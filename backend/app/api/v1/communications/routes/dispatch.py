@@ -582,6 +582,9 @@ async def patch_message_delivery_status(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> CommunicationMessageOut:
+    """Legacy status patch — provider receipts must use delivery diagnostics path."""
+    from backend.app.communications.delivery_diagnostics import apply_delivery_callback
+
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     msg = await db.get(CommunicationMessage, message_id)
@@ -596,6 +599,30 @@ async def patch_message_delivery_status(
     )
     if body.external_message_ref:
         msg.external_message_ref = body.external_message_ref
+
+    # C0.3: when a provider payload is present, route through the unified
+    # diagnostics callback path (idempotency + no delivered downgrade).
+    if body.provider_payload:
+        payload = {
+            **_as_dict(body.provider_payload),
+            "canonical_status": body.delivery_status,
+            "message": body.error_message,
+        }
+        await apply_delivery_callback(
+            db,
+            tenant_id=tenant_id,
+            provider=str(_as_dict(body.provider_payload).get("provider") or msg.channel),
+            payload=payload,
+            message_id=message_id,
+        )
+        if body.delivery_status == "read":
+            msg.read_at = body.read_at or msg.read_at or _now_utc()
+            if msg.delivery_status not in {"failed"}:
+                msg.delivery_status = "read"
+        await db.commit()
+        await db.refresh(msg)
+        return _message_out(msg)
+
     msg.delivery_status = body.delivery_status
     msg.error_message = body.error_message
     if body.delivery_status in {"sent", "delivered", "read"} and msg.sent_at is None:
@@ -604,11 +631,6 @@ async def patch_message_delivery_status(
         msg.delivered_at = body.delivered_at or msg.delivered_at or _now_utc()
     if body.delivery_status == "read":
         msg.read_at = body.read_at or msg.read_at or _now_utc()
-    if body.provider_payload:
-        msg.payload = {
-            **_as_dict(msg.payload),
-            "provider_callback": body.provider_payload,
-        }
     await db.commit()
     await db.refresh(msg)
     return _message_out(msg)

@@ -37,11 +37,14 @@ from backend.app.communications.intent import normalize_intent
 from backend.app.communications.intent_policy import evaluate_intent_policy
 from backend.app.communications.snapshot import build_outbound_snapshot
 from backend.app.models.communication import CommunicationMessage, CommunicationThread
+from backend.app.communications.delivery_canon import STATUS_QUEUED, STATUS_SENT
+from backend.app.communications.delivery_diagnostics import record_delivery_attempt
+from backend.app.communications.delivery_errors import REASON_SEND_FAILED
 from backend.app.models.communication_delivery import (
     DELIVERY_CHANNEL_EMAIL,
     DELIVERY_PROVIDER_SMTP,
     DELIVERY_STATUS_ACCEPTED,
-    DELIVERY_STATUS_FAILED,
+    DELIVERY_STATUS_QUEUED,
     CommunicationDelivery,
 )
 from backend.app.models.communication_thread_entity_link import CommunicationThreadEntityLink
@@ -506,44 +509,77 @@ async def send_communication(
         await db.flush()
 
         if transport is not None and not skip_transport:
+            attempt_started = datetime.now(timezone.utc)
             try:
                 await transport()
             except Exception as exc:  # noqa: BLE001
-                delivery.status = DELIVERY_STATUS_FAILED
-                delivery.error_code = "send_failed"
-                delivery.error_detail = str(exc) or type(exc).__name__
-                message.delivery_status = "failed"
-                message.error_message = delivery.error_detail
-                await db.flush()
+                detail = str(exc) or type(exc).__name__
+                await record_delivery_attempt(
+                    db,
+                    tenant_id=str(request.tenant_id),
+                    message_id=str(message.id),
+                    delivery_id=delivery_id,
+                    provider=DELIVERY_PROVIDER_SMTP,
+                    canonical_result="failed",
+                    started_at=attempt_started,
+                    finished_at=datetime.now(timezone.utc),
+                    reason_code=REASON_SEND_FAILED,
+                    raw_message=detail,
+                    raw_provider_payload={"error": detail, "type": type(exc).__name__},
+                    correlation_id=str(snapshot_dict.get("correlation_id") or "")
+                    or None,
+                    meta={"source": "send_communication.transport"},
+                )
                 raise SendCommunicationError(
-                    delivery.error_detail or "transport failed",
+                    detail or "transport failed",
                     details={
                         "reason": "transport_failed",
+                        "reason_code": REASON_SEND_FAILED,
                         "message_id": str(message.id),
                         "thread_id": str(thread_id),
                         "delivery_id": delivery_id,
                     },
                 ) from exc
-            delivery.status = DELIVERY_STATUS_ACCEPTED
-            delivery.sent_at = now
-            message.delivery_status = "sent"
-            message.sent_at = now
-            await db.flush()
+            await record_delivery_attempt(
+                db,
+                tenant_id=str(request.tenant_id),
+                message_id=str(message.id),
+                delivery_id=delivery_id,
+                provider=DELIVERY_PROVIDER_SMTP,
+                canonical_result=STATUS_SENT,
+                started_at=attempt_started,
+                finished_at=datetime.now(timezone.utc),
+                correlation_id=str(snapshot_dict.get("correlation_id") or "") or None,
+                meta={"source": "send_communication.transport"},
+            )
         elif skip_transport:
-            # Outbox-only: message + delivery queued; provider later (C0.3/worker).
-            message.delivery_status = "queued"
+            # Outbox-only: message + delivery queued; worker/callback advances status.
+            delivery.status = DELIVERY_STATUS_QUEUED
+            message.delivery_status = STATUS_QUEUED
             await db.flush()
     elif transport is not None and not skip_transport:
         try:
             await transport()
         except Exception as exc:  # noqa: BLE001
             message.delivery_status = "failed"
-            message.error_message = str(exc) or type(exc).__name__
+            detail = str(exc) or type(exc).__name__
+            message.error_message = detail
+            # No CommunicationDelivery row for non-email channels yet —
+            # still require a reason code on the message payload for operators.
+            payload = dict(message.payload or {})
+            payload["diagnostics"] = {
+                "status": "failed",
+                "reason_code": REASON_SEND_FAILED,
+                "retryable": True,
+                "safe_message": detail[:200],
+            }
+            message.payload = payload
             await db.flush()
             raise SendCommunicationError(
                 message.error_message or "transport failed",
                 details={
                     "reason": "transport_failed",
+                    "reason_code": REASON_SEND_FAILED,
                     "message_id": str(message.id),
                     "thread_id": str(thread_id),
                 },

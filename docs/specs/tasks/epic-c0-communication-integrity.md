@@ -1,6 +1,6 @@
 # Epic C0 — Communication Integrity
 
-**Status:** Active — C0.1 ✅ · C0.1b ✅ (PR #101 @ `7bc13d57`); **current slice C0.2**  
+**Status:** Active — C0.1 ✅ · C0.1b ✅ · C0.2 ✅ (PR #102); **current slice C0.3**  
 **Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · G13 thread entity links · Thread-primary Communication
 
 > Platform-critical GAP: HostFlow loses the link between the originating entity and the actual correspondence — and risks parallel module senders.  
@@ -93,53 +93,46 @@ Mandatory delivered: typed `IntentPolicyResult`, unified Intent registry, full i
 
 ---
 
-## Slice C0.2 — Inbound resolver and threading (**current**)
+## Slice C0.2 — Inbound resolver and threading ✅
 
 **Task:** [c0-2-inbound-resolver.md](c0-2-inbound-resolver.md)  
-**Branch:** `fix/communication-c0-inbound-resolver`  
-**Worktree:** `/tmp/hf-c0-2-inbound-resolver`
+**PR:** [#102](https://github.com/igortatarynovich/HostFlow/pull/102) — **merged** (`00ea61e9`)
 
 ### Main contract
 
 Every inbound message is deterministically linked to a thread/entity **or** enters an explicit unresolved queue. No lost inbound.
 
-### Scope
-
-Provider normalization · reply/thread resolution · entity resolution · inbound `CommunicationMessage` · G13 · unresolved queue · provider-message-id idempotency · audit/correlation.  
-**Not** Inbox redesign (C1) or delivery diagnostics (C0.3).
-
-### Resolution preference
-
-1. `In-Reply-To` / `References` → existing thread  
-2. Provider conversation / message identifiers  
-3. Exact email/phone among linked persons  
-4. Active inquiry or application for that contact  
-5. Client / candidate  
-6. Only then: unlinked thread + unresolved queue  
-
-Resolution reasons (audit): `reply_headers` | `provider_thread` | `known_participant` | `entity_contact` | `manual` | `unresolved`.
-
-### Acceptance
-
-A reply to an email sent from HostFlow lands in the **same** thread and surfaces on the **same** entity; unknowns are queued, never dropped.
-
 ---
 
-## Slice C0.3 — Delivery diagnostics and history
+## Slice C0.3 — Delivery diagnostics and history (**current**)
 
-**Branch (proposed):** `fix/communication-c0-delivery-diagnostics`
+**Task:** [c0-3-delivery-diagnostics.md](c0-3-delivery-diagnostics.md)  
+**Legacy map:** [c0-3-legacy-delivery-migration-map.md](c0-3-legacy-delivery-migration-map.md)  
+**Branch:** `fix/communication-c0-delivery-diagnostics`  
+**Worktree:** `/tmp/hf-c0-3-delivery-diagnostics`
+
+### Main contract
+
+For every send and delivery attempt the operator knows what happened, where it failed, whether retry is allowed, and what to show — without server logs.  
+Message / Delivery / Attempt statuses are separate; provider status ≠ canonical status.
 
 ### Scope
 
-- Find producer of `lead.communication.failed`; retire or remap after Thread-primary.  
-- Delivery state on Message/Delivery: created / succeeded / failed.  
-- No internal event names in operator UI.  
-- History shows: who sent, when, from, to, delivered/failed, safe failure reason.  
-- Correlation IDs between outbound message and provider webhook.
+- Canonical states: `queued → accepted → sent → delivered` + terminal negatives  
+- Immutable `CommunicationDeliveryAttempt`  
+- Error taxonomy + retry policy by reason code  
+- Unified callback path (normalize → resolve → transition → audit)  
+- Operator diagnostics API / timeline (not Inbox redesign)  
+- Retire `lead.communication.failed` producer → `communication.delivery.failed`  
+- Contract test: no provider status polling outside diagnostics platform  
 
 ### Acceptance
 
-Any send failure is explainable from **one** record without server logs.
+Any send failure is explainable from diagnostics (status, last attempt, reason_code, retryable, next retry, provider ref, timeline) without server logs.
+
+### Next after merge
+
+**C1 Inbox UX** — not Stage 3.
 
 ---
 

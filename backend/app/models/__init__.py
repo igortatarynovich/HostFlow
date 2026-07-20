@@ -67,6 +67,12 @@ LeadImportJob = lead_import_module.LeadImportJob  # type: ignore[attr-defined]
 LeadImportJobStatus = lead_import_module.LeadImportJobStatus  # type: ignore[attr-defined]
 LeadQuestionnaireInvite = _load_model_module("lead_questionnaire_invite").LeadQuestionnaireInvite  # type: ignore[attr-defined]
 CommunicationDelivery = _load_model_module("communication_delivery").CommunicationDelivery  # type: ignore[attr-defined]
+CommunicationDeliveryAttempt = _load_model_module(
+    "communication_delivery_attempt"
+).CommunicationDeliveryAttempt  # type: ignore[attr-defined]
+CommunicationDeliveryCallbackUnresolved = _load_model_module(
+    "communication_delivery_callback_unresolved"
+).CommunicationDeliveryCallbackUnresolved  # type: ignore[attr-defined]
 Candidate = _load_model_module("candidate").Candidate  # type: ignore[attr-defined]
 RecruitmentApplication = _load_model_module("recruitment_application").RecruitmentApplication  # type: ignore[attr-defined]
 SalesInquiry = _load_model_module("sales_inquiry").SalesInquiry  # type: ignore[attr-defined]
@@ -320,6 +326,8 @@ __all__ = [
     "LeadImportJobStatus",
     "LeadQuestionnaireInvite",
     "CommunicationDelivery",
+    "CommunicationDeliveryAttempt",
+    "CommunicationDeliveryCallbackUnresolved",
     "CandidateDeleteRequest",
     "UserInvite",
     "UserAuditLog",
