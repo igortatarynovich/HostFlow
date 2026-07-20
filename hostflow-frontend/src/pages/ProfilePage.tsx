@@ -32,6 +32,7 @@ import {
   writeStoredDefaultAppHome,
   type StoredDefaultAppHome,
 } from '../utils/defaultAppHome'
+import { formatOutgoingSignaturePlain } from '../utils/outgoingEmailSignature'
 
 const LOCALE_OPTIONS = ['ru-RU', 'pl-PL', 'en-US']
 const TIMEZONE_OPTIONS = ['Europe/Warsaw', 'Europe/Moscow', 'UTC']
@@ -54,48 +55,6 @@ function signatureFromMe(me: { signature?: UserOutgoingSignature | null } | null
     show_email: sig.show_email !== false,
     show_website: sig.show_website !== false,
   }
-}
-
-function previewOutgoingSignature(input: {
-  signature: UserOutgoingSignature
-  fallbackName: string
-  fallbackPosition: string
-  fallbackPhone: string
-  fallbackEmail: string
-  fallbackLogo: string
-  locale: string
-}): string {
-  const closing =
-    input.locale === 'en' ? 'Kind regards,' : input.locale === 'ru' ? 'С уважением,' : 'Z poważaniem,'
-  const first = String(input.signature.first_name || '').trim()
-  const last = String(input.signature.last_name || '').trim()
-  const name = [first, last].filter(Boolean).join(' ') || input.fallbackName
-  const position = String(input.signature.position || '').trim() || input.fallbackPosition
-  const company = String(input.signature.company || '').trim()
-  const phone = String(input.signature.phone || '').trim() || input.fallbackPhone
-  const email = String(input.signature.email || '').trim() || input.fallbackEmail
-  const websiteRaw = String(input.signature.website || '').trim()
-  const website = websiteRaw.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '')
-  const logo = String(input.signature.logo_url || '').trim() || input.fallbackLogo
-  const lines = [closing, '', name]
-  if (position) lines.push(position)
-  if (company) {
-    lines.push('')
-    lines.push(company)
-  }
-  const contacts: string[] = []
-  if (input.signature.show_phone !== false && phone) contacts.push(`☎ ${phone}`)
-  if (input.signature.show_email !== false && email) contacts.push(`✉ ${email}`)
-  if (input.signature.show_website !== false && website) contacts.push(`↗ ${website}`)
-  if (contacts.length) {
-    lines.push('')
-    lines.push(...contacts)
-  }
-  if (logo) {
-    lines.push('')
-    lines.push(logo)
-  }
-  return lines.join('\n')
 }
 
 const NOTIFICATION_ITEMS = [
@@ -371,16 +330,19 @@ export default function ProfilePage() {
   }
 
   const signaturePreview = useMemo(() => {
-    const locale = String(uiForm.locale || 'pl').split('-')[0].toLowerCase()
-    const fallbackName = [profileForm.first_name, profileForm.last_name].filter(Boolean).join(' ').trim()
-    return previewOutgoingSignature({
-      signature: signatureForm,
-      fallbackName: fallbackName || String(me?.email || '').trim(),
-      fallbackPosition: profileForm.position || '',
-      fallbackPhone: profileForm.phone || '',
+    const localeCode = String(uiForm.locale || 'pl').split('-')[0].toLowerCase()
+    return formatOutgoingSignaturePlain({
+      signature: {
+        ...signatureForm,
+        logo_url: String(signatureForm.logo_url || '').trim() || avatarPreview || '',
+      },
+      fallbackFirstName: profileForm.first_name,
+      fallbackLastName: profileForm.last_name,
+      fallbackFullName: me?.email || '',
+      fallbackPosition: profileForm.position,
+      fallbackPhone: profileForm.phone,
       fallbackEmail: profileForm.email || me?.email || '',
-      fallbackLogo: avatarPreview || '',
-      locale,
+      locale: localeCode,
     })
   }, [
     avatarPreview,

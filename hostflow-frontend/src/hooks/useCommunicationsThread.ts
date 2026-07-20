@@ -12,8 +12,10 @@ import {
 } from '../api/communications'
 import { recordTtvStepCompleted } from '../api/analytics'
 import { useI18n } from '../i18n'
+import { useAuth } from '../store/useAuth'
 import { isCommunicationThreadUnlinked } from '../utils/communicationThreadUnlinked'
 import { communicationApiTranslatedDetail } from '../utils/communicationApiTranslatedDetail'
+import { formatOutgoingSignaturePlain } from '../utils/outgoingEmailSignature'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyFormHintError, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
@@ -41,7 +43,8 @@ export type UseCommunicationsThreadOptions = {
 }
 
 export function useCommunicationsThread(threadId: string, opts?: UseCommunicationsThreadOptions) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const { me } = useAuth()
   const planLimitModal = usePlanLimitModal()
   const [thread, setThread] = useState<CommunicationThread | null>(null)
   const [messages, setMessages] = useState<CommunicationMessage[]>([])
@@ -61,8 +64,6 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
   const [sendImmediately, setSendImmediately] = useState(true)
   const [templates, setTemplates] = useState<Array<{ id: string; label: string; body: string }>>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
-  const [signatureCandidates, setSignatureCandidates] = useState<string>('')
-  const [signatureClients, setSignatureClients] = useState<string>('')
   const [applySignature, setApplySignature] = useState(true)
   const firstEmailTtvSentRef = useRef(false)
 
@@ -74,12 +75,20 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
 
   const threadUnlinked = useMemo(() => Boolean(thread && isCommunicationThreadUnlinked(thread)), [thread])
 
+  /** Default: personal cabinet signature only — never tenant recruitment/client stubs. */
   const inferredSignature = useMemo(() => {
     if (!thread || String(thread.channel || '').toLowerCase() !== 'email') return ''
-    const hasCompany = Boolean(thread.linked_company_id) || String(thread.entity_type || '').toLowerCase().includes('company')
-    const raw = hasCompany ? signatureClients : signatureCandidates
-    return String(raw || '').trim()
-  }, [signatureCandidates, signatureClients, thread])
+    return formatOutgoingSignaturePlain({
+      signature: me?.signature ?? null,
+      fallbackFirstName: me?.first_name,
+      fallbackLastName: me?.last_name,
+      fallbackFullName: me?.full_name,
+      fallbackPosition: me?.position,
+      fallbackPhone: me?.phone,
+      fallbackEmail: me?.email,
+      locale,
+    })
+  }, [locale, me, thread])
 
   const appendSignature = useCallback(
     (text: string) => {
@@ -110,9 +119,6 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
       setThread(data.thread)
       setMessages(Array.isArray(data.messages) ? data.messages : [])
       if (!draftSubject) setDraftSubject(data.thread.subject || '')
-      const emailCfg = (cfg as any)?.email || {}
-      setSignatureCandidates(String(emailCfg.signatureCandidates || '').trim())
-      setSignatureClients(String(emailCfg.signatureClients || '').trim())
       const tplItems = Array.isArray((cfg as any)?.messageTemplates?.items) ? (cfg as any).messageTemplates.items : []
       const nextTemplates = tplItems
         .filter((x: any) => x && x.enabled && (x.target === 'email' || x.target === 'both'))

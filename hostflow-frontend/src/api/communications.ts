@@ -454,8 +454,8 @@ export const DEFAULT_COMMUNICATIONS_SETTINGS: CommunicationsWorkspaceSettings = 
     autoThreading: true,
     syncIntervalMinutes: 5,
     defaultMailbox: 'candidates',
-    signatureCandidates: 'Zespół rekrutacji',
-    signatureClients: 'Zespół HostFlow',
+    signatureCandidates: '',
+    signatureClients: '',
   },
   planner: {
     view: 'agenda',

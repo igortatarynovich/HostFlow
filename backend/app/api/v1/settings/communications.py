@@ -263,8 +263,8 @@ def _default_settings() -> Dict[str, Any]:
             "autoThreading": True,
             "syncIntervalMinutes": 5,
             "defaultMailbox": "candidates",
-            "signatureCandidates": "Zespół rekrutacji",
-            "signatureClients": "Zespół HostFlow",
+            "signatureCandidates": "",
+            "signatureClients": "",
         },
         "planner": {
             "view": "agenda",
