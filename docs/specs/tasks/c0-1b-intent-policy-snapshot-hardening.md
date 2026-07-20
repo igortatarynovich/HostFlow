@@ -1,26 +1,39 @@
 # C0.1b — Intent Policy & Snapshot Hardening
 
-**Status:** Queued (after PR #100 merge)  
-**Parents:** [C0.0 Canon](c0-0-communication-canon.md) · [Epic C0](epic-c0-communication-integrity.md) · [C0.1 platform outbound](c0-1-platform-outbound.md)
+**Status:** In progress  
+**Branch:** `fix/communication-c0-intent-policy-hardening`  
+**Worktree:** `/tmp/hf-c0-1b-intent-policy`  
+**Base:** `integration/release-product-a-b` @ `f8569fa9` (PR #100 merged)  
+**Parents:** [C0.0 Canon](c0-0-communication-canon.md) · [Epic C0](epic-c0-communication-integrity.md) · [Legacy migration map](c0-1b-legacy-writers-migration-map.md)
 
-> Next slice after #100 is **not** another module writer.  
-> It hardens Intent policy, snapshots, and the migration map for remaining senders.
+> Hardens the Canon path so registry, policy, and snapshot cannot drift.  
+> **Not** another module writer.
 
-## Scope
+## Implementation order (locked)
 
-- Unified Intent registry (durable / typed beyond seed enum)  
-- Typed policy results (allow/deny with machine-readable codes)  
-- Full message/delivery snapshot contract (intent, template, links, consent decision, automation id)  
-- Canonical entity × channel × intent matrix  
-- Migration map for remaining writers (`lead_communications`, `lead_rodo`, `candidate_notifications`, inbox dispatch)
+1. **Unified Intent Registry** — `intent_registry.py` (SoT)  
+2. **Typed `IntentPolicyResult`** — `intent_policy.py` / `evaluate_intent_policy`  
+3. **Matrix entity × intent × channel** — derived from registry; deny unknown  
+4. **Full immutable snapshot** — `snapshot.py` → message/delivery payload  
+5. **Legacy writers migration map** — [c0-1b-legacy-writers-migration-map.md](c0-1b-legacy-writers-migration-map.md)  
+6. **Bypass ban** — allowlist contract test (allowlist shrinks only)
+
+## Merge criteria
+
+- [x] New intent cannot be added without registry entry (enum ↔ registry test)  
+- [x] Forbidden entity/intent/channel blocked before message create  
+- [x] Snapshot reconstructs send without live templates/settings  
+- [x] Questionnaire production caller uses `prepare_and_send` / Sender path  
+- [x] All legacy writers listed with removal plan  
+- [x] New legacy exceptions forbidden by allowlist test  
 
 ## Out of scope
 
-- Template admin UI, automation authoring UI, campaigns (C2)  
+- Migrating legacy writers in this PR (map only)  
+- Template admin / automations / campaigns (C2)  
 - Inbox UX (C1)  
-- Full PublicActionLinkService product  
-- Consent evidence engine product (contracts + minimal gate only if needed)
+- Full PublicActionLinkService / consent evidence store  
 
-## Depends on
+## After merge
 
-PR #100 merged: Intent-first outbound path + gate contract tests green.
+Proceed to **C0.2 inbound resolver** on a stable outbound model.

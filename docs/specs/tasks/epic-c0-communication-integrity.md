@@ -1,6 +1,6 @@
 # Epic C0 — Communication Integrity
 
-**Status:** Active (C0.0 canon docs + C0.1 vertical slice in PR #100)  
+**Status:** Active — C0.1 ✅ (PR #100 @ `f8569fa9`); **current slice C0.1b**  
 **Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · G13 thread entity links · Thread-primary Communication
 
 > Platform-critical GAP: HostFlow loses the link between the originating entity and the actual correspondence — and risks parallel module senders.  
@@ -42,13 +42,14 @@ Canon linked from queue + this epic; Intent-first documented; C2 scope expanded;
 
 ---
 
-## Slice C0.1 — Universal outbound foundation
+## Slice C0.1 — Universal outbound foundation ✅
 
 **Branch:** `fix/communication-c0-outbound-linkage`  
-**Worktree:** `/tmp/hf-c0-outbound-linkage`  
-**PR:** [#100](https://github.com/igortatarynovich/HostFlow/pull/100) — **first Canon implementation (outbound), not full Communication product**  
+**PR:** [#100](https://github.com/igortatarynovich/HostFlow/pull/100) — **merged** (`f8569fa9`)  
 **Normative capability note:** [c0-1-platform-outbound.md](c0-1-platform-outbound.md)  
-**Canon:** [c0-0-communication-canon.md](c0-0-communication-canon.md)
+**Canon:** [c0-0-communication-canon.md](c0-0-communication-canon.md)  
+
+**Result:** first working Canon path `Intent → Policy → Resolvers → Command → Sender` + G13.
 
 ### Main contract
 
@@ -82,12 +83,13 @@ request_questionnaire → TemplateResolver + LinkResolver → CommunicationComma
 
 ---
 
-## Slice C0.1b — Intent Policy & Snapshot Hardening
+## Slice C0.1b — Intent Policy & Snapshot Hardening (**current**)
 
 **Task:** [c0-1b-intent-policy-snapshot-hardening.md](c0-1b-intent-policy-snapshot-hardening.md)  
-**After:** PR #100 merge  
+**Branch:** `fix/communication-c0-intent-policy-hardening`  
+**Worktree:** `/tmp/hf-c0-1b-intent-policy`  
 
-Typed Intent policies, full snapshots, entity/channel matrix, migration map for remaining writers — **not** a new module email sender.
+Mandatory: typed `IntentPolicyResult`, unified Intent registry, full immutable snapshot, entity × intent × channel matrix, legacy writer migration map, ban bypass send-paths, contract test that production callers use `CommunicationSender`. **Not** a new module email sender.
 
 ### Acceptance / DoD (vertical)
 

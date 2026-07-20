@@ -5,10 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Protocol
 
-from backend.app.communications.intent import (
-    CommunicationIntent,
-    resolve_intent_policy,
-)
+from backend.app.communications.intent import CommunicationIntent, normalize_intent
+from backend.app.communications.intent_registry import get_intent_definition
 from backend.app.services.communication_templates.registry import (
     CommunicationTemplate,
     CommunicationTemplateNotFoundError,
@@ -66,16 +64,13 @@ class SeedTemplateResolver:
         channel: str = "email",
         preferred_key: str | None = None,
     ) -> ResolvedTemplate:
-        policy = resolve_intent_policy(intent)
-        key = (preferred_key or "").strip() or None
-        if key and policy.allowed_template_keys and key not in policy.allowed_template_keys:
+        normalized = normalize_intent(intent)
+        definition = get_intent_definition(normalized.value)
+        key = (preferred_key or "").strip() or definition.default_template_key
+        if key and definition.allowed_template_keys and key not in definition.allowed_template_keys:
             raise CommunicationTemplateNotFoundError(key)
         if not key:
-            if not policy.allowed_template_keys:
-                raise CommunicationTemplateNotFoundError(
-                    f"intent:{getattr(intent, 'value', intent)}"
-                )
-            key = sorted(policy.allowed_template_keys)[0]
+            raise CommunicationTemplateNotFoundError(f"intent:{normalized.value}")
         resolved = self.resolve_by_key(key)
         if channel and resolved.channel != channel:
             raise CommunicationTemplateNotFoundError(key)

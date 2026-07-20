@@ -1,10 +1,11 @@
 # C0.1 — Platform outbound capability (normative)
 
-**Status:** First Canon implementation in PR #100 (outbound path)  
-**Parents:** [C0.0 Communication Canon](c0-0-communication-canon.md) · [Epic C0](epic-c0-communication-integrity.md) · [GAP audit](c0-1-outbound-linkage-gap-audit.md)
+**Status:** ✅ Complete — PR #100 merged @ `f8569fa9`  
+**Parents:** [C0.0 Communication Canon](c0-0-communication-canon.md) · [Epic C0](epic-c0-communication-integrity.md) · [GAP audit](c0-1-outbound-linkage-gap-audit.md)  
+**Next:** [C0.1b Intent Policy & Snapshot Hardening](c0-1b-intent-policy-snapshot-hardening.md)
 
 > Intent is primary. `send_communication` executes durable writes.  
-> PR #100 aligns seams to the canon without shipping C2/Inbox/consent/campaign product.
+> C0.1 closed the first Canon outbound path; C0.1b hardens policy/snapshot (no new writers).
 
 ## Capability (mandatory)
 

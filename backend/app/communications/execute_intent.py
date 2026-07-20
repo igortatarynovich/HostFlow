@@ -11,10 +11,6 @@ from typing import Any, Mapping, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.communications.capability_resolver import (
-    CapabilityResolver,
-    get_capability_resolver,
-)
 from backend.app.communications.command import (
     CommunicationCommand,
     CommunicationOrigin,
@@ -22,7 +18,9 @@ from backend.app.communications.command import (
     ResolvedLinkSnapshot,
     SendCommunicationContent,
 )
-from backend.app.communications.intent import CommunicationIntent, normalize_intent, resolve_intent_policy
+from backend.app.communications.intent import CommunicationIntent, normalize_intent
+from backend.app.communications.intent_policy import evaluate_intent_policy
+from backend.app.communications.intent_registry import get_intent_definition
 from backend.app.communications.link_resolver import LinkResolveRequest, LinkResolver, get_link_resolver
 from backend.app.communications.prepare_send import prepare_and_send_communication
 from backend.app.communications.send_communication import (
@@ -78,47 +76,30 @@ def _trim(value: Any) -> str:
 async def render_communication_intent(
     request: IntentExecutionRequest,
     *,
-    capability_resolver: CapabilityResolver | None = None,
     template_resolver: TemplateResolver | None = None,
     link_resolver: LinkResolver | None = None,
 ) -> IntentRenderResult:
     """Intent → Policy → Resolvers → rendered Command (no persistence)."""
     intent = normalize_intent(request.intent)
-    policy = resolve_intent_policy(intent)
     channel = _trim(request.channel).lower() or "email"
-    if channel not in policy.allowed_channels:
-        raise SendCommunicationError(
-            f"channel {channel!r} is not allowed for intent {intent.value}",
-            details={
-                "reason": "intent_channel_denied",
-                "intent": intent.value,
-                "channel": channel,
-            },
-        )
-
-    caps = await (capability_resolver or get_capability_resolver()).resolve(
-        tenant_id=request.tenant_id,
-        origin=request.origin,
-        actor_id=request.actor_id,
+    origin = request.origin.normalized()
+    definition = get_intent_definition(intent.value)
+    policy_result = evaluate_intent_policy(
+        intent_key=intent.value,
+        entity_type=origin.entity_type,
+        channel=channel,
+        automation=bool(_trim(request.automation_identity)),
+        template_key=request.preferred_template_key,
     )
-    if channel not in caps.allowed_channels:
+    if not policy_result.allowed:
         raise SendCommunicationError(
-            f"channel {channel!r} is not allowed for entity {caps.entity_type}",
+            policy_result.reason_message,
             details={
-                "reason": "capability_channel_denied",
-                "entity_type": caps.entity_type,
-                "channel": channel,
-                "denial": caps.denial_reasons.get(channel) or "channel_not_allowed",
-            },
-        )
-    if intent.value not in caps.allowed_intents:
-        raise SendCommunicationError(
-            f"intent {intent.value!r} is not allowed for entity {caps.entity_type}",
-            details={
-                "reason": "capability_intent_denied",
-                "entity_type": caps.entity_type,
+                "reason": policy_result.reason_code,
                 "intent": intent.value,
-                "denial": caps.denial_reasons.get("intent") or "intent_not_allowed",
+                "entity_type": origin.entity_type,
+                "channel": channel,
+                "policy": policy_result.to_dict(),
             },
         )
 
@@ -143,7 +124,7 @@ async def render_communication_intent(
     resolved_links: list[ResolvedLinkSnapshot] = []
     link_vars: dict[str, Any] = {}
     for link_req in request.link_requests or ():
-        if link_req.link_intent not in policy.link_intents:
+        if link_req.link_intent not in definition.link_intents:
             raise SendCommunicationError(
                 f"link intent {link_req.link_intent!r} not allowed for {intent.value}",
                 details={
@@ -189,13 +170,7 @@ async def render_communication_intent(
         body_html = plain_body_to_html(body_text)
 
     policy_decision = {
-        "allowed": True,
-        "intent": intent.value,
-        "intent_purpose": policy.purpose,
-        "channel": channel,
-        "entity_type": caps.entity_type,
-        "requires_consent": policy.requires_consent,
-        "allows_automation": policy.allows_automation,
+        **policy_result.to_dict(),
         "template_key": resolved_tpl.key,
         "template_version": resolved_tpl.version,
         "link_intents": [lnk.link_intent for lnk in resolved_links],
@@ -204,7 +179,7 @@ async def render_communication_intent(
     command = CommunicationCommand(
         tenant_id=str(request.tenant_id),
         intent=intent,
-        origin=request.origin,
+        origin=origin,
         recipients=request.recipients,
         channel=channel,
         content=SendCommunicationContent(
@@ -219,8 +194,8 @@ async def render_communication_intent(
         related_entities=request.related_entities,
         thread_id=request.thread_id,
         idempotency_key=request.idempotency_key,
-        purpose=request.purpose or policy.purpose,
-        delivery_purpose=request.delivery_purpose or request.purpose or policy.purpose,
+        purpose=request.purpose or policy_result.purpose,
+        delivery_purpose=request.delivery_purpose or request.purpose or policy_result.purpose,
         thread_subject=request.thread_subject,
         template_key=resolved_tpl.key,
         template_version=resolved_tpl.version,
@@ -248,14 +223,12 @@ async def execute_communication_intent(
     *,
     transport: TransportFn | None = None,
     skip_transport: bool = False,
-    capability_resolver: CapabilityResolver | None = None,
     template_resolver: TemplateResolver | None = None,
     link_resolver: LinkResolver | None = None,
 ) -> SendCommunicationResult:
     """Full path: render from Intent, then prepare_and_send (persistence + optional transport)."""
     rendered = await render_communication_intent(
         request,
-        capability_resolver=capability_resolver,
         template_resolver=template_resolver,
         link_resolver=link_resolver,
     )
@@ -264,5 +237,4 @@ async def execute_communication_intent(
         rendered.command,
         transport=transport,
         skip_transport=skip_transport,
-        capability_resolver=capability_resolver,
     )

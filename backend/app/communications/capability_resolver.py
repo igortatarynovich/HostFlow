@@ -1,12 +1,19 @@
-"""CapabilityResolver — what an actor may send for an entity (C0.0 extension point)."""
+"""CapabilityResolver — derived from Intent Registry entity profiles (C0.1b).
+
+Do not maintain a parallel entity×intent matrix here; use intent_registry.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol, Sequence
+from typing import Protocol
 
-from backend.app.communications.intent import CommunicationIntent
 from backend.app.communications.command import CommunicationOrigin
+from backend.app.communications.intent_registry import (
+    UnknownEntityProfileError,
+    get_entity_profile,
+    intents_for_entity,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,52 +47,8 @@ class CapabilityResolver(Protocol):
     ) -> CommunicationCapabilities: ...
 
 
-# Thin seed matrix — Candidate + SalesInquiry (+ aliases). Expand later without callers changing.
-_ENTITY_CHANNEL_MATRIX: dict[str, tuple[tuple[str, ...], bool]] = {
-    "candidate": (("email", "sms", "whatsapp"), True),
-    "application": (("email", "sms", "whatsapp"), True),
-    "sales_inquiry": (("email", "sms", "whatsapp"), False),  # bulk limited → False for now
-    "lead": (("email", "sms", "whatsapp"), False),
-    "client_account": (("email", "sms", "whatsapp"), True),
-    "contact_person": (("email", "sms", "whatsapp"), True),
-    "employee": (("email", "sms", "whatsapp"), False),
-    "service_order": (("email",), False),
-}
-
-_ENTITY_INTENTS: dict[str, tuple[str, ...]] = {
-    "candidate": (
-        CommunicationIntent.REQUEST_QUESTIONNAIRE.value,
-        CommunicationIntent.REQUEST_DOCUMENTS.value,
-        CommunicationIntent.INVITE_TO_INTERVIEW.value,
-        CommunicationIntent.SEND_OFFER.value,
-        CommunicationIntent.FOLLOW_UP.value,
-        CommunicationIntent.MANUAL_OUTBOUND.value,
-    ),
-    "application": (
-        CommunicationIntent.REQUEST_QUESTIONNAIRE.value,
-        CommunicationIntent.REQUEST_DOCUMENTS.value,
-        CommunicationIntent.INVITE_TO_INTERVIEW.value,
-        CommunicationIntent.SEND_OFFER.value,
-        CommunicationIntent.FOLLOW_UP.value,
-        CommunicationIntent.MANUAL_OUTBOUND.value,
-    ),
-    "sales_inquiry": (
-        CommunicationIntent.REQUEST_QUESTIONNAIRE.value,
-        CommunicationIntent.FOLLOW_UP.value,
-        CommunicationIntent.GDPR_NOTICE.value,
-        CommunicationIntent.MANUAL_OUTBOUND.value,
-    ),
-    "lead": (
-        CommunicationIntent.REQUEST_QUESTIONNAIRE.value,
-        CommunicationIntent.FOLLOW_UP.value,
-        CommunicationIntent.GDPR_NOTICE.value,
-        CommunicationIntent.MANUAL_OUTBOUND.value,
-    ),
-}
-
-
 class DefaultCapabilityResolver:
-    """Platform default — matrix for Candidate / SalesInquiry first; others conservative."""
+    """Platform default — channels/intents from Intent Registry only."""
 
     async def resolve(
         self,
@@ -94,27 +57,33 @@ class DefaultCapabilityResolver:
         origin: CommunicationOrigin,
         actor_id: str | None = None,
     ) -> CommunicationCapabilities:
-        del tenant_id, actor_id  # actor rules land with full auth later
+        del tenant_id, actor_id
         origin = origin.normalized()
-        channels, bulk = _ENTITY_CHANNEL_MATRIX.get(
-            origin.entity_type, (("email",), False)
-        )
-        intents = _ENTITY_INTENTS.get(
-            origin.entity_type, (CommunicationIntent.MANUAL_OUTBOUND.value,)
-        )
-        denial: dict[str, str] = {}
-        if origin.entity_type == "service_order":
-            denial["sms"] = "service_order_via_contact_only"
-            denial["whatsapp"] = "service_order_via_contact_only"
-            denial["bulk"] = "service_order_bulk_forbidden"
-        if origin.entity_type in {"sales_inquiry", "lead"}:
-            denial["bulk"] = "bulk_limited_for_inquiry"
+        try:
+            profile = get_entity_profile(origin.entity_type)
+        except UnknownEntityProfileError:
+            return CommunicationCapabilities(
+                entity_type=origin.entity_type,
+                entity_id=origin.entity_id,
+                allowed_channels=(),
+                allowed_intents=(),
+                bulk_allowed=False,
+                denial_reasons={
+                    "entity": "unknown_entity_type",
+                    "channel": "unknown_entity_type",
+                    "intent": "unknown_entity_type",
+                },
+            )
+        intents = intents_for_entity(origin.entity_type)
+        denial = dict(profile.channel_denial_reasons)
+        if not profile.bulk_allowed:
+            denial.setdefault("bulk", "bulk_not_allowed")
         return CommunicationCapabilities(
             entity_type=origin.entity_type,
             entity_id=origin.entity_id,
-            allowed_channels=channels,
+            allowed_channels=tuple(sorted(profile.allowed_channels)),
             allowed_intents=intents,
-            bulk_allowed=bulk,
+            bulk_allowed=profile.bulk_allowed,
             denial_reasons=denial,
         )
 

@@ -1,8 +1,6 @@
-"""Communication Intent — primary business layer (C0.0).
+"""Communication Intent — enum façade over the unified Intent Registry (C0.1b).
 
-Sends start as an intent, not as “send email”. Intent drives templates,
-channels, link needs, consent, initiator rules, and automation eligibility.
-``prepare_and_send_communication`` / ``send_communication`` execute the intent.
+Registry SoT: ``intent_registry.py``. Do not add parallel policy tables here.
 """
 
 from __future__ import annotations
@@ -11,9 +9,16 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import FrozenSet
 
+from backend.app.communications.intent_registry import (
+    IntentDefinition,
+    UnknownIntentRegistryError,
+    get_intent_definition,
+    list_intent_definitions,
+)
+
 
 class CommunicationIntent(str, Enum):
-    """Stable intent keys. Product modules request these; they do not compose mail."""
+    """Stable intent keys — members must match Intent Registry entries."""
 
     REQUEST_QUESTIONNAIRE = "request_questionnaire"
     REQUEST_DOCUMENTS = "request_documents"
@@ -23,13 +28,12 @@ class CommunicationIntent(str, Enum):
     MARKETING_CAMPAIGN = "marketing_campaign"
     GDPR_NOTICE = "gdpr_notice"
     DOCUMENT_EXPIRY_REMINDER = "document_expiry_reminder"
-    # Escape hatch for tests / legacy callers until they migrate to a named intent.
     MANUAL_OUTBOUND = "manual_outbound"
 
 
 @dataclass(frozen=True, slots=True)
 class IntentPolicy:
-    """What an intent allows. ActionPolicy/stage gates refine further later."""
+    """Backward-compatible view of IntentDefinition for C0.1 callers."""
 
     intent: CommunicationIntent
     allowed_channels: FrozenSet[str]
@@ -38,93 +42,7 @@ class IntentPolicy:
     requires_consent: bool
     allows_automation: bool
     allows_manual: bool = True
-    purpose: str = "workflow"  # transaction | workflow | marketing
-
-
-# Seed policies — thin registry for C0.1 extension points (not full product catalog).
-_INTENT_POLICIES: dict[CommunicationIntent, IntentPolicy] = {
-    CommunicationIntent.REQUEST_QUESTIONNAIRE: IntentPolicy(
-        intent=CommunicationIntent.REQUEST_QUESTIONNAIRE,
-        allowed_channels=frozenset({"email"}),
-        allowed_template_keys=frozenset({"questionnaire_invite_email_v1"}),
-        link_intents=frozenset({"sales_questionnaire", "candidate_questionnaire"}),
-        requires_consent=False,
-        allows_automation=True,
-        purpose="workflow",
-    ),
-    CommunicationIntent.REQUEST_DOCUMENTS: IntentPolicy(
-        intent=CommunicationIntent.REQUEST_DOCUMENTS,
-        allowed_channels=frozenset({"email", "sms"}),
-        allowed_template_keys=frozenset(),
-        link_intents=frozenset({"document_upload"}),
-        requires_consent=False,
-        allows_automation=True,
-        purpose="workflow",
-    ),
-    CommunicationIntent.INVITE_TO_INTERVIEW: IntentPolicy(
-        intent=CommunicationIntent.INVITE_TO_INTERVIEW,
-        allowed_channels=frozenset({"email", "sms", "whatsapp"}),
-        allowed_template_keys=frozenset(),
-        link_intents=frozenset({"meeting_booking"}),
-        requires_consent=False,
-        allows_automation=True,
-        purpose="workflow",
-    ),
-    CommunicationIntent.SEND_OFFER: IntentPolicy(
-        intent=CommunicationIntent.SEND_OFFER,
-        allowed_channels=frozenset({"email"}),
-        allowed_template_keys=frozenset(),
-        link_intents=frozenset({"offer_review", "proposal_review"}),
-        requires_consent=False,
-        allows_automation=False,
-        purpose="transaction",
-    ),
-    CommunicationIntent.FOLLOW_UP: IntentPolicy(
-        intent=CommunicationIntent.FOLLOW_UP,
-        allowed_channels=frozenset({"email", "sms", "whatsapp"}),
-        allowed_template_keys=frozenset(),
-        link_intents=frozenset(),
-        requires_consent=False,
-        allows_automation=True,
-        purpose="workflow",
-    ),
-    CommunicationIntent.MARKETING_CAMPAIGN: IntentPolicy(
-        intent=CommunicationIntent.MARKETING_CAMPAIGN,
-        allowed_channels=frozenset({"email", "sms"}),
-        allowed_template_keys=frozenset(),
-        link_intents=frozenset({"unsubscribe"}),
-        requires_consent=True,
-        allows_automation=True,
-        purpose="marketing",
-    ),
-    CommunicationIntent.GDPR_NOTICE: IntentPolicy(
-        intent=CommunicationIntent.GDPR_NOTICE,
-        allowed_channels=frozenset({"email"}),
-        allowed_template_keys=frozenset(),
-        link_intents=frozenset({"privacy_notice"}),
-        requires_consent=False,
-        allows_automation=True,
-        purpose="transaction",
-    ),
-    CommunicationIntent.DOCUMENT_EXPIRY_REMINDER: IntentPolicy(
-        intent=CommunicationIntent.DOCUMENT_EXPIRY_REMINDER,
-        allowed_channels=frozenset({"email", "sms"}),
-        allowed_template_keys=frozenset(),
-        link_intents=frozenset(),
-        requires_consent=False,
-        allows_automation=True,
-        purpose="workflow",
-    ),
-    CommunicationIntent.MANUAL_OUTBOUND: IntentPolicy(
-        intent=CommunicationIntent.MANUAL_OUTBOUND,
-        allowed_channels=frozenset({"email", "sms", "whatsapp"}),
-        allowed_template_keys=frozenset(),
-        link_intents=frozenset(),
-        requires_consent=False,
-        allows_automation=False,
-        purpose="workflow",
-    ),
-}
+    purpose: str = "workflow"
 
 
 class UnknownCommunicationIntentError(ValueError):
@@ -137,17 +55,43 @@ def normalize_intent(value: CommunicationIntent | str | None) -> CommunicationIn
     if value is None or value == "":
         return CommunicationIntent.MANUAL_OUTBOUND
     if isinstance(value, CommunicationIntent):
+        # Ensure registry has the key (fail closed for drift).
+        get_intent_definition(value.value)
         return value
     key = str(value).strip().lower()
     try:
+        get_intent_definition(key)
         return CommunicationIntent(key)
-    except ValueError as exc:
+    except (UnknownIntentRegistryError, ValueError) as exc:
         raise UnknownCommunicationIntentError(key) from exc
 
 
+def _definition_to_policy(definition: IntentDefinition) -> IntentPolicy:
+    return IntentPolicy(
+        intent=CommunicationIntent(definition.intent_key),
+        allowed_channels=definition.allowed_channels,
+        allowed_template_keys=definition.allowed_template_keys,
+        link_intents=definition.link_intents,
+        requires_consent=definition.requires_consent,
+        allows_automation=definition.allows_automation,
+        allows_manual=definition.allows_manual,
+        purpose=definition.purpose,
+    )
+
+
 def resolve_intent_policy(intent: CommunicationIntent | str | None) -> IntentPolicy:
+    """Legacy helper — prefer ``evaluate_intent_policy`` for typed results."""
     normalized = normalize_intent(intent)
-    policy = _INTENT_POLICIES.get(normalized)
-    if policy is None:
-        raise UnknownCommunicationIntentError(str(normalized))
-    return policy
+    return _definition_to_policy(get_intent_definition(normalized.value))
+
+
+def assert_enum_matches_registry() -> None:
+    """Dev/test helper: enum members ↔ registry keys must be identical sets."""
+    enum_keys = {m.value for m in CommunicationIntent}
+    registry_keys = {d.intent_key for d in list_intent_definitions()}
+    if enum_keys != registry_keys:
+        raise RuntimeError(
+            "CommunicationIntent enum drifted from Intent Registry: "
+            f"only_enum={sorted(enum_keys - registry_keys)} "
+            f"only_registry={sorted(registry_keys - enum_keys)}"
+        )

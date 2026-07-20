@@ -1,8 +1,4 @@
-"""prepare_and_send_communication — validate Command then platform send.
-
-Receives a ready CommunicationCommand (after Intent → Resolvers).
-Does not re-make template/link business decisions; re-checks intent/capabilities.
-"""
+"""prepare_and_send_communication — IntentPolicyResult gate then platform send."""
 
 from __future__ import annotations
 
@@ -10,18 +6,15 @@ from typing import Any, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.communications.capability_resolver import (
-    CapabilityResolver,
-    get_capability_resolver,
-)
 from backend.app.communications.command import CommunicationCommand, SendCommunicationContent
-from backend.app.communications.intent import resolve_intent_policy
+from backend.app.communications.intent_policy import evaluate_intent_policy
 from backend.app.communications.send_communication import (
     SendCommunicationError,
     SendCommunicationResult,
     TransportFn,
     send_communication,
 )
+from backend.app.communications.snapshot import build_outbound_snapshot
 
 
 class CommunicationSender(Protocol):
@@ -92,12 +85,10 @@ async def prepare_and_send_communication(
     *,
     transport: TransportFn | None = None,
     skip_transport: bool = False,
-    capability_resolver: CapabilityResolver | None = None,
 ) -> SendCommunicationResult:
-    """Validate intent/capabilities on a ready Command, then execute durable send.
+    """Evaluate typed IntentPolicyResult, then execute durable send.
 
-    When ``transport`` is omitted and channel is email and not ``skip_transport``,
-    the platform supplies the SMTP transport — callers must not.
+    Forbidden combinations are denied before message/outbox creation.
     """
     if command.content is None or (
         not (command.content.subject or command.content.body_text or command.content.body_html)
@@ -107,84 +98,43 @@ async def prepare_and_send_communication(
             details={"reason": "missing_content"},
         )
 
-    intent = command.normalized_intent()
-    policy = resolve_intent_policy(intent)
+    origin = command.origin.normalized()
     channel = _trim(command.channel).lower() or "email"
-    if channel not in policy.allowed_channels:
-        raise SendCommunicationError(
-            f"channel {channel!r} is not allowed for intent {intent.value}",
-            details={
-                "reason": "intent_channel_denied",
-                "intent": intent.value,
-                "channel": channel,
-            },
-        )
+    intent = command.normalized_intent()
+    automation = bool(_trim(command.automation_identity))
 
-    caps = await (capability_resolver or get_capability_resolver()).resolve(
-        tenant_id=command.tenant_id,
-        origin=command.origin,
-        actor_id=command.actor_id,
+    policy = evaluate_intent_policy(
+        intent_key=intent.value,
+        entity_type=origin.entity_type,
+        channel=channel,
+        automation=automation,
+        template_key=command.template_key,
     )
-    if channel not in caps.allowed_channels:
+    if not policy.allowed:
         raise SendCommunicationError(
-            f"channel {channel!r} is not allowed for entity {caps.entity_type}",
+            policy.reason_message,
             details={
-                "reason": "capability_channel_denied",
-                "entity_type": caps.entity_type,
+                "reason": policy.reason_code,
+                "intent": policy.intent_key,
+                "entity_type": origin.entity_type,
                 "channel": channel,
-                "denial": caps.denial_reasons.get(channel) or "channel_not_allowed",
-            },
-        )
-    if intent.value not in caps.allowed_intents:
-        raise SendCommunicationError(
-            f"intent {intent.value!r} is not allowed for entity {caps.entity_type}",
-            details={
-                "reason": "capability_intent_denied",
-                "entity_type": caps.entity_type,
-                "intent": intent.value,
-                "denial": caps.denial_reasons.get("intent") or "intent_not_allowed",
+                "policy": policy.to_dict(),
             },
         )
 
-    if command.template_key and policy.allowed_template_keys:
-        if command.template_key not in policy.allowed_template_keys:
-            raise SendCommunicationError(
-                f"template {command.template_key!r} is not allowed for intent {intent.value}",
-                details={
-                    "reason": "intent_template_denied",
-                    "intent": intent.value,
-                    "template_key": command.template_key,
-                },
-            )
-
-    # Intent-bound product templates cannot ride MANUAL_OUTBOUND.
-    _INTENT_BOUND_TEMPLATES = {
-        "questionnaire_invite_email_v1": "request_questionnaire",
-    }
-    tpl = _trim(command.template_key)
-    if tpl in _INTENT_BOUND_TEMPLATES and intent.value != _INTENT_BOUND_TEMPLATES[tpl]:
-        raise SendCommunicationError(
-            f"template {tpl!r} requires intent {_INTENT_BOUND_TEMPLATES[tpl]!r}, got {intent.value!r}",
-            details={
-                "reason": "intent_required_for_template",
-                "template_key": tpl,
-                "required_intent": _INTENT_BOUND_TEMPLATES[tpl],
-                "intent": intent.value,
-            },
-        )
-
-    policy_decision = dict(command.policy_decision or {})
-    policy_decision.setdefault("allowed", True)
-    policy_decision.setdefault("intent", intent.value)
-    policy_decision.setdefault("intent_purpose", policy.purpose)
-    policy_decision.setdefault("channel", channel)
-    policy_decision.setdefault("entity_type", caps.entity_type)
+    signature_meta = dict((command.meta or {}).get("signature") or {}) or None
+    snapshot = build_outbound_snapshot(
+        command,
+        policy=policy,
+        signature=signature_meta,
+    )
 
     enriched_meta: dict[str, Any] = {
         **dict(command.meta or {}),
-        "intent": intent.value,
+        "intent": policy.intent_key,
         "intent_purpose": policy.purpose,
-        "policy_decision": policy_decision,
+        "policy_decision": policy.to_dict(),
+        "snapshot": snapshot.to_dict(),
         "resolved_links": [lnk.to_dict() for lnk in (command.resolved_links or ())],
         "render_variables": dict(command.render_variables or {}),
     }
@@ -201,7 +151,7 @@ async def prepare_and_send_communication(
     assert content is not None
     executable = CommunicationCommand(
         tenant_id=command.tenant_id,
-        origin=command.origin,
+        origin=origin,
         recipients=command.recipients,
         channel=channel,
         intent=intent,
@@ -219,14 +169,14 @@ async def prepare_and_send_communication(
         idempotency_key=command.idempotency_key,
         purpose=command.purpose or policy.purpose,
         thread_subject=command.thread_subject,
-        delivery_purpose=command.delivery_purpose or command.purpose,
-        template_key=command.template_key,
+        delivery_purpose=command.delivery_purpose or command.purpose or policy.purpose,
+        template_key=command.template_key or policy.default_template_key,
         template_version=command.template_version,
         locale=command.locale,
         requested_link_intents=command.requested_link_intents,
         resolved_links=command.resolved_links,
         render_variables=command.render_variables,
-        policy_decision=policy_decision,
+        policy_decision=policy.to_dict(),
         correlation_id=command.correlation_id,
         source_event_id=command.source_event_id,
         meta=enriched_meta,
