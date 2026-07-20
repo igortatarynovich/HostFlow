@@ -21,9 +21,41 @@ Continuing Sales product flow on unbound / mis-linked threads makes every later 
 
 ## Slice C0.1 — Guaranteed outbound linkage
 
-**Branch (proposed):** `fix/communication-c0-outbound-linkage`
+**Branch (proposed):** `fix/communication-c0-outbound-linkage`  
+**Worktree (proposed):** `/tmp/hf-c0-outbound-linkage`  
+**Base:** `integration/release-product-a-b` tip **after** PR #99 merge
 
-### Scope
+### Post-merge gate (before any C0.1 worktree)
+
+1. Fast-forward `integration/release-product-a-b`
+2. Verify new SHA and clean tree
+3. `make repo-health`
+4. Compare CI to known baseline (pre-existing reds are not C0 blockers)
+5. Remove `/tmp/hf-convert-entrypoints`
+6. Confirm only the integration worktree remains
+7. Create a **new** worktree + branch exclusively for C0.1
+
+### Main contract
+
+> **Cannot** create an outbound message from a HostFlow entity without a durable `thread ↔ origin entity` link.  
+> Unknown **delivery** result is allowed.  
+> Unbound thread when origin is known is **not** allowed.
+
+### GAP audit (required before writing code)
+
+Short, evidence-based inventory — no product code until this lands in the slice notes:
+
+| # | Question |
+|---|----------|
+| 1 | All outbound send entrypoints (HTTP, services, workflows, questionnaire invite, etc.) |
+| 2 | Where thread is created or resolved |
+| 3 | Where `communication_thread_entity_links` are written |
+| 4 | Which callers pass entity context (`entity_type` / `entity_id` / origin) |
+| 5 | Where UI reads legacy `entity_type` / `entity_id` instead of G13 links |
+| 6 | Transactional boundaries between message, thread, link, and outbox |
+| 7 | Existing send idempotency (re-send must not duplicate links) |
+
+### Scope (implementation, after audit)
 
 - Every send action requires origin context: `tenant_id`, `entity_type`, `entity_id`, `actor`, `recipient`.
 - Thread is created or resolved **before** provider handoff.

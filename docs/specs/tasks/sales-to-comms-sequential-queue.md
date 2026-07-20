@@ -98,6 +98,10 @@ Do **not** start Stage 3 slice 3 immediately after #99. Resume Sales product flo
 | **C0.2** | Inbound resolver / threading | Reply joins same thread on same entity |
 | **C0.3** | Delivery diagnostics / history | One record explains send failure |
 
+**After merge #99 (before C0.1 code):** FF integration → verify SHA/clean tree → `make repo-health` → CI vs baseline → remove `/tmp/hf-convert-entrypoints` → only integration worktree → new worktree/branch for C0.1 only. Then **GAP audit** (send entrypoints, thread resolve, G13 writes, entity context callers, legacy UI reads, txn boundaries, send idempotency) — see epic doc.
+
+**C0.1 contract:** outbound from a known HostFlow entity **must** have durable `thread ↔ origin entity`. Unknown delivery result OK; unbound thread with known origin **forbidden**.
+
 **Invariant (C0.1):**
 
 ```text
