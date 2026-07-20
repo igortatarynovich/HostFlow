@@ -1,12 +1,8 @@
 """C0.2: communication_inbound_unresolved queue table.
 
-Revision ID: 202608250001_comm_inbound_unresolved
+Revision ID: 202607200002_comm_inbound_unresolved
 Revises: 202607200001_ca_manual_origin
-Create Date: 2026-07-20 19:40:00.000000
-
-Chains from the current integration head so ``alembic upgrade head`` stays
-single-headed (the 202608* document line is already merged elsewhere in the
-historical graph and is not the live tip).
+Create Date: 2026-07-20 19:50:00.000000
 """
 
 from __future__ import annotations
@@ -19,7 +15,7 @@ import sqlalchemy as sa
 
 RevisionType = Union[str, Sequence[str], None]
 
-revision: str = "202608250001_comm_inbound_unresolved"
+revision: str = "202607200002_comm_inbound_unresolved"
 down_revision: RevisionType = "202607200001_ca_manual_origin"
 branch_labels: RevisionType = None
 depends_on: RevisionType = None
@@ -41,6 +37,11 @@ def upgrade() -> None:
         sa.Column("correlation_id", sa.String(length=64), nullable=True),
         sa.Column("details_json", sa.JSON(), nullable=False),
         sa.Column("notes", sa.Text(), nullable=True),
+        sa.Column("resolved_by_user_id", sa.String(length=36), nullable=True),
+        sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("resolved_entity_type", sa.String(length=64), nullable=True),
+        sa.Column("resolved_entity_id", sa.String(length=120), nullable=True),
+        sa.Column("resolved_thread_id", sa.String(length=36), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

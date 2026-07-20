@@ -22,12 +22,15 @@ from backend.app.communications.inbound_normalize import (
     normalize_message_id,
 )
 from backend.app.communications.send_communication import find_thread_id_for_origin
-from backend.app.models.candidate import Candidate
+# Destination entities via package facade (C1/C2: no direct destination-module imports).
+from backend.app.models import (
+    Candidate,
+    Lead,
+    RecruitmentApplication,
+    SalesInquiry,
+)
 from backend.app.models.communication import CommunicationMessage, CommunicationThread
 from backend.app.models.communication_thread_entity_link import CommunicationThreadEntityLink
-from backend.app.models.lead import Lead
-from backend.app.models.recruitment_application import RecruitmentApplication
-from backend.app.models.sales_inquiry import SalesInquiry
 
 
 def _trim(value: Any) -> str:
@@ -305,66 +308,96 @@ async def _resolve_entity_contact(
     db: AsyncSession,
     inbound: NormalizedInboundMessage,
 ) -> InboundResolution | None:
-    """Exact contact → prefer active application / inquiry → client/candidate."""
+    """Exact contact → prefer active application / inquiry → client/candidate.
+
+    Ambiguous matches (multiple candidates/leads, or candidate+lead) never pick
+    arbitrarily — return ``unresolved`` with ``reason_code=ambiguous_entity_contact``.
+    """
     sender = _norm_addr(inbound.sender_address)
     if not sender:
         return None
 
-    entity_type: str | None = None
-    entity_id: str | None = None
-    details: dict[str, Any] = {"sender_address": inbound.sender_address}
+    matches: list[dict[str, Any]] = []
 
-    # Candidate exact email.
-    candidate = (
+    candidates = (
         await db.execute(
-            sa.select(Candidate)
-            .where(
+            sa.select(Candidate).where(
                 Candidate.tenant_id == inbound.tenant_id,
                 Candidate.email.isnot(None),
                 sa.func.lower(Candidate.email) == sender,
             )
-            .limit(1)
         )
-    ).scalars().first()
-
-    if candidate is not None:
+    ).scalars().all()
+    for candidate in candidates:
         app_id = await _active_application_for_candidate(
             db, tenant_id=inbound.tenant_id, candidate_id=str(candidate.id)
         )
         if app_id:
-            entity_type, entity_id = "application", app_id
-            details["via"] = "active_application"
-            details["candidate_id"] = str(candidate.id)
-        else:
-            entity_type, entity_id = "candidate", str(candidate.id)
-            details["via"] = "candidate_email"
-
-    if entity_type is None:
-        lead_ids = await _lead_ids_by_email(
-            db, tenant_id=inbound.tenant_id, email=sender
-        )
-        if lead_ids:
-            lead_id = lead_ids[0]
-            si = await _sales_inquiry_for_lead(
-                db, tenant_id=inbound.tenant_id, lead_id=lead_id
+            matches.append(
+                {
+                    "entity_type": "application",
+                    "entity_id": app_id,
+                    "via": "active_application",
+                    "candidate_id": str(candidate.id),
+                }
             )
-            if si:
-                entity_type, entity_id = "sales_inquiry", si
-                details["via"] = "sales_inquiry"
-                details["lead_id"] = lead_id
-            else:
-                entity_type, entity_id = "lead", lead_id
-                details["via"] = "lead_email"
+        else:
+            matches.append(
+                {
+                    "entity_type": "candidate",
+                    "entity_id": str(candidate.id),
+                    "via": "candidate_email",
+                }
+            )
 
-    if not entity_type or not entity_id:
+    lead_ids = await _lead_ids_by_email(
+        db, tenant_id=inbound.tenant_id, email=sender
+    )
+    for lead_id in lead_ids:
+        si = await _sales_inquiry_for_lead(
+            db, tenant_id=inbound.tenant_id, lead_id=lead_id
+        )
+        if si:
+            matches.append(
+                {
+                    "entity_type": "sales_inquiry",
+                    "entity_id": si,
+                    "via": "sales_inquiry",
+                    "lead_id": lead_id,
+                }
+            )
+        else:
+            matches.append(
+                {
+                    "entity_type": "lead",
+                    "entity_id": lead_id,
+                    "via": "lead_email",
+                }
+            )
+
+    if not matches:
         return None
 
+    if len(matches) > 1:
+        return InboundResolution(
+            reason="unresolved",
+            details={
+                "reason_code": "ambiguous_entity_contact",
+                "sender_address": inbound.sender_address,
+                "matches": matches,
+            },
+        )
+
+    chosen = matches[0]
+    entity_type = str(chosen["entity_type"])
+    entity_id = str(chosen["entity_id"])
     thread_id = await find_thread_id_for_origin(
         db,
         tenant_id=inbound.tenant_id,
         channel=inbound.channel,
         origin=CommunicationOrigin(entity_type=entity_type, entity_id=entity_id),
     )
+    details = {"sender_address": inbound.sender_address, **chosen}
     return InboundResolution(
         reason="entity_contact",
         thread_id=thread_id,
@@ -409,6 +442,16 @@ async def resolve_inbound(
     inbound: NormalizedInboundMessage,
 ) -> InboundResolution:
     """Run the normative resolution chain. Always returns a decision."""
+    force = _trim(inbound.force_unresolved_reason_code)
+    if force:
+        return InboundResolution(
+            reason="unresolved",
+            details={
+                "reason_code": force,
+                "sender_address": inbound.sender_address,
+            },
+        )
+
     for step in (
         _resolve_reply_headers,
         _resolve_provider_thread,

@@ -45,13 +45,19 @@ Resolution reasons (audit):
 - Template/automation/campaign product (C2)  
 - Migrating remaining outbound legacy writers (map from C0.1b; separate slices)
 
-## Acceptance
+## Acceptance / merge gate
 
 - [x] Reply to a HostFlow-sent email joins the **same** thread and surfaces on the **same** entity  
 - [x] Unknown inbound never disappears — always message + thread + unresolved reason when unlinked  
-- [x] Duplicate provider message ID is idempotent  
-- [x] G13 written when entity is resolved  
-- [x] Contract tests for resolution chain + unresolved path + idempotency  
+- [x] Duplicate provider message ID is idempotent (`tenant` + `channel` + `channel_account` + provider message id)  
+- [x] Ambiguous `entity_contact` → unresolved (`ambiguous_entity_contact`), never arbitrary pick  
+- [x] Unresolved row in same transactional boundary as message (caller commit)  
+- [x] Manual resolution retains audit (who / when / entity / thread)  
+- [x] Message persisted before optional downstream side effects (auto-assign / UOS)  
+- [x] `/ingest/email` and `/ingest/{channel}` have no legacy thread-heuristic bypass  
+- [x] Reply Message-ID normalize: brackets, case, duplicate headers  
+- [x] G13 link idempotent  
+- [x] Corrupt / forced unresolved payload kept with reason code  
 
 ### Implementation map
 
@@ -62,6 +68,7 @@ Resolution reasons (audit):
 | Resolution chain | `backend/app/communications/inbound_resolve.py` |
 | Ingest + G13 / unresolved | `backend/app/communications/inbound_ingest.py` |
 | Unresolved queue model | `backend/app/models/communication_inbound_unresolved.py` |
+| Migration | `backend/alembic/versions/202607200002_comm_inbound_unresolved_c0_2.py` |
 | Outbound Message-ID stamp | `backend/app/communications/send_communication.py` |
 | API wire | `backend/app/api/v1/communications/routes/ingest.py` |
 | Contract tests | `backend/tests/communications/test_c0_2_inbound_resolver.py` |

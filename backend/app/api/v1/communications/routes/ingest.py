@@ -26,11 +26,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx, get_current_user
+from backend.app.communications.inbound_dto import NormalizedInboundMessage
 from backend.app.communications.inbound_ingest import ingest_inbound_message
 from backend.app.communications.inbound_normalize import (
     normalize_email_fields,
     normalize_generic_fields,
 )
+from backend.app.models.communication_inbound_unresolved import REASON_CORRUPT_PAYLOAD
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.communication import (
     CommunicationChannelAccount,
@@ -462,29 +464,50 @@ async def ingest_email(
         if account is None or str(account.tenant_id) != tenant_id or account.channel != "email":
             raise HTTPException(status_code=404, detail="Email channel account not found")
 
-    inbound = normalize_email_fields(
-        tenant_id=tenant_id,
-        channel_account_id=body.channel_account_id,
-        provider=body.provider,
-        provider_thread_ref=body.provider_thread_ref,
-        external_message_ref=body.external_message_ref,
-        subject=body.subject,
-        from_address=body.from_address,
-        from_name=body.from_name,
-        to_address=body.to_address,
-        to_name=body.to_name,
-        cc=body.cc,
-        bcc=body.bcc,
-        text=body.text,
-        html=body.html,
-        received_at=body.received_at,
-        headers=body.headers,
-        payload=body.payload,
-        entity_type=body.entity_type,
-        entity_id=body.entity_id,
-        linked_candidate_id=body.linked_candidate_id,
-        linked_company_id=body.linked_company_id,
-    )
+    try:
+        inbound = normalize_email_fields(
+            tenant_id=tenant_id,
+            channel_account_id=body.channel_account_id,
+            provider=body.provider,
+            provider_thread_ref=body.provider_thread_ref,
+            external_message_ref=body.external_message_ref,
+            subject=body.subject,
+            from_address=body.from_address,
+            from_name=body.from_name,
+            to_address=body.to_address,
+            to_name=body.to_name,
+            cc=body.cc,
+            bcc=body.bcc,
+            text=body.text,
+            html=body.html,
+            received_at=body.received_at,
+            headers=body.headers,
+            payload=body.payload,
+            entity_type=body.entity_type,
+            entity_id=body.entity_id,
+            linked_candidate_id=body.linked_candidate_id,
+            linked_company_id=body.linked_company_id,
+        )
+    except Exception as exc:  # noqa: BLE001 — never drop corrupt payloads
+        inbound = NormalizedInboundMessage(
+            tenant_id=tenant_id,
+            channel="email",
+            provider=body.provider,
+            channel_account_id=body.channel_account_id,
+            external_message_ref=body.external_message_ref,
+            subject=body.subject,
+            sender_address=body.from_address,
+            sender_label=body.from_name,
+            recipient_address=body.to_address,
+            recipient_label=body.to_name,
+            body_text=body.text,
+            body_html=body.html,
+            received_at=body.received_at,
+            headers=dict(body.headers or {}),
+            payload={**(body.payload or {}), "normalize_error": str(exc) or type(exc).__name__},
+            force_unresolved_reason_code=REASON_CORRUPT_PAYLOAD,
+        )
+    # Platform ingest only — no legacy thread heuristic bypass.
     result = await ingest_inbound_message(
         db,
         inbound=inbound,
@@ -554,33 +577,60 @@ async def ingest_generic_channel(
         if account is None or str(account.tenant_id) != tenant_id or str(account.channel).lower() != channel_norm:
             raise HTTPException(status_code=404, detail="Channel account not found")
 
-    inbound = normalize_generic_fields(
-        tenant_id=tenant_id,
-        channel=channel_norm,
-        channel_account_id=body.channel_account_id,
-        provider=body.provider,
-        provider_thread_ref=body.provider_thread_ref,
-        provider_chat_ref=body.provider_chat_ref,
-        external_message_ref=body.external_message_ref,
-        sender_address=body.sender_address,
-        sender_label=body.sender_label,
-        recipient_address=body.recipient_address,
-        recipient_label=body.recipient_label,
-        subject=body.subject,
-        text=body.text,
-        html=body.html,
-        received_at=body.received_at,
-        headers=body.headers,
-        payload={
-            **(body.payload or {}),
-            "provider_chat_ref": body.provider_chat_ref,
-        },
-        attachments=body.attachments,
-        entity_type=body.entity_type,
-        entity_id=body.entity_id,
-        linked_candidate_id=body.linked_candidate_id,
-        linked_company_id=body.linked_company_id,
-    )
+    try:
+        inbound = normalize_generic_fields(
+            tenant_id=tenant_id,
+            channel=channel_norm,
+            channel_account_id=body.channel_account_id,
+            provider=body.provider,
+            provider_thread_ref=body.provider_thread_ref,
+            provider_chat_ref=body.provider_chat_ref,
+            external_message_ref=body.external_message_ref,
+            sender_address=body.sender_address,
+            sender_label=body.sender_label,
+            recipient_address=body.recipient_address,
+            recipient_label=body.recipient_label,
+            subject=body.subject,
+            text=body.text,
+            html=body.html,
+            received_at=body.received_at,
+            headers=body.headers,
+            payload={
+                **(body.payload or {}),
+                "provider_chat_ref": body.provider_chat_ref,
+            },
+            attachments=body.attachments,
+            entity_type=body.entity_type,
+            entity_id=body.entity_id,
+            linked_candidate_id=body.linked_candidate_id,
+            linked_company_id=body.linked_company_id,
+        )
+    except Exception as exc:  # noqa: BLE001 — never drop corrupt payloads
+        inbound = NormalizedInboundMessage(
+            tenant_id=tenant_id,
+            channel=channel_norm,
+            provider=body.provider,
+            channel_account_id=body.channel_account_id,
+            provider_thread_ref=body.provider_thread_ref or body.provider_chat_ref,
+            external_message_ref=body.external_message_ref,
+            subject=body.subject,
+            sender_address=body.sender_address,
+            sender_label=body.sender_label,
+            recipient_address=body.recipient_address,
+            recipient_label=body.recipient_label,
+            body_text=body.text,
+            body_html=body.html,
+            received_at=body.received_at,
+            headers=dict(body.headers or {}),
+            payload={
+                **(body.payload or {}),
+                "provider_chat_ref": body.provider_chat_ref,
+                "normalize_error": str(exc) or type(exc).__name__,
+            },
+            attachments=[dict(x) for x in (body.attachments or []) if isinstance(x, dict)],
+            force_unresolved_reason_code=REASON_CORRUPT_PAYLOAD,
+        )
+    # Platform ingest only — no legacy thread heuristic bypass.
     result = await ingest_inbound_message(
         db,
         inbound=inbound,

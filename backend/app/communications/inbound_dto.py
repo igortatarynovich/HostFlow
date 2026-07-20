@@ -57,6 +57,8 @@ class NormalizedInboundMessage:
     linked_company_id: str | None = None
     cc: tuple[str, ...] = ()
     bcc: tuple[str, ...] = ()
+    # When set, ingest always lands in unresolved with this reason_code (corrupt payload).
+    force_unresolved_reason_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
