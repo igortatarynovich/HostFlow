@@ -516,6 +516,14 @@ async def test_outbound_thread_message_allowed_without_mandatory_link(
         },
     )
     assert second.status_code == 201, second.text
+    # C0.1: UOS service order is known origin → G13 auto-ensured on outbound.
+    detail = await client.get(
+        f"/api/v1/communications/threads/{thread_id}",
+        headers=manager_headers,
+    )
+    assert detail.status_code == 200, detail.text
+    links = detail.json().get("thread", {}).get("entity_links") or []
+    assert any(l.get("entity_type") == "service_order" for l in links)
 
 
 @pytest.mark.anyio

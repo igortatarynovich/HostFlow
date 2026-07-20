@@ -1,39 +1,54 @@
 # Epic C0 — Communication Integrity
 
-**Status:** Queued (starts only after Stage 3 slice 2 / PR #99 is merged)  
-**Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · G13 thread entity links · Thread-primary Communication
+**Status:** Active (C0.0 canon docs + C0.1 vertical slice in PR #100)  
+**Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · G13 thread entity links · Thread-primary Communication
 
-> Platform-critical GAP: HostFlow loses the link between the originating entity and the actual correspondence.  
-> This epic is **not** Inbox UX and **not** Stage 3 Sales slice 3. Thin integrity slices only.
+> Platform-critical GAP: HostFlow loses the link between the originating entity and the actual correspondence — and risks parallel module senders.  
+> This epic is **not** Inbox UX, **not** Stage 3 Sales slice 3, and **not** full Templates/Automations/Campaigns (Epic C2).  
+> **C0.0** locks contracts; **C0.1–C0.3** implement thin integrity slices under that canon.
 
 ## Why before Stage 3 slice 3
 
-Continuing Sales product flow on unbound / mis-linked threads makes every later Sales↔Communication surface more expensive. Integrity first, then Sales module completion, then Inbox UX.
+Continuing Sales product flow on unbound / mis-linked threads (or module-specific email engines) makes every later Sales↔Communication surface more expensive. Canon + integrity first, then Sales module completion, then Inbox UX, then C2 product surfaces.
 
 ## Observed GAPs (facts)
 
 1. **Unbound outbound threads** — send from inquiry / application / client / candidate / order already knows origin; G13 `communication_thread_entity_link` must be written in the same business operation. Address fallback must not be the primary outbound mechanism.
 2. **Inbound resolver too weak** — unlinked became common; resolver must prefer reply headers → provider IDs → exact contact → active inquiry/application → client/candidate → only then unresolved.
 3. **`lead.communication.failed`** — likely wrong event model after Thread-primary; delivery state belongs on Message/Delivery with human-readable history text.
-4. **Meta Intake Completeness** — separate sprint (not inside C0); see [meta-intake-completeness.md](meta-intake-completeness.md).
+4. **Parallel writers / hardcoded public URLs** — questionnaire, lead ops, RODO, candidate notifications still diverge from one command (see C0.0 anti-patterns).
+5. **Meta Intake Completeness** — separate sprint (not inside C0); see [meta-intake-completeness.md](meta-intake-completeness.md).
 
 ---
 
-## Slice C0.1 — Guaranteed outbound linkage
+## Slice C0.0 — Communication Canon & Contracts
 
-**Branch (proposed):** `fix/communication-c0-outbound-linkage`  
-**Worktree (proposed):** `/tmp/hf-c0-outbound-linkage`  
-**Base:** `integration/release-product-a-b` tip **after** PR #99 merge
+**Task:** [c0-0-communication-canon.md](c0-0-communication-canon.md)  
+**Type:** normative docs + **contract seams in PR #100** (no new product features)
 
-### Post-merge gate (before any C0.1 worktree)
+### Delivers
 
-1. Fast-forward `integration/release-product-a-b`
-2. Verify new SHA and clean tree
-3. `make repo-health`
-4. Compare CI to known baseline (pre-existing reds are not C0 blockers)
-5. Remove `/tmp/hf-convert-entrypoints`
-6. Confirm only the integration worktree remains
-7. Create a **new** worktree + branch exclusively for C0.1
+- **Communication Intent** as the primary business layer  
+- Scope / ownership of the Communication platform  
+- `CommunicationCommand`, TemplateResolver, LinkResolver, CapabilityResolver  
+- Action policy, thread resolution, message snapshot contracts  
+- Consent/RODO, automation, settings ownership (contracts)  
+- Idempotency + transaction boundaries  
+- Migration path + anti-patterns  
+
+### Acceptance
+
+Canon linked from queue + this epic; Intent-first documented; C2 scope expanded; PR #100 implements seams without shipping C2/Inbox/consent engines.
+
+---
+
+## Slice C0.1 — Universal outbound foundation
+
+**Branch:** `fix/communication-c0-outbound-linkage`  
+**Worktree:** `/tmp/hf-c0-outbound-linkage`  
+**PR:** [#100](https://github.com/igortatarynovich/HostFlow/pull/100) — **first Canon implementation (outbound), not full Communication product**  
+**Normative capability note:** [c0-1-platform-outbound.md](c0-1-platform-outbound.md)  
+**Canon:** [c0-0-communication-canon.md](c0-0-communication-canon.md)
 
 ### Main contract
 
@@ -43,30 +58,41 @@ Continuing Sales product flow on unbound / mis-linked threads makes every later 
 
 ### GAP audit (required before writing code)
 
-Short, evidence-based inventory — no product code until this lands in the slice notes:
+**Done:** [c0-1-outbound-linkage-gap-audit.md](c0-1-outbound-linkage-gap-audit.md) @ `2569b3ea`.
 
-| # | Question |
-|---|----------|
-| 1 | All outbound send entrypoints (HTTP, services, workflows, questionnaire invite, etc.) |
-| 2 | Where thread is created or resolved |
-| 3 | Where `communication_thread_entity_links` are written |
-| 4 | Which callers pass entity context (`entity_type` / `entity_id` / origin) |
-| 5 | Where UI reads legacy `entity_type` / `entity_id` instead of G13 links |
-| 6 | Transactional boundaries between message, thread, link, and outbox |
-| 7 | Existing send idempotency (re-send must not duplicate links) |
+### Locked in PR #100 (contract alignment — do not expand into product)
 
-### Scope (implementation, after audit)
+- `CommunicationIntent` + IntentPolicy seed  
+- `CommunicationCommand` + `prepare_and_send_communication` + `CommunicationSender`  
+- `CapabilityResolver` / `TemplateResolver` / `LinkResolver` (thin impls)  
+- Platform `send_communication` executor (thread + G13 + message + delivery)  
+- Questionnaire as **first intent caller** through resolvers + sender port  
+- Thread API/UI `entity_links` with temporary legacy fallback  
 
-- Every send action requires origin context: `tenant_id`, `entity_type`, `entity_id`, `actor`, `recipient`.
-- Thread is created or resolved **before** provider handoff.
-- Entity link written in the **same** business operation; re-send does not duplicate links.
-- Send from SalesInquiry links thread at least to: SalesInquiry + transport Lead/Submission for traceability.
-- After convert: add ClientAccount link **without** removing Inquiry link.
-- UI reads G13 entity links, not only legacy `entity_type` / `entity_id` columns.
+```text
+request_questionnaire → TemplateResolver + LinkResolver → CommunicationCommand
+  → prepare_and_send → send_communication → G13 + snapshot + outbox
+```
 
-### Acceptance
+### Not in C0.1 / #100
 
-Email sent from an inquiry card appears in that inquiry’s history **immediately**, before provider reply/webhook.
+- Bulk/campaign engine, template admin product, automation authoring UI → [Epic C2](epic-c2-communication-campaigns.md)  
+- Full PublicActionLinkService, consent evidence engine  
+- Inbound resolver (C0.2), delivery diagnostics UX (C0.3), Inbox (C1)
+
+---
+
+## Slice C0.1b — Intent Policy & Snapshot Hardening
+
+**Task:** [c0-1b-intent-policy-snapshot-hardening.md](c0-1b-intent-policy-snapshot-hardening.md)  
+**After:** PR #100 merge  
+
+Typed Intent policies, full snapshots, entity/channel matrix, migration map for remaining writers — **not** a new module email sender.
+
+### Acceptance / DoD (vertical)
+
+- Email / message started from a supported entity appears on that entity’s history immediately (before provider reply).  
+- Contract scenarios: send from `candidate`, `application`, `sales_inquiry`, `client_account`, `lead`; re-send reuses origin thread; every new thread has G13 origin; cannot send with known origin without G13.
 
 ---
 
@@ -99,10 +125,10 @@ A reply to an email sent from HostFlow lands in the **same** thread and surfaces
 
 ### Scope
 
-- Find producer of `lead.communication.failed`; retire or remap after Thread-primary.
-- Delivery state on Message/Delivery: created / succeeded / failed.
-- No internal event names in operator UI.
-- History shows: who sent, when, from, to, delivered/failed, safe failure reason.
+- Find producer of `lead.communication.failed`; retire or remap after Thread-primary.  
+- Delivery state on Message/Delivery: created / succeeded / failed.  
+- No internal event names in operator UI.  
+- History shows: who sent, when, from, to, delivered/failed, safe failure reason.  
 - Correlation IDs between outbound message and provider webhook.
 
 ### Acceptance
@@ -114,7 +140,8 @@ Any send failure is explainable from **one** record without server logs.
 ## Out of scope (all C0 slices)
 
 - Inbox UX redesign (Epic C1)  
-- Signature policy product UI (later Communication stage)  
-- Meta Intake Completeness (parallel-near sprint, separate epic)  
+- Templates / automations / campaigns **product** (Epic C2) — contracts only in C0.0  
+- Signature policy product UI (may land with C2 / settings)  
+- Meta Intake Completeness (separate epic)  
 - Stage 3 Sales slice 3+ product flow  
-- Historical repair of ambiguous unbound threads beyond fail-closed gates (may follow C0.1 gate)
+- Historical repair of ambiguous unbound threads beyond fail-closed gates (may follow C0.1 gate)  

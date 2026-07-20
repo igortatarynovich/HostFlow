@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.flights.destination_contract import OpaqueResultRef
+from backend.app.communications.entity_link import ensure_thread_entity_link
 from backend.app.communications.result_link import (
     ThreadResultLinkError,
     attach_thread_result_link,
@@ -232,6 +233,25 @@ async def ensure_sales_questionnaire_pipeline_binding(
             resolved_thread_id = str(thread.id)
 
     assert resolved_thread_id is not None
+
+    # G13: durable entity links (C1 result link is not a substitute).
+    await ensure_thread_entity_link(
+        db,
+        tenant_id=tid,
+        thread_id=resolved_thread_id,
+        entity_type="sales_inquiry",
+        entity_id=inquiry_id,
+        is_immutable=True,
+    )
+    await ensure_thread_entity_link(
+        db,
+        tenant_id=tid,
+        thread_id=resolved_thread_id,
+        entity_type="lead",
+        entity_id=str(lead.id),
+        is_immutable=True,
+    )
+
     loc = str(locale or "").strip().lower()[:2] or None
     return SalesQuestionnairePipelineBinding(
         thread_id=resolved_thread_id,

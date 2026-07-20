@@ -162,8 +162,16 @@ async def list_threads(
     if assignee_id:
         filters.append(CommunicationThread.assignee_id == assignee_id)
     if entity_type:
-        filters.append(CommunicationThread.entity_type == entity_type)
-    if entity_id:
+        from backend.app.communications.entity_link import g13_thread_filter_clause
+
+        filters.append(
+            g13_thread_filter_clause(
+                tenant_id,
+                entity_type,
+                entity_id=entity_id,
+            )
+        )
+    elif entity_id:
         filters.append(CommunicationThread.entity_id == entity_id)
     if not include_archived:
         filters.append(CommunicationThread.is_archived.is_(False))
@@ -188,7 +196,20 @@ async def list_threads(
 
     total = int((await db.execute(count_stmt)).scalar() or 0)
     rows = (await db.execute(stmt)).scalars().all()
-    return CommunicationThreadListResponse(items=[_thread_out(r) for r in rows], total=total)
+    from backend.app.communications.entity_link import list_entity_links_for_threads
+
+    links_by_thread = await list_entity_links_for_threads(
+        db,
+        tenant_id=tenant_id,
+        thread_ids=[str(r.id) for r in rows],
+    )
+    return CommunicationThreadListResponse(
+        items=[
+            _thread_out(r, entity_links=links_by_thread.get(str(r.id), []))
+            for r in rows
+        ],
+        total=total,
+    )
 
 
 @router.post("/threads", response_model=CommunicationThreadOut, status_code=status.HTTP_201_CREATED)
@@ -252,9 +273,29 @@ async def create_thread(
                 "details": dict(getattr(exc, "details", None) or {}),
             },
         ) from exc
+    # C0.1: persist G13 when origin is known at create time.
+    from backend.app.communications.entity_link import (
+        ThreadEntityLinkError,
+        ensure_links_for_known_thread_origin,
+    )
+
+    entity_links = []
+    try:
+        entity_links = await ensure_links_for_known_thread_origin(
+            db, tenant_id=tenant_id, thread=thread
+        )
+    except ThreadEntityLinkError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": getattr(exc, "code", "thread_entity_link_error"),
+                "message": str(getattr(exc, "message", None) or exc),
+                "details": dict(getattr(exc, "details", None) or {}),
+            },
+        ) from exc
     await db.commit()
     await db.refresh(thread)
-    return _thread_out(thread, result_link=result_link_view)
+    return _thread_out(thread, result_link=result_link_view, entity_links=entity_links)
 
 
 @router.get("/threads/{thread_id}", response_model=CommunicationThreadDetailResponse)
@@ -282,8 +323,13 @@ async def get_thread(
     )
     msgs = (await db.execute(messages_stmt)).scalars().all()
     result_link = await get_thread_result_link(db, tenant_id=tenant_id, thread_id=thread_id)
+    from backend.app.communications.entity_link import get_thread_entity_links
+
+    entity_links = await get_thread_entity_links(
+        db, tenant_id=tenant_id, thread_id=thread_id
+    )
     return CommunicationThreadDetailResponse(
-        thread=_thread_out(thread, result_link=result_link),
+        thread=_thread_out(thread, result_link=result_link, entity_links=entity_links),
         messages=[_message_out(m) for m in msgs],
     )
 
@@ -583,9 +629,18 @@ async def patch_thread(
         merged_meta["sla_policy"] = merged_sla_policy
         thread.thread_meta = merged_meta
     thread.updated_at = _now_utc()
+    from backend.app.communications.entity_link import (
+        ensure_links_for_known_thread_origin,
+        get_thread_entity_links,
+    )
+
+    await ensure_links_for_known_thread_origin(db, tenant_id=tenant_id, thread=thread)
+    entity_links = await get_thread_entity_links(
+        db, tenant_id=tenant_id, thread_id=str(thread.id)
+    )
     await db.commit()
     await db.refresh(thread)
-    return _thread_out(thread)
+    return _thread_out(thread, entity_links=entity_links)
 
 
 @router.post("/threads/{thread_id}/read", response_model=CommunicationThreadOut)

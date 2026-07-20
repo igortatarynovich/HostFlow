@@ -197,6 +197,14 @@ export type CommunicationsWorkspaceSettings = {
 
 export type CommunicationsSettingsPatch = Partial<CommunicationsWorkspaceSettings>
 
+export type CommunicationThreadEntityLink = {
+  link_id: string
+  thread_id: string
+  entity_type: string
+  entity_id: string
+  is_immutable?: boolean
+}
+
 export type CommunicationThread = {
   id: string
   channel: string
@@ -209,6 +217,8 @@ export type CommunicationThread = {
   entity_id?: string | null
   linked_company_id?: string | null
   linked_candidate_id?: string | null
+  /** G13 SoT — prefer over legacy entity_type/entity_id. */
+  entity_links?: CommunicationThreadEntityLink[] | null
   owner_id?: string | null
   assignee_id?: string | null
   queue_assigned_by?: string | null

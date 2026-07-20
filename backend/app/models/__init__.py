@@ -195,6 +195,9 @@ CommunicationThread = _load_model_module("communication").CommunicationThread  #
 CommunicationThreadResultLink = _load_model_module(
     "communication_thread_result_link"
 ).CommunicationThreadResultLink  # type: ignore[attr-defined]
+CommunicationThreadEntityLink = _load_model_module(
+    "communication_thread_entity_link"
+).CommunicationThreadEntityLink  # type: ignore[attr-defined]
 DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
@@ -348,6 +351,7 @@ __all__ = [
     "CandidateProfile",
     "CommunicationThread",
     "CommunicationThreadResultLink",
+    "CommunicationThreadEntityLink",
     "DocumentPolicy",
     "Stage",
     "MagicLink",
