@@ -276,7 +276,8 @@ Audit must answer: *which SalesInquiry, which Flights dispatch, which Capability
 - [x] Historical ADR022 commits mapped to requirements without porting code  
 - [x] Workflow registered in [`index.md`](index.md)  
 - [x] Next implementation PR = **Convert mapping only** (no wizard, no UI shell) → [`../tasks/sales-questionnaire-convert-mapping.md`](../tasks/sales-questionnaire-convert-mapping.md)
-- [ ] After Convert: **Review implementation** (not Traceability first)
+- [x] After Convert: **Review implementation** → [`../tasks/sales-ambiguous-match-review.md`](../tasks/sales-ambiguous-match-review.md)
+- [ ] After Review: **Traceability implementation** (no UI)
 
 ---
 
@@ -298,7 +299,7 @@ Order after this docs PR:
 
 1. Convert mapping implementation  
 2. Ambiguous-match review on SalesInquiry  
-3. Traceability implementation  
+3. Traceability implementation (**no UI**)  
 4. Sales-only Capability create card (UI last)  
 
 ---

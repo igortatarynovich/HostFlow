@@ -24,6 +24,7 @@ from backend.app.models.flight_dispatch_ledger import STATUS_CONFIRMED, FlightDi
 from backend.app.models.sales_inquiry import SalesInquiry
 from backend.app.modules.client_accounts import crud as account_crud
 from backend.app.modules.client_accounts.conversion import convert_client_lead
+from backend.app.modules.sales.services.ambiguous_match_review import review_blocks_convert
 
 CONVERT_MAPPING_KEY = "convert_mapping_v1"
 CONVERT_MAPPING_VERSION = 1
@@ -194,16 +195,6 @@ def _existing_mapping(inquiry: SalesInquiry) -> Optional[dict[str, Any]]:
     return dict(raw) if isinstance(raw, dict) and raw.get("client_account_id") else None
 
 
-def _review_blocks_convert(inquiry: SalesInquiry) -> bool:
-    status = str(getattr(inquiry, "status", "") or "").strip()
-    if status == "review_required":
-        return True
-    meta = _record(getattr(inquiry, "meta", None))
-    if meta.get("review_required") is True and not meta.get("review_confirmed"):
-        return True
-    return False
-
-
 def _assert_inquiry_convertible(inquiry: SalesInquiry) -> None:
     status = str(getattr(inquiry, "status", "") or "").strip()
     if status in _TERMINAL_BLOCKED_STATUSES:
@@ -218,7 +209,7 @@ def _assert_inquiry_convertible(inquiry: SalesInquiry) -> None:
             reason="invalid_inquiry_state",
             details={"sales_inquiry_id": str(inquiry.id), "status": status},
         )
-    if _review_blocks_convert(inquiry):
+    if review_blocks_convert(inquiry):
         raise ConvertMappingError(
             "SalesInquiry still requires review confirmation",
             reason="unresolved_review",
