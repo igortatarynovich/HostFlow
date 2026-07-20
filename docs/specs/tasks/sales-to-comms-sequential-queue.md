@@ -46,8 +46,8 @@
 | **4** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` (**PR #102 merged**) | ✅ Deterministic thread/entity or unresolved queue |
 | **5** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` (**PR #104 merged**) | ✅ Failures explainable without server logs |
 | **6** | **C1** Communication Inbox Workspace | `feat/communication-c1-inbox-workspace` (**PR #107 merged**) | ✅ Queues + ThreadContext + capability Composer (C1.1) |
-| **6b** | **C1.2** Workspace Actions | `feat/communication-c1-2-workspace-actions` (**current**) | Commands → ThreadContext; invariants; no queue writes |
-| **6c** | **C1.3** Workspace Experience | *(after C1.2)* | Thread card UX on frozen Thread/Command model |
+| **6b** | **C1.2** Workspace Actions | `feat/communication-c1-2-workspace-actions` (**PR #108**) | Commands → ThreadContext; concurrency; no mixed path |
+| **6c** | **C1.3** Workspace Experience | `feat/communication-c1-3-workspace-experience` (**current**) | Thread card UX on frozen Thread/Command model |
 | **7** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on **same** Commands |
 | **8** | **Epic C Complete Gate** | `docs/epic-c-complete-gate` | Single Communication capability; status → Epic C complete |
 | **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | Boundary principle across platforms |
@@ -57,9 +57,9 @@
 
 **C0.1–C0.3** ✅ → [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md) (`95f2a525`, PR #104).  
 **C1 / C1.1** ✅ → PR #107 (`dbeb36ed`) — [ThreadContext](c1-1-thread-context-composer.md).  
-**Active:** **C1.2 Workspace Actions** — [c1-2-workspace-actions.md](c1-2-workspace-actions.md).  
+**Active:** **C1.3 Workspace Experience** — [c1-3-workspace-experience.md](c1-3-workspace-experience.md) (stacked on C1.2 / PR #108).  
 **Architecture freeze:** no further C1 redesign; three merge gates (Commands-only · ThreadContext read model · queue projection).  
-**Close-out:** C1.2 → [C1.3 Workspace Experience](c1-3-workspace-experience.md) → C2 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
+**Close-out:** C1.2 → C1.3 → C2 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
 **Epic C — complete** only after gate PASS (not after C2 alone).
 
 **After row 9:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G  

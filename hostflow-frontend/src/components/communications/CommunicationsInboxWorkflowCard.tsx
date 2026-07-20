@@ -4,6 +4,8 @@ import {
   executeWorkspaceCommand,
   getCommunicationsSettings,
   type CommunicationThread,
+  type WorkspaceCommandName,
+  type WorkspaceCommandResult,
 } from '../../api/communications'
 import type { ManagerOption } from '../../api/types'
 import { listTenantManagers } from '../../api/users'
@@ -27,9 +29,17 @@ const DEFAULT_ESCALATION_QUEUE_OPTIONS = ['priority', 'manual_review', 'supervis
 type Props = {
   thread: CommunicationThread
   onRefresh: () => Promise<void>
+  runCommand?: (
+    command: WorkspaceCommandName,
+    body?: Record<string, unknown>,
+  ) => Promise<WorkspaceCommandResult>
 }
 
-export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: Props) {
+export default function CommunicationsInboxWorkflowCard({ thread, onRefresh, runCommand }: Props) {
+  const exec = async (command: WorkspaceCommandName, body?: Record<string, unknown>) => {
+    if (runCommand) return runCommand(command, body)
+    return executeWorkspaceCommand(thread.id, command, body)
+  }
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
@@ -186,7 +196,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       const current = noReplyNeededFromThread(thread)
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
       const slaPolicy = (threadMeta.sla_policy || {}) as Record<string, unknown>
-      await executeWorkspaceCommand(thread.id, 'UpdateThreadWorkflow', {
+      await exec( 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           no_reply_needed: !current,
@@ -219,7 +229,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       const current = slaMutedFromThread(thread)
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
       const slaPolicy = (threadMeta.sla_policy || {}) as Record<string, unknown>
-      await executeWorkspaceCommand(thread.id, 'UpdateThreadWorkflow', {
+      await exec( 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           sla_muted: !current,
@@ -258,7 +268,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       const until = new Date(Date.now() + Math.max(1, hours) * 60 * 60 * 1000).toISOString()
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
       const slaPolicy = (threadMeta.sla_policy || {}) as Record<string, unknown>
-      await executeWorkspaceCommand(thread.id, 'UpdateThreadWorkflow', {
+      await exec( 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           no_reply_needed: false,
@@ -330,7 +340,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
           escalated_at: nowIso,
         }
       }
-      await executeWorkspaceCommand(thread.id, 'UpdateThreadWorkflow', {
+      await exec( 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           no_reply_needed: noReply,
@@ -344,7 +354,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
         },
       })
       if (mode === 'escalated' && String(thread.priority || '').toLowerCase() !== 'high') {
-        await executeWorkspaceCommand(thread.id, 'SetThreadPriority', { priority: 'high' })
+        await exec( 'SetThreadPriority', { priority: 'high' })
       }
       await onRefresh()
     } catch (err: unknown) {
