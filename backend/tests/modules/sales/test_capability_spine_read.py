@@ -87,3 +87,57 @@ def test_spine_undecided_capability_without_profile() -> None:
     out = project_capability_spine(_inquiry(entity_profile_code=None))
     assert out["capability"]["code"] is None
     assert out["capability"]["source"] == "undecided"
+
+
+def test_spine_terminal_blocked_status_not_convertible() -> None:
+    out = project_capability_spine(_inquiry(status="rejected"))
+    assert out["convert"]["available"] is False
+    assert out["convert"]["reason"] == "invalid_inquiry_state"
+    assert out["convert"]["inquiry_status"] == "rejected"
+
+
+def test_spine_cancelled_review_does_not_block_convert() -> None:
+    from backend.app.modules.sales.services.ambiguous_match_review import STATUS_CANCELLED
+
+    inquiry = _inquiry(
+        meta={
+            REVIEW_KEY: {
+                "status": STATUS_CANCELLED,
+                "version": 1,
+                "candidates": [],
+            }
+        }
+    )
+    out = project_capability_spine(inquiry)
+    assert out["review"]["status"] == STATUS_CANCELLED
+    assert out["review"]["blocks_convert"] is False
+    assert out["review"]["convert_allowed"] is False
+    assert out["convert"]["available"] is True
+    assert out["convert"]["reason"] is None
+
+
+def test_spine_missing_sales_inquiry_payload() -> None:
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+
+    from backend.app.modules.sales.services.capability_spine_read import (
+        get_capability_spine_for_application,
+    )
+
+    db = MagicMock()
+    db.scalar = AsyncMock(return_value=None)
+    db.get = AsyncMock(return_value=None)
+
+    out = asyncio.run(
+        get_capability_spine_for_application(
+            db, tenant_id="t1", application_id="lead-missing"
+        )
+    )
+    assert out["missing_sales_inquiry"] is True
+    assert out["sales_inquiry_id"] is None
+    assert out["capability"]["source"] == "undecided"
+    assert out["capability"]["decided"] is False
+    assert out["convert"]["available"] is False
+    assert out["convert"]["reason"] == "missing_sales_inquiry"
+    assert out["traceability"]["present"] is False
+    assert out["review"]["present"] is False
