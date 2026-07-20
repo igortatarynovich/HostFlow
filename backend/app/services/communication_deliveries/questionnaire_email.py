@@ -350,6 +350,62 @@ async def send_questionnaire_invite_email(
 
     questionnaire_url = compose.questionnaire_url
     now = _now()
+
+    # C0.1: CommunicationMessage + G13 (via binder) in the same unit of work as delivery.
+    # Unknown/failed delivery is allowed; unbound origin is not (binder already wrote G13).
+    from backend.app.api.v1.communications._helpers.sla import _touch_thread_from_message
+    from backend.app.communications.entity_link import get_thread_entity_links
+    from backend.app.models.communication import CommunicationMessage, CommunicationThread
+
+    entity_links = await get_thread_entity_links(
+        db, tenant_id=str(tenant_id), thread_id=str(thread)
+    )
+    if not entity_links:
+        raise QuestionnaireEmailError(
+            "thread_entity_link_required",
+            "Questionnaire email requires a durable thread entity link before send.",
+            details={"thread_id": str(thread), "reason": "missing_thread_entity_link"},
+        )
+
+    comm_thread = await db.get(CommunicationThread, str(thread))
+    if comm_thread is None or str(comm_thread.tenant_id) != str(tenant_id):
+        raise QuestionnaireEmailError(
+            "thread_not_found",
+            "Communication thread for questionnaire email was not found.",
+            details={"thread_id": str(thread)},
+        )
+
+    message = CommunicationMessage(
+        tenant_id=str(tenant_id),
+        thread_id=str(thread),
+        own_company_id=str(getattr(lead, "own_company_id", None) or "") or None,
+        channel="email",
+        message_type="email",
+        direction="outbound",
+        sender_type="user",
+        sender_id=_trim(actor_user_id) or None,
+        recipient_type="lead",
+        recipient_id=str(lead.id),
+        recipient_address=email,
+        subject=subject_final,
+        body_text=body_final,
+        body_html=compose.body_html,
+        delivery_status="queued",
+        payload={
+            "purpose": PURPOSE_QUESTIONNAIRE_INVITE,
+            "invite_id": str(compose.invite.id),
+            "questionnaire_url": questionnaire_url,
+            "sales_inquiry_id": next(
+                (lnk.entity_id for lnk in entity_links if lnk.entity_type == "sales_inquiry"),
+                None,
+            ),
+            "transport_lead_id": str(lead.id),
+        },
+    )
+    db.add(message)
+    await db.flush()
+    _touch_thread_from_message(comm_thread, message)
+
     delivery = CommunicationDelivery(
         tenant_id=str(tenant_id),
         company_id=str(getattr(lead, "own_company_id", None) or "") or None,
@@ -369,6 +425,7 @@ async def send_questionnaire_invite_email(
         sent_by_user_id=_trim(actor_user_id) or None,
         queued_at=now,
         sent_at=now,
+        idempotency_key=f"questionnaire_invite_msg:{message.id}"[:128],
         meta={
             "recipient_email": email,
             "subject": subject_final,
@@ -376,9 +433,16 @@ async def send_questionnaire_invite_email(
             "form_locale": compose.locale,
             "channel": DELIVERY_CHANNEL_EMAIL,
             "invite_id": str(compose.invite.id),
+            "communication_message_id": str(message.id),
+            "thread_id": str(thread),
         },
     )
     db.add(delivery)
+    await db.flush()
+    message.payload = {
+        **dict(message.payload or {}),
+        "delivery_id": str(delivery.id),
+    }
     await db.flush()
 
     try:
@@ -396,6 +460,8 @@ async def send_questionnaire_invite_email(
             delivery.error_code = "email_not_configured"
             delivery.error_detail = "Connect email in settings"
             delivery.sent_at = None
+            message.delivery_status = "failed"
+            message.error_message = "Connect email in settings"
             await db.flush()
             await log_activity(
                 db,
@@ -409,6 +475,7 @@ async def send_questionnaire_invite_email(
                     "recipient": email,
                     "error_code": "email_not_configured",
                     "delivery_id": str(delivery.id),
+                    "message_id": str(message.id),
                     "questionnaire_url": questionnaire_url,
                 },
             )
@@ -417,11 +484,14 @@ async def send_questionnaire_invite_email(
                 "Connect email in settings",
                 settings_path="/app/settings/email",
                 delivery_id=str(delivery.id),
+                message_id=str(message.id),
             ) from exc
         delivery.status = DELIVERY_STATUS_FAILED
         delivery.error_code = "send_failed"
         delivery.error_detail = str(exc)
         delivery.sent_at = None
+        message.delivery_status = "failed"
+        message.error_message = str(exc)
         await db.flush()
         await log_activity(
             db,
@@ -435,15 +505,23 @@ async def send_questionnaire_invite_email(
                 "recipient": email,
                 "error": str(exc),
                 "delivery_id": str(delivery.id),
+                "message_id": str(message.id),
                 "questionnaire_url": questionnaire_url,
             },
         )
-        raise QuestionnaireEmailError("send_failed", str(exc), delivery_id=str(delivery.id)) from exc
+        raise QuestionnaireEmailError(
+            "send_failed",
+            str(exc),
+            delivery_id=str(delivery.id),
+            message_id=str(message.id),
+        ) from exc
     except Exception as exc:  # noqa: BLE001
         delivery.status = DELIVERY_STATUS_FAILED
         delivery.error_code = "send_failed"
         delivery.error_detail = str(exc) or type(exc).__name__
         delivery.sent_at = None
+        message.delivery_status = "failed"
+        message.error_message = delivery.error_detail
         await db.flush()
         await log_activity(
             db,
@@ -457,6 +535,7 @@ async def send_questionnaire_invite_email(
                 "recipient": email,
                 "error": delivery.error_detail,
                 "delivery_id": str(delivery.id),
+                "message_id": str(message.id),
                 "questionnaire_url": questionnaire_url,
             },
         )
@@ -464,7 +543,12 @@ async def send_questionnaire_invite_email(
             "send_failed",
             delivery.error_detail or "Failed to send email",
             delivery_id=str(delivery.id),
+            message_id=str(message.id),
         ) from exc
+
+    message.delivery_status = "sent"
+    message.sent_at = now
+    await db.flush()
 
     invite = await attach_questionnaire_invite_to_lead(
         db,
@@ -505,6 +589,8 @@ async def send_questionnaire_invite_email(
     return {
         "invite": questionnaire_invite_out_payload(invite),
         "delivery_id": str(delivery.id),
+        "message_id": str(message.id),
+        "thread_id": str(thread),
         "recipient_email": email,
         "questionnaire_url": questionnaire_url,
         "subject": subject_final,

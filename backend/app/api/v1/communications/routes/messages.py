@@ -126,6 +126,25 @@ async def create_thread_message(
     license_row = await _load_tenant_license_row(db, tenant_id)
     if body.direction == "outbound" and not body.is_internal_note:
         _require_outbound_comms_not_billing_blocked(tenant, license_row)
+        # C0.1: known origin → durable G13 link required (auto-ensure from thread origin).
+        from backend.app.communications.entity_link import (
+            ThreadEntityLinkError,
+            require_entity_links_for_outbound,
+        )
+
+        try:
+            await require_entity_links_for_outbound(
+                db, tenant_id=tenant_id, thread=thread
+            )
+        except ThreadEntityLinkError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": getattr(exc, "code", "thread_entity_link_error"),
+                    "message": str(getattr(exc, "message", None) or exc),
+                    "details": dict(getattr(exc, "details", None) or {}),
+                },
+            ) from exc
     now = _now_utc()
     msg = CommunicationMessage(
         tenant_id=tenant_id,
