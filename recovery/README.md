@@ -37,3 +37,11 @@ Note: matching `.pyc` names existed under `backend/alembic/versions/__pycache__/
 2. Decide cherry-pick vs discard for `admin_service.py` / `metaLeads.ts`.
 3. Only then delete the original `/tmp` directories.
 
+
+## Review (2026-07-20)
+
+See `docs/specs/gates/recovery-tmp-unique-20260720-review.md` on integration
+(after merge of the integrity PR). Summary: mig-stash drafts are **not** safe
+to apply on the current Alembic head; `admin_service.py` / `metaLeads.ts` /
+`conftest.py` are **older** than live; `settings.py` and `check_meta_oauth_env.py`
+are identical. Keep this branch as archive only.
