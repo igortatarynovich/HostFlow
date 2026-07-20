@@ -24,6 +24,7 @@ _ALLOWED_PURPOSES = frozenset(
         "qualification_questionnaire_request",
         "meeting_invitation",
         "proposal_follow_up",
+        "manual_thread_reply",
     }
 )
 _ALLOWED_RESULT_TYPES = frozenset({"sales_inquiry"})

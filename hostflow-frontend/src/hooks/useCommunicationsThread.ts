@@ -15,6 +15,7 @@ import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import { isCommunicationThreadUnlinked } from '../utils/communicationThreadUnlinked'
 import { communicationApiTranslatedDetail } from '../utils/communicationApiTranslatedDetail'
+import { communicationPipelineReasonMessage } from '../utils/communicationPipelineReason'
 import { formatOutgoingSignaturePlain } from '../utils/outgoingEmailSignature'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -242,14 +243,26 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
             const dispatched = await dispatchCommunicationMessage(msg.id, { mark_delivered: true })
             finalMsg = dispatched.message
             setThread(dispatched.thread)
-            setThreadError(null)
-            if (!firstEmailTtvSentRef.current && String(thread.channel || '').toLowerCase() === 'email') {
-              firstEmailTtvSentRef.current = true
-              void recordTtvStepCompleted({
-                event: 'ttv_step',
-                action: 'completed',
-                step_key: 'first_email_sent',
-              })
+            if (!dispatched.dispatched) {
+              setThreadError(
+                friendlyFormHintError(
+                  communicationPipelineReasonMessage(
+                    dispatched.reason || dispatched.message.error_message,
+                    t,
+                  ),
+                  t,
+                ),
+              )
+            } else {
+              setThreadError(null)
+              if (!firstEmailTtvSentRef.current && String(thread.channel || '').toLowerCase() === 'email') {
+                firstEmailTtvSentRef.current = true
+                void recordTtvStepCompleted({
+                  event: 'ttv_step',
+                  action: 'completed',
+                  step_key: 'first_email_sent',
+                })
+              }
             }
           } catch (err: any) {
             if (
@@ -341,14 +354,23 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
         const result = await dispatchCommunicationMessage(messageId, { mark_delivered: true })
         setMessages((prev) => prev.map((m) => (m.id === messageId ? result.message : m)))
         setThread(result.thread)
-        setThreadError(null)
-        if (!firstEmailTtvSentRef.current && String(result.thread.channel || '').toLowerCase() === 'email') {
-          firstEmailTtvSentRef.current = true
-          void recordTtvStepCompleted({
-            event: 'ttv_step',
-            action: 'completed',
-            step_key: 'first_email_sent',
-          })
+        if (!result.dispatched) {
+          setThreadError(
+            friendlyFormHintError(
+              communicationPipelineReasonMessage(result.reason || result.message.error_message, t),
+              t,
+            ),
+          )
+        } else {
+          setThreadError(null)
+          if (!firstEmailTtvSentRef.current && String(result.thread.channel || '').toLowerCase() === 'email') {
+            firstEmailTtvSentRef.current = true
+            void recordTtvStepCompleted({
+              event: 'ttv_step',
+              action: 'completed',
+              step_key: 'first_email_sent',
+            })
+          }
         }
       } catch (err: any) {
         const emailCh = String(thread?.channel || '').toLowerCase() === 'email'

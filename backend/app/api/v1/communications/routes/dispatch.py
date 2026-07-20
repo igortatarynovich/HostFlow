@@ -31,6 +31,11 @@ from backend.app.communications.send_pipeline import (
     authorize_outbound_communication,
     template_metadata_from_mapping,
 )
+from backend.app.communications.context_resolver import (
+    CommunicationContextResolveError,
+    resolve_communication_context,
+)
+from backend.app.communications.manual_thread_reply import manual_thread_reply_binding
 from backend.app.api.v1.utils.own_company import (
     resolve_active_own_company_id_optional,
 )
@@ -135,16 +140,42 @@ async def _authorize_outbound_or_reason(
         template_raw if isinstance(template_raw, dict) else None
     )
     locale = str(body.locale or payload.get("locale") or "").strip() or None
+    channel = str(thread.channel or msg.channel or "")
 
+    # Operator freeform inbox reply: when purpose/template omitted, fill from
+    # confirmed Thread Result Link module (never from host / legacy entity_type).
     if not purpose or template is None:
-        return "communication_pipeline_required"
+        try:
+            context = await resolve_communication_context(
+                db,
+                tenant_id=tenant_id,
+                thread_id=str(thread.id),
+            )
+        except CommunicationContextResolveError as exc:
+            return str(exc.details.get("reason") or "communication_pipeline_required")
+        binding = manual_thread_reply_binding(
+            module_owner=str(context.module_owner or ""),
+            channel=channel,
+        )
+        if binding is None:
+            return "communication_pipeline_required"
+        if not purpose:
+            purpose = binding.communication_purpose
+        if template is None:
+            template = binding.template
+        # Stamp audit fields onto the message for retries / queued dispatch.
+        payload["communication_purpose"] = purpose
+        payload["template_metadata_v1"] = template.to_dict()
+        if locale:
+            payload["locale"] = locale
+        msg.payload = payload
 
     auth = await authorize_outbound_communication(
         db,
         CommunicationSendRequest(
             tenant_id=tenant_id,
             thread_id=str(thread.id),
-            channel=str(thread.channel or msg.channel or ""),
+            channel=channel,
             communication_purpose=purpose,
             template=template,
             locale=locale,

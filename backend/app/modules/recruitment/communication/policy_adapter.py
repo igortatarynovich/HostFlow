@@ -24,6 +24,7 @@ _ALLOWED_PURPOSES = frozenset(
         "additional_information_request",
         "interview_invitation",
         "document_request",
+        "manual_thread_reply",
     }
 )
 _ALLOWED_RESULT_TYPES = frozenset({"application"})
