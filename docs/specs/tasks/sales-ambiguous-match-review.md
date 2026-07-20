@@ -38,4 +38,4 @@ UI · wizard · Capability · Recruitment review · Traceability UI · new route
 
 ## Next after merge
 
-**Traceability implementation** (no UI).
+**Traceability implementation** (no UI) — then Sales Phase 2 domain seal; Capability UI last.

@@ -25,6 +25,11 @@ from backend.app.models.sales_inquiry import SalesInquiry
 from backend.app.modules.client_accounts import crud as account_crud
 from backend.app.modules.client_accounts.conversion import convert_client_lead
 from backend.app.modules.sales.services.ambiguous_match_review import review_blocks_convert
+from backend.app.modules.sales.services.sales_inquiry_traceability import (
+    SalesInquiryTraceabilityError,
+    read_lineage,
+    record_lineage_after_convert,
+)
 
 CONVERT_MAPPING_KEY = "convert_mapping_v1"
 CONVERT_MAPPING_VERSION = 1
@@ -178,6 +183,7 @@ def _traceability_refs(
     client_account_id: str,
     flights_ledger_id: str,
     company_id: Optional[str],
+    lineage: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     refs: dict[str, Any] = {
         "sales_inquiry_id": sales_inquiry_id,
@@ -186,6 +192,8 @@ def _traceability_refs(
     }
     if company_id:
         refs["company_id"] = company_id
+    if lineage is not None:
+        refs["lineage"] = dict(lineage)
     return refs
 
 
@@ -370,6 +378,13 @@ async def convert_sales_inquiry_mapping(
     existing = _existing_mapping(inquiry)
     if existing is not None:
         # Idempotent replay — do not re-validate review/destination changes into a new mapping.
+        lineage = read_lineage(inquiry)
+        if lineage is None:
+            raise ConvertMappingError(
+                "convert mapping exists without lineage",
+                reason="orphan_convert",
+                details={"sales_inquiry_id": sid},
+            )
         return ConvertMappingResult(
             client_account_id=str(existing["client_account_id"]),
             sales_inquiry_id=sid,
@@ -383,6 +398,7 @@ async def convert_sales_inquiry_mapping(
                 client_account_id=str(existing["client_account_id"]),
                 flights_ledger_id=str(existing.get("flights_ledger_id") or flights_ledger_id),
                 company_id=_trim(existing.get("company_id")),
+                lineage=lineage,
             ),
         )
 
@@ -446,6 +462,23 @@ async def convert_sales_inquiry_mapping(
     # Re-read to guarantee immutability of what callers observe.
     stamped = _existing_mapping(inquiry) or mapping
 
+    try:
+        lineage_result = await record_lineage_after_convert(
+            db,
+            tenant_id=tid,
+            inquiry=inquiry,
+            convert_mapping=stamped,
+            destination=dest,
+            flights_ledger_id=ledger_id,
+            actor_id=actor_id,
+        )
+    except SalesInquiryTraceabilityError as exc:
+        raise ConvertMappingError(
+            exc.message,
+            reason=exc.reason,
+            details=exc.details,
+        ) from exc
+
     return ConvertMappingResult(
         client_account_id=account_id,
         sales_inquiry_id=sid,
@@ -459,5 +492,6 @@ async def convert_sales_inquiry_mapping(
             client_account_id=account_id,
             flights_ledger_id=ledger_id,
             company_id=company_id,
+            lineage=lineage_result.lineage,
         ),
     )

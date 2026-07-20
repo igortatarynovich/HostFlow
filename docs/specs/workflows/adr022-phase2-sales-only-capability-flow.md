@@ -277,7 +277,8 @@ Audit must answer: *which SalesInquiry, which Flights dispatch, which Capability
 - [x] Workflow registered in [`index.md`](index.md)  
 - [x] Next implementation PR = **Convert mapping only** (no wizard, no UI shell) → [`../tasks/sales-questionnaire-convert-mapping.md`](../tasks/sales-questionnaire-convert-mapping.md)
 - [x] After Convert: **Review implementation** → [`../tasks/sales-ambiguous-match-review.md`](../tasks/sales-ambiguous-match-review.md)
-- [ ] After Review: **Traceability implementation** (no UI)
+- [x] After Review: **Traceability implementation** (no UI) → [`../tasks/sales-inquiry-traceability.md`](../tasks/sales-inquiry-traceability.md)
+- [ ] After Traceability: **Capability UI** only (thin interface; domain sealed)
 
 ---
 
