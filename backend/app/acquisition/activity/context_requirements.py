@@ -40,6 +40,8 @@ REQUIRES_SUBMISSION_ID: frozenset[str] = frozenset(
         "SubmissionRejected",
         "ProviderSubmissionAccepted",
         "ProviderSubmissionRejected",
+        "RoutingCompleted",
+        "RoutingFailed",
     }
 )
 

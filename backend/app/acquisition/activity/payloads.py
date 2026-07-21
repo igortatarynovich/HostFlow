@@ -165,10 +165,27 @@ _SCHEMAS: dict[str, PayloadSchema] = {
         optional=frozenset({"reason_code", "normalized_schema_version", "note"}),
     ),
     "RoutingCompleted": PayloadSchema(
-        optional=frozenset({"route_intent", "reason_code", "note"}),
+        optional=frozenset(
+            {
+                "route_intent",
+                "routing_source",
+                "campaign_target_id",
+                "target_type",
+                "reason_code",
+                "note",
+            }
+        ),
     ),
     "RoutingFailed": PayloadSchema(
-        optional=frozenset({"route_intent", "reason_code", "note"}),
+        optional=frozenset(
+            {
+                "route_intent",
+                "routing_source",
+                "campaign_target_id",
+                "reason_code",
+                "note",
+            }
+        ),
     ),
     "ResultAttributed": PayloadSchema(
         required=frozenset({"result_type", "result_id"}),
@@ -230,8 +247,25 @@ _STR_KEYS = {
     "SubmissionRejected": frozenset(
         {"reason_code", "normalized_schema_version", "note"}
     ),
-    "RoutingCompleted": frozenset({"route_intent", "reason_code", "note"}),
-    "RoutingFailed": frozenset({"route_intent", "reason_code", "note"}),
+    "RoutingCompleted": frozenset(
+        {
+            "route_intent",
+            "routing_source",
+            "campaign_target_id",
+            "target_type",
+            "reason_code",
+            "note",
+        }
+    ),
+    "RoutingFailed": frozenset(
+        {
+            "route_intent",
+            "routing_source",
+            "campaign_target_id",
+            "reason_code",
+            "note",
+        }
+    ),
     "ResultAttributed": frozenset({"result_type", "result_id", "note"}),
     "OutcomeChanged": frozenset({"status", "previous_status", "note"}),
     "LeadCreated": frozenset({"lead_id", "module_owner", "note"}),
