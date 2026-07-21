@@ -105,6 +105,15 @@ def _schema_validator(
 
 _EMPTY = PayloadSchema()
 _NOTE = PayloadSchema(optional=frozenset({"note"}))
+# Flight lifecycle transition facts (PR-2): status change only — no provider fields.
+_FLIGHT_CREATED = PayloadSchema(
+    required=frozenset({"new_status"}),
+    optional=frozenset({"previous_status", "reason"}),
+)
+_FLIGHT_TRANSITION = PayloadSchema(
+    required=frozenset({"previous_status", "new_status"}),
+    optional=frozenset({"reason"}),
+)
 
 # Per-type payload schemas (event_version pairing lives in catalog.py).
 _SCHEMAS: dict[str, PayloadSchema] = {
@@ -112,12 +121,15 @@ _SCHEMAS: dict[str, PayloadSchema] = {
     "CampaignActivated": _NOTE,
     "CampaignPaused": _NOTE,
     "CampaignCompleted": _NOTE,
-    "FlightCreated": _NOTE,
-    "FlightStarted": _NOTE,
-    "FlightPaused": _NOTE,
-    "FlightResumed": _NOTE,
-    "FlightCompleted": _NOTE,
-    "FlightFailed": PayloadSchema(required=frozenset({"reason_code"}), optional=frozenset({"note"})),
+    "FlightCreated": _FLIGHT_CREATED,
+    "FlightStarted": _FLIGHT_TRANSITION,
+    "FlightPaused": _FLIGHT_TRANSITION,
+    "FlightResumed": _FLIGHT_TRANSITION,
+    "FlightCompleted": _FLIGHT_TRANSITION,
+    "FlightFailed": PayloadSchema(
+        required=frozenset({"reason_code", "previous_status", "new_status"}),
+        optional=frozenset({"reason", "note"}),
+    ),
     "BudgetChanged": PayloadSchema(
         required=frozenset({"currency"}),
         optional=frozenset({"amount", "new_amount", "previous_amount", "note"}),
@@ -191,7 +203,14 @@ _SCHEMAS: dict[str, PayloadSchema] = {
 }
 
 _STR_KEYS = {
-    "FlightFailed": frozenset({"reason_code", "note"}),
+    "FlightCreated": frozenset({"new_status", "previous_status", "reason"}),
+    "FlightStarted": frozenset({"previous_status", "new_status", "reason"}),
+    "FlightPaused": frozenset({"previous_status", "new_status", "reason"}),
+    "FlightResumed": frozenset({"previous_status", "new_status", "reason"}),
+    "FlightCompleted": frozenset({"previous_status", "new_status", "reason"}),
+    "FlightFailed": frozenset(
+        {"reason_code", "previous_status", "new_status", "reason", "note"}
+    ),
     "BudgetChanged": frozenset({"currency", "note"}),
     "AudienceChanged": frozenset({"audience_ref", "change_kind", "note"}),
     "EndpointChanged": frozenset({"endpoint_id", "change_kind", "note"}),
