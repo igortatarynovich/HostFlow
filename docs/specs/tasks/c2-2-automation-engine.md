@@ -80,11 +80,18 @@ Out of PR-1: rich UI, Campaign, Scheduling product, rule evaluator, Intent emitt
 
 ### PR-2 — Rule Evaluator
 
-Pure (or adapter-isolated) evaluation:
+Pure evaluation package: `communications/automation/evaluator/`.
 
-- Input: event payload + published rule version + policy context snapshot  
-- Output: decision + diagnostics (structured)  
-- Forbidden: Sender, Thread models, Campaign, SQL inside pure core
+| Op | Role |
+|----|------|
+| `evaluate` | Fire/skip decision + diagnostics |
+| `dry_run` | Alias of evaluate (no side effects) |
+| `diagnostics` | Structured findings only |
+
+- Input: `EventPayload` + `RuleVersionPayload` + optional `PolicyContext`  
+- Output: `EvaluationResult` (`fire` \| `skip`, reason codes, mapped template variables)  
+- Forbidden in pure core: SQL · ORM · Sender · Thread · Campaign · `execute_intent`  
+- ORM adapter stays outside: `communications/automation/payload.py`
 
 ### PR-3 — Intent Emitter
 
@@ -128,7 +135,7 @@ Thin client: list / editor / dry-run / history. No client-owned send loop.
 ## Definition of Done (C2.2)
 
 - [x] PR-1 domain + immutable published rule versions — `feat/communication-c2-2-automation-domain`  
-- [ ] PR-2 evaluator with structured diagnostics  
+- [x] PR-2 evaluator with structured diagnostics — `feat/communication-c2-2-automation-evaluator`  
 - [ ] PR-3 Intent-only emitter (contract tests: no Sender / Thread writes)  
 - [ ] PR-4 API + PR-5 thin UI  
 - [ ] Capability-isolation contract tests on C2.2 packages  

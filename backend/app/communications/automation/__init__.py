@@ -1,6 +1,19 @@
-"""C2.2 Automation Engine — domain (Intent-only; no module imports / no send)."""
+"""C2.2 Automation Engine — domain + pure evaluator (Intent-only; no module imports)."""
 
 from backend.app.communications.automation.errors import AutomationDomainError
+from backend.app.communications.automation.evaluator import (
+    OUTCOME_FIRE,
+    OUTCOME_SKIP,
+    Diagnostic,
+    EvaluationResult,
+    EventPayload,
+    PolicyContext,
+    RuleVersionPayload,
+    TriggerSpec,
+    diagnostics,
+    dry_run,
+    evaluate,
+)
 from backend.app.communications.automation.lifecycle import (
     archive_rule,
     assert_version_immutable_for_write,
@@ -13,6 +26,10 @@ from backend.app.communications.automation.lifecycle import (
     replace_draft_triggers,
     set_rule_enabled,
     update_draft_content,
+)
+from backend.app.communications.automation.payload import (
+    build_rule_payload,
+    rule_version_to_payload,
 )
 from backend.app.models.communication_automation import (
     DECISION_OUTCOME_FIRE,
@@ -60,4 +77,17 @@ __all__ = [
     "get_latest_published_version",
     "record_decision",
     "assert_version_immutable_for_write",
+    "build_rule_payload",
+    "rule_version_to_payload",
+    "OUTCOME_FIRE",
+    "OUTCOME_SKIP",
+    "TriggerSpec",
+    "RuleVersionPayload",
+    "EventPayload",
+    "PolicyContext",
+    "Diagnostic",
+    "EvaluationResult",
+    "evaluate",
+    "dry_run",
+    "diagnostics",
 ]
