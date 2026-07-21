@@ -202,15 +202,15 @@ UI must not invent composition, channel policy, or versioning rules.
 
 ## Definition of Done (C2.1)
 
-- [ ] PR-1 domain entities + publish immutability invariants  
+- [x] PR-1 domain entities + publish immutability invariants (`feat/communication-c2-1-template-domain`)  
 - [ ] PR-2 shared server renderer (preview ≡ prepare-send path)  
 - [ ] PR-3 registry is sole SoT for Intent/Channel/Capability → Template  
 - [ ] PR-4 Template API (draft/publish/archive/preview/versions/diff)  
 - [ ] PR-5 thin UI only after API  
-- [ ] Commands/snapshots persist `template_version_id` for reproducibility  
-- [ ] Capability-isolation contract tests on C2.1 packages  
-- [ ] No Campaign / Automation product code  
-- [ ] Canon §5 / snapshot section aligned with version_id  
+- [x] Commands/snapshots carry `template_version_id` (optional field; SoT for published versions)  
+- [x] Capability-isolation contract tests on C2.1 packages  
+- [x] No Campaign / Automation product code in PR-1  
+- [ ] Canon §5 / snapshot section fully aligned with version_id (follow-up with PR-2/3)  
 
 ## After C2.1
 

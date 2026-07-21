@@ -28,6 +28,7 @@ class CommunicationOutboundSnapshot:
     channel: str
     template_key: str | None
     template_version: int | None
+    template_version_id: str | None
     rendered_subject: str | None
     rendered_body_text: str | None
     rendered_body_html: str | None
@@ -58,6 +59,7 @@ class CommunicationOutboundSnapshot:
             "locale": self.locale,
             "template_key": self.template_key,
             "template_version": self.template_version,
+            "template_version_id": self.template_version_id,
             "rendered_subject": self.rendered_subject,
             "rendered_body_text": self.rendered_body_text,
             "rendered_body_html": self.rendered_body_html,
@@ -131,6 +133,9 @@ def build_outbound_snapshot(
         locale=command.locale,
         template_key=command.template_key,
         template_version=int(command.template_version or 1) if command.template_key else None,
+        template_version_id=(
+            str(command.template_version_id).strip() if command.template_version_id else None
+        ),
         rendered_subject=(content.subject if content else None),
         rendered_body_text=(content.body_text if content else None),
         rendered_body_html=(content.body_html if content else None),

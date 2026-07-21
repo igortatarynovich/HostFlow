@@ -213,6 +213,16 @@ CommunicationThreadNextAction = _load_model_module(
 CommunicationThreadSlaEvent = _load_model_module(
     "communication_thread_sla_event"
 ).CommunicationThreadSlaEvent  # type: ignore[attr-defined]
+_communication_template_module = _load_model_module("communication_template")
+CommunicationTemplate = _communication_template_module.CommunicationTemplate  # type: ignore[attr-defined]
+CommunicationTemplateVersion = _communication_template_module.CommunicationTemplateVersion  # type: ignore[attr-defined]
+CommunicationTemplateVariable = _communication_template_module.CommunicationTemplateVariable  # type: ignore[attr-defined]
+CommunicationTemplateChannelBinding = (
+    _communication_template_module.CommunicationTemplateChannelBinding
+)  # type: ignore[attr-defined]
+CommunicationTemplateIntentBinding = (
+    _communication_template_module.CommunicationTemplateIntentBinding
+)  # type: ignore[attr-defined]
 DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
@@ -372,6 +382,11 @@ __all__ = [
     "CommunicationInboundUnresolved",
     "CommunicationThreadNextAction",
     "CommunicationThreadSlaEvent",
+    "CommunicationTemplate",
+    "CommunicationTemplateVersion",
+    "CommunicationTemplateVariable",
+    "CommunicationTemplateChannelBinding",
+    "CommunicationTemplateIntentBinding",
     "DocumentPolicy",
     "Stage",
     "MagicLink",
