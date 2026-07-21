@@ -55,7 +55,7 @@ export const SIDEBAR_AGENCY_PROCESSING_ORDER = [] as const
 export const SIDEBAR_AGENCY_TEAM_ORDER = ['team-availability', 'my-availability', 'time-off'] as const
 /** Document Hub — platform horizontal (ADR-009). */
 export const SIDEBAR_AGENCY_DOCUMENTS_ORDER = ['documents'] as const
-export const SIDEBAR_AGENCY_AUTOMATIONS_ORDER = ['automations'] as const
+export const SIDEBAR_AGENCY_AUTOMATIONS_ORDER = ['automations', 'acquisition-activity'] as const
 export const SIDEBAR_AGENCY_INTEGRATIONS_ORDER = ['settings-integrations'] as const
 export const SIDEBAR_AGENCY_ANALYTICS_ORDER = [] as const
 export const SIDEBAR_AGENCY_ORGANIZATION_ORDER = ['my-company'] as const
@@ -71,7 +71,6 @@ export function financeSidebarOrder(_showFinanceSection: boolean): readonly stri
 export const SIDEBAR_HUB_NAV_ITEM_KEYS = [
   'automation-rules',
   'automation-log',
-  'acquisition-activity',
   'leads-distribution',
   'leads-distribution-rules',
   'settings-billing',

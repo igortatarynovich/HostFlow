@@ -35,6 +35,7 @@ export default function AutomationsHubPage() {
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const showLeadsDistribution = can('leads.view')
   const showMetaLeadPlaybook = can('admin.metaLeads')
+  const showAcquisitionActivity = can('vacancies.view')
 
   const policyCards = useMemo((): PolicyCard[] => {
     const out: PolicyCard[] = []
@@ -225,6 +226,33 @@ export default function AutomationsHubPage() {
             </div>
           </div>
         </Link>
+
+        {showAcquisitionActivity ? (
+          <Link
+            to={CRM_APP_PATHS.acquisitionActivity}
+            className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
+          >
+            <div className="flex items-start gap-4">
+              <span className="rounded-xl bg-slate-50 p-3 text-slate-700 ring-1 ring-slate-200">
+                <IconChecklist size={28} stroke={1.6} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-semibold text-slate-900 group-hover:text-brand-800">
+                  {t('app.nav.items.acquisition_activity', { defaultValue: 'Acquisition activity' })}
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                  {t('app.automations.hub.card_acquisition_activity_desc', {
+                    defaultValue:
+                      'Read-only Campaign / Flight intake timeline. Observe events; no runtime controls.',
+                  })}
+                </p>
+                <span className="mt-3 inline-block text-sm font-medium text-brand-600 group-hover:underline">
+                  {t('app.automations.hub.open', { defaultValue: 'Open' })} →
+                </span>
+              </div>
+            </div>
+          </Link>
+        ) : null}
 
         {showLeadsDistribution ? (
           <>
