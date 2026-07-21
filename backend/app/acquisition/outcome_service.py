@@ -3,6 +3,9 @@
 Separated from intake/submit hooks (PR-1). Callers pass an existing
 ``CampaignResultAttribution``; this service links it to an Outcome and
 updates progress idempotently.
+
+Stage 3E PR-2: status mutations emit ``OutcomeChanged`` via
+``append_activity_event`` (service choke-point only — not HTTP handlers).
 """
 
 from __future__ import annotations
@@ -51,6 +54,63 @@ def _assert_transition(current: str, target: str) -> None:
         raise OutcomeError(f"illegal transition {current} → {target}")
 
 
+def outcome_changed_source_event_id(
+    *,
+    outcome_id: str,
+    previous_status: str | None,
+    new_status: str,
+) -> str:
+    """Deterministic idempotency key for one Outcome status transition."""
+    prev = str(previous_status).strip() if previous_status else "_"
+    return f"acq.outcome.changed:{str(outcome_id).strip()}:{prev}:{str(new_status).strip()}"
+
+
+async def _emit_outcome_changed(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    campaign_id: str,
+    flight_id: str,
+    outcome_id: str,
+    status: str,
+    previous_status: str | None = None,
+    actor_type: str = "system",
+    actor_id: str | None = None,
+) -> None:
+    """Stage 3E PR-2: Activity Timeline projection after Outcome status persist."""
+    from backend.app.acquisition.activity.append_service import append_activity_event
+    from backend.app.acquisition.activity.catalog import get_activity_event_contract
+    from backend.app.models.acquisition_activity_event import ACTOR_TYPES
+
+    contract = get_activity_event_contract("OutcomeChanged")
+    if contract is None:
+        raise RuntimeError("OutcomeChanged missing from activity catalog")
+    actor = str(actor_type or "system").strip()
+    if actor not in ACTOR_TYPES:
+        actor = "system"
+    payload: dict[str, str] = {"status": str(status).strip()}
+    if previous_status is not None and str(previous_status).strip():
+        payload["previous_status"] = str(previous_status).strip()
+    await append_activity_event(
+        db,
+        tenant_id=str(tenant_id),
+        campaign_id=str(campaign_id),
+        flight_id=str(flight_id),
+        outcome_id=str(outcome_id),
+        event_type="OutcomeChanged",
+        event_version=contract.event_version,
+        payload=payload,
+        actor_type=actor,
+        actor_id=str(actor_id).strip() if actor_id else None,
+        source_event_id=outcome_changed_source_event_id(
+            outcome_id=outcome_id,
+            previous_status=previous_status,
+            new_status=status,
+        ),
+        provider=None,
+    )
+
+
 async def create_outcome(
     db: AsyncSession,
     *,
@@ -58,6 +118,8 @@ async def create_outcome(
     campaign_id: str,
     flight_id: str,
     progress_target: int = 1,
+    actor_type: str = "system",
+    actor_id: str | None = None,
 ) -> CampaignOutcome:
     """Create Outcome in ``created`` status for a Campaign Flight."""
     target = int(progress_target)
@@ -86,6 +148,17 @@ async def create_outcome(
     )
     db.add(row)
     await db.flush()
+    await _emit_outcome_changed(
+        db,
+        tenant_id=str(tenant_id),
+        campaign_id=str(campaign_id),
+        flight_id=str(flight_id),
+        outcome_id=str(row.id),
+        status=STATUS_CREATED,
+        previous_status=None,
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
     return row
 
 
@@ -106,15 +179,29 @@ async def mark_outcome_failed(
     *,
     tenant_id: str,
     outcome_id: str,
+    actor_type: str = "system",
+    actor_id: str | None = None,
 ) -> CampaignOutcome:
     outcome = await get_outcome(db, tenant_id=tenant_id, outcome_id=outcome_id)
     if outcome is None:
         raise OutcomeError("outcome not found for tenant")
-    _assert_transition(outcome.status, STATUS_FAILED)
+    previous = str(outcome.status)
+    _assert_transition(previous, STATUS_FAILED)
     now = _now()
     outcome.status = STATUS_FAILED
     outcome.failed_at = now
     await db.flush()
+    await _emit_outcome_changed(
+        db,
+        tenant_id=str(tenant_id),
+        campaign_id=str(outcome.campaign_id),
+        flight_id=str(outcome.campaign_run_id),
+        outcome_id=str(outcome.id),
+        status=STATUS_FAILED,
+        previous_status=previous,
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
     return outcome
 
 
@@ -123,15 +210,29 @@ async def mark_outcome_cancelled(
     *,
     tenant_id: str,
     outcome_id: str,
+    actor_type: str = "system",
+    actor_id: str | None = None,
 ) -> CampaignOutcome:
     outcome = await get_outcome(db, tenant_id=tenant_id, outcome_id=outcome_id)
     if outcome is None:
         raise OutcomeError("outcome not found for tenant")
-    _assert_transition(outcome.status, STATUS_CANCELLED)
+    previous = str(outcome.status)
+    _assert_transition(previous, STATUS_CANCELLED)
     now = _now()
     outcome.status = STATUS_CANCELLED
     outcome.cancelled_at = now
     await db.flush()
+    await _emit_outcome_changed(
+        db,
+        tenant_id=str(tenant_id),
+        campaign_id=str(outcome.campaign_id),
+        flight_id=str(outcome.campaign_run_id),
+        outcome_id=str(outcome.id),
+        status=STATUS_CANCELLED,
+        previous_status=previous,
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
     return outcome
 
 
@@ -141,6 +242,8 @@ async def apply_attribution_to_outcome(
     tenant_id: str,
     outcome_id: str,
     attribution_id: str,
+    actor_type: str = "system",
+    actor_id: str | None = None,
 ) -> tuple[CampaignOutcome, CampaignOutcomeResultLink, bool]:
     """Link an attributed Result to Outcome and bump progress once.
 
@@ -186,10 +289,12 @@ async def apply_attribution_to_outcome(
         raise OutcomeError("attribution already linked to an outcome")
 
     now = _now()
+    status_transitions: list[tuple[str | None, str]] = []
     if outcome.status == STATUS_CREATED:
         _assert_transition(STATUS_CREATED, STATUS_ACTIVE)
         outcome.status = STATUS_ACTIVE
         outcome.activated_at = now
+        status_transitions.append((STATUS_CREATED, STATUS_ACTIVE))
 
     link = CampaignOutcomeResultLink(
         tenant_id=str(tenant_id),
@@ -207,8 +312,21 @@ async def apply_attribution_to_outcome(
             _assert_transition(STATUS_ACTIVE, STATUS_COMPLETED)
             outcome.status = STATUS_COMPLETED
             outcome.completed_at = now
+            status_transitions.append((STATUS_ACTIVE, STATUS_COMPLETED))
 
     await db.flush()
+    for previous, new_status in status_transitions:
+        await _emit_outcome_changed(
+            db,
+            tenant_id=str(tenant_id),
+            campaign_id=str(outcome.campaign_id),
+            flight_id=str(outcome.campaign_run_id),
+            outcome_id=str(outcome.id),
+            status=new_status,
+            previous_status=previous,
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
     return outcome, link, True
 
 
