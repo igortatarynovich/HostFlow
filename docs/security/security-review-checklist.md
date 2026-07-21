@@ -66,6 +66,7 @@
 
 - [ ] Обновлён `docs/security/threat-models/*` при новой attack surface.
 - [ ] При смене модели данных — `docs/specs/**` и при необходимости `security-ssot.md`.
+- [ ] Acquisition Activity Timeline / `acquisition_activity_events`: см. [`threat-models/acquisition-activity-timeline.md`](threat-models/acquisition-activity-timeline.md) (append-only, RLS, tenant-scoped idempotency, no Ops FKs).
 
 ---
 
