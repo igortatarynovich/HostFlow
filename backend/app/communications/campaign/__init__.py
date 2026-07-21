@@ -1,7 +1,8 @@
-"""C2.3 Campaign Orchestrator — domain + pure audience resolver (Intent-only).
+"""C2.3 Campaign Orchestrator — domain + audience + Intent emitter.
 
 PR-1: entities + draft/publish + run snapshot.
-PR-2: audience resolver (definition → snapshot). No emission / API / UI.
+PR-2: audience resolver (definition → snapshot).
+PR-3: Intent emission per allowed RunItem. No API / UI.
 """
 
 from backend.app.communications.campaign.audience import (
@@ -17,6 +18,15 @@ from backend.app.communications.campaign.audience import (
     diagnostics,
     dry_run,
     resolve,
+)
+from backend.app.communications.campaign.emitter import (
+    CampaignEmitContext,
+    CampaignItemEmitInput,
+    ItemEmitResult,
+    build_intent_request,
+    campaign_identity_for,
+    emit_run_item,
+    emit_run_items,
 )
 from backend.app.communications.campaign.errors import CampaignDomainError
 from backend.app.communications.campaign.lifecycle import (
@@ -134,4 +144,11 @@ __all__ = [
     "mark_run_item_outcome",
     "get_run",
     "assert_version_immutable_for_write",
+    "CampaignItemEmitInput",
+    "CampaignEmitContext",
+    "ItemEmitResult",
+    "campaign_identity_for",
+    "build_intent_request",
+    "emit_run_item",
+    "emit_run_items",
 ]
