@@ -1,8 +1,9 @@
 # C2.3 — Campaign Orchestrator
 
-**Status:** ✅ Closed (PR-6 thin UI)  
+**Status:** Implementation complete, merge gate failed  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
-**Branch:** `feat/communication-c2-3-campaign-ui` (PR-6)  
+**Branch:** `feat/communication-c2-3-campaign-ui` (PR-6 / #126; base PR-5 / #125)  
+**Merge gate:** Do **not** mark Closed until PR-5 and PR-6 merge. Do **not** start C2.4 while this gate is red.
 
 
 
@@ -177,7 +178,8 @@ Out of PR-5: thin UI.
 - [x] Capability-isolation contract tests  
 - [x] No Scheduling product code in C2.3  
 
-## After C2.3
+## After C2.3 (only after merge)
 
-**C2.4 Scheduling** — Schedule → Intent → ordinary pipeline.
+After PR-5 (#125) and PR-6 (#126) merge and CI is green: **C2.4 Scheduling** — Schedule → Intent → ordinary pipeline.  
+Until then: keep Active on **C2.3**; do not start C2.4.
 

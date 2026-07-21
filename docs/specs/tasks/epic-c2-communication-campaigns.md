@@ -114,8 +114,8 @@ without returning to Thread / Commands / ThreadContext architecture.
 |-------|-----|----------------------|
 | **C2.1** | [c2-1-template-platform.md](c2-1-template-platform.md) ✅ | Template Registry product (PR #110–#114) |
 | **C2.2** | [c2-2-automation-engine.md](c2-2-automation-engine.md) ✅ | Event → Rules → Policy → Intent (PR #116–#120) |
-| **C2.3** | [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) ✅ | Audience + plan → Intent |
-| **C2.4** | *(next)* | Schedule → Intent → same pipeline |
+| **C2.3** | [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) | Audience + plan → Intent — **implementation complete, merge gate failed** (PR #121–#126; not Closed until #125+#126 merge) |
+| **C2.4** | *(blocked — after C2.3 merge)* | Schedule → Intent → same pipeline |
 | **Gate** | [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md) | Epic C — complete |
 
 ---
@@ -208,9 +208,9 @@ Settings / signatures / compliance UI may share **Настройки → Ком�
 
 - [x] C2.1 Template Platform shipped under Intent-only + capability-isolation gates  
 - [x] C2.2 Automation emits Intent only (no provider / Thread knowledge)  
-- [x] C2.3 Campaigns orchestrate Intent only  
+- [ ] C2.3 Campaigns orchestrate Intent only (implementation complete; Closed only after PR #125+#126 merge)  
 - [ ] C2.4 Scheduling emits Intent into the ordinary pipeline  
 - [ ] Contract tests enforce capability isolation + no second pipeline  
 - [ ] [Epic C Complete Gate](../gates/epic-c-complete-gate.md) ready for evidence pass  
 
-**Active now:** **C2.4 Scheduling** (after C2.3 ✅ — [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md)).
+**Active now:** **C2.3 Campaign Orchestrator** — implementation complete, merge gate failed ([c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md)). Do **not** start C2.4 until PR-5 (#125) and PR-6 (#126) merge.
