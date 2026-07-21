@@ -2,7 +2,10 @@
 import { describe, expect, it } from 'vitest'
 import { APP_ROUTES, NAV_ITEMS } from '../routes'
 import { CRM_APP_PATHS, crmAppRouteSegment } from '../crmAppPaths'
-import { SIDEBAR_HUB_NAV_ITEM_KEYS } from '../../nav/sidebarRailBuckets'
+import {
+  SIDEBAR_AGENCY_AUTOMATIONS_ORDER,
+  SIDEBAR_HUB_NAV_ITEM_KEYS,
+} from '../../nav/sidebarRailBuckets'
 
 describe('acquisition activity route registration', () => {
   it('registers NAV_ITEMS + APP_ROUTES under canonical path with Acquisition read permission', () => {
@@ -20,7 +23,8 @@ describe('acquisition activity route registration', () => {
     expect(CRM_APP_PATHS.acquisitionActivity).toBe('/app/acquisition/activity')
   })
 
-  it('is accounted for as hub nav (not primary rail drift)', () => {
-    expect([...SIDEBAR_HUB_NAV_ITEM_KEYS]).toContain('acquisition-activity')
+  it('appears on the Automations primary rail (not hub-only)', () => {
+    expect([...SIDEBAR_AGENCY_AUTOMATIONS_ORDER]).toContain('acquisition-activity')
+    expect([...SIDEBAR_HUB_NAV_ITEM_KEYS]).not.toContain('acquisition-activity')
   })
 })

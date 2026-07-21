@@ -407,6 +407,8 @@ export function Sidebar({
       path === p.automations ||
       path === p.automationRules ||
       path === p.automationLog ||
+      path === p.acquisitionActivity ||
+      path.startsWith(`${p.acquisitionActivity}/`) ||
       path === p.leadsDistribution ||
       path.startsWith(`${p.leadsDistribution}/`)
     )
@@ -432,6 +434,7 @@ export function Sidebar({
       item.key === 'automations' ||
       item.key === 'automation-rules' ||
       item.key === 'automation-log' ||
+      item.key === 'acquisition-activity' ||
       item.key === 'leads-distribution' ||
       item.key === 'leads-distribution-rules'
     ) {
