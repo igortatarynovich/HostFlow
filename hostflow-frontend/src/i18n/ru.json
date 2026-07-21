@@ -908,6 +908,7 @@
         "settings_communications_messengers": "Мессенджеры",
         "settings_communications_queue": "Очередь и маршрутизация",
         "settings_communications_sla": "SLA коммуникаций",
+        "settings_communications_templates": "Шаблоны коммуникаций",
         "settings_ttv": "Отчёт TTV",
         "profile": "Профиль",
         "logout": "Выйти",
@@ -11344,6 +11345,10 @@
           "label": "SLA коммуникаций",
           "description": "Эскалация, если на диалоги долго нет ответа."
         },
+        "communications_templates": {
+          "label": "Шаблоны коммуникаций",
+          "description": "Версионированные тексты, привязанные к Intent (publish/preview/история). Не сниппеты мессенджеров и не письма лидов."
+        },
         "audit": {
           "label": "Аудит-лог",
           "description": "Очередь удалений и события аудита."
@@ -11438,7 +11443,8 @@
       "messengers_templates_cta": "Шаблоны и все аккаунты",
       "open_email": "Исходящий SMTP",
       "open_queue": "Очередь inbox и маршрутизация",
-      "open_sla": "SLA коммуникаций"
+      "open_sla": "SLA коммуникаций",
+      "open_templates": "Шаблоны коммуникаций"
     },
     "communications_messengers": {
       "title": "Каналы мессенджеров",
@@ -11641,6 +11647,46 @@
         "channel": "Канал",
         "assigned": "Назначено",
         "assignee": "Исполнитель"
+      }
+    },
+    "communications_templates": {
+      "title": "Шаблоны коммуникаций",
+      "subtitle": "Версионированные тексты, привязанные к Intent. Только презентация — не сниппеты мессенджеров и не шаблоны писем лидов.",
+      "header_kicker": "шаблоны",
+      "include_archived": "Показать архивные",
+      "list_title": "Шаблоны",
+      "empty": "Шаблонов пока нет.",
+      "select_prompt": "Выберите или создайте шаблон.",
+      "preview_title": "Превью",
+      "history_title": "История версий",
+      "create": {
+        "key": "Ключ",
+        "name": "Название",
+        "submit": "Создать draft"
+      },
+      "actions": {
+        "back": "← Админка коммуникаций",
+        "messenger_snippets": "Сниппеты мессенджеров",
+        "save_draft": "Сохранить draft",
+        "publish": "Опубликовать",
+        "archive": "Архивировать",
+        "preview": "Превью draft"
+      },
+      "notices": {
+        "created": "Шаблон создан",
+        "draft_saved": "Draft сохранён",
+        "published": "Опубликовано",
+        "archived": "Архивировано"
+      },
+      "errors": {
+        "load": "Не удалось загрузить шаблоны коммуникаций",
+        "versions": "Не удалось загрузить версии",
+        "create": "Не удалось создать шаблон",
+        "save_draft": "Не удалось сохранить draft",
+        "publish": "Не удалось опубликовать",
+        "archive": "Не удалось архивировать",
+        "preview": "Превью не удалось",
+        "diff": "Diff не удалось"
       }
     },
     "communications_sla": {

@@ -927,6 +927,7 @@
         "settings_communications_messengers": "Messengers",
         "settings_communications_queue": "Queue & routing",
         "settings_communications_sla": "Communications SLA",
+        "settings_communications_templates": "Communication templates",
         "settings_ttv": "TTV report",
         "profile": "Profile",
         "logout": "Sign out",
@@ -11342,6 +11343,10 @@
           "label": "Communications SLA",
           "description": "Escalation when threads sit unanswered too long."
         },
+        "communications_templates": {
+          "label": "Communication templates",
+          "description": "Versioned Intent-bound message bodies (publish/preview/history). Not messenger canned replies or lead emails."
+        },
         "audit": {
           "label": "Audit log",
           "description": "Review admin actions and sensitive activity."
@@ -11436,7 +11441,8 @@
       "messengers_templates_cta": "Shared templates & all accounts",
       "open_email": "Outbound SMTP",
       "open_queue": "Inbox queue & routing",
-      "open_sla": "Communications SLA"
+      "open_sla": "Communications SLA",
+      "open_templates": "Communication templates"
     },
     "communications_messengers": {
       "title": "Messenger channels",
@@ -11639,6 +11645,46 @@
         "channel": "Channel",
         "assigned": "Assigned",
         "assignee": "Assignee"
+      }
+    },
+    "communications_templates": {
+      "title": "Communication templates",
+      "subtitle": "Intent-bound, versioned message bodies. Presentation only — not messenger canned replies or lead message templates.",
+      "header_kicker": "templates",
+      "include_archived": "Include archived",
+      "list_title": "Templates",
+      "empty": "No templates yet.",
+      "select_prompt": "Select or create a template.",
+      "preview_title": "Preview",
+      "history_title": "Version history",
+      "create": {
+        "key": "Key",
+        "name": "Name",
+        "submit": "Create draft"
+      },
+      "actions": {
+        "back": "← Communications admin",
+        "messenger_snippets": "Messenger snippets",
+        "save_draft": "Save draft",
+        "publish": "Publish",
+        "archive": "Archive",
+        "preview": "Preview draft"
+      },
+      "notices": {
+        "created": "Template created",
+        "draft_saved": "Draft saved",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "errors": {
+        "load": "Failed to load communication templates",
+        "versions": "Failed to load versions",
+        "create": "Failed to create template",
+        "save_draft": "Failed to save draft",
+        "publish": "Failed to publish",
+        "archive": "Failed to archive",
+        "preview": "Preview failed",
+        "diff": "Diff failed"
       }
     },
     "communications_sla": {

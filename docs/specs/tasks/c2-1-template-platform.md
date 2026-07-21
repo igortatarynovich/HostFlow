@@ -1,6 +1,6 @@
 # C2.1 — Template Platform
 
-**Status:** Active (PR-4 Template API in flight; UI still last)  
+**Status:** Active (PR-5 thin UI in flight — closes C2.1)  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
 **Branch (proposed):** `feat/communication-c2-1-template-domain` (PR-1)  
 **Parents:** [C0.0 §5 CommunicationTemplate](c0-0-communication-canon.md) · [C1 closed](c1-communication-inbox-workspace.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
@@ -238,6 +238,10 @@ Thin client over the API only:
 
 UI must not invent composition, channel policy, or versioning rules.
 
+**Surface:** `/app/settings/communications/templates` (`CommunicationTemplatesPage`)  
+API client: `hostflow-frontend/src/api/communications/templates.ts`  
+Distinct from messenger canned replies and lead message templates.
+
 ---
 
 ## In scope (epic slice total)
@@ -284,7 +288,7 @@ UI must not invent composition, channel policy, or versioning rules.
 - [x] Unknown variables are **errors** (strict policy documented)
 - [x] PR-3 registry is sole SoT for Intent/Channel/Capability → Template (`feat/communication-c2-1-template-registry`)  
 - [x] PR-4 Template API (draft/publish/archive/preview/versions/diff) — `feat/communication-c2-1-template-api`  
-- [ ] PR-5 thin UI only after API  
+- [x] PR-5 thin UI only after API — `feat/communication-c2-1-template-ui`  
 - [x] Commands/snapshots carry `template_version_id` (optional field; SoT for published versions)  
 - [x] Capability-isolation contract tests on C2.1 packages  
 - [x] No Campaign / Automation product code in PR-1  

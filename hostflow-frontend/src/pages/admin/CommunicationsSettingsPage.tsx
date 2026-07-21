@@ -37,6 +37,15 @@ export default function CommunicationsSettingsPage() {
       to: P.settingsCommunicationsSla,
       cta: t('admin.communications_settings.open_sla'),
     },
+    {
+      key: 'templates',
+      title: t('admin.settings.cards.communications_templates.label'),
+      description: t('admin.settings.cards.communications_templates.description'),
+      to: P.settingsCommunicationsTemplates,
+      cta: t('admin.communications_settings.open_templates', {
+        defaultValue: 'Open templates',
+      }),
+    },
   ]
 
   return (
