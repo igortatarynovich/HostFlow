@@ -13,5 +13,6 @@
 | [automations.md](./automations.md) | Исходящие HTTP, права сервисных аккаунтов, side effects |
 | [exports.md](./exports.md) | Insider, bulk CSV, скрытые поля, rate limits |
 | [client-account-manual-creation.md](./client-account-manual-creation.md) | Manual `ClientAccount` create: tenant/company bind, duplicates, idempotency, origin forgery |
+| [acquisition-activity-timeline.md](./acquisition-activity-timeline.md) | Stage 3E Activity Timeline: append-only audit, RLS, tenant-scoped idempotency, no Ops FKs |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).

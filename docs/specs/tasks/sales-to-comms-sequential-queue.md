@@ -1,15 +1,13 @@
 # Sales → Communication — sequential product queue (locked)
 
-**Status:** **NORMATIVE QUEUE** (one active product slice at a time)  
-**Date:** 2026-07-20 (rev. Platform Completion Roadmap)  
+**Status:** **NORMATIVE QUEUE** (one active **Product Track** slice; Engineering Track is background)  
+**Date:** 2026-07-21 (rev. Product vs Engineering tracks)  
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
-**Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Pipeline v1 seal](../architecture/sales-domain-pipeline-v1.md) · [Creation Origins v1](../architecture/client-account-creation-origins-v1.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Epic C0](epic-c0-communication-integrity.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
+**Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> Sales domain contracts are sealed. Product convert engine unification is complete (Stage 3 slice 2 / PR #99).  
-> **Horizon SoT:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) — finish **Epic C**, then **Governance Review**, then Acquisition/Stage 3.  
-> This file is the **near-term slice queue** inside Phase A (Communication).  
-> **Communication Platform Foundation is complete** (C0.0–C0.3). Do **not** jump to Stage 3.  
-> Locked close-out: **C1 → C2 → Epic C Complete Gate → Governance → Stage 3 / Meta → …**
+> **2026-07-21 strategy:** Communication foundation is mature enough. **Product Track** = Acquisition Stage **3E — Activity Timeline** (`AcquisitionActivityEvent`). **Engineering Track** = legacy full-repo pytest / CI debt — must not stop Product unless clean deploy or a Product PR introduces breakage.  
+> C2.4 **frozen**. C2.3 implementation complete — merge opportunistic on Engineering Track.  
+> Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
 ---
 
@@ -26,17 +24,24 @@
 | Stage 3 slice 2 — convert entrypoints | ✅ PR #99 |
 | Repository Health | ✅ required PASS before each new branch |
 
-**Open product GAPs (queued below / in roadmap):**
+**Tracks:**
 
-- Communication Inbox Workspace (C1 — ✅ closed 2026-07-21)  
-- Communication Capability Epic C2 — **active** (slice **C2.3 Campaign Orchestrator**; C2.1–C2.2 ✅)  
-- Epic C Complete Gate (after C2.1–C2.4; before Governance)  
-- Platform Governance Review (after **Epic C — complete**)  
-- Meta intake completeness · Stage 3 slice 3–4 (Acquisition — **after** Epic C + governance)  
+| Track | Active work | Rule |
+|-------|-------------|------|
+| **Product** | [Acquisition Stage 3E — Activity Timeline](acquisition-stage-3e-activity-timeline.md) | Almost all capacity |
+| **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred) | Background; no week-long stop of Product for 657 legacy fails |
+
+**Open product GAPs:**
+
+- **Acquisition Stage 3E / Activity Timeline** ← **Product Track active** (observability; ends at PR-4)  
+- **Acquisition Stage 4 / Flight Runtime** ← **queued** after 3E DONE — [acquisition-stage-4-flight-runtime.md](acquisition-stage-4-flight-runtime.md) (operations; not part of 3E)  
+- **Acquisition Stage 5 Optimization** · **Stage 6 Analytics** ← future horizons (ADR-024 §14.1); do not open while 3E/4 incomplete  
+- C2.3 stack merge + C2.4 + Epic C Complete Gate — Engineering / later Communication close-out (**C2.4 frozen**)  
+- Meta intake completeness · Sales Stage 3 slice 3–4 — after Flight V1 vertical (3A–3E) as needed  
 
 ---
 
-## 2. Locked near-term sequence (Phase A — Epic C)
+## 2. Communication close-out (Phase A — not Product-blocking)
 
 | # | Work | Branch (proposed) | Result |
 |---|------|-------------------|--------|
@@ -51,30 +56,18 @@
 | **7** | **C2** Capability epic (Intent-only) | [epic-c2](epic-c2-communication-campaigns.md) | Creates `CommunicationIntent` only; never mutates Thread |
 | **7a** | **C2.1** Template Platform | PR #110–#114 ✅ | Domain → Renderer → Registry → API → UI; `template_version_id` SoT |
 | **7b** | **C2.2** Automation Engine | PR #116–#120 ✅ | Event → Rules → Policy → Intent (no provider/Thread) |
-| **7c** | **C2.3** Campaign Orchestrator | `feat/communication-c2-3-campaign-domain` (**current**) | Audience + plan → Intent (no render/send/Thread) |
-| **7d** | **C2.4** Scheduling | *(after C2.3)* | Schedule → Intent → ordinary pipeline |
-| **8** | **Epic C Complete Gate** | `docs/epic-c-complete-gate` | Single Communication capability; status → Epic C complete |
-| **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | Boundary principle across platforms |
-| **10** | Meta Intake Completeness | `fix/meta-intake-completeness` | Full Meta payload retained and visible |
-| **11** | Stage 3 slice 3 | *(TBD)* | Full SalesInquiry product flow |
-| **12** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
+| **7c** | **C2.3** Campaign Orchestrator | PR #121–#126 — implementation complete; Engineering merge later | Audience + plan → Intent |
+| **7c-eng** | CI / pytest debt | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) · [stabilize](stabilize-integration-pytest-baseline.md) **deferred** | Engineering Track — base-known; not Product-blocking |
+| **7d** | **C2.4** Scheduling | *(frozen)* | Do not start |
+| **P-3E** | **Acquisition Stage 3E** Activity Timeline | `feat/acquisition-stage-3e-pr1-activity-foundation` (**PR #130** — PR-1) | Observability only: foundation → instrumentation → read API → thin UI; **DONE after PR-4** |
+| **P-4** | **Acquisition Stage 4** Flight Runtime | *(queued — after 3E PR-4)* | Operations: Campaign/Flight CRUD, Endpoint mgmt, Launch/Pause/Resume, Intake Monitor, basic metrics — [stage-4](acquisition-stage-4-flight-runtime.md) |
+| **8** | **Epic C Complete Gate** | after C2.3 merge + C2.4 (later) | Communication capability closed |
+| **9** | **A2** Platform Governance Review | after Epic C complete | Boundary principle |
+| **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
-**C0.1–C0.3** ✅ → [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md) (`95f2a525`, PR #104).  
-**C1 / C1.1–C1.3** ✅ → closed 2026-07-21 — [gate C1 evidence](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21) · smoke `backend/scripts/smoke_c1_workspace_commands.py`.  
-**C2.1** ✅ — [c2-1-template-platform.md](c2-1-template-platform.md) (PR #110–#114).  
-**C2.2** ✅ — [c2-2-automation-engine.md](c2-2-automation-engine.md) (PR #116–#120).  
-**Active:** **C2.3 Campaign Orchestrator** — [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) · epic [C2](epic-c2-communication-campaigns.md).  
-**C2 law:** create `CommunicationIntent` only; never mutate Thread; no second pipeline; **capability isolation** (no Recruitment/Sales/HR/Services/Finance imports).  
-**Architecture freeze:** Thread SoT · Commands-only · ThreadContext · queue projections.  
-**Close-out:** C2.1 ✅ → C2.2 ✅ → C2.3 → C2.4 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
-**Epic C — complete** only after gate PASS (not after C2 alone).
-
-**After row 9:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G  
-(Acquisition/Stage 3 + Meta → Forms → Entity Workspace → Documents → Billing → AI).
-
-**Deferred polish (as needed):** signature policy product UI, composer UX thin slice, historical unbound-thread repair queue, Service Orders / quotes / deals.
-
-**Supersedes (this revision):** Stage 3 slice 3 immediately after C0.3/Meta; C1/C2 after Stage 3.
+**C0–C2.2** ✅. **C2.3** implemented (merge opportunistic). **C2.4 frozen.**  
+**Active (Product):** [acquisition-stage-3e-activity-timeline.md](acquisition-stage-3e-activity-timeline.md).  
+**Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
 
@@ -136,10 +129,10 @@ Not a second CRM and not Settings. Working folders only (Inbox, Unread, Needs re
 
 ---
 
-## 5b. Epic C2 — Communication Capability Epic ← **active (C2.3)**
+## 5b. Epic C2 — Communication Capability Epic ← **parked (Engineering)**
 
 **Epic:** [epic-c2-communication-campaigns.md](epic-c2-communication-campaigns.md)  
-**Current slice:** [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) (C2.1–C2.2 ✅)
+**Product active elsewhere:** [Stage 3E Activity Timeline](acquisition-stage-3e-activity-timeline.md). C2.3 merge + C2.4 = Engineering / later close-out.
 
 C2 is **not** Communication v2. Sole responsibility: emit `CommunicationIntent` into the existing platform pipeline.  
 Order: Template Platform → Automation → Campaigns → Scheduling → Complete Gate.  
@@ -163,7 +156,7 @@ Separate from Communication. Chain: Meta payload → Submission raw → normaliz
 
 ## 7. Development rule
 
-Exactly **one** product slice active.
+Exactly **one Product Track** slice active. Engineering Track may proceed in parallel without claiming Product Active.
 
 Next branch only after:
 
@@ -173,14 +166,19 @@ Next branch only after:
 4. Stale worktrees pruned  
 5. One dedicated worktree  
 
-**Do not** open Stage 3 / Meta / Forms / Workspace while Phase A Communication slices are active (unless roadmap + this queue are explicitly amended).  
-**Do not** expand the active Communication PR beyond its locked slice.
+**Do not** start C2.4 while Product Track is on Flights/Acquisition.  
+**Do not** spend Product capacity on the 657 base-known pytest failures.  
+**Do** amend this queue when switching Product Active (this revision: → Stage 3E).
 
 ---
 
 ## 8. History
 
 - 2026-07-20: Queue locked — Capability UI → Manual create → Pipeline wiring → Communication (old 4–7) → CRM.  
+- 2026-07-21 (rev. tracks): **Product Track** = Acquisition Stage 3E; **Engineering Track** = legacy pytest/CI (#127/#128 deferred); C2.4 frozen; do not block Acquisition on 657 base-known fails.  
+- 2026-07-21 (rev. 3E Activity Timeline): Product Track renamed/corrected — **Activity Timeline** (`AcquisitionActivityEvent`); Timeline ≠ event bus; PR 1–4; see [acquisition-stage-3e-activity-timeline.md](acquisition-stage-3e-activity-timeline.md).  
+- 2026-07-21 (rev. Stage 3E vs 4): **3E = observability** (ends PR-4); **Stage 4 Flight Runtime = operations** queued next — [acquisition-stage-4-flight-runtime.md](acquisition-stage-4-flight-runtime.md); do not mix Launch/CRUD into 3E UI.  
+- 2026-07-21 (rev. maturity ladder): Acquisition ladder locked — Observability (3E) → Operations (4) → Optimization (5) → Analytics (6); ADR-024 §14.1.  
 - 2026-07-20 (rev): After Stage 3 slice 2, insert **Epic C0 Communication Integrity** (C0.1–C0.3) + **Meta Intake Completeness** before Stage 3 slice 3; then C1 Inbox; then Stage 3 slice 4.  
 - 2026-07-20 (rev. C0.0): Insert **C0.0 Communication Canon & Contracts** before treating C0.1 as foundation; expand **C2** to templates + automations + campaigns; PR #100 = vertical slice only.  
 - 2026-07-20 (rev. Platform Completion Roadmap): Finish **full Epic C** (C0.2–C0.3, C1, C2) → **Governance Review** → Acquisition/Stage 3; horizon phases Forms → Workspace → Documents → Billing → AI.  

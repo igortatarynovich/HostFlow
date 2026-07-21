@@ -164,7 +164,7 @@
 | Модуль | Документ scope |
 |--------|----------------|
 | Recruitment | [`docs/recruitment/module-scope.md`](../../recruitment/module-scope.md) |
-| Sales (Product B surface) | [`docs/sales/module-scope.md`](../../sales/module-scope.md) — umbrella над Inquiry + Services + Finance cash path; [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) |
+| Sales (Product B surface) | [`ADR-020`](ADR-020-sales-to-engagement-commercial-model.md) · [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) — umbrella над Inquiry + Services + Finance cash path (separate `docs/sales/module-scope.md` not yet present) |
 | HR | [`docs/hr/module-scope.md`](../../hr/module-scope.md) |
 | Fleet | [`docs/fleet/module-scope.md`](../../fleet/module-scope.md) |
 | Services / Orders | [`docs/services/module-scope.md`](../../services/module-scope.md) |

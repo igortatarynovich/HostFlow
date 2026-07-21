@@ -1,5 +1,15 @@
 """ADR-024 Stage 3 — Acquisition / Campaign + universal submission routing."""
 
+from backend.app.acquisition.activity import (
+    ACTIVITY_EVENT_CATALOG,
+    ACTIVITY_EVENT_TYPES,
+    ACTIVITY_LIST_ORDER,
+    ActivityEventContract,
+    ActivityTimelineError,
+    append_activity_event,
+    get_activity_event_contract,
+    list_activity_events,
+)
 from backend.app.acquisition.campaign_service import (
     CampaignServiceError,
     add_campaign_target,
@@ -48,6 +58,11 @@ from backend.app.acquisition.validation import (
 )
 
 __all__ = [
+    "ACTIVITY_EVENT_CATALOG",
+    "ACTIVITY_EVENT_TYPES",
+    "ACTIVITY_LIST_ORDER",
+    "ActivityEventContract",
+    "ActivityTimelineError",
     "AttributionError",
     "AttributionSnapshot",
     "CampaignKpiAggregate",
@@ -60,14 +75,17 @@ __all__ = [
     "add_campaign_target",
     "aggregate_campaign_kpi",
     "aggregate_flight_kpi",
+    "append_activity_event",
     "apply_attribution_to_outcome",
     "build_attribution_from_routing",
     "create_campaign",
     "create_outcome",
+    "get_activity_event_contract",
     "get_attribution_for_result",
     "get_attribution_for_submission",
     "get_campaign",
     "get_outcome",
+    "list_activity_events",
     "list_campaigns",
     "mark_outcome_cancelled",
     "mark_outcome_failed",

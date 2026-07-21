@@ -5,7 +5,7 @@
 **Amended:** 2026-07-17 (ownership correction: Employee → HR; Invoice/Payment → Finance)  
 **Layer of change:** Domain | Product surface | Navigation | Settings | Roadmap gate  
 **Authors:** Product + Platform architecture  
-**Related:** [ui-constitution-v1.md](ui-constitution-v1.md), [ADR-004](ADR-004-five-product-modules-and-billing-events.md), [ADR-020](ADR-020-sales-to-engagement-commercial-model.md), [ADR-002](ADR-002-modular-recruitment-hr-boundary.md), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md), [client-to-cash-flow-canonical-ssot.md](../workflows/client-to-cash-flow-canonical-ssot.md)
+**Related:** [ui-constitution-v1.md](ui-constitution-v1.md), [ADR-004](ADR-004-five-product-modules-and-billing-events.md), [ADR-020](ADR-020-sales-to-engagement-commercial-model.md), [ADR-002](ADR-002-modular-recruitment-hr-boundary.md), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md)
 
 > **Principle:** Recruitment and Sales are independent product modules. They must not be treated as two variants of one CRM / Lead process.  
 > **Naming:** What shipped in the first pass is **Module Surface Separation (Stage 1)** — not full Module Separation. Full independence requires eight levels (§3), including Deployment and URL Boundaries (§3.7).
@@ -319,7 +319,7 @@ Shared platform capabilities (Communications, Documents, Forms, Automations engi
    - **3B** ✅ **DONE** — Form + Intake Source binding (uses, not owns)
    - **3C** ✅ **DONE** — universal submission routing
    - **3D** outcome attribution + basic analytics ← next
-   - **3E** timeline + automation events
+   - **3E** Activity Timeline (`AcquisitionActivityEvent`) — Product Track active; see ADR-024 §10 / [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md)
 
 V1 = vertical chain through 3A–3E (minimal; single Flight); Audience/Assets/full Budget/multi-Flight later. Not a Marketing product module.
 
@@ -381,7 +381,7 @@ Internal table reuse is temporarily allowed. A shared **external** contract is n
 - [ui-constitution-v1.md](ui-constitution-v1.md)
 - [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md)
 - [`docs/recruitment/module-scope.md`](../../recruitment/module-scope.md)
-- [`docs/sales/module-scope.md`](../../sales/module-scope.md)
+- Sales product surface — [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) (no separate `docs/sales/module-scope.md` yet)
 - [`docs/services/module-scope.md`](../../services/module-scope.md)
 - [`docs/finance/module-scope.md`](../../finance/module-scope.md)
 - [`docs/hr/module-scope.md`](../../hr/module-scope.md)
