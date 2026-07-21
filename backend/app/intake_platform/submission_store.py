@@ -105,9 +105,29 @@ async def append_submission(
     if lead is None:
         raise ValueError("Lead not found for submission append")
 
+    async def _emit_submission_received(submission_entry: dict[str, Any]) -> None:
+        # Stage 3E PR-2: emit only when Acquisition routing stamp carries campaign_id.
+        # Lazy import avoids hard-loading Acquisition at module import time.
+        if not (
+            isinstance(entry_context, dict)
+            and isinstance(entry_context.get("acquisition_routing_v1"), dict)
+        ):
+            return
+        from backend.app.acquisition.submission_activity import (
+            maybe_record_submission_received_from_entry_context,
+        )
+
+        await maybe_record_submission_received_from_entry_context(
+            db,
+            tenant_id=str(tenant_id),
+            submission_entry=submission_entry,
+            entry_context=entry_context,
+        )
+
     if idempotency_key:
         existing = find_submission_by_idempotency_key(lead, idempotency_key)
         if existing is not None:
+            await _emit_submission_received(existing)
             return existing
 
     entry = _build_submission_entry(
@@ -140,4 +160,5 @@ async def append_submission(
     lead.normalized = normalized
     flag_modified(lead, "normalized")
     await db.flush()
+    await _emit_submission_received(entry)
     return entry
