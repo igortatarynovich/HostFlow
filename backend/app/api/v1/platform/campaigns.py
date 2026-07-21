@@ -433,6 +433,51 @@ async def get_campaign_registries(
     return load_campaign_registries()
 
 
+class IntakeSourceOptionOut(BaseModel):
+    """Picker option for Marketing Workspace — bindable IntakeSourceProfile rows."""
+
+    id: str
+    name: str
+    provider: str
+    code: str
+    is_active: bool
+
+
+@router.get(
+    "/intake-source-options",
+    response_model=List[IntakeSourceOptionOut],
+    dependencies=_READ,
+)
+async def list_intake_source_options(
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+    provider: Optional[str] = Query(default=None),
+):
+    """List active intake sources for the current company (Marketing setup picker)."""
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    stmt = select(IntakeSourceProfile).where(
+        IntakeSourceProfile.tenant_id == str(tenant_uuid),
+        IntakeSourceProfile.own_company_id == own_company_id,
+        IntakeSourceProfile.is_active.is_(True),
+    )
+    if provider and str(provider).strip():
+        stmt = stmt.where(IntakeSourceProfile.provider == str(provider).strip().lower())
+    stmt = stmt.order_by(IntakeSourceProfile.name.asc())
+    rows = (await db.execute(stmt)).scalars().all()
+    return [
+        IntakeSourceOptionOut(
+            id=str(r.id),
+            name=str(r.name or r.code or r.id),
+            provider=str(r.provider or ""),
+            code=str(r.code or ""),
+            is_active=bool(r.is_active),
+        )
+        for r in rows
+    ]
+
+
 @router.get("", response_model=List[CampaignOut], dependencies=_READ)
 async def list_campaigns_endpoint(
     limit: int = Query(50, ge=1, le=200),

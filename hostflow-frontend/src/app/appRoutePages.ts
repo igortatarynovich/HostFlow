@@ -43,6 +43,15 @@ export const AutomationLogPage = lazy(() => loadCrmMore().then((m) => ({ default
 export const AcquisitionActivityTimelinePage = lazy(() =>
   loadCrmMore().then((m) => ({ default: m.AcquisitionActivityTimelinePage })),
 )
+export const MarketingCampaignsPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingCampaignsPage })),
+)
+export const MarketingCampaignSetupPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingCampaignSetupPage })),
+)
+export const MarketingCampaignDetailPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingCampaignDetailPage })),
+)
 export const AutomationRulesPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationRulesPage })))
 export const FleetModulePage = lazy(() => loadCrmMore().then((m) => ({ default: m.FleetModulePage })))
 

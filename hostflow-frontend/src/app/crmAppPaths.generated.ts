@@ -62,6 +62,10 @@ export const CRM_APP_PATHS = {
   automationLog: "/app/automation-log",
   /** Stage 3E read-only Acquisition Activity Timeline (platform campaigns). */
   acquisitionActivity: "/app/acquisition/activity",
+  /** Marketing Workspace — campaign list and Flight operator surface. */
+  marketing: "/app/marketing",
+  /** Marketing Campaign Setup Flow (create campaign + form + source + launch). */
+  marketingNew: "/app/marketing/new",
   inbox: "/app/inbox",
   /** Inbox with messages channel selected (legacy top-level /app/messages redirects here). */
   inboxMessagesScoped: "/app/inbox?channel=messages",
