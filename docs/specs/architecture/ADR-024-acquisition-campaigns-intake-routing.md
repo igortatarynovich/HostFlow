@@ -506,6 +506,28 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 | **3D** ✅ | Outcome attribution and basic analytics | **Epic P COMPLETE** — [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md). Chain: Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI |
 | **3E** | Activity Timeline (observability) | **ACTIVE (Product Track)** — [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md). `AcquisitionActivityEvent` + catalog; PR-1…PR-4 only; Timeline ≠ Automation bus. **Ends at thin Timeline UI** — not Flight Runtime |
 | **4** *(post-3E)* | Flight Runtime (operations) | **QUEUED** — [`../tasks/acquisition-stage-4-flight-runtime.md`](../tasks/acquisition-stage-4-flight-runtime.md). Campaign/Flight CRUD, Endpoint management, Launch/Pause/Resume, Intake Monitor, basic metrics. Uses 3E Timeline as infrastructure; activate only after 3E DONE |
+| **5** *(horizon)* | Optimization | **FUTURE** — automatic decisions, recommendations, anomaly detection, Auto Pause/Resume, AI-assisted optimization. Depends on Stage 4 operations + 3E Timeline events |
+| **6** *(horizon)* | Analytics & strategic attribution | **FUTURE** — ROI, CPL, CAC, cohorts, Campaign/Flight compare. Depends on Stages 3D–5 facts; does not redefine Timeline store |
+
+#### 14.1 Acquisition maturity ladder (locked)
+
+Post–Epic P delivery follows a fixed ladder. Each rung uses the previous as infrastructure and **must not** reopen earlier canon:
+
+```text
+1. Observability  (Stage 3E)  — see what happened and why
+2. Operations     (Stage 4)   — control Flight Runtime day-to-day
+3. Optimization   (Stage 5)   — automatically improve (rules / AI assists)
+4. Analytics      (Stage 6)   — understand efficiency; strategic decisions
+```
+
+| Stage | Verb | Outcome for the operator / business |
+|-------|------|-------------------------------------|
+| **3E** | See | Unified Activity Timeline; typed events; immutable audit; Read API; thin Timeline UI |
+| **4** | Control | Campaign/Flight CRUD; Launch/Pause/Resume; Endpoint management; Live Intake Monitor; runtime actions; basic ops metrics |
+| **5** | Improve | Auto / assisted optimization on top of Timeline + Runtime controls |
+| **6** | Decide | Full analytics & attribution (ROI/CPL/CAC/cohorts/compare) |
+
+**Rules:** do not put Stage 4 controls into 3E UI; do not put Stage 5 auto-actions into Stage 4 without 3E event coverage; do not treat Stage 6 dashboards as a substitute for Timeline (audit stays append-only).
 
 #### Stage 3A Definition of Done — met
 
@@ -639,3 +661,4 @@ V1 **не** заменяет Meta Ads Manager.
 - 2026-07-19: Forms Builder MVP COMPLETE; **Canonical Intake Input Matrix** opened READY — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) (design gate before further routing runtime; not Stage 3E).
 - 2026-07-21: **Stage 3E ACTIVE (Product Track)** — Activity Timeline canon: `AcquisitionActivityEvent`, append-only immutable, Timeline ≠ Automation bus, single store / many views, PR 1–4 — [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md).
 - 2026-07-21: **Stage boundary** — 3E = observability (Timeline); **Stage 4 Flight Runtime** = operations (queued after 3E) — [`../tasks/acquisition-stage-4-flight-runtime.md`](../tasks/acquisition-stage-4-flight-runtime.md).
+- 2026-07-21: **§14.1 Acquisition maturity ladder** — Observability (3E) → Operations (4) → Optimization (5) → Analytics (6); each rung depends on the previous without reopening canon.

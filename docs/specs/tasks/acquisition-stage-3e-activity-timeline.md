@@ -10,14 +10,16 @@
 > **Not** Flight Runtime / operations. **Not** C2.4. **Not** multi-Flight UX / Template catalog (V2).  
 > Model = **`AcquisitionActivityEvent`**.
 
-**Stage boundary (locked):**
+**Maturity ladder (locked — ADR-024 §14.1):**
 
 ```text
-Stage 3E  = Observability  →  PR-1…PR-4 Activity Timeline  →  DONE
-Stage 4   = Operations     →  Flight Runtime (queued)     →  after 3E
+3E Observability  — see          →  PR-1…PR-4  →  DONE
+4  Operations     — control      →  Flight Runtime (queued)
+5  Optimization   — improve      →  future horizon
+6  Analytics      — decide       →  future horizon
 ```
 
-Next horizon (queued, not part of 3E): [`acquisition-stage-4-flight-runtime.md`](acquisition-stage-4-flight-runtime.md).
+Next Product epic after 3E: [`acquisition-stage-4-flight-runtime.md`](acquisition-stage-4-flight-runtime.md).
 
 **Supersedes naming:** earlier draft `acquisition-stage-3e-flight-timeline.md` (Flight Timeline) — do not implement that framing.
 
