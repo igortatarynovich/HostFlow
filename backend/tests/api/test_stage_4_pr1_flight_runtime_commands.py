@@ -243,6 +243,130 @@ async def test_resume_reactivates_campaign() -> None:
 
 
 @pytest.mark.asyncio
+async def test_routing_eligibility_across_launch_pause_resume_complete() -> None:
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+
+    async with async_session_maker() as db:
+        campaign, flight_id = await _seed_draft_campaign_with_flight(db, tenant_id=tenant_id)
+
+        launched = await execute_flight_command(
+            db,
+            tenant_id=tenant_id,
+            campaign_id=campaign.id,
+            flight_id=flight_id,
+            command="launch",
+            actor_type=ACTOR_TYPE_USER,
+            actor_id="ops-1",
+        )
+        assert is_flight_routing_eligible(
+            association_is_active=True,
+            campaign_status=launched.campaign.status,
+            flight_status=launched.flight.status,
+            starts_at=None,
+            ends_at=None,
+        )
+
+        paused = await execute_flight_command(
+            db,
+            tenant_id=tenant_id,
+            campaign_id=campaign.id,
+            flight_id=flight_id,
+            command="pause",
+            actor_type=ACTOR_TYPE_USER,
+            actor_id="ops-1",
+        )
+        assert not is_flight_routing_eligible(
+            association_is_active=True,
+            campaign_status=paused.campaign.status,
+            flight_status=paused.flight.status,
+            starts_at=None,
+            ends_at=None,
+        )
+
+        resumed = await execute_flight_command(
+            db,
+            tenant_id=tenant_id,
+            campaign_id=campaign.id,
+            flight_id=flight_id,
+            command="resume",
+            actor_type=ACTOR_TYPE_USER,
+            actor_id="ops-1",
+        )
+        assert is_flight_routing_eligible(
+            association_is_active=True,
+            campaign_status=resumed.campaign.status,
+            flight_status=resumed.flight.status,
+            starts_at=None,
+            ends_at=None,
+        )
+
+        completed = await execute_flight_command(
+            db,
+            tenant_id=tenant_id,
+            campaign_id=campaign.id,
+            flight_id=flight_id,
+            command="complete",
+            actor_type=ACTOR_TYPE_USER,
+            actor_id="ops-1",
+        )
+        await db.commit()
+        assert completed.flight.status == FLIGHT_STATUS_COMPLETED
+        assert completed.campaign.status == "active"
+        assert not is_flight_routing_eligible(
+            association_is_active=True,
+            campaign_status=completed.campaign.status,
+            flight_status=completed.flight.status,
+            starts_at=None,
+            ends_at=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_pause_idempotent_no_duplicate_campaign_paused() -> None:
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+
+    async with async_session_maker() as db:
+        campaign, flight_id = await _seed_draft_campaign_with_flight(db, tenant_id=tenant_id)
+        await execute_flight_command(
+            db,
+            tenant_id=tenant_id,
+            campaign_id=campaign.id,
+            flight_id=flight_id,
+            command="launch",
+            actor_type=ACTOR_TYPE_USER,
+            actor_id="ops-1",
+        )
+        first = await execute_flight_command(
+            db,
+            tenant_id=tenant_id,
+            campaign_id=campaign.id,
+            flight_id=flight_id,
+            command="pause",
+            actor_type=ACTOR_TYPE_USER,
+            actor_id="ops-1",
+        )
+        second = await execute_flight_command(
+            db,
+            tenant_id=tenant_id,
+            campaign_id=campaign.id,
+            flight_id=flight_id,
+            command="pause",
+            actor_type=ACTOR_TYPE_USER,
+            actor_id="ops-1",
+        )
+        await db.commit()
+
+        assert first.flight_event.id == second.flight_event.id
+        assert second.campaign_event is None
+        events = await list_activity_events(
+            db, tenant_id=tenant_id, campaign_id=campaign.id, limit=50
+        )
+        assert [e.event_type for e in events].count("CampaignPaused") == 1
+
+
+@pytest.mark.asyncio
 async def test_complete_does_not_change_campaign_status() -> None:
     data = await _init_data()
     tenant_id = data["tenant_id"]
