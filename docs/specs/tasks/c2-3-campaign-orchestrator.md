@@ -1,8 +1,9 @@
 # C2.3 — Campaign Orchestrator
 
-**Status:** Active (PR-3 Intent emission — no Campaign UI yet)  
+**Status:** Active (PR-4 run orchestration — no Campaign UI yet)  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
-**Branch:** `feat/communication-c2-3-campaign-intent-emitter` (PR-3)  
+**Branch:** `feat/communication-c2-3-campaign-run-orchestration` (PR-4)  
+
 
 
 **Parents:** [C2.2 Automation Engine ✅](c2-2-automation-engine.md) · [C2.1 Template Platform ✅](c2-1-template-platform.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
@@ -111,6 +112,20 @@ allowed RunItem → IntentExecutionRequest → execute_communication_intent
 - No provider / Sender / Workspace Commands / Thread ORM imports  
 - Out of PR-3: run orchestration product loop, HTTP API, UI
 
+### PR-4 Run orchestration (locked)
+
+`communications/campaign/orchestrator.py`:
+
+```text
+pending → running → emit_run_items → completed
+```
+
+- Item failures do **not** fail the run — summary records emitted/skipped/failed  
+- Run-level `failed` only on orchestration abort; `cancelled` is sticky  
+- Re-execute on terminal run is a no-op (`already_terminal`)  
+- Orchestrator calls `emit_run_items` only (no direct `execute_communication_intent`)  
+- Out of PR-4: HTTP API, UI
+
 
 ---
 
@@ -130,8 +145,8 @@ allowed RunItem → IntentExecutionRequest → execute_communication_intent
 - [x] PR-1 domain + publish immutability + run idempotency + snapshot vs definition  
 - [x] PR-2 audience resolver produces snapshot only (`static_list` / `filter` + caller entity pool)  
 - [x] PR-3 Intent emission via platform path (no provider / Thread writes)  
+- [x] PR-4 run orchestration (item-level failure isolation)  
 
-- [ ] PR-4 run orchestration (item-level failure isolation)  
 - [ ] PR-5 API  
 - [ ] PR-6 thin UI only after API  
 - [ ] Capability-isolation contract tests  
