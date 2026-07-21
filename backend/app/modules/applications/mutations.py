@@ -296,8 +296,11 @@ async def recruitment_process_application(
     application_id: str,
     current_user: UserCtx,
 ) -> ApplicationProcessResult:
-    from backend.app.modules.leads.router import process_lead_endpoint
+    """Create a candidate from Отклики after vacancy binding.
 
+    Explicit operator action must not re-fail on Meta acquisition routing
+    (``no_intake_context``): vacancy was already confirmed in the UI / prepare step.
+    """
     await _prepare_recruitment_application_for_process(
         db,
         tenant_id=tenant_id,
@@ -305,13 +308,52 @@ async def recruitment_process_application(
         current_user=current_user,
     )
 
-    result = await process_lead_endpoint(
-        application_id,
-        db_tenant=(db, UUID(tenant_id)),
-        current_user=current_user,
-        own_company_id=own_company_id,
-        _role="recruiter",
-    )
+    lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+
+    lead_src = str(getattr(lead, "source", "") or "").strip().lower()
+    if lead_src not in {"meta", "csv_import"}:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED"},
+        )
+    if not getattr(lead, "payload", None):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "INTAKE_ROUTING_INCOMPLETE", "message": "Lead payload is missing"},
+        )
+
+    force_existing = bool(getattr(lead, "candidate_id", None) is None) and getattr(lead, "status", None) in {
+        "processed",
+        "duplicated",
+        "duplicate_review",
+    }
+    prior_norm = getattr(lead, "normalized", None)
+    if not isinstance(prior_norm, dict):
+        prior_norm = None
+
+    try:
+        result = await service.reprocess_stored_lead_payload(
+            db=db,
+            tenant_id=tenant_id,
+            payload=lead.payload,
+            own_company_id=own_company_id or None,
+            source=lead_src,
+            force_existing=force_existing,
+            external_id_hint=(str(lead.external_id).strip() if getattr(lead, "external_id", None) else None),
+            prior_normalized=prior_norm,
+            # Operator already bound/confirmed vacancy — skip acquisition flight matrix.
+            force_candidate_conversion=True,
+            stored_db_vacancy_id=(str(lead.vacancy_id).strip() if getattr(lead, "vacancy_id", None) else None)
+            or None,
+            stored_db_ad_id=getattr(lead, "ad_id", None),
+            stored_lead_id=str(lead.id),
+        )
+    except service.LeadProcessingError as exc:
+        raise service.lead_processing_error_as_http(exc) from exc
+
+    await db.commit()
     app = await _reload_recruitment(db, tenant_id, application_id)
     candidate_id = str(result.candidate_id) if getattr(result, "candidate_id", None) else None
     return ApplicationProcessResult(application=app, candidate_id=candidate_id, message=getattr(result, "error", None))
