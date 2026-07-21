@@ -49,7 +49,7 @@
 | **6b** | **C1.2** Workspace Actions | `feat/communication-c1-2-workspace-actions` (**PR #108**) | ✅ Commands → ThreadContext; concurrency; no mixed path |
 | **6c** | **C1.3** Workspace Experience | `feat/communication-c1-3-workspace-experience` | ✅ Thread card UX; C1 closed 2026-07-21 (live Commands smoke) |
 | **7** | **C2** Capability epic (Intent-only) | [epic-c2](epic-c2-communication-campaigns.md) | Creates `CommunicationIntent` only; never mutates Thread |
-| **7a** | **C2.1** Template Platform | `feat/communication-c2-1-template-platform` (**current**) | Registry · versioning · vars · preview · draft/published |
+| **7a** | **C2.1** Template Platform | `feat/communication-c2-1-template-domain` (**current**, PR-1) | Domain → Renderer → Registry → API → UI; `template_version_id` SoT |
 | **7b** | **C2.2** Automation Engine | *(after C2.1)* | Event → Rules → Policy → Intent (no provider/Thread) |
 | **7c** | **C2.3** Campaign Orchestrator | *(after C2.2)* | Audience + plan → Intent (no render/send/Thread) |
 | **7d** | **C2.4** Scheduling | *(after C2.3)* | Schedule → Intent → ordinary pipeline |

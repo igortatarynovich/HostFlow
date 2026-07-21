@@ -121,22 +121,21 @@ without returning to Thread / Commands / ThreadContext architecture.
 
 ## C2.1 — Template Platform
 
-**First PR scope — templates only.** No Campaign, no Automation.
+**Templates only.** No Campaign, no Automation.  
+**Domain-first:** no UI until the model/renderer/registry/API are stable — see [c2-1-template-platform.md](c2-1-template-platform.md).
 
-In:
+Locked order:
 
-- Template Registry  
-- Versioning  
-- Variables  
-- Validation  
-- Preview  
-- Draft / Published  
-- Channel compatibility  
-- Intent compatibility  
+```text
+PR-1 Domain → PR-2 Renderer → PR-3 Registry → PR-4 API → PR-5 UI
+```
 
-Out of C2.1: campaigns, automations, scheduling, bulk orchestration.
+C2.1 laws:
 
-Preview uses the **same render path** as prepare-send (snapshot rules). Frontend does not own composition policy.
+1. **Template = “how it looks” only** — never whom / when / whether / channel / Thread / Notification.  
+2. **`template_version_id` is reproducible SoT** — Delivery/Snapshot/Command store version id, not “current template by name”.
+
+Preview uses the **same render path** as prepare-send. Frontend is a thin client (PR-5 only).
 
 ---
 
