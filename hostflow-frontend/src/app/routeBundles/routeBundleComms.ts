@@ -17,3 +17,4 @@ export { default as CommunicationsSlaSettingsPage } from '../../pages/admin/Comm
 export { default as CommunicationTemplatesPage } from '../../pages/admin/CommunicationTemplatesPage'
 export { default as CommunicationAutomationRulesPage } from '../../pages/admin/CommunicationAutomationRulesPage'
 export { default as LeadLifecycleEmailSettingsPage } from '../../pages/admin/LeadLifecycleEmailSettingsPage'
+export { default as CommunicationCampaignsPage } from '../../pages/admin/CommunicationCampaignsPage'

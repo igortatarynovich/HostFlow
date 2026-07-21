@@ -36,6 +36,7 @@ import {
   CommunicationTemplatesPage,
   CommunicationAutomationRulesPage,
   LeadLifecycleEmailSettingsPage,
+  CommunicationCampaignsPage,
   CommunicationsThreadPage,
   Companies,
   CompanyAccessPage,
@@ -607,6 +608,13 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'admin.users',
   },
   {
+    key: 'settings-communications-campaigns',
+    labelKey: 'app.nav.items.settings_communications_campaigns',
+    path: CRM.settingsCommunicationsCampaigns,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
     key: 'settings-ruleset',
     labelKey: 'app.nav.items.settings_ruleset',
     path: CRM.settingsRuleset,
@@ -950,6 +958,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'settings-communications-templates', path: seg(CRM.settingsCommunicationsTemplates), Component: withCommFeature(CommunicationTemplatesPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-communications-automation', path: seg(CRM.settingsCommunicationsAutomation), Component: withCommFeature(CommunicationAutomationRulesPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-communications-lead-lifecycle-email', path: seg(CRM.settingsCommunicationsLeadLifecycleEmail), Component: withCommFeature(LeadLifecycleEmailSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
+  { key: 'settings-communications-campaigns', path: seg(CRM.settingsCommunicationsCampaigns), Component: withCommFeature(CommunicationCampaignsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-tenant-links', path: seg(CRM.settingsTenantLinks), Component: TenantLinksSettingsPage, permission: 'admin.users' },
   {
     key: 'settings-integrations',
