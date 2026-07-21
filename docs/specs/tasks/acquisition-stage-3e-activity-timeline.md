@@ -237,6 +237,8 @@ Mixing these in one PR or one “Flight Timeline + emit for Automations + UI” 
 
 ### PR-2 — Existing Flow Instrumentation
 
+**Start only after #130 is merged.** Open a **fresh worktree** from current `integration/release-product-a-b` — do not branch from the PR-1 worktree tip.
+
 Emit from the existing 3C/3D chain **without a second pipeline**:
 
 - Flight lifecycle  
@@ -248,6 +250,14 @@ Emit from the existing 3C/3D chain **without a second pipeline**:
 - Lead / Candidate / Duplicate where Acquisition receives a confirmed signal  
 
 Events must be written from the same transaction as the domain change **or** via outbox → projector — not best-effort post-commit fire-and-forget.
+
+**Write-path rule (mandatory):**
+
+- Sole public write entry: `append_activity_event(...)`.  
+- **Forbidden:** direct `INSERT` / ORM `db.add(AcquisitionActivityEvent(...))` from call sites.  
+- Contract tests in PR-2 should guard that instrumentation modules import append only (no raw model construction for persistence).  
+
+This keeps catalog validation, idempotency, envelope checks, and future telemetry in one place.
 
 ### PR-3 — Timeline Read API
 
