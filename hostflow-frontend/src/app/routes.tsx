@@ -24,6 +24,7 @@ import {
   CommunicationsSlaIncidentsPage,
   NotificationAlertsPage,
   CommunicationsSlaSettingsPage,
+  CommunicationTemplatesPage,
   CommunicationsThreadPage,
   Companies,
   CompanyAccessPage,
@@ -519,6 +520,13 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'admin.users',
   },
   {
+    key: 'settings-communications-templates',
+    labelKey: 'app.nav.items.settings_communications_templates',
+    path: CRM.settingsCommunicationsTemplates,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
     key: 'settings-ruleset',
     labelKey: 'app.nav.items.settings_ruleset',
     path: CRM.settingsRuleset,
@@ -781,6 +789,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'settings-communications-messengers', path: seg(CRM.settingsCommunicationsMessengers), Component: withCommFeature(CommunicationsMessengerSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-communications-queue', path: seg(CRM.settingsCommunicationsQueue), Component: withCommFeature(CommunicationsQueueSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-communications-sla', path: seg(CRM.settingsCommunicationsSla), Component: withCommFeature(CommunicationsSlaSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
+  { key: 'settings-communications-templates', path: seg(CRM.settingsCommunicationsTemplates), Component: withCommFeature(CommunicationTemplatesPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-tenant-links', path: seg(CRM.settingsTenantLinks), Component: TenantLinksSettingsPage, permission: 'admin.users' },
   {
     key: 'settings-integrations',

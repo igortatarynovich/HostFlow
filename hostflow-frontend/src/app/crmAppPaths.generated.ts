@@ -124,6 +124,7 @@ export const CRM_APP_PATHS = {
   settingsCommunicationsMessengers: "/app/settings/communications/messengers",
   settingsCommunicationsQueue: "/app/settings/communications/queue",
   settingsCommunicationsSla: "/app/settings/communications/sla",
+  settingsCommunicationsTemplates: "/app/settings/communications/templates",
   settingsTeam: "/app/settings/team",
   settingsRiskIntel: "/app/settings/risk-intel",
   settingsHiringPipelineGates: "/app/settings/hiring-pipeline-gates",

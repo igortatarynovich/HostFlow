@@ -908,6 +908,7 @@
         "settings_communications_messengers": "Komunikatory",
         "settings_communications_queue": "Kolejka i routing",
         "settings_communications_sla": "SLA komunikacji",
+        "settings_communications_templates": "Szablony komunikacji",
         "settings_ttv": "Raport TTV",
         "profile": "Profil",
         "logout": "Wyloguj",
@@ -11342,6 +11343,10 @@
           "label": "SLA komunikacji",
           "description": "Eskalacja, gdy na wątki zbyt długo nie ma odpowiedzi."
         },
+        "communications_templates": {
+          "label": "Szablony komunikacji",
+          "description": "Wersjonowane treści powiązane z Intent (publish/preview/historia). To nie snippety messengerów ani maile leadów."
+        },
         "audit": {
           "label": "Dziennik audytu",
           "description": "Przeglądaj działania administratorów."
@@ -11436,7 +11441,8 @@
       "messengers_templates_cta": "Szablony i wszystkie konta",
       "open_email": "Wychodzący SMTP",
       "open_queue": "Kolejka inbox i routing",
-      "open_sla": "SLA komunikacji"
+      "open_sla": "SLA komunikacji",
+      "open_templates": "Szablony komunikacji"
     },
     "communications_messengers": {
       "title": "Kanały komunikatorów",
@@ -11639,6 +11645,46 @@
         "channel": "Kanał",
         "assigned": "Przydzielono",
         "assignee": "Osoba"
+      }
+    },
+    "communications_templates": {
+      "title": "Szablony komunikacji",
+      "subtitle": "Wersjonowane treści powiązane z Intent. Tylko prezentacja — nie snippety messengerów ani szablony wiadomości leadów.",
+      "header_kicker": "szablony",
+      "include_archived": "Pokaż zarchiwizowane",
+      "list_title": "Szablony",
+      "empty": "Brak szablonów.",
+      "select_prompt": "Wybierz lub utwórz szablon.",
+      "preview_title": "Podgląd",
+      "history_title": "Historia wersji",
+      "create": {
+        "key": "Klucz",
+        "name": "Nazwa",
+        "submit": "Utwórz draft"
+      },
+      "actions": {
+        "back": "← Administracja komunikacji",
+        "messenger_snippets": "Snippety messengerów",
+        "save_draft": "Zapisz draft",
+        "publish": "Opublikuj",
+        "archive": "Archiwizuj",
+        "preview": "Podgląd draftu"
+      },
+      "notices": {
+        "created": "Szablon utworzony",
+        "draft_saved": "Draft zapisany",
+        "published": "Opublikowano",
+        "archived": "Zarchiwizowano"
+      },
+      "errors": {
+        "load": "Nie udało się wczytać szablonów komunikacji",
+        "versions": "Nie udało się wczytać wersji",
+        "create": "Nie udało się utworzyć szablonu",
+        "save_draft": "Nie udało się zapisać draftu",
+        "publish": "Nie udało się opublikować",
+        "archive": "Nie udało się zarchiwizować",
+        "preview": "Podgląd nie powiódł się",
+        "diff": "Diff nie powiódł się"
       }
     },
     "communications_sla": {

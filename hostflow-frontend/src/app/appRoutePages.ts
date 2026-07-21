@@ -95,6 +95,9 @@ export const CommunicationsQueueSettingsPage = lazy(() =>
 export const CommunicationsSlaSettingsPage = lazy(() =>
   loadComms().then((m) => ({ default: m.CommunicationsSlaSettingsPage })),
 )
+export const CommunicationTemplatesPage = lazy(() =>
+  loadComms().then((m) => ({ default: m.CommunicationTemplatesPage })),
+)
 
 export const UsersPage = lazy(() => loadAdmin().then((m) => ({ default: m.UsersPage })))
 export const TenantsPage = lazy(() => loadAdmin().then((m) => ({ default: m.TenantsPage })))
