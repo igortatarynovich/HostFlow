@@ -115,7 +115,21 @@ Package: `communications/automation/emitter.py`
 
 ### PR-4 — API
 
-CRUD draft rules, publish, enable/disable, dry-run evaluate, decision history.
+Public HTTP under `/api/v1/communications/automation/rules`:
+
+| Endpoint | Role |
+|----------|------|
+| `GET/POST /automation/rules` | List / create (draft v0) |
+| `GET /automation/rules/{id}` | Bundle (rule + draft + latest published) |
+| `PATCH /…/draft` | Edit draft body / triggers |
+| `POST /…/publish` | Publish immutable version |
+| `POST /…/enabled` | Runtime on/off |
+| `POST /…/archive` | Archive rule head |
+| `GET /…/versions` · `…/versions/{vid}` | History |
+| `POST /…/dry-run` | Pure evaluator (no Intent emit, no decision persist) |
+| `GET /…/decisions` | Decision history |
+
+Still **no** Campaign / Scheduling product endpoints. Dry-run must not call the emitter.
 
 ### PR-5 — UI
 
@@ -147,7 +161,8 @@ Thin client: list / editor / dry-run / history. No client-owned send loop.
 - [x] PR-1 domain + immutable published rule versions — `feat/communication-c2-2-automation-domain`  
 - [x] PR-2 evaluator with structured diagnostics — `feat/communication-c2-2-automation-evaluator`  
 - [x] PR-3 Intent-only emitter (contract tests: no Sender / Thread writes) — `feat/communication-c2-2-automation-emitter`  
-- [ ] PR-4 API + PR-5 thin UI  
+- [x] PR-4 API — `feat/communication-c2-2-automation-api`  
+- [ ] PR-5 thin UI  
 - [ ] Capability-isolation contract tests on C2.2 packages  
 - [ ] No Campaign / Scheduling product code in C2.2  
 

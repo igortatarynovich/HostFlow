@@ -311,6 +311,7 @@ from .routes import webhooks as _webhooks_routes  # noqa: E402
 from .routes import delivery_diagnostics as _delivery_diagnostics_routes  # noqa: E402
 from .routes import workspace_commands as _workspace_commands_routes  # noqa: E402
 from .routes import templates as _templates_routes  # noqa: E402
+from .routes import automation as _automation_routes  # noqa: E402
 
 # Re-export route handlers that other modules import as functions
 # (notably ``services.communications_scheduler`` calls
@@ -383,3 +384,4 @@ router.include_router(_webhooks_routes.router)
 router.include_router(_delivery_diagnostics_routes.router)
 router.include_router(_workspace_commands_routes.router)
 router.include_router(_templates_routes.router)
+router.include_router(_automation_routes.router)
