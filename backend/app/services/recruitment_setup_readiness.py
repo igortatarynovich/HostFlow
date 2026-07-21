@@ -35,6 +35,22 @@ from backend.app.modules.intake_routing.meta_bridge import meta_external_key, me
 from backend.app.modules.intake_routing.reference import normalize_route_intent
 from backend.app.modules.leads.service._helpers import _load_tenant_business_type
 from backend.app.entity_profile.vacancy_bridge import resolve_entity_profile_hints_from_vacancy
+from backend.app.constants.spa_paths import (
+    CLIENTS as SPA_CLIENTS,
+    MY_COMPANY as SPA_MY_COMPANY,
+    ONBOARDING_COMPANY as SPA_ONBOARDING_COMPANY,
+    SETTINGS_CANDIDATE_PROFILES as SPA_SETTINGS_CANDIDATE_PROFILES,
+    SETTINGS_FUNNELS as SPA_SETTINGS_FUNNELS,
+    SETTINGS_INTEGRATIONS as SPA_SETTINGS_INTEGRATIONS,
+    SETTINGS_LEAD_FORMS as SPA_SETTINGS_LEAD_FORMS,
+    SETTINGS_LEADS as SPA_SETTINGS_LEADS,
+    SETTINGS_USERS as SPA_SETTINGS_USERS,
+    SETUP_CLIENT as SPA_SETUP_CLIENT,
+    SETUP_INTAKE as SPA_SETUP_INTAKE,
+    SETUP_PROCESS as SPA_SETUP_PROCESS,
+    SETUP_VACANCY as SPA_SETUP_VACANCY,
+    VACANCY_NEW as SPA_VACANCY_NEW,
+)
 from backend.app.platform.next_action.contracts import NextActionCandidate, ReachabilityContext
 from backend.app.platform.next_action.publisher import publish_first_reachable_next_action
 
@@ -45,22 +61,6 @@ GateStatus = Literal["pass", "fail", "not_applicable"]
 BusinessType = Literal["agency", "employer", "services"]
 
 GATE_ORDER: tuple[GateId, ...] = ("G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8")
-
-# SPA paths (shared/crm_app_paths.json — not all are in spa_paths.py yet)
-SPA_MY_COMPANY = "/app/my-company"
-SPA_ONBOARDING_COMPANY = "/app/onboarding/company"
-SPA_SETUP_CLIENT = "/app/setup/client"
-SPA_SETUP_VACANCY = "/app/setup/vacancy"
-SPA_SETUP_PROCESS = "/app/setup/process"
-SPA_SETUP_INTAKE = "/app/setup/intake"
-SPA_CLIENTS = "/app/clients"
-SPA_VACANCY_NEW = "/app/vacancies/new"
-SPA_SETTINGS_FUNNELS = "/app/settings/funnels"
-SPA_SETTINGS_CANDIDATE_PROFILES = "/app/settings/candidate-profiles"
-SPA_SETTINGS_INTEGRATIONS = "/app/settings/integrations"
-SPA_SETTINGS_LEAD_FORMS = "/app/settings/lead-forms"
-SPA_SETTINGS_USERS = "/app/settings/users"
-SPA_SETTINGS_LEADS = "/app/settings/leads"
 
 
 @dataclass(frozen=True)

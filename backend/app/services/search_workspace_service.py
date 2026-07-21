@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.constants.stages import STAGES_BY_GROUP
-from backend.app.constants.spa_paths import CANDIDATES
+from backend.app.constants.spa_paths import CANDIDATES, RECRUITMENT_INBOX, RECRUITMENT_SEARCHES
 from backend.app.models.candidate import Candidate
 from backend.app.models.vacancy import Vacancy
 from backend.app.services.search_acquisition_service import (
@@ -17,7 +17,7 @@ from backend.app.services.search_acquisition_service import (
     get_vacancy_or_raise,
 )
 
-_RECRUITMENT_SEARCH_BASE = "/app/recruitment/searches"
+_RECRUITMENT_SEARCH_BASE = RECRUITMENT_SEARCHES
 _PRE_CONTACT_STAGES = frozenset({"", "new", "no_answer", "to_call", "to_contact"})
 _INTERVIEW_STAGES = frozenset(STAGES_BY_GROUP.get("interview", []))
 _DOCS_WAIT_STAGES = frozenset({"docs_wait"})
@@ -336,7 +336,7 @@ def _build_day_plan(
                 message="Реклама работает. Новые необработанные отклики — в разделе «Отклики».",
                 action_label="Открыть отклики",
                 target="recruitment_inbox",
-                href="/app/recruitment/inbox",
+                href=RECRUITMENT_INBOX,
                 icon="⏳",
                 kind="wait_leads",
             )

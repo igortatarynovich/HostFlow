@@ -1,8 +1,10 @@
 # C2.3 — Campaign Orchestrator
 
-**Status:** Active (kickoff — Intent-only; no send path)  
+**Status:** Implementation complete. Merge blocked by shared CI debt.  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
-**Branch (proposed):** `feat/communication-c2-3-campaign-domain` (PR-1)  
+**Stack:** PR #121–#126 (domain → thin UI). **Do not** mark Closed until #125+#126 merge.  
+**Next work:** CI unblock on `integration/release-product-a-b` (`chore/ci-unblock-c2-3-stack`) — **not** C2.4.  
+
 **Parents:** [C2.2 Automation Engine ✅](c2-2-automation-engine.md) · [C2.1 Template Platform ✅](c2-1-template-platform.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
 
 > Third C2 slice. **Campaigns only.** No Automation product changes, no Scheduling product, no Thread redesign.  

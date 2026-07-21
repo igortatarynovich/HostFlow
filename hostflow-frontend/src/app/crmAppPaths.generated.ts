@@ -150,6 +150,8 @@ export const CRM_APP_PATHS = {
   activitiesLegacy: "/app/activities",
   recruitmentSearches: "/app/recruitment/searches",
   recruitmentSearchesNew: "/app/recruitment/searches/new",
+  /** Recruitment Application Workspace inbox (UI Constitution — no Lead in UI). */
+  recruitmentInbox: "/app/recruitment/inbox",
   setup: "/app/setup",
   setupClient: "/app/setup/client",
   setupVacancy: "/app/setup/vacancy",

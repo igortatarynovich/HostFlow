@@ -402,7 +402,7 @@ PR 2B evaluator consumes the same policy + DocumentData facts.
 
 ## Ссылки
 
-- Constitution: [`hostflow-constitution.md`](../hostflow-constitution.md)
+- Constitution / product surface: [`ui-constitution-v1.md`](ui-constitution-v1.md) · platform UI: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md)
 - Document Hub: [ADR-009](ADR-009-document-hub-platform-layer.md)
 - Requirement separation: [ADR-016](ADR-016-requirement-evidence-document-separation.md)
 - Registry SSOT: [`document-type-registry-v1.json`](../platform/document-type-registry-v1.json)
@@ -411,7 +411,7 @@ PR 2B evaluator consumes the same policy + DocumentData facts.
 - Requirement policy: `backend/app/requirement_rules/data/requirement_policy.recruitment.driver_ce.pl.v1.json`
 - DocumentData contract: `backend/app/document_hub/document_data_contract.py`
 - Evaluator input contract: `backend/app/requirement_rules/evaluation_input_contract.py`
-- **PR 2B reuse audit:** [`existing-runtime-reuse-review-pr2b.md`](existing-runtime-reuse-review-pr2b.md) — Variant B: DocumentRuntime (facts) + RequirementEvaluationService (policy)
+- **PR 2B reuse audit:** [`../platform/requirement-evidence-model-p0.md`](../platform/requirement-evidence-model-p0.md) — Variant B: DocumentRuntime (facts) + RequirementEvaluationService (policy)
 - **Next platform layer:** [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) — Automation & Capability Engine (after 2B-3)
 - Legacy aliases: [`document-type-legacy-aliases-v1.json`](../platform/document-type-legacy-aliases-v1.json)
 - CI guard: `backend/scripts/check_document_type_registry.py`

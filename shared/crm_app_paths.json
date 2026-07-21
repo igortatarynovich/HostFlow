@@ -133,6 +133,7 @@
     "activitiesLegacy": "/app/activities",
     "recruitmentSearches": "/app/recruitment/searches",
     "recruitmentSearchesNew": "/app/recruitment/searches/new",
+    "recruitmentInbox": "/app/recruitment/inbox",
     "setup": "/app/setup",
     "setupClient": "/app/setup/client",
     "setupVacancy": "/app/setup/vacancy",
@@ -154,7 +155,8 @@
     "hrTasks": "HR lane reminder tasks; uses /api/v1/hr/tasks.",
     "hrCompliance": "HR compliance document queues; uses /api/v1/hr/documents/*.",
     "hrZusWorkspace": "ZUS operational workspace; uses /api/v1/workforce/zus-workspace/*.",
-    "hrHandoffs": "Handoff detail + snapshot under HR workspace shell."
+    "hrHandoffs": "Handoff detail + snapshot under HR workspace shell.",
+    "recruitmentInbox": "Recruitment Application Workspace inbox (UI Constitution — no Lead in UI)."
   },
   "drilldown_hrefs": {
     "vacanciesOpen": "/app/vacancies?status=open",
@@ -256,6 +258,62 @@
       {
         "name": "INBOX_THREADS_BASE",
         "path_key": "inboxThreadsBase"
+      },
+      {
+        "name": "MY_COMPANY",
+        "path_key": "myCompany"
+      },
+      {
+        "name": "ONBOARDING_COMPANY",
+        "path_key": "onboardingCompany"
+      },
+      {
+        "name": "SETUP_CLIENT",
+        "path_key": "setupClient"
+      },
+      {
+        "name": "SETUP_VACANCY",
+        "path_key": "setupVacancy"
+      },
+      {
+        "name": "SETUP_PROCESS",
+        "path_key": "setupProcess"
+      },
+      {
+        "name": "SETUP_INTAKE",
+        "path_key": "setupIntake"
+      },
+      {
+        "name": "VACANCY_NEW",
+        "path_key": "vacancyNew"
+      },
+      {
+        "name": "SETTINGS_FUNNELS",
+        "path_key": "settingsFunnels"
+      },
+      {
+        "name": "SETTINGS_CANDIDATE_PROFILES",
+        "path_key": "settingsCandidateProfiles"
+      },
+      {
+        "name": "SETTINGS_LEAD_FORMS",
+        "path_key": "settingsLeadForms"
+      },
+      {
+        "name": "SETTINGS_USERS",
+        "path_key": "settingsUsers"
+      },
+      {
+        "name": "SETTINGS_LEADS",
+        "path_key": "settingsLeads"
+      },
+      {
+        "name": "RECRUITMENT_SEARCHES",
+        "path_key": "recruitmentSearches"
+      },
+      {
+        "name": "RECRUITMENT_INBOX",
+        "path_key": "recruitmentInbox"
       }
     ],
     "functions": [

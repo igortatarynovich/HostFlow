@@ -95,7 +95,7 @@ Fields on `tenant_lead_forms` and `publication_config_v1` on `intake_source_prof
 
 ## Development filter (post-merge)
 
-**Model:** [`release-revenue-flow-audit.md`](../release-revenue-flow-audit.md) §0 — Foundation → Scenario Step → Revenue Flow. Progress = passable steps, not Foundation merges.
+**Model:** [`ADR-022`](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) (intake purpose / submission policy) · commercial path [`ADR-020`](../architecture/ADR-020-sales-to-engagement-commercial-model.md). Progress = passable scenario steps, not Foundation merges. (`release-revenue-flow-audit.md` was retired — do not revive.)
 
 Next Scenario Step PRs: **B-1** (`F3-B-02`, `F3-B-03`) → **B-2** (`F3-B-04`..`F3-B-07`). Each must state **Operator gain**.
 

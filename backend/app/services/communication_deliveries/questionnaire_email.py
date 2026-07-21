@@ -14,6 +14,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.constants.spa_paths import SETTINGS_EMAIL
 from backend.app.communications.command import (
     CommunicationCommand,
     CommunicationOrigin,
@@ -485,7 +486,7 @@ async def send_questionnaire_invite_email(
         raise QuestionnaireEmailError(
             "email_not_configured",
             "Connect email in settings",
-            settings_path="/app/settings/email",
+            settings_path=SETTINGS_EMAIL,
         )
 
     # Render via Intent resolvers, then apply signature (tenant branding) before send.
@@ -601,7 +602,7 @@ async def send_questionnaire_invite_email(
         raise QuestionnaireEmailError(
             code,
             exc.message,
-            settings_path="/app/settings/email" if code == "email_not_configured" else None,
+            settings_path=SETTINGS_EMAIL if code == "email_not_configured" else None,
             delivery_id=(exc.details or {}).get("delivery_id"),
             message_id=(exc.details or {}).get("message_id"),
             details=dict(exc.details or {}),

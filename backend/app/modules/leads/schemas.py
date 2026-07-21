@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from backend.app.constants.spa_paths import LEADS as SPA_LEADS
+from backend.app.constants.spa_paths import LEADS as SPA_LEADS, SETTINGS_EMAIL as SPA_SETTINGS_EMAIL
 
 
 LeadStatus = Literal[
@@ -194,7 +194,7 @@ class QuestionnaireInviteEmailPreviewOut(BaseModel):
     clarification_required: bool
     invite_reused: bool
     form_locale: str
-    settings_email_path: str = "/app/settings/email"
+    settings_email_path: str = SPA_SETTINGS_EMAIL
 
 
 class QuestionnaireInviteEmailSendRequest(BaseModel):
