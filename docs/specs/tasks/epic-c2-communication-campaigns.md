@@ -113,8 +113,8 @@ without returning to Thread / Commands / ThreadContext architecture.
 |-------|-----|----------------------|
 | **C2.1** | [c2-1-template-platform.md](c2-1-template-platform.md) ✅ | Template Registry product (PR #110–#114) |
 | **C2.2** | [c2-2-automation-engine.md](c2-2-automation-engine.md) ✅ | Event → Rules → Policy → Intent (PR #116–#120) |
-| **C2.3** | [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) **active** | Audience + plan → Intent |
-| **C2.4** | *(after C2.3)* | Schedule → Intent → same pipeline |
+| **C2.3** | [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) | Audience + plan → Intent — implementation complete; merge blocked by integration pytest baseline |
+| **C2.4** | *(frozen — after C2.3 merge)* | Schedule → Intent → same pipeline |
 | **Gate** | [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md) | Epic C — complete |
 
 ---
@@ -212,4 +212,6 @@ Settings / signatures / compliance UI may share **Настройки → Ком�
 - [ ] Contract tests enforce capability isolation + no second pipeline  
 - [ ] [Epic C Complete Gate](../gates/epic-c-complete-gate.md) ready for evidence pass  
 
-**Active now:** **C2.3 Campaign Orchestrator** — [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md).
+**Product Track (active):** [Acquisition Stage 3E — Flight Timeline](acquisition-stage-3e-flight-timeline.md) — not C2.4.  
+**C2.3:** implementation complete; merge on Engineering Track when convenient. **C2.4 frozen.**  
+**Engineering (deferred):** [stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md) · [#127](https://github.com/igortatarynovich/HostFlow/pull/127).
