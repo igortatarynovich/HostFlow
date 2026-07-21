@@ -38,8 +38,9 @@ from backend.tests.conftest import _init_data
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _BACKEND_ROOT = _REPO_ROOT / "backend"
 _VERSIONS = _BACKEND_ROOT / "alembic" / "versions"
-_REV = "202607220001_acq_3e_act"
-_PREV_REV = "202607210002_comm_automation_domain_c2_2"
+_REV = "202607220002_acq_3e_imm"
+_PREV_REV = "202607220001_acq_3e_act"
+_BEFORE_ACTIVITY = "202607210002_comm_automation_domain_c2_2"
 
 
 def _alembic_bin() -> str:
@@ -244,10 +245,10 @@ def test_repository_has_no_update_or_delete_methods() -> None:
 
 
 def test_alembic_revision_is_linear_no_merge() -> None:
-    path = _VERSIONS / f"{_REV}.py"
+    path = _VERSIONS / "202607220002_acq_3e_imm_cascade.py"
     text_src = path.read_text(encoding="utf-8")
     assert f'revision: str = "{_REV}"' in text_src
-    assert f'down_revision: RevisionType = "{_PREV_REV}"' in text_src
+    assert f'down_revision: Union[str, None] = "{_PREV_REV}"' in text_src
     assert "merge" not in path.name.lower()
     assert "no UPDATE of any column" in text_src
 
@@ -675,17 +676,24 @@ async def test_nullable_references_and_external_entity_refs() -> None:
         assert created.outcome_id is None
 
         lead_id = str(uuid4())
+        submission_id = str(uuid4())
         lead = await append_activity_event(
             db,
             tenant_id=tenant_id,
             campaign_id=camp.id,
             flight_id=flight.id,
+            submission_id=submission_id,
             event_type="LeadCreated",
             event_version="1",
-            payload={"lead_id": lead_id, "module_owner": "recruitment"},
+            payload={
+                "lead_id": lead_id,
+                "submission_id": submission_id,
+                "module_owner": "recruitment",
+            },
             actor_type=ACTOR_TYPE_SYSTEM,
         )
         assert lead.payload["lead_id"] == lead_id
+        assert lead.submission_id == submission_id
         model_cols = {c.key for c in inspect(AcquisitionActivityEvent).columns}
         assert "lead_id" not in model_cols
         assert "candidate_id" not in model_cols
@@ -710,7 +718,7 @@ async def test_alembic_downgrade_upgrade_roundtrip() -> None:
     up = _run_alembic("upgrade", "head")
     assert up.returncode == 0, up.stderr + up.stdout
 
-    down = _run_alembic("downgrade", _PREV_REV)
+    down = _run_alembic("downgrade", _BEFORE_ACTIVITY)
     assert down.returncode == 0, down.stderr + down.stdout
 
     async with async_session_maker() as session:

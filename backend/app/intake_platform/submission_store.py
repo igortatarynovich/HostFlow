@@ -106,13 +106,16 @@ async def append_submission(
         raise ValueError("Lead not found for submission append")
 
     async def _emit_acquisition_activity(submission_entry: dict[str, Any]) -> None:
-        # Stage 3E PR-2: SubmissionReceived + Routing* when Acquisition stamp present.
-        # Lazy import avoids hard-loading Acquisition at module import time.
+        # Stage 3E PR-2: SubmissionReceived + Routing* + LeadCreated when Acquisition
+        # stamp present. Lazy import avoids hard-loading Acquisition at import time.
         if not (
             isinstance(entry_context, dict)
             and isinstance(entry_context.get("acquisition_routing_v1"), dict)
         ):
             return
+        from backend.app.acquisition.lead_activity import (
+            maybe_record_lead_created_from_entry_context,
+        )
         from backend.app.acquisition.submission_activity import (
             maybe_record_submission_received_from_entry_context,
         )
@@ -129,6 +132,13 @@ async def append_submission(
         await maybe_record_routing_activity_from_entry_context(
             db,
             tenant_id=str(tenant_id),
+            submission_entry=submission_entry,
+            entry_context=entry_context,
+        )
+        await maybe_record_lead_created_from_entry_context(
+            db,
+            tenant_id=str(tenant_id),
+            lead=lead,
             submission_entry=submission_entry,
             entry_context=entry_context,
         )

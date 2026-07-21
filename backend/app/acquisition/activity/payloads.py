@@ -196,8 +196,8 @@ _SCHEMAS: dict[str, PayloadSchema] = {
         optional=frozenset({"previous_status", "note"}),
     ),
     "LeadCreated": PayloadSchema(
-        required=frozenset({"lead_id"}),
-        optional=frozenset({"module_owner", "note"}),
+        required=frozenset({"lead_id", "submission_id"}),
+        optional=frozenset({"route_intent", "module_owner", "note"}),
     ),
     "CandidateCreated": PayloadSchema(
         required=frozenset({"candidate_id"}),
@@ -268,7 +268,7 @@ _STR_KEYS = {
     ),
     "ResultAttributed": frozenset({"result_type", "result_id", "note"}),
     "OutcomeChanged": frozenset({"status", "previous_status", "note"}),
-    "LeadCreated": frozenset({"lead_id", "module_owner", "note"}),
+    "LeadCreated": frozenset({"lead_id", "submission_id", "route_intent", "module_owner", "note"}),
     "CandidateCreated": frozenset({"candidate_id", "module_owner", "note"}),
     "DuplicateDetected": frozenset(
         {"entity_type", "entity_id", "duplicate_of_id", "note"}
