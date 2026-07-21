@@ -267,6 +267,8 @@ async def replace_draft_variables(
         db.add(row)
         created.append(row)
     await db.flush()
+    # Drop stale collection so subsequent selectinload/serialize sees replacements.
+    db.expire(version, ["variables"])
     return created
 
 
@@ -325,6 +327,13 @@ async def replace_draft_bindings(
                 )
             )
     await db.flush()
+    expire_attrs: list[str] = []
+    if channels is not None:
+        expire_attrs.append("channel_bindings")
+    if intent_keys is not None:
+        expire_attrs.append("intent_bindings")
+    if expire_attrs:
+        db.expire(version, expire_attrs)
 
 
 def _clone_children_to_version(
@@ -417,6 +426,123 @@ async def publish_draft(
     return published
 
 
+async def get_template(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    template_id: str,
+) -> CommunicationTemplate:
+    tpl = (
+        await db.execute(
+            select(CommunicationTemplate).where(
+                CommunicationTemplate.tenant_id == tenant_id,
+                CommunicationTemplate.id == template_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if tpl is None:
+        raise TemplateDomainError(
+            "template_not_found",
+            "Template not found",
+            details={"template_id": template_id},
+        )
+    return tpl
+
+
+async def list_templates(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    include_archived: bool = False,
+) -> list[CommunicationTemplate]:
+    stmt = select(CommunicationTemplate).where(CommunicationTemplate.tenant_id == tenant_id)
+    if not include_archived:
+        stmt = stmt.where(CommunicationTemplate.status == TEMPLATE_STATUS_ACTIVE)
+    stmt = stmt.order_by(CommunicationTemplate.key.asc())
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def list_versions(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    template_id: str,
+) -> list[CommunicationTemplateVersion]:
+    await get_template(db, tenant_id=tenant_id, template_id=template_id)
+    rows = (
+        await db.execute(
+            select(CommunicationTemplateVersion)
+            .options(
+                selectinload(CommunicationTemplateVersion.variables),
+                selectinload(CommunicationTemplateVersion.channel_bindings),
+                selectinload(CommunicationTemplateVersion.intent_bindings),
+            )
+            .where(
+                CommunicationTemplateVersion.tenant_id == tenant_id,
+                CommunicationTemplateVersion.template_id == template_id,
+            )
+            .order_by(CommunicationTemplateVersion.version_number.asc())
+        )
+    ).scalars().all()
+    return list(rows)
+
+
+async def get_version(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    template_id: str,
+    version_id: str,
+) -> CommunicationTemplateVersion:
+    row = (
+        await db.execute(
+            select(CommunicationTemplateVersion)
+            .options(
+                selectinload(CommunicationTemplateVersion.variables),
+                selectinload(CommunicationTemplateVersion.channel_bindings),
+                selectinload(CommunicationTemplateVersion.intent_bindings),
+            )
+            .where(
+                CommunicationTemplateVersion.tenant_id == tenant_id,
+                CommunicationTemplateVersion.template_id == template_id,
+                CommunicationTemplateVersion.id == version_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise TemplateDomainError(
+            "version_not_found",
+            "TemplateVersion not found",
+            details={"template_id": template_id, "version_id": version_id},
+        )
+    return row
+
+
+async def get_latest_published_version(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    template_id: str,
+) -> CommunicationTemplateVersion | None:
+    return (
+        await db.execute(
+            select(CommunicationTemplateVersion)
+            .options(
+                selectinload(CommunicationTemplateVersion.variables),
+                selectinload(CommunicationTemplateVersion.channel_bindings),
+                selectinload(CommunicationTemplateVersion.intent_bindings),
+            )
+            .where(
+                CommunicationTemplateVersion.tenant_id == tenant_id,
+                CommunicationTemplateVersion.template_id == template_id,
+                CommunicationTemplateVersion.status == VERSION_STATUS_PUBLISHED,
+            )
+            .order_by(CommunicationTemplateVersion.version_number.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
 async def archive_template(
     db: AsyncSession,
     *,
@@ -456,4 +582,9 @@ __all__ = [
     "publish_draft",
     "archive_template",
     "assert_version_immutable_for_write",
+    "get_template",
+    "list_templates",
+    "list_versions",
+    "get_version",
+    "get_latest_published_version",
 ]

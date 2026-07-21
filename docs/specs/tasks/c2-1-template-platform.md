@@ -1,6 +1,6 @@
 # C2.1 — Template Platform
 
-**Status:** Active (kickoff — domain-first; no UI yet)  
+**Status:** Active (PR-4 Template API in flight; UI still last)  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
 **Branch (proposed):** `feat/communication-c2-1-template-domain` (PR-1)  
 **Parents:** [C0.0 §5 CommunicationTemplate](c0-0-communication-canon.md) · [C1 closed](c1-communication-inbox-workspace.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
@@ -208,7 +208,21 @@ Only after the model is stable:
 - versions  
 - diff  
 
-Public HTTP API for operators/tools. Still **no** Campaign / Automation product endpoints.
+Public HTTP API for operators/tools under `/api/v1/communications/templates`.  
+Still **no** Campaign / Automation product endpoints.
+
+| Endpoint | Role |
+|----------|------|
+| `GET/POST /templates` | List / create (draft v0) |
+| `GET /templates/{id}` | Bundle (template + draft + latest published) |
+| `PATCH /templates/{id}/draft` | Edit draft content / vars / bindings |
+| `POST /templates/{id}/publish` | Publish draft → immutable version + new draft |
+| `POST /templates/{id}/archive` | Archive template head |
+| `GET /templates/{id}/versions` · `.../versions/{vid}` | History |
+| `GET /templates/{id}/diff?from=&to=` | Structural version diff |
+| `POST /templates/{id}/preview` | Operator preview via PR-2 pure renderer |
+
+Draft preview soft-marks payload status as published **in the API adapter only** (durable draft row unchanged) so operators can preview before publish.
 
 ---
 
@@ -269,7 +283,7 @@ UI must not invent composition, channel policy, or versioning rules.
 - [x] PR-2 pure renderer: Validate/Preview/Render/Diagnostics only; deterministic; typed vars; no SQL/ORM/Sender/Thread/Campaign/Automation (`feat/communication-c2-1-template-renderer`)  
 - [x] Unknown variables are **errors** (strict policy documented)
 - [x] PR-3 registry is sole SoT for Intent/Channel/Capability → Template (`feat/communication-c2-1-template-registry`)  
-- [ ] PR-4 Template API (draft/publish/archive/preview/versions/diff)  
+- [x] PR-4 Template API (draft/publish/archive/preview/versions/diff) — `feat/communication-c2-1-template-api`  
 - [ ] PR-5 thin UI only after API  
 - [x] Commands/snapshots carry `template_version_id` (optional field; SoT for published versions)  
 - [x] Capability-isolation contract tests on C2.1 packages  
