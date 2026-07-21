@@ -15,8 +15,9 @@
 ```text
 C1 Inbox Workspace          ← CLOSED 2026-07-21 (evidence below)
   → C2 Capability epic (Intent-only; never mutate Thread)
-       C2.1 Template Platform   ← active
-       C2.2 Automation Engine
+       C2.1 Template Platform   ← ✅ closed
+       C2.2 Automation Engine   ← active
+
        C2.3 Campaign Orchestrator
        C2.4 Scheduling
   → Epic C Complete Gate   ← this document

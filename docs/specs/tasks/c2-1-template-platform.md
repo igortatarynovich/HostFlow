@@ -1,6 +1,6 @@
 # C2.1 — Template Platform
 
-**Status:** Active (PR-5 thin UI in flight — closes C2.1)  
+**Status:** ✅ Closed (2026-07-21) — PR-1…PR-5 merged (`#110`–`#114`)  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
 **Branch (proposed):** `feat/communication-c2-1-template-domain` (PR-1)  
 **Parents:** [C0.0 §5 CommunicationTemplate](c0-0-communication-canon.md) · [C1 closed](c1-communication-inbox-workspace.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
