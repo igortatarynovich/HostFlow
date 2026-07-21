@@ -60,7 +60,7 @@
 | **7c-eng** | CI / pytest debt | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) · [stabilize](stabilize-integration-pytest-baseline.md) **deferred** | Engineering Track — base-known; not Product-blocking |
 | **7d** | **C2.4** Scheduling | *(frozen)* | Do not start |
 | **P-3E** | **Acquisition Stage 3E** Activity Timeline | PR #130–#133 ✅ | **DONE** — observability vertical closed; deferred — [3e-deferred](acquisition-stage-3e-deferred.md) |
-| **P-4** | **Acquisition Stage 4** Flight Runtime | `feat/acquisition-stage-4-flight-runtime` *(new worktree)* | **Product Track next** — operations: Campaign/Flight CRUD, Endpoint mgmt, Launch/Pause/Resume, Intake Monitor, basic metrics — [stage-4](acquisition-stage-4-flight-runtime.md) |
+| **P-4** | **Acquisition Stage 4** Flight Runtime | `feat/acquisition-stage-4-flight-runtime` | **PR-1 active** — backend Flight Runtime contract (launch/pause/resume/complete + Campaign coupling); Cancel deferred — [stage-4](acquisition-stage-4-flight-runtime.md) |
 | **8** | **Epic C Complete Gate** | after C2.3 merge + C2.4 (later) | Communication capability closed |
 | **9** | **A2** Platform Governance Review | after Epic C complete | Boundary principle |
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
