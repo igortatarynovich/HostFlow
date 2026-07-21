@@ -65,16 +65,18 @@ No UI before domain + evaluator + emitter contracts are stable.
 
 ### PR-1 — Domain
 
-Entities (names may refine in implementation):
+ORM uses `CommunicationAutomation*` tables (`communication_automation_*`) so we do **not** collide with legacy tenant reminder `automation_rules`. Spec aliases live in the communications package only.
 
-| Entity | Role |
-|--------|------|
-| `AutomationRule` | Stable identity / trigger / lifecycle |
-| `AutomationRuleVersion` | Immutable published rule body |
-| `AutomationTrigger` | Event key / filter binding |
-| `AutomationDecision` | Durable evaluate outcome (fire / skip + reasons) |
+| Spec name | ORM / table |
+|-----------|-------------|
+| `AutomationRule` | `CommunicationAutomationRule` / `communication_automation_rules` |
+| `AutomationRuleVersion` | `CommunicationAutomationRuleVersion` / `…_rule_versions` |
+| `AutomationTrigger` | `CommunicationAutomationTrigger` / `…_triggers` |
+| `AutomationDecision` | `CommunicationAutomationDecision` / `…_decisions` |
 
-Out of PR-1: rich UI, Campaign, Scheduling product.
+Lifecycle: draft=`version_number=0` editable; publish creates a new immutable published version and keeps the draft. Package: `backend/app/communications/automation/`.
+
+Out of PR-1: rich UI, Campaign, Scheduling product, rule evaluator, Intent emitter.
 
 ### PR-2 — Rule Evaluator
 
@@ -125,7 +127,7 @@ Thin client: list / editor / dry-run / history. No client-owned send loop.
 
 ## Definition of Done (C2.2)
 
-- [ ] PR-1 domain + immutable published rule versions  
+- [x] PR-1 domain + immutable published rule versions — `feat/communication-c2-2-automation-domain`  
 - [ ] PR-2 evaluator with structured diagnostics  
 - [ ] PR-3 Intent-only emitter (contract tests: no Sender / Thread writes)  
 - [ ] PR-4 API + PR-5 thin UI  
