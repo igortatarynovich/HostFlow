@@ -1,9 +1,11 @@
 # Acquisition Stage 4 — Flight Runtime
 
-**Status:** Queued (next Product horizon after Stage 3E) — **not active**  
+**Status:** Ready — **Product Track next** (Stage 3E DONE; implementation not started)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §14 · §14.1  
-**Depends on:** Stage **3E** complete (Activity Timeline PR-1…PR-4)  
+**Depends on:** Stage **3E** complete ✅ (Activity Timeline PR #130–#133)  
 **Parents:** [Stage 3E — Activity Timeline](acquisition-stage-3e-activity-timeline.md) · Epic P / 3D ✅  
+**Branch (scaffold):** `feat/acquisition-stage-4-flight-runtime` — dedicated worktree only  
+**Deferred (not Stage 4):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md)  
 **Next horizons:** Stage 5 Optimization · Stage 6 Analytics (see ladder below; not opened)
 
 > **Operations layer** for Acquisition — Campaign / Flight day-to-day control.  
@@ -15,8 +17,8 @@
 
 | Stage | Layer | Verb | Status |
 |-------|--------|------|--------|
-| **3E** | Observability | See | Active → DONE after Timeline PR-4 |
-| **4** | Operations | Control | **This epic (queued)** |
+| **3E** | Observability | See | **DONE** (#130–#133) |
+| **4** | Operations | Control | **This epic (Product Track next)** |
 | **5** | Optimization | Improve | Future horizon |
 | **6** | Analytics | Decide | Future horizon |
 
