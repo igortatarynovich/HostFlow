@@ -424,6 +424,69 @@ async def archive_campaign(
     return campaign
 
 
+async def list_campaigns(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    include_archived: bool = False,
+) -> list[CommunicationCampaign]:
+    stmt = select(CommunicationCampaign).where(
+        CommunicationCampaign.tenant_id == tenant_id
+    )
+    if not include_archived:
+        stmt = stmt.where(CommunicationCampaign.status != CAMPAIGN_STATUS_ARCHIVED)
+    stmt = stmt.order_by(CommunicationCampaign.key.asc())
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def list_versions(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    campaign_id: str,
+) -> list[CommunicationCampaignVersion]:
+    await get_campaign(db, tenant_id=tenant_id, campaign_id=campaign_id)
+    rows = (
+        await db.execute(
+            select(CommunicationCampaignVersion)
+            .options(selectinload(CommunicationCampaignVersion.audience_definition))
+            .where(
+                CommunicationCampaignVersion.tenant_id == tenant_id,
+                CommunicationCampaignVersion.campaign_id == campaign_id,
+            )
+            .order_by(CommunicationCampaignVersion.version_number.asc())
+        )
+    ).scalars().all()
+    return list(rows)
+
+
+async def list_runs(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    campaign_id: str,
+    limit: int = 50,
+) -> list[CommunicationCampaignRun]:
+    await get_campaign(db, tenant_id=tenant_id, campaign_id=campaign_id)
+    lim = max(1, min(int(limit or 50), 200))
+    rows = (
+        await db.execute(
+            select(CommunicationCampaignRun)
+            .options(
+                selectinload(CommunicationCampaignRun.recipients),
+                selectinload(CommunicationCampaignRun.items),
+            )
+            .where(
+                CommunicationCampaignRun.tenant_id == tenant_id,
+                CommunicationCampaignRun.campaign_id == campaign_id,
+            )
+            .order_by(CommunicationCampaignRun.created_at.desc())
+            .limit(lim)
+        )
+    ).scalars().all()
+    return list(rows)
+
+
 async def create_run_with_snapshot(
     db: AsyncSession,
     *,
@@ -707,6 +770,9 @@ __all__ = [
     "get_latest_published_version",
     "get_version",
     "archive_campaign",
+    "list_campaigns",
+    "list_versions",
+    "list_runs",
     "create_run_with_snapshot",
     "create_run_from_audience",
     "mark_run_item_outcome",

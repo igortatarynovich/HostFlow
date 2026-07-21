@@ -52,7 +52,7 @@ FORBIDDEN_MODULE_IMPORT_PREFIXES = (
 # emitter.py may call execute_communication_intent (PR-3 platform path).
 # orchestrator.py must only call emit_run_items (checked in orchestrator tests).
 DOMAIN_SEND_PATH_FILES = frozenset(
-    {"lifecycle.py", "errors.py", "payload.py", "orchestrator.py"}
+    {"lifecycle.py", "errors.py", "payload.py", "orchestrator.py", "serialize.py"}
 )
 FORBIDDEN_SEND_PATH_TOKENS = (
     "CommunicationSender",

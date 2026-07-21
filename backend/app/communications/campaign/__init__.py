@@ -3,7 +3,8 @@
 PR-1: entities + draft/publish + run snapshot.
 PR-2: audience resolver (definition → snapshot).
 PR-3: Intent emission per allowed RunItem.
-PR-4: Run orchestration (drive items; isolate failures). No API / UI.
+PR-4: Run orchestration (drive items; isolate failures).
+PR-5: HTTP API. No UI.
 """
 
 from backend.app.communications.campaign.audience import (
@@ -41,6 +42,9 @@ from backend.app.communications.campaign.lifecycle import (
     get_latest_published_version,
     get_run,
     get_version,
+    list_campaigns,
+    list_runs,
+    list_versions,
     mark_run_item_outcome,
     publish_draft,
     update_draft_content,
@@ -57,6 +61,14 @@ from backend.app.communications.campaign.orchestrator import (
 from backend.app.communications.campaign.payload import (
     audience_definition_to_payload,
     version_audience_payload,
+)
+from backend.app.communications.campaign.serialize import (
+    serialize_audience_definition,
+    serialize_campaign,
+    serialize_recipient,
+    serialize_run,
+    serialize_run_item,
+    serialize_version,
 )
 from backend.app.models.communication_campaign import (
     CAMPAIGN_RUN_STATUS_CANCELLED,
@@ -144,6 +156,9 @@ __all__ = [
     "get_draft_version",
     "get_version",
     "get_latest_published_version",
+    "list_campaigns",
+    "list_versions",
+    "list_runs",
     "update_draft_content",
     "upsert_draft_audience_definition",
     "publish_draft",
@@ -153,6 +168,12 @@ __all__ = [
     "mark_run_item_outcome",
     "get_run",
     "assert_version_immutable_for_write",
+    "serialize_audience_definition",
+    "serialize_version",
+    "serialize_campaign",
+    "serialize_recipient",
+    "serialize_run_item",
+    "serialize_run",
     "CampaignItemEmitInput",
     "CampaignEmitContext",
     "ItemEmitResult",

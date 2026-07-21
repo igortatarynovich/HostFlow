@@ -1,8 +1,9 @@
 # C2.3 — Campaign Orchestrator
 
-**Status:** Active (PR-4 run orchestration — no Campaign UI yet)  
+**Status:** Active (PR-5 API — no Campaign UI yet)  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
-**Branch:** `feat/communication-c2-3-campaign-run-orchestration` (PR-4)  
+**Branch:** `feat/communication-c2-3-campaign-api` (PR-5)  
+
 
 
 
@@ -126,6 +127,22 @@ pending → running → emit_run_items → completed
 - Orchestrator calls `emit_run_items` only (no direct `execute_communication_intent`)  
 - Out of PR-4: HTTP API, UI
 
+### PR-5 HTTP API (locked)
+
+`/api/v1/communications/campaigns`:
+
+| Method | Path | Role |
+|--------|------|------|
+| GET/POST | `/` | list / create + draft |
+| PATCH | `/{id}/draft` | edit draft + audience definition |
+| POST | `/{id}/publish` | publish immutable version |
+| POST | `/{id}/audience/dry-run` | resolve → candidates (no Run) |
+| POST | `/{id}/runs` | freeze snapshot Run |
+| POST | `/{id}/runs/{run_id}/execute` | orchestrate (default `request_only`) |
+| POST | `/{id}/runs/{run_id}/cancel` | cancel pending/running |
+
+No provider / `execute_communication_intent` in the route module — only orchestrator + pure dry-run.  
+Out of PR-5: thin UI.
 
 ---
 
@@ -146,8 +163,8 @@ pending → running → emit_run_items → completed
 - [x] PR-2 audience resolver produces snapshot only (`static_list` / `filter` + caller entity pool)  
 - [x] PR-3 Intent emission via platform path (no provider / Thread writes)  
 - [x] PR-4 run orchestration (item-level failure isolation)  
+- [x] PR-5 API  
 
-- [ ] PR-5 API  
 - [ ] PR-6 thin UI only after API  
 - [ ] Capability-isolation contract tests  
 - [ ] No Scheduling product code in C2.3  
