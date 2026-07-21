@@ -212,4 +212,6 @@ Settings / signatures / compliance UI may share **Настройки → Ком�
 - [ ] Contract tests enforce capability isolation + no second pipeline  
 - [ ] [Epic C Complete Gate](../gates/epic-c-complete-gate.md) ready for evidence pass  
 
-**Active now:** **[stabilize integration pytest baseline](stabilize-integration-pytest-baseline.md)** (then #127 → C2.3 stack merge). **C2.4 frozen.** C2.3 doc: [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md).
+**Product Track (active):** [Acquisition Stage 3E — Flight Timeline](acquisition-stage-3e-flight-timeline.md) — not C2.4.  
+**C2.3:** implementation complete; merge on Engineering Track when convenient. **C2.4 frozen.**  
+**Engineering (deferred):** [stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md) · [#127](https://github.com/igortatarynovich/HostFlow/pull/127).

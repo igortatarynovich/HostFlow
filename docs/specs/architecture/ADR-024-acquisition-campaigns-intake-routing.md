@@ -478,7 +478,7 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 | **3B** ✅ | Endpoint binding (V1: Form + Intake Source) | **DONE.** V1: `CampaignRun ↔ TenantLeadForm` + `↔ IntakeSourceProfile` as transitional Endpoint specializations; uses-not-owns. **Canon:** CampaignRun ↔ Endpoint (HostFlow Public Form = one type) — [`ADR-007`](ADR-007-forms-platform-capability.md) |
 | **3C** ✅ | Universal submission routing | **DONE.** Submission from any Endpoint → Form∪Profile Flight resolve → `route_intent` → Application \| Inquiry; unresolved → disposition-only queue. **Routing once per new Lead** |
 | **3D** ✅ | Outcome attribution and basic analytics | **Epic P COMPLETE** — [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md). Chain: Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI |
-| **3E** | Timeline and automation events | Timeline событий; emit events для Automations (полные Automation Campaigns — позже) |
+| **3E** | Timeline and automation events | **ACTIVE (Product Track)** — [`../tasks/acquisition-stage-3e-flight-timeline.md`](../tasks/acquisition-stage-3e-flight-timeline.md). Timeline + automation events; closes V1 vertical |
 
 #### Stage 3A Definition of Done — met
 

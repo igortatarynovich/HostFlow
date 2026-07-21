@@ -1,9 +1,9 @@
 # C2.3 — Campaign Orchestrator
 
-**Status:** Implementation complete. Merge blocked — integration pytest baseline red.  
+**Status:** Implementation complete. Merge opportunistic (Engineering Track) — does **not** block Product Track.  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
-**Stack:** PR #121–#126. **Do not** Closed until #125+#126 merge after CI green.  
-**Blocked by:** [stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md) → then [#127](https://github.com/igortatarynovich/HostFlow/pull/127) → rebase stack. **C2.4 frozen.**  
+**Stack:** PR #121–#126. Closed only after #125+#126 merge.  
+**Product active:** [Acquisition Stage 3E](acquisition-stage-3e-flight-timeline.md). **C2.4 frozen.** Legacy full-repo pytest = base-known debt, not a C2.3 regression.  
 
 **Parents:** [C2.2 Automation Engine ✅](c2-2-automation-engine.md) · [C2.1 Template Platform ✅](c2-1-template-platform.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
 
