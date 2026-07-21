@@ -28,16 +28,16 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | [Acquisition Stage 3E — Activity Timeline](acquisition-stage-3e-activity-timeline.md) | Almost all capacity |
+| **Product** | [Acquisition Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred) | Background; no week-long stop of Product for 657 legacy fails |
 
 **Open product GAPs:**
 
-- **Acquisition Stage 3E / Activity Timeline** ← **Product Track active** (observability; ends at PR-4)  
-- **Acquisition Stage 4 / Flight Runtime** ← **queued** after 3E DONE — [acquisition-stage-4-flight-runtime.md](acquisition-stage-4-flight-runtime.md) (operations; not part of 3E)  
-- **Acquisition Stage 5 Optimization** · **Stage 6 Analytics** ← future horizons (ADR-024 §14.1); do not open while 3E/4 incomplete  
+- **Acquisition Stage 3E / Activity Timeline** ← **DONE** (#130–#133) — [timeline](acquisition-stage-3e-activity-timeline.md); deferred gaps — [deferred](acquisition-stage-3e-deferred.md)  
+- **Acquisition Stage 4 / Flight Runtime** ← **Product Track next** — [acquisition-stage-4-flight-runtime.md](acquisition-stage-4-flight-runtime.md) (operations; new worktree only)  
+- **Acquisition Stage 5 Optimization** · **Stage 6 Analytics** ← future horizons (ADR-024 §14.1); do not open while 4 incomplete  
 - C2.3 stack merge + C2.4 + Epic C Complete Gate — Engineering / later Communication close-out (**C2.4 frozen**)  
-- Meta intake completeness · Sales Stage 3 slice 3–4 — after Flight V1 vertical (3A–3E) as needed  
+- Meta intake completeness · Sales Stage 3 slice 3–4 — after Flight V1 vertical (3A–3E) as needed; see also 3E deferred D1–D2
 
 ---
 
@@ -59,14 +59,14 @@
 | **7c** | **C2.3** Campaign Orchestrator | PR #121–#126 — implementation complete; Engineering merge later | Audience + plan → Intent |
 | **7c-eng** | CI / pytest debt | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) · [stabilize](stabilize-integration-pytest-baseline.md) **deferred** | Engineering Track — base-known; not Product-blocking |
 | **7d** | **C2.4** Scheduling | *(frozen)* | Do not start |
-| **P-3E** | **Acquisition Stage 3E** Activity Timeline | `feat/acquisition-stage-3e-pr1-activity-foundation` (**PR #130** — PR-1) | Observability only: foundation → instrumentation → read API → thin UI; **DONE after PR-4** |
-| **P-4** | **Acquisition Stage 4** Flight Runtime | *(queued — after 3E PR-4)* | Operations: Campaign/Flight CRUD, Endpoint mgmt, Launch/Pause/Resume, Intake Monitor, basic metrics — [stage-4](acquisition-stage-4-flight-runtime.md) |
+| **P-3E** | **Acquisition Stage 3E** Activity Timeline | PR #130–#133 ✅ | **DONE** — observability vertical closed; deferred — [3e-deferred](acquisition-stage-3e-deferred.md) |
+| **P-4** | **Acquisition Stage 4** Flight Runtime | `feat/acquisition-stage-4-flight-runtime` *(new worktree)* | **Product Track next** — operations: Campaign/Flight CRUD, Endpoint mgmt, Launch/Pause/Resume, Intake Monitor, basic metrics — [stage-4](acquisition-stage-4-flight-runtime.md) |
 | **8** | **Epic C Complete Gate** | after C2.3 merge + C2.4 (later) | Communication capability closed |
 | **9** | **A2** Platform Governance Review | after Epic C complete | Boundary principle |
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
 **C0–C2.2** ✅. **C2.3** implemented (merge opportunistic). **C2.4 frozen.**  
-**Active (Product):** [acquisition-stage-3e-activity-timeline.md](acquisition-stage-3e-activity-timeline.md).  
+**Active (Product):** [acquisition-stage-4-flight-runtime.md](acquisition-stage-4-flight-runtime.md) (Stage 3E DONE).  
 **Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -168,7 +168,7 @@ Next branch only after:
 
 **Do not** start C2.4 while Product Track is on Flights/Acquisition.  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
-**Do** amend this queue when switching Product Active (this revision: → Stage 3E).
+**Do** amend this queue when switching Product Active (this revision: → Stage 4).
 
 ---
 
@@ -179,6 +179,7 @@ Next branch only after:
 - 2026-07-21 (rev. 3E Activity Timeline): Product Track renamed/corrected — **Activity Timeline** (`AcquisitionActivityEvent`); Timeline ≠ event bus; PR 1–4; see [acquisition-stage-3e-activity-timeline.md](acquisition-stage-3e-activity-timeline.md).  
 - 2026-07-21 (rev. Stage 3E vs 4): **3E = observability** (ends PR-4); **Stage 4 Flight Runtime = operations** queued next — [acquisition-stage-4-flight-runtime.md](acquisition-stage-4-flight-runtime.md); do not mix Launch/CRUD into 3E UI.  
 - 2026-07-21 (rev. maturity ladder): Acquisition ladder locked — Observability (3E) → Operations (4) → Optimization (5) → Analytics (6); ADR-024 §14.1.  
+- 2026-07-21 (rev. 3E DONE): Stage 3E closed (#130–#133); deferred backlog — [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md); **Product Track → Stage 4**.  
 - 2026-07-20 (rev): After Stage 3 slice 2, insert **Epic C0 Communication Integrity** (C0.1–C0.3) + **Meta Intake Completeness** before Stage 3 slice 3; then C1 Inbox; then Stage 3 slice 4.  
 - 2026-07-20 (rev. C0.0): Insert **C0.0 Communication Canon & Contracts** before treating C0.1 as foundation; expand **C2** to templates + automations + campaigns; PR #100 = vertical slice only.  
 - 2026-07-20 (rev. Platform Completion Roadmap): Finish **full Epic C** (C0.2–C0.3, C1, C2) → **Governance Review** → Acquisition/Stage 3; horizon phases Forms → Workspace → Documents → Billing → AI.  
