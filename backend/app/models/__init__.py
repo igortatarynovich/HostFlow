@@ -223,6 +223,17 @@ CommunicationTemplateChannelBinding = (
 CommunicationTemplateIntentBinding = (
     _communication_template_module.CommunicationTemplateIntentBinding
 )  # type: ignore[attr-defined]
+_communication_automation_module = _load_model_module("communication_automation")
+CommunicationAutomationRule = _communication_automation_module.CommunicationAutomationRule  # type: ignore[attr-defined]
+CommunicationAutomationRuleVersion = (
+    _communication_automation_module.CommunicationAutomationRuleVersion
+)  # type: ignore[attr-defined]
+CommunicationAutomationTrigger = (
+    _communication_automation_module.CommunicationAutomationTrigger
+)  # type: ignore[attr-defined]
+CommunicationAutomationDecision = (
+    _communication_automation_module.CommunicationAutomationDecision
+)  # type: ignore[attr-defined]
 DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
@@ -387,6 +398,10 @@ __all__ = [
     "CommunicationTemplateVariable",
     "CommunicationTemplateChannelBinding",
     "CommunicationTemplateIntentBinding",
+    "CommunicationAutomationRule",
+    "CommunicationAutomationRuleVersion",
+    "CommunicationAutomationTrigger",
+    "CommunicationAutomationDecision",
     "DocumentPolicy",
     "Stage",
     "MagicLink",
