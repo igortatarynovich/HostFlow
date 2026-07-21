@@ -1,9 +1,9 @@
 # C1.3 — Workspace Experience
 
-**Status:** Active (kickoff)  
+**Status:** ✅ Closed with C1 (2026-07-21)  
 **Branch:** `feat/communication-c1-3-workspace-experience`  
-**Worktree:** `/tmp/hf-c1-2-workspace-actions` (stacked on C1.2 tip)  
-**Parents:** [C1.2 Workspace Actions](c1-2-workspace-actions.md) · [C1.1 ThreadContext](c1-1-thread-context-composer.md)
+**Parents:** [C1.2 Workspace Actions](c1-2-workspace-actions.md) · [C1.1 ThreadContext](c1-1-thread-context-composer.md)  
+**Close-out:** live Commands smoke + [gate evidence](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21)
 
 > Final C1 product surface. Does **not** change the Thread / Command / projection model — only consumes it.
 
@@ -38,7 +38,7 @@ optimistic concurrency (`work_version`); no mixed PATCH path.
 - [x] PauseSLA / ResumeSLA quick actions in SLA chip  
 - [x] Soft realtime: poll ThreadContext and apply on `work_version` advance  
 - [x] Drop legacy G-8 next-action badge from Thread WorkArea (panel is SoT)  
-- [ ] True push/WebSocket ThreadContext (optional; poll covers C1.3)  
+- [x] True push/WebSocket ThreadContext deferred (optional; poll covers C1.3 close)  
 
 ## Out of scope
 

@@ -28,8 +28,8 @@
 
 **Open product GAPs (queued below / in roadmap):**
 
-- Communication Inbox Workspace (C1 — **active**, slice **C1.2**)  
-- Templates/Automations/Campaigns (C2)  
+- Communication Inbox Workspace (C1 — ✅ closed 2026-07-21)  
+- Templates/Automations/Campaigns (C2 — **active**)  
 - Epic C Complete Gate (after C2; before Governance)  
 - Platform Governance Review (after **Epic C — complete**)  
 - Meta intake completeness · Stage 3 slice 3–4 (Acquisition — **after** Epic C + governance)  
@@ -46,9 +46,9 @@
 | **4** | **C0.2** Incoming resolver | `fix/communication-c0-inbound-resolver` (**PR #102 merged**) | ✅ Deterministic thread/entity or unresolved queue |
 | **5** | **C0.3** Delivery diagnostics | `fix/communication-c0-delivery-diagnostics` (**PR #104 merged**) | ✅ Failures explainable without server logs |
 | **6** | **C1** Communication Inbox Workspace | `feat/communication-c1-inbox-workspace` (**PR #107 merged**) | ✅ Queues + ThreadContext + capability Composer (C1.1) |
-| **6b** | **C1.2** Workspace Actions | `feat/communication-c1-2-workspace-actions` (**PR #108**) | Commands → ThreadContext; concurrency; no mixed path |
-| **6c** | **C1.3** Workspace Experience | `feat/communication-c1-3-workspace-experience` (**current**) | Thread card UX on frozen Thread/Command model |
-| **7** | **C2** Templates, Automations & Campaigns | *(TBD)* | Catalog + rules + bulk on **same** Commands |
+| **6b** | **C1.2** Workspace Actions | `feat/communication-c1-2-workspace-actions` (**PR #108**) | ✅ Commands → ThreadContext; concurrency; no mixed path |
+| **6c** | **C1.3** Workspace Experience | `feat/communication-c1-3-workspace-experience` | ✅ Thread card UX; C1 closed 2026-07-21 (live Commands smoke) |
+| **7** | **C2** Templates, Automations & Campaigns | `feat/communication-c2-templates-automations-campaigns` (**current**) | Catalog + rules + bulk on **same** Commands (no Thread redesign) |
 | **8** | **Epic C Complete Gate** | `docs/epic-c-complete-gate` | Single Communication capability; status → Epic C complete |
 | **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | Boundary principle across platforms |
 | **10** | Meta Intake Completeness | `fix/meta-intake-completeness` | Full Meta payload retained and visible |
@@ -56,10 +56,10 @@
 | **12** | Stage 3 slice 4 | *(TBD)* | Hard module separation |
 
 **C0.1–C0.3** ✅ → [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md) (`95f2a525`, PR #104).  
-**C1 / C1.1** ✅ → PR #107 (`dbeb36ed`) — [ThreadContext](c1-1-thread-context-composer.md).  
-**Active:** **C1.3 Workspace Experience** — [c1-3-workspace-experience.md](c1-3-workspace-experience.md) (stacked on C1.2 / PR #108).  
-**Architecture freeze:** no further C1 redesign; three merge gates (Commands-only · ThreadContext read model · queue projection).  
-**Close-out:** C1.2 → C1.3 → C2 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
+**C1 / C1.1–C1.3** ✅ → closed 2026-07-21 — [gate C1 evidence](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21) · smoke `backend/scripts/smoke_c1_workspace_commands.py`.  
+**Active:** **C2** — [epic-c2-communication-campaigns.md](epic-c2-communication-campaigns.md).  
+**Architecture freeze into C2:** Thread SoT · Commands-only · ThreadContext read model · queue projections (no Thread redesign).  
+**Close-out:** C2 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
 **Epic C — complete** only after gate PASS (not after C2 alone).
 
 **After row 9:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G  
@@ -124,17 +124,16 @@ Full prepare-send chain (canon): authorization → capabilities → recipient �
 
 Not a second CRM and not Settings. Working folders only (Inbox, Unread, Needs reply, Assigned to me, Sent, Archive, Unresolved). Thread title priority: company → contact name → email/phone → readable fallback (**never** UUID stubs). Settings / signatures / templates live under **Настройки → Коммуникации**.
 
-- [C1 kickoff](c1-communication-inbox-workspace.md) · [C1.1 ThreadContext](c1-1-thread-context-composer.md) ✅  
-- **[C1.2 Workspace Actions](c1-2-workspace-actions.md)** ← active  
-- [C1.3 Workspace Experience](c1-3-workspace-experience.md) (after C1.2)
+- [C1](c1-communication-inbox-workspace.md) ✅ · [C1.1](c1-1-thread-context-composer.md) ✅ · [C1.2](c1-2-workspace-actions.md) ✅ · [C1.3](c1-3-workspace-experience.md) ✅  
+- Live close-out: [C1 evidence in gate](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21)
 
 ---
 
-## 5b. Epic C2 — Templates, Automations & Campaigns
+## 5b. Epic C2 — Templates, Automations & Campaigns ← **active**
 
 **Task:** [epic-c2-communication-campaigns.md](epic-c2-communication-campaigns.md)
 
-After C0 + C1: product surfaces for template catalog, automation rules, and campaigns — all calling the same platform command. Not a second send engine. Closes Phase A1.
+After C0 + C1: product surfaces for template catalog, automation rules, and campaigns — all calling the same platform command. Not a second send engine. No Thread model changes. Closes Phase A1 before the Complete Gate.
 
 ---
 

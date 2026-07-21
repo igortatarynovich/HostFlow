@@ -1,11 +1,11 @@
 # C1.2 — Workspace Actions
 
-**Status:** Close-out (Command coverage + no mixed path)  
+**Status:** ✅ Closed with C1 (2026-07-21)  
 **Branch:** `feat/communication-c1-2-workspace-actions`  
-**Worktree:** `/tmp/hf-c1-2-workspace-actions`  
 **Base:** `integration/release-product-a-b` @ `dbeb36ed` (after PR #107)  
 **Parents:** [C1 Inbox Workspace](c1-communication-inbox-workspace.md) · [C1.1 ThreadContext](c1-1-thread-context-composer.md)  
-**PR:** https://github.com/igortatarynovich/HostFlow/pull/108
+**PR:** https://github.com/igortatarynovich/HostFlow/pull/108  
+**Close-out evidence:** [gate § C1](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21)
 
 > Build the manager’s workplace around **Thread** mutations — without growing Composer  
 > and without letting Workspace “sprawl” into field-level PATCH APIs.
@@ -309,4 +309,5 @@ See [C1.3 Workspace Experience](c1-3-workspace-experience.md):
 - keyboard shortcuts  
 - realtime updates (apply Command-returned / pushed ThreadContext)
 
-Then **close C1** → **C2** (Templates, Automations & Campaigns on the **same Commands**) → [Epic C Complete Gate](../gates/epic-c-complete-gate.md).
+**C1 closed 2026-07-21** (live smoke evidence in [Epic C Complete Gate](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21)).  
+Next: **C2** (Templates, Automations & Campaigns on the **same Commands**) → gate PASS → Epic C complete.

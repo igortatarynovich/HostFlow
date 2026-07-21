@@ -47,7 +47,7 @@ Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/
 
 **Communication Platform Foundation — complete** (after C0.3 / PR #104).  
 See [communication-platform-foundation.md](communication-platform-foundation.md).  
-This is **not** “Epic C complete” — C1 + C2 + **Epic C Complete Gate** remain.
+This is **not** “Epic C complete” — C2 + **Epic C Complete Gate** remain (C1 closed 2026-07-21).
 
 | Slice | Focus | Status |
 |-------|--------|--------|
@@ -55,8 +55,8 @@ This is **not** “Epic C complete” — C1 + C2 + **Epic C Complete Gate** rem
 | C0.1 / C0.1b Outbound + policy/snapshot | Canon writer path | ✅ |
 | C0.2 Inbound Resolver | Linked or explicit unresolved | ✅ (PR #102) |
 | C0.3 Delivery Diagnostics | Attempts + canonical diagnostics | ✅ (PR #104) |
-| **C1** Communication Inbox Workspace | Thread workplace for managers | **active** |
-| **C2** Templates, Automations & Campaigns | Product on platform command | queued |
+| **C1** Communication Inbox Workspace | Thread workplace for managers | ✅ closed 2026-07-21 |
+| **C2** Templates, Automations & Campaigns | Product on platform command | **active** |
 | **Epic C Complete Gate** | Single Communication capability check | queued |
 
 **Foundation result:** Intent, Policy, Registry, Sender, Snapshot, Inbound Resolver, G13, unresolved inbound, delivery attempts/diagnostics/retry/callbacks/timeline.  

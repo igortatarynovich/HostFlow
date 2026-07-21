@@ -1,9 +1,8 @@
 # C1 — Communication Inbox Workspace
 
-**Status:** Active (kickoff)  
-**Branch:** `feat/communication-c1-inbox-workspace`  
-**Worktree:** `/tmp/hf-c1-inbox-workspace`  
-**Base:** `integration/release-product-a-b` @ `95f2a525` (after PR #104)  
+**Status:** ✅ Closed (2026-07-21)  
+**Branch:** `feat/communication-c1-inbox-workspace` (merged) · C1.2 / C1.3 stacked  
+**Close-out evidence:** [Epic C Complete Gate — C1 evidence](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21) · `backend/scripts/smoke_c1_workspace_commands.py`  
 **Parents:** [Communication Platform Foundation](../architecture/communication-platform-foundation.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Epic C0](epic-c0-communication-integrity.md) · [C0.3](c0-3-delivery-diagnostics.md)
 
 > Communication becomes the manager’s primary workplace — not a message journal.  
@@ -134,7 +133,7 @@ C2 → Epic C Complete Gate → Governance → Stage 3 / Meta → …
 [Epic C Complete Gate](../gates/epic-c-complete-gate.md).  
 **Epic C — complete** only after that gate. Not Stage 3 next.
 
-## Acceptance (draft)
+## Acceptance
 
 - [x] Primary navigation lands on thread queues, not a flat message list  
 - [x] Working queues backed by platform `GET /threads?queue=` (not FE-only heuristics)  
@@ -142,5 +141,10 @@ C2 → Epic C Complete Gate → Governance → Stage 3 / Meta → …
 - [x] `GET /threads/{id}/context` assembles ThreadContext read model (four blocks; not a SoT)  
 - [x] `GET /threads/{id}/capabilities` is a compat slice of `capabilities`  
 - [x] Composer consumes ThreadContext only; backend re-applies policy on outbound  
-- [ ] Modules deep-link / filter workspace via adapters — no parallel inbox engines  
+- [x] Authenticated live smoke: all Workspace Commands → ThreadContext + `work_version` + idempotency + audit + queue projections (2026-07-21)  
+- [ ] Modules deep-link / filter workspace via adapters — tracked under C2 (same Commands; no parallel inbox engines)  
 - See also [C1.1](c1-1-thread-context-composer.md) · [C1.2](c1-2-workspace-actions.md) · [C1.3](c1-3-workspace-experience.md)
+
+## Closed → next
+
+**C1 — complete.** Next: **[C2](epic-c2-communication-campaigns.md)** on the frozen Thread / Command / projection model (no Thread redesign).

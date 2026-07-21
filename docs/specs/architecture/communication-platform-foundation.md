@@ -6,7 +6,7 @@
 **Parents:** [Platform Completion Roadmap](platform-completion-roadmap.md) · [C0.0 Canon](../tasks/c0-0-communication-canon.md) · [Epic C0](../tasks/epic-c0-communication-integrity.md)
 
 > This status means the **technical Communication Platform Foundation** is closed.  
-> It does **not** mean Epic C is finished. Inbox (C1) and Templates/Automations/Campaigns (C2) remain.
+> It does **not** mean Epic C is finished. Inbox (C1) is closed; Templates/Automations/Campaigns (C2) remain before the Complete Gate.
 
 ---
 
@@ -44,7 +44,7 @@ Do **not** report this as “Epic C complete”.
 
 | Out | Why |
 |-----|-----|
-| Inbox Workspace (C1) | Product UX over the foundation |
+| Inbox Workspace (C1) | ✅ Closed 2026-07-21 — product UX over the foundation |
 | Template management UI | C2 product surface |
 | Automation builder | C2 |
 | Campaigns | C2 |
@@ -63,8 +63,8 @@ Do **not** promote to Epic C complete after C1 or C2 alone.
 
 ## Next
 
-1. **C1 — Communication Inbox Workspace** — [c1-communication-inbox-workspace.md](../tasks/c1-communication-inbox-workspace.md)  
-2. **C2 — Templates, Automations & Campaigns**  
+1. **C1 — Communication Inbox Workspace** — ✅ closed 2026-07-21 ([evidence](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21))  
+2. **C2 — Templates, Automations & Campaigns** — **active** ([epic-c2-communication-campaigns.md](../tasks/epic-c2-communication-campaigns.md)); no Thread model changes  
 3. **Epic C Complete Gate** — [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md)  
 4. **A2 Platform Governance Review**  
 5. Acquisition (Stage 3 + Meta) → Forms → Entity Workspace → Documents → Billing → AI  
