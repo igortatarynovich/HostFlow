@@ -51,6 +51,6 @@ PR-1 Campaign Domain
 - [ ] Capability-isolation contract tests  
 - [ ] No Scheduling product code in C2.3  
 
-## After C2.3
+## After C2.3 (only after merge + green CI)
 
-**C2.4 Scheduling** — Schedule → Intent → ordinary pipeline.
+After stabilize baseline → #127 → #125+#126 merge: **C2.4 Scheduling**. Until then **C2.4 frozen**.
