@@ -29,7 +29,7 @@
 **Open product GAPs (queued below / in roadmap):**
 
 - Communication Inbox Workspace (C1 — ✅ closed 2026-07-21)  
-- Communication Capability Epic C2 — **active** (slice **C2.1 Template Platform**)  
+- Communication Capability Epic C2 — **active** (slice **C2.2 Automation Engine**; C2.1 ✅)  
 - Epic C Complete Gate (after C2.1–C2.4; before Governance)  
 - Platform Governance Review (after **Epic C — complete**)  
 - Meta intake completeness · Stage 3 slice 3–4 (Acquisition — **after** Epic C + governance)  
@@ -49,8 +49,8 @@
 | **6b** | **C1.2** Workspace Actions | `feat/communication-c1-2-workspace-actions` (**PR #108**) | ✅ Commands → ThreadContext; concurrency; no mixed path |
 | **6c** | **C1.3** Workspace Experience | `feat/communication-c1-3-workspace-experience` | ✅ Thread card UX; C1 closed 2026-07-21 (live Commands smoke) |
 | **7** | **C2** Capability epic (Intent-only) | [epic-c2](epic-c2-communication-campaigns.md) | Creates `CommunicationIntent` only; never mutates Thread |
-| **7a** | **C2.1** Template Platform | `feat/communication-c2-1-template-domain` (**current**, PR-1) | Domain → Renderer → Registry → API → UI; `template_version_id` SoT |
-| **7b** | **C2.2** Automation Engine | *(after C2.1)* | Event → Rules → Policy → Intent (no provider/Thread) |
+| **7a** | **C2.1** Template Platform | PR #110–#114 ✅ | Domain → Renderer → Registry → API → UI; `template_version_id` SoT |
+| **7b** | **C2.2** Automation Engine | `feat/communication-c2-2-automation-domain` (**current**) | Event → Rules → Policy → Intent (no provider/Thread) |
 | **7c** | **C2.3** Campaign Orchestrator | *(after C2.2)* | Audience + plan → Intent (no render/send/Thread) |
 | **7d** | **C2.4** Scheduling | *(after C2.3)* | Schedule → Intent → ordinary pipeline |
 | **8** | **Epic C Complete Gate** | `docs/epic-c-complete-gate` | Single Communication capability; status → Epic C complete |
@@ -61,10 +61,11 @@
 
 **C0.1–C0.3** ✅ → [Communication Platform Foundation — complete](../architecture/communication-platform-foundation.md) (`95f2a525`, PR #104).  
 **C1 / C1.1–C1.3** ✅ → closed 2026-07-21 — [gate C1 evidence](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21) · smoke `backend/scripts/smoke_c1_workspace_commands.py`.  
-**Active:** **C2.1 Template Platform** — [c2-1-template-platform.md](c2-1-template-platform.md) · epic [C2](epic-c2-communication-campaigns.md).  
+**C2.1** ✅ — [c2-1-template-platform.md](c2-1-template-platform.md) (PR #110–#114).  
+**Active:** **C2.2 Automation Engine** — [c2-2-automation-engine.md](c2-2-automation-engine.md) · epic [C2](epic-c2-communication-campaigns.md).  
 **C2 law:** create `CommunicationIntent` only; never mutate Thread; no second pipeline; **capability isolation** (no Recruitment/Sales/HR/Services/Finance imports).  
 **Architecture freeze:** Thread SoT · Commands-only · ThreadContext · queue projections.  
-**Close-out:** C2.1 → C2.2 → C2.3 → C2.4 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
+**Close-out:** C2.1 ✅ → C2.2 → C2.3 → C2.4 → [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → Governance → Stage 3.  
 **Epic C — complete** only after gate PASS (not after C2 alone).
 
 **After row 9:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G  
@@ -134,10 +135,10 @@ Not a second CRM and not Settings. Working folders only (Inbox, Unread, Needs re
 
 ---
 
-## 5b. Epic C2 — Communication Capability Epic ← **active (C2.1)**
+## 5b. Epic C2 — Communication Capability Epic ← **active (C2.2)**
 
 **Epic:** [epic-c2-communication-campaigns.md](epic-c2-communication-campaigns.md)  
-**Current slice:** [c2-1-template-platform.md](c2-1-template-platform.md)
+**Current slice:** [c2-2-automation-engine.md](c2-2-automation-engine.md) (C2.1 ✅)
 
 C2 is **not** Communication v2. Sole responsibility: emit `CommunicationIntent` into the existing platform pipeline.  
 Order: Template Platform → Automation → Campaigns → Scheduling → Complete Gate.  
