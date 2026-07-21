@@ -182,13 +182,15 @@ Preview and prepare-send **must share** this engine.
 
 ### PR-3 — Registry
 
-**Single SoT** for “which templates are allowed where”:
+**Single SoT** for “which templates are allowed where” — `communications/templates/registry.py`.
 
 | Axis | Mapping |
 |------|---------|
-| Intent → allowed Templates | Intent compatibility |
-| Channel → allowed Templates | Channel compatibility |
-| Capability → allowed Templates | Feature / capability matrix |
+| Intent → allowed Templates | Published `TemplateIntentBinding` (+ seed `IntentDefinition.allowed_template_keys` when non-empty) |
+| Channel → allowed Templates | Published `TemplateChannelBinding` |
+| Capability → allowed Templates | `CAPABILITY_CHANNELS` → channel set ∩ bindings |
+
+API: `list_templates_for_intent` · `list_templates_for_channel` · `list_templates_for_capability` · `is_template_allowed` · `get_published_entry_by_key`.
 
 No second allow-list in modules or frontend.  
 Registry is the only place that answers “may this Intent use this Template on this channel under this capability?”.
@@ -266,7 +268,7 @@ UI must not invent composition, channel policy, or versioning rules.
 - [x] PR-1 domain entities + publish immutability invariants (`feat/communication-c2-1-template-domain`)  
 - [x] PR-2 pure renderer: Validate/Preview/Render/Diagnostics only; deterministic; typed vars; no SQL/ORM/Sender/Thread/Campaign/Automation (`feat/communication-c2-1-template-renderer`)  
 - [x] Unknown variables are **errors** (strict policy documented)
-- [ ] PR-3 registry is sole SoT for Intent/Channel/Capability → Template  
+- [x] PR-3 registry is sole SoT for Intent/Channel/Capability → Template (`feat/communication-c2-1-template-registry`)  
 - [ ] PR-4 Template API (draft/publish/archive/preview/versions/diff)  
 - [ ] PR-5 thin UI only after API  
 - [x] Commands/snapshots carry `template_version_id` (optional field; SoT for published versions)  

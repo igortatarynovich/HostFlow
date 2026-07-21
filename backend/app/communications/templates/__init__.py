@@ -14,6 +14,16 @@ from backend.app.communications.templates.payload import (
     build_payload,
     template_version_to_payload,
 )
+from backend.app.communications.templates.registry import (
+    CAPABILITY_CHANNELS,
+    TemplateAllowDecision,
+    TemplateRegistryEntry,
+    get_published_entry_by_key,
+    is_template_allowed,
+    list_templates_for_capability,
+    list_templates_for_channel,
+    list_templates_for_intent,
+)
 from backend.app.communications.templates.renderer import (
     Diagnostic,
     RenderResult,
@@ -56,4 +66,12 @@ __all__ = [
     "preview",
     "render",
     "diagnostics",
+    "CAPABILITY_CHANNELS",
+    "TemplateRegistryEntry",
+    "TemplateAllowDecision",
+    "list_templates_for_intent",
+    "list_templates_for_channel",
+    "list_templates_for_capability",
+    "get_published_entry_by_key",
+    "is_template_allowed",
 ]
