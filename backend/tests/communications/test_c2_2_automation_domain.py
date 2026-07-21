@@ -45,6 +45,9 @@ FORBIDDEN_MODULE_IMPORT_PREFIXES = (
     "app.modules.finance",
 )
 
+# Domain/lifecycle must not grow a send path. PR-3 emitter may call
+# execute_communication_intent (platform path) — covered in emitter tests.
+DOMAIN_SEND_PATH_FILES = frozenset({"lifecycle.py", "errors.py", "payload.py"})
 FORBIDDEN_SEND_PATH_TOKENS = (
     "CommunicationSender",
     "execute_communication_intent",
@@ -79,9 +82,10 @@ def test_capability_isolation_no_module_imports():
                         for p in FORBIDDEN_MODULE_IMPORT_PREFIXES
                     ):
                         offenders.append(f"{path.name}: import {name}")
-        for token in FORBIDDEN_SEND_PATH_TOKENS:
-            if token in text:
-                offenders.append(f"{path.name}: token:{token}")
+        if path.name in DOMAIN_SEND_PATH_FILES:
+            for token in FORBIDDEN_SEND_PATH_TOKENS:
+                if token in text:
+                    offenders.append(f"{path.name}: token:{token}")
     assert offenders == [], f"C2.2 capability isolation violated: {offenders}"
 
 
