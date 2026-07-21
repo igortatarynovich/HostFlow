@@ -1,8 +1,10 @@
 # C2.3 — Campaign Orchestrator
 
-**Status:** Active (kickoff — Intent-only; no send path)  
+**Status:** Implementation complete. Merge blocked — integration pytest baseline red.  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
-**Branch (proposed):** `feat/communication-c2-3-campaign-domain` (PR-1)  
+**Stack:** PR #121–#126. **Do not** Closed until #125+#126 merge after CI green.  
+**Blocked by:** [stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md) → then [#127](https://github.com/igortatarynovich/HostFlow/pull/127) → rebase stack. **C2.4 frozen.**  
+
 **Parents:** [C2.2 Automation Engine ✅](c2-2-automation-engine.md) · [C2.1 Template Platform ✅](c2-1-template-platform.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
 
 > Third C2 slice. **Campaigns only.** No Automation product changes, no Scheduling product, no Thread redesign.  
