@@ -1,8 +1,9 @@
 # C2.3 — Campaign Orchestrator
 
-**Status:** Active (PR-1 domain — no Campaign UI yet)  
+**Status:** Active (PR-2 audience resolver — no Campaign UI yet)  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
-**Branch:** `feat/communication-c2-3-campaign-domain` (PR-1)  
+**Branch:** `feat/communication-c2-3-campaign-audience-resolver` (PR-2) · PR-1 domain `feat/communication-c2-3-campaign-domain`  
+
 **Parents:** [C2.2 Automation Engine ✅](c2-2-automation-engine.md) · [C2.1 Template Platform ✅](c2-1-template-platform.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
 
 > Third C2 slice. **Campaigns only.** No Scheduling product, no Thread redesign, **no Campaign UI in PR-1…PR-4.**  
@@ -81,7 +82,20 @@ PR-1 Domain
   → PR-6 Thin UI (last — not before API)
 ```
 
-Out of PR-1: resolver, emission, orchestration product loop, HTTP API, UI.
+### PR-2 Audience resolver (locked)
+
+Pure package `communications/campaign/audience/`:
+
+| `definition_type` | Input | Output |
+|-------------------|-------|--------|
+| `static_list` | `definition.recipients` | Snapshot candidates |
+| `filter` | `definition.filter` + caller `ResolveContext.entities` | Filtered snapshot candidates |
+
+- No SQL / ORM / module imports inside `audience/`
+- Entity pool is injected by the caller (platform boundary) — Campaign still does not import Recruitment/Sales/…
+- `create_run_from_audience` freezes resolve output into Run recipients (never re-queries later)
+- Out of PR-2: Intent emission, run orchestration loop, HTTP API, UI
+
 
 ---
 
@@ -99,8 +113,8 @@ Out of PR-1: resolver, emission, orchestration product loop, HTTP API, UI.
 ## Definition of Done (C2.3)
 
 - [x] PR-1 domain + publish immutability + run idempotency + snapshot vs definition  
- 
-- [ ] PR-2 audience resolver produces snapshot only  
+- [x] PR-2 audience resolver produces snapshot only (`static_list` / `filter` + caller entity pool)  
+
 - [ ] PR-3 Intent emission via platform path (no provider / Thread writes)  
 - [ ] PR-4 run orchestration (item-level failure isolation)  
 - [ ] PR-5 API  

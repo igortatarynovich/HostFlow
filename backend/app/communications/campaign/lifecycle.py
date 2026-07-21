@@ -1,6 +1,8 @@
-"""C2.3 PR-1 — Campaign draft/publish + run snapshot lifecycle.
+"""C2.3 — Campaign draft/publish + run snapshot lifecycle.
 
-No HTTP, no audience resolver, no Intent emission, no send path.
+PR-1: draft/publish + explicit snapshot create.
+PR-2: create_run_from_audience (definition → resolve → freeze snapshot).
+No HTTP, Intent emission, or send path.
 Campaign never creates Thread / Message / Delivery here.
 """
 
@@ -14,7 +16,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from backend.app.communications.campaign.audience import ResolveContext, resolve
 from backend.app.communications.campaign.errors import CampaignDomainError
+from backend.app.communications.campaign.payload import version_audience_payload
 from backend.app.models.communication_campaign import (
     CAMPAIGN_RUN_STATUS_PENDING,
     CAMPAIGN_STATUS_ACTIVE,
@@ -434,8 +438,8 @@ async def create_run_with_snapshot(
     """Create a Run pinned to campaign_version_id with a frozen recipient snapshot.
 
     Idempotent: same tenant + idempotency_key returns the existing run.
-    Recipients are stored as CampaignRecipient rows (snapshot), not re-resolved
-    from the version's AudienceDefinition. Resolver product logic is PR-2.
+    Recipients are stored as CampaignRecipient rows (snapshot). Prefer
+    create_run_from_audience so definition → snapshot goes through the resolver.
     """
     tid = str(tenant_id or "").strip()
     if not tid:
@@ -540,6 +544,63 @@ async def create_run_with_snapshot(
             .where(CommunicationCampaignRun.id == str(run.id))
         )
     ).scalar_one()
+
+
+async def create_run_from_audience(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    campaign_id: str,
+    campaign_version_id: str,
+    idempotency_key: str,
+    resolve_context: ResolveContext | None = None,
+    meta: dict[str, Any] | None = None,
+) -> CommunicationCampaignRun:
+    """Resolve the version's AudienceDefinition and freeze it into a Run snapshot.
+
+    Idempotent on tenant + idempotency_key. Does not emit Intent or send.
+    """
+    version = await get_version(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        version_id=campaign_version_id,
+    )
+    if not version.is_published:
+        raise CampaignDomainError(
+            "version_not_published",
+            "Run must reference a published CampaignVersion",
+            details={"campaign_version_id": campaign_version_id},
+        )
+    payload = version_audience_payload(version)
+    if payload is None:
+        raise CampaignDomainError(
+            "audience_definition_required",
+            "Published version has no audience definition",
+            details={"campaign_version_id": campaign_version_id},
+        )
+
+    result = resolve(payload, resolve_context)
+    if not result.ok:
+        raise CampaignDomainError(
+            "audience_resolve_failed",
+            "Audience definition could not be resolved",
+            details={
+                "campaign_version_id": campaign_version_id,
+                "diagnostics": [d.to_dict() for d in result.diagnostics],
+            },
+        )
+
+    return await create_run_with_snapshot(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        campaign_version_id=campaign_version_id,
+        idempotency_key=idempotency_key,
+        recipients=result.recipient_run_dicts(),
+        audience_snapshot_meta=result.to_snapshot_meta(),
+        meta=meta,
+    )
 
 
 async def mark_run_item_outcome(
@@ -647,6 +708,7 @@ __all__ = [
     "get_version",
     "archive_campaign",
     "create_run_with_snapshot",
+    "create_run_from_audience",
     "mark_run_item_outcome",
     "get_run",
 ]

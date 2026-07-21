@@ -1,13 +1,29 @@
-"""C2.3 Campaign Orchestrator — domain lifecycle (Intent-only; no module imports).
+"""C2.3 Campaign Orchestrator — domain + pure audience resolver (Intent-only).
 
-PR-1: entities + draft/publish + run snapshot. No resolver / emission / API / UI.
+PR-1: entities + draft/publish + run snapshot.
+PR-2: audience resolver (definition → snapshot). No emission / API / UI.
 """
 
+from backend.app.communications.campaign.audience import (
+    DEFINITION_TYPE_FILTER,
+    DEFINITION_TYPE_STATIC_LIST,
+    DEFINITION_TYPES,
+    AudienceDefinitionPayload,
+    EntityCandidate,
+    ResolveContext,
+    ResolvedRecipient,
+    ResolveResult,
+    SkippedCandidate,
+    diagnostics,
+    dry_run,
+    resolve,
+)
 from backend.app.communications.campaign.errors import CampaignDomainError
 from backend.app.communications.campaign.lifecycle import (
     archive_campaign,
     assert_version_immutable_for_write,
     create_campaign_with_draft,
+    create_run_from_audience,
     create_run_with_snapshot,
     get_campaign,
     get_draft_version,
@@ -18,6 +34,10 @@ from backend.app.communications.campaign.lifecycle import (
     publish_draft,
     update_draft_content,
     upsert_draft_audience_definition,
+)
+from backend.app.communications.campaign.payload import (
+    audience_definition_to_payload,
+    version_audience_payload,
 )
 from backend.app.models.communication_campaign import (
     CAMPAIGN_RUN_STATUS_CANCELLED,
@@ -86,6 +106,20 @@ __all__ = [
     "RUN_ITEM_STATUS_EMITTED",
     "RUN_ITEM_STATUS_SKIPPED",
     "RUN_ITEM_STATUS_FAILED",
+    "DEFINITION_TYPE_STATIC_LIST",
+    "DEFINITION_TYPE_FILTER",
+    "DEFINITION_TYPES",
+    "AudienceDefinitionPayload",
+    "EntityCandidate",
+    "ResolveContext",
+    "ResolvedRecipient",
+    "SkippedCandidate",
+    "ResolveResult",
+    "resolve",
+    "dry_run",
+    "diagnostics",
+    "audience_definition_to_payload",
+    "version_audience_payload",
     "create_campaign_with_draft",
     "get_campaign",
     "get_draft_version",
@@ -96,6 +130,7 @@ __all__ = [
     "publish_draft",
     "archive_campaign",
     "create_run_with_snapshot",
+    "create_run_from_audience",
     "mark_run_item_outcome",
     "get_run",
     "assert_version_immutable_for_write",
