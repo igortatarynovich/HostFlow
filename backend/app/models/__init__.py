@@ -234,6 +234,21 @@ CommunicationAutomationTrigger = (
 CommunicationAutomationDecision = (
     _communication_automation_module.CommunicationAutomationDecision
 )  # type: ignore[attr-defined]
+_communication_campaign_module = _load_model_module("communication_campaign")
+CommunicationCampaign = _communication_campaign_module.CommunicationCampaign  # type: ignore[attr-defined]
+CommunicationCampaignVersion = (
+    _communication_campaign_module.CommunicationCampaignVersion
+)  # type: ignore[attr-defined]
+CommunicationCampaignAudienceDefinition = (
+    _communication_campaign_module.CommunicationCampaignAudienceDefinition
+)  # type: ignore[attr-defined]
+CommunicationCampaignRecipient = (
+    _communication_campaign_module.CommunicationCampaignRecipient
+)  # type: ignore[attr-defined]
+CommunicationCampaignRun = _communication_campaign_module.CommunicationCampaignRun  # type: ignore[attr-defined]
+CommunicationCampaignRunItem = (
+    _communication_campaign_module.CommunicationCampaignRunItem
+)  # type: ignore[attr-defined]
 DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
@@ -402,6 +417,12 @@ __all__ = [
     "CommunicationAutomationRuleVersion",
     "CommunicationAutomationTrigger",
     "CommunicationAutomationDecision",
+    "CommunicationCampaign",
+    "CommunicationCampaignVersion",
+    "CommunicationCampaignAudienceDefinition",
+    "CommunicationCampaignRecipient",
+    "CommunicationCampaignRun",
+    "CommunicationCampaignRunItem",
     "DocumentPolicy",
     "Stage",
     "MagicLink",
