@@ -137,6 +137,7 @@
 
 - [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md)  
 - [`pipedesign.md`](../../pipedesign.md)  
+- [`Conversation Workspace v2`](../frontend/conversation-workspace-v2.md) — Communication Thread manager UX (FE overlay; not C2)  
 - `hostflow-frontend/tailwind.config.cjs`  
 - `hostflow-frontend/src/styles/components.css`  
 

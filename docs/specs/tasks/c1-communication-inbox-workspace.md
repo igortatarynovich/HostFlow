@@ -1,12 +1,14 @@
 # C1 — Communication Inbox Workspace
 
-**Status:** ✅ Closed (2026-07-21)  
+**Status:** ✅ Closed (2026-07-21) — **contracts complete; UX complete = [Conversation Workspace v2](../frontend/conversation-workspace-v2.md)**  
 **Branch:** `feat/communication-c1-inbox-workspace` (merged) · C1.2 / C1.3 stacked  
 **Close-out evidence:** [Epic C Complete Gate — C1 evidence](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21) · `backend/scripts/smoke_c1_workspace_commands.py`  
-**Parents:** [Communication Platform Foundation](../architecture/communication-platform-foundation.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Epic C0](epic-c0-communication-integrity.md) · [C0.3](c0-3-delivery-diagnostics.md)
+**Parents:** [Communication Platform Foundation](../architecture/communication-platform-foundation.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Epic C0](epic-c0-communication-integrity.md) · [C0.3](c0-3-delivery-diagnostics.md)  
+**UX follow-up (FE overlay, not C2):** [Conversation Workspace v2](../frontend/conversation-workspace-v2.md) · [task](conversation-workspace-v2.md)
 
 > Communication becomes the manager’s primary workplace — not a message journal.  
-> Infrastructure (Foundation) is complete; C1 is **product UX** on top of it.
+> Infrastructure (Foundation) is complete; C1 delivered **workspace contracts** (ThreadContext, Commands, queues) on top of it.  
+> **C1 closed ≠ UX complete.** Manager-grade Conversation UX is Conversation Workspace v2 (pure frontend overlay; no backend/API/model changes).
 
 ## Main object
 
@@ -147,4 +149,6 @@ C2 → Epic C Complete Gate → Governance → Stage 3 / Meta → …
 
 ## Closed → next
 
-**C1 — complete.** Next: **[C2](epic-c2-communication-campaigns.md)** on the frozen Thread / Command / projection model (no Thread redesign).
+**C1 — contracts complete.** Capability track next: **[C2](epic-c2-communication-campaigns.md)** on the frozen Thread / Command / projection model (no Thread redesign).
+
+**UX track (parallel, does not reopen C1 contracts):** [Conversation Workspace v2](../frontend/conversation-workspace-v2.md) — frontend overlay only; blocked on canon approval before UI PRs.

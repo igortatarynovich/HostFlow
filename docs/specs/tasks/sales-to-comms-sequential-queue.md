@@ -28,7 +28,8 @@
 
 **Open product GAPs (queued below / in roadmap):**
 
-- Communication Inbox Workspace (C1 — ✅ closed 2026-07-21)  
+- Communication Inbox Workspace (C1 — ✅ closed 2026-07-21; **contracts** complete, not UX complete)  
+- Conversation Workspace v2 — FE UX overlay ([canon](../frontend/conversation-workspace-v2.md) · [task](conversation-workspace-v2.md)); **does not block C2**; no backend/API/model changes  
 - Communication Capability Epic C2 — **active** (slice **C2.3 Campaign Orchestrator**; C2.1–C2.2 ✅)  
 - Epic C Complete Gate (after C2.1–C2.4; before Governance)  
 - Platform Governance Review (after **Epic C — complete**)  
@@ -72,7 +73,8 @@
 **After row 9:** continue [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) Phase B→G  
 (Acquisition/Stage 3 + Meta → Forms → Entity Workspace → Documents → Billing → AI).
 
-**Deferred polish (as needed):** signature policy product UI, composer UX thin slice, historical unbound-thread repair queue, Service Orders / quotes / deals.
+**Deferred polish (as needed):** signature policy product UI, historical unbound-thread repair queue, Service Orders / quotes / deals.  
+**Composer / Inbox manager UX:** tracked as [Conversation Workspace v2](../frontend/conversation-workspace-v2.md) (not a C2 slice; not “thin polish” on the engine panel).
 
 **Supersedes (this revision):** Stage 3 slice 3 immediately after C0.3/Meta; C1/C2 after Stage 3.
 
@@ -127,12 +129,22 @@ Full prepare-send chain (canon): authorization → capabilities → recipient �
 
 ---
 
-## 5. Epic C1 — Inbox UX (after C0.3)
+## 5. Epic C1 — Inbox Workspace contracts (after C0.3)
 
-Not a second CRM and not Settings. Working folders only (Inbox, Unread, Needs reply, Assigned to me, Sent, Archive, Unresolved). Thread title priority: company → contact name → email/phone → readable fallback (**never** UUID stubs). Settings / signatures / templates live under **Настройки → Коммуникации**.
+Not a second CRM and not Settings. C1 delivered Thread queues, ThreadContext, Commands, and a functional workspace surface.
+
+Thread title priority (normative for UI): company → contact name → email/phone → readable fallback (**never** UUID stubs). Settings / signatures / templates live under **Настройки → Коммуникации**.
 
 - [C1](c1-communication-inbox-workspace.md) ✅ · [C1.1](c1-1-thread-context-composer.md) ✅ · [C1.2](c1-2-workspace-actions.md) ✅ · [C1.3](c1-3-workspace-experience.md) ✅  
 - Live close-out: [C1 evidence in gate](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21)
+
+**C1 closed = backend/workspace contracts complete, not UX complete.**
+
+### 5a. Conversation Workspace v2 — manager UX overlay (parallel FE)
+
+**Canon:** [conversation-workspace-v2.md](../frontend/conversation-workspace-v2.md) · **Task:** [conversation-workspace-v2.md](conversation-workspace-v2.md)
+
+Pure frontend overlay over frozen ThreadContext + Commands. Inbox Center + standalone thread — one canon, two layout modes. Reply workspace ≠ «Новое письмо». No backend/API/model changes. **Does not block or rewrite C2.** UI code only after canon approval.
 
 ---
 
@@ -184,4 +196,5 @@ Next branch only after:
 - 2026-07-20 (rev): After Stage 3 slice 2, insert **Epic C0 Communication Integrity** (C0.1–C0.3) + **Meta Intake Completeness** before Stage 3 slice 3; then C1 Inbox; then Stage 3 slice 4.  
 - 2026-07-20 (rev. C0.0): Insert **C0.0 Communication Canon & Contracts** before treating C0.1 as foundation; expand **C2** to templates + automations + campaigns; PR #100 = vertical slice only.  
 - 2026-07-20 (rev. Platform Completion Roadmap): Finish **full Epic C** (C0.2–C0.3, C1, C2) → **Governance Review** → Acquisition/Stage 3; horizon phases Forms → Workspace → Documents → Billing → AI.  
-- 2026-07-20: PR #107 merged (`dbeb36ed`) — C1 queues + C1.1 ThreadContext; open **C1.2 Workspace Actions**.  
+- 2026-07-20: PR #107 merged (`dbeb36ed`) — C1 queues + C1.1 ThreadContext; open **C1.2 Workspace Actions**.
+- 2026-07-21: C1 closed (contracts). **Conversation Workspace v2** proposed as parallel FE UX overlay; C2 continues independently.  

@@ -38,6 +38,7 @@ There are **no new send paths**, no private SMTP/Gmail/WhatsApp callers, and no 
 | Automation rules → Intent | Workspace Commands redesign |
 | Campaign orchestration → Intent | Queue projections / Inbox UX |
 | Scheduling → Intent | Module business logic (Recruitment / Sales / …) |
+| *(n/a)* | **Conversation Workspace v2** manager UX ([canon](../frontend/conversation-workspace-v2.md)) — separate FE track; C2 must not own or block it |
 
 Everything in C2 ends the same way:
 

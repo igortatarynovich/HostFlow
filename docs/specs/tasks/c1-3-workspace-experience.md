@@ -49,4 +49,6 @@ optimistic concurrency (`work_version`); no mixed PATCH path.
 
 ## After C1.3
 
-**C1 — complete** (Foundation + Workspace model + Experience) → **C2** without rewriting Thread/Commands.
+**C1 — contracts complete** (Foundation + Workspace model + Experience surface) → **C2** without rewriting Thread/Commands.
+
+**Manager UX complete** is not claimed here. Follow-up: [Conversation Workspace v2](../frontend/conversation-workspace-v2.md) (pure FE overlay; [task](conversation-workspace-v2.md)).

@@ -47,6 +47,7 @@ This north star applies to:
 - Fleet entities
 - Compliance entities
 - Documents entities
+- Communication Thread / Conversation Workspace ([Conversation Workspace v2](conversation-workspace-v2.md))
 - future operational modules
 
 ## Derived Rules
