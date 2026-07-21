@@ -3,7 +3,8 @@
 **Status:** Active (Product Track) — PR-1 open [#130](https://github.com/igortatarynovich/HostFlow/pull/130)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §10 · §14 slice **3E**  
 **Parents:** Epic P / 3D ✅ · R3.5 Flights dispatch ✅ · Forms Sprint 1–6 ✅  
-**Branch (PR-1):** `feat/acquisition-stage-3e-pr1-activity-foundation`
+**Branch (PR-3):** `feat/acquisition-stage-3e-pr3-activity-read-api`  
+**PR-1:** merged (`#130`) · **PR-2:** merged (`#131`)
 
 > Stage 3E builds **observability infrastructure** only: a universal Activity Timeline.  
 > It closes the V1 vertical’s history/audit slice (3A→3E).  
@@ -233,7 +234,7 @@ Mixing these in one PR or one “Flight Timeline + emit for Automations + UI” 
 - Budget business logic  
 - Analytics  
 
-**Branch:** `feat/acquisition-stage-3e-pr1-activity-foundation` (**in progress**).
+**Status:** merged (`#130`).
 
 ### PR-2 — Existing Flow Instrumentation
 
@@ -261,12 +262,15 @@ This keeps catalog validation, idempotency, envelope checks, and future telemetr
 
 ### PR-3 — Timeline Read API
 
-- Flight activity  
-- Campaign roll-up (filter, not copy)  
-- Cursor pagination  
-- Filter by type and time  
+**Branch:** `feat/acquisition-stage-3e-pr3-activity-read-api` (**in progress**).
+
+- `GET /api/v1/platform/acquisition-activity` (read-only)  
+- Flight activity / Campaign roll-up via filters (not a second store)  
+- Cursor pagination: `after_occurred_at` + `after_id`  
+- Filters: campaign / flight / endpoint / submission / result / outcome / event_type / time  
 - Stable order: `occurred_at` + `id`  
 - Tenant + RBAC enforcement  
+- **No** write endpoints, UI, or new emit sites  
 
 ### PR-4 — Thin Operator UI
 
