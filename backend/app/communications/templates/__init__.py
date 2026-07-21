@@ -1,4 +1,4 @@
-"""C2.1 Template Platform — domain package (Intent-only; no module imports)."""
+"""C2.1 Template Platform — domain + pure renderer (Intent-only; no module imports)."""
 
 from backend.app.communications.templates.errors import TemplateDomainError
 from backend.app.communications.templates.lifecycle import (
@@ -9,6 +9,20 @@ from backend.app.communications.templates.lifecycle import (
     replace_draft_bindings,
     replace_draft_variables,
     update_draft_content,
+)
+from backend.app.communications.templates.payload import (
+    build_payload,
+    template_version_to_payload,
+)
+from backend.app.communications.templates.renderer import (
+    Diagnostic,
+    RenderResult,
+    TemplateVariableSpec,
+    TemplateVersionPayload,
+    diagnostics,
+    preview,
+    render,
+    validate,
 )
 from backend.app.models.communication_template import (
     Template,
@@ -32,4 +46,14 @@ __all__ = [
     "replace_draft_bindings",
     "publish_draft",
     "archive_template",
+    "build_payload",
+    "template_version_to_payload",
+    "TemplateVariableSpec",
+    "TemplateVersionPayload",
+    "Diagnostic",
+    "RenderResult",
+    "validate",
+    "preview",
+    "render",
+    "diagnostics",
 ]
