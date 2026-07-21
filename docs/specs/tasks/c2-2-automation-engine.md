@@ -1,6 +1,6 @@
 # C2.2 — Automation Engine
 
-**Status:** Active (kickoff — Intent-only; no send path)  
+**Status:** ✅ Closed (2026-07-21) — PR-1…PR-5 merged (`#116`–`#120`)  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
 **Branch (proposed):** `feat/communication-c2-2-automation-domain` (PR-1)  
 **Parents:** [C2.1 Template Platform ✅](c2-1-template-platform.md) · [C0.0 Canon](c0-0-communication-canon.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
@@ -135,6 +135,10 @@ Still **no** Campaign / Scheduling product endpoints. Dry-run must not call the 
 
 Thin client: list / editor / dry-run / history. No client-owned send loop.
 
+**Surface:** `/app/settings/communications/automation` (`CommunicationAutomationRulesPage`)  
+API client: `hostflow-frontend/src/api/communications/automation.ts`  
+Distinct from legacy Automations Hub reminder rules.
+
 ---
 
 ## Out of scope (later slices)
@@ -162,7 +166,7 @@ Thin client: list / editor / dry-run / history. No client-owned send loop.
 - [x] PR-2 evaluator with structured diagnostics — `feat/communication-c2-2-automation-evaluator`  
 - [x] PR-3 Intent-only emitter (contract tests: no Sender / Thread writes) — `feat/communication-c2-2-automation-emitter`  
 - [x] PR-4 API — `feat/communication-c2-2-automation-api`  
-- [ ] PR-5 thin UI  
+- [x] PR-5 thin UI — `feat/communication-c2-2-automation-ui`  
 - [ ] Capability-isolation contract tests on C2.2 packages  
 - [ ] No Campaign / Scheduling product code in C2.2  
 

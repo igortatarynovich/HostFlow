@@ -928,6 +928,7 @@
         "settings_communications_queue": "Queue & routing",
         "settings_communications_sla": "Communications SLA",
         "settings_communications_templates": "Communication templates",
+        "settings_communications_automation": "Communication automation",
         "settings_ttv": "TTV report",
         "profile": "Profile",
         "logout": "Sign out",
@@ -11347,6 +11348,10 @@
           "label": "Communication templates",
           "description": "Versioned Intent-bound message bodies (publish/preview/history). Not messenger canned replies or lead emails."
         },
+        "communications_automation": {
+          "label": "Communication automation",
+          "description": "Event → Rules → Intent only. Not legacy reminder automations and not a send path."
+        },
         "audit": {
           "label": "Audit log",
           "description": "Review admin actions and sensitive activity."
@@ -11442,7 +11447,8 @@
       "open_email": "Outbound SMTP",
       "open_queue": "Inbox queue & routing",
       "open_sla": "Communications SLA",
-      "open_templates": "Communication templates"
+      "open_templates": "Communication templates",
+      "open_automation": "Communication automation"
     },
     "communications_messengers": {
       "title": "Messenger channels",
@@ -11645,6 +11651,38 @@
         "channel": "Channel",
         "assigned": "Assigned",
         "assignee": "Assignee"
+      }
+    },
+    "communications_automation": {
+      "title": "Communication automation",
+      "subtitle": "Event → Rules → Intent only. Not legacy reminder automations and not a send path.",
+      "header_kicker": "automation",
+      "include_archived": "Include archived",
+      "list_title": "Rules",
+      "empty": "No automation rules yet.",
+      "select_prompt": "Select or create a rule.",
+      "create": {
+        "submit": "Create draft"
+      },
+      "actions": {
+        "back": "← Communications admin",
+        "templates": "Communication templates"
+      },
+      "notices": {
+        "created": "Rule created",
+        "draft_saved": "Draft saved",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "errors": {
+        "load": "Failed to load automation rules",
+        "history": "Failed to load history",
+        "create": "Failed to create rule",
+        "save_draft": "Failed to save draft",
+        "publish": "Failed to publish",
+        "enable": "Failed to update enabled flag",
+        "archive": "Failed to archive",
+        "dry_run": "Dry-run failed"
       }
     },
     "communications_templates": {

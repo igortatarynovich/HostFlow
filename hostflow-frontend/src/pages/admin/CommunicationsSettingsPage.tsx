@@ -46,6 +46,15 @@ export default function CommunicationsSettingsPage() {
         defaultValue: 'Open templates',
       }),
     },
+    {
+      key: 'automation',
+      title: t('admin.settings.cards.communications_automation.label'),
+      description: t('admin.settings.cards.communications_automation.description'),
+      to: P.settingsCommunicationsAutomation,
+      cta: t('admin.communications_settings.open_automation', {
+        defaultValue: 'Open automation',
+      }),
+    },
   ]
 
   return (

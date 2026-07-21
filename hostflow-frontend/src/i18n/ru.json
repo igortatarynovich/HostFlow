@@ -909,6 +909,7 @@
         "settings_communications_queue": "Очередь и маршрутизация",
         "settings_communications_sla": "SLA коммуникаций",
         "settings_communications_templates": "Шаблоны коммуникаций",
+        "settings_communications_automation": "Автоматизация коммуникаций",
         "settings_ttv": "Отчёт TTV",
         "profile": "Профиль",
         "logout": "Выйти",
@@ -11349,6 +11350,10 @@
           "label": "Шаблоны коммуникаций",
           "description": "Версионированные тексты, привязанные к Intent (publish/preview/история). Не сниппеты мессенджеров и не письма лидов."
         },
+        "communications_automation": {
+          "label": "Автоматизация коммуникаций",
+          "description": "Event → Rules → Intent. Не legacy-напоминания и не путь отправки."
+        },
         "audit": {
           "label": "Аудит-лог",
           "description": "Очередь удалений и события аудита."
@@ -11444,7 +11449,8 @@
       "open_email": "Исходящий SMTP",
       "open_queue": "Очередь inbox и маршрутизация",
       "open_sla": "SLA коммуникаций",
-      "open_templates": "Шаблоны коммуникаций"
+      "open_templates": "Шаблоны коммуникаций",
+      "open_automation": "Автоматизация коммуникаций"
     },
     "communications_messengers": {
       "title": "Каналы мессенджеров",
@@ -11647,6 +11653,38 @@
         "channel": "Канал",
         "assigned": "Назначено",
         "assignee": "Исполнитель"
+      }
+    },
+    "communications_automation": {
+      "title": "Автоматизация коммуникаций",
+      "subtitle": "Event → Rules → Intent. Не legacy-напоминания и не путь отправки.",
+      "header_kicker": "автоматизация",
+      "include_archived": "Показать архивные",
+      "list_title": "Правила",
+      "empty": "Правил автоматизации пока нет.",
+      "select_prompt": "Выберите или создайте правило.",
+      "create": {
+        "submit": "Создать draft"
+      },
+      "actions": {
+        "back": "← Админка коммуникаций",
+        "templates": "Шаблоны коммуникаций"
+      },
+      "notices": {
+        "created": "Правило создано",
+        "draft_saved": "Draft сохранён",
+        "published": "Опубликовано",
+        "archived": "Архивировано"
+      },
+      "errors": {
+        "load": "Не удалось загрузить правила автоматизации",
+        "history": "Не удалось загрузить историю",
+        "create": "Не удалось создать правило",
+        "save_draft": "Не удалось сохранить draft",
+        "publish": "Не удалось опубликовать",
+        "enable": "Не удалось изменить флаг enabled",
+        "archive": "Не удалось архивировать",
+        "dry_run": "Dry-run не удалось"
       }
     },
     "communications_templates": {
