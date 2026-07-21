@@ -43,6 +43,7 @@ REQUIRES_SUBMISSION_ID: frozenset[str] = frozenset(
         "RoutingCompleted",
         "RoutingFailed",
         "LeadCreated",
+        "CandidateCreated",
     }
 )
 
