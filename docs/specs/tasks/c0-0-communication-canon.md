@@ -85,7 +85,7 @@ Modules must not:
 | C0.2 | Inbound resolver |
 | C0.3 | Delivery diagnostics |
 | C1 | Inbox UX |
-| C2 | Templates catalog UX, automations product, campaigns |
+| C2 | Capability epic: Templates → Automation → Campaigns → Schedule — **Intent-only** (never mutate Thread) |
 | Legal review | Exact RODO bases, retention periods, notice texts |
 
 ### Allowed in PR #100 (contract alignment only)
@@ -591,7 +591,7 @@ Target: every outbound path becomes a caller of `prepare_and_send_communication`
 |----------|------------------------|
 | PR #100 | **First implementation of the Communication Canon** for the outbound path: Intent + Command + resolvers + G13 + questionnaire first caller + entity_links API/UI. Not the full Communication *product* (C2), and not Inbox/consent/campaign engines. |
 | C0.2 / C0.3 | Inbound + delivery diagnostics |
-| C2 | Templates product, automations product, campaigns — all on the same Intent → Command path |
+| C2 | Capability epic (Intent-only): Template Platform → Automation → Campaign → Schedule → Epic C Complete Gate |
 
 ---
 

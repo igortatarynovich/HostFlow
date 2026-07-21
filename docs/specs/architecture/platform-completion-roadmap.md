@@ -56,7 +56,7 @@ This is **not** “Epic C complete” — C2 + **Epic C Complete Gate** remain (
 | C0.2 Inbound Resolver | Linked or explicit unresolved | ✅ (PR #102) |
 | C0.3 Delivery Diagnostics | Attempts + canonical diagnostics | ✅ (PR #104) |
 | **C1** Communication Inbox Workspace | Thread workplace for managers | ✅ closed 2026-07-21 |
-| **C2** Templates, Automations & Campaigns | Product on platform command | **active** |
+| **C2** Capability epic (Intent-only) | Templates → Automation → Campaigns → Schedule | **active (C2.1)** |
 | **Epic C Complete Gate** | Single Communication capability check | queued |
 
 **Foundation result:** Intent, Policy, Registry, Sender, Snapshot, Inbound Resolver, G13, unresolved inbound, delivery attempts/diagnostics/retry/callbacks/timeline.  

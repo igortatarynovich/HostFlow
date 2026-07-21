@@ -14,7 +14,11 @@
 
 ```text
 C1 Inbox Workspace          ← CLOSED 2026-07-21 (evidence below)
-  → C2 Templates, Automations & Campaigns   ← active next
+  → C2 Capability epic (Intent-only; never mutate Thread)
+       C2.1 Template Platform   ← active
+       C2.2 Automation Engine
+       C2.3 Campaign Orchestrator
+       C2.4 Scheduling
   → Epic C Complete Gate   ← this document
   → A2 Platform Governance Review
   → Acquisition (Stage 3 + Meta)
@@ -45,9 +49,10 @@ Do **not** skip this gate and mark Epic C complete after C2 alone.
 
 Commands covered: AssignThread · ReassignThread · UnassignThread · MarkThreadRead · MarkThreadUnread · SetNextAction · CompleteNextAction · CancelNextAction · PauseSLA · ResumeSLA · CloseThread · ReopenThread · SetThreadPriority · SetThreadTags · DeleteThread · RestoreThread · UpdateThreadWorkflow · SetThreadLinks.
 
-**Architecture freeze into C2:** Thread SoT + Commands-only mutations + ThreadContext read model + queue projections — unchanged. C2 builds Templates / Automations / Campaigns on the **same** Commands.
+**Architecture freeze into C2:** Thread SoT + Commands-only mutations + ThreadContext read model + queue projections — unchanged.  
+**C2 law:** create `CommunicationIntent` only; no second pipeline; **capability isolation** (no module imports). See [epic-c2](../tasks/epic-c2-communication-campaigns.md).
 
-**Not yet Epic C complete** — C2 + this gate checklist still required.
+**Not yet Epic C complete** — C2.1–C2.4 + this gate checklist still required.
 
 ---
 
@@ -58,7 +63,7 @@ Commands covered: AssignThread · ReassignThread · UnassignThread · MarkThread
 | 1 | One SoT for Communication | Pending (post-C2) |
 | 2 | No legacy senders and no legacy inbound paths | Pending (post-C2) |
 | 3 | All modules use only the public Communication Contract via adapters | Pending (post-C2) |
-| 4 | No platform → module dependencies | Pending (post-C2) |
+| 4 | No platform → module dependencies (C2 capability isolation) | Pending (enforce from C2.1) |
 | 5 | All messages (outbound / inbound) pass through the unified pipeline | Pending (post-C2) |
 | 6 | Callbacks, retries, diagnostics, and Inbox share one data model | C1 Inbox ✅; campaigns pending C2 |
 | 7 | Templates, Automations, and Campaigns use Intent Registry — not private rule engines | Pending C2 |

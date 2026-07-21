@@ -1,72 +1,212 @@
-# Epic C2 — Templates, Automations & Campaigns
+# Epic C2 — Communication Capability Epic
 
 **Status:** Active (kickoff — after C1 close 2026-07-21)  
-**Branch (proposed):** `feat/communication-c2-templates-automations-campaigns`  
-**Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [C1 Inbox Workspace](c1-communication-inbox-workspace.md) · [Epic C0](epic-c0-communication-integrity.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · platform `prepare_and_send_communication` / `SendCommunication`
+**Type:** Capability epic (not Communication v2)  
+**Branch (proposed):** `feat/communication-c2-1-template-platform` (first slice)  
+**Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [C1 Inbox Workspace](c1-communication-inbox-workspace.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
 
-> Product surfaces for **templates**, **automation rules**, and **campaigns** — all on top of the same Communication platform command.  
-> **Frozen from C1:** Thread SoT · Commands-only mutations · ThreadContext read model · queue projections.  
-> Do **not** invent a second send engine. Do **not** change the Thread model.
-
-**Filename note:** path kept as `epic-c2-communication-campaigns.md` for link stability; scope is broader than campaigns alone.
+**Filename note:** path kept as `epic-c2-communication-campaigns.md` for link stability; scope is the full C2 capability epic.
 
 ---
 
-## Scope
+## Locked principle (entire C2)
 
-| Area | Product outcome |
-|------|-----------------|
-| **Templates** | Tenant catalog with versioning, purpose, variables, `link_intents`, locales, status — per [C0.0 §4](c0-0-communication-canon.md) |
-| **Automations** | Authoring/enablement of `CommunicationAutomationRule` bound to pipelines / domain events — per [C0.0 §12](c0-0-communication-canon.md) |
-| **Campaigns** | Bulk / scheduled audience sends with per-recipient message + thread + G13 |
+> **C2 creates `CommunicationIntent`. C2 never mutates Thread directly.**
 
-Settings / signatures / compliance policy UI may share **Настройки → Коммуникации** but remain separate ownership buckets ([C0.0 §13](c0-0-communication-canon.md)).
+Foundation from C0–C1 is **frozen**. C2 must not reopen Thread, Commands, ThreadContext, or queue-projection architecture.
 
----
+```text
+Templates / Automations / Campaigns / Schedule / Bulk / Triggers
+        ↓
+  CommunicationIntent
+        ↓
+  existing Platform Pipeline
+        ↓
+  Commands / Thread / delivery / G13  (unchanged)
+```
 
-## Templates
-
-- CRUD + activate/archive for `CommunicationTemplate`  
-- No baked public URLs — only link intents  
-- Preview uses the same render path as prepare-send (snapshot rules)  
-- Frontend must not own template composition logic beyond editor UX  
-
----
-
-## Automations
-
-- Rules: trigger, stage bounds, conditions, delay, channel strategy, template key, recipient role, link intents, dedupe, quiet hours, consent flag  
-- Chain only: `DomainEvent → Automation evaluation → CommunicationCommand`  
-- No sync provider send from stage handlers  
+There are **no new send paths**, no private SMTP/Gmail/WhatsApp callers, and no Campaign/Automation → Thread shortcuts.
 
 ---
 
-## Campaigns / bulk
+## Single responsibility
 
-`CommunicationCampaign` holds audience, channel, template, sender, schedule, limits, status, stats, and selection provenance.
+| C2 owns | C2 does **not** own |
+|---------|---------------------|
+| Emitting `CommunicationIntent` | Mutating Thread / Message / delivery SoT |
+| Template Registry product | Provider transport |
+| Automation rules → Intent | Workspace Commands redesign |
+| Campaign orchestration → Intent | Queue projections / Inbox UX |
+| Scheduling → Intent | Module business logic (Recruitment / Sales / …) |
 
-Per recipient the campaign creates separate:
+Everything in C2 ends the same way:
 
-- delivery  
-- message  
-- thread / G13 links  
-- idempotency key  
+```text
+Automation | Campaign | Schedule | Bulk | Trigger
+  → CommunicationIntent
+  → existing Platform Pipeline
+  → Commands / Thread
+```
 
-Recipient replies land in their **personal** thread — never a shared campaign thread.
+---
 
-### UI entry points (later)
+## Architecture freeze (from C1)
 
-1. From object lists (candidates, inquiries, prospects, clients, employees): select → Write → channel → template → preview → send/schedule  
-2. Communication module: Dialogs · Campaigns · Templates · Automations · Settings  
+Do **not** change:
 
-### Rule
+- Thread as work-object SoT  
+- Workspace Commands as sole Thread mutation path  
+- ThreadContext as Workspace read model  
+- Queue membership as projection-only  
+- Intent → Policy → Resolvers → Command → Sender pipeline  
 
-Frontend must not loop “Write” buttons for N recipients. Campaigns orchestrate platform `prepare_and_send_communication` (or a bulk variant) server-side.
+C2 **adds capabilities that feed that pipeline**. It does not replace it.
+
+---
+
+## Merge gates (every C2 PR — blockers)
+
+### 1. Intent-only egress
+
+No C2 object may write Thread / Message / Outbox / delivery tables directly.  
+Egress is **`CommunicationIntent` only** (then the existing platform pipeline).
+
+### 2. No second pipeline
+
+Forbidden: parallel senders, “campaign send”, “automation SMTP”, bulk loops that call providers or invent Thread writes.
+
+### 3. Capability isolation *(new — mandatory)*
+
+No C2 package/module may **import or depend on**:
+
+- Recruitment  
+- Sales  
+- HR  
+- Services  
+- Finance  
+
+**Allowed:** Platform contracts only (Communication Canon, Intent/Policy/Registry resolvers, DomainEvent ingress at the platform boundary, shared kernel types).
+
+This gate stops module logic from leaking into Templates and Automation over time.  
+Contract tests should fail the build if C2 code imports module packages.
+
+### 4. Frozen Thread model
+
+No Thread / Command / ThreadContext redesign in C2 PRs. Product gaps go to follow-ups **after** Epic C Complete Gate — not into C2 “while we’re here”.
+
+---
+
+## Slice sequence (locked)
+
+```text
+C2.1 Template Platform
+  → C2.2 Automation Engine
+  → C2.3 Campaign Orchestrator
+  → C2.4 Scheduling
+  → Epic C Complete Gate
+```
+
+Logical order: **what** to send → **when/why** → **to whom (bulk)** → **when (time)** → close Epic C  
+without returning to Thread / Commands / ThreadContext architecture.
+
+| Slice | Doc | First responsibility |
+|-------|-----|----------------------|
+| **C2.1** | [c2-1-template-platform.md](c2-1-template-platform.md) | Template Registry product |
+| **C2.2** | *(after C2.1)* | Event → Rules → Policy → Intent |
+| **C2.3** | *(after C2.2)* | Audience + plan → Intent |
+| **C2.4** | *(after C2.3)* | Schedule → Intent → same pipeline |
+| **Gate** | [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md) | Epic C — complete |
+
+---
+
+## C2.1 — Template Platform
+
+**First PR scope — templates only.** No Campaign, no Automation.
+
+In:
+
+- Template Registry  
+- Versioning  
+- Variables  
+- Validation  
+- Preview  
+- Draft / Published  
+- Channel compatibility  
+- Intent compatibility  
+
+Out of C2.1: campaigns, automations, scheduling, bulk orchestration.
+
+Preview uses the **same render path** as prepare-send (snapshot rules). Frontend does not own composition policy.
+
+---
+
+## C2.2 — Automation Engine
+
+```text
+Event → Rules → Policy → CommunicationIntent
+```
+
+Automation has **no own send path**.  
+Automation does **not** know SMTP, Gmail, WhatsApp, or Thread.
+
+It evaluates rules and emits Intent. Pipeline + Commands do the rest.
+
+---
+
+## C2.3 — Campaigns
+
+Campaign is an **orchestrator**, not a sender.
+
+| Campaign does | Campaign does **not** |
+|---------------|------------------------|
+| Select audience | Render templates |
+| Plan send waves | Call providers |
+| Create `CommunicationIntent` per recipient | Mutate Thread |
+
+Per-recipient work still goes through Intent → platform pipeline (personal Thread / G13 as today).  
+**Never** a shared “campaign thread”. Frontend must not loop N× Write buttons.
+
+---
+
+## C2.4 — Scheduling
+
+Separate capability:
+
+```text
+Schedule → CommunicationIntent → ordinary pipeline
+```
+
+No special schedulers that talk to providers. Time fires Intent; pipeline unchanged.
+
+---
+
+## Product surfaces (later UX; same contracts)
+
+1. Object lists → select → Write / schedule → template → preview → Intent  
+2. Communication module: Templates · Automations · Campaigns · Schedules · Settings  
+
+Settings / signatures / compliance UI may share **Настройки → Коммуникации** but stay separate ownership buckets ([C0.0 §13](c0-0-communication-canon.md)).
 
 ---
 
 ## Out of C2
 
-- C0 integrity writers/gates (already C0.0–C0.3)  
-- Inbox UX (C1)  
+- Thread / Commands / ThreadContext redesign (frozen)  
+- Inbox Workspace product work (C1 closed)  
+- C0 integrity writers (already done)  
+- Module-owned send engines  
 - Legal drafting of RODO notice text (legal review; architecture from C0.0)  
+- Epic C Complete Gate checklist fill (after C2.1–C2.4)  
+
+---
+
+## Definition of Done (epic)
+
+- [ ] C2.1 Template Platform shipped under Intent-only + capability-isolation gates  
+- [ ] C2.2 Automation emits Intent only (no provider / Thread knowledge)  
+- [ ] C2.3 Campaigns orchestrate Intent only  
+- [ ] C2.4 Scheduling emits Intent into the ordinary pipeline  
+- [ ] Contract tests enforce capability isolation + no second pipeline  
+- [ ] [Epic C Complete Gate](../gates/epic-c-complete-gate.md) ready for evidence pass  
+
+**Active now:** **C2.1 Template Platform** — [c2-1-template-platform.md](c2-1-template-platform.md).
