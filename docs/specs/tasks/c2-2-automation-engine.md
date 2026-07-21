@@ -98,10 +98,20 @@ Pure evaluation package: `communications/automation/evaluator/`.
 Only path from Automation → platform:
 
 ```text
-Decision(fire) → CommunicationIntent → existing pipeline
+EvaluationResult(fire) → IntentExecutionRequest → execute_communication_intent
 ```
 
-Uses Template Platform registry for allowed templates; never bypasses Intent Policy.
+Package: `communications/automation/emitter.py`
+
+| Op | Role |
+|----|------|
+| `build_intent_request` | Pure-ish builder (no I/O) |
+| `emit_from_evaluation` | Persist decision + optional render/execute |
+
+- Skip outcomes never create Intent (decision may still be recorded)  
+- Sets `automation_identity` + `source_event_id` + rule version meta  
+- Goes through Intent Policy via existing `execute_communication_intent` / `render_communication_intent`  
+- Forbidden: Thread models · Workspace Commands · provider/sender shortcut
 
 ### PR-4 — API
 
@@ -136,7 +146,7 @@ Thin client: list / editor / dry-run / history. No client-owned send loop.
 
 - [x] PR-1 domain + immutable published rule versions — `feat/communication-c2-2-automation-domain`  
 - [x] PR-2 evaluator with structured diagnostics — `feat/communication-c2-2-automation-evaluator`  
-- [ ] PR-3 Intent-only emitter (contract tests: no Sender / Thread writes)  
+- [x] PR-3 Intent-only emitter (contract tests: no Sender / Thread writes) — `feat/communication-c2-2-automation-emitter`  
 - [ ] PR-4 API + PR-5 thin UI  
 - [ ] Capability-isolation contract tests on C2.2 packages  
 - [ ] No Campaign / Scheduling product code in C2.2  

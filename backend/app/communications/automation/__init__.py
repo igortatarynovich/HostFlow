@@ -1,5 +1,12 @@
 """C2.2 Automation Engine — domain + pure evaluator (Intent-only; no module imports)."""
 
+from backend.app.communications.automation.emitter import (
+    EmitContext,
+    EmitResult,
+    automation_identity_for,
+    build_intent_request,
+    emit_from_evaluation,
+)
 from backend.app.communications.automation.errors import AutomationDomainError
 from backend.app.communications.automation.evaluator import (
     OUTCOME_FIRE,
@@ -90,4 +97,9 @@ __all__ = [
     "evaluate",
     "dry_run",
     "diagnostics",
+    "EmitContext",
+    "EmitResult",
+    "automation_identity_for",
+    "build_intent_request",
+    "emit_from_evaluation",
 ]
