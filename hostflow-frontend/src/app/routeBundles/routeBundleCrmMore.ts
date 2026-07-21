@@ -7,5 +7,6 @@ export { default as DocumentsRegistryPage } from '../../pages/DocumentsRegistryP
 export { default as DocumentsHubPage } from '../../pages/documents/DocumentsHubPage'
 export { default as AutomationsHubPage } from '../../pages/AutomationsHubPage'
 export { default as AutomationLogPage } from '../../pages/AutomationLogPage'
+export { default as AcquisitionActivityTimelinePage } from '../../pages/acquisition/AcquisitionActivityTimelinePage'
 export { default as AutomationRulesPage } from '../../pages/AutomationRulesPage'
 export { default as FleetModulePage } from '../../pages/fleet/FleetModulePage'

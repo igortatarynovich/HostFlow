@@ -262,7 +262,7 @@ This keeps catalog validation, idempotency, envelope checks, and future telemetr
 
 ### PR-3 — Timeline Read API
 
-**Branch:** `feat/acquisition-stage-3e-pr3-activity-read-api` (**in progress**).
+**Branch:** `feat/acquisition-stage-3e-pr3-activity-read-api` (**PR #132** — merged).
 
 - `GET /api/v1/platform/acquisition-activity` (read-only)  
 - Flight activity / Campaign roll-up via filters (not a second store)  
@@ -274,11 +274,13 @@ This keeps catalog validation, idempotency, envelope checks, and future telemetr
 
 ### PR-4 — Thin Operator UI
 
-- Single Activity Timeline surface  
-- Grouping + human labels (UI maps `event_type`)  
-- Links to related objects  
-- Technical details on expand  
-- **No** edit/delete  
+**Branch:** `feat/acquisition-stage-3e-pr4-activity-thin-ui` (**in progress**).
+
+- Single Activity Timeline surface at `/app/acquisition/activity`  
+- Displays existing Read API only (no local event reconstruction)  
+- Human labels from `event_type`; related ids as chips; technical payload on expand  
+- Cursor pagination via `next_cursor`  
+- **No** edit/delete / emit / write API  
 - **No** charts / full analytics / budget editor  
 - **No** Launch / Pause / Resume, Campaign/Flight CRUD, Endpoint management, or runtime action buttons — those are **Stage 4**
 
@@ -331,4 +333,5 @@ Stage 3E is **complete** when Activity Timeline observability is shipped end-to-
 
 - 2026-07-21: Opened as Product Track (Flight Timeline draft).  
 - 2026-07-21: **Canon correction** — `AcquisitionActivityEvent`; Timeline ≠ event bus; PR 1–4; provider-agnostic; single store / many views. Filename → `acquisition-stage-3e-activity-timeline.md`.  
-- 2026-07-21: **Boundary lock** — Stage 3E = observability only (ends at PR-4); Flight Runtime = Stage 4 (queued).
+- 2026-07-21: **Boundary lock** — Stage 3E = observability only (ends at PR-4); Flight Runtime = Stage 4 (queued).  
+- 2026-07-21: PR-3 Read API merged (#132); PR-4 Thin UI branch opened.

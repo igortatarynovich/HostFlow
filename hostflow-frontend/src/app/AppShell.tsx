@@ -71,6 +71,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     path === CRM_APP_PATHS.automations ||
     path === CRM_APP_PATHS.automationRules ||
     path === CRM_APP_PATHS.automationLog ||
+    path === CRM_APP_PATHS.acquisitionActivity ||
     path.startsWith(`${CRM_APP_PATHS.automationAreaPrefix}/`)
   const isCalendarOrDocumentsPage =
     path === CRM_APP_PATHS.calendar || path === CRM_APP_PATHS.documents
