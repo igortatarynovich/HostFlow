@@ -55,6 +55,18 @@ for _name, _module in list(_sys.modules.items()):
     if _name.startswith("app.models.") and _module is not None:
         _sys.modules.setdefault(f"backend.{_name}", _module)
 
+# Campaign bindings import models via backend.app.models.*; without a forced alias the
+# /app/backend symlink can load a second copy on a second SQLAlchemy Base and break FKs.
+for _acq_model in (
+    "campaign",
+    "tenant_lead_form",
+    "intake_routing",
+    "acquisition_activity_event",
+):
+    _app_mod_name = f"app.models.{_acq_model}"
+    importlib.import_module(_app_mod_name)
+    _sys.modules[f"backend.app.models.{_acq_model}"] = _sys.modules[_app_mod_name]
+
 _DOCUMENTS_DISABLED = bool(int(os.environ.get("DOCUMENTS_DISABLED", "0")))
 
 try:
