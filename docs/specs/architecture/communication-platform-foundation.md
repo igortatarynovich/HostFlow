@@ -64,7 +64,7 @@ Do **not** promote to Epic C complete after C1 or C2 alone.
 ## Next
 
 1. **C1 — Communication Inbox Workspace** — ✅ closed 2026-07-21 ([evidence](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21))  
-2. **C2 — Capability epic** — **active C2.2** ([epic](../tasks/epic-c2-communication-campaigns.md) · [C2.1 ✅](../tasks/c2-1-template-platform.md) · [C2.2](../tasks/c2-2-automation-engine.md)); Intent-only; no Thread model changes  
+2. **C2 — Capability epic** — **active C2.3** ([epic](../tasks/epic-c2-communication-campaigns.md) · [C2.1–C2.2 ✅](../tasks/c2-2-automation-engine.md) · [C2.3](../tasks/c2-3-campaign-orchestrator.md)); Intent-only; no Thread model changes  
 3. **Epic C Complete Gate** — [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md)  
 4. **A2 Platform Governance Review**  
 5. Acquisition (Stage 3 + Meta) → Forms → Entity Workspace → Documents → Billing → AI  

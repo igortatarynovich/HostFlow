@@ -38,6 +38,7 @@ const SETTINGS_PATH_PREFIX_TAB: { prefix: string; tab: SettingsChromeTabKey }[] 
   { prefix: CRM_APP_PATHS.settingsCommunicationsQueue, tab: 'automations' },
   { prefix: CRM_APP_PATHS.settingsCommunicationsSla, tab: 'automations' },
   { prefix: CRM_APP_PATHS.settingsCommunicationsTemplates, tab: 'integrations' },
+  { prefix: CRM_APP_PATHS.settingsCommunicationsAutomation, tab: 'automations' },
   { prefix: CRM_APP_PATHS.settingsCommunications, tab: 'integrations' },
   { prefix: CRM_APP_PATHS.settingsIntegrationsMeta, tab: 'integrations' },
   { prefix: CRM_APP_PATHS.settingsIntegrationsGoogle, tab: 'integrations' },

@@ -909,6 +909,7 @@
         "settings_communications_queue": "Kolejka i routing",
         "settings_communications_sla": "SLA komunikacji",
         "settings_communications_templates": "Szablony komunikacji",
+        "settings_communications_automation": "Automatyzacja komunikacji",
         "settings_ttv": "Raport TTV",
         "profile": "Profil",
         "logout": "Wyloguj",
@@ -11347,6 +11348,10 @@
           "label": "Szablony komunikacji",
           "description": "Wersjonowane treści powiązane z Intent (publish/preview/historia). To nie snippety messengerów ani maile leadów."
         },
+        "communications_automation": {
+          "label": "Automatyzacja komunikacji",
+          "description": "Event → Rules → Intent. To nie legacy przypomnienia i nie ścieżka wysyłki."
+        },
         "audit": {
           "label": "Dziennik audytu",
           "description": "Przeglądaj działania administratorów."
@@ -11442,7 +11447,8 @@
       "open_email": "Wychodzący SMTP",
       "open_queue": "Kolejka inbox i routing",
       "open_sla": "SLA komunikacji",
-      "open_templates": "Szablony komunikacji"
+      "open_templates": "Szablony komunikacji",
+      "open_automation": "Automatyzacja komunikacji"
     },
     "communications_messengers": {
       "title": "Kanały komunikatorów",
@@ -11645,6 +11651,38 @@
         "channel": "Kanał",
         "assigned": "Przydzielono",
         "assignee": "Osoba"
+      }
+    },
+    "communications_automation": {
+      "title": "Automatyzacja komunikacji",
+      "subtitle": "Event → Rules → Intent. To nie legacy przypomnienia i nie ścieżka wysyłki.",
+      "header_kicker": "automatyzacja",
+      "include_archived": "Pokaż zarchiwizowane",
+      "list_title": "Reguły",
+      "empty": "Brak reguł automatyzacji.",
+      "select_prompt": "Wybierz lub utwórz regułę.",
+      "create": {
+        "submit": "Utwórz draft"
+      },
+      "actions": {
+        "back": "← Administracja komunikacji",
+        "templates": "Szablony komunikacji"
+      },
+      "notices": {
+        "created": "Reguła utworzona",
+        "draft_saved": "Draft zapisany",
+        "published": "Opublikowano",
+        "archived": "Zarchiwizowano"
+      },
+      "errors": {
+        "load": "Nie udało się wczytać reguł automatyzacji",
+        "history": "Nie udało się wczytać historii",
+        "create": "Nie udało się utworzyć reguły",
+        "save_draft": "Nie udało się zapisać draftu",
+        "publish": "Nie udało się opublikować",
+        "enable": "Nie udało się zmienić flagi enabled",
+        "archive": "Nie udało się zarchiwizować",
+        "dry_run": "Dry-run nie powiódł się"
       }
     },
     "communications_templates": {

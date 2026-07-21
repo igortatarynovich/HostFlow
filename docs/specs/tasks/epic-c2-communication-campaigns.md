@@ -112,8 +112,8 @@ without returning to Thread / Commands / ThreadContext architecture.
 | Slice | Doc | First responsibility |
 |-------|-----|----------------------|
 | **C2.1** | [c2-1-template-platform.md](c2-1-template-platform.md) ✅ | Template Registry product (PR #110–#114) |
-| **C2.2** | [c2-2-automation-engine.md](c2-2-automation-engine.md) **active** | Event → Rules → Policy → Intent |
-| **C2.3** | *(after C2.2)* | Audience + plan → Intent |
+| **C2.2** | [c2-2-automation-engine.md](c2-2-automation-engine.md) ✅ | Event → Rules → Policy → Intent (PR #116–#120) |
+| **C2.3** | [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) **active** | Audience + plan → Intent |
 | **C2.4** | *(after C2.3)* | Schedule → Intent → same pipeline |
 | **Gate** | [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md) | Epic C — complete |
 
@@ -139,7 +139,7 @@ Preview uses the **same render path** as prepare-send. Frontend is a thin client
 
 ---
 
-## C2.2 — Automation Engine ← **active**
+## C2.2 — Automation Engine ✅
 
 ```text
 Event → Rules → Policy → CommunicationIntent
@@ -150,13 +150,15 @@ Automation does **not** know SMTP, Gmail, WhatsApp, or Thread.
 
 It evaluates rules and emits Intent. Pipeline + Commands do the rest.
 
-Slice plan: [c2-2-automation-engine.md](c2-2-automation-engine.md).
+Slice: [c2-2-automation-engine.md](c2-2-automation-engine.md) (PR #116–#120).
 
 ---
 
-## C2.3 — Campaigns
+## C2.3 — Campaigns ← **active**
 
 Campaign is an **orchestrator**, not a sender.
+
+Slice plan: [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md).
 
 | Campaign does | Campaign does **not** |
 |---------------|------------------------|
@@ -204,10 +206,10 @@ Settings / signatures / compliance UI may share **Настройки → Ком�
 ## Definition of Done (epic)
 
 - [x] C2.1 Template Platform shipped under Intent-only + capability-isolation gates  
-- [ ] C2.2 Automation emits Intent only (no provider / Thread knowledge)  
+- [x] C2.2 Automation emits Intent only (no provider / Thread knowledge)  
 - [ ] C2.3 Campaigns orchestrate Intent only  
 - [ ] C2.4 Scheduling emits Intent into the ordinary pipeline  
 - [ ] Contract tests enforce capability isolation + no second pipeline  
 - [ ] [Epic C Complete Gate](../gates/epic-c-complete-gate.md) ready for evidence pass  
 
-**Active now:** **C2.2 Automation Engine** — [c2-2-automation-engine.md](c2-2-automation-engine.md).
+**Active now:** **C2.3 Campaign Orchestrator** — [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md).

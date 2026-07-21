@@ -15,3 +15,4 @@ export { default as MessengerIntegrationChannelPage } from '../../pages/admin/Me
 export { default as CommunicationsQueueSettingsPage } from '../../pages/admin/CommunicationsQueueSettingsPage'
 export { default as CommunicationsSlaSettingsPage } from '../../pages/admin/CommunicationsSlaSettingsPage'
 export { default as CommunicationTemplatesPage } from '../../pages/admin/CommunicationTemplatesPage'
+export { default as CommunicationAutomationRulesPage } from '../../pages/admin/CommunicationAutomationRulesPage'
