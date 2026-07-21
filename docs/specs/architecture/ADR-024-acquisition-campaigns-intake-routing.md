@@ -97,7 +97,7 @@ Campaign                         ← долгоживущая инициатив
 │     ├── Endpoints (links)
 │     └── Results (wave facts)
 ├── Attribution / Analytics      ← roll-up по Flight → Campaign
-├── Timeline                     ← общая история инициативы
+├── Activity Timeline            ← AcquisitionActivityEvent (единый store; views по фильтрам)
 └── Outcomes                     ← progress к цели (кванты)
 ```
 
@@ -179,7 +179,7 @@ Template → Campaign → Flight → Results → Outcomes
 | Объект | Владелец |
 |--------|----------|
 | CampaignTemplate (playbook / recipe; instantiate → Campaign) | Shared Acquisition (после V1 foundation) |
-| Campaign, CampaignGoal (type + primary KPI), CampaignTarget, CampaignRun (Flight), Channel binding, Ad / Creative (Asset), Audience (definition), Budget, Attribution, Campaign Timeline | Shared Acquisition |
+| Campaign, CampaignGoal (type + primary KPI), CampaignTarget, CampaignRun (Flight), Channel binding, Ad / Creative (Asset), Audience (definition), Budget, Attribution, Acquisition Activity Timeline (`AcquisitionActivityEvent`) | Shared Acquisition |
 | Provider account / OAuth / webhook credentials | Shared Integrations (+ Acquisition UX) |
 | **Form** (template, versions, public link, consents) | **Shared Forms** ([`ADR-007`](ADR-007-forms-platform-capability.md)) — **Core Platform Module** |
 | **Endpoint** (Meta Lead Form, HostFlow Public Form, API, Webhook, WhatsApp, Telegram, QR, Mobile App, …) | Shared Intake association on Flight; HostFlow Form SoT remains Forms |
@@ -375,18 +375,44 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 
 Results поставляют owning modules (атрибуция к Flight → Campaign); Outcomes объявляются на Campaign в рамках Goal Type / Primary KPI и считаются по attributed Results. Intelligence агрегирует и замыкает цикл на Growth / следующий Flight / Template.
 
-### 10. Campaign Timeline
+### 10. Acquisition Activity Timeline
 
-Кампания — **управляемый проект с историей**, не только набор настроек. Единая шкала:
+Кампания и её волны — **управляемый поток с историей**, не только набор настроек. Каноническая проекция истории — **Acquisition Activity Timeline**.
 
-- создание кампании;  
-- подключение канала (Meta/…);  
-- смена креатива / формы / бюджета / аудитории;  
-- первые submissions / leads;  
-- первый Candidate / Inquiry;  
-- первый hire / первая сделка.
+**Владение:** Acquisition. Агрегат: **`AcquisitionActivityEvent`**.  
+**Хранилище:** одна таблица `acquisition_activity_events` (не отдельный Flight journal и не копия Campaign journal).
 
-События Timeline — append-only audit/projection; бизнес-объекты по-прежнему deep-link через Stage 6C.
+```text
+Campaign → Flight → Endpoint → Submission → Result → Outcome
+```
+
+Flight — основной операционный контекст для большинства событий (`flight_id` часто заполнен), но **не** владелец модели. События уровня Campaign / Endpoint / Routing / Outcome не должны искусственно привязываться к Flight и не требуют параллельных журналов.
+
+**Поля (канон):** `id`, `tenant_id`, `campaign_id`, nullable `flight_id` / `endpoint_id` / `submission_id` / `result_id` / `outcome_id`, `event_type` (closed catalog), `event_version`, `occurred_at`, `recorded_at`, `actor_type` (`user` \| `system` \| `automation` \| `provider`), nullable `actor_id` / `provider`, `source_event_id` (идемпотентность), `correlation_id`, `causation_id`, typed `payload` (не free-text UI copy).
+
+**Неизменяемость:**
+
+> Acquisition Activity Timeline is append-only and immutable.
+
+Запрещены update/delete, мутация `payload`, «исправление» старой строки. Коррекция состояния = **новое** событие (`BudgetChanged`, `EndpointCorrected`, `OutcomeReclassified`, …). Enforcement: append-only service/repository (без публичных update/delete) + DB path.
+
+**Timeline ≠ event bus / command source:**
+
+```text
+Domain operation → Domain Event → consumers
+                      ├── Activity Timeline projector
+                      ├── Automation Engine
+                      ├── analytics read models
+                      └── notifications
+```
+
+Timeline — долговечная **аудит-проекция**. Domain Event / Outbox — доставка и интеграция. Automation Engine **не** читает таблицу Timeline как очередь.
+
+**Read-модели** (фильтры, не копии): Flight Activity · Campaign Activity · Submission / Result / Outcome trace.
+
+**Provider-agnostic:** Meta / TikTok / Google / LinkedIn / Landing / API / Referral пишут в один контракт; `provider` — optional metadata, не SoT архитектуры.
+
+Ссылки на Lead / Candidate / Application / Inquiry **не** передают Acquisition владение этими объектами (deep-link / ids only). Нормативный трекер среза: [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md).
 
 ### 11. Automation Campaigns
 
@@ -398,13 +424,13 @@ Results поставляют owning modules (атрибуция к Flight → Ca
 
 Acquisition **не** дублирует automation engine: триггеры/actions регистрируются как automation capability над Campaign objects.
 
-### 12. UI: пять экранов (+ Timeline; Results не конечная точка)
+### 12. UI: пять экранов (+ Activity Timeline; Results не конечная точка)
 
 1. **Обзор** — проекты, статусы, расходы, progress к Outcomes; (позже) список Flight.  
 2. **Конструктор** — **Goal Type + Primary KPI**, targets/context, Flight dates/budget, channels, audiences, route_intent, **Outcome** quanta; (позже) «создать из Template».  
 3. **Assets / Объявления** — тексты, креативы, placements, variants (привязка к Flight).  
 4. **Forms** — выбор/линк переиспользуемых форм (Forms SoT).  
-5. **Performance** — channel stats, воронка, **Results**, **Outcomes** (goal attainment), экономика + **Timeline**; сравнение Flight когда волн > 1.
+5. **Performance** — channel stats, воронка, **Results**, **Outcomes** (goal attainment), экономика + **Activity Timeline**; сравнение Flight когда волн > 1.
 
 Экран «Результаты» **не** является конечной точкой модели: без Outcomes нельзя ответить «достигли ли цели». В UI можно объединять Results+Outcomes во вкладке Performance, но в данных и каноне это **разные** понятия.
 
@@ -426,7 +452,7 @@ Campaign Manager (growth engine)
     │     └── Budget (wave)
     ├── Attribution
     ├── Analytics
-    ├── Timeline
+    ├── Activity Timeline          ← AcquisitionActivityEvent (единый store)
     ├── Results
     └── Outcomes
 ```
@@ -451,8 +477,8 @@ Template → Campaign → Flight → Results → Outcomes
 | **`route_intent`** | Что создать во Intake после submission |
 | **Result** | **Что произошло** — факт/объект; атрибуция к Flight |
 | **Outcome** | **Насколько достигнута цель** — измеримый progress в рамках Goal Type / Primary KPI |
-| **Timeline** | История изменений и milestone-событий инициативы (across Flights) |
-| **Automation** | Реакция через platform Automations (ADR-019) — **не** отдельный campaign engine |
+| **Activity Timeline** | Append-only `AcquisitionActivityEvent` store; Campaign/Flight/Submission views = filters, not copies |
+| **Automation** | Реакция через platform Automations (ADR-019) на **Domain Events** — **не** чтение Timeline как очереди; **не** отдельный campaign engine |
 
 ```text
 Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
@@ -478,7 +504,7 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 | **3B** ✅ | Endpoint binding (V1: Form + Intake Source) | **DONE.** V1: `CampaignRun ↔ TenantLeadForm` + `↔ IntakeSourceProfile` as transitional Endpoint specializations; uses-not-owns. **Canon:** CampaignRun ↔ Endpoint (HostFlow Public Form = one type) — [`ADR-007`](ADR-007-forms-platform-capability.md) |
 | **3C** ✅ | Universal submission routing | **DONE.** Submission from any Endpoint → Form∪Profile Flight resolve → `route_intent` → Application \| Inquiry; unresolved → disposition-only queue. **Routing once per new Lead** |
 | **3D** ✅ | Outcome attribution and basic analytics | **Epic P COMPLETE** — [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md). Chain: Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI |
-| **3E** | Timeline and automation events | Timeline событий; emit events для Automations (полные Automation Campaigns — позже) |
+| **3E** | Activity Timeline & runtime observability | **ACTIVE (Product Track)** — [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md). `AcquisitionActivityEvent` + catalog; PR-1 foundation → PR-2 instrumentation → PR-3 read API → PR-4 thin UI; Timeline ≠ Automation bus; closes V1 vertical |
 
 #### Stage 3A Definition of Done — met
 
@@ -540,9 +566,9 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 5. **Contract tests** — PR-1…PR-3 suites + E2E; no xfail.  
 6. **Unlock** — Forms Sprint 1 **UNLOCKED**; Forms Builder **LOCKED**.
 
-**Вне 3D:** Timeline (3E); multi-Flight; Template; Forms Builder; manual attribution API; KPI dashboard UI.
+**Вне 3D:** Activity Timeline (3E); multi-Flight; Template; Forms Builder; manual attribution API; KPI dashboard UI.
 
-#### Минимальный вертикальный срез V1 (3A→3D, базовый Timeline в 3E)
+#### Минимальный вертикальный срез V1 (3A→3D, базовый Activity Timeline в 3E)
 
 Должен доказать **всю** цепочку:
 
@@ -552,7 +578,7 @@ Campaign + Goal Type + Primary KPI → Target → Flight(1) → Endpoint → Sub
   → Result attribution (Flight → Campaign) → Outcome progress
 ```
 
-**В минимальный V1 входит:** Campaign; **Goal Type + Primary KPI**; Targets; **один CampaignRun**; **Endpoints** (V1: Form + Intake Source specializations); Submission; routing в Recruitment **и** Sales; базовые spend/lead metrics; Result → Flight → Campaign; хотя бы одно **Outcome** + progress; Timeline событий.
+**В минимальный V1 входит:** Campaign; **Goal Type + Primary KPI**; Targets; **один CampaignRun**; **Endpoints** (V1: Form + Intake Source specializations); Submission; routing в Recruitment **и** Sales; базовые spend/lead metrics; Result → Flight → Campaign; хотя бы одно **Outcome** + progress; **Acquisition Activity Timeline** (`AcquisitionActivityEvent`, append-only).
 
 **Места в модели уже закреплены, но идут после вертикали V1:** **CampaignTemplate** (instantiate playbook); multi-Flight UX / сравнение волн; Audience; Assets; полноценный Budget; расширенная Intelligence; create/manage ads in-provider (V2); Automation Campaigns / AI (V3).
 
@@ -610,3 +636,4 @@ V1 **не** заменяет Meta Ads Manager.
   
 - 2026-07-18: Linked to **P-01…P-03** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)…[`ADR-027`](ADR-027-capability-composition.md)); capability catalog §0.1.  
 - 2026-07-19: Forms Builder MVP COMPLETE; **Canonical Intake Input Matrix** opened READY — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) (design gate before further routing runtime; not Stage 3E).
+- 2026-07-21: **Stage 3E ACTIVE (Product Track)** — Activity Timeline canon: `AcquisitionActivityEvent`, append-only immutable, Timeline ≠ Automation bus, single store / many views, PR 1–4 — [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md).

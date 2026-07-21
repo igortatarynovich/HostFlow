@@ -84,7 +84,7 @@ Campaign → Audience(s) → Flight → Channels
 3. **3C** ✅ — routing → Application | Inquiry (Submission before Decision Layer; routing once per Lead)  
 4. **3D** ✅ — **Epic P COMPLETE** — Result → Outcome → KPI — [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md) · E2E `test_stage_3d_epic_p_contract.py`  
 5. **Canonical Input Matrix** ✅ **READY** (design) — [`../specs/architecture/intake-canonical-input-matrix.md`](../specs/architecture/intake-canonical-input-matrix.md) · epic [`../specs/tasks/intake-canonical-input-matrix.md`](../specs/tasks/intake-canonical-input-matrix.md) **ACTIVE** — freeze Source profile → Provider → Published form → `route_intent` → handoff → Destination **before** further routing runtime  
-6. **3E** — Timeline + automation events  
+6. **3E** — **ACTIVE (Product Track)** — Activity Timeline (`AcquisitionActivityEvent`) — [`../specs/tasks/acquisition-stage-3e-activity-timeline.md`](../specs/tasks/acquisition-stage-3e-activity-timeline.md)
 
 **Forms Builder MVP COMPLETE** (P2.1–P2.5). Forms P3 Publish UI **LOCKED**.  
 See [`capability-contract.md`](../specs/architecture/capability-contract.md).

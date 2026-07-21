@@ -319,7 +319,7 @@ Shared platform capabilities (Communications, Documents, Forms, Automations engi
    - **3B** ✅ **DONE** — Form + Intake Source binding (uses, not owns)
    - **3C** ✅ **DONE** — universal submission routing
    - **3D** outcome attribution + basic analytics ← next
-   - **3E** timeline + automation events
+   - **3E** Activity Timeline (`AcquisitionActivityEvent`) — Product Track active; see ADR-024 §10 / [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md)
 
 V1 = vertical chain through 3A–3E (minimal; single Flight); Audience/Assets/full Budget/multi-Flight later. Not a Marketing product module.
 
