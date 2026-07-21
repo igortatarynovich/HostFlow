@@ -1,8 +1,9 @@
-"""C2.3 Campaign Orchestrator — domain + audience + Intent emitter.
+"""C2.3 Campaign Orchestrator — domain + audience + emitter + run orchestration.
 
 PR-1: entities + draft/publish + run snapshot.
 PR-2: audience resolver (definition → snapshot).
-PR-3: Intent emission per allowed RunItem. No API / UI.
+PR-3: Intent emission per allowed RunItem.
+PR-4: Run orchestration (drive items; isolate failures). No API / UI.
 """
 
 from backend.app.communications.campaign.audience import (
@@ -44,6 +45,14 @@ from backend.app.communications.campaign.lifecycle import (
     publish_draft,
     update_draft_content,
     upsert_draft_audience_definition,
+)
+from backend.app.communications.campaign.orchestrator import (
+    RunOrchestrationResult,
+    RunSummary,
+    cancel_campaign_run,
+    execute_campaign_run,
+    mark_pending_items_ready,
+    summarize_items,
 )
 from backend.app.communications.campaign.payload import (
     audience_definition_to_payload,
@@ -151,4 +160,10 @@ __all__ = [
     "build_intent_request",
     "emit_run_item",
     "emit_run_items",
+    "RunSummary",
+    "RunOrchestrationResult",
+    "summarize_items",
+    "mark_pending_items_ready",
+    "cancel_campaign_run",
+    "execute_campaign_run",
 ]
