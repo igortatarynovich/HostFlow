@@ -7,12 +7,14 @@ from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition import binding_service, campaign_service
 from backend.app.acquisition.campaign_service import CampaignServiceError
+from backend.app.acquisition.flights import runtime_commands
+from backend.app.acquisition.flights.runtime_commands import FlightRuntimeError
 from backend.app.api.v1.utils.own_company import resolve_own_company_id_for_session
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.constants.campaign_registries import load_campaign_registries
@@ -150,6 +152,20 @@ class CampaignFlightOut(BaseModel):
     intake_sources: List[CampaignIntakeSourceLinkOut] = Field(default_factory=list)
 
 
+class FlightUpdateIn(BaseModel):
+    """Metadata-only Flight update — lifecycle status is command-only (Stage 4 PR-1)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    starts_at: Optional[datetime] = None
+    ends_at: Optional[datetime] = None
+
+
+class FlightCommandIn(BaseModel):
+    reason: Optional[str] = None
+
+
 class CampaignGoalOut(BaseModel):
     """Logical CampaignGoal (ADR-024) — Goal Type + Primary KPI."""
 
@@ -173,6 +189,18 @@ class CampaignOut(BaseModel):
     updated_at: Optional[datetime] = None
     targets: List[CampaignTargetOut] = Field(default_factory=list)
     flights: List[CampaignFlightOut] = Field(default_factory=list)
+
+
+class FlightCommandOut(BaseModel):
+    command: str
+    campaign: CampaignOut
+    flight_id: str
+    flight_status: str
+    campaign_status: str
+    flight_event_id: str
+    flight_event_type: str
+    campaign_event_id: Optional[str] = None
+    campaign_event_type: Optional[str] = None
 
 
 async def _form_display_map(
@@ -330,6 +358,57 @@ async def _campaign_out(db: AsyncSession, campaign: Campaign) -> CampaignOut:
 
 def _raise_service(exc: CampaignServiceError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+def _raise_runtime(exc: FlightRuntimeError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+async def _flight_command(
+    *,
+    command: str,
+    campaign_id: str,
+    flight_id: str,
+    payload: FlightCommandIn,
+    db_tenant,
+    ctx: UserCtx,
+    x_own_company_id: Optional[str],
+) -> FlightCommandOut:
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
+    try:
+        result = await runtime_commands.execute_flight_command(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            flight_id=flight_id,
+            command=command,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            reason=payload.reason,
+            own_company_id=own_company_id,
+        )
+        await db.commit()
+    except FlightRuntimeError as exc:
+        await db.rollback()
+        _raise_runtime(exc)
+    campaign_out = await _campaign_out(db, result.campaign)
+    return FlightCommandOut(
+        command=result.command,
+        campaign=campaign_out,
+        flight_id=str(result.flight.id),
+        flight_status=str(result.flight.status),
+        campaign_status=str(result.campaign.status),
+        flight_event_id=str(result.flight_event.id),
+        flight_event_type=str(result.flight_event.event_type),
+        campaign_event_id=(
+            str(result.campaign_event.id) if result.campaign_event is not None else None
+        ),
+        campaign_event_type=(
+            str(result.campaign_event.event_type) if result.campaign_event is not None else None
+        ),
+    )
 
 
 async def _resolve_company(
@@ -766,7 +845,208 @@ async def patch_intake_source_link_current_flight(
     return await _campaign_out(db, campaign)
 
 
-# Explicit Flight paths (V1 = one Flight; same handlers with flight_id)
+# Stage 4 PR-1 — Flight Runtime: read / metadata / lifecycle commands
+
+
+@router.get(
+    "/{campaign_id}/flights",
+    response_model=List[CampaignFlightOut],
+    dependencies=_READ,
+)
+async def list_flights_endpoint(
+    campaign_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        campaign, _flights = await runtime_commands.list_flights(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            own_company_id=own_company_id,
+        )
+    except FlightRuntimeError as exc:
+        _raise_runtime(exc)
+    out = await _campaign_out(db, campaign)
+    return out.flights
+
+
+@router.get(
+    "/{campaign_id}/flights/{flight_id}",
+    response_model=CampaignFlightOut,
+    dependencies=_READ,
+)
+async def get_flight_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        campaign, flight = await runtime_commands.get_flight(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            flight_id=flight_id,
+            own_company_id=own_company_id,
+        )
+    except FlightRuntimeError as exc:
+        _raise_runtime(exc)
+    out = await _campaign_out(db, campaign)
+    for item in out.flights:
+        if item.id == str(flight.id):
+            return item
+    raise HTTPException(status_code=404, detail="Flight not found")
+
+
+@router.patch(
+    "/{campaign_id}/flights/{flight_id}",
+    response_model=CampaignFlightOut,
+    dependencies=_WRITE,
+)
+async def update_flight_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    payload: FlightUpdateIn,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    fields = payload.model_dump(exclude_unset=True)
+    if "status" in fields:
+        raise HTTPException(
+            status_code=422,
+            detail="Flight status cannot be changed via PATCH; use launch/pause/resume/complete",
+        )
+    try:
+        campaign, flight = await runtime_commands.update_flight_metadata(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            flight_id=flight_id,
+            own_company_id=own_company_id,
+            name=fields["name"] if "name" in fields else None,
+            starts_at=fields.get("starts_at") if "starts_at" in fields else None,
+            ends_at=fields.get("ends_at") if "ends_at" in fields else None,
+            clear_starts_at="starts_at" in fields and fields.get("starts_at") is None,
+            clear_ends_at="ends_at" in fields and fields.get("ends_at") is None,
+        )
+        await db.commit()
+    except FlightRuntimeError as exc:
+        await db.rollback()
+        _raise_runtime(exc)
+    out = await _campaign_out(db, campaign)
+    for item in out.flights:
+        if item.id == str(flight.id):
+            return item
+    raise HTTPException(status_code=404, detail="Flight not found")
+
+
+@router.post(
+    "/{campaign_id}/flights/{flight_id}/launch",
+    response_model=FlightCommandOut,
+    dependencies=_WRITE,
+)
+async def launch_flight_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    payload: FlightCommandIn | None = None,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    return await _flight_command(
+        command="launch",
+        campaign_id=campaign_id,
+        flight_id=flight_id,
+        payload=payload or FlightCommandIn(),
+        db_tenant=db_tenant,
+        ctx=ctx,
+        x_own_company_id=x_own_company_id,
+    )
+
+
+@router.post(
+    "/{campaign_id}/flights/{flight_id}/pause",
+    response_model=FlightCommandOut,
+    dependencies=_WRITE,
+)
+async def pause_flight_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    payload: FlightCommandIn | None = None,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    return await _flight_command(
+        command="pause",
+        campaign_id=campaign_id,
+        flight_id=flight_id,
+        payload=payload or FlightCommandIn(),
+        db_tenant=db_tenant,
+        ctx=ctx,
+        x_own_company_id=x_own_company_id,
+    )
+
+
+@router.post(
+    "/{campaign_id}/flights/{flight_id}/resume",
+    response_model=FlightCommandOut,
+    dependencies=_WRITE,
+)
+async def resume_flight_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    payload: FlightCommandIn | None = None,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    return await _flight_command(
+        command="resume",
+        campaign_id=campaign_id,
+        flight_id=flight_id,
+        payload=payload or FlightCommandIn(),
+        db_tenant=db_tenant,
+        ctx=ctx,
+        x_own_company_id=x_own_company_id,
+    )
+
+
+@router.post(
+    "/{campaign_id}/flights/{flight_id}/complete",
+    response_model=FlightCommandOut,
+    dependencies=_WRITE,
+)
+async def complete_flight_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    payload: FlightCommandIn | None = None,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    return await _flight_command(
+        command="complete",
+        campaign_id=campaign_id,
+        flight_id=flight_id,
+        payload=payload or FlightCommandIn(),
+        db_tenant=db_tenant,
+        ctx=ctx,
+        x_own_company_id=x_own_company_id,
+    )
+
+
+# Explicit Flight binding paths (V1 = one Flight; same handlers with flight_id)
 
 
 @router.post(
