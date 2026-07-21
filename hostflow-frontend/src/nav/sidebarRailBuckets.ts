@@ -92,6 +92,8 @@ export const SIDEBAR_HUB_NAV_ITEM_KEYS = [
   'settings-communications-messengers',
   'settings-communications-queue',
   'settings-communications-sla',
+  'settings-communications-templates',
+  'settings-communications-automation',
   'settings-ruleset',
   'settings-audit',
 ] as const

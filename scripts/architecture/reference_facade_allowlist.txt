@@ -4,6 +4,7 @@ backend/app/services/reference_service_facade.py
 backend/app/services/document_applicability_resolver.py
 backend/app/services/document_type_runtime_resolver.py
 backend/app/services/document_reference_sync.py
+backend/app/services/document_type_version_assignment_resolver.py
 
 # Temporary compatibility (must be removed by milestone)
 backend/app/services/hr_expected_documents_resolver.py
