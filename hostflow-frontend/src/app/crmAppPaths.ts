@@ -27,6 +27,10 @@ export function settingsLeadFormDetailPath(formId: string): string {
   return `${P.settingsLeadForms}/${encodeURIComponent(formId)}`
 }
 
+export function marketingCampaignPath(campaignId: string): string {
+  return `${P.marketing}/${encodeURIComponent(campaignId)}`
+}
+
 export function settingsLeadFormBuilderPath(formId: string): string {
   return `${settingsLeadFormDetailPath(formId)}/builder`
 }

@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app.db.base import Base
+from ..db.base import Base
 
 JSONType = SQLiteJSON().with_variant(JSONB, "postgresql")
 

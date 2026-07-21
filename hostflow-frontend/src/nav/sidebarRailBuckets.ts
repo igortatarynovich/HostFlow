@@ -35,8 +35,8 @@ export const SIDEBAR_AGENCY_RECRUITMENT_ORDER = [
 /** HR / Workforce owns Employee Workspace after handoff. */
 export const SIDEBAR_AGENCY_HR_ORDER = ['hr-workspace'] as const
 
-/** Sales owns Inquiry + ClientAccount — not Invoice/Payment model. */
-export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'clients'] as const
+/** Sales owns Inquiry + ClientAccount — not Invoice/Payment model. Marketing = Campaign/Flight workspace. */
+export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'marketing', 'clients'] as const
 
 /** Services owns catalog + service order lifecycle. */
 export const SIDEBAR_AGENCY_SERVICES_ORDER = ['service-orders', 'services'] as const

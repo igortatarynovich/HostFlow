@@ -14,6 +14,7 @@ export const SIDEBAR_ITEM_ICON: Partial<Record<string, SidebarIconSpec>> = {
   'recruitment-inbox': { kind: 'ui', id: 'отклики' },
   'hr-workspace': { kind: 'ui', id: 'сотрудники' },
   sales: { kind: 'ui', id: 'обращения' },
+  marketing: { kind: 'ui', id: 'конверсия' },
   candidates: { kind: 'ui', id: 'candidates' },
   'candidates-no-next-action': { kind: 'ui', id: 'человек' },
   clients: { kind: 'ui', id: 'клиенты' },

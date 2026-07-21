@@ -414,6 +414,11 @@ export function Sidebar({
     )
   }, [location.pathname, p])
 
+  const marketingRailActive = useMemo(() => {
+    const path = location.pathname
+    return path === p.marketing || path.startsWith(`${p.marketing}/`)
+  }, [location.pathname, p])
+
   const integrationsRailActive = useMemo(() => {
     const path = location.pathname
     return (
@@ -425,6 +430,7 @@ export function Sidebar({
 
   const navItemActive = (item: NavItem, isActive: boolean): boolean => {
     if (item.key === 'clients') return clientsNavActive
+    if (item.key === 'marketing') return marketingRailActive
     if (item.key === 'recruitment-searches') {
       return location.pathname.startsWith(p.recruitmentSearches)
     }

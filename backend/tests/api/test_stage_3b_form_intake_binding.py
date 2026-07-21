@@ -605,3 +605,52 @@ def test_association_models_have_no_provider_or_external_ref_columns():
     assert "external_ref" not in src_cols
     assert {"campaign_run_id", "form_id", "role", "is_active"} <= form_cols
     assert {"campaign_run_id", "intake_source_profile_id", "role", "is_active"} <= src_cols
+
+
+@pytest.mark.asyncio
+async def test_intake_source_options_for_marketing_picker(
+    client: AsyncClient,
+    auth_headers: dict,
+):
+    """Marketing setup needs named Meta sources — no raw profile JSON for operators."""
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    own_company_id = await _default_own_company_id(tenant_id)
+    meta_id = await _seed_intake_source(
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        provider="meta",
+        name="Meta leads PL",
+    )
+    await _seed_intake_source(
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        provider="public_intake",
+        name="Website",
+    )
+    other_oc = await _seed_own_company(tenant_id, name="Other marketing OC")
+    await _seed_intake_source(
+        tenant_id=tenant_id,
+        own_company_id=other_oc,
+        provider="meta",
+        name="Other company Meta",
+    )
+
+    hdrs = _company_headers(auth_headers, own_company_id)
+    all_resp = await client.get("/api/v1/platform/campaigns/intake-source-options", headers=hdrs)
+    assert all_resp.status_code == 200, all_resp.text
+    all_rows = all_resp.json()
+    assert any(row["id"] == meta_id and row["name"] == "Meta leads PL" for row in all_rows)
+    assert all(row["id"] != "" for row in all_rows)
+    assert not any(row["name"] == "Other company Meta" for row in all_rows)
+
+    meta_resp = await client.get(
+        "/api/v1/platform/campaigns/intake-source-options",
+        headers=hdrs,
+        params={"provider": "meta"},
+    )
+    assert meta_resp.status_code == 200
+    meta_rows = meta_resp.json()
+    assert meta_rows
+    assert all(row["provider"] == "meta" for row in meta_rows)
+    assert any(row["id"] == meta_id for row in meta_rows)
