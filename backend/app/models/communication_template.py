@@ -34,7 +34,25 @@ TEMPLATE_STATUS_ARCHIVED = "archived"
 VERSION_STATUS_DRAFT = "draft"
 VERSION_STATUS_PUBLISHED = "published"
 
-VARIABLE_TYPES = frozenset({"string", "text", "url", "email", "number", "bool", "datetime"})
+# Keep in sync with renderer.types.VARIABLE_TYPES (renderer is SoT for validation).
+VARIABLE_TYPES = frozenset(
+    {
+        "string",
+        "text",
+        "markdown",
+        "html",
+        "email",
+        "phone",
+        "url",
+        "date",
+        "datetime",
+        "currency",
+        "boolean",
+        "bool",
+        "number",
+        "enum",
+    }
+)
 
 
 class CommunicationTemplate(Base, TimestampMixin):

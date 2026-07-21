@@ -155,7 +155,7 @@ Renderer returns a **structured result** (content + diagnostics), not only excep
 |-----------------|--------|
 | `missing_variable` | Required var absent |
 | `wrong_type` | Value fails declared type |
-| `unknown_variable` | Extra var not in schema (policy: error or warn — document in PR-2) |
+| `unknown_variable` | Extra var not in schema (**error** — strict for reproducible sends) |
 | `channel_unsupported` | Channel not bound on this version |
 | `template_not_published` | Version is not published |
 | `version_archived` | Template/version not usable |
@@ -264,7 +264,8 @@ UI must not invent composition, channel policy, or versioning rules.
 ## Definition of Done (C2.1)
 
 - [x] PR-1 domain entities + publish immutability invariants (`feat/communication-c2-1-template-domain`)  
-- [ ] PR-2 pure renderer: Validate/Preview/Render/Diagnostics only; deterministic; typed vars; no SQL/ORM/Sender/Thread/Campaign/Automation  
+- [x] PR-2 pure renderer: Validate/Preview/Render/Diagnostics only; deterministic; typed vars; no SQL/ORM/Sender/Thread/Campaign/Automation (`feat/communication-c2-1-template-renderer`)  
+- [x] Unknown variables are **errors** (strict policy documented)
 - [ ] PR-3 registry is sole SoT for Intent/Channel/Capability → Template  
 - [ ] PR-4 Template API (draft/publish/archive/preview/versions/diff)  
 - [ ] PR-5 thin UI only after API  
