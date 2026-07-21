@@ -6,6 +6,7 @@ import {
   AuditLogPage,
   AutomationsHubPage,
   AutomationLogPage,
+  AcquisitionActivityTimelinePage,
   AutomationRulesPage,
   BillingWorkspacePage,
   CandidateCard,
@@ -259,6 +260,14 @@ export const NAV_ITEMS: NavItem[] = [
     path: CRM.automationLog,
     group: 'workflows',
     permission: 'notifications.view',
+  },
+  {
+    key: 'acquisition-activity',
+    labelKey: 'app.nav.items.acquisition_activity',
+    path: CRM.acquisitionActivity,
+    group: 'workflows',
+    /** Aligns with Acquisition campaign/timeline read surface (API enforces Role set). */
+    permission: 'vacancies.view',
   },
   {
     key: 'service-orders',
@@ -733,6 +742,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'leads', path: seg(CRM.leads), Component: LeadsPage, permission: 'leads.view' },
   { key: 'automations', path: seg(CRM.automations), Component: AutomationsHubPage, permission: 'notifications.view' },
   { key: 'automation-log', path: seg(CRM.automationLog), Component: AutomationLogPage, permission: 'notifications.view' },
+  {
+    key: 'acquisition-activity',
+    path: seg(CRM.acquisitionActivity),
+    Component: AcquisitionActivityTimelinePage,
+    permission: 'vacancies.view',
+  },
   { key: 'automation-rules', path: seg(CRM.automationRules), Component: AutomationRulesPage, permission: 'notifications.view' },
   { key: 'pipeline', path: seg(CRM.pipeline), Component: PipelineRedirect, permission: 'candidates.pipeline' },
   { key: 'settings', path: seg(CRM.settings), Component: SettingsLandingPage, permission: 'settings.view' },

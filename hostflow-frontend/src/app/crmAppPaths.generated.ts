@@ -60,6 +60,8 @@ export const CRM_APP_PATHS = {
   automationAreaPrefix: "/app/automation",
   automationRules: "/app/automation-rules",
   automationLog: "/app/automation-log",
+  /** Stage 3E read-only Acquisition Activity Timeline (platform campaigns). */
+  acquisitionActivity: "/app/acquisition/activity",
   inbox: "/app/inbox",
   /** Inbox with messages channel selected (legacy top-level /app/messages redirects here). */
   inboxMessagesScoped: "/app/inbox?channel=messages",

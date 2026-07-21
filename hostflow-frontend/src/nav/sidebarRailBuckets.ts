@@ -71,6 +71,7 @@ export function financeSidebarOrder(_showFinanceSection: boolean): readonly stri
 export const SIDEBAR_HUB_NAV_ITEM_KEYS = [
   'automation-rules',
   'automation-log',
+  'acquisition-activity',
   'leads-distribution',
   'leads-distribution-rules',
   'settings-billing',
@@ -92,6 +93,8 @@ export const SIDEBAR_HUB_NAV_ITEM_KEYS = [
   'settings-communications-messengers',
   'settings-communications-queue',
   'settings-communications-sla',
+  'settings-communications-templates',
+  'settings-communications-automation',
   'settings-ruleset',
   'settings-audit',
 ] as const

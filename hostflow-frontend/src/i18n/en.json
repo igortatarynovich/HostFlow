@@ -938,6 +938,7 @@
         "no_next_action": "No next action",
         "automations": "Automations",
         "automation_log": "Automation log",
+        "acquisition_activity": "Acquisition activity",
         "automation_rules": "Automation rules",
         "settings_hiring_gates": "Hiring pipeline gates",
         "settings_risk_intel": "Risk intelligence"

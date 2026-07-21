@@ -40,6 +40,9 @@ export const DocumentsRegistryPage = lazy(() => loadCrmMore().then((m) => ({ def
 export const DocumentsHubPage = lazy(() => loadCrmMore().then((m) => ({ default: m.DocumentsHubPage })))
 export const AutomationsHubPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationsHubPage })))
 export const AutomationLogPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationLogPage })))
+export const AcquisitionActivityTimelinePage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.AcquisitionActivityTimelinePage })),
+)
 export const AutomationRulesPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationRulesPage })))
 export const FleetModulePage = lazy(() => loadCrmMore().then((m) => ({ default: m.FleetModulePage })))
 
