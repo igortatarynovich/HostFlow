@@ -7,12 +7,14 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.activity import ACTIVITY_LIST_ORDER, list_activity_events
+from backend.app.acquisition.activity.catalog import ACTIVITY_EVENT_TYPES
 from backend.app.auth.deps import Role, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.acquisition_activity_event import AcquisitionActivityEvent
@@ -40,6 +42,20 @@ _READ = [
 _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
 
+_TIME_AFTER_DESC = (
+    "Exclusive lower bound on occurred_at (events with occurred_at > this value)."
+)
+_TIME_BEFORE_DESC = (
+    "Exclusive upper bound on occurred_at (events with occurred_at < this value)."
+)
+_CURSOR_AT_DESC = (
+    "Cursor: occurred_at of the last item from the previous page. "
+    "Must be paired with after_id. Selects rows strictly after (occurred_at, id)."
+)
+_CURSOR_ID_DESC = (
+    "Cursor: id of the last item from the previous page. Must be paired with after_occurred_at."
+)
+
 
 class ActivityEventOut(BaseModel):
     id: str
@@ -64,7 +80,7 @@ class ActivityEventOut(BaseModel):
 
 
 class ActivityCursorOut(BaseModel):
-    """Opaque-enough cursor: last row's (occurred_at, id) for stable pagination."""
+    """Cursor: last row's (occurred_at, id) for stable keyset pagination."""
 
     occurred_at: datetime
     id: str
@@ -74,6 +90,21 @@ class ActivityListOut(BaseModel):
     items: list[ActivityEventOut]
     next_cursor: Optional[ActivityCursorOut] = None
     order: tuple[str, str] = ACTIVITY_LIST_ORDER
+
+
+def _require_uuid(value: str | None, *, field: str) -> str | None:
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    try:
+        return str(UUID(raw))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{field} must be a valid UUID",
+        ) from exc
 
 
 def _to_out(row: AcquisitionActivityEvent) -> ActivityEventOut:
@@ -105,21 +136,30 @@ async def list_acquisition_activity(
     db_tenant: tuple[AsyncSession, str] = Depends(get_db_with_tenant),
     campaign_id: Optional[str] = Query(default=None),
     flight_id: Optional[str] = Query(default=None),
-    endpoint_id: Optional[str] = Query(default=None),
+    endpoint_id: Optional[str] = Query(
+        default=None,
+        description="Opaque endpoint id (e.g. form:{uuid} / intake_source:{uuid}).",
+    ),
     submission_id: Optional[str] = Query(default=None),
-    result_id: Optional[str] = Query(default=None),
+    result_id: Optional[str] = Query(
+        default=None,
+        description="Opaque Result id (not necessarily a UUID).",
+    ),
     outcome_id: Optional[str] = Query(default=None),
-    event_type: Optional[list[str]] = Query(default=None),
-    occurred_after: Optional[datetime] = Query(default=None),
-    occurred_before: Optional[datetime] = Query(default=None),
-    after_occurred_at: Optional[datetime] = Query(default=None),
-    after_id: Optional[str] = Query(default=None),
+    event_type: Optional[list[str]] = Query(
+        default=None,
+        description="Filter by catalog event_type (repeatable). Unknown types → 422.",
+    ),
+    occurred_after: Optional[datetime] = Query(default=None, description=_TIME_AFTER_DESC),
+    occurred_before: Optional[datetime] = Query(default=None, description=_TIME_BEFORE_DESC),
+    after_occurred_at: Optional[datetime] = Query(default=None, description=_CURSOR_AT_DESC),
+    after_id: Optional[str] = Query(default=None, description=_CURSOR_ID_DESC),
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
 ) -> ActivityListOut:
     """Tenant-scoped Activity Timeline list with cursor pagination.
 
     Order is fixed to ``(occurred_at ASC, id ASC)``. Pass the last item's
-    ``occurred_at`` + ``id`` as ``after_*`` for the next page.
+    ``occurred_at`` + ``id`` as ``after_*`` for the next page (strictly greater).
     """
     db, tenant_id = db_tenant
     if (after_occurred_at is None) ^ (after_id is None or not str(after_id or "").strip()):
@@ -133,6 +173,21 @@ async def list_acquisition_activity(
         types = [str(t).strip() for t in event_type if str(t).strip()]
         if not types:
             types = None
+        else:
+            unknown = sorted({t for t in types if t not in ACTIVITY_EVENT_TYPES})
+            if unknown:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Unknown event_type(s): {', '.join(unknown)}",
+                )
+
+    campaign_f = _require_uuid(campaign_id, field="campaign_id")
+    flight_f = _require_uuid(flight_id, field="flight_id")
+    submission_f = _require_uuid(submission_id, field="submission_id")
+    outcome_f = _require_uuid(outcome_id, field="outcome_id")
+    after_id_f = _require_uuid(after_id, field="after_id") if after_id else None
+    endpoint_f = str(endpoint_id).strip() if endpoint_id and str(endpoint_id).strip() else None
+    result_f = str(result_id).strip() if result_id and str(result_id).strip() else None
 
     # Fetch one extra row to decide whether a next cursor exists.
     fetch_limit = min(limit + 1, 500)
@@ -140,17 +195,17 @@ async def list_acquisition_activity(
         rows = await list_activity_events(
             db,
             tenant_id=str(tenant_id),
-            campaign_id=str(campaign_id).strip() if campaign_id else None,
-            flight_id=str(flight_id).strip() if flight_id else None,
-            endpoint_id=str(endpoint_id).strip() if endpoint_id else None,
-            submission_id=str(submission_id).strip() if submission_id else None,
-            result_id=str(result_id).strip() if result_id else None,
-            outcome_id=str(outcome_id).strip() if outcome_id else None,
+            campaign_id=campaign_f,
+            flight_id=flight_f,
+            endpoint_id=endpoint_f,
+            submission_id=submission_f,
+            result_id=result_f,
+            outcome_id=outcome_f,
             event_types=types,
             occurred_after=occurred_after,
             occurred_before=occurred_before,
             after_occurred_at=after_occurred_at,
-            after_id=str(after_id).strip() if after_id else None,
+            after_id=after_id_f,
             limit=fetch_limit,
         )
     except ValueError as exc:
