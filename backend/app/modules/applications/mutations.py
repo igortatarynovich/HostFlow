@@ -26,6 +26,29 @@ from backend.app.modules.leads.schemas import LeadStageUpdate
 from backend.app.modules.leads.service.intake_decision import INTAKE_DECISION_QUALIFY
 
 
+async def _vacancy_id_from_meta_ad_map(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+) -> Optional[str]:
+    """Resolve vacancy from Meta ad→vacancy map when the operator has not bound one yet."""
+    raw_ad = getattr(lead, "ad_id", None)
+    if raw_ad is None:
+        norm = lead.normalized if isinstance(lead.normalized, dict) else {}
+        raw_ad = norm.get("ad_id")
+    if raw_ad is None or str(raw_ad).strip() == "":
+        return None
+    try:
+        ad_id = int(str(raw_ad).strip())
+    except (TypeError, ValueError):
+        return None
+    entry = await crud.get_meta_ads_entry(db, tenant_id=tenant_id, ad_id=ad_id)
+    if entry is None or not getattr(entry, "vacancy_id", None):
+        return None
+    return str(entry.vacancy_id).strip() or None
+
+
 async def _prepare_recruitment_application_for_process(
     db: AsyncSession,
     *,
@@ -56,23 +79,36 @@ async def _prepare_recruitment_application_for_process(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
         block = await service.manual_process_block_code(db, tenant_id, lead)
 
-    if block == "VACANCY_NOT_CONFIRMED":
-        vac_id = str(getattr(lead, "vacancy_id", "") or "").strip()
-        if vac_id:
-            try:
-                await service.confirm_lead_vacancy(
-                    db,
-                    tenant_id=tenant_id,
-                    lead_id=application_id,
-                    vacancy_id=vac_id,
-                    actor_sub=actor_id,
-                )
-            except service.LeadProcessingError as exc:
-                raise service.lead_processing_error_as_http(exc) from exc
-            lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
-            if not lead:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-            block = await service.manual_process_block_code(db, tenant_id, lead)
+    # Prefer explicit lead.vacancy_id; otherwise apply Meta ads map before pool/routing gates.
+    vac_id = str(getattr(lead, "vacancy_id", "") or "").strip()
+    if not vac_id:
+        vac_id = (await _vacancy_id_from_meta_ad_map(db, tenant_id=tenant_id, lead=lead)) or ""
+
+    lead_has_vacancy = bool(str(getattr(lead, "vacancy_id", "") or "").strip())
+    should_confirm = bool(vac_id) and (
+        not lead_has_vacancy
+        or block
+        in {
+            "VACANCY_NOT_CONFIRMED",
+            "INTAKE_POOL_PATH_REQUIRED",
+            "INTAKE_ROUTING_INCOMPLETE",
+        }
+    )
+    if should_confirm:
+        try:
+            await service.confirm_lead_vacancy(
+                db,
+                tenant_id=tenant_id,
+                lead_id=application_id,
+                vacancy_id=vac_id,
+                actor_sub=actor_id,
+            )
+        except service.LeadProcessingError as exc:
+            raise service.lead_processing_error_as_http(exc) from exc
+        lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
+        if not lead:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+        block = await service.manual_process_block_code(db, tenant_id, lead)
 
     if block:
         raise HTTPException(
