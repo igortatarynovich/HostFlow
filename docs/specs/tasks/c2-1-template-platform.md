@@ -103,19 +103,80 @@ Out of PR-1: renderer product surface, registry matrices UX, public CRUD API, UI
 
 ### PR-2 — Rendering Engine
 
-**Server-side renderer only.** No Campaign.
+**Pure server-side renderer.** Not a mini-automation engine.  
+PR-1 ends at domain/lifecycle; PR-2 must not reopen Thread / Intent / Campaign design.
 
-Capabilities:
+#### Public operations (only these four)
 
-- Strict variable validation  
-- Typed variables  
-- `preview`  
-- `render`  
-- Missing-variable diagnostics  
-- Channel validation (against `TemplateChannelBinding`)  
+| Op | Role |
+|----|------|
+| `Validate` | Check variables + channel + version usability |
+| `Preview` | Render for operator preview (same engine as send) |
+| `Render` | Produce final content for the platform pipeline |
+| `Diagnostics` | Structured findings (not “just throw”) |
 
-Preview and prepare-send **must share** this engine (same snapshot rules).  
-No provider calls. No Thread writes.
+Forbidden in Renderer:
+
+- Send · Intent · Thread · Campaign · Automation · Delivery  
+- Knowing **who** called it (no actor/workflow context required)
+
+#### Determinism (law)
+
+Same inputs → **bit-identical** outputs:
+
+- `template_version_id`  
+- `variables`  
+- `locale`  
+- `channel` (for channel checks)
+
+Renderer must **not** read:
+
+- current time  
+- database / ORM  
+- external APIs  
+- Thread / Command / Delivery state  
+
+Dynamic values (`today`, `sender_name`, SLA, …) arrive **already in `variables`**.  
+Caller (pipeline / API adapter) loads the published version payload and passes a **pure snapshot** into the renderer.
+
+#### Typed variables
+
+Not a free `dict[str, str]`. Declared types (aligned with `TemplateVariable.var_type`), e.g.:
+
+`string` · `markdown` · `html` · `email` · `phone` · `url` · `date` · `datetime` · `currency` · `boolean` · `enum`
+
+Type mismatches fail on **Validate**, not at provider send.
+
+#### Diagnostics (first-class result)
+
+Renderer returns a **structured result** (content + diagnostics), not only exceptions:
+
+| Code (examples) | Meaning |
+|-----------------|--------|
+| `missing_variable` | Required var absent |
+| `wrong_type` | Value fails declared type |
+| `unknown_variable` | Extra var not in schema (policy: error or warn — document in PR-2) |
+| `channel_unsupported` | Channel not bound on this version |
+| `template_not_published` | Version is not published |
+| `version_archived` | Template/version not usable |
+
+#### Merge gate — Pure renderer *(mandatory)*
+
+Renderer package **must not**:
+
+- execute SQL  
+- use ORM / `AsyncSession`  
+- call `CommunicationSender`  
+- import Workspace Commands  
+- import Thread models  
+- import Automation / Campaign packages  
+
+**Input:** published template version payload + `variables` + `channel` (+ `locale`).  
+**Output:** rendered content + diagnostics.
+
+Contract test (AST / import scan) enforces this gate — same spirit as C2 capability isolation.
+
+Preview and prepare-send **must share** this engine.
 
 ---
 
@@ -202,15 +263,15 @@ UI must not invent composition, channel policy, or versioning rules.
 
 ## Definition of Done (C2.1)
 
-- [ ] PR-1 domain entities + publish immutability invariants  
-- [ ] PR-2 shared server renderer (preview ≡ prepare-send path)  
+- [x] PR-1 domain entities + publish immutability invariants (`feat/communication-c2-1-template-domain`)  
+- [ ] PR-2 pure renderer: Validate/Preview/Render/Diagnostics only; deterministic; typed vars; no SQL/ORM/Sender/Thread/Campaign/Automation  
 - [ ] PR-3 registry is sole SoT for Intent/Channel/Capability → Template  
 - [ ] PR-4 Template API (draft/publish/archive/preview/versions/diff)  
 - [ ] PR-5 thin UI only after API  
-- [ ] Commands/snapshots persist `template_version_id` for reproducibility  
-- [ ] Capability-isolation contract tests on C2.1 packages  
-- [ ] No Campaign / Automation product code  
-- [ ] Canon §5 / snapshot section aligned with version_id  
+- [x] Commands/snapshots carry `template_version_id` (optional field; SoT for published versions)  
+- [x] Capability-isolation contract tests on C2.1 packages  
+- [x] No Campaign / Automation product code in PR-1  
+- [ ] Canon §5 / snapshot section fully aligned with version_id (follow-up with PR-2/3)  
 
 ## After C2.1
 

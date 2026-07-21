@@ -82,6 +82,8 @@ class CommunicationCommand:
     delivery_purpose: str | None = None
     template_key: str | None = None
     template_version: int = 1
+    # C2.1: durable published version id (SoT for reproducibility). Prefer this over key/name.
+    template_version_id: str | None = None
     locale: str | None = None
     requested_link_intents: Sequence[str] = ()
     resolved_links: Sequence[ResolvedLinkSnapshot] = ()
