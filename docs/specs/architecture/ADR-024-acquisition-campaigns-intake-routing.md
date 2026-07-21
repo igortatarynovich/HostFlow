@@ -504,7 +504,8 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 | **3B** ✅ | Endpoint binding (V1: Form + Intake Source) | **DONE.** V1: `CampaignRun ↔ TenantLeadForm` + `↔ IntakeSourceProfile` as transitional Endpoint specializations; uses-not-owns. **Canon:** CampaignRun ↔ Endpoint (HostFlow Public Form = one type) — [`ADR-007`](ADR-007-forms-platform-capability.md) |
 | **3C** ✅ | Universal submission routing | **DONE.** Submission from any Endpoint → Form∪Profile Flight resolve → `route_intent` → Application \| Inquiry; unresolved → disposition-only queue. **Routing once per new Lead** |
 | **3D** ✅ | Outcome attribution and basic analytics | **Epic P COMPLETE** — [`../tasks/acquisition-epic-p-stage-3d.md`](../tasks/acquisition-epic-p-stage-3d.md). Chain: Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI |
-| **3E** | Activity Timeline & runtime observability | **ACTIVE (Product Track)** — [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md). `AcquisitionActivityEvent` + catalog; PR-1 foundation → PR-2 instrumentation → PR-3 read API → PR-4 thin UI; Timeline ≠ Automation bus; closes V1 vertical |
+| **3E** | Activity Timeline (observability) | **ACTIVE (Product Track)** — [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md). `AcquisitionActivityEvent` + catalog; PR-1…PR-4 only; Timeline ≠ Automation bus. **Ends at thin Timeline UI** — not Flight Runtime |
+| **4** *(post-3E)* | Flight Runtime (operations) | **QUEUED** — [`../tasks/acquisition-stage-4-flight-runtime.md`](../tasks/acquisition-stage-4-flight-runtime.md). Campaign/Flight CRUD, Endpoint management, Launch/Pause/Resume, Intake Monitor, basic metrics. Uses 3E Timeline as infrastructure; activate only after 3E DONE |
 
 #### Stage 3A Definition of Done — met
 
@@ -637,3 +638,4 @@ V1 **не** заменяет Meta Ads Manager.
 - 2026-07-18: Linked to **P-01…P-03** ([`ADR-025`](ADR-025-standard-adapter-boundary.md)…[`ADR-027`](ADR-027-capability-composition.md)); capability catalog §0.1.  
 - 2026-07-19: Forms Builder MVP COMPLETE; **Canonical Intake Input Matrix** opened READY — [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) (design gate before further routing runtime; not Stage 3E).
 - 2026-07-21: **Stage 3E ACTIVE (Product Track)** — Activity Timeline canon: `AcquisitionActivityEvent`, append-only immutable, Timeline ≠ Automation bus, single store / many views, PR 1–4 — [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md).
+- 2026-07-21: **Stage boundary** — 3E = observability (Timeline); **Stage 4 Flight Runtime** = operations (queued after 3E) — [`../tasks/acquisition-stage-4-flight-runtime.md`](../tasks/acquisition-stage-4-flight-runtime.md).

@@ -1,13 +1,23 @@
 # Acquisition Stage 3E — Activity Timeline & Runtime Observability
 
-**Status:** Active (Product Track kickoff — canon correction before code)  
+**Status:** Active (Product Track) — PR-1 open [#130](https://github.com/igortatarynovich/HostFlow/pull/130)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §10 · §14 slice **3E**  
 **Parents:** Epic P / 3D ✅ · R3.5 Flights dispatch ✅ · Forms Sprint 1–6 ✅  
 **Branch (PR-1):** `feat/acquisition-stage-3e-pr1-activity-foundation`
 
-> Closes the **V1 vertical** (3A→3E): operators can observe Acquisition inbound-flow history end-to-end.  
-> **Not** C2.4. **Not** full multi-Flight UX / Template catalog (V2).  
-> **Not** Flight-centric log. Model = **`AcquisitionActivityEvent`**.
+> Stage 3E builds **observability infrastructure** only: a universal Activity Timeline.  
+> It closes the V1 vertical’s history/audit slice (3A→3E).  
+> **Not** Flight Runtime / operations. **Not** C2.4. **Not** multi-Flight UX / Template catalog (V2).  
+> Model = **`AcquisitionActivityEvent`**.
+
+**Stage boundary (locked):**
+
+```text
+Stage 3E  = Observability  →  PR-1…PR-4 Activity Timeline  →  DONE
+Stage 4   = Operations     →  Flight Runtime (queued)     →  after 3E
+```
+
+Next horizon (queued, not part of 3E): [`acquisition-stage-4-flight-runtime.md`](acquisition-stage-4-flight-runtime.md).
 
 **Supersedes naming:** earlier draft `acquisition-stage-3e-flight-timeline.md` (Flight Timeline) — do not implement that framing.
 
@@ -254,18 +264,22 @@ Events must be written from the same transaction as the domain change **or** via
 - Technical details on expand  
 - **No** edit/delete  
 - **No** charts / full analytics / budget editor  
+- **No** Launch / Pause / Resume, Campaign/Flight CRUD, Endpoint management, or runtime action buttons — those are **Stage 4**
 
 ```text
-1. Foundation (model + append + catalog)
-2. Instrument existing 3C/3D paths
-3. Read API
-4. Thin UI last
+1. Foundation (model + append + catalog)     ← PR-1 (#130)
+2. Instrument existing 3C/3D paths          ← PR-2
+3. Read API                                 ← PR-3
+4. Thin UI last                             ← PR-4  →  Stage 3E DONE
 ```
+
+After PR-4 merges: mark Stage 3E DONE; promote [`acquisition-stage-4-flight-runtime.md`](acquisition-stage-4-flight-runtime.md) to Product Track active in the sequential queue.
 
 ---
 
 ## Out of scope (all of 3E)
 
+- **Flight Runtime / Stage 4** (Campaign/Flight CRUD, Endpoint Management, Launch/Pause/Resume, Live Intake Monitor, basic metrics, runtime actions)  
 - Multi-Flight UX / wave compare (V2)  
 - CampaignTemplate catalog  
 - Forms Builder expansion  
@@ -278,6 +292,8 @@ Events must be written from the same transaction as the domain change **or** via
 
 ## Definition of Done (Stage 3E)
 
+Stage 3E is **complete** when Activity Timeline observability is shipped end-to-end (PR-1…PR-4). Flight Runtime is **not** required.
+
 - [ ] Single immutable Activity Timeline store (`acquisition_activity_events`)  
 - [ ] Events typed + versioned (`event_type` + `event_version` + payload contracts)  
 - [ ] Retry / redelivery does not duplicate (`source_event_id` idempotency)  
@@ -286,15 +302,17 @@ Events must be written from the same transaction as the domain change **or** via
 - [ ] Existing 3C/3D chain instrumented without a second pipeline  
 - [ ] Timeline is **not** used as Automation Engine queue  
 - [ ] Read API available (PR-3)  
-- [ ] Operator can inspect history in minimal UI (PR-4)  
+- [ ] Operator can inspect history in minimal UI (PR-4) — observe only  
 - [ ] Clean PostgreSQL migration path  
 - [ ] Acquisition contract suites green; no new SPA `/app` literals; no cross-module ownership breaks  
 - [ ] Base-known 657 legacy failures are **not** a Product blocker  
-- [ ] ADR-024 3E marked DONE; V1 vertical closed  
+- [ ] ADR-024 3E marked DONE; V1 observability vertical closed  
+- [ ] Stage 4 Flight Runtime queued as next Product epic (not started inside 3E)  
 
 ---
 
 ## History
 
 - 2026-07-21: Opened as Product Track (Flight Timeline draft).  
-- 2026-07-21: **Canon correction** — `AcquisitionActivityEvent`; Timeline ≠ event bus; PR 1–4; provider-agnostic; single store / many views. Filename → `acquisition-stage-3e-activity-timeline.md`.
+- 2026-07-21: **Canon correction** — `AcquisitionActivityEvent`; Timeline ≠ event bus; PR 1–4; provider-agnostic; single store / many views. Filename → `acquisition-stage-3e-activity-timeline.md`.  
+- 2026-07-21: **Boundary lock** — Stage 3E = observability only (ends at PR-4); Flight Runtime = Stage 4 (queued).
