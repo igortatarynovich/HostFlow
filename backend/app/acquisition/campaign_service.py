@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from fastapi import HTTPException
 
+from backend.app.acquisition.flights.lifecycle import create_flight
 from backend.app.acquisition.target_resolver import assert_promotion_target_accessible
 from backend.app.acquisition.validation import (
     CampaignValidationError,
@@ -20,6 +21,7 @@ from backend.app.acquisition.validation import (
 )
 from backend.app.auth.module_gate import enforce_module_gate
 from backend.app.auth.deps import UserCtx
+from backend.app.models.acquisition_activity_event import ACTOR_TYPE_SYSTEM, ACTOR_TYPE_USER
 from backend.app.models.campaign import Campaign, CampaignRun, CampaignTarget
 from backend.app.models.own_company import OwnCompany
 
@@ -184,6 +186,8 @@ async def create_campaign(
 
     campaign_id = str(uuid4())
     flight_id = str(uuid4())
+    actor_id = str(ctx.sub) if ctx and ctx.sub else None
+    actor_type = ACTOR_TYPE_USER if actor_id else ACTOR_TYPE_SYSTEM
     # CampaignGoal (ADR-024) is stored as goal_type + primary_kpi on Campaign in V1.
     campaign = Campaign(
         id=campaign_id,
@@ -195,21 +199,13 @@ async def create_campaign(
         goal_type=gt,
         primary_kpi=pk,
         current_flight_id=flight_id,
-        created_by_user_id=str(ctx.sub) if ctx and ctx.sub else None,
-    )
-    # V1 invariant: exactly one reserved Flight created in the same transaction.
-    flight = CampaignRun(
-        id=flight_id,
-        tenant_id=tenant_id,
-        campaign_id=campaign_id,
-        code="flight_1",
-        name="Flight 1",
-        status="planned",
+        created_by_user_id=actor_id,
     )
     db.add(campaign)
-    db.add(flight)
+    # Attach targets before nested activity flush so we never lazy-load
+    # ``campaign.targets`` after the instance is expired.
     for idx, t in enumerate(validated):
-        campaign.targets.append(
+        db.add(
             CampaignTarget(
                 id=str(uuid4()),
                 tenant_id=tenant_id,
@@ -222,6 +218,17 @@ async def create_campaign(
                 sort_order=t.sort_order if t.sort_order else idx,
             )
         )
+    # V1 invariant: exactly one reserved Flight; status writes go through lifecycle.
+    await create_flight(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        flight_id=flight_id,
+        code="flight_1",
+        name="Flight 1",
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
     await db.flush()
     return await _reload_campaign(db, tenant_id=tenant_id, campaign_id=campaign_id)
 

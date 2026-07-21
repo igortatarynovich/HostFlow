@@ -105,6 +105,15 @@ def _schema_validator(
 
 _EMPTY = PayloadSchema()
 _NOTE = PayloadSchema(optional=frozenset({"note"}))
+# Flight lifecycle transition facts (PR-2): status change only — no provider fields.
+_FLIGHT_CREATED = PayloadSchema(
+    required=frozenset({"new_status"}),
+    optional=frozenset({"previous_status", "reason"}),
+)
+_FLIGHT_TRANSITION = PayloadSchema(
+    required=frozenset({"previous_status", "new_status"}),
+    optional=frozenset({"reason"}),
+)
 
 # Per-type payload schemas (event_version pairing lives in catalog.py).
 _SCHEMAS: dict[str, PayloadSchema] = {
@@ -112,12 +121,15 @@ _SCHEMAS: dict[str, PayloadSchema] = {
     "CampaignActivated": _NOTE,
     "CampaignPaused": _NOTE,
     "CampaignCompleted": _NOTE,
-    "FlightCreated": _NOTE,
-    "FlightStarted": _NOTE,
-    "FlightPaused": _NOTE,
-    "FlightResumed": _NOTE,
-    "FlightCompleted": _NOTE,
-    "FlightFailed": PayloadSchema(required=frozenset({"reason_code"}), optional=frozenset({"note"})),
+    "FlightCreated": _FLIGHT_CREATED,
+    "FlightStarted": _FLIGHT_TRANSITION,
+    "FlightPaused": _FLIGHT_TRANSITION,
+    "FlightResumed": _FLIGHT_TRANSITION,
+    "FlightCompleted": _FLIGHT_TRANSITION,
+    "FlightFailed": PayloadSchema(
+        required=frozenset({"reason_code", "previous_status", "new_status"}),
+        optional=frozenset({"reason", "note"}),
+    ),
     "BudgetChanged": PayloadSchema(
         required=frozenset({"currency"}),
         optional=frozenset({"amount", "new_amount", "previous_amount", "note"}),
@@ -153,10 +165,27 @@ _SCHEMAS: dict[str, PayloadSchema] = {
         optional=frozenset({"reason_code", "normalized_schema_version", "note"}),
     ),
     "RoutingCompleted": PayloadSchema(
-        optional=frozenset({"route_intent", "reason_code", "note"}),
+        optional=frozenset(
+            {
+                "route_intent",
+                "routing_source",
+                "campaign_target_id",
+                "target_type",
+                "reason_code",
+                "note",
+            }
+        ),
     ),
     "RoutingFailed": PayloadSchema(
-        optional=frozenset({"route_intent", "reason_code", "note"}),
+        optional=frozenset(
+            {
+                "route_intent",
+                "routing_source",
+                "campaign_target_id",
+                "reason_code",
+                "note",
+            }
+        ),
     ),
     "ResultAttributed": PayloadSchema(
         required=frozenset({"result_type", "result_id"}),
@@ -167,12 +196,12 @@ _SCHEMAS: dict[str, PayloadSchema] = {
         optional=frozenset({"previous_status", "note"}),
     ),
     "LeadCreated": PayloadSchema(
-        required=frozenset({"lead_id"}),
-        optional=frozenset({"module_owner", "note"}),
+        required=frozenset({"lead_id", "submission_id"}),
+        optional=frozenset({"route_intent", "module_owner", "note"}),
     ),
     "CandidateCreated": PayloadSchema(
-        required=frozenset({"candidate_id"}),
-        optional=frozenset({"module_owner", "note"}),
+        required=frozenset({"candidate_id", "lead_id", "submission_id"}),
+        optional=frozenset({"route_intent", "module_owner", "note"}),
     ),
     "DuplicateDetected": PayloadSchema(
         required=frozenset({"entity_type", "entity_id"}),
@@ -191,7 +220,14 @@ _SCHEMAS: dict[str, PayloadSchema] = {
 }
 
 _STR_KEYS = {
-    "FlightFailed": frozenset({"reason_code", "note"}),
+    "FlightCreated": frozenset({"new_status", "previous_status", "reason"}),
+    "FlightStarted": frozenset({"previous_status", "new_status", "reason"}),
+    "FlightPaused": frozenset({"previous_status", "new_status", "reason"}),
+    "FlightResumed": frozenset({"previous_status", "new_status", "reason"}),
+    "FlightCompleted": frozenset({"previous_status", "new_status", "reason"}),
+    "FlightFailed": frozenset(
+        {"reason_code", "previous_status", "new_status", "reason", "note"}
+    ),
     "BudgetChanged": frozenset({"currency", "note"}),
     "AudienceChanged": frozenset({"audience_ref", "change_kind", "note"}),
     "EndpointChanged": frozenset({"endpoint_id", "change_kind", "note"}),
@@ -211,12 +247,31 @@ _STR_KEYS = {
     "SubmissionRejected": frozenset(
         {"reason_code", "normalized_schema_version", "note"}
     ),
-    "RoutingCompleted": frozenset({"route_intent", "reason_code", "note"}),
-    "RoutingFailed": frozenset({"route_intent", "reason_code", "note"}),
+    "RoutingCompleted": frozenset(
+        {
+            "route_intent",
+            "routing_source",
+            "campaign_target_id",
+            "target_type",
+            "reason_code",
+            "note",
+        }
+    ),
+    "RoutingFailed": frozenset(
+        {
+            "route_intent",
+            "routing_source",
+            "campaign_target_id",
+            "reason_code",
+            "note",
+        }
+    ),
     "ResultAttributed": frozenset({"result_type", "result_id", "note"}),
     "OutcomeChanged": frozenset({"status", "previous_status", "note"}),
-    "LeadCreated": frozenset({"lead_id", "module_owner", "note"}),
-    "CandidateCreated": frozenset({"candidate_id", "module_owner", "note"}),
+    "LeadCreated": frozenset({"lead_id", "submission_id", "route_intent", "module_owner", "note"}),
+    "CandidateCreated": frozenset(
+        {"candidate_id", "lead_id", "submission_id", "route_intent", "module_owner", "note"}
+    ),
     "DuplicateDetected": frozenset(
         {"entity_type", "entity_id", "duplicate_of_id", "note"}
     ),

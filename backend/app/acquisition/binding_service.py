@@ -2,6 +2,9 @@
 
 CampaignRun *uses* Form and IntakeSourceProfile; it does not own them.
 Association rows store only FK + role + is_active (no provider/external_ref snapshots).
+
+Stage 3E PR-2: successful association mutations append ``EndpointChanged`` here
+(not in HTTP handlers), only via ``append_activity_event``.
 """
 
 from __future__ import annotations
@@ -17,6 +20,16 @@ from backend.app.acquisition.campaign_service import (
     _reload_campaign,
     get_campaign,
 )
+from backend.app.acquisition.endpoint_activity import (
+    CHANGE_KIND_ATTACHED,
+    CHANGE_KIND_DETACHED,
+    CHANGE_KIND_UPDATED,
+    append_endpoint_changed,
+    endpoint_source_event_id,
+    form_endpoint_id,
+    intake_source_endpoint_id,
+)
+from backend.app.models.acquisition_activity_event import ACTOR_TYPE_SYSTEM
 from backend.app.models.campaign import (
     Campaign,
     CampaignRun,
@@ -107,6 +120,8 @@ async def attach_form(
     own_company_id: str | None = None,
     flight_id: str | None = None,
     role: str = "primary",
+    actor_type: str = ACTOR_TYPE_SYSTEM,
+    actor_id: str | None = None,
 ) -> Campaign:
     _, flight = await _resolve_flight(
         db,
@@ -144,9 +159,10 @@ async def attach_form(
     if role_n == "primary":
         await _assert_no_active_primary_form(db, campaign_run_id=flight.id)
 
+    link_id = str(uuid4())
     flight.form_links.append(
         CampaignRunForm(
-            id=str(uuid4()),
+            id=link_id,
             tenant_id=tenant_id,
             campaign_run_id=flight.id,
             form_id=fid,
@@ -163,6 +179,17 @@ async def attach_form(
                 status_code=422,
             ) from exc
         raise
+    await append_endpoint_changed(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        flight_id=flight.id,
+        endpoint_id=form_endpoint_id(fid),
+        change_kind=CHANGE_KIND_ATTACHED,
+        source_event_id=endpoint_source_event_id(link_id, CHANGE_KIND_ATTACHED),
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
     return await _reload_campaign(
         db,
         tenant_id=tenant_id,
@@ -181,6 +208,8 @@ async def update_form_link(
     flight_id: str | None = None,
     is_active: bool | None = None,
     role: str | None = None,
+    actor_type: str = ACTOR_TYPE_SYSTEM,
+    actor_id: str | None = None,
 ) -> Campaign:
     _, flight = await _resolve_flight(
         db,
@@ -202,6 +231,7 @@ async def update_form_link(
 
     next_role = _normalize_role(role) if role is not None else link.role
     next_active = link.is_active if is_active is None else bool(is_active)
+    changed = next_role != link.role or next_active != link.is_active
 
     becoming_active_primary = next_role == "primary" and next_active
     was_active_primary = link.role == "primary" and link.is_active
@@ -219,6 +249,22 @@ async def update_form_link(
                 status_code=422,
             ) from exc
         raise
+    if changed:
+        await append_endpoint_changed(
+            db,
+            tenant_id=tenant_id,
+            campaign_id=campaign_id,
+            flight_id=flight.id,
+            endpoint_id=form_endpoint_id(link.form_id),
+            change_kind=CHANGE_KIND_UPDATED,
+            source_event_id=endpoint_source_event_id(
+                link.id,
+                CHANGE_KIND_UPDATED,
+                suffix=f"{int(next_active)}:{next_role}",
+            ),
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
     return await _reload_campaign(
         db,
         tenant_id=tenant_id,
@@ -235,6 +281,8 @@ async def detach_form(
     link_id: str,
     own_company_id: str | None = None,
     flight_id: str | None = None,
+    actor_type: str = ACTOR_TYPE_SYSTEM,
+    actor_id: str | None = None,
 ) -> Campaign:
     _, flight = await _resolve_flight(
         db,
@@ -253,8 +301,21 @@ async def detach_form(
     link = row.scalar_one_or_none()
     if link is None:
         raise CampaignServiceError("Form link not found", status_code=404)
+    endpoint_id = form_endpoint_id(link.form_id)
+    source_event_id = endpoint_source_event_id(link.id, CHANGE_KIND_DETACHED)
     await db.delete(link)
     await db.flush()
+    await append_endpoint_changed(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        flight_id=flight.id,
+        endpoint_id=endpoint_id,
+        change_kind=CHANGE_KIND_DETACHED,
+        source_event_id=source_event_id,
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
     return await _reload_campaign(
         db,
         tenant_id=tenant_id,
@@ -272,6 +333,8 @@ async def attach_intake_source(
     own_company_id: str | None = None,
     flight_id: str | None = None,
     role: str = "primary",
+    actor_type: str = ACTOR_TYPE_SYSTEM,
+    actor_id: str | None = None,
 ) -> Campaign:
     campaign, flight = await _resolve_flight(
         db,
@@ -317,9 +380,10 @@ async def attach_intake_source(
     if role_n == "primary":
         await _assert_no_active_primary_intake_source(db, campaign_run_id=flight.id)
 
+    link_id = str(uuid4())
     flight.intake_source_links.append(
         CampaignRunIntakeSource(
-            id=str(uuid4()),
+            id=link_id,
             tenant_id=tenant_id,
             campaign_run_id=flight.id,
             intake_source_profile_id=pid,
@@ -336,6 +400,17 @@ async def attach_intake_source(
                 status_code=422,
             ) from exc
         raise
+    await append_endpoint_changed(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        flight_id=flight.id,
+        endpoint_id=intake_source_endpoint_id(pid),
+        change_kind=CHANGE_KIND_ATTACHED,
+        source_event_id=endpoint_source_event_id(link_id, CHANGE_KIND_ATTACHED),
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
     return await _reload_campaign(
         db,
         tenant_id=tenant_id,
@@ -354,6 +429,8 @@ async def update_intake_source_link(
     flight_id: str | None = None,
     is_active: bool | None = None,
     role: str | None = None,
+    actor_type: str = ACTOR_TYPE_SYSTEM,
+    actor_id: str | None = None,
 ) -> Campaign:
     _, flight = await _resolve_flight(
         db,
@@ -375,6 +452,7 @@ async def update_intake_source_link(
 
     next_role = _normalize_role(role) if role is not None else link.role
     next_active = link.is_active if is_active is None else bool(is_active)
+    changed = next_role != link.role or next_active != link.is_active
 
     becoming_active_primary = next_role == "primary" and next_active
     was_active_primary = link.role == "primary" and link.is_active
@@ -392,6 +470,22 @@ async def update_intake_source_link(
                 status_code=422,
             ) from exc
         raise
+    if changed:
+        await append_endpoint_changed(
+            db,
+            tenant_id=tenant_id,
+            campaign_id=campaign_id,
+            flight_id=flight.id,
+            endpoint_id=intake_source_endpoint_id(link.intake_source_profile_id),
+            change_kind=CHANGE_KIND_UPDATED,
+            source_event_id=endpoint_source_event_id(
+                link.id,
+                CHANGE_KIND_UPDATED,
+                suffix=f"{int(next_active)}:{next_role}",
+            ),
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
     return await _reload_campaign(
         db,
         tenant_id=tenant_id,
@@ -408,6 +502,8 @@ async def detach_intake_source(
     link_id: str,
     own_company_id: str | None = None,
     flight_id: str | None = None,
+    actor_type: str = ACTOR_TYPE_SYSTEM,
+    actor_id: str | None = None,
 ) -> Campaign:
     _, flight = await _resolve_flight(
         db,
@@ -426,8 +522,21 @@ async def detach_intake_source(
     link = row.scalar_one_or_none()
     if link is None:
         raise CampaignServiceError("Intake Source link not found", status_code=404)
+    endpoint_id = intake_source_endpoint_id(link.intake_source_profile_id)
+    source_event_id = endpoint_source_event_id(link.id, CHANGE_KIND_DETACHED)
     await db.delete(link)
     await db.flush()
+    await append_endpoint_changed(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        flight_id=flight.id,
+        endpoint_id=endpoint_id,
+        change_kind=CHANGE_KIND_DETACHED,
+        source_event_id=source_event_id,
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
     return await _reload_campaign(
         db,
         tenant_id=tenant_id,

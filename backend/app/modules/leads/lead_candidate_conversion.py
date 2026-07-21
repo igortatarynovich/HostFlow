@@ -171,9 +171,20 @@ async def create_candidate_from_lead_conversion(
         acl=None,
         source_lead=lead,
     )
-    if not getattr(lead, "candidate_id", None):
+    if str(getattr(lead, "candidate_id", None) or "") != str(candidate.id):
         lead.candidate_id = str(candidate.id)
-        await db.flush()
+    await db.flush()
+    # Stage 3E PR-2: Activity only after link flush; silent without Acq stamp+submission.
+    from backend.app.acquisition.candidate_activity import (
+        maybe_record_candidate_created_from_conversion,
+    )
+
+    await maybe_record_candidate_created_from_conversion(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        candidate=candidate,
+    )
     oc = getattr(candidate, "own_company_id", None) or getattr(lead, "own_company_id", None)
     await _emit_candidate_created_audit(
         db,

@@ -38,8 +38,9 @@ from backend.tests.conftest import _init_data
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _BACKEND_ROOT = _REPO_ROOT / "backend"
 _VERSIONS = _BACKEND_ROOT / "alembic" / "versions"
-_REV = "202607220001_acq_3e_act"
-_PREV_REV = "202607210002_comm_automation_domain_c2_2"
+_REV = "202607220002_acq_3e_imm"
+_PREV_REV = "202607220001_acq_3e_act"
+_BEFORE_ACTIVITY = "202607210002_comm_automation_domain_c2_2"
 
 
 def _alembic_bin() -> str:
@@ -131,6 +132,30 @@ async def _seed_campaign(db, *, tenant_id: str) -> tuple[Campaign, CampaignRun]:
     return campaign, flight
 
 
+def _flight_started_payload(
+    *, previous_status: str = "planned", new_status: str = "active"
+) -> dict:
+    return {"previous_status": previous_status, "new_status": new_status}
+
+
+def _flight_paused_payload(
+    *, previous_status: str = "active", new_status: str = "paused"
+) -> dict:
+    return {"previous_status": previous_status, "new_status": new_status}
+
+
+def _flight_resumed_payload(
+    *, previous_status: str = "paused", new_status: str = "active"
+) -> dict:
+    return {"previous_status": previous_status, "new_status": new_status}
+
+
+def _flight_completed_payload(
+    *, previous_status: str = "active", new_status: str = "completed"
+) -> dict:
+    return {"previous_status": previous_status, "new_status": new_status}
+
+
 # --- Catalog / versioning -----------------------------------------------------
 
 
@@ -220,10 +245,10 @@ def test_repository_has_no_update_or_delete_methods() -> None:
 
 
 def test_alembic_revision_is_linear_no_merge() -> None:
-    path = _VERSIONS / f"{_REV}.py"
+    path = _VERSIONS / "202607220002_acq_3e_imm_cascade.py"
     text_src = path.read_text(encoding="utf-8")
     assert f'revision: str = "{_REV}"' in text_src
-    assert f'down_revision: RevisionType = "{_PREV_REV}"' in text_src
+    assert f'down_revision: Union[str, None] = "{_PREV_REV}"' in text_src
     assert "merge" not in path.name.lower()
     assert "no UPDATE of any column" in text_src
 
@@ -256,7 +281,7 @@ async def test_append_success_materialises_occurred_at() -> None:
             flight_id=flight.id,
             event_type="FlightStarted",
             event_version="1",
-            payload={},
+            payload=_flight_started_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
             occurred_at=t0,
             correlation_id="corr-ok",
@@ -289,7 +314,7 @@ async def test_duplicate_append_returns_existing_row() -> None:
             flight_id=flight_a.id,
             event_type="FlightStarted",
             event_version="1",
-            payload={"note": "original"},
+            payload=_flight_started_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
             source_event_id="src-flight-start-1",
         )
@@ -300,13 +325,13 @@ async def test_duplicate_append_returns_existing_row() -> None:
             flight_id=flight_a.id,
             event_type="FlightStarted",
             event_version="1",
-            payload={"note": "retry-must-not-overwrite"},
+            payload={**_flight_started_payload(), "reason": "retry-must-not-overwrite"},
             actor_type=ACTOR_TYPE_SYSTEM,
             source_event_id="src-flight-start-1",
         )
         assert isinstance(second, AcquisitionActivityEvent)
         assert second.id == first.id
-        assert second.payload == {"note": "original"}
+        assert second.payload == _flight_started_payload()
         assert second.event_type == first.event_type
         assert second.source_event_id == "src-flight-start-1"
 
@@ -338,7 +363,7 @@ async def test_source_event_id_unique_per_tenant() -> None:
             flight_id=flight.id,
             event_type="FlightPaused",
             event_version="1",
-            payload={},
+            payload=_flight_paused_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
             source_event_id="uniq-key-1",
         )
@@ -349,7 +374,7 @@ async def test_source_event_id_unique_per_tenant() -> None:
             flight_id=flight.id,
             event_type="FlightPaused",
             event_version="1",
-            payload={},
+            payload=_flight_paused_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
             source_event_id="uniq-key-1",
         )
@@ -382,7 +407,7 @@ async def test_immutable_update_any_column_rejected() -> None:
             flight_id=flight.id,
             event_type="FlightPaused",
             event_version="1",
-            payload={},
+            payload=_flight_paused_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
             source_event_id=f"imm-{uuid4().hex}",
         )
@@ -426,7 +451,7 @@ async def test_immutable_delete_rejected() -> None:
             flight_id=flight.id,
             event_type="FlightResumed",
             event_version="1",
-            payload={},
+            payload=_flight_resumed_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
         )
         await db.commit()
@@ -462,7 +487,7 @@ async def test_tenant_isolation_on_query() -> None:
             flight_id=flight_a.id,
             event_type="FlightStarted",
             event_version="1",
-            payload={},
+            payload=_flight_started_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
             source_event_id=f"iso-a-{uuid4().hex}",
         )
@@ -473,7 +498,7 @@ async def test_tenant_isolation_on_query() -> None:
             flight_id=flight_b.id,
             event_type="FlightStarted",
             event_version="1",
-            payload={},
+            payload=_flight_started_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
             source_event_id=f"iso-b-{uuid4().hex}",
         )
@@ -512,7 +537,7 @@ async def test_ordering_occurred_at_then_id_only() -> None:
             flight_id=flight.id,
             event_type="FlightStarted",
             event_version="1",
-            payload={},
+            payload=_flight_started_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
             occurred_at=t0,
         )
@@ -523,7 +548,7 @@ async def test_ordering_occurred_at_then_id_only() -> None:
             flight_id=flight.id,
             event_type="FlightCompleted",
             event_version="1",
-            payload={},
+            payload=_flight_completed_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
             occurred_at=t0 + timedelta(minutes=15),
         )
@@ -551,7 +576,7 @@ async def test_payload_validation_semantic_allowlist() -> None:
                 flight_id=flight.id,
                 event_type="FlightStarted",
                 event_version="1",
-                payload={"currency": "EUR", "amount": 10},
+                payload={**_flight_started_payload(), "currency": "EUR", "amount": 10},
                 actor_type=ACTOR_TYPE_SYSTEM,
             )
 
@@ -563,7 +588,7 @@ async def test_payload_validation_semantic_allowlist() -> None:
                 campaign_id=camp.id,
                 event_type="FlightStarted",
                 event_version="1",
-                payload={},
+                payload=_flight_started_payload(),
                 actor_type=ACTOR_TYPE_SYSTEM,
             )
 
@@ -587,7 +612,7 @@ async def test_payload_validation_semantic_allowlist() -> None:
             flight_id=flight.id,
             event_type="FlightStarted",
             event_version="1",
-            payload={},
+            payload=_flight_started_payload(),
             actor_type=ACTOR_TYPE_SYSTEM,
             occurred_at=datetime(2026, 7, 21, 9, 0, tzinfo=timezone.utc),
         )
@@ -611,7 +636,7 @@ async def test_version_validation_per_event_type() -> None:
                 flight_id=flight.id,
                 event_type="FlightStarted",
                 event_version="99",
-                payload={},
+                payload=_flight_started_payload(),
                 actor_type=ACTOR_TYPE_SYSTEM,
             )
         with pytest.raises(UnknownActivityEventType):
@@ -651,17 +676,24 @@ async def test_nullable_references_and_external_entity_refs() -> None:
         assert created.outcome_id is None
 
         lead_id = str(uuid4())
+        submission_id = str(uuid4())
         lead = await append_activity_event(
             db,
             tenant_id=tenant_id,
             campaign_id=camp.id,
             flight_id=flight.id,
+            submission_id=submission_id,
             event_type="LeadCreated",
             event_version="1",
-            payload={"lead_id": lead_id, "module_owner": "recruitment"},
+            payload={
+                "lead_id": lead_id,
+                "submission_id": submission_id,
+                "module_owner": "recruitment",
+            },
             actor_type=ACTOR_TYPE_SYSTEM,
         )
         assert lead.payload["lead_id"] == lead_id
+        assert lead.submission_id == submission_id
         model_cols = {c.key for c in inspect(AcquisitionActivityEvent).columns}
         assert "lead_id" not in model_cols
         assert "candidate_id" not in model_cols
@@ -686,7 +718,7 @@ async def test_alembic_downgrade_upgrade_roundtrip() -> None:
     up = _run_alembic("upgrade", "head")
     assert up.returncode == 0, up.stderr + up.stdout
 
-    down = _run_alembic("downgrade", _PREV_REV)
+    down = _run_alembic("downgrade", _BEFORE_ACTIVITY)
     assert down.returncode == 0, down.stderr + down.stdout
 
     async with async_session_maker() as session:
