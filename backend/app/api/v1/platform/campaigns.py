@@ -17,6 +17,7 @@ from backend.app.api.v1.utils.own_company import resolve_own_company_id_for_sess
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.constants.campaign_registries import load_campaign_registries
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.models.acquisition_activity_event import ACTOR_TYPE_SYSTEM, ACTOR_TYPE_USER
 from backend.app.models.campaign import Campaign
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.tenant_lead_form import TenantLeadForm
@@ -28,6 +29,13 @@ router = APIRouter(
 )
 
 _WRITE = [Depends(require_roles(Role.administrator, Role.supervisor, Role.recruiter, Role.client_manager, Role.superadmin))]
+
+def _activity_actor(ctx: UserCtx) -> tuple[str, str | None]:
+    actor_id = str(ctx.sub).strip() if ctx and getattr(ctx, "sub", None) else None
+    if actor_id:
+        return ACTOR_TYPE_USER, actor_id
+    return ACTOR_TYPE_SYSTEM, None
+
 _READ = [
     Depends(
         require_roles(
@@ -544,6 +552,7 @@ async def attach_form_current_flight(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
     try:
         campaign = await binding_service.attach_form(
             db,
@@ -552,6 +561,8 @@ async def attach_form_current_flight(
             form_id=payload.form_id,
             own_company_id=own_company_id,
             role=payload.role,
+            actor_type=actor_type,
+            actor_id=actor_id,
         )
         await db.commit()
     except CampaignServiceError as exc:
@@ -574,6 +585,7 @@ async def detach_form_current_flight(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
     try:
         campaign = await binding_service.detach_form(
             db,
@@ -581,6 +593,8 @@ async def detach_form_current_flight(
             campaign_id=campaign_id,
             link_id=link_id,
             own_company_id=own_company_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
         )
         await db.commit()
     except CampaignServiceError as exc:
@@ -604,6 +618,7 @@ async def patch_form_link_current_flight(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
     try:
         campaign = await binding_service.update_form_link(
             db,
@@ -613,6 +628,8 @@ async def patch_form_link_current_flight(
             own_company_id=own_company_id,
             is_active=payload.is_active,
             role=payload.role,
+            actor_type=actor_type,
+            actor_id=actor_id,
         )
         await db.commit()
     except CampaignServiceError as exc:
@@ -663,6 +680,7 @@ async def attach_intake_source_current_flight(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
     try:
         campaign = await binding_service.attach_intake_source(
             db,
@@ -671,6 +689,8 @@ async def attach_intake_source_current_flight(
             intake_source_profile_id=payload.intake_source_profile_id,
             own_company_id=own_company_id,
             role=payload.role,
+            actor_type=actor_type,
+            actor_id=actor_id,
         )
         await db.commit()
     except CampaignServiceError as exc:
@@ -693,6 +713,7 @@ async def detach_intake_source_current_flight(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
     try:
         campaign = await binding_service.detach_intake_source(
             db,
@@ -700,6 +721,8 @@ async def detach_intake_source_current_flight(
             campaign_id=campaign_id,
             link_id=link_id,
             own_company_id=own_company_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
         )
         await db.commit()
     except CampaignServiceError as exc:
@@ -723,6 +746,7 @@ async def patch_intake_source_link_current_flight(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
     try:
         campaign = await binding_service.update_intake_source_link(
             db,
@@ -732,6 +756,8 @@ async def patch_intake_source_link_current_flight(
             own_company_id=own_company_id,
             is_active=payload.is_active,
             role=payload.role,
+            actor_type=actor_type,
+            actor_id=actor_id,
         )
         await db.commit()
     except CampaignServiceError as exc:
@@ -759,6 +785,7 @@ async def attach_form_on_flight(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
     try:
         campaign = await binding_service.attach_form(
             db,
@@ -768,6 +795,8 @@ async def attach_form_on_flight(
             own_company_id=own_company_id,
             flight_id=flight_id,
             role=payload.role,
+            actor_type=actor_type,
+            actor_id=actor_id,
         )
         await db.commit()
     except CampaignServiceError as exc:
@@ -791,6 +820,7 @@ async def detach_form_on_flight(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
     try:
         campaign = await binding_service.detach_form(
             db,
@@ -799,6 +829,8 @@ async def detach_form_on_flight(
             link_id=link_id,
             own_company_id=own_company_id,
             flight_id=flight_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
         )
         await db.commit()
     except CampaignServiceError as exc:
@@ -823,6 +855,7 @@ async def attach_intake_source_on_flight(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
     try:
         campaign = await binding_service.attach_intake_source(
             db,
@@ -832,6 +865,8 @@ async def attach_intake_source_on_flight(
             own_company_id=own_company_id,
             flight_id=flight_id,
             role=payload.role,
+            actor_type=actor_type,
+            actor_id=actor_id,
         )
         await db.commit()
     except CampaignServiceError as exc:
@@ -855,6 +890,7 @@ async def detach_intake_source_on_flight(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
     try:
         campaign = await binding_service.detach_intake_source(
             db,
@@ -863,6 +899,8 @@ async def detach_intake_source_on_flight(
             link_id=link_id,
             own_company_id=own_company_id,
             flight_id=flight_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
         )
         await db.commit()
     except CampaignServiceError as exc:
