@@ -443,6 +443,89 @@ async def get_latest_published_version(
     ).scalar_one_or_none()
 
 
+async def list_rules(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    include_archived: bool = False,
+) -> list[CommunicationAutomationRule]:
+    stmt = select(CommunicationAutomationRule).where(
+        CommunicationAutomationRule.tenant_id == tenant_id
+    )
+    if not include_archived:
+        stmt = stmt.where(CommunicationAutomationRule.status == RULE_STATUS_ACTIVE)
+    stmt = stmt.order_by(
+        CommunicationAutomationRule.priority.desc(),
+        CommunicationAutomationRule.key.asc(),
+    )
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def list_versions(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    rule_id: str,
+) -> list[CommunicationAutomationRuleVersion]:
+    await get_rule(db, tenant_id=tenant_id, rule_id=rule_id)
+    rows = (
+        await db.execute(
+            select(CommunicationAutomationRuleVersion)
+            .options(selectinload(CommunicationAutomationRuleVersion.triggers))
+            .where(
+                CommunicationAutomationRuleVersion.tenant_id == tenant_id,
+                CommunicationAutomationRuleVersion.rule_id == rule_id,
+            )
+            .order_by(CommunicationAutomationRuleVersion.version_number.asc())
+        )
+    ).scalars().all()
+    return list(rows)
+
+
+async def get_version(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    rule_id: str,
+    version_id: str,
+) -> CommunicationAutomationRuleVersion:
+    row = (
+        await db.execute(
+            select(CommunicationAutomationRuleVersion)
+            .options(selectinload(CommunicationAutomationRuleVersion.triggers))
+            .where(
+                CommunicationAutomationRuleVersion.tenant_id == tenant_id,
+                CommunicationAutomationRuleVersion.rule_id == rule_id,
+                CommunicationAutomationRuleVersion.id == version_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise AutomationDomainError(
+            "version_not_found",
+            "AutomationRuleVersion not found",
+            details={"rule_id": rule_id, "version_id": version_id},
+        )
+    return row
+
+
+async def list_decisions(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    rule_id: str | None = None,
+    limit: int = 50,
+) -> list[CommunicationAutomationDecision]:
+    lim = max(1, min(int(limit or 50), 200))
+    stmt = select(CommunicationAutomationDecision).where(
+        CommunicationAutomationDecision.tenant_id == tenant_id
+    )
+    if rule_id:
+        stmt = stmt.where(CommunicationAutomationDecision.rule_id == rule_id)
+    stmt = stmt.order_by(CommunicationAutomationDecision.created_at.desc()).limit(lim)
+    return list((await db.execute(stmt)).scalars().all())
+
+
 async def record_decision(
     db: AsyncSession,
     *,
@@ -507,5 +590,9 @@ __all__ = [
     "set_rule_enabled",
     "archive_rule",
     "get_latest_published_version",
+    "list_rules",
+    "list_versions",
+    "get_version",
+    "list_decisions",
     "record_decision",
 ]
