@@ -176,6 +176,51 @@ async def get_attribution_for_submission(
     return row.scalar_one_or_none()
 
 
+def result_attributed_source_event_id(*, result_type: str, result_id: str) -> str:
+    return f"acq.result.attributed:{str(result_type).strip()}:{str(result_id).strip()}"
+
+
+async def _emit_result_attributed(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    snapshot: AttributionSnapshot,
+    actor_type: str = "system",
+    actor_id: str | None = None,
+) -> None:
+    """Stage 3E PR-2: Activity Timeline projection after attribution persist."""
+    from backend.app.acquisition.activity.append_service import append_activity_event
+    from backend.app.acquisition.activity.catalog import get_activity_event_contract
+    from backend.app.models.acquisition_activity_event import ACTOR_TYPES
+
+    contract = get_activity_event_contract("ResultAttributed")
+    if contract is None:
+        raise RuntimeError("ResultAttributed missing from activity catalog")
+    actor = str(actor_type or "system").strip()
+    if actor not in ACTOR_TYPES:
+        actor = "system"
+    await append_activity_event(
+        db,
+        tenant_id=str(tenant_id),
+        campaign_id=snapshot.campaign_id,
+        flight_id=snapshot.campaign_run_id,
+        submission_id=snapshot.submission_id,
+        result_id=snapshot.result_id,
+        event_type="ResultAttributed",
+        event_version=contract.event_version,
+        payload={
+            "result_type": snapshot.result_type,
+            "result_id": snapshot.result_id,
+        },
+        actor_type=actor,
+        actor_id=str(actor_id).strip() if actor_id else None,
+        source_event_id=result_attributed_source_event_id(
+            result_type=snapshot.result_type, result_id=snapshot.result_id
+        ),
+        provider=None,
+    )
+
+
 async def record_result_attribution_from_routing(
     db: AsyncSession,
     *,
@@ -188,6 +233,8 @@ async def record_result_attribution_from_routing(
     campaign_id: Optional[str] = None,
     campaign_run_id: Optional[str] = None,
     flight_id: Optional[str] = None,
+    actor_type: str = "system",
+    actor_id: str | None = None,
 ) -> CampaignResultAttribution:
     """Persist attribution from routing. Manual campaign/flight args are forbidden."""
     if campaign_id is not None or campaign_run_id is not None or flight_id is not None:
@@ -208,6 +255,13 @@ async def record_result_attribution_from_routing(
     )
     if existing is not None:
         _assert_same_attribution(existing, snapshot)
+        await _emit_result_attributed(
+            db,
+            tenant_id=str(tenant_id),
+            snapshot=snapshot,
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
         return existing
 
     by_submission = await get_attribution_for_submission(
@@ -217,6 +271,13 @@ async def record_result_attribution_from_routing(
     )
     if by_submission is not None:
         _assert_same_attribution(by_submission, snapshot)
+        await _emit_result_attributed(
+            db,
+            tenant_id=str(tenant_id),
+            snapshot=snapshot,
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
         return by_submission
 
     row = CampaignResultAttribution(
@@ -234,6 +295,13 @@ async def record_result_attribution_from_routing(
     )
     db.add(row)
     await db.flush()
+    await _emit_result_attributed(
+        db,
+        tenant_id=str(tenant_id),
+        snapshot=snapshot,
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
     return row
 
 

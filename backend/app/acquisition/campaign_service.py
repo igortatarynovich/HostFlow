@@ -202,19 +202,10 @@ async def create_campaign(
         created_by_user_id=actor_id,
     )
     db.add(campaign)
-    # V1 invariant: exactly one reserved Flight; status writes go through lifecycle.
-    await create_flight(
-        db,
-        tenant_id=tenant_id,
-        campaign_id=campaign_id,
-        flight_id=flight_id,
-        code="flight_1",
-        name="Flight 1",
-        actor_type=actor_type,
-        actor_id=actor_id,
-    )
+    # Attach targets before nested activity flush so we never lazy-load
+    # ``campaign.targets`` after the instance is expired.
     for idx, t in enumerate(validated):
-        campaign.targets.append(
+        db.add(
             CampaignTarget(
                 id=str(uuid4()),
                 tenant_id=tenant_id,
@@ -227,6 +218,17 @@ async def create_campaign(
                 sort_order=t.sort_order if t.sort_order else idx,
             )
         )
+    # V1 invariant: exactly one reserved Flight; status writes go through lifecycle.
+    await create_flight(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        flight_id=flight_id,
+        code="flight_1",
+        name="Flight 1",
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
     await db.flush()
     return await _reload_campaign(db, tenant_id=tenant_id, campaign_id=campaign_id)
 
