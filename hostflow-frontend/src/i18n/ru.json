@@ -1849,7 +1849,12 @@
         "communications_workspace": "Рабочее пространство для связи",
         "more": "Подробнее",
         "operations": "Операции",
-        "system": "Система"
+        "system": "Система",
+        "section_communications": "Коммуникации",
+        "section_recruitment": "Рекрутинг",
+        "section_sales": "Продажи",
+        "section_hr": "HR / Кадры",
+        "section_services": "Услуги"
       },
       "actions": {
         "logout": "Выйти",
@@ -11923,6 +11928,33 @@
         "from_email": "info@hostflow.cc",
         "from_name": "HostFlow",
         "test_to": "test@example.com"
+      },
+      "gmail_oauth": {
+        "title": "Gmail OAuth (входящая почта)",
+        "subtitle": "Подключение Gmail для Communications inbox. SMTP выше — только для исходящих уведомлений CRM.",
+        "default_label": "Gmail inbox",
+        "account": "Почтовый аккаунт",
+        "client_id": "OAuth Client ID",
+        "client_secret": "OAuth Client Secret",
+        "client_secret_placeholder_saved": "Оставьте пустым, чтобы сохранить уже записанный секрет",
+        "client_secret_required": "Введите Google Client Secret и нажмите Save mailbox",
+        "client_id_required": "Укажите OAuth Client ID",
+        "redirect_uri": "Redirect URI",
+        "save_mailbox": "Save mailbox",
+        "save_ok": "Mailbox сохранён",
+        "save_failed": "Не удалось сохранить mailbox",
+        "secret_saved": "Client secret сохранён",
+        "secret_missing": "Client secret ещё не сохранён",
+        "start_failed": "Не удалось начать OAuth",
+        "complete_failed": "Не удалось завершить OAuth",
+        "complete_ok": "Gmail подключён",
+        "code_required": "Нет кода авторизации",
+        "state_required": "Нет OAuth state — сначала нажмите «Подключить Gmail»",
+        "refresh_ok": "Токен обновлён",
+        "refresh_failed": "Не удалось обновить токен",
+        "refresh_token": "Обновить токен",
+        "no_refresh_token": "Refresh token отсутствует",
+        "flow_hint": "1) Вставьте Client ID и Secret из Google Cloud → Save mailbox. 2) Connect email → войдите. 3) OAuth complete."
       }
     },
     "ttv": {

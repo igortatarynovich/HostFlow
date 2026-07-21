@@ -31,11 +31,14 @@ const REJECT_REASONS = [
 
 function recruitmentActionErrorMessage(err: unknown, t: (key: string, options?: Record<string, unknown>) => string): string {
   const info = getFriendlyErrorInfo(err, 'Не удалось выполнить действие', t)
-  const code = info.code || ''
+  const code = String(info.code || '').toUpperCase()
   const byCode: Record<string, string> = {
     INTAKE_INFO_REQUESTED: 'Ранее запросили данные у кандидата. Повторите «Создать кандидата» после обновления.',
     VACANCY_NOT_CONFIRMED: 'Сначала привяжите подбор в блоке «Вакансия».',
     INTAKE_ROUTING_INCOMPLETE: 'Не хватает маршрутизации: привяжите подбор.',
+    INTAKE_POOL_PATH_REQUIRED: 'Сначала привяжите подбор в блоке «Вакансия», затем снова нажмите «Создать кандидата».',
+    NO_INTAKE_CONTEXT:
+      'Не удалось создать кандидата: у отклика нет полного intake-контекста. Привяжите актуальный подбор и повторите, либо откройте карточку лида для маршрутизации.',
     LEAD_RODO_REQUIRED: 'Нужно подтвердить RODO перед этим действием.',
     LEAD_INTAKE_ALREADY_REJECTED: 'Отклик уже закрыт.',
     INTAKE_REJECT_REASON_REQUIRED: 'Укажите причину отклонения.',
@@ -43,6 +46,10 @@ function recruitmentActionErrorMessage(err: unknown, t: (key: string, options?: 
   }
   const mapped = byCode[code]
   return [mapped || info.title, info.detail, info.hint].filter(Boolean).join(' ')
+}
+
+function processResultError(message: string | null | undefined): { response: { data: { detail: { code: string } } } } {
+  return { response: { data: { detail: { code: String(message || 'NO_INTAKE_CONTEXT') } } } }
 }
 
 function candidateDetailPath(candidateId: string): string {
@@ -115,12 +122,17 @@ export function ApplicationRecruitmentDetailPanel({
   const createCandidate = useCallback(() => {
     void run(async () => {
       const result = await processRecruitmentApplication(application.id)
-      notify({ title: 'Кандидат создан', variant: 'success' })
-      if (result.candidate_id) {
-        navigate(candidateDetailPath(String(result.candidate_id)))
+      if (!result.candidate_id) {
+        notify({
+          title: recruitmentActionErrorMessage(processResultError(result.message), t),
+          variant: 'error',
+        })
+        return
       }
+      notify({ title: 'Кандидат создан', variant: 'success' })
+      navigate(candidateDetailPath(String(result.candidate_id)))
     })
-  }, [application.id, navigate, notify, run])
+  }, [application.id, navigate, notify, run, t])
 
   const decision = resolveRecruitmentApplicationDecision({
     application,

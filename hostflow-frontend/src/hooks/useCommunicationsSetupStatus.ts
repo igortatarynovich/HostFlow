@@ -96,6 +96,11 @@ export function useCommunicationsSetupStatus() {
     }
   }, [accounts, settings, threads])
 
+  const emailPathReady = state.emailConnected && state.emailInboundSeen
+  const messengerPathReady = state.messengerConnected && state.messengerInboundSeen
+  // One working channel path is enough — do not block email-only tenants on messenger.
+  const isComplete = state.channelsEnabled && (emailPathReady || messengerPathReady)
+
   const doneCount = useMemo(
     () =>
       [
@@ -109,14 +114,20 @@ export function useCommunicationsSetupStatus() {
   )
 
   const missingStepKeys = useMemo<CommunicationsSetupStepKey[]>(() => {
+    if (isComplete) return []
     const out: CommunicationsSetupStepKey[] = []
     if (!state.channelsEnabled) out.push('channels')
-    if (!state.emailConnected) out.push('email_connected')
-    if (!state.messengerConnected) out.push('messenger_connected')
-    if (!state.emailInboundSeen) out.push('email_inbound')
-    if (!state.messengerInboundSeen) out.push('messenger_inbound')
+    // Prefer finishing the email path when email is already connected or nothing is ready yet.
+    if (!emailPathReady) {
+      if (!state.emailConnected) out.push('email_connected')
+      else if (!state.emailInboundSeen) out.push('email_inbound')
+    }
+    if (!messengerPathReady && !state.emailConnected) {
+      if (!state.messengerConnected) out.push('messenger_connected')
+      else if (!state.messengerInboundSeen) out.push('messenger_inbound')
+    }
     return out
-  }, [state])
+  }, [emailPathReady, isComplete, messengerPathReady, state])
 
   const nextStepKey = missingStepKeys[0] ?? null
 
@@ -125,7 +136,7 @@ export function useCommunicationsSetupStatus() {
     error,
     state,
     doneCount,
-    isComplete: doneCount === 5,
+    isComplete,
     missingStepKeys,
     nextStepKey,
     reload,

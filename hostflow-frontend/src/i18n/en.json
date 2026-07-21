@@ -1920,7 +1920,12 @@
         "communications_workspace": "Communications workspace",
         "more": "More",
         "operations": "Operations",
-        "system": "System"
+        "system": "System",
+        "section_communications": "Communications",
+        "section_recruitment": "Recruitment",
+        "section_sales": "Sales",
+        "section_hr": "HR",
+        "section_services": "Services"
       },
       "actions": {
         "logout": "Sign out",
@@ -11977,6 +11982,33 @@
         "from_email": "info@hostflow.cc",
         "from_name": "HostFlow",
         "test_to": "test@example.com"
+      },
+      "gmail_oauth": {
+        "title": "Gmail OAuth (inbound inbox)",
+        "subtitle": "Connect Gmail for the Communications inbox. SMTP above is only for outbound CRM notifications.",
+        "default_label": "Gmail inbox",
+        "account": "Mailbox",
+        "client_id": "OAuth Client ID",
+        "client_secret": "OAuth Client Secret",
+        "client_secret_placeholder_saved": "Leave blank to keep the saved secret",
+        "client_secret_required": "Enter the Google Client Secret, then Save mailbox",
+        "client_id_required": "Enter the OAuth Client ID",
+        "redirect_uri": "Redirect URI",
+        "save_mailbox": "Save mailbox",
+        "save_ok": "Mailbox saved",
+        "save_failed": "Could not save mailbox",
+        "secret_saved": "Client secret saved",
+        "secret_missing": "Client secret not saved yet",
+        "start_failed": "Could not start OAuth",
+        "complete_failed": "Could not complete OAuth",
+        "complete_ok": "Gmail connected",
+        "code_required": "No authorization code",
+        "state_required": "No OAuth state — click Connect email first",
+        "refresh_ok": "Token refreshed",
+        "refresh_failed": "Could not refresh token",
+        "refresh_token": "Refresh token",
+        "no_refresh_token": "Refresh token missing",
+        "flow_hint": "1) Paste Client ID + Secret from Google Cloud → Save mailbox. 2) Connect email → sign in. 3) OAuth complete."
       }
     },
     "ttv": {

@@ -1847,7 +1847,12 @@
         "communications_workspace": "Obszar roboczy komunikacji",
         "more": "Więcej",
         "operations": "Operacje",
-        "system": "System"
+        "system": "System",
+        "section_communications": "Komunikacja",
+        "section_recruitment": "Rekrutacja",
+        "section_sales": "Sprzedaż",
+        "section_hr": "HR / Kadry",
+        "section_services": "Usługi"
       },
       "actions": {
         "logout": "Wyloguj",
@@ -11921,6 +11926,33 @@
         "from_email": "info@hostflow.cc",
         "from_name": "HostFlow",
         "test_to": "test@example.com"
+      },
+      "gmail_oauth": {
+        "title": "Gmail OAuth (skrzynka przychodząca)",
+        "subtitle": "Połączenie Gmail z Communications inbox. SMTP powyżej — tylko dla wychodzących powiadomień CRM.",
+        "default_label": "Skrzynka Gmail",
+        "account": "Skrzynka",
+        "client_id": "OAuth Client ID",
+        "client_secret": "OAuth Client Secret",
+        "client_secret_placeholder_saved": "Pozostaw puste, aby zachować zapisany sekret",
+        "client_secret_required": "Wpisz Google Client Secret, potem Save mailbox",
+        "client_id_required": "Podaj OAuth Client ID",
+        "redirect_uri": "Redirect URI",
+        "save_mailbox": "Save mailbox",
+        "save_ok": "Skrzynka zapisana",
+        "save_failed": "Nie udało się zapisać skrzynki",
+        "secret_saved": "Client secret zapisany",
+        "secret_missing": "Client secret jeszcze nie zapisany",
+        "start_failed": "Nie udało się rozpocząć OAuth",
+        "complete_failed": "Nie udało się zakończyć OAuth",
+        "complete_ok": "Gmail połączony",
+        "code_required": "Brak kodu autoryzacji",
+        "state_required": "Brak OAuth state — najpierw Connect email",
+        "refresh_ok": "Token odświeżony",
+        "refresh_failed": "Nie udało się odświeżyć tokenu",
+        "refresh_token": "Odśwież token",
+        "no_refresh_token": "Brak refresh token",
+        "flow_hint": "1) Wklej Client ID + Secret z Google Cloud → Save mailbox. 2) Connect email → zaloguj się. 3) OAuth complete."
       }
     },
     "ttv": {
