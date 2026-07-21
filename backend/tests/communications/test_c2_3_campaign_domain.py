@@ -49,7 +49,8 @@ FORBIDDEN_MODULE_IMPORT_PREFIXES = (
     "app.modules.finance",
 )
 
-DOMAIN_SEND_PATH_FILES = frozenset({"lifecycle.py", "errors.py", "__init__.py"})
+# emitter.py may call execute_communication_intent (PR-3 platform path).
+DOMAIN_SEND_PATH_FILES = frozenset({"lifecycle.py", "errors.py", "payload.py"})
 FORBIDDEN_SEND_PATH_TOKENS = (
     "CommunicationSender",
     "execute_communication_intent",

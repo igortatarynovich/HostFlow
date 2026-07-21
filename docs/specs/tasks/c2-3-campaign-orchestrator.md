@@ -1,8 +1,9 @@
 # C2.3 — Campaign Orchestrator
 
-**Status:** Active (PR-2 audience resolver — no Campaign UI yet)  
+**Status:** Active (PR-3 Intent emission — no Campaign UI yet)  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
-**Branch:** `feat/communication-c2-3-campaign-audience-resolver` (PR-2) · PR-1 domain `feat/communication-c2-3-campaign-domain`  
+**Branch:** `feat/communication-c2-3-campaign-intent-emitter` (PR-3)  
+
 
 **Parents:** [C2.2 Automation Engine ✅](c2-2-automation-engine.md) · [C2.1 Template Platform ✅](c2-1-template-platform.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
 
@@ -96,6 +97,20 @@ Pure package `communications/campaign/audience/`:
 - `create_run_from_audience` freezes resolve output into Run recipients (never re-queries later)
 - Out of PR-2: Intent emission, run orchestration loop, HTTP API, UI
 
+### PR-3 Intent emission (locked)
+
+`communications/campaign/emitter.py`:
+
+```text
+allowed RunItem → IntentExecutionRequest → execute_communication_intent
+```
+
+- Per-item emission; one failure → `failed`/`skipped` on that item only  
+- Idempotent: already `emitted` items are not re-fired  
+- `automation_identity = comm_campaign:{campaign_id}:{version_id}`  
+- No provider / Sender / Workspace Commands / Thread ORM imports  
+- Out of PR-3: run orchestration product loop, HTTP API, UI
+
 
 ---
 
@@ -114,8 +129,8 @@ Pure package `communications/campaign/audience/`:
 
 - [x] PR-1 domain + publish immutability + run idempotency + snapshot vs definition  
 - [x] PR-2 audience resolver produces snapshot only (`static_list` / `filter` + caller entity pool)  
+- [x] PR-3 Intent emission via platform path (no provider / Thread writes)  
 
-- [ ] PR-3 Intent emission via platform path (no provider / Thread writes)  
 - [ ] PR-4 run orchestration (item-level failure isolation)  
 - [ ] PR-5 API  
 - [ ] PR-6 thin UI only after API  
