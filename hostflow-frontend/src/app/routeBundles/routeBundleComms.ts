@@ -16,3 +16,4 @@ export { default as CommunicationsQueueSettingsPage } from '../../pages/admin/Co
 export { default as CommunicationsSlaSettingsPage } from '../../pages/admin/CommunicationsSlaSettingsPage'
 export { default as CommunicationTemplatesPage } from '../../pages/admin/CommunicationTemplatesPage'
 export { default as CommunicationAutomationRulesPage } from '../../pages/admin/CommunicationAutomationRulesPage'
+export { default as CommunicationCampaignsPage } from '../../pages/admin/CommunicationCampaignsPage'

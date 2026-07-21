@@ -1,8 +1,9 @@
 # C2.3 — Campaign Orchestrator
 
-**Status:** Active (PR-5 API — no Campaign UI yet)  
+**Status:** ✅ Closed (PR-6 thin UI)  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
-**Branch:** `feat/communication-c2-3-campaign-api` (PR-5)  
+**Branch:** `feat/communication-c2-3-campaign-ui` (PR-6)  
+
 
 
 
@@ -144,6 +145,14 @@ pending → running → emit_run_items → completed
 No provider / `execute_communication_intent` in the route module — only orchestrator + pure dry-run.  
 Out of PR-5: thin UI.
 
+### PR-6 Thin UI (locked)
+
+`/app/settings/communications/campaigns` — operator tools only (list / draft JSON / publish / dry-run / run request_only).
+
+- Same shell as Templates / Automation (`SettingsSubpageHeader` + list|detail)
+- No inbox, no N× Write, no rich audience builder, no provider knobs
+- Entry card on Communications settings hub
+
 ---
 
 ## Anti-patterns (reject in review)
@@ -164,11 +173,11 @@ Out of PR-5: thin UI.
 - [x] PR-3 Intent emission via platform path (no provider / Thread writes)  
 - [x] PR-4 run orchestration (item-level failure isolation)  
 - [x] PR-5 API  
-
-- [ ] PR-6 thin UI only after API  
-- [ ] Capability-isolation contract tests  
-- [ ] No Scheduling product code in C2.3  
+- [x] PR-6 thin UI only after API  
+- [x] Capability-isolation contract tests  
+- [x] No Scheduling product code in C2.3  
 
 ## After C2.3
 
 **C2.4 Scheduling** — Schedule → Intent → ordinary pipeline.
+
