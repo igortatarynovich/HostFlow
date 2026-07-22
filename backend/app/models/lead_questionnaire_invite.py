@@ -12,9 +12,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 # Relative Base import (not backend.app.db.base): under the uvicorn /app/backend
 # symlink an absolute import can load a second Base and break FKs to tenant_lead_forms.
+# app.db.base also aliases backend.app.db.base so Lead (absolute Base import) shares MetaData.
 from ..db.base import Base
 
-# Ensure FK target is registered in the same MetaData (SQLAlchemy NoReferencedTableError).
+# Ensure FK targets are registered in the same MetaData (SQLAlchemy NoReferencedTableError).
+from .lead import Lead  # noqa: F401
 from .tenant_lead_form import TenantLeadForm  # noqa: F401
 
 JSONType = MutableDict.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql"))
