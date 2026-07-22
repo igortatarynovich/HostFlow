@@ -928,6 +928,27 @@ export async function updateLeadStage(leadId: string, payload: {
   return data;
 }
 
+export type LeadCallResultCode =
+  | 'no_answer'
+  | 'answered'
+  | 'callback_requested'
+  | 'interested'
+  | 'not_interested'
+  | 'wrong_number'
+  | 'unavailable'
+
+export type LeadCallResultPayload = {
+  result: LeadCallResultCode
+  note?: string | null
+  bump_stage?: boolean
+}
+
+/** POST /leads/:id/call-result — B2B appeal call disposition + comment. */
+export async function logLeadCallResult(leadId: string, payload: LeadCallResultPayload) {
+  const { data } = await api.post(`/leads/${leadId}/call-result`, payload)
+  return data
+}
+
 export async function bulkUpdateLeads(payload: {
   lead_ids: string[];
   stage?: string | null;

@@ -6385,6 +6385,31 @@
           "hint": "Utwórz działanie follow-up dla tego leada (np. oddzwonić jutro).",
           "default_title": "Kontakt z leadem"
         },
+        "call_result": {
+          "kicker": "Zapytanie B2B",
+          "title": "Wynik rozmowy",
+          "subtitle": "Oddzwonić albo co jeszcze chcą / myślą — zapisz po rozmowie.",
+          "save": "Zapisz wynik rozmowy",
+          "saved": "Wynik rozmowy zapisany",
+          "save_failed": "Nie udało się zapisać wyniku rozmowy",
+          "history_title": "Historia rozmów",
+          "results": {
+            "no_answer": "Brak odpowiedzi",
+            "answered": "Odebrał",
+            "callback_requested": "Oddzwonić",
+            "interested": "Zainteresowany",
+            "not_interested": "Niezainteresowany",
+            "wrong_number": "Zły numer",
+            "unavailable": "Niedostępny"
+          },
+          "fields": {
+            "result": "Wynik",
+            "note": "Komentarz do wyniku",
+            "note_recommended": "zalecane",
+            "note_placeholder": "Np. oddzwonić jutro o 15:00, pyta o stawkę, zastanawia się…",
+            "note_hint": "Co chcą lub myślą: oddzwonić, warunki, wątpliwości, kolejny krok."
+          }
+        },
         "lost_reason_title": "Powód utraty",
         "qualification_summary": {
           "title": "Podsumowanie kwalifikacji",
@@ -6485,7 +6510,7 @@
         "empty_desc": "Podłącz źródła reklam lub zaimportuj leady, aby uruchomić routing i przypisywanie.",
         "empty_desc_services": "Podłącz źródła leadów lub dodaj pierwszego klienta, aby prowadzić sprzedaż usług i follow-up.",
         "empty_title": "Brak leadów",
-        "empty_title_services": "Brak leadów klientów"
+        "empty_title_services": "Brak zapytań"
       },
       "messages": {
         "load_failed": "Nie udało się załadować leadów.",
@@ -6984,7 +7009,7 @@
         "lost_from_filter_banner": "Utrata z etapu CRM: {stage}",
         "lost_from_stage_unknown": "Nieznany poprzedni etap"
       },
-      "title_services": "Leady klientów",
+      "title_services": "Zapytania",
       "workspace": {
         "distribution_cta": "Autodystrybucja",
         "view_table": "Tabela",

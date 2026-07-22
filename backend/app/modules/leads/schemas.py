@@ -160,6 +160,45 @@ class LeadOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+LeadCallResult = Literal[
+    "no_answer",
+    "answered",
+    "callback_requested",
+    "interested",
+    "not_interested",
+    "wrong_number",
+    "unavailable",
+]
+
+
+class LeadCallResultIn(BaseModel):
+    """Operator disposition after a call on a B2B appeal / client lead."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    result: LeadCallResult = Field(
+        ...,
+        description="Call outcome (callback_requested = перезвонить).",
+    )
+    note: Optional[str] = Field(
+        default=None,
+        max_length=2000,
+        description="Free-text: what they want / think, when to call back, conditions.",
+    )
+    bump_stage: bool = Field(
+        default=True,
+        description="When true, contact-reached results move CRM stage to contacted (if not already later).",
+    )
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def _strip_call_note(cls, v: Any) -> Any:
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
+
+
 class LeadStageUpdate(BaseModel):
     stage: Optional[LeadStage] = None
     assignment_locked: Optional[bool] = Field(

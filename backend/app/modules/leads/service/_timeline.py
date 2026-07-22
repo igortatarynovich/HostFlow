@@ -79,6 +79,14 @@ async def get_lead_timeline(
             from_stage = (payload or {}).get("from_stage") if isinstance(payload, dict) else None
             to_stage = (payload or {}).get("to_stage") if isinstance(payload, dict) else None
             descr = f"{from_stage or '—'} → {to_stage or '—'}"
+        elif action == "lead.call_result":
+            kind = "call_result"
+            result = (payload or {}).get("result") if isinstance(payload, dict) else None
+            note = (payload or {}).get("note") if isinstance(payload, dict) else None
+            parts = [str(result)] if result else []
+            if note:
+                parts.append(str(note))
+            descr = " — ".join(parts) if parts else None
         elif str(action or "").startswith("analytics.next_action."):
             kind = "next_action_warning"
         elif str(action or "").startswith("analytics.perf."):
