@@ -12,7 +12,7 @@ from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app.db.base import Base
+from ..db.base import Base
 from .mixins import now_utc
 
 JSONType = MutableDict.as_mutable(JSONB().with_variant(SQLiteJSON(), "sqlite"))

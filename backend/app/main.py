@@ -55,13 +55,16 @@ for _name, _module in list(_sys.modules.items()):
     if _name.startswith("app.models.") and _module is not None:
         _sys.modules.setdefault(f"backend.{_name}", _module)
 
-# Campaign bindings import models via backend.app.models.*; without a forced alias the
-# /app/backend symlink can load a second copy on a second SQLAlchemy Base and break FKs.
+# Campaign / questionnaire bindings import models via backend.app.models.*; without a
+# forced alias the /app/backend symlink can load a second copy on a second SQLAlchemy
+# Base and break FKs (e.g. lead_questionnaire_invites.lead_form_id → tenant_lead_forms).
 for _acq_model in (
     "campaign",
     "tenant_lead_form",
     "intake_routing",
     "acquisition_activity_event",
+    "lead_questionnaire_invite",
+    "communication_delivery",
 ):
     _app_mod_name = f"app.models.{_acq_model}"
     importlib.import_module(_app_mod_name)
