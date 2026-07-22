@@ -24,11 +24,49 @@ from backend.app.db.session import async_session_maker
 from backend.app.models.campaign import Campaign, CampaignRun, CampaignRunForm, CampaignTarget
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.lead import MetaAdsMap
+from backend.app.models.module_registry import (
+    INSTALLATION_STATE_ENABLED,
+    TenantModuleInstallation,
+)
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.models.vacancy import Vacancy
+from backend.app.module_registry.seed import ensure_tenant_module_installations
 from backend.tests.conftest import _init_data
 
+
+async def _ensure_recruitment_enabled(tenant_id: str) -> None:
+    """Fresh DB may lack enabled recruitment installation; CampaignTarget needs it."""
+    async with async_session_maker() as session:
+        await ensure_tenant_module_installations(session, tenant_id)
+        row = (
+            await session.execute(
+                select(TenantModuleInstallation).where(
+                    TenantModuleInstallation.tenant_id == tenant_id,
+                    TenantModuleInstallation.module_code == "recruitment",
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            session.add(
+                TenantModuleInstallation(
+                    id=str(uuid4()),
+                    tenant_id=tenant_id,
+                    module_code="recruitment",
+                    state=INSTALLATION_STATE_ENABLED,
+                    source="test",
+                    metadata_json={"source": "legacy_search_migration_test"},
+                )
+            )
+        else:
+            row.state = INSTALLATION_STATE_ENABLED
+        await session.commit()
+
+
+async def _bootstrap() -> dict:
+    data = await _init_data()
+    await _ensure_recruitment_enabled(data["tenant_id"])
+    return data
 
 def test_eligibility_requires_acquisition_signal():
     assert not is_eligible(signals=[])
@@ -176,7 +214,7 @@ async def _seed_meta_profile(
 
 @pytest.mark.asyncio
 async def test_bare_vacancy_not_eligible():
-    data = await _init_data()
+    data = await _bootstrap()
     tenant_id = data["tenant_id"]
     oc = await _oc(tenant_id)
     title = f"Bare vacancy {uuid4().hex[:8]}"
@@ -201,7 +239,7 @@ async def test_bare_vacancy_not_eligible():
 
 @pytest.mark.asyncio
 async def test_migrate_form_and_meta_idempotent_rollback_keeps_stamp():
-    data = await _init_data()
+    data = await _bootstrap()
     tenant_id = data["tenant_id"]
     oc = await _oc(tenant_id)
     form_id = await _seed_form(tenant_id)
@@ -316,7 +354,7 @@ async def test_migrate_form_and_meta_idempotent_rollback_keeps_stamp():
 
 @pytest.mark.asyncio
 async def test_ambiguous_meta_needs_manual_no_fake_binding():
-    data = await _init_data()
+    data = await _bootstrap()
     tenant_id = data["tenant_id"]
     oc = await _oc(tenant_id)
     form_id = await _seed_form(tenant_id)
@@ -369,7 +407,7 @@ async def test_ambiguous_meta_needs_manual_no_fake_binding():
 
 @pytest.mark.asyncio
 async def test_completed_status_mapping():
-    data = await _init_data()
+    data = await _bootstrap()
     tenant_id = data["tenant_id"]
     oc = await _oc(tenant_id)
     form_id = await _seed_form(tenant_id)
