@@ -9,7 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select
 
 from backend.app.models.tenant import Tenant, TenantLicense
 from backend.app.services import billing_restrictions
@@ -34,6 +34,7 @@ from backend.app.modules.leads.schemas import (
     BulkAutoProcessQueueResponse,
     BulkLeadUpdateRequest,
     BulkLeadUpdateResponse,
+    LeadCallResultIn,
     LeadDistributionOut,
     LeadDistributionPatch,
     LeadDistributionAlert,
@@ -455,6 +456,88 @@ async def get_lead_detail_endpoint(
     res = await service.list_leads(
         db,
         tenant_id=str(tenant_uuid),
+        own_company_id=own_company_id,
+        only_lead_id=lead_id,
+        limit=1,
+        offset=0,
+    )
+    if not res.items:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    return res.items[0]
+
+
+@router.post(
+    "/{lead_id}/call-result",
+    response_model=LeadOut,
+    dependencies=[Depends(require_roles(Role.admin, Role.manager, Role.recruiter))],
+)
+async def log_lead_call_result_endpoint(
+    lead_id: str,
+    payload: LeadCallResultIn,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+) -> LeadOut:
+    """Log call outcome + comment on a lead (B2B appeals / client leads).
+
+    Stores ``normalized.call_result_v1`` (latest) and appends to
+    ``normalized.call_results_v1``. Contact-reached results may bump CRM stage
+    to ``contacted``.
+    """
+    from backend.app.modules.leads import crud
+    from backend.app.modules.leads.service.call_result import log_lead_call_result
+    from backend.app.modules.leads.service.intake_decision import client_lead_is_terminal, is_client_lead
+    from backend.app.services.lead_rodo import (
+        LEAD_RODO_ACTION_COMMUNICATION_CALL,
+        ensure_lead_rodo_allows_action,
+    )
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    if is_client_lead(lead) and client_lead_is_terminal(lead):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "INTAKE_REJECTED"},
+        )
+
+    if await ensure_lead_rodo_allows_action(
+        db,
+        tenant_id=tenant_id_str,
+        lead=lead,
+        action=LEAD_RODO_ACTION_COMMUNICATION_CALL,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "LEAD_RODO_REQUIRED"},
+        )
+
+    tenant_row = await db.get(Tenant, tenant_id_str)
+    lic_row = (
+        await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id_str).limit(1))
+    ).scalar_one_or_none()
+    billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
+
+    await log_lead_call_result(
+        db,
+        tenant_id=tenant_id_str,
+        lead=lead,
+        result=payload.result,
+        note=payload.note,
+        actor_id=str(current_user.sub or "").strip() or None,
+        bump_stage=bool(payload.bump_stage),
+    )
+    await db.commit()
+
+    res = await service.list_leads(
+        db,
+        tenant_id=tenant_id_str,
         own_company_id=own_company_id,
         only_lead_id=lead_id,
         limit=1,

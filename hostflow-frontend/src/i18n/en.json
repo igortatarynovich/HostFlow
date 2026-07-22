@@ -6663,6 +6663,31 @@
           "hint": "Create a follow-up activity on this lead (for example, call back tomorrow).",
           "default_title": "Follow up with lead"
         },
+        "call_result": {
+          "kicker": "B2B inquiry",
+          "title": "Call result",
+          "subtitle": "Callback or what else they want / think — capture it after the call.",
+          "save": "Save call result",
+          "saved": "Call result saved",
+          "save_failed": "Could not save call result",
+          "history_title": "Call history",
+          "results": {
+            "no_answer": "No answer",
+            "answered": "Answered",
+            "callback_requested": "Call back",
+            "interested": "Interested",
+            "not_interested": "Not interested",
+            "wrong_number": "Wrong number",
+            "unavailable": "Unavailable"
+          },
+          "fields": {
+            "result": "Result",
+            "note": "Comment on result",
+            "note_recommended": "recommended",
+            "note_placeholder": "e.g. call back tomorrow 15:00, asks about rate, thinking it over…",
+            "note_hint": "What they want or think: callback, conditions, doubts, next step."
+          }
+        },
         "lost_reason_title": "Lost reason",
         "qualification_summary": {
           "title": "Qualification summary",
@@ -6763,7 +6788,7 @@
         "empty_desc": "Connect ad sources or import leads to start routing and assignment.",
         "empty_desc_services": "Connect lead sources or add your first client to start service sales and follow-up.",
         "empty_title": "No leads yet",
-        "empty_title_services": "No client leads yet"
+        "empty_title_services": "No inquiries yet"
       },
       "messages": {
         "load_failed": "Failed to load leads.",
@@ -7262,7 +7287,7 @@
         "lost_from_filter_banner": "Lost from prior CRM stage: {stage}",
         "lost_from_stage_unknown": "Unknown prior stage"
       },
-      "title_services": "Client Leads",
+      "title_services": "Inquiries",
       "workspace": {
         "distribution_cta": "Auto distribution",
         "view_table": "Table",

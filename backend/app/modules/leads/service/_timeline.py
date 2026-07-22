@@ -96,6 +96,14 @@ async def get_lead_timeline(
                 contact = payload.get("contact_name") or "—"
                 company = payload.get("company_name") or "—"
                 descr = f"{contact} — {company}"
+        elif action == "lead.call_result":
+            kind = "call_result"
+            result = (payload or {}).get("result") if isinstance(payload, dict) else None
+            note = (payload or {}).get("note") if isinstance(payload, dict) else None
+            parts = [str(result)] if result else []
+            if note:
+                parts.append(str(note))
+            descr = " — ".join(parts) if parts else None
         elif str(action or "").startswith("analytics.next_action."):
             kind = "next_action_warning"
         elif str(action or "").startswith("analytics.perf."):

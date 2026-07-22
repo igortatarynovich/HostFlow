@@ -11,9 +11,11 @@ import {
   getLeadTimeline,
   getOnboardingStatus,
   listReminders,
+  logLeadCallResult,
   processLead,
   submitLeadIntakeDecision,
   updateLeadStage,
+  type LeadCallResultCode,
 } from '../api/client'
 import type { Lead, LeadStage, LeadStatus } from '../api/types'
 import type { ReminderRecord } from '../api/types/notification'
@@ -185,6 +187,7 @@ export default function LeadDetailPage() {
   const [reminderDueAt, setReminderDueAt] = useState(() => new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16))
   const [reminderOffset, setReminderOffset] = useState(15)
   const [patching, setPatching] = useState(false)
+  const [savingCallResult, setSavingCallResult] = useState(false)
   const [lostStagePrompt, setLostStagePrompt] = useState<{ previousStage: string | null } | null>(null)
   const [deletingLead, setDeletingLead] = useState(false)
   const [convertingClientLead, setConvertingClientLead] = useState(false)
@@ -678,6 +681,54 @@ export default function LeadDetailPage() {
     [handleDetailStageChange, lead, lead?.id, lead?.stage],
   )
 
+  const handleCallResult = useCallback(
+    async (payload: { result: LeadCallResultCode; note: string }) => {
+      if (!lead?.id) return
+      setSavingCallResult(true)
+      try {
+        const updated = (await logLeadCallResult(lead.id, {
+          result: payload.result,
+          note: payload.note || undefined,
+        })) as Lead
+        setLead(updated)
+        bumpNextActionTick()
+        notify({
+          title: t('app.leads.detail.call_result.saved', {
+            defaultValue: 'Результат звонка сохранён',
+          }),
+          variant: 'success',
+        })
+        void loadTimeline()
+      } catch (err: unknown) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(
+            err,
+            t('app.leads.detail.call_result.save_failed', {
+              defaultValue: 'Не удалось сохранить результат звонка',
+            }),
+          )
+        ) {
+          return
+        }
+        const info = getFriendlyErrorInfo(
+          err,
+          t('app.leads.detail.call_result.save_failed', {
+            defaultValue: 'Не удалось сохранить результат звонка',
+          }),
+          t,
+        )
+        notify({
+          title: info.title,
+          description: [info.detail, info.hint].filter(Boolean).join(' '),
+          variant: 'error',
+        })
+      } finally {
+        setSavingCallResult(false)
+      }
+    },
+    [bumpNextActionTick, lead?.id, loadTimeline, notify, planLimitModal, t],
+  )
+
   const cancelLostStagePrompt = useCallback(() => setLostStagePrompt(null), [])
 
   const confirmLostStageFromModal = useCallback(
@@ -991,8 +1042,10 @@ export default function LeadDetailPage() {
               formatDate={(iso) => formatDateValue(iso, locale)}
               converting={convertingClientLead}
               patching={patching}
+              savingCallResult={savingCallResult}
               onConvert={() => void handleConvertClientLead()}
               onStage={(stage) => void handleDetailStageSelect(stage)}
+              onCallResult={(payload) => void handleCallResult(payload)}
               moreSection={
                 <div className="space-y-6">
                   <LeadMetaProblemPanel lead={lead} onRefreshed={refreshLeadAndTimeline} />
