@@ -12,6 +12,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base
 
+# Ensure FK target is registered in the same MetaData (SQLAlchemy NoReferencedTableError).
+from backend.app.models.tenant_lead_form import TenantLeadForm  # noqa: F401
+
 JSONType = MutableDict.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql"))
 
 

@@ -55,3 +55,15 @@ def test_questionnaire_email_module_imports_without_circular_error() -> None:
     )
     assert callable(mod.compose_questionnaire_invite_email)
     assert callable(mod.send_questionnaire_invite_email)
+
+
+def test_questionnaire_email_http_error_maps_import_error_without_reimport() -> None:
+    from backend.app.modules.leads.router import _questionnaire_email_http_error
+
+    err = ImportError(
+        "cannot import name 'find_thread_id_for_origin' from partially initialized module"
+    )
+    http_exc = _questionnaire_email_http_error(err)
+    assert http_exc.status_code == 500
+    assert http_exc.detail["code"] == "questionnaire_email_import_error"
+    assert "find_thread_id_for_origin" in http_exc.detail["message"]
