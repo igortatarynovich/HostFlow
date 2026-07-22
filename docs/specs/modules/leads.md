@@ -97,6 +97,20 @@ Sequence диаграмма (логический порядок):
 
 Операционный слой intake (отдельно от стадий кандидата): **`POST /api/v1/leads/{id}/intake-decision`**, **`POST /api/v1/leads/{id}/confirm-vacancy`**, гейтинг **`POST /api/v1/leads/{id}/process`** через `manual_process_block_code` (стабильные коды в 422), тот же слой на **bulk/NBA**, **retry**, **CSV reimport** для повторной обработки существующей строки. Детали и smoke-чеклист: [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8.0.
 
+### Call result on B2B appeals (client leads)
+
+Операторский лог результата звонка по обращению (client lead):
+
+- `POST /api/v1/leads/{id}/call-result` — body `{ result, note?, bump_stage? }`
+- `result`: `no_answer` | `answered` | `callback_requested` | `interested` | `not_interested` | `wrong_number` | `unavailable`
+- `note` — свободный комментарий (перезвонить / что хотят / думают), до 2000 символов
+- Persistence: latest → `Lead.normalized.call_result_v1`; history → `Lead.normalized.call_results_v1` (append, max 50)
+- Audit: `lead.call_result` в timeline
+- При `bump_stage=true` (default) и результате из contact-reached (`answered` / `callback_requested` / `interested` / `not_interested`) CRM stage → `contacted` (если ещё не `qualified` / `converted` / `lost`)
+- Gate: lead RODO (`communication_call`), billing side-effects; terminal rejected client lead → 422
+
+UI: карточка client lead (`ClientLeadDetailView`) — блок «Результат звонка» + история. Для services-tenant заголовок списка — «Обращения» (`app.leads.title_services`).
+
 ### Lead-stage RODO (art. 14)
 
 Политика арендатора в **`Tenant.settings.lead_rodo_v1`**, поля в **`GET/PATCH /api/v1/settings/leads/settings`**:

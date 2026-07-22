@@ -1,17 +1,26 @@
-import { type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+import type { LeadCallResultCode } from '../../api/client'
 import type { Lead } from '../../api/types'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { useI18n } from '../../i18n'
 import { leadIntakeResolutionRejected } from '../../utils/intakeResolution'
+import {
+  LEAD_CALL_RESULT_CODES,
+  leadCallResultHistory,
+  type LeadCallResultEntry,
+} from '../../utils/leadCallResult'
 
 type ClientLeadDetailViewProps = {
   lead: Lead
   formatDate: (iso: string | null | undefined) => string
   converting: boolean
   patching: boolean
+  savingCallResult?: boolean
   onConvert: () => void | Promise<void>
   onStage: (stage: 'contacted' | 'qualified' | 'lost') => void | Promise<void>
+  onCallResult?: (payload: { result: LeadCallResultCode; note: string }) => void | Promise<void>
   moreSection?: ReactNode
 }
 
@@ -60,15 +69,48 @@ function Section({
   )
 }
 
+function CallResultHistoryItem({
+  entry,
+  formatDate,
+  resultLabel,
+  noteLabel,
+}: {
+  entry: LeadCallResultEntry
+  formatDate: (iso: string | null | undefined) => string
+  resultLabel: (code: string) => string
+  noteLabel: string
+}) {
+  return (
+    <li className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-medium text-slate-800">{resultLabel(entry.result)}</span>
+        {entry.at ? <span className="text-xs text-slate-500">{formatDate(entry.at)}</span> : null}
+      </div>
+      {entry.note?.trim() ? (
+        <p className="mt-1.5 whitespace-pre-wrap border-t border-slate-100 pt-1.5 text-slate-700">
+          <span className="text-xs font-medium text-slate-500">{noteLabel}: </span>
+          {entry.note.trim()}
+        </p>
+      ) : null}
+    </li>
+  )
+}
+
 export default function ClientLeadDetailView({
   lead,
   formatDate,
   converting,
   patching,
+  savingCallResult = false,
   onConvert,
   onStage,
+  onCallResult,
   moreSection,
 }: ClientLeadDetailViewProps) {
+  const { t } = useI18n()
+  const [callResult, setCallResult] = useState<LeadCallResultCode>('callback_requested')
+  const [callNote, setCallNote] = useState('')
+
   const normalized = record(lead.normalized)
   const payload = record(lead.payload)
   const company = record(normalized.company_profile)
@@ -106,13 +148,28 @@ export default function ClientLeadDetailView({
           ? 'Отклонён'
           : lead.status
 
+  const history = useMemo(() => leadCallResultHistory(lead), [lead])
+
+  const resultLabel = (code: string) =>
+    t(`app.leads.detail.call_result.results.${code}`, { defaultValue: code })
+
+  const noteRecommended =
+    callResult === 'answered' ||
+    callResult === 'callback_requested' ||
+    callResult === 'interested' ||
+    callResult === 'not_interested'
+
+  const busy = patching || converting || savingCallResult
+
   return (
     <div className="space-y-5">
       <header className="card relative overflow-hidden p-5 shadow-md shadow-slate-900/[0.04] sm:p-6">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600/90" aria-hidden />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Client Lead</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+              {t('app.leads.detail.call_result.kicker', { defaultValue: 'Обращение' })}
+            </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{companyName}</h1>
             <p className="mt-2 text-sm text-slate-600">
               {text(need.summary) || [text(need.people_count), text(need.what_needed)].filter(Boolean).join(' ') || 'Анкета транспортной компании'}
@@ -148,7 +205,7 @@ export default function ClientLeadDetailView({
               <button
                 type="button"
                 className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold"
-                disabled={converting || patching}
+                disabled={busy}
                 onClick={() => void onConvert()}
               >
                 {converting ? 'Создаём...' : 'Создать клиента'}
@@ -156,13 +213,13 @@ export default function ClientLeadDetailView({
             )}
             {!terminal ? (
               <>
-                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={patching || converting} onClick={() => void onStage('contacted')}>
+                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={busy} onClick={() => void onStage('contacted')}>
                   Контакт установлен
                 </button>
-                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={patching || converting} onClick={() => void onStage('qualified')}>
+                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={busy} onClick={() => void onStage('qualified')}>
                   Квалифицировать
                 </button>
-                <button type="button" className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60" disabled={patching || converting} onClick={() => void onStage('lost')}>
+                <button type="button" className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60" disabled={busy} onClick={() => void onStage('lost')}>
                   Отклонить
                 </button>
               </>
@@ -170,6 +227,108 @@ export default function ClientLeadDetailView({
           </div>
         </div>
       </header>
+
+      {!terminal && onCallResult ? (
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">
+            {t('app.leads.detail.call_result.title', { defaultValue: 'Результат звонка' })}
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            {t('app.leads.detail.call_result.subtitle', {
+              defaultValue: 'Перезвонить или что ещё хотят / думают — зафиксируйте после разговора.',
+            })}
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs font-medium text-slate-600">
+                {t('app.leads.detail.call_result.fields.result', { defaultValue: 'Результат' })}
+              </span>
+              <select
+                className="input w-full"
+                value={callResult}
+                disabled={busy}
+                onChange={(e) => setCallResult(e.target.value as LeadCallResultCode)}
+              >
+                {LEAD_CALL_RESULT_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {resultLabel(code)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="sm:col-span-2">
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-medium text-slate-600">
+                  {t('app.leads.detail.call_result.fields.note', {
+                    defaultValue: 'Комментарий к результату',
+                  })}
+                  {noteRecommended ? (
+                    <span className="ml-1 font-normal text-slate-500">
+                      (
+                      {t('app.leads.detail.call_result.fields.note_recommended', {
+                        defaultValue: 'желательно',
+                      })}
+                      )
+                    </span>
+                  ) : null}
+                </span>
+                <textarea
+                  className="textarea mt-0 w-full"
+                  rows={3}
+                  maxLength={2000}
+                  disabled={busy}
+                  value={callNote}
+                  onChange={(e) => setCallNote(e.target.value)}
+                  placeholder={t('app.leads.detail.call_result.fields.note_placeholder', {
+                    defaultValue: 'Например: перезвонить завтра в 15:00, спрашивает про ставку, думает…',
+                  })}
+                />
+              </label>
+              <p className="mt-1 text-xs text-slate-500">
+                {t('app.leads.detail.call_result.fields.note_hint', {
+                  defaultValue: 'Что хотят или думают: перезвонить, условия, сомнения, следующий шаг.',
+                })}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60"
+              disabled={busy}
+              onClick={() => {
+                void Promise.resolve(
+                  onCallResult({ result: callResult, note: callNote.trim() }),
+                ).then(() => setCallNote(''))
+              }}
+            >
+              {savingCallResult
+                ? t('common.saving', { defaultValue: 'Сохранение…' })
+                : t('app.leads.detail.call_result.save', { defaultValue: 'Сохранить результат звонка' })}
+            </button>
+          </div>
+          {history.length > 0 ? (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.leads.detail.call_result.history_title', { defaultValue: 'История звонков' })}
+              </h3>
+              <ul className="mt-2 space-y-2">
+                {history.map((entry, idx) => (
+                  <CallResultHistoryItem
+                    key={`${entry.at || 'x'}-${entry.result}-${idx}`}
+                    entry={entry}
+                    formatDate={formatDate}
+                    resultLabel={resultLabel}
+                    noteLabel={t('app.leads.detail.call_result.fields.note', {
+                      defaultValue: 'Комментарий',
+                    })}
+                  />
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <Section title="Компания">
         <Field
