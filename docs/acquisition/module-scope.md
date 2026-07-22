@@ -101,12 +101,32 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 
 **CampaignTemplate** catalog + instantiate — после V1 (ориентир V2). Multi-Flight UX — тоже после V1.
 
+## Operator surface (Marketing Workspace)
+
+**SoT привлечения для оператора:** `/app/marketing` (Marketing Workspace).
+
+Единственная точка управления ростом на UI:
+
+- Campaign + Flight;
+- форма / public source / Meta bind;
+- destination;
+- launch / pause / resume;
+- входящие заявки, attribution, timeline, показатели кампании.
+
+`/app/recruitment/searches*` — **deprecated operator surface** (не развивать). SPA redirect:
+
+- list / new → `/app/marketing`;
+- `/:id` (process) → `/app/vacancies/:id`;
+- acquisition / Meta → `/app/marketing`.
+
+Не поддерживать два acquisition-flow (Searches + Marketing).
+
 ## Anti-scope (Stage 3A / V1)
 
-- Не Marketing product / `marketing.*`  
 - Не Template catalog в 3A  
 - Не multi-Flight UX в V1  
 - Не Goal как плоский enum  
 - Не Goal = `route_intent`  
 - Не Form exclusive child / typed FK на Campaign / SoT Candidate в Acquisition  
 - Не зависимость Campaign от Forms internals (только Endpoint → Submission)  
+- Не параллельный operator workspace «Подборы» для запуска источников / притока  

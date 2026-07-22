@@ -839,6 +839,11 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               >
                 {t('app.candidates.pipeline.title')}
               </Link>
+              <Link className="btn-secondary btn-sm" to={CRM_APP_PATHS.marketing}>
+                {t('app.vacancies.detail.ops.marketing_cta', {
+                  defaultValue: 'Кампании / привлечение',
+                })}
+              </Link>
               {can('services.view') && model?.id ? (
                 <Link
                   className="btn-secondary btn-sm"

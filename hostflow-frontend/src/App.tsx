@@ -47,16 +47,10 @@ import SetupFirstClientPage from './pages/setup/SetupFirstClientPage'
 import SetupFirstVacancyPage from './pages/setup/SetupFirstVacancyPage'
 import SetupProcessDefaultsPage from './pages/setup/SetupProcessDefaultsPage'
 import SetupCandidateIntakePage from './pages/setup/SetupCandidateIntakePage'
-import CreateSearchWizardPage from './pages/recruitment/CreateSearchWizardPage'
-import SearchHomePage from './pages/recruitment/SearchHomePage'
-import SearchWorkspaceLayout from './pages/recruitment/SearchWorkspaceLayout'
-import AcquisitionLayout from './pages/recruitment/AcquisitionLayout'
-import AcquisitionActivitiesPage from './pages/recruitment/AcquisitionActivitiesPage'
-import AcquisitionAudiencePage from './pages/recruitment/AcquisitionAudiencePage'
-import AcquisitionJournalPage from './pages/recruitment/AcquisitionJournalPage'
-import LaunchAcquisitionPage from './pages/recruitment/LaunchAcquisitionPage'
-import SearchMetaSourcePage from './pages/recruitment/SearchMetaSourcePage'
-import SearchesListPage from './pages/recruitment/SearchesListPage'
+import {
+  RecruitmentSearchesToMarketingRedirect,
+  RecruitmentSearchToVacancyRedirect,
+} from './pages/recruitment/RecruitmentSearchesRedirects'
 import CreateClientChannelWizardPage from './pages/client-acquisition/CreateClientChannelWizardPage'
 import ClientChannelsListPage from './pages/client-acquisition/ClientChannelsListPage'
 import ClientChannelWorkspaceLayout from './pages/client-acquisition/ClientChannelWorkspaceLayout'
@@ -239,22 +233,13 @@ export default function App(){
             <Route path="setup/vacancy" element={<SetupFirstVacancyPage />} />
             <Route path="setup/process" element={<SetupProcessDefaultsPage />} />
             <Route path="setup/intake" element={<SetupCandidateIntakePage />} />
-            <Route path="recruitment/searches" element={<SearchesListPage />} />
-            <Route path="recruitment/searches/new" element={<CreateSearchWizardPage />} />
-            <Route path="recruitment/searches/:searchId" element={<SearchWorkspaceLayout />}>
-              <Route index element={<SearchHomePage />} />
-              <Route path="acquisition" element={<AcquisitionLayout />}>
-                <Route index element={<Navigate to="activities" replace />} />
-                <Route path="activities" element={<AcquisitionActivitiesPage />} />
-                <Route path="audience" element={<AcquisitionAudiencePage />} />
-                <Route path="journal" element={<AcquisitionJournalPage />} />
-                <Route path="analytics" element={<Navigate to="../journal" replace />} />
-              </Route>
-              <Route path="acquisition/new" element={<LaunchAcquisitionPage />} />
-              <Route path="acquisition/meta" element={<SearchMetaSourcePage />} />
-              <Route path="sources" element={<Navigate to="acquisition" replace />} />
-              <Route path="sources/meta" element={<Navigate to="../acquisition/meta" replace />} />
-            </Route>
+            {/* Deprecated: Searches operator surface → Marketing / Vacancy */}
+            <Route path="recruitment/searches" element={<RecruitmentSearchesToMarketingRedirect />} />
+            <Route path="recruitment/searches/new" element={<RecruitmentSearchesToMarketingRedirect />} />
+            <Route path="recruitment/searches/:searchId/acquisition/*" element={<RecruitmentSearchesToMarketingRedirect />} />
+            <Route path="recruitment/searches/:searchId/sources/*" element={<RecruitmentSearchesToMarketingRedirect />} />
+            <Route path="recruitment/searches/:searchId/*" element={<RecruitmentSearchToVacancyRedirect />} />
+            <Route path="recruitment/searches/:searchId" element={<RecruitmentSearchToVacancyRedirect />} />
             <Route path="sales" element={<SalesWorkspaceLayout />}>
               <Route index element={<SalesInquiriesEntryPage />} />
               <Route path="inquiries/:leadId" element={<SalesInquiriesEntryPage />} />

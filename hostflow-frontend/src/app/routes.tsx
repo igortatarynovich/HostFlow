@@ -91,7 +91,7 @@ import { SALES_HOME_PATH } from './salesPaths'
 import { RECRUITMENT_INBOX_PATH } from './recruitmentInboxPaths'
 import EntityListShellDemoPage from '../pages/dev/EntityListShellDemoPage'
 import LaunchpadPage from '../pages/LaunchpadPage'
-import SearchesListPage from '../pages/recruitment/SearchesListPage'
+import { RecruitmentSearchesToMarketingRedirect } from '../pages/recruitment/RecruitmentSearchesRedirects'
 import ClientChannelsListPage from '../pages/client-acquisition/ClientChannelsListPage'
 
 const seg = crmAppRouteSegment
@@ -165,13 +165,6 @@ export const NAV_ITEMS: NavItem[] = [
     path: CRM.hr,
     group: 'people',
     permission: 'workforce.view',
-  },
-  {
-    key: 'recruitment-searches',
-    labelKey: 'app.nav.items.recruitment_searches',
-    path: CRM.recruitmentSearches,
-    group: 'people',
-    permission: 'vacancies.view',
   },
   {
     key: 'recruitment-inbox',
@@ -641,9 +634,16 @@ export const APP_ROUTES: AppRouteConfig[] = [
   /** Rendered under nested `path="work"` + index in `App.tsx` (`WorkAreaLayout` + `<Outlet />`). Kept here for nav/permission scripts. */
   { key: 'work', path: seg(CRM.work), Component: WorkHubPage },
   {
+    /** Legacy URL only — not in NAV_ITEMS. Redirect keeps bookmarks alive. */
     key: 'recruitment-searches',
     path: seg(CRM.recruitmentSearches),
-    Component: SearchesListPage,
+    Component: RecruitmentSearchesToMarketingRedirect,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'recruitment-searches-new',
+    path: seg(CRM.recruitmentSearchesNew),
+    Component: RecruitmentSearchesToMarketingRedirect,
     permission: 'vacancies.view',
   },
   {

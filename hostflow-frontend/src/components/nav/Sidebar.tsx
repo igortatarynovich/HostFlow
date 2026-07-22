@@ -25,7 +25,6 @@ import {
   IconMessageCircle,
   IconPlugConnected,
   IconRoute,
-  IconSearch,
   IconSettings,
   IconShield,
   IconUsers,
@@ -88,7 +87,6 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   overview: IconDashboard,
   analytics: IconChartBar,
   'work-hub': IconBriefcase,
-  'recruitment-searches': IconSearch,
   'recruitment-inbox': IconInbox,
   'hr-workspace': IconUsersGroup,
   sales: IconBuildingStore,
@@ -214,7 +212,6 @@ export function Sidebar({
 
   const visibleItems = useMemo(() => {
     const moduleByItemKey: Partial<Record<string, keyof TenantModuleSettings>> = {
-      'recruitment-searches': 'vacancies',
       'recruitment-inbox': 'leads',
       candidates: 'candidates',
       'candidates-no-next-action': 'candidates',
@@ -431,9 +428,6 @@ export function Sidebar({
   const navItemActive = (item: NavItem, isActive: boolean): boolean => {
     if (item.key === 'clients') return clientsNavActive
     if (item.key === 'marketing') return marketingRailActive
-    if (item.key === 'recruitment-searches') {
-      return location.pathname.startsWith(p.recruitmentSearches)
-    }
     if (item.key === 'work-hub') return location.pathname.startsWith(p.work) || location.pathname.startsWith(`${p.work}/`)
     if (item.key === 'hr-workspace') return location.pathname === p.hr || location.pathname.startsWith(`${p.hr}/`)
     if (

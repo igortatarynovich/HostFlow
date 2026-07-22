@@ -1,7 +1,7 @@
 import { api } from '../api/client'
 import { getOnboardingStatus } from '../api/client'
 import { listVacancies } from '../api/vacancies'
-import { CRM_APP_PATHS, recruitmentSearchPath } from '../app/crmAppPaths'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import {
   clearLastLaunchSearchId,
   persistLastLaunchSearchId,
@@ -38,14 +38,14 @@ async function vacancyExists(vacancyId: string): Promise<boolean> {
 }
 
 /**
- * After login / `/app` index: land in recruitment workspace when the tenant already runs подборы.
- * Launchpad stays for first-time users without any подбор.
+ * After login / `/app` index: land on vacancy (or marketing) when the tenant already hires.
+ * Searches operator surface is deprecated — attraction SoT is Marketing Workspace.
  */
 export async function resolveRecruitmentWorkspaceEntryHref(canOpenTasks: boolean): Promise<string> {
   const lastId = readLastLaunchSearchId()
   if (lastId) {
     if (await vacancyExists(lastId)) {
-      return recruitmentSearchPath(lastId)
+      return `${CRM_APP_PATHS.vacancies}/${encodeURIComponent(lastId)}`
     }
     clearLastLaunchSearchId()
   }
@@ -59,7 +59,7 @@ export async function resolveRecruitmentWorkspaceEntryHref(canOpenTasks: boolean
     const searches = await listActiveLaunchSearches()
     if (searches.length === 0) {
       if (status?.steps?.first_vacancy_created) {
-        return CRM_APP_PATHS.recruitmentSearches
+        return CRM_APP_PATHS.vacancies
       }
       return resolveDefaultAppHomeHref(canOpenTasks)
     }
@@ -70,7 +70,7 @@ export async function resolveRecruitmentWorkspaceEntryHref(canOpenTasks: boolean
     }
 
     persistLastLaunchSearchId(targetId)
-    return recruitmentSearchPath(targetId)
+    return `${CRM_APP_PATHS.vacancies}/${encodeURIComponent(targetId)}`
   } catch {
     return resolveDefaultAppHomeHref(canOpenTasks)
   }

@@ -1,4 +1,4 @@
-import { CRM_APP_PATHS, recruitmentSearchPath } from '../app/crmAppPaths'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import type { PlatformHandoff } from '../api/platformCompletion'
 import { createLaunchSearch } from './createLaunchSearch'
 import { persistLaunchSearch } from './launchSearchSession'
@@ -34,11 +34,13 @@ export async function executePlatformHandoff(handoff: PlatformHandoff): Promise<
       clientName: String(ctx.client_name || '').trim() || 'Клиент',
     })
     persistLaunchSearch(created)
-    return { navigateTo: recruitmentSearchPath(created.searchId) }
+    // Search id == vacancy id; Searches UI is deprecated → Vacancy workspace.
+    return {
+      navigateTo: `${CRM_APP_PATHS.vacancies}/${encodeURIComponent(created.searchId)}`,
+    }
   }
   if (handoff.action === 'marketing.create_project') {
-    // Executor module not wired yet — surfaced as a pluggable handoff on the order line.
-    return { pending: 'marketing.create_project' }
+    return { navigateTo: CRM_APP_PATHS.marketingNew }
   }
   return null
 }
