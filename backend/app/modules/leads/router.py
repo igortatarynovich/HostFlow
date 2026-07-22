@@ -1333,16 +1333,41 @@ def _invite_out_from_payload(out: dict) -> LeadQuestionnaireInviteOut:
 
 
 def _questionnaire_email_http_error(exc: Exception) -> HTTPException:
-    from backend.app.services.communication_deliveries.questionnaire_email import QuestionnaireEmailError
+    # ImportError (circular send_communication ↔ inbound) must map to structured JSON
+    # without re-entering the broken import graph.
+    if isinstance(exc, ImportError):
+        return HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "questionnaire_email_import_error",
+                "message": str(exc) or "questionnaire email module import failed",
+            },
+        )
 
-    if isinstance(exc, QuestionnaireEmailError):
-        code = exc.code
-        detail: dict = {"code": code, "message": exc.message, **(exc.extra or {})}
+    code = getattr(exc, "code", None)
+    message = getattr(exc, "message", None)
+    extra = getattr(exc, "extra", None)
+    is_typed = (
+        type(exc).__name__ == "QuestionnaireEmailError"
+        and isinstance(code, str)
+        and isinstance(message, str)
+    )
+    if is_typed:
+        detail: dict = {"code": code, "message": message, **(extra if isinstance(extra, dict) else {})}
         if code in {"email_not_configured"}:
             return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
         if code in {"clarification_required"}:
             return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
-        if code in {"invalid_email", "empty_message", "not_client_lead", "invite_error"}:
+        if code in {
+            "invalid_email",
+            "empty_message",
+            "not_client_lead",
+            "invite_error",
+            "compose_failed",
+            "template_resolution_failed",
+            "link_resolution_failed",
+            "capability_intent_denied",
+        }:
             return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
         if code in {
             "communication_pipeline_required",
@@ -1350,10 +1375,13 @@ def _questionnaire_email_http_error(exc: Exception) -> HTTPException:
             "recruitment_result_bound",
             "sales_inquiry_transport_conflict",
             "thread_result_link_error",
-        } or "authorization" in (exc.extra or {}):
+        } or (isinstance(extra, dict) and "authorization" in extra):
             return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
         return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
-    return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail={"code": "questionnaire_email_internal_error", "message": str(exc) or type(exc).__name__},
+    )
 
 
 @router.post(
@@ -1369,10 +1397,6 @@ async def preview_lead_questionnaire_invite_email(
     _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
 ) -> QuestionnaireInviteEmailPreviewOut:
     from backend.app.modules.leads import crud
-    from backend.app.services.communication_deliveries.questionnaire_email import (
-        QuestionnaireEmailError,
-        compose_questionnaire_invite_email,
-    )
 
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -1382,7 +1406,13 @@ async def preview_lead_questionnaire_invite_email(
     if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
+    # Import inside try: circular ImportError on questionnaire_email must not become
+    # an opaque FastAPI 500 before compose() runs (prod symptom on appeals email).
     try:
+        from backend.app.services.communication_deliveries.questionnaire_email import (
+            compose_questionnaire_invite_email,
+        )
+
         compose = await compose_questionnaire_invite_email(
             db,
             tenant_id=tenant_id_str,
@@ -1393,21 +1423,30 @@ async def preview_lead_questionnaire_invite_email(
             recipient_email=payload.recipient_email,
             actor_user_id=str(current_user.sub or "").strip() or None,
         )
-    except QuestionnaireEmailError as exc:
+    except Exception as exc:  # noqa: BLE001 — typed QuestionnaireEmailError + ImportError
         raise _questionnaire_email_http_error(exc) from exc
 
     await db.commit()
-    return QuestionnaireInviteEmailPreviewOut(
-        invite=_invite_out_from_payload(compose.invite_payload),
-        recipient_email=compose.recipient_email or None,
-        subject=compose.subject,
-        body=compose.body,
-        questionnaire_url=compose.questionnaire_url,
-        email_configured=compose.email_configured,
-        clarification_required=compose.clarification_required,
-        invite_reused=compose.invite_reused,
-        form_locale=compose.locale,
-    )
+    try:
+        return QuestionnaireInviteEmailPreviewOut(
+            invite=_invite_out_from_payload(compose.invite_payload),
+            recipient_email=compose.recipient_email or None,
+            subject=compose.subject,
+            body=compose.body,
+            questionnaire_url=compose.questionnaire_url,
+            email_configured=compose.email_configured,
+            clarification_required=compose.clarification_required,
+            invite_reused=compose.invite_reused,
+            form_locale=compose.locale,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "questionnaire_email_response_error",
+                "message": str(exc) or type(exc).__name__,
+            },
+        ) from exc
 
 
 @router.post(
@@ -1427,10 +1466,6 @@ async def send_lead_questionnaire_invite_email(
         _require_outbound_comms_not_billing_blocked,
     )
     from backend.app.modules.leads import crud
-    from backend.app.services.communication_deliveries.questionnaire_email import (
-        QuestionnaireEmailError,
-        send_questionnaire_invite_email,
-    )
 
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -1447,6 +1482,11 @@ async def send_lead_questionnaire_invite_email(
     _require_outbound_comms_not_billing_blocked(tenant, license_row)
 
     try:
+        from backend.app.services.communication_deliveries.questionnaire_email import (
+            QuestionnaireEmailError,
+            send_questionnaire_invite_email,
+        )
+
         result = await send_questionnaire_invite_email(
             db,
             tenant_id=tenant_id_str,
@@ -1464,8 +1504,9 @@ async def send_lead_questionnaire_invite_email(
             template_metadata=payload.template_metadata,
             locale=payload.locale,
         )
-    except QuestionnaireEmailError as exc:
-        await db.commit()  # persist failed delivery journal row
+    except Exception as exc:  # noqa: BLE001 — QuestionnaireEmailError + ImportError
+        if type(exc).__name__ == "QuestionnaireEmailError":
+            await db.commit()  # persist failed delivery journal row
         raise _questionnaire_email_http_error(exc) from exc
 
     await db.commit()

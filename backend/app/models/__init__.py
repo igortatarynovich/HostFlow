@@ -65,6 +65,7 @@ IntakeSourceBinding = intake_routing_module.IntakeSourceBinding  # type: ignore[
 lead_import_module = _load_model_module("lead_import_job")
 LeadImportJob = lead_import_module.LeadImportJob  # type: ignore[attr-defined]
 LeadImportJobStatus = lead_import_module.LeadImportJobStatus  # type: ignore[attr-defined]
+TenantLeadForm = _load_model_module("tenant_lead_form").TenantLeadForm  # type: ignore[attr-defined]
 LeadQuestionnaireInvite = _load_model_module("lead_questionnaire_invite").LeadQuestionnaireInvite  # type: ignore[attr-defined]
 CommunicationDelivery = _load_model_module("communication_delivery").CommunicationDelivery  # type: ignore[attr-defined]
 CommunicationDeliveryAttempt = _load_model_module(
@@ -355,6 +356,7 @@ __all__ = [
     "MetaOAuthPending",
     "LeadImportJob",
     "LeadImportJobStatus",
+    "TenantLeadForm",
     "LeadQuestionnaireInvite",
     "CommunicationDelivery",
     "CommunicationDeliveryAttempt",

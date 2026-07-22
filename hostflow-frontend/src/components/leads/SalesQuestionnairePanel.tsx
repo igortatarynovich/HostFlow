@@ -79,11 +79,18 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
   const [sendError, setSendError] = useState<string | null>(null)
 
   const statusLabel = useMemo(() => salesQuestionnaireStatusLabel(lead, { locale }), [lead, locale])
-  const phone = text(lead.normalized?.phone) || text(lead.payload?.phone)
+  const phone =
+    text(lead.normalized?.phone) ||
+    text(lead.payload?.phone) ||
+    text((lead.normalized as { contact_person?: { phone?: string } } | undefined)?.contact_person?.phone) ||
+    text((lead.normalized as { contact?: { phone?: string } } | undefined)?.contact?.phone)
   const leadEmail =
     text(lead.normalized?.email) ||
     text(lead.payload?.email) ||
-    text((lead.normalized as { contact?: { email?: string } } | undefined)?.contact?.email)
+    text((lead.normalized as { contact_person?: { email?: string } } | undefined)?.contact_person?.email) ||
+    text((lead.payload as { contact_person?: { email?: string } } | undefined)?.contact_person?.email) ||
+    text((lead.normalized as { contact?: { email?: string } } | undefined)?.contact?.email) ||
+    text((lead.payload as { contact?: { email?: string } } | undefined)?.contact?.email)
   const questionnaireStatus = text(lead.normalized?.sales_questionnaire_status)
   const waitingForResponse = isWaitingForQuestionnaireResponse(questionnaireStatus)
   const answered = questionnaireStatus === 'submitted'

@@ -53,6 +53,15 @@ def _bypass_lead_source_limit(monkeypatch: pytest.MonkeyPatch) -> None:
 
 async def _seed_sales_profile(tenant_id: str) -> None:
     async with async_session_maker() as session:
+        from backend.app.models.tenant import Tenant
+        from sqlalchemy.orm.attributes import flag_modified
+
+        tenant = await session.get(Tenant, str(tenant_id))
+        if tenant is not None:
+            settings = dict(tenant.settings or {}) if isinstance(tenant.settings, dict) else {}
+            settings["business_type"] = "services"
+            tenant.settings = settings
+            flag_modified(tenant, "settings")
         await ensure_tenant_entity_profile_defaults(session, tenant_id)
         await ensure_tenant_targeted_advertising_intake_form(session, tenant_id)
         await session.commit()

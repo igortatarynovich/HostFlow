@@ -76,22 +76,30 @@ def _trim(value: Any) -> str:
 
 
 def lead_contact_email(lead: Lead) -> str:
+    """Resolve contact email from lead normalized/payload (incl. B2B contact_person)."""
     normalized = _record(lead.normalized)
     payload = _record(lead.payload)
     return (
         _trim(normalized.get("email"))
         or _trim(payload.get("email"))
+        or _trim((_record(normalized.get("contact_person")).get("email")))
+        or _trim((_record(payload.get("contact_person")).get("email")))
         or _trim((_record(normalized.get("contact")).get("email")))
         or _trim((_record(payload.get("contact")).get("email")))
     )
 
 
 def lead_contact_name(lead: Lead) -> str:
+    """Resolve contact display name (incl. B2B contact_person.full_name)."""
     normalized = _record(lead.normalized)
     payload = _record(lead.payload)
     return (
         _trim(normalized.get("full_name"))
         or _trim(normalized.get("contact_name"))
+        or _trim((_record(normalized.get("contact_person")).get("full_name")))
+        or _trim((_record(payload.get("contact_person")).get("full_name")))
+        or _trim((_record(normalized.get("contact")).get("full_name")))
+        or _trim((_record(payload.get("contact")).get("full_name")))
         or _trim(normalized.get("first_name"))
         or _trim(payload.get("full_name"))
         or "—"
@@ -305,73 +313,95 @@ async def compose_questionnaire_invite_email(
         )
     except SendCommunicationError as exc:
         # Preview for unbound lead: capability may deny fake origin — fall back with lead origin.
-        if (exc.details or {}).get("reason") == "capability_intent_denied" and not sales_inquiry_id:
-            rendered = await render_communication_intent(
-                IntentExecutionRequest(
-                    tenant_id=str(tenant_id),
-                    intent=_INTENT,
-                    origin=CommunicationOrigin(entity_type="lead", entity_id=str(lead.id)),
-                    recipients=[
-                        CommunicationRecipient(address=recipient or "preview@invalid.local")
-                    ],
-                    channel=DELIVERY_CHANNEL_EMAIL,
-                    locale=locale,
-                    template_variables={"contact_name": lead_contact_name(lead)},
-                    link_requests=(
-                        LinkResolveRequest(
-                            tenant_id=str(tenant_id),
-                            link_intent=_QUESTIONNAIRE_LINK_INTENT,
-                            entity_type="lead",
-                            entity_id=str(lead.id),
-                            locale=locale,
-                            apply_path_or_url=str(invite_payload.get("apply_url") or ""),
-                            actor_id=_trim(actor_user_id) or None,
+        reason = str((exc.details or {}).get("reason") or "")
+        if reason == "capability_intent_denied" and not sales_inquiry_id:
+            try:
+                rendered = await render_communication_intent(
+                    IntentExecutionRequest(
+                        tenant_id=str(tenant_id),
+                        intent=_INTENT,
+                        origin=CommunicationOrigin(entity_type="lead", entity_id=str(lead.id)),
+                        recipients=[
+                            CommunicationRecipient(address=recipient or "preview@invalid.local")
+                        ],
+                        channel=DELIVERY_CHANNEL_EMAIL,
+                        locale=locale,
+                        template_variables={"contact_name": lead_contact_name(lead)},
+                        link_requests=(
+                            LinkResolveRequest(
+                                tenant_id=str(tenant_id),
+                                link_intent=_QUESTIONNAIRE_LINK_INTENT,
+                                entity_type="lead",
+                                entity_id=str(lead.id),
+                                locale=locale,
+                                apply_path_or_url=str(invite_payload.get("apply_url") or ""),
+                                actor_id=_trim(actor_user_id) or None,
+                            ),
                         ),
-                    ),
-                    actor_id=_trim(actor_user_id) or None,
-                    purpose=PURPOSE_QUESTIONNAIRE_INVITE,
+                        actor_id=_trim(actor_user_id) or None,
+                        purpose=PURPOSE_QUESTIONNAIRE_INVITE,
+                    )
                 )
-            )
+            except SendCommunicationError as fallback_exc:
+                raise QuestionnaireEmailError(
+                    str((fallback_exc.details or {}).get("reason") or "compose_failed"),
+                    fallback_exc.message,
+                    details=dict(fallback_exc.details or {}),
+                ) from fallback_exc
         else:
             raise QuestionnaireEmailError(
-                str((exc.details or {}).get("reason") or "compose_failed"),
+                reason or "compose_failed",
                 exc.message,
                 details=dict(exc.details or {}),
             ) from exc
 
-    subject, body, body_html = await _apply_signature(
-        db,
-        tenant_id=tenant_id,
-        lead=lead,
-        actor_user_id=actor_user_id,
-        locale=locale,
-        subject=rendered.subject,
-        body_text=rendered.body_text,
-    )
-    questionnaire_url = ""
-    if rendered.resolved_links:
-        questionnaire_url = rendered.resolved_links[0].public_url
+    try:
+        subject, body, body_html = await _apply_signature(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            actor_user_id=actor_user_id,
+            locale=locale,
+            subject=rendered.subject,
+            body_text=rendered.body_text,
+        )
+        questionnaire_url = ""
+        if rendered.resolved_links:
+            questionnaire_url = rendered.resolved_links[0].public_url
 
-    email_cfg = await get_tenant_email_config(db, str(tenant_id))
-    email_configured = bool(email_cfg and email_cfg.smtp_host and email_cfg.from_email)
+        email_cfg = await get_tenant_email_config(db, str(tenant_id))
+        email_configured = bool(email_cfg and email_cfg.smtp_host and email_cfg.from_email)
 
-    return QuestionnaireEmailCompose(
-        invite=invite,
-        invite_payload=invite_payload,
-        recipient_email=recipient,
-        subject=subject,
-        body=body,
-        body_html=body_html,
-        questionnaire_url=questionnaire_url,
-        email_configured=email_configured,
-        clarification_required=submitted_before,
-        invite_reused=invite_reused,
-        locale=locale,
-        template_key=rendered.command.template_key or "",
-        template_version=int(rendered.command.template_version or 1),
-        link_intent=_QUESTIONNAIRE_LINK_INTENT,
-        intent=_INTENT.value,
-    )
+        try:
+            template_version = int(rendered.command.template_version or 1)
+        except (TypeError, ValueError):
+            template_version = 1
+
+        return QuestionnaireEmailCompose(
+            invite=invite,
+            invite_payload=invite_payload,
+            recipient_email=recipient,
+            subject=subject,
+            body=body,
+            body_html=body_html,
+            questionnaire_url=questionnaire_url,
+            email_configured=email_configured,
+            clarification_required=submitted_before,
+            invite_reused=invite_reused,
+            locale=locale,
+            template_key=rendered.command.template_key or "",
+            template_version=template_version,
+            link_intent=_QUESTIONNAIRE_LINK_INTENT,
+            intent=_INTENT.value,
+        )
+    except QuestionnaireEmailError:
+        raise
+    except Exception as exc:  # noqa: BLE001 — surface as typed compose error, not opaque 500
+        raise QuestionnaireEmailError(
+            "compose_failed",
+            str(exc) or type(exc).__name__,
+            details={"error_type": type(exc).__name__},
+        ) from exc
 
 
 async def send_questionnaire_invite_email(
