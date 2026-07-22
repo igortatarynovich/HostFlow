@@ -157,7 +157,13 @@ export function withDeployAwareNavPaths<T extends { key: string; path?: string }
   return items.map((item) => {
     if (!item.path) return item
     const owner = NAV_KEY_TO_DEPLOY_HOST[item.key]
-    if (!owner || owner === 'shell') return item
+    if (!owner) return item
+    // Platform / shell-owned surfaces (e.g. Marketing) must hard-link to hostflow.cc
+    // when the operator is on a business module host.
+    if (owner === 'shell') {
+      if (host === 'shell') return item
+      return { ...item, path: buildModuleAbsoluteUrl('shell', item.path) }
+    }
     if (host === 'shell' || host !== owner) {
       return { ...item, path: buildModuleAbsoluteUrl(owner, item.path) }
     }

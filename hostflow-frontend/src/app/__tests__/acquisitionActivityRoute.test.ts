@@ -12,14 +12,14 @@ describe('acquisition activity route registration', () => {
     const nav = NAV_ITEMS.find((item) => item.key === 'acquisition-activity')
     expect(nav).toMatchObject({
       path: CRM_APP_PATHS.acquisitionActivity,
-      permission: 'vacancies.view',
+      permission: 'acquisition.view',
       labelKey: 'app.nav.items.acquisition_activity',
     })
 
     const route = APP_ROUTES.find((item) => item.key === 'acquisition-activity')
     expect(route).toBeTruthy()
     expect(route?.path).toBe(crmAppRouteSegment(CRM_APP_PATHS.acquisitionActivity))
-    expect(route?.permission).toBe('vacancies.view')
+    expect(route?.permission).toBe('acquisition.view')
     expect(CRM_APP_PATHS.acquisitionActivity).toBe('/app/acquisition/activity')
   })
 

@@ -151,7 +151,7 @@
     "sales": "Operational sales workspace for services tenants (inquiries, work session, conversion).",
     "clientAcquisitionChannels": "Client acquisition channel list and per-channel inquiry workspace.",
     "acquisitionActivity": "Stage 3E read-only Acquisition Activity Timeline (platform campaigns).",
-    "marketing": "Marketing Workspace — SoT operator surface for attraction (Campaign / Flight / form / Meta / launch).",
+    "marketing": "Platform Marketing Workspace on shell (hostflow.cc) — SoT for attraction; not owned by Sales/Recruitment hosts.",
     "marketingNew": "Marketing Campaign Setup Flow (create campaign + form + source + launch).",
     "recruitmentSearches": "DEPRECATED operator surface — SPA redirects to /app/marketing (list/new) or /app/vacancies/:id.",
     "recruitmentSearchesNew": "DEPRECATED — SPA redirects to /app/marketing.",

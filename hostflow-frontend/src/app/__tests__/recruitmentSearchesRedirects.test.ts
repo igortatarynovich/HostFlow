@@ -28,8 +28,10 @@ describe('recruitment searches deprecation', () => {
     expect(APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS).not.toContain('vacancies')
   })
 
-  it('keeps Marketing as the attraction NAV entry', () => {
+  it('keeps Marketing as the platform attraction NAV entry', () => {
     const marketing = NAV_ITEMS.find((item) => item.key === 'marketing')
     expect(marketing?.path).toBe(CRM_APP_PATHS.marketing)
+    expect(marketing?.permission).toBe('acquisition.view')
   })
 })
+

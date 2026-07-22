@@ -103,21 +103,27 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 
 ## Operator surface (Marketing Workspace)
 
-**SoT привлечения для оператора:** `/app/marketing` (Marketing Workspace).
+**SoT привлечения для оператора:** `/app/marketing` на **shell** (`hostflow.cc`).
+
+Marketing — **платформенный** модуль (не Sales, не Recruitment, не лицензируемый business module):
+
+- nav: отдельная секция верхнего уровня;
+- deploy host: `shell` (не `sales.hostflow.cc` / `recruitment.hostflow.cc`);
+- с module host ссылка = абсолютный `https://hostflow.cc/app/marketing`;
+- FE permission: `acquisition.view` (не `vacancies.view`).
 
 Единственная точка управления ростом на UI:
 
 - Campaign + Flight;
 - форма / public source / Meta bind;
-- destination;
+- destination (Recruitment / Sales / Services / …);
 - launch / pause / resume;
 - входящие заявки, attribution, timeline, показатели кампании.
 
 `/app/recruitment/searches*` — **deprecated operator surface** (не развивать). SPA redirect:
 
-- list / new → `/app/marketing`;
-- `/:id` (process) → `/app/vacancies/:id`;
-- acquisition / Meta → `/app/marketing`.
+- list / new / acquisition / Meta → shell Marketing;
+- `/:id` (process) → `/app/vacancies/:id`.
 
 Не поддерживать два acquisition-flow (Searches + Marketing).
 

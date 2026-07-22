@@ -184,8 +184,9 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'marketing',
     labelKey: 'app.nav.items.marketing',
     path: CRM.marketing,
-    group: 'people',
-    permission: 'vacancies.view',
+    group: 'workflows',
+    /** Platform Acquisition — not vacancies/leads/companies module gate. */
+    permission: 'acquisition.view',
   },
   {
     key: 'client-acquisition-channels',
@@ -269,8 +270,8 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'app.nav.items.acquisition_activity',
     path: CRM.acquisitionActivity,
     group: 'workflows',
-    /** Aligns with Acquisition campaign/timeline read surface (API enforces Role set). */
-    permission: 'vacancies.view',
+    /** Platform Acquisition timeline — same gate as Marketing Workspace. */
+    permission: 'acquisition.view',
   },
   {
     key: 'service-orders',
@@ -756,25 +757,25 @@ export const APP_ROUTES: AppRouteConfig[] = [
     key: 'acquisition-activity',
     path: seg(CRM.acquisitionActivity),
     Component: AcquisitionActivityTimelinePage,
-    permission: 'vacancies.view',
+    permission: 'acquisition.view',
   },
   {
     key: 'marketing-new',
     path: seg(CRM.marketingNew),
     Component: MarketingCampaignSetupPage,
-    permission: 'vacancies.view',
+    permission: 'acquisition.view',
   },
   {
     key: 'marketing-detail',
     path: `${seg(CRM.marketing)}/:campaignId`,
     Component: MarketingCampaignDetailPage,
-    permission: 'vacancies.view',
+    permission: 'acquisition.view',
   },
   {
     key: 'marketing',
     path: seg(CRM.marketing),
     Component: MarketingCampaignsPage,
-    permission: 'vacancies.view',
+    permission: 'acquisition.view',
   },
   { key: 'automation-rules', path: seg(CRM.automationRules), Component: AutomationRulesPage, permission: 'notifications.view' },
   { key: 'pipeline', path: seg(CRM.pipeline), Component: PipelineRedirect, permission: 'candidates.pipeline' },
