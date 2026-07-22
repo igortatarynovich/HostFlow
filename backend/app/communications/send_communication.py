@@ -19,7 +19,6 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.api.v1.communications._helpers.sla import _touch_thread_from_message
 from backend.app.communications.command import (
     CommunicationCommand,
     CommunicationOrigin,
@@ -453,6 +452,9 @@ async def send_communication(
     )
     db.add(message)
     await db.flush()
+    # Lazy import: api.v1.communications package init pulls inbound → this module.
+    from backend.app.api.v1.communications._helpers.sla import _touch_thread_from_message
+
     _touch_thread_from_message(thread, message)
 
     delivery_id: str | None = None

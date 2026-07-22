@@ -1342,7 +1342,16 @@ def _questionnaire_email_http_error(exc: Exception) -> HTTPException:
             return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
         if code in {"clarification_required"}:
             return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
-        if code in {"invalid_email", "empty_message", "not_client_lead", "invite_error"}:
+        if code in {
+            "invalid_email",
+            "empty_message",
+            "not_client_lead",
+            "invite_error",
+            "compose_failed",
+            "template_resolution_failed",
+            "link_resolution_failed",
+            "capability_intent_denied",
+        }:
             return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
         if code in {
             "communication_pipeline_required",
@@ -1353,7 +1362,10 @@ def _questionnaire_email_http_error(exc: Exception) -> HTTPException:
         } or "authorization" in (exc.extra or {}):
             return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
         return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
-    return HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail={"code": "questionnaire_email_internal_error", "message": str(exc) or type(exc).__name__},
+    )
 
 
 @router.post(
@@ -1395,19 +1407,30 @@ async def preview_lead_questionnaire_invite_email(
         )
     except QuestionnaireEmailError as exc:
         raise _questionnaire_email_http_error(exc) from exc
+    except Exception as exc:  # noqa: BLE001 — never leak opaque ImportError/circular-import 500
+        raise _questionnaire_email_http_error(exc) from exc
 
     await db.commit()
-    return QuestionnaireInviteEmailPreviewOut(
-        invite=_invite_out_from_payload(compose.invite_payload),
-        recipient_email=compose.recipient_email or None,
-        subject=compose.subject,
-        body=compose.body,
-        questionnaire_url=compose.questionnaire_url,
-        email_configured=compose.email_configured,
-        clarification_required=compose.clarification_required,
-        invite_reused=compose.invite_reused,
-        form_locale=compose.locale,
-    )
+    try:
+        return QuestionnaireInviteEmailPreviewOut(
+            invite=_invite_out_from_payload(compose.invite_payload),
+            recipient_email=compose.recipient_email or None,
+            subject=compose.subject,
+            body=compose.body,
+            questionnaire_url=compose.questionnaire_url,
+            email_configured=compose.email_configured,
+            clarification_required=compose.clarification_required,
+            invite_reused=compose.invite_reused,
+            form_locale=compose.locale,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "questionnaire_email_response_error",
+                "message": str(exc) or type(exc).__name__,
+            },
+        ) from exc
 
 
 @router.post(

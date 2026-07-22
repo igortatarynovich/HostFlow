@@ -21,7 +21,6 @@ from backend.app.communications.inbound_normalize import (
     extract_reply_message_ids,
     normalize_message_id,
 )
-from backend.app.communications.send_communication import find_thread_id_for_origin
 # Destination entities via package facade (C1/C2: no direct destination-module imports).
 from backend.app.models import (
     Candidate,
@@ -391,6 +390,8 @@ async def _resolve_entity_contact(
     chosen = matches[0]
     entity_type = str(chosen["entity_type"])
     entity_id = str(chosen["entity_id"])
+    from backend.app.communications.send_communication import find_thread_id_for_origin
+
     thread_id = await find_thread_id_for_origin(
         db,
         tenant_id=inbound.tenant_id,
@@ -466,6 +467,8 @@ async def resolve_inbound(
     if manual is not None:
         # Try attach to existing origin thread when possible.
         if manual.entity_type and manual.entity_id:
+            from backend.app.communications.send_communication import find_thread_id_for_origin
+
             thread_id = await find_thread_id_for_origin(
                 db,
                 tenant_id=inbound.tenant_id,
