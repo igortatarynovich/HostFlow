@@ -35,8 +35,8 @@ function globalWorkStripVisible(pathname: string): boolean {
   if (pathname.startsWith(p.profile)) return false
   if (pathname.startsWith(p.myCompany)) return false
   if (pathname.startsWith(p.onboarding)) return false
-  if (pathname.startsWith(p.recruitmentSearches)) return true
   if (pathname.startsWith(RECRUITMENT_INBOX_PATH)) return true
+  if (pathname.startsWith(p.marketing)) return true
   if (pathname.startsWith(p.sales)) return true
 
   if (pathname === p.work || pathname.startsWith(`${p.work}/`)) return false
@@ -81,10 +81,10 @@ export default function WorkContextTabs({ businessType = 'agency' }: WorkContext
     const out: TabDef[] = []
     if (can('vacancies.view')) {
       out.push({
-        key: 'recruitment-searches',
-        to: CRM_APP_PATHS.recruitmentSearches,
-        label: t('app.nav.items.recruitment_searches', { defaultValue: 'Подборы' }),
-        isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.recruitmentSearches),
+        key: 'vacancies',
+        to: CRM_APP_PATHS.vacancies,
+        label: t('app.nav.items.vacancies', { defaultValue: 'Вакансии' }),
+        isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.vacancies),
       })
     }
     if (can('leads.view')) {

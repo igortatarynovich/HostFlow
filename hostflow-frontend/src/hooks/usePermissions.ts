@@ -21,6 +21,11 @@ export type Permission =
   | 'companies.manage'
   | 'leads.view'
   | 'vacancies.view'
+  /**
+   * Platform Marketing / Acquisition Workspace (`/app/marketing`).
+   * Not tied to a licensed business module (vacancies/leads/companies).
+   */
+  | 'acquisition.view'
   | 'candidates.view'
   | 'candidates.requestDelete'
   | 'candidates.deleteQueue'
@@ -45,6 +50,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'companies.manage',
     'leads.view',
     'vacancies.view',
+    'acquisition.view',
     'notifications.view',
     'candidates.view',
     'candidates.manage',
@@ -65,6 +71,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'leads.view',
     'notifications.view',
     'vacancies.view',
+    'acquisition.view',
     'candidates.view',
     'candidates.manage',
     'candidates.requestDelete',
@@ -73,13 +80,21 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'services.view',
     'services.orders.manage',
   ],
-  viewer: ['companies.view', 'leads.view', 'vacancies.view', 'candidates.view', 'services.view'],
+  viewer: [
+    'companies.view',
+    'leads.view',
+    'vacancies.view',
+    'acquisition.view',
+    'candidates.view',
+    'services.view',
+  ],
   client_processor: [
     'companies.view',
     'candidates.view',
     'candidates.manage',
     'candidates.pipeline',
     'vacancies.view',
+    'acquisition.view',
     'documents.manage',
   ],
   client_manager: [
@@ -89,6 +104,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'candidates.manage',
     'candidates.pipeline',
     'vacancies.view',
+    'acquisition.view',
     'documents.manage',
     'users.view',
     'users.manage',
@@ -104,6 +120,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'leads.view',
     'notifications.view',
     'vacancies.view',
+    'acquisition.view',
     'candidates.view',
     'candidates.manage',
     'candidates.pipeline',
@@ -111,8 +128,8 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'services.view',
     'services.orders.manage',
   ],
-  /** People / HR: no recruitment or CRM modules — only the HR workspace. */
-  hr_officer: ['notifications.view', 'workforce.view', 'workforce.manage'],
+  /** People / HR: HR workspace + platform Marketing read (campaign API allows hr_officer). */
+  hr_officer: ['notifications.view', 'workforce.view', 'workforce.manage', 'acquisition.view'],
 }
 
 const ROLE_ALIAS: Record<string, string> = {

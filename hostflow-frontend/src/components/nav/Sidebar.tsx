@@ -21,11 +21,11 @@ import {
   IconHome,
   IconInbox,
   IconLayoutKanban,
+  IconMegaphone,
   IconMail,
   IconMessageCircle,
   IconPlugConnected,
   IconRoute,
-  IconSearch,
   IconSettings,
   IconShield,
   IconUsers,
@@ -60,6 +60,7 @@ import {
   SIDEBAR_AGENCY_FINANCE_ORDER,
   SIDEBAR_AGENCY_HR_ORDER,
   SIDEBAR_AGENCY_RECRUITMENT_ORDER,
+  SIDEBAR_AGENCY_MARKETING_ORDER,
   SIDEBAR_AGENCY_SALES_ORDER,
   SIDEBAR_AGENCY_SERVICES_ORDER,
   SIDEBAR_AGENCY_SETTINGS_HUB_ORDER,
@@ -88,10 +89,10 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   overview: IconDashboard,
   analytics: IconChartBar,
   'work-hub': IconBriefcase,
-  'recruitment-searches': IconSearch,
   'recruitment-inbox': IconInbox,
   'hr-workspace': IconUsersGroup,
   sales: IconBuildingStore,
+  marketing: IconMegaphone,
   candidates: IconUsers,
   'candidates-no-next-action': IconUserQuestion,
   clients: IconBuilding,
@@ -214,7 +215,6 @@ export function Sidebar({
 
   const visibleItems = useMemo(() => {
     const moduleByItemKey: Partial<Record<string, keyof TenantModuleSettings>> = {
-      'recruitment-searches': 'vacancies',
       'recruitment-inbox': 'leads',
       candidates: 'candidates',
       'candidates-no-next-action': 'candidates',
@@ -302,11 +302,12 @@ export function Sidebar({
     return moduleFiltered.filter((item) => allowed.has(item.key))
   }, [can, canUseCommunicationsFeature, isClientTenant, isSoloWorkspace, items, modules])
 
-  /** ADR-023 Stage 1: Communications → Recruitment → HR → Sales → Services → Finance → … */
+  /** Platform Marketing → Communications → Recruitment → HR → Sales → Services → Finance → … */
   const {
     dashboardNavItems,
     workHubNavItems,
     inboxNavItems,
+    marketingNavItems,
     recruitmentNavItems,
     hrNavItems,
     salesNavItems,
@@ -338,6 +339,7 @@ export function Sidebar({
         dashboardNavItems: [] as NavItem[],
         workHubNavItems: [] as NavItem[],
         inboxNavItems: [] as NavItem[],
+        marketingNavItems: [] as NavItem[],
         recruitmentNavItems: [] as NavItem[],
         hrNavItems: [] as NavItem[],
         salesNavItems: [] as NavItem[],
@@ -361,6 +363,7 @@ export function Sidebar({
     const dashboardNavItems = pickOrdered([...SIDEBAR_AGENCY_DASHBOARD_ORDER])
     const workHubNavItems = pickOrdered([...SIDEBAR_AGENCY_WORK_HUB_ORDER])
     const inboxNavItems = pickOrdered([...SIDEBAR_AGENCY_INBOX_ORDER])
+    const marketingNavItems = pickOrdered([...SIDEBAR_AGENCY_MARKETING_ORDER])
     const recruitmentNavItems = pickOrdered([...SIDEBAR_AGENCY_RECRUITMENT_ORDER])
     const hrNavItems = pickOrdered([...SIDEBAR_AGENCY_HR_ORDER])
     const salesNavItems = pickOrdered([...SIDEBAR_AGENCY_SALES_ORDER])
@@ -381,6 +384,7 @@ export function Sidebar({
       dashboardNavItems,
       workHubNavItems,
       inboxNavItems,
+      marketingNavItems,
       recruitmentNavItems,
       hrNavItems,
       salesNavItems,
@@ -431,9 +435,6 @@ export function Sidebar({
   const navItemActive = (item: NavItem, isActive: boolean): boolean => {
     if (item.key === 'clients') return clientsNavActive
     if (item.key === 'marketing') return marketingRailActive
-    if (item.key === 'recruitment-searches') {
-      return location.pathname.startsWith(p.recruitmentSearches)
-    }
     if (item.key === 'work-hub') return location.pathname.startsWith(p.work) || location.pathname.startsWith(`${p.work}/`)
     if (item.key === 'hr-workspace') return location.pathname === p.hr || location.pathname.startsWith(`${p.hr}/`)
     if (
@@ -653,6 +654,17 @@ export function Sidebar({
                     </div>
                     <div className="space-y-1">{inboxNavItems.map(renderPrimaryNavItem)}</div>
                   </div>
+                )}
+                {marketingNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_marketing', { defaultValue: 'Маркетинг' })}
+                      </div>
+                      <div className="space-y-1">{marketingNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
                 )}
                 {recruitmentNavItems.length > 0 && (
                   <>

@@ -91,7 +91,7 @@ import { SALES_HOME_PATH } from './salesPaths'
 import { RECRUITMENT_INBOX_PATH } from './recruitmentInboxPaths'
 import EntityListShellDemoPage from '../pages/dev/EntityListShellDemoPage'
 import LaunchpadPage from '../pages/LaunchpadPage'
-import SearchesListPage from '../pages/recruitment/SearchesListPage'
+import { RecruitmentSearchesToMarketingRedirect } from '../pages/recruitment/RecruitmentSearchesRedirects'
 import ClientChannelsListPage from '../pages/client-acquisition/ClientChannelsListPage'
 
 const seg = crmAppRouteSegment
@@ -167,13 +167,6 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'workforce.view',
   },
   {
-    key: 'recruitment-searches',
-    labelKey: 'app.nav.items.recruitment_searches',
-    path: CRM.recruitmentSearches,
-    group: 'people',
-    permission: 'vacancies.view',
-  },
-  {
     key: 'recruitment-inbox',
     labelKey: 'app.nav.items.recruitment_inbox',
     path: RECRUITMENT_INBOX_PATH,
@@ -191,8 +184,9 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'marketing',
     labelKey: 'app.nav.items.marketing',
     path: CRM.marketing,
-    group: 'people',
-    permission: 'vacancies.view',
+    group: 'workflows',
+    /** Platform Acquisition — not vacancies/leads/companies module gate. */
+    permission: 'acquisition.view',
   },
   {
     key: 'client-acquisition-channels',
@@ -276,8 +270,8 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'app.nav.items.acquisition_activity',
     path: CRM.acquisitionActivity,
     group: 'workflows',
-    /** Aligns with Acquisition campaign/timeline read surface (API enforces Role set). */
-    permission: 'vacancies.view',
+    /** Platform Acquisition timeline — same gate as Marketing Workspace. */
+    permission: 'acquisition.view',
   },
   {
     key: 'service-orders',
@@ -641,9 +635,16 @@ export const APP_ROUTES: AppRouteConfig[] = [
   /** Rendered under nested `path="work"` + index in `App.tsx` (`WorkAreaLayout` + `<Outlet />`). Kept here for nav/permission scripts. */
   { key: 'work', path: seg(CRM.work), Component: WorkHubPage },
   {
+    /** Legacy URL only — not in NAV_ITEMS. Redirect keeps bookmarks alive. */
     key: 'recruitment-searches',
     path: seg(CRM.recruitmentSearches),
-    Component: SearchesListPage,
+    Component: RecruitmentSearchesToMarketingRedirect,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'recruitment-searches-new',
+    path: seg(CRM.recruitmentSearchesNew),
+    Component: RecruitmentSearchesToMarketingRedirect,
     permission: 'vacancies.view',
   },
   {
@@ -756,25 +757,25 @@ export const APP_ROUTES: AppRouteConfig[] = [
     key: 'acquisition-activity',
     path: seg(CRM.acquisitionActivity),
     Component: AcquisitionActivityTimelinePage,
-    permission: 'vacancies.view',
+    permission: 'acquisition.view',
   },
   {
     key: 'marketing-new',
     path: seg(CRM.marketingNew),
     Component: MarketingCampaignSetupPage,
-    permission: 'vacancies.view',
+    permission: 'acquisition.view',
   },
   {
     key: 'marketing-detail',
     path: `${seg(CRM.marketing)}/:campaignId`,
     Component: MarketingCampaignDetailPage,
-    permission: 'vacancies.view',
+    permission: 'acquisition.view',
   },
   {
     key: 'marketing',
     path: seg(CRM.marketing),
     Component: MarketingCampaignsPage,
-    permission: 'vacancies.view',
+    permission: 'acquisition.view',
   },
   { key: 'automation-rules', path: seg(CRM.automationRules), Component: AutomationRulesPage, permission: 'notifications.view' },
   { key: 'pipeline', path: seg(CRM.pipeline), Component: PipelineRedirect, permission: 'candidates.pipeline' },

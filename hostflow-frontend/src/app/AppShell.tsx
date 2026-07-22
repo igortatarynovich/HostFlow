@@ -55,10 +55,8 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
    */
   const isInboxWorkspacePage =
     path === CRM_APP_PATHS.inbox || path.startsWith(`${CRM_APP_PATHS.inbox}/`)
-  const isRecruitmentSearchesWorkspace =
-    path === CRM_APP_PATHS.recruitmentSearches ||
-    (path.startsWith(`${CRM_APP_PATHS.recruitmentSearches}/`) &&
-      path !== CRM_APP_PATHS.recruitmentSearchesNew)
+  const isVacanciesWorkspace =
+    path === CRM_APP_PATHS.vacancies || path.startsWith(`${CRM_APP_PATHS.vacancies}/`)
   const isHrWorkspacePage = path === CRM_APP_PATHS.hr || path.startsWith(`${CRM_APP_PATHS.hr}/`)
   const isHubWorkspacePage =
     path === CRM_APP_PATHS.overview ||
@@ -90,7 +88,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     path === CRM_APP_PATHS.invoices ||
     path === CRM_APP_PATHS.tasks ||
     isInboxWorkspacePage ||
-    isRecruitmentSearchesWorkspace ||
+    isVacanciesWorkspace ||
     isHrWorkspacePage ||
     isHubWorkspacePage ||
     isProfileWorkspacePage ||

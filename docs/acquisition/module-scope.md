@@ -101,12 +101,38 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 
 **CampaignTemplate** catalog + instantiate — после V1 (ориентир V2). Multi-Flight UX — тоже после V1.
 
+## Operator surface (Marketing Workspace)
+
+**SoT привлечения для оператора:** `/app/marketing` на **shell** (`hostflow.cc`).
+
+Marketing — **платформенный** модуль (не Sales, не Recruitment, не лицензируемый business module):
+
+- nav: отдельная секция верхнего уровня;
+- deploy host: `shell` (не `sales.hostflow.cc` / `recruitment.hostflow.cc`);
+- с module host ссылка = абсолютный `https://hostflow.cc/app/marketing`;
+- FE permission: `acquisition.view` (не `vacancies.view`).
+
+Единственная точка управления ростом на UI:
+
+- Campaign + Flight;
+- форма / public source / Meta bind;
+- destination (Recruitment / Sales / Services / …);
+- launch / pause / resume;
+- входящие заявки, attribution, timeline, показатели кампании.
+
+`/app/recruitment/searches*` — **deprecated operator surface** (не развивать). SPA redirect:
+
+- list / new / acquisition / Meta → shell Marketing;
+- `/:id` (process) → `/app/vacancies/:id`.
+
+Не поддерживать два acquisition-flow (Searches + Marketing).
+
 ## Anti-scope (Stage 3A / V1)
 
-- Не Marketing product / `marketing.*`  
 - Не Template catalog в 3A  
 - Не multi-Flight UX в V1  
 - Не Goal как плоский enum  
 - Не Goal = `route_intent`  
 - Не Form exclusive child / typed FK на Campaign / SoT Candidate в Acquisition  
 - Не зависимость Campaign от Forms internals (только Endpoint → Submission)  
+- Не параллельный operator workspace «Подборы» для запуска источников / притока  

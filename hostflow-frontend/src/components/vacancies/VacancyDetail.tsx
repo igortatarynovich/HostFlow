@@ -17,6 +17,11 @@ import { listCandidateProfiles, type CandidateProfile } from '../../api/candidat
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import {
+  buildModuleAbsoluteUrl,
+  isShellDeployHost,
+  resolveDeployHost,
+} from '../../platform/deployHosts'
 import { PageHeader } from '../nav/PageHeader'
 import { PageShell, PageShellHeader, Toolbar } from '../layout'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
@@ -839,6 +844,31 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               >
                 {t('app.candidates.pipeline.title')}
               </Link>
+              {(() => {
+                const marketingPath = model?.id
+                  ? `${CRM_APP_PATHS.marketing}?vacancy_id=${encodeURIComponent(String(model.id))}`
+                  : CRM_APP_PATHS.marketing
+                const host = resolveDeployHost()
+                const href = isShellDeployHost(host)
+                  ? marketingPath
+                  : buildModuleAbsoluteUrl('shell', marketingPath)
+                if (/^https?:\/\//i.test(href)) {
+                  return (
+                    <a className="btn-secondary btn-sm" href={href}>
+                      {t('app.vacancies.detail.ops.marketing_cta', {
+                        defaultValue: 'Кампании / привлечение',
+                      })}
+                    </a>
+                  )
+                }
+                return (
+                  <Link className="btn-secondary btn-sm" to={href}>
+                    {t('app.vacancies.detail.ops.marketing_cta', {
+                      defaultValue: 'Кампании / привлечение',
+                    })}
+                  </Link>
+                )
+              })()}
               {can('services.view') && model?.id ? (
                 <Link
                   className="btn-secondary btn-sm"

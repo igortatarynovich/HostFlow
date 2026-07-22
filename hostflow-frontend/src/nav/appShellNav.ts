@@ -12,8 +12,6 @@ export const APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS = [
   'client-acquisition-channels',
   /** §2.14: primary entry via Candidates + queue param / dashboard. */
   'candidates-no-next-action',
-  /** Launch-search подборы replace generic vacancy list in daily work. */
-  'vacancies',
   'sla-incidents',
   /** Operator diagnostics — Automations hub / direct URL. */
   'command-audit',

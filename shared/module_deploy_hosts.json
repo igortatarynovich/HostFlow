@@ -13,7 +13,7 @@
   "business_modules": ["recruitment", "hr", "sales", "fleet", "finance"],
   "module_home_paths": {
     "shell": "/app/overview",
-    "recruitment": "/app/recruitment/searches",
+    "recruitment": "/app/vacancies",
     "hr": "/app/hr",
     "sales": "/app/sales",
     "fleet": "/app/fleet",
@@ -42,7 +42,9 @@
     "/app/my-company",
     "/app/launchpad",
     "/app/setup",
-    "/app/platform"
+    "/app/platform",
+    "/app/marketing",
+    "/app/acquisition"
   ],
   "app_path_prefixes": [
     { "prefix": "/app/recruitment", "host": "recruitment" },
@@ -72,8 +74,8 @@
     { "prefix": "/app/settings/billing", "host": "finance" }
   ],
   "nav_key_to_host": {
-    "recruitment-searches": "recruitment",
     "recruitment-inbox": "recruitment",
+    "vacancies": "recruitment",
     "candidates": "recruitment",
     "candidates-no-next-action": "recruitment",
     "vacancies": "recruitment",
@@ -88,6 +90,8 @@
     "settings-docs": "recruitment",
     "hr-workspace": "hr",
     "sales": "sales",
+    "marketing": "shell",
+    "acquisition-activity": "shell",
     "clients": "sales",
     "client-acquisition-channels": "sales",
     "service-orders": "sales",
@@ -100,6 +104,8 @@
     "overview",
     "work-hub",
     "inbox",
+    "marketing",
+    "acquisition-activity",
     "tasks",
     "notification-alerts",
     "calendar",
@@ -133,7 +139,7 @@
     "candidate": { "host": "recruitment", "path_template": "/app/candidates/{id}" },
     "recruitment_application": { "host": "recruitment", "path_template": "/app/recruitment/inbox/{id}" },
     "vacancy": { "host": "recruitment", "path_template": "/app/vacancies/{id}" },
-    "search": { "host": "recruitment", "path_template": "/app/recruitment/searches/{id}" },
+    "search": { "host": "recruitment", "path_template": "/app/vacancies/{id}", "notes": "Legacy search id == vacancy id; operator surface redirects via SPA" },
     "lead": { "host": "recruitment", "path_template": "/app/leads/{id}", "notes": "Recruitment transport lead card; sales inquiry uses inquiry" },
     "employee": { "host": "hr", "path_template": "/app/hr/employees/{id}" },
     "inquiry": { "host": "sales", "path_template": "/app/sales/inquiries/{id}" },

@@ -10,7 +10,6 @@ export const SIDEBAR_ITEM_ICON: Partial<Record<string, SidebarIconSpec>> = {
   overview: { kind: 'ui', id: 'home' },
   analytics: { kind: 'ui', id: 'график' },
   'work-hub': { kind: 'ui', id: 'что-дальше' },
-  'recruitment-searches': { kind: 'ui', id: 'подборы' },
   'recruitment-inbox': { kind: 'ui', id: 'отклики' },
   'hr-workspace': { kind: 'ui', id: 'сотрудники' },
   sales: { kind: 'ui', id: 'обращения' },

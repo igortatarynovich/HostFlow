@@ -6,10 +6,11 @@
 
 ## Суть
 
-- **Входит:** Applications (отклики), кандидаты, вакансии / подборы, пайплайн подбора, документы и правила стадий в контексте найма, handoff к HR/Fleet по продуктовым сценариям; **Job Post / vacancy-facing publishing** как recruitment-specific surface — см. [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md). **Кампании / рекламные кабинеты / универсальный intake routing** — Shared **Acquisition** ([`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)); Подбор остаётся SoT потребности, не кампании.
+- **Входит:** Applications (отклики), кандидаты, **вакансии** (потребность + прогресс закрытия), пайплайн отбора, интервью/документы/решение в контексте найма, handoff к HR/Fleet; **Job Post / vacancy-facing publishing** — см. [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md).
+- **Не входит (оператор привлечения):** создание набора / выбор формы / Meta / launch-pause / счётчики притока / timeline кампании — SoT UI = **platform Marketing** на shell `/app/marketing` ([`../acquisition/module-scope.md`](../acquisition/module-scope.md), [`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)). Vacancy может ссылаться в Marketing с `vacancy_id`, но не владеет Marketing.
 - **Не входит:** Sales Inquiry / ClientAccount (→ **Sales**); Service Order (→ **Services**); Invoice / Payment (→ **Finance**); **Employee Workspace** и кадровый lifecycle (→ **HR** — Recruitment только handoff + ссылка); операции автопарка (→ **Fleet**); владение Campaign/Ad как SoT (→ **Acquisition**). См. [`ADR-023`](../specs/architecture/ADR-023-recruitment-sales-module-separation.md).
 - **`Lead`** — только внутренний transport intake; в UI модуля — **Отклик (Application)** / **Кандидат**, никогда «лид» как рабочий объект ([`ui-constitution-v1.md`](../specs/architecture/ui-constitution-v1.md)).
-- **Nav:** Employees **не** живут в секции Recruitment.
+- **Nav:** Employees **не** живут в секции Recruitment. Пункт **«Подборы»** (`/app/recruitment/searches`) — **deprecated**; rail = Вакансии / Отклики / Кандидаты. VacancyDetail → CTA «Кампании / привлечение» ведёт в Marketing.
 - **Stage 2A product API:** `/api/v1/recruitment/applications/*`, `/api/v1/recruitment/candidates/*` (legacy `/api/v1/candidates` remains compat).
 
 ## Job Publishing / Job Distribution (ADR-008)
@@ -25,7 +26,7 @@
 
 **Flow:** `Vacancy → Job Post → Publishing Channel → Application Form → Application → Candidate` с атрибуцией **source / channel / campaign**. Долгосрочно **Campaign / ads / multi-module placement** живут в Shared **Acquisition** ([`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)); Job Post не становится владельцем Sales Inquiry.
 
-**Подбор ≠ Campaign:** Подбор = внутренняя потребность Recruitment; Campaign = объект Acquisition (канал, бюджет, креатив). Один Подбор → много кампаний.
+**Vacancy ≠ Campaign:** Vacancy = внутренняя потребность Recruitment (закрытие позиций); Campaign/Flight = объект Acquisition / Marketing Workspace. Один Vacancy → много кампаний. Operator UI «Подборы» как второй acquisition console **запрещён**.
 
 **Зависимость:** при выключенном **Recruitment** Job Publishing **недоступен**. При включённом — basic в составе Recruitment, advanced — addon; интеграции отдельных порталов — через Marketplace ([`ADR-006`](../specs/architecture/ADR-006-marketplace-and-integration-platform.md)).
 

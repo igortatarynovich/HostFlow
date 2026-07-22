@@ -17,7 +17,7 @@ import { getOnboardingStatus } from '../api/client'
 import { getBillingSubscriptionCached } from '../api/billingSubscriptionCache'
 import type { BillingSubscription } from '../api/billing'
 import { useSetupReadiness } from '../hooks/useSetupReadiness'
-import { CRM_APP_PATHS, recruitmentSearchPath } from '../app/crmAppPaths'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { getBusinessHomePath } from '../app/activationRoutes'
 import { readLastLaunchSearchId } from '../services/launchSearchSession'
 import type { ActivationBusinessType } from '../app/activationRoutes'
@@ -173,18 +173,18 @@ export default function LaunchpadPage() {
   const lastSearchId = readLastLaunchSearchId()
   const recruitmentOpenPath =
     lastSearchId && hasActiveSearch
-      ? recruitmentSearchPath(lastSearchId)
+      ? `${CRM_APP_PATHS.vacancies}/${encodeURIComponent(lastSearchId)}`
       : hasActiveSearch
-        ? CRM_APP_PATHS.recruitmentSearches
+        ? CRM_APP_PATHS.vacancies
         : getBusinessHomePath(businessType)
   const recruitmentModulePath =
     recruitmentWorkspaceAvailable && hasActiveSearch
       ? recruitmentOpenPath
-      : CRM_APP_PATHS.recruitmentSearchesNew
+      : CRM_APP_PATHS.marketingNew
   const recruitmentModuleActionLabel =
     recruitmentWorkspaceAvailable && hasActiveSearch
-      ? t('app.launchpad.open_search', { defaultValue: 'Открыть подбор' })
-      : t('app.launchpad.create_search', { defaultValue: 'Создать подбор' })
+      ? t('app.launchpad.open_vacancy', { defaultValue: 'Открыть вакансию' })
+      : t('app.launchpad.create_campaign', { defaultValue: 'Создать кампанию' })
 
   const setupPassed = snapshot?.gates.filter((gate) => gate.applicable && gate.status === 'pass').length ?? 0
   const setupTotal = snapshot?.gates.filter((gate) => gate.applicable).length ?? 0
@@ -251,15 +251,15 @@ export default function LaunchpadPage() {
           <Link
             to={
               lastSearchId && hasActiveSearch
-                ? recruitmentSearchPath(lastSearchId)
-                : CRM_APP_PATHS.recruitmentSearchesNew
+                ? `${CRM_APP_PATHS.vacancies}/${encodeURIComponent(lastSearchId)}`
+                : CRM_APP_PATHS.marketingNew
             }
             data-testid="m1-launchpad-create-search"
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700 sm:mt-6 sm:w-auto sm:self-start sm:text-base"
           >
             {lastSearchId && hasActiveSearch
-              ? t('app.launchpad.open_search', { defaultValue: 'Открыть подбор' })
-              : t('app.launchpad.create_search', { defaultValue: 'Создать подбор' })}
+              ? t('app.launchpad.open_vacancy', { defaultValue: 'Открыть вакансию' })
+              : t('app.launchpad.create_campaign', { defaultValue: 'Создать кампанию' })}
             <IconArrowRight size={16} stroke={2} aria-hidden />
           </Link>
         </article>

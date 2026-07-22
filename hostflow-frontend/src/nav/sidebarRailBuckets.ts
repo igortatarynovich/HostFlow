@@ -12,7 +12,8 @@ export const SIDEBAR_CLIENT_FLAT_ORDER = [
   'overview',
   'work-hub',
   'inbox',
-  'recruitment-searches',
+  'marketing',
+  'vacancies',
   'candidates',
   'tasks',
   'notification-alerts',
@@ -25,9 +26,9 @@ export const SIDEBAR_AGENCY_WORK_HUB_ORDER = ['work-hub'] as const
 /** Horizontal Communications — not nested under Recruitment or Sales. */
 export const SIDEBAR_AGENCY_INBOX_ORDER = ['inbox'] as const
 
-/** Recruitment owns Applications / Candidates / Searches — not Employees (ADR-023 §2.2). */
+/** Recruitment owns Applications / Candidates / Vacancies — not Employees (ADR-023 §2.2). Attraction → Marketing. */
 export const SIDEBAR_AGENCY_RECRUITMENT_ORDER = [
-  'recruitment-searches',
+  'vacancies',
   'recruitment-inbox',
   'candidates',
 ] as const
@@ -35,8 +36,14 @@ export const SIDEBAR_AGENCY_RECRUITMENT_ORDER = [
 /** HR / Workforce owns Employee Workspace after handoff. */
 export const SIDEBAR_AGENCY_HR_ORDER = ['hr-workspace'] as const
 
-/** Sales owns Inquiry + ClientAccount — not Invoice/Payment model. Marketing = Campaign/Flight workspace. */
-export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'marketing', 'clients'] as const
+/**
+ * Platform attraction (Marketing Workspace) — not owned by Sales/Recruitment/Services.
+ * SoT: Campaign / Flight / form / Meta / launch on shell host.
+ */
+export const SIDEBAR_AGENCY_MARKETING_ORDER = ['marketing'] as const
+
+/** Sales owns Inquiry + ClientAccount — not Invoice/Payment model. */
+export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'clients'] as const
 
 /** Services owns catalog + service order lifecycle. */
 export const SIDEBAR_AGENCY_SERVICES_ORDER = ['service-orders', 'services'] as const
@@ -105,6 +112,7 @@ const _agencyRailKeyParts: readonly (readonly string[])[] = [
   SIDEBAR_AGENCY_DASHBOARD_ORDER,
   SIDEBAR_AGENCY_WORK_HUB_ORDER,
   SIDEBAR_AGENCY_INBOX_ORDER,
+  SIDEBAR_AGENCY_MARKETING_ORDER,
   SIDEBAR_AGENCY_RECRUITMENT_ORDER,
   SIDEBAR_AGENCY_HR_ORDER,
   SIDEBAR_AGENCY_SALES_ORDER,
