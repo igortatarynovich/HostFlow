@@ -48,6 +48,13 @@ if current_pkg is None:
 _sys.modules.setdefault("backend", current_pkg)
 _sys.modules.setdefault("backend.app", current_pkg)
 
+# Collapse dual SQLAlchemy Base before models load (see app.db.base). Required so
+# Lead (backend.app.db.base) and relative-Base models share one MetaData.
+_app_db = importlib.import_module("app.db")
+_app_db_base = importlib.import_module("app.db.base")
+_sys.modules["backend.app.db"] = _app_db
+_sys.modules["backend.app.db.base"] = _app_db_base
+
 from . import models as _models  # noqa: F401
 from backend.app.db.base import Base
 _sys.modules.setdefault("backend.app.models", _sys.modules.get("app.models", _models))
