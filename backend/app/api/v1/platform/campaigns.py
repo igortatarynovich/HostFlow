@@ -21,6 +21,7 @@ from backend.app.acquisition.kpi_aggregates import (
     aggregate_flight_kpi,
 )
 from backend.app.acquisition.ops.live_intake_monitor import get_live_intake_monitor
+from backend.app.acquisition.ops.optimization_signals import get_flight_optimization
 from backend.app.acquisition.ops.runtime_read import get_flight_runtime_snapshot
 from backend.app.api.v1.platform.acquisition_activity import (
     ActivityCursorOut,
@@ -326,6 +327,48 @@ class LiveIntakeMonitorOut(BaseModel):
     next_cursor: Optional[ActivityCursorOut] = None
     order: tuple[str, str]
     event_types: List[str] = Field(default_factory=list)
+
+
+class OptimizationSignalOut(BaseModel):
+    code: str
+    severity: str
+    message: str
+
+
+class OptimizationWindowCountersOut(BaseModel):
+    submissions: int
+    routing_completed: int
+    routing_failed: int
+    delivery_errors: int
+    routing_sample: int
+    decision_volume: int
+
+
+class OptimizationThresholdsOut(BaseModel):
+    min_decision_volume: int
+    routing_fail_rate_threshold: float
+    min_routing_sample: int
+    delivery_error_threshold: int
+
+
+class FlightOptimizationOut(BaseModel):
+    tenant_id: str
+    campaign_id: str
+    flight_id: str
+    campaign_status: str
+    flight_status: str
+    assessment: str
+    recommended_action: str
+    reason_codes: List[str] = Field(default_factory=list)
+    signals: List[OptimizationSignalOut] = Field(default_factory=list)
+    window_hours: int
+    window_start: datetime
+    window_end: datetime
+    counters: OptimizationWindowCountersOut
+    kpi_leads: int
+    spend: str
+    generated_at: datetime
+    thresholds: OptimizationThresholdsOut
 
 
 async def _form_display_map(
@@ -1661,3 +1704,41 @@ async def get_live_intake_monitor_endpoint(
         order=page.order,
         event_types=list(page.event_types),
     )
+
+
+@router.get(
+    "/{campaign_id}/flights/{flight_id}/optimization",
+    response_model=FlightOptimizationOut,
+    dependencies=_READ,
+)
+async def get_flight_optimization_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+    window_hours: Optional[int] = Query(
+        None,
+        ge=1,
+        le=168,
+        description="Observation window in hours (default 24, clamped 1..168).",
+    ),
+):
+    """Stage 5 PR-1 — read-only optimization signals / pause recommendation.
+
+    Does not mutate Campaign/Flight and does not append Activity events.
+    """
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        snap = await get_flight_optimization(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            flight_id=flight_id,
+            own_company_id=own_company_id,
+            window_hours=window_hours,
+        )
+    except FlightRuntimeError as exc:
+        _raise_runtime(exc)
+    return FlightOptimizationOut.model_validate(snap.to_dict())

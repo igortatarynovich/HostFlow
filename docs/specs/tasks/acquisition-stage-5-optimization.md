@@ -35,27 +35,64 @@
 
 ## PR-1 — Optimization signals / pause recommendation (locked)
 
-Minimal first Product PR. **Read-only** — no auto Launch/Pause/Resume writes.
+Minimal first Product PR. **Read-only** — no auto Launch/Pause/Resume writes.  
+**Architectural ban:** the signal may **explain and recommend only**. It must never mutate Campaign or Flight. No Activity append on GET.
 
 ### IN
 
-1. **Signals contract** — typed Flight optimization signals composed from Stage 4 runtime snapshot + Live Intake Monitor counters + allowlisted Timeline events (e.g. elevated `routing_failed`, `DeliveryErrorOccurred` rate in a window).
-2. **HTTP read** — `GET …/flights/{id}/optimization` (or equivalent under platform campaigns) returning signals + optional `recommended_action` (`none` | `suggest_pause`) with reason codes.
-3. **Tests** — tenant/company scope, recommendation thresholds, no write-path side effects.
+1. **Signals contract** — typed Flight optimization signals composed from Stage 4 `get_flight_runtime_snapshot` (identity / status / KPI strip) + **windowed** Timeline counts (allowlist subset of Live Intake Monitor). No second metrics ledger.
+2. **HTTP read** — `GET /api/v1/platform/campaigns/{campaign_id}/flights/{flight_id}/optimization?window_hours=` returning `assessment`, `recommended_action`, `reason_codes`, `signals`, window counters, KPI strip, and locked `thresholds`.
+3. **Tests** — threshold boundaries, zero spend/intake, paused/completed flight, company scope, repeat GET without side effects.
 4. **Thin UI (optional in same PR if tiny)** — Marketing detail badge/banner “Consider pause” when recommendation present; no auto-button that bypasses existing Stage 4 commands.
+
+### Locked inputs (PR-1)
+
+| Input | Source |
+|-------|--------|
+| Campaign / Flight identity | Stage 4 runtime snapshot |
+| Current runtime status (`campaign_status`, `flight_status`) | Stage 4 runtime snapshot |
+| Delivery + intake counters (windowed) | Timeline: `SubmissionReceived`, `RoutingCompleted`, `RoutingFailed`, `DeliveryErrorOccurred` |
+| KPI spend / leads (informational) | Stage 4 runtime KPI aggregate — **not** used for pause thresholds in PR-1 |
+| Observation window | `window_hours` query (default **24**, clamp **1…168**) |
+| Minimum data volume | `decision_volume` = sum of the four windowed counters |
+
+### Locked assessments / actions
+
+| `assessment` | `recommended_action` | When |
+|--------------|----------------------|------|
+| `insufficient_data` | `none` | Flight not `active`, or `decision_volume` < min volume |
+| `healthy` | `none` | Active + enough volume + within thresholds |
+| `suggest_pause` | `suggest_pause` | Active + enough volume + any pause threshold met |
+
+### Locked thresholds (PR-1)
+
+| Constant | Value | Rule |
+|----------|-------|------|
+| `MIN_DECISION_VOLUME` | **5** | Below → `insufficient_data` |
+| `MIN_ROUTING_SAMPLE` | **5** | `routing_completed + routing_failed` |
+| `ROUTING_FAIL_RATE_THRESHOLD` | **0.50** | Inclusive (`>=`) when sample ≥ min |
+| `DELIVERY_ERROR_THRESHOLD` | **3** | Inclusive absolute `DeliveryErrorOccurred` count in window |
+
+Pause recommendation applies **only** while `flight_status == active`. Paused / completed / planned → `insufficient_data` + `flight_not_active` (never auto-suggest pause for a non-active flight).
+
+### Activity events
+
+Stage 5 PR-1 does **not** define a recommendation Activity type. **Do not** emit Activity on GET. Repeat GET must leave Timeline row count and Flight/Campaign status unchanged.
 
 ### OUT
 
 - Auto-executing Pause/Resume/Complete without operator confirmation  
+- Workers / schedulers / auto-pause policies (candidate for later PR only)  
 - AI / LLM recommendations  
 - Stage 6 ROI / cohort analytics  
 - Flight Cancel · Ads Manager · Meta D2 full path  
 - New event store · changing 3E ASC list canon  
 - Budget automation as a product suite  
+- Activity emit on every optimization read  
 
 ### Implementation bias
 
-Compose Stage 4 `runtime_read` + `live_intake_monitor` + Timeline list. Prefer pure functions over new tables. If persistence is required later, open a separate ownership note — default KEEP MODULE / no System Layer dictionaries.
+Compose Stage 4 `runtime_read` + Timeline window counts (same family as `live_intake_monitor`). Prefer pure `evaluate_flight_optimization` over new tables. If persistence is required later, open a separate ownership note — default KEEP MODULE / no System Layer dictionaries.
 
 ---
 
@@ -70,3 +107,4 @@ Compose Stage 4 `runtime_read` + `live_intake_monitor` + Timeline list. Prefer p
 ## History
 
 - 2026-07-23: Opened after Stage 4 DONE merge (#148–#151); **PR-1 locked** as read-only optimization signals.
+- 2026-07-23: Locked PR-1 inputs/thresholds/assessments; no Activity on GET; compose runtime + windowed Timeline only.
