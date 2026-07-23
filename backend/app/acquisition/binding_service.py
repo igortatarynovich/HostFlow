@@ -557,13 +557,9 @@ async def attach_ad(
     flight_id: str | None = None,
     actor_type: str = ACTOR_TYPE_SYSTEM,
     actor_id: str | None = None,
-    trigger_reprocess: bool = True,
-) -> tuple[Campaign, dict]:
-    """Create active Ad ID → Flight binding; optionally auto-reprocess waiting leads."""
-    from backend.app.acquisition.flight_ad_binding import (
-        normalize_provider_ad_id,
-        reprocess_leads_for_ad_binding,
-    )
+) -> Campaign:
+    """Create active Ad ID → Flight binding (commit separately; reprocess post-commit)."""
+    from backend.app.acquisition.flight_ad_binding import normalize_provider_ad_id
 
     campaign, flight = await _resolve_flight(
         db,
@@ -623,22 +619,12 @@ async def attach_ad(
         actor_id=actor_id,
     )
 
-    reprocess_summary: dict = {"matched": 0, "processed": 0, "skipped": 0, "errors": []}
-    if trigger_reprocess:
-        reprocess_summary = await reprocess_leads_for_ad_binding(
-            db,
-            tenant_id=tenant_id,
-            provider=prov,
-            provider_ad_id=ad,
-        )
-
-    refreshed = await _reload_campaign(
+    return await _reload_campaign(
         db,
         tenant_id=tenant_id,
         campaign_id=campaign_id,
         own_company_id=own_company_id,
     )
-    return refreshed, reprocess_summary
 
 
 async def update_ad_link(
@@ -651,10 +637,8 @@ async def update_ad_link(
     own_company_id: str | None = None,
     actor_type: str = ACTOR_TYPE_SYSTEM,
     actor_id: str | None = None,
-    trigger_reprocess: bool = True,
-) -> tuple[Campaign, dict]:
-    from backend.app.acquisition.flight_ad_binding import reprocess_leads_for_ad_binding
-
+) -> Campaign:
+    """Update Ad binding (commit separately; reprocess active links post-commit)."""
     campaign = await get_campaign(
         db, tenant_id=tenant_id, campaign_id=campaign_id, own_company_id=own_company_id
     )
@@ -693,22 +677,12 @@ async def update_ad_link(
         actor_id=actor_id,
     )
 
-    reprocess_summary: dict = {"matched": 0, "processed": 0, "skipped": 0, "errors": []}
-    if trigger_reprocess and bool(link.is_active):
-        reprocess_summary = await reprocess_leads_for_ad_binding(
-            db,
-            tenant_id=tenant_id,
-            provider=str(link.provider),
-            provider_ad_id=str(link.provider_ad_id),
-        )
-
-    refreshed = await _reload_campaign(
+    return await _reload_campaign(
         db,
         tenant_id=tenant_id,
         campaign_id=campaign_id,
         own_company_id=own_company_id,
     )
-    return refreshed, reprocess_summary
 
 
 async def detach_ad(

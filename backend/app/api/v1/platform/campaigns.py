@@ -1764,6 +1764,41 @@ async def get_flight_optimization_endpoint(
 # --- FlightAdBinding (Ad ID → Flight) ---
 
 
+async def _reprocess_after_ad_binding_commit(
+    *,
+    tenant_id: str,
+    provider: str,
+    provider_ad_id: str,
+    enabled: bool = True,
+) -> dict:
+    """Run auto-reprocess in a separate transaction after binding is committed.
+
+    Failures never roll back the binding — they surface in the response summary.
+    """
+    empty: dict = {
+        "matched": 0,
+        "processed": 0,
+        "skipped": 0,
+        "batches": 0,
+        "errors": [],
+    }
+    if not enabled:
+        return empty
+    from backend.app.acquisition.flight_ad_binding import reprocess_leads_for_ad_binding
+
+    try:
+        return await reprocess_leads_for_ad_binding(
+            tenant_id=tenant_id,
+            provider=provider,
+            provider_ad_id=provider_ad_id,
+        )
+    except Exception as exc:  # noqa: BLE001 — binding already durable
+        return {
+            **empty,
+            "errors": [{"lead_id": "*", "error": str(exc)[:240]}],
+        }
+
+
 @router.post(
     "/{campaign_id}/ad-bindings",
     response_model=AdBindingOut,
@@ -1781,7 +1816,7 @@ async def attach_ad_current_flight(
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
     actor_type, actor_id = _activity_actor(ctx)
     try:
-        campaign, reprocess = await binding_service.attach_ad(
+        campaign = await binding_service.attach_ad(
             db,
             tenant_id=str(tenant_uuid),
             campaign_id=campaign_id,
@@ -1796,6 +1831,11 @@ async def attach_ad_current_flight(
         await db.rollback()
         _raise_service(exc)
     link = _find_ad_link(campaign, payload.provider, payload.provider_ad_id)
+    reprocess = await _reprocess_after_ad_binding_commit(
+        tenant_id=str(tenant_uuid),
+        provider=str(link.provider) if link else payload.provider,
+        provider_ad_id=str(link.provider_ad_id) if link else payload.provider_ad_id,
+    )
     return AdBindingOut(
         id=str(link.id) if link else "",
         provider=str(link.provider) if link else payload.provider,
@@ -1825,7 +1865,7 @@ async def attach_ad_on_flight(
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
     actor_type, actor_id = _activity_actor(ctx)
     try:
-        campaign, reprocess = await binding_service.attach_ad(
+        campaign = await binding_service.attach_ad(
             db,
             tenant_id=str(tenant_uuid),
             campaign_id=campaign_id,
@@ -1841,6 +1881,11 @@ async def attach_ad_on_flight(
         await db.rollback()
         _raise_service(exc)
     link = _find_ad_link(campaign, payload.provider, payload.provider_ad_id)
+    reprocess = await _reprocess_after_ad_binding_commit(
+        tenant_id=str(tenant_uuid),
+        provider=str(link.provider) if link else payload.provider,
+        provider_ad_id=str(link.provider_ad_id) if link else payload.provider_ad_id,
+    )
     return AdBindingOut(
         id=str(link.id) if link else "",
         provider=str(link.provider) if link else payload.provider,
@@ -1869,7 +1914,7 @@ async def patch_ad_binding(
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
     actor_type, actor_id = _activity_actor(ctx)
     try:
-        campaign, reprocess = await binding_service.update_ad_link(
+        campaign = await binding_service.update_ad_link(
             db,
             tenant_id=str(tenant_uuid),
             campaign_id=campaign_id,
@@ -1884,6 +1929,12 @@ async def patch_ad_binding(
         await db.rollback()
         _raise_service(exc)
     link = _find_ad_link_by_id(campaign, link_id)
+    reprocess = await _reprocess_after_ad_binding_commit(
+        tenant_id=str(tenant_uuid),
+        provider=str(link.provider) if link else "meta",
+        provider_ad_id=str(link.provider_ad_id) if link else "",
+        enabled=bool(link and link.is_active),
+    )
     return AdBindingOut(
         id=str(link.id) if link else link_id,
         provider=str(link.provider) if link else "meta",

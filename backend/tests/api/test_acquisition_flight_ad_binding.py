@@ -349,3 +349,222 @@ async def test_attach_ad_binding_reprocesses_missing_campaign_flight(
         stamp = (waiting.normalized or {}).get("acquisition_routing_v1") or {}
         assert stamp.get("unresolved_reason") != MISSING_CAMPAIGN_FLIGHT or waiting.candidate_id
         assert untouched.error == "MAPPING_FAILED"
+
+
+def _waiting_lead(
+    *,
+    tenant_id: str,
+    own_company_id: str | None,
+    ad_id: str,
+    source: str = "meta",
+    email: str | None = None,
+) -> Lead:
+    return Lead(
+        id=str(uuid4()),
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        source=source,
+        status="needs_routing",
+        ad_id=int(ad_id) if str(ad_id).isdigit() else None,
+        payload={"ad_id": ad_id, "field_data": []},
+        normalized={
+            "ad_id": ad_id,
+            "email": email or f"wait-{uuid4().hex[:8]}@example.com",
+            "acquisition_routing_v1": {
+                "status": "unresolved",
+                "unresolved_reason": MISSING_CAMPAIGN_FLIGHT,
+            },
+        },
+        error=MISSING_CAMPAIGN_FLIGHT,
+        external_id=f"meta-lead-{uuid4().hex[:12]}",
+    )
+
+
+def _clear_waiting_stamp(lead: Lead) -> None:
+    lead.error = None
+    lead.status = "processed"
+    norm = dict(lead.normalized or {})
+    stamp = dict(norm.get("acquisition_routing_v1") or {})
+    stamp["status"] = "routed"
+    stamp.pop("unresolved_reason", None)
+    norm["acquisition_routing_v1"] = stamp
+    lead.normalized = norm
+
+
+@pytest.mark.anyio
+async def test_reprocess_batches_beyond_200_and_isolates_filters(monkeypatch):
+    """201+ waiting leads are fully drained; other tenant/provider/ad_id stay waiting."""
+    from backend.app.acquisition import flight_ad_binding as fab
+    from backend.app.modules.leads.service import _bulk as bulk_mod
+
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    oc = await _own_company_id(tenant_id)
+    target_ad = str(700_000_000 + (uuid4().int % 90_000_000))
+    other_ad = str(int(target_ad) + 1)
+    other_tenant = "22222222-2222-2222-2222-222222222222"
+    conversions: list[str] = []
+
+    async def fake_reprocess(db, *, stored_lead_id, **_kwargs):
+        lead = await db.get(Lead, stored_lead_id)
+        assert lead is not None
+        # Idempotent convert: count only first successful conversion.
+        stamp = (lead.normalized or {}).get("acquisition_routing_v1") or {}
+        if stamp.get("unresolved_reason") == MISSING_CAMPAIGN_FLIGHT and not lead.candidate_id:
+            conversions.append(str(lead.id))
+            lead.candidate_id = None  # no FK row; stamp clear is enough for filter
+            _clear_waiting_stamp(lead)
+            # Synthetic application marker for idempotency asserts
+            norm = dict(lead.normalized or {})
+            norm["_test_application_v1"] = {"created": True, "run": 1}
+            lead.normalized = norm
+
+    monkeypatch.setattr(bulk_mod, "reprocess_stored_lead_payload", fake_reprocess)
+
+    target_ids: list[str] = []
+    async with async_session_maker() as session:
+        leads = [
+            _waiting_lead(tenant_id=tenant_id, own_company_id=oc, ad_id=target_ad)
+            for _ in range(201)
+        ]
+        other_ad_lead = _waiting_lead(
+            tenant_id=tenant_id, own_company_id=oc, ad_id=other_ad
+        )
+        other_provider_lead = _waiting_lead(
+            tenant_id=tenant_id, own_company_id=oc, ad_id=target_ad, source="tiktok"
+        )
+        # other provider still has meta stamp but source filter excludes non-meta for meta binding
+        other_tenant_lead = _waiting_lead(
+            tenant_id=other_tenant, own_company_id=None, ad_id=target_ad
+        )
+        session.add_all(leads + [other_ad_lead, other_provider_lead, other_tenant_lead])
+        await session.commit()
+        target_ids = [str(x.id) for x in leads]
+        other_ad_id = str(other_ad_lead.id)
+        other_provider_id = str(other_provider_lead.id)
+        other_tenant_id = str(other_tenant_lead.id)
+
+    summary = await fab.reprocess_leads_for_ad_binding(
+        tenant_id=tenant_id,
+        provider="meta",
+        provider_ad_id=target_ad,
+        batch_size=50,
+    )
+    assert summary["matched"] == 201
+    assert summary["processed"] == 201
+    assert summary["batches"] >= 5  # 50 * 5 = 250 capacity; 201 needs ≥5 pages
+    assert summary["errors"] == []
+    assert len(conversions) == 201
+
+    # Second run: no duplicate conversions
+    summary2 = await fab.reprocess_leads_for_ad_binding(
+        tenant_id=tenant_id,
+        provider="meta",
+        provider_ad_id=target_ad,
+        batch_size=50,
+    )
+    assert summary2["matched"] == 0
+    assert summary2["processed"] == 0
+    assert len(conversions) == 201
+
+    async with async_session_maker() as session:
+        for lid in target_ids:
+            row = await session.get(Lead, lid)
+            assert row is not None
+            stamp = (row.normalized or {}).get("acquisition_routing_v1") or {}
+            assert stamp.get("unresolved_reason") != MISSING_CAMPAIGN_FLIGHT
+            assert (row.normalized or {}).get("_test_application_v1", {}).get("created") is True
+
+        for lid in (other_ad_id, other_provider_id):
+            row = await session.get(Lead, lid)
+            assert row is not None
+            assert row.error == MISSING_CAMPAIGN_FLIGHT
+
+        from backend.tests.conftest import _set_tenant
+
+        await _set_tenant(session, other_tenant)
+        other_tenant_row = await session.get(Lead, other_tenant_id)
+        assert other_tenant_row is not None
+        assert other_tenant_row.error == MISSING_CAMPAIGN_FLIGHT
+        assert other_tenant_row.tenant_id == other_tenant
+
+
+@pytest.mark.anyio
+async def test_binding_survives_reprocess_lead_failure(
+    client: AsyncClient, manager_headers: dict, monkeypatch
+):
+    """Binding commit is durable even when one waiting lead fails during reprocess."""
+    from backend.app.modules.leads.service import _bulk as bulk_mod
+
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    oc = await _own_company_id(tenant_id)
+    company_id = await _company_id(tenant_id)
+    ad_id = str(600_000_000 + (uuid4().int % 90_000_000))
+
+    async with async_session_maker() as session:
+        vac = Vacancy(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            own_company_id=oc,
+            company_id=company_id,
+            title="Survivors",
+            status="open",
+            is_active=True,
+            is_archived=False,
+        )
+        session.add(vac)
+        await session.flush()
+        camp_id, flight_id = await _seed_campaign_flight(
+            tenant_id=tenant_id, own_company_id=oc, vacancy_id=str(vac.id)
+        )
+        ok_lead = _waiting_lead(tenant_id=tenant_id, own_company_id=oc, ad_id=ad_id)
+        bad_lead = _waiting_lead(tenant_id=tenant_id, own_company_id=oc, ad_id=ad_id)
+        session.add_all([ok_lead, bad_lead])
+        await session.commit()
+        ok_id = str(ok_lead.id)
+        bad_id = str(bad_lead.id)
+
+    async def flaky_reprocess(db, *, stored_lead_id, **_kwargs):
+        if str(stored_lead_id) == bad_id:
+            raise RuntimeError("simulated reprocess failure")
+        lead = await db.get(Lead, stored_lead_id)
+        assert lead is not None
+        _clear_waiting_stamp(lead)
+
+    monkeypatch.setattr(bulk_mod, "reprocess_stored_lead_payload", flaky_reprocess)
+
+    headers = dict(manager_headers)
+    headers["X-Tenant-Id"] = tenant_id
+    headers["X-Own-Company-Id"] = oc
+    headers["Content-Type"] = "application/json"
+    resp = await client.post(
+        f"/api/v1/platform/campaigns/{camp_id}/flights/{flight_id}/ad-bindings",
+        headers=headers,
+        json={"provider_ad_id": ad_id, "provider": "meta"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["is_active"] is True
+    assert body["reprocess"]["processed"] >= 1
+    assert any(e.get("lead_id") == bad_id for e in body["reprocess"].get("errors") or [])
+
+    async with async_session_maker() as session:
+        binding = (
+            await session.execute(
+                select(FlightAdBinding).where(
+                    FlightAdBinding.tenant_id == tenant_id,
+                    FlightAdBinding.provider == "meta",
+                    FlightAdBinding.provider_ad_id == ad_id,
+                    FlightAdBinding.is_active.is_(True),
+                )
+            )
+        ).scalar_one()
+        assert str(binding.campaign_run_id) == flight_id
+
+        ok_row = await session.get(Lead, ok_id)
+        bad_row = await session.get(Lead, bad_id)
+        assert ok_row is not None and bad_row is not None
+        ok_stamp = (ok_row.normalized or {}).get("acquisition_routing_v1") or {}
+        assert ok_stamp.get("unresolved_reason") != MISSING_CAMPAIGN_FLIGHT
+        assert bad_row.error == MISSING_CAMPAIGN_FLIGHT
