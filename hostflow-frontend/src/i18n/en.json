@@ -940,6 +940,7 @@
         "automations": "Automations",
         "automation_log": "Automation log",
         "acquisition_activity": "Acquisition activity",
+        "marketing_sources": "Sources",
         "automation_rules": "Automation rules",
         "settings_hiring_gates": "Hiring pipeline gates",
         "settings_risk_intel": "Risk intelligence"
@@ -8609,6 +8610,51 @@
           "create": "Created a new inquiry",
           "match_or_create": "Matched or created inquiry",
           "review": "Sent to review queue"
+        }
+      }
+    },
+    "marketing": {
+      "sources": {
+        "title": "Sources",
+        "subtitle": "Connected sources, Mapping Health, waiting submissions, and last events.",
+        "none": "—",
+        "empty_title": "No sources yet",
+        "empty_body": "Connect Meta in Integrations or bind an intake source — they will appear here.",
+        "columns": {
+          "source": "Source",
+          "provider": "Provider",
+          "connection": "Connection",
+          "mapping_health": "Mapping Health",
+          "last_lead": "Last lead",
+          "waiting": "Waiting",
+          "routing_issue": "Routing issue",
+          "last_error": "Last error",
+          "campaigns_flights": "Campaigns / Flights",
+          "actions": "Actions"
+        },
+        "connection": {
+          "connected": "Connected",
+          "attention": "Attention",
+          "disconnected": "Disconnected"
+        },
+        "health": {
+          "ready": "Ready",
+          "needs_review": "Needs review",
+          "broken": "Broken"
+        },
+        "routing_issue": {
+          "missing_campaign_flight": "Campaign/Flight for this Ad ID are not configured."
+        },
+        "actions": {
+          "integrations": "Integrations",
+          "connect": "Open Integrations",
+          "mapping": "Mapping",
+          "test_lead": "Test lead",
+          "connection": "Connection",
+          "setup_campaign_flight": "Configure Campaign/Flight"
+        },
+        "errors": {
+          "load": "Failed to load sources"
         }
       }
     }

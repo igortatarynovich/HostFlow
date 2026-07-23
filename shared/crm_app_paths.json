@@ -53,6 +53,7 @@
     "acquisitionActivity": "/app/acquisition/activity",
     "marketing": "/app/marketing",
     "marketingNew": "/app/marketing/new",
+    "marketingSources": "/app/marketing/sources",
     "inbox": "/app/inbox",
     "inboxMessagesScoped": "/app/inbox?channel=messages",
     "inboxEmailScoped": "/app/inbox?channel=email",
@@ -154,6 +155,7 @@
     "acquisitionActivity": "Stage 3E read-only Acquisition Activity Timeline (platform campaigns).",
     "marketing": "Marketing Workspace — campaign list and Flight operator surface.",
     "marketingNew": "Marketing Campaign Setup Flow (create campaign + form + source + launch).",
+    "marketingSources": "Marketing Sources foundation — intake inventory, connection, Mapping Health (C-3).",
     "companiesLegacy": "Legacy URLs kept for redirects / bookmarks.",
     "plannerLegacy": "Legacy planner shell — redirects to /app/calendar (Phase 2.1 absorbed planner into Activity).",
     "settingsIntegrationsMessengerFacebook": "Facebook Messenger channel under Integration hub (URL segment repeats API channel key “messenger”).",
@@ -303,6 +305,14 @@
       {
         "name": "MARKETING_NEW",
         "path_key": "marketingNew"
+      },
+      {
+        "name": "MARKETING_SOURCES",
+        "path_key": "marketingSources"
+      },
+      {
+        "name": "SETTINGS_LEAD_FORMS",
+        "path_key": "settingsLeadForms"
       }
     ],
     "functions": [

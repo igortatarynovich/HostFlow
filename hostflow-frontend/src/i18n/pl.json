@@ -921,6 +921,7 @@
         "automations": "Automatyzacje",
         "automation_log": "Dziennik automatyzacji",
         "acquisition_activity": "Aktywność Acquisition",
+        "marketing_sources": "Sources",
         "automation_rules": "Reguły automatyzacji",
         "settings_hiring_gates": "Bramki lejka rekrutacji",
         "settings_risk_intel": "Ryzyko operacyjne",
@@ -8609,6 +8610,51 @@
           "create": "Utworzono nowe zapytanie",
           "match_or_create": "Dopasowano lub utworzono zapytanie",
           "review": "Wysłano do kolejki weryfikacji"
+        }
+      }
+    },
+    "marketing": {
+      "sources": {
+        "title": "Sources",
+        "subtitle": "Podłączone źródła, Mapping Health, oczekujące zgłoszenia i ostatnie zdarzenia.",
+        "none": "—",
+        "empty_title": "Brak źródeł",
+        "empty_body": "Podłącz Meta w Integrations lub powiąż intake source — pojawią się tutaj.",
+        "columns": {
+          "source": "Source",
+          "provider": "Provider",
+          "connection": "Connection",
+          "mapping_health": "Mapping Health",
+          "last_lead": "Ostatni lead",
+          "waiting": "Oczekujące",
+          "routing_issue": "Problem routingu",
+          "last_error": "Ostatni błąd",
+          "campaigns_flights": "Campaigns / Flights",
+          "actions": "Akcje"
+        },
+        "connection": {
+          "connected": "Connected",
+          "attention": "Attention",
+          "disconnected": "Disconnected"
+        },
+        "health": {
+          "ready": "Ready",
+          "needs_review": "Needs review",
+          "broken": "Broken"
+        },
+        "routing_issue": {
+          "missing_campaign_flight": "Campaign/Flight dla tego Ad ID nie są skonfigurowane."
+        },
+        "actions": {
+          "integrations": "Integrations",
+          "connect": "Otwórz Integrations",
+          "mapping": "Mapping",
+          "test_lead": "Test lead",
+          "connection": "Connection",
+          "setup_campaign_flight": "Skonfiguruj Campaign/Flight"
+        },
+        "errors": {
+          "load": "Nie udało się załadować źródeł"
         }
       }
     }

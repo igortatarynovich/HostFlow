@@ -86,7 +86,7 @@ Campaign → Audience(s) → Flight → Channels
 5. **Canonical Input Matrix** ✅ **READY** (design) — [`../specs/architecture/intake-canonical-input-matrix.md`](../specs/architecture/intake-canonical-input-matrix.md) · epic [`../specs/tasks/intake-canonical-input-matrix.md`](../specs/tasks/intake-canonical-input-matrix.md) **ACTIVE** — freeze Source profile → Provider → Published form → `route_intent` → handoff → Destination **before** further routing runtime  
 6. **3E** — ✅ **DONE** — Activity Timeline observability — [`../specs/tasks/acquisition-stage-3e-activity-timeline.md`](../specs/tasks/acquisition-stage-3e-activity-timeline.md)  
 7. **Stage 4 runtime** — ✅ **DONE** (#136 / #148–#151) — Flight Runtime — [`../specs/tasks/acquisition-stage-4-flight-runtime.md`](../specs/tasks/acquisition-stage-4-flight-runtime.md)  
-7b. **Stage 4 product/UI cutover** — ❌ **NOT DONE** / **ACTIVE Product Track** — [`../specs/tasks/acquisition-ui-cutover.md`](../specs/tasks/acquisition-ui-cutover.md) (C-2…C-7 migration; **C-7 PASS** closes cutover → then Diagnostics / Stage 5+ as product evolution)  
+7b. **Stage 4 product/UI cutover** — ❌ **NOT DONE** / **ACTIVE Product Track** — [`../specs/tasks/acquisition-ui-cutover.md`](../specs/tasks/acquisition-ui-cutover.md) (C-1 ✅ #157 · C-2 ✅ #158 · next **C-3 Sources**; C-7 PASS closes cutover → then Diagnostics / Stage 5+ as product evolution)  
 8. **Stage 5** — PR-1 ✅ DONE · PR-2 **PAUSED** until UI cutover — [`../specs/tasks/acquisition-stage-5-optimization.md`](../specs/tasks/acquisition-stage-5-optimization.md)  
 9. **Stage 6** — **FUTURE** — Analytics (ADR-024 §14.1 maturity ladder)
 
