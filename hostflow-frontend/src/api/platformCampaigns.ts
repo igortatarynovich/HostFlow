@@ -298,11 +298,32 @@ export async function getFlightRuntime(campaignId: string, flightId: string): Pr
 export async function getLiveIntakeMonitor(
   campaignId: string,
   flightId: string,
-  params?: { limit?: number; event_type?: string[] },
+  params?: {
+    limit?: number
+    event_type?: string[]
+    after_occurred_at?: string
+    after_id?: string
+  },
 ): Promise<LiveIntakeMonitor> {
   const { data } = await api.get<LiveIntakeMonitor>(
     `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/monitor/live-intake`,
     { params },
+  )
+  return data
+}
+
+export async function updateFlight(
+  campaignId: string,
+  flightId: string,
+  payload: {
+    name?: string
+    starts_at?: string | null
+    ends_at?: string | null
+  },
+): Promise<CampaignFlight> {
+  const { data } = await api.patch<CampaignFlight>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}`,
+    payload,
   )
   return data
 }

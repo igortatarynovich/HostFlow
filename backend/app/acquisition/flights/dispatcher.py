@@ -30,6 +30,7 @@ from backend.app.acquisition.flights.destination_registry import (
     DestinationUnknownIntentError,
     platform_destination_registry,
 )
+from backend.app.acquisition.flights.dispatch_activity import maybe_emit_delivery_error
 from backend.app.acquisition.flights.dispatch_ledger import (
     DispatchProvenanceError,
     build_dispatch_idempotency_key,
@@ -251,6 +252,15 @@ async def dispatch_destination_submit(
                 code=type(exc).__name__,
                 message=str(exc)[:500],
             )
+            await maybe_emit_delivery_error(
+                db,
+                tenant_id=str(tenant_id),
+                draft_lead=draft_lead,
+                intake_state=intake_state if isinstance(intake_state, dict) else None,
+                ledger_id=str(ledger_row.id),
+                error_code=type(exc).__name__,
+                note=str(exc)[:500],
+            )
         raise
 
     try:
@@ -294,6 +304,15 @@ async def dispatch_destination_submit(
                 code=getattr(exc, "code", "contract_error"),
                 message=str(getattr(exc, "message", None) or exc),
                 details=dict(getattr(exc, "details", None) or {}),
+            )
+            await maybe_emit_delivery_error(
+                db,
+                tenant_id=str(tenant_id),
+                draft_lead=draft_lead,
+                intake_state=intake_state if isinstance(intake_state, dict) else None,
+                ledger_id=str(ledger_row.id),
+                error_code=str(getattr(exc, "code", None) or type(exc).__name__),
+                note=str(getattr(exc, "message", None) or exc)[:500],
             )
         raise
 

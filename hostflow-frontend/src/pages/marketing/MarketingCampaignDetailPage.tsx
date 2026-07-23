@@ -47,6 +47,7 @@ export default function MarketingCampaignDetailPage() {
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const load = useCallback(async () => {
     if (!campaignId) return
@@ -169,6 +170,35 @@ export default function MarketingCampaignDetailPage() {
       )
     } finally {
       setActing(false)
+    }
+  }
+
+  async function loadMoreMonitor() {
+    if (!campaign || !flight || !monitor?.next_cursor || loadingMore) return
+    setLoadingMore(true)
+    setError(null)
+    try {
+      const page = await getLiveIntakeMonitor(campaign.id, flight.id, {
+        limit: 40,
+        after_occurred_at: monitor.next_cursor.occurred_at,
+        after_id: monitor.next_cursor.id,
+      })
+      setMonitor({
+        ...page,
+        items: [...(monitor.items || []), ...(page.items || [])],
+      })
+    } catch (err: unknown) {
+      setError(
+        getFriendlyErrorInfo(
+          err,
+          t('app.marketing.detail.errors.load_more', {
+            defaultValue: 'Не удалось подгрузить события монитора',
+          }),
+          t,
+        ),
+      )
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -370,47 +400,63 @@ export default function MarketingCampaignDetailPage() {
               {!monitor?.items?.length ? (
                 <p className="px-4 py-6 text-sm text-slate-500">
                   Пока нет intake-событий. Отправьте тестовую заявку по публичной ссылке.
+                  Meta без Submission (D2) в Timeline не попадёт.
                 </p>
               ) : (
-                <ul className="divide-y divide-slate-100">
-                  {monitor.items.map((e) => (
-                    <li key={e.id} className="px-4 py-3">
+                <>
+                  <ul className="divide-y divide-slate-100">
+                    {monitor.items.map((e) => (
+                      <li key={e.id} className="px-4 py-3">
+                        <button
+                          type="button"
+                          className="w-full text-left"
+                          onClick={() => setExpandedId((id) => (id === e.id ? null : e.id))}
+                        >
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <span className="text-sm font-medium text-slate-900">
+                              {humanizeEventType(e.event_type)}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {formatDateTime(e.occurred_at, locale)}
+                            </span>
+                          </div>
+                          {e.submission_id ? (
+                            <div className="mt-0.5 text-xs text-slate-500">
+                              submission {e.submission_id.slice(0, 8)}…
+                            </div>
+                          ) : null}
+                        </button>
+                        {expandedId === e.id ? (
+                          <pre className="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs text-slate-700">
+                            {JSON.stringify(
+                              {
+                                id: e.id,
+                                event_type: e.event_type,
+                                submission_id: e.submission_id,
+                                payload: e.payload ?? {},
+                              },
+                              null,
+                              2,
+                            )}
+                          </pre>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                  {monitor.next_cursor ? (
+                    <div className="border-t border-slate-100 px-4 py-3">
                       <button
                         type="button"
-                        className="w-full text-left"
-                        onClick={() => setExpandedId((id) => (id === e.id ? null : e.id))}
+                        className="btn-secondary btn-sm"
+                        disabled={loadingMore}
+                        onClick={() => void loadMoreMonitor()}
+                        data-testid="marketing-monitor-load-more"
                       >
-                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                          <span className="text-sm font-medium text-slate-900">
-                            {humanizeEventType(e.event_type)}
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            {formatDateTime(e.occurred_at, locale)}
-                          </span>
-                        </div>
-                        {e.submission_id ? (
-                          <div className="mt-0.5 text-xs text-slate-500">
-                            submission {e.submission_id.slice(0, 8)}…
-                          </div>
-                        ) : null}
+                        {loadingMore ? t('common.loading') : 'Ещё события'}
                       </button>
-                      {expandedId === e.id ? (
-                        <pre className="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs text-slate-700">
-                          {JSON.stringify(
-                            {
-                              id: e.id,
-                              event_type: e.event_type,
-                              submission_id: e.submission_id,
-                              payload: e.payload ?? {},
-                            },
-                            null,
-                            2,
-                          )}
-                        </pre>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  ) : null}
+                </>
               )}
             </section>
           </>
