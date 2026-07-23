@@ -58,7 +58,7 @@ Merged [#153](https://github.com/igortatarynovich/HostFlow/pull/153) as `1bf3e7f
 | `ROUTING_FAIL_RATE_THRESHOLD` | **0.50** | Inclusive (`>=`) when sample ≥ min |
 | `DELIVERY_ERROR_THRESHOLD` | **3** | Inclusive absolute `DeliveryErrorOccurred` count in window |
 
-Note: integer counters cannot yield **exactly** `0.50` at `sample=5` (would need 2.5 fails). Exact `0.50` requires an even sample ≥ 6 (e.g. 3/6). Smoke verified `rate=0.50` at `sample=6`.
+**Boundary rule (integer counts):** the product rule is **`routing_fail_rate >= 0.50`** with `routing_sample >= MIN_ROUTING_SAMPLE`. At `sample=5`, exact `0.50` is unreachable (needs 2.5 fails). Tests and smoke must prove the exact threshold on an **even** sample (e.g. **3/6 = 0.50** → `suggest_pause`), and may separately check `sample=5` with the nearest achievable rates (e.g. 2/5 = 0.40 → healthy, 3/5 = 0.60 → suggest_pause).
 
 ### Deploy / smoke (2026-07-23, tip `1bf3e7f4`)
 
@@ -82,21 +82,35 @@ Deploy: `integration/release-product-a-b` @ `1bf3e7f4`; rebuilt `backend` + `arq
 
 ## PR-2 — Signal explainability / operator acknowledge (**locked**)
 
-Next Product PR. **Still read-only w.r.t. Campaign/Flight.** No auto-pause.
+Next Product PR. **Still read-only w.r.t. Campaign/Flight status.** No auto-pause.  
+Branch (planned): `feat/acquisition-stage-5-pr2-signal-explainability`
+
+### Hard boundaries
+
+| Must | Must not |
+|------|----------|
+| Expose **reason codes** | Auto-pause / auto-resume |
+| Expose **observed values** used in the decision | Change Flight or Campaign **status** |
+| Echo **applied thresholds** (PR-1 frozen constants) | Let dismiss/acknowledge alter `assessment` / `recommended_action` |
+| Provide a clear **why** for the recommendation | Workers / schedulers / Flight write commands |
+| **Acknowledge / dismiss** as separate **operator state** | Treat dismiss as Pause |
+| **Audit trail** of operator acknowledge/dismiss actions | Emit recommendation Activity on every GET (PR-1 ban remains) |
 
 ### IN
 
-1. **Explainability contract** — expose structured observed values alongside reason codes and locked thresholds (e.g. fail rate numerator/denominator, delivery error count, `decision_volume`, window bounds) so operators can see *why* the recommendation fired.
-2. **Operator dismiss / acknowledge** — optional **user-local** (or tenant preference) state that hides/acknowledges a recommendation in UI for a Flight/window; must **not** change Flight status, Campaign status, or Timeline. Persistence, if any, is UI/operator state only — not a runtime command.
-3. **HTTP / UI** — extend optimization read payload and Marketing detail presentation; no new write commands on Flight.
-4. **Tests** — explainability fields stable; dismiss does not mutate Flight/Campaign/Activity; company/tenant scope preserved.
+1. **Explainability contract** — structured payload: reason codes, observed values (e.g. routing failed/completed, fail rate, delivery error count, `decision_volume`, window bounds), applied thresholds, and a human-readable explanation of why the recommendation fired (or why data is insufficient / healthy).
+2. **Operator dismiss / acknowledge** — separate operator state bound to recommendation identity (Flight + window / signal fingerprint as designed). Absence or presence of acknowledge/dismiss **must not** change the pure optimization assessment calculation (`evaluate_flight_optimization` remains side-effect free).
+3. **Audit trail** — record operator acknowledge/dismiss actions (who / when / what was acknowledged) without mutating runtime status. Prefer an append-only operator action record; do **not** overload Timeline with per-GET recommendation noise.
+4. **HTTP / UI** — extend optimization read (+ write only for acknowledge/dismiss operator state); Marketing detail shows explanation and acknowledge/dismiss controls. Pause remains Stage 4 command.
+5. **Tests** — explainability fields; dismiss does not mutate Flight/Campaign status or assessment; audit row on dismiss; company/tenant scope; threshold boundary on even sample (3/6).
 
 ### OUT
 
 - Auto-pause / auto-resume / workers / schedulers  
-- Treating dismiss as Pause  
+- Treating dismiss as Pause or any Flight/Campaign lifecycle transition  
 - Changing PR-1 threshold constants without an explicit threshold-change decision  
 - Stage 6 analytics  
+- Coupling assessment output to UI dismiss state  
 
 ---
 
@@ -113,3 +127,4 @@ Next Product PR. **Still read-only w.r.t. Campaign/Flight.** No auto-pause.
 - 2026-07-23: Opened after Stage 4 DONE merge (#148–#151); **PR-1 locked** as read-only optimization signals.
 - 2026-07-23: Locked PR-1 inputs/thresholds/assessments; no Activity on GET; compose runtime + windowed Timeline only.
 - 2026-07-23: **PR-1 DONE** — merged #153 as `1bf3e7f4`; deploy + smoke PASS; **PR-2 locked** as explainability + dismiss/acknowledge (no Flight mutation; no auto-pause).
+- 2026-07-23: PR-2 boundaries refined — reason codes, observed values, applied thresholds, operator acknowledge/dismiss + audit trail; assessment independent of dismiss; integer-sample note (`>= 0.50`, exact boundary on even sample e.g. 3/6).
