@@ -15,14 +15,53 @@ from backend.app.acquisition import binding_service, campaign_service
 from backend.app.acquisition.campaign_service import CampaignServiceError
 from backend.app.acquisition.flights import runtime_commands
 from backend.app.acquisition.flights.runtime_commands import FlightRuntimeError
+from backend.app.acquisition.kpi_aggregates import (
+    KpiAggregateError,
+    aggregate_campaign_kpi,
+    aggregate_flight_kpi,
+)
+from backend.app.acquisition.ops.live_intake_monitor import get_live_intake_monitor
+from backend.app.acquisition.ops.runtime_read import get_flight_runtime_snapshot
+from backend.app.api.v1.platform.acquisition_activity import (
+    ActivityCursorOut,
+    ActivityEventOut,
+)
 from backend.app.api.v1.utils.own_company import resolve_own_company_id_for_session
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.constants.campaign_registries import load_campaign_registries
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.models.acquisition_activity_event import ACTOR_TYPE_SYSTEM, ACTOR_TYPE_USER
+from backend.app.models.acquisition_activity_event import (
+    ACTOR_TYPE_SYSTEM,
+    ACTOR_TYPE_USER,
+    AcquisitionActivityEvent,
+)
 from backend.app.models.campaign import Campaign
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.tenant_lead_form import TenantLeadForm
+
+
+def _activity_event_out(row: AcquisitionActivityEvent) -> ActivityEventOut:
+    return ActivityEventOut(
+        id=str(row.id),
+        tenant_id=str(row.tenant_id),
+        campaign_id=str(row.campaign_id),
+        flight_id=str(row.flight_id) if row.flight_id else None,
+        endpoint_id=str(row.endpoint_id) if row.endpoint_id else None,
+        submission_id=str(row.submission_id) if row.submission_id else None,
+        result_id=str(row.result_id) if row.result_id else None,
+        outcome_id=str(row.outcome_id) if row.outcome_id else None,
+        event_type=str(row.event_type),
+        event_version=str(row.event_version),
+        occurred_at=row.occurred_at,
+        recorded_at=row.recorded_at,
+        actor_type=str(row.actor_type),
+        actor_id=str(row.actor_id) if row.actor_id else None,
+        provider=str(row.provider) if row.provider else None,
+        source_event_id=str(row.source_event_id) if row.source_event_id else None,
+        correlation_id=str(row.correlation_id) if row.correlation_id else None,
+        causation_id=str(row.causation_id) if row.causation_id else None,
+        payload=dict(row.payload or {}),
+    )
 
 router = APIRouter(
     prefix="/platform/campaigns",
@@ -208,6 +247,85 @@ class FlightCommandOut(BaseModel):
     flight_event_type: str
     campaign_event_id: Optional[str] = None
     campaign_event_type: Optional[str] = None
+
+
+class FlightKpiOut(BaseModel):
+    tenant_id: str
+    campaign_id: str
+    flight_id: str
+    currency: Optional[str] = None
+    spend: str
+    leads: int
+    qualified: int
+    converted: int
+    outcomes_completed: int
+    cost_per_lead: Optional[str] = None
+    cost_per_qualified: Optional[str] = None
+    cost_per_outcome: Optional[str] = None
+
+
+class CampaignKpiOut(BaseModel):
+    tenant_id: str
+    campaign_id: str
+    currency: Optional[str] = None
+    spend: str
+    leads: int
+    qualified: int
+    converted: int
+    outcomes_completed: int
+    cost_per_lead: Optional[str] = None
+    cost_per_qualified: Optional[str] = None
+    cost_per_outcome: Optional[str] = None
+    flights: List[FlightKpiOut] = Field(default_factory=list)
+
+
+class EndpointsSummaryOut(BaseModel):
+    forms_total: int
+    forms_active: int
+    intake_sources_total: int
+    intake_sources_active: int
+
+
+class FlightRuntimeOut(BaseModel):
+    tenant_id: str
+    campaign_id: str
+    flight_id: str
+    campaign_status: str
+    flight_status: str
+    flight_name: str
+    flight_code: str
+    starts_at: Optional[datetime] = None
+    ends_at: Optional[datetime] = None
+    is_current: bool
+    endpoints: EndpointsSummaryOut
+    kpi: FlightKpiOut
+    generated_at: datetime
+
+
+class LiveIntakeCountersOut(BaseModel):
+    submissions: int
+    leads_activity: int
+    candidates: int
+    routing_completed: int
+    routing_failed: int
+    rejected: int
+    kpi_leads: int
+    spend: str
+    cost_per_lead: Optional[str] = None
+    currency: Optional[str] = None
+
+
+class LiveIntakeMonitorOut(BaseModel):
+    tenant_id: str
+    campaign_id: str
+    flight_id: str
+    campaign_status: str
+    flight_status: str
+    counters: LiveIntakeCountersOut
+    items: List[ActivityEventOut] = Field(default_factory=list)
+    next_cursor: Optional[ActivityCursorOut] = None
+    order: tuple[str, str]
+    event_types: List[str] = Field(default_factory=list)
 
 
 async def _form_display_map(
@@ -1384,3 +1502,162 @@ async def detach_intake_source_on_flight(
         await db.rollback()
         _raise_service(exc)
     return await _campaign_out(db, campaign)
+
+
+# Stage 4 PR-3 — Runtime Read API + Live Intake Monitor
+
+
+@router.get(
+    "/{campaign_id}/kpi",
+    response_model=CampaignKpiOut,
+    dependencies=_READ,
+)
+async def get_campaign_kpi_endpoint(
+    campaign_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        await campaign_service.get_campaign(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            own_company_id=own_company_id,
+        )
+        kpi = await aggregate_campaign_kpi(
+            db, tenant_id=str(tenant_uuid), campaign_id=campaign_id
+        )
+    except CampaignServiceError as exc:
+        _raise_service(exc)
+    except KpiAggregateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return CampaignKpiOut.model_validate(kpi.to_dict())
+
+
+@router.get(
+    "/{campaign_id}/flights/{flight_id}/kpi",
+    response_model=FlightKpiOut,
+    dependencies=_READ,
+)
+async def get_flight_kpi_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        await runtime_commands.get_flight(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            flight_id=flight_id,
+            own_company_id=own_company_id,
+        )
+        kpi = await aggregate_flight_kpi(
+            db, tenant_id=str(tenant_uuid), flight_id=flight_id
+        )
+    except FlightRuntimeError as exc:
+        _raise_runtime(exc)
+    except KpiAggregateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return FlightKpiOut.model_validate(kpi.to_dict())
+
+
+@router.get(
+    "/{campaign_id}/flights/{flight_id}/runtime",
+    response_model=FlightRuntimeOut,
+    dependencies=_READ,
+)
+async def get_flight_runtime_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        snap = await get_flight_runtime_snapshot(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            flight_id=flight_id,
+            own_company_id=own_company_id,
+        )
+    except FlightRuntimeError as exc:
+        _raise_runtime(exc)
+    return FlightRuntimeOut(
+        tenant_id=snap.tenant_id,
+        campaign_id=snap.campaign_id,
+        flight_id=snap.flight_id,
+        campaign_status=snap.campaign_status,
+        flight_status=snap.flight_status,
+        flight_name=snap.flight_name,
+        flight_code=snap.flight_code,
+        starts_at=snap.starts_at,
+        ends_at=snap.ends_at,
+        is_current=snap.is_current,
+        endpoints=EndpointsSummaryOut(**snap.endpoints.to_dict()),
+        kpi=FlightKpiOut.model_validate(snap.kpi.to_dict()),
+        generated_at=snap.generated_at,
+    )
+
+
+@router.get(
+    "/{campaign_id}/flights/{flight_id}/monitor/live-intake",
+    response_model=LiveIntakeMonitorOut,
+    dependencies=_READ,
+)
+async def get_live_intake_monitor_endpoint(
+    campaign_id: str,
+    flight_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+    occurred_after: Optional[datetime] = Query(None),
+    after_occurred_at: Optional[datetime] = Query(None),
+    after_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    event_type: Optional[List[str]] = Query(None),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        page = await get_live_intake_monitor(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            flight_id=flight_id,
+            own_company_id=own_company_id,
+            occurred_after=occurred_after,
+            after_occurred_at=after_occurred_at,
+            after_id=after_id,
+            limit=limit,
+            event_types=event_type,
+        )
+    except FlightRuntimeError as exc:
+        _raise_runtime(exc)
+    next_cursor = None
+    if page.next_cursor is not None:
+        next_cursor = ActivityCursorOut(
+            occurred_at=page.next_cursor[0], id=page.next_cursor[1]
+        )
+    return LiveIntakeMonitorOut(
+        tenant_id=page.tenant_id,
+        campaign_id=page.campaign_id,
+        flight_id=page.flight_id,
+        campaign_status=page.campaign_status,
+        flight_status=page.flight_status,
+        counters=LiveIntakeCountersOut(**page.counters.to_dict()),
+        items=[_activity_event_out(row) for row in page.items],
+        next_cursor=next_cursor,
+        order=page.order,
+        event_types=list(page.event_types),
+    )
