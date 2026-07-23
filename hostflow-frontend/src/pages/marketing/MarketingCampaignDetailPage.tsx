@@ -403,7 +403,7 @@ export default function MarketingCampaignDetailPage() {
                   Сигнал только советует — пауза через кнопку «Пауза» выше. Автопаузы нет.
                 </p>
                 {optimization.signals.length ? (
-                  <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-amber-900/80">
+                  <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-amber-900/80">
                     {optimization.signals
                       .filter((s) => s.code !== 'within_thresholds')
                       .map((s) => (
