@@ -11,6 +11,7 @@ from typing import Any, Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.constants.spa_paths import MARKETING_NEW
 from backend.app.constants.stages import STAGES_BY_GROUP
 from backend.app.core.crypto import decrypt_secret
 from backend.app.models.campaign import Campaign, CampaignTarget
@@ -388,7 +389,7 @@ def marketing_setup_path_for_search(search_id: str, *, name: str | None = None) 
     q = {"target_type": "vacancy", "target_id": str(search_id), "flow": "candidates"}
     if name and str(name).strip():
         q["name"] = str(name).strip()[:160]
-    return f"/app/marketing/new?{urlencode(q, quote_via=quote)}"
+    return f"{MARKETING_NEW}?{urlencode(q, quote_via=quote)}"
 
 
 async def resolve_search_campaign_reconciliation(

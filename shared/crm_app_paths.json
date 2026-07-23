@@ -295,6 +295,14 @@
       {
         "name": "RECRUITMENT_INBOX",
         "path_key": "recruitmentInbox"
+      },
+      {
+        "name": "MARKETING",
+        "path_key": "marketing"
+      },
+      {
+        "name": "MARKETING_NEW",
+        "path_key": "marketingNew"
       }
     ],
     "functions": [
