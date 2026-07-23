@@ -4,9 +4,11 @@
 **Branch:** `stabilize/integration-pytest-baseline` ([PR #128](https://github.com/igortatarynovich/HostFlow/pull/128) — parked)  
 **Base:** `integration/release-product-a-b`
 
-## Verdict (2026-07-21)
+## Verdict (2026-07-21 · confirmed 2026-07-23)
 
-The **657** full-suite failures observed after SPA/docs/axios unblocked on [#127](https://github.com/igortatarynovich/HostFlow/pull/127) are **base-known integration debt**, same class as [`acquisition-epic-p-base-known-ci-failures.md`](acquisition-epic-p-base-known-ci-failures.md):
+The **~650+** full-suite failures observed after SPA/docs/axios unblocked (and again after Stage 4 CI unblocks on #148–#151) are **base-known integration debt**, same class as [`acquisition-epic-p-base-known-ci-failures.md`](acquisition-epic-p-base-known-ci-failures.md):
+
+**Stage 4 attribution (2026-07-23):** Stage 4 contract suites pass; Stage 4 security/docs/frontend gates pass; full `backend-ci` suite remains red **before and outside** Stage 4 product scope. Repo owner accepted merge of #148–#151 without attributing that suite debt to Flight Runtime.
 
 | Check | Finding |
 |-------|---------|

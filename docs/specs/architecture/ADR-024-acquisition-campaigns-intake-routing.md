@@ -663,3 +663,4 @@ V1 **не** заменяет Meta Ads Manager.
 - 2026-07-21: **Stage boundary** — 3E = observability (Timeline); **Stage 4 Flight Runtime** = operations (queued after 3E) — [`../tasks/acquisition-stage-4-flight-runtime.md`](../tasks/acquisition-stage-4-flight-runtime.md).
 - 2026-07-21: **§14.1 Acquisition maturity ladder** — Observability (3E) → Operations (4) → Optimization (5) → Analytics (6); each rung depends on the previous without reopening canon.  
 - 2026-07-21: **Stage 3E DONE** (PR #130–#133); deferred instrumentation — [`../tasks/acquisition-stage-3e-deferred.md`](../tasks/acquisition-stage-3e-deferred.md); Stage 4 = Product Track next.
+- 2026-07-23: **Stage 4 DONE** (PR #136 / #148–#151); Product Track → Stage 5 Optimization — [`../tasks/acquisition-stage-5-optimization.md`](../tasks/acquisition-stage-5-optimization.md).
