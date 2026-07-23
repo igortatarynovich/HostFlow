@@ -1,15 +1,17 @@
 # Acquisition Stage 4 — Flight Runtime
 
-**Status:** ✅ **DONE** (2026-07-23) — PR-1…PR-5 merged (#136 / #148–#151)  
+**Status:** ✅ **Runtime DONE** (2026-07-23) — PR-1…PR-5 merged (#136 / #148–#151)  
+**Product/UI cutover:** ❌ **NOT DONE** — see [acquisition-ui-cutover.md](acquisition-ui-cutover.md)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §14 · §14.1  
 **Depends on:** Stage **3E** complete ✅ (Activity Timeline PR #130–#133)  
 **Parents:** [Stage 3E — Activity Timeline](acquisition-stage-3e-activity-timeline.md) · Epic P / 3D ✅  
 **Merged tip:** `integration/release-product-a-b` @ `903db20d`  
 **Deferred (not Stage 4):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md)  
-**Next:** [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (PR-1 DONE · PR-2 locked)
+**Next (Product Track):** [Acquisition UI Cutover](acquisition-ui-cutover.md) — then resume [Stage 5 PR-2](acquisition-stage-5-optimization.md)
 
 > **Operations layer** for Acquisition — Campaign / Flight day-to-day control.  
-> Uses Stage 3E Activity Timeline as **observability infrastructure**; does **not** redefine it.
+> Uses Stage 3E Activity Timeline as **observability infrastructure**; does **not** redefine it.  
+> **Runtime ≠ product cutover:** Marketing still grouped under Sales nav; Подборы + legacy search-acquisition launch path still live; Form Builder not in Marketing flow.
 
 ---
 
@@ -18,8 +20,8 @@
 | Stage | Layer | Verb | Status |
 |-------|--------|------|--------|
 | **3E** | Observability | See | **DONE** (#130–#133) |
-| **4** | Operations | Control | **DONE** (#136 / #148–#151) |
-| **5** | Optimization | Improve | [Stage 5](acquisition-stage-5-optimization.md) — PR-1 DONE · PR-2 locked |
+| **4** | Operations | Control | **Runtime DONE** · **UI cutover NOT DONE** |
+| **5** | Optimization | Improve | [Stage 5](acquisition-stage-5-optimization.md) — PR-1 DONE · PR-2 **PAUSED** |
 | **6** | Analytics | Decide | Future horizon |
 
 Normative detail: [ADR-024 §14.1](../architecture/ADR-024-acquisition-campaigns-intake-routing.md).

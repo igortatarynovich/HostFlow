@@ -1,11 +1,12 @@
 # Acquisition Stage 5 — Optimization
 
-**Status:** Active — **PR-1 DONE** ✅ · **PR-2 locked** (signal explainability / operator acknowledge)  
+**Status:** **PR-1 DONE** ✅ · **PR-2 PAUSED** (blocked by [Acquisition UI Cutover](acquisition-ui-cutover.md))  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §14 · §14.1  
-**Depends on:** Stage **4** complete ✅ (Flight Runtime #136 / #148–#151)  
+**Depends on:** Stage **4 runtime** DONE · Stage **4 product/UI cutover** must PASS before PR-2  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · Stage 3E Timeline  
 **PR-1 merge:** [#153](https://github.com/igortatarynovich/HostFlow/pull/153) → `1bf3e7f4` on `integration/release-product-a-b` (2026-07-23)  
 **Deferred (not Stage 5):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md) (D1–D5 remain Instrumentation)  
+**Product Track now:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md)  
 **Next horizon:** Stage 6 Analytics (do not open while 5 incomplete)
 
 > **Improve** rung of the maturity ladder — assisted / automatic optimization **on top of** Stage 4 controls + 3E Timeline.  
@@ -18,8 +19,8 @@
 | Stage | Layer | Verb | Status |
 |-------|--------|------|--------|
 | **3E** | Observability | See | **DONE** (#130–#133) |
-| **4** | Operations | Control | **DONE** (#136 / #148–#151) |
-| **5** | Optimization | Improve | **Active** — PR-1 DONE · PR-2 locked |
+| **4** | Operations | Control | **Runtime DONE** · UI cutover [active](acquisition-ui-cutover.md) |
+| **5** | Optimization | Improve | **PR-1 DONE** · **PR-2 PAUSED** |
 | **6** | Analytics | Decide | Future horizon |
 
 ---
@@ -29,9 +30,10 @@
 | PR | Scope | Status |
 |----|--------|--------|
 | **PR-1** | Optimization signals + `suggest_pause` (read-only) | **DONE** (#153 / `1bf3e7f4`) |
-| **PR-2** | Signal explainability + operator dismiss/acknowledge (no Flight mutation) | **Locked** (next) |
+| **PR-2** | Signal explainability + operator dismiss/acknowledge (no Flight mutation) | **PAUSED** — resume only after [UI Cutover](acquisition-ui-cutover.md) PASS |
 | **PR-3+** | Auto-apply / auto-pause only with explicit operator/safety contract | Not opened |
 
+**Do not start PR-2 implementation while Подборы / Sales-nested Marketing / Settings-only Form Builder remain the operator path.**  
 **Hard ban until a later PR is explicitly accepted:** auto-pause, workers, schedulers, or any write that changes Campaign/Flight from an optimization signal.
 
 ---
@@ -128,3 +130,4 @@ Branch (planned): `feat/acquisition-stage-5-pr2-signal-explainability`
 - 2026-07-23: Locked PR-1 inputs/thresholds/assessments; no Activity on GET; compose runtime + windowed Timeline only.
 - 2026-07-23: **PR-1 DONE** — merged #153 as `1bf3e7f4`; deploy + smoke PASS; **PR-2 locked** as explainability + dismiss/acknowledge (no Flight mutation; no auto-pause).
 - 2026-07-23: PR-2 boundaries refined — reason codes, observed values, applied thresholds, operator acknowledge/dismiss + audit trail; assessment independent of dismiss; integer-sample note (`>= 0.50`, exact boundary on even sample e.g. 3/6).
+- 2026-07-23: **PR-2 PAUSED** — Product Track switches to [Acquisition UI Cutover](acquisition-ui-cutover.md); Stage 4 runtime DONE but product/UI cutover NOT DONE.
