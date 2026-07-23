@@ -1610,6 +1610,8 @@
       "communications_thread_escalated_title": "Thread escalated — action needed",
       "lead_public_intake_client_title": "New client lead from public intake",
       "lead_public_intake_client_desc": "Inquiry from {name}. Open the lead to follow up.",
+      "intake_questionnaire_submitted_title": "Client submitted questionnaire",
+      "intake_questionnaire_submitted_desc": "{contact} — {company}",
       "intake_client_lead_skipped_no_company_title": "Client intake: lead not created",
       "intake_client_lead_skipped_no_company_desc": "{name} sent a client inquiry, but no client company could be resolved. Set a default company (Meta leads) or link vacancy/client.",
       "reminder_popup": {
