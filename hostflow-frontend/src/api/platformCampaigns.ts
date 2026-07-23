@@ -170,6 +170,143 @@ export async function resumeFlight(
   return data
 }
 
+export async function completeFlight(
+  campaignId: string,
+  flightId: string,
+  reason?: string,
+): Promise<FlightCommandResult> {
+  const { data } = await api.post<FlightCommandResult>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/complete`,
+    reason ? { reason } : {},
+  )
+  return data
+}
+
+export async function completeCampaign(campaignId: string, reason?: string): Promise<Campaign> {
+  const { data } = await api.post<Campaign>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/complete`,
+    reason ? { reason } : {},
+  )
+  return data
+}
+
+export async function archiveCampaign(campaignId: string, reason?: string): Promise<Campaign> {
+  const { data } = await api.post<Campaign>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/archive`,
+    reason ? { reason } : {},
+  )
+  return data
+}
+
+export type FlightKpi = {
+  tenant_id: string
+  campaign_id: string
+  flight_id: string
+  currency?: string | null
+  spend: string
+  leads: number
+  qualified: number
+  converted: number
+  outcomes_completed: number
+  cost_per_lead?: string | null
+  cost_per_qualified?: string | null
+  cost_per_outcome?: string | null
+}
+
+export type CampaignKpi = Omit<FlightKpi, 'flight_id'> & {
+  flights: FlightKpi[]
+}
+
+export type FlightRuntime = {
+  tenant_id: string
+  campaign_id: string
+  flight_id: string
+  campaign_status: string
+  flight_status: string
+  flight_name: string
+  flight_code: string
+  starts_at?: string | null
+  ends_at?: string | null
+  is_current: boolean
+  endpoints: {
+    forms_total: number
+    forms_active: number
+    intake_sources_total: number
+    intake_sources_active: number
+  }
+  kpi: FlightKpi
+  generated_at: string
+}
+
+export type LiveIntakeCounters = {
+  submissions: number
+  leads_activity: number
+  candidates: number
+  routing_completed: number
+  routing_failed: number
+  rejected: number
+  kpi_leads: number
+  spend: string
+  cost_per_lead?: string | null
+  currency?: string | null
+}
+
+export type LiveIntakeMonitorEvent = {
+  id: string
+  campaign_id: string
+  flight_id?: string | null
+  event_type: string
+  occurred_at: string
+  submission_id?: string | null
+  payload?: Record<string, unknown>
+}
+
+export type LiveIntakeMonitor = {
+  tenant_id: string
+  campaign_id: string
+  flight_id: string
+  campaign_status: string
+  flight_status: string
+  counters: LiveIntakeCounters
+  items: LiveIntakeMonitorEvent[]
+  next_cursor?: { occurred_at: string; id: string } | null
+  order: [string, string] | string[]
+  event_types: string[]
+}
+
+export async function getCampaignKpi(campaignId: string): Promise<CampaignKpi> {
+  const { data } = await api.get<CampaignKpi>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/kpi`,
+  )
+  return data
+}
+
+export async function getFlightKpi(campaignId: string, flightId: string): Promise<FlightKpi> {
+  const { data } = await api.get<FlightKpi>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/kpi`,
+  )
+  return data
+}
+
+export async function getFlightRuntime(campaignId: string, flightId: string): Promise<FlightRuntime> {
+  const { data } = await api.get<FlightRuntime>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/runtime`,
+  )
+  return data
+}
+
+export async function getLiveIntakeMonitor(
+  campaignId: string,
+  flightId: string,
+  params?: { limit?: number; event_type?: string[] },
+): Promise<LiveIntakeMonitor> {
+  const { data } = await api.get<LiveIntakeMonitor>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/monitor/live-intake`,
+    { params },
+  )
+  return data
+}
+
 export async function listIntakeSourceOptions(provider?: string): Promise<IntakeSourceOption[]> {
   const { data } = await api.get<IntakeSourceOption[]>('/platform/campaigns/intake-source-options', {
     params: provider ? { provider } : undefined,
