@@ -6,7 +6,7 @@
 **Parents:** [Stage 3E — Activity Timeline](acquisition-stage-3e-activity-timeline.md) · Epic P / 3D ✅  
 **Merged tip:** `integration/release-product-a-b` @ `903db20d`  
 **Deferred (not Stage 4):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md)  
-**Next:** [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (PR-1 locked)
+**Next:** [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (PR-1 DONE · PR-2 locked)
 
 > **Operations layer** for Acquisition — Campaign / Flight day-to-day control.  
 > Uses Stage 3E Activity Timeline as **observability infrastructure**; does **not** redefine it.
@@ -19,7 +19,7 @@
 |-------|--------|------|--------|
 | **3E** | Observability | See | **DONE** (#130–#133) |
 | **4** | Operations | Control | **DONE** (#136 / #148–#151) |
-| **5** | Optimization | Improve | [Stage 5](acquisition-stage-5-optimization.md) — PR-1 locked |
+| **5** | Optimization | Improve | [Stage 5](acquisition-stage-5-optimization.md) — PR-1 DONE · PR-2 locked |
 | **6** | Analytics | Decide | Future horizon |
 
 Normative detail: [ADR-024 §14.1](../architecture/ADR-024-acquisition-campaigns-intake-routing.md).
