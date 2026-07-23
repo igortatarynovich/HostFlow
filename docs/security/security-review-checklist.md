@@ -67,6 +67,7 @@
 - [ ] Обновлён `docs/security/threat-models/*` при новой attack surface.
 - [ ] При смене модели данных — `docs/specs/**` и при необходимости `security-ssot.md`.
 - [ ] Acquisition Activity Timeline / `acquisition_activity_events`: см. [`threat-models/acquisition-activity-timeline.md`](threat-models/acquisition-activity-timeline.md) (append-only, RLS, tenant-scoped idempotency, no Ops FKs).
+- [ ] Acquisition Optimization Signals (Stage 5): см. [`threat-models/acquisition-optimization-signals.md`](threat-models/acquisition-optimization-signals.md) (read-only, company-scope, no Activity on GET, no auto-pause).
 
 ---
 

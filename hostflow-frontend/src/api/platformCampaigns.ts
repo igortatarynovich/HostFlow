@@ -312,6 +312,56 @@ export async function getLiveIntakeMonitor(
   return data
 }
 
+export type FlightOptimizationSignal = {
+  code: string
+  severity: string
+  message: string
+}
+
+export type FlightOptimization = {
+  tenant_id: string
+  campaign_id: string
+  flight_id: string
+  campaign_status: string
+  flight_status: string
+  assessment: 'insufficient_data' | 'healthy' | 'suggest_pause' | string
+  recommended_action: 'none' | 'suggest_pause' | string
+  reason_codes: string[]
+  signals: FlightOptimizationSignal[]
+  window_hours: number
+  window_start: string
+  window_end: string
+  counters: {
+    submissions: number
+    routing_completed: number
+    routing_failed: number
+    delivery_errors: number
+    routing_sample: number
+    decision_volume: number
+  }
+  kpi_leads: number
+  spend: string
+  generated_at: string
+  thresholds: {
+    min_decision_volume: number
+    routing_fail_rate_threshold: number
+    min_routing_sample: number
+    delivery_error_threshold: number
+  }
+}
+
+export async function getFlightOptimization(
+  campaignId: string,
+  flightId: string,
+  params?: { window_hours?: number },
+): Promise<FlightOptimization> {
+  const { data } = await api.get<FlightOptimization>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/optimization`,
+    { params },
+  )
+  return data
+}
+
 export async function updateFlight(
   campaignId: string,
   flightId: string,

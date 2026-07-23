@@ -15,5 +15,6 @@
 | [client-account-manual-creation.md](./client-account-manual-creation.md) | Manual `ClientAccount` create: tenant/company bind, duplicates, idempotency, origin forgery |
 | [acquisition-activity-timeline.md](./acquisition-activity-timeline.md) | Stage 3E Activity Timeline: append-only audit, RLS, tenant-scoped idempotency, no Ops FKs |
 | [acquisition-flight-runtime.md](./acquisition-flight-runtime.md) | Stage 4 Flight Runtime: platform campaign/flight APIs, RBAC/company-scope, lifecycle commands, delivery-error activity |
+| [acquisition-optimization-signals.md](./acquisition-optimization-signals.md) | Stage 5 PR-1: read-only optimization signals / `suggest_pause` (no auto-pause, no GET side effects) |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).

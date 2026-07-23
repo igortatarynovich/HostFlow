@@ -12,12 +12,14 @@ import {
   completeFlight,
   currentFlight,
   getCampaign,
+  getFlightOptimization,
   getFlightRuntime,
   getLiveIntakeMonitor,
   launchFlight,
   pauseFlight,
   resumeFlight,
   type Campaign,
+  type FlightOptimization,
   type FlightRuntime,
   type LiveIntakeMonitor,
 } from '../../api/platformCampaigns'
@@ -42,6 +44,7 @@ export default function MarketingCampaignDetailPage() {
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [runtime, setRuntime] = useState<FlightRuntime | null>(null)
   const [monitor, setMonitor] = useState<LiveIntakeMonitor | null>(null)
+  const [optimization, setOptimization] = useState<FlightOptimization | null>(null)
   const [destinationLabel, setDestinationLabel] = useState<string>('—')
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
@@ -58,15 +61,18 @@ export default function MarketingCampaignDetailPage() {
       setCampaign(c)
       const flight = currentFlight(c)
       if (flight) {
-        const [rt, mon] = await Promise.all([
+        const [rt, mon, opt] = await Promise.all([
           getFlightRuntime(c.id, flight.id),
           getLiveIntakeMonitor(c.id, flight.id, { limit: 40 }),
+          getFlightOptimization(c.id, flight.id).catch(() => null),
         ])
         setRuntime(rt)
         setMonitor(mon)
+        setOptimization(opt)
       } else {
         setRuntime(null)
         setMonitor(null)
+        setOptimization(null)
       }
 
       const target = c.targets?.[0]
@@ -99,6 +105,7 @@ export default function MarketingCampaignDetailPage() {
       setCampaign(null)
       setRuntime(null)
       setMonitor(null)
+      setOptimization(null)
     } finally {
       setLoading(false)
     }
@@ -384,6 +391,28 @@ export default function MarketingCampaignDetailPage() {
                 </div>
               ))}
             </section>
+
+            {optimization?.recommended_action === 'suggest_pause' ? (
+              <div
+                className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+                data-testid="marketing-optimization-suggest-pause"
+                role="status"
+              >
+                <div className="font-semibold">Рекомендация: рассмотреть паузу Flight</div>
+                <p className="mt-1 text-amber-900/90">
+                  Сигнал только советует — пауза через кнопку «Пауза» выше. Автопаузы нет.
+                </p>
+                {optimization.signals.length ? (
+                  <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-amber-900/80">
+                    {optimization.signals
+                      .filter((s) => s.code !== 'within_thresholds')
+                      .map((s) => (
+                        <li key={s.code}>{s.message}</li>
+                      ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
 
             <section className="rounded-xl border border-slate-200 bg-white" data-testid="marketing-live-intake-monitor">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
