@@ -36,4 +36,13 @@ describe('marketing workspace route registration', () => {
     expect([...SIDEBAR_AGENCY_AUTOMATIONS_ORDER]).not.toContain('acquisition-activity')
     expect([...SIDEBAR_HUB_NAV_ITEM_KEYS]).not.toContain('marketing')
   })
+
+  it('C-1: Marketing list/setup/detail require vacancies.view (route gate)', () => {
+    for (const key of ['marketing', 'marketing-new', 'marketing-detail'] as const) {
+      const route = APP_ROUTES.find((item) => item.key === key)
+      expect(route?.permission, key).toBe('vacancies.view')
+    }
+    const nav = NAV_ITEMS.find((item) => item.key === 'marketing')
+    expect(nav?.permission).toBe('vacancies.view')
+  })
 })

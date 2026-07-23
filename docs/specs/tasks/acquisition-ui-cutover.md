@@ -88,13 +88,13 @@ Stage 5 PR-2             = PAUSED until this cutover closes
 
 | PR | Scope | Status |
 |----|--------|--------|
-| **C-1** | Nav: Marketing top-level section; remove from Sales bucket; Activity under Marketing | **In progress** — `feat/acquisition-ui-cutover-c1-marketing-navigation` |
-| **C-2** | Forms under Marketing (`/app/marketing/forms`…) — list/new/detail/builder/publish/public URL/routing destination; keep Forms SoT ownership | Next |
-| **C-3** | Marketing Setup: choose existing form **or** create form in-flow and return | — |
-| **C-4** | Подборы decommission: block create; redirect/read-only; migrated → Campaign; unresolved → reconciliation queue | — |
-| **C-5** | Production nav + smoke acceptance; close Stage 4 product cutover gate | — |
+| **C-1** | Nav: Marketing top-level section; remove from Sales bucket; Activity under Marketing | **DONE** — #157 |
+| **C-2** | Stop legacy ad-launch from Подборы (`searchAcquisition`); reconcile to Campaign/Flight; block new dual-write debt | **Next** (Product Track) |
+| **C-3** | Forms under Marketing (`/app/marketing/forms`…) + create-form-in-setup flow | After C-2 |
+| **C-4** | Подборы UI decommission: redirect/read-only; unresolved → reconciliation queue | After C-2/C-3 as needed |
+| **C-5** | Production nav + smoke acceptance; close Stage 4 product cutover gate | Final |
 
-Exact PR split may compress if slices stay small — one concern per PR still applies.
+**Ordering note (2026-07-23):** Form Builder embedding is **after** stopping `searchAcquisition` launch — otherwise new dual-path data keeps growing.
 
 ---
 
@@ -122,3 +122,5 @@ Exact PR split may compress if slices stay small — one concern per PR still ap
 ## History
 
 - 2026-07-23: Opened after owner diagnosis — Stage 4 runtime DONE but product/UI cutover incomplete; Stage 5 PR-2 paused.
+- 2026-07-23: **C-1 DONE** (#157) — Marketing top-level nav; Activity under Marketing; Sales = sales+clients only.
+- 2026-07-23: Product Track next = **C-2** legacy launch stop + Campaign/Flight reconciliation (Forms C-3 deferred).

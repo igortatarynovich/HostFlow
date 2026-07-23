@@ -4,6 +4,7 @@ import { APP_ROUTES, NAV_ITEMS } from '../routes'
 import { CRM_APP_PATHS, crmAppRouteSegment } from '../crmAppPaths'
 import {
   SIDEBAR_AGENCY_AUTOMATIONS_ORDER,
+  SIDEBAR_AGENCY_MARKETING_ORDER,
   SIDEBAR_HUB_NAV_ITEM_KEYS,
 } from '../../nav/sidebarRailBuckets'
 
@@ -23,8 +24,9 @@ describe('acquisition activity route registration', () => {
     expect(CRM_APP_PATHS.acquisitionActivity).toBe('/app/acquisition/activity')
   })
 
-  it('appears on the Automations primary rail (not hub-only)', () => {
-    expect([...SIDEBAR_AGENCY_AUTOMATIONS_ORDER]).toContain('acquisition-activity')
+  it('C-1: appears on the Marketing primary rail (not Automations / hub-only)', () => {
+    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toContain('acquisition-activity')
+    expect([...SIDEBAR_AGENCY_AUTOMATIONS_ORDER]).not.toContain('acquisition-activity')
     expect([...SIDEBAR_HUB_NAV_ITEM_KEYS]).not.toContain('acquisition-activity')
   })
 })
