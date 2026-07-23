@@ -47,6 +47,7 @@ _CATALOG: tuple[ActivityEventContract, ...] = (
     _contract("CampaignActivated", zone="campaign"),
     _contract("CampaignPaused", zone="campaign"),
     _contract("CampaignCompleted", zone="campaign"),
+    _contract("CampaignArchived", zone="campaign"),
     # Flight
     _contract("FlightCreated", zone="flight"),
     _contract("FlightStarted", zone="flight"),

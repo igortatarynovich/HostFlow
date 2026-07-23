@@ -1,4 +1,4 @@
-"""Campaign foundation service — Stage 3A (ADR-024)."""
+"""Campaign foundation service — Stage 3A (ADR-024) + Stage 4 PR-2 hardening."""
 
 from __future__ import annotations
 
@@ -11,6 +11,9 @@ from sqlalchemy.orm import selectinload
 
 from fastapi import HTTPException
 
+from backend.app.acquisition.activity.append_service import append_activity_event
+from backend.app.acquisition.activity.catalog import get_activity_event_contract
+from backend.app.acquisition.activity.repository import get_by_source_event_id
 from backend.app.acquisition.flights.lifecycle import create_flight
 from backend.app.acquisition.target_resolver import assert_promotion_target_accessible
 from backend.app.acquisition.validation import (
@@ -21,9 +24,56 @@ from backend.app.acquisition.validation import (
 )
 from backend.app.auth.module_gate import enforce_module_gate
 from backend.app.auth.deps import UserCtx
-from backend.app.models.acquisition_activity_event import ACTOR_TYPE_SYSTEM, ACTOR_TYPE_USER
+from backend.app.models.acquisition_activity_event import (
+    ACTOR_TYPE_SYSTEM,
+    ACTOR_TYPE_USER,
+    AcquisitionActivityEvent,
+)
 from backend.app.models.campaign import Campaign, CampaignRun, CampaignTarget
 from backend.app.models.own_company import OwnCompany
+
+_CAMPAIGN_COMPLETE_FROM = frozenset({"draft", "active", "paused"})
+_CAMPAIGN_ARCHIVE_FROM = frozenset({"draft", "active", "paused", "completed"})
+
+
+def campaign_created_source_event_id(campaign_id: str) -> str:
+    return f"acq.campaign.created:{campaign_id}"
+
+
+def campaign_command_source_event_id(campaign_id: str, command: str) -> str:
+    return f"acq.campaign.command:{campaign_id}:{command}"
+
+
+async def _emit_campaign_event(
+    db: AsyncSession,
+    *,
+    campaign: Campaign,
+    event_type: str,
+    source_event_id: str,
+    actor_type: str,
+    actor_id: str | None,
+    note: str | None = None,
+    flight_id: str | None = None,
+) -> AcquisitionActivityEvent:
+    contract = get_activity_event_contract(event_type)
+    if contract is None:
+        raise CampaignServiceError(f"unknown campaign event_type: {event_type!r}", status_code=500)
+    payload: dict[str, Any] = {}
+    if note is not None and str(note).strip():
+        payload["note"] = str(note).strip()
+    return await append_activity_event(
+        db,
+        tenant_id=str(campaign.tenant_id),
+        campaign_id=str(campaign.id),
+        flight_id=flight_id or (str(campaign.current_flight_id) if campaign.current_flight_id else None),
+        event_type=event_type,
+        event_version=contract.event_version,
+        payload=payload,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        source_event_id=source_event_id,
+        provider=None,
+    )
 
 
 class CampaignServiceError(Exception):
@@ -229,6 +279,15 @@ async def create_campaign(
         actor_type=actor_type,
         actor_id=actor_id,
     )
+    await _emit_campaign_event(
+        db,
+        campaign=campaign,
+        event_type="CampaignCreated",
+        source_event_id=campaign_created_source_event_id(campaign_id),
+        actor_type=actor_type,
+        actor_id=actor_id,
+        flight_id=flight_id,
+    )
     await db.flush()
     return await _reload_campaign(db, tenant_id=tenant_id, campaign_id=campaign_id)
 
@@ -285,10 +344,11 @@ async def update_campaign(
     own_company_id: str | None = None,
     name: str | None = None,
     description: str | None = None,
-    status: str | None = None,
     goal_type: str | None = None,
     primary_kpi: str | None = None,
 ) -> Campaign:
+    """Metadata-only Campaign update — lifecycle status is command-only (Stage 4 PR-2)."""
+    _ = ctx
     campaign = await get_campaign(
         db, tenant_id=tenant_id, campaign_id=campaign_id, own_company_id=own_company_id
     )
@@ -299,11 +359,6 @@ async def update_campaign(
         campaign.name = name_n
     if description is not None:
         campaign.description = str(description).strip() or None
-    if status is not None:
-        st = str(status).strip().lower()
-        if st not in {"draft", "active", "paused", "completed", "archived"}:
-            raise CampaignServiceError("invalid status", status_code=422)
-        campaign.status = st
 
     next_gt = goal_type if goal_type is not None else campaign.goal_type
     next_pk = primary_kpi if primary_kpi is not None else campaign.primary_kpi
@@ -318,6 +373,119 @@ async def update_campaign(
     await db.flush()
     return await _reload_campaign(
         db, tenant_id=tenant_id, campaign_id=campaign_id, own_company_id=own_company_id
+    )
+
+
+async def _apply_campaign_command(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    campaign_id: str,
+    own_company_id: str | None,
+    command: str,
+    target_status: str,
+    event_type: str,
+    allowed_from: frozenset[str],
+    actor_type: str,
+    actor_id: str | None,
+    reason: str | None = None,
+) -> tuple[Campaign, AcquisitionActivityEvent]:
+    campaign = await get_campaign(
+        db, tenant_id=tenant_id, campaign_id=campaign_id, own_company_id=own_company_id
+    )
+    source_event_id = campaign_command_source_event_id(str(campaign.id), command)
+    current = str(campaign.status or "").strip().lower()
+    target = str(target_status).strip().lower()
+
+    if current == target:
+        existing = await get_by_source_event_id(
+            db, tenant_id=tenant_id, source_event_id=source_event_id
+        )
+        if existing is None:
+            # Status already matches (e.g. legacy free PATCH) — emit idempotent marker.
+            existing = await _emit_campaign_event(
+                db,
+                campaign=campaign,
+                event_type=event_type,
+                source_event_id=source_event_id,
+                actor_type=actor_type,
+                actor_id=actor_id,
+                note=reason,
+            )
+        return campaign, existing
+
+    if current not in allowed_from:
+        raise CampaignServiceError(
+            f"cannot {command} campaign from status {current!r}",
+            status_code=422,
+        )
+
+    campaign.status = target
+    await db.flush()
+    event = await _emit_campaign_event(
+        db,
+        campaign=campaign,
+        event_type=event_type,
+        source_event_id=source_event_id,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        note=reason,
+    )
+    reloaded = await _reload_campaign(
+        db, tenant_id=tenant_id, campaign_id=campaign_id, own_company_id=own_company_id
+    )
+    return reloaded, event
+
+
+async def complete_campaign(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    campaign_id: str,
+    actor_type: str,
+    actor_id: str | None = None,
+    own_company_id: str | None = None,
+    reason: str | None = None,
+) -> tuple[Campaign, AcquisitionActivityEvent]:
+    """Mark Campaign completed. Does not mutate Flight status."""
+    return await _apply_campaign_command(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        own_company_id=own_company_id,
+        command="complete",
+        target_status="completed",
+        event_type="CampaignCompleted",
+        allowed_from=_CAMPAIGN_COMPLETE_FROM,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        reason=reason,
+    )
+
+
+async def archive_campaign(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    campaign_id: str,
+    actor_type: str,
+    actor_id: str | None = None,
+    own_company_id: str | None = None,
+    reason: str | None = None,
+) -> tuple[Campaign, AcquisitionActivityEvent]:
+    """Mark Campaign archived. Does not mutate Flight status."""
+    return await _apply_campaign_command(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        own_company_id=own_company_id,
+        command="archive",
+        target_status="archived",
+        event_type="CampaignArchived",
+        allowed_from=_CAMPAIGN_ARCHIVE_FROM,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        reason=reason,
     )
 
 
