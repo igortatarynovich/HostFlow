@@ -2,7 +2,7 @@
  * Marketing Campaign Setup — one finished operator flow (no raw UUIDs / JSON).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CRM_APP_PATHS, marketingCampaignPath } from '../../app/crmAppPaths'
 import { listAdditionalServices } from '../../api/additionalServices'
 import { listLeadForms, type TenantLeadForm } from '../../api/leadForms'
@@ -67,14 +67,24 @@ function OptionCard({
 export default function MarketingCampaignSetupPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
-  const [name, setName] = useState('')
-  const [flowKind, setFlowKind] = useState<MarketingFlowKind | ''>('')
+  const [name, setName] = useState(() => (searchParams.get('name') || '').trim().slice(0, 160))
+  const [flowKind, setFlowKind] = useState<MarketingFlowKind | ''>(() => {
+    const flow = (searchParams.get('flow') || '').trim()
+    return FLOW_PRESETS.some((p) => p.kind === flow) ? (flow as MarketingFlowKind) : ''
+  })
   const [formId, setFormId] = useState('')
   const [sourceKind, setSourceKind] = useState<MarketingSourceKind | ''>('')
   const [metaSourceId, setMetaSourceId] = useState('')
-  const [targetId, setTargetId] = useState('')
+  const [targetId, setTargetId] = useState(() => {
+    const targetType = (searchParams.get('target_type') || '').trim()
+    const id = (searchParams.get('target_id') || '').trim()
+    return targetType === 'vacancy' && id ? id : ''
+  })
   const [launchNow, setLaunchNow] = useState(true)
+  const prefilledFromSearch =
+    Boolean(targetId) && (searchParams.get('target_type') || '').trim() === 'vacancy'
 
   const [forms, setForms] = useState<TenantLeadForm[]>([])
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
@@ -120,6 +130,12 @@ export default function MarketingCampaignSetupPage() {
   useEffect(() => {
     void loadOptions()
   }, [loadOptions])
+
+  useEffect(() => {
+    if (!prefilledFromSearch || !flowKind) return
+    // Unambiguous vacancy handoff from Подборы → jump past name/flow when both present.
+    if (name.trim().length >= 2) setStep((s) => Math.max(s, 3))
+  }, [prefilledFromSearch, flowKind, name])
 
   const selectedForm = forms.find((f) => f.id === formId) || null
   const selectedVacancy = vacancies.find((v) => v.id === targetId) || null
@@ -208,6 +224,17 @@ export default function MarketingCampaignSetupPage() {
       </PageShellHeader>
 
       <div className="mx-auto w-full max-w-2xl flex-1 space-y-4 overflow-y-auto px-4 pb-8">
+        {prefilledFromSearch ? (
+          <section
+            className="rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-3 text-sm text-slate-800"
+            data-testid="marketing-setup-vacancy-prefill"
+          >
+            {t('app.marketing.setup.prefill_from_search', {
+              defaultValue:
+                'Цель уже выбрана из Подбора (vacancy). Завершите форму и источник — запуск пойдёт как Campaign → Flight.',
+            })}
+          </section>
+        ) : null}
         {error ? <ErrorRecoveryBanner info={error} onRetry={() => void loadOptions()} /> : null}
         {optionsLoading ? (
           <p className="text-sm text-slate-500">{t('common.loading')}</p>

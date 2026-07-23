@@ -51,6 +51,20 @@ export function recruitmentSearchAcquisitionNewPath(searchId: string): string {
   return `${recruitmentSearchPath(searchId)}/acquisition/new`
 }
 
+/** C-2: canonical create path — Marketing setup with vacancy target prefilled. */
+export function marketingSetupWithVacancyTargetPath(
+  vacancyId: string,
+  opts?: { name?: string },
+): string {
+  const params = new URLSearchParams({
+    target_type: 'vacancy',
+    target_id: vacancyId,
+    flow: 'candidates',
+  })
+  if (opts?.name?.trim()) params.set('name', opts.name.trim().slice(0, 160))
+  return `${P.marketingNew}?${params.toString()}`
+}
+
 export function recruitmentSearchMetaSourcePath(searchId: string): string {
   return `${recruitmentSearchPath(searchId)}/acquisition/meta`
 }

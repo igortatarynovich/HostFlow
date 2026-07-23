@@ -115,6 +115,15 @@ export type AcquisitionOverview = {
   recommendations?: AcquisitionRecommendation[]
 }
 
+export type AcquisitionReconciliation = {
+  status: 'linked' | 'unresolved' | string
+  linked_campaign_id?: string | null
+  linked_campaign_name?: string | null
+  linked_campaign_status?: string | null
+  candidate_campaign_ids?: string[]
+  reason?: string | null
+}
+
 export type AcquisitionSnapshot = {
   version: number
   synced_at?: string | null
@@ -132,6 +141,9 @@ export type AcquisitionSnapshot = {
   analytics?: { history?: AcquisitionMetricsHistoryRow[] }
   sync?: AcquisitionSyncState
   warnings?: string[]
+  legacy_mode?: boolean
+  reconciliation?: AcquisitionReconciliation | null
+  marketing_setup_path?: string | null
 }
 
 export async function getSearchAcquisition(vacancyId: string): Promise<AcquisitionSnapshot> {
@@ -146,17 +158,17 @@ export async function syncSearchAcquisition(vacancyId: string): Promise<Acquisit
   return data
 }
 
+/** @deprecated C-2: always fails — use Marketing Campaign/Flight setup. */
 export async function createAcquisitionActivity(
-  vacancyId: string,
-  payload: { type: string; name: string },
+  _vacancyId: string,
+  _payload: { type: string; name: string },
 ): Promise<AcquisitionActivity> {
-  const { data } = await api.post<AcquisitionActivity>(
-    `/vacancies/${encodeURIComponent(vacancyId)}/acquisition/activities`,
-    payload,
+  throw new Error(
+    'legacy_launch_disabled: create acquisition launches via /app/marketing/new (Campaign → Flight)',
   )
-  return data
 }
 
+/** @deprecated C-2 alias — same hard stop as createAcquisitionActivity. */
 export const createAcquisitionChannel = createAcquisitionActivity
 
 export async function updateAcquisitionAudience(

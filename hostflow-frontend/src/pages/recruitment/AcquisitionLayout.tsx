@@ -1,9 +1,10 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import clsx from 'clsx'
-import { IconPlus } from '@tabler/icons-react'
+import { IconExternalLink, IconPlus } from '@tabler/icons-react'
 import {
+  CRM_APP_PATHS,
+  marketingSetupWithVacancyTargetPath,
   recruitmentSearchAcquisitionPath,
-  recruitmentSearchAcquisitionNewPath,
 } from '../../app/crmAppPaths'
 import { Toolbar } from '../../components/layout'
 import { useI18n } from '../../i18n'
@@ -19,21 +20,71 @@ const subTabClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function AcquisitionLayout() {
   const { t } = useI18n()
-  const { searchId } = useSearchWorkspace()
+  const { searchId, searchName } = useSearchWorkspace()
   const acquisitionBase = recruitmentSearchAcquisitionPath(searchId)
   const { snapshot, loading, syncing, refresh } = useAcquisitionData(searchId)
+  const marketingHref =
+    snapshot?.marketing_setup_path ||
+    marketingSetupWithVacancyTargetPath(searchId, { name: searchName || undefined })
+  const linkedCampaignId = snapshot?.reconciliation?.linked_campaign_id
+  const linkedCampaignHref = linkedCampaignId
+    ? `${CRM_APP_PATHS.marketing}/${encodeURIComponent(linkedCampaignId)}`
+    : null
 
   return (
     <div className="space-y-4" data-testid="m1-acquisition-layout">
+      <section
+        className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+        data-testid="acquisition-legacy-banner"
+      >
+        <p className="font-medium">
+          {t('app.acquisition.legacy_readonly_title', {
+            defaultValue: 'Подборы / Acquisition — legacy read-only',
+          })}
+        </p>
+        <p className="mt-1 text-amber-900/90">
+          {t('app.acquisition.legacy_readonly_body', {
+            defaultValue:
+              'Новые запуски создаются только в Marketing (Campaign → Flight). Здесь остаются исторические активности до reconciliation.',
+          })}
+        </p>
+        {snapshot?.reconciliation?.status === 'linked' && linkedCampaignHref ? (
+          <p className="mt-2">
+            <Link
+              to={linkedCampaignHref}
+              className="inline-flex items-center gap-1 font-medium text-brand-700 underline"
+              data-testid="acquisition-linked-campaign"
+            >
+              {t('app.acquisition.open_linked_campaign', {
+                defaultValue: 'Открыть связанный Campaign',
+              })}
+              {snapshot.reconciliation.linked_campaign_name
+                ? `: ${snapshot.reconciliation.linked_campaign_name}`
+                : ''}
+              <IconExternalLink size={14} stroke={1.9} />
+            </Link>
+          </p>
+        ) : null}
+        {snapshot?.reconciliation?.status === 'unresolved' ? (
+          <p className="mt-2 text-amber-900/80" data-testid="acquisition-reconciliation-unresolved">
+            {t('app.acquisition.reconciliation_unresolved', {
+              defaultValue:
+                'Связь с Campaign не установлена однозначно — данные сохранены для reconciliation.',
+            })}
+          </p>
+        ) : null}
+      </section>
+
       <Toolbar>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <AcquisitionSyncStatus snapshot={snapshot} syncing={syncing} />
           <Link
-            to={recruitmentSearchAcquisitionNewPath(searchId)}
+            to={marketingHref}
             className="btn-primary btn-sm inline-flex items-center gap-2"
+            data-testid="acquisition-go-marketing-setup"
           >
             <IconPlus size={16} stroke={1.9} />
-            {t('app.acquisition.launch', { defaultValue: 'Запустить рекламу' })}
+            {t('app.acquisition.launch_in_marketing', { defaultValue: 'Создать в Marketing' })}
           </Link>
         </div>
         <nav

@@ -11,8 +11,10 @@ from typing import Any, Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.constants.spa_paths import MARKETING_NEW
 from backend.app.constants.stages import STAGES_BY_GROUP
 from backend.app.core.crypto import decrypt_secret
+from backend.app.models.campaign import Campaign, CampaignTarget
 from backend.app.models.candidate import Candidate
 from backend.app.models.lead import Lead
 from backend.app.models.vacancy import Vacancy
@@ -25,6 +27,19 @@ from backend.app.modules.leads.meta_marketing_graph import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Acquisition UI Cutover C-2 — no new launches outside Campaign/Flight.
+LEGACY_LAUNCH_DISABLED = True
+LEGACY_LAUNCH_CODE = "legacy_launch_disabled"
+
+
+class LegacyLaunchDisabledError(RuntimeError):
+    """Raised when searchAcquisition tries to create/duplicate a launch."""
+
+    def __init__(self, *, search_id: str, marketing_setup_path: str):
+        self.search_id = search_id
+        self.marketing_setup_path = marketing_setup_path
+        super().__init__(LEGACY_LAUNCH_CODE)
 
 ACQUISITION_EXTRA_KEY = "acquisition_v1"
 SYNC_INTERVAL_MINUTES = 15
@@ -362,8 +377,69 @@ def _enrich_activity_controls(activity: dict[str, Any], sync_state: dict[str, An
         "update_bindings": not is_static,
         "pause": not is_static and activity["lifecycle"] == "active",
         "resume": not is_static and activity["lifecycle"] == "paused",
-        "duplicate": not is_static and str(activity.get("channel_type") or activity.get("type")) != "qr",
+        # C-2: duplicate creates a new launch — disabled (Campaign/Flight only).
+        "duplicate": False,
         "archive": not is_static,
+    }
+
+
+def marketing_setup_path_for_search(search_id: str, *, name: str | None = None) -> str:
+    from urllib.parse import quote, urlencode
+
+    q = {"target_type": "vacancy", "target_id": str(search_id), "flow": "candidates"}
+    if name and str(name).strip():
+        q["name"] = str(name).strip()[:160]
+    return f"{MARKETING_NEW}?{urlencode(q, quote_via=quote)}"
+
+
+async def resolve_search_campaign_reconciliation(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    search_id: str,
+) -> dict[str, Any]:
+    """Link Подбор/vacancy to Campaign when exactly one vacancy target matches."""
+    rows = (
+        await db.execute(
+            select(Campaign.id, Campaign.name, Campaign.status)
+            .join(CampaignTarget, CampaignTarget.campaign_id == Campaign.id)
+            .where(
+                Campaign.tenant_id == str(tenant_id),
+                CampaignTarget.tenant_id == str(tenant_id),
+                CampaignTarget.target_type == "vacancy",
+                CampaignTarget.target_id == str(search_id),
+                Campaign.status != "archived",
+            )
+            .order_by(Campaign.created_at.asc())
+        )
+    ).all()
+    if not rows:
+        return {
+            "status": "unresolved",
+            "linked_campaign_id": None,
+            "linked_campaign_name": None,
+            "linked_campaign_status": None,
+            "candidate_campaign_ids": [],
+            "reason": "no_campaign_with_vacancy_target",
+        }
+    if len(rows) == 1:
+        cid, cname, cstatus = rows[0]
+        return {
+            "status": "linked",
+            "linked_campaign_id": str(cid),
+            "linked_campaign_name": str(cname or ""),
+            "linked_campaign_status": str(cstatus or ""),
+            "candidate_campaign_ids": [str(cid)],
+            "reason": "unique_vacancy_target",
+        }
+    ids = [str(r[0]) for r in rows]
+    return {
+        "status": "unresolved",
+        "linked_campaign_id": None,
+        "linked_campaign_name": None,
+        "linked_campaign_status": None,
+        "candidate_campaign_ids": ids,
+        "reason": "multiple_campaigns_for_vacancy",
     }
 
 
@@ -762,6 +838,9 @@ async def build_acquisition_snapshot(
     recommendations = _build_recommendations(activities, search_fill)
     journal = _get_event_log(stored_block)
 
+    reconciliation = await resolve_search_campaign_reconciliation(
+        db, tenant_id=tenant_id, search_id=search_id
+    )
     snapshot = {
         "version": 2,
         "synced_at": now,
@@ -779,6 +858,9 @@ async def build_acquisition_snapshot(
         "sync": sync_state,
         "watch_state": stored_block.get("watch_state") if isinstance(stored_block.get("watch_state"), dict) else {},
         "warnings": warnings,
+        "legacy_mode": True,
+        "reconciliation": reconciliation,
+        "marketing_setup_path": marketing_setup_path_for_search(search_id, name=search_title),
     }
     return snapshot
 
@@ -813,6 +895,13 @@ async def add_acquisition_activity(
     name: str,
 ) -> dict[str, Any]:
     search_id = str(vacancy.id)
+    if LEGACY_LAUNCH_DISABLED:
+        raise LegacyLaunchDisabledError(
+            search_id=search_id,
+            marketing_setup_path=marketing_setup_path_for_search(
+                search_id, name=str(getattr(vacancy, "title", None) or name)
+            ),
+        )
     extra = _loads_extra(vacancy.extra)
     block = extra.get(ACQUISITION_EXTRA_KEY)
     if not isinstance(block, dict):
@@ -907,6 +996,13 @@ async def perform_acquisition_activity_action(
         target["updated_at"] = now
         _append_event(block, kind="activity_archived", title=f"Активность «{name}» архивирована.", activity_id=activity_id)
     elif action == "duplicate":
+        if LEGACY_LAUNCH_DISABLED:
+            raise LegacyLaunchDisabledError(
+                search_id=search_id,
+                marketing_setup_path=marketing_setup_path_for_search(
+                    search_id, name=str(getattr(vacancy, "title", None) or name)
+                ),
+            )
         clone = dict(target)
         clone["id"] = f"act_{target.get('channel_type', 'meta')}_{uuid.uuid4().hex[:8]}"
         clone["name"] = f"{name} (копия)"

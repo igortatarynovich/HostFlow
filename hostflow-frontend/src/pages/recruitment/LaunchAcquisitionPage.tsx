@@ -1,136 +1,47 @@
-import { useState } from 'react'
+/**
+ * C-2: legacy launch UI retired — redirect to Marketing Campaign setup
+ * with vacancy target prefilled. Does not call searchAcquisition create.
+ */
+import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { createAcquisitionActivity } from '../../api/searchAcquisition'
-import { recruitmentSearchAcquisitionPath, recruitmentSearchMetaSourcePath } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS, marketingSetupWithVacancyTargetPath } from '../../app/crmAppPaths'
 import { useI18n } from '../../i18n'
-import { useToast } from '../../components/Toast'
 import { useSearchWorkspace } from './SearchWorkspaceLayout'
-
-const CHANNEL_OPTIONS = [
-  { id: 'meta', label: 'Meta Ads', hint: 'Facebook и Instagram' },
-  { id: 'google', label: 'Google Ads', hint: 'Скоро', disabled: true },
-  { id: 'tiktok', label: 'TikTok Ads', hint: 'Скоро', disabled: true },
-  { id: 'telegram', label: 'Telegram', hint: 'Скоро', disabled: true },
-  { id: 'referral', label: 'Рефералы', hint: 'Скоро', disabled: true },
-] as const
 
 export default function LaunchAcquisitionPage() {
   const { t } = useI18n()
-  const { notify } = useToast()
   const navigate = useNavigate()
   const { searchId, searchName } = useSearchWorkspace()
-  const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [channelType, setChannelType] = useState('meta')
-  const [name, setName] = useState('')
-  const [busy, setBusy] = useState(false)
+  const marketingHref = marketingSetupWithVacancyTargetPath(searchId, {
+    name: searchName || undefined,
+  })
 
-  async function handleCreate() {
-    const label = name.trim()
-    if (!label) return
-    setBusy(true)
-    try {
-      await createAcquisitionActivity(searchId, { type: channelType, name: label })
-      setStep(3)
-    } catch {
-      notify({
-        title: t('app.acquisition.launch_failed', { defaultValue: 'Не удалось создать источник' }),
-        variant: 'error',
-      })
-    } finally {
-      setBusy(false)
-    }
-  }
+  useEffect(() => {
+    navigate(marketingHref, { replace: true })
+  }, [marketingHref, navigate])
 
   return (
-    <div className="space-y-5" data-testid="m1-launch-acquisition">
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900">
-          {t('app.acquisition.launch_title', { defaultValue: 'Запуск новой рекламы' })}
+    <div className="space-y-4" data-testid="m1-launch-acquisition-redirect">
+      <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-950">
+        <h2 className="text-base font-semibold">
+          {t('app.acquisition.legacy_launch_disabled_title', {
+            defaultValue: 'Запуск рекламы перенесён в Marketing',
+          })}
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
-          {t('app.acquisition.launch_subtitle', {
-            defaultValue: 'Подбор «{name}» — выберите канал и дайте понятное имя кампании.',
-            values: { name: searchName },
+        <p className="mt-2 text-amber-900/90">
+          {t('app.acquisition.legacy_launch_disabled_body', {
+            defaultValue:
+              'Новые запуски создаются только как Campaign → Flight. Подборы больше не создают acquisition activities.',
           })}
         </p>
-
-        {step === 1 ? (
-          <div className="mt-6 space-y-3">
-            <p className="text-sm font-medium text-slate-800">
-              {t('app.acquisition.step_channel', { defaultValue: '1. Канал привлечения' })}
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {CHANNEL_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  disabled={Boolean(opt.disabled)}
-                  onClick={() => setChannelType(opt.id)}
-                  className={`rounded-xl border-2 p-4 text-left text-sm transition ${
-                    channelType === opt.id
-                      ? 'border-brand-400 bg-brand-50'
-                      : 'border-slate-200 hover:border-slate-300'
-                  } ${opt.disabled ? 'opacity-50' : ''}`}
-                >
-                  <p className="font-semibold text-slate-900">{opt.label}</p>
-                  <p className="mt-0.5 text-slate-600">{opt.hint}</p>
-                </button>
-              ))}
-            </div>
-            <button type="button" className="btn-primary mt-4" onClick={() => setStep(2)}>
-              {t('common.actions.continue', { defaultValue: 'Продолжить' })}
-            </button>
-          </div>
-        ) : null}
-
-        {step === 2 ? (
-          <div className="mt-6 space-y-4">
-            <p className="text-sm font-medium text-slate-800">
-              {t('app.acquisition.step_name', { defaultValue: '2. Название (как вы будете узнавать эту рекламу)' })}
-            </p>
-            <input
-              className="input w-full max-w-md"
-              placeholder={t('app.acquisition.name_placeholder', { defaultValue: 'Например: Польша' })}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setStep(1)}>
-                {t('common.actions.back', { defaultValue: 'Назад' })}
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={busy || !name.trim()}
-                onClick={() => void handleCreate()}
-              >
-                {busy ? t('common.loading') : t('app.acquisition.step_connect', { defaultValue: '3. Создать и настроить' })}
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {step === 3 ? (
-          <div className="mt-6 space-y-4">
-            <p className="text-sm text-slate-700">
-              {t('app.acquisition.launch_done', {
-                defaultValue: 'Источник создан. Подключите Meta и привяжите объявления к этому подбору.',
-              })}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => navigate(recruitmentSearchMetaSourcePath(searchId))}
-              >
-                {t('app.acquisition.setup_meta', { defaultValue: 'Настроить Meta' })}
-              </button>
-              <Link to={recruitmentSearchAcquisitionPath(searchId)} className="btn-secondary">
-                {t('app.acquisition.back_to_list', { defaultValue: 'К привлечению' })}
-              </Link>
-            </div>
-          </div>
-        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link to={marketingHref} className="btn-primary btn-sm" data-testid="legacy-launch-go-marketing">
+            {t('app.acquisition.go_marketing_setup', { defaultValue: 'Открыть Marketing setup' })}
+          </Link>
+          <Link to={CRM_APP_PATHS.marketing} className="btn-secondary btn-sm">
+            {t('app.nav.items.marketing', { defaultValue: 'Маркетинг' })}
+          </Link>
+        </div>
       </section>
     </div>
   )

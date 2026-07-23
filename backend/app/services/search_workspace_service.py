@@ -15,6 +15,7 @@ from backend.app.models.vacancy import Vacancy
 from backend.app.services.search_acquisition_service import (
     build_acquisition_snapshot,
     get_vacancy_or_raise,
+    marketing_setup_path_for_search,
 )
 _PRE_CONTACT_STAGES = frozenset({"", "new", "no_answer", "to_call", "to_contact"})
 _INTERVIEW_STAGES = frozenset(STAGES_BY_GROUP.get("interview", []))
@@ -243,7 +244,7 @@ def _build_day_plan(
                 message=f"Поток откликов слабый — нужна реклама для «{search_title}».",
                 action_label="Запустить",
                 target="acquisition",
-                href=_search_path(search_id, "/acquisition/new"),
+                href=marketing_setup_path_for_search(str(search_id)),
                 icon="🚀",
                 kind="acquisition_launch",
             )
@@ -254,10 +255,10 @@ def _build_day_plan(
                 id="acquisition_expand",
                 severity="info",
                 headline="Расширить рекламу",
-                message="Можно добавить активность в другой стране или канале.",
-                action_label="Новая активность",
+                message="Создайте новую Campaign/Flight в Marketing (не через Подборы).",
+                action_label="В Marketing",
                 target="acquisition",
-                href=_search_path(search_id, "/acquisition/new"),
+                href=marketing_setup_path_for_search(str(search_id)),
                 bucket="later",
             )
         )

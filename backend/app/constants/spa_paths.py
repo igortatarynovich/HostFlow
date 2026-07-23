@@ -35,6 +35,8 @@ SETUP_INTAKE = "/app/setup/intake"
 SETTINGS_USERS = "/app/settings/users"
 RECRUITMENT_SEARCHES = "/app/recruitment/searches"
 RECRUITMENT_INBOX = "/app/recruitment/inbox"
+MARKETING = "/app/marketing"
+MARKETING_NEW = "/app/marketing/new"
 
 def spa_candidate(candidate_id: str) -> str:
     return f"{CANDIDATES}/{candidate_id}"
