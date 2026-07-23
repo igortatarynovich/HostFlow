@@ -39,7 +39,11 @@ export const SIDEBAR_AGENCY_HR_ORDER = ['hr-workspace'] as const
  * Marketing / Growth — Campaign + Flight operator surface (+ Activity Timeline).
  * Top-level rail section; must not nest under Sales (Acquisition UI Cutover C-1).
  */
-export const SIDEBAR_AGENCY_MARKETING_ORDER = ['marketing', 'acquisition-activity'] as const
+export const SIDEBAR_AGENCY_MARKETING_ORDER = [
+  'marketing',
+  'marketing-sources',
+  'acquisition-activity',
+] as const
 
 /** Sales owns Inquiry + ClientAccount — not Invoice/Payment model; not Growth/Campaigns. */
 export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'clients'] as const

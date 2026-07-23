@@ -62,7 +62,11 @@ describe('sidebar nav placement integrity', () => {
     expect(SIDEBAR_AGENCY_SALES_ORDER).not.toContain('invoices')
     expect(SIDEBAR_AGENCY_SALES_ORDER).not.toContain('candidates')
 
-    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toEqual(['marketing', 'acquisition-activity'])
+    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toEqual([
+      'marketing',
+      'marketing-sources',
+      'acquisition-activity',
+    ])
     expect(SIDEBAR_AGENCY_AUTOMATIONS_ORDER).not.toContain('acquisition-activity')
     expect(SIDEBAR_AGENCY_MARKETING_ORDER).not.toContain('sales')
 

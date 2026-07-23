@@ -29,7 +29,11 @@ describe('marketing workspace route registration', () => {
   })
 
   it('C-1: Marketing is a top-level rail section, not under Sales', () => {
-    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toEqual(['marketing', 'acquisition-activity'])
+    expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toEqual([
+      'marketing',
+      'marketing-sources',
+      'acquisition-activity',
+    ])
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).toEqual(['sales', 'clients'])
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).not.toContain('marketing')
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).not.toContain('acquisition-activity')

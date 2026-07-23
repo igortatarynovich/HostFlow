@@ -921,6 +921,7 @@
         "automations": "Автоматизации",
         "automation_log": "Журнал автоматизаций",
         "acquisition_activity": "Активность Acquisition",
+        "marketing_sources": "Sources",
         "automation_rules": "Правила автоматизаций",
         "settings_hiring_gates": "Барьеры воронки найма",
         "settings_risk_intel": "Операционный риск",
@@ -8609,6 +8610,51 @@
           "create": "Создана новая заявка",
           "match_or_create": "Найдена или создана заявка",
           "review": "Отправлено в очередь проверки"
+        }
+      }
+    },
+    "marketing": {
+      "sources": {
+        "title": "Sources",
+        "subtitle": "Подключённые источники, Mapping Health, ожидающие заявки и последние события.",
+        "none": "—",
+        "empty_title": "Пока нет источников",
+        "empty_body": "Подключите Meta в Integrations или привяжите intake source — они появятся здесь.",
+        "columns": {
+          "source": "Source",
+          "provider": "Provider",
+          "connection": "Connection",
+          "mapping_health": "Mapping Health",
+          "last_lead": "Последняя заявка",
+          "waiting": "Ожидают",
+          "routing_issue": "Проблема маршрута",
+          "last_error": "Последняя ошибка",
+          "campaigns_flights": "Campaigns / Flights",
+          "actions": "Действия"
+        },
+        "connection": {
+          "connected": "Connected",
+          "attention": "Attention",
+          "disconnected": "Disconnected"
+        },
+        "health": {
+          "ready": "Ready",
+          "needs_review": "Needs review",
+          "broken": "Broken"
+        },
+        "routing_issue": {
+          "missing_campaign_flight": "Campaign/Flight для этого Ad ID не настроены."
+        },
+        "actions": {
+          "integrations": "Integrations",
+          "connect": "Открыть Integrations",
+          "mapping": "Mapping",
+          "test_lead": "Test lead",
+          "connection": "Connection",
+          "setup_campaign_flight": "Настроить Campaign/Flight"
+        },
+        "errors": {
+          "load": "Не удалось загрузить источники"
         }
       }
     }

@@ -35,6 +35,7 @@ export const SIDEBAR_ITEM_ICON: Partial<Record<string, SidebarIconSpec>> = {
   'automation-rules': { kind: 'ui', id: 'автоматизации' },
   'automation-log': { kind: 'ui', id: 'история' },
   'acquisition-activity': { kind: 'ui', id: 'история' },
+  'marketing-sources': { kind: 'ui', id: 'интеграции' },
   automations: { kind: 'ui', id: 'автоматизации' },
   'integrations-meta': { kind: 'platform', id: 'meta', variant: 'brand' },
   'integrations-google': { kind: 'platform', id: 'google', variant: 'brand' },

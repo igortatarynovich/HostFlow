@@ -113,6 +113,7 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   'automation-rules': IconBolt,
   'automation-log': IconChecklist,
   'acquisition-activity': IconChecklist,
+  'marketing-sources': IconChecklist,
   automations: IconBolt,
   'integrations-meta': IconBrandMeta,
   'integrations-google': IconBrandGoogle,

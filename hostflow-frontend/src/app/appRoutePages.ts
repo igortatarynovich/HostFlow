@@ -52,6 +52,9 @@ export const MarketingCampaignSetupPage = lazy(() =>
 export const MarketingCampaignDetailPage = lazy(() =>
   loadCrmMore().then((m) => ({ default: m.MarketingCampaignDetailPage })),
 )
+export const MarketingSourcesPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingSourcesPage })),
+)
 export const AutomationRulesPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationRulesPage })))
 export const FleetModulePage = lazy(() => loadCrmMore().then((m) => ({ default: m.FleetModulePage })))
 

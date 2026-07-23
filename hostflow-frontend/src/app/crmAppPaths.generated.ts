@@ -66,6 +66,8 @@ export const CRM_APP_PATHS = {
   marketing: "/app/marketing",
   /** Marketing Campaign Setup Flow (create campaign + form + source + launch). */
   marketingNew: "/app/marketing/new",
+  /** Marketing Sources foundation — intake inventory, connection, Mapping Health (C-3). */
+  marketingSources: "/app/marketing/sources",
   inbox: "/app/inbox",
   /** Inbox with messages channel selected (legacy top-level /app/messages redirects here). */
   inboxMessagesScoped: "/app/inbox?channel=messages",

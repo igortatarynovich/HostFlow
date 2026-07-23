@@ -220,7 +220,7 @@ Routing preview after mapping must show concrete outcome (entity type, vacancy/s
 |----|--------|--------|
 | **C-1** | Nav: Marketing top-level section; remove from Sales bucket; Activity under Marketing | **DONE** — #157 |
 | **C-2** | Stop legacy ad-launch from Подборы (`searchAcquisition`); reconcile to Campaign/Flight; block new dual-write debt | **DONE** — #158 (merge exception: scoped C-2 + qa-static green; full backend-ci baseline → Engineering [#159](https://github.com/igortatarynovich/HostFlow/issues/159)) |
-| **C-3** | **Sources foundation** — unified Sources list; connection status; Meta Page/Form inventory; webhook health; last submission; links to current provider bindings; Mapping Health summary (**Ready / Needs review / Broken**). No new mapping engine | **NEXT** — `feat/acquisition-ui-cutover-c3-sources` |
+| **C-3** | **Sources foundation** — unified Sources list; connection status; Meta Page/Form inventory; webhook health; last submission; links to current provider bindings; Mapping Health summary (**Ready / Needs review / Broken**). No new mapping engine | **In PR** — `feat/acquisition-ui-cutover-c3-sources` (read-only) |
 | **C-4** | **Test submission & field discovery** — Meta test lead and/or capture-next; raw payload inspector; detected fields + sample values; masking; replay normalization **without** creating production entities by default | After C-3 |
 | **C-5** | **Mapping workspace** — provider field → standard / domain / custom / answer / ignore; validation; versioning; unmapped-field alerts; routing preview; Mapping Health updates | After C-4 |
 | **C-6** | **Form Builder cutover** — Forms under Marketing (`/app/marketing/forms`…); create/edit/preview/publish; create-form-in-setup; integrate with Campaign Setup | After C-5 |
@@ -271,6 +271,71 @@ Scan tests: `backend/tests/api/test_acquisition_c2_legacy_launch_disabled.py`, `
 ### C-3…C-5 sketch (Sources foundation → Mapping)
 
 **C-3 Sources list columns (minimum):** status (Connected / Attention / Disconnected), provider, account/portfolio, page, provider form, last lead at, last error, Mapping Health, destination, active Flights count.
+
+**C-3 waiting / missing Campaign-Flight visibility (this PR only — no runtime change):**
+
+| Signal | Operator sees |
+|--------|----------------|
+| `waiting_submissions` | Count of saved submissions in technical wait (`needs_routing`) for this Source |
+| Last submission time | Already on list (`last_submission_at`) |
+| `last_problematic_ad_id` | Most recent waiting Meta Ad ID |
+| Concrete reason | **Campaign/Flight для этого Ad ID не настроены** (`routing_issue_code=missing_campaign_flight`) — not an abstract “Awaiting Routing” UI status |
+| CTA | **Настроить Campaign/Flight** → Marketing setup deep-link |
+
+**C-3 limitation (explicit):** this PR displays the **current** routing / `needs_routing` state. Full waiting-submission semantics for Meta under the Ad ID → Campaign/Flight model land in a **separate runtime PR** (contract below). Do **not** mix runtime ingest changes into C-3.
+
+### Locked contract — Meta Ad ID → Campaign/Flight (before runtime PR)
+
+Short decision in this Acquisition SoT. No new ADR unless a real L0/L1 gap appears. Runtime implements this contract in **one** follow-up PR after C-3.
+
+#### 1. Fact of receipt (Submission)
+
+For Meta, the existing **`Lead`** with raw/`normalized` payload **is** the Submission. Do **not** add a Meta Submission table in the runtime PR if Lead already allows:
+
+- store payload;
+- store `ad_id`;
+- tell whether Candidate/Application already exists;
+- reprocess idempotently.
+
+Ingest always persists Lead. Routing may stop without creating Candidate/Application.
+
+#### 2. Advertising route key
+
+**Canonical rule:** for a Meta submission with `ad_id`, Campaign/Flight is resolved by **Ad ID**.
+
+Resolution order:
+
+1. Exact active binding **Ad ID → Flight**;
+2. If none — do **not** route (no Candidate/Application);
+3. Form ID, Page ID, IntakeSourceProfile **must not** pick a different Flight;
+4. **`profile_default` is forbidden** for such a submission.
+
+Form / Source remain for Meta connection, field mapping, intake type, diagnostics, and Source UI — **not** for ad attribution.
+
+#### 3. Where to store Ad ID → Campaign/Flight
+
+Do **not** overload `CampaignRunForm` or `CampaignRunIntakeSource` (those are Form/Source associations).
+
+Prefer a dedicated acquisition binding (e.g. `FlightAdBinding`):
+
+- `tenant_id`, `provider`, `provider_ad_id`, `campaign_id`, `flight_id`, `active`, `created_at`, `updated_at`
+- Unique active route for `(tenant_id, provider, provider_ad_id)`
+- Flight must belong to Campaign; tenant isolation
+- Deactivate/delete binding must **not** delete received Leads
+
+**Before creating a new table:** check whether `meta_ads_map` (`ad_id → vacancy_id` today) can be migrated toward Target/Flight, or whether a Flight binding should sit **beside** it — avoid a third SoT for the same Ad ID. Decision in the runtime PR after a short inventory of `meta_ads_map` consumers.
+
+#### 4. Runtime PR scope (single PR)
+
+1. Resolver Ad ID → Flight  
+2. Forbid `profile_default` for Meta with `ad_id`  
+3. Persist Lead without Candidate/Application when binding missing  
+4. Reason `missing_campaign_flight` (operator copy: Campaign/Flight для этого Ad ID не настроены)  
+5. **Automatic** reprocess on create / activate / change of Ad binding — **no** “Process waiting submissions” button  
+6. Idempotency on the original Meta lead  
+7. Activity (when catalog already supports): `SubmissionReceived`, `RoutingFailed` (`missing_campaign_flight`), `RoutingCompleted`, `CandidateCreated`, `ApplicationCreated` if present  
+
+**Auto-reprocess filter (strict):** same tenant + provider + exact `ad_id`; no Candidate/Application yet; stopped specifically for `missing_campaign_flight`. Do **not** re-run all `needs_routing` (mapping / source / corrupt payloads stay untouched).
 
 **C-4 field discovery table:** provider field · sample (masked) · proposed HostFlow target · action (confirm / select).
 
@@ -368,3 +433,4 @@ Minimum epic intent (lock later in its own task doc):
 - 2026-07-23: Noted post-cutover epic **Source Diagnostics** (ops: submissions timeline, raw/normalized, routing/duplicate, mapping version, replay/export) — explicit OUT of C-3…C-5; open only after C-7.
 - 2026-07-23: Locked **two lifecycles** (Onboarding vs Operations) and Marketing IA evolution: during C-3…C-7 Sources holds Connection/Mapping/Health; after C-7 **Diagnostics** is a top-level Marketing tool (not a Sources tab), provider-agnostic.
 - 2026-07-23: Locked closure: **C-7 PASS ends Acquisition UI cutover / migration**; further Acquisition work is product evolution (Diagnostics, Stage 5+, analytics, automation, AI) — not another model move.
+- 2026-07-23: **C-3 Sources** — inventory + Mapping Health + **waiting visibility** over current `needs_routing` (read-only). Limitation: full Meta waiting semantics under Ad ID → Flight = separate runtime PR. Locked SoT contract: Lead = Meta Submission; route by Ad ID; no Form/Profile Flight override; forbid `profile_default`; dedicated Ad→Flight binding (check `meta_ads_map` first); auto-reprocess only `missing_campaign_flight` rows.
