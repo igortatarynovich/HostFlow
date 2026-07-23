@@ -63,7 +63,7 @@
 | **7d** | **C2.4** Scheduling | *(frozen)* | Do not start |
 | **P-3E** | **Acquisition Stage 3E** Activity Timeline | PR #130–#133 ✅ | **DONE** — observability vertical closed; deferred — [3e-deferred](acquisition-stage-3e-deferred.md) |
 | **P-4** | **Acquisition Stage 4** Flight Runtime | — | ✅ **Runtime DONE** (#136 / #148–#151) — [stage-4](acquisition-stage-4-flight-runtime.md) |
-| **P-4b** | **Acquisition UI Cutover** | `feat/acquisition-ui-cutover` | **ACTIVE** — Marketing IA + Forms + retire Подборы ad-launch — [cutover](acquisition-ui-cutover.md) |
+| **P-4b** | **Acquisition UI Cutover** | C-1 ✅ #157 · next C-2 | **ACTIVE** — stop legacy Подборы launch / reconcile Campaign-Flight — [cutover](acquisition-ui-cutover.md) |
 | **P-5** | **Acquisition Stage 5** Optimization | paused | **PR-1 DONE** (#153) · **PR-2 PAUSED** until P-4b — [stage-5](acquisition-stage-5-optimization.md) |
 | **8** | **Epic C Complete Gate** | after C2.3 merge + C2.4 (later) | Communication capability closed |
 | **9** | **A2** Platform Governance Review | after Epic C complete | Boundary principle |

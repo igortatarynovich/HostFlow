@@ -59,6 +59,7 @@ import {
   SIDEBAR_AGENCY_PROFILE_ORDER,
   SIDEBAR_AGENCY_FINANCE_ORDER,
   SIDEBAR_AGENCY_HR_ORDER,
+  SIDEBAR_AGENCY_MARKETING_ORDER,
   SIDEBAR_AGENCY_RECRUITMENT_ORDER,
   SIDEBAR_AGENCY_SALES_ORDER,
   SIDEBAR_AGENCY_SERVICES_ORDER,
@@ -219,6 +220,9 @@ export function Sidebar({
       candidates: 'candidates',
       'candidates-no-next-action': 'candidates',
       'hr-workspace': 'hr',
+      /** Growth / Campaigns share vacancy module gate until a dedicated Acquisition entitlement exists. */
+      marketing: 'vacancies',
+      'acquisition-activity': 'vacancies',
       sales: 'companies',
       clients: 'companies',
       vacancies: 'vacancies',
@@ -302,13 +306,14 @@ export function Sidebar({
     return moduleFiltered.filter((item) => allowed.has(item.key))
   }, [can, canUseCommunicationsFeature, isClientTenant, isSoloWorkspace, items, modules])
 
-  /** ADR-023 Stage 1: Communications → Recruitment → HR → Sales → Services → Finance → … */
+  /** ADR-023 + Acquisition UI Cutover C-1: … → HR → Marketing → Sales → Services → Finance → … */
   const {
     dashboardNavItems,
     workHubNavItems,
     inboxNavItems,
     recruitmentNavItems,
     hrNavItems,
+    marketingNavItems,
     salesNavItems,
     servicesNavItems,
     financeNavItems,
@@ -340,6 +345,7 @@ export function Sidebar({
         inboxNavItems: [] as NavItem[],
         recruitmentNavItems: [] as NavItem[],
         hrNavItems: [] as NavItem[],
+        marketingNavItems: [] as NavItem[],
         salesNavItems: [] as NavItem[],
         servicesNavItems: [] as NavItem[],
         financeNavItems: [] as NavItem[],
@@ -363,6 +369,7 @@ export function Sidebar({
     const inboxNavItems = pickOrdered([...SIDEBAR_AGENCY_INBOX_ORDER])
     const recruitmentNavItems = pickOrdered([...SIDEBAR_AGENCY_RECRUITMENT_ORDER])
     const hrNavItems = pickOrdered([...SIDEBAR_AGENCY_HR_ORDER])
+    const marketingNavItems = pickOrdered([...SIDEBAR_AGENCY_MARKETING_ORDER])
     const salesNavItems = pickOrdered([...SIDEBAR_AGENCY_SALES_ORDER])
     const servicesNavItems = pickOrdered([...SIDEBAR_AGENCY_SERVICES_ORDER])
     const financeNavItems = pickOrdered([...SIDEBAR_AGENCY_FINANCE_ORDER])
@@ -383,6 +390,7 @@ export function Sidebar({
       inboxNavItems,
       recruitmentNavItems,
       hrNavItems,
+      marketingNavItems,
       salesNavItems,
       servicesNavItems,
       financeNavItems,
@@ -407,8 +415,6 @@ export function Sidebar({
       path === p.automations ||
       path === p.automationRules ||
       path === p.automationLog ||
-      path === p.acquisitionActivity ||
-      path.startsWith(`${p.acquisitionActivity}/`) ||
       path === p.leadsDistribution ||
       path.startsWith(`${p.leadsDistribution}/`)
     )
@@ -417,6 +423,11 @@ export function Sidebar({
   const marketingRailActive = useMemo(() => {
     const path = location.pathname
     return path === p.marketing || path.startsWith(`${p.marketing}/`)
+  }, [location.pathname, p])
+
+  const acquisitionActivityRailActive = useMemo(() => {
+    const path = location.pathname
+    return path === p.acquisitionActivity || path.startsWith(`${p.acquisitionActivity}/`)
   }, [location.pathname, p])
 
   const integrationsRailActive = useMemo(() => {
@@ -431,6 +442,7 @@ export function Sidebar({
   const navItemActive = (item: NavItem, isActive: boolean): boolean => {
     if (item.key === 'clients') return clientsNavActive
     if (item.key === 'marketing') return marketingRailActive
+    if (item.key === 'acquisition-activity') return acquisitionActivityRailActive
     if (item.key === 'recruitment-searches') {
       return location.pathname.startsWith(p.recruitmentSearches)
     }
@@ -440,7 +452,6 @@ export function Sidebar({
       item.key === 'automations' ||
       item.key === 'automation-rules' ||
       item.key === 'automation-log' ||
-      item.key === 'acquisition-activity' ||
       item.key === 'leads-distribution' ||
       item.key === 'leads-distribution-rules'
     ) {
@@ -676,10 +687,21 @@ export function Sidebar({
                     </div>
                   </>
                 )}
+                {marketingNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3" data-testid="sidebar-section-marketing">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_marketing')}
+                      </div>
+                      <div className="space-y-1">{marketingNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
+                )}
                 {salesNavItems.length > 0 && (
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
-                    <div className="mb-3">
+                    <div className="mb-3" data-testid="sidebar-section-sales">
                       <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_sales')}
                       </div>
