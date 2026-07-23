@@ -1,10 +1,10 @@
 # Acquisition Stage 5 — Optimization
 
-**Status:** Active — **PR-1 locked** (Optimization signals / pause recommendation — read-only)  
+**Status:** Active — **PR-1 DONE** ✅ · **PR-2 locked** (signal explainability / operator acknowledge)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §14 · §14.1  
 **Depends on:** Stage **4** complete ✅ (Flight Runtime #136 / #148–#151)  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · Stage 3E Timeline  
-**Branch:** `feat/acquisition-stage-5-pr1-optimization-signals` · worktree TBD  
+**PR-1 merge:** [#153](https://github.com/igortatarynovich/HostFlow/pull/153) → `1bf3e7f4` on `integration/release-product-a-b` (2026-07-23)  
 **Deferred (not Stage 5):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md) (D1–D5 remain Instrumentation)  
 **Next horizon:** Stage 6 Analytics (do not open while 5 incomplete)
 
@@ -19,52 +19,37 @@
 |-------|--------|------|--------|
 | **3E** | Observability | See | **DONE** (#130–#133) |
 | **4** | Operations | Control | **DONE** (#136 / #148–#151) |
-| **5** | Optimization | Improve | **This epic (PR-1 locked)** |
+| **5** | Optimization | Improve | **Active** — PR-1 DONE · PR-2 locked |
 | **6** | Analytics | Decide | Future horizon |
 
 ---
 
-## PR sequence (initial)
+## PR sequence
 
-| PR | Scope |
-|----|--------|
-| **PR-1** | Optimization signals + pause recommendation (read-only) — **locked** |
-| **PR-2+** | TBD after PR-1 — auto-apply policies only with explicit operator/safety contract |
+| PR | Scope | Status |
+|----|--------|--------|
+| **PR-1** | Optimization signals + `suggest_pause` (read-only) | **DONE** (#153 / `1bf3e7f4`) |
+| **PR-2** | Signal explainability + operator dismiss/acknowledge (no Flight mutation) | **Locked** (next) |
+| **PR-3+** | Auto-apply / auto-pause only with explicit operator/safety contract | Not opened |
+
+**Hard ban until a later PR is explicitly accepted:** auto-pause, workers, schedulers, or any write that changes Campaign/Flight from an optimization signal.
 
 ---
 
-## PR-1 — Optimization signals / pause recommendation (locked)
+## PR-1 — Optimization signals / pause recommendation — **DONE**
 
-Minimal first Product PR. **Read-only** — no auto Launch/Pause/Resume writes.  
-**Architectural ban:** the signal may **explain and recommend only**. It must never mutate Campaign or Flight. No Activity append on GET.
+Merged [#153](https://github.com/igortatarynovich/HostFlow/pull/153) as `1bf3e7f4` (2026-07-23).  
+**Architectural ban (still in force):** the signal may **explain and recommend only**. It must never mutate Campaign or Flight. No Activity append on GET.
 
-### IN
+### Delivered
 
 1. **Signals contract** — typed Flight optimization signals composed from Stage 4 `get_flight_runtime_snapshot` (identity / status / KPI strip) + **windowed** Timeline counts (allowlist subset of Live Intake Monitor). No second metrics ledger.
-2. **HTTP read** — `GET /api/v1/platform/campaigns/{campaign_id}/flights/{flight_id}/optimization?window_hours=` returning `assessment`, `recommended_action`, `reason_codes`, `signals`, window counters, KPI strip, and locked `thresholds`.
-3. **Tests** — threshold boundaries, zero spend/intake, paused/completed flight, company scope, repeat GET without side effects.
-4. **Thin UI (optional in same PR if tiny)** — Marketing detail badge/banner “Consider pause” when recommendation present; no auto-button that bypasses existing Stage 4 commands.
+2. **HTTP read** — `GET /api/v1/platform/campaigns/{campaign_id}/flights/{flight_id}/optimization?window_hours=`
+3. **Tests** — `backend/tests/api/test_stage_5_pr1_optimization_signals.py`
+4. **Thin UI** — Marketing detail banner when `recommended_action === suggest_pause` (`data-testid="marketing-optimization-suggest-pause"`); Pause remains Stage 4 control.
+5. **Threat model** — [`docs/security/threat-models/acquisition-optimization-signals.md`](../../security/threat-models/acquisition-optimization-signals.md)
 
-### Locked inputs (PR-1)
-
-| Input | Source |
-|-------|--------|
-| Campaign / Flight identity | Stage 4 runtime snapshot |
-| Current runtime status (`campaign_status`, `flight_status`) | Stage 4 runtime snapshot |
-| Delivery + intake counters (windowed) | Timeline: `SubmissionReceived`, `RoutingCompleted`, `RoutingFailed`, `DeliveryErrorOccurred` |
-| KPI spend / leads (informational) | Stage 4 runtime KPI aggregate — **not** used for pause thresholds in PR-1 |
-| Observation window | `window_hours` query (default **24**, clamp **1…168**) |
-| Minimum data volume | `decision_volume` = sum of the four windowed counters |
-
-### Locked assessments / actions
-
-| `assessment` | `recommended_action` | When |
-|--------------|----------------------|------|
-| `insufficient_data` | `none` | Flight not `active`, or `decision_volume` < min volume |
-| `healthy` | `none` | Active + enough volume + within thresholds |
-| `suggest_pause` | `suggest_pause` | Active + enough volume + any pause threshold met |
-
-### Locked thresholds (PR-1)
+### Locked thresholds (PR-1 — frozen)
 
 | Constant | Value | Rule |
 |----------|-------|------|
@@ -73,26 +58,45 @@ Minimal first Product PR. **Read-only** — no auto Launch/Pause/Resume writes.
 | `ROUTING_FAIL_RATE_THRESHOLD` | **0.50** | Inclusive (`>=`) when sample ≥ min |
 | `DELIVERY_ERROR_THRESHOLD` | **3** | Inclusive absolute `DeliveryErrorOccurred` count in window |
 
-Pause recommendation applies **only** while `flight_status == active`. Paused / completed / planned → `insufficient_data` + `flight_not_active` (never auto-suggest pause for a non-active flight).
+Note: integer counters cannot yield **exactly** `0.50` at `sample=5` (would need 2.5 fails). Exact `0.50` requires an even sample ≥ 6 (e.g. 3/6). Smoke verified `rate=0.50` at `sample=6`.
 
-### Activity events
+### Deploy / smoke (2026-07-23, tip `1bf3e7f4`)
 
-Stage 5 PR-1 does **not** define a recommendation Activity type. **Do not** emit Activity on GET. Repeat GET must leave Timeline row count and Flight/Campaign status unchanged.
+Deploy: `integration/release-product-a-b` @ `1bf3e7f4`; rebuilt `backend` + `arq-worker`; `alembic upgrade heads` → `202607220002_acq_3e_imm` (head); frontend `npm ci` / build + `rebuild-frontend.sh`.
+
+| Check | Result |
+|-------|--------|
+| Active Flight, zero window volume → `insufficient_data` | **PASS** |
+| Sufficient volume, fail rate below threshold → `healthy` | **PASS** (4 completed / 2 failed) |
+| Routing fail rate **exactly 0.50** (sample ≥ 5) → `suggest_pause` | **PASS** (3/6; sample 5 cannot be exact 0.50) |
+| Delivery errors **exactly 3** → `suggest_pause` | **PASS** (3 errors + 2 submissions) |
+| Paused / completed Flight → `insufficient_data` / `flight_not_active`, no mutation | **PASS** |
+| Repeat GET → Activity count unchanged | **PASS** (10→10) |
+| Cross-company optimization → 404 | **PASS** |
+| Marketing UI banner present in dist only for suggest_pause path | **PASS** (`marketing-optimization-suggest-pause` in published assets) |
+| `/health` → 200 | **PASS** |
+
+**CI posture (same as Stage 4):** Stage 5 tests green; security/docs/qa-static green; full `backend-ci` red = accepted Engineering baseline debt ([stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md)). Merge used `--admin` on that basis.
+
+---
+
+## PR-2 — Signal explainability / operator acknowledge (**locked**)
+
+Next Product PR. **Still read-only w.r.t. Campaign/Flight.** No auto-pause.
+
+### IN
+
+1. **Explainability contract** — expose structured observed values alongside reason codes and locked thresholds (e.g. fail rate numerator/denominator, delivery error count, `decision_volume`, window bounds) so operators can see *why* the recommendation fired.
+2. **Operator dismiss / acknowledge** — optional **user-local** (or tenant preference) state that hides/acknowledges a recommendation in UI for a Flight/window; must **not** change Flight status, Campaign status, or Timeline. Persistence, if any, is UI/operator state only — not a runtime command.
+3. **HTTP / UI** — extend optimization read payload and Marketing detail presentation; no new write commands on Flight.
+4. **Tests** — explainability fields stable; dismiss does not mutate Flight/Campaign/Activity; company/tenant scope preserved.
 
 ### OUT
 
-- Auto-executing Pause/Resume/Complete without operator confirmation  
-- Workers / schedulers / auto-pause policies (candidate for later PR only)  
-- AI / LLM recommendations  
-- Stage 6 ROI / cohort analytics  
-- Flight Cancel · Ads Manager · Meta D2 full path  
-- New event store · changing 3E ASC list canon  
-- Budget automation as a product suite  
-- Activity emit on every optimization read  
-
-### Implementation bias
-
-Compose Stage 4 `runtime_read` + Timeline window counts (same family as `live_intake_monitor`). Prefer pure `evaluate_flight_optimization` over new tables. If persistence is required later, open a separate ownership note — default KEEP MODULE / no System Layer dictionaries.
+- Auto-pause / auto-resume / workers / schedulers  
+- Treating dismiss as Pause  
+- Changing PR-1 threshold constants without an explicit threshold-change decision  
+- Stage 6 analytics  
 
 ---
 
@@ -108,3 +112,4 @@ Compose Stage 4 `runtime_read` + Timeline window counts (same family as `live_in
 
 - 2026-07-23: Opened after Stage 4 DONE merge (#148–#151); **PR-1 locked** as read-only optimization signals.
 - 2026-07-23: Locked PR-1 inputs/thresholds/assessments; no Activity on GET; compose runtime + windowed Timeline only.
+- 2026-07-23: **PR-1 DONE** — merged #153 as `1bf3e7f4`; deploy + smoke PASS; **PR-2 locked** as explainability + dismiss/acknowledge (no Flight mutation; no auto-pause).
