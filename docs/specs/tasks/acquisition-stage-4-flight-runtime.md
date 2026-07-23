@@ -1,10 +1,10 @@
 # Acquisition Stage 4 — Flight Runtime
 
-**Status:** Active — **PR-1 in progress** (Backend Flight Runtime Contract)  
+**Status:** Active — **PR-2 in progress** (Campaign + Endpoint CRUD hardening)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §14 · §14.1  
-**Depends on:** Stage **3E** complete ✅ (Activity Timeline PR #130–#133)  
+**Depends on:** Stage **3E** complete ✅ (Activity Timeline PR #130–#133) · Stage 4 **PR-1** ✅ (#136)  
 **Parents:** [Stage 3E — Activity Timeline](acquisition-stage-3e-activity-timeline.md) · Epic P / 3D ✅  
-**Branch:** `feat/acquisition-stage-4-flight-runtime` · worktree `/opt/HostFlow-wt/acq-stage-4`  
+**Branch:** `feat/acquisition-stage-4-pr2-crud-hardening` · worktree `/opt/HostFlow-wt/acq-stage-4`  
 **Deferred (not Stage 4):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md)  
 **Next horizons:** Stage 5 Optimization · Stage 6 Analytics (see ladder below; not opened)
 
@@ -18,7 +18,7 @@
 | Stage | Layer | Verb | Status |
 |-------|--------|------|--------|
 | **3E** | Observability | See | **DONE** (#130–#133) |
-| **4** | Operations | Control | **This epic (PR-1 active)** |
+| **4** | Operations | Control | **This epic (PR-2 active)** |
 | **5** | Optimization | Improve | Future horizon |
 | **6** | Analytics | Decide | Future horizon |
 
@@ -30,8 +30,8 @@ Normative detail: [ADR-024 §14.1](../architecture/ADR-024-acquisition-campaigns
 
 | PR | Scope |
 |----|--------|
-| **PR-1** | Backend Flight Runtime Contract (commands + coupling + metadata) — **active** |
-| **PR-2** | Campaign + Endpoint operational CRUD hardening (if audit gaps remain) |
+| **PR-1** | Backend Flight Runtime Contract (commands + coupling + metadata) — ✅ #136 |
+| **PR-2** | Campaign + Endpoint operational CRUD hardening — **active** |
 | **PR-3** | Runtime Read API + Live Intake Monitor backend |
 | **PR-4** | Operations UI |
 | **PR-5** | Production hardening / provider-runtime gaps |
@@ -105,9 +105,45 @@ Wrap `transition_flight_status` — do not fork a second Flight status writer.
 
 ---
 
+## PR-2 — Campaign + Endpoint operational CRUD hardening (locked)
+
+Hardening over existing 3A/3B/PR-1 surfaces — **not** greenfield CRUD.
+
+### IN
+
+1. **Campaign status discipline** — lifecycle status forbidden on `PATCH /campaigns/{id}` (metadata only: name, description, goal_type, primary_kpi). Mirror Flight PR-1.
+2. **`CampaignCreated`** — emit on `create_campaign` (same txn as `FlightCreated`), deterministic `source_event_id`.
+3. **Campaign terminal commands** — `POST …/complete` → `completed` + `CampaignCompleted`; `POST …/archive` → `archived` + `CampaignArchived`. Idempotent retry. Does **not** auto-complete/cancel Flight (Flight complete remains PR-1 command; Cancel deferred).
+4. **Endpoint binding HTTP parity** — `PATCH …/flights/{flight_id}/forms/{link_id}` and `…/intake-sources/{link_id}` (service already accepts `flight_id`).
+5. Tests for status PATCH forbidden, CampaignCreated, complete/archive + events, flight-scoped link PATCH.
+
+### OUT
+
+- Operations UI / frontend client completeness (PR-4)  
+- Runtime Read API + Live Intake Monitor (PR-3)  
+- Multi-Flight create · Flight Cancel · unified Endpoint entity redesign  
+- IntakeSourceProfile / Binding SoT CRUD outside Acquisition  
+- Activity on every target/goal metadata edit  
+- Provider runtime · metrics · optimization
+
+### Campaign status writers (after PR-2)
+
+| Path | Status effect |
+|------|----------------|
+| `create_campaign` | → `draft` + `CampaignCreated` |
+| Flight launch / resume (PR-1) | → `active` + `CampaignActivated` if changed |
+| Flight pause (PR-1) | → `paused` + `CampaignPaused` if changed |
+| `POST …/complete` | → `completed` + `CampaignCompleted` |
+| `POST …/archive` | → `archived` + `CampaignArchived` |
+| `PATCH …` | **no status** |
+
+---
+
 ## History
 
 - 2026-07-21: Opened as **queued** epic — Stage 3E = observability only; Stage 4 = operations (Flight Runtime).  
 - 2026-07-21: Linked to maturity ladder — Operations → then Optimization (5) → Analytics (6).  
 - 2026-07-21: Stage 3E DONE; Product Track → Stage 4; worktree opened.  
-- 2026-07-21: **PR-1 locked** — Flight Runtime backend contract; Cancel deferred; Campaign sync only on launch/pause/resume.
+- 2026-07-21: **PR-1 locked** — Flight Runtime backend contract; Cancel deferred; Campaign sync only on launch/pause/resume.  
+- 2026-07-21: **PR-1 merged** (#136).  
+- 2026-07-23: **PR-2 locked** — Campaign status discipline, CampaignCreated, complete/archive commands, Endpoint PATCH parity.

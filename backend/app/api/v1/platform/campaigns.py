@@ -73,11 +73,18 @@ class CampaignCreateIn(BaseModel):
 
 
 class CampaignUpdateIn(BaseModel):
+    """Metadata-only Campaign update — lifecycle status is command-only (Stage 4 PR-2)."""
+
+    model_config = ConfigDict(extra="forbid")
+
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     description: Optional[str] = None
-    status: Optional[str] = None
     goal_type: Optional[str] = None
     primary_kpi: Optional[str] = None
+
+
+class CampaignCommandIn(BaseModel):
+    reason: Optional[str] = None
 
 
 class FormLinkIn(BaseModel):
@@ -559,6 +566,12 @@ async def update_campaign_endpoint(
 ):
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    fields = getattr(payload, "model_fields_set", None) or getattr(payload, "__fields_set__", set())
+    if "status" in fields:
+        raise HTTPException(
+            status_code=422,
+            detail="Campaign status cannot be changed via PATCH; use launch/pause/resume (Flight) or complete/archive",
+        )
     try:
         campaign = await campaign_service.update_campaign(
             db,
@@ -568,9 +581,74 @@ async def update_campaign_endpoint(
             own_company_id=own_company_id,
             name=payload.name,
             description=payload.description,
-            status=payload.status,
             goal_type=payload.goal_type,
             primary_kpi=payload.primary_kpi,
+        )
+        await db.commit()
+    except CampaignServiceError as exc:
+        await db.rollback()
+        _raise_service(exc)
+    return await _campaign_out(db, campaign)
+
+
+@router.post(
+    "/{campaign_id}/complete",
+    response_model=CampaignOut,
+    dependencies=_WRITE,
+)
+async def complete_campaign_endpoint(
+    campaign_id: str,
+    payload: Optional[CampaignCommandIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
+    body = payload or CampaignCommandIn()
+    try:
+        campaign, _event = await campaign_service.complete_campaign(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            own_company_id=own_company_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            reason=body.reason,
+        )
+        await db.commit()
+    except CampaignServiceError as exc:
+        await db.rollback()
+        _raise_service(exc)
+    return await _campaign_out(db, campaign)
+
+
+@router.post(
+    "/{campaign_id}/archive",
+    response_model=CampaignOut,
+    dependencies=_WRITE,
+)
+async def archive_campaign_endpoint(
+    campaign_id: str,
+    payload: Optional[CampaignCommandIn] = None,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
+    body = payload or CampaignCommandIn()
+    try:
+        campaign, _event = await campaign_service.archive_campaign(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            own_company_id=own_company_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            reason=body.reason,
         )
         await db.commit()
     except CampaignServiceError as exc:
@@ -1164,6 +1242,43 @@ async def detach_form_on_flight(
     return await _campaign_out(db, campaign)
 
 
+@router.patch(
+    "/{campaign_id}/flights/{flight_id}/forms/{link_id}",
+    response_model=CampaignOut,
+    dependencies=_WRITE,
+)
+async def patch_form_link_on_flight(
+    campaign_id: str,
+    flight_id: str,
+    link_id: str,
+    payload: LinkPatchIn,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
+    try:
+        campaign = await binding_service.update_form_link(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            link_id=link_id,
+            own_company_id=own_company_id,
+            flight_id=flight_id,
+            is_active=payload.is_active,
+            role=payload.role,
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
+        await db.commit()
+    except CampaignServiceError as exc:
+        await db.rollback()
+        _raise_service(exc)
+    return await _campaign_out(db, campaign)
+
+
 @router.post(
     "/{campaign_id}/flights/{flight_id}/intake-sources",
     response_model=CampaignOut,
@@ -1189,6 +1304,43 @@ async def attach_intake_source_on_flight(
             intake_source_profile_id=payload.intake_source_profile_id,
             own_company_id=own_company_id,
             flight_id=flight_id,
+            role=payload.role,
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
+        await db.commit()
+    except CampaignServiceError as exc:
+        await db.rollback()
+        _raise_service(exc)
+    return await _campaign_out(db, campaign)
+
+
+@router.patch(
+    "/{campaign_id}/flights/{flight_id}/intake-sources/{link_id}",
+    response_model=CampaignOut,
+    dependencies=_WRITE,
+)
+async def patch_intake_source_link_on_flight(
+    campaign_id: str,
+    flight_id: str,
+    link_id: str,
+    payload: LinkPatchIn,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
+    try:
+        campaign = await binding_service.update_intake_source_link(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            link_id=link_id,
+            own_company_id=own_company_id,
+            flight_id=flight_id,
+            is_active=payload.is_active,
             role=payload.role,
             actor_type=actor_type,
             actor_id=actor_id,

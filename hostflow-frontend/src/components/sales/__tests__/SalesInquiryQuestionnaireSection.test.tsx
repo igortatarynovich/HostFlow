@@ -1,6 +1,7 @@
-import { describe, expect, it, vi, afterEach } from 'vitest'
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 
 import type { Lead } from '../../../api/types'
 import { I18nProvider } from '../../../i18n'
@@ -9,11 +10,30 @@ import SalesInquiryQuestionnaireSection from '../SalesInquiryQuestionnaireSectio
 
 const getLead = vi.fn()
 const createLeadQuestionnaireInvite = vi.fn()
+const getLeadQuestionnaireInvite = vi.fn()
+const listLeadQuestionnaireForms = vi.fn()
+const previewLeadQuestionnaireInviteEmail = vi.fn()
+const sendLeadQuestionnaireInviteEmail = vi.fn()
 
 vi.mock('../../../api/client', () => ({
   getLead: (...args: unknown[]) => getLead(...args),
   createLeadQuestionnaireInvite: (...args: unknown[]) => createLeadQuestionnaireInvite(...args),
+  getLeadQuestionnaireInvite: (...args: unknown[]) => getLeadQuestionnaireInvite(...args),
+  listLeadQuestionnaireForms: (...args: unknown[]) => listLeadQuestionnaireForms(...args),
+  previewLeadQuestionnaireInviteEmail: (...args: unknown[]) => previewLeadQuestionnaireInviteEmail(...args),
+  sendLeadQuestionnaireInviteEmail: (...args: unknown[]) => sendLeadQuestionnaireInviteEmail(...args),
 }))
+
+beforeEach(() => {
+  listLeadQuestionnaireForms.mockResolvedValue([
+    { id: 'form-1', title: 'B2B intake', purpose: 'questionnaire' },
+  ])
+  getLeadQuestionnaireInvite.mockResolvedValue(null)
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: vi.fn().mockResolvedValue(undefined) },
+  })
+})
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -36,11 +56,13 @@ const clientLead = {
 
 function renderSection() {
   return render(
-    <I18nProvider initialLocale="pl">
-      <ToastProvider>
-        <SalesInquiryQuestionnaireSection leadId={clientLead.id} />
-      </ToastProvider>
-    </I18nProvider>,
+    <MemoryRouter>
+      <I18nProvider initialLocale="en">
+        <ToastProvider>
+          <SalesInquiryQuestionnaireSection leadId={clientLead.id} />
+        </ToastProvider>
+      </I18nProvider>
+    </MemoryRouter>,
   )
 }
 
@@ -51,8 +73,9 @@ describe('SalesInquiryQuestionnaireSection', () => {
     renderSection()
 
     expect(await screen.findByTestId('sales-inquiry-questionnaire')).toBeInTheDocument()
-    expect(screen.getByText(/Ankieta klienta/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Wyślij ankietę/i })).toBeInTheDocument()
+    expect(screen.getByTestId('sales-questionnaire-panel')).toBeInTheDocument()
+    expect(screen.getByText(/B2B questionnaire/i)).toBeInTheDocument()
+    expect(screen.getByTestId('sales-questionnaire-email-open')).toBeInTheDocument()
   })
 
   it('does not hydrate invite on load while status is not_sent', async () => {
@@ -64,7 +87,7 @@ describe('SalesInquiryQuestionnaireSection', () => {
     expect(createLeadQuestionnaireInvite).not.toHaveBeenCalled()
   })
 
-  it('creates invite link from sales workspace', async () => {
+  it('creates invite link from sales workspace More menu', async () => {
     getLead.mockResolvedValue(clientLead)
     createLeadQuestionnaireInvite.mockResolvedValue({
       id: 'invite-1',
@@ -76,17 +99,19 @@ describe('SalesInquiryQuestionnaireSection', () => {
     })
 
     renderSection()
-    await screen.findByRole('button', { name: /Wyślij ankietę/i })
-
-    await userEvent.click(screen.getByRole('button', { name: /Wyślij ankietę/i }))
+    await screen.findByTestId('sales-questionnaire-more')
+    await userEvent.click(screen.getByTestId('sales-questionnaire-more'))
+    await userEvent.click(screen.getByRole('button', { name: /Copy link/i }))
 
     await waitFor(() => {
-      expect(createLeadQuestionnaireInvite).toHaveBeenCalledWith(clientLead.id, { mark_sent: true })
+      expect(createLeadQuestionnaireInvite).toHaveBeenCalledWith(
+        clientLead.id,
+        expect.objectContaining({ mark_sent: true }),
+      )
     })
-    expect(await screen.findByText(/\/public\/apply\/abc/)).toBeInTheDocument()
   })
 
-  it('shows view answers as primary action after submit without hydrating invite', async () => {
+  it('shows answers view after submit without hydrating invite', async () => {
     getLead.mockResolvedValue({
       ...clientLead,
       normalized: {
@@ -96,13 +121,22 @@ describe('SalesInquiryQuestionnaireSection', () => {
           need_type: 'client_acquisition',
           primary_outcome: 'more_inquiries',
         },
+        submissions_v1: [
+          {
+            submission_id: 'sub-1',
+            submitted_at: '2026-07-14T13:00:00.000Z',
+            target_entity_profile_code: 'service_sales.targeted_advertising',
+            normalized_values: {
+              'service_sales.targeted_advertising.need_type': 'client_acquisition',
+              'service_sales.targeted_advertising.primary_outcome': 'more_inquiries',
+            },
+          },
+        ],
       },
     })
 
     renderSection()
 
-    expect(await screen.findByRole('button', { name: /Przeglądaj odpowiedzi/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Wyślij ankietę/i })).not.toBeInTheDocument()
     expect(await screen.findByTestId('sales-questionnaire-answers')).toBeInTheDocument()
     expect(createLeadQuestionnaireInvite).not.toHaveBeenCalled()
   })

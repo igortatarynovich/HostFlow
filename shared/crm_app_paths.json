@@ -136,6 +136,7 @@
     "activitiesLegacy": "/app/activities",
     "recruitmentSearches": "/app/recruitment/searches",
     "recruitmentSearchesNew": "/app/recruitment/searches/new",
+    "recruitmentInbox": "/app/recruitment/inbox",
     "setup": "/app/setup",
     "setupClient": "/app/setup/client",
     "setupVacancy": "/app/setup/vacancy",
@@ -262,6 +263,38 @@
       {
         "name": "INBOX_THREADS_BASE",
         "path_key": "inboxThreadsBase"
+      },
+      {
+        "name": "ONBOARDING_COMPANY",
+        "path_key": "onboardingCompany"
+      },
+      {
+        "name": "SETUP_CLIENT",
+        "path_key": "setupClient"
+      },
+      {
+        "name": "SETUP_VACANCY",
+        "path_key": "setupVacancy"
+      },
+      {
+        "name": "SETUP_PROCESS",
+        "path_key": "setupProcess"
+      },
+      {
+        "name": "SETUP_INTAKE",
+        "path_key": "setupIntake"
+      },
+      {
+        "name": "SETTINGS_USERS",
+        "path_key": "settingsUsers"
+      },
+      {
+        "name": "RECRUITMENT_SEARCHES",
+        "path_key": "recruitmentSearches"
+      },
+      {
+        "name": "RECRUITMENT_INBOX",
+        "path_key": "recruitmentInbox"
       }
     ],
     "functions": [

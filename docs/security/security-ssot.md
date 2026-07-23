@@ -341,6 +341,16 @@ Handoff — **контролируемая** видимость между те�
 - **Docker:** минимальные образы; сканирование (Trivy и т.п.).
 - **Frontend:** `npm audit` / dependency review в CI.
 
+### 18.1 Known constraint — Starlette vs FastAPI pin
+
+Runtime pin: `fastapi==0.115.6` + `prometheus-fastapi-instrumentator==7.0.0` (see `AGENTS.md`).
+That FastAPI release resolves `starlette` into the `0.41.x` band. Several advisory fix versions require
+`starlette>=0.47` / `1.x`, which is incompatible without a coordinated FastAPI + instrumentator upgrade.
+
+Until that upgrade lands as its own dependency PR, `security-gates` pip-audit may ignore the listed
+Starlette advisory IDs in `.github/workflows/security-gates.yml` (commented next to `--ignore-vuln`).
+New **critical** findings outside that allowlist remain merge-blocking.
+
 Детали внедрения — в `.github/workflows/*` (отдельные PR).
 
 ---

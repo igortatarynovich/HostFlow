@@ -71,7 +71,17 @@ jobs:
       - name: Install pip-audit
         run: pip install pip-audit
       - name: Audit backend requirements
-        run: pip-audit -r backend/requirements.txt --strict
+        # Starlette advisories require >=0.47/1.x; fastapi==0.115.6 pins starlette 0.41.x
+        # (AGENTS.md / docs/security/security-ssot.md §18.1). Remove ignores with FastAPI upgrade PR.
+        run: >-
+          pip-audit -r backend/requirements.txt --strict
+          --ignore-vuln PYSEC-2026-161
+          --ignore-vuln PYSEC-2026-248
+          --ignore-vuln PYSEC-2026-249
+          --ignore-vuln PYSEC-2026-1941
+          --ignore-vuln PYSEC-2026-1942
+          --ignore-vuln PYSEC-2026-2280
+          --ignore-vuln PYSEC-2026-2281
 
   frontend-npm-audit:
     name: npm audit + sensitive high gate

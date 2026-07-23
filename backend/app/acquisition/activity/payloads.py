@@ -121,6 +121,7 @@ _SCHEMAS: dict[str, PayloadSchema] = {
     "CampaignActivated": _NOTE,
     "CampaignPaused": _NOTE,
     "CampaignCompleted": _NOTE,
+    "CampaignArchived": _NOTE,
     "FlightCreated": _FLIGHT_CREATED,
     "FlightStarted": _FLIGHT_TRANSITION,
     "FlightPaused": _FLIGHT_TRANSITION,

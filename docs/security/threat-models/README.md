@@ -14,5 +14,6 @@
 | [exports.md](./exports.md) | Insider, bulk CSV, скрытые поля, rate limits |
 | [client-account-manual-creation.md](./client-account-manual-creation.md) | Manual `ClientAccount` create: tenant/company bind, duplicates, idempotency, origin forgery |
 | [acquisition-activity-timeline.md](./acquisition-activity-timeline.md) | Stage 3E Activity Timeline: append-only audit, RLS, tenant-scoped idempotency, no Ops FKs |
+| [acquisition-flight-runtime.md](./acquisition-flight-runtime.md) | Stage 4 Flight Runtime: platform campaign/flight APIs, RBAC/company-scope, lifecycle commands, delivery-error activity |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).

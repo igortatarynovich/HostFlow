@@ -1,5 +1,7 @@
 /** Operator-facing labels for intake form purpose, profile, and answer routing (ADR-022). */
 
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
+
 export type FormPurposeKey =
   | 'inquiry'
   | 'application'
@@ -88,9 +90,9 @@ export function salesModuleLabel(entityProfileCode: string | null | undefined): 
 
 export function salesInboxPath(entityProfileCode: string | null | undefined): string {
   const code = String(entityProfileCode || '')
-  if (code.startsWith('service_sales.')) return '/app/sales'
-  if (code.startsWith('recruitment.')) return '/app/recruitment/inbox'
-  return '/app/leads'
+  if (code.startsWith('service_sales.')) return CRM_APP_PATHS.sales
+  if (code.startsWith('recruitment.')) return CRM_APP_PATHS.recruitmentInbox
+  return CRM_APP_PATHS.leads
 }
 
 export function publicSubmitBehaviorLabel(definition: FormDefinitionLike | null | undefined): string {
