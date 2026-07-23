@@ -35,6 +35,14 @@ from backend.app.modules.intake_routing.meta_bridge import meta_external_key, me
 from backend.app.modules.intake_routing.reference import normalize_route_intent
 from backend.app.modules.leads.service._helpers import _load_tenant_business_type
 from backend.app.entity_profile.vacancy_bridge import resolve_entity_profile_hints_from_vacancy
+from backend.app.constants.spa_paths import (
+    ONBOARDING_COMPANY,
+    SETTINGS_USERS,
+    SETUP_CLIENT,
+    SETUP_INTAKE,
+    SETUP_PROCESS,
+    SETUP_VACANCY,
+)
 from backend.app.platform.next_action.contracts import NextActionCandidate, ReachabilityContext
 from backend.app.platform.next_action.publisher import publish_first_reachable_next_action
 
@@ -45,22 +53,6 @@ GateStatus = Literal["pass", "fail", "not_applicable"]
 BusinessType = Literal["agency", "employer", "services"]
 
 GATE_ORDER: tuple[GateId, ...] = ("G0", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8")
-
-# SPA paths (shared/crm_app_paths.json — not all are in spa_paths.py yet)
-SPA_MY_COMPANY = "/app/my-company"
-SPA_ONBOARDING_COMPANY = "/app/onboarding/company"
-SPA_SETUP_CLIENT = "/app/setup/client"
-SPA_SETUP_VACANCY = "/app/setup/vacancy"
-SPA_SETUP_PROCESS = "/app/setup/process"
-SPA_SETUP_INTAKE = "/app/setup/intake"
-SPA_CLIENTS = "/app/clients"
-SPA_VACANCY_NEW = "/app/vacancies/new"
-SPA_SETTINGS_FUNNELS = "/app/settings/funnels"
-SPA_SETTINGS_CANDIDATE_PROFILES = "/app/settings/candidate-profiles"
-SPA_SETTINGS_INTEGRATIONS = "/app/settings/integrations"
-SPA_SETTINGS_LEAD_FORMS = "/app/settings/lead-forms"
-SPA_SETTINGS_USERS = "/app/settings/users"
-SPA_SETTINGS_LEADS = "/app/settings/leads"
 
 
 @dataclass(frozen=True)
@@ -347,15 +339,15 @@ def _evaluate_gate(gate_id: GateId, ctx: SetupReadinessContext) -> SetupGateResu
 
 
 NEXT_ACTIONS: dict[GateId, SetupNextAction] = {
-    "G0": SetupNextAction("G0", "setup.gate.g0.admin_user", SPA_SETTINGS_USERS),
-    "G1": SetupNextAction("G1", "setup.gate.g1.company", SPA_ONBOARDING_COMPANY),
-    "G2": SetupNextAction("G2", "setup.gate.g2.client", SPA_SETUP_CLIENT),
-    "G3": SetupNextAction("G3", "setup.gate.g3.vacancy", SPA_SETUP_VACANCY),
-    "G4": SetupNextAction("G4", "setup.gate.g4.funnel", SPA_SETUP_PROCESS),
-    "G5": SetupNextAction("G5", "setup.gate.g5.profile", SPA_SETUP_PROCESS),
-    "G6": SetupNextAction("G6", "setup.gate.g6.intake", SPA_SETUP_INTAKE),
-    "G7": SetupNextAction("G7", "setup.gate.g7.intake", SPA_SETUP_INTAKE),
-    "G8": SetupNextAction("G8", "setup.gate.g8.intake", SPA_SETUP_INTAKE),
+    "G0": SetupNextAction("G0", "setup.gate.g0.admin_user", SETTINGS_USERS),
+    "G1": SetupNextAction("G1", "setup.gate.g1.company", ONBOARDING_COMPANY),
+    "G2": SetupNextAction("G2", "setup.gate.g2.client", SETUP_CLIENT),
+    "G3": SetupNextAction("G3", "setup.gate.g3.vacancy", SETUP_VACANCY),
+    "G4": SetupNextAction("G4", "setup.gate.g4.funnel", SETUP_PROCESS),
+    "G5": SetupNextAction("G5", "setup.gate.g5.profile", SETUP_PROCESS),
+    "G6": SetupNextAction("G6", "setup.gate.g6.intake", SETUP_INTAKE),
+    "G7": SetupNextAction("G7", "setup.gate.g7.intake", SETUP_INTAKE),
+    "G8": SetupNextAction("G8", "setup.gate.g8.intake", SETUP_INTAKE),
 }
 
 
