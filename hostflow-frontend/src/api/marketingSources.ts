@@ -1,4 +1,4 @@
-import { api } from './http'
+import http from './http'
 
 export type MarketingSourceConnectionStatus = 'connected' | 'attention' | 'disconnected'
 export type MarketingSourceMappingHealth = 'ready' | 'needs_review' | 'broken'
@@ -33,6 +33,6 @@ export type MarketingSourceListResponse = {
 }
 
 export async function listMarketingSources(): Promise<MarketingSourceSummary[]> {
-  const { data } = await api.get<MarketingSourceListResponse>('/platform/marketing/sources')
+  const { data } = await http.get<MarketingSourceListResponse>('/platform/marketing/sources')
   return Array.isArray(data?.items) ? data.items : []
 }

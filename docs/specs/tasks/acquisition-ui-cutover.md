@@ -286,7 +286,13 @@ Scan tests: `backend/tests/api/test_acquisition_c2_legacy_launch_disabled.py`, `
 
 ### Locked contract — Meta Ad ID → Campaign/Flight (before runtime PR)
 
-Short decision in this Acquisition SoT. No new ADR unless a real L0/L1 gap appears. Runtime implements this contract in **one** follow-up PR after C-3.
+Short decision in this Acquisition SoT. No new ADR unless a real L0/L1 gap appears. Runtime implements this contract in **one** follow-up PR after C-3 merges.
+
+**Inventory (2026-07-23) — locked:**
+
+- `meta_ads_map` stays **Ad ID → Vacancy only** (do not overload with Flight).
+- Flight attribution needs a **separate** binding table (do not extend `CampaignRunForm` / `CampaignRunIntakeSource`).
+- Unique key must be composite `(tenant_id, provider, provider_ad_id)` — **never** global `PK = ad_id` (meta_ads_map anti-pattern).
 
 #### 1. Fact of receipt (Submission)
 
@@ -295,7 +301,7 @@ For Meta, the existing **`Lead`** with raw/`normalized` payload **is** the Submi
 - store payload;
 - store `ad_id`;
 - tell whether Candidate/Application already exists;
-- reprocess idempotently.
+- reprocess idempotently (`tenant+source+external_id`, Application `(tenant, candidate_id, lead_id)`).
 
 Ingest always persists Lead. Routing may stop without creating Candidate/Application.
 
@@ -305,37 +311,78 @@ Ingest always persists Lead. Routing may stop without creating Candidate/Applica
 
 Resolution order:
 
-1. Exact active binding **Ad ID → Flight**;
-2. If none — do **not** route (no Candidate/Application);
+1. Exact **active** binding Ad ID → Flight;
+2. If none — do **not** route (no Candidate/Application); reason `missing_campaign_flight`;
 3. Form ID, Page ID, IntakeSourceProfile **must not** pick a different Flight;
 4. **`profile_default` is forbidden** for such a submission.
 
 Form / Source remain for Meta connection, field mapping, intake type, diagnostics, and Source UI — **not** for ad attribution.
 
-#### 3. Where to store Ad ID → Campaign/Flight
+#### 3. Binding schema — `FlightAdBinding` (minimal)
 
-Do **not** overload `CampaignRunForm` or `CampaignRunIntakeSource` (those are Form/Source associations).
+Table (name illustrative; acquisition schema): e.g. `acq_flight_ad_bindings`.
 
-Prefer a dedicated acquisition binding (e.g. `FlightAdBinding`):
+| Column | Notes |
+|--------|--------|
+| `id` | UUID PK |
+| `tenant_id` | RLS / isolation |
+| `provider` | e.g. `meta` |
+| `provider_ad_id` | string (Meta ad id as text) |
+| `campaign_id` | FK → campaign; must own `flight_id` |
+| `flight_id` | FK → campaign run (Flight) |
+| `is_active` | bool |
+| `created_at` / `updated_at` | timestamps |
 
-- `tenant_id`, `provider`, `provider_ad_id`, `campaign_id`, `flight_id`, `active`, `created_at`, `updated_at`
-- Unique active route for `(tenant_id, provider, provider_ad_id)`
-- Flight must belong to Campaign; tenant isolation
-- Deactivate/delete binding must **not** delete received Leads
+**Constraints**
 
-**Before creating a new table:** check whether `meta_ads_map` (`ad_id → vacancy_id` today) can be migrated toward Target/Flight, or whether a Flight binding should sit **beside** it — avoid a third SoT for the same Ad ID. Decision in the runtime PR after a short inventory of `meta_ads_map` consumers.
+- Unique **active** route: `(tenant_id, provider, provider_ad_id)` where `is_active` (partial unique index preferred).
+- Flight must belong to Campaign and same tenant.
+- Deactivate/delete binding must **not** delete Leads.
+- Do **not** reuse `meta_ads_map.ad_id` as lone PK.
 
-#### 4. Runtime PR scope (single PR)
+`meta_ads_map` remains Vacancy SoT for the same Ad ID (second table, different concern).
 
-1. Resolver Ad ID → Flight  
-2. Forbid `profile_default` for Meta with `ad_id`  
-3. Persist Lead without Candidate/Application when binding missing  
-4. Reason `missing_campaign_flight` (operator copy: Campaign/Flight для этого Ad ID не настроены)  
-5. **Automatic** reprocess on create / activate / change of Ad binding — **no** “Process waiting submissions” button  
-6. Idempotency on the original Meta lead  
-7. Activity (when catalog already supports): `SubmissionReceived`, `RoutingFailed` (`missing_campaign_flight`), `RoutingCompleted`, `CandidateCreated`, `ApplicationCreated` if present  
+#### 4. Write points (binding)
 
-**Auto-reprocess filter (strict):** same tenant + provider + exact `ad_id`; no Candidate/Application yet; stopped specifically for `missing_campaign_flight`. Do **not** re-run all `needs_routing` (mapping / source / corrupt payloads stay untouched).
+| Point | When |
+|-------|------|
+| Marketing setup / Flight ops API | Operator links Meta Ad ID to a Flight (create / update / activate) |
+| Deactivate / reassign API | Operator turns off or moves Ad → another Flight |
+| **Not** | Meta webhook ingest (read-only consumer of binding) |
+| **Not** | `meta_ads_map` CRUD (Vacancy only; no dual-write of Flight) |
+
+First runtime PR: backend binding CRUD (or attach on existing Flight endpoints) + resolver/reprocess. Marketing UI CTA may deep-link setup; full Ad-picker UX can follow if needed.
+
+#### 5. Auto-reprocess trigger
+
+After **successful commit** of: create active binding, activate (`is_active` false→true), or change `flight_id` on an active binding for `(tenant, provider, ad_id)`:
+
+1. Select Leads where `tenant_id` match, `source`/`provider` = binding provider, `ad_id` exact match;
+2. No `candidate_id` (and no Application for this lead);
+3. Stopped for **`missing_campaign_flight`** only (`lead.error` and/or `acquisition_routing_v1.unresolved_reason`);
+4. Re-run existing idempotent process path (`process_normalized_lead` / equivalent) per lead.
+
+No “Process waiting” button. Do **not** reprocess other `needs_routing` causes.
+
+#### 6. Vacancy after Flight (priority)
+
+Once Flight is resolved from Ad binding:
+
+1. **CampaignTarget** on that Campaign: primary target with `target_type=vacancy` → `target_id` as vacancy;
+2. Else **`meta_ads_map`** for the same Ad ID → Vacancy;
+3. Else leave Lead without Candidate; vacancy unresolved reason (distinct from `missing_campaign_flight`).
+
+Do not invent a third Vacancy SoT.
+
+#### 7. Runtime PR scope (single PR after C-3)
+
+1. Migration + model `FlightAdBinding`  
+2. Resolver Ad ID → Flight; Meta+`ad_id` path ignores Form/Profile Flight and forbids `profile_default`  
+3. Persist Lead + `missing_campaign_flight` when no active binding  
+4. Binding write API + auto-reprocess trigger (filter above)  
+5. Vacancy priority §6  
+6. Activity: `SubmissionReceived`, `RoutingFailed` (`missing_campaign_flight`), `RoutingCompleted`, `CandidateCreated`, `ApplicationCreated` if in catalog  
+7. Tests: no Candidate without binding; Form/Profile cannot override; reprocess idempotent; only `missing_campaign_flight` rows reprocessed  
 
 **C-4 field discovery table:** provider field · sample (masked) · proposed HostFlow target · action (confirm / select).
 
@@ -434,3 +481,4 @@ Minimum epic intent (lock later in its own task doc):
 - 2026-07-23: Locked **two lifecycles** (Onboarding vs Operations) and Marketing IA evolution: during C-3…C-7 Sources holds Connection/Mapping/Health; after C-7 **Diagnostics** is a top-level Marketing tool (not a Sources tab), provider-agnostic.
 - 2026-07-23: Locked closure: **C-7 PASS ends Acquisition UI cutover / migration**; further Acquisition work is product evolution (Diagnostics, Stage 5+, analytics, automation, AI) — not another model move.
 - 2026-07-23: **C-3 Sources** — inventory + Mapping Health + **waiting visibility** over current `needs_routing` (read-only). Limitation: full Meta waiting semantics under Ad ID → Flight = separate runtime PR. Locked SoT contract: Lead = Meta Submission; route by Ad ID; no Form/Profile Flight override; forbid `profile_default`; dedicated Ad→Flight binding (check `meta_ads_map` first); auto-reprocess only `missing_campaign_flight` rows.
+- 2026-07-23: Inventory closed — keep `meta_ads_map` as Vacancy only; add `FlightAdBinding` with composite unique `(tenant_id, provider, provider_ad_id)`; vacancy after Flight = CampaignTarget(vacancy) then meta_ads_map; write points + auto-reprocess trigger formalized in cutover SoT (runtime code still gated on C-3 merge).
