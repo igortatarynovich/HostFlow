@@ -86,13 +86,13 @@ Stage 5 PR-2             = PAUSED until this cutover closes
 
 ## PR sequence (initial)
 
-| PR | Scope |
-|----|--------|
-| **C-1** | Nav: Marketing top-level section; remove from Sales bucket; Activity under Marketing |
-| **C-2** | Forms under Marketing (`/app/marketing/forms`…) — list/new/detail/builder/publish/public URL/routing destination; keep Forms SoT ownership |
-| **C-3** | Marketing Setup: choose existing form **or** create form in-flow and return |
-| **C-4** | Подборы decommission: block create; redirect/read-only; migrated → Campaign; unresolved → reconciliation queue |
-| **C-5** | Production nav + smoke acceptance; close Stage 4 product cutover gate |
+| PR | Scope | Status |
+|----|--------|--------|
+| **C-1** | Nav: Marketing top-level section; remove from Sales bucket; Activity under Marketing | **In progress** — `feat/acquisition-ui-cutover-c1-marketing-navigation` |
+| **C-2** | Forms under Marketing (`/app/marketing/forms`…) — list/new/detail/builder/publish/public URL/routing destination; keep Forms SoT ownership | Next |
+| **C-3** | Marketing Setup: choose existing form **or** create form in-flow and return | — |
+| **C-4** | Подборы decommission: block create; redirect/read-only; migrated → Campaign; unresolved → reconciliation queue | — |
+| **C-5** | Production nav + smoke acceptance; close Stage 4 product cutover gate | — |
 
 Exact PR split may compress if slices stay small — one concern per PR still applies.
 

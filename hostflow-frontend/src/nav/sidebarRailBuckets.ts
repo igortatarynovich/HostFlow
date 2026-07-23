@@ -35,8 +35,14 @@ export const SIDEBAR_AGENCY_RECRUITMENT_ORDER = [
 /** HR / Workforce owns Employee Workspace after handoff. */
 export const SIDEBAR_AGENCY_HR_ORDER = ['hr-workspace'] as const
 
-/** Sales owns Inquiry + ClientAccount — not Invoice/Payment model. Marketing = Campaign/Flight workspace. */
-export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'marketing', 'clients'] as const
+/**
+ * Marketing / Growth — Campaign + Flight operator surface (+ Activity Timeline).
+ * Top-level rail section; must not nest under Sales (Acquisition UI Cutover C-1).
+ */
+export const SIDEBAR_AGENCY_MARKETING_ORDER = ['marketing', 'acquisition-activity'] as const
+
+/** Sales owns Inquiry + ClientAccount — not Invoice/Payment model; not Growth/Campaigns. */
+export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'clients'] as const
 
 /** Services owns catalog + service order lifecycle. */
 export const SIDEBAR_AGENCY_SERVICES_ORDER = ['service-orders', 'services'] as const
@@ -55,7 +61,7 @@ export const SIDEBAR_AGENCY_PROCESSING_ORDER = [] as const
 export const SIDEBAR_AGENCY_TEAM_ORDER = ['team-availability', 'my-availability', 'time-off'] as const
 /** Document Hub — platform horizontal (ADR-009). */
 export const SIDEBAR_AGENCY_DOCUMENTS_ORDER = ['documents'] as const
-export const SIDEBAR_AGENCY_AUTOMATIONS_ORDER = ['automations', 'acquisition-activity'] as const
+export const SIDEBAR_AGENCY_AUTOMATIONS_ORDER = ['automations'] as const
 export const SIDEBAR_AGENCY_INTEGRATIONS_ORDER = ['settings-integrations'] as const
 export const SIDEBAR_AGENCY_ANALYTICS_ORDER = [] as const
 export const SIDEBAR_AGENCY_ORGANIZATION_ORDER = ['my-company'] as const
@@ -107,6 +113,7 @@ const _agencyRailKeyParts: readonly (readonly string[])[] = [
   SIDEBAR_AGENCY_INBOX_ORDER,
   SIDEBAR_AGENCY_RECRUITMENT_ORDER,
   SIDEBAR_AGENCY_HR_ORDER,
+  SIDEBAR_AGENCY_MARKETING_ORDER,
   SIDEBAR_AGENCY_SALES_ORDER,
   SIDEBAR_AGENCY_SERVICES_ORDER,
   SIDEBAR_AGENCY_FINANCE_ORDER,
