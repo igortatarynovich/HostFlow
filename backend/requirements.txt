@@ -5,6 +5,7 @@ SQLAlchemy>=2.0
 alembic>=1.13
 pydantic>=2.8
 pydantic-settings>=2.3
+jsonschema>=4.22.0
 aiosqlite>=0.20
 asyncpg>=0.29
 asgi-lifespan>=2.1
