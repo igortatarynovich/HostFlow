@@ -1,22 +1,25 @@
 /**
- * Marketing Flight card — status, bindings, actions, recent leads, activity, funnel.
+ * Marketing Flight ops card — runtime controls, KPI strip, Live Intake Monitor.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import {
-  listAcquisitionActivity,
-  type AcquisitionActivityEvent,
-} from '../../api/acquisitionActivity'
 import { getVacancy } from '../../api/vacancies'
 import { listAdditionalServices } from '../../api/additionalServices'
 import {
+  archiveCampaign,
+  completeCampaign,
+  completeFlight,
   currentFlight,
   getCampaign,
+  getFlightRuntime,
+  getLiveIntakeMonitor,
   launchFlight,
   pauseFlight,
   resumeFlight,
   type Campaign,
+  type FlightRuntime,
+  type LiveIntakeMonitor,
 } from '../../api/platformCampaigns'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { PageHeader } from '../../components/nav/PageHeader'
@@ -24,16 +27,11 @@ import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { formatDateTime } from '../../utils/dateFormat'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { humanizeEventType } from '../acquisition/acquisitionActivityPresentation'
 import {
-  formatActivityDetailsJson,
-  humanizeEventType,
-} from '../acquisition/acquisitionActivityPresentation'
-import {
-  countFlightFunnel,
   formPublicUrl,
   primaryForm,
   primarySource,
-  recentSubmissionEvents,
   statusLabel,
   statusTone,
 } from './marketingPresentation'
@@ -42,7 +40,8 @@ export default function MarketingCampaignDetailPage() {
   const { t, locale } = useI18n()
   const { campaignId = '' } = useParams<{ campaignId: string }>()
   const [campaign, setCampaign] = useState<Campaign | null>(null)
-  const [events, setEvents] = useState<AcquisitionActivityEvent[]>([])
+  const [runtime, setRuntime] = useState<FlightRuntime | null>(null)
+  const [monitor, setMonitor] = useState<LiveIntakeMonitor | null>(null)
   const [destinationLabel, setDestinationLabel] = useState<string>('—')
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
@@ -56,11 +55,18 @@ export default function MarketingCampaignDetailPage() {
     try {
       const c = await getCampaign(campaignId)
       setCampaign(c)
-      const activity = await listAcquisitionActivity({
-        campaign_id: campaignId,
-        limit: 100,
-      })
-      setEvents(activity.items)
+      const flight = currentFlight(c)
+      if (flight) {
+        const [rt, mon] = await Promise.all([
+          getFlightRuntime(c.id, flight.id),
+          getLiveIntakeMonitor(c.id, flight.id, { limit: 40 }),
+        ])
+        setRuntime(rt)
+        setMonitor(mon)
+      } else {
+        setRuntime(null)
+        setMonitor(null)
+      }
 
       const target = c.targets?.[0]
       if (target?.target_type === 'vacancy' && target.target_id) {
@@ -90,6 +96,8 @@ export default function MarketingCampaignDetailPage() {
         ),
       )
       setCampaign(null)
+      setRuntime(null)
+      setMonitor(null)
     } finally {
       setLoading(false)
     }
@@ -102,33 +110,55 @@ export default function MarketingCampaignDetailPage() {
   const flight = campaign ? currentFlight(campaign) : null
   const form = primaryForm(flight)
   const source = primarySource(flight)
-  const funnel = useMemo(
-    () => countFlightFunnel(events, flight?.id),
-    [events, flight?.id],
-  )
-  const recent = useMemo(
-    () => recentSubmissionEvents(events, flight?.id, 8),
-    [events, flight?.id],
-  )
 
-  const flightStatus = flight?.status || 'planned'
+  const flightStatus = runtime?.flight_status || flight?.status || 'planned'
+  const campaignStatus = runtime?.campaign_status || campaign?.status || 'draft'
   const canLaunch = flightStatus === 'planned'
   const canPause = flightStatus === 'active'
   const canResume = flightStatus === 'paused'
+  const canCompleteFlight = flightStatus === 'active'
+  const canCompleteCampaign = ['draft', 'active', 'paused'].includes(campaignStatus)
+  const canArchiveCampaign = ['draft', 'active', 'paused', 'completed'].includes(campaignStatus)
 
-  async function runCommand(kind: 'launch' | 'pause' | 'resume') {
+  async function runFlightCommand(kind: 'launch' | 'pause' | 'resume' | 'complete') {
     if (!campaign || !flight) return
     setActing(true)
     setError(null)
     try {
-      const fn = kind === 'launch' ? launchFlight : kind === 'pause' ? pauseFlight : resumeFlight
-      const result = await fn(campaign.id, flight.id)
-      setCampaign(result.campaign)
-      const activity = await listAcquisitionActivity({
-        campaign_id: campaign.id,
-        limit: 100,
-      })
-      setEvents(activity.items)
+      const fn =
+        kind === 'launch'
+          ? launchFlight
+          : kind === 'pause'
+            ? pauseFlight
+            : kind === 'resume'
+              ? resumeFlight
+              : completeFlight
+      await fn(campaign.id, flight.id)
+      await load()
+    } catch (err: unknown) {
+      setError(
+        getFriendlyErrorInfo(
+          err,
+          t('app.marketing.detail.errors.command', { defaultValue: 'Не удалось выполнить действие' }),
+          t,
+        ),
+      )
+    } finally {
+      setActing(false)
+    }
+  }
+
+  async function runCampaignCommand(kind: 'complete' | 'archive') {
+    if (!campaign) return
+    setActing(true)
+    setError(null)
+    try {
+      const next =
+        kind === 'complete'
+          ? await completeCampaign(campaign.id)
+          : await archiveCampaign(campaign.id)
+      setCampaign(next)
+      await load()
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
@@ -145,6 +175,26 @@ export default function MarketingCampaignDetailPage() {
   const publicUrl = formPublicUrl(form?.public_slug)
   const sourceLabel =
     source?.name || source?.provider || (form ? 'Публичная форма' : '—')
+  const counters = monitor?.counters
+  const kpiTiles = [
+    { label: 'Заявки', value: counters?.submissions ?? 0 },
+    { label: 'Направлено', value: counters?.routing_completed ?? 0 },
+    { label: 'Ошибки маршрута', value: counters?.routing_failed ?? 0 },
+    { label: 'Лиды (KPI)', value: counters?.kpi_leads ?? 0 },
+    {
+      label: 'CPL',
+      value:
+        counters?.cost_per_lead != null
+          ? `${counters.cost_per_lead}${counters.currency ? ` ${counters.currency}` : ''}`
+          : '—',
+    },
+    {
+      label: 'Spend',
+      value: counters
+        ? `${counters.spend}${counters.currency ? ` ${counters.currency}` : ''}`
+        : '0',
+    },
+  ]
 
   return (
     <PageShell>
@@ -153,7 +203,7 @@ export default function MarketingCampaignDetailPage() {
           title={campaign?.name || t('app.marketing.detail.title', { defaultValue: 'Кампания' })}
           subtitle={
             flight
-              ? `Flight · ${statusLabel(flight.status)}`
+              ? `Flight · ${statusLabel(flightStatus)}`
               : t('app.marketing.detail.no_flight', { defaultValue: 'Flight не найден' })
           }
           kind="browse"
@@ -175,7 +225,7 @@ export default function MarketingCampaignDetailPage() {
                     type="button"
                     className="btn-primary btn-sm"
                     disabled={acting}
-                    onClick={() => void runCommand('launch')}
+                    onClick={() => void runFlightCommand('launch')}
                     data-testid="marketing-flight-launch"
                   >
                     Запустить
@@ -186,7 +236,7 @@ export default function MarketingCampaignDetailPage() {
                     type="button"
                     className="btn-secondary btn-sm"
                     disabled={acting}
-                    onClick={() => void runCommand('pause')}
+                    onClick={() => void runFlightCommand('pause')}
                     data-testid="marketing-flight-pause"
                   >
                     Приостановить
@@ -197,10 +247,43 @@ export default function MarketingCampaignDetailPage() {
                     type="button"
                     className="btn-primary btn-sm"
                     disabled={acting}
-                    onClick={() => void runCommand('resume')}
+                    onClick={() => void runFlightCommand('resume')}
                     data-testid="marketing-flight-resume"
                   >
                     Возобновить
+                  </button>
+                ) : null}
+                {canCompleteFlight ? (
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    disabled={acting}
+                    onClick={() => void runFlightCommand('complete')}
+                    data-testid="marketing-flight-complete"
+                  >
+                    Завершить Flight
+                  </button>
+                ) : null}
+                {canCompleteCampaign ? (
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    disabled={acting}
+                    onClick={() => void runCampaignCommand('complete')}
+                    data-testid="marketing-campaign-complete"
+                  >
+                    Завершить кампанию
+                  </button>
+                ) : null}
+                {canArchiveCampaign ? (
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    disabled={acting}
+                    onClick={() => void runCampaignCommand('archive')}
+                    data-testid="marketing-campaign-archive"
+                  >
+                    В архив
                   </button>
                 ) : null}
               </div>
@@ -220,11 +303,19 @@ export default function MarketingCampaignDetailPage() {
                 <div className="text-xs text-slate-500">Кампания</div>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${statusTone(campaign.status)}`}
+                    className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${statusTone(campaignStatus)}`}
                   >
-                    {statusLabel(campaign.status)}
+                    {statusLabel(campaignStatus)}
                   </span>
                 </div>
+                {runtime ? (
+                  <div className="mt-1 text-xs text-slate-500">
+                    Endpoints: forms {runtime.endpoints.forms_active}/{runtime.endpoints.forms_total}
+                    {' · '}
+                    sources {runtime.endpoints.intake_sources_active}/
+                    {runtime.endpoints.intake_sources_total}
+                  </div>
+                ) : null}
               </div>
               <div>
                 <div className="text-xs text-slate-500">Форма</div>
@@ -255,46 +346,18 @@ export default function MarketingCampaignDetailPage() {
               </div>
             </section>
 
-            <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                { label: 'Получено', value: funnel.received },
-                { label: 'Направлено', value: funnel.routed },
-                { label: 'Ошибки маршрутизации', value: funnel.routingFailed },
-                { label: 'Дубликаты', value: funnel.duplicates },
-              ].map((kpi) => (
+            <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" data-testid="marketing-ops-kpi-strip">
+              {kpiTiles.map((kpi) => (
                 <div key={kpi.label} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
                   <div className="text-xs text-slate-500">{kpi.label}</div>
-                  <div className="mt-1 text-2xl font-semibold text-slate-900">{kpi.value}</div>
+                  <div className="mt-1 text-xl font-semibold text-slate-900">{kpi.value}</div>
                 </div>
               ))}
             </section>
 
-            <section className="rounded-xl border border-slate-200 bg-white">
-              <div className="border-b border-slate-100 px-4 py-3">
-                <h2 className="text-sm font-semibold text-slate-900">Последние заявки</h2>
-              </div>
-              {!recent.length ? (
-                <p className="px-4 py-6 text-sm text-slate-500">
-                  Пока нет заявок. Отправьте тестовую форму по публичной ссылке.
-                </p>
-              ) : (
-                <ul className="divide-y divide-slate-100">
-                  {recent.map((e) => (
-                    <li key={e.id} className="px-4 py-3 text-sm">
-                      <div className="font-medium text-slate-900">Заявка получена</div>
-                      <div className="mt-0.5 text-xs text-slate-500">
-                        {formatDateTime(e.occurred_at, locale)}
-                        {e.submission_id ? ` · ${e.submission_id.slice(0, 8)}…` : ''}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="rounded-xl border border-slate-200 bg-white">
+            <section className="rounded-xl border border-slate-200 bg-white" data-testid="marketing-live-intake-monitor">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                <h2 className="text-sm font-semibold text-slate-900">Activity Timeline</h2>
+                <h2 className="text-sm font-semibold text-slate-900">Live Intake Monitor</h2>
                 <Link
                   to={`${CRM_APP_PATHS.acquisitionActivity}?campaign_id=${encodeURIComponent(campaign.id)}${
                     flight ? `&flight_id=${encodeURIComponent(flight.id)}` : ''
@@ -304,11 +367,13 @@ export default function MarketingCampaignDetailPage() {
                   Полный таймлайн →
                 </Link>
               </div>
-              {!events.length ? (
-                <p className="px-4 py-6 text-sm text-slate-500">Событий пока нет.</p>
+              {!monitor?.items?.length ? (
+                <p className="px-4 py-6 text-sm text-slate-500">
+                  Пока нет intake-событий. Отправьте тестовую заявку по публичной ссылке.
+                </p>
               ) : (
                 <ul className="divide-y divide-slate-100">
-                  {events.slice(0, 25).map((e) => (
+                  {monitor.items.map((e) => (
                     <li key={e.id} className="px-4 py-3">
                       <button
                         type="button"
@@ -323,10 +388,24 @@ export default function MarketingCampaignDetailPage() {
                             {formatDateTime(e.occurred_at, locale)}
                           </span>
                         </div>
+                        {e.submission_id ? (
+                          <div className="mt-0.5 text-xs text-slate-500">
+                            submission {e.submission_id.slice(0, 8)}…
+                          </div>
+                        ) : null}
                       </button>
                       {expandedId === e.id ? (
                         <pre className="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs text-slate-700">
-                          {formatActivityDetailsJson(e)}
+                          {JSON.stringify(
+                            {
+                              id: e.id,
+                              event_type: e.event_type,
+                              submission_id: e.submission_id,
+                              payload: e.payload ?? {},
+                            },
+                            null,
+                            2,
+                          )}
                         </pre>
                       ) : null}
                     </li>
