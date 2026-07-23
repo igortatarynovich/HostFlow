@@ -1,12 +1,12 @@
 # Acquisition Stage 4 — Flight Runtime
 
-**Status:** Active — **PR-5 in progress** (Production hardening)  
+**Status:** ✅ **DONE** (2026-07-23) — PR-1…PR-5 merged (#136 / #148–#151)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §14 · §14.1  
-**Depends on:** Stage **3E** ✅ · PR-1…4 (#136 / #148 / #149 / #150)  
+**Depends on:** Stage **3E** complete ✅ (Activity Timeline PR #130–#133)  
 **Parents:** [Stage 3E — Activity Timeline](acquisition-stage-3e-activity-timeline.md) · Epic P / 3D ✅  
-**Branch:** `feat/acquisition-stage-4-pr5-production-hardening` · worktree `/opt/HostFlow-wt/acq-stage-4`  
+**Merged tip:** `integration/release-product-a-b` @ `903db20d`  
 **Deferred (not Stage 4):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md)  
-**Next horizons:** Stage 5 Optimization · Stage 6 Analytics (see ladder below; not opened)
+**Next:** [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (PR-1 locked)
 
 > **Operations layer** for Acquisition — Campaign / Flight day-to-day control.  
 > Uses Stage 3E Activity Timeline as **observability infrastructure**; does **not** redefine it.
@@ -18,8 +18,8 @@
 | Stage | Layer | Verb | Status |
 |-------|--------|------|--------|
 | **3E** | Observability | See | **DONE** (#130–#133) |
-| **4** | Operations | Control | **This epic (PR-5 active)** |
-| **5** | Optimization | Improve | Future horizon |
+| **4** | Operations | Control | **DONE** (#136 / #148–#151) |
+| **5** | Optimization | Improve | [Stage 5](acquisition-stage-5-optimization.md) — PR-1 locked |
 | **6** | Analytics | Decide | Future horizon |
 
 Normative detail: [ADR-024 §14.1](../architecture/ADR-024-acquisition-campaigns-intake-routing.md).
@@ -30,11 +30,11 @@ Normative detail: [ADR-024 §14.1](../architecture/ADR-024-acquisition-campaigns
 
 | PR | Scope |
 |----|--------|
-| **PR-1** | Backend Flight Runtime Contract (commands + coupling + metadata) — ✅ #136 |
-| **PR-2** | Campaign + Endpoint operational CRUD hardening — [#148](https://github.com/igortatarynovich/HostFlow/pull/148) |
-| **PR-3** | Runtime Read API + Live Intake Monitor backend — [#149](https://github.com/igortatarynovich/HostFlow/pull/149) |
-| **PR-4** | Operations UI — [#150](https://github.com/igortatarynovich/HostFlow/pull/150) |
-| **PR-5** | Production hardening / provider-runtime gaps — **active** |
+| **PR-1** | Backend Flight Runtime Contract — ✅ #136 |
+| **PR-2** | Campaign + Endpoint operational CRUD hardening — ✅ #148 |
+| **PR-3** | Runtime Read API + Live Intake Monitor backend — ✅ #149 |
+| **PR-4** | Operations UI — ✅ #150 |
+| **PR-5** | Production hardening / DeliveryErrorOccurred — ✅ #151 |
 
 ---
 
@@ -149,7 +149,9 @@ Hardening over existing 3A/3B/PR-1 surfaces — **not** greenfield CRUD.
 - 2026-07-23: **PR-2 locked** — Campaign status discipline, CampaignCreated, complete/archive commands, Endpoint PATCH parity.  
 - 2026-07-23: **PR-3 locked** — KPI HTTP + Flight runtime snapshot + Live Intake Monitor projection (composition of 3D/3E).  
 - 2026-07-23: **PR-4 locked** — Marketing detail as Flight ops surface (commands + KPI strip + Live Intake Monitor).  
-- 2026-07-23: **PR-5 locked** — hardening + DeliveryErrorOccurred from dispatcher; Meta D2 full path remains deferred.
+- 2026-07-23: **PR-5 locked** — hardening + DeliveryErrorOccurred from dispatcher; Meta D2 full path remains deferred.  
+- 2026-07-23: **Stage 4 DONE** — #148–#151 merged to `integration/release-product-a-b`; deploy + smoke on host; Product Track → Stage 5.  
+- 2026-07-23: **Merge note (baseline debt)** — Stage 4 suites/gates green; full-repo `backend-ci` pytest remains red as pre-existing integration debt ([stabilize](stabilize-integration-pytest-baseline.md)); merge accepted by repo owner without attributing that debt to Stage 4.
 
 ---
 

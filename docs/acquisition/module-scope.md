@@ -84,9 +84,10 @@ Campaign → Audience(s) → Flight → Channels
 3. **3C** ✅ — routing → Application | Inquiry (Submission before Decision Layer; routing once per Lead)  
 4. **3D** ✅ — **Epic P COMPLETE** — Result → Outcome → KPI — [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md) · E2E `test_stage_3d_epic_p_contract.py`  
 5. **Canonical Input Matrix** ✅ **READY** (design) — [`../specs/architecture/intake-canonical-input-matrix.md`](../specs/architecture/intake-canonical-input-matrix.md) · epic [`../specs/tasks/intake-canonical-input-matrix.md`](../specs/tasks/intake-canonical-input-matrix.md) **ACTIVE** — freeze Source profile → Provider → Published form → `route_intent` → handoff → Destination **before** further routing runtime  
-6. **3E** — **ACTIVE (Product Track)** — Activity Timeline observability (`AcquisitionActivityEvent`) — [`../specs/tasks/acquisition-stage-3e-activity-timeline.md`](../specs/tasks/acquisition-stage-3e-activity-timeline.md) — ends at PR-4 thin Timeline UI  
-7. **Stage 4** — **ACTIVE (PR-5)** — Flight Runtime (operations) — [`../specs/tasks/acquisition-stage-4-flight-runtime.md`](../specs/tasks/acquisition-stage-4-flight-runtime.md) — PR-1…4 open/merged stack; PR-5 hardening  
-8. **Stages 5–6** — **FUTURE** — Optimization → Analytics (ADR-024 §14.1 maturity ladder)
+6. **3E** — ✅ **DONE** — Activity Timeline observability — [`../specs/tasks/acquisition-stage-3e-activity-timeline.md`](../specs/tasks/acquisition-stage-3e-activity-timeline.md)  
+7. **Stage 4** — ✅ **DONE** (#136 / #148–#151) — Flight Runtime (operations) — [`../specs/tasks/acquisition-stage-4-flight-runtime.md`](../specs/tasks/acquisition-stage-4-flight-runtime.md)  
+8. **Stage 5** — **ACTIVE (Product Track)** — Optimization — [`../specs/tasks/acquisition-stage-5-optimization.md`](../specs/tasks/acquisition-stage-5-optimization.md) — PR-1 locked (read-only signals)  
+9. **Stage 6** — **FUTURE** — Analytics (ADR-024 §14.1 maturity ladder)
 
 **Forms Builder MVP COMPLETE** (P2.1–P2.5). Forms P3 Publish UI **LOCKED**.  
 See [`capability-contract.md`](../specs/architecture/capability-contract.md).
