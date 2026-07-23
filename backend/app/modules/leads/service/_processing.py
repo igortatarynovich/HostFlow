@@ -99,6 +99,34 @@ async def _agency_recruitment_lock_context_for_ingest(
     return True, (reason or "handoff")
 
 
+async def _apply_vacancy_hint_from_campaign_target(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    normalized: Dict[str, Any],
+    acquisition_routing: Dict[str, Any],
+) -> None:
+    """Vacancy priority after Flight: CampaignTarget(vacancy) wins over meta_ads_map."""
+    if str(acquisition_routing.get("status") or "").strip() != "routed":
+        return
+    # Explicit vacancy already set on payload wins.
+    if normalized.get("vacancy_id") or normalized.get("vacancy_id_hint"):
+        return
+    target_id = str(acquisition_routing.get("campaign_target_id") or "").strip()
+    if not target_id:
+        return
+    from backend.app.models.campaign import CampaignTarget
+
+    target = await db.get(CampaignTarget, target_id)
+    if target is None or str(target.tenant_id) != str(tenant_id):
+        return
+    if str(target.target_type or "").strip().lower() != "vacancy":
+        return
+    vid = str(target.target_id or "").strip()
+    if vid:
+        normalized["vacancy_id"] = vid
+
+
 async def process_normalized_lead(
     db: AsyncSession,
     *,
@@ -332,6 +360,12 @@ async def process_normalized_lead(
         from backend.app.acquisition.submission_routing import ACQUISITION_ROUTING_V1_KEY
 
         normalized[ACQUISITION_ROUTING_V1_KEY] = dict(intake_ctx.acquisition_routing)
+        await _apply_vacancy_hint_from_campaign_target(
+            db,
+            tenant_id=tenant_id,
+            normalized=normalized,
+            acquisition_routing=intake_ctx.acquisition_routing,
+        )
     if intake_ctx.pipeline_preset:
         normalized["intake_pipeline_preset_v1"] = intake_ctx.pipeline_preset
     if intake_ctx.own_company_id:

@@ -177,6 +177,7 @@ def _campaign_options():
         selectinload(Campaign.targets),
         selectinload(Campaign.flights).selectinload(CampaignRun.form_links),
         selectinload(Campaign.flights).selectinload(CampaignRun.intake_source_links),
+        selectinload(Campaign.flights).selectinload(CampaignRun.ad_links),
     )
 
 
