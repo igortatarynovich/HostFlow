@@ -14,7 +14,7 @@
 | # | Item | Why deferred in 3E | Suggested home |
 |---|------|--------------------|----------------|
 | D1 | **Recruitment acquisition stamp + submission normalization** | Recruitment Lead→Application paths without Acquisition stamp / submission linkage cannot emit Timeline events without inventing a second pipeline | Intake / 3C normalization slice before more Recruitment emits |
-| D2 | **Meta submission normalization** | Meta leads without a Submission row have no Timeline choke-point; do not emit from webhook adapters alone | Meta intake completeness + Submission always-on path |
+| D2 | **Meta submission normalization** | Meta leads without a Submission row have no Timeline choke-point; do not emit from webhook adapters alone | Meta intake completeness + Submission always-on path — **still deferred** after Stage 4 PR-5 (PR-5 only adds dispatcher `DeliveryErrorOccurred`, not Meta→Submission) |
 | D3 | **Unified duplicate disposition → `DuplicateDetected`** | Catalog includes `DuplicateDetected`; no single final-disposition choke-point yet (`apply_blocked_duplicate_outcome` alone is insufficient) | Emit only at unified final disposition after pipeline normalization |
 | D4 | **`create_candidate_full` transaction boundary** | Broader candidate create path vs Lead→Candidate conversion wrapper; Timeline emit must not invent ownership across txn boundaries | Candidate create contract audit; keep emit at conversion wrapper until boundary is explicit |
 | D5 | **Catalog-only events for future stages** | Types reserved in catalog (e.g. `FlightFailed`, future runtime/ops events) without a real producer path | Emit when the owning runtime path exists (Stage 4+); do not fake emits |
