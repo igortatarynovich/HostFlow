@@ -243,7 +243,7 @@ def _build_day_plan(
                 message=f"Поток откликов слабый — нужна реклама для «{search_title}».",
                 action_label="Запустить",
                 target="acquisition",
-                href=_search_path(search_id, "/acquisition/new"),
+                href=f"/app/marketing/new?target_type=vacancy&target_id={search_id}&flow=candidates",
                 icon="🚀",
                 kind="acquisition_launch",
             )
@@ -254,10 +254,10 @@ def _build_day_plan(
                 id="acquisition_expand",
                 severity="info",
                 headline="Расширить рекламу",
-                message="Можно добавить активность в другой стране или канале.",
-                action_label="Новая активность",
+                message="Создайте новую Campaign/Flight в Marketing (не через Подборы).",
+                action_label="В Marketing",
                 target="acquisition",
-                href=_search_path(search_id, "/acquisition/new"),
+                href=f"/app/marketing/new?target_type=vacancy&target_id={search_id}&flow=candidates",
                 bucket="later",
             )
         )

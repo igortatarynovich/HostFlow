@@ -65,8 +65,9 @@ export default function AcquisitionActivitiesPage() {
     return (
       <section className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
         <p className="text-sm text-slate-600">
-          {t('app.acquisition.empty_activities', {
-            defaultValue: 'Пока нет рекламных активностей. Запустите рекламу или используйте публичную ссылку.',
+          {t('app.acquisition.empty_activities_legacy', {
+            defaultValue:
+              'Исторических активностей нет. Новые запуски создаются только в Marketing (Campaign → Flight).',
           })}
         </p>
       </section>

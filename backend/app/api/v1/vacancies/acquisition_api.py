@@ -10,6 +10,7 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
 from backend.app.services.search_acquisition_service import (
+    LegacyLaunchDisabledError,
     add_acquisition_activity,
     build_acquisition_snapshot,
     get_vacancy_or_raise,
@@ -17,6 +18,21 @@ from backend.app.services.search_acquisition_service import (
     persist_acquisition_snapshot,
     update_acquisition_audience,
 )
+
+
+def _raise_legacy_launch(exc: LegacyLaunchDisabledError) -> None:
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "legacy_launch_disabled",
+            "message": (
+                "Creating acquisition launches from Подборы is disabled. "
+                "Use Marketing Campaign → Flight instead."
+            ),
+            "search_id": exc.search_id,
+            "marketing_setup_path": exc.marketing_setup_path,
+        },
+    )
 
 router = APIRouter(tags=["vacancies-acquisition"])
 
@@ -37,6 +53,15 @@ class AcquisitionAudienceIn(BaseModel):
     notes: Optional[str] = None
 
 
+class AcquisitionReconciliationOut(BaseModel):
+    status: str
+    linked_campaign_id: Optional[str] = None
+    linked_campaign_name: Optional[str] = None
+    linked_campaign_status: Optional[str] = None
+    candidate_campaign_ids: list[str] = Field(default_factory=list)
+    reason: Optional[str] = None
+
+
 class AcquisitionSnapshotOut(BaseModel):
     version: int = 2
     synced_at: Optional[str] = None
@@ -50,6 +75,9 @@ class AcquisitionSnapshotOut(BaseModel):
     analytics: dict[str, Any] = Field(default_factory=dict)
     sync: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+    legacy_mode: bool = True
+    reconciliation: Optional[AcquisitionReconciliationOut] = None
+    marketing_setup_path: Optional[str] = None
 
 
 class AcquisitionActivityActionIn(BaseModel):
@@ -117,13 +145,16 @@ async def create_search_acquisition_activity(
         vacancy = await get_vacancy_or_raise(db, str(tenant_id), str(vacancy_id))
     except LookupError:
         raise HTTPException(status_code=404, detail="Vacancy not found")
-    activity = await add_acquisition_activity(
-        db,
-        str(tenant_id),
-        vacancy,
-        channel_type=payload.type,
-        name=payload.name,
-    )
+    try:
+        activity = await add_acquisition_activity(
+            db,
+            str(tenant_id),
+            vacancy,
+            channel_type=payload.type,
+            name=payload.name,
+        )
+    except LegacyLaunchDisabledError as exc:
+        _raise_legacy_launch(exc)
     await db.commit()
     return activity
 
@@ -174,6 +205,8 @@ async def post_search_acquisition_activity_action(
             payload.action,
             search_ids=payload.search_ids or None,
         )
+    except LegacyLaunchDisabledError as exc:
+        _raise_legacy_launch(exc)
     except LookupError:
         raise HTTPException(status_code=404, detail="Activity not found")
     except ValueError as exc:

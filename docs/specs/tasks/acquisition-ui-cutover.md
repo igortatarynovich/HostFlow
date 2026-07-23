@@ -89,12 +89,40 @@ Stage 5 PR-2             = PAUSED until this cutover closes
 | PR | Scope | Status |
 |----|--------|--------|
 | **C-1** | Nav: Marketing top-level section; remove from Sales bucket; Activity under Marketing | **DONE** — #157 |
-| **C-2** | Stop legacy ad-launch from Подборы (`searchAcquisition`); reconcile to Campaign/Flight; block new dual-write debt | **Next** (Product Track) |
+| **C-2** | Stop legacy ad-launch from Подборы (`searchAcquisition`); reconcile to Campaign/Flight; block new dual-write debt | **In progress** — `feat/acquisition-ui-cutover-c2-stop-legacy-launch` |
 | **C-3** | Forms under Marketing (`/app/marketing/forms`…) + create-form-in-setup flow | After C-2 |
 | **C-4** | Подборы UI decommission: redirect/read-only; unresolved → reconciliation queue | After C-2/C-3 as needed |
 | **C-5** | Production nav + smoke acceptance; close Stage 4 product cutover gate | Final |
 
 **Ordering note (2026-07-23):** Form Builder embedding is **after** stopping `searchAcquisition` launch — otherwise new dual-path data keeps growing.
+
+### C-2 locked scope
+
+1. Forbid creating new launches via `searchAcquisition` (POST activities/channels + `duplicate` action).  
+2. Inventory all legacy launch call sites (frontend + backend) — enforced by scan tests.  
+3. Unambiguous Подбор/vacancy → Marketing setup prefilled (`Campaign → Flight` with `target_type=vacancy`).  
+4. Ambiguous / historical activities → `reconciliation` state on acquisition snapshot (`linked` \| `unresolved`).  
+5. Подборы acquisition UI stays temporarily as **read-only / legacy** (view + sync + pause/resume/archive of existing rows only).  
+6. Where a Campaign is already linked by vacancy target — surface link/redirect to that Campaign.  
+7. Do **not** delete legacy JSON/activity data until reconciliation complete.  
+8. Do **not** touch Form Builder in C-2.
+
+**C-2 acceptance:** after merge, no user action may create a new acquisition launch outside Campaign/Flight.
+
+### C-2 call-site inventory (enforced by scan tests)
+
+| Surface | Path | C-2 behavior |
+|---------|------|----------------|
+| API create | `POST …/vacancies/{id}/acquisition/activities\|channels` | **410** `legacy_launch_disabled` + `marketing_setup_path` |
+| API duplicate | `POST …/activities/{id}/actions` `action=duplicate` | **410** same |
+| FE helper | `createAcquisitionActivity` / `createAcquisitionChannel` | throws client-side; no HTTP |
+| Launch page | `…/searches/:id/acquisition/new` | redirect → `/app/marketing/new?target_type=vacancy&…` |
+| Acquisition layout CTA | Подборы acquisition header | «Создать в Marketing» + legacy banner + Campaign link when `reconciliation.status=linked` |
+| Search workspace pulse | «Запустить рекламу» | Marketing setup href (not legacy create) |
+| Snapshot | `GET …/acquisition` | `legacy_mode`, `reconciliation`, `marketing_setup_path` |
+| Form Builder | Settings lead-forms builder | **out of scope** (C-3+) |
+
+Scan tests: `backend/tests/api/test_acquisition_c2_legacy_launch_disabled.py`, `hostflow-frontend/src/app/__tests__/acquisitionC2LegacyLaunchScan.test.ts`.
 
 ---
 
