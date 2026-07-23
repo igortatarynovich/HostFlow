@@ -238,7 +238,10 @@ async def _load_campaign(
     stmt = (
         select(Campaign)
         .where(Campaign.id == campaign_id, Campaign.tenant_id == tenant_id)
-        .options(selectinload(Campaign.flights))
+        .options(
+            selectinload(Campaign.flights).selectinload(CampaignRun.form_links),
+            selectinload(Campaign.flights).selectinload(CampaignRun.intake_source_links),
+        )
     )
     if own_company_id:
         stmt = stmt.where(Campaign.own_company_id == own_company_id)
