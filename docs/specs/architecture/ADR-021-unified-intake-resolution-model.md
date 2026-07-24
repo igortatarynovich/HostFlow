@@ -1,14 +1,17 @@
 # ADR-021: Unified Intake Resolution Model
 
-**Status:** Proposed (L1 — pending architecture review, revision 2)  
+**Status:** Accepted  
 **Date:** 2026-07-15  
+**Accepted:** 2026-07-24 (Architecture — hard gates 1–8 PASS; see [review checklist](ADR-021-review-checklist.md) and [PR #21 review comment](https://github.com/igortatarynovich/HostFlow/pull/21#issuecomment-5069747606))  
 **Layer of change:** Domain | Product surface | Constitution  
 **Authors:** Product + Platform architecture  
 **Supersedes / clarifies:** partial product behaviour documented across [ADR-013](ADR-013-public-intake-strategy.md), [ui-constitution-v1.md](ui-constitution-v1.md), [applications-operating-model.md](applications-operating-model.md), [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md)
 
-**Related (not replaced):** [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) (Sales-to-Engagement commercial model), [ADR-007](ADR-007-forms-platform-capability.md) (Forms Platform), [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) (Form Purpose + Submission Policy — Intake Platform entry contract), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Decision Layer / Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md)
+**Related (not replaced):** [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) (Sales-to-Engagement commercial model), [ADR-007](ADR-007-forms-platform-capability.md) (Forms Platform), [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md) (Form Purpose + Submission Policy — Intake Platform entry contract; **still Proposed** — see process note below), [entity-profile-definition-registry.md](../platform/entity-profile-definition-registry.md) (Decision Layer / Outcome Executor), [module-catalog-and-routing-map.md](module-catalog-and-routing-map.md)
 
 **Review artifact:** [ADR-021-review-checklist.md](ADR-021-review-checklist.md)
+
+> **Process note (tracked, not a silent ratification):** Accepting ADR-021 does **not** accept [ADR-022](ADR-022-intake-form-purpose-and-submission-policy-model.md). ADR-022 Phase 1 backend already exists on `integration/release-product-a-b` while ADR-022 remains **Proposed**. That drift is tracked separately and requires its own sign-off before Phase 1A/1B contracts treat ADR-022 as settled canon.
 
 > **Terminology (обязательно):** **`Lead`** — внутренний transport intake (как OAuth token / message envelope). **Не product object.** В UI — только продуктовые проекции (**Отклик**, **Обращение**, **Заявка на услугу**, **Заявка на разбор**). Оператор **никогда** не работает с универсальным объектом «Лид».
 
@@ -255,6 +258,8 @@ At any moment an Application has **exactly one `module_owner`** and appears in *
 | Lifecycle | May reset to `reviewing` or `ready_for_decision` per target module policy |
 | Resolution | `resolution_code=routed` only when Application closes without entity outcome in source module |
 
+**L0 INV-09 (non-conflict):** [INV-09](architecture-invariants.md) (“routing once at Lead create; continuation inherits context”) governs the **IntakeRouter** binding at transport create. Operator **reroute** (§6.2) is a later ownership change on the same Application — it does **not** re-run IntakeRouter and does not violate INV-09. Phase 1A contracts must keep `resolution_code=routed` (source-module closed perspective) distinct from the destination inbox still showing the same `application_id`.
+
 ### 6.3 Matching vs routing
 
 Matching (§8) suggests entity candidates; **routing** decides module inbox. They are orthogonal: strong ClientAccount match on a recruitment Application does **not** auto-move to Sales without explicit reroute decision.
@@ -375,7 +380,7 @@ Matching is **informational** for operator decision (§2.1). It **must not** del
 
 | Layer | Responsibility |
 |-------|----------------|
-| **decision_record** | Auditable intent — immutable after write |
+| **decision_record** | Auditable **intent** — immutable after write (`decision_code`, targets, actor, `idempotency_key`, snapshot ref). `execution_status` / `execution_error` / `target_entity_id` may advance on retry |
 | **Outcome Executor** | Idempotent side effects |
 | **Application projection** | Denormalized current state for UI |
 
@@ -477,19 +482,19 @@ Phase 1 uses Lead-backed facade if it exposes §3–§9 contracts at the API/pro
 
 ## 14. Acceptance criteria (ADR approval)
 
-- [ ] Architecture review: §2 unit-of-work rules approved
-- [ ] Architecture review: Application / Submission / Intake event separation (§3)
-- [ ] Architecture review: `lifecycle_status` vs `resolution_code` (§7)
-- [ ] Architecture review: routing ownership + reroute (§6)
-- [ ] Architecture review: Submission snapshot fields (§5.1)
-- [ ] Architecture review: field-level `reviewed_data` (§5.2)
-- [ ] Architecture review: decision idempotency (§9)
-- [ ] Architecture review: granular auto-policy (§10)
-- [ ] Product: module inbox mapping accepted
-- [ ] Engineering: Phase 1 feasible without `applications` table
-- [ ] Security: tenant isolation on decision + submission audit
+- [x] Architecture review: §2 unit-of-work rules approved
+- [x] Architecture review: Application / Submission / Intake event separation (§3)
+- [x] Architecture review: `lifecycle_status` vs `resolution_code` (§7)
+- [x] Architecture review: routing ownership + reroute (§6)
+- [x] Architecture review: Submission snapshot fields (§5.1)
+- [x] Architecture review: field-level `reviewed_data` (§5.2)
+- [x] Architecture review: decision idempotency (§9)
+- [x] Architecture review: granular auto-policy (§10)
+- [ ] Product: module inbox mapping accepted *(countersignature tracked on accepting PR)*
+- [ ] Engineering: Phase 1 feasible without `applications` table *(countersignature tracked on accepting PR)*
+- [ ] Security: tenant isolation on decision + submission audit *(countersignature tracked on accepting PR)*
 
-**After approval only:** Phase 1A and Phase 1B implementation contracts in `docs/specs/tasks/`.
+**After Architecture acceptance:** Phase 1A and Phase 1B implementation contracts in `docs/specs/tasks/` (do not treat ADR-022 as Accepted until its own sign-off).
 
 ---
 
