@@ -48,7 +48,7 @@ export default function MarketingConnectSourcePage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
 
-  const flight = currentFlight(campaign)
+  const flight = campaign ? currentFlight(campaign) : null
   const canMeta = canConnectSourceKind(flight, 'meta')
   const canPublic = canConnectSourceKind(flight, 'public_form')
 

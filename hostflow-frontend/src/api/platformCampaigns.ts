@@ -406,8 +406,8 @@ export async function listIntakeSourceOptions(provider?: string): Promise<Intake
   return Array.isArray(data) ? data : []
 }
 
-export function currentFlight(campaign: Campaign): CampaignFlight | null {
-  if (!campaign.flights?.length) return null
+export function currentFlight(campaign: Campaign | null | undefined): CampaignFlight | null {
+  if (!campaign?.flights?.length) return null
   const currentId = campaign.current_flight_id
   if (currentId) {
     const found = campaign.flights.find((f) => f.id === currentId)
