@@ -568,3 +568,117 @@ async def test_binding_survives_reprocess_lead_failure(
         ok_stamp = (ok_row.normalized or {}).get("acquisition_routing_v1") or {}
         assert ok_stamp.get("unresolved_reason") != MISSING_CAMPAIGN_FLIGHT
         assert bad_row.error == MISSING_CAMPAIGN_FLIGHT
+
+
+@pytest.mark.anyio
+async def test_list_awaiting_skips_earlier_non_matching_same_ad(monkeypatch):
+    """>1000 earlier MAPPING_FAILED rows must not starve a later missing_campaign_flight lead."""
+    from datetime import datetime, timedelta, timezone
+
+    from backend.app.acquisition import flight_ad_binding as fab
+    from backend.app.db.deps import bind_tenant_context_to_session
+    from backend.app.modules.leads.service import _bulk as bulk_mod
+    from uuid import UUID
+
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    oc = await _own_company_id(tenant_id)
+    ad_id = str(550_000_000 + (uuid4().int % 90_000_000))
+    base = datetime.now(timezone.utc) - timedelta(hours=2)
+    conversions: list[str] = []
+
+    async def fake_reprocess(db, *, stored_lead_id, **_kwargs):
+        lead = await db.get(Lead, stored_lead_id)
+        assert lead is not None
+        conversions.append(str(lead.id))
+        _clear_waiting_stamp(lead)
+
+    monkeypatch.setattr(bulk_mod, "reprocess_stored_lead_payload", fake_reprocess)
+
+    async with async_session_maker() as session:
+        await bind_tenant_context_to_session(session, UUID(tenant_id))
+        junk: list[Lead] = []
+        for i in range(1001):
+            lead = Lead(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                own_company_id=oc,
+                source="meta",
+                status="needs_routing",
+                ad_id=int(ad_id),
+                payload={"ad_id": ad_id},
+                normalized={"ad_id": ad_id},
+                error="MAPPING_FAILED",
+                external_id=f"map-fail-{uuid4().hex[:12]}",
+                created_at=base + timedelta(seconds=i),
+            )
+            junk.append(lead)
+        waiting = _waiting_lead(tenant_id=tenant_id, own_company_id=oc, ad_id=ad_id)
+        waiting.created_at = base + timedelta(seconds=2000)
+        # Also cover stamp-only path (error cleared but unresolved_reason set).
+        stamp_only = _waiting_lead(tenant_id=tenant_id, own_company_id=oc, ad_id=ad_id)
+        stamp_only.error = None
+        stamp_only.created_at = base + timedelta(seconds=2001)
+        session.add_all(junk + [waiting, stamp_only])
+        await session.commit()
+        waiting_id = str(waiting.id)
+        stamp_only_id = str(stamp_only.id)
+
+        page = await fab.list_leads_awaiting_ad_flight(
+            session,
+            tenant_id=tenant_id,
+            provider="meta",
+            provider_ad_id=ad_id,
+            limit=10,
+        )
+        page_ids = {str(x.id) for x in page}
+        assert waiting_id in page_ids
+        assert stamp_only_id in page_ids
+        assert len(page) == 2
+
+    summary = await fab.reprocess_leads_for_ad_binding(
+        tenant_id=tenant_id,
+        provider="meta",
+        provider_ad_id=ad_id,
+        batch_size=50,
+    )
+    assert summary["matched"] == 2
+    assert summary["processed"] == 2
+    assert set(conversions) == {waiting_id, stamp_only_id}
+
+
+@pytest.mark.anyio
+async def test_attach_rejects_non_meta_provider(
+    client: AsyncClient, manager_headers: dict
+):
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    oc = await _own_company_id(tenant_id)
+    company_id = await _company_id(tenant_id)
+    async with async_session_maker() as session:
+        vac = Vacancy(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            own_company_id=oc,
+            company_id=company_id,
+            title="Prov Gate",
+            status="open",
+            is_active=True,
+            is_archived=False,
+        )
+        session.add(vac)
+        await session.flush()
+        camp_id, flight_id = await _seed_campaign_flight(
+            tenant_id=tenant_id, own_company_id=oc, vacancy_id=str(vac.id)
+        )
+
+    headers = dict(manager_headers)
+    headers["X-Tenant-Id"] = tenant_id
+    headers["X-Own-Company-Id"] = oc
+    headers["Content-Type"] = "application/json"
+    resp = await client.post(
+        f"/api/v1/platform/campaigns/{camp_id}/flights/{flight_id}/ad-bindings",
+        headers=headers,
+        json={"provider_ad_id": "123456789", "provider": "tiktok"},
+    )
+    assert resp.status_code == 422, resp.text

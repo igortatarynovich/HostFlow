@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Optional, Sequence
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.campaign import FlightAdBinding
@@ -13,6 +13,8 @@ from backend.app.models.lead import Lead
 
 MISSING_CAMPAIGN_FLIGHT = "missing_campaign_flight"
 PROVIDER_META = "meta"
+# FlightAdBinding auto-reprocess currently maps provider → Lead.source 1:1 for Meta only.
+SUPPORTED_FLIGHT_AD_PROVIDERS = frozenset({PROVIDER_META})
 # Batch size only — not a hard ceiling on total waiting leads.
 REPROCESS_BATCH_SIZE = 200
 
@@ -24,6 +26,17 @@ def normalize_provider_ad_id(value: Any) -> Optional[str]:
     return text or None
 
 
+def normalize_flight_ad_provider(value: Any) -> str:
+    """Return canonical provider code; raises ValueError when unsupported."""
+    prov = str(value or "").strip().lower() or PROVIDER_META
+    if prov not in SUPPORTED_FLIGHT_AD_PROVIDERS:
+        raise ValueError(
+            f"Unsupported Ad binding provider '{prov}'; "
+            f"supported: {', '.join(sorted(SUPPORTED_FLIGHT_AD_PROVIDERS))}"
+        )
+    return prov
+
+
 async def get_active_flight_ad_binding(
     db: AsyncSession,
     *,
@@ -31,7 +44,10 @@ async def get_active_flight_ad_binding(
     provider: str,
     provider_ad_id: str,
 ) -> Optional[FlightAdBinding]:
-    prov = str(provider or "").strip().lower() or PROVIDER_META
+    try:
+        prov = normalize_flight_ad_provider(provider)
+    except ValueError:
+        return None
     ad = normalize_provider_ad_id(provider_ad_id)
     if not ad:
         return None
@@ -59,6 +75,23 @@ def lead_matches_missing_campaign_flight(lead: Lead) -> bool:
     return str(stamp.get("unresolved_reason") or "").strip() == MISSING_CAMPAIGN_FLIGHT
 
 
+def _missing_campaign_flight_sql():
+    """SQL predicate: error column or acquisition_routing_v1.unresolved_reason stamp."""
+    unresolved = Lead.normalized["acquisition_routing_v1"]["unresolved_reason"].as_string()
+    return or_(
+        Lead.error == MISSING_CAMPAIGN_FLIGHT,
+        unresolved == MISSING_CAMPAIGN_FLIGHT,
+    )
+
+
+def _provider_ad_id_sql(ad: str, ad_int: Optional[int]):
+    """Match Lead.ad_id and/or normalized.ad_id for the bound provider Ad ID."""
+    json_ad = Lead.normalized["ad_id"].as_string() == ad
+    if ad_int is not None:
+        return or_(Lead.ad_id == ad_int, json_ad)
+    return json_ad
+
+
 async def list_leads_awaiting_ad_flight(
     db: AsyncSession,
     *,
@@ -68,8 +101,15 @@ async def list_leads_awaiting_ad_flight(
     limit: int = REPROCESS_BATCH_SIZE,
     exclude_ids: Optional[Sequence[str]] = None,
 ) -> list[Lead]:
-    """One page of leads eligible for auto-reprocess after Ad→Flight binding commit."""
-    prov = str(provider or "").strip().lower() or PROVIDER_META
+    """One page of leads eligible for auto-reprocess after Ad→Flight binding commit.
+
+    Reason and Ad ID filters run in SQL so older non-matching rows with the same
+    Ad ID cannot starve later ``missing_campaign_flight`` leads.
+    """
+    try:
+        prov = normalize_flight_ad_provider(provider)
+    except ValueError:
+        return []
     ad = normalize_provider_ad_id(provider_ad_id)
     if not ad:
         return []
@@ -80,44 +120,27 @@ async def list_leads_awaiting_ad_flight(
         ad_int = None
 
     batch_limit = max(1, int(limit))
+    # Exact provider isolation: binding provider maps to Lead.source (Meta only today).
     clauses = [
         Lead.tenant_id == str(tenant_id),
         Lead.candidate_id.is_(None),
+        Lead.source == prov,
+        _provider_ad_id_sql(ad, ad_int),
+        _missing_campaign_flight_sql(),
     ]
-    if prov == PROVIDER_META:
-        clauses.append(Lead.source == PROVIDER_META)
-    if ad_int is not None:
-        clauses.append(Lead.ad_id == ad_int)
     excluded = [str(x).strip() for x in (exclude_ids or ()) if str(x).strip()]
     if excluded:
         clauses.append(Lead.id.notin_(excluded))
 
-    # Oversample then filter in Python (reason may live only in normalized JSON).
-    fetch_n = min(batch_limit * 5, 2000)
     rows = (
         await db.execute(
             select(Lead)
             .where(*clauses)
             .order_by(Lead.created_at.asc())
-            .limit(fetch_n)
+            .limit(batch_limit)
         )
     ).scalars().all()
-
-    out: list[Lead] = []
-    for lead in rows:
-        lead_ad = normalize_provider_ad_id(getattr(lead, "ad_id", None))
-        if lead_ad is None:
-            normalized = getattr(lead, "normalized", None)
-            if isinstance(normalized, dict):
-                lead_ad = normalize_provider_ad_id(normalized.get("ad_id"))
-        if lead_ad != ad:
-            continue
-        if not lead_matches_missing_campaign_flight(lead):
-            continue
-        out.append(lead)
-        if len(out) >= batch_limit:
-            break
-    return out
+    return list(rows)
 
 
 async def reprocess_leads_for_ad_binding(
@@ -136,6 +159,17 @@ async def reprocess_leads_for_ad_binding(
     """
     from backend.app.db.deps import tenant_enforced_session
     from backend.app.modules.leads.service._bulk import reprocess_stored_lead_payload
+
+    try:
+        prov = normalize_flight_ad_provider(provider)
+    except ValueError:
+        return {
+            "matched": 0,
+            "processed": 0,
+            "skipped": 0,
+            "batches": 0,
+            "errors": [{"lead_id": "*", "error": f"unsupported provider: {provider}"}],
+        }
 
     tid = str(tenant_id).strip()
     page = max(1, int(batch_size))
@@ -157,7 +191,7 @@ async def reprocess_leads_for_ad_binding(
             batch = await list_leads_awaiting_ad_flight(
                 db,
                 tenant_id=tid,
-                provider=provider,
+                provider=prov,
                 provider_ad_id=provider_ad_id,
                 limit=page,
                 exclude_ids=sorted(attempted_ids),
@@ -181,7 +215,7 @@ async def reprocess_leads_for_ad_binding(
                             own_company_id=str(getattr(lead, "own_company_id", None) or "").strip()
                             or None,
                             payload=lead.payload if isinstance(lead.payload, dict) else {},
-                            source=str(lead.source or provider or "meta"),
+                            source=str(lead.source or prov),
                             force_existing=True,
                             external_id_hint=str(lead.external_id).strip()
                             if lead.external_id
@@ -212,9 +246,11 @@ __all__ = [
     "MISSING_CAMPAIGN_FLIGHT",
     "PROVIDER_META",
     "REPROCESS_BATCH_SIZE",
+    "SUPPORTED_FLIGHT_AD_PROVIDERS",
     "get_active_flight_ad_binding",
     "lead_matches_missing_campaign_flight",
     "list_leads_awaiting_ad_flight",
+    "normalize_flight_ad_provider",
     "normalize_provider_ad_id",
     "reprocess_leads_for_ad_binding",
 ]

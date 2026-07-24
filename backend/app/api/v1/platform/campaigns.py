@@ -7,7 +7,7 @@ from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -138,10 +138,20 @@ class IntakeSourceLinkIn(BaseModel):
 
 
 class AdLinkIn(BaseModel):
-    """Meta (or other provider) Ad ID → Flight advertising route."""
+    """Meta Ad ID → Flight advertising route (Meta-only until more providers map to Lead.source)."""
 
     provider_ad_id: str
     provider: str = "meta"
+
+    @field_validator("provider")
+    @classmethod
+    def _provider_must_be_supported(cls, value: str) -> str:
+        from backend.app.acquisition.flight_ad_binding import normalize_flight_ad_provider
+
+        try:
+            return normalize_flight_ad_provider(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 class AdBindingOut(BaseModel):

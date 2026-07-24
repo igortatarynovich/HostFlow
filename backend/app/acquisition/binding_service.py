@@ -559,7 +559,10 @@ async def attach_ad(
     actor_id: str | None = None,
 ) -> Campaign:
     """Create active Ad ID → Flight binding (commit separately; reprocess post-commit)."""
-    from backend.app.acquisition.flight_ad_binding import normalize_provider_ad_id
+    from backend.app.acquisition.flight_ad_binding import (
+        normalize_flight_ad_provider,
+        normalize_provider_ad_id,
+    )
 
     campaign, flight = await _resolve_flight(
         db,
@@ -568,7 +571,10 @@ async def attach_ad(
         own_company_id=own_company_id,
         flight_id=flight_id,
     )
-    prov = str(provider or "meta").strip().lower() or "meta"
+    try:
+        prov = normalize_flight_ad_provider(provider)
+    except ValueError as exc:
+        raise CampaignServiceError(str(exc), status_code=422) from exc
     ad = normalize_provider_ad_id(provider_ad_id)
     if not ad:
         raise CampaignServiceError("provider_ad_id is required", status_code=422)
