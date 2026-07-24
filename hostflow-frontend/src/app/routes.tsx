@@ -9,6 +9,7 @@ import {
   AcquisitionActivityTimelinePage,
   MarketingCampaignsPage,
   MarketingCampaignSetupPage,
+  MarketingConnectSourcePage,
   MarketingCampaignDetailPage,
   MarketingSourcesPage,
   AutomationRulesPage,
@@ -776,6 +777,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     key: 'marketing-new',
     path: seg(CRM.marketingNew),
     Component: MarketingCampaignSetupPage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-connect-source',
+    path: `${seg(CRM.marketing)}/:campaignId/sources/new`,
+    Component: MarketingConnectSourcePage,
     permission: 'vacancies.view',
   },
   {

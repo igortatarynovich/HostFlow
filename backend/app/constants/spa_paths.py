@@ -60,5 +60,9 @@ def spa_vacancy(vacancy_id: str) -> str:
     return f"{VACANCIES}/{vacancy_id}"
 
 
+def spa_marketing_connect_source(campaign_id: str) -> str:
+    return f"{MARKETING}/{campaign_id}/sources/new"
+
+
 def spa_inbox_thread(thread_id: str) -> str:
     return f"{INBOX_THREADS_BASE}/{thread_id}"

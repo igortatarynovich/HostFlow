@@ -19,7 +19,7 @@
 
 | Surface | Path | Role |
 |---------|------|------|
-| Marketing list / setup / detail | `/app/marketing`, `/app/marketing/new`, `/app/marketing/:campaignId` | Canonical Campaign / Flight operator SPA |
+| Marketing list / create / detail / connect source | `/app/marketing`, `/app/marketing/new`, `/app/marketing/:campaignId`, `/app/marketing/:campaignId/sources/new` | Canonical Campaign / Flight operator SPA |
 | Sales workplace | `/app/sales` | Client / service sales — **not** Growth owner |
 | Integrations (tenant access) | `/app/settings/integrations`, `…/meta` | Meta OAuth / Business / Pages / webhook health |
 | Form Builder (Forms platform) | `/app/settings/lead-forms`, `…/:formId`, `…/:formId/builder` | Forms SoT (ADR-007); **not** embedded in Marketing setup |
@@ -28,7 +28,8 @@
 
 Nav fact: Marketing is top-level after **C-1** (#157). Sales bucket no longer owns Marketing.
 
-Marketing setup (`MarketingCampaignSetupPage`) can select an **existing** form, intake source, vacancy/service, bind to Campaign/Flight, and start a Flight — wizard only, **not** Form Builder and **not** Source onboarding / mapping.
+**Campaign create vs Connect Source (UI split):**  
+`/app/marketing/new` creates Campaign only (`own_company_id` + Primary Target + optional `CampaignTarget(role=context)`). Sources bind later via `/app/marketing/:campaignId/sources/new` to the current Flight. Detail shows empty state / bindings list; CTA is gated so UI does not offer a second **primary** of the same endpoint type (multi-primary sources = later runtime PR). Not Form Builder and not full Source onboarding / mapping.
 
 ### What was missed when Stage 4 was closed
 
@@ -472,6 +473,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-24: **UI split** — Create Campaign (`/marketing/new`) vs Connect Source (`/marketing/:campaignId/sources/new`); Detail empty state + primary-slot CTA gate; no ADR-024 rewrite.
 - 2026-07-23: Opened after owner diagnosis — Stage 4 runtime DONE but product/UI cutover incomplete; Stage 5 PR-2 paused.
 - 2026-07-23: **C-1 DONE** (#157) — Marketing top-level nav; Activity under Marketing; Sales = sales+clients only.
 - 2026-07-23: Product Track next = **C-2** legacy launch stop + Campaign/Flight reconciliation (Forms C-3 deferred).

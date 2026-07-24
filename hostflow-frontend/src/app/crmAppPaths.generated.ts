@@ -62,9 +62,9 @@ export const CRM_APP_PATHS = {
   automationLog: "/app/automation-log",
   /** Stage 3E read-only Acquisition Activity Timeline (platform campaigns). */
   acquisitionActivity: "/app/acquisition/activity",
-  /** Marketing Workspace — campaign list and Flight operator surface. */
+  /** Marketing Workspace — campaign list and Flight operator surface (Acquisition capability UI). */
   marketing: "/app/marketing",
-  /** Marketing Campaign Setup Flow (create campaign + form + source + launch). */
+  /** Create Campaign only (goal + Primary Target + optional context). Sources connect separately via spa_marketing_connect_source. */
   marketingNew: "/app/marketing/new",
   /** Marketing Sources foundation — intake inventory, connection, Mapping Health (C-3). */
   marketingSources: "/app/marketing/sources",

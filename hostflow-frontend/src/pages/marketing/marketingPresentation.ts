@@ -134,6 +134,33 @@ export function primarySource(
   )
 }
 
+export function activePrimaryForm(
+  flight: CampaignFlight | null,
+): CampaignFlight['forms'][number] | null {
+  if (!flight?.forms?.length) return null
+  return flight.forms.find((f) => f.is_active && f.role === 'primary') || null
+}
+
+export function activePrimaryIntakeSource(
+  flight: CampaignFlight | null,
+): CampaignFlight['intake_sources'][number] | null {
+  if (!flight?.intake_sources?.length) return null
+  return flight.intake_sources.find((s) => s.is_active && s.role === 'primary') || null
+}
+
+/** PR1: only offer Connect when a primary slot of that endpoint type is free (no secondary UX). */
+export function canConnectSourceKind(
+  flight: CampaignFlight | null,
+  kind: MarketingSourceKind,
+): boolean {
+  if (kind === 'public_form') return !activePrimaryForm(flight)
+  return !activePrimaryIntakeSource(flight)
+}
+
+export function canConnectAnySource(flight: CampaignFlight | null): boolean {
+  return canConnectSourceKind(flight, 'public_form') || canConnectSourceKind(flight, 'meta')
+}
+
 export function destinationSummary(campaign: Campaign): string {
   const t = campaign.targets?.[0]
   if (!t) return 'Не задано'

@@ -1,20 +1,18 @@
 /**
- * Marketing Campaign Setup — one finished operator flow (no raw UUIDs / JSON).
+ * Create Campaign — business goal + Primary Target (+ optional context).
+ * Sources connect later via MarketingConnectSourcePage.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CRM_APP_PATHS, marketingCampaignPath } from '../../app/crmAppPaths'
 import { listAdditionalServices } from '../../api/additionalServices'
-import { listLeadForms, type TenantLeadForm } from '../../api/leadForms'
+import { listClientAccounts, type ClientAccount } from '../../api/clientAccounts'
 import {
-  attachCampaignForm,
-  attachCampaignIntakeSource,
-  createCampaign,
-  currentFlight,
-  launchFlight,
-  listIntakeSourceOptions,
-  type IntakeSourceOption,
-} from '../../api/platformCampaigns'
+  listOwnCompanies,
+  ownCompanySettings,
+  type OwnCompanyRecord,
+} from '../../api/client'
+import { createCampaign } from '../../api/platformCampaigns'
 import { listVacancies, type Vacancy } from '../../api/vacancies'
 import type { AdditionalService } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
@@ -24,45 +22,12 @@ import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import {
   FLOW_PRESETS,
-  formPublicUrl,
   type FlowPreset,
   type MarketingFlowKind,
-  type MarketingSourceKind,
 } from './marketingPresentation'
+import { MarketingOptionCard } from './MarketingOptionCard'
 
-const TOTAL_STEPS = 6
-
-function OptionCard({
-  selected,
-  onClick,
-  children,
-  disabled,
-  testId,
-}: {
-  selected: boolean
-  onClick: () => void
-  children: React.ReactNode
-  disabled?: boolean
-  testId?: string
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      disabled={disabled}
-      data-testid={testId}
-      onClick={onClick}
-      className={`w-full rounded-xl border-2 p-4 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
-        selected
-          ? 'border-brand-400 bg-brand-50/80 ring-2 ring-brand-200'
-          : 'border-slate-200 hover:border-slate-300'
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
+const TOTAL_STEPS = 4
 
 export default function MarketingCampaignSetupPage() {
   const { t } = useI18n()
@@ -70,26 +35,25 @@ export default function MarketingCampaignSetupPage() {
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState(1)
   const [name, setName] = useState(() => (searchParams.get('name') || '').trim().slice(0, 160))
+  const [description, setDescription] = useState('')
   const [flowKind, setFlowKind] = useState<MarketingFlowKind | ''>(() => {
     const flow = (searchParams.get('flow') || '').trim()
     return FLOW_PRESETS.some((p) => p.kind === flow) ? (flow as MarketingFlowKind) : ''
   })
-  const [formId, setFormId] = useState('')
-  const [sourceKind, setSourceKind] = useState<MarketingSourceKind | ''>('')
-  const [metaSourceId, setMetaSourceId] = useState('')
   const [targetId, setTargetId] = useState(() => {
     const targetType = (searchParams.get('target_type') || '').trim()
     const id = (searchParams.get('target_id') || '').trim()
     return targetType === 'vacancy' && id ? id : ''
   })
-  const [launchNow, setLaunchNow] = useState(true)
+  const [contextClientId, setContextClientId] = useState('')
+  const [ownCompanyId, setOwnCompanyId] = useState(() => ownCompanySettings.get() || '')
   const prefilledFromSearch =
     Boolean(targetId) && (searchParams.get('target_type') || '').trim() === 'vacancy'
 
-  const [forms, setForms] = useState<TenantLeadForm[]>([])
+  const [companies, setCompanies] = useState<OwnCompanyRecord[]>([])
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [services, setServices] = useState<AdditionalService[]>([])
-  const [metaSources, setMetaSources] = useState<IntakeSourceOption[]>([])
+  const [clients, setClients] = useState<ClientAccount[]>([])
   const [optionsLoading, setOptionsLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
@@ -101,23 +65,30 @@ export default function MarketingCampaignSetupPage() {
 
   const loadOptions = useCallback(async () => {
     setOptionsLoading(true)
+    setError(null)
     try {
-      const [formRows, vacRows, svcRows, metaRows] = await Promise.all([
-        listLeadForms(),
-        listVacancies({ limit: 100 }),
-        listAdditionalServices(false),
-        listIntakeSourceOptions('meta').catch(() => [] as IntakeSourceOption[]),
+      const [companyRes, vacs, svcs, accounts] = await Promise.all([
+        listOwnCompanies().catch(() => ({ items: [] as OwnCompanyRecord[] })),
+        listVacancies().catch(() => [] as Vacancy[]),
+        listAdditionalServices().catch(() => [] as AdditionalService[]),
+        listClientAccounts({ limit: 200 }).catch(() => [] as ClientAccount[]),
       ])
-      setForms((formRows || []).filter((f) => f.is_active))
-      setVacancies(Array.isArray(vacRows) ? vacRows : [])
-      setServices(Array.isArray(svcRows) ? svcRows.filter((s) => s.is_active !== false) : [])
-      setMetaSources(Array.isArray(metaRows) ? metaRows : [])
-    } catch (err: unknown) {
+      const companyItems = Array.isArray(companyRes?.items) ? companyRes.items : []
+      setCompanies(companyItems)
+      if (!ownCompanyId && companyItems.length) {
+        const active =
+          companyItems.find((c) => c.id === ownCompanySettings.get()) || companyItems[0]
+        if (active?.id) setOwnCompanyId(active.id)
+      }
+      setVacancies(Array.isArray(vacs) ? vacs.filter((v) => !v.is_archived) : [])
+      setServices(Array.isArray(svcs) ? svcs : [])
+      setClients(Array.isArray(accounts) ? accounts : [])
+    } catch (err) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.setup.errors.options', {
-            defaultValue: 'Не удалось загрузить формы и назначения',
+          t('app.marketing.setup.errors.load_options', {
+            defaultValue: 'Не удалось загрузить справочники',
           }),
           t,
         ),
@@ -125,65 +96,66 @@ export default function MarketingCampaignSetupPage() {
     } finally {
       setOptionsLoading(false)
     }
-  }, [t])
+  }, [ownCompanyId, t])
 
   useEffect(() => {
     void loadOptions()
   }, [loadOptions])
 
-  useEffect(() => {
-    if (!prefilledFromSearch || !flowKind) return
-    // Unambiguous vacancy handoff from Подборы → jump past name/flow when both present.
-    if (name.trim().length >= 2) setStep((s) => Math.max(s, 3))
-  }, [prefilledFromSearch, flowKind, name])
+  const stepTitle = useMemo(() => {
+    if (step === 1) return 'Название кампании'
+    if (step === 2) return 'Тип потока'
+    if (step === 3) return 'Куда направлять заявки'
+    return 'Проверка'
+  }, [step])
 
-  const selectedForm = forms.find((f) => f.id === formId) || null
-  const selectedVacancy = vacancies.find((v) => v.id === targetId) || null
-  const selectedService = services.find((s) => s.id === targetId) || null
-  const selectedMeta = metaSources.find((s) => s.id === metaSourceId) || null
-
-  const canNext = (): boolean => {
-    if (step === 1) return name.trim().length >= 2
+  const canNext = useMemo(() => {
+    if (step === 1) return name.trim().length >= 2 && Boolean(ownCompanyId)
     if (step === 2) return Boolean(flowKind)
-    if (step === 3) return Boolean(formId)
-    if (step === 4) {
-      if (sourceKind === 'public_form') return true
-      if (sourceKind === 'meta') return Boolean(metaSourceId)
-      return false
-    }
-    if (step === 5) return Boolean(targetId && preset)
-    return true
-  }
+    if (step === 3) return Boolean(targetId && preset)
+    return Boolean(preset && targetId && ownCompanyId && name.trim().length >= 2)
+  }, [step, name, ownCompanyId, flowKind, targetId, preset])
 
-  async function onSubmit() {
-    if (!preset || !formId || !targetId || !sourceKind) return
+  async function handleCreate() {
+    if (!preset || !targetId || !ownCompanyId) return
     setSubmitting(true)
     setError(null)
     try {
-      let campaign = await createCampaign({
+      const targets: Array<{
+        target_type: string
+        target_id: string
+        route_intent: string
+        role: string
+        sort_order?: number
+      }> = [
+        {
+          target_type: preset.target_type,
+          target_id: targetId,
+          route_intent: preset.route_intent,
+          role: 'primary',
+          sort_order: 0,
+        },
+      ]
+      if (contextClientId) {
+        targets.push({
+          target_type: 'client_account',
+          target_id: contextClientId,
+          // Registry requires an allowed intent for client_account; routing uses Primary only.
+          route_intent: 'sales_inquiry',
+          role: 'context',
+          sort_order: 1,
+        })
+      }
+      const campaign = await createCampaign({
         name: name.trim(),
+        description: description.trim() || undefined,
         goal_type: preset.goal_type,
         primary_kpi: preset.primary_kpi,
-        targets: [
-          {
-            target_type: preset.target_type,
-            target_id: targetId,
-            route_intent: preset.route_intent,
-            role: 'primary',
-          },
-        ],
+        own_company_id: ownCompanyId,
+        targets,
       })
-      campaign = await attachCampaignForm(campaign.id, formId, 'primary')
-      if (sourceKind === 'meta' && metaSourceId) {
-        campaign = await attachCampaignIntakeSource(campaign.id, metaSourceId, 'primary')
-      }
-      const flight = currentFlight(campaign)
-      if (launchNow && flight) {
-        const launched = await launchFlight(campaign.id, flight.id)
-        campaign = launched.campaign
-      }
       navigate(marketingCampaignPath(campaign.id))
-    } catch (err: unknown) {
+    } catch (err) {
       setError(
         getFriendlyErrorInfo(
           err,
@@ -198,15 +170,10 @@ export default function MarketingCampaignSetupPage() {
     }
   }
 
-  const stepTitle =
-    [
-      'Название кампании',
-      'Тип потока',
-      'Форма',
-      'Источник',
-      'Куда направлять заявки',
-      'Проверка и запуск',
-    ][step - 1] || 'Создание кампании'
+  const selectedVacancy = vacancies.find((v) => v.id === targetId)
+  const selectedService = services.find((s) => s.id === targetId)
+  const selectedClient = clients.find((c) => c.id === contextClientId)
+  const selectedCompany = companies.find((c) => c.id === ownCompanyId)
 
   return (
     <PageShell>
@@ -214,45 +181,67 @@ export default function MarketingCampaignSetupPage() {
         <PageHeader
           title={t('app.marketing.setup.title', { defaultValue: 'Новая кампания' })}
           subtitle={`${step} / ${TOTAL_STEPS} · ${stepTitle}`}
-          kind="action"
+          kind="browse"
           secondaryActions={
             <Link to={CRM_APP_PATHS.marketing} className="btn-secondary btn-sm">
-              {t('common.actions.cancel', { defaultValue: 'Отмена' })}
+              К списку
             </Link>
           }
         />
       </PageShellHeader>
 
-      <div className="mx-auto w-full max-w-2xl flex-1 space-y-4 overflow-y-auto px-4 pb-8">
-        {prefilledFromSearch ? (
-          <section
-            className="rounded-xl border border-brand-200 bg-brand-50/70 px-4 py-3 text-sm text-slate-800"
-            data-testid="marketing-setup-vacancy-prefill"
-          >
-            {t('app.marketing.setup.prefill_from_search', {
-              defaultValue:
-                'Цель уже выбрана из Подбора (vacancy). Завершите форму и источник — запуск пойдёт как Campaign → Flight.',
-            })}
-          </section>
-        ) : null}
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 pb-8">
         {error ? <ErrorRecoveryBanner info={error} onRetry={() => void loadOptions()} /> : null}
-        {optionsLoading ? (
-          <p className="text-sm text-slate-500">{t('common.loading')}</p>
+        {optionsLoading ? <p className="text-sm text-slate-500">{t('common.loading')}</p> : null}
+
+        {prefilledFromSearch ? (
+          <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+            Вакансия подставлена из Подбора. Дальше задайте цель кампании — источник подключите на
+            странице кампании.
+          </p>
         ) : null}
 
         {step === 1 ? (
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-slate-800">
-              Как назвать кампанию?
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-slate-800">Название</span>
               <input
-                type="text"
+                className="input w-full"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                placeholder="Например: Водители CE — Meta апрель"
+                onChange={(e) => setName(e.target.value.slice(0, 160))}
+                placeholder="Например: Kierowca CE — Poltrakt"
                 data-testid="marketing-setup-name"
-                autoFocus
               />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-slate-800">Описание (необязательно)</span>
+              <textarea
+                className="input w-full min-h-[80px]"
+                value={description}
+                onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
+                placeholder="Бизнес-цель кампании"
+                data-testid="marketing-setup-description"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-slate-800">Компания (владелец)</span>
+              <select
+                className="input w-full"
+                value={ownCompanyId}
+                onChange={(e) => setOwnCompanyId(e.target.value)}
+                data-testid="marketing-setup-own-company"
+              >
+                <option value="">Выберите компанию</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name || c.id}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-xs text-slate-500">
+                Campaign принадлежит tenant и этой компании. Клиент/заказ — только контекст, не
+                владелец.
+              </span>
             </label>
           </div>
         ) : null}
@@ -260,107 +249,32 @@ export default function MarketingCampaignSetupPage() {
         {step === 2 ? (
           <div className="grid gap-3" role="radiogroup" aria-label="Тип потока">
             {FLOW_PRESETS.map((p) => (
-              <OptionCard
+              <MarketingOptionCard
                 key={p.kind}
                 selected={flowKind === p.kind}
                 onClick={() => {
                   setFlowKind(p.kind)
-                  setTargetId('')
+                  setTargetId((prev) => {
+                    const current = FLOW_PRESETS.find((x) => x.kind === flowKind)
+                    if (current && current.target_type !== p.target_type) return ''
+                    return prev
+                  })
                 }}
                 testId={`marketing-setup-flow-${p.kind}`}
               >
                 <span className="font-medium text-slate-900">{p.label}</span>
                 <span className="mt-1 block text-slate-600">{p.description}</span>
-              </OptionCard>
+              </MarketingOptionCard>
             ))}
           </div>
         ) : null}
 
-        {step === 3 ? (
-          <div className="space-y-3">
+        {step === 3 && preset ? (
+          <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Выберите готовую форму из Form Builder. Нет формы?{' '}
-              <Link to={CRM_APP_PATHS.settingsLeadForms} className="text-brand-600 underline">
-                Открыть формы
-              </Link>
+              Primary Target задаёт consumer contract и{' '}
+              <code className="text-xs">route_intent</code> для всех источников кампании.
             </p>
-            {!forms.length ? (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                Активных форм нет. Создайте форму в настройках, затем вернитесь сюда.
-              </p>
-            ) : (
-              <div className="grid gap-2" role="radiogroup" aria-label="Форма">
-                {forms.map((f) => (
-                  <OptionCard
-                    key={f.id}
-                    selected={formId === f.id}
-                    onClick={() => setFormId(f.id)}
-                    testId={`marketing-setup-form-${f.id}`}
-                  >
-                    <span className="font-medium text-slate-900">{f.title || 'Без названия'}</span>
-                    {f.public_slug ? (
-                      <span className="mt-1 block text-xs text-slate-500">Публичная ссылка готова</span>
-                    ) : (
-                      <span className="mt-1 block text-xs text-amber-700">Нет public slug — ссылка появится после публикации</span>
-                    )}
-                  </OptionCard>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        {step === 4 ? (
-          <div className="space-y-3">
-            <div className="grid gap-3" role="radiogroup" aria-label="Источник">
-              <OptionCard
-                selected={sourceKind === 'public_form'}
-                onClick={() => {
-                  setSourceKind('public_form')
-                  setMetaSourceId('')
-                }}
-                testId="marketing-setup-source-public"
-              >
-                <span className="font-medium text-slate-900">Публичная ссылка</span>
-                <span className="mt-1 block text-slate-600">
-                  Заявки приходят через публичную форму HostFlow.
-                </span>
-              </OptionCard>
-              <OptionCard
-                selected={sourceKind === 'meta'}
-                onClick={() => setSourceKind('meta')}
-                disabled={!metaSources.length}
-                testId="marketing-setup-source-meta"
-              >
-                <span className="font-medium text-slate-900">Meta</span>
-                <span className="mt-1 block text-slate-600">
-                  {metaSources.length
-                    ? 'Привязать существующий источник Meta.'
-                    : 'Нет активных Meta-источников в компании — настройте интеграцию Meta.'}
-                </span>
-              </OptionCard>
-            </div>
-            {sourceKind === 'meta' && metaSources.length ? (
-              <div className="grid gap-2" role="radiogroup" aria-label="Meta источник">
-                {metaSources.map((s) => (
-                  <OptionCard
-                    key={s.id}
-                    selected={metaSourceId === s.id}
-                    onClick={() => setMetaSourceId(s.id)}
-                    testId={`marketing-setup-meta-${s.id}`}
-                  >
-                    <span className="font-medium text-slate-900">{s.name}</span>
-                    <span className="mt-1 block text-xs text-slate-500">{s.code || s.provider}</span>
-                  </OptionCard>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {step === 5 && preset ? (
-          <div className="space-y-3">
-            <p className="text-sm text-slate-600">Выберите {preset.destinationLabel.toLowerCase()}.</p>
             {preset.target_type === 'vacancy' ? (
               !vacancies.length ? (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -370,100 +284,111 @@ export default function MarketingCampaignSetupPage() {
                   </Link>
                 </p>
               ) : (
-                <div className="grid max-h-80 gap-2 overflow-y-auto" role="radiogroup">
+                <div className="grid gap-2" role="radiogroup" aria-label="Вакансия">
                   {vacancies.map((v) => (
-                    <OptionCard
+                    <MarketingOptionCard
                       key={v.id}
                       selected={targetId === v.id}
                       onClick={() => setTargetId(v.id)}
                       testId={`marketing-setup-vacancy-${v.id}`}
                     >
-                      <span className="font-medium text-slate-900">{v.title}</span>
-                      {v.company_name ? (
-                        <span className="mt-1 block text-xs text-slate-500">{v.company_name}</span>
-                      ) : null}
-                    </OptionCard>
+                      <span className="font-medium text-slate-900">{v.title || v.id}</span>
+                    </MarketingOptionCard>
                   ))}
                 </div>
               )
             ) : !services.length ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                Нет услуг в каталоге.{' '}
+                Нет услуг.{' '}
                 <Link to={CRM_APP_PATHS.services} className="underline">
                   Открыть услуги
                 </Link>
               </p>
             ) : (
-              <div className="grid max-h-80 gap-2 overflow-y-auto" role="radiogroup">
+              <div className="grid gap-2" role="radiogroup" aria-label="Услуга">
                 {services.map((s) => (
-                  <OptionCard
+                  <MarketingOptionCard
                     key={s.id}
                     selected={targetId === s.id}
                     onClick={() => setTargetId(s.id)}
                     testId={`marketing-setup-service-${s.id}`}
                   >
-                    <span className="font-medium text-slate-900">{s.name}</span>
-                    {s.code ? <span className="mt-1 block text-xs text-slate-500">{s.code}</span> : null}
-                  </OptionCard>
+                    <span className="font-medium text-slate-900">{s.name || s.id}</span>
+                  </MarketingOptionCard>
                 ))}
               </div>
             )}
+
+            <div className="border-t border-slate-200 pt-4">
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-slate-800">
+                  Контекст клиента (необязательно)
+                </span>
+                <select
+                  className="input w-full"
+                  value={contextClientId}
+                  onChange={(e) => setContextClientId(e.target.value)}
+                  data-testid="marketing-setup-context-client"
+                >
+                  <option value="">Без клиентского контекста</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.display_name}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs text-slate-500">
+                  Сохраняется как CampaignTarget(role=context). Не меняет владельца кампании.
+                </span>
+              </label>
+            </div>
           </div>
         ) : null}
 
-        {step === 6 && preset ? (
-          <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 text-sm">
-            <dl className="grid gap-2">
-              <div>
-                <dt className="text-xs text-slate-500">Кампания</dt>
-                <dd className="font-medium text-slate-900">{name.trim()}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Поток</dt>
-                <dd className="font-medium text-slate-900">{preset.label}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Форма</dt>
-                <dd className="font-medium text-slate-900">{selectedForm?.title || '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Источник</dt>
-                <dd className="font-medium text-slate-900">
-                  {sourceKind === 'public_form'
-                    ? 'Публичная ссылка'
-                    : selectedMeta?.name || 'Meta'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Куда</dt>
-                <dd className="font-medium text-slate-900">
-                  {preset.target_type === 'vacancy'
-                    ? selectedVacancy?.title || '—'
-                    : selectedService?.name || '—'}
-                </dd>
-              </div>
-              {sourceKind === 'public_form' && selectedForm?.public_slug ? (
-                <div>
-                  <dt className="text-xs text-slate-500">Ссылка для теста</dt>
-                  <dd className="break-all font-mono text-xs text-slate-700">
-                    {formPublicUrl(selectedForm.public_slug)}
-                  </dd>
-                </div>
+        {step === 4 && preset ? (
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 text-sm">
+            <div>
+              <div className="text-xs text-slate-500">Кампания</div>
+              <div className="font-medium text-slate-900">{name.trim()}</div>
+              {description.trim() ? (
+                <div className="mt-1 text-slate-600">{description.trim()}</div>
               ) : null}
-            </dl>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={launchNow}
-                onChange={(e) => setLaunchNow(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300"
-              />
-              <span className="font-medium text-slate-800">Запустить Flight сразу после создания</span>
-            </label>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Компания-владелец</div>
+              <div className="font-medium text-slate-900">
+                {selectedCompany?.name || ownCompanyId}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Поток</div>
+              <div className="font-medium text-slate-900">{preset.label}</div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Primary Target · route_intent</div>
+              <div className="font-medium text-slate-900">
+                {preset.target_type === 'vacancy'
+                  ? selectedVacancy?.title || targetId
+                  : selectedService?.name || targetId}
+              </div>
+              <div className="text-xs text-slate-500">{preset.route_intent}</div>
+            </div>
+            {contextClientId ? (
+              <div>
+                <div className="text-xs text-slate-500">Контекст клиента</div>
+                <div className="font-medium text-slate-900">
+                  {selectedClient?.display_name || contextClientId}
+                </div>
+              </div>
+            ) : null}
+            <p className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              Источник заявок (Meta Lead Form / публичная анкета) подключается на странице кампании —
+              отдельно от создания цели.
+            </p>
           </div>
         ) : null}
 
-        <div className="flex flex-wrap justify-between gap-3 pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
           <button
             type="button"
             className="btn-secondary btn-sm"
@@ -476,7 +401,7 @@ export default function MarketingCampaignSetupPage() {
             <button
               type="button"
               className="btn-primary btn-sm"
-              disabled={!canNext() || optionsLoading}
+              disabled={!canNext || optionsLoading}
               onClick={() => setStep((s) => Math.min(TOTAL_STEPS, s + 1))}
               data-testid="marketing-setup-next"
             >
@@ -486,15 +411,11 @@ export default function MarketingCampaignSetupPage() {
             <button
               type="button"
               className="btn-primary btn-sm"
-              disabled={!canNext() || submitting}
-              onClick={() => void onSubmit()}
-              data-testid="marketing-setup-submit"
+              disabled={!canNext || submitting}
+              onClick={() => void handleCreate()}
+              data-testid="marketing-setup-create"
             >
-              {submitting
-                ? t('common.loading')
-                : launchNow
-                  ? 'Создать и запустить'
-                  : 'Создать кампанию'}
+              {submitting ? 'Создание…' : 'Создать кампанию'}
             </button>
           )}
         </div>

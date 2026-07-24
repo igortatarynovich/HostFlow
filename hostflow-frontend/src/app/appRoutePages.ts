@@ -49,6 +49,9 @@ export const MarketingCampaignsPage = lazy(() =>
 export const MarketingCampaignSetupPage = lazy(() =>
   loadCrmMore().then((m) => ({ default: m.MarketingCampaignSetupPage })),
 )
+export const MarketingConnectSourcePage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingConnectSourcePage })),
+)
 export const MarketingCampaignDetailPage = lazy(() =>
   loadCrmMore().then((m) => ({ default: m.MarketingCampaignDetailPage })),
 )

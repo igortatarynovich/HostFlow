@@ -153,8 +153,8 @@
     "sales": "Operational sales workspace for services tenants (inquiries, work session, conversion).",
     "clientAcquisitionChannels": "Client acquisition channel list and per-channel inquiry workspace.",
     "acquisitionActivity": "Stage 3E read-only Acquisition Activity Timeline (platform campaigns).",
-    "marketing": "Marketing Workspace — campaign list and Flight operator surface.",
-    "marketingNew": "Marketing Campaign Setup Flow (create campaign + form + source + launch).",
+    "marketing": "Marketing Workspace — campaign list and Flight operator surface (Acquisition capability UI).",
+    "marketingNew": "Create Campaign only (goal + Primary Target + optional context). Sources connect separately via spa_marketing_connect_source.",
     "marketingSources": "Marketing Sources foundation — intake inventory, connection, Mapping Health (C-3).",
     "companiesLegacy": "Legacy URLs kept for redirects / bookmarks.",
     "plannerLegacy": "Legacy planner shell — redirects to /app/calendar (Phase 2.1 absorbed planner into Activity).",
@@ -350,6 +350,13 @@
           "vacancy_id: str"
         ],
         "body": "return f\"{VACANCIES}/{vacancy_id}\""
+      },
+      {
+        "name": "spa_marketing_connect_source",
+        "params": [
+          "campaign_id: str"
+        ],
+        "body": "return f\"{MARKETING}/{campaign_id}/sources/new\""
       },
       {
         "name": "spa_inbox_thread",
