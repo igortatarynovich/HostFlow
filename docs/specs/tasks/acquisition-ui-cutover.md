@@ -224,7 +224,7 @@ Routing preview after mapping must show concrete outcome (entity type, vacancy/s
 |----|--------|--------|
 | **C-1** | Nav: Marketing top-level section; remove from Sales bucket; Activity under Marketing | **DONE** — #157 |
 | **C-2** | Stop legacy ad-launch from Подборы (`searchAcquisition`); reconcile to Campaign/Flight; block new dual-write debt | **DONE** — #158 (merge exception: scoped C-2 + qa-static green; full backend-ci baseline → Engineering [#159](https://github.com/igortatarynovich/HostFlow/issues/159)) |
-| **C-3** | **Sources foundation** — unified Sources list; connection status; Meta Page/Form inventory; webhook health; last submission; links to current provider bindings; Mapping Health summary (**Ready / Needs review / Broken**). No new mapping engine | **DONE** — #160 |
+| **C-3** | **Sources foundation** — unified Sources list; connection status; Mapping Health; last submission/error; waiting visibility. No new mapping engine | **DONE with constraints** — #160 · [errata](#c-3-errata--sources-list-columns-2026-07-24) (6/10 minimum columns shipped; 4 deferred → **C-3.1**) |
 | **C-4** | **Test submission & field discovery** — Meta test lead and/or capture-next; raw payload inspector; detected fields + sample values; masking; replay normalization **without** creating production entities by default — [brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md) | **ACTIVE** (after C-3 ✅) |
 | **C-5** | **Mapping workspace** — provider field → standard / domain / custom / answer / ignore; validation; versioning; unmapped-field alerts; routing preview; Mapping Health updates | After C-4 |
 | **C-6** | **Form Builder cutover** — Forms under Marketing (`/app/marketing/forms`…); create/edit/preview/publish; create-form-in-setup; integrate with Campaign Setup | After C-5 |
@@ -275,6 +275,31 @@ Scan tests: `backend/tests/api/test_acquisition_c2_legacy_launch_disabled.py`, `
 ### C-3…C-5 sketch (Sources foundation → Mapping)
 
 **C-3 Sources list columns (minimum):** status (Connected / Attention / Disconnected), provider, account/portfolio, page, provider form, last lead at, last error, Mapping Health, destination, active Flights count.
+
+#### C-3 errata — Sources list columns (2026-07-24)
+
+**Status:** #160 remains merged Product work, but C-3 is **DONE with constraints** — not an unqualified DONE against the minimum column list above.
+
+Audit of `SourceSummary` / `GET /api/v1/platform/marketing/sources` (`backend/app/acquisition/sources_read.py`) vs the locked minimum:
+
+| Canon column (minimum) | Shipped in C-3 (#160)? | API / UI field today | Notes |
+|------------------------|------------------------|----------------------|--------|
+| status | ✅ | `connection_status` | Connected / Attention / Disconnected |
+| provider | ✅ | `provider` | |
+| account/portfolio | ❌ deferred → **C-3.1** | — | No field and no cheap SoT identified yet; keep deferred until a real donor exists |
+| page | ❌ deferred → **C-3.1** | — | Not on Sources list. **Donor (do not re-invent):** `backend/app/acquisition/campaign_source_cards.py` — `page_id` via `parse_meta_page_id`, optional `page_name` |
+| provider form | ⚠️ partial → **C-3.1** | only via technical `code` / `display_name` | Operator-readable form label missing. **Donor:** same file — `lead_form_name`, `display_title`, `humanize_meta_profile_name` (already used on Campaign Detail Source cards) |
+| last lead at | ✅ | `last_submission_at` | |
+| last error | ✅ | `last_error_at` / `last_error_code` | |
+| Mapping Health | ✅ | `mapping_health` | Ready / Needs review / Broken |
+| destination | ❌ deferred → **C-3.1** | — | Absent from `SourceSummary`; still required by Sources IA prose above — pick one simple SoT in C-3.1 (e.g. `route_intent` / vacancy-or-sales summary), do not invent a parallel destination registry |
+| active Flights count | ✅ | `flight_count` | Active, non-archived Flight links |
+
+**Shipped count:** 6 / 10 minimum columns. **Deferred:** account/portfolio, page, provider form (human), destination.
+
+**Explicit non-rewrite:** this errata does **not** reopen C-3 as failed and does **not** change C-4 scope. It forbids treating #160 as “full minimum Sources list” without the deferred set.
+
+**C-3.1 (follow-up, thin):** Sources list completeness — project deferred columns into `SourceSummary` + Marketing Sources table. For **page** and **provider form**, compose from **`campaign_source_cards.py`** (same helpers / field meanings as Campaign Detail cards). Do not copy Graph live-fetch into the list. Open after C-4 smoke (or in parallel as a small PR); before claiming cutover Sources inventory complete.
 
 **C-3 waiting / missing Campaign-Flight visibility (this PR only — no runtime change):**
 
@@ -463,8 +488,9 @@ Minimum epic intent (lock later in its own task doc):
 
 - [x] Marketing is a top-level sidebar section (not under Sales) — **C-1**  
 - [x] No new acquisition launch outside Campaign/Flight — **C-2**  
-- [x] Marketing → Sources shows inventory + connection + Mapping Health — **C-3** (#160)  
+- [x] Marketing → Sources shows inventory + connection + Mapping Health — **C-3** (#160) · **with constraints** — [errata](#c-3-errata--sources-list-columns-2026-07-24) (page / form / destination / account deferred → **C-3.1**)  
 - [ ] Operator can obtain a test/sample submission and see detected fields — **C-4** ([brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md))  
+- [ ] Sources list minimum columns complete (page, provider form, destination; account/portfolio if SoT exists) — **C-3.1**  
 - [ ] Per-source mapping workspace + routing preview; unknown fields force review (not silent loss) — **C-5**  
 - [ ] Operator can create/edit/publish a form from Marketing; Setup supports select-existing **and** create-new — **C-6**  
 - [ ] New ad launch cannot start from Подборы; legacy URLs redirect or read-only — **C-7**  
@@ -477,6 +503,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-24: **C-3 errata** — Sources list minimum columns: 6/10 shipped in #160; deferred account/portfolio, page, provider form (human), destination → **C-3.1**. Status **DONE with constraints**. Donor for page/form: `backend/app/acquisition/campaign_source_cards.py` (`page_id`, `lead_form_name`, `display_title`) — do not re-discover SoT.
 - 2026-07-24: **C-4 brief opened** — [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md); Product Track = Test lead + field discovery (Marketing-native); boundary vs C-5 locked (propose/dry-run only; no production entities by default).
 - 2026-07-24: **PR2 presentation** — Campaign Detail Source cards show Lead Form / анкета HostFlow human fields; technical IDs behind «Подробнее».
 - 2026-07-24: **UI split** — Create Campaign (`/marketing/new`) vs Connect Source (`/marketing/:campaignId/sources/new`); Detail empty state + primary-slot CTA gate; no ADR-024 rewrite.
