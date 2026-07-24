@@ -103,6 +103,10 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          # Before any import of backend.app.db.session (incl. pytest-cov early import):
+          # QueuePool keeps asyncpg conns tied to a closed loop across pytest-asyncio
+          # loop boundaries. conftest also setdefault's this; workflow makes it process-wide.
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
         run: |
           pip install pytest pytest-asyncio pytest-cov
           pytest -q \
@@ -114,6 +118,7 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
         run: |
           pip install pytest pytest-asyncio
           pytest -q tests/api/test_tenant_isolation.py -m postgres_integration
@@ -121,6 +126,7 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
         run: pytest -q tests/security
       - name: Coverage gate (Phase 0 #7 — ratchet)
         run: python backend/scripts/check_coverage.py
