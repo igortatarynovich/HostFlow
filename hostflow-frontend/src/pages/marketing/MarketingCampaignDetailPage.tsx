@@ -3,7 +3,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS, marketingConnectSourcePath } from '../../app/crmAppPaths'
 import { getVacancy } from '../../api/vacancies'
 import { listAdditionalServices } from '../../api/additionalServices'
 import {
@@ -34,6 +34,7 @@ import {
   formPublicUrl,
   primaryForm,
   primarySource,
+  canConnectAnySource,
   statusLabel,
   statusTone,
 } from './marketingPresentation'
@@ -211,7 +212,13 @@ export default function MarketingCampaignDetailPage() {
 
   const publicUrl = formPublicUrl(form?.public_slug)
   const sourceLabel =
-    source?.name || source?.provider || (form ? 'Публичная форма' : '—')
+    source?.name || source?.provider || (form ? 'Публичная анкета HostFlow' : '—')
+  const formLinks = flight?.forms?.filter((f) => f.is_active) || []
+  const intakeLinks = flight?.intake_sources?.filter((s) => s.is_active) || []
+  const hasAnySourceBinding = formLinks.length > 0 || intakeLinks.length > 0
+  const showConnectCta = Boolean(flight && canConnectAnySource(flight))
+  const primaryTarget = campaign?.targets?.find((x) => x.role === 'primary')
+  const contextTargets = campaign?.targets?.filter((x) => x.role === 'context') || []
   const counters = monitor?.counters
   const kpiTiles = [
     { label: 'Заявки', value: counters?.submissions ?? 0 },
@@ -355,7 +362,7 @@ export default function MarketingCampaignDetailPage() {
                 ) : null}
               </div>
               <div>
-                <div className="text-xs text-slate-500">Форма</div>
+                <div className="text-xs text-slate-500">Анкета HostFlow</div>
                 <div className="mt-1 text-sm font-medium text-slate-900">{form?.title || '—'}</div>
                 {publicUrl ? (
                   <a
@@ -369,18 +376,123 @@ export default function MarketingCampaignDetailPage() {
                 ) : null}
               </div>
               <div>
-                <div className="text-xs text-slate-500">Источник</div>
+                <div className="text-xs text-slate-500">Источник (кратко)</div>
                 <div className="mt-1 text-sm font-medium text-slate-900">{sourceLabel}</div>
               </div>
               <div>
                 <div className="text-xs text-slate-500">Куда идут заявки</div>
                 <div className="mt-1 text-sm font-medium text-slate-900">{destinationLabel}</div>
+                {primaryTarget ? (
+                  <div className="mt-1 text-xs text-slate-500">{primaryTarget.route_intent}</div>
+                ) : null}
                 {flight?.starts_at ? (
                   <div className="mt-1 text-xs text-slate-500">
                     Запуск: {formatDateTime(flight.starts_at, locale)}
                   </div>
                 ) : null}
               </div>
+            </section>
+
+            <section
+              className="rounded-xl border border-slate-200 bg-white p-4"
+              data-testid="marketing-campaign-sources"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">Источники заявок</h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Подключения к текущему Flight. Routing наследует Primary Target кампании.
+                  </p>
+                </div>
+                {showConnectCta ? (
+                  <Link
+                    to={marketingConnectSourcePath(campaign.id)}
+                    className="btn-primary btn-sm"
+                    data-testid="marketing-connect-source-cta"
+                  >
+                    Подключить источник
+                  </Link>
+                ) : null}
+              </div>
+
+              {!hasAnySourceBinding ? (
+                <div
+                  className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center"
+                  data-testid="marketing-sources-empty"
+                >
+                  <p className="text-sm font-medium text-slate-800">Источников пока нет</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Подключите Meta Lead Ads или публичную анкету HostFlow — без повторного создания
+                    кампании.
+                  </p>
+                  {showConnectCta ? (
+                    <Link
+                      to={marketingConnectSourcePath(campaign.id)}
+                      className="btn-primary btn-sm mt-4 inline-flex"
+                      data-testid="marketing-sources-empty-cta"
+                    >
+                      Подключить источник
+                    </Link>
+                  ) : null}
+                </div>
+              ) : (
+                <ul className="mt-4 space-y-2">
+                  {formLinks.map((f) => (
+                    <li
+                      key={f.id}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      data-testid={`marketing-source-form-${f.id}`}
+                    >
+                      <div className="font-medium text-slate-900">
+                        Анкета HostFlow · {f.title || f.form_id}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        role={f.role}
+                        {f.public_slug ? ` · ${f.public_slug}` : ''}
+                      </div>
+                    </li>
+                  ))}
+                  {intakeLinks.map((s) => (
+                    <li
+                      key={s.id}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                      data-testid={`marketing-source-intake-${s.id}`}
+                    >
+                      <div className="font-medium text-slate-900">
+                        Lead Form (Meta) · {s.name || s.code || s.intake_source_profile_id}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        role={s.role}
+                        {s.provider ? ` · ${s.provider}` : ''}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {!showConnectCta && hasAnySourceBinding ? (
+                <p
+                  className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600"
+                  data-testid="marketing-sources-primary-limit"
+                >
+                  Primary-слоты анкеты HostFlow и Meta-источника для этого Flight заняты. Несколько
+                  равноправных источников одного типа появятся в следующем обновлении — сейчас UI не
+                  предлагает подключение, которое завершится ошибкой.
+                </p>
+              ) : null}
+
+              {contextTargets.length ? (
+                <div className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-600">
+                  <div className="font-medium text-slate-700">Контекст кампании</div>
+                  <ul className="mt-1 list-inside list-disc">
+                    {contextTargets.map((ct) => (
+                      <li key={ct.id}>
+                        {ct.target_type}: {ct.target_id}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </section>
 
             <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" data-testid="marketing-ops-kpi-strip">

@@ -20,12 +20,22 @@ describe('marketing workspace route registration', () => {
 
     const list = APP_ROUTES.find((item) => item.key === 'marketing')
     const setup = APP_ROUTES.find((item) => item.key === 'marketing-new')
+    const connect = APP_ROUTES.find((item) => item.key === 'marketing-connect-source')
     const detail = APP_ROUTES.find((item) => item.key === 'marketing-detail')
     expect(list?.path).toBe(crmAppRouteSegment(CRM_APP_PATHS.marketing))
     expect(setup?.path).toBe(crmAppRouteSegment(CRM_APP_PATHS.marketingNew))
+    expect(connect?.path).toBe(`${crmAppRouteSegment(CRM_APP_PATHS.marketing)}/:campaignId/sources/new`)
     expect(detail?.path).toBe(`${crmAppRouteSegment(CRM_APP_PATHS.marketing)}/:campaignId`)
     expect(CRM_APP_PATHS.marketing).toBe('/app/marketing')
     expect(CRM_APP_PATHS.marketingNew).toBe('/app/marketing/new')
+  })
+
+  it('registers Connect Source before Campaign detail (more specific path)', () => {
+    const connectIdx = APP_ROUTES.findIndex((item) => item.key === 'marketing-connect-source')
+    const detailIdx = APP_ROUTES.findIndex((item) => item.key === 'marketing-detail')
+    expect(connectIdx).toBeGreaterThanOrEqual(0)
+    expect(detailIdx).toBeGreaterThanOrEqual(0)
+    expect(connectIdx).toBeLessThan(detailIdx)
   })
 
   it('C-1: Marketing is a top-level rail section, not under Sales', () => {
@@ -41,8 +51,13 @@ describe('marketing workspace route registration', () => {
     expect([...SIDEBAR_HUB_NAV_ITEM_KEYS]).not.toContain('marketing')
   })
 
-  it('C-1: Marketing list/setup/detail require vacancies.view (route gate)', () => {
-    for (const key of ['marketing', 'marketing-new', 'marketing-detail'] as const) {
+  it('C-1: Marketing list/setup/detail/connect require vacancies.view (route gate)', () => {
+    for (const key of [
+      'marketing',
+      'marketing-new',
+      'marketing-detail',
+      'marketing-connect-source',
+    ] as const) {
       const route = APP_ROUTES.find((item) => item.key === key)
       expect(route?.permission, key).toBe('vacancies.view')
     }

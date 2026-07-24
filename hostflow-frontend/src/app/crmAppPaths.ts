@@ -31,6 +31,11 @@ export function marketingCampaignPath(campaignId: string): string {
   return `${P.marketing}/${encodeURIComponent(campaignId)}`
 }
 
+/** Connect Source wizard for an existing Campaign (Flight association). */
+export function marketingConnectSourcePath(campaignId: string): string {
+  return `${marketingCampaignPath(campaignId)}/sources/new`
+}
+
 export function settingsLeadFormBuilderPath(formId: string): string {
   return `${settingsLeadFormDetailPath(formId)}/builder`
 }
