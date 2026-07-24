@@ -111,6 +111,13 @@ export type IntakeSourceOption = {
   provider: string
   code: string
   is_active: boolean
+  display_title?: string | null
+  lead_form_name?: string | null
+  meta_form_id?: string | null
+  page_id?: string | null
+  page_name?: string | null
+  last_submission_at?: string | null
+  sample_ad_ids?: string[]
 }
 
 export async function listCampaigns(params?: {

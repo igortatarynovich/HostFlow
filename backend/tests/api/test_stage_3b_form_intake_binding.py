@@ -654,3 +654,10 @@ async def test_intake_source_options_for_marketing_picker(
     assert meta_rows
     assert all(row["provider"] == "meta" for row in meta_rows)
     assert any(row["id"] == meta_id for row in meta_rows)
+    target = next(row for row in meta_rows if row["id"] == meta_id)
+    assert target.get("display_title")
+    assert "lead_form_name" in target
+    assert "meta_form_id" in target
+    assert "page_id" in target
+    assert "sample_ad_ids" in target
+    assert isinstance(target["sample_ad_ids"], list)
