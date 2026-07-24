@@ -710,11 +710,16 @@ async def get_campaign_registries(
     return load_campaign_registries()
 
 
+class IntakeSourceSampleAdOut(BaseModel):
+    ad_id: str
+    label: Optional[str] = None
+
+
 class IntakeSourceOptionOut(BaseModel):
     """Picker option for Marketing Workspace — bindable IntakeSourceProfile rows.
 
-    Enrichment fields reuse ``campaign_source_cards`` (same donor as C-3.1 /
-    Campaign Detail Source cards). See
+    Enrichment: ``campaign_source_cards`` + optional Meta Graph hydrate
+    (``connect_source_picker``). See
     ``docs/specs/tasks/acquisition-ui-cutover-connect-source-picker-enrichment.md``.
     """
 
@@ -730,55 +735,7 @@ class IntakeSourceOptionOut(BaseModel):
     page_name: Optional[str] = None
     last_submission_at: Optional[datetime] = None
     sample_ad_ids: List[str] = Field(default_factory=list)
-
-
-async def _sample_ad_ids_by_form_id(
-    db: AsyncSession,
-    *,
-    tenant_id: str,
-    form_ids: set[str],
-    per_form: int = 3,
-) -> dict[str, list[str]]:
-    """Recent distinct Meta ad_ids per form_id from ingested leads (recognition aid)."""
-    if not form_ids:
-        return {}
-    from backend.app.models.lead import Lead
-
-    wanted = {str(f).strip() for f in form_ids if str(f).strip()}
-    rows = (
-        await db.execute(
-            select(Lead.ad_id, Lead.payload, Lead.created_at)
-            .where(
-                Lead.tenant_id == str(tenant_id),
-                Lead.ad_id.isnot(None),
-            )
-            .order_by(Lead.created_at.desc())
-            .limit(800)
-        )
-    ).all()
-    out: dict[str, list[str]] = {fid: [] for fid in wanted}
-    for ad_id, payload, _created in rows:
-        aid = str(ad_id or "").strip()
-        if not aid:
-            continue
-        form_id = ""
-        try:
-            entry = (payload or {}).get("entry") or []
-            if entry:
-                changes = (entry[0] or {}).get("changes") or []
-                if changes:
-                    value = (changes[0] or {}).get("value") or {}
-                    form_id = str(value.get("form_id") or "").strip()
-        except Exception:
-            form_id = ""
-        if form_id not in wanted:
-            continue
-        bucket = out[form_id]
-        if aid not in bucket and len(bucket) < per_form:
-            bucket.append(aid)
-        if all(len(v) >= per_form for v in out.values()):
-            break
-    return {k: v for k, v in out.items() if v}
+    sample_ads: List[IntakeSourceSampleAdOut] = Field(default_factory=list)
 
 
 @router.get(
@@ -793,6 +750,8 @@ async def list_intake_source_options(
     provider: Optional[str] = Query(default=None),
 ):
     """List active intake sources for the current company (Marketing setup picker)."""
+    from backend.app.acquisition.connect_source_picker import build_intake_source_options
+
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
     stmt = select(IntakeSourceProfile).where(
@@ -804,80 +763,13 @@ async def list_intake_source_options(
         stmt = stmt.where(IntakeSourceProfile.provider == str(provider).strip().lower())
     stmt = stmt.order_by(IntakeSourceProfile.name.asc())
     rows = (await db.execute(stmt)).scalars().all()
-    if not rows:
-        return []
-
-    profile_ids = [str(r.id) for r in rows]
-    bindings_rows = (
-        await db.execute(
-            select(IntakeSourceBinding).where(
-                IntakeSourceBinding.tenant_id == str(tenant_uuid),
-                IntakeSourceBinding.intake_source_profile_id.in_(profile_ids),
-            )
-        )
-    ).scalars().all()
-    bindings_by_profile: dict[str, list[IntakeSourceBinding]] = {pid: [] for pid in profile_ids}
-    form_ids: set[str] = set()
-    for b in bindings_rows:
-        pid = str(b.intake_source_profile_id)
-        bindings_by_profile.setdefault(pid, []).append(b)
-        fid = parse_meta_form_id(getattr(b, "external_key", "") or "")
-        if fid:
-            form_ids.add(fid)
-    for r in rows:
-        code = str(r.code or "")
-        if code.startswith("meta-form-"):
-            form_ids.add(code[len("meta-form-") :])
-
-    meta_by_form = await load_meta_form_mappings_by_form_id(
-        db, tenant_id=str(tenant_uuid), form_ids=form_ids
+    enriched = await build_intake_source_options(
+        db,
+        tenant_id=str(tenant_uuid),
+        profiles=list(rows),
+        hydrate_graph=True,
     )
-    endpoint_ids = [intake_source_endpoint_id(pid) for pid in profile_ids]
-    last_by_endpoint = await load_last_submission_by_endpoint(
-        db, tenant_id=str(tenant_uuid), endpoint_ids=endpoint_ids
-    )
-    sample_ads = await _sample_ad_ids_by_form_id(
-        db, tenant_id=str(tenant_uuid), form_ids=form_ids
-    )
-
-    out: list[IntakeSourceOptionOut] = []
-    for r in rows:
-        pid = str(r.id)
-        bindings = bindings_by_profile.get(pid) or []
-        meta_form_id: Optional[str] = None
-        for b in bindings:
-            meta_form_id = parse_meta_form_id(getattr(b, "external_key", "") or "")
-            if meta_form_id:
-                break
-        if not meta_form_id:
-            code = str(r.code or "")
-            if code.startswith("meta-form-"):
-                meta_form_id = code[len("meta-form-") :] or None
-        meta_map = meta_by_form.get(meta_form_id) if meta_form_id else None
-        card = enrich_intake_source_card(
-            r,
-            bindings,
-            meta_map=meta_map,
-            last_submission_at=last_by_endpoint.get(intake_source_endpoint_id(pid)),
-        )
-        out.append(
-            IntakeSourceOptionOut(
-                id=pid,
-                name=str(r.name or r.code or r.id),
-                provider=str(r.provider or ""),
-                code=str(r.code or ""),
-                is_active=bool(r.is_active),
-                display_title=card.display_title,
-                lead_form_name=card.lead_form_name,
-                meta_form_id=card.meta_form_id,
-                page_id=card.page_id,
-                page_name=card.page_name,
-                last_submission_at=card.last_submission_at,
-                sample_ad_ids=list(sample_ads.get(str(card.meta_form_id or ""), [])),
-            )
-        )
-    return out
-
+    return [IntakeSourceOptionOut(**row) for row in enriched]
 
 @router.get("", response_model=List[CampaignOut], dependencies=_READ)
 async def list_campaigns_endpoint(

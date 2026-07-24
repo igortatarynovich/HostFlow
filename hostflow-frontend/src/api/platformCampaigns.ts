@@ -105,6 +105,11 @@ export type FlightCommandResult = {
   campaign_event_type?: string | null
 }
 
+export type IntakeSourceSampleAd = {
+  ad_id: string
+  label?: string | null
+}
+
 export type IntakeSourceOption = {
   id: string
   name: string
@@ -118,6 +123,7 @@ export type IntakeSourceOption = {
   page_name?: string | null
   last_submission_at?: string | null
   sample_ad_ids?: string[]
+  sample_ads?: IntakeSourceSampleAd[]
 }
 
 export async function listCampaigns(params?: {

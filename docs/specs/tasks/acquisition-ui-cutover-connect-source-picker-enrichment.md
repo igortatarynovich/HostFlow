@@ -1,13 +1,14 @@
 # Acquisition UI Cutover — Connect Source picker enrichment
 
-**Status:** READY TO IMPLEMENT → implement with C-3.1 donor reuse  
+**Status:** IMPLEMENTED (local SoT + Graph hydrate for names)  
 **Date:** 2026-07-24  
 **Canon:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md)  
 **Parents:** C-3 (#160) · C-3.1 Sources list columns · Campaign Detail Source cards (PR2)  
-**Not:** C-4 test-lead · C-5 mapping · FlightAdBinding Ad-ID UI · Graph live-fetch
+**Not:** C-4 test-lead · C-5 mapping · FlightAdBinding Ad-ID UI  
 
-> Thin fix: Connect Source Meta picker must show the **same human SoT** as Sources list / Source cards.  
-> Root cause: **different endpoint**, not missing Meta sync.
+> Connect Source Meta picker must show **human form / page / ad labels**, not only IDs.  
+> Root cause #1: different endpoint than Sources list (C-3.1).  
+> Root cause #2: SoT had no `form_name` / page name — hydrate from Meta Graph + cache `form_name`.
 
 ---
 
@@ -29,10 +30,10 @@ Operators choose a Meta form **here**. Raw `Meta form {id}` blocks self-serve se
 
 On Connect Source → Meta Lead Ads, each option shows enough to pick without opening Ads Manager side-by-side:
 
-- human form title when known (`lead_form_name` / `display_title`)
+- human form title when known (`lead_form_name` / `display_title`) — from mapping **or Graph hydrate**
 - **Form ID** (always)
-- **Page ID** when bound (page **name** stays null until Graph sync — same honesty as cards)
-- optional: recent **Ad IDs** seen on this form (from existing Leads) so ENG/PL/RU ads are recognizable when `form_name` is empty
+- **Page** — name from Graph when token available; else page ID
+- recent **Ads** with Graph / `meta_ads_map.note` / vacancy labels when available
 - optional: last submission timestamp
 
 ---
@@ -51,7 +52,9 @@ Reuse (already imported by `campaigns.py` for Detail cards):
 
 **Pattern reference:** C-3.1 compose in `sources_read.py` (same helpers, list shape).
 
-**Forbidden:** new local name dictionary; Graph live-fetch in this slice; inventing `page_name` when not persisted.
+**Forbidden:** new local name dictionary; inventing page/form names without Graph or operator SoT.
+
+**Allowed Graph (this slice):** page token → form `name`, page `name`, sample ad `name`; cache form name on `meta_lead_form_mappings` only (do not wipe `mapping_rules`).
 
 ---
 

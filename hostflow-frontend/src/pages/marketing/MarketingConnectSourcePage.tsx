@@ -252,7 +252,10 @@ export default function MarketingConnectSourcePage() {
                     t('app.marketing.connect.meta.lead_form', { defaultValue: 'Lead Form' })
                   const formId = s.meta_form_id || null
                   const pageLabel = s.page_name || s.page_id || null
-                  const ads = Array.isArray(s.sample_ad_ids) ? s.sample_ad_ids.filter(Boolean) : []
+                  const ads =
+                    Array.isArray(s.sample_ads) && s.sample_ads.length
+                      ? s.sample_ads
+                      : (s.sample_ad_ids || []).map((ad_id) => ({ ad_id, label: null }))
                   return (
                     <MarketingOptionCard
                       key={s.id}
@@ -260,7 +263,12 @@ export default function MarketingConnectSourcePage() {
                       onClick={() => setMetaSourceId(s.id)}
                       testId={`marketing-connect-meta-${s.id}`}
                     >
-                      <span className="font-medium text-slate-900">{title}</span>
+                      <span
+                        className="font-medium text-slate-900"
+                        data-testid={`marketing-connect-meta-title-${s.id}`}
+                      >
+                        {title}
+                      </span>
                       <span className="mt-1 block text-xs text-slate-600">
                         {formId ? (
                           <>
@@ -279,7 +287,10 @@ export default function MarketingConnectSourcePage() {
                           {t('app.marketing.connect.meta.page', { defaultValue: 'Page' })}
                           {': '}
                           <span data-testid={`marketing-connect-meta-page-${s.id}`}>
-                            {pageLabel}
+                            {s.page_name ? s.page_name : pageLabel}
+                            {s.page_name && s.page_id ? (
+                              <span className="text-slate-400"> ({s.page_id})</span>
+                            ) : null}
                           </span>
                         </span>
                       ) : null}
@@ -288,7 +299,11 @@ export default function MarketingConnectSourcePage() {
                           {t('app.marketing.connect.meta.ads', { defaultValue: 'Ads' })}
                           {': '}
                           <span data-testid={`marketing-connect-meta-ads-${s.id}`}>
-                            {ads.join(', ')}
+                            {ads
+                              .map((a) =>
+                                a.label ? `${a.label} (${a.ad_id})` : a.ad_id,
+                              )
+                              .join(', ')}
                           </span>
                         </span>
                       ) : null}
