@@ -23,10 +23,16 @@ describe('C-3 Sources scope guards', () => {
     expect(src).not.toContain('recruitmentSearches')
   })
 
-  it('does not introduce write client helpers for Sources', () => {
+  it('list helper stays GET; C-4 sample writes are explicit sample/* helpers', () => {
     const api = readFileSync(path.join(ROOT, 'src/api/marketingSources.ts'), 'utf8')
     expect(api).toContain("'/platform/marketing/sources'")
-    expect(api).not.toMatch(/\.(post|put|patch|delete)\(/i)
+    expect(api).toContain('listMarketingSources')
+    expect(api).toMatch(/http\.get<MarketingSourceListResponse>\('\/platform\/marketing\/sources'\)/)
+    expect(api).toContain('getMarketingSourceSample')
+    expect(api).toContain('postMarketingSourceSamplePreview')
+    expect(api).toContain('/sample/preview')
+    expect(api).toContain('/sample/from-payload')
+    expect(api).toContain('/sample/capture-next')
     expect(CRM_APP_PATHS.marketingSources).toBe('/app/marketing/sources')
   })
 })
