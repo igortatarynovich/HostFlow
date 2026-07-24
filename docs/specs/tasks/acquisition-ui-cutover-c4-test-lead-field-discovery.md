@@ -128,7 +128,8 @@ Keep surface small; prefer extending platform Marketing Sources, not Settings-on
 
 Exact paths may fold under existing Meta admin services with a Marketing façade — **contract matters more than URL**.
 
-**Writes allowed in C-4:** sample blob / capture-next arm / last_discovered_fields metadata on Source profile.  
+**Writes allowed in C-4:** sample blob / capture-next arm / last_discovered_fields metadata on Source profile  
+(`publication_config_v1.mapping_discovery_v1` — policy resolver ignores unknown keys; no dedicated column in this PR).  
 **Writes forbidden:** production Candidate/Application; Flight bindings; Campaign mutations; Mapping Health → Ready without C-5 confirm (Health may move to `needs_review` when new fields appear — OK).
 
 ---
