@@ -195,7 +195,7 @@ export default function MarketingCampaignSetupPage() {
         {optionsLoading ? <p className="text-sm text-slate-500">{t('common.loading')}</p> : null}
 
         {prefilledFromSearch ? (
-          <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+          <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
             Вакансия подставлена из Подбора. Дальше задайте цель кампании — источник подключите на
             странице кампании.
           </p>
