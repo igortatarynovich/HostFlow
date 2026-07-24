@@ -710,14 +710,32 @@ async def get_campaign_registries(
     return load_campaign_registries()
 
 
+class IntakeSourceSampleAdOut(BaseModel):
+    ad_id: str
+    label: Optional[str] = None
+
+
 class IntakeSourceOptionOut(BaseModel):
-    """Picker option for Marketing Workspace — bindable IntakeSourceProfile rows."""
+    """Picker option for Marketing Workspace — bindable IntakeSourceProfile rows.
+
+    Enrichment: ``campaign_source_cards`` + optional Meta Graph hydrate
+    (``connect_source_picker``). See
+    ``docs/specs/tasks/acquisition-ui-cutover-connect-source-picker-enrichment.md``.
+    """
 
     id: str
     name: str
     provider: str
     code: str
     is_active: bool
+    display_title: Optional[str] = None
+    lead_form_name: Optional[str] = None
+    meta_form_id: Optional[str] = None
+    page_id: Optional[str] = None
+    page_name: Optional[str] = None
+    last_submission_at: Optional[datetime] = None
+    sample_ad_ids: List[str] = Field(default_factory=list)
+    sample_ads: List[IntakeSourceSampleAdOut] = Field(default_factory=list)
 
 
 @router.get(
@@ -732,6 +750,8 @@ async def list_intake_source_options(
     provider: Optional[str] = Query(default=None),
 ):
     """List active intake sources for the current company (Marketing setup picker)."""
+    from backend.app.acquisition.connect_source_picker import build_intake_source_options
+
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
     stmt = select(IntakeSourceProfile).where(
@@ -743,17 +763,13 @@ async def list_intake_source_options(
         stmt = stmt.where(IntakeSourceProfile.provider == str(provider).strip().lower())
     stmt = stmt.order_by(IntakeSourceProfile.name.asc())
     rows = (await db.execute(stmt)).scalars().all()
-    return [
-        IntakeSourceOptionOut(
-            id=str(r.id),
-            name=str(r.name or r.code or r.id),
-            provider=str(r.provider or ""),
-            code=str(r.code or ""),
-            is_active=bool(r.is_active),
-        )
-        for r in rows
-    ]
-
+    enriched = await build_intake_source_options(
+        db,
+        tenant_id=str(tenant_uuid),
+        profiles=list(rows),
+        hydrate_graph=True,
+    )
+    return [IntakeSourceOptionOut(**row) for row in enriched]
 
 @router.get("", response_model=List[CampaignOut], dependencies=_READ)
 async def list_campaigns_endpoint(
