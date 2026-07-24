@@ -64,7 +64,7 @@
 | **7d** | **C2.4** Scheduling | *(frozen)* | Do not start |
 | **P-3E** | **Acquisition Stage 3E** Activity Timeline | PR #130–#133 ✅ | **DONE** — observability vertical closed; deferred — [3e-deferred](acquisition-stage-3e-deferred.md) |
 | **P-4** | **Acquisition Stage 4** Flight Runtime | — | ✅ **Runtime DONE** (#136 / #148–#151) — [stage-4](acquisition-stage-4-flight-runtime.md) |
-| **P-4b** | **Acquisition UI Cutover** | C-1 ✅ #157 · C-2 ✅ #158 **with constraints** · C-3 ✅ #160 **with constraints** · **C-4 ACTIVE** | **ACTIVE** — [C-4](acquisition-ui-cutover-c4-test-lead-field-discovery.md); C-3.1 list completeness after C-4 smoke; then C-5…C-7 — [cutover](acquisition-ui-cutover.md) |
+| **P-4b** | **Acquisition UI Cutover** | C-1 ✅ #157 · C-2 ✅ #158 **with constraints** · C-3 ✅ #160 **with constraints** · **C-3.1 ✅** · **C-4 ACTIVE** | **ACTIVE** — [C-4](acquisition-ui-cutover-c4-test-lead-field-discovery.md); then C-5…C-7 — [cutover](acquisition-ui-cutover.md) |
 | **P-5** | **Acquisition Stage 5** Optimization | paused | **PR-1 DONE** (#153) · **PR-2 PAUSED** until P-4b — [stage-5](acquisition-stage-5-optimization.md) |
 | **8** | **Epic C Complete Gate** | after C2.3 merge + C2.4 (later) | Communication capability closed |
 | **9** | **A2** Platform Governance Review | after Epic C complete | Boundary principle |

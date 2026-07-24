@@ -26,6 +26,11 @@ export type MarketingSourceSummary = {
   routing_issue_code?: string | null
   routing_issue_message?: string | null
   setup_campaign_flight_path?: string | null
+  page_id?: string | null
+  page_name?: string | null
+  provider_form?: string | null
+  destination?: string | null
+  destination_label?: string | null
 }
 
 export type MarketingSourceListResponse = {

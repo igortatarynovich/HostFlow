@@ -81,6 +81,12 @@ class SourceSummary:
     routing_issue_code: Optional[str] = None
     routing_issue_message: Optional[str] = None
     setup_campaign_flight_path: Optional[str] = None
+    # C-3.1 — operator-facing inventory columns (errata deferred set minus account/portfolio).
+    page_id: Optional[str] = None
+    page_name: Optional[str] = None
+    provider_form: Optional[str] = None
+    destination: Optional[str] = None
+    destination_label: Optional[str] = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -106,6 +112,11 @@ class SourceSummary:
             "routing_issue_code": self.routing_issue_code,
             "routing_issue_message": self.routing_issue_message,
             "setup_campaign_flight_path": self.setup_campaign_flight_path,
+            "page_id": self.page_id,
+            "page_name": self.page_name,
+            "provider_form": self.provider_form,
+            "destination": self.destination,
+            "destination_label": self.destination_label,
         }
 
 
@@ -190,6 +201,32 @@ def build_source_paths(
         f"{SETTINGS_INTEGRATIONS_META}?tab=debug",
         SETTINGS_INTEGRATIONS_META,
     )
+
+
+def compute_destination(
+    *,
+    route_intent: Optional[str],
+    lead_target_type: Optional[str] = None,
+) -> tuple[Optional[str], Optional[str]]:
+    """Simple destination SoT for Sources list (C-3.1) — no parallel registry.
+
+    Returns ``(destination_code, destination_label)``.
+    """
+    intent = str(route_intent or "").strip().lower()
+    target = str(lead_target_type or "").strip().lower()
+    if intent == "candidate_application" or target in {"candidate", "vacancy"}:
+        return "candidate_application", "Recruitment / Candidate"
+    if intent == "sales_inquiry" or target in {"client", "company", "sales"}:
+        return "sales_inquiry", "Sales inquiry"
+    if intent == "service_request":
+        return "service_request", "Service request"
+    if intent == "partner_inquiry":
+        return "partner_inquiry", "Partner inquiry"
+    if intent and intent != "unknown":
+        return intent, intent.replace("_", " ").strip().title()
+    if target:
+        return target, target.replace("_", " ").strip().title()
+    return None, None
 
 
 def build_setup_campaign_flight_path(
@@ -333,20 +370,26 @@ async def list_marketing_source_summaries(
     )
     meta_map_by_form = {str(m.form_id): m for m in meta_maps}
 
-    # HostFlow lead forms by public_slug → id (for public_intake profiles)
+    # HostFlow lead forms by public_slug → (id, title) for public_intake profiles
     lead_forms = list(
         (
             await db.execute(
-                select(TenantLeadForm.id, TenantLeadForm.public_slug).where(
+                select(TenantLeadForm.id, TenantLeadForm.public_slug, TenantLeadForm.title).where(
                     TenantLeadForm.tenant_id == tid,
                     TenantLeadForm.public_slug.is_not(None),
                 )
             )
         ).all()
     )
-    lead_form_by_slug = {
-        str(slug): str(fid) for fid, slug in lead_forms if slug and str(slug).strip()
-    }
+    lead_form_by_slug: dict[str, str] = {}
+    lead_form_name_by_slug: dict[str, str] = {}
+    for fid, slug, ftitle in lead_forms:
+        if not slug or not str(slug).strip():
+            continue
+        key = str(slug).strip()
+        lead_form_by_slug[key] = str(fid)
+        if ftitle and str(ftitle).strip():
+            lead_form_name_by_slug[key] = str(ftitle).strip()
 
     # Activity: latest submission / error per intake_source endpoint
     endpoint_ids = [intake_source_endpoint_id(pid) for pid in profile_ids]
@@ -574,11 +617,54 @@ async def list_marketing_source_summaries(
             lead_form_id=lead_form_id,
         )
 
+        # C-3.1: reuse campaign_source_cards helpers (donor) — avoid circular import at module top.
+        from backend.app.acquisition.campaign_source_cards import (
+            humanize_meta_profile_name,
+            parse_meta_page_id,
+        )
+
+        page_id: Optional[str] = None
+        for b in active_bindings or profile_bindings:
+            page_id = parse_meta_page_id(getattr(b, "external_key_secondary", "") or "")
+            if page_id:
+                break
+        meta_map = meta_map_by_form.get(meta_form_id) if meta_form_id else None
+        if not page_id and meta_map is not None:
+            page_id = str(meta_map.page_id or "").strip() or None
+        page_name: Optional[str] = None  # not persisted without Graph sync (same as cards)
+
+        provider_form: Optional[str] = None
+        if meta_map is not None:
+            provider_form = str(meta_map.form_name or "").strip() or None
+        if not provider_form:
+            for b in active_bindings or profile_bindings:
+                provider_form = humanize_meta_profile_name(
+                    getattr(b, "label", None), form_id=meta_form_id
+                )
+                if provider_form:
+                    break
+        if not provider_form and slug and slug in lead_form_name_by_slug:
+            provider_form = lead_form_name_by_slug[slug]
+        if not provider_form:
+            provider_form = humanize_meta_profile_name(profile.name, form_id=meta_form_id)
+
+        destination, destination_label = compute_destination(
+            route_intent=str(getattr(profile, "route_intent", None) or ""),
+            lead_target_type=str(getattr(profile, "lead_target_type", None) or "") or None,
+        )
+
+        display_name = (
+            provider_form
+            or str(profile.name or "").strip()
+            or str(profile.code or "").strip()
+            or pid
+        )
+
         summaries.append(
             SourceSummary(
                 source_id=pid,
                 provider=provider,
-                display_name=str(profile.name or profile.code or pid),
+                display_name=display_name,
                 connection_status=connection_status,
                 mapping_health=mapping_health,
                 last_submission_at=last_submission,
@@ -598,6 +684,11 @@ async def list_marketing_source_summaries(
                 routing_issue_code=routing_issue_code,
                 routing_issue_message=routing_issue_message,
                 setup_campaign_flight_path=setup_campaign_flight_path,
+                page_id=page_id,
+                page_name=page_name,
+                provider_form=provider_form,
+                destination=destination,
+                destination_label=destination_label,
             )
         )
 
@@ -617,6 +708,7 @@ __all__ = [
     "build_setup_campaign_flight_path",
     "build_source_paths",
     "compute_connection_status",
+    "compute_destination",
     "compute_mapping_health",
     "extract_lead_ad_id",
     "extract_lead_form_id",

@@ -17,6 +17,7 @@ from backend.app.acquisition.sources_read import (
     HEALTH_READY,
     ROUTING_ISSUE_MISSING_CAMPAIGN_FLIGHT,
     compute_connection_status,
+    compute_destination,
     compute_mapping_health,
     list_marketing_source_summaries,
 )
@@ -72,6 +73,17 @@ async def _own_company_id(db, tenant_id: str) -> str:
         db.add(OwnCompany(id=oc, tenant_id=tenant_id, name=f"OC {uuid4().hex[:6]}"))
         await db.flush()
     return str(oc)
+
+
+def test_compute_destination_from_route_intent() -> None:
+    code, label = compute_destination(route_intent="candidate_application")
+    assert code == "candidate_application"
+    assert label == "Recruitment / Candidate"
+    code, label = compute_destination(route_intent="sales_inquiry")
+    assert code == "sales_inquiry"
+    assert "Sales" in (label or "")
+    code, label = compute_destination(route_intent=None, lead_target_type=None)
+    assert code is None and label is None
 
 
 def test_mapping_health_projection_matrix() -> None:
@@ -169,6 +181,8 @@ async def test_list_sources_aggregates_bindings_and_flights(
     async with async_session_maker() as db:
         await _ensure_tenant(db, tid)
         oc = await _own_company_id(db, tid)
+        form_id = f"form-c3-{uuid4().hex[:8]}"
+        page_id = f"page-{uuid4().hex[:6]}"
         profile = IntakeSourceProfile(
             id=str(uuid4()),
             tenant_id=tid,
@@ -189,8 +203,9 @@ async def test_list_sources_aggregates_bindings_and_flights(
                 tenant_id=tid,
                 intake_source_profile_id=profile.id,
                 provider="meta",
-                external_key=f"form_id:form-c3-{uuid4().hex[:8]}",
-                external_key_secondary=f"page_id:page-{uuid4().hex[:6]}",
+                external_key=f"form_id:{form_id}",
+                external_key_secondary=f"page_id:{page_id}",
+                label="Kierowca CE Lead Form",
                 is_active=True,
                 priority=10,
             )
@@ -304,6 +319,7 @@ async def test_list_sources_aggregates_bindings_and_flights(
         await db.commit()
         profile_id = str(profile.id)
         lonely_id = str(lonely.id)
+        expected_page_id = page_id
 
     resp = await client.get("/api/v1/platform/marketing/sources", headers=headers)
     assert resp.status_code == 200, resp.text
@@ -314,8 +330,13 @@ async def test_list_sources_aggregates_bindings_and_flights(
 
     linked = by_id[profile_id]
     assert linked["provider"] == "meta"
-    assert linked["display_name"] == "C3 Meta Source"
+    assert linked["display_name"] == "Kierowca CE Lead Form"
     assert linked["connection_status"] == "connected"
+    # C-3.1 inventory columns
+    assert linked["page_id"] == expected_page_id
+    assert linked["provider_form"] == "Kierowca CE Lead Form"
+    assert linked["destination"] == "candidate_application"
+    assert linked["destination_label"] == "Recruitment / Candidate"
     # routing_failed → Broken even with mapping rules
     assert linked["mapping_health"] == HEALTH_BROKEN
     assert linked["campaign_count"] >= 1
