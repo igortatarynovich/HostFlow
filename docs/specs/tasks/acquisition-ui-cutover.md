@@ -223,7 +223,7 @@ Routing preview after mapping must show concrete outcome (entity type, vacancy/s
 | PR | Scope | Status |
 |----|--------|--------|
 | **C-1** | Nav: Marketing top-level section; remove from Sales bucket; Activity under Marketing | **DONE** — #157 |
-| **C-2** | Stop legacy ad-launch from Подборы (`searchAcquisition`); reconcile to Campaign/Flight; block new dual-write debt | **DONE** — #158 (merge exception: scoped C-2 + qa-static green; full backend-ci baseline → Engineering [#159](https://github.com/igortatarynovich/HostFlow/issues/159)) |
+| **C-2** | Stop legacy ad-launch from Подборы (`searchAcquisition`); reconcile to Campaign/Flight; block new dual-write debt | **DONE with constraints** — #158 · [note](#c-2-constraint--legacy-ops-beyond-create-stop-2026-07-24) (create/duplicate stopped; item 5 «only» is soft) |
 | **C-3** | **Sources foundation** — unified Sources list; connection status; Mapping Health; last submission/error; waiting visibility. No new mapping engine | **DONE with constraints** — #160 · [errata](#c-3-errata--sources-list-columns-2026-07-24) (6/10 minimum columns shipped; 4 deferred → **C-3.1**) |
 | **C-4** | **Test submission & field discovery** — Meta test lead and/or capture-next; raw payload inspector; detected fields + sample values; masking; replay normalization **without** creating production entities by default — [brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md) | **ACTIVE** (after C-3 ✅) |
 | **C-5** | **Mapping workspace** — provider field → standard / domain / custom / answer / ignore; validation; versioning; unmapped-field alerts; routing preview; Mapping Health updates | After C-4 |
@@ -256,6 +256,16 @@ Early decommission would leave a scenario gap for users who still use legacy sur
 9. Do **not** decommission Подборы list/nav in C-2 — that is **C-7** only.
 
 **C-2 acceptance:** after merge, no user action may create a new acquisition launch outside Campaign/Flight.
+
+#### C-2 constraint — legacy ops beyond create-stop (2026-07-24)
+
+**Status:** #158 remains **DONE with constraints**. Acceptance (no **new** launch via `searchAcquisition` create/duplicate) holds and is enforced (API **410**, FE helpers throw, redirects, scan tests).
+
+Locked scope item **5** wording («view + sync + pause/resume/archive **only**») is **softly inaccurate**: Подборы acquisition may still **mutate audience** (`PUT …/acquisition/audience` → `update_acquisition_audience` with **no** `LegacyLaunchDisabledError` gate) and **update_bindings**; FE may still wire a gated `onDuplicate` handler (button off / API 410). These are legacy ops on existing rows — **not** new launch create paths.
+
+**Do not** reopen C-2. Retire leftover writable surfaces with **C-7** (or an explicit pre–C-7 cleanup if needed). Until then, read item 5 as: **no new launches**; pause/resume/archive/sync remain; audience/bindings = known legacy write surface.
+
+Merge CI exception (full backend-ci baseline → Engineering [#159](https://github.com/igortatarynovich/HostFlow/issues/159)) is unchanged and separate from this product wording constraint.
 
 ### C-2 call-site inventory (enforced by scan tests)
 
@@ -487,7 +497,7 @@ Minimum epic intent (lock later in its own task doc):
 ## Acceptance (cutover PASS)
 
 - [x] Marketing is a top-level sidebar section (not under Sales) — **C-1**  
-- [x] No new acquisition launch outside Campaign/Flight — **C-2**  
+- [x] No new acquisition launch outside Campaign/Flight — **C-2** (#158) · **with constraints** — [note](#c-2-constraint--legacy-ops-beyond-create-stop-2026-07-24) (audience/bindings still writable on legacy rows)  
 - [x] Marketing → Sources shows inventory + connection + Mapping Health — **C-3** (#160) · **with constraints** — [errata](#c-3-errata--sources-list-columns-2026-07-24) (page / form / destination / account deferred → **C-3.1**)  
 - [ ] Operator can obtain a test/sample submission and see detected fields — **C-4** ([brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md))  
 - [ ] Sources list minimum columns complete (page, provider form, destination; account/portfolio if SoT exists) — **C-3.1**  
@@ -503,6 +513,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-24: **C-2 constraint note** — item 5 «only» soft: create/duplicate stop real; audience PUT + update_bindings still live (no LegacyLaunch gate); gated FE `onDuplicate` residue. Status **DONE with constraints**; leftover writes → C-7.
 - 2026-07-24: **C-3 errata** — Sources list minimum columns: 6/10 shipped in #160; deferred account/portfolio, page, provider form (human), destination → **C-3.1**. Status **DONE with constraints**. Donor for page/form: `backend/app/acquisition/campaign_source_cards.py` (`page_id`, `lead_form_name`, `display_title`) — do not re-discover SoT.
 - 2026-07-24: **C-4 brief opened** — [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md); Product Track = Test lead + field discovery (Marketing-native); boundary vs C-5 locked (propose/dry-run only; no production entities by default).
 - 2026-07-24: **PR2 presentation** — Campaign Detail Source cards show Lead Form / анкета HostFlow human fields; technical IDs behind «Подробнее».
