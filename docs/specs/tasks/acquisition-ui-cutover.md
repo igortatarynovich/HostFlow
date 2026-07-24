@@ -1,10 +1,11 @@
 # Acquisition UI Cutover
 
-**Status:** **ACTIVE — Product Track next** (blocks Stage 5 PR-2)  
+**Status:** **ACTIVE — Product Track = C-4** (blocks Stage 5 PR-2)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [acquisition/module-scope.md](../../acquisition/module-scope.md)  
-**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151)  
+**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160  
+**C-4 brief:** [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md)  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (paused)  
-**Branch (planned):** `feat/acquisition-ui-cutover`  
+**Branch (planned):** `feat/acq-c4-test-lead-field-discovery`  
 **Trusted tip at open:** `integration/release-product-a-b` @ `0d87d377` (docs PR-2 boundaries)
 
 > Stage 4 **runtime** is DONE. Stage 4 **product/UI cutover** is **NOT DONE**.  
@@ -224,7 +225,7 @@ Routing preview after mapping must show concrete outcome (entity type, vacancy/s
 | **C-1** | Nav: Marketing top-level section; remove from Sales bucket; Activity under Marketing | **DONE** — #157 |
 | **C-2** | Stop legacy ad-launch from Подборы (`searchAcquisition`); reconcile to Campaign/Flight; block new dual-write debt | **DONE** — #158 (merge exception: scoped C-2 + qa-static green; full backend-ci baseline → Engineering [#159](https://github.com/igortatarynovich/HostFlow/issues/159)) |
 | **C-3** | **Sources foundation** — unified Sources list; connection status; Meta Page/Form inventory; webhook health; last submission; links to current provider bindings; Mapping Health summary (**Ready / Needs review / Broken**). No new mapping engine | **DONE** — #160 |
-| **C-4** | **Test submission & field discovery** — Meta test lead and/or capture-next; raw payload inspector; detected fields + sample values; masking; replay normalization **without** creating production entities by default | After C-3 |
+| **C-4** | **Test submission & field discovery** — Meta test lead and/or capture-next; raw payload inspector; detected fields + sample values; masking; replay normalization **without** creating production entities by default — [brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md) | **ACTIVE** (after C-3 ✅) |
 | **C-5** | **Mapping workspace** — provider field → standard / domain / custom / answer / ignore; validation; versioning; unmapped-field alerts; routing preview; Mapping Health updates | After C-4 |
 | **C-6** | **Form Builder cutover** — Forms under Marketing (`/app/marketing/forms`…); create/edit/preview/publish; create-form-in-setup; integrate with Campaign Setup | After C-5 |
 | **C-7** | **Recruitment Searches decommission + navigation acceptance** — retire Подборы ad-launch UI (redirect/read-only); unresolved → reconciliation queue; production nav + smoke; close Stage 4 product cutover gate | After C-6 |
@@ -387,7 +388,8 @@ Do not invent a third Vacancy SoT.
 6. Activity: `SubmissionReceived`, `RoutingFailed` (`missing_campaign_flight`), `RoutingCompleted`, `CandidateCreated`, `ApplicationCreated` if in catalog  
 7. Tests: no Candidate without binding; Form/Profile cannot override; reprocess idempotent; only `missing_campaign_flight` rows reprocessed  
 
-**C-4 field discovery table:** provider field · sample (masked) · proposed HostFlow target · action (confirm / select).
+**C-4 field discovery table:** provider field · sample (masked) · proposed HostFlow target · action (confirm / select).  
+Full locked scope / OUT / acceptance: [C-4 brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md). C-4 **proposes** and dry-runs; **persist mapping + routing preview = C-5**.
 
 **C-5 mapping + routing preview:** confirm decisions; show Person / Candidate / answers / ignored; duplicate policy; assignee/queue; dry-run without silent drop of unknown fields (inbox / Needs review).
 
@@ -461,8 +463,8 @@ Minimum epic intent (lock later in its own task doc):
 
 - [x] Marketing is a top-level sidebar section (not under Sales) — **C-1**  
 - [x] No new acquisition launch outside Campaign/Flight — **C-2**  
-- [ ] Marketing → Sources shows inventory + connection + Mapping Health — **C-3**  
-- [ ] Operator can obtain a test/sample submission and see detected fields — **C-4**  
+- [x] Marketing → Sources shows inventory + connection + Mapping Health — **C-3** (#160)  
+- [ ] Operator can obtain a test/sample submission and see detected fields — **C-4** ([brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md))  
 - [ ] Per-source mapping workspace + routing preview; unknown fields force review (not silent loss) — **C-5**  
 - [ ] Operator can create/edit/publish a form from Marketing; Setup supports select-existing **and** create-new — **C-6**  
 - [ ] New ad launch cannot start from Подборы; legacy URLs redirect or read-only — **C-7**  
@@ -475,6 +477,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-24: **C-4 brief opened** — [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md); Product Track = Test lead + field discovery (Marketing-native); boundary vs C-5 locked (propose/dry-run only; no production entities by default).
 - 2026-07-24: **PR2 presentation** — Campaign Detail Source cards show Lead Form / анкета HostFlow human fields; technical IDs behind «Подробнее».
 - 2026-07-24: **UI split** — Create Campaign (`/marketing/new`) vs Connect Source (`/marketing/:campaignId/sources/new`); Detail empty state + primary-slot CTA gate; no ADR-024 rewrite.
 - 2026-07-23: Opened after owner diagnosis — Stage 4 runtime DONE but product/UI cutover incomplete; Stage 5 PR-2 paused.
