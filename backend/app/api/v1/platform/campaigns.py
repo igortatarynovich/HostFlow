@@ -13,6 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition import binding_service, campaign_service
 from backend.app.acquisition.campaign_service import CampaignServiceError
+from backend.app.acquisition.campaign_source_cards import (
+    enrich_form_card,
+    enrich_intake_source_card,
+    load_last_submission_by_endpoint,
+    load_meta_form_mappings_by_form_id,
+    parse_meta_form_id,
+)
+from backend.app.acquisition.endpoint_activity import form_endpoint_id, intake_source_endpoint_id
 from backend.app.acquisition.flights import runtime_commands
 from backend.app.acquisition.flights.runtime_commands import FlightRuntimeError
 from backend.app.acquisition.kpi_aggregates import (
@@ -188,6 +196,11 @@ class CampaignFormLinkOut(BaseModel):
     is_active: bool
     title: Optional[str] = None
     public_slug: Optional[str] = None
+    # Human card (Forms SoT + activity compose; PR2)
+    form_is_active: Optional[bool] = None
+    publication_status: Optional[str] = None
+    is_public: Optional[bool] = None
+    last_submission_at: Optional[datetime] = None
 
 
 class IntakeSourceBindingOut(BaseModel):
@@ -212,6 +225,16 @@ class CampaignIntakeSourceLinkOut(BaseModel):
     name: Optional[str] = None
     # Live from IntakeSourceBinding SoT
     bindings: List[IntakeSourceBindingOut] = Field(default_factory=list)
+    # Human card (Meta mapping / bindings / activity compose; PR2)
+    profile_is_active: Optional[bool] = None
+    display_title: Optional[str] = None
+    lead_form_name: Optional[str] = None
+    page_id: Optional[str] = None
+    page_name: Optional[str] = None
+    meta_form_id: Optional[str] = None
+    binding_status: Optional[str] = None
+    active_binding_count: Optional[int] = None
+    last_submission_at: Optional[datetime] = None
 
 
 class CampaignFlightOut(BaseModel):
@@ -466,11 +489,39 @@ async def _campaign_out(db: AsyncSession, campaign: Campaign) -> CampaignOut:
         db, tenant_id=campaign.tenant_id, profile_ids=profile_ids
     )
 
+    meta_form_ids: set[str] = set()
+    for live_bindings in bindings_map.values():
+        for b in live_bindings:
+            fid = parse_meta_form_id(b.external_key)
+            if fid:
+                meta_form_ids.add(fid)
+    for profile in profiles_by_id.values():
+        code = str(profile.code or "")
+        if code.startswith("meta-form-"):
+            fid = code[len("meta-form-") :].strip()
+            if fid:
+                meta_form_ids.add(fid)
+
+    meta_maps = await load_meta_form_mappings_by_form_id(
+        db, tenant_id=campaign.tenant_id, form_ids=meta_form_ids
+    )
+
+    endpoint_ids = [form_endpoint_id(fid) for fid in form_ids] + [
+        intake_source_endpoint_id(pid) for pid in profile_ids
+    ]
+    last_by_endpoint = await load_last_submission_by_endpoint(
+        db, tenant_id=campaign.tenant_id, endpoint_ids=endpoint_ids
+    )
+
     flights_out: list[CampaignFlightOut] = []
     for f in campaign.flights or []:
         forms_out = []
         for link in f.form_links or []:
             form = forms_by_id.get(link.form_id)
+            form_card = enrich_form_card(
+                form,
+                last_submission_at=last_by_endpoint.get(form_endpoint_id(link.form_id)),
+            )
             forms_out.append(
                 CampaignFormLinkOut(
                     id=link.id,
@@ -479,12 +530,34 @@ async def _campaign_out(db: AsyncSession, campaign: Campaign) -> CampaignOut:
                     is_active=link.is_active,
                     title=form.title if form else None,
                     public_slug=form.public_slug if form else None,
+                    form_is_active=form_card.form_is_active,
+                    publication_status=form_card.publication_status,
+                    is_public=form_card.is_public,
+                    last_submission_at=form_card.last_submission_at,
                 )
             )
         sources_out = []
         for link in f.intake_source_links or []:
             profile = profiles_by_id.get(link.intake_source_profile_id)
             live_bindings = bindings_map.get(link.intake_source_profile_id) or []
+            meta_form_id = None
+            for b in live_bindings:
+                meta_form_id = parse_meta_form_id(b.external_key)
+                if meta_form_id:
+                    break
+            if not meta_form_id and profile is not None:
+                code = str(profile.code or "")
+                if code.startswith("meta-form-"):
+                    meta_form_id = code[len("meta-form-") :].strip() or None
+            meta_map = meta_maps.get(meta_form_id) if meta_form_id else None
+            src_card = enrich_intake_source_card(
+                profile,
+                live_bindings,
+                meta_map=meta_map,
+                last_submission_at=last_by_endpoint.get(
+                    intake_source_endpoint_id(link.intake_source_profile_id)
+                ),
+            )
             sources_out.append(
                 CampaignIntakeSourceLinkOut(
                     id=link.id,
@@ -505,6 +578,15 @@ async def _campaign_out(db: AsyncSession, campaign: Campaign) -> CampaignOut:
                         )
                         for b in live_bindings
                     ],
+                    profile_is_active=src_card.profile_is_active,
+                    display_title=src_card.display_title,
+                    lead_form_name=src_card.lead_form_name,
+                    page_id=src_card.page_id,
+                    page_name=src_card.page_name,
+                    meta_form_id=src_card.meta_form_id,
+                    binding_status=src_card.binding_status,
+                    active_binding_count=src_card.active_binding_count,
+                    last_submission_at=src_card.last_submission_at,
                 )
             )
         flights_out.append(

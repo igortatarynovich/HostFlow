@@ -38,6 +38,7 @@ import {
   statusLabel,
   statusTone,
 } from './marketingPresentation'
+import { HostFlowFormSourceCard, MetaLeadFormSourceCard } from './MarketingSourceCards'
 
 export default function MarketingCampaignDetailPage() {
   const { t, locale } = useI18n()
@@ -401,7 +402,8 @@ export default function MarketingCampaignDetailPage() {
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900">Источники заявок</h2>
                   <p className="mt-1 text-xs text-slate-500">
-                    Подключения к текущему Flight. Routing наследует Primary Target кампании.
+                    Source = откуда приходят заявки (Lead Form Meta или анкета HostFlow). Connection
+                    (OAuth) настраивается в Integrations. Routing наследует Primary Target кампании.
                   </p>
                 </div>
                 {showConnectCta ? (
@@ -436,36 +438,12 @@ export default function MarketingCampaignDetailPage() {
                   ) : null}
                 </div>
               ) : (
-                <ul className="mt-4 space-y-2">
+                <ul className="mt-4 space-y-3">
                   {formLinks.map((f) => (
-                    <li
-                      key={f.id}
-                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                      data-testid={`marketing-source-form-${f.id}`}
-                    >
-                      <div className="font-medium text-slate-900">
-                        Анкета HostFlow · {f.title || f.form_id}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        role={f.role}
-                        {f.public_slug ? ` · ${f.public_slug}` : ''}
-                      </div>
-                    </li>
+                    <HostFlowFormSourceCard key={f.id} link={f} locale={locale} />
                   ))}
                   {intakeLinks.map((s) => (
-                    <li
-                      key={s.id}
-                      className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                      data-testid={`marketing-source-intake-${s.id}`}
-                    >
-                      <div className="font-medium text-slate-900">
-                        Lead Form (Meta) · {s.name || s.code || s.intake_source_profile_id}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        role={s.role}
-                        {s.provider ? ` · ${s.provider}` : ''}
-                      </div>
-                    </li>
+                    <MetaLeadFormSourceCard key={s.id} link={s} locale={locale} />
                   ))}
                 </ul>
               )}
