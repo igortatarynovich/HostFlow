@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.acquisition.endpoint_activity import intake_source_endpoint_id
 from backend.app.constants.spa_paths import (
     MARKETING_NEW,
+    MARKETING_SOURCES,
     SETTINGS_INTEGRATIONS_META,
     SETTINGS_LEAD_FORMS,
 )
@@ -176,29 +177,30 @@ def compute_mapping_health(
 
 def build_source_paths(
     *,
+    source_id: str,
     provider: str,
     meta_form_id: Optional[str],
     lead_form_id: Optional[str],
 ) -> tuple[str, str, str]:
-    """Return (mapping_path, test_lead_path, settings_path)."""
+    """Return (mapping_path, test_lead_path, settings_path).
+
+    C-4: ``test_lead_path`` is Marketing-native (``/app/marketing/sources/{id}/test-lead``).
+    Mapping remains Settings until C-5 Mapping workspace.
+    """
     provider_l = str(provider or "").strip().lower()
+    test_path = f"{MARKETING_SOURCES}/{quote(str(source_id), safe='')}/test-lead"
     if lead_form_id:
         form_base = f"{SETTINGS_LEAD_FORMS}/{quote(str(lead_form_id), safe='')}"
-        return form_base, f"{form_base}?section=mapping", SETTINGS_INTEGRATIONS_META
+        return form_base, test_path, SETTINGS_INTEGRATIONS_META
     if provider_l == "meta" or meta_form_id:
         q = {"tab": "field_mapping"}
         if meta_form_id:
             q["form_id"] = str(meta_form_id)
         mapping = f"{SETTINGS_INTEGRATIONS_META}?{urlencode(q)}"
-        # C-4 will own real test-lead UX; deep-link existing Meta debug / incoming preview.
-        test_q = {"tab": "debug"}
-        if meta_form_id:
-            test_q["form_id"] = str(meta_form_id)
-        test_path = f"{SETTINGS_INTEGRATIONS_META}?{urlencode(test_q)}"
         return mapping, test_path, SETTINGS_INTEGRATIONS_META
     return (
         f"{SETTINGS_INTEGRATIONS_META}?tab=field_mapping",
-        f"{SETTINGS_INTEGRATIONS_META}?tab=debug",
+        test_path,
         SETTINGS_INTEGRATIONS_META,
     )
 
@@ -612,6 +614,7 @@ async def list_marketing_source_summaries(
                 mapping_health = HEALTH_NEEDS_REVIEW
 
         mapping_path, test_lead_path, settings_path = build_source_paths(
+            source_id=pid,
             provider=provider,
             meta_form_id=meta_form_id,
             lead_form_id=lead_form_id,
