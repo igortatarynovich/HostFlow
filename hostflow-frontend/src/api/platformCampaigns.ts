@@ -17,6 +17,10 @@ export type CampaignFormLink = {
   is_active: boolean
   title?: string | null
   public_slug?: string | null
+  form_is_active?: boolean | null
+  publication_status?: string | null
+  is_public?: boolean | null
+  last_submission_at?: string | null
 }
 
 export type CampaignIntakeSourceLink = {
@@ -27,6 +31,23 @@ export type CampaignIntakeSourceLink = {
   provider?: string | null
   code?: string | null
   name?: string | null
+  bindings?: Array<{
+    id: string
+    provider: string
+    external_key: string
+    external_key_secondary?: string
+    label?: string | null
+    priority?: number
+  }>
+  profile_is_active?: boolean | null
+  display_title?: string | null
+  lead_form_name?: string | null
+  page_id?: string | null
+  page_name?: string | null
+  meta_form_id?: string | null
+  binding_status?: string | null
+  active_binding_count?: number | null
+  last_submission_at?: string | null
 }
 
 export type CampaignFlight = {
