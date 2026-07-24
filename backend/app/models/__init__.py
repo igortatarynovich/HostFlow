@@ -99,6 +99,7 @@ CampaignRun = campaign_module.CampaignRun  # type: ignore[attr-defined]
 CampaignTarget = campaign_module.CampaignTarget  # type: ignore[attr-defined]
 CampaignRunForm = campaign_module.CampaignRunForm  # type: ignore[attr-defined]
 CampaignRunIntakeSource = campaign_module.CampaignRunIntakeSource  # type: ignore[attr-defined]
+FlightAdBinding = campaign_module.FlightAdBinding  # type: ignore[attr-defined]
 CampaignResultAttribution = campaign_module.CampaignResultAttribution  # type: ignore[attr-defined]
 CampaignOutcome = campaign_module.CampaignOutcome  # type: ignore[attr-defined]
 CampaignOutcomeResultLink = campaign_module.CampaignOutcomeResultLink  # type: ignore[attr-defined]
@@ -339,6 +340,7 @@ __all__ = [
     "CampaignTarget",
     "CampaignRunForm",
     "CampaignRunIntakeSource",
+    "FlightAdBinding",
     "CampaignResultAttribution",
     "CampaignOutcome",
     "CampaignOutcomeResultLink",

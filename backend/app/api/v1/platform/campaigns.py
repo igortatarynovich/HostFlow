@@ -7,7 +7,7 @@ from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -135,6 +135,33 @@ class FormLinkIn(BaseModel):
 class IntakeSourceLinkIn(BaseModel):
     intake_source_profile_id: str
     role: str = "primary"
+
+
+class AdLinkIn(BaseModel):
+    """Meta Ad ID → Flight advertising route (Meta-only until more providers map to Lead.source)."""
+
+    provider_ad_id: str
+    provider: str = "meta"
+
+    @field_validator("provider")
+    @classmethod
+    def _provider_must_be_supported(cls, value: str) -> str:
+        from backend.app.acquisition.flight_ad_binding import normalize_flight_ad_provider
+
+        try:
+            return normalize_flight_ad_provider(value)
+        except ValueError as exc:
+            raise ValueError(str(exc)) from exc
+
+
+class AdBindingOut(BaseModel):
+    id: str
+    provider: str
+    provider_ad_id: str
+    campaign_id: str
+    flight_id: str
+    is_active: bool
+    reprocess: Optional[dict] = None
 
 
 class LinkPatchIn(BaseModel):
@@ -1742,3 +1769,238 @@ async def get_flight_optimization_endpoint(
     except FlightRuntimeError as exc:
         _raise_runtime(exc)
     return FlightOptimizationOut.model_validate(snap.to_dict())
+
+
+# --- FlightAdBinding (Ad ID → Flight) ---
+
+
+async def _reprocess_after_ad_binding_commit(
+    *,
+    tenant_id: str,
+    provider: str,
+    provider_ad_id: str,
+    enabled: bool = True,
+) -> dict:
+    """Run auto-reprocess in a separate transaction after binding is committed.
+
+    Failures never roll back the binding — they surface in the response summary.
+    """
+    empty: dict = {
+        "matched": 0,
+        "processed": 0,
+        "skipped": 0,
+        "batches": 0,
+        "errors": [],
+    }
+    if not enabled:
+        return empty
+    from backend.app.acquisition.flight_ad_binding import reprocess_leads_for_ad_binding
+
+    try:
+        return await reprocess_leads_for_ad_binding(
+            tenant_id=tenant_id,
+            provider=provider,
+            provider_ad_id=provider_ad_id,
+        )
+    except Exception as exc:  # noqa: BLE001 — binding already durable
+        return {
+            **empty,
+            "errors": [{"lead_id": "*", "error": str(exc)[:240]}],
+        }
+
+
+@router.post(
+    "/{campaign_id}/ad-bindings",
+    response_model=AdBindingOut,
+    status_code=201,
+    dependencies=_WRITE,
+)
+async def attach_ad_current_flight(
+    campaign_id: str,
+    payload: AdLinkIn,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
+    try:
+        campaign = await binding_service.attach_ad(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            provider_ad_id=payload.provider_ad_id,
+            provider=payload.provider,
+            own_company_id=own_company_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
+        await db.commit()
+    except CampaignServiceError as exc:
+        await db.rollback()
+        _raise_service(exc)
+    link = _find_ad_link(campaign, payload.provider, payload.provider_ad_id)
+    reprocess = await _reprocess_after_ad_binding_commit(
+        tenant_id=str(tenant_uuid),
+        provider=str(link.provider) if link else payload.provider,
+        provider_ad_id=str(link.provider_ad_id) if link else payload.provider_ad_id,
+    )
+    return AdBindingOut(
+        id=str(link.id) if link else "",
+        provider=str(link.provider) if link else payload.provider,
+        provider_ad_id=str(link.provider_ad_id) if link else payload.provider_ad_id,
+        campaign_id=str(campaign.id),
+        flight_id=str(link.campaign_run_id) if link else "",
+        is_active=bool(link.is_active) if link else True,
+        reprocess=reprocess,
+    )
+
+
+@router.post(
+    "/{campaign_id}/flights/{flight_id}/ad-bindings",
+    response_model=AdBindingOut,
+    status_code=201,
+    dependencies=_WRITE,
+)
+async def attach_ad_on_flight(
+    campaign_id: str,
+    flight_id: str,
+    payload: AdLinkIn,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
+    try:
+        campaign = await binding_service.attach_ad(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            provider_ad_id=payload.provider_ad_id,
+            provider=payload.provider,
+            own_company_id=own_company_id,
+            flight_id=flight_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
+        await db.commit()
+    except CampaignServiceError as exc:
+        await db.rollback()
+        _raise_service(exc)
+    link = _find_ad_link(campaign, payload.provider, payload.provider_ad_id)
+    reprocess = await _reprocess_after_ad_binding_commit(
+        tenant_id=str(tenant_uuid),
+        provider=str(link.provider) if link else payload.provider,
+        provider_ad_id=str(link.provider_ad_id) if link else payload.provider_ad_id,
+    )
+    return AdBindingOut(
+        id=str(link.id) if link else "",
+        provider=str(link.provider) if link else payload.provider,
+        provider_ad_id=str(link.provider_ad_id) if link else payload.provider_ad_id,
+        campaign_id=str(campaign.id),
+        flight_id=str(link.campaign_run_id) if link else flight_id,
+        is_active=bool(link.is_active) if link else True,
+        reprocess=reprocess,
+    )
+
+
+@router.patch(
+    "/{campaign_id}/ad-bindings/{link_id}",
+    response_model=AdBindingOut,
+    dependencies=_WRITE,
+)
+async def patch_ad_binding(
+    campaign_id: str,
+    link_id: str,
+    payload: LinkPatchIn,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
+    try:
+        campaign = await binding_service.update_ad_link(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            link_id=link_id,
+            is_active=payload.is_active,
+            own_company_id=own_company_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
+        await db.commit()
+    except CampaignServiceError as exc:
+        await db.rollback()
+        _raise_service(exc)
+    link = _find_ad_link_by_id(campaign, link_id)
+    reprocess = await _reprocess_after_ad_binding_commit(
+        tenant_id=str(tenant_uuid),
+        provider=str(link.provider) if link else "meta",
+        provider_ad_id=str(link.provider_ad_id) if link else "",
+        enabled=bool(link and link.is_active),
+    )
+    return AdBindingOut(
+        id=str(link.id) if link else link_id,
+        provider=str(link.provider) if link else "meta",
+        provider_ad_id=str(link.provider_ad_id) if link else "",
+        campaign_id=str(campaign.id),
+        flight_id=str(link.campaign_run_id) if link else "",
+        is_active=bool(link.is_active) if link else False,
+        reprocess=reprocess,
+    )
+
+
+@router.delete(
+    "/{campaign_id}/ad-bindings/{link_id}",
+    response_model=CampaignOut,
+    dependencies=_WRITE,
+)
+async def detach_ad_binding(
+    campaign_id: str,
+    link_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
+    try:
+        campaign = await binding_service.detach_ad(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            link_id=link_id,
+            own_company_id=own_company_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
+        await db.commit()
+    except CampaignServiceError as exc:
+        await db.rollback()
+        _raise_service(exc)
+    return await _campaign_out(db, campaign)
+
+
+def _find_ad_link(campaign: Campaign, provider: str, provider_ad_id: str):
+    prov = str(provider or "meta").strip().lower()
+    ad = str(provider_ad_id or "").strip()
+    for flight in campaign.flights or []:
+        for link in flight.ad_links or []:
+            if str(link.provider).lower() == prov and str(link.provider_ad_id) == ad and link.is_active:
+                return link
+    return None
+
+
+def _find_ad_link_by_id(campaign: Campaign, link_id: str):
+    for flight in campaign.flights or []:
+        for link in flight.ad_links or []:
+            if str(link.id) == str(link_id):
+                return link
+    return None

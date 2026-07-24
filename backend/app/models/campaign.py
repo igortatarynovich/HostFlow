@@ -101,6 +101,12 @@ class CampaignRun(Base, TimestampMixin):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    ad_links: Mapped[list["FlightAdBinding"]] = relationship(
+        "FlightAdBinding",
+        back_populates="campaign_run",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class CampaignTarget(Base, TimestampMixin):
@@ -204,6 +210,54 @@ class CampaignRunIntakeSource(Base, TimestampMixin):
     campaign_run: Mapped["CampaignRun"] = relationship(
         "CampaignRun", back_populates="intake_source_links"
     )
+
+
+class FlightAdBinding(Base, TimestampMixin):
+    """Ad ID → Flight advertising route (Acquisition SoT; separate from Form/Source/Vacancy).
+
+    Unique active route is ``(tenant_id, provider, provider_ad_id)`` via partial index —
+    never a global ``ad_id`` primary key (see ``meta_ads_map`` anti-pattern).
+    """
+
+    __tablename__ = "acq_flight_ad_bindings"
+    __table_args__ = (
+        Index(
+            "ix_acq_flight_ad_bindings_tenant_flight",
+            "tenant_id",
+            "campaign_run_id",
+        ),
+        Index(
+            "ix_acq_flight_ad_bindings_tenant_campaign",
+            "tenant_id",
+            "campaign_id",
+        ),
+        Index(
+            "ix_acq_flight_ad_bindings_lookup",
+            "tenant_id",
+            "provider",
+            "provider_ad_id",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False, default="meta")
+    provider_ad_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    campaign_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaigns.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    campaign_run_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("acq_campaign_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    campaign_run: Mapped["CampaignRun"] = relationship("CampaignRun", back_populates="ad_links")
 
 
 class CampaignResultAttribution(Base, TimestampMixin):

@@ -35,6 +35,7 @@ from backend.app.models.campaign import (
     CampaignRun,
     CampaignRunForm,
     CampaignRunIntakeSource,
+    FlightAdBinding,
 )
 from backend.app.models.intake_routing import IntakeSourceProfile
 from backend.app.models.tenant_lead_form import TenantLeadForm
@@ -534,6 +535,200 @@ async def detach_intake_source(
         endpoint_id=endpoint_id,
         change_kind=CHANGE_KIND_DETACHED,
         source_event_id=source_event_id,
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
+    return await _reload_campaign(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        own_company_id=own_company_id,
+    )
+
+
+async def attach_ad(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    campaign_id: str,
+    provider_ad_id: str,
+    provider: str = "meta",
+    own_company_id: str | None = None,
+    flight_id: str | None = None,
+    actor_type: str = ACTOR_TYPE_SYSTEM,
+    actor_id: str | None = None,
+) -> Campaign:
+    """Create active Ad ID → Flight binding (commit separately; reprocess post-commit)."""
+    from backend.app.acquisition.flight_ad_binding import (
+        normalize_flight_ad_provider,
+        normalize_provider_ad_id,
+    )
+
+    campaign, flight = await _resolve_flight(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        own_company_id=own_company_id,
+        flight_id=flight_id,
+    )
+    try:
+        prov = normalize_flight_ad_provider(provider)
+    except ValueError as exc:
+        raise CampaignServiceError(str(exc), status_code=422) from exc
+    ad = normalize_provider_ad_id(provider_ad_id)
+    if not ad:
+        raise CampaignServiceError("provider_ad_id is required", status_code=422)
+
+    existing_active = await db.execute(
+        select(FlightAdBinding).where(
+            FlightAdBinding.tenant_id == tenant_id,
+            FlightAdBinding.provider == prov,
+            FlightAdBinding.provider_ad_id == ad,
+            FlightAdBinding.is_active.is_(True),
+        )
+    )
+    if existing_active.scalar_one_or_none() is not None:
+        raise CampaignServiceError(
+            "Active Ad binding already exists for this provider Ad ID",
+            status_code=422,
+        )
+
+    link_id = str(uuid4())
+    flight.ad_links.append(
+        FlightAdBinding(
+            id=link_id,
+            tenant_id=tenant_id,
+            provider=prov,
+            provider_ad_id=ad,
+            campaign_id=str(campaign.id),
+            campaign_run_id=str(flight.id),
+            is_active=True,
+        )
+    )
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        raise CampaignServiceError(
+            "Active Ad binding already exists for this provider Ad ID",
+            status_code=422,
+        ) from exc
+
+    await append_endpoint_changed(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        flight_id=flight.id,
+        endpoint_id=f"ad:{prov}:{ad}",
+        change_kind=CHANGE_KIND_ATTACHED,
+        source_event_id=endpoint_source_event_id(link_id, CHANGE_KIND_ATTACHED),
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
+
+    return await _reload_campaign(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        own_company_id=own_company_id,
+    )
+
+
+async def update_ad_link(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    campaign_id: str,
+    link_id: str,
+    is_active: bool | None = None,
+    own_company_id: str | None = None,
+    actor_type: str = ACTOR_TYPE_SYSTEM,
+    actor_id: str | None = None,
+) -> Campaign:
+    """Update Ad binding (commit separately; reprocess active links post-commit)."""
+    campaign = await get_campaign(
+        db, tenant_id=tenant_id, campaign_id=campaign_id, own_company_id=own_company_id
+    )
+    link: FlightAdBinding | None = None
+    flight: CampaignRun | None = None
+    for f in campaign.flights or []:
+        for row in f.ad_links or []:
+            if str(row.id) == str(link_id):
+                link = row
+                flight = f
+                break
+        if link is not None:
+            break
+    if link is None or flight is None or str(link.tenant_id) != str(tenant_id):
+        raise CampaignServiceError("Ad binding not found", status_code=404)
+
+    if is_active is not None:
+        link.is_active = bool(is_active)
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        raise CampaignServiceError(
+            "Active Ad binding already exists for this provider Ad ID",
+            status_code=422,
+        ) from exc
+
+    await append_endpoint_changed(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        flight_id=flight.id,
+        endpoint_id=f"ad:{link.provider}:{link.provider_ad_id}",
+        change_kind=CHANGE_KIND_UPDATED,
+        source_event_id=endpoint_source_event_id(str(link.id), CHANGE_KIND_UPDATED),
+        actor_type=actor_type,
+        actor_id=actor_id,
+    )
+
+    return await _reload_campaign(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        own_company_id=own_company_id,
+    )
+
+
+async def detach_ad(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    campaign_id: str,
+    link_id: str,
+    own_company_id: str | None = None,
+    actor_type: str = ACTOR_TYPE_SYSTEM,
+    actor_id: str | None = None,
+) -> Campaign:
+    campaign = await get_campaign(
+        db, tenant_id=tenant_id, campaign_id=campaign_id, own_company_id=own_company_id
+    )
+    link: FlightAdBinding | None = None
+    flight: CampaignRun | None = None
+    for f in campaign.flights or []:
+        for row in list(f.ad_links or []):
+            if str(row.id) == str(link_id):
+                link = row
+                flight = f
+                break
+        if link is not None:
+            break
+    if link is None or flight is None or str(link.tenant_id) != str(tenant_id):
+        raise CampaignServiceError("Ad binding not found", status_code=404)
+
+    endpoint_id = f"ad:{link.provider}:{link.provider_ad_id}"
+    await db.delete(link)
+    await db.flush()
+
+    await append_endpoint_changed(
+        db,
+        tenant_id=tenant_id,
+        campaign_id=campaign_id,
+        flight_id=flight.id,
+        endpoint_id=endpoint_id,
+        change_kind=CHANGE_KIND_DETACHED,
+        source_event_id=endpoint_source_event_id(str(link_id), CHANGE_KIND_DETACHED),
         actor_type=actor_type,
         actor_id=actor_id,
     )

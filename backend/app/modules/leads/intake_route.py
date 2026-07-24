@@ -236,6 +236,12 @@ async def resolve_intake_route_for_ingest(
         tenant_id=str(tenant_id),
         intake_source_profile_id=routing.intake_source_profile_id,
         form_id=form_id,
+        provider=src,
+        provider_ad_id=(
+            str(normalized.get("ad_id")).strip()
+            if normalized.get("ad_id") is not None and str(normalized.get("ad_id")).strip()
+            else None
+        ),
     )
     unresolved = uni.status != RoutingDecisionStatus.routed.value
     effective_intent = (

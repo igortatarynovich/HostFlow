@@ -31,15 +31,22 @@
 - RBAC via existing platform read roles (`require_roles` on the router)
 - Projection exposes counts, timestamps, Ad ID, routing issue **code/message**, and SPA deep-links — not raw submission payloads
 - Waiting / routing issue fields are server-derived from Lead + bindings; UI does not invent reasons
-- Runtime ingest / `profile_default` / Ad→Flight binding **unchanged** in C-3 (separate runtime PR)
+
+## Follow-up surface — FlightAdBinding (runtime)
+
+- Write: `POST/PATCH/DELETE /api/v1/platform/campaigns/.../ad-bindings`
+- Assets: `acq_flight_ad_bindings` (tenant + provider + provider_ad_id unique when active)
+- Threats: cross-tenant Ad bind, binding forging another company's Flight, unbounded reprocess storm
+- Mitigations: campaign company-scope + `_WRITE` roles; Flight must belong to Campaign/tenant; auto-reprocess limited to `missing_campaign_flight` + exact Ad ID + no Candidate; webhook never creates bindings
 
 ## Тесты
 
 - `backend/tests/api/test_acquisition_c3_marketing_sources.py`
+- `backend/tests/api/test_acquisition_flight_ad_binding.py`
 - `hostflow-frontend/src/app/__tests__/acquisitionC3SourcesScopeScan.test.ts`
 
 ## Связанные спеки
 
-- [`docs/specs/tasks/acquisition-ui-cutover.md`](../../specs/tasks/acquisition-ui-cutover.md) (C-3 + locked Ad ID→Flight contract for follow-up)
+- [`docs/specs/tasks/acquisition-ui-cutover.md`](../../specs/tasks/acquisition-ui-cutover.md)
 - [`docs/security/threat-models/acquisition-activity-timeline.md`](./acquisition-activity-timeline.md)
 - [`docs/security/threat-models/acquisition-flight-runtime.md`](./acquisition-flight-runtime.md)
