@@ -228,7 +228,7 @@ export default function FormsBuilderPage() {
     }
   }
 
-  const backHref = formId ? settingsLeadFormDetailPath(formId) : CRM_APP_PATHS.settingsLeadForms
+  const backHref = formId ? settingsLeadFormDetailPath(formId) : CRM_APP_PATHS.marketingForms
 
   return (
     <SettingsSubpageHeader

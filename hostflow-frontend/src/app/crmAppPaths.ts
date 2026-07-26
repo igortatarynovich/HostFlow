@@ -24,7 +24,7 @@ export function communicationsThreadPath(threadId: string): string {
 }
 
 export function settingsLeadFormDetailPath(formId: string): string {
-  return `${P.settingsLeadForms}/${encodeURIComponent(formId)}`
+  return marketingFormDetailPath(formId)
 }
 
 export function marketingCampaignPath(campaignId: string): string {
@@ -46,8 +46,17 @@ export function marketingConnectSourcePath(campaignId: string): string {
   return `${marketingCampaignPath(campaignId)}/sources/new`
 }
 
+/** C-6: Marketing-native HostFlow form detail / builder (Forms SoT unchanged). */
+export function marketingFormDetailPath(formId: string): string {
+  return `${P.marketingForms}/${encodeURIComponent(formId)}`
+}
+
+export function marketingFormBuilderPath(formId: string): string {
+  return `${marketingFormDetailPath(formId)}/builder`
+}
+
 export function settingsLeadFormBuilderPath(formId: string): string {
-  return `${settingsLeadFormDetailPath(formId)}/builder`
+  return marketingFormBuilderPath(formId)
 }
 
 export function recruitmentSearchPath(searchId: string): string {

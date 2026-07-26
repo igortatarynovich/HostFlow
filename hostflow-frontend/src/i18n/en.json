@@ -941,6 +941,7 @@
         "automation_log": "Automation log",
         "acquisition_activity": "Acquisition activity",
         "marketing_sources": "Sources",
+        "marketing_forms": "Forms",
         "automation_rules": "Automation rules",
         "settings_hiring_gates": "Hiring pipeline gates",
         "settings_risk_intel": "Risk intelligence"

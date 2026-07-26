@@ -30,6 +30,7 @@ describe('marketing sources route registration (C-3)', () => {
     expect([...SIDEBAR_AGENCY_MARKETING_ORDER]).toEqual([
       'marketing',
       'marketing-sources',
+      'marketing-forms',
       'acquisition-activity',
     ])
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).not.toContain('marketing-sources')
@@ -42,5 +43,6 @@ describe('marketing sources route registration (C-3)', () => {
     expect(CRM_APP_PATHS.settingsIntegrationsMeta).toBe('/app/settings/integrations/meta')
     expect(CRM_APP_PATHS.settingsLeadForms).toBe('/app/settings/lead-forms')
     expect(CRM_APP_PATHS.settingsLeadForms.startsWith('/app/settings/')).toBe(true)
+    expect(CRM_APP_PATHS.marketingForms).toBe('/app/marketing/forms')
   })
 })

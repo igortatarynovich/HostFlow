@@ -308,7 +308,7 @@ export default function SettingsLandingPage() {
         key: 'lead_forms',
         label: t('admin.settings.cards.lead_forms.label'),
         description: t('admin.settings.cards.lead_forms.description'),
-        target: CRM_APP_PATHS.settingsLeadForms,
+        target: CRM_APP_PATHS.marketingForms,
         roles: ['administrator', 'supervisor'],
         section: 'crm_setup',
         requiresModules: ['leads'],

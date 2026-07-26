@@ -118,6 +118,25 @@ function LegacySettingsLeadsToMetaRedirect() {
   return <Navigate to={CRM.settingsIntegrationsMeta} replace />
 }
 
+function SettingsLeadFormsListRedirect() {
+  return <Navigate to={CRM.marketingForms} replace />
+}
+
+function SettingsLeadFormDetailRedirect() {
+  const { formId } = useParams()
+  return <Navigate to={`${CRM.marketingForms}/${encodeURIComponent(String(formId || ''))}`} replace />
+}
+
+function SettingsLeadFormBuilderRedirect() {
+  const { formId } = useParams()
+  return (
+    <Navigate
+      to={`${CRM.marketingForms}/${encodeURIComponent(String(formId || ''))}/builder`}
+      replace
+    />
+  )
+}
+
 function ClientsRootRedirect() {
   return <Navigate to={CRM.clientsDirectory} replace />
 }
@@ -202,6 +221,13 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'marketing-sources',
     labelKey: 'app.nav.items.marketing_sources',
     path: CRM.marketingSources,
+    group: 'people',
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-forms',
+    labelKey: 'app.nav.items.marketing_forms',
+    path: CRM.marketingForms,
     group: 'people',
     permission: 'vacancies.view',
   },
@@ -788,6 +814,24 @@ export const APP_ROUTES: AppRouteConfig[] = [
     permission: 'vacancies.view',
   },
   {
+    key: 'marketing-forms',
+    path: seg(CRM.marketingForms),
+    Component: LeadFormsSettingsPage,
+    permission: ['admin.users', 'leads.view', 'vacancies.view'],
+  },
+  {
+    key: 'marketing-forms-builder',
+    path: `${seg(CRM.marketingForms)}/:formId/builder`,
+    Component: FormsBuilderPage,
+    permission: ['admin.users', 'leads.view', 'vacancies.view'],
+  },
+  {
+    key: 'marketing-form-detail',
+    path: `${seg(CRM.marketingForms)}/:formId`,
+    Component: IntakeFormDetailPage,
+    permission: ['admin.users', 'leads.view', 'vacancies.view'],
+  },
+  {
     key: 'marketing-new',
     path: seg(CRM.marketingNew),
     Component: MarketingCampaignSetupPage,
@@ -843,19 +887,19 @@ export const APP_ROUTES: AppRouteConfig[] = [
   {
     key: 'settings-lead-forms',
     path: seg(CRM.settingsLeadForms),
-    Component: LeadFormsSettingsPage,
+    Component: SettingsLeadFormsListRedirect,
     permission: ['admin.users', 'leads.view'],
   },
   {
     key: 'settings-forms-builder',
     path: `${seg(CRM.settingsLeadForms)}/:formId/builder`,
-    Component: FormsBuilderPage,
+    Component: SettingsLeadFormBuilderRedirect,
     permission: ['admin.users', 'leads.view'],
   },
   {
     key: 'settings-intake-form-detail',
     path: `${seg(CRM.settingsLeadForms)}/:formId`,
-    Component: IntakeFormDetailPage,
+    Component: SettingsLeadFormDetailRedirect,
     permission: ['admin.users', 'leads.view'],
   },
   {

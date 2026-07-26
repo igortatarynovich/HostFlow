@@ -8,6 +8,7 @@ import {
   CRM_APP_PATHS,
   marketingCampaignPath,
 } from '../../app/crmAppPaths'
+import { createIntakeForm, listIntakeFormEntityProfiles } from '../../api/intakeForms'
 import { listLeadForms, type TenantLeadForm } from '../../api/leadForms'
 import {
   attachCampaignForm,
@@ -22,7 +23,13 @@ import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { PageHeader } from '../../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
+import { usePermissions } from '../../hooks/usePermissions'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import {
+  defaultProfileForPurpose,
+  slugifyFormTitle,
+} from '../../utils/intakeFormRoutingSummary'
+import { launchSearchIntakeFields } from '../../utils/launchSearchIntakeFields'
 import {
   canConnectSourceKind,
   type MarketingSourceKind,
@@ -32,6 +39,8 @@ import { MarketingOptionCard } from './MarketingOptionCard'
 export default function MarketingConnectSourcePage() {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const { role } = usePermissions()
+  const canCreateForm = role === 'administrator'
   const { campaignId = '' } = useParams<{ campaignId: string }>()
   const [searchParams] = useSearchParams()
   const kindParam = (searchParams.get('kind') || '').trim()
@@ -47,6 +56,9 @@ export default function MarketingConnectSourcePage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [createTitle, setCreateTitle] = useState('')
+  const [creatingForm, setCreatingForm] = useState(false)
 
   const flight = campaign ? currentFlight(campaign) : null
   const canMeta = canConnectSourceKind(flight, 'meta')
@@ -96,6 +108,67 @@ export default function MarketingConnectSourcePage() {
     if (sourceKind === 'meta') return canMeta && Boolean(metaSourceId)
     return false
   }, [campaign, flight, sourceKind, canPublic, canMeta, formId, metaSourceId])
+
+  async function handleCreateHostflowForm() {
+    if (!canCreateForm || !canPublic) return
+    const title = createTitle.trim() || 'New Marketing form'
+    const slug = slugifyFormTitle(title)
+    if (slug.length < 2) {
+      setError(
+        getFriendlyErrorInfo(
+          new Error('slug'),
+          t('app.marketing.connect.errors.create_slug', {
+            defaultValue: 'Укажите название анкеты (нужен публичный slug)',
+          }),
+          t,
+        ),
+      )
+      return
+    }
+    setCreatingForm(true)
+    setError(null)
+    try {
+      const profiles = await listIntakeFormEntityProfiles().catch(() => [])
+      const mapped = profiles.map((item) => ({ code: item.code, name: item.name }))
+      const profileCode =
+        defaultProfileForPurpose(mapped, 'application') ||
+        mapped.find((p) => p.code.startsWith('recruitment.candidate'))?.code ||
+        mapped[0]?.code
+      if (!profileCode) {
+        throw new Error('No entity profile available for candidate form')
+      }
+      const fields = await launchSearchIntakeFields('other')
+      const created = await createIntakeForm({
+        title,
+        public_slug: slug,
+        entity_profile_code: profileCode,
+        fields,
+        is_active: true,
+      })
+      const form = created.form
+      setForms((prev) => {
+        const next = prev.filter((row) => row.id !== form.id)
+        next.unshift(form)
+        return next
+      })
+      setFormId(form.id)
+      setShowCreateForm(false)
+      setCreateTitle('')
+      setSourceKind('public_form')
+    } catch (err) {
+      setError(
+        getFriendlyErrorInfo(
+          err,
+          t('app.marketing.connect.errors.create_form', {
+            defaultValue: 'Не удалось создать анкету',
+          }),
+          t,
+        ),
+      )
+    } finally {
+      setCreatingForm(false)
+    }
+  }
 
   async function handleConnect() {
     if (!campaign || !canSubmit || !sourceKind) return
@@ -215,30 +288,98 @@ export default function MarketingConnectSourcePage() {
             </div>
 
             {sourceKind === 'public_form' && canPublic ? (
-              forms.length ? (
-                <div className="grid gap-2" role="radiogroup" aria-label="Анкета HostFlow">
-                  {forms.map((f) => (
-                    <MarketingOptionCard
-                      key={f.id}
-                      selected={formId === f.id}
-                      onClick={() => setFormId(f.id)}
-                      testId={`marketing-connect-form-${f.id}`}
+              <div className="space-y-3" data-testid="marketing-connect-public-form">
+                {forms.length ? (
+                  <div className="grid gap-2" role="radiogroup" aria-label="Анкета HostFlow">
+                    {forms.map((f) => (
+                      <MarketingOptionCard
+                        key={f.id}
+                        selected={formId === f.id}
+                        onClick={() => setFormId(f.id)}
+                        testId={`marketing-connect-form-${f.id}`}
+                      >
+                        <span className="font-medium text-slate-900">{f.title}</span>
+                        {f.public_slug ? (
+                          <span className="mt-1 block text-xs text-slate-500">{f.public_slug}</span>
+                        ) : null}
+                      </MarketingOptionCard>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    Нет активных анкет.{' '}
+                    <Link to={CRM_APP_PATHS.marketingForms} className="underline">
+                      Открыть анкеты
+                    </Link>
+                  </p>
+                )}
+
+                {canCreateForm ? (
+                  showCreateForm ? (
+                    <div
+                      className="space-y-3 rounded-lg border border-brand-100 bg-white p-3"
+                      data-testid="marketing-connect-create-form"
                     >
-                      <span className="font-medium text-slate-900">{f.title}</span>
-                      {f.public_slug ? (
-                        <span className="mt-1 block text-xs text-slate-500">{f.public_slug}</span>
-                      ) : null}
-                    </MarketingOptionCard>
-                  ))}
-                </div>
-              ) : (
-                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  Нет активных анкет.{' '}
-                  <Link to={CRM_APP_PATHS.settingsLeadForms} className="underline">
-                    Открыть анкеты
-                  </Link>
-                </p>
-              )
+                      <label className="block text-sm">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {t('app.marketing.connect.create.title', {
+                            defaultValue: 'Название новой анкеты',
+                          })}
+                        </span>
+                        <input
+                          className="input mt-1 w-full"
+                          value={createTitle}
+                          data-testid="marketing-connect-create-title"
+                          onChange={(e) => setCreateTitle(e.target.value)}
+                          placeholder="Kierowca CE Lead Form"
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="btn-primary btn-sm"
+                          disabled={creatingForm}
+                          data-testid="marketing-connect-create-submit"
+                          onClick={() => void handleCreateHostflowForm()}
+                        >
+                          {t('app.marketing.connect.create.submit', {
+                            defaultValue: 'Создать и выбрать',
+                          })}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
+                          disabled={creatingForm}
+                          data-testid="marketing-connect-create-cancel"
+                          onClick={() => {
+                            setShowCreateForm(false)
+                            setCreateTitle('')
+                          }}
+                        >
+                          {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                        </button>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        {t('app.marketing.connect.create.hint', {
+                          defaultValue:
+                            'Создаёт активную HostFlow-анкету (candidate fields) через createIntakeForm и сразу выбирает её.',
+                        })}
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      data-testid="marketing-connect-create-open"
+                      onClick={() => setShowCreateForm(true)}
+                    >
+                      {t('app.marketing.connect.create.open', {
+                        defaultValue: 'Создать новую анкету',
+                      })}
+                    </button>
+                  )
+                ) : null}
+              </div>
             ) : null}
 
             {sourceKind === 'meta' && canMeta && metaSources.length ? (

@@ -54,6 +54,7 @@
     "marketing": "/app/marketing",
     "marketingNew": "/app/marketing/new",
     "marketingSources": "/app/marketing/sources",
+    "marketingForms": "/app/marketing/forms",
     "inbox": "/app/inbox",
     "inboxMessagesScoped": "/app/inbox?channel=messages",
     "inboxEmailScoped": "/app/inbox?channel=email",
@@ -156,6 +157,7 @@
     "marketing": "Marketing Workspace — campaign list and Flight operator surface (Acquisition capability UI).",
     "marketingNew": "Create Campaign only (goal + Primary Target + optional context). Sources connect separately via spa_marketing_connect_source.",
     "marketingSources": "Marketing Sources foundation — intake inventory, connection, Mapping Health (C-3).",
+    "marketingForms": "Marketing Forms — HostFlow Form Builder remount (C-6); SoT remains ADR-007 / settings APIs.",
     "companiesLegacy": "Legacy URLs kept for redirects / bookmarks.",
     "plannerLegacy": "Legacy planner shell — redirects to /app/calendar (Phase 2.1 absorbed planner into Activity).",
     "settingsIntegrationsMessengerFacebook": "Facebook Messenger channel under Integration hub (URL segment repeats API channel key “messenger”).",
@@ -309,6 +311,10 @@
       {
         "name": "MARKETING_SOURCES",
         "path_key": "marketingSources"
+      },
+      {
+        "name": "MARKETING_FORMS",
+        "path_key": "marketingForms"
       },
       {
         "name": "SETTINGS_LEAD_FORMS",
