@@ -4,7 +4,7 @@
 **Date:** 2026-07-24  
 **Canon:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) (C-4 row + onboarding lifecycle)  
 **Parents:** ADR-024 · C-3 Sources foundation (#160) · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)  
-**Next:** C-6 Form Builder cutover — **ACTIVE Product Track**  
+**Next:** [C-7 Подборы decommission](acquisition-ui-cutover-c7-searches-decommission.md) — **ACTIVE Product Track**  
 **Blocks:** Stage 5 PR-2 remains paused until cutover C-7 PASS
 
 > C-4 closes the **Test Lead → Field Discovery** step of Source onboarding.  
