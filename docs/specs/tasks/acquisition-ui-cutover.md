@@ -1,14 +1,15 @@
 # Acquisition UI Cutover
 
-**Status:** **ACTIVE — Product Track = C-6** (C-5 Mapping workspace DONE; Stage 5 PR-2 still paused until C-7)  
+**Status:** **ACTIVE — Product Track = C-7** (C-6 Form Builder DONE; Stage 5 PR-2 still paused until C-7 PASS)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [acquisition/module-scope.md](../../acquisition/module-scope.md)  
-**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅ · C-5 ✅  
-**C-6 brief:** [acquisition-ui-cutover-c6-form-builder.md](acquisition-ui-cutover-c6-form-builder.md) · **ACTIVE**  
+**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅ · C-5 ✅ · C-6 ✅  
+**C-7 brief:** [acquisition-ui-cutover-c7-searches-decommission.md](acquisition-ui-cutover-c7-searches-decommission.md) · **ACTIVE**  
+**C-6 brief:** [acquisition-ui-cutover-c6-form-builder.md](acquisition-ui-cutover-c6-form-builder.md) · **DONE**  
 **C-5 brief:** [acquisition-ui-cutover-c5-mapping-workspace.md](acquisition-ui-cutover-c5-mapping-workspace.md) · **DONE**  
 **C-4 brief:** [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md) · **DONE**  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (paused)  
-**Branch (planned):** `feat/acq-c6-form-builder-brief`  
-**Trusted tip at open:** `integration/release-product-a-b` @ C-5 tip (#169)
+**Branch (planned):** `docs/acq-c6-closeout` / `feat/acq-c7-searches-decommission`  
+**Trusted tip at open:** `integration/release-product-a-b` @ C-6 tip (#171)
 
 > Stage 4 **runtime** is DONE. Stage 4 **product/UI cutover** is **NOT DONE**.  
 > Production still looks “old” because navigation and legacy Подборы surfaces were never retired.  
@@ -229,8 +230,8 @@ Routing preview after mapping must show concrete outcome (entity type, vacancy/s
 | **C-3** | **Sources foundation** — unified Sources list; connection status; Mapping Health; last submission/error; waiting visibility. No new mapping engine | **DONE with constraints** — #160 · [errata](#c-3-errata--sources-list-columns-2026-07-24) · **C-3.1** closes page/form/destination |
 | **C-4** | **Test submission & field discovery** — Meta test lead and/or capture-next; raw payload inspector; detected fields + sample values; masking; replay normalization **without** creating production entities by default — [brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md) | **DONE** — smoke PASS 2026-07-26 |
 | **C-5** | **Mapping workspace** — provider field → standard / domain / custom / answer / ignore; validation; versioning; unmapped-field alerts; routing preview; Mapping Health updates — [brief](acquisition-ui-cutover-c5-mapping-workspace.md) | **DONE** (thin map/ignore + routing preview; see brief constraints) |
-| **C-6** | **Form Builder cutover** — Forms under Marketing (`/app/marketing/forms`…); create/edit/preview/publish; create-form-in-setup; integrate with Campaign Setup — [brief](acquisition-ui-cutover-c6-form-builder.md) | **ACTIVE** (after C-5) |
-| **C-7** | **Recruitment Searches decommission + navigation acceptance** — retire Подборы ad-launch UI (redirect/read-only); unresolved → reconciliation queue; production nav + smoke; close Stage 4 product cutover gate | After C-6 |
+| **C-6** | **Form Builder cutover** — Forms under Marketing (`/app/marketing/forms`…); create/edit/preview/publish; create-form-in-setup; integrate with Campaign Setup — [brief](acquisition-ui-cutover-c6-form-builder.md) | **DONE** (#170 · #171; thin create-in-setup — see brief constraints) |
+| **C-7** | **Recruitment Searches decommission + navigation acceptance** — retire Подборы ad-launch UI (redirect/read-only); unresolved → reconciliation queue; production nav + smoke; close Stage 4 product cutover gate — [brief](acquisition-ui-cutover-c7-searches-decommission.md) | **ACTIVE** (after C-6) |
 
 **Ordering rationale**
 
@@ -504,8 +505,8 @@ Minimum epic intent (lock later in its own task doc):
 - [x] Sources list page / provider form / destination columns — **C-3.1** (account/portfolio still deferred)  
 - [x] Operator can obtain a test/sample submission and see detected fields — **C-4** ([brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md)) · smoke PASS 2026-07-26  
 - [x] Per-source mapping workspace + routing preview; unknown fields force review (not silent loss) — **C-5** ([brief](acquisition-ui-cutover-c5-mapping-workspace.md); thin map/ignore UX)  
-- [ ] Operator can create/edit/publish a form from Marketing; Setup supports select-existing **and** create-new — **C-6**  
-- [ ] New ad launch cannot start from Подборы; legacy URLs redirect or read-only — **C-7**  
+- [x] Operator can create/edit/publish a form from Marketing; Setup supports select-existing **and** create-new — **C-6** ([brief](acquisition-ui-cutover-c6-form-builder.md); #171)  
+- [ ] New ad launch cannot start from Подборы; legacy URLs redirect or read-only — **C-7** ([brief](acquisition-ui-cutover-c7-searches-decommission.md))  
 - [ ] Reconciliation inventory: migrated / unresolved counts documented — **C-7**  
 - [ ] Sales / Recruitment / Marketing IA match the tables above — **C-7**  
 - [ ] End-to-end acceptance path (Connect → … → First processed lead) executable without a developer — **C-7**  
@@ -515,6 +516,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-26: **C-6 DONE** — Marketing Forms IA + create-in-setup (#170 · #171); Product Track → **C-7**; [C-7 brief](acquisition-ui-cutover-c7-searches-decommission.md) opened.
 - 2026-07-26: **C-6 brief opened** — [acquisition-ui-cutover-c6-form-builder.md](acquisition-ui-cutover-c6-form-builder.md); Product Track = Form Builder cutover (Marketing IA remount + create-in-setup; no second Forms SoT).
 - 2026-07-26: **C-5 DONE** — Marketing mapping GET/PUT + routing-preview; `mapping_path` → `/app/marketing/sources/{id}/mapping`; Product Track → **C-6**.
 - 2026-07-26: **C-5 brief opened** — [acquisition-ui-cutover-c5-mapping-workspace.md](acquisition-ui-cutover-c5-mapping-workspace.md); Product Track = Mapping workspace (persist `mapping_rules` + routing preview; no new engine).

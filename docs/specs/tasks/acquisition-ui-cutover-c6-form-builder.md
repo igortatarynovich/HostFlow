@@ -1,10 +1,10 @@
 # Acquisition UI Cutover C-6 — Form Builder cutover
 
-**Status:** READY TO IMPLEMENT — **ACTIVE Product Track** (after C-5 Mapping workspace)  
+**Status:** DONE — Marketing Forms IA + create-in-setup shipped (#170 brief · #171 IA); Product Track → **C-7**  
 **Date:** 2026-07-26  
 **Canon:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) (C-6 row + Forms zone)  
 **Parents:** ADR-024 · ADR-007 (Forms SoT) · [C-5 Mapping](acquisition-ui-cutover-c5-mapping-workspace.md) · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)  
-**Next:** C-7 Подборы decommission + cutover PASS  
+**Next:** [C-7 Подборы decommission](acquisition-ui-cutover-c7-searches-decommission.md) — **ACTIVE Product Track**  
 **Blocks:** Stage 5 PR-2 remains paused until cutover C-7 PASS
 
 > C-6 closes **Forms inside Marketing IA**: list / edit / activate / public URL from Marketing, plus **create-new-form in Connect Source / Setup** — without leaving the Campaign onboarding path.  
@@ -94,23 +94,37 @@ Do not rename these into a new Marketing-only lifecycle in C-6.
 
 ## 8. Acceptance
 
-- [ ] Marketing rail includes Forms; `/app/marketing/forms` lists forms  
-- [ ] Operator can create/edit/activate/copy public URL from Marketing paths  
-- [ ] Builder reachable under Marketing path (same donor)  
-- [ ] Settings lead-forms URLs redirect or deeplink to Marketing equivalents  
-- [ ] Connect Source supports select-existing **and** create-new-in-flow (uses `createIntakeForm`)  
-- [ ] No second Forms SoT; no Composition `commit_publish` invention unless already productized  
-- [ ] Cutover docs: C-6 DONE; Product Track → C-7  
-- [ ] Tests: route/nav scope scans + Connect Source create path; `make docs-lint`  
+- [x] Marketing rail includes Forms; `/app/marketing/forms` lists forms  
+- [x] Operator can create/edit/activate/copy public URL from Marketing paths  
+- [x] Builder reachable under Marketing path (same donor)  
+- [x] Settings lead-forms URLs redirect or deeplink to Marketing equivalents  
+- [x] Connect Source supports select-existing **and** create-new-in-flow (uses `createIntakeForm`)  
+- [x] No second Forms SoT; no Composition `commit_publish` invention unless already productized  
+- [x] Cutover docs: C-6 DONE; Product Track → C-7  
+- [x] Tests: route/nav scope scans + Connect Source create path; `make docs-lint`  
+
+**Shipped surface:**
+
+| Layer | Path |
+|-------|------|
+| Paths | `marketingForms` = `/app/marketing/forms` (+ detail/builder helpers) |
+| Routes | Marketing remount of `LeadFormsSettingsPage` / `IntakeFormDetailPage` / `FormsBuilderPage` |
+| Redirects | `/app/settings/lead-forms…` → Marketing equivalents |
+| Connect | create-in-setup via `createIntakeForm` + candidate field defaults; auto-select |
+
+**Constraints / honesty notes:**
+
+- Create-in-setup is a **thin** title → `createIntakeForm` path (general candidate field pack) — full Settings wizard remains on Marketing Forms list.  
+- Operator “publish” remains `is_active` + `public_slug`; Composition Builder stays draft-only.  
+- Settings Forms card / sales_setup chrome tab now deep-link to Marketing Forms.
 
 ---
 
 ## 9. Implementation order (PR split)
 
-1. **Docs / brief** (this file) + queue linkage  
-2. **IA:** `marketingForms` paths + routes remounting Settings donors + Marketing nav + Settings redirects  
-3. **Create-in-setup:** Connect Source create-new using `createIntakeForm`  
-4. Close-out docs + smoke  
+1. **Docs / brief** (#170) + queue linkage  
+2. **IA + create-in-setup** (#171)  
+3. Close-out docs + Product Track → C-7  
 
 ---
 
