@@ -352,6 +352,8 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 
 **Boundary:** RODO / GDPR art. 14 notice is satisfied **on the Lead** before gated intake actions. After conversion, candidate-level compliance may apply separately; lead audit is copied read-only into `Candidate.extra['rodo_lead_audit']` — not re-sent by default.
 
+**Delivery (ADR-031):** compliance **gates and audit** stay on Lead (`normalized.rodo`). When outbound email is required, **send** must use Communication Pipeline with opaque result (`sales_inquiry` \| `application`) via module binders — not business-module SMTP. Permanent path: [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) · [task](../tasks/compliance-outbound-pipeline-early-result.md). Legacy `lead_rodo` SMTP is migration debt (C0.1b allowlist) until removed.
+
 **Tenant policy** (`Tenant.settings.lead_rodo_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings`):
 
 | `lead_rodo_send_mode` | Behaviour |
@@ -390,6 +392,8 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 ### 8.0.2 Lead operational communication (MVP PR1 — signed off, 2026-05)
 
 **Boundary:** Candidate-facing **operational** status email on the Lead lifecycle. **Not** RODO / art. 14 — separate settings, persistence, audit, and UI block.
+
+**Delivery (ADR-031 / C5):** hooks remain on Lead lifecycle; send requires Pipeline inputs (thread + purpose + template metadata) from destination binders. Fail-closed `communication_pipeline_required` without binder is intentional until [compliance-outbound-pipeline-early-result](../tasks/compliance-outbound-pipeline-early-result.md) PR-4 lands.
 
 **Tenant policy** (`Tenant.settings.lead_communication_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings`):
 
