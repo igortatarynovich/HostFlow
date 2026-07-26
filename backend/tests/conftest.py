@@ -233,6 +233,25 @@ def _pytest_block_real_email_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def _clear_meta_lead_credentials_between_tests() -> None:
+    """Admin Meta tests leave active ``meta_lead_credentials``; later ingest helpers
+    that sign with ``settings.meta_webhook_secret`` (often empty) then get 401
+    Signature mismatch. Clear default-tenant credentials every test.
+    """
+    try:
+        async with async_session_maker() as session:
+            await session.execute(
+                sa.text("DELETE FROM meta_lead_credentials WHERE tenant_id = :tenant_id"),
+                {"tenant_id": DEFAULT_TENANT_ID},
+            )
+            await session.commit()
+    except Exception:
+        # Table may be missing before migrations in some unit-only paths.
+        pass
+    yield
+
+
 @pytest.fixture
 def anyio_backend() -> str:
     return "asyncio"

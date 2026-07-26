@@ -298,14 +298,37 @@ async def ensure_candidate_shell_and_application_for_compliance_outbound(
     if candidate is None:
         payload = _candidate_payload_from_lead(lead, source=source)
         # source_lead=None: do not run conversion carry / mark Lead converted.
-        candidate = await create_candidate_full(
-            db,
-            tenant_id=tid,
-            payload=payload,
-            actor_id=None,
-            acl=None,
-            source_lead=None,
-        )
+        try:
+            candidate = await create_candidate_full(
+                db,
+                tenant_id=tid,
+                payload=payload,
+                actor_id=None,
+                acl=None,
+                source_lead=None,
+            )
+        except Exception as exc:
+            from fastapi import HTTPException
+
+            from backend.app.services.recruitment_funnel_resolver import (
+                RecruitmentFunnelNotFoundError,
+                RecruitmentModuleNotEnabledError,
+            )
+
+            if isinstance(
+                exc,
+                (RecruitmentFunnelNotFoundError, RecruitmentModuleNotEnabledError, HTTPException),
+            ):
+                detail = getattr(exc, "detail", None) or getattr(exc, "args", [None])[0]
+                raise ComplianceOutboundEnsureError(
+                    "Recruitment Candidate shell create failed for compliance outbound",
+                    details={
+                        "lead_id": lid,
+                        "reason": "candidate_shell_create_failed",
+                        "detail": str(detail)[:500],
+                    },
+                ) from exc
+            raise
         created_shell = True
         cid = str(candidate.id)
         # Critical UX: Lead rail stays intake until Process attaches the shell.

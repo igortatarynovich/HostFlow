@@ -258,6 +258,7 @@ async def send_lead_rodo_email(
     except ComplianceOutboundEnsureError as exc:
         if str((exc.details or {}).get("reason") or "") == "duplicate_review":
             return False, "RODO blocked: lead is in duplicate_review"
+        # Missing funnel / shell create failure: continue; Pipeline bind fail-closes.
 
     rodo_doc = await get_active_legal_document(db, tenant_id, "rodo_clause")
     if template_id and str(template_id).strip():
