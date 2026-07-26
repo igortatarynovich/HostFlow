@@ -64,14 +64,14 @@
 | **7d** | **C2.4** Scheduling | *(frozen)* | Do not start |
 | **P-3E** | **Acquisition Stage 3E** Activity Timeline | PR #130–#133 ✅ | **DONE** — observability vertical closed; deferred — [3e-deferred](acquisition-stage-3e-deferred.md) |
 | **P-4** | **Acquisition Stage 4** Flight Runtime | — | ✅ **Runtime DONE** (#136 / #148–#151) — [stage-4](acquisition-stage-4-flight-runtime.md) |
-| **P-4b** | **Acquisition UI Cutover** | C-1 ✅ #157 · C-2 ✅ #158 **with constraints** · C-3 ✅ #160 **with constraints** · **C-3.1 ✅** · **C-4 ✅** · **C-5 ✅** · **C-6 ACTIVE** | **ACTIVE** — C-6 Form Builder; then C-7 — [cutover](acquisition-ui-cutover.md) |
+| **P-4b** | **Acquisition UI Cutover** | C-1 ✅ #157 · C-2 ✅ #158 **with constraints** · C-3 ✅ #160 **with constraints** · **C-3.1 ✅** · **C-4 ✅** · **C-5 ✅** · **C-6 ACTIVE** | **ACTIVE** — [C-6](acquisition-ui-cutover-c6-form-builder.md); then C-7 — [cutover](acquisition-ui-cutover.md) |
 | **P-5** | **Acquisition Stage 5** Optimization | paused | **PR-1 DONE** (#153) · **PR-2 PAUSED** until P-4b — [stage-5](acquisition-stage-5-optimization.md) |
 | **8** | **Epic C Complete Gate** | after C2.3 merge + C2.4 (later) | Communication capability closed |
 | **9** | **A2** Platform Governance Review | after Epic C complete | Boundary principle |
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
 **C0–C2.2** ✅. **C2.3** implemented (merge opportunistic). **C2.4 frozen.**  
-**Active (Product):** C-6 Form Builder cutover · [cutover](acquisition-ui-cutover.md) (C-5 Mapping DONE; Stage 5 PR-2 paused until C-7).
+**Active (Product):** [C-6 Form Builder cutover](acquisition-ui-cutover-c6-form-builder.md) · [cutover](acquisition-ui-cutover.md) (C-5 Mapping DONE; Stage 5 PR-2 paused until C-7).
 **Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap. Stage 4 merge (2026-07-23) accepted with known baseline debt — Stage 4 tests/gates green; full suite red outside scope.
 
 ---
