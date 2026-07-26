@@ -13,5 +13,6 @@ export { default as MarketingCampaignSetupPage } from '../../pages/marketing/Mar
 export { default as MarketingConnectSourcePage } from '../../pages/marketing/MarketingConnectSourcePage'
 export { default as MarketingCampaignDetailPage } from '../../pages/marketing/MarketingCampaignDetailPage'
 export { default as MarketingSourcesPage } from '../../pages/marketing/MarketingSourcesPage'
+export { default as MarketingSourceTestLeadPage } from '../../pages/marketing/MarketingSourceTestLeadPage'
 export { default as AutomationRulesPage } from '../../pages/AutomationRulesPage'
 export { default as FleetModulePage } from '../../pages/fleet/FleetModulePage'

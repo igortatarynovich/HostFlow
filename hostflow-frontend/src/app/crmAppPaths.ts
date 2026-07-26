@@ -31,6 +31,11 @@ export function marketingCampaignPath(campaignId: string): string {
   return `${P.marketing}/${encodeURIComponent(campaignId)}`
 }
 
+/** C-4: Marketing-native test lead / field discovery for a Source. */
+export function marketingSourceTestLeadPath(sourceId: string): string {
+  return `${P.marketingSources}/${encodeURIComponent(sourceId)}/test-lead`
+}
+
 /** Connect Source wizard for an existing Campaign (Flight association). */
 export function marketingConnectSourcePath(campaignId: string): string {
   return `${marketingCampaignPath(campaignId)}/sources/new`

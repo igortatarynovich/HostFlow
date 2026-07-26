@@ -1,10 +1,10 @@
 # Acquisition UI Cutover C-4 — Test submission & field discovery
 
-**Status:** READY TO IMPLEMENT — **ACTIVE Product Track** (after C-3 ✅ #160)  
+**Status:** **DONE** — operator smoke PASS 2026-07-26  
 **Date:** 2026-07-24  
 **Canon:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) (C-4 row + onboarding lifecycle)  
 **Parents:** ADR-024 · C-3 Sources foundation (#160) · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)  
-**Next:** C-5 Mapping workspace (persist decisions + routing preview)  
+**Next:** C-5 Mapping workspace (persist decisions + routing preview) — **ACTIVE Product Track**  
 **Blocks:** Stage 5 PR-2 remains paused until cutover C-7 PASS
 
 > C-4 closes the **Test Lead → Field Discovery** step of Source onboarding.  
@@ -128,7 +128,8 @@ Keep surface small; prefer extending platform Marketing Sources, not Settings-on
 
 Exact paths may fold under existing Meta admin services with a Marketing façade — **contract matters more than URL**.
 
-**Writes allowed in C-4:** sample blob / capture-next arm / last_discovered_fields metadata on Source profile.  
+**Writes allowed in C-4:** sample blob / capture-next arm / last_discovered_fields metadata on Source profile  
+(`publication_config_v1.mapping_discovery_v1` — policy resolver ignores unknown keys; no dedicated column in this PR).  
 **Writes forbidden:** production Candidate/Application; Flight bindings; Campaign mutations; Mapping Health → Ready without C-5 confirm (Health may move to `needs_review` when new fields appear — OK).
 
 ---

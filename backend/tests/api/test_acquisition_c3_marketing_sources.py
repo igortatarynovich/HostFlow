@@ -21,7 +21,12 @@ from backend.app.acquisition.sources_read import (
     compute_mapping_health,
     list_marketing_source_summaries,
 )
-from backend.app.constants.spa_paths import MARKETING_NEW, SETTINGS_INTEGRATIONS_META, SETTINGS_LEAD_FORMS
+from backend.app.constants.spa_paths import (
+    MARKETING_NEW,
+    MARKETING_SOURCES,
+    SETTINGS_INTEGRATIONS_META,
+    SETTINGS_LEAD_FORMS,
+)
 from backend.app.db.session import async_session_maker
 from backend.app.models.acquisition_activity_event import AcquisitionActivityEvent
 from backend.app.models.campaign import Campaign, CampaignRun, CampaignRunIntakeSource
@@ -346,7 +351,8 @@ async def test_list_sources_aggregates_bindings_and_flights(
     assert linked["last_error_code"] == "routing_failed"
     assert linked["mapping_path"].startswith(SETTINGS_INTEGRATIONS_META)
     assert "tab=field_mapping" in linked["mapping_path"]
-    assert linked["test_lead_path"].startswith(SETTINGS_INTEGRATIONS_META)
+    assert linked["test_lead_path"].startswith(MARKETING_SOURCES)
+    assert linked["test_lead_path"].endswith(f"/{linked['source_id']}/test-lead")
     assert linked["settings_path"] == SETTINGS_INTEGRATIONS_META
 
     lonely_row = by_id[lonely_id]
@@ -415,14 +421,19 @@ async def test_ready_health_when_mapped_and_connected() -> None:
     assert by_id[pid].connection_status == "connected"
 
 
-def test_c3_router_is_get_only_no_write_routes() -> None:
+def test_c3_list_router_still_exposes_get() -> None:
     from backend.app.api.v1.platform import marketing_sources as mod
 
-    methods = set()
+    list_methods: set[str] = set()
     for route in mod.router.routes:
-        methods |= set(getattr(route, "methods", set()) or set())
-    assert methods == {"GET"}
+        if getattr(route, "path", "") in {"", "/"} or str(getattr(route, "path", "")).endswith(
+            "/platform/marketing/sources"
+        ):
+            list_methods |= set(getattr(route, "methods", set()) or set())
+    # List remains GET; C-4 adds POST under /{source_id}/sample/*
+    assert "GET" in list_methods
     assert SETTINGS_LEAD_FORMS.startswith("/app/settings/lead-forms")
+    assert MARKETING_SOURCES == "/app/marketing/sources"
 
 
 @pytest.mark.anyio
