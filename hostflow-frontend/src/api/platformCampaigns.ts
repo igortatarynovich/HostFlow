@@ -285,6 +285,22 @@ export type LiveIntakeCounters = {
   currency?: string | null
 }
 
+export type LiveIntakeApplicant = {
+  lead_id: string
+  created_at?: string | null
+  full_name?: string | null
+  phone?: string | null
+  email?: string | null
+  lead_status: string
+  disposition?: string | null
+  status_label: string
+  candidate_id?: string | null
+  vacancy_id?: string | null
+  route_intent?: string | null
+  routing_status?: string | null
+  source?: string | null
+}
+
 export type LiveIntakeMonitorEvent = {
   id: string
   campaign_id: string
@@ -302,6 +318,8 @@ export type LiveIntakeMonitor = {
   campaign_status: string
   flight_status: string
   counters: LiveIntakeCounters
+  applicants: LiveIntakeApplicant[]
+  applicants_next_cursor?: { created_at: string; id: string } | null
   items: LiveIntakeMonitorEvent[]
   next_cursor?: { occurred_at: string; id: string } | null
   order: [string, string] | string[]
@@ -337,6 +355,8 @@ export async function getLiveIntakeMonitor(
     event_type?: string[]
     after_occurred_at?: string
     after_id?: string
+    applicants_after_created_at?: string
+    applicants_after_id?: string
   },
 ): Promise<LiveIntakeMonitor> {
   const { data } = await api.get<LiveIntakeMonitor>(

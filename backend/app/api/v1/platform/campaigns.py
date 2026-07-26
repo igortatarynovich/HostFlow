@@ -366,6 +366,27 @@ class LiveIntakeCountersOut(BaseModel):
     currency: Optional[str] = None
 
 
+class LiveIntakeApplicantOut(BaseModel):
+    lead_id: str
+    created_at: Optional[datetime] = None
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    lead_status: str
+    disposition: Optional[str] = None
+    status_label: str
+    candidate_id: Optional[str] = None
+    vacancy_id: Optional[str] = None
+    route_intent: Optional[str] = None
+    routing_status: Optional[str] = None
+    source: Optional[str] = None
+
+
+class LiveIntakeApplicantsCursorOut(BaseModel):
+    created_at: datetime
+    id: str
+
+
 class LiveIntakeMonitorOut(BaseModel):
     tenant_id: str
     campaign_id: str
@@ -373,6 +394,8 @@ class LiveIntakeMonitorOut(BaseModel):
     campaign_status: str
     flight_status: str
     counters: LiveIntakeCountersOut
+    applicants: List[LiveIntakeApplicantOut] = Field(default_factory=list)
+    applicants_next_cursor: Optional[LiveIntakeApplicantsCursorOut] = None
     items: List[ActivityEventOut] = Field(default_factory=list)
     next_cursor: Optional[ActivityCursorOut] = None
     order: tuple[str, str]
@@ -1792,6 +1815,8 @@ async def get_live_intake_monitor_endpoint(
     occurred_after: Optional[datetime] = Query(None),
     after_occurred_at: Optional[datetime] = Query(None),
     after_id: Optional[str] = Query(None),
+    applicants_after_created_at: Optional[datetime] = Query(None),
+    applicants_after_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     event_type: Optional[List[str]] = Query(None),
 ):
@@ -1809,6 +1834,8 @@ async def get_live_intake_monitor_endpoint(
             after_id=after_id,
             limit=limit,
             event_types=event_type,
+            applicants_after_created_at=applicants_after_created_at,
+            applicants_after_id=applicants_after_id,
         )
     except FlightRuntimeError as exc:
         _raise_runtime(exc)
@@ -1817,6 +1844,12 @@ async def get_live_intake_monitor_endpoint(
         next_cursor = ActivityCursorOut(
             occurred_at=page.next_cursor[0], id=page.next_cursor[1]
         )
+    applicants_next = None
+    if page.applicants_next_cursor is not None:
+        applicants_next = LiveIntakeApplicantsCursorOut(
+            created_at=page.applicants_next_cursor[0],
+            id=page.applicants_next_cursor[1],
+        )
     return LiveIntakeMonitorOut(
         tenant_id=page.tenant_id,
         campaign_id=page.campaign_id,
@@ -1824,6 +1857,10 @@ async def get_live_intake_monitor_endpoint(
         campaign_status=page.campaign_status,
         flight_status=page.flight_status,
         counters=LiveIntakeCountersOut(**page.counters.to_dict()),
+        applicants=[
+            LiveIntakeApplicantOut(**row.to_dict()) for row in page.applicants
+        ],
+        applicants_next_cursor=applicants_next,
         items=[_activity_event_out(row) for row in page.items],
         next_cursor=next_cursor,
         order=page.order,

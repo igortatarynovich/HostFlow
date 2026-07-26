@@ -29,7 +29,6 @@ import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { formatDateTime } from '../../utils/dateFormat'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
-import { humanizeEventType } from '../acquisition/acquisitionActivityPresentation'
 import {
   formPublicUrl,
   primaryForm,
@@ -51,7 +50,6 @@ export default function MarketingCampaignDetailPage() {
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
 
   const load = useCallback(async () => {
@@ -183,25 +181,26 @@ export default function MarketingCampaignDetailPage() {
   }
 
   async function loadMoreMonitor() {
-    if (!campaign || !flight || !monitor?.next_cursor || loadingMore) return
+    if (!campaign || !flight || !monitor?.applicants_next_cursor || loadingMore) return
     setLoadingMore(true)
     setError(null)
     try {
       const page = await getLiveIntakeMonitor(campaign.id, flight.id, {
         limit: 40,
-        after_occurred_at: monitor.next_cursor.occurred_at,
-        after_id: monitor.next_cursor.id,
+        applicants_after_created_at: monitor.applicants_next_cursor.created_at,
+        applicants_after_id: monitor.applicants_next_cursor.id,
       })
       setMonitor({
         ...page,
-        items: [...(monitor.items || []), ...(page.items || [])],
+        applicants: [...(monitor.applicants || []), ...(page.applicants || [])],
+        items: monitor.items || [],
       })
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
           t('app.marketing.detail.errors.load_more', {
-            defaultValue: 'Не удалось подгрузить события монитора',
+            defaultValue: 'Не удалось подгрузить заявки',
           }),
           t,
         ),
@@ -506,63 +505,56 @@ export default function MarketingCampaignDetailPage() {
 
             <section className="rounded-xl border border-slate-200 bg-white" data-testid="marketing-live-intake-monitor">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                <h2 className="text-sm font-semibold text-slate-900">Live Intake Monitor</h2>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">Заявки</h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Люди, пришедшие на этот Flight. Технический лог — в таймлайне.
+                  </p>
+                </div>
                 <Link
                   to={`${CRM_APP_PATHS.acquisitionActivity}?campaign_id=${encodeURIComponent(campaign.id)}${
                     flight ? `&flight_id=${encodeURIComponent(flight.id)}` : ''
                   }`}
                   className="text-xs font-medium text-brand-600"
                 >
-                  Полный таймлайн →
+                  Таймлайн →
                 </Link>
               </div>
-              {!monitor?.items?.length ? (
+              {!monitor?.applicants?.length ? (
                 <p className="px-4 py-6 text-sm text-slate-500">
-                  Пока нет intake-событий. Отправьте тестовую заявку по публичной ссылке.
-                  Meta без Submission (D2) в Timeline не попадёт.
+                  Пока нет заявок на этот Flight. После Connect Source новые Meta-лиды появятся здесь.
                 </p>
               ) : (
                 <>
                   <ul className="divide-y divide-slate-100">
-                    {monitor.items.map((e) => (
-                      <li key={e.id} className="px-4 py-3">
-                        <button
-                          type="button"
-                          className="w-full text-left"
-                          onClick={() => setExpandedId((id) => (id === e.id ? null : e.id))}
-                        >
-                          <div className="flex flex-wrap items-baseline justify-between gap-2">
-                            <span className="text-sm font-medium text-slate-900">
-                              {humanizeEventType(e.event_type)}
-                            </span>
-                            <span className="text-xs text-slate-500">
-                              {formatDateTime(e.occurred_at, locale)}
-                            </span>
-                          </div>
-                          {e.submission_id ? (
-                            <div className="mt-0.5 text-xs text-slate-500">
-                              submission {e.submission_id.slice(0, 8)}…
+                    {monitor.applicants.map((row) => {
+                      const href = row.candidate_id
+                        ? `${CRM_APP_PATHS.candidates}/${encodeURIComponent(row.candidate_id)}`
+                        : `${CRM_APP_PATHS.leads}?q=${encodeURIComponent(row.lead_id)}`
+                      const contact = [row.phone, row.email].filter(Boolean).join(' · ')
+                      return (
+                        <li key={row.lead_id} className="px-4 py-3">
+                          <Link to={href} className="block hover:bg-slate-50/80 -mx-4 px-4 py-0.5 rounded">
+                            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                              <span className="text-sm font-medium text-slate-900">
+                                {row.full_name || 'Без имени'}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                {row.created_at ? formatDateTime(row.created_at, locale) : '—'}
+                              </span>
                             </div>
-                          ) : null}
-                        </button>
-                        {expandedId === e.id ? (
-                          <pre className="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs text-slate-700">
-                            {JSON.stringify(
-                              {
-                                id: e.id,
-                                event_type: e.event_type,
-                                submission_id: e.submission_id,
-                                payload: e.payload ?? {},
-                              },
-                              null,
-                              2,
-                            )}
-                          </pre>
-                        ) : null}
-                      </li>
-                    ))}
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                              <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-800">
+                                {row.status_label}
+                              </span>
+                              {contact ? <span>{contact}</span> : null}
+                            </div>
+                          </Link>
+                        </li>
+                      )
+                    })}
                   </ul>
-                  {monitor.next_cursor ? (
+                  {monitor.applicants_next_cursor ? (
                     <div className="border-t border-slate-100 px-4 py-3">
                       <button
                         type="button"
@@ -571,7 +563,7 @@ export default function MarketingCampaignDetailPage() {
                         onClick={() => void loadMoreMonitor()}
                         data-testid="marketing-monitor-load-more"
                       >
-                        {loadingMore ? t('common.loading') : 'Ещё события'}
+                        {loadingMore ? t('common.loading') : 'Ещё заявки'}
                       </button>
                     </div>
                   ) : null}
