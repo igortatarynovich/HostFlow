@@ -238,6 +238,28 @@ async def send_lead_rodo_email(
     if lead_rodo_sent_from_normalized(norm):
         return False, "RODO already sent for this lead"
 
+    # ADR-031 PR-2: Recruitment opaque result before outbound (SMTP still until PR-3).
+    from backend.app.modules.recruitment.services.application_result_service import (
+        ApplicationTransportConflictError,
+    )
+    from backend.app.modules.recruitment.services.compliance_outbound_ensure import (
+        ComplianceOutboundEnsureError,
+        maybe_ensure_compliance_outbound_for_recruitment_lead,
+    )
+
+    try:
+        await maybe_ensure_compliance_outbound_for_recruitment_lead(
+            db,
+            tenant_id=str(tenant_id),
+            lead=lead,
+            source=str(ingest_source or auto_trigger or "lead_rodo_manual"),
+        )
+    except ApplicationTransportConflictError:
+        pass  # Sales-bound — not Recruitment ensure
+    except ComplianceOutboundEnsureError as exc:
+        if str((exc.details or {}).get("reason") or "") == "duplicate_review":
+            return False, "RODO blocked: lead is in duplicate_review"
+
     rodo_doc = await get_active_legal_document(db, tenant_id, "rodo_clause")
     if template_id and str(template_id).strip():
         from sqlalchemy import select

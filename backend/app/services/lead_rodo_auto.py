@@ -74,10 +74,14 @@ async def apply_lead_rodo_on_ingest(
     """
     After a new ``Lead`` row is persisted: stamp source-provided or run auto-send per tenant settings.
     Idempotent for webhook replay (existing lead / already sent).
+
+    ADR-031 PR-2: when Recruitment §2.4 holds and auto RODO would fire, ensure early
+    Candidate shell + Application **before** send (Lead.candidate_id stays unset).
     """
     if not is_new_lead:
         return
-    if getattr(lead, "candidate_id", None):
+    # Early compliance shell must not block Lead-stage art.14 (gates stay on Lead.rodo).
+    if getattr(lead, "candidate_id", None) and lead_rodo_satisfied(lead):
         return
 
     norm = dict(normalized or {}) if isinstance(normalized, dict) else {}
@@ -91,6 +95,13 @@ async def apply_lead_rodo_on_ingest(
         return
     if not _source_eligible_for_auto_on_created(source):
         return
+
+    await _maybe_ensure_recruitment_result_before_outbound(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        source=source,
+    )
 
     await _auto_send_once(
         db,
@@ -114,6 +125,12 @@ async def maybe_auto_send_before_gated_action(
     cfg = await get_lead_rodo_settings(db, tenant_id)
     if not cfg.auto_on_first_action():
         return
+    await _maybe_ensure_recruitment_result_before_outbound(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        source=str(getattr(lead, "source", "") or "first_action"),
+    )
     await _auto_send_once(
         db,
         tenant_id=tenant_id,
@@ -122,6 +139,49 @@ async def maybe_auto_send_before_gated_action(
         trigger="first_action",
         ingest_source=str(getattr(lead, "source", "") or ""),
     )
+
+
+async def _maybe_ensure_recruitment_result_before_outbound(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    source: str,
+) -> None:
+    from backend.app.modules.recruitment.services.application_result_service import (
+        ApplicationTransportConflictError,
+    )
+    from backend.app.modules.recruitment.services.compliance_outbound_ensure import (
+        ComplianceOutboundEnsureError,
+        maybe_ensure_compliance_outbound_for_recruitment_lead,
+    )
+
+    try:
+        await maybe_ensure_compliance_outbound_for_recruitment_lead(
+            db,
+            tenant_id=str(tenant_id),
+            lead=lead,
+            source=str(source or "lead_rodo"),
+        )
+    except ApplicationTransportConflictError:
+        # Sales-bound — leave to Sales Pipeline path (PR-1); no Recruitment Application.
+        return
+    except ComplianceOutboundEnsureError as exc:
+        if str((exc.details or {}).get("reason") or "") == "duplicate_review":
+            logger.info(
+                "lead_rodo_compliance_ensure_skipped_duplicate_review",
+                extra={"tenant_id": tenant_id, "lead_id": str(lead.id)},
+            )
+            return
+        logger.info(
+            "lead_rodo_compliance_ensure_skipped",
+            extra={
+                "tenant_id": tenant_id,
+                "lead_id": str(lead.id),
+                "reason": exc.message,
+                "details": dict(exc.details or {}),
+            },
+        )
 
 
 async def _auto_send_once(
