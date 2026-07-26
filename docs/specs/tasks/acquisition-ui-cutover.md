@@ -1,9 +1,9 @@
 # Acquisition UI Cutover
 
-**Status:** **ACTIVE — Product Track = C-4** (blocks Stage 5 PR-2)  
+**Status:** **ACTIVE — Product Track = C-5** (C-4 smoke PASS 2026-07-26; Stage 5 PR-2 still paused until C-7)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [acquisition/module-scope.md](../../acquisition/module-scope.md)  
-**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160  
-**C-4 brief:** [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md)  
+**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅  
+**C-4 brief:** [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md) · **DONE**  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (paused)  
 **Branch (planned):** `feat/acq-c4-test-lead-field-discovery`  
 **Trusted tip at open:** `integration/release-product-a-b` @ `0d87d377` (docs PR-2 boundaries)
@@ -225,8 +225,8 @@ Routing preview after mapping must show concrete outcome (entity type, vacancy/s
 | **C-1** | Nav: Marketing top-level section; remove from Sales bucket; Activity under Marketing | **DONE** — #157 |
 | **C-2** | Stop legacy ad-launch from Подборы (`searchAcquisition`); reconcile to Campaign/Flight; block new dual-write debt | **DONE with constraints** — #158 · [note](#c-2-constraint--legacy-ops-beyond-create-stop-2026-07-24) (create/duplicate stopped; item 5 «only» is soft) |
 | **C-3** | **Sources foundation** — unified Sources list; connection status; Mapping Health; last submission/error; waiting visibility. No new mapping engine | **DONE with constraints** — #160 · [errata](#c-3-errata--sources-list-columns-2026-07-24) · **C-3.1** closes page/form/destination |
-| **C-4** | **Test submission & field discovery** — Meta test lead and/or capture-next; raw payload inspector; detected fields + sample values; masking; replay normalization **without** creating production entities by default — [brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md) | **ACTIVE** (after C-3 ✅) |
-| **C-5** | **Mapping workspace** — provider field → standard / domain / custom / answer / ignore; validation; versioning; unmapped-field alerts; routing preview; Mapping Health updates | After C-4 |
+| **C-4** | **Test submission & field discovery** — Meta test lead and/or capture-next; raw payload inspector; detected fields + sample values; masking; replay normalization **without** creating production entities by default — [brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md) | **DONE** — smoke PASS 2026-07-26 |
+| **C-5** | **Mapping workspace** — provider field → standard / domain / custom / answer / ignore; validation; versioning; unmapped-field alerts; routing preview; Mapping Health updates | **ACTIVE** (after C-4) |
 | **C-6** | **Form Builder cutover** — Forms under Marketing (`/app/marketing/forms`…); create/edit/preview/publish; create-form-in-setup; integrate with Campaign Setup | After C-5 |
 | **C-7** | **Recruitment Searches decommission + navigation acceptance** — retire Подборы ad-launch UI (redirect/read-only); unresolved → reconciliation queue; production nav + smoke; close Stage 4 product cutover gate | After C-6 |
 
@@ -500,7 +500,7 @@ Minimum epic intent (lock later in its own task doc):
 - [x] No new acquisition launch outside Campaign/Flight — **C-2** (#158) · **with constraints** — [note](#c-2-constraint--legacy-ops-beyond-create-stop-2026-07-24) (audience/bindings still writable on legacy rows)  
 - [x] Marketing → Sources shows inventory + connection + Mapping Health — **C-3** (#160) · **with constraints** — [errata](#c-3-errata--sources-list-columns-2026-07-24)  
 - [x] Sources list page / provider form / destination columns — **C-3.1** (account/portfolio still deferred)  
-- [ ] Operator can obtain a test/sample submission and see detected fields — **C-4** ([brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md))  
+- [x] Operator can obtain a test/sample submission and see detected fields — **C-4** ([brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md)) · smoke PASS 2026-07-26  
 - [ ] Per-source mapping workspace + routing preview; unknown fields force review (not silent loss) — **C-5**  
 - [ ] Operator can create/edit/publish a form from Marketing; Setup supports select-existing **and** create-new — **C-6**  
 - [ ] New ad launch cannot start from Подборы; legacy URLs redirect or read-only — **C-7**  
@@ -513,6 +513,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-26: **C-4 smoke PASS** — operator verified Test lead / discovery on deploy; Product Track → **C-5**.
 - 2026-07-24: **C-3.1 DONE** — Sources list page / provider_form / destination from `campaign_source_cards` helpers + `route_intent`; account/portfolio still deferred (no SoT).
 - 2026-07-24: **C-2 constraint note** — item 5 «only» soft: create/duplicate stop real; audience PUT + update_bindings still live (no LegacyLaunch gate); gated FE `onDuplicate` residue. Status **DONE with constraints**; leftover writes → C-7.
 - 2026-07-24: **C-3 errata** — Sources list minimum columns: 6/10 shipped in #160; deferred account/portfolio, page, provider form (human), destination → **C-3.1**. Status **DONE with constraints**. Donor for page/form: `backend/app/acquisition/campaign_source_cards.py` (`page_id`, `lead_form_name`, `display_title`) — do not re-discover SoT.
