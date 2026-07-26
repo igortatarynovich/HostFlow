@@ -518,6 +518,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-26: **Live Intake person feed** — monitor returns `applicants` (name/phone/email/status) from Flight-attributed leads; Marketing UI shows people, not raw Activity JSON.
 - 2026-07-26: **Meta Connect Source routing** — Meta+`ad_id` without Ad bind falls back to Form ∪ Profile Flight (Connect Source); Ad bind still wins; `profile_default` still forbidden.
 - 2026-07-26: **C-6 DONE** — Marketing Forms IA + create-in-setup (#170 · #171); Product Track → **C-7**; [C-7 brief](acquisition-ui-cutover-c7-searches-decommission.md) opened.
 - 2026-07-26: **C-6 brief opened** — [acquisition-ui-cutover-c6-form-builder.md](acquisition-ui-cutover-c6-form-builder.md); Product Track = Form Builder cutover (Marketing IA remount + create-in-setup; no second Forms SoT).

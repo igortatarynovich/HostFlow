@@ -174,6 +174,7 @@ async def test_live_intake_monitor_counters_and_allowlist(
     assert "RoutingFailed" in types
     assert "FlightCreated" not in types
     assert "FlightCreated" not in body["event_types"]
+    assert isinstance(body.get("applicants"), list)
 
     # Filtered subset
     filtered = await client.get(
