@@ -25,6 +25,10 @@ _ALLOWED_PURPOSES = frozenset(
         "meeting_invitation",
         "proposal_follow_up",
         "manual_thread_reply",
+        # ADR-031 compliance / ops outbound (Sales binders)
+        "gdpr_notice",
+        "intake_rejection_notice",
+        "moving_forward_notice",
     }
 )
 _ALLOWED_RESULT_TYPES = frozenset({"sales_inquiry"})
