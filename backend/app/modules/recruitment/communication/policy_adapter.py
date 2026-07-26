@@ -25,6 +25,8 @@ _ALLOWED_PURPOSES = frozenset(
         "interview_invitation",
         "document_request",
         "manual_thread_reply",
+        # ADR-031 compliance outbound (Recruitment binders)
+        "gdpr_notice",
     }
 )
 _ALLOWED_RESULT_TYPES = frozenset({"application"})

@@ -309,6 +309,52 @@ async def send_lead_rodo_email(
     subject = resolved.subject
     body = resolved.body
 
+    from backend.app.modules.recruitment.communication.compliance_pipeline import (
+        RecruitmentCompliancePipelineError,
+        resolve_lead_uses_recruitment_compliance_pipeline,
+    )
+
+    if await resolve_lead_uses_recruitment_compliance_pipeline(
+        db, tenant_id=str(tenant_id), lead=lead
+    ):
+        try:
+            ok, msg = await _send_lead_rodo_via_recruitment_pipeline(
+                db,
+                tenant_id=tenant_id,
+                lead=lead,
+                actor_id=actor_id,
+                email=email,
+                channel=channel,
+                subject=subject,
+                body=body,
+                rodo_link=link,
+                rodo_version_id=str(rodo_doc.version_id),
+                auto_trigger=auto_trigger,
+                ingest_source=ingest_source,
+                first_name=first_name,
+            )
+            return ok, msg
+        except RecruitmentCompliancePipelineError as exc:
+            reason = exc.message
+            mark_lead_rodo_failed(lead, reason=reason)
+            await db.flush()
+            await log_audit_event(
+                db,
+                tenant_id=tenant_id,
+                event_type=AuditEventType.rodo_sent_failed,
+                entity_type=AuditEntityType.lead,
+                entity_id=str(lead.id),
+                actor_id=actor_id,
+                payload={
+                    "reason": f"Recruitment pipeline bind failed: {reason}",
+                    "notice_status": "failed",
+                    "auto_trigger": auto_trigger,
+                    "ingest_source": ingest_source,
+                    "details": dict(exc.details or {}),
+                },
+            )
+            return False, f"Failed to send email: {reason}"
+
     try:
         await send_email_for_tenant(
             db,
@@ -365,6 +411,201 @@ async def send_lead_rodo_email(
             "lead_id": str(lead.id),
             "auto_trigger": auto_trigger,
             "ingest_source": ingest_source,
+        },
+    )
+    return True, "RODO email sent for lead"
+
+
+async def _send_lead_rodo_via_recruitment_pipeline(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    actor_id: Optional[str],
+    email: str,
+    channel: str,
+    subject: str,
+    body: str,
+    rodo_link: str,
+    rodo_version_id: str,
+    auto_trigger: Optional[str],
+    ingest_source: Optional[str],
+    first_name: str,
+) -> Tuple[bool, str]:
+    """ADR-031 Recruitment path: binder → authorize → prepare_and_send (no direct SMTP)."""
+    from backend.app.communications.command import (
+        CommunicationCommand,
+        CommunicationOrigin,
+        CommunicationRecipient,
+        ResolvedLinkSnapshot,
+        SendCommunicationContent,
+    )
+    from backend.app.communications.intent import CommunicationIntent
+    from backend.app.communications.prepare_send import prepare_and_send_communication
+    from backend.app.communications.send_communication import SendCommunicationError
+    from backend.app.communications.send_pipeline import (
+        CommunicationSendRequest,
+        authorize_outbound_communication,
+    )
+    from backend.app.modules.recruitment.communication.compliance_pipeline import (
+        PURPOSE_GDPR_NOTICE,
+        ensure_recruitment_compliance_pipeline_binding,
+    )
+
+    binding = await ensure_recruitment_compliance_pipeline_binding(
+        db,
+        tenant_id=str(tenant_id),
+        lead=lead,
+        purpose=PURPOSE_GDPR_NOTICE,
+        actor_user_id=actor_id,
+        source="recruitment.lead_rodo",
+    )
+    auth = await authorize_outbound_communication(
+        db,
+        CommunicationSendRequest(
+            tenant_id=str(tenant_id),
+            thread_id=binding.thread_id,
+            channel="email",
+            communication_purpose=binding.communication_purpose,
+            template=binding.template,
+            locale=binding.locale,
+        ),
+    )
+    if not auth.allowed:
+        reason = str(auth.reason_code or "communication_pipeline_denied")
+        mark_lead_rodo_failed(lead, reason=reason)
+        await db.flush()
+        await log_audit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type=AuditEventType.rodo_sent_failed,
+            entity_type=AuditEntityType.lead,
+            entity_id=str(lead.id),
+            actor_id=actor_id,
+            payload={
+                "reason": f"Pipeline denied: {reason}",
+                "notice_status": "failed",
+                "auto_trigger": auto_trigger,
+                "ingest_source": ingest_source,
+                "authorization": auth.to_dict(),
+            },
+        )
+        return False, f"Failed to send email: {reason}"
+
+    command = CommunicationCommand(
+        tenant_id=str(tenant_id),
+        origin=CommunicationOrigin(
+            entity_type="application",
+            entity_id=binding.application_id,
+        ),
+        recipients=[
+            CommunicationRecipient(
+                address=email,
+                label=first_name,
+                recipient_type="lead",
+                recipient_id=str(lead.id),
+            )
+        ],
+        channel="email",
+        intent=CommunicationIntent.GDPR_NOTICE,
+        content=SendCommunicationContent(
+            subject=subject,
+            body_text=body,
+            message_type="email",
+        ),
+        actor_id=actor_id,
+        own_company_id=str(getattr(lead, "own_company_id", None) or "") or None,
+        related_entities=[
+            CommunicationOrigin(entity_type="lead", entity_id=str(lead.id)),
+            CommunicationOrigin(entity_type="candidate", entity_id=binding.candidate_id),
+        ],
+        thread_id=binding.thread_id,
+        purpose=binding.communication_purpose,
+        delivery_purpose=binding.communication_purpose,
+        template_key=binding.template.template_id,
+        locale=binding.locale,
+        requested_link_intents=("privacy_notice",),
+        resolved_links=(
+            ResolvedLinkSnapshot(
+                link_intent="privacy_notice",
+                public_url=rodo_link,
+                variable_name="rodo_link",
+            ),
+        ),
+        render_variables={"first_name": first_name, "rodo_link": rodo_link},
+        policy_decision=auth.to_dict(),
+        idempotency_key=f"lead_rodo:{lead.id}:{rodo_version_id}"[:128],
+        meta={
+            "source": "lead_rodo.recruitment_pipeline",
+            "lead_id": str(lead.id),
+            "application_id": binding.application_id,
+            "auto_trigger": auto_trigger,
+            "ingest_source": ingest_source,
+        },
+    )
+    try:
+        await prepare_and_send_communication(db, command)
+    except SendCommunicationError as exc:
+        reason = (
+            exc.message
+            or str(exc.details.get("reason") if exc.details else "")
+            or "send_failed"
+        )
+        mark_lead_rodo_failed(lead, reason=reason)
+        await db.flush()
+        await log_audit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type=AuditEventType.rodo_sent_failed,
+            entity_type=AuditEntityType.lead,
+            entity_id=str(lead.id),
+            actor_id=actor_id,
+            payload={
+                "reason": f"Email send failed: {reason}",
+                "notice_status": "failed",
+                "auto_trigger": auto_trigger,
+                "ingest_source": ingest_source,
+                "details": dict(exc.details or {}),
+            },
+        )
+        return False, f"Failed to send email: {reason}"
+
+    now = datetime.now(timezone.utc).isoformat()
+    norm_out: Dict[str, Any] = (
+        dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    )
+    rodo_block_out: Dict[str, Any] = {
+        "status": "sent",
+        "sent_at": now,
+        "channel": channel,
+        "recipient": email,
+        "rodo_version_id": rodo_version_id,
+        "delivery": "communication_pipeline",
+        "application_id": binding.application_id,
+        "thread_id": binding.thread_id,
+    }
+    if auto_trigger:
+        rodo_block_out["auto_trigger"] = str(auto_trigger).strip()
+    if ingest_source:
+        rodo_block_out["ingest_source"] = str(ingest_source).strip()
+    norm_out["rodo"] = rodo_block_out
+    lead.normalized = norm_out
+    await db.flush()
+
+    await log_audit_event(
+        db,
+        tenant_id=tenant_id,
+        event_type=AuditEventType.rodo_sent,
+        entity_type=AuditEntityType.lead,
+        entity_id=str(lead.id),
+        actor_id=actor_id,
+        payload={
+            "channel": channel,
+            "lead_id": str(lead.id),
+            "auto_trigger": auto_trigger,
+            "ingest_source": ingest_source,
+            "delivery": "communication_pipeline",
+            "application_id": binding.application_id,
         },
     )
     return True, "RODO email sent for lead"

@@ -210,7 +210,10 @@ _INTENT_DEFINITIONS: tuple[IntentDefinition, ...] = (
     IntentDefinition(
         intent_key="gdpr_notice",
         purpose="transaction",
-        allowed_entity_types=_SALES_ENTITIES | _CLIENT_ENTITIES | _fs("candidate"),
+        allowed_entity_types=_SALES_ENTITIES
+        | _CLIENT_ENTITIES
+        | _RECRUITMENT_ENTITIES
+        | _fs("candidate"),
         allowed_channels=_fs("email"),
         allows_automation=True,
         allows_manual=True,
