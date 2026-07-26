@@ -13,6 +13,7 @@ import {
   MarketingCampaignDetailPage,
   MarketingSourcesPage,
   MarketingSourceTestLeadPage,
+  MarketingSourceMappingPage,
   AutomationRulesPage,
   BillingWorkspacePage,
   CandidateCard,
@@ -766,6 +767,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     key: 'acquisition-activity',
     path: seg(CRM.acquisitionActivity),
     Component: AcquisitionActivityTimelinePage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-source-mapping',
+    path: `${seg(CRM.marketingSources)}/:sourceId/mapping`,
+    Component: MarketingSourceMappingPage,
     permission: 'vacancies.view',
   },
   {

@@ -1,12 +1,12 @@
 # Acquisition UI Cutover
 
-**Status:** **ACTIVE — Product Track = C-5** (C-4 smoke PASS 2026-07-26; Stage 5 PR-2 still paused until C-7)  
+**Status:** **ACTIVE — Product Track = C-6** (C-5 Mapping workspace DONE; Stage 5 PR-2 still paused until C-7)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [acquisition/module-scope.md](../../acquisition/module-scope.md)  
-**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅  
-**C-5 brief:** [acquisition-ui-cutover-c5-mapping-workspace.md](acquisition-ui-cutover-c5-mapping-workspace.md) · **ACTIVE**  
+**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅ · C-5 ✅  
+**C-5 brief:** [acquisition-ui-cutover-c5-mapping-workspace.md](acquisition-ui-cutover-c5-mapping-workspace.md) · **DONE**  
 **C-4 brief:** [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md) · **DONE**  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (paused)  
-**Branch (planned):** `feat/acq-c4-test-lead-field-discovery`  
+**Branch (planned):** `feat/acq-c5-mapping-workspace`  
 **Trusted tip at open:** `integration/release-product-a-b` @ `0d87d377` (docs PR-2 boundaries)
 
 > Stage 4 **runtime** is DONE. Stage 4 **product/UI cutover** is **NOT DONE**.  
@@ -227,8 +227,8 @@ Routing preview after mapping must show concrete outcome (entity type, vacancy/s
 | **C-2** | Stop legacy ad-launch from Подборы (`searchAcquisition`); reconcile to Campaign/Flight; block new dual-write debt | **DONE with constraints** — #158 · [note](#c-2-constraint--legacy-ops-beyond-create-stop-2026-07-24) (create/duplicate stopped; item 5 «only» is soft) |
 | **C-3** | **Sources foundation** — unified Sources list; connection status; Mapping Health; last submission/error; waiting visibility. No new mapping engine | **DONE with constraints** — #160 · [errata](#c-3-errata--sources-list-columns-2026-07-24) · **C-3.1** closes page/form/destination |
 | **C-4** | **Test submission & field discovery** — Meta test lead and/or capture-next; raw payload inspector; detected fields + sample values; masking; replay normalization **without** creating production entities by default — [brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md) | **DONE** — smoke PASS 2026-07-26 |
-| **C-5** | **Mapping workspace** — provider field → standard / domain / custom / answer / ignore; validation; versioning; unmapped-field alerts; routing preview; Mapping Health updates — [brief](acquisition-ui-cutover-c5-mapping-workspace.md) | **ACTIVE** (after C-4) |
-| **C-6** | **Form Builder cutover** — Forms under Marketing (`/app/marketing/forms`…); create/edit/preview/publish; create-form-in-setup; integrate with Campaign Setup | After C-5 |
+| **C-5** | **Mapping workspace** — provider field → standard / domain / custom / answer / ignore; validation; versioning; unmapped-field alerts; routing preview; Mapping Health updates — [brief](acquisition-ui-cutover-c5-mapping-workspace.md) | **DONE** (thin map/ignore + routing preview; see brief constraints) |
+| **C-6** | **Form Builder cutover** — Forms under Marketing (`/app/marketing/forms`…); create/edit/preview/publish; create-form-in-setup; integrate with Campaign Setup | **ACTIVE** (after C-5) |
 | **C-7** | **Recruitment Searches decommission + navigation acceptance** — retire Подборы ad-launch UI (redirect/read-only); unresolved → reconciliation queue; production nav + smoke; close Stage 4 product cutover gate | After C-6 |
 
 **Ordering rationale**
@@ -502,7 +502,7 @@ Minimum epic intent (lock later in its own task doc):
 - [x] Marketing → Sources shows inventory + connection + Mapping Health — **C-3** (#160) · **with constraints** — [errata](#c-3-errata--sources-list-columns-2026-07-24)  
 - [x] Sources list page / provider form / destination columns — **C-3.1** (account/portfolio still deferred)  
 - [x] Operator can obtain a test/sample submission and see detected fields — **C-4** ([brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md)) · smoke PASS 2026-07-26  
-- [ ] Per-source mapping workspace + routing preview; unknown fields force review (not silent loss) — **C-5**  
+- [x] Per-source mapping workspace + routing preview; unknown fields force review (not silent loss) — **C-5** ([brief](acquisition-ui-cutover-c5-mapping-workspace.md); thin map/ignore UX)  
 - [ ] Operator can create/edit/publish a form from Marketing; Setup supports select-existing **and** create-new — **C-6**  
 - [ ] New ad launch cannot start from Подборы; legacy URLs redirect or read-only — **C-7**  
 - [ ] Reconciliation inventory: migrated / unresolved counts documented — **C-7**  
@@ -514,6 +514,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-26: **C-5 DONE** — Marketing mapping GET/PUT + routing-preview; `mapping_path` → `/app/marketing/sources/{id}/mapping`; Product Track → **C-6**.
 - 2026-07-26: **C-5 brief opened** — [acquisition-ui-cutover-c5-mapping-workspace.md](acquisition-ui-cutover-c5-mapping-workspace.md); Product Track = Mapping workspace (persist `mapping_rules` + routing preview; no new engine).
 - 2026-07-26: **C-4 smoke PASS** — operator verified Test lead / discovery on deploy; Product Track → **C-5**.
 - 2026-07-24: **Connect Source picker enrichment** — `campaign_source_cards` + Meta Graph hydrate for form/page/ad names on `intake-source-options`; [brief](acquisition-ui-cutover-connect-source-picker-enrichment.md).

@@ -20,7 +20,6 @@ from backend.app.constants.spa_paths import (
     MARKETING_NEW,
     MARKETING_SOURCES,
     SETTINGS_INTEGRATIONS_META,
-    SETTINGS_LEAD_FORMS,
 )
 from backend.app.models.acquisition_activity_event import AcquisitionActivityEvent
 from backend.app.models.campaign import Campaign, CampaignRun, CampaignRunIntakeSource
@@ -185,24 +184,14 @@ def build_source_paths(
     """Return (mapping_path, test_lead_path, settings_path).
 
     C-4: ``test_lead_path`` is Marketing-native (``/app/marketing/sources/{id}/test-lead``).
-    Mapping remains Settings until C-5 Mapping workspace.
+    C-5: ``mapping_path`` is Marketing-native (``/app/marketing/sources/{id}/mapping``).
+    Settings integrations remain the Connection deep-link.
     """
-    provider_l = str(provider or "").strip().lower()
-    test_path = f"{MARKETING_SOURCES}/{quote(str(source_id), safe='')}/test-lead"
-    if lead_form_id:
-        form_base = f"{SETTINGS_LEAD_FORMS}/{quote(str(lead_form_id), safe='')}"
-        return form_base, test_path, SETTINGS_INTEGRATIONS_META
-    if provider_l == "meta" or meta_form_id:
-        q = {"tab": "field_mapping"}
-        if meta_form_id:
-            q["form_id"] = str(meta_form_id)
-        mapping = f"{SETTINGS_INTEGRATIONS_META}?{urlencode(q)}"
-        return mapping, test_path, SETTINGS_INTEGRATIONS_META
-    return (
-        f"{SETTINGS_INTEGRATIONS_META}?tab=field_mapping",
-        test_path,
-        SETTINGS_INTEGRATIONS_META,
-    )
+    _ = (provider, meta_form_id, lead_form_id)  # retained for call-site compatibility
+    sid = quote(str(source_id), safe="")
+    mapping_path = f"{MARKETING_SOURCES}/{sid}/mapping"
+    test_path = f"{MARKETING_SOURCES}/{sid}/test-lead"
+    return mapping_path, test_path, SETTINGS_INTEGRATIONS_META
 
 
 def compute_destination(

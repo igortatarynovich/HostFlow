@@ -4,7 +4,10 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import {
+  CRM_APP_PATHS,
+  marketingSourceMappingPath,
+} from '../../app/crmAppPaths'
 import {
   getMarketingSourceSample,
   listMarketingSources,
@@ -97,8 +100,10 @@ export default function MarketingSourceTestLeadPage() {
 
   const mappingHref = useMemo(() => {
     if (source?.mapping_path) return source.mapping_path
-    return CRM_APP_PATHS.settingsIntegrationsMeta
-  }, [source?.mapping_path])
+    return sourceId
+      ? marketingSourceMappingPath(sourceId)
+      : CRM_APP_PATHS.marketingSources
+  }, [source?.mapping_path, sourceId])
 
   const title = source?.display_name
     ? t('app.marketing.test_lead.title_named', {
