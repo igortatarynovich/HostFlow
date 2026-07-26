@@ -42,6 +42,7 @@ export const SIDEBAR_AGENCY_HR_ORDER = ['hr-workspace'] as const
 export const SIDEBAR_AGENCY_MARKETING_ORDER = [
   'marketing',
   'marketing-sources',
+  'marketing-forms',
   'acquisition-activity',
 ] as const
 

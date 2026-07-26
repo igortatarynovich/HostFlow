@@ -68,6 +68,8 @@ export const CRM_APP_PATHS = {
   marketingNew: "/app/marketing/new",
   /** Marketing Sources foundation — intake inventory, connection, Mapping Health (C-3). */
   marketingSources: "/app/marketing/sources",
+  /** Marketing Forms — HostFlow Form Builder remount (C-6); SoT remains ADR-007 / settings APIs. */
+  marketingForms: "/app/marketing/forms",
   inbox: "/app/inbox",
   /** Inbox with messages channel selected (legacy top-level /app/messages redirects here). */
   inboxMessagesScoped: "/app/inbox?channel=messages",

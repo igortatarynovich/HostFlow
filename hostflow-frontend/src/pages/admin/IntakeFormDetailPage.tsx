@@ -213,7 +213,7 @@ export default function IntakeFormDetailPage() {
   return (
     <SettingsSubpageHeader
       backLabel={t('admin.intake_forms.back_list', { defaultValue: 'All intake forms' })}
-      backHref={CRM_APP_PATHS.settingsLeadForms}
+      backHref={CRM_APP_PATHS.marketingForms}
       kicker={t('admin.intake_forms.header_kicker', { defaultValue: 'Intake sources' })}
       title={
         <span className="inline-flex items-center gap-2">
@@ -234,7 +234,7 @@ export default function IntakeFormDetailPage() {
               info={pageError}
               {...friendlyErrorBannerSecondary(
                 pageError,
-                CRM_APP_PATHS.settingsLeadForms,
+                CRM_APP_PATHS.marketingForms,
                 t('admin.intake_forms.back_list', { defaultValue: 'All intake forms' }),
               )}
             />

@@ -234,7 +234,7 @@ export default function MarketingConnectSourcePage() {
               ) : (
                 <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                   Нет активных анкет.{' '}
-                  <Link to={CRM_APP_PATHS.settingsLeadForms} className="underline">
+                  <Link to={CRM_APP_PATHS.marketingForms} className="underline">
                     Открыть анкеты
                   </Link>
                 </p>
