@@ -18,7 +18,6 @@ from backend.app.services.lead_communication_settings import (
 )
 from backend.app.services.message_hub import resolve_lead_email_message
 from backend.app.intake_platform.constants import SUBMISSIONS_V1_KEY
-from backend.app.services.tenant_email import send_email_for_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -304,12 +303,158 @@ async def maybe_send_lead_communication(
         authorize_outbound_communication,
         template_metadata_from_mapping,
     )
+    from backend.app.modules.recruitment.communication.compliance_pipeline import (
+        RecruitmentCompliancePipelineError,
+        ensure_recruitment_compliance_pipeline_binding,
+        purpose_for_ops_event as recruitment_purpose_for_ops_event,
+        resolve_lead_uses_recruitment_compliance_pipeline,
+    )
+    from backend.app.modules.recruitment.services.compliance_outbound_ensure import (
+        ComplianceOutboundEnsureError,
+        maybe_ensure_compliance_outbound_for_recruitment_lead,
+    )
+    from backend.app.modules.sales.communication.compliance_pipeline import (
+        SalesCompliancePipelineError,
+        ensure_sales_compliance_pipeline_binding,
+        purpose_for_ops_event as sales_purpose_for_ops_event,
+        resolve_lead_uses_sales_compliance_pipeline,
+    )
 
     thread = str(thread_id or "").strip()
     purpose = str(communication_purpose or "").strip()
     template = template_metadata_from_mapping(
         template_metadata if isinstance(template_metadata, dict) else None
     )
+    sales_inquiry_id: Optional[str] = None
+    application_id: Optional[str] = None
+    use_sales_pipeline = False
+    use_recruitment_pipeline = False
+    sales_bound = await resolve_lead_uses_sales_compliance_pipeline(
+        db, tenant_id=str(tenant_id), lead=lead
+    )
+    recruitment_bound = (
+        False
+        if sales_bound
+        else await resolve_lead_uses_recruitment_compliance_pipeline(
+            db, tenant_id=str(tenant_id), lead=lead
+        )
+    )
+
+    if (not thread or not purpose or template is None) and sales_bound:
+        sales_purpose = sales_purpose_for_ops_event(ev)
+        if sales_purpose is None:
+            _stamp_event(
+                lead,
+                ev,
+                status="skipped",
+                reason="communication_pipeline_required",
+            )
+            await db.flush()
+            return False
+        try:
+            binding = await ensure_sales_compliance_pipeline_binding(
+                db,
+                tenant_id=str(tenant_id),
+                lead=lead,
+                purpose=sales_purpose,
+                locale=str(locale).strip() if locale else None,
+                source="sales.lead_communications",
+            )
+        except SalesCompliancePipelineError as exc:
+            reason = str((exc.details or {}).get("reason") or exc.message)
+            _stamp_event(lead, ev, status="skipped", reason=reason)
+            await db.flush()
+            await log_audit_event(
+                db,
+                tenant_id=tenant_id,
+                event_type=AuditEventType.communication_delivery_failed,
+                entity_type=AuditEntityType.lead,
+                entity_id=str(lead.id),
+                actor_id=None,
+                payload=_delivery_failure_payload(
+                    event_type=ev,
+                    reason_code="authentication_configuration",
+                    notice_status="skipped",
+                    extra={"detail": reason, "details": dict(exc.details or {})},
+                ),
+            )
+            return False
+        thread = binding.thread_id
+        purpose = binding.communication_purpose
+        template = binding.template
+        sales_inquiry_id = binding.sales_inquiry_id
+        use_sales_pipeline = True
+
+    if (not thread or not purpose or template is None) and recruitment_bound:
+        rec_purpose = recruitment_purpose_for_ops_event(ev)
+        if rec_purpose is None:
+            _stamp_event(
+                lead,
+                ev,
+                status="skipped",
+                reason="communication_pipeline_required",
+            )
+            await db.flush()
+            return False
+        try:
+            await maybe_ensure_compliance_outbound_for_recruitment_lead(
+                db,
+                tenant_id=str(tenant_id),
+                lead=lead,
+                source="recruitment.lead_communications",
+            )
+            binding = await ensure_recruitment_compliance_pipeline_binding(
+                db,
+                tenant_id=str(tenant_id),
+                lead=lead,
+                purpose=rec_purpose,
+                locale=str(locale).strip() if locale else None,
+                source="recruitment.lead_communications",
+            )
+        except ComplianceOutboundEnsureError as exc:
+            reason = str((exc.details or {}).get("reason") or exc.message)
+            _stamp_event(lead, ev, status="skipped", reason=reason)
+            await db.flush()
+            await log_audit_event(
+                db,
+                tenant_id=tenant_id,
+                event_type=AuditEventType.communication_delivery_failed,
+                entity_type=AuditEntityType.lead,
+                entity_id=str(lead.id),
+                actor_id=None,
+                payload=_delivery_failure_payload(
+                    event_type=ev,
+                    reason_code="authentication_configuration",
+                    notice_status="skipped",
+                    extra={"detail": reason, "details": dict(exc.details or {})},
+                ),
+            )
+            return False
+        except RecruitmentCompliancePipelineError as exc:
+            reason = str((exc.details or {}).get("reason") or exc.message)
+            _stamp_event(lead, ev, status="skipped", reason=reason)
+            await db.flush()
+            await log_audit_event(
+                db,
+                tenant_id=tenant_id,
+                event_type=AuditEventType.communication_delivery_failed,
+                entity_type=AuditEntityType.lead,
+                entity_id=str(lead.id),
+                actor_id=None,
+                payload=_delivery_failure_payload(
+                    event_type=ev,
+                    reason_code="authentication_configuration",
+                    notice_status="skipped",
+                    extra={"detail": reason, "details": dict(exc.details or {})},
+                ),
+            )
+            return False
+        thread = binding.thread_id
+        purpose = binding.communication_purpose
+        template = binding.template
+        application_id = binding.application_id
+        use_recruitment_pipeline = True
+
     if not thread or not purpose or template is None:
         _stamp_event(
             lead,
@@ -333,6 +478,11 @@ async def maybe_send_lead_communication(
             ),
         )
         return False
+
+    if sales_bound:
+        use_sales_pipeline = True
+    elif recruitment_bound:
+        use_recruitment_pipeline = True
 
     auth = await authorize_outbound_communication(
         db,
@@ -399,17 +549,92 @@ async def maybe_send_lead_communication(
     )
     subject = resolved.subject
     body = resolved.body
-    try:
-        await send_email_for_tenant(
+
+    if use_sales_pipeline:
+        send_coro = _send_ops_via_sales_pipeline(
             db,
-            tenant_id=tenant_id,
-            to=email,
+            tenant_id=str(tenant_id),
+            lead=lead,
+            event_type=ev,
+            email=email,
+            first_name=first_name,
             subject=subject,
             body=body,
+            thread_id=thread,
+            purpose=purpose,
+            template_id=getattr(template, "template_id", None),
+            locale=str(locale).strip() if locale else None,
+            sales_inquiry_id=sales_inquiry_id,
+            policy_decision=auth.to_dict(),
         )
-    except Exception as exc:
-        reason = str(exc) if str(exc) else type(exc).__name__
-        _stamp_event(lead, ev, status="failed", channel="email", recipient=email, reason=reason)
+    elif use_recruitment_pipeline:
+        send_coro = _send_ops_via_recruitment_pipeline(
+            db,
+            tenant_id=str(tenant_id),
+            lead=lead,
+            event_type=ev,
+            email=email,
+            first_name=first_name,
+            subject=subject,
+            body=body,
+            thread_id=thread,
+            purpose=purpose,
+            template_id=getattr(template, "template_id", None),
+            locale=str(locale).strip() if locale else None,
+            application_id=application_id,
+            policy_decision=auth.to_dict(),
+        )
+    else:
+        send_coro = None
+
+    if send_coro is not None:
+        try:
+            await send_coro
+        except Exception as exc:
+            from backend.app.communications.send_communication import SendCommunicationError
+
+            if isinstance(exc, SendCommunicationError):
+                reason = (
+                    exc.message
+                    or str((exc.details or {}).get("reason") or "")
+                    or "send_failed"
+                )
+            else:
+                reason = str(exc) if str(exc) else type(exc).__name__
+            _stamp_event(lead, ev, status="failed", channel="email", recipient=email, reason=reason)
+            await db.flush()
+            await log_audit_event(
+                db,
+                tenant_id=tenant_id,
+                event_type=AuditEventType.communication_delivery_failed,
+                entity_type=AuditEntityType.lead,
+                entity_id=str(lead.id),
+                actor_id=None,
+                payload=_delivery_failure_payload(
+                    event_type=ev,
+                    reason_code="send_failed",
+                    notice_status="failed",
+                    extra={"detail": reason[:500]},
+                ),
+            )
+            logger.info(
+                "lead_communication_send_failed",
+                extra={
+                    "tenant_id": tenant_id,
+                    "lead_id": str(lead.id),
+                    "event_type": ev,
+                    "reason": reason,
+                },
+            )
+            return False
+    else:
+        # ADR-031 PR-5: no Lead SMTP fallback when destination unbound / unselected.
+        _stamp_event(
+            lead,
+            ev,
+            status="skipped",
+            reason="communication_pipeline_required",
+        )
         await db.flush()
         await log_audit_event(
             db,
@@ -420,14 +645,10 @@ async def maybe_send_lead_communication(
             actor_id=None,
             payload=_delivery_failure_payload(
                 event_type=ev,
-                reason_code="send_failed",
-                notice_status="failed",
-                extra={"detail": reason[:500]},
+                reason_code="authentication_configuration",
+                notice_status="skipped",
+                extra={"detail": "communication_pipeline_required"},
             ),
-        )
-        logger.info(
-            "lead_communication_send_failed",
-            extra={"tenant_id": tenant_id, "lead_id": str(lead.id), "event_type": ev, "reason": reason},
         )
         return False
 
@@ -440,9 +661,190 @@ async def maybe_send_lead_communication(
         entity_type=AuditEntityType.lead,
         entity_id=str(lead.id),
         actor_id=None,
-        payload={"event_type": ev, "channel": "email", "recipient": email},
+        payload={
+            "event_type": ev,
+            "channel": "email",
+            "recipient": email,
+            "delivery": "communication_pipeline",
+            **({"sales_inquiry_id": sales_inquiry_id} if sales_inquiry_id else {}),
+            **({"application_id": application_id} if application_id else {}),
+        },
     )
     return True
+
+
+async def _send_ops_via_sales_pipeline(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    event_type: str,
+    email: str,
+    first_name: str,
+    subject: str,
+    body: str,
+    thread_id: str,
+    purpose: str,
+    template_id: Optional[str],
+    locale: Optional[str],
+    sales_inquiry_id: Optional[str],
+    policy_decision: Dict[str, Any],
+) -> None:
+    """ADR-031 Sales ops path: Intent follow_up → prepare_and_send (no direct SMTP)."""
+    from sqlalchemy import select
+
+    from backend.app.communications.command import (
+        CommunicationCommand,
+        CommunicationOrigin,
+        CommunicationRecipient,
+        SendCommunicationContent,
+    )
+    from backend.app.communications.intent import CommunicationIntent
+    from backend.app.communications.prepare_send import prepare_and_send_communication
+    from backend.app.models.sales_inquiry import SalesInquiry
+
+    si_id = str(sales_inquiry_id or "").strip()
+    if not si_id:
+        link = lead.normalized if isinstance(lead.normalized, dict) else {}
+        raw_link = link.get("intake_result_link_v1") if isinstance(link, dict) else None
+        if isinstance(raw_link, dict):
+            si_id = str(raw_link.get("sales_inquiry_id") or "").strip()
+    if not si_id:
+        row = await db.scalar(
+            select(SalesInquiry)
+            .where(SalesInquiry.tenant_id == tenant_id, SalesInquiry.lead_id == str(lead.id))
+            .limit(1)
+        )
+        if row is not None:
+            si_id = str(row.id)
+    if not si_id:
+        raise RuntimeError("sales_inquiry_id required for Sales pipeline ops send")
+
+    command = CommunicationCommand(
+        tenant_id=tenant_id,
+        origin=CommunicationOrigin(entity_type="sales_inquiry", entity_id=si_id),
+        recipients=[
+            CommunicationRecipient(
+                address=email,
+                label=first_name,
+                recipient_type="lead",
+                recipient_id=str(lead.id),
+            )
+        ],
+        channel="email",
+        intent=CommunicationIntent.FOLLOW_UP,
+        content=SendCommunicationContent(
+            subject=subject,
+            body_text=body,
+            message_type="email",
+        ),
+        own_company_id=str(getattr(lead, "own_company_id", None) or "") or None,
+        related_entities=[
+            CommunicationOrigin(entity_type="lead", entity_id=str(lead.id)),
+        ],
+        thread_id=thread_id,
+        purpose=purpose,
+        delivery_purpose=purpose,
+        template_key=str(template_id or "").strip() or None,
+        locale=locale,
+        policy_decision=policy_decision,
+        idempotency_key=f"lead_ops:{lead.id}:{event_type}"[:128],
+        meta={
+            "source": "lead_communications.sales_pipeline",
+            "lead_id": str(lead.id),
+            "event_type": event_type,
+        },
+    )
+    await prepare_and_send_communication(db, command)
+
+
+async def _send_ops_via_recruitment_pipeline(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    event_type: str,
+    email: str,
+    first_name: str,
+    subject: str,
+    body: str,
+    thread_id: str,
+    purpose: str,
+    template_id: Optional[str],
+    locale: Optional[str],
+    application_id: Optional[str],
+    policy_decision: Dict[str, Any],
+) -> None:
+    """ADR-031 Recruitment ops path: Intent follow_up → prepare_and_send (no direct SMTP)."""
+    from sqlalchemy import select
+
+    from backend.app.communications.command import (
+        CommunicationCommand,
+        CommunicationOrigin,
+        CommunicationRecipient,
+        SendCommunicationContent,
+    )
+    from backend.app.communications.intent import CommunicationIntent
+    from backend.app.communications.prepare_send import prepare_and_send_communication
+    from backend.app.models.recruitment_application import RecruitmentApplication
+
+    app_id = str(application_id or "").strip()
+    if not app_id:
+        link = lead.normalized if isinstance(lead.normalized, dict) else {}
+        raw_link = link.get("intake_result_link_v1") if isinstance(link, dict) else None
+        if isinstance(raw_link, dict):
+            app_id = str(raw_link.get("application_id") or "").strip()
+    if not app_id:
+        row = await db.scalar(
+            select(RecruitmentApplication)
+            .where(
+                RecruitmentApplication.tenant_id == tenant_id,
+                RecruitmentApplication.lead_id == str(lead.id),
+            )
+            .limit(1)
+        )
+        if row is not None:
+            app_id = str(row.id)
+    if not app_id:
+        raise RuntimeError("application_id required for Recruitment pipeline ops send")
+
+    command = CommunicationCommand(
+        tenant_id=tenant_id,
+        origin=CommunicationOrigin(entity_type="application", entity_id=app_id),
+        recipients=[
+            CommunicationRecipient(
+                address=email,
+                label=first_name,
+                recipient_type="lead",
+                recipient_id=str(lead.id),
+            )
+        ],
+        channel="email",
+        intent=CommunicationIntent.FOLLOW_UP,
+        content=SendCommunicationContent(
+            subject=subject,
+            body_text=body,
+            message_type="email",
+        ),
+        own_company_id=str(getattr(lead, "own_company_id", None) or "") or None,
+        related_entities=[
+            CommunicationOrigin(entity_type="lead", entity_id=str(lead.id)),
+        ],
+        thread_id=thread_id,
+        purpose=purpose,
+        delivery_purpose=purpose,
+        template_key=str(template_id or "").strip() or None,
+        locale=locale,
+        policy_decision=policy_decision,
+        idempotency_key=f"lead_ops:{lead.id}:{event_type}"[:128],
+        meta={
+            "source": "lead_communications.recruitment_pipeline",
+            "lead_id": str(lead.id),
+            "event_type": event_type,
+            "application_id": app_id,
+        },
+    )
+    await prepare_and_send_communication(db, command)
 
 
 async def maybe_send_application_received_on_ingest(

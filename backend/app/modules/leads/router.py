@@ -32,6 +32,9 @@ from backend.app.modules.leads.schemas import (
     BulkAutoProcessQueueItemOut,
     BulkAutoProcessQueueRequest,
     BulkAutoProcessQueueResponse,
+    BulkLeadRodoRetryItemOut,
+    BulkLeadRodoRetryRequest,
+    BulkLeadRodoRetryResponse,
     BulkLeadUpdateRequest,
     BulkLeadUpdateResponse,
     LeadCallResultIn,
@@ -582,6 +585,56 @@ async def send_lead_rodo_compliance_endpoint(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
     await db.commit()
     return {"ok": True, "message": msg}
+
+
+@router.post(
+    "/bulk/compliance/rodo/retry",
+    response_model=BulkLeadRodoRetryResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_roles(Role.admin, Role.manager))],
+)
+async def bulk_retry_lead_rodo_endpoint(
+    body: BulkLeadRodoRetryRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> BulkLeadRodoRetryResponse:
+    """Re-send art.14 RODO for leads stuck after Communication Pipeline cutover (ADR-031)."""
+    from backend.app.services.lead_rodo_bulk_retry import bulk_retry_lead_rodo
+
+    db, tenant_uuid = db_tenant
+    tenant_id_str = str(tenant_uuid)
+    try:
+        result = await bulk_retry_lead_rodo(
+            db,
+            tenant_id=tenant_id_str,
+            actor_id=str(current_user.sub or "").strip() or None,
+            lead_ids=body.lead_ids,
+            statuses=body.statuses,
+            max_items=body.max_items,
+            include_terminal=body.include_terminal,
+            dry_run=body.dry_run,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    if not body.dry_run:
+        await db.commit()
+    return BulkLeadRodoRetryResponse(
+        results=[
+            BulkLeadRodoRetryItemOut(
+                lead_id=i.lead_id,
+                outcome=i.outcome,
+                rodo_status_before=i.rodo_status_before,
+                rodo_status_after=i.rodo_status_after,
+                message=i.message,
+            )
+            for i in result.items
+        ],
+        attempted=result.attempted,
+        sent=result.sent,
+        skipped=result.skipped,
+        failed=result.failed,
+        dry_run=result.dry_run,
+    )
 
 
 @router.post(

@@ -122,12 +122,22 @@ async def create_candidate_from_lead_conversion(
 
     Idempotency (no extra migration): (1) if ``lead.candidate_id`` already points
     to a live tenant-scoped row, return it and emit audit with
-    ``idempotent_replay=True`` instead of inserting again; (2) deduplication of
-    lead rows for the same webhook is handled in ``process_normalized_lead`` via
-    ``get_lead_by_external_id`` and DB partial unique index on
-    ``(tenant_id, source, external_id)``.
+    ``idempotent_replay=True`` instead of inserting again; (1b) ADR-031 early
+    compliance shell: Application.lead_id → Candidate is attached to the Lead
+    before INSERT; (2) deduplication of lead rows for the same webhook is handled
+    in ``process_normalized_lead`` via ``get_lead_by_external_id`` and DB partial
+    unique index on ``(tenant_id, source, external_id)``.
     """
     duplicate_result = _duplicate_result_label(duplicate_match_level)
+
+    if not getattr(lead, "candidate_id", None):
+        from backend.app.modules.recruitment.services.compliance_outbound_ensure import (
+            attach_compliance_shell_candidate_on_process,
+        )
+
+        await attach_compliance_shell_candidate_on_process(
+            db, tenant_id=tenant_id, lead=lead
+        )
 
     linked_id = getattr(lead, "candidate_id", None)
     if linked_id:

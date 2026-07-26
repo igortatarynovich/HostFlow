@@ -422,6 +422,42 @@ class BulkAutoProcessQueueResponse(BaseModel):
     failed: int
 
 
+class BulkLeadRodoRetryRequest(BaseModel):
+    """ADR-031 ops: re-send art.14 for leads stuck after Pipeline cutover."""
+
+    lead_ids: Optional[List[str]] = Field(
+        default=None,
+        description="If set, only these leads (still filtered by statuses / terminal).",
+    )
+    statuses: Optional[List[str]] = Field(
+        default=None,
+        description="RODO statuses to retry: failed | pending_channel | manual_required | unsatisfied. Default: failed.",
+    )
+    max_items: int = Field(default=50, ge=1, le=200)
+    include_terminal: bool = Field(
+        default=False,
+        description="Include processed/rejected/lost/archived leads.",
+    )
+    dry_run: bool = Field(default=False, description="List candidates without sending.")
+
+
+class BulkLeadRodoRetryItemOut(BaseModel):
+    lead_id: str
+    outcome: str
+    rodo_status_before: str
+    rodo_status_after: Optional[str] = None
+    message: str
+
+
+class BulkLeadRodoRetryResponse(BaseModel):
+    results: List[BulkLeadRodoRetryItemOut]
+    attempted: int
+    sent: int
+    skipped: int
+    failed: int
+    dry_run: bool
+
+
 class LeadListResponse(BaseModel):
     items: List[LeadOut]
     total: int

@@ -47,11 +47,10 @@ _CANON_SENDER_MODULES = {
 }
 
 # send_email_for_tenant call sites allowed until migrated (must not grow).
+# ADR-031 PR-5: lead_communications + lead_rodo removed (Pipeline only).
 _SMTP_ALLOWLIST = {
     "backend/app/communications/prepare_send.py",
     "backend/app/services/tenant_email.py",
-    "backend/app/services/lead_communications.py",
-    "backend/app/services/lead_rodo.py",
     "backend/app/services/rodo.py",
     "backend/app/services/candidate_notifications.py",
     "backend/app/services/draft_reminders.py",
@@ -299,6 +298,17 @@ def test_production_canon_callers_use_sender_path() -> None:
     assert "prepare_and_send_communication" in text
     assert "await send_communication(" not in text
     assert "send_email_for_tenant" not in text
+
+
+def test_lead_compliance_ops_migrated_off_smtp() -> None:
+    """ADR-031 PR-5: lead RODO/ops must not call send_email_for_tenant."""
+    for rel in (
+        "services/lead_rodo.py",
+        "services/lead_communications.py",
+    ):
+        text = (BACKEND_APP / rel).read_text(encoding="utf-8")
+        assert "send_email_for_tenant" not in text, rel
+        assert "prepare_and_send_communication" in text, rel
 
 
 def test_registry_is_sole_intent_definition_source() -> None:

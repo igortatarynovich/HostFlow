@@ -59,7 +59,7 @@ No code that reintroduces bypass.
 | **PR-2** | **Recruitment** `ensure_candidate_shell_and_application_for_compliance_outbound` (or extend R4 ensure); idempotent; conflict if SI-bound; stamp `intake_result_link_v1`; **no** SMTP | Unit/API: early Application before Process when §2.4 conditions hold; duplicate_review still blocked |
 | **PR-3** | **Recruitment** RODO binder + migrate `lead_rodo` (+ candidate `rodo.py` when result is Application/Candidate post-convert rules); gates unchanged | Art.14 before Process on Meta path without `send_email_for_tenant` from `lead_rodo` |
 | **PR-4** | Ops emails (`application_received`, reject, moving_forward`) both destinations via binders; shrink c0-1b rows for `lead_communications` | Fail-closed becomes real send; C5 tests updated |
-| **PR-5** | Remove migrated callers from legacy allowlist; harden contract test; optional: inbox Result Link backfill for threads with known opaque result (separate concern OK) | Allowlist smaller; no RODO/ops bypass |
+| **PR-5** | Remove migrated callers from legacy allowlist; harden contract test; optional: inbox Result Link backfill for threads with known opaque result (separate concern OK) | **DONE** — allowlist smaller; `lead_rodo` / `lead_communications` fail-closed without destination; no RODO/ops SMTP bypass |
 
 **Do not** combine PR-2 domain creation with PR-1 Sales binders.
 
@@ -126,6 +126,18 @@ Recruitment binder lives under `backend/app/modules/recruitment/communication/` 
 
 ---
 
+## 9. Post-merge ops — unlock gated leads
+
+After PR-0…PR-5 deploy, re-send art.14 for leads stuck on `rodo.status=failed` (and optionally `unsatisfied` / `manual_required` with email):
+
+- API: `POST /api/v1/leads/bulk/compliance/rodo/retry` (`dry_run: true` first).
+- CLI: `backend/scripts/retry_lead_rodo.py --tenant <uuid> --dry-run` then without `--dry-run`.
+- Skip / do not force `pending_channel` without email — fix channel first.
+- `source_provided` remains the non-email satisfaction path.
+
+---
+
 ## History
 
 - 2026-07-26: Created with ADR-031 — permanent path only.
+- 2026-07-26: Bulk RODO retry API + CLI for cutover unlock.
