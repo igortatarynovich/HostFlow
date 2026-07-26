@@ -210,10 +210,6 @@ async def test_recruitment_rodo_uses_prepare_and_send_not_smtp() -> None:
             "backend.app.services.lead_rodo.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch(
-            "backend.app.services.lead_rodo.send_email_for_tenant",
-            new_callable=AsyncMock,
-        ) as smtp,
     ):
         ok, msg = await _send_lead_rodo_via_recruitment_pipeline(
             db,
@@ -234,6 +230,5 @@ async def test_recruitment_rodo_uses_prepare_and_send_not_smtp() -> None:
     assert ok is True
     assert "sent" in msg.lower()
     prep.assert_awaited_once()
-    smtp.assert_not_called()
     assert lead.normalized["rodo"]["delivery"] == "communication_pipeline"
     assert lead.normalized["rodo"]["application_id"] == "app-1"

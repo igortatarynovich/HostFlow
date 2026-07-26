@@ -133,10 +133,6 @@ async def test_recruitment_ops_auto_bind_then_pipeline_send() -> None:
             new_callable=AsyncMock,
         ),
         patch(
-            "backend.app.services.lead_communications.send_email_for_tenant",
-            new_callable=AsyncMock,
-        ) as smtp,
-        patch(
             "backend.app.services.lead_communications.flag_modified",
         ),
     ):
@@ -150,4 +146,3 @@ async def test_recruitment_ops_auto_bind_then_pipeline_send() -> None:
     assert sent is True
     ensure.assert_awaited_once()
     prep.assert_awaited_once()
-    smtp.assert_not_called()

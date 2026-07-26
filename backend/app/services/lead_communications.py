@@ -18,7 +18,6 @@ from backend.app.services.lead_communication_settings import (
 )
 from backend.app.services.message_hub import resolve_lead_email_message
 from backend.app.intake_platform.constants import SUBMISSIONS_V1_KEY
-from backend.app.services.tenant_email import send_email_for_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -551,7 +550,6 @@ async def maybe_send_lead_communication(
     subject = resolved.subject
     body = resolved.body
 
-    pipeline_used = use_sales_pipeline or use_recruitment_pipeline
     if use_sales_pipeline:
         send_coro = _send_ops_via_sales_pipeline(
             db,
@@ -630,42 +628,29 @@ async def maybe_send_lead_communication(
             )
             return False
     else:
-        try:
-            await send_email_for_tenant(
-                db,
-                tenant_id=tenant_id,
-                to=email,
-                subject=subject,
-                body=body,
-            )
-        except Exception as exc:
-            reason = str(exc) if str(exc) else type(exc).__name__
-            _stamp_event(lead, ev, status="failed", channel="email", recipient=email, reason=reason)
-            await db.flush()
-            await log_audit_event(
-                db,
-                tenant_id=tenant_id,
-                event_type=AuditEventType.communication_delivery_failed,
-                entity_type=AuditEntityType.lead,
-                entity_id=str(lead.id),
-                actor_id=None,
-                payload=_delivery_failure_payload(
-                    event_type=ev,
-                    reason_code="send_failed",
-                    notice_status="failed",
-                    extra={"detail": reason[:500]},
-                ),
-            )
-            logger.info(
-                "lead_communication_send_failed",
-                extra={
-                    "tenant_id": tenant_id,
-                    "lead_id": str(lead.id),
-                    "event_type": ev,
-                    "reason": reason,
-                },
-            )
-            return False
+        # ADR-031 PR-5: no Lead SMTP fallback when destination unbound / unselected.
+        _stamp_event(
+            lead,
+            ev,
+            status="skipped",
+            reason="communication_pipeline_required",
+        )
+        await db.flush()
+        await log_audit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type=AuditEventType.communication_delivery_failed,
+            entity_type=AuditEntityType.lead,
+            entity_id=str(lead.id),
+            actor_id=None,
+            payload=_delivery_failure_payload(
+                event_type=ev,
+                reason_code="authentication_configuration",
+                notice_status="skipped",
+                extra={"detail": "communication_pipeline_required"},
+            ),
+        )
+        return False
 
     _stamp_event(lead, ev, status="sent", channel="email", recipient=email)
     await db.flush()
@@ -680,7 +665,7 @@ async def maybe_send_lead_communication(
             "event_type": ev,
             "channel": "email",
             "recipient": email,
-            **({"delivery": "communication_pipeline"} if pipeline_used else {}),
+            "delivery": "communication_pipeline",
             **({"sales_inquiry_id": sales_inquiry_id} if sales_inquiry_id else {}),
             **({"application_id": application_id} if application_id else {}),
         },

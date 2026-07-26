@@ -227,11 +227,6 @@ def _pytest_block_real_email_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.app.services.lead_rodo.send_email_for_tenant",
-        _noop_send_email_for_tenant,
-        raising=False,
-    )
-    monkeypatch.setattr(
         "backend.app.services.system_email.send_system_email",
         _noop_send_system_email,
         raising=False,

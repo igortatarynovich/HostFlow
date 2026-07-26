@@ -13,7 +13,6 @@ from backend.app.models.lead import Lead
 from backend.app.services.audit import log_audit_event
 from backend.app.services.legal_documents import get_active_legal_document
 from backend.app.services.message_hub import resolve_lead_email_message
-from backend.app.services.tenant_email import send_email_for_tenant
 
 
 def normalized_merging_lead_rodo(lead: Lead, normalized: Dict[str, Any]) -> Dict[str, Any]:
@@ -400,65 +399,25 @@ async def send_lead_rodo_email(
             )
             return False, f"Failed to send email: {reason}"
 
-    try:
-        await send_email_for_tenant(
-            db,
-            tenant_id=tenant_id,
-            to=email,
-            subject=subject,
-            body=body,
-        )
-    except Exception as e:
-        reason = str(e) if str(e) else type(e).__name__
-        mark_lead_rodo_failed(lead, reason=reason)
-        await db.flush()
-        await log_audit_event(
-            db,
-            tenant_id=tenant_id,
-            event_type=AuditEventType.rodo_sent_failed,
-            entity_type=AuditEntityType.lead,
-            entity_id=str(lead.id),
-            actor_id=actor_id,
-            payload={
-                "reason": f"Email send failed: {reason}",
-                "notice_status": "failed",
-                "auto_trigger": auto_trigger,
-                "ingest_source": ingest_source,
-            },
-        )
-        return False, f"Failed to send email: {reason}"
-
-    now = datetime.now(timezone.utc).isoformat()
-    rodo_block: Dict[str, Any] = {
-        "status": "sent",
-        "sent_at": now,
-        "channel": channel,
-        "recipient": email,
-        "rodo_version_id": str(rodo_doc.version_id),
-    }
-    if auto_trigger:
-        rodo_block["auto_trigger"] = str(auto_trigger).strip()
-    if ingest_source:
-        rodo_block["ingest_source"] = str(ingest_source).strip()
-    norm["rodo"] = rodo_block
-    lead.normalized = norm
+    # ADR-031 PR-5: no Lead SMTP fallback — destination must resolve to Pipeline.
+    reason = "communication_pipeline_required"
+    mark_lead_rodo_failed(lead, reason=reason)
     await db.flush()
-
     await log_audit_event(
         db,
         tenant_id=tenant_id,
-        event_type=AuditEventType.rodo_sent,
+        event_type=AuditEventType.rodo_sent_failed,
         entity_type=AuditEntityType.lead,
         entity_id=str(lead.id),
         actor_id=actor_id,
         payload={
-            "channel": channel,
-            "lead_id": str(lead.id),
+            "reason": f"Email send failed: {reason}",
+            "notice_status": "failed",
             "auto_trigger": auto_trigger,
             "ingest_source": ingest_source,
         },
     )
-    return True, "RODO email sent for lead"
+    return False, f"Failed to send email: {reason}"
 
 
 async def _send_lead_rodo_via_sales_pipeline(
