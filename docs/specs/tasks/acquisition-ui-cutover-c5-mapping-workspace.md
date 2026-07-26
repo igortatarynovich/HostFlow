@@ -1,6 +1,6 @@
 # Acquisition UI Cutover C-5 — Mapping workspace
 
-**Status:** READY TO IMPLEMENT — **ACTIVE Product Track** (after C-4 ✅ smoke PASS 2026-07-26)  
+**Status:** DONE — implementation shipped (API + Marketing UI); Product Track → **C-6**  
 **Date:** 2026-07-26  
 **Canon:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) (C-5 row + onboarding lifecycle)  
 **Parents:** ADR-024 · C-3 / C-3.1 Sources · [C-4 test lead](acquisition-ui-cutover-c4-test-lead-field-discovery.md) · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)  
@@ -80,13 +80,28 @@ From a Source, a non-developer operator can **edit and save** `mapping_rules`, s
 
 ## 7. Acceptance
 
-- [ ] Operator can open Mapping workspace for a Source from Marketing  
-- [ ] Can change and **persist** mapping decisions on `mapping_rules`  
-- [ ] Mapping Health on Sources list updates after save  
-- [ ] Routing preview shows entity / ignored / needs-review without creating production rows by default  
-- [ ] Unmapped fields cannot disappear silently in preview  
-- [ ] Cutover docs: C-5 DONE; Product Track → C-6  
-- [ ] Tests: API persist + FE scope scan; `make docs-lint`  
+- [x] Operator can open Mapping workspace for a Source from Marketing  
+- [x] Can change and **persist** mapping decisions on `mapping_rules`  
+- [x] Mapping Health on Sources list updates after save  
+- [x] Routing preview shows entity / ignored / needs-review without creating production rows by default  
+- [x] Unmapped fields cannot disappear silently in preview  
+- [x] Cutover docs: C-5 DONE; Product Track → C-6  
+- [x] Tests: API persist + FE scope scan; `make docs-lint`  
+
+**Shipped surface:**
+
+| Layer | Path |
+|-------|------|
+| API | `GET/PUT /api/v1/platform/marketing/sources/{id}/mapping` · `POST …/mapping/routing-preview` |
+| Façade | `backend/app/acquisition/sources_mapping.py` |
+| UI | `/app/marketing/sources/:sourceId/mapping` (`MarketingSourceMappingPage`) |
+| Paths | `build_source_paths.mapping_path` → Marketing-native |
+
+**Constraints / honesty notes:**
+
+- Action column is thin (`map` / `ignore`) — full standard/domain/custom/answer taxonomy remains Settings/Form Builder territory until C-6 expands UX.  
+- Routing preview is destination + unmapped/ignored + C-4 normalize dry-run — not full duplicate/assignee queue simulation.  
+- Read still falls back to Meta form mapping when profile rules are empty; **writes** always go to profile `mapping_rules`.
 
 ---
 

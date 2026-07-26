@@ -1,0 +1,243 @@
+"""Acquisition UI Cutover C-5 — Marketing Sources mapping + routing preview API."""
+
+from __future__ import annotations
+
+from typing import Any, Dict
+from uuid import uuid4
+
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import select
+
+from backend.app.db.session import async_session_maker
+from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
+from backend.app.models.own_company import OwnCompany
+from backend.app.models.tenant import Tenant
+
+DEFAULT_TENANT_ID = "11111111-1111-1111-1111-111111111111"
+OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
+
+
+def _headers(base: Dict[str, str], *, tenant_id: str = DEFAULT_TENANT_ID) -> Dict[str, str]:
+    merged = dict(base)
+    merged["X-Tenant-Id"] = tenant_id
+    merged.setdefault("Content-Type", "application/json")
+    return merged
+
+
+async def _ensure_tenant(db, tenant_id: str) -> None:
+    exists = (
+        await db.execute(select(Tenant.id).where(Tenant.id == tenant_id))
+    ).scalar_one_or_none()
+    if exists is not None:
+        return
+    suffix = tenant_id.replace("-", "")[:8]
+    db.add(
+        Tenant(
+            id=tenant_id,
+            name=f"Tenant {suffix}",
+            slug=f"t-{suffix}",
+            api_key=f"api-{suffix}-{uuid4().hex[:8]}",
+            is_active=True,
+        )
+    )
+    await db.flush()
+
+
+async def _own_company_id(db, tenant_id: str) -> str:
+    row = await db.execute(
+        select(OwnCompany.id)
+        .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
+        .order_by(OwnCompany.created_at.asc())
+        .limit(1)
+    )
+    oc = row.scalar_one_or_none()
+    if oc is None:
+        oc = str(uuid4())
+        db.add(OwnCompany(id=oc, tenant_id=tenant_id, name=f"OC {uuid4().hex[:6]}"))
+        await db.flush()
+    return str(oc)
+
+
+async def _make_meta_source(
+    db,
+    *,
+    tenant_id: str,
+    form_id: str,
+    mapping_rules: list[dict[str, Any]] | None = None,
+) -> IntakeSourceProfile:
+    await _ensure_tenant(db, tenant_id)
+    oc = await _own_company_id(db, tenant_id)
+    profile = IntakeSourceProfile(
+        id=str(uuid4()),
+        tenant_id=tenant_id,
+        code=f"c5-src-{uuid4().hex[:8]}",
+        name="C5 Meta Source",
+        provider="meta",
+        channel="paid",
+        own_company_id=oc,
+        route_intent="candidate_application",
+        mapping_rules=list(mapping_rules or []),
+        is_active=True,
+    )
+    db.add(profile)
+    await db.flush()
+    db.add(
+        IntakeSourceBinding(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            intake_source_profile_id=profile.id,
+            provider="meta",
+            external_key=f"form_id:{form_id}",
+            external_key_secondary=f"page_id:page-{uuid4().hex[:6]}",
+            is_active=True,
+            priority=10,
+        )
+    )
+    await db.flush()
+    return profile
+
+
+@pytest.mark.anyio
+async def test_get_put_mapping_persists_profile_rules(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-c5-{uuid4().hex[:8]}"
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db,
+            tenant_id=DEFAULT_TENANT_ID,
+            form_id=form_id,
+            mapping_rules=[{"source": "email", "target": "email"}],
+        )
+        await db.commit()
+        source_id = str(profile.id)
+
+    headers = _headers(manager_headers)
+    got = await client.get(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+    )
+    assert got.status_code == 200, got.text
+    body = got.json()
+    assert body["source_id"] == source_id
+    assert body["rules_source"] == "profile"
+    assert body["destination"] == "candidate_application"
+    assert body["mapping_rules_count"] >= 1
+
+    put = await client.put(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping",
+        headers=headers,
+        json={
+            "mapping_rules": [
+                {"source": "email", "target": "email"},
+                {"source": "full_name", "target": "full_name"},
+                {"source": "which_licence", "action": "ignore"},
+            ]
+        },
+    )
+    assert put.status_code == 200, put.text
+    put_body = put.json()
+    assert put_body["mapping_rules_count"] == 3
+    assert put_body["rules_source"] == "profile"
+    assert put_body["mapping_health"] in {"ready", "needs_review"}
+
+    async with async_session_maker() as db:
+        row = (
+            await db.execute(
+                select(IntakeSourceProfile).where(IntakeSourceProfile.id == source_id)
+            )
+        ).scalar_one()
+        rules = list(row.mapping_rules or [])
+        sources = {str(r.get("source")) for r in rules if isinstance(r, dict)}
+        assert sources == {"email", "full_name", "which_licence"}
+
+
+@pytest.mark.anyio
+async def test_routing_preview_flags_unmapped_without_creating_entities(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-c5-prev-{uuid4().hex[:8]}"
+    async with async_session_maker() as db:
+        profile = await _make_meta_source(
+            db,
+            tenant_id=DEFAULT_TENANT_ID,
+            form_id=form_id,
+            mapping_rules=[{"source": "email", "target": "email"}],
+        )
+        await db.commit()
+        source_id = str(profile.id)
+
+    headers = _headers(manager_headers)
+    sample_payload = {
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "value": {
+                            "form_id": form_id,
+                            "leadgen_id": f"lg-{uuid4().hex[:10]}",
+                            "field_data": [
+                                {"name": "email", "values": ["anna@example.com"]},
+                                {"name": "which_licence", "values": ["CE"]},
+                            ],
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+    resp = await client.post(
+        f"/api/v1/platform/marketing/sources/{source_id}/mapping/routing-preview",
+        headers=headers,
+        json={"sample_payload": sample_payload},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["creates_entities"] is False
+    assert body["needs_review"] is True
+    assert "which_licence" in body["unmapped_fields"]
+    assert body["destination"] == "candidate_application"
+
+
+@pytest.mark.anyio
+async def test_mapping_tenant_isolation(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    form_id = f"form-c5-iso-{uuid4().hex[:8]}"
+    async with async_session_maker() as db:
+        foreign = await _make_meta_source(
+            db, tenant_id=OTHER_TENANT_ID, form_id=form_id
+        )
+        await db.commit()
+        foreign_id = str(foreign.id)
+
+    headers = _headers(manager_headers, tenant_id=DEFAULT_TENANT_ID)
+    resp = await client.get(
+        f"/api/v1/platform/marketing/sources/{foreign_id}/mapping",
+        headers=headers,
+    )
+    assert resp.status_code == 404
+
+
+def test_c5_router_exposes_mapping_routes() -> None:
+    from backend.app.api.v1.platform import marketing_sources as mod
+
+    paths = {getattr(route, "path", "") for route in mod.router.routes}
+    assert any(p.endswith("/{source_id}/mapping") for p in paths)
+    assert any(p.endswith("/{source_id}/mapping/routing-preview") for p in paths)
+
+
+def test_build_source_paths_mapping_is_marketing_native() -> None:
+    from backend.app.acquisition.sources_read import build_source_paths
+    from backend.app.constants.spa_paths import MARKETING_SOURCES, SETTINGS_INTEGRATIONS_META
+
+    mapping, test_lead, settings = build_source_paths(
+        source_id="src-1",
+        provider="meta",
+        meta_form_id="form-1",
+        lead_form_id=None,
+    )
+    assert mapping == f"{MARKETING_SOURCES}/src-1/mapping"
+    assert test_lead == f"{MARKETING_SOURCES}/src-1/test-lead"
+    assert settings == SETTINGS_INTEGRATIONS_META

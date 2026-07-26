@@ -349,8 +349,8 @@ async def test_list_sources_aggregates_bindings_and_flights(
     assert linked["last_submission_at"] is not None
     assert linked["last_error_at"] is not None
     assert linked["last_error_code"] == "routing_failed"
-    assert linked["mapping_path"].startswith(SETTINGS_INTEGRATIONS_META)
-    assert "tab=field_mapping" in linked["mapping_path"]
+    assert linked["mapping_path"].startswith(MARKETING_SOURCES)
+    assert linked["mapping_path"].endswith(f"/{linked['source_id']}/mapping")
     assert linked["test_lead_path"].startswith(MARKETING_SOURCES)
     assert linked["test_lead_path"].endswith(f"/{linked['source_id']}/test-lead")
     assert linked["settings_path"] == SETTINGS_INTEGRATIONS_META

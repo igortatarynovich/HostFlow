@@ -36,6 +36,11 @@ export function marketingSourceTestLeadPath(sourceId: string): string {
   return `${P.marketingSources}/${encodeURIComponent(sourceId)}/test-lead`
 }
 
+/** C-5: Marketing-native mapping workspace for a Source. */
+export function marketingSourceMappingPath(sourceId: string): string {
+  return `${P.marketingSources}/${encodeURIComponent(sourceId)}/mapping`
+}
+
 /** Connect Source wizard for an existing Campaign (Flight association). */
 export function marketingConnectSourcePath(campaignId: string): string {
   return `${marketingCampaignPath(campaignId)}/sources/new`

@@ -73,6 +73,45 @@ export type MarketingSourceCaptureNext = {
   message: string
 }
 
+export type MarketingSourceMappingRule = {
+  source: string
+  target?: string
+  qualified_field_code?: string
+  action?: string
+  format?: string
+  overwrite?: boolean
+}
+
+export type MarketingSourceMapping = {
+  source_id: string
+  provider: string
+  display_name: string
+  meta_form_id: string | null
+  mapping_rules: MarketingSourceMappingRule[]
+  profile_mapping_rules: MarketingSourceMappingRule[]
+  rules_source: string
+  mapping_rules_count: number
+  mapping_health: MarketingSourceMappingHealth | string
+  destination: string | null
+  destination_label: string | null
+  route_intent: string | null
+}
+
+export type MarketingSourceRoutingPreview = {
+  source_id: string
+  creates_entities: boolean
+  destination: string | null
+  destination_label: string | null
+  route_intent: string | null
+  mapping_health: string | null
+  mapping_rules_count: number | null
+  unmapped_fields: string[]
+  ignored_fields: string[]
+  needs_review: boolean
+  preview: Record<string, unknown>
+  note: string
+}
+
 export async function listMarketingSources(): Promise<MarketingSourceSummary[]> {
   const { data } = await http.get<MarketingSourceListResponse>('/platform/marketing/sources')
   return Array.isArray(data?.items) ? data.items : []
@@ -115,6 +154,41 @@ export async function postMarketingSourceSamplePreview(
       : { sample_payload: samplePayload }
   const { data } = await http.post<MarketingSourceSamplePreview>(
     `/platform/marketing/sources/${encodeURIComponent(sourceId)}/sample/preview`,
+    body,
+  )
+  return data
+}
+
+export async function getMarketingSourceMapping(
+  sourceId: string,
+): Promise<MarketingSourceMapping> {
+  const { data } = await http.get<MarketingSourceMapping>(
+    `/platform/marketing/sources/${encodeURIComponent(sourceId)}/mapping`,
+  )
+  return data
+}
+
+export async function putMarketingSourceMapping(
+  sourceId: string,
+  mappingRules: MarketingSourceMappingRule[],
+): Promise<MarketingSourceMapping> {
+  const { data } = await http.put<MarketingSourceMapping>(
+    `/platform/marketing/sources/${encodeURIComponent(sourceId)}/mapping`,
+    { mapping_rules: mappingRules },
+  )
+  return data
+}
+
+export async function postMarketingSourceRoutingPreview(
+  sourceId: string,
+  samplePayload?: Record<string, unknown> | null,
+): Promise<MarketingSourceRoutingPreview> {
+  const body =
+    samplePayload === undefined || samplePayload === null
+      ? {}
+      : { sample_payload: samplePayload }
+  const { data } = await http.post<MarketingSourceRoutingPreview>(
+    `/platform/marketing/sources/${encodeURIComponent(sourceId)}/mapping/routing-preview`,
     body,
   )
   return data

@@ -1,4 +1,4 @@
-# Threat Model — Marketing Sources (Acquisition UI Cutover C-3 / C-4)
+# Threat Model — Marketing Sources (Acquisition UI Cutover C-3 / C-4 / C-5)
 
 ## Assets
 
@@ -15,6 +15,11 @@
   - `POST …/sample/capture-next`  
   - `POST …/sample/preview`  
   - Discovery state under `publication_config_v1.mapping_discovery_v1` (sample blob + capture-next arm; policy resolver ignores unknown keys)
+- **C-5 mapping / routing-preview façade** (`backend/app/acquisition/sources_mapping.py`)  
+  - `GET /api/v1/platform/marketing/sources/{source_id}/mapping`  
+  - `PUT …/mapping` (writes `IntakeSourceProfile.mapping_rules` only)  
+  - `POST …/mapping/routing-preview` (dry-run; `creates_entities=false`)
+  - Marketing Mapping UI (`/app/marketing/sources/:sourceId/mapping`)
 
 ## Trust boundaries
 
@@ -22,6 +27,7 @@
 - Frontend Marketing Sources page → browser session only; CTAs navigate to existing setup/mapping/settings paths
 - Campaign Detail Source cards → same authenticated Campaign read; no new public surface
 - C-4 sample write/preview → administrator / supervisor / superadmin only (`_WRITE`); sample GET uses existing `_READ` roles
+- C-5 mapping PUT + routing-preview → same `_WRITE` roles; mapping GET uses `_READ`
 - No public/unauthenticated surface in this slice
 
 ## Угрозы
@@ -38,6 +44,9 @@
 | MS-8 | Preview creates production entities | Dry-run path calling test-ingest / process_normalized_lead |
 | MS-9 | PII over-exposure in discovery UI | Returning unmasked email/phone/name samples or full raw payload |
 | MS-10 | Oversized / hostile paste payload | Mode C JSON paste DoS or unexpected normalizer input |
+| MS-11 | Cross-tenant mapping read/write | `source_id` from another tenant on mapping endpoints |
+| MS-12 | Mapping PUT invents parallel SoT | Writing rules outside `IntakeSourceProfile.mapping_rules` |
+| MS-13 | Routing preview creates funnel entities | Preview path inserting Candidate / Application / Lead |
 
 ## Митигации (C-3)
 
@@ -70,7 +79,14 @@
 - UI-facing samples go through `mask_sample_value` / `mask_payload_for_ui`
 - Paste path enforces JSON object + size cap (`MAX_PASTE_BYTES`)
 - Capture-next only arms TTL metadata; lazy sample seed on GET may persist discovery state **without** creating funnel entities
-- Mapping persist / routing preview remain C-5 — not exposed here
+
+## Митигации (C-5)
+
+- Mapping GET/PUT/routing-preview load profile by `(tenant_id, source_id)` → **404** cross-tenant
+- PUT writes only `IntakeSourceProfile.mapping_rules` (enriched via existing `enrich_mapping_rules_for_storage`) — no Meta form mapping overwrite, no new registry
+- Routing preview reuses C-4 `preview_source_sample` + destination/health projection; response forces `creates_entities=false`
+- Unmapped / empty rules → `needs_review=true` (no silent drop in preview note + `unmapped_fields`)
+- `_WRITE` required for PUT and routing-preview; `_READ` for GET
 
 ## Follow-up surface — Connect Source Meta picker enrichment
 
@@ -114,14 +130,18 @@
 
 - `backend/tests/api/test_acquisition_c3_marketing_sources.py`
 - `backend/tests/api/test_acquisition_c4_source_sample.py`
+- `backend/tests/api/test_acquisition_c5_source_mapping.py`
 - `backend/tests/api/test_acquisition_flight_ad_binding.py`
 - `backend/tests/acquisition/test_campaign_source_cards.py`
 - `hostflow-frontend/src/app/__tests__/acquisitionC3SourcesScopeScan.test.ts`
+- `hostflow-frontend/src/app/__tests__/acquisitionC4TestLeadUiScan.test.ts`
+- `hostflow-frontend/src/app/__tests__/acquisitionC5MappingUiScan.test.ts`
 - `hostflow-frontend/src/pages/marketing/__tests__/sourceCardPresentation.test.ts`
 
 ## Связанные спеки
 
 - [`docs/specs/tasks/acquisition-ui-cutover.md`](../../specs/tasks/acquisition-ui-cutover.md)
 - [`docs/specs/tasks/acquisition-ui-cutover-c4-test-lead-field-discovery.md`](../../specs/tasks/acquisition-ui-cutover-c4-test-lead-field-discovery.md)
+- [`docs/specs/tasks/acquisition-ui-cutover-c5-mapping-workspace.md`](../../specs/tasks/acquisition-ui-cutover-c5-mapping-workspace.md)
 - [`docs/security/threat-models/acquisition-activity-timeline.md`](./acquisition-activity-timeline.md)
 - [`docs/security/threat-models/acquisition-flight-runtime.md`](./acquisition-flight-runtime.md)
