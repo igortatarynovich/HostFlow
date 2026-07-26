@@ -105,12 +105,25 @@ export type FlightCommandResult = {
   campaign_event_type?: string | null
 }
 
+export type IntakeSourceSampleAd = {
+  ad_id: string
+  label?: string | null
+}
+
 export type IntakeSourceOption = {
   id: string
   name: string
   provider: string
   code: string
   is_active: boolean
+  display_title?: string | null
+  lead_form_name?: string | null
+  meta_form_id?: string | null
+  page_id?: string | null
+  page_name?: string | null
+  last_submission_at?: string | null
+  sample_ad_ids?: string[]
+  sample_ads?: IntakeSourceSampleAd[]
 }
 
 export async function listCampaigns(params?: {
@@ -406,8 +419,8 @@ export async function listIntakeSourceOptions(provider?: string): Promise<Intake
   return Array.isArray(data) ? data : []
 }
 
-export function currentFlight(campaign: Campaign): CampaignFlight | null {
-  if (!campaign.flights?.length) return null
+export function currentFlight(campaign: Campaign | null | undefined): CampaignFlight | null {
+  if (!campaign?.flights?.length) return null
   const currentId = campaign.current_flight_id
   if (currentId) {
     const found = campaign.flights.find((f) => f.id === currentId)

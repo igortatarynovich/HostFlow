@@ -514,6 +514,7 @@ Minimum epic intent (lock later in its own task doc):
 ## History
 
 - 2026-07-26: **C-4 smoke PASS** — operator verified Test lead / discovery on deploy; Product Track → **C-5**.
+- 2026-07-24: **Connect Source picker enrichment** — `campaign_source_cards` + Meta Graph hydrate for form/page/ad names on `intake-source-options`; [brief](acquisition-ui-cutover-connect-source-picker-enrichment.md).
 - 2026-07-24: **C-3.1 DONE** — Sources list page / provider_form / destination from `campaign_source_cards` helpers + `route_intent`; account/portfolio still deferred (no SoT).
 - 2026-07-24: **C-2 constraint note** — item 5 «only» soft: create/duplicate stop real; audience PUT + update_bindings still live (no LegacyLaunch gate); gated FE `onDuplicate` residue. Status **DONE with constraints**; leftover writes → C-7.
 - 2026-07-24: **C-3 errata** — Sources list minimum columns: 6/10 shipped in #160; deferred account/portfolio, page, provider form (human), destination → **C-3.1**. Status **DONE with constraints**. Donor for page/form: `backend/app/acquisition/campaign_source_cards.py` (`page_id`, `lead_form_name`, `display_title`) — do not re-discover SoT.

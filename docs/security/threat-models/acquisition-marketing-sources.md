@@ -72,6 +72,17 @@
 - Capture-next only arms TTL metadata; lazy sample seed on GET may persist discovery state **without** creating funnel entities
 - Mapping persist / routing preview remain C-5 — not exposed here
 
+## Follow-up surface — Connect Source Meta picker enrichment
+
+**Surface:** `GET /api/v1/platform/campaigns/intake-source-options` (+ Marketing Connect Source UI)
+
+| Concern | Mitigation |
+|---------|------------|
+| Cross-tenant options | Same company-scoped profile list as before |
+| Graph hydrate | Uses existing **page access tokens** only; fail-soft if Graph denies; no tokens in API response |
+| Cache `form_name` | Writes `MetaLeadFormMapping.form_name` only — must **not** wipe `mapping_rules` |
+| PII | Returns form/page/ad **names** and IDs — not lead field samples |
+
 ## Follow-up surface — FlightAdBinding (runtime)
 
 - Write: `POST/PATCH/DELETE /api/v1/platform/campaigns/.../ad-bindings`

@@ -48,7 +48,7 @@ export default function MarketingConnectSourcePage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
 
-  const flight = currentFlight(campaign)
+  const flight = campaign ? currentFlight(campaign) : null
   const canMeta = canConnectSourceKind(flight, 'meta')
   const canPublic = canConnectSourceKind(flight, 'public_form')
 
@@ -243,17 +243,82 @@ export default function MarketingConnectSourcePage() {
 
             {sourceKind === 'meta' && canMeta && metaSources.length ? (
               <div className="grid gap-2" role="radiogroup" aria-label="Lead Form Meta">
-                {metaSources.map((s) => (
-                  <MarketingOptionCard
-                    key={s.id}
-                    selected={metaSourceId === s.id}
-                    onClick={() => setMetaSourceId(s.id)}
-                    testId={`marketing-connect-meta-${s.id}`}
-                  >
-                    <span className="font-medium text-slate-900">{s.name}</span>
-                    <span className="mt-1 block text-xs text-slate-500">{s.code || s.provider}</span>
-                  </MarketingOptionCard>
-                ))}
+                {metaSources.map((s) => {
+                  const title =
+                    s.lead_form_name ||
+                    (s.display_title && !/^Meta form\s+\d+$/i.test(s.display_title)
+                      ? s.display_title
+                      : null) ||
+                    t('app.marketing.connect.meta.lead_form', { defaultValue: 'Lead Form' })
+                  const formId = s.meta_form_id || null
+                  const pageLabel = s.page_name || s.page_id || null
+                  const ads =
+                    Array.isArray(s.sample_ads) && s.sample_ads.length
+                      ? s.sample_ads
+                      : (s.sample_ad_ids || []).map((ad_id) => ({ ad_id, label: null }))
+                  return (
+                    <MarketingOptionCard
+                      key={s.id}
+                      selected={metaSourceId === s.id}
+                      onClick={() => setMetaSourceId(s.id)}
+                      testId={`marketing-connect-meta-${s.id}`}
+                    >
+                      <span
+                        className="font-medium text-slate-900"
+                        data-testid={`marketing-connect-meta-title-${s.id}`}
+                      >
+                        {title}
+                      </span>
+                      <span className="mt-1 block text-xs text-slate-600">
+                        {formId ? (
+                          <>
+                            {t('app.marketing.connect.meta.form_id', { defaultValue: 'Form ID' })}
+                            {': '}
+                            <span data-testid={`marketing-connect-meta-form-id-${s.id}`}>
+                              {formId}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-slate-500">{s.code || s.provider}</span>
+                        )}
+                      </span>
+                      {pageLabel ? (
+                        <span className="mt-0.5 block text-xs text-slate-500">
+                          {t('app.marketing.connect.meta.page', { defaultValue: 'Page' })}
+                          {': '}
+                          <span data-testid={`marketing-connect-meta-page-${s.id}`}>
+                            {s.page_name ? s.page_name : pageLabel}
+                            {s.page_name && s.page_id ? (
+                              <span className="text-slate-400"> ({s.page_id})</span>
+                            ) : null}
+                          </span>
+                        </span>
+                      ) : null}
+                      {ads.length ? (
+                        <span className="mt-0.5 block text-xs text-slate-500">
+                          {t('app.marketing.connect.meta.ads', { defaultValue: 'Ads' })}
+                          {': '}
+                          <span data-testid={`marketing-connect-meta-ads-${s.id}`}>
+                            {ads
+                              .map((a) =>
+                                a.label ? `${a.label} (${a.ad_id})` : a.ad_id,
+                              )
+                              .join(', ')}
+                          </span>
+                        </span>
+                      ) : null}
+                      {s.last_submission_at ? (
+                        <span className="mt-0.5 block text-xs text-slate-400">
+                          {t('app.marketing.connect.meta.last_lead', {
+                            defaultValue: 'Last lead',
+                          })}
+                          {': '}
+                          {new Date(s.last_submission_at).toLocaleString()}
+                        </span>
+                      ) : null}
+                    </MarketingOptionCard>
+                  )
+                })}
               </div>
             ) : null}
 
