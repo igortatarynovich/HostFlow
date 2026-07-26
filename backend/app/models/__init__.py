@@ -89,6 +89,14 @@ Stage = _load_model_module("stage").Stage  # type: ignore[attr-defined]
 MagicLink = _load_model_module("magic_link").MagicLink  # type: ignore[attr-defined]
 OwnCompany = _load_model_module("own_company").OwnCompany  # type: ignore[attr-defined]
 WorkforceEmployee = _load_model_module("workforce_employee").WorkforceEmployee  # type: ignore[attr-defined]
+WorkforceTaxProfile = _load_model_module("workforce_tax_profile").WorkforceTaxProfile  # type: ignore[attr-defined]
+WorkforceInsuranceProfile = _load_model_module("workforce_insurance_profile").WorkforceInsuranceProfile  # type: ignore[attr-defined]
+WorkforceComplianceState = _load_model_module("workforce_compliance_state").WorkforceComplianceState  # type: ignore[attr-defined]
+WorkforceWorkEligibilityProfile = _load_model_module(
+    "workforce_work_eligibility_profile"
+).WorkforceWorkEligibilityProfile  # type: ignore[attr-defined]
+WorkforceHrDocumentContext = _load_model_module("workforce_hr_document_context").WorkforceHrDocumentContext  # type: ignore[attr-defined]
+WorkforceZusWorkspaceTask = _load_model_module("workforce_zus_workspace_task").WorkforceZusWorkspaceTask  # type: ignore[attr-defined]
 WorkforceHrDocumentControlTask = _load_model_module("workforce_hr_document_control_task").WorkforceHrDocumentControlTask  # type: ignore[attr-defined]
 WorkforceLifecycleEvent = _load_model_module("workforce_lifecycle_event").WorkforceLifecycleEvent  # type: ignore[attr-defined]
 WorkforceEmployment = _load_model_module("workforce_employment").WorkforceEmployment  # type: ignore[attr-defined]
@@ -331,6 +339,12 @@ __all__ = [
     "User",
     "OwnCompany",
     "WorkforceEmployee",
+    "WorkforceTaxProfile",
+    "WorkforceInsuranceProfile",
+    "WorkforceComplianceState",
+    "WorkforceWorkEligibilityProfile",
+    "WorkforceHrDocumentContext",
+    "WorkforceZusWorkspaceTask",
     "WorkforceHrDocumentControlTask",
     "WorkforceLifecycleEvent",
     "WorkforceEmployment",

@@ -20,21 +20,23 @@ from pathlib import Path
 from typing import List, Optional
 
 THIS = Path(__file__).resolve()
-if THIS.parent.name == "scripts" and THIS.parent.parent.name == "backend":
-    BACKEND_DIR = THIS.parent.parent
-    PROJECT_ROOT = BACKEND_DIR.parent
+# Local: <repo>/backend/scripts/foo.py → repo root.
+# Docker: /app/backend → /app symlink, so scripts resolve under /app/scripts.
+_parent = THIS.parent.parent
+if (_parent / "app" / "__init__.py").is_file() or (_parent / "app" / "main.py").is_file():
+    PROJECT_ROOT = _parent
+elif (_parent.parent / "backend" / "app").is_dir():
+    PROJECT_ROOT = _parent.parent
 else:
-    PROJECT_ROOT = THIS.parent.parent
-    BACKEND_DIR = PROJECT_ROOT / "backend"
+    PROJECT_ROOT = _parent
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_DIR))
 
 from sqlalchemy import text  # noqa: E402
 
 from backend.app.core.settings import settings  # noqa: F401,E402
+import backend.app.models  # noqa: F401,E402 — configure ORM relationship targets
 from backend.app.db.session import async_session_maker  # noqa: E402
 from backend.app.services.lead_rodo_bulk_retry import (  # noqa: E402
     bulk_retry_lead_rodo,
