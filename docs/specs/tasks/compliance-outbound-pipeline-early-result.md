@@ -126,6 +126,18 @@ Recruitment binder lives under `backend/app/modules/recruitment/communication/` 
 
 ---
 
+## 9. Post-merge ops — unlock gated leads
+
+After PR-0…PR-5 deploy, re-send art.14 for leads stuck on `rodo.status=failed` (and optionally `unsatisfied` / `manual_required` with email):
+
+- API: `POST /api/v1/leads/bulk/compliance/rodo/retry` (`dry_run: true` first).
+- CLI: `backend/scripts/retry_lead_rodo.py --tenant <uuid> --dry-run` then without `--dry-run`.
+- Skip / do not force `pending_channel` without email — fix channel first.
+- `source_provided` remains the non-email satisfaction path.
+
+---
+
 ## History
 
 - 2026-07-26: Created with ADR-031 — permanent path only.
+- 2026-07-26: Bulk RODO retry API + CLI for cutover unlock.

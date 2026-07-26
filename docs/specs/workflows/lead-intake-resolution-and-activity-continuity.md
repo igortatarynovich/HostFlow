@@ -382,6 +382,7 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 
 - `POST /api/v1/leads/{id}/compliance/rodo/send` — manual / retry (always available when auto is on).
 - `POST /api/v1/leads/{id}/compliance/rodo/source-provided` — mark covered at source.
+- `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk re-send after Pipeline cutover (default `rodo.status=failed`; `dry_run` supported). CLI: `backend/scripts/retry_lead_rodo.py`.
 
 **UI:** Meta Leads settings — mode select; **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / manual hint; Send RODO + “covered at source” buttons retained for retry.
 
