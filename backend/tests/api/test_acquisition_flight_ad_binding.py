@@ -19,6 +19,7 @@ from backend.app.models.campaign import (
     Campaign,
     CampaignRun,
     CampaignRunForm,
+    CampaignRunIntakeSource,
     CampaignTarget,
     FlightAdBinding,
 )
@@ -106,6 +107,7 @@ async def _seed_campaign_flight(
 
 @pytest.mark.anyio
 async def test_meta_ad_without_binding_is_missing_campaign_flight_no_profile_default():
+    """No Ad bind and no Connect Source Flight → unresolved; never profile_default."""
     data = await _init_data()
     tenant_id = data["tenant_id"]
     oc = await _own_company_id(tenant_id)
@@ -136,6 +138,73 @@ async def test_meta_ad_without_binding_is_missing_campaign_flight_no_profile_def
         )
     assert decision.status == "unresolved"
     assert decision.unresolved_reason == UnresolvedReason.missing_campaign_flight.value
+    assert decision.source != RoutingSource.profile_default.value
+
+
+@pytest.mark.anyio
+async def test_meta_ad_without_binding_uses_connect_source_flight():
+    """Connect Source (profile→Flight) routes Meta+ad when Ad bind is absent."""
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    oc = await _own_company_id(tenant_id)
+    company_id = await _company_id(tenant_id)
+
+    async with async_session_maker() as session:
+        vac = Vacancy(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            own_company_id=oc,
+            company_id=company_id,
+            title="Drivers",
+            status="open",
+            is_active=True,
+            is_archived=False,
+        )
+        session.add(vac)
+        await session.flush()
+        camp_id, flight_id = await _seed_inner(
+            session, tenant_id=tenant_id, own_company_id=oc, vacancy_id=str(vac.id)
+        )
+        profile = IntakeSourceProfile(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            code=f"cs-prof-{uuid4().hex[:6]}",
+            name="POLTRAKT ENG CE Drivers PL",
+            provider="meta",
+            channel="paid",
+            own_company_id=oc,
+            route_intent="candidate_application",
+            mapping_rules=[{"source": "email", "target": "email"}],
+            is_active=True,
+        )
+        session.add(profile)
+        await session.flush()
+        session.add(
+            CampaignRunIntakeSource(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                campaign_run_id=flight_id,
+                intake_source_profile_id=str(profile.id),
+                role="primary",
+                is_active=True,
+            )
+        )
+        await session.commit()
+        pid = str(profile.id)
+
+        decision = await resolve_universal_submission_routing(
+            session,
+            tenant_id=tenant_id,
+            intake_source_profile_id=pid,
+            form_id=None,
+            provider="meta",
+            provider_ad_id="120249011467340547",
+        )
+    assert decision.status == "routed"
+    assert decision.campaign_run_id == flight_id
+    assert decision.campaign_id == camp_id
+    assert decision.source == RoutingSource.campaign_target.value
+    assert "connect_source_flight" in decision.warnings
     assert decision.source != RoutingSource.profile_default.value
 
 

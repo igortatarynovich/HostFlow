@@ -349,16 +349,18 @@ Ingest always persists Lead. Routing may stop without creating Candidate/Applica
 
 #### 2. Advertising route key
 
-**Canonical rule:** for a Meta submission with `ad_id`, Campaign/Flight is resolved by **Ad ID**.
+**Canonical rule:** for a Meta submission with `ad_id`, Campaign/Flight is resolved in this order:
 
 Resolution order:
 
-1. Exact **active** binding Ad ID → Flight;
-2. If none — do **not** route (no Candidate/Application); reason `missing_campaign_flight`;
-3. Form ID, Page ID, IntakeSourceProfile **must not** pick a different Flight;
-4. **`profile_default` is forbidden** for such a submission.
+1. Exact **active** Ad ID → Flight binding (`FlightAdBinding`) — **wins** when present (Ad attribution override; Form/Source must not override a different Flight);
+2. Else **Connect Source / Form ∪ Profile Flight** associations (same Stage 3C matrix as non-Meta): single eligible Flight linked via `CampaignRunIntakeSource` or `CampaignRunForm` → route there;
+3. If neither (1) nor (2) — do **not** route (no Candidate/Application); reason `missing_campaign_flight`;
+4. **`profile_default` is forbidden** for such a submission (even when a profile exists without a Flight link).
 
-Form / Source remain for Meta connection, field mapping, intake type, diagnostics, and Source UI — **not** for ad attribution.
+**Product intent:** Connect Source by Meta Lead Form name must deliver leads to that Flight without a separate Ad bind. Ad binding remains optional for multi-Flight split of the same form.
+
+Form / Source: Meta connection, field mapping, intake type, diagnostics, Source UI, **and** Flight routing when no Ad bind is set.
 
 #### 3. Binding schema — `FlightAdBinding` (minimal)
 
@@ -419,7 +421,7 @@ Do not invent a third Vacancy SoT.
 #### 7. Runtime PR scope (single PR after C-3)
 
 1. Migration + model `FlightAdBinding`  
-2. Resolver Ad ID → Flight; Meta+`ad_id` path ignores Form/Profile Flight and forbids `profile_default`  
+2. Resolver: Ad ID → Flight wins; else Connect Source Form/Profile Flight; Meta+`ad_id` forbids `profile_default`  
 3. Persist Lead + `missing_campaign_flight` when no active binding  
 4. Binding write API + auto-reprocess trigger (filter above)  
 5. Vacancy priority §6  
@@ -516,6 +518,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-26: **Meta Connect Source routing** — Meta+`ad_id` without Ad bind falls back to Form ∪ Profile Flight (Connect Source); Ad bind still wins; `profile_default` still forbidden.
 - 2026-07-26: **C-6 DONE** — Marketing Forms IA + create-in-setup (#170 · #171); Product Track → **C-7**; [C-7 brief](acquisition-ui-cutover-c7-searches-decommission.md) opened.
 - 2026-07-26: **C-6 brief opened** — [acquisition-ui-cutover-c6-form-builder.md](acquisition-ui-cutover-c6-form-builder.md); Product Track = Form Builder cutover (Marketing IA remount + create-in-setup; no second Forms SoT).
 - 2026-07-26: **C-5 DONE** — Marketing mapping GET/PUT + routing-preview; `mapping_path` → `/app/marketing/sources/{id}/mapping`; Product Track → **C-6**.

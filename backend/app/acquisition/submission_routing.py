@@ -440,9 +440,14 @@ async def resolve_universal_submission_routing(
 ) -> UniversalRoutingDecision:
     """Form ∪ Profile Flight matrix → CampaignTarget.route_intent or profile default.
 
-    Meta submissions with ``provider_ad_id`` resolve Flight **only** via
-    ``FlightAdBinding`` — Form/Profile must not pick another Flight and
-    ``profile_default`` is forbidden for that case.
+    Meta submissions with ``provider_ad_id``:
+
+    1. Active ``FlightAdBinding`` wins (Ad attribution override).
+    2. Else Form ∪ Profile Flight associations from Connect Source / Flight
+       setup (same matrix as non-Meta) — Connect Source must route without
+       a separate Ad bind when a single eligible Flight is linked.
+    3. ``profile_default`` remains forbidden when ``ad_id`` is present —
+       missing Flight link → ``missing_campaign_flight``.
     """
     moment = at or _now()
     decided_at = _iso_now(moment)
@@ -450,8 +455,9 @@ async def resolve_universal_submission_routing(
     form = str(form_id or "").strip() or None
     prov = str(provider or "").strip().lower() or None
     ad = str(provider_ad_id or "").strip() or None
+    meta_with_ad = prov == "meta" and bool(ad)
 
-    if prov == "meta" and ad:
+    if meta_with_ad:
         from backend.app.acquisition.flight_ad_binding import get_active_flight_ad_binding
 
         binding = await get_active_flight_ad_binding(
@@ -460,38 +466,33 @@ async def resolve_universal_submission_routing(
             provider=prov,
             provider_ad_id=ad,
         )
-        if binding is None:
-            return _unresolved(
-                reason=UnresolvedReason.missing_campaign_flight,
+        if binding is not None:
+            decision = await _decision_from_flight(
+                db,
+                tenant_id=str(tenant_id),
+                flight_id=str(binding.campaign_run_id),
                 intake_source_profile_id=profile_id,
                 form_id=form,
-                warnings=(f"ad_id:{ad}", "profile_default_forbidden"),
                 decided_at=decided_at,
             )
-        decision = await _decision_from_flight(
-            db,
-            tenant_id=str(tenant_id),
-            flight_id=str(binding.campaign_run_id),
-            intake_source_profile_id=profile_id,
-            form_id=form,
-            decided_at=decided_at,
-        )
-        if decision.status == RoutingDecisionStatus.routed.value:
-            # Stamp advertising route source without changing CampaignTarget intent resolution.
-            return UniversalRoutingDecision(
-                status=decision.status,
-                route_intent=decision.route_intent,
-                campaign_id=decision.campaign_id,
-                campaign_run_id=decision.campaign_run_id,
-                campaign_target_id=decision.campaign_target_id,
-                intake_source_profile_id=decision.intake_source_profile_id,
-                form_id=decision.form_id,
-                source=RoutingSource.flight_ad_binding.value,
-                unresolved_reason=None,
-                warnings=decision.warnings + (f"ad_id:{ad}",),
-                decided_at=decision.decided_at,
-            )
-        return decision
+            if decision.status == RoutingDecisionStatus.routed.value:
+                # Stamp advertising route source without changing CampaignTarget intent resolution.
+                return UniversalRoutingDecision(
+                    status=decision.status,
+                    route_intent=decision.route_intent,
+                    campaign_id=decision.campaign_id,
+                    campaign_run_id=decision.campaign_run_id,
+                    campaign_target_id=decision.campaign_target_id,
+                    intake_source_profile_id=decision.intake_source_profile_id,
+                    form_id=decision.form_id,
+                    source=RoutingSource.flight_ad_binding.value,
+                    unresolved_reason=None,
+                    warnings=decision.warnings + (f"ad_id:{ad}",),
+                    decided_at=decision.decided_at,
+                )
+            return decision
+        # No Ad binding: fall through to Form ∪ Profile Flight matrix.
+        # profile_default stays forbidden at the end of this function.
 
     if not profile_id and not form:
         return _unresolved(
@@ -541,12 +542,40 @@ async def resolve_universal_submission_routing(
         chosen = next(iter(profile_flights))
 
     if chosen is not None:
-        return await _decision_from_flight(
+        decision = await _decision_from_flight(
             db,
             tenant_id=str(tenant_id),
             flight_id=chosen,
             intake_source_profile_id=profile_id,
             form_id=form,
+            decided_at=decided_at,
+        )
+        if (
+            meta_with_ad
+            and decision.status == RoutingDecisionStatus.routed.value
+            and ad
+        ):
+            return UniversalRoutingDecision(
+                status=decision.status,
+                route_intent=decision.route_intent,
+                campaign_id=decision.campaign_id,
+                campaign_run_id=decision.campaign_run_id,
+                campaign_target_id=decision.campaign_target_id,
+                intake_source_profile_id=decision.intake_source_profile_id,
+                form_id=decision.form_id,
+                source=decision.source,
+                unresolved_reason=None,
+                warnings=decision.warnings + (f"ad_id:{ad}", "connect_source_flight"),
+                decided_at=decision.decided_at,
+            )
+        return decision
+
+    if meta_with_ad:
+        return _unresolved(
+            reason=UnresolvedReason.missing_campaign_flight,
+            intake_source_profile_id=profile_id,
+            form_id=form,
+            warnings=(f"ad_id:{ad}", "profile_default_forbidden"),
             decided_at=decided_at,
         )
 
