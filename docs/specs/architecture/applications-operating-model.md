@@ -2,7 +2,7 @@
 
 **Purpose:** Define **Application** as a first-class **operational intent** layer — semantics, boundaries, and migration path — **not** a CRUD appendix to Lead → Candidate. This document is the source of truth for *why* Applications exist and *what they must not become*.
 
-**Related:** [Recruitment domain model](recruitment-domain-model.md) (full narrative: Lead vs Candidate vs Application, conversion boundary, examples), [Lead → Candidate operating model](../workflows/lead-to-candidate-operating-model.md) (current funnel; Candidate overload today), [Application creation MVP](../workflows/application-creation-mvp.md) (first migration, creation triggers, tests), [Recruitment Application lifecycle](../workflows/recruitment-application-lifecycle.md) (canonical statuses, transition matrix, idempotency — **spec before enum**), [Lifecycle reconciliation / sync note](../workflows/recruitment-application-lifecycle-sync-note.md) (branch diff, contract table, **C1–C4 / C2b / I1**), [person-identity-layer-and-roadmap.md](person-identity-layer-and-roadmap.md) (Person **after** Applications), duplicate / intake (§8 duplicate MVP in the workflow doc).
+**Related:** [Recruitment domain model](recruitment-domain-model.md) (full narrative: Lead vs Candidate vs Application, conversion boundary, examples), [Lead → Candidate operating model](../workflows/lead-to-candidate-operating-model.md) (current funnel; Candidate overload today), [Application creation MVP](../workflows/application-creation-mvp.md) (first migration, creation triggers, tests), [Recruitment Application lifecycle](../workflows/recruitment-application-lifecycle.md) (canonical statuses, transition matrix, idempotency — **spec before enum**), [Lifecycle reconciliation / sync note](../workflows/recruitment-application-lifecycle-sync-note.md) (branch diff, contract table, **C1–C4 / C2b / I1**), [person-identity-layer-and-roadmap.md](person-identity-layer-and-roadmap.md) (Person **after** Applications), duplicate / intake (§8 duplicate MVP in the workflow doc), [ADR-031](ADR-031-compliance-outbound-requires-opaque-result.md) (Pipeline outbound requires early Application when needed before Process).
 
 ---
 
@@ -103,10 +103,12 @@ Designed to avoid a big-bang refactor:
 
 1. **One active Application per Candidate** is acceptable initially — still teaches the model and APIs.
 2. **Legacy `vacancy_id` on Candidate** may remain for a transition period; UI and reports may read Candidate until backfill is complete.
-3. **Application is created at conversion / process** when a Lead becomes (or attaches to) a Candidate — first-class creation moment.
+3. **Application is created when Candidate + concrete recruitment intent exist** — historically at conversion / Process; **also** under [ADR-031](ADR-031-compliance-outbound-requires-opaque-result.md) §2.4 when outbound compliance/ops mail requires an opaque `application` result **before** Process (early Candidate shell + Application, idempotent; Lead remains intake SoT).
 4. **UI may still show** some fields from Candidate while Application is the source of truth for “applied where / when.”
 
 Later: multiple active Applications, rehire as new Application + cycle, analytics keyed by `application_id` where relevant.
+
+**Communication:** product outbound (art.14, ops status mail) attaches to Application via Communication Pipeline Result Link — see ADR-031 and [`compliance-outbound-pipeline-early-result.md`](../tasks/compliance-outbound-pipeline-early-result.md).
 
 ---
 

@@ -67,6 +67,7 @@
 | **P-4b** | **Acquisition UI Cutover** | C-1 ✅ #157 · C-2 ✅ #158 **with constraints** · C-3 ✅ #160 **with constraints** · **C-3.1 ✅** · **C-4 ✅** · **C-5 ✅** · **C-6 ✅** · **C-7 ACTIVE** | **ACTIVE** — [C-7](acquisition-ui-cutover-c7-searches-decommission.md); then Diagnostics — [cutover](acquisition-ui-cutover.md) |
 | **P-5** | **Acquisition Stage 5** Optimization | paused | **PR-1 DONE** (#153) · **PR-2 PAUSED** until P-4b — [stage-5](acquisition-stage-5-optimization.md) |
 | **8** | **Epic C Complete Gate** | after C2.3 merge + C2.4 (later) | Communication capability closed |
+| **8b** | **Compliance outbound (ADR-031)** | [compliance-outbound-pipeline-early-result](compliance-outbound-pipeline-early-result.md) | Early opaque result + RODO/ops binders; **Engineering track**; no SMTP bypass |
 | **9** | **A2** Platform Governance Review | after Epic C complete | Boundary principle |
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
