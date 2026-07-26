@@ -1,4 +1,6 @@
 /** @vitest-environment node */
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { APP_ROUTES, NAV_ITEMS } from '../routes'
 import {
@@ -10,6 +12,7 @@ import {
 } from '../crmAppPaths'
 import { SIDEBAR_AGENCY_MARKETING_ORDER } from '../../nav/sidebarRailBuckets'
 
+const ROOT = path.resolve(__dirname, '../../..')
 const seg = crmAppRouteSegment
 
 describe('C-6 Marketing Forms IA', () => {
@@ -40,5 +43,16 @@ describe('C-6 Marketing Forms IA', () => {
     expect(marketingFormDetailPath('f1')).toBe('/app/marketing/forms/f1')
     expect(marketingFormBuilderPath('f1')).toBe('/app/marketing/forms/f1/builder')
     expect(settingsLeadFormDetailPath('f1')).toBe('/app/marketing/forms/f1')
+  })
+
+  it('Connect Source wires createIntakeForm create-in-setup', () => {
+    const src = readFileSync(
+      path.join(ROOT, 'src/pages/marketing/MarketingConnectSourcePage.tsx'),
+      'utf8',
+    )
+    expect(src).toContain('createIntakeForm')
+    expect(src).toContain('marketing-connect-create-open')
+    expect(src).toContain('marketing-connect-create-submit')
+    expect(src).toContain('CRM_APP_PATHS.marketingForms')
   })
 })
