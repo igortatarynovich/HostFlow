@@ -158,6 +158,19 @@ export default function MarketingSourcesPage() {
                   {t('app.marketing.sources.columns.provider', { defaultValue: 'Provider' })}
                 </th>
                 <th className="px-4 py-3 font-medium">
+                  {t('app.marketing.sources.columns.page', { defaultValue: 'Page' })}
+                </th>
+                <th className="px-4 py-3 font-medium">
+                  {t('app.marketing.sources.columns.provider_form', {
+                    defaultValue: 'Provider form',
+                  })}
+                </th>
+                <th className="px-4 py-3 font-medium">
+                  {t('app.marketing.sources.columns.destination', {
+                    defaultValue: 'Destination',
+                  })}
+                </th>
+                <th className="px-4 py-3 font-medium">
                   {t('app.marketing.sources.columns.connection', { defaultValue: 'Connection' })}
                 </th>
                 <th className="px-4 py-3 font-medium">
@@ -201,6 +214,26 @@ export default function MarketingSourcesPage() {
                     ) : null}
                   </td>
                   <td className="px-4 py-3 text-slate-700">{row.provider}</td>
+                  <td
+                    className="px-4 py-3 text-slate-700"
+                    data-testid={`marketing-source-page-${row.source_id}`}
+                  >
+                    {row.page_name || row.page_id || t('app.marketing.sources.none', { defaultValue: '—' })}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-slate-700"
+                    data-testid={`marketing-source-provider-form-${row.source_id}`}
+                  >
+                    {row.provider_form || t('app.marketing.sources.none', { defaultValue: '—' })}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-slate-700"
+                    data-testid={`marketing-source-destination-${row.source_id}`}
+                  >
+                    {row.destination_label ||
+                      row.destination ||
+                      t('app.marketing.sources.none', { defaultValue: '—' })}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${connectionTone(row.connection_status)}`}

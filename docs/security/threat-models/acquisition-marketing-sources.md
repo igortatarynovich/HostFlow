@@ -36,6 +36,22 @@
 - Projection exposes counts, timestamps, Ad ID, routing issue **code/message**, and SPA deep-links — not raw submission payloads
 - Waiting / routing issue fields are server-derived from Lead + bindings; UI does not invent reasons
 
+## Follow-up surface — C-3.1 Sources list column completeness
+
+**Additive read fields on the same GET Sources list** (still no write API):
+
+| Field | Source of truth |
+|-------|-----------------|
+| `page_id` / `page_name` | Same donor as Campaign Detail cards — `campaign_source_cards.parse_meta_page_id` / mapping `page_id`; `page_name` only if present in SoT (**no** live Graph call in C-3.1) |
+| `provider_form` | `humanize_meta_profile_name` + `MetaLeadFormMapping.form_name` / binding label / HostFlow form `title` |
+| `destination` / `destination_label` | `IntakeSourceProfile.route_intent` (+ `lead_target_type` fallback) via `compute_destination` — no parallel destination registry |
+
+**Security properties:**
+
+- Remains **GET-only**; tenant filter + RLS unchanged
+- Does **not** expose raw Meta payloads or mapping sample values
+- Does **not** invent account/portfolio labels without SoT (column stays deferred)
+
 ## Follow-up surface — FlightAdBinding (runtime)
 
 - Write: `POST/PATCH/DELETE /api/v1/platform/campaigns/.../ad-bindings`

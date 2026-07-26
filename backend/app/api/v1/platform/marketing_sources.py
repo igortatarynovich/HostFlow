@@ -57,6 +57,11 @@ class MarketingSourceSummaryOut(BaseModel):
     routing_issue_code: Optional[str] = None
     routing_issue_message: Optional[str] = None
     setup_campaign_flight_path: Optional[str] = None
+    page_id: Optional[str] = None
+    page_name: Optional[str] = None
+    provider_form: Optional[str] = None
+    destination: Optional[str] = None
+    destination_label: Optional[str] = None
 
 
 class MarketingSourceListOut(BaseModel):

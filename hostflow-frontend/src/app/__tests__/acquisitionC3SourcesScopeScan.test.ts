@@ -18,6 +18,10 @@ describe('C-3 Sources scope guards', () => {
     expect(src).toContain('row.setup_campaign_flight_path')
     expect(src).toContain('waiting_submissions')
     expect(src).toContain('listMarketingSources')
+    // C-3.1 inventory columns
+    expect(src).toContain('row.page_id')
+    expect(src).toContain('row.provider_form')
+    expect(src).toContain('row.destination')
     // No Form Builder / Searches ownership move in this page
     expect(src).not.toContain('settingsLeadFormBuilderPath')
     expect(src).not.toContain('recruitmentSearches')
