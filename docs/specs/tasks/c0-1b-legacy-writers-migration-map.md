@@ -26,7 +26,7 @@ Intent → IntentPolicyResult → Resolvers → CommunicationCommand → Communi
 
 | Current caller | Intent (target) | Origin (typical) | Channel | Template | Links | Compliance | Migration slice | Bypass |
 |----------------|-----------------|------------------|---------|----------|-------|------------|-----------------|--------|
-| `services/lead_communications.py` | `follow_up` / `gdpr_notice` | `sales_inquiry` / `application` (not Lead-as-result) | email | lead templates | Result Link | lead_rodo adjacent | [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) / [compliance-outbound task](compliance-outbound-pipeline-early-result.md) PR-1/PR-4 | **allowed** until migrated |
+| `services/lead_communications.py` | `follow_up` | `sales_inquiry` / `application` (not Lead-as-result) | email | lead templates | Result Link | lead_rodo adjacent | [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) / [compliance-outbound task](compliance-outbound-pipeline-early-result.md) **PR-4** | **migrating** — Sales/Recruitment destination auto-bind; SMTP only if unbound |
 | `services/lead_rodo.py` | `gdpr_notice` | `sales_inquiry` / `application` | email | RODO notice | `privacy_notice` | RODO | ADR-031 PR-1/PR-3 | **allowed** until migrated |
 | `services/rodo.py` | `gdpr_notice` | candidate / `application` | email | RODO | `privacy_notice` | RODO | ADR-031 PR-3 | **allowed** until migrated |
 | `services/candidate_notifications.py` | `follow_up` / stage intents | `candidate` / `application` | email/telegram | notification keys | none | workflow | C0.1c | **allowed** |

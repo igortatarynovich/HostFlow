@@ -42,9 +42,21 @@ from backend.app.modules.recruitment.services.compliance_outbound_ensure import 
 )
 
 PURPOSE_GDPR_NOTICE = "gdpr_notice"
-TEMPLATE_GDPR = ("tpl_recruitment_gdpr_notice_v1", "1")
+PURPOSE_SUBMISSION_ACK = "submission_acknowledgement"
+PURPOSE_INTAKE_REJECTION = "intake_rejection_notice"
+PURPOSE_MOVING_FORWARD = "moving_forward_notice"
 
-CompliancePurpose = Literal["gdpr_notice"]
+TEMPLATE_GDPR = ("tpl_recruitment_gdpr_notice_v1", "1")
+TEMPLATE_SUBMISSION_ACK = ("tpl_recruitment_submission_acknowledgement_v1", "1")
+TEMPLATE_REJECTION = ("tpl_recruitment_intake_rejection_notice_v1", "1")
+TEMPLATE_MOVING_FORWARD = ("tpl_recruitment_moving_forward_notice_v1", "1")
+
+CompliancePurpose = Literal[
+    "gdpr_notice",
+    "submission_acknowledgement",
+    "intake_rejection_notice",
+    "moving_forward_notice",
+]
 
 
 class RecruitmentCompliancePipelineError(Exception):
@@ -71,7 +83,13 @@ def _record(value: Any) -> dict[str, Any]:
 
 
 def _template_for_purpose(purpose: CompliancePurpose) -> CommunicationTemplateMetadata:
-    tid, ver = TEMPLATE_GDPR
+    mapping: dict[str, tuple[str, str]] = {
+        PURPOSE_GDPR_NOTICE: TEMPLATE_GDPR,
+        PURPOSE_SUBMISSION_ACK: TEMPLATE_SUBMISSION_ACK,
+        PURPOSE_INTAKE_REJECTION: TEMPLATE_REJECTION,
+        PURPOSE_MOVING_FORWARD: TEMPLATE_MOVING_FORWARD,
+    }
+    tid, ver = mapping[purpose]
     return build_template_metadata(
         template_id=tid,
         template_version=ver,
@@ -83,6 +101,17 @@ def _template_for_purpose(purpose: CompliancePurpose) -> CommunicationTemplateMe
         lifecycle_status="active",
         policy_version=POLICY_VERSION,
     )
+
+
+def purpose_for_ops_event(event_type: str) -> CompliancePurpose | None:
+    ev = str(event_type or "").strip().lower()
+    if ev == "application_received":
+        return PURPOSE_SUBMISSION_ACK
+    if ev == "lead_rejected":
+        return PURPOSE_INTAKE_REJECTION
+    if ev == "moving_forward":
+        return PURPOSE_MOVING_FORWARD
+    return None
 
 
 async def resolve_lead_uses_recruitment_compliance_pipeline(
