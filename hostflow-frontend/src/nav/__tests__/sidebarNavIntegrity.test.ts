@@ -50,8 +50,9 @@ describe('sidebar nav placement integrity', () => {
 
   it('ADR-023 ownership: Employee under HR; Invoice under Finance; not under Recruitment/Sales', () => {
     expect([...SIDEBAR_AGENCY_RECRUITMENT_ORDER]).toEqual(
-      expect.arrayContaining(['recruitment-searches', 'recruitment-inbox', 'candidates']),
+      expect.arrayContaining(['recruitment-inbox', 'candidates']),
     )
+    expect(SIDEBAR_AGENCY_RECRUITMENT_ORDER).not.toContain('recruitment-searches')
     expect(SIDEBAR_AGENCY_RECRUITMENT_ORDER).not.toContain('hr-workspace')
     expect(SIDEBAR_AGENCY_RECRUITMENT_ORDER).not.toContain('sales')
     expect(SIDEBAR_AGENCY_RECRUITMENT_ORDER).not.toContain('invoices')

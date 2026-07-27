@@ -175,16 +175,16 @@ export default function LaunchpadPage() {
     lastSearchId && hasActiveSearch
       ? recruitmentSearchPath(lastSearchId)
       : hasActiveSearch
-        ? CRM_APP_PATHS.recruitmentSearches
+        ? CRM_APP_PATHS.marketing
         : getBusinessHomePath(businessType)
   const recruitmentModulePath =
     recruitmentWorkspaceAvailable && hasActiveSearch
       ? recruitmentOpenPath
-      : CRM_APP_PATHS.recruitmentSearchesNew
+      : CRM_APP_PATHS.marketingNew
   const recruitmentModuleActionLabel =
     recruitmentWorkspaceAvailable && hasActiveSearch
       ? t('app.launchpad.open_search', { defaultValue: 'Открыть подбор' })
-      : t('app.launchpad.create_search', { defaultValue: 'Создать подбор' })
+      : t('app.launchpad.create_campaign', { defaultValue: 'Создать кампанию' })
 
   const setupPassed = snapshot?.gates.filter((gate) => gate.applicable && gate.status === 'pass').length ?? 0
   const setupTotal = snapshot?.gates.filter((gate) => gate.applicable).length ?? 0
@@ -252,7 +252,7 @@ export default function LaunchpadPage() {
             to={
               lastSearchId && hasActiveSearch
                 ? recruitmentSearchPath(lastSearchId)
-                : CRM_APP_PATHS.recruitmentSearchesNew
+                : CRM_APP_PATHS.marketingNew
             }
             data-testid="m1-launchpad-create-search"
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700 sm:mt-6 sm:w-auto sm:self-start sm:text-base"
