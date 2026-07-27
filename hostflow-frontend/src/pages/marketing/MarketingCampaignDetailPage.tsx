@@ -38,6 +38,7 @@ import {
   statusTone,
 } from './marketingPresentation'
 import { HostFlowFormSourceCard, MetaLeadFormSourceCard } from './MarketingSourceCards'
+import { MarketingAdBindingsPanel } from './MarketingAdBindingsPanel'
 
 export default function MarketingCampaignDetailPage() {
   const { t, locale } = useI18n()
@@ -456,6 +457,15 @@ export default function MarketingCampaignDetailPage() {
                   равноправных источников одного типа появятся в следующем обновлении — сейчас UI не
                   предлагает подключение, которое завершится ошибкой.
                 </p>
+              ) : null}
+
+              {flight ? (
+                <MarketingAdBindingsPanel
+                  campaignId={campaign.id}
+                  flight={flight}
+                  onChanged={load}
+                  t={t}
+                />
               ) : null}
 
               {contextTargets.length ? (

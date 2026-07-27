@@ -50,6 +50,22 @@ export type CampaignIntakeSourceLink = {
   last_submission_at?: string | null
 }
 
+export type CampaignAdBinding = {
+  id: string
+  provider: string
+  provider_ad_id: string
+  campaign_id: string
+  flight_id: string
+  is_active: boolean
+  reprocess?: {
+    matched?: number
+    processed?: number
+    skipped?: number
+    batches?: number
+    errors?: Array<{ lead_id?: string; error?: string }>
+  } | null
+}
+
 export type CampaignFlight = {
   id: string
   code: string
@@ -60,6 +76,7 @@ export type CampaignFlight = {
   is_current: boolean
   forms: CampaignFormLink[]
   intake_sources: CampaignIntakeSourceLink[]
+  ad_bindings?: CampaignAdBinding[]
 }
 
 export type Campaign = {
@@ -164,6 +181,41 @@ export async function attachCampaignIntakeSource(
   const { data } = await api.post<Campaign>(
     `/platform/campaigns/${encodeURIComponent(campaignId)}/intake-sources`,
     { intake_source_profile_id: intakeSourceProfileId, role },
+  )
+  return data
+}
+
+export async function attachFlightAdBinding(
+  campaignId: string,
+  flightId: string,
+  providerAdId: string,
+  provider = 'meta',
+): Promise<CampaignAdBinding> {
+  const { data } = await api.post<CampaignAdBinding>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/ad-bindings`,
+    { provider_ad_id: providerAdId, provider },
+  )
+  return data
+}
+
+export async function patchCampaignAdBinding(
+  campaignId: string,
+  linkId: string,
+  isActive: boolean,
+): Promise<CampaignAdBinding> {
+  const { data } = await api.patch<CampaignAdBinding>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/ad-bindings/${encodeURIComponent(linkId)}`,
+    { is_active: isActive },
+  )
+  return data
+}
+
+export async function detachCampaignAdBinding(
+  campaignId: string,
+  linkId: string,
+): Promise<Campaign> {
+  const { data } = await api.delete<Campaign>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/ad-bindings/${encodeURIComponent(linkId)}`,
   )
   return data
 }

@@ -1,6 +1,6 @@
 # Acquisition UI Cutover
 
-**Status:** **PASS** — Stage 4 product/UI cutover closed (2026-07-27); **Product Track → FlightAdBinding Ad-ID bind UI**  
+**Status:** **PASS** — Stage 4 product/UI cutover closed (2026-07-27); **Product Track → FlightAdBinding Ad-ID bind UI (implementing)**  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [acquisition/module-scope.md](../../acquisition/module-scope.md)  
 **Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅ · C-5 ✅ · C-6 ✅ · **C-7 PASS**  
 **C-7 brief:** [acquisition-ui-cutover-c7-searches-decommission.md](acquisition-ui-cutover-c7-searches-decommission.md) · **PASS** (#184 · #185 · inventory)  
@@ -9,7 +9,8 @@
 **C-4 brief:** [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md) · **DONE**  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (PR-2 may resume)  
 **Shipped tip:** `integration/release-product-a-b` @ #185 + C-7 close-out  
-**Unpause:** Stage 5 PR-2 **may resume**
+**Unpause:** Stage 5 PR-2 **may resume**  
+**Active slice:** Marketing Campaign Detail — Ad ID → Flight bind panel (API #161 + Campaign GET `ad_bindings`)
 
 > Stage 4 **runtime** is DONE. Stage 4 **product/UI cutover** is **PASS** (C-7).  
 > Operator launch path is Marketing-only: Connect → Source → Test Lead → Mapping → Form → Campaign → Flight → Lead.  
@@ -451,7 +452,7 @@ After that, work is **product evolution**, not migration onto the Campaign/Fligh
 
 | After C-7 | Nature |
 |-----------|--------|
-| **FlightAdBinding Ad-ID bind UI** | Product slice (API already shipped #161) — operator links Meta Ad → Flight for multi-Flight split of one form; **not** required when Connect Source alone routes | 
+| **FlightAdBinding Ad-ID bind UI** | Product slice (API #161) — Marketing Campaign Detail panel; Campaign GET exposes `ad_bindings`; operator links Meta Ad → Flight for multi-Flight split | 
 | **Source Diagnostics** | First ops epic (top-level Marketing Diagnostics) |
 | Stage 5 Optimization PR-2+ | Improve running Flights |
 | Stage 6 Analytics / automation / AI assistants / campaign recommendations | Exploitation & growth features |
