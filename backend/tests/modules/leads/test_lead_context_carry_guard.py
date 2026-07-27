@@ -84,6 +84,8 @@ async def test_conversion_carries_lead_note_to_candidate(
     async with async_session_maker() as db:
         row = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = row.scalar_one()
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         candidate = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,
@@ -157,6 +159,8 @@ async def test_conversion_context_carry_is_idempotent(
             "email": f"idemp-{uuid.uuid4().hex[:8]}@example.com",
             "company_id": str(lead.company_id),
         }
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         first = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,
@@ -173,6 +177,8 @@ async def test_conversion_context_carry_is_idempotent(
     async with async_session_maker() as db:
         row = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = row.scalar_one()
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,
@@ -224,6 +230,8 @@ async def test_greenfield_lead_carries_source_link_only(
     async with async_session_maker() as db:
         row = await db.execute(select(Lead).where(Lead.id == lead_id))
         lead = row.scalar_one()
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         candidate = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,

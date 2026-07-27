@@ -324,6 +324,8 @@ async def test_conversion_from_contacted_lead_skips_uos_call(
             "source": "meta",
             "origin": {"meta": {}},
         }
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         cand = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,
@@ -563,6 +565,8 @@ async def test_conversion_from_pooled_lead_skips_uos_call(
             "source": "meta",
             "origin": {"meta": {}},
         }
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         cand = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,
@@ -650,6 +654,8 @@ async def test_conversion_from_request_info_lead_skips_uos_and_carries_intake(
             "source": "meta",
             "origin": {"meta": {}},
         }
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         cand = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,

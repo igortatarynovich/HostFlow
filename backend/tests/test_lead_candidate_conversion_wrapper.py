@@ -63,7 +63,7 @@ async def test_conversion_idempotent_when_lead_already_has_candidate_id(db):
         vacancy_id=vacancy.id,
         payload={},
         normalized={"email": "idemp-wrapper@test.local"},
-        status="new",
+        status="processed",
         source="meta",
         external_id=f"idemp-ext-{uuid.uuid4().hex}",
         candidate_id=cand.id,

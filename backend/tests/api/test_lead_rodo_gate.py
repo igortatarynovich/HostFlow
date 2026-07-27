@@ -345,3 +345,81 @@ async def test_confirm_vacancy_without_rodo_ok(client, manager_headers, tenant_i
     )
     assert patch.status_code == 422, patch.text
     assert patch.json().get("detail", {}).get("code") == "LEAD_RODO_REQUIRED"
+
+
+@pytest.mark.anyio
+async def test_process_blocked_when_rodo_undelivered_after_sent(client, manager_headers, tenant_id):
+    """SMTP ``sent`` then bounce/undelivered must reopen LEAD_RODO_REQUIRED."""
+    patch_settings = await client.patch(
+        "/api/v1/settings/leads/settings",
+        headers=manager_headers,
+        json={"auto_create_enabled": True, "leads_processing_mode_v1": "assisted"},
+    )
+    assert patch_settings.status_code == 200, patch_settings.text
+
+    async with async_session_maker() as session:
+        company_id = await _ensure_company(session, tenant_id)
+        vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
+        await _ensure_meta_settings(session, tenant_id, str(settings.meta_webhook_secret or "test-secret"))
+
+    u = uuid.uuid4().hex[:12]
+    ad_numeric = 9_970_000_000 + (uuid.uuid4().int % 99_000_000)
+    await client.post(
+        "/api/v1/settings/leads/mapping",
+        headers=manager_headers,
+        json={"ad_id": ad_numeric, "vacancy_id": vacancy_id, "note": "rodo_undelivered"},
+    )
+    email = f"rodo-undel-{u}@example.com"
+    payload = _meta_payload(
+        vacancy_id,
+        email=email,
+        phone=f"+48192{u[:9]}",
+        lead_id=f"lg-undel-{u}",
+        ad_id=str(ad_numeric),
+    )
+    ingest = await client.post(
+        "/api/v1/leads/meta",
+        headers={**manager_headers, "X-Hub-Signature-256": _signature_for_payload(payload)},
+        content=json.dumps(payload),
+    )
+    assert ingest.status_code == 200, ingest.text
+    lead_id = ingest.json()["lead_id"]
+
+    await satisfy_lead_rodo_via_source_for_tests(client, manager_headers, lead_id)
+
+    # Simulate post-accept bounce write-back (mailbox DSN path).
+    from backend.app.services.lead_rodo import mark_lead_rodo_undelivered
+    from backend.app.models.lead import Lead
+
+    async with async_session_maker() as session:
+        lead = await session.get(Lead, lead_id)
+        assert lead is not None
+        # Pretend notice was emailed then bounced.
+        norm = dict(lead.normalized or {})
+        norm["rodo"] = {
+            **(norm.get("rodo") if isinstance(norm.get("rodo"), dict) else {}),
+            "status": "sent",
+            "sent_at": "2026-07-27T08:00:00+00:00",
+            "recipient": email,
+        }
+        lead.normalized = norm
+        mark_lead_rodo_undelivered(
+            lead,
+            reason="Email address not found or does not accept mail.",
+            reason_code="invalid_recipient",
+            outcome="failed",
+        )
+        await session.commit()
+
+    conf = await client.post(
+        f"/api/v1/leads/{lead_id}/confirm-vacancy",
+        headers=manager_headers,
+        json={"vacancy_id": vacancy_id},
+    )
+    assert conf.status_code == 200, conf.text
+    assert (conf.json().get("normalized") or {}).get("rodo", {}).get("status") == "failed"
+
+    proc = await client.post(f"/api/v1/leads/{lead_id}/process", headers=manager_headers)
+    assert proc.status_code == 422, proc.text
+    assert proc.json().get("detail", {}).get("code") == "LEAD_RODO_REQUIRED"
+

@@ -621,6 +621,31 @@ async def apply_delivery_callback(
     delivery.meta = meta
     await db.flush()
 
+    if applied and is_terminal_negative(callback.canonical_status):
+        try:
+            from backend.app.services.lead_rodo_delivery_feedback import (
+                maybe_apply_rodo_delivery_feedback_from_delivery,
+            )
+
+            meta_now = _as_dict(delivery.meta)
+            recipient = (
+                str(meta_now.get("recipient_email") or "").strip()
+                or str(delivery.recipient_normalized or "").strip()
+            )
+            await maybe_apply_rodo_delivery_feedback_from_delivery(
+                db,
+                tenant_id=tenant_id,
+                purpose=str(delivery.purpose or ""),
+                recipient_email=recipient,
+                canonical_status=callback.canonical_status,
+                reason_code=err.reason_code if err else callback.reason_code,
+                safe_message=err.safe_message if err else None,
+                provider_event_id=callback.provider_event_id,
+            )
+        except Exception:
+            # Never fail the delivery callback path on lead write-back.
+            pass
+
     return {
         "status": "applied" if applied else "ignored_out_of_order",
         "delivery_id": str(delivery.id),

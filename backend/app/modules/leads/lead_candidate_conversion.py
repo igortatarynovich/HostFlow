@@ -130,6 +130,18 @@ async def create_candidate_from_lead_conversion(
     """
     duplicate_result = _duplicate_result_label(duplicate_match_level)
 
+    from backend.app.services.lead_rodo import lead_rodo_satisfied
+
+    # Defense-in-depth: never complete Lead→Candidate while art.14 is unsatisfied /
+    # undelivered / deferred. Pure idempotent replay (already processed) is allowed.
+    already_converted = bool(getattr(lead, "candidate_id", None)) and str(
+        getattr(lead, "status", "") or ""
+    ).strip().lower() in {"processed", "duplicated"}
+    if not already_converted and not lead_rodo_satisfied(lead):
+        from backend.app.modules.leads.service._helpers import LeadProcessingError
+
+        raise LeadProcessingError("invalid", "LEAD_RODO_REQUIRED")
+
     if not getattr(lead, "candidate_id", None):
         from backend.app.modules.recruitment.services.compliance_outbound_ensure import (
             attach_compliance_shell_candidate_on_process,

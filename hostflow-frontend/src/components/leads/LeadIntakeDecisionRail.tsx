@@ -18,6 +18,8 @@ import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import {
   INTAKE_REJECT_REASON_CODES,
   leadCommunicationRailLine,
+  leadRodoFailureReason,
+  leadRodoFailureReasonCode,
   leadRodoNoticeStatus,
   leadRodoSatisfied,
   leadRoutingTableAction,
@@ -83,6 +85,8 @@ export default function LeadIntakeDecisionRail({
 
   const rodoOk = useMemo(() => leadRodoSatisfied(lead), [lead])
   const rodoStatus = useMemo(() => leadRodoNoticeStatus(lead), [lead])
+  const rodoFailureReason = useMemo(() => leadRodoFailureReason(lead), [lead])
+  const rodoFailureCode = useMemo(() => leadRodoFailureReasonCode(lead), [lead])
   const commLine = useMemo(() => leadCommunicationRailLine(lead, t), [lead, t])
 
   const src = String(lead.source || '').toLowerCase()
@@ -338,7 +342,11 @@ export default function LeadIntakeDecisionRail({
         <div
           className={clsx(
             'space-y-3 rounded-xl px-3 py-3 text-sm ring-1',
-            rodoOk ? 'bg-emerald-500/[0.08] text-emerald-950 ring-emerald-900/10' : 'bg-amber-500/[0.1] text-amber-950 ring-amber-800/15',
+            rodoOk
+              ? 'bg-emerald-500/[0.08] text-emerald-950 ring-emerald-900/10'
+              : rodoStatus === 'failed' || rodoStatus === 'deferred'
+                ? 'bg-rose-500/[0.1] text-rose-950 ring-rose-900/15'
+                : 'bg-amber-500/[0.1] text-amber-950 ring-amber-800/15',
           )}
           role="status"
         >
@@ -347,13 +355,49 @@ export default function LeadIntakeDecisionRail({
           </p>
           {!rodoOk ? (
             <>
-              <p className="text-xs leading-relaxed text-amber-900/95">
+              <p
+                className={clsx(
+                  'text-xs leading-relaxed',
+                  rodoStatus === 'failed' || rodoStatus === 'deferred' ? 'text-rose-900/95' : 'text-amber-900/95',
+                )}
+              >
                 {rodoStatus === 'pending_channel'
                   ? t('app.leads.intake_workspace.decision_rail.rodo_pending_channel')
-                  : rodoStatus === 'failed'
-                    ? t('app.leads.intake_workspace.decision_rail.rodo_failed')
-                    : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
+                  : rodoStatus === 'deferred'
+                    ? t('app.leads.intake_workspace.decision_rail.rodo_deferred', {
+                        defaultValue:
+                          'RODO notice is not delivered yet (temporary delay). Candidate creation is blocked until delivery succeeds or you mark covered at source.',
+                      })
+                    : rodoStatus === 'failed'
+                      ? t('app.leads.intake_workspace.decision_rail.rodo_undelivered', {
+                          defaultValue:
+                            'RODO notice was not delivered. Fix the email or re-send before creating a candidate.',
+                        })
+                      : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
               </p>
+              {rodoFailureReason ? (
+                <p className="rounded-lg bg-white/60 px-2.5 py-2 text-xs leading-relaxed text-rose-950 ring-1 ring-rose-900/10">
+                  <span className="font-semibold">
+                    {t('app.leads.intake_workspace.decision_rail.rodo_failure_reason_label', {
+                      defaultValue: 'Reason',
+                    })}
+                    :{' '}
+                  </span>
+                  {rodoFailureCode === 'invalid_recipient'
+                    ? t('app.leads.intake_workspace.decision_rail.rodo_reason_invalid_recipient', {
+                        defaultValue: 'Email address not found or does not accept mail.',
+                      })
+                    : rodoFailureCode === 'spf_rejected'
+                      ? t('app.leads.intake_workspace.decision_rail.rodo_reason_spf', {
+                          defaultValue: 'Recipient server deferred/rejected due to SPF.',
+                        })
+                      : rodoFailureCode === 'deferred'
+                        ? t('app.leads.intake_workspace.decision_rail.rodo_reason_deferred', {
+                            defaultValue: 'Delivery temporarily delayed by the recipient server.',
+                          })
+                        : rodoFailureReason}
+                </p>
+              ) : null}
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <button
                   type="button"
