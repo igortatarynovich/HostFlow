@@ -199,3 +199,64 @@ def test_service_create_raises_without_persist() -> None:
         assert exc.value.marketing_setup_path.startswith("/app/marketing/new?")
 
     asyncio.run(_run())
+
+
+@pytest.mark.anyio
+async def test_put_audience_returns_410(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    headers = _headers(manager_headers)
+    vacancy_id = await _create_vacancy(client, headers)
+    resp = await client.put(
+        f"/api/v1/vacancies/{vacancy_id}/acquisition/audience",
+        headers=headers,
+        json={"countries": ["PL"], "age_min": 25, "age_max": 55},
+    )
+    assert resp.status_code == 410, resp.text
+    assert resp.json()["detail"]["code"] == "legacy_launch_disabled"
+
+
+@pytest.mark.anyio
+async def test_update_bindings_action_returns_410(
+    client: AsyncClient, manager_headers: Dict[str, str]
+) -> None:
+    headers = _headers(manager_headers)
+    vacancy_id = await _create_vacancy(client, headers)
+    import json
+
+    from backend.app.db.session import async_session_maker
+    from backend.app.models.vacancy import Vacancy
+    from sqlalchemy import select
+
+    activity_id = f"act_meta_{uuid.uuid4().hex[:8]}"
+    async with async_session_maker() as session:
+        row = (
+            await session.execute(select(Vacancy).where(Vacancy.id == vacancy_id))
+        ).scalar_one()
+        extra = json.loads(row.extra) if row.extra else {}
+        block = {
+            "version": 2,
+            "activities": [
+                {
+                    "id": activity_id,
+                    "channel_type": "meta",
+                    "type": "meta",
+                    "name": "Legacy seed",
+                    "search_ids": [vacancy_id],
+                    "lifecycle": "active",
+                    "status": "active",
+                }
+            ],
+        }
+        block["channels"] = block["activities"]
+        extra["acquisition_v1"] = block
+        row.extra = json.dumps(extra, ensure_ascii=False)
+        await session.commit()
+
+    resp = await client.post(
+        f"/api/v1/vacancies/{vacancy_id}/acquisition/activities/{activity_id}/actions",
+        headers=headers,
+        json={"action": "update_bindings", "search_ids": [vacancy_id]},
+    )
+    assert resp.status_code == 410, resp.text
+    assert resp.json()["detail"]["code"] == "legacy_launch_disabled"

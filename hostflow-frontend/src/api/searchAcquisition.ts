@@ -171,15 +171,14 @@ export async function createAcquisitionActivity(
 /** @deprecated C-2 alias — same hard stop as createAcquisitionActivity. */
 export const createAcquisitionChannel = createAcquisitionActivity
 
+/** @deprecated C-7: audience writes disabled — Marketing owns targeting. */
 export async function updateAcquisitionAudience(
-  vacancyId: string,
-  payload: AcquisitionAudience,
+  _vacancyId: string,
+  _payload: AcquisitionAudience,
 ): Promise<AcquisitionAudience> {
-  const { data } = await api.put<AcquisitionAudience>(
-    `/vacancies/${encodeURIComponent(vacancyId)}/acquisition/audience`,
-    payload,
+  throw new Error(
+    'legacy_launch_disabled: audience edits via /app/marketing (Campaign → Flight)',
   )
-  return data
 }
 
 export async function performAcquisitionActivityAction(
@@ -188,6 +187,11 @@ export async function performAcquisitionActivityAction(
   action: string,
   searchIds?: string[],
 ): Promise<AcquisitionSnapshot> {
+  if (action === 'duplicate' || action === 'update_bindings') {
+    throw new Error(
+      'legacy_launch_disabled: legacy activity writes via /app/marketing (Campaign → Flight)',
+    )
+  }
   const { data } = await api.post<AcquisitionSnapshot>(
     `/vacancies/${encodeURIComponent(vacancyId)}/acquisition/activities/${encodeURIComponent(activityId)}/actions`,
     { action, search_ids: searchIds ?? [] },

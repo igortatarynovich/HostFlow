@@ -34,7 +34,7 @@ LEGACY_LAUNCH_CODE = "legacy_launch_disabled"
 
 
 class LegacyLaunchDisabledError(RuntimeError):
-    """Raised when searchAcquisition tries to create/duplicate a launch."""
+    """Raised when searchAcquisition tries to create/duplicate or mutate audience/bindings."""
 
     def __init__(self, *, search_id: str, marketing_setup_path: str):
         self.search_id = search_id
@@ -944,6 +944,14 @@ async def update_acquisition_audience(
     vacancy: Vacancy,
     audience: dict[str, Any],
 ) -> dict[str, Any]:
+    search_id = str(vacancy.id)
+    if LEGACY_LAUNCH_DISABLED:
+        raise LegacyLaunchDisabledError(
+            search_id=search_id,
+            marketing_setup_path=marketing_setup_path_for_search(
+                search_id, name=str(getattr(vacancy, "title", None) or "")
+            ),
+        )
     extra = _loads_extra(vacancy.extra)
     block = extra.get(ACQUISITION_EXTRA_KEY)
     if not isinstance(block, dict):
@@ -1016,6 +1024,13 @@ async def perform_acquisition_activity_action(
         _append_event(block, kind="activity_duplicated", title=f"Создана копия активности «{name}».", activity_id=clone["id"])
         target = clone
     elif action == "update_bindings":
+        if LEGACY_LAUNCH_DISABLED:
+            raise LegacyLaunchDisabledError(
+                search_id=search_id,
+                marketing_setup_path=marketing_setup_path_for_search(
+                    search_id, name=str(getattr(vacancy, "title", None) or name)
+                ),
+            )
         if not search_ids:
             raise ValueError("search_ids_required")
         normalized = list(dict.fromkeys(str(s) for s in search_ids))
