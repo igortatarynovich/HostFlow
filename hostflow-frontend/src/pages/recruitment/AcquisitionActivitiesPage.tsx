@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { performAcquisitionActivityAction, type AcquisitionActivity } from '../../api/searchAcquisition'
+import { performAcquisitionActivityAction } from '../../api/searchAcquisition'
 import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
 import { useSearchWorkspace } from './SearchWorkspaceLayout'
 import { AcquisitionActivityCard } from '../../components/recruitment/AcquisitionActivityCard'
-import { AcquisitionBindingsModal } from '../../components/recruitment/AcquisitionBindingsModal'
 import { useAcquisitionOutlet } from './useAcquisitionOutlet'
 
 export default function AcquisitionActivitiesPage() {
@@ -16,7 +15,6 @@ export default function AcquisitionActivitiesPage() {
   const [searchParams] = useSearchParams()
   const highlightId = searchParams.get('highlight')
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [bindingsActivity, setBindingsActivity] = useState<AcquisitionActivity | null>(null)
 
   const activities = snapshot?.activities ?? []
 
@@ -26,10 +24,10 @@ export default function AcquisitionActivitiesPage() {
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [highlightId, activities.length])
 
-  async function runAction(activityId: string, action: string, searchIds?: string[]) {
+  async function runAction(activityId: string, action: string) {
     setBusyId(activityId)
     try {
-      await performAcquisitionActivityAction(searchId, activityId, action, searchIds)
+      await performAcquisitionActivityAction(searchId, activityId, action)
       await refresh()
       await refreshPulse()
       notify({
@@ -75,37 +73,26 @@ export default function AcquisitionActivitiesPage() {
   }
 
   return (
-    <>
-      <div className="space-y-3" data-testid="m1-acquisition-activities">
-        {sorted.map((activity) => (
-          <AcquisitionActivityCard
-            key={activity.id}
-            activity={activity}
-            highlighted={highlightId === activity.id}
-            busy={busyId === activity.id}
-            onPause={() => void runAction(activity.id, 'pause')}
-            onResume={() => void runAction(activity.id, 'resume')}
-            onDuplicate={() => void runAction(activity.id, 'duplicate')}
-            onArchive={() => {
-              if (window.confirm(t('app.acquisition.archive_confirm', { defaultValue: 'Архивировать эту активность?' }))) {
-                void runAction(activity.id, 'archive')
-              }
-            }}
-            onEditBindings={() => setBindingsActivity(activity)}
-          />
-        ))}
-      </div>
-
-      <AcquisitionBindingsModal
-        open={Boolean(bindingsActivity)}
-        currentSearchId={searchId}
-        selectedIds={bindingsActivity?.search_ids ?? [searchId]}
-        onClose={() => setBindingsActivity(null)}
-        onSave={async (ids) => {
-          if (!bindingsActivity) return
-          await runAction(bindingsActivity.id, 'update_bindings', ids)
-        }}
-      />
-    </>
+    <div className="space-y-3" data-testid="m1-acquisition-activities">
+      {sorted.map((activity) => (
+        <AcquisitionActivityCard
+          key={activity.id}
+          activity={activity}
+          highlighted={highlightId === activity.id}
+          busy={busyId === activity.id}
+          onPause={() => void runAction(activity.id, 'pause')}
+          onResume={() => void runAction(activity.id, 'resume')}
+          onArchive={() => {
+            if (
+              window.confirm(
+                t('app.acquisition.archive_confirm', { defaultValue: 'Архивировать эту активность?' }),
+              )
+            ) {
+              void runAction(activity.id, 'archive')
+            }
+          }}
+        />
+      ))}
+    </div>
   )
 }

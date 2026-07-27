@@ -23,9 +23,9 @@ type AcquisitionActivityCardProps = {
   highlighted?: boolean
   onPause: () => void
   onResume: () => void
-  onDuplicate: () => void
+  onDuplicate?: () => void
   onArchive: () => void
-  onEditBindings: () => void
+  onEditBindings?: () => void
   busy?: boolean
 }
 
@@ -114,7 +114,7 @@ export function AcquisitionActivityCard({
             {t('app.acquisition.action_open_meta', { defaultValue: 'Открыть в Meta' })}
           </a>
         ) : null}
-        {actions.update_bindings ? (
+        {actions.update_bindings && onEditBindings ? (
           <button
             type="button"
             disabled={busy}
@@ -144,7 +144,7 @@ export function AcquisitionActivityCard({
             {t('app.acquisition.action_resume', { defaultValue: 'Возобновить' })}
           </button>
         ) : null}
-        {actions.duplicate ? (
+        {actions.duplicate && onDuplicate ? (
           <button
             type="button"
             disabled={busy}

@@ -92,8 +92,8 @@ An operator cannot start a **new ad launch** from Подборы; legacy acquisi
 ## 8. Implementation order (suggested PR split)
 
 1. **Docs / brief** (this file) + queue linkage — ✅  
-2. **UI retire / redirects** for Подборы launch surfaces — **IN PROGRESS** (nav hide + list/new → Marketing)  
-3. **Legacy write gates** (audience/bindings) + reconciliation inventory note  
+2. **UI retire / redirects** for Подборы launch surfaces — ✅ #184  
+3. **Legacy write gates** (audience/bindings) + reconciliation inventory note — **IN PROGRESS**  
 4. Close-out + production smoke → cutover PASS  
 
 ---

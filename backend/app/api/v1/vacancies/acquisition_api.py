@@ -26,7 +26,7 @@ def _raise_legacy_launch(exc: LegacyLaunchDisabledError) -> None:
         detail={
             "code": "legacy_launch_disabled",
             "message": (
-                "Creating acquisition launches from Подборы is disabled. "
+                "Legacy Подборы acquisition writes are disabled. "
                 "Use Marketing Campaign → Flight instead."
             ),
             "search_id": exc.search_id,
@@ -172,12 +172,15 @@ async def put_search_acquisition_audience(
         vacancy = await get_vacancy_or_raise(db, str(tenant_id), str(vacancy_id))
     except LookupError:
         raise HTTPException(status_code=404, detail="Vacancy not found")
-    audience = await update_acquisition_audience(
-        db,
-        str(tenant_id),
-        vacancy,
-        payload.model_dump(exclude_none=True),
-    )
+    try:
+        audience = await update_acquisition_audience(
+            db,
+            str(tenant_id),
+            vacancy,
+            payload.model_dump(exclude_none=True),
+        )
+    except LegacyLaunchDisabledError as exc:
+        _raise_legacy_launch(exc)
     await db.commit()
     return audience
 
