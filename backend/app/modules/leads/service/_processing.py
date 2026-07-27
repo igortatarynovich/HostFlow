@@ -859,7 +859,12 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
-    if not triage_gate_bypass and not may_auto_convert and not pool_manual_convert_ready:
+    if (
+        not triage_gate_bypass
+        and not may_auto_convert
+        and not pool_manual_convert_ready
+        and not sales_lead_without_candidate
+    ):
         if creates_candidate:
             if effective_processing_mode == "assisted":
                 _stamp_lead_qualification_preview_v1(
