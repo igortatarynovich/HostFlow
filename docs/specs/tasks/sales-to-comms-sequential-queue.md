@@ -28,17 +28,17 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | [Acquisition UI Cutover](acquisition-ui-cutover.md) | Almost all capacity |
+| **Product** | **FlightAdBinding Ad-ID bind UI** | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred) | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
 
 - **Acquisition Stage 3E / Activity Timeline** ← **DONE** (#130–#133) — [timeline](acquisition-stage-3e-activity-timeline.md); deferred gaps — [deferred](acquisition-stage-3e-deferred.md)  
 - **Acquisition Stage 4 / Flight Runtime** ← **Runtime DONE** (#136 / #148–#151) — [stage-4](acquisition-stage-4-flight-runtime.md)  
-- **Acquisition UI Cutover** ← **Product Track = C-7** — [cutover](acquisition-ui-cutover.md) (C-1 ✅ · C-2 ✅ **with constraints** · C-3 ✅ **with constraints** · C-3.1 ✅ · C-4 ✅ · C-5 ✅ · **C-6 ✅**; **C-7 PASS closes migration**; then **Ad-ID bind UI** → Source Diagnostics → product evolution)  
-- **FlightAdBinding Ad-ID bind UI** ← **first product slice after C-7 PASS** (API #161 exists; Marketing UI missing) — [cutover after table](acquisition-ui-cutover.md)  
-- **Source Diagnostics** ← **first Product Epic after Ad bind UI** (Operations lifecycle; top-level Marketing **Diagnostics**) — [cutover](acquisition-ui-cutover.md#after-cutover--source-diagnostics-separate-product-epic)  
-- **Acquisition Stage 5 / Optimization** ← PR-1 DONE · **PR-2 PAUSED** until cutover — [stage-5](acquisition-stage-5-optimization.md)  
+- **Acquisition UI Cutover** ← **PASS** — [cutover](acquisition-ui-cutover.md) · [C-7](acquisition-ui-cutover-c7-searches-decommission.md) (C-1…C-7 closed 2026-07-27; Stage 5 PR-2 may resume)
+- **FlightAdBinding Ad-ID bind UI** ← **ACTIVE Product Track** (API #161 exists; Marketing UI missing) — [cutover after table](acquisition-ui-cutover.md)
+- **Source Diagnostics** ← **first Product Epic after Ad bind UI** (Operations lifecycle; top-level Marketing **Diagnostics**) — [cutover](acquisition-ui-cutover.md#after-cutover--source-diagnostics-separate-product-epic)
+- **Acquisition Stage 5 / Optimization** ← PR-1 DONE · **PR-2 may resume** after C-7 PASS — [stage-5](acquisition-stage-5-optimization.md)  
 - **Acquisition Stage 6 Analytics** ← future horizon (ADR-024 §14.1); do not open while 5 incomplete  
 - C2.3 stack merge + C2.4 + Epic C Complete Gate — Engineering / later Communication close-out (**C2.4 frozen**)  
 - Meta intake completeness · Sales Stage 3 slice 3–4 — after Flight V1 vertical (3A–3E) as needed; see also 3E deferred D1–D2
@@ -65,7 +65,7 @@
 | **7d** | **C2.4** Scheduling | *(frozen)* | Do not start |
 | **P-3E** | **Acquisition Stage 3E** Activity Timeline | PR #130–#133 ✅ | **DONE** — observability vertical closed; deferred — [3e-deferred](acquisition-stage-3e-deferred.md) |
 | **P-4** | **Acquisition Stage 4** Flight Runtime | — | ✅ **Runtime DONE** (#136 / #148–#151) — [stage-4](acquisition-stage-4-flight-runtime.md) |
-| **P-4b** | **Acquisition UI Cutover** | C-1 ✅ #157 · C-2 ✅ #158 **with constraints** · C-3 ✅ #160 **with constraints** · **C-3.1 ✅** · **C-4 ✅** · **C-5 ✅** · **C-6 ✅** · **C-7 ACTIVE** | **ACTIVE** — [C-7](acquisition-ui-cutover-c7-searches-decommission.md); after PASS: **Ad-ID bind UI** → Diagnostics — [cutover](acquisition-ui-cutover.md) |
+| **P-4b** | **Acquisition UI Cutover** | C-1…C-6 ✅ · **C-7 PASS** (#184 · #185 · inventory) | **PASS** — [C-7](acquisition-ui-cutover-c7-searches-decommission.md); next = **Ad-ID bind UI** → Diagnostics — [cutover](acquisition-ui-cutover.md) |
 | **P-5** | **Acquisition Stage 5** Optimization | paused | **PR-1 DONE** (#153) · **PR-2 PAUSED** until P-4b — [stage-5](acquisition-stage-5-optimization.md) |
 | **8** | **Epic C Complete Gate** | after C2.3 merge + C2.4 (later) | Communication capability closed |
 | **8b** | **Compliance outbound (ADR-031)** | [compliance-outbound-pipeline-early-result](compliance-outbound-pipeline-early-result.md) | Early opaque result + RODO/ops binders; **Engineering track**; no SMTP bypass |
@@ -73,7 +73,7 @@
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
 **C0–C2.2** ✅. **C2.3** implemented (merge opportunistic). **C2.4 frozen.**  
-**Active (Product):** [C-7 Подборы decommission](acquisition-ui-cutover-c7-searches-decommission.md) · [cutover](acquisition-ui-cutover.md) (C-6 Forms DONE; Stage 5 PR-2 paused until C-7 PASS). After C-7 PASS: Ad-ID bind UI → Source Diagnostics.
+**Active (Product):** **FlightAdBinding Ad-ID bind UI** (after [C-7 PASS](acquisition-ui-cutover-c7-searches-decommission.md)). Stage 5 PR-2 may resume. Then Source Diagnostics.
 **Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap. Stage 4 merge (2026-07-23) accepted with known baseline debt — Stage 4 tests/gates green; full suite red outside scope.
 
 ---

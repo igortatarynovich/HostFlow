@@ -1,19 +1,19 @@
 # Acquisition UI Cutover
 
-**Status:** **ACTIVE — Product Track = C-7** (C-6 Form Builder DONE; Stage 5 PR-2 still paused until C-7 PASS)  
+**Status:** **PASS** — Stage 4 product/UI cutover closed (2026-07-27); **Product Track → FlightAdBinding Ad-ID bind UI**  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [acquisition/module-scope.md](../../acquisition/module-scope.md)  
-**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅ · C-5 ✅ · C-6 ✅  
-**C-7 brief:** [acquisition-ui-cutover-c7-searches-decommission.md](acquisition-ui-cutover-c7-searches-decommission.md) · **ACTIVE**  
+**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅ · C-5 ✅ · C-6 ✅ · **C-7 PASS**  
+**C-7 brief:** [acquisition-ui-cutover-c7-searches-decommission.md](acquisition-ui-cutover-c7-searches-decommission.md) · **PASS** (#184 · #185 · inventory)  
 **C-6 brief:** [acquisition-ui-cutover-c6-form-builder.md](acquisition-ui-cutover-c6-form-builder.md) · **DONE**  
 **C-5 brief:** [acquisition-ui-cutover-c5-mapping-workspace.md](acquisition-ui-cutover-c5-mapping-workspace.md) · **DONE**  
 **C-4 brief:** [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md) · **DONE**  
-**Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (paused)  
-**Branch (planned):** `docs/acq-c6-closeout` / `feat/acq-c7-searches-decommission`  
-**Trusted tip at open:** `integration/release-product-a-b` @ C-6 tip (#171)
+**Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (PR-2 may resume)  
+**Shipped tip:** `integration/release-product-a-b` @ #185 + C-7 close-out  
+**Unpause:** Stage 5 PR-2 **may resume**
 
-> Stage 4 **runtime** is DONE. Stage 4 **product/UI cutover** is **NOT DONE**.  
-> Production still looks “old” because navigation and legacy Подборы surfaces were never retired.  
-> Technical entities (Campaign/Flight, IntakeSourceProfile, Meta OAuth, Forms builder, mapping_rules) exist but are **split across screens** — there is no single operator onboarding path.
+> Stage 4 **runtime** is DONE. Stage 4 **product/UI cutover** is **PASS** (C-7).  
+> Operator launch path is Marketing-only: Connect → Source → Test Lead → Mapping → Form → Campaign → Flight → Lead.  
+> Legacy Подборы launch surfaces are retired/read-only; historical `acquisition_v1` JSON kept (inventory documented in C-7 brief §8).
 
 ---
 
@@ -231,7 +231,7 @@ Routing preview after mapping must show concrete outcome (entity type, vacancy/s
 | **C-4** | **Test submission & field discovery** — Meta test lead and/or capture-next; raw payload inspector; detected fields + sample values; masking; replay normalization **without** creating production entities by default — [brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md) | **DONE** — smoke PASS 2026-07-26 |
 | **C-5** | **Mapping workspace** — provider field → standard / domain / custom / answer / ignore; validation; versioning; unmapped-field alerts; routing preview; Mapping Health updates — [brief](acquisition-ui-cutover-c5-mapping-workspace.md) | **DONE** (thin map/ignore + routing preview; see brief constraints) |
 | **C-6** | **Form Builder cutover** — Forms under Marketing (`/app/marketing/forms`…); create/edit/preview/publish; create-form-in-setup; integrate with Campaign Setup — [brief](acquisition-ui-cutover-c6-form-builder.md) | **DONE** (#170 · #171; thin create-in-setup — see brief constraints) |
-| **C-7** | **Recruitment Searches decommission + navigation acceptance** — retire Подборы ad-launch UI (redirect/read-only); unresolved → reconciliation queue; production nav + smoke; close Stage 4 product cutover gate — [brief](acquisition-ui-cutover-c7-searches-decommission.md) | **ACTIVE** (after C-6) |
+| **C-7** | **Recruitment Searches decommission + navigation acceptance** — retire Подборы ad-launch UI (redirect/read-only); unresolved → reconciliation queue; production nav + smoke; close Stage 4 product cutover gate — [brief](acquisition-ui-cutover-c7-searches-decommission.md) | **PASS** (#184 · #185 · inventory 2026-07-27) |
 
 **Ordering rationale**
 
@@ -264,9 +264,9 @@ Early decommission would leave a scenario gap for users who still use legacy sur
 
 **Status:** #158 remains **DONE with constraints**. Acceptance (no **new** launch via `searchAcquisition` create/duplicate) holds and is enforced (API **410**, FE helpers throw, redirects, scan tests).
 
-Locked scope item **5** wording («view + sync + pause/resume/archive **only**») is **softly inaccurate**: Подборы acquisition may still **mutate audience** (`PUT …/acquisition/audience` → `update_acquisition_audience` with **no** `LegacyLaunchDisabledError` gate) and **update_bindings**; FE may still wire a gated `onDuplicate` handler (button off / API 410). These are legacy ops on existing rows — **not** new launch create paths.
+Locked scope item **5** wording («view + sync + pause/resume/archive **only**») was **softly inaccurate** until C-7: audience PUT and `update_bindings` remained writable after C-2 create/duplicate stop.
 
-**Do not** reopen C-2. Retire leftover writable surfaces with **C-7** (or an explicit pre–C-7 cleanup if needed). Until then, read item 5 as: **no new launches**; pause/resume/archive/sync remain; audience/bindings = known legacy write surface.
+**Resolved in C-7 (#185):** audience PUT and `update_bindings` → **410** `legacy_launch_disabled`; FE audience read-only; bindings/duplicate CTAs removed. pause/resume/archive/sync remain for historical rows. **Do not** reopen C-2.
 
 Merge CI exception (full backend-ci baseline → Engineering [#159](https://github.com/igortatarynovich/HostFlow/issues/159)) is unchanged and separate from this product wording constraint.
 
@@ -505,22 +505,23 @@ Minimum epic intent (lock later in its own task doc):
 ## Acceptance (cutover PASS)
 
 - [x] Marketing is a top-level sidebar section (not under Sales) — **C-1**  
-- [x] No new acquisition launch outside Campaign/Flight — **C-2** (#158) · **with constraints** — [note](#c-2-constraint--legacy-ops-beyond-create-stop-2026-07-24) (audience/bindings still writable on legacy rows)  
+- [x] No new acquisition launch outside Campaign/Flight — **C-2** (#158) · leftover audience/bindings writes closed in **C-7** (#185) — [note](#c-2-constraint--legacy-ops-beyond-create-stop-2026-07-24)  
 - [x] Marketing → Sources shows inventory + connection + Mapping Health — **C-3** (#160) · **with constraints** — [errata](#c-3-errata--sources-list-columns-2026-07-24)  
 - [x] Sources list page / provider form / destination columns — **C-3.1** (account/portfolio still deferred)  
 - [x] Operator can obtain a test/sample submission and see detected fields — **C-4** ([brief](acquisition-ui-cutover-c4-test-lead-field-discovery.md)) · smoke PASS 2026-07-26  
 - [x] Per-source mapping workspace + routing preview; unknown fields force review (not silent loss) — **C-5** ([brief](acquisition-ui-cutover-c5-mapping-workspace.md); thin map/ignore UX)  
 - [x] Operator can create/edit/publish a form from Marketing; Setup supports select-existing **and** create-new — **C-6** ([brief](acquisition-ui-cutover-c6-form-builder.md); #171)  
-- [ ] New ad launch cannot start from Подборы; legacy URLs redirect or read-only — **C-7** ([brief](acquisition-ui-cutover-c7-searches-decommission.md))  
-- [ ] Reconciliation inventory: migrated / unresolved counts documented — **C-7**  
-- [ ] Sales / Recruitment / Marketing IA match the tables above — **C-7**  
-- [ ] End-to-end acceptance path (Connect → … → First processed lead) executable without a developer — **C-7**  
-- [ ] Deploy smoke of full production nav — **C-7**  
+- [x] New ad launch cannot start from Подборы; legacy URLs redirect or read-only — **C-7** ([brief](acquisition-ui-cutover-c7-searches-decommission.md); #184)  
+- [x] Reconciliation inventory: migrated / unresolved counts documented — **C-7** (brief §8; 15 vacancies / 1 linked / 14 unresolved; Focus = 0 legacy)  
+- [x] Sales / Recruitment / Marketing IA match the tables above — **C-7**  
+- [x] End-to-end acceptance path (Connect → … → First processed lead) executable without a developer — **C-7** (Focus / Poltrakt)  
+- [x] Deploy smoke of full production Marketing nav — **C-7** (2026-07-27)  
 
 ---
 
 ## History
 
+- 2026-07-27: **C-7 PASS** — #184 nav/redirects · #185 audience/bindings 410 · reconciliation inventory documented · production Marketing nav smoke; Stage 5 PR-2 may resume; Product Track → **Ad-ID bind UI**.
 - 2026-07-27: **Queue lock** — after C-7 PASS: **FlightAdBinding Ad-ID bind UI** (API #161 exists; UI missing), then Source Diagnostics. Not in C-7 scope.
 - 2026-07-26: **Live Intake person feed** — monitor returns `applicants` (name/phone/email/status) from Flight-attributed leads; Marketing UI shows people, not raw Activity JSON.
 - 2026-07-26: **Meta Connect Source routing** — Meta+`ad_id` without Ad bind falls back to Form ∪ Profile Flight (Connect Source); Ad bind still wins; `profile_default` still forbidden.
