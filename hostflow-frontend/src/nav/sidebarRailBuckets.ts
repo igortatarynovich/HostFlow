@@ -12,7 +12,6 @@ export const SIDEBAR_CLIENT_FLAT_ORDER = [
   'overview',
   'work-hub',
   'inbox',
-  'recruitment-searches',
   'candidates',
   'tasks',
   'notification-alerts',
@@ -25,9 +24,8 @@ export const SIDEBAR_AGENCY_WORK_HUB_ORDER = ['work-hub'] as const
 /** Horizontal Communications — not nested under Recruitment or Sales. */
 export const SIDEBAR_AGENCY_INBOX_ORDER = ['inbox'] as const
 
-/** Recruitment owns Applications / Candidates / Searches — not Employees (ADR-023 §2.2). */
+/** Recruitment owns Applications / Candidates — Подборы retired in C-7 (Marketing owns launch). */
 export const SIDEBAR_AGENCY_RECRUITMENT_ORDER = [
-  'recruitment-searches',
   'recruitment-inbox',
   'candidates',
 ] as const

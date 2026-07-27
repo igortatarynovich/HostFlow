@@ -38,8 +38,8 @@ async function vacancyExists(vacancyId: string): Promise<boolean> {
 }
 
 /**
- * After login / `/app` index: land in recruitment workspace when the tenant already runs подборы.
- * Launchpad stays for first-time users without any подбор.
+ * After login / `/app` index: prefer Marketing (Acquisition cutover C-7).
+ * Legacy search workspace deep links remain for historical acquisition read-only.
  */
 export async function resolveRecruitmentWorkspaceEntryHref(canOpenTasks: boolean): Promise<string> {
   const lastId = readLastLaunchSearchId()
@@ -58,15 +58,12 @@ export async function resolveRecruitmentWorkspaceEntryHref(canOpenTasks: boolean
 
     const searches = await listActiveLaunchSearches()
     if (searches.length === 0) {
-      if (status?.steps?.first_vacancy_created) {
-        return CRM_APP_PATHS.recruitmentSearches
-      }
-      return resolveDefaultAppHomeHref(canOpenTasks)
+      return CRM_APP_PATHS.marketing
     }
 
     const targetId = String(searches[0]?.id ?? '').trim()
     if (!targetId) {
-      return resolveDefaultAppHomeHref(canOpenTasks)
+      return CRM_APP_PATHS.marketing
     }
 
     persistLastLaunchSearchId(targetId)

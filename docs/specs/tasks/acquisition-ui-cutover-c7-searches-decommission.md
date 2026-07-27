@@ -1,7 +1,7 @@
 # Acquisition UI Cutover C-7 — Подборы decommission + cutover PASS
 
-**Status:** READY TO IMPLEMENT — **ACTIVE Product Track** (after C-6 Form Builder DONE)  
-**Date:** 2026-07-26  
+**Status:** IMPLEMENTING — **ACTIVE Product Track** (PR-1: nav retire / redirects)  
+**Date:** 2026-07-26 (updated 2026-07-27)  
 **Canon:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) (C-7 row + acceptance gate)  
 **Parents:** ADR-024 · C-2 create-stop (#158) · [C-6 Forms](acquisition-ui-cutover-c6-form-builder.md) · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)  
 **Next:** Cutover PASS → **FlightAdBinding Ad-ID bind UI** (API exists; Marketing UI missing) → Source Diagnostics (first post-cutover Product Epic); Stage 5 PR-2 may resume  
@@ -91,8 +91,8 @@ An operator cannot start a **new ad launch** from Подборы; legacy acquisi
 
 ## 8. Implementation order (suggested PR split)
 
-1. **Docs / brief** (this file) + queue linkage  
-2. **UI retire / redirects** for Подборы launch surfaces  
+1. **Docs / brief** (this file) + queue linkage — ✅  
+2. **UI retire / redirects** for Подборы launch surfaces — **IN PROGRESS** (nav hide + list/new → Marketing)  
 3. **Legacy write gates** (audience/bindings) + reconciliation inventory note  
 4. Close-out + production smoke → cutover PASS  
 

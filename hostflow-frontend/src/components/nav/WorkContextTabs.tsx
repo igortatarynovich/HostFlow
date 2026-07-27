@@ -79,14 +79,6 @@ export default function WorkContextTabs({ businessType = 'agency' }: WorkContext
 
   const tabs = useMemo(() => {
     const out: TabDef[] = []
-    if (can('vacancies.view')) {
-      out.push({
-        key: 'recruitment-searches',
-        to: CRM_APP_PATHS.recruitmentSearches,
-        label: t('app.nav.items.recruitment_searches', { defaultValue: 'Подборы' }),
-        isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.recruitmentSearches),
-      })
-    }
     if (can('leads.view')) {
       out.push({
         key: 'recruitment-inbox',

@@ -14,6 +14,8 @@ export const APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS = [
   'candidates-no-next-action',
   /** Launch-search подборы replace generic vacancy list in daily work. */
   'vacancies',
+  /** C-7: Подборы ad-launch surface retired — Marketing owns Campaign/Flight. Deep links remain. */
+  'recruitment-searches',
   'sla-incidents',
   /** Operator diagnostics — Automations hub / direct URL. */
   'command-audit',
