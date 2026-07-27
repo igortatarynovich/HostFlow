@@ -451,9 +451,12 @@ After that, work is **product evolution**, not migration onto the Campaign/Fligh
 
 | After C-7 | Nature |
 |-----------|--------|
+| **FlightAdBinding Ad-ID bind UI** | Product slice (API already shipped #161) — operator links Meta Ad → Flight for multi-Flight split of one form; **not** required when Connect Source alone routes | 
 | **Source Diagnostics** | First ops epic (top-level Marketing Diagnostics) |
 | Stage 5 Optimization PR-2+ | Improve running Flights |
 | Stage 6 Analytics / automation / AI assistants / campaign recommendations | Exploitation & growth features |
+
+**Queue lock (2026-07-27):** after **C-7 PASS**, next Acquisition product slice = **Ad-ID → Flight bind UI**, then Source Diagnostics. Do not open Ad bind UI during C-7.
 
 Do **not** reopen cutover scope for those — they assume the onboarding path and Marketing IA above already work.
 
@@ -518,6 +521,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-27: **Queue lock** — after C-7 PASS: **FlightAdBinding Ad-ID bind UI** (API #161 exists; UI missing), then Source Diagnostics. Not in C-7 scope.
 - 2026-07-26: **Live Intake person feed** — monitor returns `applicants` (name/phone/email/status) from Flight-attributed leads; Marketing UI shows people, not raw Activity JSON.
 - 2026-07-26: **Meta Connect Source routing** — Meta+`ad_id` without Ad bind falls back to Form ∪ Profile Flight (Connect Source); Ad bind still wins; `profile_default` still forbidden.
 - 2026-07-26: **C-6 DONE** — Marketing Forms IA + create-in-setup (#170 · #171); Product Track → **C-7**; [C-7 brief](acquisition-ui-cutover-c7-searches-decommission.md) opened.
