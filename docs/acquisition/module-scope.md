@@ -86,11 +86,11 @@ Campaign → Audience(s) → Flight → Channels
 5. **Canonical Input Matrix** ✅ **READY** (design) — [`../specs/architecture/intake-canonical-input-matrix.md`](../specs/architecture/intake-canonical-input-matrix.md) · epic [`../specs/tasks/intake-canonical-input-matrix.md`](../specs/tasks/intake-canonical-input-matrix.md) **ACTIVE** — freeze Source profile → Provider → Published form → `route_intent` → handoff → Destination **before** further routing runtime  
 6. **3E** — ✅ **DONE** — Activity Timeline observability — [`../specs/tasks/acquisition-stage-3e-activity-timeline.md`](../specs/tasks/acquisition-stage-3e-activity-timeline.md)  
 7. **Stage 4 runtime** — ✅ **DONE** (#136 / #148–#151) — Flight Runtime — [`../specs/tasks/acquisition-stage-4-flight-runtime.md`](../specs/tasks/acquisition-stage-4-flight-runtime.md)  
-7b. **Stage 4 product/UI cutover** — ❌ **NOT DONE** / **ACTIVE Product Track = C-5** — [`../specs/tasks/acquisition-ui-cutover.md`](../specs/tasks/acquisition-ui-cutover.md) · [`../specs/tasks/acquisition-ui-cutover-c5-mapping-workspace.md`](../specs/tasks/acquisition-ui-cutover-c5-mapping-workspace.md) (C-1 ✅ #157 · C-2 ✅ #158 **with constraints** · C-3 ✅ #160 **with constraints** · **C-3.1 ✅** · **C-4 ✅** smoke PASS · **C-5 Mapping workspace**; C-7 PASS closes cutover → then Diagnostics / Stage 5+ as product evolution)  
-8. **Stage 5** — PR-1 ✅ DONE · PR-2 **PAUSED** until UI cutover — [`../specs/tasks/acquisition-stage-5-optimization.md`](../specs/tasks/acquisition-stage-5-optimization.md)  
+7b. **Stage 4 product/UI cutover** — ✅ **PASS** (2026-07-27) — [`../specs/tasks/acquisition-ui-cutover.md`](../specs/tasks/acquisition-ui-cutover.md) · [`../specs/tasks/acquisition-ui-cutover-c7-searches-decommission.md`](../specs/tasks/acquisition-ui-cutover-c7-searches-decommission.md) (C-1…C-7 closed; #184 · #185 · inventory). Next Product Track = **FlightAdBinding Ad-ID bind UI** → Source Diagnostics / Stage 5+  
+8. **Stage 5** — PR-1 ✅ DONE · PR-2 **may resume** after cutover PASS — [`../specs/tasks/acquisition-stage-5-optimization.md`](../specs/tasks/acquisition-stage-5-optimization.md)  
 9. **Stage 6** — **FUTURE** — Analytics (ADR-024 §14.1 maturity ladder)
 
-**Forms Builder MVP COMPLETE** (P2.1–P2.5) at `/app/settings/lead-forms/:id/builder`. **Not yet** embedded in Marketing flow — cutover **C-6** (after Sources/mapping C-3–C-5). Forms P3 Publish UI **LOCKED**.  
+**Forms Builder MVP COMPLETE** (P2.1–P2.5); Marketing Forms IA cutover **C-6 DONE**. Forms P3 Publish UI **LOCKED**.  
 See [`capability-contract.md`](../specs/architecture/capability-contract.md).
 
 V1 chain + maturity ladder:
