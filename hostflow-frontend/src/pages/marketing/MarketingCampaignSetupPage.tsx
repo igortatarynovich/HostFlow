@@ -105,19 +105,31 @@ export default function MarketingCampaignSetupPage() {
   const stepTitle = useMemo(() => {
     if (step === 1) return 'Название кампании'
     if (step === 2) return 'Тип потока'
-    if (step === 3) return 'Куда направлять заявки'
+    if (step === 3) return 'Клиент и предмет кампании'
     return 'Проверка'
   }, [step])
+
+  const selectedClient = clients.find((c) => c.id === contextClientId)
+
+  const vacanciesForClient = useMemo(() => {
+    if (!contextClientId) return [] as Vacancy[]
+    const primaryCompanyId = String(selectedClient?.primary_company_id || '').trim()
+    if (!primaryCompanyId) return vacancies
+    const matched = vacancies.filter((v) => String(v.company_id || '') === primaryCompanyId)
+    return matched.length ? matched : vacancies
+  }, [contextClientId, selectedClient, vacancies])
 
   const canNext = useMemo(() => {
     if (step === 1) return name.trim().length >= 2 && Boolean(ownCompanyId)
     if (step === 2) return Boolean(flowKind)
-    if (step === 3) return Boolean(targetId && preset)
-    return Boolean(preset && targetId && ownCompanyId && name.trim().length >= 2)
-  }, [step, name, ownCompanyId, flowKind, targetId, preset])
+    if (step === 3) return Boolean(targetId && preset && contextClientId)
+    return Boolean(
+      preset && targetId && ownCompanyId && contextClientId && name.trim().length >= 2,
+    )
+  }, [step, name, ownCompanyId, flowKind, targetId, preset, contextClientId])
 
   async function handleCreate() {
-    if (!preset || !targetId || !ownCompanyId) return
+    if (!preset || !targetId || !ownCompanyId || !contextClientId) return
     setSubmitting(true)
     setError(null)
     try {
@@ -135,17 +147,15 @@ export default function MarketingCampaignSetupPage() {
           role: 'primary',
           sort_order: 0,
         },
-      ]
-      if (contextClientId) {
-        targets.push({
+        {
           target_type: 'client_account',
           target_id: contextClientId,
           // Registry requires an allowed intent for client_account; routing uses Primary only.
           route_intent: 'sales_inquiry',
           role: 'context',
           sort_order: 1,
-        })
-      }
+        },
+      ]
       const campaign = await createCampaign({
         name: name.trim(),
         description: description.trim() || undefined,
@@ -172,7 +182,6 @@ export default function MarketingCampaignSetupPage() {
 
   const selectedVacancy = vacancies.find((v) => v.id === targetId)
   const selectedService = services.find((s) => s.id === targetId)
-  const selectedClient = clients.find((c) => c.id === contextClientId)
   const selectedCompany = companies.find((c) => c.id === ownCompanyId)
 
   return (
@@ -272,76 +281,111 @@ export default function MarketingCampaignSetupPage() {
         {step === 3 && preset ? (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Primary Target задаёт consumer contract и{' '}
-              <code className="text-xs">route_intent</code> для всех источников кампании.
+              Кампания обслуживает <span className="font-medium text-slate-800">клиента</span>. Primary
+              Target — вакансия или услуга/заказ этого клиента; routing и KPI идут через него.
             </p>
-            {preset.target_type === 'vacancy' ? (
-              !vacancies.length ? (
-                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  Нет вакансий.{' '}
-                  <Link to={CRM_APP_PATHS.vacancyNew} className="underline">
-                    Создать вакансию
-                  </Link>
-                </p>
-              ) : (
-                <div className="grid gap-2" role="radiogroup" aria-label="Вакансия">
-                  {vacancies.map((v) => (
-                    <MarketingOptionCard
-                      key={v.id}
-                      selected={targetId === v.id}
-                      onClick={() => setTargetId(v.id)}
-                      testId={`marketing-setup-vacancy-${v.id}`}
-                    >
-                      <span className="font-medium text-slate-900">{v.title || v.id}</span>
-                    </MarketingOptionCard>
-                  ))}
-                </div>
-              )
-            ) : !services.length ? (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                Нет услуг.{' '}
-                <Link to={CRM_APP_PATHS.services} className="underline">
-                  Открыть услуги
-                </Link>
-              </p>
-            ) : (
-              <div className="grid gap-2" role="radiogroup" aria-label="Услуга">
-                {services.map((s) => (
-                  <MarketingOptionCard
-                    key={s.id}
-                    selected={targetId === s.id}
-                    onClick={() => setTargetId(s.id)}
-                    testId={`marketing-setup-service-${s.id}`}
-                  >
-                    <span className="font-medium text-slate-900">{s.name || s.id}</span>
-                  </MarketingOptionCard>
-                ))}
-              </div>
-            )}
 
-            <div className="border-t border-slate-200 pt-4">
+            <div>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-800">
-                  Контекст клиента (необязательно)
-                </span>
+                <span className="mb-1 block font-medium text-slate-800">Клиент (обязательно)</span>
                 <select
                   className="input w-full"
                   value={contextClientId}
-                  onChange={(e) => setContextClientId(e.target.value)}
+                  onChange={(e) => {
+                    setContextClientId(e.target.value)
+                    setTargetId('')
+                  }}
                   data-testid="marketing-setup-context-client"
                 >
-                  <option value="">Без клиентского контекста</option>
+                  <option value="">Выберите клиента</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.display_name}
                     </option>
                   ))}
                 </select>
-                <span className="mt-1 block text-xs text-slate-500">
-                  Сохраняется как CampaignTarget(role=context). Не меняет владельца кампании.
-                </span>
               </label>
+              {!clients.length ? (
+                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  Нет Client Account.{' '}
+                  <Link to={CRM_APP_PATHS.clientNew} className="underline">
+                    Создать клиента
+                  </Link>{' '}
+                  в Sales, затем вернитесь сюда.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-500">
+                  Сохраняется как CampaignTarget(role=context, client_account). Статистика по клиенту —
+                  отсюда.{' '}
+                  <Link to={CRM_APP_PATHS.clientNew} className="underline">
+                    Новый клиент
+                  </Link>
+                </p>
+              )}
             </div>
+
+            {contextClientId ? (
+              <div className="border-t border-slate-200 pt-4 space-y-3">
+                <p className="text-sm font-medium text-slate-800">
+                  Предмет кампании · {preset.destinationLabel}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Primary Target задаёт <code className="text-xs">route_intent</code> для всех
+                  источников кампании.
+                </p>
+                {preset.target_type === 'vacancy' ? (
+                  !vacanciesForClient.length ? (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                      Нет вакансий для этого клиента.{' '}
+                      <Link to={CRM_APP_PATHS.vacancyNew} className="underline">
+                        Создать вакансию
+                      </Link>{' '}
+                      в Recruitment (Вакансии).
+                    </p>
+                  ) : (
+                    <div className="grid gap-2" role="radiogroup" aria-label="Вакансия">
+                      {vacanciesForClient.map((v) => (
+                        <MarketingOptionCard
+                          key={v.id}
+                          selected={targetId === v.id}
+                          onClick={() => setTargetId(v.id)}
+                          testId={`marketing-setup-vacancy-${v.id}`}
+                        >
+                          <span className="font-medium text-slate-900">{v.title || v.id}</span>
+                          {v.company_name ? (
+                            <span className="mt-0.5 block text-xs text-slate-500">{v.company_name}</span>
+                          ) : null}
+                        </MarketingOptionCard>
+                      ))}
+                    </div>
+                  )
+                ) : !services.length ? (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    Нет услуг.{' '}
+                    <Link to={CRM_APP_PATHS.services} className="underline">
+                      Открыть услуги
+                    </Link>
+                  </p>
+                ) : (
+                  <div className="grid gap-2" role="radiogroup" aria-label="Услуга">
+                    {services.map((s) => (
+                      <MarketingOptionCard
+                        key={s.id}
+                        selected={targetId === s.id}
+                        onClick={() => setTargetId(s.id)}
+                        testId={`marketing-setup-service-${s.id}`}
+                      >
+                        <span className="font-medium text-slate-900">{s.name || s.id}</span>
+                      </MarketingOptionCard>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                Сначала выберите клиента — затем вакансию (hiring) или услугу (B2B).
+              </p>
+            )}
           </div>
         ) : null}
 
@@ -365,6 +409,13 @@ export default function MarketingCampaignSetupPage() {
               <div className="font-medium text-slate-900">{preset.label}</div>
             </div>
             <div>
+              <div className="text-xs text-slate-500">Клиент (обслуживаем)</div>
+              <div className="font-medium text-slate-900">
+                {selectedClient?.display_name || contextClientId}
+              </div>
+              <div className="text-xs text-slate-500">CampaignTarget · role=context</div>
+            </div>
+            <div>
               <div className="text-xs text-slate-500">Primary Target · route_intent</div>
               <div className="font-medium text-slate-900">
                 {preset.target_type === 'vacancy'
@@ -373,14 +424,6 @@ export default function MarketingCampaignSetupPage() {
               </div>
               <div className="text-xs text-slate-500">{preset.route_intent}</div>
             </div>
-            {contextClientId ? (
-              <div>
-                <div className="text-xs text-slate-500">Контекст клиента</div>
-                <div className="font-medium text-slate-900">
-                  {selectedClient?.display_name || contextClientId}
-                </div>
-              </div>
-            ) : null}
             <p className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
               Источник заявок (Meta Lead Form / публичная анкета) подключается на странице кампании —
               отдельно от создания цели.

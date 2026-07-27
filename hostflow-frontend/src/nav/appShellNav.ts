@@ -12,9 +12,8 @@ export const APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS = [
   'client-acquisition-channels',
   /** §2.14: primary entry via Candidates + queue param / dashboard. */
   'candidates-no-next-action',
-  /** Launch-search подборы replace generic vacancy list in daily work. */
-  'vacancies',
-  /** C-7: Подборы ad-launch surface retired — Marketing owns Campaign/Flight. Deep links remain. */
+  /** C-7: Подборы ad-launch surface retired — Marketing owns Campaign/Flight. Deep links remain.
+   *  Vacancies return to Recruitment rail (job SoT); do not hide them with Подборы. */
   'recruitment-searches',
   'sla-incidents',
   /** Operator diagnostics — Automations hub / direct URL. */

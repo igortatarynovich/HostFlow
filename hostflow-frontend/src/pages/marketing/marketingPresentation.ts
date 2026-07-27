@@ -18,7 +18,7 @@ export const FLOW_PRESETS: FlowPreset[] = [
   {
     kind: 'candidates',
     label: 'Кандидаты',
-    description: 'Заявки на вакансию → Recruitment',
+    description: 'Клиент → вакансия → заявки в Recruitment',
     goal_type: 'hiring',
     primary_kpi: 'applications',
     target_type: 'vacancy',
@@ -27,8 +27,8 @@ export const FLOW_PRESETS: FlowPreset[] = [
   },
   {
     kind: 'clients',
-    label: 'Клиенты',
-    description: 'Заявки от клиентов → Sales inquiry',
+    label: 'B2B / клиенты',
+    description: 'Клиент → услуга (таргетинг и др.) → Sales inquiry',
     goal_type: 'sales',
     primary_kpi: 'qualified_leads',
     target_type: 'service',
@@ -38,7 +38,7 @@ export const FLOW_PRESETS: FlowPreset[] = [
   {
     kind: 'service',
     label: 'Заявки на услугу',
-    description: 'Запросы на услугу → Service flow',
+    description: 'Клиент → услуга каталога → Service flow',
     goal_type: 'sales',
     primary_kpi: 'revenue',
     target_type: 'service',

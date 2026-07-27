@@ -113,7 +113,7 @@ Field mapping during cutover lives **under Sources** (per-source setup). It is n
 |---------|------|
 | **Marketing** | Campaigns, Forms, Sources, Activity; later **Diagnostics** |
 | **Sales** | Client leads, offers, service sales |
-| **Recruitment** | Candidates, vacancies/pipeline, inbox — **no** ad-launch “Подборы” object (after **C-7**) |
+| **Recruitment** | Candidates, **vacancies**/pipeline, inbox — **no** ad-launch “Подборы” object (after **C-7**); Vacancies returned to Recruitment rail after C-7 (job SoT) |
 | **Settings → Integrations** | Tenant-level **access only**: OAuth, Meta Business, available Pages, ad accounts, webhook health, permissions, reconnect/disconnect |
 
 **Settings answers “can we talk to the provider?”**  
@@ -522,6 +522,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-27: **Vacancies back in Recruitment nav** + Marketing Setup requires Client (context `client_account`) then Vacancy|Service primary — stats by client + subject; Vacancies SoT stays Recruitment (not Marketing).
 - 2026-07-27: **C-7 PASS** — #184 nav/redirects · #185 audience/bindings 410 · reconciliation inventory documented · production Marketing nav smoke; Stage 5 PR-2 may resume; Product Track → **Ad-ID bind UI**.
 - 2026-07-27: **Queue lock** — after C-7 PASS: **FlightAdBinding Ad-ID bind UI** (API #161 exists; UI missing), then Source Diagnostics. Not in C-7 scope.
 - 2026-07-26: **Live Intake person feed** — monitor returns `applicants` (name/phone/email/status) from Flight-attributed leads; Marketing UI shows people, not raw Activity JSON.
