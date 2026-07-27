@@ -751,3 +751,53 @@ async def test_attach_rejects_non_meta_provider(
         json={"provider_ad_id": "123456789", "provider": "tiktok"},
     )
     assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.anyio
+async def test_campaign_get_includes_ad_bindings(
+    client: AsyncClient, manager_headers: dict
+):
+    """Campaign GET serializes Flight.ad_bindings for Marketing bind UI."""
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    oc = await _own_company_id(tenant_id)
+    company_id = await _company_id(tenant_id)
+    async with async_session_maker() as session:
+        vac = Vacancy(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            own_company_id=oc,
+            company_id=company_id,
+            title="Ad list vac",
+            status="open",
+            is_active=True,
+            is_archived=False,
+        )
+        session.add(vac)
+        await session.flush()
+        camp_id, flight_id = await _seed_campaign_flight(
+            tenant_id=tenant_id, own_company_id=oc, vacancy_id=str(vac.id)
+        )
+
+    headers = dict(manager_headers)
+    headers["X-Tenant-Id"] = tenant_id
+    headers["X-Own-Company-Id"] = oc
+    headers["Content-Type"] = "application/json"
+    ad_id = f"1202{uuid4().int % 10**14:014d}"
+    attach = await client.post(
+        f"/api/v1/platform/campaigns/{camp_id}/flights/{flight_id}/ad-bindings",
+        headers=headers,
+        json={"provider_ad_id": ad_id, "provider": "meta"},
+    )
+    assert attach.status_code == 201, attach.text
+    link_id = attach.json()["id"]
+
+    get_resp = await client.get(
+        f"/api/v1/platform/campaigns/{camp_id}",
+        headers=headers,
+    )
+    assert get_resp.status_code == 200, get_resp.text
+    body = get_resp.json()
+    flight = next(f for f in body["flights"] if f["id"] == flight_id)
+    bindings = flight.get("ad_bindings") or []
+    assert any(b["id"] == link_id and b["provider_ad_id"] == ad_id and b["is_active"] for b in bindings)

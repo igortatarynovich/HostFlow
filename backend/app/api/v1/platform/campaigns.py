@@ -247,6 +247,8 @@ class CampaignFlightOut(BaseModel):
     is_current: bool = False
     forms: List[CampaignFormLinkOut] = Field(default_factory=list)
     intake_sources: List[CampaignIntakeSourceLinkOut] = Field(default_factory=list)
+    # Meta Ad ID → Flight overrides (read shape; write via /ad-bindings)
+    ad_bindings: List[AdBindingOut] = Field(default_factory=list)
 
 
 class FlightUpdateIn(BaseModel):
@@ -612,6 +614,18 @@ async def _campaign_out(db: AsyncSession, campaign: Campaign) -> CampaignOut:
                     last_submission_at=src_card.last_submission_at,
                 )
             )
+        ad_bindings_out = [
+            AdBindingOut(
+                id=str(link.id),
+                provider=str(link.provider or "meta"),
+                provider_ad_id=str(link.provider_ad_id or ""),
+                campaign_id=str(campaign.id),
+                flight_id=str(link.campaign_run_id),
+                is_active=bool(link.is_active),
+                reprocess=None,
+            )
+            for link in (f.ad_links or [])
+        ]
         flights_out.append(
             CampaignFlightOut(
                 id=f.id,
@@ -623,6 +637,7 @@ async def _campaign_out(db: AsyncSession, campaign: Campaign) -> CampaignOut:
                 is_current=bool(current and f.id == current),
                 forms=forms_out,
                 intake_sources=sources_out,
+                ad_bindings=ad_bindings_out,
             )
         )
 
