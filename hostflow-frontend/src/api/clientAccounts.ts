@@ -6,6 +6,7 @@ export type ClientAccount = {
   own_company_id?: string | null
   display_name: string
   status: string
+  primary_company_id?: string | null
 }
 
 export type ClientAccountListResponse = {
