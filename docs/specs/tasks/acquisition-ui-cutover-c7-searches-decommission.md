@@ -4,8 +4,8 @@
 **Date:** 2026-07-26  
 **Canon:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) (C-7 row + acceptance gate)  
 **Parents:** ADR-024 · C-2 create-stop (#158) · [C-6 Forms](acquisition-ui-cutover-c6-form-builder.md) · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)  
-**Next:** Cutover PASS → Source Diagnostics (first post-cutover Product Epic); Stage 5 PR-2 may resume  
-**Blocks:** Stage 5 PR-2 remains paused until this gate PASS
+**Next:** Cutover PASS → **FlightAdBinding Ad-ID bind UI** (API exists; Marketing UI missing) → Source Diagnostics (first post-cutover Product Epic); Stage 5 PR-2 may resume  
+**Blocks:** Stage 5 PR-2 remains paused until this gate PASS; Ad bind UI must **not** absorb into C-7
 
 > C-7 closes the **Stage 4 product/UI cutover**: retire Подборы as an advertising launch surface, finish reconciliation inventory, and prove the Marketing onboarding path end-to-end.  
 > **Not** Source Diagnostics ops console. **Not** Stage 5 Optimization. **Not** deleting historical activity JSON before reconciliation is documented.
@@ -69,6 +69,7 @@ An operator cannot start a **new ad launch** from Подборы; legacy acquisi
 ## 6. OUT
 
 - Source Diagnostics epic (post–C-7 Product)  
+- **FlightAdBinding Ad-ID bind UI** (post–C-7 product slice; API already exists)  
 - Stage 5 PR-2 implementation (only **unpause** after PASS)  
 - Stage 6 Analytics  
 - Hard-delete of legacy search acquisition rows without inventory  
