@@ -32,10 +32,29 @@ def lead_normalized_rodo_block(normalized: Optional[Dict[str, Any]]) -> Dict[str
     return raw if isinstance(raw, dict) else {}
 
 
+# Negative delivery outcomes block gates even when ``sent_at`` remains for audit.
+LEAD_RODO_NEGATIVE_STATUSES: frozenset[str] = frozenset(
+    {"failed", "deferred", "undelivered", "pending_channel"}
+)
+
+# Human-facing reason codes written by delivery feedback (mailbox DSN / callbacks).
+LEAD_RODO_REASON_INVALID_RECIPIENT = "invalid_recipient"
+LEAD_RODO_REASON_SPF_REJECTED = "spf_rejected"
+LEAD_RODO_REASON_DEFERRED = "deferred"
+LEAD_RODO_REASON_DELIVERY_FAILED = "delivery_failed"
+
+
 def lead_rodo_satisfied_from_normalized(normalized: Optional[Dict[str, Any]]) -> bool:
-    """Art.14 satisfied at lead when notice was emailed, explicitly waived as satisfied, or marked source-provided."""
+    """Art.14 satisfied when notice was accepted outbound, source-provided, or explicitly satisfied.
+
+    SMTP ``sent`` counts until a delivery problem is recorded (``failed`` / ``deferred`` /
+    ``undelivered``). Temporary deferral also blocks — obligation is not fulfilled until
+    delivery succeeds or source-provided is marked.
+    """
     block = lead_normalized_rodo_block(normalized if isinstance(normalized, dict) else {})
     st = str(block.get("status") or "").strip().lower()
+    if st in LEAD_RODO_NEGATIVE_STATUSES:
+        return False
     if st in ("sent", "satisfied", "source_provided"):
         return True
     return bool(str(block.get("sent_at") or "").strip())
@@ -43,18 +62,21 @@ def lead_rodo_satisfied_from_normalized(normalized: Optional[Dict[str, Any]]) ->
 
 def lead_rodo_notice_status_from_normalized(normalized: Optional[Dict[str, Any]]) -> str:
     """
-    UI / API contract: ``sent`` | ``failed`` | ``pending_channel`` | ``manual_required`` | ``source_provided``.
+    UI / API contract:
+    ``sent`` | ``failed`` | ``deferred`` | ``pending_channel`` | ``manual_required`` | ``source_provided``.
     """
     block = lead_normalized_rodo_block(normalized if isinstance(normalized, dict) else {})
     st = str(block.get("status") or "").strip().lower()
     if st == "source_provided":
         return "source_provided"
-    if st in ("sent", "satisfied") or block.get("sent_at"):
-        return "sent"
-    if st == "failed":
+    if st == "deferred":
+        return "deferred"
+    if st in ("failed", "undelivered"):
         return "failed"
     if st == "pending_channel":
         return "pending_channel"
+    if st in ("sent", "satisfied") or block.get("sent_at"):
+        return "sent"
     return "manual_required"
 
 
@@ -72,6 +94,39 @@ def mark_lead_rodo_failed(lead: Lead, *, reason: str) -> None:
     block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
     block["status"] = "failed"
     block["failure_reason"] = str(reason or "").strip()[:2000]
+    norm["rodo"] = block
+    lead.normalized = norm
+
+
+def mark_lead_rodo_undelivered(
+    lead: Lead,
+    *,
+    reason: str,
+    reason_code: str = LEAD_RODO_REASON_DELIVERY_FAILED,
+    outcome: str = "failed",
+    provider_event_id: str | None = None,
+) -> None:
+    """Record post-accept delivery problem (bounce / deferral). Clears gate satisfaction.
+
+    ``outcome``:
+    - ``deferred`` — temporary (e.g. Gmail «Пока не доставлено»); still blocks conversion
+    - ``failed`` / ``undelivered`` — permanent or operator-visible failure
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    oc = str(outcome or "failed").strip().lower()
+    if oc not in ("deferred", "failed", "undelivered"):
+        oc = "failed"
+    status = "deferred" if oc == "deferred" else "failed"
+    code = str(reason_code or LEAD_RODO_REASON_DELIVERY_FAILED).strip().lower()[:64]
+    norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
+    block["status"] = status
+    block["failure_reason"] = str(reason or "").strip()[:2000]
+    block["failure_reason_code"] = code
+    block["delivery_outcome"] = oc
+    block["undelivered_at"] = now
+    if provider_event_id:
+        block["delivery_feedback_event_id"] = str(provider_event_id).strip()[:255]
     norm["rodo"] = block
     lead.normalized = norm
 
@@ -143,9 +198,15 @@ def lead_rodo_required_block_code(lead: Lead, action: str) -> Optional[str]:
 
 
 def lead_rodo_sent_from_normalized(normalized: Optional[Dict[str, Any]]) -> bool:
-    """True when outbound art.14 email was already sent (blocks duplicate send; ``source_provided`` alone does not)."""
+    """True when outbound art.14 email was already sent (blocks duplicate send; ``source_provided`` alone does not).
+
+    Negative delivery outcomes (``failed`` / ``deferred`` / ``undelivered``) allow retry even if
+    ``sent_at`` is still present for audit.
+    """
     block = lead_normalized_rodo_block(normalized)
     st = str(block.get("status") or "").strip().lower()
+    if st in LEAD_RODO_NEGATIVE_STATUSES:
+        return False
     if st in ("sent", "satisfied"):
         return True
     return bool(str(block.get("sent_at") or "").strip())
@@ -861,11 +922,17 @@ __all__ = [
     "LEAD_RODO_ACTION_PROCESS",
     "LEAD_RODO_ACTION_REQUEST_DOCUMENTS",
     "LEAD_RODO_ACTION_REQUEST_INFO",
+    "LEAD_RODO_NEGATIVE_STATUSES",
+    "LEAD_RODO_REASON_DEFERRED",
+    "LEAD_RODO_REASON_DELIVERY_FAILED",
+    "LEAD_RODO_REASON_INVALID_RECIPIENT",
+    "LEAD_RODO_REASON_SPF_REJECTED",
     "lead_normalized_rodo_block",
     "lead_rodo_notice_status_from_normalized",
     "lead_rodo_required_block_code",
     "mark_lead_rodo_failed",
     "mark_lead_rodo_pending_channel",
+    "mark_lead_rodo_undelivered",
     "lead_rodo_satisfied",
     "lead_rodo_satisfied_from_normalized",
     "lead_rodo_sent_from_normalized",
