@@ -5,6 +5,16 @@ import { CSRF_HEADER, readCsrfToken } from "./csrf";
 
 const API_BASE_STORAGE_KEY = "hf_api_base";
 export const OWN_COMPANY_STORAGE_KEY = "hf_own_company_id";
+export const IMPERSONATION_BACKUP_STORAGE_KEY = "hf:platform-session-backup";
+const TOKEN_STORAGE_KEYS = [
+  "access_token",
+  "token",
+  "accessToken",
+  "auth_token",
+  "jwt",
+  "Authorization",
+] as const;
+const TENANT_STORAGE_KEYS = ["tenant_id", "X-Tenant-Id", "x-tenant-id", "tenant"] as const;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -251,7 +261,7 @@ function sanitizeOwnCompanyId(raw: string | null | undefined): string | null {
 
 export const settings = {
   get(): string {
-    const keys = ["tenant_id", "X-Tenant-Id", "x-tenant-id"];
+    const keys = TENANT_STORAGE_KEYS;
     let value: string | null = null;
     for (const key of keys) {
       const raw = safeStorageGet(key);
@@ -268,11 +278,24 @@ export const settings = {
     }
     return value || DEFAULT_TENANT;
   },
+  /** Stored tenant only — does not fall back to DEFAULT_TENANT. */
+  getStored(): string | null {
+    for (const key of TENANT_STORAGE_KEYS) {
+      const sanitized = sanitizeTenantId(safeStorageGet(key));
+      if (sanitized) return sanitized;
+    }
+    return null;
+  },
   set(value: string) {
     const sanitized = sanitizeTenantId(value) ?? DEFAULT_TENANT;
     safeStorageSet("tenant_id", sanitized);
     safeStorageSet("X-Tenant-Id", sanitized);
     safeStorageSet("x-tenant-id", sanitized);
+  },
+  clear(): void {
+    for (const key of TENANT_STORAGE_KEYS) {
+      safeStorageRemove(key);
+    }
   },
 };
 
@@ -304,21 +327,78 @@ export const ownCompanySettings = {
 // --- helper to attach headers
 let _refreshInFlight: Promise<string | null> | null = null;
 
+export function getStoredAccessToken(): string | null {
+  for (const key of TOKEN_STORAGE_KEYS) {
+    const raw = safeStorageGet(key);
+    if (!raw) continue;
+    const val = raw.replace(/^Bearer\s+/i, "").trim();
+    if (val) return val;
+  }
+  return null;
+}
+
+export type JwtIdentityClaims = {
+  sub?: string;
+  email?: string;
+  tenant_id?: string;
+  role?: string;
+};
+
+export function decodeJwtPayload(token: string): JwtIdentityClaims | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const json = typeof atob === "function" ? atob(padded) : "";
+    if (!json) return null;
+    const payload = JSON.parse(json) as JwtIdentityClaims;
+    return payload && typeof payload === "object" ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Drop every per-origin auth pointer (tokens, tenant header keys, impersonation backup).
+ * Shared Domain cookies must be cleared separately via POST /auth/logout.
+ */
+export function clearLocalAuthState(): void {
+  for (const key of TOKEN_STORAGE_KEYS) {
+    safeStorageRemove(key);
+  }
+  for (const key of TENANT_STORAGE_KEYS) {
+    safeStorageRemove(key);
+  }
+  safeStorageRemove(OWN_COMPANY_STORAGE_KEY);
+  safeStorageRemove(IMPERSONATION_BACKUP_STORAGE_KEY);
+}
+
 async function refreshAccessTokenViaCookie(): Promise<string | null> {
   try {
+    // Never revive a session the user just revoked (logout / wipe bounce).
+    try {
+      if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("hf:session_revoked") === "1") {
+        return null;
+      }
+    } catch {
+      /* ignore */
+    }
     const headers: Record<string, string> = {};
     const csrf = readCsrfToken();
     if (csrf) headers[CSRF_HEADER] = csrf;
-    const { data } = await apiInstance.post("/auth/refresh", {}, { headers });
+    const { data } = await apiInstance.post(
+      "/auth/refresh",
+      {},
+      { headers, __hfSkipBearer: true } as any,
+    );
     const token = typeof data?.access_token === "string" ? data.access_token : null;
     if (token) {
-      safeStorageSet("token", token);
-      safeStorageSet("access_token", token);
+      setToken(token);
     }
     return token;
   } catch {
-    safeStorageRemove("token");
-    safeStorageRemove("access_token");
+    setToken(null);
     return null;
   }
 }
@@ -332,8 +412,7 @@ export async function ensureSharedSessionCookies(): Promise<boolean> {
     const { data } = await apiInstance.post("/auth/session/sync", {});
     const token = typeof data?.access_token === "string" ? data.access_token : null;
     if (token) {
-      safeStorageSet("token", token);
-      safeStorageSet("access_token", token);
+      setToken(token);
     }
     return true;
   } catch {
@@ -341,9 +420,60 @@ export async function ensureSharedSessionCookies(): Promise<boolean> {
   }
 }
 
+/**
+ * If this origin's localStorage Bearer / tenant pointer disagrees with the shared
+ * Domain cookie session, drop stale LS state so cookie identity wins.
+ * Prevents module-host navigation from flipping tenants/accounts.
+ */
+export async function reconcileBearerWithSharedCookie(): Promise<void> {
+  const localToken = getStoredAccessToken();
+  if (!localToken) return;
+
+  try {
+    const { data: cookieWhoami } = await apiInstance.get("/auth/whoami-verify", {
+      __hfSkipBearer: true,
+    } as any);
+    const cookieSub = String(cookieWhoami?.sub || "").trim();
+    const cookieTenant = String(cookieWhoami?.tenant_id || "").trim();
+    const cookieRole = String(cookieWhoami?.role || "").trim().toLowerCase();
+    if (!cookieSub) return;
+
+    const localClaims = decodeJwtPayload(localToken);
+    const localSub = String(localClaims?.sub || "").trim();
+    const localTenant = String(localClaims?.tenant_id || "").trim();
+    const identityMismatch = Boolean(localSub && localSub !== cookieSub);
+    const jwtTenantMismatch = Boolean(
+      localTenant && cookieTenant && localTenant !== cookieTenant,
+    );
+
+    if (identityMismatch || jwtTenantMismatch) {
+      // Stale per-origin Bearer (or re-login into another membership tenant).
+      setToken(null);
+      settings.clear();
+      const synced = await ensureSharedSessionCookies();
+      if (!synced) {
+        setToken(null);
+      }
+      return;
+    }
+
+    // Same user/session: non-superadmin must not keep a stale X-Tenant-Id override.
+    const isSuperadmin = cookieRole === "superadmin" || cookieRole === "super_admin";
+    if (!isSuperadmin && cookieTenant) {
+      const stored = settings.getStored();
+      if (stored && stored !== cookieTenant) {
+        settings.set(cookieTenant);
+      }
+    }
+  } catch {
+    // No usable shared cookie — keep local Bearer (shell / single-origin).
+  }
+}
+
 function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: string) {
   inst.interceptors.request.use((config) => {
     const tid = tenantId ?? settings.get();
+    const skipBearer = Boolean((config as { __hfSkipBearer?: boolean }).__hfSkipBearer);
 
     // ensure default headers
     if (!config.headers) config.headers = new AxiosHeaders();
@@ -374,16 +504,20 @@ function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: st
       if (ownId) (config.headers as any)["X-Own-Company-Id"] = ownId;
     }
 
-    const token =
-      safeStorageGet("access_token") ||
-      safeStorageGet("accessToken") ||
-      safeStorageGet("token") ||
-      null;
-    if (token) {
+    if (skipBearer) {
       if (config.headers instanceof AxiosHeaders) {
-        config.headers.set("Authorization", `Bearer ${token}`);
+        config.headers.delete("Authorization");
       } else {
-        (config.headers as any).Authorization = `Bearer ${token}`;
+        delete (config.headers as any).Authorization;
+      }
+    } else {
+      const token = getStoredAccessToken();
+      if (token) {
+        if (config.headers instanceof AxiosHeaders) {
+          config.headers.set("Authorization", `Bearer ${token}`);
+        } else {
+          (config.headers as any).Authorization = `Bearer ${token}`;
+        }
       }
     }
 
@@ -449,8 +583,9 @@ export function setToken(token: string | null) {
     safeStorageSet("token", token);
     safeStorageSet("access_token", token);
   } else {
-    safeStorageRemove("token");
-    safeStorageRemove("access_token");
+    for (const key of TOKEN_STORAGE_KEYS) {
+      safeStorageRemove(key);
+    }
   }
 }
 

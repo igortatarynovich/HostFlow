@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormE
 import { useNavigate } from 'react-router-dom'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { Modal } from '../../components/Modal'
-import { settings as tenantSettings, setToken } from '../../api/client'
+import { settings as tenantSettings, setToken, ensureSharedSessionCookies } from '../../api/client'
 import {
   changePlatformTenantStatus,
   createPlatformTenant,
@@ -506,6 +506,8 @@ export default function TenantsPage() {
       beginImpersonation()
       setToken(token.token)
       tenantSettings.set(selected.id)
+      // Keep Domain=.hostflow.cc cookies aligned with the impersonation Bearer.
+      await ensureSharedSessionCookies()
       await refreshSession()
       window.location.assign(CRM_APP_PATHS.overview)
     } catch (err) {

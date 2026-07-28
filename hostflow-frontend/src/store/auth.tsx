@@ -1,15 +1,29 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react'
 import { useLocation } from 'react-router-dom'
 import { invalidateBillingSubscriptionCache } from '../api/billingSubscriptionCache'
 import { invalidateBillingQuotaHeadroomCache } from '../api/billingQuotaHeadroomCache'
-import { api, ensureSharedSessionCookies, setToken, settings as tenantSettings } from '../api/client'
+import {
+  api,
+  clearLocalAuthState,
+  ensureSharedSessionCookies,
+  IMPERSONATION_BACKUP_STORAGE_KEY,
+  reconcileBearerWithSharedCookie,
+  setToken,
+  settings as tenantSettings,
+} from '../api/client'
 import { getUserMe } from '../api/users'
 import type { UserPreferences, UserSecuritySummary, WhoAmI } from '../api/types'
 import { bindUserContext } from '../lib/observability'
 import { useI18n, type LocaleCode } from '../i18n'
+import {
+  clearSessionRevoked,
+  isSessionRevoked,
+  markSessionRevoked,
+  startCrossOriginLogoutBounce,
+} from '../platform/sessionLogout'
 import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
 
-const IMPERSONATION_BACKUP_KEY = 'hf:platform-session-backup'
+const IMPERSONATION_BACKUP_KEY = IMPERSONATION_BACKUP_STORAGE_KEY
 export const LOGIN_NOTICE_STORAGE_KEY = 'hf:last-login-notice'
 export type LoginNotice = 'expired' | 'invite_accepted' | 'password_reset_success'
 
@@ -57,6 +71,8 @@ const extractStatus = (error: unknown): number | undefined => {
 }
 
 const isPublicAuthPath = (path: string): boolean =>
+  path === '/login' ||
+  path.startsWith('/login/') ||
   path.startsWith('/public') ||
   path.startsWith('/signup') ||
   path.startsWith('/forgot-password') ||
@@ -98,6 +114,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return false
     }
   })
+  const logoutInFlightRef = useRef(false)
 
   const applyTheme = useCallback((theme?: string | null) => {
     const root = document.documentElement
@@ -114,14 +131,28 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setLoading(false)
       return
     }
+    // Explicit logout / wipe bounce must not be rehydrated from leftover cookies.
+    if (!opts?.force && (logoutInFlightRef.current || isSessionRevoked())) {
+      setLoading(false)
+      setMe(null)
+      return
+    }
     setLoading(true)
     try {
+      // Prefer shared Domain cookie over a stale per-origin Bearer (module-host split-brain).
+      await reconcileBearerWithSharedCookie()
+
       // whoami first: on module hosts localStorage (X-Tenant-Id) is empty — seed tenant
       // from JWT before /users/me, otherwise the API falls back to the demo tenant → 403 → logout loop.
       const { data: whoami } = await api.get('/auth/whoami-verify')
       const whoamiTenant = String(whoami?.tenant_id || '').trim()
       if (whoamiTenant) {
-        tenantSettings.set(whoamiTenant)
+        const isPlatformSuperadmin = isPlatformSuperadminRole(whoami?.role)
+        const storedTenantId = String(tenantSettings.getStored() || '').trim()
+        // Superadmin may keep an explicit workspace override; everyone else follows JWT tenant.
+        if (!(isPlatformSuperadmin && storedTenantId && storedTenantId !== whoamiTenant)) {
+          tenantSettings.set(whoamiTenant)
+        }
       }
 
       // Shell-only localStorage / host-only cookies cannot authenticate module hosts.
@@ -205,7 +236,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       console.warn('[Auth] refresh failed', err)
       if (status === 401) {
         rememberLoginNotice('expired')
-        setToken(null)
+        clearLocalAuthState()
         setMe(null)
         setPreferences(null)
         setSecurity(null)
@@ -224,6 +255,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const login = useCallback(async (email: string, password: string) => {
     try {
+      clearSessionRevoked()
+      logoutInFlightRef.current = false
+      // New login must not inherit another account's tenant / Bearer leftovers.
+      clearLocalAuthState()
       const { data } = await api.post('/auth/login', { email, password })
       setToken(data.access_token)
       if (data.session_id) {
@@ -236,34 +271,34 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await refresh({ force: true }) // обновит me в общем контексте даже на /signup
       clearLoginNotice()
     } catch (err) {
-      setToken(null)
+      clearLocalAuthState()
       throw err
     }
   }, [refresh])
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    if (logoutInFlightRef.current) return
+    logoutInFlightRef.current = true
+    markSessionRevoked()
     invalidateBillingSubscriptionCache()
     invalidateBillingQuotaHeadroomCache()
-    const finish = () => {
-      setToken(null)
-      setMe(null)
-      setPreferences(null)
-      setSecurity(null)
-      setSessionId(null)
-      applyTheme('system')
-      clearLoginNotice()
-      if (typeof window !== 'undefined') {
-        try {
-          window.localStorage.removeItem(IMPERSONATION_BACKUP_KEY)
-        } catch {}
-      }
-      setCanReturnToPlatform(false)
+    setMe(null)
+    setPreferences(null)
+    setSecurity(null)
+    setSessionId(null)
+    setCanReturnToPlatform(false)
+    applyTheme('system')
+    clearLoginNotice()
+    try {
+      // Stage 6B: revoke refresh + clear Domain=.hostflow.cc cookies.
+      await api.post('/auth/logout')
+    } catch {
+      /* still wipe client state */
     }
-    // Stage 6B: clear shared cookies on all *.hostflow.cc hosts.
-    void api
-      .post('/auth/logout')
-      .catch(() => undefined)
-      .finally(finish)
+    clearLocalAuthState()
+    if (typeof window !== 'undefined') {
+      window.location.replace(startCrossOriginLogoutBounce())
+    }
   }, [applyTheme])
 
   const beginImpersonation = useCallback(() => {
@@ -298,7 +333,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
       window.localStorage.removeItem(IMPERSONATION_BACKUP_KEY)
       setCanReturnToPlatform(false)
-      await refresh()
+      try {
+        await ensureSharedSessionCookies()
+      } catch {
+        /* cookie sync best-effort */
+      }
+      await refresh({ force: true })
     } catch (err) {
       console.warn('[Auth] restore platform session failed', err)
     }
@@ -307,6 +347,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     const path = location.pathname || ''
     if (isPublicAuthPath(path)) {
+      setLoading(false)
+      return
+    }
+    if (logoutInFlightRef.current || isSessionRevoked()) {
       setLoading(false)
       return
     }

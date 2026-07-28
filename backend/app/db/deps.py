@@ -250,6 +250,13 @@ async def get_db_with_tenant(
                 {"access_kind", "jwt_tenant_id", "elevated_reason", "elevated_scope"}
             ),
         )
+    elif user is not None and getattr(user, "sub", None):
+        # P0 fail-closed: X-Tenant-Id must match JWT tenant or user_memberships.
+        # Classifier leaves mismatches as tenant_bound; never bind RLS to a foreign
+        # tenant without proving membership (security-ssot §3).
+        from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
+
+        await ensure_user_can_access_tenant(db, user, header_str)
 
     db.info["security_access_kind"] = access_kind.value
     db.info["security_elevated_reason"] = eff_reason
