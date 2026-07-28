@@ -44,6 +44,13 @@ Key fields: `sales_order_id`, `sales_order_line_id`, `trigger_code`, `amount`, `
 - `GET /api/v1/sales-order-lines?company_id=&unlinked=true`
 - `GET/POST /api/v1/sales-billable-items` (create stub / list)
 
+## SPA (V1)
+
+- List / create / detail: `/app/sales/orders` (`CRM_APP_PATHS.salesOrders`)
+- **Not** Services-module `/app/orders` (additional-services fulfillment)
+
+Operator flow: create Service Order (deal snapshot) → add Order Lines → open Vacancy create and bind a free line.
+
 ## Forbidden
 
 See ADR-032 §2.8.
