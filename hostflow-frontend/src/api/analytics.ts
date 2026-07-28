@@ -395,10 +395,14 @@ export async function getContactAttemptStats(params?: {
 export async function getDocumentStats(params?: {
   from?: string
   to?: string
+  companyId?: string
+  vacancyId?: string
 }): Promise<DocumentStatsResponse> {
   const q: Record<string, string> = {}
   if (params?.from) q.from = params.from
   if (params?.to) q.to = params.to
+  if (params?.companyId) q.company_id = params.companyId
+  if (params?.vacancyId) q.vacancy_id = params.vacancyId
   const { data } = await api.get<DocumentStatsResponse>('/analytics/document-stats', {
     params: Object.keys(q).length ? q : undefined,
   })

@@ -2023,6 +2023,16 @@ async def document_stats(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     date_from: Optional[str] = Query(None, alias="from"),
     date_to: Optional[str] = Query(None, alias="to"),
+    company_id: Optional[str] = Query(
+        None,
+        alias="company_id",
+        description="Optional client/company filter (Candidate.company_id).",
+    ),
+    vacancy_id: Optional[str] = Query(
+        None,
+        alias="vacancy_id",
+        description="Optional vacancy filter (Candidate.vacancy_id).",
+    ),
 ):
     """Aggregate document stats for candidates in tenant (filter by candidate created_at)."""
     db, tenant_id = db_tenant
@@ -2032,6 +2042,8 @@ async def document_stats(
     scope_clause = repo_scope_clause(tenant_id_str, visibility, is_client_tenant=is_client)
     dfrom = _parse_dt(date_from)
     dto = _parse_dt(date_to, end_of_day=True)
+    company_filter = str(company_id).strip() if company_id else ""
+    vacancy_filter = str(vacancy_id).strip() if vacancy_id else ""
 
     cand_subq = (
         select(Candidate.id)
@@ -2041,6 +2053,10 @@ async def document_stats(
         cand_subq = cand_subq.where(Candidate.created_at >= dfrom)
     if dto:
         cand_subq = cand_subq.where(Candidate.created_at <= dto)
+    if company_filter:
+        cand_subq = cand_subq.where(Candidate.company_id == company_filter)
+    if vacancy_filter:
+        cand_subq = cand_subq.where(Candidate.vacancy_id == vacancy_filter)
 
     docs_stmt = (
         select(Document.status, Document.kind, Document.candidate_id)

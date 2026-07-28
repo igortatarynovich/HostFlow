@@ -3860,8 +3860,8 @@
       }
     },
     "dashboard": {
-      "title": "Analityka",
-      "page_subtitle": "Odpowiedzi na pytania biznesowe: gdzie tracimy ludzi, co hamuje, które źródła się zwracają, co zrobić dziś. Filtry działają na całość; presety zapisują się na tym urządzeniu.",
+      "title": "Efektywność pracy",
+      "page_subtitle": "Etapy, odrzucenia i dokumenty. Filtry: klient, okres, wakat.",
       "sections": {
         "shortcuts": {
           "title": "Szybkie linki",
@@ -4419,6 +4419,54 @@
         "validation_title": "Walidacja kohorty shadow",
         "validation_samples": "Próbki kohorty",
         "validation_rate": "Wskaźnik przejścia etapu"
+      },
+      "efficiency": {
+        "title": "Efektywność pracy",
+        "subtitle": "Etapy pipeline, powody odrzuceń i status dokumentów. Filtry: klient, okres, wakat.",
+        "empty": "Brak danych dla wybranego wycinka.",
+        "insight": "{closedPct} kandydatów jest już zamkniętych (odrzucony / zrezygnował). We wczesnych etapach — {early}, w dokumentach — {docs}.",
+        "filters": {
+          "client": "Klient",
+          "all_clients": "Wszyscy klienci"
+        },
+        "stats": {
+          "total": "Wszyscy kandydaci",
+          "in_progress": "W toku",
+          "closed": "Zamknięte (reject + decline)",
+          "docs_pipeline": "Dokumenty: wait + got"
+        },
+        "stages": {
+          "title": "Rozkład etapów",
+          "subtitle": "Bieżący etap kandydata w wybranym wycinku.",
+          "col_stage": "Etap",
+          "col_count": "Liczba",
+          "col_share": "Udział",
+          "terminal": "finał"
+        },
+        "reasons": {
+          "rejected_title": "Odrzucony przez firmę ({count})",
+          "declined_title": "Zrezygnował kandydat ({count})",
+          "hint": "Suma powodów może być większa niż liczba kandydatów — część ma kilka kodów.",
+          "empty": "Brak powodów w tym wycinku."
+        },
+        "docs": {
+          "title": "Dokumenty",
+          "subtitle": "Etapy docs_wait / docs_got oraz statusy wgranych plików.",
+          "wait": "Czekamy na dokumenty",
+          "got": "Dokumenty otrzymane",
+          "complete": "Pełny pakiet",
+          "col_status": "Status pliku",
+          "col_count": "Liczba",
+          "files_total": "Plików łącznie: {count}",
+          "empty_files": "Brak plików dokumentów w wycinku."
+        },
+        "charts": {
+          "outcomes_title": "Struktura wyników",
+          "outcomes_hint": "Odrzucony przez firmę · zrezygnował kandydat · w toku",
+          "outcome_rejected": "Odrzucony",
+          "outcome_declined": "Zrezygnował",
+          "outcome_in_progress": "W toku"
+        }
       }
     },
     "candidate_card": {

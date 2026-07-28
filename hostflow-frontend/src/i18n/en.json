@@ -4454,8 +4454,8 @@
       }
     },
     "dashboard": {
-      "title": "Insights",
-      "page_subtitle": "Answer business questions: where you lose people, what is slow, which sources pay off, and what to fix today. Filters apply to every block; presets are saved on this device.",
+      "title": "Work efficiency",
+      "page_subtitle": "Stages, rejections, and documents. Filters: client, period, vacancy.",
       "sections": {
         "shortcuts": {
           "title": "Quick links",
@@ -5013,6 +5013,54 @@
         "validation_title": "Shadow cohort validation",
         "validation_samples": "Cohort samples",
         "validation_rate": "Stage forward rate"
+      },
+      "efficiency": {
+        "title": "Work efficiency",
+        "subtitle": "Pipeline stages, rejection reasons, and document status. Filters: client, period, vacancy.",
+        "empty": "No data for the selected slice.",
+        "insight": "{closedPct} of candidates are already closed (rejected / declined). Early stages — {early}, documents — {docs}.",
+        "filters": {
+          "client": "Client",
+          "all_clients": "All clients"
+        },
+        "stats": {
+          "total": "Total candidates",
+          "in_progress": "In progress",
+          "closed": "Closed (reject + decline)",
+          "docs_pipeline": "Documents: wait + got"
+        },
+        "stages": {
+          "title": "Stage distribution",
+          "subtitle": "Current candidate stage in the selected slice.",
+          "col_stage": "Stage",
+          "col_count": "Count",
+          "col_share": "Share",
+          "terminal": "final"
+        },
+        "reasons": {
+          "rejected_title": "Rejected by company ({count})",
+          "declined_title": "Declined by candidate ({count})",
+          "hint": "Reason totals may exceed candidate counts when multiple codes apply.",
+          "empty": "No reasons in this slice."
+        },
+        "docs": {
+          "title": "Documents",
+          "subtitle": "Operational docs_wait / docs_got stages and uploaded file statuses.",
+          "wait": "Waiting for documents",
+          "got": "Documents received",
+          "complete": "Complete package",
+          "col_status": "File status",
+          "col_count": "Count",
+          "files_total": "Total files: {count}",
+          "empty_files": "No document files in this slice."
+        },
+        "charts": {
+          "outcomes_title": "Outcome mix",
+          "outcomes_hint": "Rejected by company · declined by candidate · still in progress",
+          "outcome_rejected": "Rejected",
+          "outcome_declined": "Declined",
+          "outcome_in_progress": "In progress"
+        }
       }
     },
     "candidate_card": {
