@@ -44,6 +44,18 @@ Key fields: `sales_order_id`, `sales_order_line_id`, `trigger_code`, `amount`, `
 - `GET /api/v1/sales-order-lines?company_id=&unlinked=true`
 - `GET/POST /api/v1/sales-billable-items` (create stub / list)
 
+## Auto accrual (V1)
+
+Delivery facade: `backend.app.modules.sales_orders.contracts`.
+
+| Trigger on Order Line | Event | Hook |
+|----------------------|-------|------|
+| `candidate_hired` | Candidate stage → `hired` / `employed` | `notify_candidate_hired` from candidates PATCH / bulk stage |
+| `headcount_completed` | Same hire path; when hired count on vacancy ≥ `quantity_needed` | one billable, source = line |
+| `candidate_started_work` | Employee `onboarding` → `active` | `notify_candidate_started_work` from HR review approve |
+
+Idempotent on `(line, trigger, source_entity_type, source_entity_id)` among non-`void`. Amount = `unit_rate` (× qty for headcount). Freeform vacancies (no `order_line_id`) skipped. Not wired: guarantee / milestone / monthly.
+
 ## SPA (V1)
 
 - List / create / detail: `/app/sales/orders` (`CRM_APP_PATHS.salesOrders`)

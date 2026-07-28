@@ -1576,6 +1576,24 @@ async def update_candidate_full(
                     candidate_id,
                 )
 
+            # ADR-032: Sales billable accrual (hired / headcount) — never breaks PATCH.
+            try:
+                from backend.app.modules.sales_orders.contracts import notify_candidate_hired
+
+                await notify_candidate_hired(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate_id=str(candidate_id),
+                    vacancy_id=vacancy_after,
+                    stage_code=stage_after,
+                )
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "sales notify_candidate_hired failed tenant=%s candidate=%s",
+                    tenant_id,
+                    candidate_id,
+                )
+
             try:
                 from backend.app.services import uos_auto_activities
 
@@ -1960,6 +1978,23 @@ async def bulk_update_stage(
                 old_stage=getattr(c, "stage", None),
                 new_stage=normalized,
             )
+
+            try:
+                from backend.app.modules.sales_orders.contracts import notify_candidate_hired
+
+                await notify_candidate_hired(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate_id=str(cid),
+                    vacancy_id=str(getattr(c, "vacancy_id", None) or "").strip() or None,
+                    stage_code=normalized,
+                )
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "sales notify_candidate_hired bulk failed tenant=%s candidate=%s",
+                    tenant_id,
+                    cid,
+                )
 
             try:
                 from backend.app.services import uos_auto_activities
