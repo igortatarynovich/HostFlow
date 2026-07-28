@@ -75,6 +75,8 @@ Campaign → Audience(s) → Flight → Channels
 
 Две кампании с Goal Type = Hiring могут отличаться Primary KPI: Cost per Hire vs Hires.
 
+**Fulfillment chain (ADR-032):** Flight — **исполнитель** Vacancy; Vacancy исполняет Sales **Order Line**; коммерция и billable — Sales/Finance (`sales_orders` / lines / `sales_billable_items`). Запрещено держать цену / billable qty на Campaign/Flight.
+
 ## Delivery
 
 После **production cutover**:

@@ -220,6 +220,11 @@ export function buildVacancyPayload(
     }
   }
 
+  if (typeof form.order_line_id !== 'undefined') {
+    const oid = String(form.order_line_id || '').trim()
+    payload.order_line_id = oid || (_mode === 'create' ? undefined : null)
+  }
+
   const extraObject: Record<string, any> = {
     salary: {
       from: hasFrom ? (Number.isFinite(numFrom!) ? numFrom : form.salary_from) : undefined,

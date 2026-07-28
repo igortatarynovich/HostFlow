@@ -13,6 +13,7 @@ import { useI18n } from '../../i18n'
 import type { LocaleCode } from '../../i18n'
 import { EMPLOYMENT_TYPES, VACANCY_STATUSES, createVacancy, getVacancy, normalizeVacancyStatus, updateVacancy } from '../../api/vacancies'
 import type { EmploymentType, VacancyStatus } from '../../api/vacancies'
+import { listSalesOrderLines, type SalesOrderLine } from '../../api/salesOrders'
 import { listCandidateProfiles, type CandidateProfile } from '../../api/candidate_profiles'
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -71,6 +72,7 @@ const vacancyFormSchema = z.object({
   /** Vacancy.extra.lead_fit_evaluation_enabled_v1 — apply lead_criteria_v1 vs incoming leads */
   lead_fit_evaluation_enabled: z.boolean().optional().default(false),
   headcount_target: z.string().optional().or(z.literal('')),
+  order_line_id: z.string().optional().or(z.literal('')),
 })
 
 type VacancyFormValues = z.infer<typeof vacancyFormSchema>
@@ -201,6 +203,7 @@ function toFormDefaults(source: any | null): VacancyFormValues {
       source?.headcount_target != null && Number(source.headcount_target) > 0
         ? String(source.headcount_target)
         : '',
+    order_line_id: source?.order_line_id ? String(source.order_line_id) : '',
   }
 }
 
@@ -307,6 +310,8 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   const [candidateProfiles, setCandidateProfiles] = useState<CandidateProfile[]>([])
   const [requirementsPresets, setRequirementsPresets] = useState<VacancyRequirementsPreset[]>([])
   const [selectedPresetId, setSelectedPresetId] = useState<string>('')
+  const [orderLines, setOrderLines] = useState<SalesOrderLine[]>([])
+  const isCreate = !item && routeId === 'new'
 
   const {
     control,
@@ -325,6 +330,39 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   const watchIsOpen = watch('is_open')
   const watchCompanyId = watch('company_id')
   const watchTitle = watch('title')
+  const watchOrderLineId = watch('order_line_id')
+
+  useEffect(() => {
+    if (!isCreate || !watchCompanyId) {
+      setOrderLines([])
+      return
+    }
+    let cancelled = false
+    void listSalesOrderLines({
+      company_id: watchCompanyId,
+      unlinked: true,
+      status: 'open',
+      limit: 100,
+    })
+      .then((rows) => {
+        if (!cancelled) setOrderLines(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setOrderLines([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isCreate, watchCompanyId])
+
+  useEffect(() => {
+    if (!isCreate || !watchOrderLineId) return
+    const line = orderLines.find((l) => l.id === watchOrderLineId)
+    if (!line) return
+    setValue('headcount_target', String(line.quantity_needed))
+    if (!watchTitle) setValue('title', line.title)
+    if (line.location) setValue('location', line.location)
+  }, [isCreate, watchOrderLineId, orderLines, setValue, watchTitle])
 
   useEffect(() => {
     resetForm(toFormDefaults(model))
@@ -640,23 +678,52 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
           )
         case 'company_id':
           return (
-            <label key="company_id" className="block">
-              <div className="label">
-                {vacancyFieldLabel('company_id', 'Компания', effectiveLayout)}
-                {requiredMark ? <span className="text-rose-600"> *</span> : null}
-              </div>
-              <select className="input" {...register('company_id')}>
-                <option value="">— выберите компанию —</option>
-                {companyOptions.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              {errors.company_id && (
-                <p className="text-sm text-rose-600 mt-1">{errors.company_id.message}</p>
-              )}
-            </label>
+            <div key="company_id" className="space-y-3">
+              <label className="block">
+                <div className="label">
+                  {vacancyFieldLabel('company_id', 'Компания', effectiveLayout)}
+                  {requiredMark ? <span className="text-rose-600"> *</span> : null}
+                </div>
+                <select className="input" {...register('company_id')}>
+                  <option value="">— выберите компанию —</option>
+                  {companyOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.company_id && (
+                  <p className="text-sm text-rose-600 mt-1">{errors.company_id.message}</p>
+                )}
+              </label>
+              {isCreate ? (
+                <label className="block">
+                  <div className="label">Order Line (заказ клиента, необязательно)</div>
+                  <select
+                    className="input"
+                    {...register('order_line_id')}
+                    data-testid="vacancy-order-line"
+                  >
+                    <option value="">— свободная вакансия (без заказа) —</option>
+                    {orderLines.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.title} · qty {l.quantity_needed}
+                        {l.location ? ` · ${l.location}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-slate-500">
+                    При выборе линии headcount/роль тянутся из Sales Order Line (ADR-032). Две
+                    вакансии на одну линию нельзя.
+                  </p>
+                </label>
+              ) : model?.order_line_id ? (
+                <p className="text-xs text-slate-500">
+                  Привязана к Order Line <code>{String(model.order_line_id).slice(0, 8)}…</code> —
+                  headcount из линии заказа.
+                </p>
+              ) : null}
+            </div>
           )
         case 'headcount_target':
           return (

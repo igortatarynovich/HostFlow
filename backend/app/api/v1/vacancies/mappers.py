@@ -61,4 +61,5 @@ def vacancy_to_out(v: Vacancy, *, company_name: Optional[str] = None,
         candidate_count=candidate_count or 0,
         last_candidate_activity_at=last_candidate_activity_at,
         headcount_target=getattr(v, "headcount_target", None),
+        order_line_id=getattr(v, "order_line_id", None),
     )

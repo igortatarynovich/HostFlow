@@ -168,7 +168,18 @@ class Vacancy(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String, nullable=False, default="open")
 
     # Planned number of positions to fill (recruitment container target); optional.
+    # When ``order_line_id`` is set, MUST mirror SalesOrderLine.quantity_needed (ADR-032).
     headcount_target: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Sales Order Line (1:1). Null = freeform vacancy.
+    order_line_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("sales_order_lines.id", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+        index=True,
+        comment="ADR-032: Vacancy executes exactly one Order Line when set",
+    )
 
     # free-form JSON stored as string for now
     extra: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
