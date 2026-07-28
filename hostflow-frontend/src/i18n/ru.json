@@ -4538,7 +4538,8 @@
       "labels": {
         "no_reason": "Без причины",
         "no_title": "Без названия",
-        "no_subgroup": "Без подгруппы"
+        "no_subgroup": "Без подгруппы",
+        "untitled": "Без названия"
       },
       "filters": {
         "title": "Фильтры",
@@ -4979,7 +4980,21 @@
           "col_status": "Статус файла",
           "col_count": "Кол-во",
           "files_total": "Всего файлов: {count}",
-          "empty_files": "Файлов документов в срезе нет."
+          "empty_files": "Файлов документов в срезе нет.",
+          "statuses": {
+            "approved": "Одобрен",
+            "received": "Получен",
+            "submitted": "На проверке",
+            "requested": "Запрошен",
+            "rejected": "Отклонён",
+            "verified": "Проверен",
+            "overdue": "Просрочен",
+            "expired": "Истёк",
+            "missing": "Отсутствует",
+            "uploaded": "Загружен",
+            "completed": "Завершён",
+            "delivered": "Доставлен"
+          }
         },
         "charts": {
           "outcomes_title": "Структура исходов",

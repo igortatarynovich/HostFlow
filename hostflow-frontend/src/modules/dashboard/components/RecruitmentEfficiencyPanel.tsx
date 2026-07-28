@@ -96,6 +96,44 @@ export interface RecruitmentEfficiencyPanelProps {
   loading: boolean
 }
 
+function translateStageLabel(t: TranslateFn, key: string, fallback?: string): string {
+  return t(`app.candidates.stage_labels.${key}`, { defaultValue: fallback || key })
+}
+
+function translateReasonLabel(t: TranslateFn, key: string, fallback?: string): string {
+  if (key === 'no_reason' || key === 'Без причины') {
+    return t('app.dashboard.labels.no_reason', { defaultValue: fallback || key })
+  }
+  return t(`app.dashboard.reason_codes.${key}`, { defaultValue: fallback || key })
+}
+
+function translateDocStatus(t: TranslateFn, status: string): string {
+  return t(`app.dashboard.efficiency.docs.statuses.${status}`, { defaultValue: status })
+}
+
+/** Collapse duplicate stage keys (ORDER may list the same code in multiple lanes). */
+function mergeStagesByKey(rows: NamedCount[], t: TranslateFn): NamedCount[] {
+  const merged = new Map<string, NamedCount>()
+  for (const row of rows) {
+    const key = String(row.key || '').trim()
+    if (!key) continue
+    if (merged.has(key)) continue
+    merged.set(key, {
+      key,
+      label: translateStageLabel(t, key, row.label || key),
+      count: row.count || 0,
+    })
+  }
+  return [...merged.values()].sort((a, b) => (b.count || 0) - (a.count || 0))
+}
+
+function localizeReasonRows(rows: NamedCount[], t: TranslateFn): NamedCount[] {
+  return rows.map((row) => ({
+    ...row,
+    label: translateReasonLabel(t, String(row.key || ''), row.label),
+  }))
+}
+
 export function RecruitmentEfficiencyPanel({
   t,
   formatNumber,
@@ -105,8 +143,8 @@ export function RecruitmentEfficiencyPanel({
 }: RecruitmentEfficiencyPanelProps) {
   const total = slices?.total ?? 0
   const stages = useMemo(
-    () => [...(slices?.stages ?? [])].sort((a, b) => (b.count || 0) - (a.count || 0)),
-    [slices?.stages],
+    () => mergeStagesByKey(slices?.stages ?? [], t),
+    [slices?.stages, t],
   )
   const rejected = stages.find((s) => String(s.key).toLowerCase() === 'rejected')?.count ?? 0
   const declined = stages.find((s) => String(s.key).toLowerCase() === 'declined')?.count ?? 0
@@ -114,8 +152,14 @@ export function RecruitmentEfficiencyPanel({
   const inProgress = Math.max(0, total - closed)
   const docsWait = stageCount(stages, DOCS_WAIT_KEYS)
   const docsGot = stageCount(stages, DOCS_GOT_KEYS)
-  const rejectedReasons = slices?.reasons?.rejected ?? []
-  const declinedReasons = slices?.reasons?.declined ?? []
+  const rejectedReasons = useMemo(
+    () => localizeReasonRows(slices?.reasons?.rejected ?? [], t),
+    [slices?.reasons?.rejected, t],
+  )
+  const declinedReasons = useMemo(
+    () => localizeReasonRows(slices?.reasons?.declined ?? [], t),
+    [slices?.reasons?.declined, t],
+  )
   const docStatusRows = Object.entries(documentStats?.by_status ?? {}).sort((a, b) => b[1] - a[1])
 
   const outcomePie = useMemo(
@@ -178,11 +222,12 @@ export function RecruitmentEfficiencyPanel({
   const docChartData = useMemo(
     () =>
       docStatusRows.map(([status, count], i) => ({
-        name: status,
+        key: status,
+        name: translateDocStatus(t, status),
         count,
         fill: DOC_STATUS_COLORS[status] || STAGE_PALETTE[i % STAGE_PALETTE.length],
       })),
-    [docStatusRows],
+    [docStatusRows, t],
   )
 
   if (loading && !slices) {
@@ -438,7 +483,7 @@ export function RecruitmentEfficiencyPanel({
                     paddingAngle={2}
                   >
                     {docChartData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.fill} stroke="#fff" strokeWidth={2} />
+                      <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip formatter={tooltipFmt as never} />
@@ -455,7 +500,7 @@ export function RecruitmentEfficiencyPanel({
                 </thead>
                 <tbody>
                   {docChartData.map((row) => (
-                    <tr key={row.name} className="border-b border-slate-50">
+                    <tr key={row.key} className="border-b border-slate-50">
                       <td className="py-2 pr-3 text-slate-800">
                         <span className="inline-flex items-center gap-2">
                           <span

@@ -4017,7 +4017,8 @@
       "labels": {
         "no_reason": "Bez powodu",
         "no_title": "Bez nazwy",
-        "no_subgroup": "Bez podgrupy"
+        "no_subgroup": "Bez podgrupy",
+        "untitled": "Bez nazwy"
       },
       "filters": {
         "title": "Filtry",
@@ -4458,7 +4459,21 @@
           "col_status": "Status pliku",
           "col_count": "Liczba",
           "files_total": "Plików łącznie: {count}",
-          "empty_files": "Brak plików dokumentów w wycinku."
+          "empty_files": "Brak plików dokumentów w wycinku.",
+          "statuses": {
+            "approved": "Zatwierdzony",
+            "received": "Otrzymany",
+            "submitted": "Przesłany",
+            "requested": "Zażądany",
+            "rejected": "Odrzucony",
+            "verified": "Zweryfikowany",
+            "overdue": "Zaległy",
+            "expired": "Wygasły",
+            "missing": "Brakuje",
+            "uploaded": "Przesłany plik",
+            "completed": "Ukończony",
+            "delivered": "Dostarczony"
+          }
         },
         "charts": {
           "outcomes_title": "Struktura wyników",

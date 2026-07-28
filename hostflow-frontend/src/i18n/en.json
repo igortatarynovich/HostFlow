@@ -4611,7 +4611,8 @@
       "labels": {
         "no_reason": "No reason",
         "no_title": "Untitled",
-        "no_subgroup": "No subgroup"
+        "no_subgroup": "No subgroup",
+        "untitled": "Untitled"
       },
       "filters": {
         "title": "Filters",
@@ -5052,7 +5053,21 @@
           "col_status": "File status",
           "col_count": "Count",
           "files_total": "Total files: {count}",
-          "empty_files": "No document files in this slice."
+          "empty_files": "No document files in this slice.",
+          "statuses": {
+            "approved": "Approved",
+            "received": "Received",
+            "submitted": "Submitted",
+            "requested": "Requested",
+            "rejected": "Rejected",
+            "verified": "Verified",
+            "overdue": "Overdue",
+            "expired": "Expired",
+            "missing": "Missing",
+            "uploaded": "Uploaded",
+            "completed": "Completed",
+            "delivered": "Delivered"
+          }
         },
         "charts": {
           "outcomes_title": "Outcome mix",

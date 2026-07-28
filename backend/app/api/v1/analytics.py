@@ -2566,10 +2566,10 @@ async def candidate_slices(
                 label = label_map.get(rcode, rcode)
                 dedup.append((rcode, label))
             if dedup:
-                for _, label in dedup:
-                    reason_counters[reason_stage][label] += 1
+                for rcode, _reason_label in dedup:
+                    reason_counters[reason_stage][rcode] += 1
             else:
-                reason_counters[reason_stage]["Без причины"] += 1
+                reason_counters[reason_stage]["no_reason"] += 1
 
         snapshot.append(
             {
@@ -2636,9 +2636,19 @@ async def candidate_slices(
     top_limit = max(5, min(limit, 200))
     list_limit = max(10, min(limit * 2, 200))
 
-    ordered_stage_set = set(STAGE_ORDER)
-    stage_rows: List[Dict[str, Any]] = []
+    # STAGE_ORDER is flattened from STAGES_BY_GROUP and intentionally repeats
+    # codes that appear in multiple kanban lanes (e.g. employment_pending).
+    # Analytics stage distribution must emit each code once.
+    ordered_stage_unique: List[str] = []
+    ordered_stage_seen: set[str] = set()
     for code in STAGE_ORDER:
+        if code in ordered_stage_seen:
+            continue
+        ordered_stage_seen.add(code)
+        ordered_stage_unique.append(code)
+
+    stage_rows: List[Dict[str, Any]] = []
+    for code in ordered_stage_unique:
         if not _stage_visible_for_view(code, effective_stage_view):
             continue
         count = int(stage_counter.get(code, 0))
@@ -2647,7 +2657,7 @@ async def candidate_slices(
     extra_stages = [
         (code, count)
         for code, count in stage_counter.items()
-        if code not in ordered_stage_set
+        if code not in ordered_stage_seen
     ]
     stage_rows.extend(
         {"key": code, "label": _stage_label(code), "count": int(count)}
@@ -2670,8 +2680,21 @@ async def candidate_slices(
         "citizenships": _top(citizenship_counter, list_limit),
         "countries": _top(country_counter, list_limit),
         "reasons": {
-            key: _top(counter, list_limit)
-            for key, counter in reason_counters.items()
+            stage_key: [
+                {
+                    "key": code,
+                    "label": (
+                        "Без причины"
+                        if code == "no_reason"
+                        else _REASON_LABELS.get(stage_key, {}).get(code, code)
+                    ),
+                    "count": int(count),
+                }
+                for code, count in sorted(counter.items(), key=lambda kv: (-kv[1], kv[0]))[
+                    :list_limit
+                ]
+            ]
+            for stage_key, counter in reason_counters.items()
         },
         "snapshot": snapshot,
     }
