@@ -73,7 +73,7 @@ from backend.app.services.risk_intel_v1 import (
     shadow_validation_summary,
 )
 
-router = APIRouter(tags=["analytics"])
+router = APIRouter(tags=["analytics"], dependencies=[Depends(get_current_user)])
 
 RISK_OPS_ROLES = frozenset({"superadmin", "administrator", "supervisor"})
 

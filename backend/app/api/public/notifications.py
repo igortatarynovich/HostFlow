@@ -14,7 +14,8 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.deps import get_db_with_tenant
+from backend.app.api.public.intake_tenant_bind import bind_session_for_intake_token
+from backend.app.db.deps import get_db
 from backend.app.models.candidate import Candidate
 from backend.app.services import user_notifications
 from backend.app.services.notifications import notify
@@ -75,13 +76,13 @@ async def _load_candidate_by_token(
 @router.post("/subscribe", response_model=NotificationSubscriptionResponse)
 async def subscribe_to_notifications(
     payload: NotificationSubscriptionRequest,
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db: AsyncSession = Depends(get_db),
 ) -> NotificationSubscriptionResponse:
     """
     Subscribe candidate to notifications about their application status.
     Supports email and phone (SMS) channels.
     """
-    db, tenant_id = db_tenant
+    tenant_id = await bind_session_for_intake_token(db, payload.token)
     candidate = await _load_candidate_by_token(db, tenant_id, payload.token)
 
     # Update candidate's notification preferences
@@ -125,12 +126,12 @@ async def subscribe_to_notifications(
 @router.post("/unsubscribe", response_model=NotificationSubscriptionResponse)
 async def unsubscribe_from_notifications(
     payload: NotificationUnsubscribeRequest,
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db: AsyncSession = Depends(get_db),
 ) -> NotificationSubscriptionResponse:
     """
     Unsubscribe candidate from notifications.
     """
-    db, tenant_id = db_tenant
+    tenant_id = await bind_session_for_intake_token(db, payload.token)
     candidate = await _load_candidate_by_token(db, tenant_id, payload.token)
 
     if not candidate.intake_state:
@@ -167,13 +168,13 @@ async def unsubscribe_from_notifications(
 @router.post("/push/subscribe", response_model=NotificationSubscriptionResponse)
 async def subscribe_to_push_notifications(
     payload: PushSubscriptionRequest,
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db: AsyncSession = Depends(get_db),
 ) -> NotificationSubscriptionResponse:
     """
     Subscribe candidate to push notifications.
     Stores push subscription data for sending notifications later.
     """
-    db, tenant_id = db_tenant
+    tenant_id = await bind_session_for_intake_token(db, payload.token)
     candidate = await _load_candidate_by_token(db, tenant_id, payload.token)
 
     if not candidate.intake_state:
@@ -205,12 +206,12 @@ async def subscribe_to_push_notifications(
 @router.post("/push/unsubscribe", response_model=NotificationSubscriptionResponse)
 async def unsubscribe_from_push_notifications(
     payload: NotificationUnsubscribeRequest,
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db: AsyncSession = Depends(get_db),
 ) -> NotificationSubscriptionResponse:
     """
     Unsubscribe candidate from push notifications.
     """
-    db, tenant_id = db_tenant
+    tenant_id = await bind_session_for_intake_token(db, payload.token)
     candidate = await _load_candidate_by_token(db, tenant_id, payload.token)
 
     if not candidate.intake_state:

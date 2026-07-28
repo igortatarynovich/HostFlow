@@ -10,7 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.public.intake import _load_candidate_by_token, _save_public_document_upload  # type: ignore
-from backend.app.db.deps import get_db_with_tenant
+from backend.app.api.public.intake_tenant_bind import bind_session_for_intake_token
+from backend.app.db.deps import get_db
 from backend.app.db.session import async_session_maker
 from backend.app.models.candidate import Candidate
 from backend.app.models.scan import ScanSession
@@ -45,9 +46,9 @@ async def list_public_presets() -> list[ScanPresetSchema]:
 @router.post("", response_model=ScanSessionSchema)
 async def create_public_scan_session(
     payload: ScanSessionCreatePublic,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db: AsyncSession = Depends(get_db),
 ) -> ScanSessionSchema:
-    db, tenant_id = db_tenant
+    tenant_id = await bind_session_for_intake_token(db, payload.token)
     candidate = await _load_candidate_by_token(db, tenant_id, payload.token)
     preset_code = payload.preset_code or payload.document_type
     session = await create_scan_session(

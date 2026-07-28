@@ -169,6 +169,31 @@ class CalendarConnectionOut(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
+    @staticmethod
+    def _public_token_meta(raw: dict[str, Any] | None) -> dict[str, Any]:
+        """Never expose OAuth secrets / access tokens in API responses."""
+        if not raw:
+            return {}
+        allow = {
+            "expires_at",
+            "expiry",
+            "exp",
+            "expires_in",
+            "token_type",
+            "scope",
+            "scopes",
+        }
+        out: dict[str, Any] = {}
+        for key, value in raw.items():
+            lk = str(key).strip().lower()
+            if lk in allow:
+                out[key] = value
+                continue
+            if any(s in lk for s in ("token", "secret", "password", "authorization")):
+                continue
+            out[key] = value
+        return out
+
     @classmethod
     def from_model(cls, row: CalendarConnection) -> "CalendarConnectionOut":
         return cls(
@@ -178,7 +203,7 @@ class CalendarConnectionOut(BaseModel):
             status=row.status,
             user_id=UUID(row.user_id) if row.user_id else None,
             scopes=list(row.scopes_json or []),
-            token_meta=dict(row.token_meta_json or {}),
+            token_meta=cls._public_token_meta(dict(row.token_meta_json or {})),
             last_error=row.last_error,
             created_at=row.created_at,
             updated_at=row.updated_at,
@@ -554,6 +579,7 @@ async def list_calendar_items(
     start: Optional[datetime] = Query(None),
     end: Optional[datetime] = Query(None),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> CalendarItemsResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
@@ -829,6 +855,7 @@ def _require_teams_secret(secret_header: Optional[str]) -> None:
 async def list_calendar_connections(
     provider: Optional[str] = Query(None),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> CalendarConnectionsResponse:
     db, tenant_uuid = db_tenant
     stmt = select(CalendarConnection).where(CalendarConnection.tenant_id == str(tenant_uuid))
@@ -1010,6 +1037,7 @@ async def refresh_calendar_connection_oauth(
     connection_id: UUID,
     body: CalendarConnectionRefreshRequest,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> CalendarConnectionOut:
     db, tenant_uuid = db_tenant
     row = await db.get(CalendarConnection, str(connection_id))
@@ -1052,6 +1080,7 @@ async def refresh_calendar_connection_oauth(
 async def delete_calendar_connection(
     connection_id: UUID,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> Response:
     db, tenant_uuid = db_tenant
     row = await db.get(CalendarConnection, str(connection_id))
@@ -1059,15 +1088,14 @@ async def delete_calendar_connection(
         raise HTTPException(status_code=404, detail="Connection not found")
     await db.delete(row)
     await db.commit()
-    return None
-
-
-
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get("/integrations/connections/{connection_id}/cursor", response_model=CalendarSyncCursorListOut)
 async def get_calendar_connection_cursors(
     connection_id: UUID,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> CalendarSyncCursorListOut:
     db, tenant_uuid = db_tenant
     conn_row = await db.get(CalendarConnection, str(connection_id))
@@ -1088,6 +1116,7 @@ async def patch_calendar_connection_cursor(
     connection_id: UUID,
     body: CalendarSyncCursorPatch,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> CalendarSyncCursorOut:
     db, tenant_uuid = db_tenant
     conn_row = await db.get(CalendarConnection, str(connection_id))
@@ -1127,6 +1156,7 @@ async def patch_calendar_connection_cursor(
 async def queue_calendar_reconcile(
     body: CalendarReconcileRequest,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> CalendarReconcileResponse:
     db, tenant_uuid = db_tenant
     stmt = select(CalendarConnection).where(
@@ -1181,6 +1211,7 @@ async def queue_calendar_reconcile(
 async def queue_calendar_subscription_renew(
     body: CalendarSubscriptionRenewRequest,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> CalendarReconcileResponse:
     db, tenant_uuid = db_tenant
     stmt = select(CalendarConnection).where(

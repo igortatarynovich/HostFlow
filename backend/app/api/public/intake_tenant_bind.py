@@ -292,6 +292,19 @@ async def resolve_tenant_uuid_for_public_intake_create(
     return tid
 
 
+async def bind_session_for_intake_token(db: AsyncSession, token: str) -> UUID:
+    """Bind RLS from intake token (ignore X-Tenant-Id). Used by public notifications/scanner."""
+    tid_str = await resolve_intake_token_tenant_id(db, (token or "").strip())
+    if not tid_str:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid token or candidate not found",
+        )
+    tid = UUID(tid_str)
+    await bind_tenant_context_to_session(db, tid)
+    return tid
+
+
 # --- FastAPI dependencies (path param names must match route) ---
 
 

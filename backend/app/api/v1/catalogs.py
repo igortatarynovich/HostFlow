@@ -24,6 +24,7 @@ from backend.app.constants.catalog_utils import (
     to_options_localized_catalog,
 )
 from backend.app.constants.catalogs import COUNTRIES, LANGUAGES
+from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant as get_db
 from backend.app.services import users as users_service
 from fastapi import APIRouter, Depends, Query
@@ -119,6 +120,7 @@ async def list_company_setup_options():
 @router.get("/catalogs/managers")
 async def list_managers(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db),
+    _current_user: UserCtx = Depends(get_current_user),
     roles: str | None = Query(
         default=None,
         description=(

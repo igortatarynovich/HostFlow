@@ -6,6 +6,7 @@ import {
   api,
   clearLocalAuthState,
   ensureSharedSessionCookies,
+  getStoredAccessToken,
   IMPERSONATION_BACKUP_STORAGE_KEY,
   reconcileBearerWithSharedCookie,
   setToken,
@@ -304,10 +305,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const beginImpersonation = useCallback(() => {
     if (typeof window === 'undefined') return
     try {
-      const previousToken =
-        window.localStorage.getItem('access_token') ||
-        window.localStorage.getItem('token') ||
-        null
+      const previousToken = getStoredAccessToken()
       const previousTenant = tenantSettings.get()
       window.localStorage.setItem(
         IMPERSONATION_BACKUP_KEY,

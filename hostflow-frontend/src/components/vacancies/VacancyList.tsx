@@ -7,7 +7,7 @@ import { useI18n } from '../../i18n'
 import type { LocaleCode } from '../../i18n'
 import { patchUserMe } from '../../api/users'
 import type { UserSavedView } from '../../api/types'
-import { resolveApiBase, settings as clientSettings, DEFAULT_TENANT } from '../../api/client'
+import { resolveApiBase, settings as clientSettings, DEFAULT_TENANT, getStoredAccessToken } from '../../api/client'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
@@ -52,11 +52,7 @@ function sanitizeTenant(raw: string | null | undefined): string | null {
 }
 
 function getAuthHeaders(tenantOverride?: string | null) {
-  const token =
-    (safeStorageGet('access_token') ||
-      safeStorageGet('accessToken') ||
-      safeStorageGet('token') ||
-      '') as string
+  const token = getStoredAccessToken() || ''
 
   const candidates = [
     sanitizeTenant(tenantOverride ?? null),

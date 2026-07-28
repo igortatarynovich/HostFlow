@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.services.handoff import is_client_tenant, can_client_edit
@@ -26,6 +26,7 @@ class LinkIn(BaseModel):
 async def get_links(
     candidate_id: UUID,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id = db_tenant
     row = await db.execute(
