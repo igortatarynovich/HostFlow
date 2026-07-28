@@ -109,6 +109,7 @@ STATUSES = {status.value for status in DocumentStatus}
 @router.get("/document-types")
 async def list_document_types(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ):
     """Return available document types. Falls back to an empty list if the model is absent."""
     db, tenant_id = db_tenant

@@ -32,6 +32,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.document import Document
 from backend.app.services.next_action import NextActionDTO, compute_document_next_action
@@ -55,6 +56,7 @@ router = APIRouter()
 async def get_document_next_action(
     document_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> NextActionDTO:
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)

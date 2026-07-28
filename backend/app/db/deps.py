@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text, select
 
 from .session import async_session_maker  # ← используем твою фабрику
-from backend.app.auth.deps import UserCtx, get_current_user_optional
+from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.models.tenant import Tenant, TenantLink, TenantType, TenantVacancyAccess
 from backend.app.models.vacancy import Vacancy
 from backend.app.services.tenant_visibility import TenantVisibility
@@ -20,6 +20,9 @@ from backend.app.services.tenant_visibility import TenantVisibility
 
 # Legacy fallback when X-Tenant-Id is omitted (CRM / older embeds). Public intake must not rely on this alone.
 PUBLIC_LEGACY_DEFAULT_TENANT_UUID = UUID("11111111-1111-1111-1111-111111111111")
+
+# db.info["security_access_kind"] for signed webhooks / anonymous public surfaces.
+SECURITY_ACCESS_KIND_PUBLIC_ANONYMOUS = "public_anonymous"
 
 
 async def bind_tenant_context_to_session(db: AsyncSession, tenant_id: UUID) -> None:
@@ -159,11 +162,14 @@ async def get_db_with_tenant(
     tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
     elevated_reason: str | None = Header(None, alias="X-HostFlow-Elevated-Reason"),
     elevated_scope: str | None = Header(None, alias="X-HostFlow-Elevated-Scope"),
-    user: UserCtx | None = Depends(get_current_user_optional),
+    user: UserCtx = Depends(get_current_user),
 ) -> AsyncGenerator[Tuple[AsyncSession, UUID], None]:
-    """
-    Отдаёт (db, tenant_id) из заголовка X-Tenant-Id.
-    Валидирует UUID и возвращает 400 при ошибке.
+    """CRM tenant bind: authenticated principal required (fail-closed).
+
+    ``X-Tenant-Id`` must match JWT tenant or ``user_memberships`` (unless
+    superadmin/support elevated headers). Anonymous callers get 401 from
+    ``get_current_user`` — use ``get_db_with_tenant_public`` for signed webhooks
+    or token-first public surfaces instead.
     """
     from backend.app.security.api_tenant_context import (
         SecurityAccessKind,
@@ -176,7 +182,7 @@ async def get_db_with_tenant(
         EVENT_SUPERADMIN_ELEVATED_DB_BIND,
     )
 
-    if user is not None and getattr(user, "sub", None):
+    if getattr(user, "sub", None):
         from backend.app.security.runtime_context import set_security_actor_id
 
         set_security_actor_id(str(user.sub))
@@ -250,10 +256,8 @@ async def get_db_with_tenant(
                 {"access_kind", "jwt_tenant_id", "elevated_reason", "elevated_scope"}
             ),
         )
-    elif user is not None and getattr(user, "sub", None):
+    else:
         # P0 fail-closed: X-Tenant-Id must match JWT tenant or user_memberships.
-        # Classifier leaves mismatches as tenant_bound; never bind RLS to a foreign
-        # tenant without proving membership (security-ssot §3).
         from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
 
         await ensure_user_can_access_tenant(db, user, header_str)
@@ -265,4 +269,29 @@ async def get_db_with_tenant(
     db.info["tenant_rls_enforcement"] = True
     await bind_tenant_context_to_session(db, tenant_id)
 
+    yield db, tenant_id
+
+
+async def get_db_with_tenant_public(
+    db: AsyncSession = Depends(get_db),
+    tenant_id_header: str | None = Header(None, alias="X-Tenant-Id"),
+) -> AsyncGenerator[Tuple[AsyncSession, UUID], None]:
+    """Anonymous tenant bind for signed webhooks (caller enforces HMAC / secrets).
+
+    Requires an explicit ``X-Tenant-Id`` (no legacy default). Prefer token-first
+    public deps (``intake_tenant_bind``) when a capability token exists.
+    """
+    raw = (tenant_id_header or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="X-Tenant-Id is required")
+    try:
+        tenant_id = UUID(raw)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="X-Tenant-Id must be a valid UUID") from exc
+
+    db.info["security_access_kind"] = SECURITY_ACCESS_KIND_PUBLIC_ANONYMOUS
+    db.info["security_elevated_reason"] = None
+    db.info["security_elevated_scope"] = None
+    db.info["tenant_rls_enforcement"] = True
+    await bind_tenant_context_to_session(db, tenant_id)
     yield db, tenant_id

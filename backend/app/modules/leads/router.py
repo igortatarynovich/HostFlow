@@ -15,7 +15,7 @@ from backend.app.models.tenant import Tenant, TenantLicense
 from backend.app.services import billing_restrictions
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
-from backend.app.db.deps import get_db_with_tenant
+from backend.app.db.deps import get_db_with_tenant, get_db_with_tenant_public
 from backend.app.schemas.additional_services import ServiceOrderOut
 from backend.app.modules.companies import schemas as company_schemas
 from backend.app.modules.companies.service import create_company_service
@@ -1951,7 +1951,7 @@ async def process_lead_endpoint(
 @router.post("/meta", response_model=MetaLeadResponse)
 async def ingest_meta_lead(
     request: Request,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant_public),
 ) -> MetaLeadResponse:
     body = await request.body()
     db, tenant_uuid = db_tenant

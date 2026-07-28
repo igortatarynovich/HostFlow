@@ -161,3 +161,34 @@ async def test_document_templates_ok_with_auth(client: AsyncClient) -> None:
     assert isinstance(resp.json(), list)
     legal = await client.get("/api/v1/legal-documents/active", headers=headers)
     assert legal.status_code == 200, legal.text
+
+
+@pytest.mark.anyio
+async def test_get_db_with_tenant_fail_closed_without_auth(client: AsyncClient) -> None:
+    """CRM tenant bind must 401 when anonymous (even with X-Tenant-Id)."""
+    data = await _init_data()
+    headers = {"X-Tenant-Id": data["tenant_id"]}
+    # Reminder/list is a typical CRM route that used get_db_with_tenant.
+    resp = await client.get("/api/v1/candidates/document-types", headers=headers)
+    assert resp.status_code in (401, 403), resp.text
+
+
+@pytest.mark.anyio
+async def test_public_tenant_bind_requires_explicit_header(client: AsyncClient) -> None:
+    """Signed Meta ingest must not silently bind the legacy default tenant."""
+    resp = await client.post("/api/v1/leads/meta", content=b"{}")
+    assert resp.status_code == 400, resp.text
+    assert "X-Tenant-Id" in str(resp.json().get("detail", ""))
+
+
+@pytest.mark.anyio
+async def test_public_scan_session_requires_intake_token(client: AsyncClient) -> None:
+    session_id = str(uuid.uuid4())
+    resp = await client.get(f"/api/v1/public/scan-sessions/{session_id}")
+    # Missing required query param → 422; with empty token path still not open.
+    assert resp.status_code in (401, 403, 404, 422), resp.text
+    resp2 = await client.get(
+        f"/api/v1/public/scan-sessions/{session_id}",
+        params={"token": "not-a-real-token"},
+    )
+    assert resp2.status_code in (403, 404), resp2.text
