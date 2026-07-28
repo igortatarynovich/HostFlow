@@ -386,6 +386,32 @@ async def run_email_poll_worker(
                         created_threads += 1
                     if resp.duplicate_message:
                         skipped_messages += 1
+                    # ADR / art.14: DSN bounce/deferral reopens lead RODO gate.
+                    try:
+                        from backend.app.services.lead_rodo_delivery_feedback import (
+                            maybe_apply_rodo_delivery_feedback_from_inbound,
+                        )
+
+                        body_txt = raw.get("text") if isinstance(raw.get("text"), str) else None
+                        if not body_txt and isinstance(raw.get("html"), str):
+                            body_txt = raw.get("html")
+                        updated_leads = await maybe_apply_rodo_delivery_feedback_from_inbound(
+                            db,
+                            tenant_id=tenant_id,
+                            subject=_clamp_db_str(raw.get("subject"), 512),
+                            body_text=body_txt,
+                            from_address=_clamp_db_str(raw.get("from_address"), 255),
+                            external_message_ref=_clamp_db_str(raw.get("external_message_ref"), 255),
+                            inbox_address=_clamp_db_str(account_inbox_snap, 255),
+                            actor_id=str(getattr(current_user, "id", "") or "") or None,
+                        )
+                        if updated_leads:
+                            await db.commit()
+                    except Exception:
+                        logger.exception(
+                            "communications email poll RODO delivery feedback failed account=%s",
+                            account_id_str,
+                        )
             except Exception as exc:
                 skipped_messages += 1
                 try:

@@ -253,6 +253,8 @@ async def test_conversion_emits_candidate_created(monkeypatch) -> None:
             flight_id=flight_id,
             submission_id=submission_id,
         )
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         cand = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,
@@ -312,6 +314,8 @@ async def test_conversion_silent_without_stamp(monkeypatch) -> None:
             own_company_id=oc,
             submission_id=str(uuid4()),
         )
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         cand = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,
@@ -357,6 +361,8 @@ async def test_conversion_silent_when_submission_ambiguous(monkeypatch) -> None:
             submission_id=str(uuid4()),
             extra_submissions=[str(uuid4())],
         )
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         cand = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,
@@ -420,6 +426,8 @@ async def test_idempotent_replay_no_candidate_created(monkeypatch) -> None:
         create_mock = AsyncMock(side_effect=AssertionError("must not insert"))
         monkeypatch.setattr(conversion_mod, "create_candidate_full", create_mock)
 
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         out = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,
@@ -482,6 +490,8 @@ async def test_rollback_after_link_drops_candidate_created(monkeypatch) -> None:
     async with async_session_maker() as db:
         lead = await db.get(Lead, lead_id)
         assert lead is not None
+        from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+        mark_lead_rodo_source_provided(lead)
         cand = await create_candidate_from_lead_conversion(
             db,
             tenant_id=tenant_id,

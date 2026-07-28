@@ -368,15 +368,28 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 
 | `status` / signal | Meaning |
 |-------------------|---------|
-| `sent` | Outbound art. 14 email sent (`sent_at`, `channel`, `recipient`, optional `auto_trigger`, `ingest_source`). |
+| `sent` | Outbound art. 14 email **accepted** by transport (`sent_at`, `channel`, `recipient`, optional `auto_trigger`, `ingest_source`). Satisfies gates **until** a delivery problem is recorded. |
 | `source_provided` | Notice already covered at source (e.g. `normalized.rodo_notice_at_source` or public intake consents) — **no duplicate outbound**. |
-| `pending_channel` | Auto/manual send could not run — no usable channel (MVP: email). |
-| `failed` | Send error; manual retry allowed. |
+| `pending_channel` | Auto/manual send could not run — no usable channel (MVP: email). **Blocks** gates. |
+| `failed` | Send error **or** permanent undeliverable (bounce / invalid recipient). Manual retry allowed. **Blocks** gates (even if `sent_at` remains for audit). |
+| `deferred` | Temporary undelivered (e.g. Gmail «Пока не доставлено», Interia SPF soft-defer). **Blocks** gates — art. 14 obligation is not fulfilled until delivery succeeds or `source_provided`. |
 | *(none / unsatisfied)* | UI: `manual_required`; gates apply. |
 
-**Idempotency:** webhook replay for the same `tenant_id + source + external_id` does not send a second notice (`lead_rodo_sent_from_normalized`). Pipeline merges preserve `normalized.rodo` when other keys are rewritten (`normalized_merging_lead_rodo` in `update_lead`).
+**Delivery feedback (post-accept):** SMTP/`prepare_and_send` success stamps `sent` only. Provider DSNs ingested via email poll (`maybe_apply_rodo_delivery_feedback_from_inbound`) and terminal delivery callbacks for `gdpr_notice` write `failed` / `deferred` with:
 
-**Gates** (422 `LEAD_RODO_REQUIRED` unless satisfied): `POST .../process`, intake-decision **request_info**, CRM stage → **contacted**; bulk/retry/CSV reimport use the same `manual_process_block_code` / `ensure_lead_rodo_allows_action` layer as manual Process.
+| Field | Role |
+|-------|------|
+| `failure_reason` | Operator-visible explanation |
+| `failure_reason_code` | `invalid_recipient` \| `spf_rejected` \| `deferred` \| `delivery_failed` |
+| `delivery_outcome` | `failed` \| `deferred` \| `undelivered` |
+| `undelivered_at` | ISO timestamp |
+| `delivery_feedback_event_id` | Idempotency key (DSN message id) |
+
+**Satisfied rule:** `status ∈ {sent, satisfied, source_provided}` **and not** in `{failed, deferred, undelivered, pending_channel}`; legacy `sent_at` alone does **not** satisfy when a negative status is set. Candidate conversion (`create_candidate_from_lead_conversion`) re-checks the same gate (defense-in-depth).
+
+**Idempotency:** webhook replay for the same `tenant_id + source + external_id` does not send a second notice (`lead_rodo_sent_from_normalized`). Negative delivery outcomes clear the “already sent” guard so retry is allowed. Pipeline merges preserve `normalized.rodo` when other keys are rewritten (`normalized_merging_lead_rodo` in `update_lead`).
+
+**Gates** (422 `LEAD_RODO_REQUIRED` unless satisfied): `POST .../process`, intake-decision **request_info**, CRM stage → **contacted**; bulk/retry/CSV reimport use the same `manual_process_block_code` / `ensure_lead_rodo_allows_action` layer as manual Process; **Lead → Candidate conversion** is blocked while RODO is undelivered/deferred.
 
 **API (operator):**
 
@@ -384,11 +397,13 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 - `POST /api/v1/leads/{id}/compliance/rodo/source-provided` — mark covered at source.
 - `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk re-send after Pipeline cutover (default `rodo.status=failed`; `dry_run` supported). CLI: `backend/scripts/retry_lead_rodo.py`.
 
-**UI:** Meta Leads settings — mode select; **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / manual hint; Send RODO + “covered at source” buttons retained for retry.
+**UI:** Meta Leads settings — mode select; **Intake Decision rail** — status copy for `sent` / `failed` / `deferred` / `pending_channel` / manual hint + **failure reason**; Send RODO + “covered at source” buttons retained for retry. Undelivered/deferred use rose tone; Process / create candidate stay locked.
 
-**Tests:** `backend/tests/api/test_lead_rodo_gate.py`, `backend/tests/api/test_lead_rodo_auto.py`.
+**Tests:** `backend/tests/api/test_lead_rodo_gate.py`, `backend/tests/api/test_lead_rodo_auto.py`, `backend/tests/services/test_lead_rodo_delivery_feedback.py`.
 
 **Out of scope (operational communication — see §8.0.2):** application-received / moving-forward / rejected templates, tracking links, non-RODO operational email — do not extend this gate.
+
+**Ops note:** DNS SPF for the From domain (`hostflow.cc`) is required for Interia and similar receivers; missing SPF produces `spf_rejected` / deferred DSNs independent of Pipeline correctness.
 
 ### 8.0.2 Lead operational communication (MVP PR1 — signed off, 2026-05)
 
@@ -426,6 +441,8 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 10. Meta webhook replay → single send, no duplicate audit spam.
 11. Public form / ingest with `rodo_notice_at_source` → `source_provided`, no duplicate send.
 12. Failed send → rail `failed`, retry via manual send clears gate.
+13. Provider bounce / «Адрес не найден» after `sent` → rail `failed` + reason, Process / conversion blocked until re-send or source-provided.
+14. Temporary «Пока не доставлено» / SPF soft-defer → rail `deferred`, same block as failed until resolved.
 
 ### 8.1 Product evolution order (doctrine)
 

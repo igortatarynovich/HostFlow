@@ -125,7 +125,7 @@ UI: карточка client lead (`ClientLeadDetailView`) — блок «Рез�
 - `POST /api/v1/leads/{id}/compliance/rodo/source-provided`
 - `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk art.14 re-send (Pipeline; default failed; dry_run)
 
-Состояние: `Lead.normalized.rodo` (`sent`, `source_provided`, `pending_channel`, `failed`). Ingest hook после создания лида — `apply_lead_rodo_on_ingest` в `process_normalized_lead`. Канон: [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8.0.1.
+Состояние: `Lead.normalized.rodo` (`sent`, `source_provided`, `pending_channel`, `failed`, `deferred`). Post-accept DSN/bounce write-back sets `failed`/`deferred` + `failure_reason` / `failure_reason_code` and reopens gates (including temporary «Пока не доставлено»). Ingest hook после создания лида — `apply_lead_rodo_on_ingest` в `process_normalized_lead`. Канон: [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8.0.1.
 
 ### Формат ответа
 ```json
