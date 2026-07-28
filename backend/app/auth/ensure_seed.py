@@ -359,11 +359,31 @@ async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.
     )
 
 
+def auth_seed_enabled() -> bool:
+    """Dev-бутстрап выключен по умолчанию — включается только явно.
+
+    Раньше эта функция вызывалась из startup безусловно, и в проде это означало:
+      * пароль ADMIN_EMAIL сбрасывался на константу из репозитория при КАЖДОМ рестарте
+        (ветка «пользователь уже существует» перезаписывает password_hash),
+        вместе с принудительными is_active=true и role=superadmin;
+      * заново создавался dev-аккаунт hr.officer@hostflow.dev — его удаление
+        отменялось следующим перезапуском;
+      * лишняя работа на старте.
+    Для локальной разработки поставьте HOSTFLOW_AUTH_SEED_ENABLED=1.
+    """
+    return str(os.getenv("HOSTFLOW_AUTH_SEED_ENABLED", "")).strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+
+
 async def ensure_auth_seed() -> None:
     """
     Создаёт дефолтного администратора, если пользователей с этим email ещё нет.
     Работает на SQLite и PostgreSQL. Явно задаёт id (uuid4), если колонка существует.
     """
+    if not auth_seed_enabled():
+        print("[seed] dev-сидинг выключен (HOSTFLOW_AUTH_SEED_ENABLED не задан) — пропускаю")
+        return
     if pwd_context is None:
         print("[seed] passlib не установлен — пропускаю сидинг")
         return
