@@ -60,6 +60,7 @@ import subprocess
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Dict
+from urllib.parse import urlsplit
 
 import pytest
 import pytest_asyncio
@@ -149,8 +150,37 @@ def _env_with_local_db_host(base: dict[str, str]) -> dict[str, str]:
     return out
 
 
+_PROD_DB_NAMES = {"hostflow"}
+
+
+def _assert_not_production_db(url: str) -> None:
+    """Refuse to run the suite against a database that is not clearly a test database.
+
+    The suite seeds fixtures and (below) runs `alembic upgrade head` against whatever
+    DATABASE_URL resolves to. With the repo's default env that is **production**
+    (`localhost:5432/hostflow`), and a stray `pytest` has in the past filled prod with
+    836 `@hostflow.test` users, 63 non-UUID tenants and a migration-revision drift.
+    Fail loudly instead.
+    """
+    if not url:
+        return
+    db_name = urlsplit(url).path.lstrip("/").split("?")[0]
+    if not db_name or db_name.startswith(":memory:"):
+        return
+    if db_name in _PROD_DB_NAMES or "test" not in db_name.lower():
+        raise RuntimeError(
+            f"Refusing to run tests against database {db_name!r}: it does not look like a "
+            "test database. Point DATABASE_URL / ASYNC_DATABASE_URL / SYNC_DATABASE_URL at a "
+            "scratch DB (name must contain 'test'), or set HOSTFLOW_ALLOW_NON_TEST_DB=1 if you "
+            "genuinely mean it."
+        )
+
+
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Apply Alembic migrations so ORM columns (e.g. FTS tsvector) exist on the test DB."""
+    if os.environ.get("HOSTFLOW_ALLOW_NON_TEST_DB", "").strip().lower() not in ("1", "true", "yes"):
+        for var in ("ALEMBIC_DATABASE_URL", "SYNC_DATABASE_URL", "ASYNC_DATABASE_URL", "DATABASE_URL"):
+            _assert_not_production_db(os.environ.get(var, "").strip())
     if os.environ.get("HOSTFLOW_SKIP_ALEMBIC_UPGRADE", "").strip().lower() in ("1", "true", "yes"):
         return
     backend_root = Path(__file__).resolve().parents[1]
