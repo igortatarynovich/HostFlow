@@ -11,6 +11,7 @@ import { PlanLimitModalProvider } from './contexts/PlanLimitModalContext'
 import { installStaleChunkReloadRecovery } from './utils/staleChunkReload'
 import { initSentry } from './lib/observability'
 import { consumeLogoutWipeAndContinue } from './platform/sessionLogout'
+import { applyAuthIsolationWipeOnce } from './api/client'
 
 import './styles/components.css'
 import './index.css'
@@ -19,6 +20,8 @@ import './index.css'
 if (consumeLogoutWipeAndContinue()) {
   // Redirect scheduled — do not mount the app on this origin.
 } else {
+  // One-time clear of stale per-origin Bearer/tenant left from dual-session bug.
+  applyAuthIsolationWipeOnce()
   initSentry()
   installStaleChunkReloadRecovery()
 

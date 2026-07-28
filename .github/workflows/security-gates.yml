@@ -37,6 +37,14 @@ jobs:
       - name: Enforce canonical security event producers
         run: python3 scripts/security/check_no_raw_emit_security_event.py
 
+  tenant-bind-auth:
+    name: Fail-closed get_db_with_tenant + public allowlist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce CRM tenant bind requires auth
+        run: python3 scripts/security/check_tenant_bind_auth.py
+
   telemetry-phase34-stability:
     name: Phase 3/4 telemetry stabilization (helpers + logger heuristic)
     runs-on: ubuntu-latest

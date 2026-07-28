@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  AUTH_ISOLATION_WIPE_STORAGE_KEY,
+  applyAuthIsolationWipeOnce,
   clearLocalAuthState,
   decodeJwtPayload,
   getStoredAccessToken,
@@ -74,6 +76,18 @@ describe('clearLocalAuthState / setToken', () => {
     expect(getStoredAccessToken()).toBeNull()
     expect(localStorage.getItem('auth_token')).toBeNull()
     expect(localStorage.getItem('jwt')).toBeNull()
+  })
+
+  it('applyAuthIsolationWipeOnce clears stale LS once then no-ops', () => {
+    localStorage.setItem('access_token', 'stale-bearer')
+    localStorage.setItem('tenant_id', 'old-tenant')
+    expect(applyAuthIsolationWipeOnce()).toBe(true)
+    expect(localStorage.getItem('access_token')).toBeNull()
+    expect(localStorage.getItem('tenant_id')).toBeNull()
+    expect(localStorage.getItem(AUTH_ISOLATION_WIPE_STORAGE_KEY)).toBe('1')
+    localStorage.setItem('access_token', 'after-wipe')
+    expect(applyAuthIsolationWipeOnce()).toBe(false)
+    expect(localStorage.getItem('access_token')).toBe('after-wipe')
   })
 })
 

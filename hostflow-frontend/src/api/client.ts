@@ -6,6 +6,8 @@ import { CSRF_HEADER, readCsrfToken } from "./csrf";
 const API_BASE_STORAGE_KEY = "hf_api_base";
 export const OWN_COMPANY_STORAGE_KEY = "hf_own_company_id";
 export const IMPERSONATION_BACKUP_STORAGE_KEY = "hf:platform-session-backup";
+/** One-time LS wipe after dual-session / Bearer-vs-cookie isolation fix (v1). */
+export const AUTH_ISOLATION_WIPE_STORAGE_KEY = "hf:auth_isolation_wipe_v1";
 const TOKEN_STORAGE_KEYS = [
   "access_token",
   "token",
@@ -372,6 +374,23 @@ export function clearLocalAuthState(): void {
   }
   safeStorageRemove(OWN_COMPANY_STORAGE_KEY);
   safeStorageRemove(IMPERSONATION_BACKUP_STORAGE_KEY);
+}
+
+/**
+ * Once per browser origin: drop stale per-origin Bearer / tenant pointers left from
+ * the pre-isolation dual-session bug. Shared Domain cookies remain; AuthProvider
+ * rehydrates via cookie reconcile. Safe to call before React mount.
+ */
+export function applyAuthIsolationWipeOnce(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (safeStorageGet(AUTH_ISOLATION_WIPE_STORAGE_KEY) === "1") return false;
+    clearLocalAuthState();
+    safeStorageSet(AUTH_ISOLATION_WIPE_STORAGE_KEY, "1");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function refreshAccessTokenViaCookie(): Promise<string | null> {

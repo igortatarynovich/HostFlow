@@ -1,0 +1,7 @@
+# Allowlist: files that may Depends(get_db_with_tenant_public).
+# Prefer token-first public deps (intake_tenant_bind) when a capability token exists.
+# Signed webhooks that must bind RLS from X-Tenant-Id without a CRM JWT go here.
+#
+# One path per line (repo-relative, forward slashes).
+
+backend/app/modules/leads/router.py
