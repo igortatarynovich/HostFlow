@@ -9,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx
+from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
 from backend.app.db.deps import compute_tenant_visibility_for_tenant
 from backend.app.services.tenant_visibility import TenantVisibility
 
@@ -53,6 +54,21 @@ def candidate_scope_tenant_str(
     return header_s or jwt_s or header_s
 
 
+async def ensure_candidate_scope_access(
+    db: AsyncSession,
+    *,
+    header_tenant: UUID,
+    scope_tenant: str,
+    current_user: UserCtx,
+) -> None:
+    """Fail-closed when query scope rebinds RLS away from the authenticated header tenant."""
+    header_s = str(header_tenant).strip()
+    scope_s = (scope_tenant or "").strip()
+    if not scope_s or scope_s == header_s:
+        return
+    await ensure_user_can_access_tenant(db, current_user, scope_s)
+
+
 async def bind_candidate_scope_rls(db: AsyncSession, scope_tenant: str) -> None:
     """Set Postgres ``app.tenant_id`` for RLS and align ``db.info['tenant_visibility']``.
 
@@ -86,3 +102,22 @@ async def bind_candidate_scope_rls(db: AsyncSession, scope_tenant: str) -> None:
         info["tenant_id"] = scope_uuid
     except Exception:
         pass
+
+
+async def resolve_and_bind_candidate_scope(
+    db: AsyncSession,
+    *,
+    header_tenant: UUID,
+    scope_tenant_id: UUID | None,
+    current_user: UserCtx,
+) -> str:
+    """Resolve scope string, enforce membership, then bind RLS."""
+    scope_tenant = candidate_scope_tenant_str(header_tenant, scope_tenant_id, current_user)
+    await ensure_candidate_scope_access(
+        db,
+        header_tenant=header_tenant,
+        scope_tenant=scope_tenant,
+        current_user=current_user,
+    )
+    await bind_candidate_scope_rls(db, scope_tenant)
+    return scope_tenant

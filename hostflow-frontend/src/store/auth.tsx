@@ -331,14 +331,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (backup.tenant) {
         tenantSettings.set(String(backup.tenant))
       }
-      window.localStorage.removeItem(IMPERSONATION_BACKUP_KEY)
-      setCanReturnToPlatform(false)
       try {
         await ensureSharedSessionCookies()
       } catch {
         /* cookie sync best-effort */
       }
       await refresh({ force: true })
+      // Drop backup only after a successful restore so a failed refresh can retry.
+      window.localStorage.removeItem(IMPERSONATION_BACKUP_KEY)
+      setCanReturnToPlatform(false)
     } catch (err) {
       console.warn('[Auth] restore platform session failed', err)
     }

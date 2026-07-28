@@ -5,10 +5,11 @@ from enum import Enum
 from typing import Any, Dict, Iterable, Iterator, Optional
 
 import jwt  # PyJWT
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.app.core.settings import settings
+from backend.app.auth.session_cookies import extract_bearer_token, read_access_token
 
 # TODO: add FastAPI router for /api/v1/ping that returns {"ok": true}
 
@@ -107,17 +108,57 @@ def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
     )
 
 
-async def get_current_user(
-    cred: HTTPAuthorizationCredentials | None = Depends(bearer),
-) -> UserCtx:
-    if not cred or not cred.scheme or cred.scheme.lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Missing Authorization header")
+def _decode_access_token(token: str) -> Dict[str, Any]:
+    try:
+        return jwt.decode(token, key=_secret(), algorithms=[ALGO])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-    token = cred.credentials
+
+def _token_sub(token: str) -> str | None:
     try:
         data = jwt.decode(token, key=_secret(), algorithms=[ALGO])
     except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        return None
+    sub = str(data.get("sub") or "").strip()
+    return sub or None
+
+
+def _resolve_request_access_token(
+    request: Request,
+    cred: HTTPAuthorizationCredentials | None,
+) -> str | None:
+    """
+    Prefer Authorization Bearer when present, else Domain cookie.
+    If both exist and ``sub`` differs, prefer the shared cookie (stale per-origin Bearer).
+    """
+    authorization = None
+    if cred and cred.scheme and cred.scheme.lower() == "bearer" and cred.credentials:
+        authorization = f"Bearer {cred.credentials}"
+    bearer_tok = extract_bearer_token(authorization)
+    cookie_tok = read_access_token(request)
+    if bearer_tok and cookie_tok:
+        b_sub = _token_sub(bearer_tok)
+        c_sub = _token_sub(cookie_tok)
+        if b_sub and c_sub and b_sub != c_sub:
+            return cookie_tok
+        if b_sub:
+            return bearer_tok
+        if c_sub:
+            return cookie_tok
+        return bearer_tok
+    return bearer_tok or cookie_tok
+
+
+async def get_current_user(
+    request: Request,
+    cred: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> UserCtx:
+    token = _resolve_request_access_token(request, cred)
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+
+    data = _decode_access_token(token)
 
     try:
         user = _user_ctx_from_decoded_jwt(data)
@@ -134,15 +175,14 @@ async def get_current_user(
 
 
 async def get_current_user_optional(
+    request: Request,
     cred: HTTPAuthorizationCredentials | None = Depends(bearer),
 ) -> Optional[UserCtx]:
-    """Same JWT validation as get_current_user, but missing Authorization yields None (no 401)."""
-    if not cred or not cred.scheme or cred.scheme.lower() != "bearer":
+    """Same JWT validation as get_current_user, but missing session yields None (no 401)."""
+    token = _resolve_request_access_token(request, cred)
+    if not token:
         return None
-    try:
-        data = jwt.decode(cred.credentials, key=_secret(), algorithms=[ALGO])
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    data = _decode_access_token(token)
     try:
         user = _user_ctx_from_decoded_jwt(data)
     except ValueError:

@@ -119,6 +119,8 @@ from backend.app.api.v1.candidates.acl import (
 from backend.app.api.v1.candidates.scope_utils import (
     bind_candidate_scope_rls,
     candidate_scope_tenant_str,
+    ensure_candidate_scope_access,
+    resolve_and_bind_candidate_scope,
     resolve_optional_scope_tenant_uuid,
 )
 from backend.app.auth.hiring_workspace_roles import (
@@ -758,6 +760,12 @@ async def list_candidates(
     scope_tenant = (
         str(scope_tenant_id) if scope_tenant_id
         else (str(tenant_id).strip() or str(current_user.tenant_id).strip() or str(tenant_id))
+    )
+    await ensure_candidate_scope_access(
+        db,
+        header_tenant=tenant_id,
+        scope_tenant=scope_tenant,
+        current_user=current_user,
     )
     # Debug: log who и с каким scope_tenant запрашивает список
     logging.getLogger(__name__).info(
@@ -1476,6 +1484,12 @@ async def candidates_available_statuses(
         str(scope_tenant_id) if scope_tenant_id
         else (str(tenant_id).strip() or str(current_user.tenant_id).strip() or str(tenant_id))
     )
+    await ensure_candidate_scope_access(
+        db,
+        header_tenant=tenant_id,
+        scope_tenant=scope_tenant,
+        current_user=current_user,
+    )
     try:
         await db.execute(
             text("SELECT set_config('app.tenant_id', :tid, true)"),
@@ -1551,6 +1565,12 @@ async def list_candidates_no_next_action(
     db, tenant_id = db_tenant
     scope_tenant = (
         str(scope_tenant_id) if scope_tenant_id else (str(tenant_id).strip() or str(current_user.tenant_id).strip() or str(tenant_id))
+    )
+    await ensure_candidate_scope_access(
+        db,
+        header_tenant=tenant_id,
+        scope_tenant=scope_tenant,
+        current_user=current_user,
     )
     try:
         await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": scope_tenant})
@@ -1933,8 +1953,12 @@ async def get_candidate(
     current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id = db_tenant
-    scope_tenant = candidate_scope_tenant_str(tenant_id, scope_tenant_id, current_user)
-    await bind_candidate_scope_rls(db, scope_tenant)
+    scope_tenant = await resolve_and_bind_candidate_scope(
+        db,
+        header_tenant=tenant_id,
+        scope_tenant_id=scope_tenant_id,
+        current_user=current_user,
+    )
     tenant_id_str = str(scope_tenant)
     visibility = get_tenant_visibility(db, tenant_id_str)
     await ensure_candidate_access(

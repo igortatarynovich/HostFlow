@@ -872,6 +872,9 @@ async def run_global_search_v1(
 
     saved: _SavedTenantCtx | None = None
     if scope_override:
+        from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
+
+        await ensure_user_can_access_tenant(db, current_user, scope_tenant)
         saved = await _push_scope_tenant_context(db, scope_tenant)
 
     candidates: list[dict[str, Any]] = []
