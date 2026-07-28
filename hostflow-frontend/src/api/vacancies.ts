@@ -60,6 +60,8 @@ export interface VacancyPayload {
   candidate_profile_id?: string | null;
   /** Planned positions to fill; omit, 0, or null clears */
   headcount_target?: number | null;
+  /** ADR-032: Sales Order Line bind (1:1) */
+  order_line_id?: string | null;
   extra?: Record<string, unknown> | string | null;
 }
 
@@ -80,6 +82,7 @@ export interface Vacancy {
   candidate_count?: number;
   last_candidate_activity_at?: string | null;
   headcount_target?: number | null;
+  order_line_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }

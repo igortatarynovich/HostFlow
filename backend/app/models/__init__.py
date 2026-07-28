@@ -49,6 +49,10 @@ Tenant = _load_model_module("tenant").Tenant  # type: ignore[attr-defined]
 TenantEmailConfig = _load_model_module("tenant_email_config").TenantEmailConfig  # type: ignore[attr-defined]
 Company = _load_model_module("company").Company  # type: ignore[attr-defined]
 ClientAccount = _load_model_module("client_account").ClientAccount  # type: ignore[attr-defined]
+sales_order_module = _load_model_module("sales_order")
+SalesOrder = sales_order_module.SalesOrder  # type: ignore[attr-defined]
+SalesOrderLine = sales_order_module.SalesOrderLine  # type: ignore[attr-defined]
+SalesBillableItem = sales_order_module.SalesBillableItem  # type: ignore[attr-defined]
 Vacancy = _load_model_module("vacancy").Vacancy  # type: ignore[attr-defined]
 VacancyRecruiter = _load_model_module("vacancy_recruiter").VacancyRecruiter  # type: ignore[attr-defined]
 lead_module = _load_model_module("lead")
@@ -386,6 +390,9 @@ __all__ = [
     "Tenant",
     "TenantEmailConfig",
     "Company",
+    "SalesOrder",
+    "SalesOrderLine",
+    "SalesBillableItem",
     "Vacancy",
     "Funnel",
     "FunnelStage",

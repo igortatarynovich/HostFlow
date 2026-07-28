@@ -6,8 +6,8 @@
 
 ## Суть
 
-- **Входит:** Applications (отклики), кандидаты, вакансии / подборы, пайплайн подбора, документы и правила стадий в контексте найма, handoff к HR/Fleet по продуктовым сценариям; **Job Post / vacancy-facing publishing** как recruitment-specific surface — см. [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md). **Кампании / рекламные кабинеты / универсальный intake routing** — Shared **Acquisition** ([`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)); Подбор остаётся SoT потребности, не кампании.
-- **Не входит:** Sales Inquiry / ClientAccount (→ **Sales**); Service Order (→ **Services**); Invoice / Payment (→ **Finance**); **Employee Workspace** и кадровый lifecycle (→ **HR** — Recruitment только handoff + ссылка); операции автопарка (→ **Fleet**); владение Campaign/Ad как SoT (→ **Acquisition**). См. [`ADR-023`](../specs/architecture/ADR-023-recruitment-sales-module-separation.md).
+- **Входит:** Applications (отклики), кандидаты, вакансии / подборы, пайплайн подбора, документы и правила стадий в контексте найма, handoff к HR/Fleet по продуктовым сценариям; **Job Post / vacancy-facing publishing** как recruitment-specific surface — см. [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md). **Кампании / рекламные кабинеты / универсальный intake routing** — Shared **Acquisition** ([`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)); Подбор остаётся SoT потребности, не кампании. **Vacancy под Sales Order Line** — исполнитель одной линии заказа ([`ADR-032`](../specs/architecture/ADR-032-client-order-vacancy-flight-chain.md)); коммерция и headcount SoT — Sales Order Line, не Vacancy.
+- **Не входит:** Sales Inquiry / ClientAccount / Service Order / Order Line / Billable Item (→ **Sales** / **Finance**); Service Order каталога услуг (→ **Services**); Invoice / Payment (→ **Finance**); **Employee Workspace** и кадровый lifecycle (→ **HR** — Recruitment только handoff + ссылка); операции автопарка (→ **Fleet**); владение Campaign/Ad как SoT (→ **Acquisition**). См. [`ADR-023`](../specs/architecture/ADR-023-recruitment-sales-module-separation.md).
 - **`Lead`** — только внутренний transport intake; в UI модуля — **Отклик (Application)** / **Кандидат**, никогда «лид» как рабочий объект ([`ui-constitution-v1.md`](../specs/architecture/ui-constitution-v1.md)).
 - **Nav:** Employees **не** живут в секции Recruitment.
 - **Stage 2A product API:** `/api/v1/recruitment/applications/*`, `/api/v1/recruitment/candidates/*` (legacy `/api/v1/candidates` remains compat).
@@ -18,7 +18,7 @@
 
 | Сущность | Роль |
 |----------|------|
-| **Vacancy** | Внутренняя потребность: кого ищем, для какой company, условия, headcount, `owner_company_id`, статус. **Не** кандидат и **не** pipeline кандидата. |
+| Vacancy | Внутренняя потребность: кого ищем, для какой company, условия, headcount, `owner_company_id`, статус. При связи с Sales **Order Line** (`order_line_id`, ADR-032) headcount/role/location — **проекция линии**, не второй SoT. **Не** кандидат и **не** pipeline кандидата. |
 | **Job Post** | Публичная версия вакансии (title, description, язык, зарплата, локация, статус публикации, привязка к **application form**). Одна vacancy → **много** posts (языки, порталы, кампании). |
 | **Publishing Channel** | Куда публикуем: career page, HostFlow job page, Pracuj, Indeed, Meta, LinkedIn, OLX и т.д. |
 | **Application Form** | Контур [**Forms**](../forms/module-scope.md) / [`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md): отклик, файлы, RODO, предквалификация. |

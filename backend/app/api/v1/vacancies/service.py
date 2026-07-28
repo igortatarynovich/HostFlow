@@ -113,6 +113,28 @@ class VacancyService:
             if payload.headcount_target is not None and int(payload.headcount_target) > 0
             else None,
         }
+        order_line_id = getattr(payload, "order_line_id", None)
+        if order_line_id:
+            from backend.app.modules.vacancies.order_line_bind import (
+                OrderLineBindError,
+                resolve_order_line_for_vacancy_bind,
+            )
+
+            try:
+                line, _order = await resolve_order_line_for_vacancy_bind(
+                    self.repo.db,
+                    tenant_id=tenant_id,
+                    company_id=str(payload.company_id),
+                    order_line_id=str(order_line_id),
+                )
+            except OrderLineBindError as exc:
+                raise ValueError(exc.detail) from exc
+            values["order_line_id"] = line.id
+            values["headcount_target"] = int(line.quantity_needed)
+            if not str(values.get("title") or "").strip():
+                values["title"] = line.title
+            if line.location and not values.get("location"):
+                values["location"] = line.location
         if str(values.get("status") or "open").strip().lower() == "open":
             from backend.app.services import tenant_quota
 
@@ -227,11 +249,43 @@ class VacancyService:
 
         fields_set = getattr(payload, "model_fields_set", None) or set()
         if "headcount_target" in fields_set:
-            hc = payload.headcount_target
-            if hc is None or int(hc) <= 0:
-                values["headcount_target"] = None
+            # Linked vacancies: headcount SoT is Order Line — ignore manual override.
+            if getattr(obj, "order_line_id", None) and "order_line_id" not in fields_set:
+                pass
             else:
-                values["headcount_target"] = int(hc)
+                hc = payload.headcount_target
+                if hc is None or int(hc) <= 0:
+                    values["headcount_target"] = None
+                else:
+                    values["headcount_target"] = int(hc)
+
+        if "order_line_id" in fields_set:
+            from backend.app.modules.vacancies.order_line_bind import (
+                OrderLineBindError,
+                resolve_order_line_for_vacancy_bind,
+            )
+
+            oid = payload.order_line_id
+            if oid is None:
+                values["order_line_id"] = None
+            else:
+                company_for_bind = str(
+                    values.get("company_id")
+                    or getattr(obj, "company_id", None)
+                    or ""
+                )
+                try:
+                    line, _order = await resolve_order_line_for_vacancy_bind(
+                        self.repo.db,
+                        tenant_id=str(getattr(obj, "tenant_id", "")),
+                        company_id=company_for_bind,
+                        order_line_id=str(oid),
+                        exclude_vacancy_id=str(obj.id),
+                    )
+                except OrderLineBindError as exc:
+                    raise ValueError(exc.detail) from exc
+                values["order_line_id"] = line.id
+                values["headcount_target"] = int(line.quantity_needed)
 
         if payload.employment_type is not None:
             values["employment_type"] = _to_str_or_none(payload.employment_type)
