@@ -135,3 +135,29 @@ async def test_public_goals_resolves_tenant_from_share_token(client: AsyncClient
     body = resp.json()
     assert "metrics" in body
     assert "goals" in body
+
+
+@pytest.mark.anyio
+async def test_document_templates_and_legal_active_require_auth(client: AsyncClient) -> None:
+    data = await _init_data()
+    headers = {"X-Tenant-Id": data["tenant_id"]}
+    for path in (
+        "/api/v1/documents/templates",
+        "/api/v1/legal-documents/active",
+        "/api/v1/db/document-types",
+        "/api/v1/notifications/templates",
+    ):
+        resp = await client.get(path, headers=headers)
+        assert resp.status_code in (401, 403), (path, resp.status_code, resp.text)
+
+
+@pytest.mark.anyio
+async def test_document_templates_ok_with_auth(client: AsyncClient) -> None:
+    data = await _init_data()
+    token = _build_token(data["admin_id"], data["admin_email"], "administrator", data["tenant_id"])
+    headers = {"Authorization": f"Bearer {token}", "X-Tenant-Id": data["tenant_id"]}
+    resp = await client.get("/api/v1/documents/templates", headers=headers)
+    assert resp.status_code == 200, resp.text
+    assert isinstance(resp.json(), list)
+    legal = await client.get("/api/v1/legal-documents/active", headers=headers)
+    assert legal.status_code == 200, legal.text

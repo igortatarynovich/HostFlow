@@ -21,7 +21,7 @@ except Exception:  # pragma: no cover - pydantic<2 fallback
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
@@ -1395,6 +1395,7 @@ async def list_expiring(
 async def list_document_templates(
     include_inactive: bool = Query(False),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> List[DocumentTemplateOut]:
     db, tenant_id = db_tenant
     stmt = select(DocumentTemplate).where(DocumentTemplate.tenant_id == str(tenant_id))
@@ -1409,6 +1410,7 @@ async def list_document_templates(
 async def get_document_template(
     template_id: UUID,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> DocumentTemplateOut:
     db, tenant_id = db_tenant
     res = await db.execute(

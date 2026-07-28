@@ -77,7 +77,9 @@ class NotificationTenantReconcileResponse(BaseModel):
 
 
 @router.get("/templates", response_model=NotificationTemplateListResponse)
-async def list_notification_templates_endpoint() -> NotificationTemplateListResponse:
+async def list_notification_templates_endpoint(
+    _current_user: UserCtx = Depends(get_current_user),
+) -> NotificationTemplateListResponse:
     templates = list_notification_templates()
     items: List[NotificationTemplateOut] = []
     for template in templates:

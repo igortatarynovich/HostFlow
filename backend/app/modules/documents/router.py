@@ -149,7 +149,11 @@ from .document_visibility_and_locks import (
 )
 from .validators import validate_meta
 
-router = APIRouter(prefix="/db", tags=["documents"])
+router = APIRouter(
+    prefix="/db",
+    tags=["documents"],
+    dependencies=[Depends(get_current_user)],
+)
 logger = logging.getLogger(__name__)
 
 

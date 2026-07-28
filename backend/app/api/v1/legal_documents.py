@@ -140,6 +140,7 @@ async def update_legal_document(
 @router.get("/active", response_model=ActiveLegalDocsOut)
 async def get_active_docs(
     db_tenant=Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ):
     """Get active RODO, privacy, and §2.16 billing exhibits for current tenant."""
     db, tenant_id = db_tenant
