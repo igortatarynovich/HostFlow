@@ -63,6 +63,9 @@ import ClientChannelWorkspaceLayout from './pages/client-acquisition/ClientChann
 import ClientChannelHomePage from './pages/client-acquisition/ClientChannelHomePage'
 import ClientInquiryWorkPage from './pages/client-acquisition/ClientInquiryWorkPage'
 import SalesInquiriesEntryPage from './pages/sales/SalesInquiriesEntryPage'
+import SalesOrdersListPage from './pages/sales/SalesOrdersListPage'
+import SalesOrderCreatePage from './pages/sales/SalesOrderCreatePage'
+import SalesOrderDetailPage from './pages/sales/SalesOrderDetailPage'
 import SalesWorkspaceLayout from './pages/sales/SalesWorkspaceLayout'
 import RecruitmentInboxEntryPage from './pages/recruitment/RecruitmentInboxEntryPage'
 import SignupPage from './pages/SignupPage'
@@ -258,6 +261,9 @@ export default function App(){
             <Route path="sales" element={<SalesWorkspaceLayout />}>
               <Route index element={<SalesInquiriesEntryPage />} />
               <Route path="inquiries/:leadId" element={<SalesInquiriesEntryPage />} />
+              <Route path="orders" element={<SalesOrdersListPage />} />
+              <Route path="orders/new" element={<SalesOrderCreatePage />} />
+              <Route path="orders/:orderId" element={<SalesOrderDetailPage />} />
             </Route>
             <Route path="recruitment/inbox" element={<RecruitmentInboxEntryPage />} />
             <Route path="recruitment/inbox/:applicationId" element={<RecruitmentInboxEntryPage />} />

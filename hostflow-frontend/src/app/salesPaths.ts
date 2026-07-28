@@ -3,9 +3,22 @@ import { CRM_APP_PATHS } from './crmAppPaths'
 /** Channel-independent Sales entry ("Что дальше" + work session over company inquiries). */
 export const SALES_HOME_PATH = `${CRM_APP_PATHS.appShellPrefix}/sales`
 
+/** ADR-032 Sales Service Orders list (not Services-module `/app/orders`). */
+export const SALES_ORDERS_PATH = CRM_APP_PATHS.salesOrders
+
 /** Channel-independent inquiry work card path. */
 export function salesInquiryPath(leadId: string): string {
   return `${SALES_HOME_PATH}/inquiries/${encodeURIComponent(leadId)}`
+}
+
+/** Sales Service Order detail. */
+export function salesOrderPath(orderId: string): string {
+  return `${SALES_ORDERS_PATH}/${encodeURIComponent(orderId)}`
+}
+
+/** Create form for a new Sales Service Order. */
+export function salesOrderNewPath(): string {
+  return `${SALES_ORDERS_PATH}/new`
 }
 
 /** Parse a leadId out of a channel-independent Sales inquiry path. */

@@ -44,6 +44,8 @@ export const CRM_APP_PATHS = {
   leadsDistributionRules: "/app/leads/distribution/rules",
   /** Operational sales workspace for services tenants (inquiries, work session, conversion). */
   sales: "/app/sales",
+  /** Sales Service Orders (ADR-032 commercial deal + order lines). Not Services-module /app/orders. */
+  salesOrders: "/app/sales/orders",
   launchpad: "/app/launchpad",
   /** Client acquisition channel list and per-channel inquiry workspace. */
   clientAcquisitionChannels: "/app/client-acquisition/channels",

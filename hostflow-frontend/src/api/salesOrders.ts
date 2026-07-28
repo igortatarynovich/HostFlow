@@ -10,6 +10,15 @@ export type BillingTrigger =
   | 'headcount_completed'
   | 'monthly_service_period_closed'
 
+export const BILLING_TRIGGERS: BillingTrigger[] = [
+  'candidate_hired',
+  'candidate_started_work',
+  'guarantee_period_passed',
+  'milestone_accepted',
+  'headcount_completed',
+  'monthly_service_period_closed',
+]
+
 export type SalesOrderLine = {
   id: string
   tenant_id: string
@@ -48,6 +57,30 @@ export type SalesOrder = {
   lines: SalesOrderLine[]
 }
 
+export type SalesOrderCreatePayload = {
+  company_id: string
+  title: string
+  client_account_id?: string
+  currency?: string
+  payment_term_days?: number
+  payment_model?: string
+  vat_rate?: number
+  guarantee_days?: number
+  invoice_right_policy?: string
+  billing_notes?: string
+}
+
+export type SalesOrderLineCreatePayload = {
+  title: string
+  quantity_needed: number
+  role_label?: string
+  location?: string
+  unit_rate?: number
+  charge_unit?: string
+  billing_trigger?: BillingTrigger | string
+  guarantee_days?: number
+}
+
 export async function listSalesOrders(params?: {
   company_id?: string
   status?: string
@@ -63,31 +96,57 @@ export async function listSalesOrders(params?: {
   return Array.isArray(data?.items) ? data.items : []
 }
 
-export async function createSalesOrder(payload: {
-  company_id: string
-  title: string
-  client_account_id?: string
-  currency?: string
-  payment_term_days?: number
-  payment_model?: string
-  quantity_needed?: never
-}) {
+export async function getSalesOrder(orderId: string) {
+  const { data } = await api.get<SalesOrder>(`/sales-orders/${encodeURIComponent(orderId)}`)
+  return data
+}
+
+export async function createSalesOrder(payload: SalesOrderCreatePayload) {
   const { data } = await api.post<SalesOrder>('/sales-orders', payload)
   return data
 }
 
-export async function createSalesOrderLine(
+export async function updateSalesOrder(
   orderId: string,
-  payload: {
+  payload: Partial<{
+    title: string
+    status: SalesOrderStatus | string
+    currency: string
+    payment_term_days: number
+    payment_model: string
+    vat_rate: number
+    guarantee_days: number
+    invoice_right_policy: string
+    billing_notes: string
+  }>,
+) {
+  const { data } = await api.patch<SalesOrder>(`/sales-orders/${encodeURIComponent(orderId)}`, payload)
+  return data
+}
+
+export async function createSalesOrderLine(orderId: string, payload: SalesOrderLineCreatePayload) {
+  const { data } = await api.post<SalesOrderLine>(`/sales-orders/${encodeURIComponent(orderId)}/lines`, payload)
+  return data
+}
+
+export async function updateSalesOrderLine(
+  lineId: string,
+  payload: Partial<{
     title: string
     quantity_needed: number
-    role_label?: string
-    location?: string
-    unit_rate?: number
-    billing_trigger?: BillingTrigger | string
-  },
+    role_label: string
+    location: string
+    unit_rate: number
+    charge_unit: string
+    billing_trigger: BillingTrigger | string
+    guarantee_days: number
+    status: SalesOrderStatus | string
+  }>,
 ) {
-  const { data } = await api.post<SalesOrderLine>(`/sales-orders/${orderId}/lines`, payload)
+  const { data } = await api.patch<SalesOrderLine>(
+    `/sales-order-lines/${encodeURIComponent(lineId)}`,
+    payload,
+  )
   return data
 }
 
