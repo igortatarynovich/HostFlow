@@ -1,13 +1,13 @@
 # Sales Capability UI — display-only Pipeline v1 spine
 
-**Status:** ACTIVE  
+**Status:** SUPERSEDED (operator UI removed)  
 **Branch:** `feat/sales-capability-ui`  
 **Queue:** [`sales-to-comms-sequential-queue.md`](sales-to-comms-sequential-queue.md) Stage 1  
 **Parents:** Pipeline v1 seal · Creation Origins · Phase 2 Flow Spec
 
 ## Scope
 
-Thin read + display of existing Sales Domain Pipeline v1 state:
+Thin read of existing Sales Domain Pipeline v1 state (API remains for domain/debug consumers):
 
 | Surface | Source |
 |---------|--------|
@@ -18,8 +18,8 @@ Thin read + display of existing Sales Domain Pipeline v1 state:
 
 ## Delivery
 
-- `GET /api/v1/sales/inquiries/{application_id}/capability-spine`
-- `SalesCapabilitySpineSection` in `ApplicationSalesDetailPanel` summary rail
+- `GET /api/v1/sales/inquiries/{application_id}/capability-spine` — **API kept**
+- Operator Sales rail (`ApplicationSalesDetailPanel`) **does not** show the spine. Daily work surface: contact phone, call notes, questionnaire, timeline.
 
 ## Forbidden (this slice)
 
@@ -30,4 +30,4 @@ Thin read + display of existing Sales Domain Pipeline v1 state:
 
 ## Non-goal honesty
 
-Product `POST .../convert-client` may still use Lead convert (Pipeline GAP §3). This UI shows **domain** convert readiness / mapping / lineage only — it does not wire product convert to mapping.
+Product `POST .../convert-client` may still use Lead convert (Pipeline GAP §3). Capability spine is a domain projection, not a sales-manager tool.

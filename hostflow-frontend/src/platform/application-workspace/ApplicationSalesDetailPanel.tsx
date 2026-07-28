@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import type { Application } from '../../api/types/application'
 import { useI18n } from '../../i18n'
 import { clientDetailPath } from '../../services/platformHandoff'
 import SalesInquiryPossibleDuplicatesSection from '../../components/sales/SalesInquiryPossibleDuplicatesSection'
-import SalesCapabilitySpineSection from '../../components/sales/SalesCapabilitySpineSection'
 import SalesInquiryQuestionnaireSection from '../../components/sales/SalesInquiryQuestionnaireSection'
+import SalesInquiryCallNotesSection from '../../components/sales/SalesInquiryCallNotesSection'
+import SalesInquiryTimelineSection from '../../components/sales/SalesInquiryTimelineSection'
 import { ContextRail } from '../context-rail'
 import {
   APPLICATION_STATUS_BADGE,
@@ -40,6 +42,7 @@ export function ApplicationSalesDetailPanel({
   onQuestionnaireUpdated,
 }: ApplicationSalesDetailPanelProps) {
   const { t } = useI18n()
+  const [timelineRefresh, setTimelineRefresh] = useState(0)
   const companyName = application.title
   const statusKey = application.status === 'rejected' ? 'completed' : application.status
   const activeStep = Number(application.extensions?.workflow_step ?? 1)
@@ -47,6 +50,10 @@ export function ApplicationSalesDetailPanel({
   const clientHref = convertedId ? clientDetailPath(convertedId) : undefined
   const subtitle = application.subtitle || 'B2B заявка'
   const openCardLabel = t('app.sales_inquiry.open_client_card', { defaultValue: 'Открыть полную карточку' })
+  const contactPhone = application.contact.phone?.trim() || ''
+  const contactEmail = application.contact.email?.trim() || ''
+  const telHref = contactPhone ? `tel:${contactPhone.replace(/\s/g, '')}` : null
+  const busy = patching || converting
 
   const decision = resolveSalesApplicationDecision({
     application,
@@ -113,26 +120,66 @@ export function ApplicationSalesDetailPanel({
           </ol>
         ),
         contacts: (
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3" data-testid="sales-rail-contact">
             <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-800">
               {applicationInitial(application)}
             </span>
-            <p className="text-sm text-slate-600">{application.contact.name || 'Контакт'}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-800">
+                {application.contact.name || 'Контакт'}
+              </p>
+              {telHref ? (
+                <a
+                  href={telHref}
+                  className="mt-1 block break-all text-2xl font-semibold tracking-wide text-slate-900 hover:text-brand-700"
+                  data-testid="sales-rail-phone"
+                >
+                  {contactPhone}
+                </a>
+              ) : (
+                <p className="mt-1 text-sm text-slate-400">
+                  {t('app.sales_inquiry.no_phone', { defaultValue: 'Телефон не указан' })}
+                </p>
+              )}
+              {contactEmail ? (
+                <a
+                  href={`mailto:${contactEmail}`}
+                  className="mt-1 block truncate text-sm text-slate-600 hover:text-brand-700"
+                >
+                  {contactEmail}
+                </a>
+              ) : null}
+            </div>
           </div>
         ),
         summary: (
-          <div className="space-y-4">
-            <SalesCapabilitySpineSection applicationId={application.id} />
+          <div className="space-y-5">
+            <SalesInquiryCallNotesSection
+              leadId={application.id}
+              disabled={busy}
+              onSaved={() => {
+                setTimelineRefresh((n) => n + 1)
+                onQuestionnaireUpdated?.()
+              }}
+            />
             <SalesInquiryPossibleDuplicatesSection applicationId={application.id} />
             <SalesInquiryQuestionnaireSection
               leadId={application.id}
-              onUpdated={onQuestionnaireUpdated}
+              onUpdated={() => {
+                setTimelineRefresh((n) => n + 1)
+                onQuestionnaireUpdated?.()
+              }}
             />
           </div>
         ),
+        history: (
+          <SalesInquiryTimelineSection leadId={application.id} refreshToken={timelineRefresh} />
+        ),
       }}
       contextTitles={{
-        summary: t('app.sales_inquiry.questionnaire_title', { defaultValue: 'Ankieta klienta' }),
+        contacts: t('app.sales_inquiry.contact_title', { defaultValue: 'Контакт' }),
+        summary: t('app.sales_inquiry.work_title', { defaultValue: 'Работа по обращению' }),
+        history: t('app.leads.detail.timeline', { defaultValue: 'История' }),
       }}
     />
   )
