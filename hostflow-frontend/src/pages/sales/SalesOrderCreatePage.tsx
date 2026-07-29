@@ -2,11 +2,33 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { createSalesOrder } from '../../api/salesOrders'
 import { listCompanies } from '../../api/client'
-import { listClientAccounts, type ClientAccount } from '../../api/clientAccounts'
+import {
+  applyCommercialDefaultsPrefill,
+  listClientAccounts,
+  updateClientAccount,
+  type ClientAccount,
+  type CommercialDefaults,
+} from '../../api/clientAccounts'
 import { SALES_ORDERS_PATH, salesOrderPath } from '../../app/salesPaths'
 import { useI18n } from '../../i18n'
 
 type CompanyOpt = { id: string; name: string }
+
+function buildDefaultsFromForm(fields: {
+  currency: string
+  paymentTermDays: string
+  paymentModel: string
+  vatRate: string
+  guaranteeDays: string
+}): CommercialDefaults {
+  return {
+    currency: fields.currency.trim() || undefined,
+    payment_term_days: fields.paymentTermDays !== '' ? Number(fields.paymentTermDays) : undefined,
+    payment_model: fields.paymentModel.trim() || undefined,
+    vat_rate: fields.vatRate !== '' ? Number(fields.vatRate) : undefined,
+    guarantee_days: fields.guaranteeDays !== '' ? Number(fields.guaranteeDays) : undefined,
+  }
+}
 
 export default function SalesOrderCreatePage() {
   const { t } = useI18n()
@@ -23,7 +45,9 @@ export default function SalesOrderCreatePage() {
   const [guaranteeDays, setGuaranteeDays] = useState('')
   const [billingNotes, setBillingNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [savingDefaults, setSavingDefaults] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -52,8 +76,55 @@ export default function SalesOrderCreatePage() {
   useEffect(() => {
     if (!clientAccountId) return
     const acc = accounts.find((a) => a.id === clientAccountId)
-    if (acc?.primary_company_id) setCompanyId(String(acc.primary_company_id))
-  }, [clientAccountId, accounts])
+    if (!acc) return
+    if (acc.primary_company_id) setCompanyId(String(acc.primary_company_id))
+    const prefill = applyCommercialDefaultsPrefill(acc.commercial_defaults)
+    if (prefill.currency) setCurrency(prefill.currency)
+    if (prefill.payment_term_days) setPaymentTermDays(prefill.payment_term_days)
+    if (prefill.payment_model) setPaymentModel(prefill.payment_model)
+    if (prefill.vat_rate) setVatRate(prefill.vat_rate)
+    if (prefill.guarantee_days) setGuaranteeDays(prefill.guarantee_days)
+    setMessage(
+      t('app.sales_orders.create.defaults_applied', {
+        defaultValue: 'Подставлены commercial defaults клиента (только для нового заказа).',
+      }),
+    )
+  }, [clientAccountId, accounts, t])
+
+  const onSaveDefaults = async () => {
+    if (!clientAccountId) {
+      setError(
+        t('app.sales_orders.create.defaults_need_account', {
+          defaultValue: 'Выберите Client Account, чтобы сохранить defaults',
+        }),
+      )
+      return
+    }
+    setSavingDefaults(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const updated = await updateClientAccount(clientAccountId, {
+        commercial_defaults: buildDefaultsFromForm({
+          currency,
+          paymentTermDays,
+          paymentModel,
+          vatRate,
+          guaranteeDays,
+        }),
+      })
+      setAccounts((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)))
+      setMessage(
+        t('app.sales_orders.create.defaults_saved', {
+          defaultValue: 'Defaults клиента сохранены. Открытые заказы не меняются.',
+        }),
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSavingDefaults(false)
+    }
+  }
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,7 +164,8 @@ export default function SalesOrderCreatePage() {
       </h2>
       <p className="mt-1 text-sm text-slate-600">
         {t('app.sales_orders.create.subtitle', {
-          defaultValue: 'Снимок коммерческих условий сделки. Defaults клиента сюда не подтягиваются автоматически (V1).',
+          defaultValue:
+            'Снимок коммерческих условий сделки. Defaults Client Account подставляются при выборе — существующие заказы не переписываются.',
         })}
       </p>
 
@@ -151,7 +223,12 @@ export default function SalesOrderCreatePage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <div className="label">{t('app.sales_orders.create.currency', { defaultValue: 'Валюта' })}</div>
-            <input className="input" value={currency} onChange={(e) => setCurrency(e.target.value)} />
+            <input
+              className="input"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              data-testid="sales-order-currency"
+            />
           </label>
           <label className="block">
             <div className="label">
@@ -164,6 +241,7 @@ export default function SalesOrderCreatePage() {
               max={365}
               value={paymentTermDays}
               onChange={(e) => setPaymentTermDays(e.target.value)}
+              data-testid="sales-order-payment-term"
             />
           </label>
           <label className="block">
@@ -201,6 +279,30 @@ export default function SalesOrderCreatePage() {
           </label>
         </div>
 
+        {clientAccountId ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+            <p className="text-sm text-slate-600">
+              {t('app.sales_orders.create.defaults_hint', {
+                defaultValue:
+                  'Можно сохранить текущие поля как commercial defaults этого Client Account (ADR-032).',
+              })}
+            </p>
+            <button
+              type="button"
+              className="btn-secondary mt-2"
+              disabled={savingDefaults}
+              onClick={() => void onSaveDefaults()}
+              data-testid="sales-order-save-defaults"
+            >
+              {savingDefaults
+                ? t('common.saving', { defaultValue: 'Сохранение…' })
+                : t('app.sales_orders.create.save_defaults', {
+                    defaultValue: 'Сохранить как defaults клиента',
+                  })}
+            </button>
+          </div>
+        ) : null}
+
         <label className="block">
           <div className="label">{t('app.sales_orders.create.notes', { defaultValue: 'Коммерческие заметки' })}</div>
           <textarea
@@ -210,6 +312,11 @@ export default function SalesOrderCreatePage() {
           />
         </label>
 
+        {message ? (
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            {message}
+          </p>
+        ) : null}
         {error ? (
           <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{error}</p>
         ) : null}

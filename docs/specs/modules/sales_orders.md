@@ -64,6 +64,13 @@ Idempotent on `(line, trigger, source_entity_type, source_entity_id)` among non-
 - Partial selection allowed; mixed currencies / void / pending+invoiced mix → 422/409
 - Sales UI: order detail → Billable Items checklist → «Создать счёт»
 
+## Client Account commercial defaults (V1)
+
+- Column `client_accounts.commercial_defaults` (JSON): `currency`, `payment_term_days`, `payment_model`, `vat_rate`, `guarantee_days`, `invoice_right_policy`
+- `PATCH /api/v1/client-accounts/{id}` accepts `commercial_defaults`
+- Sales order create: selecting Client Account **prefills** form; «Сохранить как defaults клиента» writes back
+- Changing defaults **must not** rewrite existing Service Orders (snapshot SoT)
+
 ## SPA (V1)
 
 - List / create / detail: `/app/sales/orders` (`CRM_APP_PATHS.salesOrders`)
