@@ -56,6 +56,14 @@ Delivery facade: `backend.app.modules.sales_orders.contracts`.
 
 Idempotent on `(line, trigger, source_entity_type, source_entity_id)` among non-`void`. Amount = `unit_rate` (× qty for headcount). Freeform vacancies (no `order_line_id`) skipped. Not wired: guarantee / milestone / monthly.
 
+## Invoice composer (V1)
+
+- `GET /api/v1/sales-billable-items?sales_order_id=&status=pending`
+- `POST /api/v1/sales-orders/{id}/invoices` body `{ billable_item_ids: [...] }`
+- Creates Finance **draft** Invoice via existing invoice CRUD; sets selected rows `status=invoiced` + `invoice_id`
+- Partial selection allowed; mixed currencies / void / pending+invoiced mix → 422/409
+- Sales UI: order detail → Billable Items checklist → «Создать счёт»
+
 ## SPA (V1)
 
 - List / create / detail: `/app/sales/orders` (`CRM_APP_PATHS.salesOrders`)
