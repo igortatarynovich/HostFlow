@@ -213,6 +213,10 @@ class Settings(BaseSettings):
     # on the request path. Set this to false to force inline processing even with ARQ.
     job_queue_stripe_webhook_async: bool = True
 
+    # Phase 7 — optional Slack/Teams/compatible incoming webhook for detection.alert.raised.
+    # Empty = log-only alerts (canonical security_event still emitted).
+    security_alert_webhook_url: Optional[str] = None
+
     # Object storage (Phase 0 #6). "fs" keeps the historical UPLOAD_DIR layout served
     # via `/uploads/<path>` (default, zero-migration). "s3" routes writes through
     # `app.core.object_storage` to an S3-compatible bucket (AWS S3, MinIO, Cloudflare R2, …)

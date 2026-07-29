@@ -8,6 +8,7 @@
 |----------|------------|
 | [security-ssot.md](./security-ssot.md) | Единый источник истины: классификация данных, изоляция, RBAC, handoff, auth, интеграции, тесты, KPI, IR. |
 | [runtime-roadmap.md](./runtime-roadmap.md) | Фазовый backlog: runtime assertions, observability, telemetry, detection, AI/search isolation, scorecard; **канон полей security-событий**, security-owned pipeline. |
+| [detection-runbooks.md](./detection-runbooks.md) | Phase 7: triage runbooks для `detection.alert.raised` (export anomaly, retrieval/signed-URL bursts). |
 | [security-events-governance.md](./security-events-governance.md) | Правила владения security events: canonical v1, taxonomy PR, запрет raw events, redaction, отделение transport от producers. |
 | [security-review-checklist.md](./security-review-checklist.md) | Обязательный чеклист для каждого PR, который трогает security perimeter. |
 | [threat-models/](./threat-models/) | Узкоспециализированные threat models по поверхностям атаки. |

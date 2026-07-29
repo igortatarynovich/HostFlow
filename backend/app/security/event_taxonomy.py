@@ -21,6 +21,7 @@ ALLOWED_EVENT_PREFIXES: tuple[str, ...] = (
     "superadmin.",
     "search.",
     "ai.",
+    "detection.",
 )
 
 _EVENT_TYPE_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$")
@@ -59,6 +60,9 @@ EVENT_SEARCH_RETRIEVAL_DENIED = "search.retrieval.denied"
 EVENT_AI_RETRIEVAL_REQUESTED = "ai.retrieval.requested"
 EVENT_AI_RETRIEVAL_COMPLETED = "ai.retrieval.completed"
 EVENT_AI_RETRIEVAL_DENIED = "ai.retrieval.denied"
+
+# Phase 7 — detection / alerting (reaction layer on top of telemetry)
+EVENT_DETECTION_ALERT_RAISED = "detection.alert.raised"
 
 
 def validate_event_type(event_type: str) -> str:

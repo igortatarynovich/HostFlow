@@ -61,6 +61,17 @@ jobs:
       - name: Enforce search retrieval audit producers
         run: python3 scripts/security/check_retrieval_call_sites.py
 
+  detection-rules:
+    name: Phase 7 detection rules have runbooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Enforce detection rule owners + runbooks
+        run: python3 scripts/security/check_detection_rules.py
+
   telemetry-phase34-stability:
     name: Phase 3/4 telemetry stabilization (helpers + logger heuristic)
     runs-on: ubuntu-latest

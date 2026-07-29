@@ -262,19 +262,31 @@ Observability для HF трактуется как **часть security archit
 
 ## Phase 7 — Detection & alerting
 
-**Цель:** превратить сигналы фаз 2–4 в **реакцию** (Slack, email, admin center, PagerDuty по критичности).
+**Статус (код):** **started — detection engine v1** (in-process rules + `detection.alert.raised` + optional webhook).
 
-**Примеры правил**
+**Цель:** превратить сигналы фаз 2–4 (и Phase 6 retrieval denies) в **реакцию** (Slack webhook / log), с обязательным runbook.
 
-- Brute force / всплеск 401/403.
-- Массовые экспорты / скачивания документов (см. Phase 4).
-- Аномалии signed URL (см. Phase 3).
-- Tenant enumeration (паттерны запросов к публичным endpoint).
+**Реализовано (v1):**
+
+- Taxonomy prefix `detection.` · `detection.alert.raised`.
+- Rules registry: `backend/app/security/detection_rules.py` (owner + runbook required).
+- Engine hook from `emit_security_event_v1` → `maybe_raise_detection_alerts` (skips `detection.*` recursion).
+- Rules: `export_anomaly_v1` (immediate), `retrieval_denied_burst_v1` (5/10m), `document_signed_url_denied_burst_v1` (10/10m). Burst counters are **process-local** (multi-replica → shared store backlog).
+- Optional sink: `SECURITY_ALERT_WEBHOOK_URL` / `settings.security_alert_webhook_url`.
+- Runbooks: [`detection-runbooks.md`](./detection-runbooks.md).
+- CI: `scripts/security/check_detection_rules.py`.
+
+**Примеры правил (ещё backlog)**
+
+- Brute force / всплеск 401/403 (auth path metrics).
+- Sliding-window export count per actor/day (needs shared store).
+- Tenant enumeration on public endpoints.
 
 **Критерии готовности фазы (пример)**
 
-- Каждое правило имеет owner, порог и процедуру triage.
-- Нет «алерта без runbook» (ссылка на IR в SSOT / security-review-checklist).
+- ~~Каждое правило имеет owner, порог и процедуру triage.~~ **v1 done.**
+- ~~Нет «алерта без runbook».~~ **enforced by CI.**
+- Shared-store burst + PagerDuty — backlog.
 
 ---
 
