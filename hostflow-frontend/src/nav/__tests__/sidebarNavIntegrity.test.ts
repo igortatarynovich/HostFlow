@@ -68,6 +68,7 @@ describe('sidebar nav placement integrity', () => {
       'marketing',
       'marketing-sources',
       'marketing-forms',
+      'marketing-diagnostics',
       'acquisition-activity',
     ])
     expect(SIDEBAR_AGENCY_AUTOMATIONS_ORDER).not.toContain('acquisition-activity')

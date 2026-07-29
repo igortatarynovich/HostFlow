@@ -43,6 +43,7 @@ describe('marketing workspace route registration', () => {
       'marketing',
       'marketing-sources',
       'marketing-forms',
+      'marketing-diagnostics',
       'acquisition-activity',
     ])
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).toEqual(['sales', 'clients'])

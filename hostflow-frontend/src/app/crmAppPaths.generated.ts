@@ -170,6 +170,8 @@ export const CRM_APP_PATHS = {
   setupProcess: "/app/setup/process",
   setupIntake: "/app/setup/intake",
   platformSetup: "/app/platform/setup",
+  /** Marketing Source Diagnostics — ops console for recent submissions (post Ad-ID bind UI). */
+  marketingDiagnostics: "/app/marketing/diagnostics",
 } as const
 
 export const CRM_APP_DRILLDOWN_HREFS = {
