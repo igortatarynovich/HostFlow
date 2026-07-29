@@ -56,7 +56,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
         label: t('app.candidates.detail.open_full_profile', { defaultValue: 'Открыть полную карточку' }),
         href: candidateHref,
       },
-      requiredContext: ['outcome'],
+      requiredContext: ['outcome', 'contacts'],
       variant: 'success',
     }
   }
@@ -70,7 +70,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
           ? t('app.recruitment_inquiry.rejected_body', { defaultValue: 'Отклик отклонён.' })
           : t('app.recruitment_inquiry.completed_body', { defaultValue: 'Обработка завершена.' }),
       primaryAction: null,
-      requiredContext: [],
+      requiredContext: ['contacts'],
       terminal: true,
       outcome: {
         title: t('app.recruitment_inquiry.closed_title', { defaultValue: 'Отклик закрыт' }),
@@ -105,7 +105,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
         },
       ],
       contactActions,
-      requiredContext: ['vacancy', 'assignee'],
+      requiredContext: ['contacts', 'vacancy', 'assignee'],
       afterActionHint: t('app.recruitment_inquiry.after_call_hint', {
         defaultValue: 'После звонка привяжите подбор и создайте кандидата.',
       }),
@@ -135,6 +135,6 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
       },
     ],
     contactActions,
-    requiredContext: ['vacancy', 'assignee'],
+    requiredContext: ['contacts', 'vacancy', 'assignee'],
   }
 }

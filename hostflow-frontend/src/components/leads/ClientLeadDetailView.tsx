@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import type { LeadCallResultCode } from '../../api/client'
 import type { Lead } from '../../api/types'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import EntityCorrespondenceOpen from '../communications/EntityCorrespondenceOpen'
 import { useI18n } from '../../i18n'
 import { leadIntakeResolutionRejected } from '../../utils/intakeResolution'
 import {
@@ -197,6 +198,19 @@ export default function ClientLeadDetailView({
             <p className="mt-3 font-mono text-[11px] leading-relaxed text-slate-400 break-all">ID · {lead.id}</p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-slate-100 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+            <EntityCorrespondenceOpen
+              refs={[
+                { entityType: 'lead', entityId: lead.id },
+                ...(convertedId
+                  ? [
+                      { entityType: 'client_account', entityId: convertedId },
+                      { entityType: 'company', entityId: convertedId },
+                    ]
+                  : []),
+              ]}
+              size="md"
+              testId="client-lead-correspondence"
+            />
             {terminal ? null : convertedId ? (
               <Link to={`${CRM_APP_PATHS.agencyClients}/${convertedId}`} className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold">
                 Открыть клиента
