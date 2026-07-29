@@ -42,6 +42,7 @@ export const SIDEBAR_AGENCY_MARKETING_ORDER = [
   'marketing',
   'marketing-sources',
   'marketing-forms',
+  'marketing-diagnostics',
   'acquisition-activity',
 ] as const
 
@@ -104,6 +105,7 @@ export const SIDEBAR_HUB_NAV_ITEM_KEYS = [
   'settings-communications-sla',
   'settings-communications-templates',
   'settings-communications-automation',
+  'settings-communications-lead-lifecycle-email',
   'settings-ruleset',
   'settings-audit',
 ] as const

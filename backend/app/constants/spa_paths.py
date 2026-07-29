@@ -39,6 +39,7 @@ MARKETING = "/app/marketing"
 MARKETING_NEW = "/app/marketing/new"
 MARKETING_SOURCES = "/app/marketing/sources"
 MARKETING_FORMS = "/app/marketing/forms"
+MARKETING_DIAGNOSTICS = "/app/marketing/diagnostics"
 SETTINGS_LEAD_FORMS = "/app/settings/lead-forms"
 
 def spa_candidate(candidate_id: str) -> str:

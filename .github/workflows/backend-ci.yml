@@ -35,6 +35,10 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    # Scratch CI DB is named `hostflow` (service POSTGRES_DB). conftest refuses
+    # non-*test* names unless explicitly allowed — CI deliberately opts in.
+    env:
+      HOSTFLOW_ALLOW_NON_TEST_DB: "1"
     services:
       db:
         image: postgres:15
