@@ -183,6 +183,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const resolvedTenantId = effectiveTenantId ?? whoami.tenant_id ?? profile.tenant_id ?? ''
       const merged: WhoAmI = {
         ...whoami,
+        session_kind: whoami.session_kind ?? 'normal',
+        impersonated_by: whoami.impersonated_by ?? null,
+        exp: whoami.exp ?? null,
         sub: profile.user_id ?? whoami.sub,
         email: profile.email ?? whoami.email,
         tenant_id: resolvedTenantId || whoami.tenant_id,

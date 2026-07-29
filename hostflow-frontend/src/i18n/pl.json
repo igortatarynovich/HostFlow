@@ -1879,6 +1879,7 @@
         "return_to_platform": "Wróć do panelu platformy",
         "language": "Język"
       },
+      "impersonation_banner": "SUPERADMIN ACCESS ACTIVE — impersonacja tenanta klienta",
       "notifications": {
         "title": "Powiadomienia",
         "panel_subtitle": "Nieprzeczytane: {count}",
@@ -2366,6 +2367,7 @@
           "impersonate": "Wejdź jako tenant",
           "impersonating": "Przełączanie…",
           "impersonate_confirm": "Przełączyć się na tenant „{name}”? Bieżąca sesja zostanie zastąpiona.",
+          "impersonate_reason_prompt": "Powód impersonacji (wymagany, min. 3 znaki):",
           "manage_team": "Zarządzaj zespołem",
           "suspend": "Zawieś",
           "activate": "Aktywuj",
@@ -2469,6 +2471,7 @@
           "logo_upload_failed": "Przesyłanie logo nie powiodło się.",
           "status_change_failed": "Nie udało się zmienić statusu.",
           "impersonate_failed": "Impersonacja nie powiodła się.",
+          "impersonate_reason_required": "Wymagane uzasadnienie (min. 3 znaki).",
           "required_fields": "Nazwa i slug są wymagane.",
           "initial_admin_password_required": "Podaj hasło administratora.",
           "create_failed": "Nie udało się utworzyć tenanta.",

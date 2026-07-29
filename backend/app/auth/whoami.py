@@ -21,6 +21,21 @@ def _require_access_token(
     return token
 
 
+def _session_kind_from_payload(payload: Dict[str, Any]) -> str:
+    raw_type = str(payload.get("type") or "").strip().lower()
+    if raw_type == "impersonation":
+        return "impersonation"
+    return "normal"
+
+
+def _session_fields(payload: Dict[str, Any]) -> Dict[str, Any]:
+    kind = _session_kind_from_payload(payload)
+    out: Dict[str, Any] = {"session_kind": kind}
+    if kind == "impersonation":
+        out["impersonated_by"] = payload.get("impersonated_by")
+    return out
+
+
 @router.get("/whoami")
 def whoami(
     request: Request, authorization: Optional[str] = Header(None)
@@ -38,6 +53,7 @@ def whoami(
         "iat": payload.get("iat"),
         "exp": payload.get("exp"),
         "raw": payload,
+        **_session_fields(payload),
     }
 
 
@@ -60,4 +76,5 @@ def whoami_verify(
         "tenant_id": payload.get("tenant_id"),
         "iat": payload.get("iat"),
         "exp": payload.get("exp"),
+        **_session_fields(payload),
     }

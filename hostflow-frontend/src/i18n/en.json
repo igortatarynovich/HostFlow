@@ -1952,6 +1952,7 @@
         "return_to_platform": "Return to platform admin",
         "language": "Language"
       },
+      "impersonation_banner": "SUPERADMIN ACCESS ACTIVE — impersonating customer tenant",
       "notifications": {
         "title": "Notifications",
         "panel_subtitle": "{count} unread",
@@ -2502,6 +2503,7 @@
           "impersonate": "Impersonate",
           "impersonating": "Switching…",
           "impersonate_confirm": "Switch to tenant “{name}”? Your current session will be replaced.",
+          "impersonate_reason_prompt": "Reason for impersonation (required, min 3 characters):",
           "manage_team": "Manage team",
           "suspend": "Suspend",
           "activate": "Reactivate",
@@ -2542,6 +2544,7 @@
           "logo_upload_failed": "Logo upload failed.",
           "status_change_failed": "Failed to update tenant status.",
           "impersonate_failed": "Impersonation failed.",
+          "impersonate_reason_required": "A justification of at least 3 characters is required.",
           "required_fields": "Name and slug are required.",
           "initial_admin_password_required": "Initial admin password is required.",
           "create_failed": "Failed to create tenant.",

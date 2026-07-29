@@ -17,6 +17,7 @@ import { Topbar } from '../components/nav/Topbar'
 import WorkContextTabs from '../components/nav/WorkContextTabs'
 import { SettingsChrome } from '../components/nav/SettingsChrome'
 import { LicenseExpiredBanner } from '../components/LicenseExpiredBanner'
+import { ImpersonationBanner } from '../components/ImpersonationBanner'
 import { TrialStatusBanner } from '../components/TrialStatusBanner'
 import { WizardSetupRail } from '../components/onboarding/WizardSetupRail'
 import { isOnboardingWizardEnabled } from '../utils/featureFlags'
@@ -264,6 +265,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
           />
 
           <div className="flex flex-1 flex-col overflow-hidden">
+            <ImpersonationBanner visible={me?.session_kind === 'impersonation'} />
             <LicenseExpiredBanner visible={licenseExpired && !isSuperAdmin} validUntil={validUntil} />
             <TrialStatusBanner
               visible={

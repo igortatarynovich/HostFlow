@@ -499,10 +499,23 @@ export default function TenantsPage() {
     if (!selected) return
     const confirmText = t('app.platform.tenants.actions.impersonate_confirm', formatValues({ name: selected.name }))
     if (!window.confirm(confirmText)) return
+    const reasonPrompt = t('app.platform.tenants.actions.impersonate_reason_prompt', {
+      defaultValue: 'Reason for impersonation (required, min 3 characters):',
+    })
+    const reasonRaw = window.prompt(reasonPrompt, '')
+    const reason = (reasonRaw || '').trim()
+    if (reason.length < 3) {
+      setActionError(
+        t('app.platform.tenants.errors.impersonate_reason_required', {
+          defaultValue: 'A justification of at least 3 characters is required.',
+        }),
+      )
+      return
+    }
     setImpersonating(true)
     setActionError(null)
     try {
-      const token = await impersonatePlatformTenant(selected.id)
+      const token = await impersonatePlatformTenant(selected.id, reason)
       beginImpersonation()
       setToken(token.token)
       tenantSettings.set(selected.id)

@@ -18,3 +18,8 @@ ALLOWED_ELEVATED_SCOPES: frozenset[str] = frozenset(
         "global",
     }
 )
+
+# Phase 5 — time-bound platform impersonation (JWT exp).
+IMPERSONATION_TTL_MINUTES = 30
+IMPERSONATION_REASON_MIN_LEN = 3
+IMPERSONATION_REASON_MAX_LEN = 2000

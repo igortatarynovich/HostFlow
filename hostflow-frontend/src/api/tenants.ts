@@ -187,8 +187,10 @@ export async function updatePlatformTenantLegalHostSettings(
   return data
 }
 
-export async function impersonatePlatformTenant(tenantId: string) {
-  const { data } = await http.post<TenantImpersonationToken>(`/platform/tenants/${tenantId}/impersonate`)
+export async function impersonatePlatformTenant(tenantId: string, reason: string) {
+  const { data } = await http.post<TenantImpersonationToken>(`/platform/tenants/${tenantId}/impersonate`, {
+    reason,
+  })
   return data
 }
 

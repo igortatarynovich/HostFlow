@@ -1,6 +1,6 @@
 # HostFlow — Security Scorecard
 
-**Generated:** 2026-07-29T09:24:36Z (UTC)  
+**Generated:** 2026-07-29T09:27:10Z (UTC)  
 **Generator:** `scripts/security/generate_security_scorecard.py`  
 **Canon:** [`runtime-roadmap.md`](./runtime-roadmap.md) Phase 8 · [`security-ssot.md`](./security-ssot.md)
 
@@ -8,7 +8,7 @@ Living **repo-derived** scorecard for leadership / retros. Does not replace SSOT
 
 | Area | Metric | Value | Target | Status | Note |
 |------|--------|-------|--------|--------|------|
-| Security tests | `backend/tests/security/test_*.py` count | 15 | ≥ 10 | `green` | Unit/integration coverage for isolation, telemetry, detection. |
+| Security tests | `backend/tests/security/test_*.py` count | 16 | ≥ 10 | `green` | Unit/integration coverage for isolation, telemetry, detection. |
 | CI gates | Required security gate scripts on disk | 6/6 | 6/6 | `green` | All listed gate scripts present. |
 | CI gates | Jobs in `.github/workflows/security-gates.yml` | 15 | ≥ 8 | `green` | Inventory only — green workflow on default branch is reviewed in monthly cycle. |
 | Threat models | Files under `docs/security/threat-models/` | 15 | ≥ 10 | `green` | threat-model gate enforces updates when surface code changes. |

@@ -208,19 +208,31 @@ Observability для HF трактуется как **часть security archit
 
 ## Phase 5 — SUPERADMIN operational controls
 
+**Статус (код):** **started — MVP** (mandatory reason + audit on impersonation start, 30m JWT TTL, UI banner; WORM store backlog).
+
 **Цель:** перевести описанные в SSOT требования в **операционные** контроли, а не только в архитектуру.
 
-**Направления работ**
+**Реализовано (MVP, 2026-07-29):**
 
-- Обязательное поле **reason** (и при необходимости ссылка на ticket/incident) при impersonation / elevated session.
-- Time-bound elevation (например 30 мин) в продукте, не только в тексте спеки.
-- Audit trail: **append-only** или эквивалент (WORM / immutable store / crypto-hashing цепочки событий) для superadmin-действий — выбор реализации в backlog.
-- UI banner «SUPERADMIN ACCESS ACTIVE» (или эквивалент) для снижения социального риска.
+- `POST /platform/tenants/{id}/impersonate` требует body `{ "reason": "…" }` (min 3 chars); без reason → 422.
+- Time-bound elevation: JWT `exp` = now + `IMPERSONATION_TTL_MINUTES` (**30**); константа в `security/constants.py`.
+- Audit: `superadmin.impersonation.started` via `emit_security_event_v1` (`elevated_reason`, `ttl_minutes`, `expires_at`, `platform_tenant_id`).
+- `whoami` / `whoami-verify` → `session_kind=impersonation` (+ `impersonated_by`).
+- FE: reason prompt before impersonate; `ImpersonationBanner` («SUPERADMIN ACCESS ACTIVE») in AppShell.
+- Elevated cross-tenant DB bind reason (`X-HostFlow-Elevated-Reason`) — уже Phase 1 hardening.
+
+**Направления работ (остаток)**
+
+- Audit trail: **append-only** / WORM store для superadmin-действий — backlog.
+- Dual authorization для enterprise — backlog.
+- Dedicated admin query API «superadmin events за период» — пока triage по structured log `event_type` prefix `superadmin.`.
 
 **Критерии готовности фазы (пример)**
 
-- Невозможно начать impersonation без reason в production-конфигурации.
-- Выборка superadmin-событий за период — один запрос / один отчёт.
+- ~~Невозможно начать impersonation без reason~~ — enforced API + FE.
+- ~~Time-limited elevation в claims~~ — 30m JWT.
+- ~~UI banner~~ — `ImpersonationBanner`.
+- Выборка superadmin-событий из SIEM/логов по `superadmin.*` — operational; WORM API — backlog.
 
 ---
 

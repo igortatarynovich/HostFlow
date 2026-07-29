@@ -1879,6 +1879,7 @@
         "return_to_platform": "Вернуться к суперадмину",
         "language": "Язык"
       },
+      "impersonation_banner": "SUPERADMIN ACCESS ACTIVE — вход в тенант клиента",
       "notifications": {
         "title": "Уведомления",
         "panel_subtitle": "Непрочитанных: {count}",
@@ -2366,6 +2367,7 @@
           "impersonate": "Войти от имени тенанта",
           "impersonating": "Переключаемся…",
           "impersonate_confirm": "Перейти в тенант «{name}»? Текущая сессия будет заменена.",
+          "impersonate_reason_prompt": "Причина импёрсонации (обязательно, мин. 3 символа):",
           "manage_team": "Управлять командой",
           "suspend": "Заблокировать",
           "activate": "Активировать",
@@ -2469,6 +2471,7 @@
           "logo_upload_failed": "Ошибка при загрузке логотипа.",
           "status_change_failed": "Ошибка при смене статуса.",
           "impersonate_failed": "Не удалось выполнить импёрсонацию.",
+          "impersonate_reason_required": "Нужно обоснование не короче 3 символов.",
           "required_fields": "Название и слаг обязательны.",
           "initial_admin_password_required": "Укажите пароль администратора.",
           "create_failed": "Не удалось создать тенант.",

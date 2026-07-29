@@ -29,6 +29,7 @@ _EVENT_TYPE_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$")
 # Spike canonical types (use these at call sites).
 EVENT_SUPERADMIN_ELEVATED_DB_BIND = "superadmin.elevated.db_bind"
 EVENT_AUTH_IMPERSONATION_DB_BIND = "auth.impersonation.db_bind"
+EVENT_SUPERADMIN_IMPERSONATION_STARTED = "superadmin.impersonation.started"
 EVENT_RLS_TENANT_CONTEXT_EXECUTE_DENIED = "rls.tenant_context.execute_denied"
 EVENT_SUPERADMIN_META_LEADS_OPERATIONAL_REMAP = "superadmin.meta_leads.operational_remap"
 

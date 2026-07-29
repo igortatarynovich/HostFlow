@@ -12,6 +12,10 @@ export interface WhoAmI {
   role: 'admin' | 'manager' | 'user' | string;
   tenant_id: string;
   sub?: string;
+  /** Phase 5 — `impersonation` when JWT type=impersonation; else `normal`. */
+  session_kind?: 'normal' | 'impersonation' | string;
+  impersonated_by?: string | null;
+  exp?: number | null;
   first_name?: string | null;
   last_name?: string | null;
   full_name?: string | null;

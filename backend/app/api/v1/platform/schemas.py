@@ -225,6 +225,12 @@ class TenantStatusChange(BaseModel):
     reason: str | None = Field(default=None, max_length=2000)
 
 
+class TenantImpersonationIn(BaseModel):
+    """Phase 5 — mandatory justification for platform impersonation (SSOT §6)."""
+
+    reason: str = Field(..., min_length=3, max_length=2000)
+
+
 class TenantImpersonationOut(BaseModel):
     token: str
     expires_at: datetime
