@@ -8,6 +8,7 @@ import registry from '@shared/module_deploy_hosts.json'
 
 export type ModuleDeployHost =
   | 'shell'
+  | 'overview'
   | 'recruitment'
   | 'hr'
   | 'sales'
@@ -16,6 +17,8 @@ export type ModuleDeployHost =
 
 export const DEPLOYMENT_HOSTS = registry.hosts as Record<ModuleDeployHost, string>
 export const BUSINESS_MODULE_HOSTS = registry.business_modules as readonly ModuleDeployHost[]
+export const SYSTEM_MODULE_HOSTS = ((registry as { system_modules?: string[] }).system_modules ||
+  []) as readonly ModuleDeployHost[]
 export const APEX_DOMAIN = registry.apex_domain
 export const COOKIE_DOMAIN = registry.cookie_domain
 
@@ -50,7 +53,11 @@ function parseModuleOverride(raw: string | null | undefined): ModuleDeployHost |
     .trim()
     .toLowerCase()
   if (!v) return null
-  if ((BUSINESS_MODULE_HOSTS as readonly string[]).includes(v) || v === 'shell') {
+  if (
+    (BUSINESS_MODULE_HOSTS as readonly string[]).includes(v) ||
+    (SYSTEM_MODULE_HOSTS as readonly string[]).includes(v) ||
+    v === 'shell'
+  ) {
     return v as ModuleDeployHost
   }
   return null
@@ -92,6 +99,11 @@ export function resolveDeployHost(opts?: {
 
 export function isShellDeployHost(host: ModuleDeployHost = resolveDeployHost()): boolean {
   return host === 'shell'
+}
+
+/** Platform system hosts (analytics overview, …) — not business module workspaces. */
+export function isSystemDeployHost(host: ModuleDeployHost = resolveDeployHost()): boolean {
+  return host === 'shell' || (SYSTEM_MODULE_HOSTS as readonly string[]).includes(host)
 }
 
 export function deployHostPublicOrigin(host: ModuleDeployHost, opts?: { protocol?: string }): string {
@@ -321,6 +333,7 @@ export function listRegistryHostsForProxy(): string[] {
   return [
     DEPLOYMENT_HOSTS.shell,
     `www.${APEX_DOMAIN}`,
+    ...SYSTEM_MODULE_HOSTS.map((m) => DEPLOYMENT_HOSTS[m]),
     ...BUSINESS_MODULE_HOSTS.map((m) => DEPLOYMENT_HOSTS[m]),
   ]
 }

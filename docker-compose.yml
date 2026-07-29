@@ -145,6 +145,7 @@ services:
       - "443:443"
     # Свежий Vite dist без пересборки образа: npm run build → restart caddy
     volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./hostflow-frontend/dist:/var/www/hostflow-frontend:ro
       - caddy_data:/data
       - caddy_config:/config

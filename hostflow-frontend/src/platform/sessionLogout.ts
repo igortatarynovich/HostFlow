@@ -9,6 +9,7 @@ import { clearLocalAuthState } from '../api/client'
 import {
   BUSINESS_MODULE_HOSTS,
   DEPLOYMENT_HOSTS,
+  SYSTEM_MODULE_HOSTS,
   deployHostPublicOrigin,
   isAllowedHandoffNext,
   resolveDeployHost,
@@ -88,7 +89,7 @@ function resolveLogoutReturnUrl(raw: string | null | undefined): string {
 /** Hosts whose per-origin localStorage must be wiped (current host first-caller clears itself). */
 export function remainingLogoutWipeHosts(currentHost?: ModuleDeployHost): ModuleDeployHost[] {
   const current = currentHost ?? resolveDeployHost()
-  const ordered: ModuleDeployHost[] = ['shell', ...BUSINESS_MODULE_HOSTS]
+  const ordered: ModuleDeployHost[] = ['shell', ...SYSTEM_MODULE_HOSTS, ...BUSINESS_MODULE_HOSTS]
   return ordered.filter((host) => host !== current)
 }
 

@@ -1,5 +1,5 @@
 {
-  "$schema_comment": "ADR-023 §3.7 — single host registry for SPA, backend, proxy validation, auth redirects, deep links.",
+  "$schema_comment": "ADR-023 §3.7 — host registry for SPA/backend/proxy. business_modules = five product hosts; system_modules = platform surfaces (overview analytics aggregates licensed modules; not a sixth business module).",
   "apex_domain": "hostflow.cc",
   "cookie_domain": ".hostflow.cc",
   "hosts": {
@@ -8,16 +8,24 @@
     "hr": "hr.hostflow.cc",
     "sales": "sales.hostflow.cc",
     "fleet": "fleet.hostflow.cc",
-    "finance": "finance.hostflow.cc"
+    "finance": "finance.hostflow.cc",
+    "overview": "overview.hostflow.cc"
   },
-  "business_modules": ["recruitment", "hr", "sales", "fleet", "finance"],
+  "business_modules": [
+    "recruitment",
+    "hr",
+    "sales",
+    "fleet",
+    "finance"
+  ],
   "module_home_paths": {
     "shell": "/app/overview",
     "recruitment": "/app/recruitment/searches",
     "hr": "/app/hr",
     "sales": "/app/sales",
     "fleet": "/app/fleet",
-    "finance": "/app/invoices"
+    "finance": "/app/invoices",
+    "overview": "/app/overview"
   },
   "owner_to_deploy_host": {
     "recruitment": "recruitment",
@@ -29,7 +37,6 @@
     "platform": "shell"
   },
   "shell_platform_path_prefixes": [
-    "/app/overview",
     "/app/work",
     "/app/inbox",
     "/app/tasks",
@@ -45,32 +52,114 @@
     "/app/platform"
   ],
   "app_path_prefixes": [
-    { "prefix": "/app/recruitment", "host": "recruitment" },
-    { "prefix": "/app/candidates", "host": "recruitment" },
-    { "prefix": "/app/vacancies", "host": "recruitment" },
-    { "prefix": "/app/leads", "host": "recruitment" },
-    { "prefix": "/app/pipeline", "host": "recruitment" },
-    { "prefix": "/app/settings/funnels", "host": "recruitment" },
-    { "prefix": "/app/settings/hiring-pipeline-gates", "host": "recruitment" },
-    { "prefix": "/app/settings/risk-intel", "host": "recruitment" },
-    { "prefix": "/app/settings/candidate-profiles", "host": "recruitment" },
-    { "prefix": "/app/settings/custom-fields", "host": "recruitment" },
-    { "prefix": "/app/settings/docs", "host": "recruitment" },
-    { "prefix": "/app/settings/document-merge-templates", "host": "recruitment" },
-    { "prefix": "/app/settings/lead-forms", "host": "sales" },
-    { "prefix": "/app/settings/message-templates", "host": "sales" },
-    { "prefix": "/app/hr", "host": "hr" },
-    { "prefix": "/app/sales", "host": "sales" },
-    { "prefix": "/app/marketing", "host": "sales" },
-    { "prefix": "/app/clients", "host": "sales" },
-    { "prefix": "/app/client-acquisition", "host": "sales" },
-    { "prefix": "/app/services", "host": "sales" },
-    { "prefix": "/app/orders", "host": "sales" },
-    { "prefix": "/app/service-orders", "host": "sales" },
-    { "prefix": "/app/companies", "host": "sales" },
-    { "prefix": "/app/fleet", "host": "fleet" },
-    { "prefix": "/app/invoices", "host": "finance" },
-    { "prefix": "/app/settings/billing", "host": "finance" }
+    {
+      "prefix": "/app/overview",
+      "host": "overview"
+    },
+    {
+      "prefix": "/app/recruitment",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/candidates",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/vacancies",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/leads",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/pipeline",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/settings/funnels",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/settings/hiring-pipeline-gates",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/settings/risk-intel",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/settings/candidate-profiles",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/settings/custom-fields",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/settings/docs",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/settings/document-merge-templates",
+      "host": "recruitment"
+    },
+    {
+      "prefix": "/app/settings/lead-forms",
+      "host": "sales"
+    },
+    {
+      "prefix": "/app/settings/message-templates",
+      "host": "sales"
+    },
+    {
+      "prefix": "/app/hr",
+      "host": "hr"
+    },
+    {
+      "prefix": "/app/sales",
+      "host": "sales"
+    },
+    {
+      "prefix": "/app/marketing",
+      "host": "sales"
+    },
+    {
+      "prefix": "/app/clients",
+      "host": "sales"
+    },
+    {
+      "prefix": "/app/client-acquisition",
+      "host": "sales"
+    },
+    {
+      "prefix": "/app/services",
+      "host": "sales"
+    },
+    {
+      "prefix": "/app/orders",
+      "host": "sales"
+    },
+    {
+      "prefix": "/app/service-orders",
+      "host": "sales"
+    },
+    {
+      "prefix": "/app/companies",
+      "host": "sales"
+    },
+    {
+      "prefix": "/app/fleet",
+      "host": "fleet"
+    },
+    {
+      "prefix": "/app/invoices",
+      "host": "finance"
+    },
+    {
+      "prefix": "/app/settings/billing",
+      "host": "finance"
+    }
   ],
   "nav_key_to_host": {
     "recruitment-searches": "recruitment",
@@ -96,10 +185,10 @@
     "services": "sales",
     "fleet": "fleet",
     "invoices": "finance",
-    "settings-billing": "finance"
+    "settings-billing": "finance",
+    "overview": "overview"
   },
   "shell_shared_nav_keys": [
-    "overview",
     "work-hub",
     "inbox",
     "tasks",
@@ -132,18 +221,56 @@
     "launchpad"
   ],
   "entity_deep_links": {
-    "candidate": { "host": "recruitment", "path_template": "/app/candidates/{id}" },
-    "recruitment_application": { "host": "recruitment", "path_template": "/app/recruitment/inbox/{id}" },
-    "vacancy": { "host": "recruitment", "path_template": "/app/vacancies/{id}" },
-    "search": { "host": "recruitment", "path_template": "/app/recruitment/searches/{id}" },
-    "lead": { "host": "recruitment", "path_template": "/app/leads/{id}", "notes": "Recruitment transport lead card; sales inquiry uses inquiry" },
-    "employee": { "host": "hr", "path_template": "/app/hr/employees/{id}" },
-    "inquiry": { "host": "sales", "path_template": "/app/sales/inquiries/{id}" },
-    "client_account": { "host": "sales", "path_template": "/app/clients/{id}" },
-    "service_order": { "host": "sales", "path_template": "/app/services?tab=orders&order={id}", "notes": "Services capability deploys under Sales host — not a sixth product module" },
-    "vehicle": { "host": "fleet", "path_template": "/app/fleet/vehicles/{id}" },
-    "invoice": { "host": "finance", "path_template": "/app/invoices/{id}" },
-    "payment": { "host": "finance", "path_template": "/app/invoices?payment={id}" }
+    "candidate": {
+      "host": "recruitment",
+      "path_template": "/app/candidates/{id}"
+    },
+    "recruitment_application": {
+      "host": "recruitment",
+      "path_template": "/app/recruitment/inbox/{id}"
+    },
+    "vacancy": {
+      "host": "recruitment",
+      "path_template": "/app/vacancies/{id}"
+    },
+    "search": {
+      "host": "recruitment",
+      "path_template": "/app/recruitment/searches/{id}"
+    },
+    "lead": {
+      "host": "recruitment",
+      "path_template": "/app/leads/{id}",
+      "notes": "Recruitment transport lead card; sales inquiry uses inquiry"
+    },
+    "employee": {
+      "host": "hr",
+      "path_template": "/app/hr/employees/{id}"
+    },
+    "inquiry": {
+      "host": "sales",
+      "path_template": "/app/sales/inquiries/{id}"
+    },
+    "client_account": {
+      "host": "sales",
+      "path_template": "/app/clients/{id}"
+    },
+    "service_order": {
+      "host": "sales",
+      "path_template": "/app/services?tab=orders&order={id}",
+      "notes": "Services capability deploys under Sales host — not a sixth product module"
+    },
+    "vehicle": {
+      "host": "fleet",
+      "path_template": "/app/fleet/vehicles/{id}"
+    },
+    "invoice": {
+      "host": "finance",
+      "path_template": "/app/invoices/{id}"
+    },
+    "payment": {
+      "host": "finance",
+      "path_template": "/app/invoices?payment={id}"
+    }
   },
   "entity_type_aliases": {
     "company": "client_account",
@@ -156,8 +283,25 @@
     "service-order": "service_order",
     "fleet_vehicle": "vehicle"
   },
-  "deep_link_query_allowlist": ["tab", "order", "order_id", "payment", "focus", "channel", "company_id", "view", "action"],
-  "shell_entity_types": ["communication_thread", "thread", "task", "reminder", "document", "document_step"],
+  "deep_link_query_allowlist": [
+    "tab",
+    "order",
+    "order_id",
+    "payment",
+    "focus",
+    "channel",
+    "company_id",
+    "view",
+    "action"
+  ],
+  "shell_entity_types": [
+    "communication_thread",
+    "thread",
+    "task",
+    "reminder",
+    "document",
+    "document_step"
+  ],
   "auth_handoff": {
     "status": "removed_stage_6b",
     "hash_prefix": "hf_auth=",
@@ -171,5 +315,8 @@
     "samesite": "lax",
     "secure": true,
     "httponly_access_refresh": true
-  }
+  },
+  "system_modules": [
+    "overview"
+  ]
 }

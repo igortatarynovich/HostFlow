@@ -1,5 +1,6 @@
 # Shell + ADR-023 module hosts — one SPA dist, cookies on .hostflow.cc
 hostflow.cc, www.hostflow.cc,
+overview.hostflow.cc,
 recruitment.hostflow.cc, hr.hostflow.cc, sales.hostflow.cc,
 fleet.hostflow.cc, finance.hostflow.cc {
     encode gzip
