@@ -159,6 +159,19 @@ class BillableItemOut(BaseModel):
     notes: Optional[str] = None
 
 
+class ComposeInvoiceRequest(BaseModel):
+    billable_item_ids: list[str] = Field(..., min_length=1)
+
+
+class ComposeInvoiceResponse(BaseModel):
+    invoice_id: str
+    invoice_number: Optional[str] = None
+    status: str
+    currency: Optional[str] = None
+    total_amount: Optional[Decimal] = None
+    billable_item_ids: list[str] = Field(default_factory=list)
+
+
 def _status_ok(st: str) -> bool:
     return st in {"open", "in_progress", "completed", "cancelled"}
 
@@ -553,6 +566,7 @@ async def patch_order_line(
 @router.get("/sales-billable-items", response_model=list[BillableItemOut], dependencies=[_READ])
 async def list_billable_items(
     sales_order_id: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None, alias="status"),
     limit: int = Query(100, ge=1, le=200),
     db_tenant=Depends(get_db_with_tenant),
 ) -> list[BillableItemOut]:
@@ -566,6 +580,11 @@ async def list_billable_items(
     )
     if sales_order_id:
         stmt = stmt.where(SalesBillableItem.sales_order_id == str(sales_order_id).strip())
+    if status_filter:
+        st = str(status_filter).strip().lower()
+        if st not in {"pending", "invoiced", "void"}:
+            raise HTTPException(status_code=422, detail="Invalid status")
+        stmt = stmt.where(SalesBillableItem.status == st)
     rows = (await db.execute(stmt)).scalars().all()
     return [
         BillableItemOut(
@@ -585,6 +604,62 @@ async def list_billable_items(
         )
         for r in rows
     ]
+
+
+@router.post(
+    "/sales-orders/{order_id}/invoices",
+    response_model=ComposeInvoiceResponse,
+    status_code=201,
+    dependencies=[_WRITE],
+)
+async def compose_invoice_for_sales_order(
+    order_id: str,
+    payload: ComposeInvoiceRequest,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+) -> ComposeInvoiceResponse:
+    """ADR-032: assemble draft Invoice from selected pending billables."""
+    from backend.app.modules.sales_orders.compose_invoice import (
+        ComposeInvoiceError,
+        compose_invoice_from_billables,
+    )
+
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    own_company_id = await resolve_own_company_id_for_session(db, tenant_id, ctx, None)
+    try:
+        invoice = await compose_invoice_from_billables(
+            db,
+            tenant_id=tenant_id,
+            sales_order_id=order_id,
+            billable_item_ids=payload.billable_item_ids,
+            actor_user_id=ctx.sub,
+            own_company_id=own_company_id,
+        )
+        await db.commit()
+        await db.refresh(invoice)
+    except ComposeInvoiceError as exc:
+        await db.rollback()
+        code_map = {
+            "not_found": status.HTTP_404_NOT_FOUND,
+            "empty": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "void": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "currency": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "conflict": status.HTTP_409_CONFLICT,
+        }
+        raise HTTPException(status_code=code_map.get(exc.code, 400), detail=exc.message) from exc
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return ComposeInvoiceResponse(
+        invoice_id=str(invoice.id),
+        invoice_number=getattr(invoice, "invoice_number", None),
+        status=str(getattr(invoice, "status", "") or ""),
+        currency=getattr(invoice, "currency", None),
+        total_amount=getattr(invoice, "total_amount", None),
+        billable_item_ids=list(payload.billable_item_ids),
+    )
 
 
 @router.post("/sales-billable-items", response_model=BillableItemOut, status_code=201, dependencies=[_WRITE])

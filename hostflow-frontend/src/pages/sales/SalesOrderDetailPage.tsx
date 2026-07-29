@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   BILLING_TRIGGERS,
+  composeSalesOrderInvoice,
   createSalesOrderLine,
   getSalesOrder,
+  listSalesBillableItems,
   updateSalesOrder,
   updateSalesOrderLine,
   type BillingTrigger,
+  type SalesBillableItem,
   type SalesOrder,
   type SalesOrderLine,
 } from '../../api/salesOrders'
@@ -35,14 +38,29 @@ export default function SalesOrderDetailPage() {
   const [savingLine, setSavingLine] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
 
+  const [billables, setBillables] = useState<SalesBillableItem[]>([])
+  const [selectedBillables, setSelectedBillables] = useState<Record<string, boolean>>({})
+  const [composing, setComposing] = useState(false)
+
   const load = useCallback(async () => {
     if (!orderId) return
     setLoading(true)
     setError(null)
     try {
-      const data = await getSalesOrder(orderId)
+      const [data, billableRows, cosRaw] = await Promise.all([
+        getSalesOrder(orderId),
+        listSalesBillableItems({ sales_order_id: orderId, limit: 200 }).catch(() => []),
+        listCompanies({ limit: 500 }).catch(() => []),
+      ])
       setOrder(data)
-      const cosRaw = await listCompanies({ limit: 500 }).catch(() => [])
+      setBillables(billableRows)
+      setSelectedBillables((prev) => {
+        const next: Record<string, boolean> = {}
+        for (const b of billableRows) {
+          if (b.status === 'pending') next[b.id] = prev[b.id] ?? true
+        }
+        return next
+      })
       const cos = Array.isArray((cosRaw as { items?: unknown })?.items)
         ? (cosRaw as { items: Array<{ id?: string; name?: string }> }).items
         : Array.isArray(cosRaw)
@@ -113,6 +131,34 @@ export default function SalesOrderDetailPage() {
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const pendingBillables = billables.filter((b) => b.status === 'pending')
+  const selectedIds = pendingBillables.filter((b) => selectedBillables[b.id]).map((b) => b.id)
+
+  const onComposeInvoice = async () => {
+    if (!order || selectedIds.length === 0) return
+    setComposing(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const result = await composeSalesOrderInvoice(order.id, selectedIds)
+      setMessage(
+        t('app.sales_orders.detail.invoice_created', {
+          defaultValue: 'Счёт создан: {{number}}',
+          values: { number: result.invoice_number || result.invoice_id.slice(0, 8) },
+        }),
+      )
+      await load()
+    } catch (err: unknown) {
+      const detail =
+        err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+          : undefined
+      setError(detail || (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setComposing(false)
     }
   }
 
@@ -331,6 +377,84 @@ export default function SalesOrderDetailPage() {
               : t('app.sales_orders.detail.add_line_submit', { defaultValue: 'Добавить линию' })}
           </button>
         </form>
+      </section>
+
+      <section data-testid="sales-order-billables">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold text-slate-900">
+            {t('app.sales_orders.detail.billables_title', { defaultValue: 'Billable Items' })}
+          </h3>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={composing || selectedIds.length === 0}
+            onClick={() => void onComposeInvoice()}
+            data-testid="sales-order-compose-invoice"
+          >
+            {composing
+              ? t('common.saving', { defaultValue: 'Сохранение…' })
+              : t('app.sales_orders.detail.compose_invoice', {
+                  defaultValue: 'Создать счёт ({{n}})',
+                  values: { n: selectedIds.length },
+                })}
+          </button>
+        </div>
+        <p className="mt-1 text-sm text-slate-600">
+          {t('app.sales_orders.detail.billables_hint', {
+            defaultValue: 'Выберите pending позиции → draft Invoice. Частичная выписка разрешена (ADR-032).',
+          })}
+        </p>
+
+        {billables.length === 0 ? (
+          <p className="mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-600">
+            {t('app.sales_orders.detail.no_billables', {
+              defaultValue: 'Пока нет billable items — появятся после hire/start/headcount по триггеру линии.',
+            })}
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
+            {billables.map((b) => {
+              const pending = b.status === 'pending'
+              return (
+                <li key={b.id} className="flex items-start gap-3 px-4 py-3">
+                  {pending ? (
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={Boolean(selectedBillables[b.id])}
+                      onChange={(e) =>
+                        setSelectedBillables((prev) => ({ ...prev, [b.id]: e.target.checked }))
+                      }
+                      data-testid={`sales-billable-check-${b.id}`}
+                    />
+                  ) : (
+                    <span className="mt-1 w-4" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-slate-900">
+                      {triggerLabel(b.trigger_code)} · {b.amount} {b.currency}
+                      <span className="ml-2 text-xs font-normal text-slate-500">×{b.quantity}</span>
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {b.status}
+                      {b.invoice_id ? (
+                        <>
+                          {' · '}
+                          <Link
+                            to={`${CRM_APP_PATHS.invoices}/${encodeURIComponent(b.invoice_id)}`}
+                            className="text-brand-700 hover:underline"
+                          >
+                            {t('app.sales_orders.detail.open_invoice', { defaultValue: 'Открыть счёт' })}
+                          </Link>
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </section>
 
       {message ? (

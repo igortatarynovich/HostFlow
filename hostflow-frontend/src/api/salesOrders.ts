@@ -168,3 +168,54 @@ export async function listSalesOrderLines(params?: {
   })
   return Array.isArray(data?.items) ? data.items : []
 }
+
+export type SalesBillableItem = {
+  id: string
+  tenant_id: string
+  sales_order_id: string
+  sales_order_line_id?: string | null
+  trigger_code: string
+  amount: number
+  currency: string
+  quantity: number
+  source_entity_type?: string | null
+  source_entity_id?: string | null
+  status: 'pending' | 'invoiced' | 'void' | string
+  invoice_id?: string | null
+  notes?: string | null
+}
+
+export type ComposeInvoiceResult = {
+  invoice_id: string
+  invoice_number?: string | null
+  status: string
+  currency?: string | null
+  total_amount?: number | null
+  billable_item_ids: string[]
+}
+
+export async function listSalesBillableItems(params?: {
+  sales_order_id?: string
+  status?: string
+  limit?: number
+}) {
+  const { data } = await api.get<SalesBillableItem[]>('/sales-billable-items', {
+    params: {
+      sales_order_id: params?.sales_order_id,
+      status: params?.status,
+      limit: params?.limit ?? 100,
+    },
+  })
+  return Array.isArray(data) ? data : []
+}
+
+export async function composeSalesOrderInvoice(
+  orderId: string,
+  billableItemIds: string[],
+) {
+  const { data } = await api.post<ComposeInvoiceResult>(
+    `/sales-orders/${encodeURIComponent(orderId)}/invoices`,
+    { billable_item_ids: billableItemIds },
+  )
+  return data
+}
