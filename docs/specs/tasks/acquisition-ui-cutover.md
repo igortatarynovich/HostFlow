@@ -1,16 +1,17 @@
 # Acquisition UI Cutover
 
-**Status:** **PASS** — Stage 4 product/UI cutover closed (2026-07-27); **Product Track → FlightAdBinding Ad-ID bind UI (implementing)**  
+**Status:** **PASS** — Stage 4 product/UI cutover closed (2026-07-27); **Ad-ID bind UI DONE** (#187); **Product Track → Source Diagnostics PR1**  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [acquisition/module-scope.md](../../acquisition/module-scope.md)  
-**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅ · C-5 ✅ · C-6 ✅ · **C-7 PASS**  
+**Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅ · C-5 ✅ · C-6 ✅ · **C-7 PASS** · **Ad-ID bind UI ✅ #187**  
 **C-7 brief:** [acquisition-ui-cutover-c7-searches-decommission.md](acquisition-ui-cutover-c7-searches-decommission.md) · **PASS** (#184 · #185 · inventory)  
 **C-6 brief:** [acquisition-ui-cutover-c6-form-builder.md](acquisition-ui-cutover-c6-form-builder.md) · **DONE**  
 **C-5 brief:** [acquisition-ui-cutover-c5-mapping-workspace.md](acquisition-ui-cutover-c5-mapping-workspace.md) · **DONE**  
 **C-4 brief:** [acquisition-ui-cutover-c4-test-lead-field-discovery.md](acquisition-ui-cutover-c4-test-lead-field-discovery.md) · **DONE**  
+**Source Diagnostics:** [acquisition-source-diagnostics.md](acquisition-source-diagnostics.md)  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (PR-2 may resume)  
-**Shipped tip:** `integration/release-product-a-b` @ #185 + C-7 close-out  
+**Shipped tip:** `integration/release-product-a-b` @ #187 + C-7  
 **Unpause:** Stage 5 PR-2 **may resume**  
-**Active slice:** Marketing Campaign Detail — Ad ID → Flight bind panel (API #161 + Campaign GET `ad_bindings`)
+**Active slice:** [Source Diagnostics PR1](acquisition-source-diagnostics.md) — `/app/marketing/diagnostics`
 
 > Stage 4 **runtime** is DONE. Stage 4 **product/UI cutover** is **PASS** (C-7).  
 > Operator launch path is Marketing-only: Connect → Source → Test Lead → Mapping → Form → Campaign → Flight → Lead.  
@@ -452,12 +453,13 @@ After that, work is **product evolution**, not migration onto the Campaign/Fligh
 
 | After C-7 | Nature |
 |-----------|--------|
-| **FlightAdBinding Ad-ID bind UI** | Product slice (API #161) — Marketing Campaign Detail panel; Campaign GET exposes `ad_bindings`; operator links Meta Ad → Flight for multi-Flight split | 
-| **Source Diagnostics** | First ops epic (top-level Marketing Diagnostics) |
+| **FlightAdBinding Ad-ID bind UI** | **DONE** #187 — Campaign Detail panel; Campaign GET `ad_bindings`; attach/toggle/detach |
+| **Source Diagnostics** | **ACTIVE** — [brief](acquisition-source-diagnostics.md); first ops epic (top-level Marketing Diagnostics) |
 | Stage 5 Optimization PR-2+ | Improve running Flights |
 | Stage 6 Analytics / automation / AI assistants / campaign recommendations | Exploitation & growth features |
 
-**Queue lock (2026-07-27):** after **C-7 PASS**, next Acquisition product slice = **Ad-ID → Flight bind UI**, then Source Diagnostics. Do not open Ad bind UI during C-7.
+**Queue lock (2026-07-29):** after **Ad-ID bind UI DONE** (#187), next Acquisition product slice = **Source Diagnostics PR1**.  
+**Prior lock (2026-07-27):** after **C-7 PASS**: Ad-ID → Flight bind UI, then Source Diagnostics.
 
 Do **not** reopen cutover scope for those — they assume the onboarding path and Marketing IA above already work.
 
@@ -522,6 +524,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-29: **Ad-ID bind UI DONE** (#187) — Product Track → **Source Diagnostics PR1** ([brief](acquisition-source-diagnostics.md)).
 - 2026-07-27: **Vacancies back in Recruitment nav** + Marketing Setup requires Client (context `client_account`) then Vacancy|Service primary — stats by client + subject; Vacancies SoT stays Recruitment (not Marketing).
 - 2026-07-27: **C-7 PASS** — #184 nav/redirects · #185 audience/bindings 410 · reconciliation inventory documented · production Marketing nav smoke; Stage 5 PR-2 may resume; Product Track → **Ad-ID bind UI**.
 - 2026-07-27: **Queue lock** — after C-7 PASS: **FlightAdBinding Ad-ID bind UI** (API #161 exists; UI missing), then Source Diagnostics. Not in C-7 scope.

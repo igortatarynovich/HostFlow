@@ -146,7 +146,8 @@
     "setupVacancy": "/app/setup/vacancy",
     "setupProcess": "/app/setup/process",
     "setupIntake": "/app/setup/intake",
-    "platformSetup": "/app/platform/setup"
+    "platformSetup": "/app/platform/setup",
+    "marketingDiagnostics": "/app/marketing/diagnostics"
   },
   "path_comments": {
     "inboxMessagesScoped": "Inbox with messages channel selected (legacy top-level /app/messages redirects here).",
@@ -168,7 +169,8 @@
     "hrTasks": "HR lane reminder tasks; uses /api/v1/hr/tasks.",
     "hrCompliance": "HR compliance document queues; uses /api/v1/hr/documents/*.",
     "hrZusWorkspace": "ZUS operational workspace; uses /api/v1/workforce/zus-workspace/*.",
-    "hrHandoffs": "Handoff detail + snapshot under HR workspace shell."
+    "hrHandoffs": "Handoff detail + snapshot under HR workspace shell.",
+    "marketingDiagnostics": "Marketing Source Diagnostics — ops console for recent submissions (post Ad-ID bind UI)."
   },
   "drilldown_hrefs": {
     "vacanciesOpen": "/app/vacancies?status=open",
@@ -318,6 +320,10 @@
       {
         "name": "MARKETING_FORMS",
         "path_key": "marketingForms"
+      },
+      {
+        "name": "MARKETING_DIAGNOSTICS",
+        "path_key": "marketingDiagnostics"
       },
       {
         "name": "SETTINGS_LEAD_FORMS",
