@@ -384,6 +384,7 @@ async def _run_calendar_maintenance_for_tenant(db, *, tenant: Tenant, now: datet
                     await enqueue_job(
                         "calendar_sync_ingest",
                         sync_job_id=renew_job.id,
+                        tenant_id=tenant_id,
                         job_id=f"calendar_sync_ingest:{renew_job.id}",
                     )
                     stats["renew_queued"] += 1
@@ -453,6 +454,7 @@ async def _run_calendar_maintenance_for_tenant(db, *, tenant: Tenant, now: datet
                     await enqueue_job(
                         "calendar_sync_ingest",
                         sync_job_id=reconcile_job.id,
+                        tenant_id=tenant_id,
                         job_id=f"calendar_sync_ingest:{reconcile_job.id}",
                     )
                     stats["reconcile_queued"] += 1

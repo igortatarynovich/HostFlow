@@ -811,6 +811,7 @@ async def _enqueue_webhook_job(
     await enqueue_job(
         "calendar_sync_ingest",
         sync_job_id=job.id,
+        tenant_id=tenant_id,
         job_id=f"calendar_sync_ingest:{job.id}",
     )
     return IntegrationWebhookAck(accepted=True, tenant_id=tenant_id, queued_job_id=UUID(job.id))
@@ -1200,6 +1201,7 @@ async def queue_calendar_reconcile(
         await enqueue_job(
             "calendar_sync_ingest",
             sync_job_id=job.id,
+            tenant_id=str(tenant_uuid),
             job_id=f"calendar_sync_ingest:{job.id}",
         )
         queued += 1
@@ -1244,6 +1246,7 @@ async def queue_calendar_subscription_renew(
         await enqueue_job(
             "calendar_sync_ingest",
             sync_job_id=job.id,
+            tenant_id=str(tenant_uuid),
             job_id=f"calendar_sync_ingest:{job.id}",
         )
         queued += 1

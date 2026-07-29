@@ -101,34 +101,43 @@ async def job_stripe_webhook_process(
     already verified the signature and claimed `event_id` in the idempotency
     log, so this job just routes the event to the right handler. On failure
     we release the claim so ARQ (or Stripe itself) can retry.
+
+    Platform-scoped: tenant is resolved inside billing handlers from Stripe
+    customer / subscription mapping (not via X-Tenant-Id). Still sets
+    ``security_job_context`` for actor/correlation audit (SSOT §0b).
     """
     from backend.app.api.v1.settings import billing
     from backend.app.db.session import async_session_maker
+    from backend.app.security.runtime_context import security_job_context
 
     try:
-        async with async_session_maker() as db:
-            try:
-                if event_type == "checkout.session.completed":
-                    detail = await billing._handle_checkout_completed(db, event_obj)
-                elif event_type in ("invoice.paid", "invoice.payment_succeeded"):
-                    detail = await billing._handle_invoice_paid(db, event_obj)
-                elif event_type == "invoice.finalized":
-                    detail = await billing._handle_invoice_finalized(db, event_obj)
-                elif event_type == "invoice.payment_failed":
-                    detail = await billing._handle_invoice_payment_failed(db, event_obj)
-                elif event_type in (
-                    "customer.subscription.created",
-                    "customer.subscription.updated",
-                ):
-                    detail = await billing._handle_subscription_event(db, event_obj, deleted=False)
-                elif event_type == "customer.subscription.deleted":
-                    detail = await billing._handle_subscription_event(db, event_obj, deleted=True)
-                else:
-                    detail = f"Ignored: unsupported event type {event_type or '<empty>'}"
-                await db.commit()
-            except Exception:
-                await db.rollback()
-                raise
+        async with security_job_context(
+            actor_id="system:stripe_webhook",
+            correlation_id=str(event_id),
+        ):
+            async with async_session_maker() as db:
+                try:
+                    if event_type == "checkout.session.completed":
+                        detail = await billing._handle_checkout_completed(db, event_obj)
+                    elif event_type in ("invoice.paid", "invoice.payment_succeeded"):
+                        detail = await billing._handle_invoice_paid(db, event_obj)
+                    elif event_type == "invoice.finalized":
+                        detail = await billing._handle_invoice_finalized(db, event_obj)
+                    elif event_type == "invoice.payment_failed":
+                        detail = await billing._handle_invoice_payment_failed(db, event_obj)
+                    elif event_type in (
+                        "customer.subscription.created",
+                        "customer.subscription.updated",
+                    ):
+                        detail = await billing._handle_subscription_event(db, event_obj, deleted=False)
+                    elif event_type == "customer.subscription.deleted":
+                        detail = await billing._handle_subscription_event(db, event_obj, deleted=True)
+                    else:
+                        detail = f"Ignored: unsupported event type {event_type or '<empty>'}"
+                    await db.commit()
+                except Exception:
+                    await db.rollback()
+                    raise
         logger.info(
             "[arq] stripe_webhook_process event_id=%s type=%s detail=%s",
             event_id,
@@ -139,9 +148,13 @@ async def job_stripe_webhook_process(
     except Exception as exc:
         # Release the claim so the next retry (from ARQ or Stripe) can re-run.
         try:
-            async with async_session_maker() as db:
-                await billing._stripe_webhook_release_claim(db, event_id)
-                await db.commit()
+            async with security_job_context(
+                actor_id="system:stripe_webhook",
+                correlation_id=str(event_id),
+            ):
+                async with async_session_maker() as db:
+                    await billing._stripe_webhook_release_claim(db, event_id)
+                    await db.commit()
         except Exception as release_exc:  # pragma: no cover
             logger.warning(
                 "[arq] stripe_webhook_process release_claim failed event_id=%s: %s",
@@ -170,14 +183,23 @@ async def job_communications_dispatch_once(
       * drive dispatch from webhooks / API actions (e.g. "send a test" buttons),
       * eventually replace the in-process loop with an ARQ cron schedule.
 
-    When `tenant_id` is given we scope dispatch to a single tenant; otherwise
-    we run the full tick. The job is safe to retry — the scheduler itself
-    tracks per-tenant `last_sent_at` timestamps.
+    When `tenant_id` is given we validate it (SSOT §0b); the scheduler tick still
+    walks tenants via ``tenant_enforced_session`` internally. The job is safe to
+    retry — the scheduler itself tracks per-tenant `last_sent_at` timestamps.
     """
+    from backend.app.security.runtime_context import security_job_context
+    from backend.app.security.worker_job_context import parse_required_job_tenant_id
     from backend.app.services.communications_scheduler import run_scheduler_tick_once
 
+    if tenant_id is not None and str(tenant_id).strip():
+        parse_required_job_tenant_id(tenant_id, job_name="communications_dispatch_once")
+
     try:
-        summary = await run_scheduler_tick_once()
+        async with security_job_context(
+            actor_id="system:communications_dispatch",
+            correlation_id=f"comms-dispatch:{tenant_id or 'all'}",
+        ):
+            summary = await run_scheduler_tick_once()
         logger.info(
             "[arq] communications_dispatch_once tenant_id=%s summary=%s",
             tenant_id or "<all>",
@@ -221,12 +243,15 @@ async def job_automation_evaluate_trigger(
     examined = 0
     try:
         from backend.app.db.deps import tenant_enforced_session
+        from backend.app.security.worker_job_context import parse_required_job_tenant_id
 
+        tid = parse_required_job_tenant_id(tenant_id, job_name="automation_evaluate_trigger")
         async with tenant_enforced_session(
-            UUID(tenant_id),
+            tid,
             actor_id=(actor_id or "system:automation_evaluate_trigger"),
+            correlation_id=f"automation:{trigger}:{tid}",
         ) as db:
-            rules = await list_rules(db, tenant_id=tenant_id, trigger=trigger)
+            rules = await list_rules(db, tenant_id=str(tid), trigger=trigger)
             for rule in rules:
                 examined += 1
                 conditions = _loads_or_empty(rule.conditions_json)
@@ -234,7 +259,7 @@ async def job_automation_evaluate_trigger(
                     continue
                 await execute_automation_rule(
                     db,
-                    tenant_id=tenant_id,
+                    tenant_id=str(tid),
                     rule=rule,
                     trigger=trigger,
                     actor_id=actor_id,
@@ -244,12 +269,12 @@ async def job_automation_evaluate_trigger(
             await db.commit()
         logger.info(
             "[arq] automation_evaluate_trigger tenant_id=%s trigger=%s fired=%d/%d",
-            tenant_id,
+            tid,
             trigger,
             fired,
             examined,
         )
-        return {"ok": True, "tenant_id": tenant_id, "trigger": trigger, "fired": fired, "examined": examined}
+        return {"ok": True, "tenant_id": str(tid), "trigger": trigger, "fired": fired, "examined": examined}
     except Exception as exc:
         logger.exception(
             "[arq] automation_evaluate_trigger failed tenant_id=%s trigger=%s: %s",
@@ -264,17 +289,18 @@ async def job_calendar_sync_ingest(
     ctx: Dict[str, Any],
     *,
     sync_job_id: str,
+    tenant_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Consume one queued calendar sync job.
+    Consume one queued calendar sync job under a tenant-enforced DB session (SSOT §0b).
 
-    For now this is a safe scaffold: it marks the job as processing and then
-    completed so webhook->queue->worker flow is verifiable end-to-end.
-    Provider-specific mapping/sync logic will replace the placeholder block.
+    Prefer passing ``tenant_id`` at enqueue time. Legacy jobs without it bootstrap
+    ``tenant_id`` from ``calendar_sync_jobs`` once, then re-open with enforcement.
     """
     from datetime import datetime, timezone
     from sqlalchemy import and_, select
 
+    from backend.app.db.deps import tenant_enforced_session
     from backend.app.db.session import async_session_maker
     from backend.app.models.calendar_integration import (
         CalendarChannel,
@@ -283,6 +309,10 @@ async def job_calendar_sync_ingest(
         CalendarItemLink,
         CalendarSyncCursor,
         CalendarSyncJob,
+    )
+    from backend.app.security.worker_job_context import (
+        JobTenantRequiredError,
+        parse_required_job_tenant_id,
     )
     from backend.app.services.calendar_provider_sync import (
         CalendarProviderSyncError,
@@ -448,7 +478,34 @@ async def job_calendar_sync_ingest(
         return False
 
     now = datetime.now(timezone.utc)
-    async with async_session_maker() as db:
+    try:
+        if tenant_id is not None and str(tenant_id).strip():
+            tid = parse_required_job_tenant_id(tenant_id, job_name="calendar_sync_ingest")
+        else:
+            # Legacy queue payloads without tenant_id — bootstrap then rebind.
+            async with async_session_maker() as bootstrap:
+                boot_row = await bootstrap.execute(
+                    select(CalendarSyncJob).where(CalendarSyncJob.id == str(sync_job_id)).limit(1)
+                )
+                boot_job = boot_row.scalar_one_or_none()
+                if boot_job is None:
+                    logger.warning(
+                        "[arq] calendar_sync_ingest job not found sync_job_id=%s", sync_job_id
+                    )
+                    return {"ok": False, "reason": "not_found", "sync_job_id": sync_job_id}
+                tid = parse_required_job_tenant_id(
+                    getattr(boot_job, "tenant_id", None),
+                    job_name="calendar_sync_ingest",
+                )
+    except JobTenantRequiredError as exc:
+        logger.error("[arq] calendar_sync_ingest missing tenant sync_job_id=%s: %s", sync_job_id, exc)
+        return {"ok": False, "reason": "tenant_required", "sync_job_id": sync_job_id}
+
+    async with tenant_enforced_session(
+        tid,
+        actor_id="system:calendar_sync_ingest",
+        correlation_id=f"calendar_sync:{sync_job_id}",
+    ) as db:
         row = await db.execute(select(CalendarSyncJob).where(CalendarSyncJob.id == str(sync_job_id)).limit(1))
         job = row.scalar_one_or_none()
         if job is None:
