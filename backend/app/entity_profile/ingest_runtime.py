@@ -31,6 +31,7 @@ class IngestEnvelope:
     resolution_source: str = "not_specified"
     bridge_source: Optional[str] = None
     intake_source_profile_id: Optional[str] = None
+    mapping_rules_source: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -42,12 +43,31 @@ class IngestEnvelope:
             "resolution_source": self.resolution_source,
             "bridge_source": self.bridge_source,
             "intake_source_profile_id": self.intake_source_profile_id,
+            "mapping_rules_source": self.mapping_rules_source,
         }
 
 
 def stamp_ingest_envelope_v1(normalized: dict[str, Any], envelope: IngestEnvelope) -> None:
     normalized["ingest_envelope_v1"] = envelope.to_dict()
 
+
+def stamp_mapping_applied_from_envelope(
+    normalized: dict[str, Any],
+    *,
+    rules: list[dict[str, Any]],
+    envelope: IngestEnvelope,
+    profile_updated_at: str | None = None,
+) -> None:
+    """Diagnostics PR5 — persist mapping revision fingerprint used at ingest."""
+    from backend.app.acquisition.mapping_applied_stamp import stamp_mapping_applied_v1
+
+    stamp_mapping_applied_v1(
+        normalized,
+        rules=rules,
+        source_id=envelope.intake_source_profile_id,
+        rules_source=envelope.mapping_rules_source,
+        profile_updated_at=profile_updated_at,
+    )
 
 def _minimal_normalized_for_routing(payload: dict[str, Any], *, source: str) -> dict[str, Any]:
     ctx = extract_meta_lead_form_context(payload, source=source)
@@ -129,6 +149,8 @@ async def prepare_meta_ingest_runtime(
         source=src,
         settings_row=settings_row,
     )
+    rules_source = "meta_form_or_tenant"
+    profile_updated_at: Optional[str] = None
     if intake_route.intake_source_profile_id:
         from backend.app.modules.intake_routing import crud as intake_crud
 
@@ -138,10 +160,14 @@ async def prepare_meta_ingest_runtime(
             profile_id=str(intake_route.intake_source_profile_id),
         )
         if isp is not None:
+            updated = getattr(isp, "updated_at", None)
+            if updated is not None and hasattr(updated, "isoformat"):
+                profile_updated_at = updated.isoformat()
             source_rules = isp.mapping_rules if isinstance(getattr(isp, "mapping_rules", None), list) else []
             source_rules = [dict(r) for r in source_rules if isinstance(r, dict)]
             if source_rules:
                 raw_rules = source_rules
+                rules_source = "profile"
 
     allowed = allowed_qualified_codes_from_profile_view(profile_view)
     validation = validate_mapping_rules_for_profile(
@@ -161,7 +187,13 @@ async def prepare_meta_ingest_runtime(
         resolution_source=str(profile_view.get("resolution_source") or "not_specified"),
         bridge_source=profile_view.get("bridge_source"),
         intake_source_profile_id=intake_route.intake_source_profile_id,
+        mapping_rules_source=rules_source,
     )
+    # Stash for callers that stamp after normalize (avoids extra profile fetch).
+    envelope.mapping_result = {
+        **envelope.mapping_result,
+        "profile_updated_at": profile_updated_at,
+    }
     return validation.accepted_rules, envelope, intake_route, profile_view
 
 

@@ -255,7 +255,26 @@ function CaseDetail({
             <div>
               <dt className="text-slate-500">Historical version</dt>
               <dd className="font-medium text-slate-900" data-testid="marketing-diagnostics-mapping-historical">
-                {row.mapping.historical_version_available ? 'available' : 'not stamped'}
+                {row.mapping.historical_version_available
+                  ? `${row.mapping.applied_rules_fingerprint || 'stamped'}${
+                      row.mapping.applied_rules_count != null
+                        ? ` · ${row.mapping.applied_rules_count} rules`
+                        : ''
+                    }`
+                  : 'not stamped'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Drift</dt>
+              <dd
+                className={`font-medium ${row.mapping.drift ? 'text-rose-700' : 'text-slate-900'}`}
+                data-testid="marketing-diagnostics-mapping-drift"
+              >
+                {row.mapping.historical_version_available
+                  ? row.mapping.drift
+                    ? 'yes — current rules differ from ingest'
+                    : 'no'
+                  : '—'}
               </dd>
             </div>
           </dl>
