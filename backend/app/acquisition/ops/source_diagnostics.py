@@ -2,6 +2,7 @@
 
 PR1: tenant-scoped recent Acquisition-stamped leads + case detail.
 PR2: list filters — source / flight_id / failed_only.
+PR3: duplicate decision surface (decision_result_v1 + duplicate_match_v1).
 No parallel submissions store.
 """
 
@@ -32,6 +33,23 @@ _MAX_LIMIT = 200
 
 
 @dataclass(frozen=True)
+class DiagnosticsDuplicateDecision:
+    """Read-only compose of duplicate signals already on Lead (no new SoT)."""
+
+    active: bool
+    lead_status: str
+    disposition: Optional[str]
+    match_level: Optional[str]
+    suggested_candidate_id: Optional[str]
+    attach_candidate_id: Optional[str]
+    reasons: tuple[str, ...]
+    hr_blockers: tuple[str, ...]
+    error_code: Optional[str]
+    needs_duplicate_review: bool
+    stamped_at: Optional[str]
+
+
+@dataclass(frozen=True)
 class DiagnosticsCaseDetail:
     applicant: LiveIntakeApplicantRow
     submission_id: Optional[str]
@@ -43,10 +61,75 @@ class DiagnosticsCaseDetail:
     normalized: dict[str, Any]
     timeline: list[AcquisitionActivityEvent]
     lead_error: Optional[str]
+    duplicate: DiagnosticsDuplicateDecision
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, Mapping) else {}
+
+
+def _str_list(value: Any) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(str(x).strip() for x in value if str(x or "").strip())
+
+
+def compose_duplicate_decision(
+    *,
+    lead_status: str,
+    decision: Mapping[str, Any],
+    normalized: Mapping[str, Any],
+) -> DiagnosticsDuplicateDecision:
+    """Explain duplicate outcome from decision_result_v1 + duplicate_match_v1."""
+    status = str(lead_status or "").strip()
+    disposition = str(decision.get("disposition") or "").strip() or None
+    decision_dm = decision.get("duplicate_match")
+    decision_dm = decision_dm if isinstance(decision_dm, Mapping) else {}
+    stamp = normalized.get("duplicate_match_v1")
+    stamp = stamp if isinstance(stamp, Mapping) else {}
+
+    match_level = (
+        str(stamp.get("level") or decision_dm.get("level") or "").strip() or None
+    )
+    suggested = (
+        str(stamp.get("suggested_candidate_id") or "").strip()
+        or str(decision_dm.get("candidate_id") or "").strip()
+        or None
+    )
+    attach = str(decision.get("attach_candidate_id") or "").strip() or None
+    reasons = _str_list(stamp.get("reasons")) or _str_list(decision_dm.get("reasons"))
+    hr_blockers = _str_list(stamp.get("hr_blockers")) or _str_list(
+        decision_dm.get("hr_blockers")
+    )
+    error_code = str(stamp.get("error_code") or "").strip() or None
+    needs_review = bool(decision_dm.get("needs_duplicate_review")) or status in {
+        "duplicate_review",
+        "duplicated",
+    }
+    stamped_at = str(stamp.get("stamped_at") or "").strip() or None
+    active = bool(
+        status in {"duplicate_review", "duplicated"}
+        or disposition == "blocked_duplicate"
+        or needs_review
+        or match_level not in (None, "", "none")
+        or suggested
+        or error_code
+        or reasons
+        or hr_blockers
+    )
+    return DiagnosticsDuplicateDecision(
+        active=active,
+        lead_status=status,
+        disposition=disposition,
+        match_level=match_level,
+        suggested_candidate_id=suggested,
+        attach_candidate_id=attach,
+        reasons=reasons,
+        hr_blockers=hr_blockers,
+        error_code=error_code,
+        needs_duplicate_review=needs_review,
+        stamped_at=stamped_at,
+    )
 
 
 def _acquisition_stamped_filter(*, tenant_id: str):
@@ -161,6 +244,7 @@ async def get_diagnostic_case(
         )
 
     payload = _as_dict(getattr(lead, "payload", None))
+    lead_status = str(getattr(lead, "status", None) or "")
     return DiagnosticsCaseDetail(
         applicant=_applicant_from_lead(lead),
         submission_id=submission_id,
@@ -172,11 +256,18 @@ async def get_diagnostic_case(
         normalized=normalized,
         timeline=timeline,
         lead_error=str(getattr(lead, "error", None) or "").strip() or None,
+        duplicate=compose_duplicate_decision(
+            lead_status=lead_status,
+            decision=decision,
+            normalized=normalized,
+        ),
     )
 
 
 __all__ = [
     "DiagnosticsCaseDetail",
+    "DiagnosticsDuplicateDecision",
+    "compose_duplicate_decision",
     "get_diagnostic_case",
     "list_diagnostic_submissions",
 ]

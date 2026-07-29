@@ -1,4 +1,4 @@
-"""Marketing Source Diagnostics API — list + case detail (+ PR2 filters)."""
+"""Marketing Source Diagnostics API — list + case (+ filters + duplicate surface)."""
 
 from __future__ import annotations
 
@@ -77,6 +77,20 @@ class DiagnosticsTimelineEventOut(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
+class DiagnosticsDuplicateOut(BaseModel):
+    active: bool = False
+    lead_status: str = ""
+    disposition: Optional[str] = None
+    match_level: Optional[str] = None
+    suggested_candidate_id: Optional[str] = None
+    attach_candidate_id: Optional[str] = None
+    reasons: list[str] = Field(default_factory=list)
+    hr_blockers: list[str] = Field(default_factory=list)
+    error_code: Optional[str] = None
+    needs_duplicate_review: bool = False
+    stamped_at: Optional[str] = None
+
+
 class DiagnosticsCaseOut(BaseModel):
     lead_id: str
     created_at: Optional[datetime] = None
@@ -99,6 +113,7 @@ class DiagnosticsCaseOut(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
     normalized: dict[str, Any] = Field(default_factory=dict)
     lead_error: Optional[str] = None
+    duplicate: DiagnosticsDuplicateOut = Field(default_factory=DiagnosticsDuplicateOut)
     timeline: list[DiagnosticsTimelineEventOut] = Field(default_factory=list)
 
 
@@ -178,6 +193,7 @@ async def get_submission_case(
     if detail is None:
         raise HTTPException(status_code=404, detail="submission_not_found")
     app = detail.applicant
+    dup = detail.duplicate
     return DiagnosticsCaseOut(
         lead_id=app.lead_id,
         created_at=app.created_at,
@@ -200,6 +216,19 @@ async def get_submission_case(
         payload=detail.payload,
         normalized=detail.normalized,
         lead_error=detail.lead_error,
+        duplicate=DiagnosticsDuplicateOut(
+            active=dup.active,
+            lead_status=dup.lead_status,
+            disposition=dup.disposition,
+            match_level=dup.match_level,
+            suggested_candidate_id=dup.suggested_candidate_id,
+            attach_candidate_id=dup.attach_candidate_id,
+            reasons=list(dup.reasons),
+            hr_blockers=list(dup.hr_blockers),
+            error_code=dup.error_code,
+            needs_duplicate_review=dup.needs_duplicate_review,
+            stamped_at=dup.stamped_at,
+        ),
         timeline=[
             DiagnosticsTimelineEventOut(
                 id=str(ev.id),
