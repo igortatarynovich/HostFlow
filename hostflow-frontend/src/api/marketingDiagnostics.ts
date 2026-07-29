@@ -1,4 +1,4 @@
-/** Marketing Source Diagnostics API — PR1. */
+/** Marketing Source Diagnostics API — list + case (+ PR2 filters). */
 import { api } from './client'
 
 export type DiagnosticsSubmission = {
@@ -44,11 +44,18 @@ export type DiagnosticsListResponse = {
   next_cursor?: { created_at: string; id: string } | null
 }
 
-export async function listDiagnosticsSubmissions(params?: {
+export type DiagnosticsListParams = {
   limit?: number
   after_created_at?: string
   after_id?: string
-}): Promise<DiagnosticsListResponse> {
+  source?: string
+  flight_id?: string
+  failed_only?: boolean
+}
+
+export async function listDiagnosticsSubmissions(
+  params?: DiagnosticsListParams,
+): Promise<DiagnosticsListResponse> {
   const { data } = await api.get<DiagnosticsListResponse>(
     '/platform/marketing/diagnostics/submissions',
     { params },

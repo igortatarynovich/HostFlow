@@ -1,4 +1,4 @@
-"""Marketing Source Diagnostics API — PR1 list + case detail."""
+"""Marketing Source Diagnostics API — list + case detail (+ PR2 filters)."""
 
 from __future__ import annotations
 
@@ -116,9 +116,15 @@ async def list_submissions(
     limit: int = Query(default=_DEFAULT_LIMIT, ge=1, le=_MAX_LIMIT),
     after_created_at: Optional[datetime] = Query(default=None),
     after_id: Optional[str] = Query(default=None),
+    source: Optional[str] = Query(default=None, max_length=64),
+    flight_id: Optional[str] = Query(default=None),
+    failed_only: bool = Query(default=False),
 ) -> DiagnosticsListOut:
     db, tenant_id = db_tenant
     cursor_id = _require_uuid(after_id, field="after_id") if after_id is not None else None
+    flight = (
+        _require_uuid(flight_id, field="flight_id") if flight_id is not None and str(flight_id).strip() else None
+    )
     try:
         rows, cursor = await list_diagnostic_submissions(
             db,
@@ -126,6 +132,9 @@ async def list_submissions(
             limit=limit,
             after_created_at=after_created_at,
             after_id=cursor_id,
+            source=source,
+            flight_id=flight,
+            failed_only=bool(failed_only),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
