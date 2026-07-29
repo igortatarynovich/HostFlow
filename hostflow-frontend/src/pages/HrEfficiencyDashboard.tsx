@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -13,6 +12,8 @@ import { getHandoffStats, type HandoffStatsResponse } from '../api/analytics'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
 import { useI18n } from '../i18n'
+import { formatAnalyticsLoadError } from '../modules/dashboard/analyticsLoad'
+import { ChartHost } from '../modules/dashboard/components/ChartHost'
 import { QUICK_RANGE_OPTIONS } from '../modules/dashboard/constants'
 import type { QuickRange } from '../modules/dashboard/types'
 import { calcRange } from '../modules/dashboard/utils'
@@ -23,6 +24,7 @@ import { calcRange } from '../modules/dashboard/utils'
  */
 export default function HrEfficiencyDashboard() {
   const { t, locale } = useI18n()
+  const loadSeq = useRef(0)
   const initialRange = calcRange('30d')
   const [dateFrom, setDateFrom] = useState(initialRange.from)
   const [dateTo, setDateTo] = useState(initialRange.to)
@@ -51,12 +53,14 @@ export default function HrEfficiencyDashboard() {
   )
 
   const rangeInvalid = Boolean(dateFrom && dateTo && dateFrom > dateTo)
+  const chartsReady = !loading
 
   const load = useCallback(async () => {
     if (dateFrom && dateTo && dateFrom > dateTo) {
       setErrText(t('app.dashboard.errors.range_invalid'))
       return
     }
+    const seq = ++loadSeq.current
     setLoading(true)
     setErrText(null)
     try {
@@ -64,13 +68,13 @@ export default function HrEfficiencyDashboard() {
         from: dateFrom || undefined,
         to: dateTo || undefined,
       })
+      if (seq !== loadSeq.current) return
       setStats(data)
     } catch (e: unknown) {
-      const err = e as { message?: string }
-      setErrText(err?.message || t('app.dashboard.errors.load_failed'))
-      setStats(null)
+      if (seq !== loadSeq.current) return
+      setErrText(formatAnalyticsLoadError(e, t))
     } finally {
-      setLoading(false)
+      if (seq === loadSeq.current) setLoading(false)
     }
   }, [dateFrom, dateTo, t])
 
@@ -207,19 +211,19 @@ export default function HrEfficiencyDashboard() {
           </div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi label={t('app.dashboard.hr.flow.requested')} value={formatNumber(requested)} accent="#64748b" />
-          <Kpi label={t('app.dashboard.hr.flow.accepted')} value={formatNumber(accepted)} accent="#16a34a" />
-          <Kpi label={t('app.dashboard.hr.flow.returned')} value={formatNumber(returned)} accent="#f97316" />
-          <Kpi label={t('app.dashboard.hr.flow.rejected')} value={formatNumber(rejected)} accent="#e11d48" />
-        </div>
+        <div className={`space-y-4 ${loading ? 'opacity-70 transition-opacity' : ''}`}>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Kpi label={t('app.dashboard.hr.flow.requested')} value={formatNumber(requested)} accent="#64748b" />
+            <Kpi label={t('app.dashboard.hr.flow.accepted')} value={formatNumber(accepted)} accent="#16a34a" />
+            <Kpi label={t('app.dashboard.hr.flow.returned')} value={formatNumber(returned)} accent="#f97316" />
+            <Kpi label={t('app.dashboard.hr.flow.rejected')} value={formatNumber(rejected)} accent="#e11d48" />
+          </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.hr.flow_title')}</div>
-            <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.hr.flow_subtitle')}</p>
-            <div className="mt-3 h-56">
-              <ResponsiveContainer width="100%" height="100%">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.hr.flow_title')}</div>
+              <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.hr.flow_subtitle')}</p>
+              <ChartHost className="mt-3 h-56 w-full min-w-0" ready={chartsReady}>
                 <BarChart data={flow} layout="vertical" margin={{ left: 8, right: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
@@ -231,30 +235,30 @@ export default function HrEfficiencyDashboard() {
                     ))}
                   </Bar>
                 </BarChart>
-              </ResponsiveContainer>
+              </ChartHost>
             </div>
-          </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.hr.by_client_title')}</div>
-            <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.hr.by_client_subtitle')}</p>
-            {byClient.length === 0 ? (
-              <p className="mt-6 text-sm text-slate-500">{t('app.dashboard.efficiency.empty')}</p>
-            ) : (
-              <ul className="mt-3 max-h-56 space-y-2 overflow-y-auto">
-                {byClient.map((row) => (
-                  <li
-                    key={row.name}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm"
-                  >
-                    <span className="truncate text-slate-700">{row.name}</span>
-                    <span className="shrink-0 text-slate-900">
-                      {formatNumber(row.accepted)}/{formatNumber(row.requested)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.hr.by_client_title')}</div>
+              <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.hr.by_client_subtitle')}</p>
+              {byClient.length === 0 ? (
+                <p className="mt-6 text-sm text-slate-500">{t('app.dashboard.efficiency.empty')}</p>
+              ) : (
+                <ul className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+                  {byClient.map((row) => (
+                    <li
+                      key={row.name}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-2 text-sm"
+                    >
+                      <span className="truncate text-slate-700">{row.name}</span>
+                      <span className="shrink-0 text-slate-900">
+                        {formatNumber(row.accepted)}/{formatNumber(row.requested)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </div>

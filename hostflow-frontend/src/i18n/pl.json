@@ -4158,7 +4158,8 @@
       },
       "errors": {
         "range_invalid": "Data początkowa musi być wcześniejsza niż końcowa.",
-        "load_failed": "Nie udało się wczytać danych panelu"
+        "load_failed": "Nie udało się wczytać danych panelu",
+        "temporarily_unavailable": "Analityka jest tymczasowo niedostępna. Spróbuj ponownie za kilka sekund."
       },
       "stats": {
         "candidates_total": "Kandydaci (łącznie)",
@@ -4485,6 +4486,31 @@
           "outcome_rejected": "Odrzucony",
           "outcome_declined": "Zrezygnował",
           "outcome_in_progress": "W toku"
+        },
+        "contact": {
+          "title": "Metryka kontaktu",
+          "subtitle": "Otrzymano → próby kontaktu → dodzwoniono → wynik. Z prób kontaktu w CRM (te same filtry).",
+          "received": "Otrzymano",
+          "attempted": "Była próba",
+          "reached": "Dodzwoniono",
+          "untouched": "Bez prób",
+          "attempts_total": "Łącznie prób",
+          "funnel_received": "Otrzymano",
+          "funnel_attempted": "Próba",
+          "funnel_reached": "Dodzwoniono",
+          "funnel_closed": "Zamknięte",
+          "funnel_hint": "Śr. prób na kandydata: {avg} · limit (≥3): {limit}",
+          "empty": "Brak prób kontaktu w przekroju.",
+          "stage_now": "Teraz na etapach: kontakt {contacted} · brak odpowiedzi {noAnswer}",
+          "results": {
+            "answered": "Odebrał",
+            "no_answer": "Brak odpowiedzi",
+            "wrong_number": "Zły numer",
+            "unavailable": "Niedostępny",
+            "callback_requested": "Oddzwonić",
+            "interested": "Zainteresowany",
+            "not_interested": "Niezainteresowany"
+          }
         }
       },
       "tabs": {
@@ -4505,6 +4531,33 @@
           "modules": "Zakładki pojawiają się tylko dla kupionych i dostępnych modułów.",
           "filters": "Każdy moduł ma własne zakresy i przekroje (okres, klient, wakat gdy potrzeba).",
           "owned": "Rekrutacja ≠ sprzedaż ≠ HR: lejki i KPI należą do modułu."
+        },
+        "pulse_title": "Puls operacyjny",
+        "window_30d": "okno 30 dni",
+        "business_type": {
+          "agency": "Agencja",
+          "employer": "Pracodawca",
+          "services": "Usługi"
+        },
+        "modules": {
+          "recruitment": "Rekrutacja",
+          "sales": "Sprzedaż",
+          "hr_finance": "HR / Finanse"
+        },
+        "kpis": {
+          "pipeline": "W pipeline",
+          "stuck": "Utknięte",
+          "active_today": "Aktywne dziś",
+          "open_vacancies": "Otwarte wakaty",
+          "candidates": "Kandydaci",
+          "vacancies_active": "Aktywne wakaty",
+          "on_open_vacancies": "Na otwartych wakatach",
+          "leads": "Leady / zapytania",
+          "leads_overdue": "Leady przeterminowane",
+          "open_orders": "Otwarte zamówienia",
+          "handoff_requested": "Handoff zgłoszone",
+          "handoff_accepted": "Handoff przyjęte",
+          "orders_30d": "Zamówienia (30d)"
         }
       },
       "sales": {
@@ -4536,7 +4589,13 @@
         "orders_cancelled": "Anulowane",
         "orders_revenue": "Przychód",
         "orders_status_title": "Statusy zamówień",
-        "order_status": {}
+        "order_status": {},
+        "filters": {
+          "source": "Źródło",
+          "source_placeholder": "meta, csv…",
+          "vacancy": "Wakat",
+          "vacancy_all": "Wszystkie wakaty"
+        }
       },
       "hr": {
         "title": "Efektywność HR",
@@ -4566,6 +4625,21 @@
           "cost": "Koszt",
           "profit": "Zysk brutto",
           "margin": "Marża"
+        }
+      },
+      "fleet": {
+        "title": "Flota",
+        "subtitle": "Park, linie i przydziały. Pełny moduł — w Flocie.",
+        "open_module": "Otwórz Flotę",
+        "module_hint": "API floty odpowiada, ale status modułu niepotwierdzony.",
+        "kpis": {
+          "vehicles": "Pojazdy",
+          "trailers": "Naczepy",
+          "drivers": "Kierowcy",
+          "lines": "Linie",
+          "assignments": "Przydziały",
+          "assignments_today": "Przydziały dziś (UTC)",
+          "assignments_month": "Przydziały w miesiącu (UTC)"
         }
       }
     },

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -6,7 +6,6 @@ import {
   Cell,
   Pie,
   PieChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -15,6 +14,7 @@ import {
   getServicesAnalyticsOverview,
   type ServicesAnalyticsOverview,
 } from '../api/analytics'
+import api from '../api/client'
 import {
   fetchLeadConversionFunnel,
   type LeadConversionFunnelResponse,
@@ -22,6 +22,8 @@ import {
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
 import { useI18n } from '../i18n'
+import { formatAnalyticsLoadError } from '../modules/dashboard/analyticsLoad'
+import { ChartHost } from '../modules/dashboard/components/ChartHost'
 import { QUICK_RANGE_OPTIONS } from '../modules/dashboard/constants'
 import type { QuickRange } from '../modules/dashboard/types'
 import { calcRange } from '../modules/dashboard/utils'
@@ -36,6 +38,8 @@ const FUNNEL_COLORS: Record<string, string> = {
 }
 
 const STATUS_COLORS = ['#0ea5e9', '#8b5cf6', '#14b8a6', '#f97316', '#e11d48', '#64748b']
+
+type ListResp<T> = { items: T[]; total?: number } | T[]
 
 function daysBetween(from: string, to: string): number {
   if (!from || !to) return 30
@@ -65,11 +69,16 @@ export default function SalesEfficiencyDashboard() {
   const { t, locale } = useI18n()
   const { can } = usePermissions()
   const canServices = can('services.view')
+  const loadSeq = useRef(0)
 
-  const initialRange = calcRange('30d')
+  const initialRange = calcRange('90d')
   const [dateFrom, setDateFrom] = useState(initialRange.from)
   const [dateTo, setDateTo] = useState(initialRange.to)
-  const [activeRange, setActiveRange] = useState<QuickRange | 'custom'>('30d')
+  const [activeRange, setActiveRange] = useState<QuickRange | 'custom'>('90d')
+  const [sourceFilter, setSourceFilter] = useState('')
+  const [sourceDraft, setSourceDraft] = useState('')
+  const [vacancyFilter, setVacancyFilter] = useState('')
+  const [vacancyOptions, setVacancyOptions] = useState<{ id: string; label: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [errText, setErrText] = useState<string | null>(null)
   const [funnel, setFunnel] = useState<LeadConversionFunnelResponse | null>(null)
@@ -95,42 +104,76 @@ export default function SalesEfficiencyDashboard() {
   )
 
   const rangeInvalid = Boolean(dateFrom && dateTo && dateFrom > dateTo)
+  const chartsReady = !loading
 
   const load = useCallback(async () => {
     if (dateFrom && dateTo && dateFrom > dateTo) {
       setErrText(t('app.dashboard.errors.range_invalid'))
       return
     }
+    const seq = ++loadSeq.current
     setLoading(true)
     setErrText(null)
     try {
       const after = toIsoStart(dateFrom)
       const before = toExclusiveIsoEnd(dateTo)
       const [funnelResp, servicesResp] = await Promise.all([
-        fetchLeadConversionFunnel(
-          after && before
+        fetchLeadConversionFunnel({
+          ...(after && before
             ? { cohortCreatedAfter: after, cohortCreatedBeforeExclusive: before }
-            : undefined,
-        ).catch(() => null),
+            : {}),
+          ...(sourceFilter.trim() ? { source: sourceFilter.trim() } : {}),
+          ...(vacancyFilter ? { vacancyId: vacancyFilter } : {}),
+        }),
         canServices
-          ? getServicesAnalyticsOverview({ days: daysBetween(dateFrom, dateTo) }).catch(() => null)
+          ? getServicesAnalyticsOverview({ days: daysBetween(dateFrom, dateTo) })
           : Promise.resolve(null),
       ])
+      if (seq !== loadSeq.current) return
       setFunnel(funnelResp)
       setServices(servicesResp)
     } catch (e: unknown) {
-      const err = e as { message?: string }
-      setErrText(err?.message || t('app.dashboard.errors.load_failed'))
-      setFunnel(null)
-      setServices(null)
+      if (seq !== loadSeq.current) return
+      setErrText(formatAnalyticsLoadError(e, t))
     } finally {
-      setLoading(false)
+      if (seq === loadSeq.current) setLoading(false)
     }
-  }, [canServices, dateFrom, dateTo, t])
+  }, [canServices, dateFrom, dateTo, sourceFilter, vacancyFilter, t])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const { data } = await api.get<
+          ListResp<{
+            id?: string
+            title?: string
+            vacancy_title?: string
+            company_name?: string
+            company?: { name?: string }
+          }>
+        >('/vacancies/', { params: { limit: 200, offset: 0 } })
+        const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : []
+        const untitled = t('app.dashboard.labels.untitled', { defaultValue: '—' })
+        setVacancyOptions(
+          list
+            .map((item) => {
+              const id = item?.id
+              if (!id) return null
+              const title = item?.title || item?.vacancy_title || untitled
+              const companyName = item?.company_name || item?.company?.name || ''
+              return { id, label: companyName ? `${title} • ${companyName}` : title }
+            })
+            .filter(Boolean) as { id: string; label: string }[],
+        )
+      } catch {
+        setVacancyOptions([])
+      }
+    })()
+  }, [t])
 
   const applyQuickRange = (range: QuickRange) => {
     const next = calcRange(range)
@@ -248,6 +291,38 @@ export default function SalesEfficiencyDashboard() {
                 }}
               />
             </label>
+            <label className="flex flex-col gap-0.5 text-xs">
+              <span className="text-slate-500">{t('app.dashboard.sales.filters.source')}</span>
+              <input
+                type="text"
+                className="input input-sm w-40"
+                value={sourceDraft}
+                placeholder={t('app.dashboard.sales.filters.source_placeholder')}
+                onChange={(e) => setSourceDraft(e.target.value)}
+                onBlur={() => setSourceFilter(sourceDraft.trim())}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    setSourceFilter(sourceDraft.trim())
+                  }
+                }}
+              />
+            </label>
+            <label className="flex flex-col gap-0.5 text-xs">
+              <span className="text-slate-500">{t('app.dashboard.sales.filters.vacancy')}</span>
+              <select
+                className="input input-sm min-w-[12rem]"
+                value={vacancyFilter}
+                onChange={(e) => setVacancyFilter(e.target.value)}
+              >
+                <option value="">{t('app.dashboard.sales.filters.vacancy_all')}</option>
+                {vacancyOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <div className="border-t border-slate-100 pt-2 text-xs text-slate-500">
             {t('app.dashboard.filters.sample', { values: { count: formatNumber(leadTotal) } })}
@@ -266,66 +341,66 @@ export default function SalesEfficiencyDashboard() {
           </div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi
-            label={t('app.dashboard.sales.stats.inquiries')}
-            value={formatNumber(leadTotal)}
-            accent="#64748b"
-          />
-          <Kpi
-            label={t('app.dashboard.sales.stats.win_path')}
-            value={formatNumber(winPath)}
-            accent="#16a34a"
-          />
-          <Kpi
-            label={t('app.dashboard.sales.stats.lost')}
-            value={formatNumber(lost)}
-            accent="#e11d48"
-          />
-          <Kpi
-            label={t('app.dashboard.sales.stats.new_untouched')}
-            value={formatNumber(newCount)}
-            accent="#f97316"
-          />
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold text-slate-800">
-              {t('app.dashboard.sales.funnel_title')}
-            </div>
-            <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.sales.funnel_subtitle')}</p>
-            <div className="mt-3 h-56">
-              {funnelChart.length === 0 ? (
-                <Empty />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={funnelChart} layout="vertical" margin={{ left: 8, right: 12 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <YAxis type="category" dataKey="name" width={88} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(value: number) => formatNumber(value)} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      {funnelChart.map((entry) => (
-                        <Cell key={entry.key} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+        <div className={`space-y-4 ${loading ? 'opacity-70 transition-opacity' : ''}`}>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Kpi
+              label={t('app.dashboard.sales.stats.inquiries')}
+              value={formatNumber(leadTotal)}
+              accent="#64748b"
+            />
+            <Kpi
+              label={t('app.dashboard.sales.stats.win_path')}
+              value={formatNumber(winPath)}
+              accent="#16a34a"
+            />
+            <Kpi
+              label={t('app.dashboard.sales.stats.lost')}
+              value={formatNumber(lost)}
+              accent="#e11d48"
+            />
+            <Kpi
+              label={t('app.dashboard.sales.stats.new_untouched')}
+              value={formatNumber(newCount)}
+              accent="#f97316"
+            />
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold text-slate-800">
-              {t('app.dashboard.sales.lost_title')}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="text-sm font-semibold text-slate-800">
+                {t('app.dashboard.sales.funnel_title')}
+              </div>
+              <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.sales.funnel_subtitle')}</p>
+              <div className="mt-3 h-56 min-w-0">
+                {funnelChart.length === 0 ? (
+                  <Empty />
+                ) : (
+                  <ChartHost className="h-full w-full min-w-0" ready={chartsReady}>
+                    <BarChart data={funnelChart} layout="vertical" margin={{ left: 8, right: 12 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="name" width={88} tick={{ fontSize: 11 }} />
+                      <Tooltip formatter={(value: number) => formatNumber(value)} />
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        {funnelChart.map((entry) => (
+                          <Cell key={entry.key} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ChartHost>
+                )}
+              </div>
             </div>
-            <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.sales.lost_subtitle')}</p>
-            {lostReasons.length === 0 ? (
-              <p className="mt-6 text-sm text-slate-500">{t('app.dashboard.sales.lost_empty')}</p>
-            ) : (
-              <div className="mt-3 h-56">
-                <ResponsiveContainer width="100%" height="100%">
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="text-sm font-semibold text-slate-800">
+                {t('app.dashboard.sales.lost_title')}
+              </div>
+              <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.sales.lost_subtitle')}</p>
+              {lostReasons.length === 0 ? (
+                <p className="mt-6 text-sm text-slate-500">{t('app.dashboard.sales.lost_empty')}</p>
+              ) : (
+                <ChartHost className="mt-3 h-56 w-full min-w-0" ready={chartsReady}>
                   <BarChart data={lostReasons} layout="vertical" margin={{ left: 8, right: 12 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                     <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
@@ -333,68 +408,68 @@ export default function SalesEfficiencyDashboard() {
                     <Tooltip formatter={(value: number) => formatNumber(value)} />
                     <Bar dataKey="count" fill="#e11d48" radius={[0, 4, 4, 0]} />
                   </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
+                </ChartHost>
+              )}
+            </div>
           </div>
-        </div>
 
-        {canServices ? (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-sm font-semibold text-slate-800">
-                {t('app.dashboard.sales.orders_title')}
+          {canServices ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="text-sm font-semibold text-slate-800">
+                  {t('app.dashboard.sales.orders_title')}
+                </div>
+                <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.sales.orders_subtitle')}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <MiniStat
+                    label={t('app.dashboard.sales.orders_total')}
+                    value={formatNumber(services?.totals.orders_total)}
+                  />
+                  <MiniStat
+                    label={t('app.dashboard.sales.orders_delivered')}
+                    value={formatNumber(services?.totals.delivered_orders)}
+                  />
+                  <MiniStat
+                    label={t('app.dashboard.sales.orders_cancelled')}
+                    value={formatNumber(services?.totals.cancelled_orders)}
+                  />
+                  <MiniStat
+                    label={t('app.dashboard.sales.orders_revenue')}
+                    value={formatNumber(services?.totals.revenue)}
+                  />
+                </div>
               </div>
-              <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.sales.orders_subtitle')}</p>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <MiniStat
-                  label={t('app.dashboard.sales.orders_total')}
-                  value={formatNumber(services?.totals.orders_total)}
-                />
-                <MiniStat
-                  label={t('app.dashboard.sales.orders_delivered')}
-                  value={formatNumber(services?.totals.delivered_orders)}
-                />
-                <MiniStat
-                  label={t('app.dashboard.sales.orders_cancelled')}
-                  value={formatNumber(services?.totals.cancelled_orders)}
-                />
-                <MiniStat
-                  label={t('app.dashboard.sales.orders_revenue')}
-                  value={formatNumber(services?.totals.revenue)}
-                />
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="text-sm font-semibold text-slate-800">
+                  {t('app.dashboard.sales.orders_status_title')}
+                </div>
+                <div className="mt-3 h-48 min-w-0">
+                  {statusPie.length === 0 ? (
+                    <Empty />
+                  ) : (
+                    <ChartHost className="h-full w-full min-w-0" ready={chartsReady}>
+                      <PieChart>
+                        <Pie
+                          data={statusPie}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={45}
+                          outerRadius={75}
+                          paddingAngle={2}
+                        >
+                          {statusPie.map((entry) => (
+                            <Cell key={entry.key} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number) => formatNumber(value)} />
+                      </PieChart>
+                    </ChartHost>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="text-sm font-semibold text-slate-800">
-                {t('app.dashboard.sales.orders_status_title')}
-              </div>
-              <div className="mt-3 h-48">
-                {statusPie.length === 0 ? (
-                  <Empty />
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={statusPie}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={45}
-                        outerRadius={75}
-                        paddingAngle={2}
-                      >
-                        {statusPie.map((entry) => (
-                          <Cell key={entry.key} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => formatNumber(value)} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </PageShell>
   )

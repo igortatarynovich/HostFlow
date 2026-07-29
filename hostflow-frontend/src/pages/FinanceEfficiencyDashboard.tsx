@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   getServicesAnalyticsOverview,
   type ServicesAnalyticsOverview,
@@ -6,6 +6,7 @@ import {
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
 import { useI18n } from '../i18n'
+import { formatAnalyticsLoadError } from '../modules/dashboard/analyticsLoad'
 import { QUICK_RANGE_OPTIONS } from '../modules/dashboard/constants'
 import type { QuickRange } from '../modules/dashboard/types'
 import { calcRange } from '../modules/dashboard/utils'
@@ -24,6 +25,7 @@ function daysBetween(from: string, to: string): number {
  */
 export default function FinanceEfficiencyDashboard() {
   const { t, locale } = useI18n()
+  const loadSeq = useRef(0)
   const initialRange = calcRange('30d')
   const [dateFrom, setDateFrom] = useState(initialRange.from)
   const [dateTo, setDateTo] = useState(initialRange.to)
@@ -60,17 +62,18 @@ export default function FinanceEfficiencyDashboard() {
       setErrText(t('app.dashboard.errors.range_invalid'))
       return
     }
+    const seq = ++loadSeq.current
     setLoading(true)
     setErrText(null)
     try {
       const data = await getServicesAnalyticsOverview({ days: daysBetween(dateFrom, dateTo) })
+      if (seq !== loadSeq.current) return
       setServices(data)
     } catch (e: unknown) {
-      const err = e as { message?: string }
-      setErrText(err?.message || t('app.dashboard.errors.load_failed'))
-      setServices(null)
+      if (seq !== loadSeq.current) return
+      setErrText(formatAnalyticsLoadError(e, t))
     } finally {
-      setLoading(false)
+      if (seq === loadSeq.current) setLoading(false)
     }
   }, [dateFrom, dateTo, t])
 
@@ -166,40 +169,42 @@ export default function FinanceEfficiencyDashboard() {
           </div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi
-            label={t('app.dashboard.finance.stats.invoiced')}
-            value={formatNumber(totals?.invoices_invoiced)}
-            accent="#0ea5e9"
-          />
-          <Kpi
-            label={t('app.dashboard.finance.stats.paid')}
-            value={formatNumber(totals?.invoices_paid)}
-            accent="#16a34a"
-          />
-          <Kpi
-            label={t('app.dashboard.finance.stats.outstanding')}
-            value={formatNumber(totals?.invoices_outstanding)}
-            accent="#f97316"
-          />
-          <Kpi
-            label={t('app.dashboard.finance.stats.overdue')}
-            value={formatNumber(totals?.invoices_overdue_count)}
-            accent="#e11d48"
-          />
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.finance.margin_title')}</div>
-          <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.finance.margin_subtitle')}</p>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Mini label={t('app.dashboard.finance.stats.revenue')} value={formatNumber(totals?.revenue)} />
-            <Mini label={t('app.dashboard.finance.stats.cost')} value={formatNumber(totals?.actual_cost)} />
-            <Mini label={t('app.dashboard.finance.stats.profit')} value={formatNumber(totals?.gross_profit)} />
-            <Mini
-              label={t('app.dashboard.finance.stats.margin')}
-              value={`${formatNumber(Math.round((totals?.gross_margin || 0) * 100))}%`}
+        <div className={`space-y-4 ${loading ? 'opacity-70 transition-opacity' : ''}`}>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Kpi
+              label={t('app.dashboard.finance.stats.invoiced')}
+              value={formatNumber(totals?.invoices_invoiced)}
+              accent="#0ea5e9"
             />
+            <Kpi
+              label={t('app.dashboard.finance.stats.paid')}
+              value={formatNumber(totals?.invoices_paid)}
+              accent="#16a34a"
+            />
+            <Kpi
+              label={t('app.dashboard.finance.stats.outstanding')}
+              value={formatNumber(totals?.invoices_outstanding)}
+              accent="#f97316"
+            />
+            <Kpi
+              label={t('app.dashboard.finance.stats.overdue')}
+              value={formatNumber(totals?.invoices_overdue_count)}
+              accent="#e11d48"
+            />
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.finance.margin_title')}</div>
+            <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.finance.margin_subtitle')}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Mini label={t('app.dashboard.finance.stats.revenue')} value={formatNumber(totals?.revenue)} />
+              <Mini label={t('app.dashboard.finance.stats.cost')} value={formatNumber(totals?.actual_cost)} />
+              <Mini label={t('app.dashboard.finance.stats.profit')} value={formatNumber(totals?.gross_profit)} />
+              <Mini
+                label={t('app.dashboard.finance.stats.margin')}
+                value={`${formatNumber(Math.round((totals?.gross_margin || 0) * 100))}%`}
+              />
+            </div>
           </div>
         </div>
       </div>

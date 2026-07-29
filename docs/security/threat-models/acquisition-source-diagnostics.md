@@ -1,4 +1,4 @@
-# Threat Model — Acquisition Source Diagnostics (PR1–PR4)
+# Threat Model — Acquisition Source Diagnostics (PR1–PR5)
 
 ## Assets
 
@@ -8,19 +8,17 @@
   - `GET /api/v1/platform/marketing/diagnostics/submissions/{lead_id}`  
   (`backend/app/api/v1/platform/marketing_diagnostics.py` ·  
   `backend/app/acquisition/ops/source_diagnostics.py`)
-- Marketing Diagnostics UI (`/app/marketing/diagnostics`) — list + case detail + filter bar  
-  + duplicate panel + mapping / Mapping Health panel
-- Composed views over existing SoT: **Lead** (`payload` / `normalized`) + **Acquisition Activity** timeline  
-  + **IntakeSourceProfile** mapping façade (current health only)
+- Ingest stamp `mapping_applied_v1` on Lead.normalized (Meta/webhook reprocess paths)  
+  (`backend/app/acquisition/mapping_applied_stamp.py`)
+- Marketing Diagnostics UI — list / case / filters / duplicate / Mapping Health / drift
 
 ## Trust boundaries
 
 - Authenticated tenant operator → platform diagnostics read (JWT + `X-Tenant-Id` + RLS)
 - Roles: administrator / supervisor / recruiter / client_manager / viewer / hr_officer / superadmin (`_READ`)
 - Frontend Marketing page → browser session only; no write / replay / reprocess from this surface
+- Mapping stamp is written only on authorized ingest / reprocess paths (not on Diagnostics GET)
 - Case detail may expose intake **payload** and **normalized** blocks to authorized operators (ops need)
-- List filters are query params only — they never widen tenant scope
-- Mapping panel deep-links to Marketing Sources Mapping — still same tenant session
 
 ## Угрозы
 
@@ -34,23 +32,21 @@
 | ASD-6 | Excess PII exposure outside RBAC | Case JSON returned without authenticated tenant-scoped `_READ` |
 | ASD-7 | Filter bypass / enumeration | `flight_id` / `source` filters used to probe other tenants |
 | ASD-8 | Cross-tenant Source mapping read | Resolving `intake_source_profile_id` without tenant scope |
+| ASD-9 | Tampered mapping stamp | Client-supplied fingerprint without ingest authority |
 
-## Митигации (PR1–PR4)
+## Митигации (PR1–PR5)
 
-- List filters `Lead.tenant_id` + presence of `acquisition_routing_v1` in `normalized`
-- Optional filters (`source`, `flight_id`, `failed_only`) are AND-narrowing inside that tenant set
-- `flight_id` validated as UUID (422 on invalid)
-- Case loads Lead by `tenant_id` + `lead_id`; Activity via existing tenant-scoped `list_activity_events`
-- Mapping compose uses tenant-scoped `get_source_mapping` / profile CRUD; missing profile → `profile_missing` (no leak)
-- Endpoints are `_READ` only; no replay / export / mapping write in this slice
-- No Activity emit and no Lead mutation on GET
-- Reuses Lead + Acquisition Activity + IntakeSourceProfile — no new submissions / version store
-- `historical_version_available=false` until a future ingest stamp (no invented ledger)
+- List / case tenant-scoped; filters AND-narrowing; UUID validation on `flight_id`
+- Mapping compose uses tenant-scoped Sources façade; missing profile → `profile_missing`
+- `mapping_applied_v1` written only in server ingest/reprocess after validated rules
+- Drift is a read-time comparison of fingerprints — no auto remapping
+- Endpoints remain `_READ` only on Diagnostics; no replay/export in this slice
 - No new public / unauthenticated surfaces
 
 ## Тесты
 
 - `backend/tests/api/test_marketing_diagnostics.py`
+- `backend/tests/acquisition/test_mapping_applied_stamp.py`
 - `hostflow-frontend/src/app/__tests__/marketingDiagnosticsRoute.test.ts`
 
 ## Связанные спеки

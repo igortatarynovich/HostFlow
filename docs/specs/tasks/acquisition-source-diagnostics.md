@@ -1,6 +1,6 @@
 # Source Diagnostics — Marketing ops console (Product Epic)
 
-**Status:** **PR1–PR4 DONE** · later backlog remains  
+**Status:** **PR1–PR5 DONE** · later backlog remains  
 **Date:** 2026-07-29  
 **Product Track (next):** [Acquisition Stage 5 PR-2](acquisition-stage-5-optimization.md)  
 **Parents:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) § After cutover · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)
@@ -30,52 +30,37 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ---
 
-## PR1 — Recent submissions + case detail ✅ #196
+## PR1–PR4 ✅
 
-### Acceptance (PR1)
-
-- [x] Operator opens Marketing → Diagnostics without developer  
-- [x] Sees recent Acquisition-stamped submissions (name / status / source / time)  
-- [x] Opens one case: routing summary + activity timeline + payload blocks  
-- [x] No new SoT tables; tests cover list/detail compose  
+- PR1 #196 list + case · PR2 #199 filters · PR3 #200 duplicate · PR4 #201 Mapping Health
 
 ---
 
-## PR2 — List filters ✅ #199
+## PR5 — Ingest mapping stamp + drift ✅ #202
 
-### Acceptance (PR2)
+### IN
 
-- [x] Filter by source narrows list  
-- [x] Filter by flight_id (UUID) narrows to stamped Flight  
-- [x] failed_only excludes clean routed/processed rows  
-- [x] Invalid flight_id → 422  
+1. Stamp `mapping_applied_v1` on Lead.normalized at Meta/webhook ingest (rules fingerprint, count, source, stamped_at)  
+2. Diagnostics `mapping.historical_version_available=true` when stamp present  
+3. `mapping.drift` when current Source rules fingerprint ≠ applied fingerprint  
+4. UI shows applied fingerprint + drift flag  
 
----
+### OUT
 
-## PR3 — Duplicate decision surface ✅ #200
+- Replay / export  
+- Alerting / webhook on drift (Phase 7 style)  
 
-### Acceptance (PR3)
+### Acceptance (PR5)
 
-- [x] Case with duplicate stamp returns `duplicate.active=true` + match fields  
-- [x] Clean routed case returns `duplicate.active=false`  
-- [x] UI shows panel only when active; Resolve in Lead CTA present  
-
----
-
-## PR4 — Mapping context / Mapping Health ✅ #201
-
-### Acceptance (PR4)
-
-- [x] Case with `intake_source_profile_id` returns `mapping.active=true` + health  
-- [x] Missing profile → `profile_missing=true` (no 500)  
-- [x] UI shows Mapping Health panel + Open Mapping CTA  
+- [x] Ingest path writes `mapping_applied_v1`  
+- [x] Case with stamp + changed profile rules → `drift=true`  
+- [x] Case without stamp → historical false / drift n/a  
 
 ---
 
 ## Later epic backlog
 
-- historical mapping version stamp at ingest  
-- Mapping Health drift alerts  
+- Mapping Health drift alerts (notification / detection)  
 - replay submission  
 - export payload  
 
@@ -83,8 +68,9 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ## History
 
-- 2026-07-29: Epic brief opened; Product Track → Source Diagnostics PR1 (Ad-ID bind UI closed #187).
-- 2026-07-29: PR1 merged (#196); Product Track → PR2 filters.
+- 2026-07-29: PR5 merged (#202); Product Track → Stage 5 PR-2 explainability / operator ack-dismiss.
+- 2026-07-29: PR4 merged (#201); Product Track → PR5 ingest mapping stamp + drift.
+- 2026-07-29: PR3 merged (#200); Product Track → PR4 mapping context.
 - 2026-07-29: PR2 merged (#199); Product Track → PR3 duplicate decision surface.
-- 2026-07-29: PR3 merged (#200); Product Track → PR4 mapping context / Mapping Health.
-- 2026-07-29: PR4 merged (#201); Product Track → Stage 5 PR-2 explainability / operator ack-dismiss.
+- 2026-07-29: PR1 merged (#196); Product Track → PR2 filters.
+- 2026-07-29: Epic brief opened; Product Track → Source Diagnostics PR1 (Ad-ID bind UI closed #187).

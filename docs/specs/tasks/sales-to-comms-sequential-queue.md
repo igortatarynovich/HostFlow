@@ -37,7 +37,7 @@
 - **Acquisition Stage 4 / Flight Runtime** ← **Runtime DONE** (#136 / #148–#151) — [stage-4](acquisition-stage-4-flight-runtime.md)  
 - **Acquisition UI Cutover** ← **PASS** — [cutover](acquisition-ui-cutover.md) · [C-7](acquisition-ui-cutover-c7-searches-decommission.md) (C-1…C-7 closed 2026-07-27; Stage 5 PR-2 may resume)
 - **FlightAdBinding Ad-ID bind UI** ← **DONE** (#187) — Campaign Detail Ad→Flight panel  
-- **Source Diagnostics** ← **PR1–PR4 DONE** (#196–#201) — [brief](acquisition-source-diagnostics.md); later backlog remains  
+- **Source Diagnostics** ← **PR1–PR5 DONE** (#196–#202) — [brief](acquisition-source-diagnostics.md); later backlog remains  
 - **Acquisition Stage 5 / Optimization** ← **ACTIVE Product Track** — PR-1 DONE · **PR-2 IN PROGRESS** — [stage-5](acquisition-stage-5-optimization.md)  
 - **Acquisition Stage 6 Analytics** ← future horizon (ADR-024 §14.1); do not open while 5 incomplete  
 - C2.3 stack merge + C2.4 + Epic C Complete Gate — Engineering / later Communication close-out (**C2.4 frozen**)  
@@ -73,7 +73,7 @@
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
 **C0–C2.2** ✅. **C2.3** implemented (merge opportunistic). **C2.4 frozen.**  
-**Active (Product):** **Stage 5 PR-2** optimization explainability / operator ack-dismiss — [stage-5](acquisition-stage-5-optimization.md). Source Diagnostics PR1–PR4 ✅ (#196–#201).  
+**Active (Product):** **Stage 5 PR-2** optimization explainability / operator ack-dismiss — [stage-5](acquisition-stage-5-optimization.md). Source Diagnostics PR1–PR5 ✅ (#196–#202).  
 **Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap. Stage 4 merge (2026-07-23) accepted with known baseline debt — Stage 4 tests/gates green; full suite red outside scope.
 
 ---

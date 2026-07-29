@@ -54,6 +54,12 @@ export type DiagnosticsMapping = {
   profile_updated_at?: string | null
   historical_version_available: boolean
   profile_missing: boolean
+  applied_rules_count?: number
+  applied_rules_fingerprint?: string | null
+  applied_rules_source?: string | null
+  applied_stamped_at?: string | null
+  current_rules_fingerprint?: string | null
+  drift?: boolean
 }
 
 export type DiagnosticsCase = DiagnosticsSubmission & {

@@ -10,8 +10,12 @@ export type HandoffStatsResponse = {
 }
 
 export type ContactAttemptStatsResponse = {
+  /** Candidates in the filtered cohort (by created_at ± company/vacancy). */
+  cohort_total?: number
   total_attempts: number
   candidates_with_attempts: number
+  /** Distinct candidates with at least one reached result (answered / interested / callback). */
+  candidates_reached?: number
   avg_per_candidate: number
   limit_reached_count: number
   by_result: Record<string, number>
@@ -382,10 +386,14 @@ export async function getHandoffStats(params?: {
 export async function getContactAttemptStats(params?: {
   from?: string
   to?: string
+  companyId?: string
+  vacancyId?: string
 }): Promise<ContactAttemptStatsResponse> {
   const q: Record<string, string> = {}
   if (params?.from) q.from = params.from
   if (params?.to) q.to = params.to
+  if (params?.companyId) q.company_id = params.companyId
+  if (params?.vacancyId) q.vacancy_id = params.vacancyId
   const { data } = await api.get<ContactAttemptStatsResponse>('/analytics/contact-attempt-stats', {
     params: Object.keys(q).length ? q : undefined,
   })

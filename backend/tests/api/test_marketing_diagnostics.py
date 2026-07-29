@@ -368,3 +368,84 @@ async def test_diagnostics_case_mapping_context(client: AsyncClient, auth_header
     assert mapping["profile_missing"] is False
     assert "/app/marketing/sources/" in (mapping["mapping_path"] or "")
     assert profile_id in (mapping["mapping_path"] or "")
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_case_mapping_drift_from_applied_stamp(
+    client: AsyncClient, auth_headers: Dict[str, str]
+):
+    lead_id = str(uuid4())
+    profile_id = str(uuid4())
+    from backend.app.acquisition.mapping_applied_stamp import fingerprint_mapping_rules
+
+    applied_rules = [{"source": "email", "target": "email"}]
+    current_rules = [
+        {"source": "email", "target": "email"},
+        {"source": "phone", "target": "phone"},
+    ]
+    async with async_session_maker() as db:
+        await _ensure_tenant(db, DEFAULT_TENANT_ID)
+        oc = (
+            await db.execute(
+                select(OwnCompany.id).where(OwnCompany.tenant_id == DEFAULT_TENANT_ID)
+            )
+        ).scalar_one_or_none()
+        if oc is None:
+            oc = str(uuid4())
+            db.add(OwnCompany(id=oc, tenant_id=DEFAULT_TENANT_ID, name="Diag OC2"))
+            await db.flush()
+        db.add(
+            IntakeSourceProfile(
+                id=profile_id,
+                tenant_id=DEFAULT_TENANT_ID,
+                code=f"diag-drift-{uuid4().hex[:8]}",
+                name="Diag Drift Source",
+                provider="meta",
+                channel="paid",
+                own_company_id=str(oc),
+                route_intent="candidate_application",
+                mapping_rules=current_rules,
+                is_active=True,
+            )
+        )
+        db.add(
+            Lead(
+                id=lead_id,
+                tenant_id=DEFAULT_TENANT_ID,
+                source="meta",
+                status="processed",
+                lead_type="candidate",
+                lead_target_type="candidate",
+                external_id=f"meta-lead-{uuid4().hex[:10]}",
+                normalized={
+                    "full_name": "Drift Person",
+                    ACQUISITION_ROUTING_V1_KEY: {
+                        "status": "routed",
+                        "campaign_id": str(uuid4()),
+                        "campaign_run_id": str(uuid4()),
+                        "route_intent": "candidate_application",
+                        "intake_source_profile_id": profile_id,
+                    },
+                    "mapping_applied_v1": {
+                        "source_id": profile_id,
+                        "rules_source": "profile",
+                        "rules_count": 1,
+                        "rules_fingerprint": fingerprint_mapping_rules(applied_rules),
+                        "stamped_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                },
+                payload={},
+            )
+        )
+        await db.commit()
+
+    case_resp = await client.get(
+        f"/api/v1/platform/marketing/diagnostics/submissions/{lead_id}",
+        headers=_headers(auth_headers),
+    )
+    assert case_resp.status_code == 200, case_resp.text
+    mapping = case_resp.json()["mapping"]
+    assert mapping["historical_version_available"] is True
+    assert mapping["drift"] is True
+    assert mapping["applied_rules_count"] == 1
+    assert mapping["mapping_rules_count"] >= 2

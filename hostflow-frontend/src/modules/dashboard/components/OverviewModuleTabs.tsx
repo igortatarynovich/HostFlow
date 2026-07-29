@@ -100,6 +100,14 @@ export function OverviewModuleTabs({ active, onChange, onTabsReady }: OverviewMo
       })
     }
 
+    // Fleet: same surface gate as Topbar (companies.view); API confirms module status.
+    if (can('companies.view')) {
+      out.push({
+        key: 'fleet',
+        label: t('app.dashboard.tabs.fleet', { defaultValue: 'Fleet' }),
+      })
+    }
+
     return out
   }, [can, mods, t])
 

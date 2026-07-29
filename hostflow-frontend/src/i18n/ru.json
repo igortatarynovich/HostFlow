@@ -4679,7 +4679,8 @@
       },
       "errors": {
         "range_invalid": "Дата начала не может быть позже даты окончания.",
-        "load_failed": "Ошибка загрузки данных"
+        "load_failed": "Ошибка загрузки данных",
+        "temporarily_unavailable": "Сервис аналитики временно недоступен. Повторите через несколько секунд."
       },
       "stats": {
         "candidates_total": "Кандидаты (всего)",
@@ -5006,6 +5007,31 @@
           "outcome_rejected": "Отклонён",
           "outcome_declined": "Отказался",
           "outcome_in_progress": "В работе"
+        },
+        "contact": {
+          "title": "Контактная метрика",
+          "subtitle": "Получено → попытки связи → дозвонились → итог. По попыткам контакта в CRM (те же фильтры).",
+          "received": "Получено",
+          "attempted": "Была попытка",
+          "reached": "Дозвонились",
+          "untouched": "Без попыток",
+          "attempts_total": "Всего попыток",
+          "funnel_received": "Получено",
+          "funnel_attempted": "Попытка",
+          "funnel_reached": "Дозвон",
+          "funnel_closed": "Закрыто",
+          "funnel_hint": "Среднее попыток на кандидата: {avg} · лимит (≥3): {limit}",
+          "empty": "Попыток контакта в срезе нет.",
+          "stage_now": "Сейчас на этапах: контакт {contacted} · не отвечает {noAnswer}",
+          "results": {
+            "answered": "Ответил",
+            "no_answer": "Не отвечает",
+            "wrong_number": "Неверный номер",
+            "unavailable": "Недоступен",
+            "callback_requested": "Перезвонить",
+            "interested": "Заинтересован",
+            "not_interested": "Не заинтересован"
+          }
         }
       },
       "tabs": {
@@ -5026,6 +5052,33 @@
           "modules": "Вкладки появляются только для купленных и доступных модулей.",
           "filters": "В каждом модуле — свои диапазоны и срезы (период, клиент, вакансия где нужно).",
           "owned": "Рекрутинг ≠ продажи ≠ HR: воронки и KPI принадлежат модулю."
+        },
+        "pulse_title": "Операционный пульс",
+        "window_30d": "окно 30 дней",
+        "business_type": {
+          "agency": "Агентство",
+          "employer": "Работодатель",
+          "services": "Услуги"
+        },
+        "modules": {
+          "recruitment": "Рекрутинг",
+          "sales": "Продажи",
+          "hr_finance": "HR / Финансы"
+        },
+        "kpis": {
+          "pipeline": "В пайплайне",
+          "stuck": "Застряли",
+          "active_today": "Активны сегодня",
+          "open_vacancies": "Открытые вакансии",
+          "candidates": "Кандидаты",
+          "vacancies_active": "Активные вакансии",
+          "on_open_vacancies": "На открытых вакансиях",
+          "leads": "Лиды / обращения",
+          "leads_overdue": "Лиды просрочены",
+          "open_orders": "Открытые заказы",
+          "handoff_requested": "Handoff запрошено",
+          "handoff_accepted": "Handoff принято",
+          "orders_30d": "Заказы (30д)"
         }
       },
       "sales": {
@@ -5057,7 +5110,13 @@
         "orders_cancelled": "Отменено",
         "orders_revenue": "Выручка",
         "orders_status_title": "Статусы заказов",
-        "order_status": {}
+        "order_status": {},
+        "filters": {
+          "source": "Источник",
+          "source_placeholder": "meta, csv…",
+          "vacancy": "Вакансия",
+          "vacancy_all": "Все вакансии"
+        }
       },
       "hr": {
         "title": "Эффективность HR",
@@ -5087,6 +5146,21 @@
           "cost": "Себестоимость",
           "profit": "Валовая прибыль",
           "margin": "Маржа"
+        }
+      },
+      "fleet": {
+        "title": "Флот",
+        "subtitle": "Парк, линии и назначения. Полный модуль — в разделе Флот.",
+        "open_module": "Открыть Флот",
+        "module_hint": "Модуль флота отвечает, но статус не подтверждён.",
+        "kpis": {
+          "vehicles": "ТС",
+          "trailers": "Прицепы",
+          "drivers": "Водители",
+          "lines": "Линии",
+          "assignments": "Назначения",
+          "assignments_today": "Назначения сегодня (UTC)",
+          "assignments_month": "Назначения в месяце (UTC)"
         }
       }
     },

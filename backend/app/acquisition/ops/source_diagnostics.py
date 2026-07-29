@@ -58,8 +58,8 @@ class DiagnosticsDuplicateDecision:
 class DiagnosticsMappingContext:
     """Current Source mapping / Mapping Health for the case (read-only).
 
-    ``historical_version_available`` stays False until ingest stamps a
-    mapping revision on Lead — PR4 does not invent a parallel version ledger.
+    When ``mapping_applied_v1`` exists on Lead.normalized (ingest stamp),
+    ``historical_version_available`` is True and drift compares fingerprints.
     """
 
     active: bool
@@ -74,6 +74,12 @@ class DiagnosticsMappingContext:
     profile_updated_at: Optional[str]
     historical_version_available: bool
     profile_missing: bool
+    applied_rules_count: int = 0
+    applied_rules_fingerprint: Optional[str] = None
+    applied_rules_source: Optional[str] = None
+    applied_stamped_at: Optional[str] = None
+    current_rules_fingerprint: Optional[str] = None
+    drift: bool = False
 
 
 @dataclass(frozen=True)
@@ -182,10 +188,48 @@ async def compose_mapping_context(
     *,
     tenant_id: str,
     routing: Mapping[str, Any],
+    normalized: Mapping[str, Any] | None = None,
 ) -> DiagnosticsMappingContext:
-    """Resolve current Mapping Health for ``routing.intake_source_profile_id``."""
-    source_id = str(routing.get("intake_source_profile_id") or "").strip() or None
+    """Resolve current Mapping Health + optional ingest ``mapping_applied_v1`` stamp."""
+    from backend.app.acquisition.mapping_applied_stamp import (
+        fingerprint_mapping_rules,
+        read_mapping_applied_stamp,
+    )
+
+    applied = read_mapping_applied_stamp(normalized)
+    applied_fp = str(applied.get("rules_fingerprint") or "").strip() or None
+    applied_count = int(applied.get("rules_count") or 0)
+    applied_src = str(applied.get("rules_source") or "").strip() or None
+    applied_at = str(applied.get("stamped_at") or "").strip() or None
+    historical = bool(applied_fp)
+
+    source_id = (
+        str(routing.get("intake_source_profile_id") or "").strip()
+        or str(applied.get("source_id") or "").strip()
+        or None
+    )
     if not source_id:
+        if historical:
+            return DiagnosticsMappingContext(
+                active=True,
+                source_id=None,
+                display_name=None,
+                provider=None,
+                mapping_health=None,
+                mapping_rules_count=0,
+                rules_source=None,
+                meta_form_id=None,
+                mapping_path=None,
+                profile_updated_at=None,
+                historical_version_available=True,
+                profile_missing=False,
+                applied_rules_count=applied_count,
+                applied_rules_fingerprint=applied_fp,
+                applied_rules_source=applied_src,
+                applied_stamped_at=applied_at,
+                current_rules_fingerprint=None,
+                drift=False,
+            )
         return _empty_mapping()
     try:
         summary = await get_source_mapping(
@@ -199,7 +243,7 @@ async def compose_mapping_context(
             lead_form_id=None,
         )
         return DiagnosticsMappingContext(
-            active=False,
+            active=historical,
             source_id=source_id,
             display_name=None,
             provider=None,
@@ -209,8 +253,14 @@ async def compose_mapping_context(
             meta_form_id=None,
             mapping_path=mapping_path,
             profile_updated_at=None,
-            historical_version_available=False,
+            historical_version_available=historical,
             profile_missing=True,
+            applied_rules_count=applied_count,
+            applied_rules_fingerprint=applied_fp,
+            applied_rules_source=applied_src,
+            applied_stamped_at=applied_at,
+            current_rules_fingerprint=None,
+            drift=False,
         )
 
     mapping_path, _, _ = build_source_paths(
@@ -219,7 +269,6 @@ async def compose_mapping_context(
         meta_form_id=summary.get("meta_form_id"),
         lead_form_id=None,
     )
-    # Prefer façade path; fall back to computed.
     path = str(summary.get("mapping_path") or mapping_path or "").strip() or mapping_path
 
     from backend.app.modules.intake_routing import crud as intake_crud
@@ -229,6 +278,12 @@ async def compose_mapping_context(
     )
     updated = getattr(profile, "updated_at", None) if profile is not None else None
     updated_s = updated.isoformat() if isinstance(updated, datetime) else None
+
+    current_rules = summary.get("mapping_rules") if isinstance(summary.get("mapping_rules"), list) else []
+    current_fp = fingerprint_mapping_rules(
+        [r for r in current_rules if isinstance(r, Mapping)]
+    )
+    drift = bool(historical and applied_fp and current_fp and applied_fp != current_fp)
 
     return DiagnosticsMappingContext(
         active=True,
@@ -241,8 +296,14 @@ async def compose_mapping_context(
         meta_form_id=str(summary.get("meta_form_id") or "").strip() or None,
         mapping_path=path,
         profile_updated_at=updated_s,
-        historical_version_available=False,
+        historical_version_available=historical,
         profile_missing=False,
+        applied_rules_count=applied_count,
+        applied_rules_fingerprint=applied_fp,
+        applied_rules_source=applied_src,
+        applied_stamped_at=applied_at,
+        current_rules_fingerprint=current_fp,
+        drift=drift,
     )
 
 
@@ -360,7 +421,10 @@ async def get_diagnostic_case(
     payload = _as_dict(getattr(lead, "payload", None))
     lead_status = str(getattr(lead, "status", None) or "")
     mapping = await compose_mapping_context(
-        db, tenant_id=str(tenant_id), routing=routing
+        db,
+        tenant_id=str(tenant_id),
+        routing=routing,
+        normalized=normalized,
     )
     return DiagnosticsCaseDetail(
         applicant=_applicant_from_lead(lead),

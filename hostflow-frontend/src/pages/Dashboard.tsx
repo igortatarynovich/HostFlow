@@ -12,6 +12,7 @@ import RecruitmentEfficiencyDashboard from './RecruitmentEfficiencyDashboard'
 import SalesEfficiencyDashboard from './SalesEfficiencyDashboard'
 import HrEfficiencyDashboard from './HrEfficiencyDashboard'
 import FinanceEfficiencyDashboard from './FinanceEfficiencyDashboard'
+import FleetEfficiencyDashboard from './FleetEfficiencyDashboard'
 
 const OVERVIEW_QUERY_KEY = 'module'
 
@@ -53,8 +54,8 @@ export default function Dashboard() {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev)
-          if (tab === 'summary') next.delete(OVERVIEW_QUERY_KEY)
-          else next.set(OVERVIEW_QUERY_KEY, tab)
+          // Always set module= so Overview host default does not fall back to deploy-host tab.
+          next.set(OVERVIEW_QUERY_KEY, tab)
           return next
         },
         { replace: true },
@@ -74,6 +75,8 @@ export default function Dashboard() {
         <HrEfficiencyDashboard />
       ) : activeTab === 'finance' ? (
         <FinanceEfficiencyDashboard />
+      ) : activeTab === 'fleet' ? (
+        <FleetEfficiencyDashboard />
       ) : (
         <AnalyticsSummaryDashboard />
       )}

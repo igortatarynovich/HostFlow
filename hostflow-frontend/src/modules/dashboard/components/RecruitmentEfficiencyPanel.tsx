@@ -6,14 +6,14 @@ import {
   Cell,
   Pie,
   PieChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
 import type { TranslateFn } from '../../../i18n'
-import type { DocumentStatsResponse } from '../../../api/analytics'
+import type { ContactAttemptStatsResponse, DocumentStatsResponse } from '../../../api/analytics'
 import type { CandidateSlicesResponse, NamedCount } from '../types'
+import { ChartHost } from './ChartHost'
 
 const TERMINAL_STAGES = new Set(['rejected', 'declined'])
 const DOCS_WAIT_KEYS = new Set(['docs_wait', 'waiting_docs'])
@@ -88,11 +88,22 @@ function truncateLabel(value: string, max = 28): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s
 }
 
+const CONTACT_RESULT_COLORS: Record<string, string> = {
+  answered: '#16a34a',
+  no_answer: '#f97316',
+  wrong_number: '#e11d48',
+  unavailable: '#64748b',
+  interested: '#0ea5e9',
+  callback_requested: '#8b5cf6',
+  not_interested: '#94a3b8',
+}
+
 export interface RecruitmentEfficiencyPanelProps {
   t: TranslateFn
   formatNumber: (value?: number) => string
   slices: CandidateSlicesResponse | null
   documentStats: DocumentStatsResponse | null
+  contactStats?: ContactAttemptStatsResponse | null
   loading: boolean
 }
 
@@ -139,6 +150,7 @@ export function RecruitmentEfficiencyPanel({
   formatNumber,
   slices,
   documentStats,
+  contactStats = null,
   loading,
 }: RecruitmentEfficiencyPanelProps) {
   const total = slices?.total ?? 0
@@ -230,6 +242,52 @@ export function RecruitmentEfficiencyPanel({
     [docStatusRows, t],
   )
 
+  const cohortTotal = contactStats?.cohort_total ?? total
+  const attempted = contactStats?.candidates_with_attempts ?? 0
+  const reached = contactStats?.candidates_reached ?? 0
+  const untouched = Math.max(0, cohortTotal - attempted)
+  const contactFunnel = useMemo(
+    () =>
+      [
+        {
+          key: 'received',
+          name: t('app.dashboard.efficiency.contact.funnel_received'),
+          value: cohortTotal,
+          fill: '#64748b',
+        },
+        {
+          key: 'attempted',
+          name: t('app.dashboard.efficiency.contact.funnel_attempted'),
+          value: attempted,
+          fill: '#0ea5e9',
+        },
+        {
+          key: 'reached',
+          name: t('app.dashboard.efficiency.contact.funnel_reached'),
+          value: reached,
+          fill: '#16a34a',
+        },
+        {
+          key: 'closed',
+          name: t('app.dashboard.efficiency.contact.funnel_closed'),
+          value: closed,
+          fill: '#e11d48',
+        },
+      ].filter((row) => row.value > 0 || row.key === 'received'),
+    [t, cohortTotal, attempted, reached, closed],
+  )
+  const contactResultRows = useMemo(() => {
+    const entries = Object.entries(contactStats?.by_result ?? {}).sort((a, b) => b[1] - a[1])
+    return entries.map(([key, count], i) => ({
+      key,
+      name: t(`app.dashboard.efficiency.contact.results.${key}`, { defaultValue: key }),
+      count,
+      fill: CONTACT_RESULT_COLORS[key] || STAGE_PALETTE[i % STAGE_PALETTE.length],
+    }))
+  }, [contactStats?.by_result, t])
+  const stageContacted = stages.find((s) => String(s.key).toLowerCase() === 'contacted')?.count ?? 0
+  const stageNoAnswer = stages.find((s) => String(s.key).toLowerCase() === 'no_answer')?.count ?? 0
+
   if (loading && !slices) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
@@ -248,8 +306,10 @@ export function RecruitmentEfficiencyPanel({
 
   const tooltipFmt = (value: number) => formatNumber(value)
 
+  const chartsReady = !loading
+
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${loading ? 'opacity-70 transition-opacity' : ''}`}>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('app.dashboard.efficiency.stats.total')} value={formatNumber(total)} tone="neutral" />
         <StatCard
@@ -285,6 +345,94 @@ export function RecruitmentEfficiencyPanel({
         </div>
       ) : null}
 
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-900">
+          {t('app.dashboard.efficiency.contact.title')}
+        </h2>
+        <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.efficiency.contact.subtitle')}</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <StatCard
+            label={t('app.dashboard.efficiency.contact.received')}
+            value={formatNumber(cohortTotal)}
+            tone="neutral"
+          />
+          <StatCard
+            label={t('app.dashboard.efficiency.contact.attempted')}
+            value={formatNumber(attempted)}
+            tone="info"
+          />
+          <StatCard
+            label={t('app.dashboard.efficiency.contact.reached')}
+            value={formatNumber(reached)}
+            tone="success"
+          />
+          <StatCard
+            label={t('app.dashboard.efficiency.contact.untouched')}
+            value={formatNumber(untouched)}
+            tone="warning"
+          />
+          <StatCard
+            label={t('app.dashboard.efficiency.contact.attempts_total')}
+            value={formatNumber(contactStats?.total_attempts)}
+            tone="neutral"
+          />
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          {t('app.dashboard.efficiency.contact.funnel_hint', {
+            values: {
+              avg: formatNumber(contactStats?.avg_per_candidate ?? 0),
+              limit: formatNumber(contactStats?.limit_reached_count ?? 0),
+            },
+          })}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          {t('app.dashboard.efficiency.contact.stage_now', {
+            values: {
+              contacted: formatNumber(stageContacted),
+              noAnswer: formatNumber(stageNoAnswer),
+            },
+          })}
+        </p>
+        {!contactStats || (contactStats.total_attempts === 0 && attempted === 0) ? (
+          <p className="mt-4 text-sm text-slate-500">{t('app.dashboard.efficiency.contact.empty')}</p>
+        ) : (
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <ChartHost className="h-48 w-full min-w-0" ready={chartsReady}>
+              <BarChart data={contactFunnel} layout="vertical" margin={{ left: 8, right: 12 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11, fill: '#475569' }} />
+                <Tooltip formatter={tooltipFmt as never} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={18}>
+                  {contactFunnel.map((entry) => (
+                    <Cell key={entry.key} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ChartHost>
+            <ChartHost className="h-48 w-full min-w-0" ready={chartsReady}>
+              <PieChart>
+                <Pie
+                  data={contactResultRows}
+                  dataKey="count"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={70}
+                  paddingAngle={2}
+                >
+                  {contactResultRows.map((entry) => (
+                    <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={tooltipFmt as never} />
+              </PieChart>
+            </ChartHost>
+          </div>
+        )}
+      </section>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-900">
@@ -295,27 +443,25 @@ export function RecruitmentEfficiencyPanel({
             <p className="mt-6 text-sm text-slate-500">{t('app.dashboard.efficiency.empty')}</p>
           ) : (
             <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
-              <div className="h-52 w-full min-w-0 sm:w-1/2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={outcomePie}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={48}
-                      outerRadius={78}
-                      paddingAngle={2}
-                    >
-                      {outcomePie.map((entry) => (
-                        <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={tooltipFmt as never} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <ChartHost className="h-52 w-full min-w-0 sm:w-1/2" ready={chartsReady}>
+                <PieChart>
+                  <Pie
+                    data={outcomePie}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={48}
+                    outerRadius={78}
+                    paddingAngle={2}
+                  >
+                    {outcomePie.map((entry) => (
+                      <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={tooltipFmt as never} />
+                </PieChart>
+              </ChartHost>
               <ul className="w-full space-y-2 sm:w-1/2">
                 {outcomePie.map((entry) => (
                   <li key={entry.key} className="flex items-center justify-between gap-2 text-sm">
@@ -347,35 +493,33 @@ export function RecruitmentEfficiencyPanel({
           {stageChartData.length === 0 ? (
             <p className="mt-6 text-sm text-slate-500">{t('app.dashboard.efficiency.empty')}</p>
           ) : (
-            <div className="mt-2 h-52 w-full min-w-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  layout="vertical"
-                  data={stageChartData.slice(0, 8)}
-                  margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={110}
-                    tick={{ fontSize: 11, fill: '#475569' }}
-                  />
-                  <Tooltip
-                    formatter={tooltipFmt as never}
-                    labelFormatter={(_, payload) =>
-                      String((payload?.[0]?.payload as { fullName?: string } | undefined)?.fullName || '')
-                    }
-                  />
-                  <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={18}>
-                    {stageChartData.slice(0, 8).map((entry) => (
-                      <Cell key={entry.key} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartHost className="mt-2 h-52 w-full min-w-0" ready={chartsReady}>
+              <BarChart
+                layout="vertical"
+                data={stageChartData.slice(0, 8)}
+                margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={110}
+                  tick={{ fontSize: 11, fill: '#475569' }}
+                />
+                <Tooltip
+                  formatter={tooltipFmt as never}
+                  labelFormatter={(_, payload) =>
+                    String((payload?.[0]?.payload as { fullName?: string } | undefined)?.fullName || '')
+                  }
+                />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={18}>
+                  {stageChartData.slice(0, 8).map((entry) => (
+                    <Cell key={entry.key} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ChartHost>
           )}
         </section>
       </div>
@@ -432,6 +576,7 @@ export function RecruitmentEfficiencyPanel({
           barColor={REJECT_BAR}
           formatNumber={formatNumber}
           empty={t('app.dashboard.efficiency.reasons.empty')}
+          chartsReady={chartsReady}
         />
         <ReasonsCard
           title={t('app.dashboard.efficiency.reasons.declined_title', {
@@ -443,6 +588,7 @@ export function RecruitmentEfficiencyPanel({
           barColor={DECLINE_BAR}
           formatNumber={formatNumber}
           empty={t('app.dashboard.efficiency.reasons.empty')}
+          chartsReady={chartsReady}
         />
       </div>
 
@@ -469,27 +615,25 @@ export function RecruitmentEfficiencyPanel({
 
         {docChartData.length > 0 ? (
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <div className="h-48 w-full min-w-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={docChartData}
-                    dataKey="count"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
-                    paddingAngle={2}
-                  >
-                    {docChartData.map((entry) => (
-                      <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={tooltipFmt as never} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartHost className="h-48 w-full min-w-0" ready={chartsReady}>
+              <PieChart>
+                <Pie
+                  data={docChartData}
+                  dataKey="count"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={70}
+                  paddingAngle={2}
+                >
+                  {docChartData.map((entry) => (
+                    <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={tooltipFmt as never} />
+              </PieChart>
+            </ChartHost>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
@@ -591,6 +735,7 @@ function ReasonsCard({
   barColor,
   formatNumber,
   empty,
+  chartsReady,
 }: {
   title: string
   hint: string
@@ -599,6 +744,7 @@ function ReasonsCard({
   barColor: string
   formatNumber: (value?: number) => string
   empty: string
+  chartsReady: boolean
 }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -608,31 +754,29 @@ function ReasonsCard({
         <p className="mt-3 text-sm text-slate-500">{empty}</p>
       ) : (
         <>
-          <div className="mt-2 h-56 w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                layout="vertical"
-                data={chartData}
-                margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={120}
-                  tick={{ fontSize: 10, fill: '#475569' }}
-                />
-                <Tooltip
-                  formatter={((v: number) => formatNumber(v)) as never}
-                  labelFormatter={(_, payload) =>
-                    String((payload?.[0]?.payload as { fullName?: string } | undefined)?.fullName || '')
-                  }
-                />
-                <Bar dataKey="count" fill={barColor} radius={[0, 4, 4, 0]} maxBarSize={16} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <ChartHost className="mt-2 h-56 w-full min-w-0" ready={chartsReady}>
+            <BarChart
+              layout="vertical"
+              data={chartData}
+              margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                width={120}
+                tick={{ fontSize: 10, fill: '#475569' }}
+              />
+              <Tooltip
+                formatter={((v: number) => formatNumber(v)) as never}
+                labelFormatter={(_, payload) =>
+                  String((payload?.[0]?.payload as { fullName?: string } | undefined)?.fullName || '')
+                }
+              />
+              <Bar dataKey="count" fill={barColor} radius={[0, 4, 4, 0]} maxBarSize={16} />
+            </BarChart>
+          </ChartHost>
           <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
             {rows.slice(0, 8).map((row) => {
               const max = rows[0]?.count || 1
