@@ -50,6 +50,7 @@ EVENT_EXPORT_GENERATED = "export.generated"
 EVENT_EXPORT_DOWNLOADED = "export.downloaded"
 EVENT_EXPORT_DENIED = "export.denied"
 EVENT_EXPORT_EXPIRED = "export.expired"
+EVENT_EXPORT_ANOMALY_DETECTED = "export.anomaly.detected"
 
 # Search / AI retrieval audit (governance PR — call sites follow separately)
 EVENT_SEARCH_RETRIEVAL_REQUESTED = "search.retrieval.requested"

@@ -168,28 +168,40 @@ Observability для HF трактуется как **часть security archit
 
 ## Phase 4 — Export anomaly detection
 
-**Статус (код):** **started — export telemetry v1** (`emit_security_event_v1` на синхронных export-путях; детекторы / пороги / bulk — по-прежнему backlog этой фазы).
+**Статус (код):** **started — export telemetry v1 + anomaly detector v1** (per-request thresholds; sliding-window / Slack alerts → Phase 7).
 
 **Цель:** снизить **insider risk** и массовые выгрузки без блокировки легитимной работы.
 
 **Реализовано (v1 telemetry, узкий scope):**
 
-- Таксономия `export.*`: `export.requested`, `export.generated`, `export.downloaded`, `export.denied`, плейсхолдер `export.expired` (на будущее для TTL/async).
-- `export_events.py`: `emit_export_security_event_v1` + allowlist `extra` с полями `export_type`, `row_count`, `byte_size`, `filter_scope`, `async_job_id`, **`export_scope`**, **`contains_class3`**, **`bulk_operation`**, `reason`, `response_mode`.
-- Call sites: `modules/documents/router` (export.json / export.csv / export.zip bundle), `api/v1/analytics` (`/analytics/export`), `api/v1/admin/org_units` (`/export` snapshot).
+- Таксономия `export.*`: `export.requested`, `export.generated`, `export.downloaded`, `export.denied`, `export.anomaly.detected`, плейсхолдер `export.expired` (на будущее для TTL/async).
+- `export_events.py`: `emit_export_security_event_v1` + allowlist `extra` с полями `export_type`, `row_count`, `byte_size`, `filter_scope`, `async_job_id`, **`export_scope`**, **`contains_class3`**, **`bulk_operation`**, `reason`, `response_mode`, **`anomaly_codes`**, **`threshold_*`**.
+- Call sites: `modules/documents/router` (export.json / export.csv / export.zip bundle), `api/v1/admin/org_units` (`/export` snapshot). Detector runs automatically on every successful `export.generated`.
 - Redaction: доп. запрет ключей `rows`, `records`, `archive_path`, `export_path`, `attachment_filename` в security `extra`.
 - **Stabilization (Phase 3+4):** таблица обязательных событий и анти-drift gates — [`telemetry-phase3-4-mandatory-events.md`](./telemetry-phase3-4-mandatory-events.md), job `telemetry-phase34-stability` в `security-gates.yml`.
 
-**Сигналы (примеры)**
+**Пороги anomaly v1 (per-request, не блокируют):**
 
-- Резкий рост `row_count` или числа экспортов на пользователя / tenant / сутки.
-- Много скачиваний CLASS 3 за короткий интервал.
-- Нетипичное время (after-hours) + большой объём (политика по юрисдикции и культуре компании).
+| Код | Условие | Значение |
+|-----|---------|----------|
+| `row_count_threshold` | `row_count >= N` | **500** |
+| `byte_size_threshold` | `byte_size >= N` | **5_000_000** (≈5 MiB) |
+| `class3_bulk` | `contains_class3` и `bulk_operation` | boolean |
+| `class3_row_count` | CLASS 3 и `row_count >= N` | **50** |
+
+Ложноположительные: крупные org-structure snapshots, легитимные bulk CSV. Triage по `export_type` + `anomaly_codes`; auto-block — **не** в v1.
+
+**Сигналы (ещё backlog / Phase 7)**
+
+- Резкий рост числа экспортов на пользователя / tenant / сутки (sliding window).
+- Нетипичное время (after-hours) + большой объём.
+- Алерт в Slack / admin center на `export.anomaly.detected`.
 
 **Критерии готовности фазы (пример)**
 
-- Пороги v1 задокументированы; ложноположительные сценарии известны.
-- Связка с audit trail export (SSOT): каждый экспорт уже имеет запись → детектор читает те же данные.
+- ~~Пороги v1 задокументированы; ложноположительные сценарии известны.~~ **done (таблица выше).**
+- Связка с audit trail export (SSOT): каждый экспорт уже имеет запись → детектор читает те же поля `export.generated`.
+- Sliding-window + paging alerts — Phase 7.
 
 ---
 

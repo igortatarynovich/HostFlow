@@ -28,6 +28,7 @@ Producers: только **`emit_security_event_v1`** или тонкие обё�
 | `export.generated` | Артефакт собран | то же | + **`row_count`**, **`byte_size`** где применимо; **`async_job_id`** если появится async-export |
 | `export.downloaded` | Ответ-вложение / stream отдан клиенту (где отделён от generated) | то же | те же метрики; без имён файлов с PII и без путей архива в `extra` |
 | `export.denied` | Отказ (например owner-access / HTTP до сборки) | то же | `reason` как код, не сырой текст ошибки с PII |
+| `export.anomaly.detected` | После `export.generated`, если сработали пороги v1 | то же | `anomaly_codes`, `threshold_*`, `row_count` / `byte_size`; **не** блокирует экспорт |
 | `export.expired` | *Зарезервировано* — async / signed TTL | — | не эмитить без реального сценария |
 
 **Не логировать в `extra` и не обходить через `logger.*`:** сырые строки export, пути архивов, signed export URLs, произвольные `rows` / `records` (ключи зарезервированы под redaction в `event_redaction.py`).
