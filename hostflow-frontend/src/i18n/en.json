@@ -4752,7 +4752,8 @@
       },
       "errors": {
         "range_invalid": "Start date must be before end date.",
-        "load_failed": "Failed to load dashboard data"
+        "load_failed": "Failed to load dashboard data",
+        "temporarily_unavailable": "Analytics is temporarily unavailable. Try again in a few seconds."
       },
       "stats": {
         "candidates_total": "Candidates (total)",
@@ -5079,6 +5080,31 @@
           "outcome_rejected": "Rejected",
           "outcome_declined": "Declined",
           "outcome_in_progress": "In progress"
+        },
+        "contact": {
+          "title": "Contact metric",
+          "subtitle": "Received → contact attempts → reached → outcome. From CRM contact attempts (same filters).",
+          "received": "Received",
+          "attempted": "Attempted",
+          "reached": "Reached",
+          "untouched": "No attempts",
+          "attempts_total": "Total attempts",
+          "funnel_received": "Received",
+          "funnel_attempted": "Attempted",
+          "funnel_reached": "Reached",
+          "funnel_closed": "Closed",
+          "funnel_hint": "Avg attempts per candidate: {avg} · limit (≥3): {limit}",
+          "empty": "No contact attempts in this slice.",
+          "stage_now": "Now on stages: contacted {contacted} · no answer {noAnswer}",
+          "results": {
+            "answered": "Answered",
+            "no_answer": "No answer",
+            "wrong_number": "Wrong number",
+            "unavailable": "Unavailable",
+            "callback_requested": "Callback requested",
+            "interested": "Interested",
+            "not_interested": "Not interested"
+          }
         }
       },
       "tabs": {
@@ -5099,6 +5125,33 @@
           "modules": "Tabs appear only for purchased and available modules.",
           "filters": "Each module has its own ranges and slices (period, client, vacancy where needed).",
           "owned": "Recruitment ≠ sales ≠ HR: funnels and KPIs stay module-owned."
+        },
+        "pulse_title": "Ops pulse",
+        "window_30d": "30-day window",
+        "business_type": {
+          "agency": "Agency",
+          "employer": "Employer",
+          "services": "Services"
+        },
+        "modules": {
+          "recruitment": "Recruitment",
+          "sales": "Sales",
+          "hr_finance": "HR / Finance"
+        },
+        "kpis": {
+          "pipeline": "In pipeline",
+          "stuck": "Stuck",
+          "active_today": "Active today",
+          "open_vacancies": "Open vacancies",
+          "candidates": "Candidates",
+          "vacancies_active": "Active vacancies",
+          "on_open_vacancies": "On open vacancies",
+          "leads": "Leads / inquiries",
+          "leads_overdue": "Leads overdue",
+          "open_orders": "Open orders",
+          "handoff_requested": "Handoff requested",
+          "handoff_accepted": "Handoff accepted",
+          "orders_30d": "Orders (30d)"
         }
       },
       "sales": {
@@ -5130,7 +5183,13 @@
         "orders_cancelled": "Cancelled",
         "orders_revenue": "Revenue",
         "orders_status_title": "Order statuses",
-        "order_status": {}
+        "order_status": {},
+        "filters": {
+          "source": "Source",
+          "source_placeholder": "meta, csv…",
+          "vacancy": "Vacancy",
+          "vacancy_all": "All vacancies"
+        }
       },
       "hr": {
         "title": "HR efficiency",
@@ -5160,6 +5219,21 @@
           "cost": "Cost",
           "profit": "Gross profit",
           "margin": "Margin"
+        }
+      },
+      "fleet": {
+        "title": "Fleet",
+        "subtitle": "Park, lines and assignments. Full ops live under Fleet.",
+        "open_module": "Open Fleet",
+        "module_hint": "Fleet API responded but module status is not confirmed.",
+        "kpis": {
+          "vehicles": "Vehicles",
+          "trailers": "Trailers",
+          "drivers": "Drivers",
+          "lines": "Lines",
+          "assignments": "Assignments",
+          "assignments_today": "Assignments today (UTC)",
+          "assignments_month": "Assignments this month (UTC)"
         }
       }
     },

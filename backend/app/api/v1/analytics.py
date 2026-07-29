@@ -1960,11 +1960,25 @@ async def handoff_stats(
 
 
 # ------- /analytics/contact-attempt-stats -------
+# Positive / "reached" results (CRM enum + forward-compatible extras).
+_CONTACT_REACHED_RESULTS = frozenset({"answered", "interested", "callback_requested"})
+
+
 @router.get("/analytics/contact-attempt-stats")
 async def contact_attempt_stats(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     date_from: Optional[str] = Query(None, alias="from"),
     date_to: Optional[str] = Query(None, alias="to"),
+    company_id: Optional[str] = Query(
+        None,
+        alias="company_id",
+        description="Optional client/company filter (Candidate.company_id).",
+    ),
+    vacancy_id: Optional[str] = Query(
+        None,
+        alias="vacancy_id",
+        description="Optional vacancy filter (Candidate.vacancy_id).",
+    ),
 ):
     """Aggregate contact attempt stats for candidates in tenant (filter by candidate created_at)."""
     db, tenant_id = db_tenant
@@ -1974,19 +1988,26 @@ async def contact_attempt_stats(
     scope_clause = repo_scope_clause(tenant_id_str, visibility, is_client_tenant=is_client)
     dfrom = _parse_dt(date_from)
     dto = _parse_dt(date_to, end_of_day=True)
+    company_filter = str(company_id).strip() if company_id else ""
+    vacancy_filter = str(vacancy_id).strip() if vacancy_id else ""
 
-    cand_subq = (
-        select(Candidate.id)
-        .where(and_(Candidate.deleted_at.is_(None), scope_clause))
-    )
+    cand_base = select(Candidate.id).where(and_(Candidate.deleted_at.is_(None), scope_clause))
     if dfrom:
-        cand_subq = cand_subq.where(Candidate.created_at >= dfrom)
+        cand_base = cand_base.where(Candidate.created_at >= dfrom)
     if dto:
-        cand_subq = cand_subq.where(Candidate.created_at <= dto)
+        cand_base = cand_base.where(Candidate.created_at <= dto)
+    if company_filter:
+        cand_base = cand_base.where(Candidate.company_id == company_filter)
+    if vacancy_filter:
+        cand_base = cand_base.where(Candidate.vacancy_id == vacancy_filter)
+
+    cohort_total = int(
+        (await db.execute(select(func.count()).select_from(cand_base.subquery()))).scalar() or 0
+    )
 
     attempts_stmt = (
         select(ContactAttempt.candidate_id, ContactAttempt.result, func.count())
-        .where(ContactAttempt.candidate_id.in_(cand_subq.scalar_subquery()))
+        .where(ContactAttempt.candidate_id.in_(cand_base.scalar_subquery()))
         .group_by(ContactAttempt.candidate_id, ContactAttempt.result)
     )
     attempt_rows = (await db.execute(attempts_stmt)).all()
@@ -1994,9 +2015,14 @@ async def contact_attempt_stats(
     total_attempts = sum(cnt for _, _, cnt in attempt_rows)
     by_result: Dict[str, int] = {}
     cand_attempt_counts: Dict[str, int] = {}
+    reached_candidates: set[str] = set()
     for cand_id, result, cnt in attempt_rows:
-        by_result[result] = by_result.get(result, 0) + cnt
-        cand_attempt_counts[cand_id] = cand_attempt_counts.get(cand_id, 0) + cnt
+        result_key = str(result or "")
+        by_result[result_key] = by_result.get(result_key, 0) + cnt
+        cand_id_str = str(cand_id)
+        cand_attempt_counts[cand_id_str] = cand_attempt_counts.get(cand_id_str, 0) + cnt
+        if result_key in _CONTACT_REACHED_RESULTS:
+            reached_candidates.add(cand_id_str)
 
     candidates_with_attempts = len(cand_attempt_counts)
     avg_per_candidate = (
@@ -2005,8 +2031,10 @@ async def contact_attempt_stats(
     limit_reached_count = sum(1 for c in cand_attempt_counts.values() if c >= 3)
 
     return {
+        "cohort_total": cohort_total,
         "total_attempts": total_attempts,
         "candidates_with_attempts": candidates_with_attempts,
+        "candidates_reached": len(reached_candidates),
         "avg_per_candidate": round(avg_per_candidate, 2),
         "limit_reached_count": limit_reached_count,
         "by_result": by_result,
