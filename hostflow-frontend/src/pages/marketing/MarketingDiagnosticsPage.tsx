@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
+  exportDiagnosticsCase,
   getDiagnosticsCase,
   listDiagnosticsSubmissions,
   type DiagnosticsCase,
@@ -42,6 +43,7 @@ function CaseDetail({
   const { t } = useI18n()
   const [row, setRow] = useState<DiagnosticsCase | null>(null)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
+  const [exportError, setExportError] = useState<FriendlyErrorInfo | null>(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -77,6 +79,29 @@ function CaseDetail({
   }
   if (!row) return null
 
+  const onExport = async () => {
+    setExportError(null)
+    try {
+      const blob = await exportDiagnosticsCase(leadId)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `diagnostics-case-${leadId}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err: unknown) {
+      setExportError(
+        getFriendlyErrorInfo(
+          err,
+          t('app.marketing.diagnostics.errors.export', {
+            defaultValue: 'Не удалось скачать export',
+          }),
+          t,
+        ),
+      )
+    }
+  }
+
   return (
     <div className="space-y-4" data-testid="marketing-diagnostics-case">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -98,14 +123,28 @@ function CaseDetail({
             {row.created_at ? ` · ${formatDateTime(row.created_at)}` : ''}
           </p>
         </div>
-        <Link
-          className="btn-secondary btn-sm"
-          to={`${CRM_APP_PATHS.leads}/${encodeURIComponent(row.lead_id)}`}
-          data-testid="marketing-diagnostics-open-lead"
-        >
-          Открыть Lead в CRM
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={() => void onExport()}
+            data-testid="marketing-diagnostics-export"
+          >
+            Export JSON
+          </button>
+          <Link
+            className="btn-secondary btn-sm"
+            to={`${CRM_APP_PATHS.leads}/${encodeURIComponent(row.lead_id)}`}
+            data-testid="marketing-diagnostics-open-lead"
+          >
+            Открыть Lead в CRM
+          </Link>
+        </div>
       </div>
+
+      {exportError ? (
+        <ErrorRecoveryBanner error={exportError} onRetry={() => void onExport()} />
+      ) : null}
 
       {row.lead_error ? (
         <div

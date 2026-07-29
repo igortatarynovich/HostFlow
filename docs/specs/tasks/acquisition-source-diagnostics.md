@@ -1,8 +1,8 @@
 # Source Diagnostics — Marketing ops console (Product Epic)
 
-**Status:** **PR1–PR5 DONE** · later backlog remains  
+**Status:** **ACTIVE** — PR6 implementing (PR1–PR5 ✅)  
 **Date:** 2026-07-29  
-**Product Track (next):** [Acquisition Stage 5 PR-2](acquisition-stage-5-optimization.md)  
+**Product Track:** Source Diagnostics PR6 (Stage 5 PR-2 ✅ #203)  
 **Parents:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) § After cutover · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)
 
 ---
@@ -30,31 +30,31 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ---
 
-## PR1–PR4 ✅
+## PR1–PR5 ✅
 
-- PR1 #196 list + case · PR2 #199 filters · PR3 #200 duplicate · PR4 #201 Mapping Health
+- PR1 #196 list + case · PR2 #199 filters · PR3 #200 duplicate · PR4 #201 Mapping Health · PR5 #202 mapping stamp + drift
 
 ---
 
-## PR5 — Ingest mapping stamp + drift ✅ #202
+## PR6 — Case export payload (this slice)
 
 ### IN
 
-1. Stamp `mapping_applied_v1` on Lead.normalized at Meta/webhook ingest (rules fingerprint, count, source, stamped_at)  
-2. Diagnostics `mapping.historical_version_available=true` when stamp present  
-3. `mapping.drift` when current Source rules fingerprint ≠ applied fingerprint  
-4. UI shows applied fingerprint + drift flag  
+1. `GET /api/v1/platform/marketing/diagnostics/submissions/{lead_id}/export` — JSON attachment of case compose (routing / decision / duplicate / mapping / payload / normalized / timeline)  
+2. Emit export security events (`export.requested` / `export.generated` / `export.denied`) with `contains_class3=true`, `bulk_operation=false`  
+3. Case UI — **Export JSON** download button  
 
 ### OUT
 
-- Replay / export  
-- Alerting / webhook on drift (Phase 7 style)  
+- Bulk export / zip of many cases  
+- Replay / remapping write paths  
+- Drift alerting  
 
-### Acceptance (PR5)
+### Acceptance (PR6)
 
-- [x] Ingest path writes `mapping_applied_v1`  
-- [x] Case with stamp + changed profile rules → `drift=true`  
-- [x] Case without stamp → historical false / drift n/a  
+- [ ] Authenticated `_READ` export returns `application/json` attachment with schema `hostflow.marketing_diagnostics_export`  
+- [ ] Missing lead → 404 + `export.denied`  
+- [ ] FE downloads file from case view  
 
 ---
 
@@ -62,13 +62,13 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 - Mapping Health drift alerts (notification / detection)  
 - replay submission  
-- export payload  
 
 ---
 
 ## History
 
-- 2026-07-29: PR5 merged (#202); Product Track → Stage 5 PR-2 explainability / operator ack-dismiss.
+- 2026-07-29: Stage 5 PR-2 merged (#203); Product Track → Source Diagnostics PR6 case export.
+- 2026-07-29: PR5 merged (#202); Product Track briefly → Stage 5 PR-2 explainability / operator ack-dismiss.
 - 2026-07-29: PR4 merged (#201); Product Track → PR5 ingest mapping stamp + drift.
 - 2026-07-29: PR3 merged (#200); Product Track → PR4 mapping context.
 - 2026-07-29: PR2 merged (#199); Product Track → PR3 duplicate decision surface.

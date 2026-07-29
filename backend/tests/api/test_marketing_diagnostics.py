@@ -308,7 +308,9 @@ async def test_diagnostics_case_mapping_context(client: AsyncClient, auth_header
         await _ensure_tenant(db, DEFAULT_TENANT_ID)
         oc = (
             await db.execute(
-                select(OwnCompany.id).where(OwnCompany.tenant_id == DEFAULT_TENANT_ID)
+                select(OwnCompany.id)
+                .where(OwnCompany.tenant_id == DEFAULT_TENANT_ID)
+                .limit(1)
             )
         ).scalar_one_or_none()
         if oc is None:
@@ -387,7 +389,9 @@ async def test_diagnostics_case_mapping_drift_from_applied_stamp(
         await _ensure_tenant(db, DEFAULT_TENANT_ID)
         oc = (
             await db.execute(
-                select(OwnCompany.id).where(OwnCompany.tenant_id == DEFAULT_TENANT_ID)
+                select(OwnCompany.id)
+                .where(OwnCompany.tenant_id == DEFAULT_TENANT_ID)
+                .limit(1)
             )
         ).scalar_one_or_none()
         if oc is None:
@@ -449,3 +453,49 @@ async def test_diagnostics_case_mapping_drift_from_applied_stamp(
     assert mapping["drift"] is True
     assert mapping["applied_rules_count"] == 1
     assert mapping["mapping_rules_count"] >= 2
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_case_export_json(client: AsyncClient, auth_headers: Dict[str, str]):
+    lead_id = str(uuid4())
+    flight_id = str(uuid4())
+    async with async_session_maker() as db:
+        await _ensure_tenant(db, DEFAULT_TENANT_ID)
+        db.add(
+            _stamped_lead(
+                lead_id=lead_id,
+                source="meta",
+                status="processed",
+                flight_id=flight_id,
+            )
+        )
+        await db.commit()
+
+    resp = await client.get(
+        f"/api/v1/platform/marketing/diagnostics/submissions/{lead_id}/export",
+        headers=_headers(auth_headers),
+    )
+    assert resp.status_code == 200, resp.text
+    assert "attachment" in (resp.headers.get("content-disposition") or "")
+    assert f"diagnostics-case-{lead_id}.json" in (resp.headers.get("content-disposition") or "")
+    body = resp.json()
+    assert body["schema"] == "hostflow.marketing_diagnostics_export"
+    assert body["schema_version"] == 1
+    assert body["lead_id"] == lead_id
+    assert body["flight_id"] == flight_id
+    assert "payload" in body
+    assert "normalized" in body
+    assert "mapping" in body
+    assert "duplicate" in body
+    assert isinstance(body["timeline"], list)
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_case_export_404(client: AsyncClient, auth_headers: Dict[str, str]):
+    missing = str(uuid4())
+    resp = await client.get(
+        f"/api/v1/platform/marketing/diagnostics/submissions/{missing}/export",
+        headers=_headers(auth_headers),
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "submission_not_found"

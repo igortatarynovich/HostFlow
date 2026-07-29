@@ -106,3 +106,11 @@ export async function getDiagnosticsCase(leadId: string): Promise<DiagnosticsCas
   )
   return data
 }
+
+export async function exportDiagnosticsCase(leadId: string): Promise<Blob> {
+  const { data } = await api.get<Blob>(
+    `/platform/marketing/diagnostics/submissions/${encodeURIComponent(leadId)}/export`,
+    { responseType: 'blob' },
+  )
+  return data
+}
