@@ -72,6 +72,17 @@ jobs:
       - name: Enforce detection rule owners + runbooks
         run: python3 scripts/security/check_detection_rules.py
 
+  security-scorecard:
+    name: Phase 8 security scorecard drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check security-scorecard.md matches generator
+        run: python3 scripts/security/generate_security_scorecard.py --check
+
   telemetry-phase34-stability:
     name: Phase 3/4 telemetry stabilization (helpers + logger heuristic)
     runs-on: ubuntu-latest

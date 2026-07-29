@@ -14,6 +14,7 @@
 | `check_arq_worker_tenant.py` | ARQ jobs: tenant-scoped → `tenant_enforced_session` + `parse_required_job_tenant_id`; platform → `security_job_context`. |
 | `check_retrieval_call_sites.py` | Phase 6: global search + tenant link company search must emit retrieval events. |
 | `check_detection_rules.py` | Phase 7: каждая detection rule — owner + runbook на диске с упоминанием `rule_id`. |
+| `generate_security_scorecard.py` | Phase 8: генерирует / проверяет `docs/security/security-scorecard.md`. |
 
 Локально:
 
@@ -23,6 +24,8 @@ python3 scripts/security/check_tenant_bind_auth.py
 python3 scripts/security/check_arq_worker_tenant.py
 python3 scripts/security/check_retrieval_call_sites.py
 python3 scripts/security/check_detection_rules.py
+python3 scripts/security/generate_security_scorecard.py --write
+python3 scripts/security/generate_security_scorecard.py --check
 python3 scripts/security/threat_model_gate.py   # нужны BASE_SHA и HEAD_SHA
 node scripts/security/npm_audit_gate.mjs        # из корня репо, после npm ci в hostflow-frontend
 ```

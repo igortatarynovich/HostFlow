@@ -292,23 +292,34 @@ Observability для HF трактуется как **часть security archit
 
 ## Phase 8 — Security scorecard
 
+**Статус (код):** **started — scorecard v1** (repo-derived markdown + CI drift check).
+
 **Цель:** сделать security **измеримой системой** для leadership и ретроспектив, без превращения в SOC2-theater.
+
+**Реализовано (v1):**
+
+- Generator: `scripts/security/generate_security_scorecard.py` (`--write` / `--check`).
+- Artifact: [`security-scorecard.md`](./security-scorecard.md) — единый источник цифр из репо (tests, gates, threat models, detection rules, RLS static hint + runtime guard).
+- `make security-scorecard` / `make security-scorecard-check`; CI job `security-scorecard`.
+- MFA / vuln counts remain **n/a** in-repo (fill in monthly review log + paste CI URLs).
 
 **Примеры строк scorecard**
 
 | Area | Metric | Target / note |
 |------|--------|-----------------|
-| RLS | % tenant-таблиц с политикой | 100% |
-| CI gates | security-gates workflow | green on main |
-| Security tests | `backend/tests/security/` + tenant API tests | pass |
-| Threat models | актуальность при изменении surface | по gate |
-| MFA | adoption superadmin + owners | > 90% (цель SSOT) |
-| Vulns | critical / high (sensitive deps) | 0 / по политике |
+| RLS | static coverage hint + runtime guard | guard present; live 100% via DB audit |
+| CI gates | security gate scripts + workflow jobs | inventory green |
+| Security tests | `backend/tests/security/` | ≥ 10 modules |
+| Threat models | `docs/security/threat-models/` | ≥ 10 |
+| Detection | Phase 7 rules | ≥ 3 + runbooks |
+| MFA | adoption superadmin + owners | > 90% (SSOT) — manual |
+| Vulns | critical / high (sensitive deps) | CI jobs |
 
 **Критерии готовности фазы (пример)**
 
-- Единый источник цифр (дашборд + ссылка из этого файла).
-- Ежемесячный или квартальный review с фиксацией в changelog roadmap.
+- ~~Единый источник цифр~~ — `docs/security/security-scorecard.md`.
+- ~~Ежемесячный review log~~ — секция в scorecard (дополнять вручную).
+- Dashboard UI — backlog.
 
 ---
 
@@ -325,5 +336,6 @@ Observability для HF трактуется как **часть security archit
 
 - [`security-ssot.md`](./security-ssot.md) — принципы, классификация данных, invariants.  
 - [`security-review-checklist.md`](./security-review-checklist.md) — PR gate.  
+- [`security-scorecard.md`](./security-scorecard.md) — Phase 8 living metrics.  
 - [`threat-models/`](./threat-models/) — уточнение по поверхностям.  
 - CI: `.github/workflows/security-gates.yml`.
