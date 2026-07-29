@@ -218,6 +218,15 @@ _SCHEMAS: dict[str, PayloadSchema] = {
         required=frozenset({"error_code"}),
         optional=frozenset({"provider", "note"}),
     ),
+    # Stage 5 PR-2 — operator acknowledge/dismiss of optimization signal (not Flight mutation).
+    "OptimizationSignalAcknowledged": PayloadSchema(
+        required=frozenset({"signal_fingerprint", "assessment", "recommended_action"}),
+        optional=frozenset({"note", "window_hours"}),
+    ),
+    "OptimizationSignalDismissed": PayloadSchema(
+        required=frozenset({"signal_fingerprint", "assessment", "recommended_action"}),
+        optional=frozenset({"note", "window_hours"}),
+    ),
 }
 
 _STR_KEYS = {
@@ -278,10 +287,18 @@ _STR_KEYS = {
     ),
     "SpendAnomalyDetected": frozenset({"anomaly_code", "currency", "note"}),
     "DeliveryErrorOccurred": frozenset({"error_code", "provider", "note"}),
+    "OptimizationSignalAcknowledged": frozenset(
+        {"signal_fingerprint", "assessment", "recommended_action", "note"}
+    ),
+    "OptimizationSignalDismissed": frozenset(
+        {"signal_fingerprint", "assessment", "recommended_action", "note"}
+    ),
 }
 
 _NUMBER_KEYS = {
     "BudgetChanged": frozenset({"amount", "new_amount", "previous_amount"}),
+    "OptimizationSignalAcknowledged": frozenset({"window_hours"}),
+    "OptimizationSignalDismissed": frozenset({"window_hours"}),
 }
 
 

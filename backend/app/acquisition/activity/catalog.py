@@ -82,6 +82,8 @@ _CATALOG: tuple[ActivityEventContract, ...] = (
     _contract("FlightAutoResumed", zone="automation_monitoring"),
     _contract("SpendAnomalyDetected", zone="automation_monitoring"),
     _contract("DeliveryErrorOccurred", zone="automation_monitoring"),
+    _contract("OptimizationSignalAcknowledged", zone="automation_monitoring"),
+    _contract("OptimizationSignalDismissed", zone="automation_monitoring"),
 )
 
 ACTIVITY_EVENT_CATALOG: Mapping[str, ActivityEventContract] = {

@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Source Diagnostics PR5** (mapping stamp + drift; PR1–4 ✅) | Almost all capacity |
+| **Product** | **Stage 5 PR-2** (optimization explainability / ack-dismiss) | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred) | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -37,8 +37,8 @@
 - **Acquisition Stage 4 / Flight Runtime** ← **Runtime DONE** (#136 / #148–#151) — [stage-4](acquisition-stage-4-flight-runtime.md)  
 - **Acquisition UI Cutover** ← **PASS** — [cutover](acquisition-ui-cutover.md) · [C-7](acquisition-ui-cutover-c7-searches-decommission.md) (C-1…C-7 closed 2026-07-27; Stage 5 PR-2 may resume)
 - **FlightAdBinding Ad-ID bind UI** ← **DONE** (#187) — Campaign Detail Ad→Flight panel  
-- **Source Diagnostics** ← **ACTIVE Product Track** — [brief](acquisition-source-diagnostics.md) · [cutover](acquisition-ui-cutover.md#after-cutover--source-diagnostics-separate-product-epic)
-- **Acquisition Stage 5 / Optimization** ← PR-1 DONE · **PR-2 may resume** after C-7 PASS — [stage-5](acquisition-stage-5-optimization.md)  
+- **Source Diagnostics** ← **PR1–PR5 DONE** (#196–#202) — [brief](acquisition-source-diagnostics.md); later backlog remains  
+- **Acquisition Stage 5 / Optimization** ← **ACTIVE Product Track** — PR-1 DONE · **PR-2 IN PROGRESS** — [stage-5](acquisition-stage-5-optimization.md)  
 - **Acquisition Stage 6 Analytics** ← future horizon (ADR-024 §14.1); do not open while 5 incomplete  
 - C2.3 stack merge + C2.4 + Epic C Complete Gate — Engineering / later Communication close-out (**C2.4 frozen**)  
 - Meta intake completeness · Sales Stage 3 slice 3–4 — after Flight V1 vertical (3A–3E) as needed; see also 3E deferred D1–D2
@@ -66,14 +66,14 @@
 | **P-3E** | **Acquisition Stage 3E** Activity Timeline | PR #130–#133 ✅ | **DONE** — observability vertical closed; deferred — [3e-deferred](acquisition-stage-3e-deferred.md) |
 | **P-4** | **Acquisition Stage 4** Flight Runtime | — | ✅ **Runtime DONE** (#136 / #148–#151) — [stage-4](acquisition-stage-4-flight-runtime.md) |
 | **P-4b** | **Acquisition UI Cutover** | C-1…C-6 ✅ · **C-7 PASS** (#184 · #185 · inventory) | **PASS** — [C-7](acquisition-ui-cutover-c7-searches-decommission.md); Ad-ID bind ✅ #187 → **Diagnostics** — [cutover](acquisition-ui-cutover.md) |
-| **P-5** | **Acquisition Stage 5** Optimization | paused | **PR-1 DONE** (#153) · **PR-2 PAUSED** until P-4b — [stage-5](acquisition-stage-5-optimization.md) |
+| **P-5** | **Acquisition Stage 5** Optimization | active | **PR-1 DONE** (#153) · **PR-2 IN PROGRESS** — [stage-5](acquisition-stage-5-optimization.md) |
 | **8** | **Epic C Complete Gate** | after C2.3 merge + C2.4 (later) | Communication capability closed |
 | **8b** | **Compliance outbound (ADR-031)** | [compliance-outbound-pipeline-early-result](compliance-outbound-pipeline-early-result.md) | Early opaque result + RODO/ops binders; **Engineering track**; no SMTP bypass |
 | **9** | **A2** Platform Governance Review | after Epic C complete | Boundary principle |
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
 **C0–C2.2** ✅. **C2.3** implemented (merge opportunistic). **C2.4 frozen.**  
-**Active (Product):** **Source Diagnostics PR5** mapping stamp + drift (PR1–4 ✅ [#196](https://github.com/igortatarynovich/HostFlow/pull/196) · [#199](https://github.com/igortatarynovich/HostFlow/pull/199) · [#200](https://github.com/igortatarynovich/HostFlow/pull/200) · [#201](https://github.com/igortatarynovich/HostFlow/pull/201)). Stage 5 PR-2 may resume.  
+**Active (Product):** **Stage 5 PR-2** optimization explainability / operator ack-dismiss — [stage-5](acquisition-stage-5-optimization.md). Source Diagnostics PR1–PR5 ✅ (#196–#202).  
 **Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap. Stage 4 merge (2026-07-23) accepted with known baseline debt — Stage 4 tests/gates green; full suite red outside scope.
 
 ---

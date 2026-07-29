@@ -1,15 +1,15 @@
-"""Stage 5 PR-1 — Flight optimization signals (read-only).
+"""Stage 5 — Flight optimization signals (read-only assessment).
 
-Composes Stage 4 ``get_flight_runtime_snapshot`` identity/status/KPI strip with
-**windowed** Activity Timeline counters (same allowlist as Live Intake Monitor).
-Does **not** invent a second metrics store, emit Activity on GET, or mutate
-Campaign/Flight.
+PR-1: compose Stage 4 runtime + windowed Timeline counters; suggest_pause only.
+PR-2: explainability fields + operator acknowledge/dismiss state (separate from
+assessment). GET still does not mutate Campaign/Flight and does not emit Activity.
 
 Canon: docs/specs/tasks/acquisition-stage-5-optimization.md
 """
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
@@ -18,6 +18,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.flights.runtime_commands import FlightRuntimeError
+from backend.app.acquisition.ops.optimization_operator_state import (
+    OptimizationOperatorState,
+    get_optimization_operator_state,
+)
 from backend.app.acquisition.ops.runtime_read import get_flight_runtime_snapshot
 from backend.app.models.acquisition_activity_event import AcquisitionActivityEvent
 
@@ -139,9 +143,27 @@ class FlightOptimizationSnapshot:
     kpi_leads: int
     spend: str
     generated_at: datetime
+    # PR-2 explainability / operator state (assessment remains pure).
+    signal_fingerprint: str = ""
+    explanation: str = ""
+    observed: dict[str, Any] | None = None
+    operator: OptimizationOperatorState | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        rate = self.counters.routing_fail_rate
+        observed = self.observed or {
+            "submissions": self.counters.submissions,
+            "routing_completed": self.counters.routing_completed,
+            "routing_failed": self.counters.routing_failed,
+            "delivery_errors": self.counters.delivery_errors,
+            "routing_sample": self.counters.routing_sample,
+            "decision_volume": self.counters.decision_volume,
+            "routing_fail_rate": rate,
+            "window_hours": self.window_hours,
+            "window_start": self.window_start.isoformat(),
+            "window_end": self.window_end.isoformat(),
+        }
+        out: dict[str, Any] = {
             "tenant_id": self.tenant_id,
             "campaign_id": self.campaign_id,
             "flight_id": self.flight_id,
@@ -164,12 +186,82 @@ class FlightOptimizationSnapshot:
                 "min_routing_sample": MIN_ROUTING_SAMPLE,
                 "delivery_error_threshold": DELIVERY_ERROR_THRESHOLD,
             },
+            "signal_fingerprint": self.signal_fingerprint
+            or compute_signal_fingerprint(
+                flight_id=self.flight_id,
+                assessment=self.assessment,
+                recommended_action=self.recommended_action,
+                reason_codes=self.reason_codes,
+                window_hours=self.window_hours,
+                counters=self.counters,
+            ),
+            "explanation": self.explanation
+            or build_explanation(
+                assessment=self.assessment,
+                reason_codes=self.reason_codes,
+                signals=self.signals,
+                counters=self.counters,
+            ),
+            "observed": observed,
+            "operator": self.operator.to_dict() if self.operator else None,
         }
+        return out
 
 
 def clamp_window_hours(raw: int | None) -> int:
     hours = int(raw if raw is not None else DEFAULT_WINDOW_HOURS)
     return max(MIN_WINDOW_HOURS, min(hours, MAX_WINDOW_HOURS))
+
+
+def compute_signal_fingerprint(
+    *,
+    flight_id: str,
+    assessment: str,
+    recommended_action: str,
+    reason_codes: tuple[str, ...] | list[str],
+    window_hours: int,
+    counters: WindowCounters,
+) -> str:
+    """Stable identity for operator ack/dismiss — independent of wall-clock window bounds."""
+    rate = counters.routing_fail_rate
+    rate_s = f"{rate:.4f}" if rate is not None else "none"
+    raw = "|".join(
+        [
+            str(flight_id),
+            str(assessment),
+            str(recommended_action),
+            ",".join(sorted(str(c) for c in reason_codes)),
+            str(int(window_hours)),
+            rate_s,
+            str(int(counters.delivery_errors)),
+            str(int(counters.decision_volume)),
+            str(int(counters.routing_sample)),
+        ]
+    )
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+
+def build_explanation(
+    *,
+    assessment: Assessment,
+    reason_codes: tuple[str, ...] | list[str],
+    signals: tuple[OptimizationSignal, ...] | list[OptimizationSignal],
+    counters: WindowCounters,
+) -> str:
+    """Human-readable why for the current assessment (PR-2)."""
+    if assessment == "insufficient_data":
+        if "flight_not_active" in reason_codes:
+            return "Pause recommendation is not evaluated while the Flight is not active."
+        return (
+            f"Not enough window observations to decide "
+            f"({counters.decision_volume}/{MIN_DECISION_VOLUME} required)."
+        )
+    if assessment == "healthy":
+        return "Routing and delivery counters are within locked pause thresholds for this window."
+    parts = [s.message for s in signals if s.code not in {"within_thresholds", "flight_not_active"}]
+    if parts:
+        return " ".join(parts)
+    return "Optimization signals recommend considering a Flight pause."
 
 
 def evaluate_flight_optimization(
@@ -296,7 +388,36 @@ def _snapshot(
     reason_codes: tuple[str, ...],
     signals: tuple[OptimizationSignal, ...],
     generated_at: datetime,
+    operator: OptimizationOperatorState | None = None,
 ) -> FlightOptimizationSnapshot:
+    counters = inputs.counters
+    fingerprint = compute_signal_fingerprint(
+        flight_id=str(inputs.flight_id),
+        assessment=assessment,
+        recommended_action=recommended_action,
+        reason_codes=reason_codes,
+        window_hours=int(inputs.window_hours),
+        counters=counters,
+    )
+    explanation = build_explanation(
+        assessment=assessment,
+        reason_codes=reason_codes,
+        signals=signals,
+        counters=counters,
+    )
+    rate = counters.routing_fail_rate
+    observed = {
+        "submissions": counters.submissions,
+        "routing_completed": counters.routing_completed,
+        "routing_failed": counters.routing_failed,
+        "delivery_errors": counters.delivery_errors,
+        "routing_sample": counters.routing_sample,
+        "decision_volume": counters.decision_volume,
+        "routing_fail_rate": rate,
+        "window_hours": int(inputs.window_hours),
+        "window_start": inputs.window_start.isoformat(),
+        "window_end": inputs.window_end.isoformat(),
+    }
     return FlightOptimizationSnapshot(
         tenant_id=str(tenant_id),
         campaign_id=str(inputs.campaign_id),
@@ -310,10 +431,14 @@ def _snapshot(
         window_hours=int(inputs.window_hours),
         window_start=inputs.window_start,
         window_end=inputs.window_end,
-        counters=inputs.counters,
+        counters=counters,
         kpi_leads=int(inputs.kpi_leads),
         spend=str(inputs.spend),
         generated_at=generated_at,
+        signal_fingerprint=fingerprint,
+        explanation=explanation,
+        observed=observed,
+        operator=operator,
     )
 
 
@@ -394,8 +519,39 @@ async def get_flight_optimization(
         kpi_leads=int(runtime.kpi.leads),
         spend=str(runtime.kpi.spend),
     )
-    return evaluate_flight_optimization(
+    snap = evaluate_flight_optimization(
         inputs, tenant_id=str(tenant_id), generated_at=end
+    )
+    operator = await get_optimization_operator_state(
+        db,
+        tenant_id=str(tenant_id),
+        campaign_id=str(runtime.campaign_id),
+        flight_id=str(runtime.flight_id),
+        signal_fingerprint=snap.signal_fingerprint,
+    )
+    if operator is None:
+        return snap
+    return FlightOptimizationSnapshot(
+        tenant_id=snap.tenant_id,
+        campaign_id=snap.campaign_id,
+        flight_id=snap.flight_id,
+        campaign_status=snap.campaign_status,
+        flight_status=snap.flight_status,
+        assessment=snap.assessment,
+        recommended_action=snap.recommended_action,
+        reason_codes=snap.reason_codes,
+        signals=snap.signals,
+        window_hours=snap.window_hours,
+        window_start=snap.window_start,
+        window_end=snap.window_end,
+        counters=snap.counters,
+        kpi_leads=snap.kpi_leads,
+        spend=snap.spend,
+        generated_at=snap.generated_at,
+        signal_fingerprint=snap.signal_fingerprint,
+        explanation=snap.explanation,
+        observed=snap.observed,
+        operator=operator,
     )
 
 
@@ -413,7 +569,9 @@ __all__ = [
     "OptimizationSignal",
     "RecommendedAction",
     "WindowCounters",
+    "build_explanation",
     "clamp_window_hours",
+    "compute_signal_fingerprint",
     "evaluate_flight_optimization",
     "get_flight_optimization",
 ]

@@ -24,6 +24,8 @@ REQUIRES_FLIGHT_ID: frozenset[str] = frozenset(
         "LearningPhaseEntered",
         "LearningPhaseExited",
         "SpendAnomalyDetected",
+        "OptimizationSignalAcknowledged",
+        "OptimizationSignalDismissed",
     }
 )
 

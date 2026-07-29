@@ -424,6 +424,15 @@ export type FlightOptimizationSignal = {
   message: string
 }
 
+export type FlightOptimizationOperator = {
+  action: 'acknowledge' | 'dismiss' | string
+  signal_fingerprint: string
+  occurred_at: string
+  actor_type: string
+  actor_id?: string | null
+  note?: string | null
+}
+
 export type FlightOptimization = {
   tenant_id: string
   campaign_id: string
@@ -454,6 +463,21 @@ export type FlightOptimization = {
     min_routing_sample: number
     delivery_error_threshold: number
   }
+  signal_fingerprint?: string
+  explanation?: string
+  observed?: {
+    submissions: number
+    routing_completed: number
+    routing_failed: number
+    delivery_errors: number
+    routing_sample: number
+    decision_volume: number
+    routing_fail_rate?: number | null
+    window_hours: number
+    window_start: string
+    window_end: string
+  }
+  operator?: FlightOptimizationOperator | null
 }
 
 export async function getFlightOptimization(
@@ -463,6 +487,24 @@ export async function getFlightOptimization(
 ): Promise<FlightOptimization> {
   const { data } = await api.get<FlightOptimization>(
     `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/optimization`,
+    { params },
+  )
+  return data
+}
+
+export async function postFlightOptimizationOperatorAction(
+  campaignId: string,
+  flightId: string,
+  payload: {
+    action: 'acknowledge' | 'dismiss'
+    signal_fingerprint: string
+    note?: string
+  },
+  params?: { window_hours?: number },
+): Promise<FlightOptimization> {
+  const { data } = await api.post<FlightOptimization>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/optimization/operator-action`,
+    payload,
     { params },
   )
   return data

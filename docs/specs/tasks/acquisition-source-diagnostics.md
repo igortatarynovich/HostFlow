@@ -1,8 +1,8 @@
 # Source Diagnostics — Marketing ops console (Product Epic)
 
-**Status:** **ACTIVE** — PR5 implementing (PR1 ✅ #196 · PR2 ✅ #199 · PR3 ✅ #200 · PR4 ✅ #201)  
+**Status:** **PR1–PR5 DONE** · later backlog remains  
 **Date:** 2026-07-29  
-**Product Track:** after FlightAdBinding Ad-ID bind UI (**DONE** #187)  
+**Product Track (next):** [Acquisition Stage 5 PR-2](acquisition-stage-5-optimization.md)  
 **Parents:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) § After cutover · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)
 
 ---
@@ -36,7 +36,7 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ---
 
-## PR5 — Ingest mapping stamp + drift (this slice)
+## PR5 — Ingest mapping stamp + drift ✅ #202
 
 ### IN
 
@@ -52,9 +52,9 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ### Acceptance (PR5)
 
-- [ ] Ingest path writes `mapping_applied_v1`  
-- [ ] Case with stamp + changed profile rules → `drift=true`  
-- [ ] Case without stamp → historical false / drift n/a  
+- [x] Ingest path writes `mapping_applied_v1`  
+- [x] Case with stamp + changed profile rules → `drift=true`  
+- [x] Case without stamp → historical false / drift n/a  
 
 ---
 
@@ -68,6 +68,7 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ## History
 
+- 2026-07-29: PR5 merged (#202); Product Track → Stage 5 PR-2 explainability / operator ack-dismiss.
 - 2026-07-29: PR4 merged (#201); Product Track → PR5 ingest mapping stamp + drift.
 - 2026-07-29: PR3 merged (#200); Product Track → PR4 mapping context.
 - 2026-07-29: PR2 merged (#199); Product Track → PR3 duplicate decision surface.
