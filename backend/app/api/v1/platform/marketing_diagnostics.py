@@ -91,6 +91,21 @@ class DiagnosticsDuplicateOut(BaseModel):
     stamped_at: Optional[str] = None
 
 
+class DiagnosticsMappingOut(BaseModel):
+    active: bool = False
+    source_id: Optional[str] = None
+    display_name: Optional[str] = None
+    provider: Optional[str] = None
+    mapping_health: Optional[str] = None
+    mapping_rules_count: int = 0
+    rules_source: Optional[str] = None
+    meta_form_id: Optional[str] = None
+    mapping_path: Optional[str] = None
+    profile_updated_at: Optional[str] = None
+    historical_version_available: bool = False
+    profile_missing: bool = False
+
+
 class DiagnosticsCaseOut(BaseModel):
     lead_id: str
     created_at: Optional[datetime] = None
@@ -114,6 +129,7 @@ class DiagnosticsCaseOut(BaseModel):
     normalized: dict[str, Any] = Field(default_factory=dict)
     lead_error: Optional[str] = None
     duplicate: DiagnosticsDuplicateOut = Field(default_factory=DiagnosticsDuplicateOut)
+    mapping: DiagnosticsMappingOut = Field(default_factory=DiagnosticsMappingOut)
     timeline: list[DiagnosticsTimelineEventOut] = Field(default_factory=list)
 
 
@@ -228,6 +244,20 @@ async def get_submission_case(
             error_code=dup.error_code,
             needs_duplicate_review=dup.needs_duplicate_review,
             stamped_at=dup.stamped_at,
+        ),
+        mapping=DiagnosticsMappingOut(
+            active=detail.mapping.active,
+            source_id=detail.mapping.source_id,
+            display_name=detail.mapping.display_name,
+            provider=detail.mapping.provider,
+            mapping_health=detail.mapping.mapping_health,
+            mapping_rules_count=detail.mapping.mapping_rules_count,
+            rules_source=detail.mapping.rules_source,
+            meta_form_id=detail.mapping.meta_form_id,
+            mapping_path=detail.mapping.mapping_path,
+            profile_updated_at=detail.mapping.profile_updated_at,
+            historical_version_available=detail.mapping.historical_version_available,
+            profile_missing=detail.mapping.profile_missing,
         ),
         timeline=[
             DiagnosticsTimelineEventOut(

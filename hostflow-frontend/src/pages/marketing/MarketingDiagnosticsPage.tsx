@@ -202,6 +202,66 @@ function CaseDetail({
         </section>
       ) : null}
 
+      {row.mapping?.active || row.mapping?.profile_missing || row.mapping?.source_id ? (
+        <section
+          className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+          data-testid="marketing-diagnostics-mapping"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Mapping / Mapping Health</h3>
+              <p className="mt-1 text-xs text-slate-600">
+                Current Source mapping (not a historical ingest stamp). Open Mapping workspace to review rules.
+              </p>
+            </div>
+            {row.mapping.mapping_path ? (
+              <Link
+                className="btn-secondary btn-sm"
+                to={row.mapping.mapping_path}
+                data-testid="marketing-diagnostics-open-mapping"
+              >
+                Open Mapping
+              </Link>
+            ) : null}
+          </div>
+          <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+            <div>
+              <dt className="text-slate-500">Source</dt>
+              <dd className="font-medium text-slate-900" data-testid="marketing-diagnostics-mapping-name">
+                {row.mapping.display_name || row.mapping.source_id || '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Mapping Health</dt>
+              <dd className="font-medium text-slate-900" data-testid="marketing-diagnostics-mapping-health">
+                {row.mapping.profile_missing
+                  ? 'profile missing'
+                  : row.mapping.mapping_health || '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Rules</dt>
+              <dd className="font-medium text-slate-900">
+                {row.mapping.mapping_rules_count}
+                {row.mapping.rules_source ? ` · ${row.mapping.rules_source}` : ''}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Profile updated</dt>
+              <dd className="font-mono text-slate-800">
+                {row.mapping.profile_updated_at || '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Historical version</dt>
+              <dd className="font-medium text-slate-900" data-testid="marketing-diagnostics-mapping-historical">
+                {row.mapping.historical_version_available ? 'available' : 'not stamped'}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
           <div className="text-xs text-slate-500">Routing</div>

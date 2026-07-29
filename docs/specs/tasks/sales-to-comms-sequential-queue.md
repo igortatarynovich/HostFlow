@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Source Diagnostics PR3** (duplicate surface; PR1–2 ✅) | Almost all capacity |
+| **Product** | **Source Diagnostics PR4** (mapping context; PR1–3 ✅) | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred) | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -73,7 +73,7 @@
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
 **C0–C2.2** ✅. **C2.3** implemented (merge opportunistic). **C2.4 frozen.**  
-**Active (Product):** **Source Diagnostics PR3** duplicate surface (PR1 ✅ [#196](https://github.com/igortatarynovich/HostFlow/pull/196) · PR2 ✅ [#199](https://github.com/igortatarynovich/HostFlow/pull/199)). Stage 5 PR-2 may resume.  
+**Active (Product):** **Source Diagnostics PR4** mapping context (PR1 ✅ [#196](https://github.com/igortatarynovich/HostFlow/pull/196) · PR2 ✅ [#199](https://github.com/igortatarynovich/HostFlow/pull/199) · PR3 ✅ [#200](https://github.com/igortatarynovich/HostFlow/pull/200)). Stage 5 PR-2 may resume.  
 **Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap. Stage 4 merge (2026-07-23) accepted with known baseline debt — Stage 4 tests/gates green; full suite red outside scope.
 
 ---
