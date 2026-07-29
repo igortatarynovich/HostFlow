@@ -41,6 +41,21 @@ export type DiagnosticsDuplicate = {
   stamped_at?: string | null
 }
 
+export type DiagnosticsMapping = {
+  active: boolean
+  source_id?: string | null
+  display_name?: string | null
+  provider?: string | null
+  mapping_health?: string | null
+  mapping_rules_count: number
+  rules_source?: string | null
+  meta_form_id?: string | null
+  mapping_path?: string | null
+  profile_updated_at?: string | null
+  historical_version_available: boolean
+  profile_missing: boolean
+}
+
 export type DiagnosticsCase = DiagnosticsSubmission & {
   submission_id?: string | null
   campaign_id?: string | null
@@ -51,6 +66,7 @@ export type DiagnosticsCase = DiagnosticsSubmission & {
   normalized: Record<string, unknown>
   lead_error?: string | null
   duplicate: DiagnosticsDuplicate
+  mapping: DiagnosticsMapping
   timeline: DiagnosticsTimelineEvent[]
 }
 

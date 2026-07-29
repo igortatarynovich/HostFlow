@@ -3,6 +3,8 @@
 PR1: tenant-scoped recent Acquisition-stamped leads + case detail.
 PR2: list filters — source / flight_id / failed_only.
 PR3: duplicate decision surface (decision_result_v1 + duplicate_match_v1).
+PR4: mapping context — current Mapping Health for linked IntakeSourceProfile
+     (historical ingest mapping version is not stamped yet).
 No parallel submissions store.
 """
 
@@ -12,6 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Mapping, Optional
 
+from fastapi import HTTPException
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +27,8 @@ from backend.app.acquisition.ops.live_intake_monitor import (
     LiveIntakeApplicantRow,
     _applicant_from_lead,
 )
+from backend.app.acquisition.sources_mapping import get_source_mapping
+from backend.app.acquisition.sources_read import build_source_paths
 from backend.app.acquisition.submission_routing import ACQUISITION_ROUTING_V1_KEY
 from backend.app.models.acquisition_activity_event import AcquisitionActivityEvent
 from backend.app.models.lead import Lead
@@ -50,6 +55,28 @@ class DiagnosticsDuplicateDecision:
 
 
 @dataclass(frozen=True)
+class DiagnosticsMappingContext:
+    """Current Source mapping / Mapping Health for the case (read-only).
+
+    ``historical_version_available`` stays False until ingest stamps a
+    mapping revision on Lead — PR4 does not invent a parallel version ledger.
+    """
+
+    active: bool
+    source_id: Optional[str]
+    display_name: Optional[str]
+    provider: Optional[str]
+    mapping_health: Optional[str]
+    mapping_rules_count: int
+    rules_source: Optional[str]
+    meta_form_id: Optional[str]
+    mapping_path: Optional[str]
+    profile_updated_at: Optional[str]
+    historical_version_available: bool
+    profile_missing: bool
+
+
+@dataclass(frozen=True)
 class DiagnosticsCaseDetail:
     applicant: LiveIntakeApplicantRow
     submission_id: Optional[str]
@@ -62,6 +89,7 @@ class DiagnosticsCaseDetail:
     timeline: list[AcquisitionActivityEvent]
     lead_error: Optional[str]
     duplicate: DiagnosticsDuplicateDecision
+    mapping: DiagnosticsMappingContext
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
@@ -129,6 +157,92 @@ def compose_duplicate_decision(
         error_code=error_code,
         needs_duplicate_review=needs_review,
         stamped_at=stamped_at,
+    )
+
+
+def _empty_mapping(*, source_id: str | None = None, profile_missing: bool = False) -> DiagnosticsMappingContext:
+    return DiagnosticsMappingContext(
+        active=False,
+        source_id=source_id,
+        display_name=None,
+        provider=None,
+        mapping_health=None,
+        mapping_rules_count=0,
+        rules_source=None,
+        meta_form_id=None,
+        mapping_path=None,
+        profile_updated_at=None,
+        historical_version_available=False,
+        profile_missing=profile_missing,
+    )
+
+
+async def compose_mapping_context(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    routing: Mapping[str, Any],
+) -> DiagnosticsMappingContext:
+    """Resolve current Mapping Health for ``routing.intake_source_profile_id``."""
+    source_id = str(routing.get("intake_source_profile_id") or "").strip() or None
+    if not source_id:
+        return _empty_mapping()
+    try:
+        summary = await get_source_mapping(
+            db, tenant_id=str(tenant_id), source_id=source_id
+        )
+    except HTTPException:
+        mapping_path, _, _ = build_source_paths(
+            source_id=source_id,
+            provider="",
+            meta_form_id=None,
+            lead_form_id=None,
+        )
+        return DiagnosticsMappingContext(
+            active=False,
+            source_id=source_id,
+            display_name=None,
+            provider=None,
+            mapping_health=None,
+            mapping_rules_count=0,
+            rules_source=None,
+            meta_form_id=None,
+            mapping_path=mapping_path,
+            profile_updated_at=None,
+            historical_version_available=False,
+            profile_missing=True,
+        )
+
+    mapping_path, _, _ = build_source_paths(
+        source_id=source_id,
+        provider=str(summary.get("provider") or ""),
+        meta_form_id=summary.get("meta_form_id"),
+        lead_form_id=None,
+    )
+    # Prefer façade path; fall back to computed.
+    path = str(summary.get("mapping_path") or mapping_path or "").strip() or mapping_path
+
+    from backend.app.modules.intake_routing import crud as intake_crud
+
+    profile = await intake_crud.get_profile_by_id(
+        db, tenant_id=str(tenant_id), profile_id=source_id
+    )
+    updated = getattr(profile, "updated_at", None) if profile is not None else None
+    updated_s = updated.isoformat() if isinstance(updated, datetime) else None
+
+    return DiagnosticsMappingContext(
+        active=True,
+        source_id=source_id,
+        display_name=str(summary.get("display_name") or "").strip() or None,
+        provider=str(summary.get("provider") or "").strip() or None,
+        mapping_health=str(summary.get("mapping_health") or "").strip() or None,
+        mapping_rules_count=int(summary.get("mapping_rules_count") or 0),
+        rules_source=str(summary.get("rules_source") or "").strip() or None,
+        meta_form_id=str(summary.get("meta_form_id") or "").strip() or None,
+        mapping_path=path,
+        profile_updated_at=updated_s,
+        historical_version_available=False,
+        profile_missing=False,
     )
 
 
@@ -245,6 +359,9 @@ async def get_diagnostic_case(
 
     payload = _as_dict(getattr(lead, "payload", None))
     lead_status = str(getattr(lead, "status", None) or "")
+    mapping = await compose_mapping_context(
+        db, tenant_id=str(tenant_id), routing=routing
+    )
     return DiagnosticsCaseDetail(
         applicant=_applicant_from_lead(lead),
         submission_id=submission_id,
@@ -261,13 +378,16 @@ async def get_diagnostic_case(
             decision=decision,
             normalized=normalized,
         ),
+        mapping=mapping,
     )
 
 
 __all__ = [
     "DiagnosticsCaseDetail",
     "DiagnosticsDuplicateDecision",
+    "DiagnosticsMappingContext",
     "compose_duplicate_decision",
+    "compose_mapping_context",
     "get_diagnostic_case",
     "list_diagnostic_submissions",
 ]

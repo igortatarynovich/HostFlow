@@ -1,6 +1,6 @@
 # Acquisition UI Cutover
 
-**Status:** **PASS** — Stage 4 product/UI cutover closed (2026-07-27); **Ad-ID bind UI DONE** (#187); Diagnostics PR1–2 ✅ (#196 · #199); **Product Track → Source Diagnostics PR3**  
+**Status:** **PASS** — Stage 4 product/UI cutover closed (2026-07-27); **Ad-ID bind UI DONE** (#187); Diagnostics PR1–3 ✅ (#196 · #199 · #200); **Product Track → Source Diagnostics PR4**  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [acquisition/module-scope.md](../../acquisition/module-scope.md)  
 **Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅ · C-5 ✅ · C-6 ✅ · **C-7 PASS** · **Ad-ID bind UI ✅ #187**  
 **C-7 brief:** [acquisition-ui-cutover-c7-searches-decommission.md](acquisition-ui-cutover-c7-searches-decommission.md) · **PASS** (#184 · #185 · inventory)  
@@ -11,7 +11,7 @@
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (PR-2 may resume)  
 **Shipped tip:** `integration/release-product-a-b` @ #187 + C-7  
 **Unpause:** Stage 5 PR-2 **may resume**  
-**Active slice:** [Source Diagnostics PR3](acquisition-source-diagnostics.md) duplicate decision — `/app/marketing/diagnostics`
+**Active slice:** [Source Diagnostics PR4](acquisition-source-diagnostics.md) mapping / Mapping Health — `/app/marketing/diagnostics`
 
 > Stage 4 **runtime** is DONE. Stage 4 **product/UI cutover** is **PASS** (C-7).  
 > Operator launch path is Marketing-only: Connect → Source → Test Lead → Mapping → Form → Campaign → Flight → Lead.  
@@ -458,7 +458,7 @@ After that, work is **product evolution**, not migration onto the Campaign/Fligh
 | Stage 5 Optimization PR-2+ | Improve running Flights |
 | Stage 6 Analytics / automation / AI assistants / campaign recommendations | Exploitation & growth features |
 
-**Queue lock (2026-07-29):** Ad-ID ✅ #187 → Diagnostics PR1 ✅ #196 → PR2 ✅ #199 → **PR3 duplicate surface** active.  
+**Queue lock (2026-07-29):** Ad-ID ✅ #187 → Diagnostics PR1 ✅ #196 → PR2 ✅ #199 → PR3 ✅ #200 → **PR4 mapping context** active.  
 **Prior lock (2026-07-27):** after **C-7 PASS**: Ad-ID → Flight bind UI, then Source Diagnostics.
 
 Do **not** reopen cutover scope for those — they assume the onboarding path and Marketing IA above already work.
@@ -524,6 +524,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-29: Diagnostics **PR3 merged** (#200); Product Track → **PR4 mapping context / Mapping Health**.
 - 2026-07-29: Diagnostics **PR2 merged** (#199); Product Track → **PR3 duplicate decision surface**.
 - 2026-07-29: Diagnostics **PR1 merged** (#196); Product Track → **PR2 filters**.
 - 2026-07-29: **Ad-ID bind UI DONE** (#187) — Product Track → **Source Diagnostics PR1** ([brief](acquisition-source-diagnostics.md)).
