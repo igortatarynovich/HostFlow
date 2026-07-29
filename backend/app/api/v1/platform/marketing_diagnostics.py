@@ -104,6 +104,12 @@ class DiagnosticsMappingOut(BaseModel):
     profile_updated_at: Optional[str] = None
     historical_version_available: bool = False
     profile_missing: bool = False
+    applied_rules_count: int = 0
+    applied_rules_fingerprint: Optional[str] = None
+    applied_rules_source: Optional[str] = None
+    applied_stamped_at: Optional[str] = None
+    current_rules_fingerprint: Optional[str] = None
+    drift: bool = False
 
 
 class DiagnosticsCaseOut(BaseModel):
@@ -258,6 +264,12 @@ async def get_submission_case(
             profile_updated_at=detail.mapping.profile_updated_at,
             historical_version_available=detail.mapping.historical_version_available,
             profile_missing=detail.mapping.profile_missing,
+            applied_rules_count=detail.mapping.applied_rules_count,
+            applied_rules_fingerprint=detail.mapping.applied_rules_fingerprint,
+            applied_rules_source=detail.mapping.applied_rules_source,
+            applied_stamped_at=detail.mapping.applied_stamped_at,
+            current_rules_fingerprint=detail.mapping.current_rules_fingerprint,
+            drift=detail.mapping.drift,
         ),
         timeline=[
             DiagnosticsTimelineEventOut(
