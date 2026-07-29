@@ -4455,8 +4455,8 @@
       }
     },
     "dashboard": {
-      "title": "Work efficiency",
-      "page_subtitle": "Stages, rejections, and documents. Filters: client, period, vacancy.",
+      "title": "Analytics",
+      "page_subtitle": "System module: slices for licensed modules.",
       "sections": {
         "shortcuts": {
           "title": "Quick links",
@@ -5076,6 +5076,87 @@
           "outcome_rejected": "Rejected",
           "outcome_declined": "Declined",
           "outcome_in_progress": "In progress"
+        }
+      },
+      "tabs": {
+        "aria": "Analytics modules",
+        "summary": "Summary",
+        "general": "Summary",
+        "recruitment": "Recruitment",
+        "sales": "Sales",
+        "hr": "HR",
+        "finance": "Finance",
+        "fleet": "Fleet"
+      },
+      "summary": {
+        "title": "Summary",
+        "subtitle": "HostFlow system analytics. Open a module tab for detailed slices.",
+        "body": "This host collects data from connected modules and turns it into human-readable analytics. Each tab owns its metrics — not a copy of another module.",
+        "bullets": {
+          "modules": "Tabs appear only for purchased and available modules.",
+          "filters": "Each module has its own ranges and slices (period, client, vacancy where needed).",
+          "owned": "Recruitment ≠ sales ≠ HR: funnels and KPIs stay module-owned."
+        }
+      },
+      "sales": {
+        "title": "Sales efficiency",
+        "subtitle": "Inquiries → qualification → win/lost and commercial orders. Not the candidate pipeline.",
+        "stats": {
+          "inquiries": "Inquiries (cohort)",
+          "win_path": "On win-path",
+          "lost": "Lost",
+          "new_untouched": "New / untouched"
+        },
+        "funnel_title": "Inquiry funnel",
+        "funnel_subtitle": "Conversion roots lead → qualified → active → final (+ lost).",
+        "funnel_stages": {
+          "lead": "Lead",
+          "qualified": "Qualified",
+          "active": "Active",
+          "final": "Final",
+          "lost": "Lost"
+        },
+        "lost_title": "Lost reasons",
+        "lost_subtitle": "Why inquiries closed without a win.",
+        "lost_empty": "No lost reasons in this slice.",
+        "lost_reasons": {},
+        "orders_title": "Orders / services",
+        "orders_subtitle": "Commercial slice for the selected period.",
+        "orders_total": "Orders",
+        "orders_delivered": "Delivered",
+        "orders_cancelled": "Cancelled",
+        "orders_revenue": "Revenue",
+        "orders_status_title": "Order statuses",
+        "order_status": {}
+      },
+      "hr": {
+        "title": "HR efficiency",
+        "subtitle": "Handoff: requested → accepted / returned / rejected.",
+        "flow_title": "Handoff flow",
+        "flow_subtitle": "HR transfer only — not recruitment stages.",
+        "by_client_title": "By client",
+        "by_client_subtitle": "Accepted / requested (top).",
+        "flow": {
+          "requested": "Requested",
+          "accepted": "Accepted",
+          "returned": "Returned",
+          "rejected": "Rejected"
+        }
+      },
+      "finance": {
+        "title": "Finance efficiency",
+        "subtitle": "Invoices and margin for the period — not the sales funnel.",
+        "margin_title": "Revenue and margin",
+        "margin_subtitle": "From related orders/services in the period.",
+        "stats": {
+          "invoiced": "Invoiced",
+          "paid": "Paid",
+          "outstanding": "Outstanding",
+          "overdue": "Overdue",
+          "revenue": "Revenue",
+          "cost": "Cost",
+          "profit": "Gross profit",
+          "margin": "Margin"
         }
       }
     },

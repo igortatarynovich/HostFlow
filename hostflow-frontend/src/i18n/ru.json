@@ -4382,8 +4382,8 @@
       }
     },
     "dashboard": {
-      "title": "Эффективность работы",
-      "page_subtitle": "Этапы, отказы и документы. Фильтры: клиент, период, вакансия.",
+      "title": "Аналитика",
+      "page_subtitle": "Системный модуль: срезы по купленным модулям.",
       "sections": {
         "shortcuts": {
           "title": "Быстрые ссылки",
@@ -5003,6 +5003,87 @@
           "outcome_rejected": "Отклонён",
           "outcome_declined": "Отказался",
           "outcome_in_progress": "В работе"
+        }
+      },
+      "tabs": {
+        "aria": "Модули аналитики",
+        "summary": "Сводка",
+        "general": "Сводка",
+        "recruitment": "Рекрутинг",
+        "sales": "Продажи",
+        "hr": "HR",
+        "finance": "Финансы",
+        "fleet": "Флот"
+      },
+      "summary": {
+        "title": "Сводка",
+        "subtitle": "Системная аналитика HostFlow. Откройте вкладку модуля для детальных срезов.",
+        "body": "Этот хост собирает данные из подключённых модулей и показывает их в человекочитаемом виде. Каждый таб — свой модуль со своими метриками, не копией соседнего.",
+        "bullets": {
+          "modules": "Вкладки появляются только для купленных и доступных модулей.",
+          "filters": "В каждом модуле — свои диапазоны и срезы (период, клиент, вакансия где нужно).",
+          "owned": "Рекрутинг ≠ продажи ≠ HR: воронки и KPI принадлежат модулю."
+        }
+      },
+      "sales": {
+        "title": "Эффективность продаж",
+        "subtitle": "Обращения → квалификация → win/lost и коммерческие заказы. Не воронка кандидатов.",
+        "stats": {
+          "inquiries": "Обращения (когорта)",
+          "win_path": "На win-path",
+          "lost": "Lost",
+          "new_untouched": "Новые / не тронуты"
+        },
+        "funnel_title": "Воронка обращений",
+        "funnel_subtitle": "Корни конверсии lead → qualified → active → final (+ lost).",
+        "funnel_stages": {
+          "lead": "Lead",
+          "qualified": "Qualified",
+          "active": "Active",
+          "final": "Final",
+          "lost": "Lost"
+        },
+        "lost_title": "Причины lost",
+        "lost_subtitle": "Почему обращения закрылись без win.",
+        "lost_empty": "Нет lost-причин в срезе.",
+        "lost_reasons": {},
+        "orders_title": "Заказы / услуги",
+        "orders_subtitle": "Коммерческий срез за выбранный период.",
+        "orders_total": "Заказов",
+        "orders_delivered": "Доставлено",
+        "orders_cancelled": "Отменено",
+        "orders_revenue": "Выручка",
+        "orders_status_title": "Статусы заказов",
+        "order_status": {}
+      },
+      "hr": {
+        "title": "Эффективность HR",
+        "subtitle": "Handoff: запрошено → принято / возвращено / отклонено.",
+        "flow_title": "Поток handoff",
+        "flow_subtitle": "Только HR-передача, не этапы рекрутинга.",
+        "by_client_title": "По клиентам",
+        "by_client_subtitle": "Принято / запрошено (топ).",
+        "flow": {
+          "requested": "Запрошено",
+          "accepted": "Принято",
+          "returned": "Возвращено",
+          "rejected": "Отклонено"
+        }
+      },
+      "finance": {
+        "title": "Эффективность финансов",
+        "subtitle": "Счета и маржа за период — не sales-воронка.",
+        "margin_title": "Выручка и маржа",
+        "margin_subtitle": "По связанным заказам/услугам в периоде.",
+        "stats": {
+          "invoiced": "Выставлено",
+          "paid": "Оплачено",
+          "outstanding": "К оплате",
+          "overdue": "Просрочено",
+          "revenue": "Выручка",
+          "cost": "Себестоимость",
+          "profit": "Валовая прибыль",
+          "margin": "Маржа"
         }
       }
     },

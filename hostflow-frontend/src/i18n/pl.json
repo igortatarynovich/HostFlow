@@ -3861,8 +3861,8 @@
       }
     },
     "dashboard": {
-      "title": "Efektywność pracy",
-      "page_subtitle": "Etapy, odrzucenia i dokumenty. Filtry: klient, okres, wakat.",
+      "title": "Analityka",
+      "page_subtitle": "Moduł systemowy: przekroje dla licencjonowanych modułów.",
       "sections": {
         "shortcuts": {
           "title": "Szybkie linki",
@@ -4482,6 +4482,87 @@
           "outcome_rejected": "Odrzucony",
           "outcome_declined": "Zrezygnował",
           "outcome_in_progress": "W toku"
+        }
+      },
+      "tabs": {
+        "aria": "Moduły analityki",
+        "summary": "Podsumowanie",
+        "general": "Podsumowanie",
+        "recruitment": "Rekrutacja",
+        "sales": "Sprzedaż",
+        "hr": "HR",
+        "finance": "Finanse",
+        "fleet": "Flota"
+      },
+      "summary": {
+        "title": "Podsumowanie",
+        "subtitle": "Systemowa analityka HostFlow. Otwórz zakładkę modułu, aby zobaczyć szczegóły.",
+        "body": "Ten host zbiera dane z podłączonych modułów i pokazuje je w czytelnej formie. Każda zakładka ma własne metryki — nie kopię innego modułu.",
+        "bullets": {
+          "modules": "Zakładki pojawiają się tylko dla kupionych i dostępnych modułów.",
+          "filters": "Każdy moduł ma własne zakresy i przekroje (okres, klient, wakat gdy potrzeba).",
+          "owned": "Rekrutacja ≠ sprzedaż ≠ HR: lejki i KPI należą do modułu."
+        }
+      },
+      "sales": {
+        "title": "Efektywność sprzedaży",
+        "subtitle": "Zapytania → kwalifikacja → win/lost oraz zamówienia. Nie pipeline kandydatów.",
+        "stats": {
+          "inquiries": "Zapytania (kohorta)",
+          "win_path": "Na win-path",
+          "lost": "Lost",
+          "new_untouched": "Nowe / nietknięte"
+        },
+        "funnel_title": "Lejek zapytań",
+        "funnel_subtitle": "Korzenie konwersji lead → qualified → active → final (+ lost).",
+        "funnel_stages": {
+          "lead": "Lead",
+          "qualified": "Qualified",
+          "active": "Active",
+          "final": "Final",
+          "lost": "Lost"
+        },
+        "lost_title": "Powody lost",
+        "lost_subtitle": "Dlaczego zapytania zamknięto bez win.",
+        "lost_empty": "Brak powodów lost w przekroju.",
+        "lost_reasons": {},
+        "orders_title": "Zamówienia / usługi",
+        "orders_subtitle": "Przekrój komercyjny dla wybranego okresu.",
+        "orders_total": "Zamówienia",
+        "orders_delivered": "Dostarczone",
+        "orders_cancelled": "Anulowane",
+        "orders_revenue": "Przychód",
+        "orders_status_title": "Statusy zamówień",
+        "order_status": {}
+      },
+      "hr": {
+        "title": "Efektywność HR",
+        "subtitle": "Handoff: złożono → przyjęto / zwrócono / odrzucono.",
+        "flow_title": "Przepływ handoff",
+        "flow_subtitle": "Tylko przekazanie HR — nie etapy rekrutacji.",
+        "by_client_title": "Wg klienta",
+        "by_client_subtitle": "Przyjęto / złożono (top).",
+        "flow": {
+          "requested": "Złożono",
+          "accepted": "Przyjęto",
+          "returned": "Zwrócono",
+          "rejected": "Odrzucono"
+        }
+      },
+      "finance": {
+        "title": "Efektywność finansów",
+        "subtitle": "Faktury i marża w okresie — nie lejek sprzedaży.",
+        "margin_title": "Przychód i marża",
+        "margin_subtitle": "Z powiązanych zamówień/usług w okresie.",
+        "stats": {
+          "invoiced": "Wystawione",
+          "paid": "Opłacone",
+          "outstanding": "Do zapłaty",
+          "overdue": "Przeterminowane",
+          "revenue": "Przychód",
+          "cost": "Koszt",
+          "profit": "Zysk brutto",
+          "margin": "Marża"
         }
       }
     },
