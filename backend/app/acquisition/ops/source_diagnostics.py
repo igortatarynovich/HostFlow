@@ -1,6 +1,7 @@
 """Source Diagnostics — Marketing ops read compose over Lead + Activity.
 
 PR1: tenant-scoped recent Acquisition-stamped leads + case detail.
+PR2: list filters — source / flight_id / failed_only.
 No parallel submissions store.
 """
 
@@ -57,6 +58,33 @@ def _acquisition_stamped_filter(*, tenant_id: str):
     )
 
 
+def _list_filters(
+    *,
+    source: str | None,
+    flight_id: str | None,
+    failed_only: bool,
+):
+    """Optional list narrowing — still within stamped Acquisition set."""
+    clauses = []
+    src = str(source or "").strip()
+    if src:
+        clauses.append(Lead.source == src)
+    fid = str(flight_id or "").strip()
+    if fid:
+        routing = Lead.normalized[ACQUISITION_ROUTING_V1_KEY]
+        clauses.append(routing["campaign_run_id"].as_string() == fid)
+    if failed_only:
+        routing = Lead.normalized[ACQUISITION_ROUTING_V1_KEY]
+        clauses.append(
+            or_(
+                Lead.status == "failed",
+                routing["status"].as_string() == "unresolved",
+                and_(Lead.error.isnot(None), Lead.error != ""),
+            )
+        )
+    return and_(*clauses) if clauses else None
+
+
 async def list_diagnostic_submissions(
     db: AsyncSession,
     *,
@@ -64,6 +92,9 @@ async def list_diagnostic_submissions(
     limit: int = _DEFAULT_LIMIT,
     after_created_at: datetime | None = None,
     after_id: str | None = None,
+    source: str | None = None,
+    flight_id: str | None = None,
+    failed_only: bool = False,
 ) -> tuple[list[LiveIntakeApplicantRow], tuple[datetime, str] | None]:
     if (after_created_at is None) ^ (after_id is None):
         raise ValueError("after_created_at and after_id must be provided together")
@@ -73,6 +104,9 @@ async def list_diagnostic_submissions(
         .where(_acquisition_stamped_filter(tenant_id=tenant_id))
         .order_by(Lead.created_at.desc(), Lead.id.desc())
     )
+    extra = _list_filters(source=source, flight_id=flight_id, failed_only=failed_only)
+    if extra is not None:
+        stmt = stmt.where(extra)
     if after_created_at is not None and after_id is not None:
         stmt = stmt.where(
             or_(

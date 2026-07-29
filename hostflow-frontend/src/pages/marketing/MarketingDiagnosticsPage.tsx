@@ -1,9 +1,10 @@
 /**
- * Marketing Source Diagnostics (PR1) — recent Acquisition submissions + case detail.
+ * Marketing Source Diagnostics — recent Acquisition submissions + case detail.
+ * PR2: list filters (source / flight / failed-only).
  * SoT: Lead + Acquisition Activity. Sibling of Sources, not a tab.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
   getDiagnosticsCase,
@@ -169,15 +170,25 @@ export default function MarketingDiagnosticsPage() {
   const { t } = useI18n()
   const { leadId } = useParams<{ leadId?: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [items, setItems] = useState<DiagnosticsSubmission[]>([])
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const sourceFilter = (searchParams.get('source') || '').trim()
+  const flightFilter = (searchParams.get('flight_id') || '').trim()
+  const failedOnly = searchParams.get('failed_only') === '1'
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await listDiagnosticsSubmissions({ limit: 50 })
+      const res = await listDiagnosticsSubmissions({
+        limit: 50,
+        ...(sourceFilter ? { source: sourceFilter } : {}),
+        ...(flightFilter ? { flight_id: flightFilter } : {}),
+        ...(failedOnly ? { failed_only: true } : {}),
+      })
       setItems(res.items || [])
     } catch (err: unknown) {
       setError(
@@ -193,11 +204,34 @@ export default function MarketingDiagnosticsPage() {
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [failedOnly, flightFilter, sourceFilter, t])
 
   useEffect(() => {
     if (!leadId) void load()
   }, [leadId, load])
+
+  const patchFilters = (patch: {
+    source?: string
+    flight_id?: string
+    failed_only?: boolean
+  }) => {
+    const next = new URLSearchParams(searchParams)
+    if (patch.source !== undefined) {
+      const v = patch.source.trim()
+      if (v) next.set('source', v)
+      else next.delete('source')
+    }
+    if (patch.flight_id !== undefined) {
+      const v = patch.flight_id.trim()
+      if (v) next.set('flight_id', v)
+      else next.delete('flight_id')
+    }
+    if (patch.failed_only !== undefined) {
+      if (patch.failed_only) next.set('failed_only', '1')
+      else next.delete('failed_only')
+    }
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <PageShell data-testid="marketing-diagnostics-page">
@@ -215,16 +249,69 @@ export default function MarketingDiagnosticsPage() {
         {leadId ? (
           <CaseDetail
             leadId={leadId}
-            onBack={() => navigate(CRM_APP_PATHS.marketingDiagnostics)}
+            onBack={() =>
+              navigate({
+                pathname: CRM_APP_PATHS.marketingDiagnostics,
+                search: searchParams.toString() ? `?${searchParams.toString()}` : '',
+              })
+            }
           />
         ) : (
           <>
+            <form
+              key={`${sourceFilter}|${flightFilter}|${failedOnly ? '1' : '0'}`}
+              className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
+              data-testid="marketing-diagnostics-filters"
+              onSubmit={(e) => {
+                e.preventDefault()
+                const fd = new FormData(e.currentTarget)
+                patchFilters({
+                  source: String(fd.get('source') || ''),
+                  flight_id: String(fd.get('flight_id') || ''),
+                  failed_only: fd.get('failed_only') === 'on',
+                })
+              }}
+            >
+              <label className="min-w-[8rem] flex-1 text-xs text-slate-600">
+                Source
+                <input
+                  name="source"
+                  defaultValue={sourceFilter}
+                  placeholder="meta"
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900"
+                  data-testid="marketing-diagnostics-filter-source"
+                />
+              </label>
+              <label className="min-w-[12rem] flex-[2] text-xs text-slate-600">
+                Flight ID
+                <input
+                  name="flight_id"
+                  defaultValue={flightFilter}
+                  placeholder="uuid"
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm text-slate-900"
+                  data-testid="marketing-diagnostics-filter-flight"
+                />
+              </label>
+              <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  name="failed_only"
+                  defaultChecked={failedOnly}
+                  data-testid="marketing-diagnostics-filter-failed"
+                />
+                Только failed / unresolved
+              </label>
+              <button type="submit" className="btn-secondary btn-sm" data-testid="marketing-diagnostics-filter-apply">
+                Применить
+              </button>
+            </form>
+
             {error ? <ErrorRecoveryBanner error={error} onRetry={() => void load()} /> : null}
             {loading ? (
               <p className="text-sm text-slate-500">…</p>
             ) : items.length === 0 ? (
               <p className="text-sm text-slate-500" data-testid="marketing-diagnostics-empty">
-                Пока нет Acquisition-заявок со штампом маршрута.
+                Нет заявок по текущему фильтру.
               </p>
             ) : (
               <ul className="space-y-2" data-testid="marketing-diagnostics-list">
@@ -234,9 +321,10 @@ export default function MarketingDiagnosticsPage() {
                       type="button"
                       className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:border-slate-300"
                       onClick={() =>
-                        navigate(
-                          `${CRM_APP_PATHS.marketingDiagnostics}/${encodeURIComponent(row.lead_id)}`,
-                        )
+                        navigate({
+                          pathname: `${CRM_APP_PATHS.marketingDiagnostics}/${encodeURIComponent(row.lead_id)}`,
+                          search: searchParams.toString() ? `?${searchParams.toString()}` : '',
+                        })
                       }
                       data-testid={`marketing-diagnostics-row-${row.lead_id}`}
                     >

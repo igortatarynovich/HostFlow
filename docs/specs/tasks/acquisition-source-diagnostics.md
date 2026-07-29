@@ -1,6 +1,6 @@
 # Source Diagnostics — Marketing ops console (Product Epic)
 
-**Status:** **ACTIVE** — PR1 implementing  
+**Status:** **ACTIVE** — PR2 implementing (PR1 ✅ #196)  
 **Date:** 2026-07-29  
 **Product Track:** after FlightAdBinding Ad-ID bind UI (**DONE** #187)  
 **Parents:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) § After cutover · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)
@@ -30,7 +30,7 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ---
 
-## PR1 — Recent submissions + case detail (this slice)
+## PR1 — Recent submissions + case detail ✅ #196
 
 ### IN
 
@@ -50,16 +50,38 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ### Acceptance (PR1)
 
-- [ ] Operator opens Marketing → Diagnostics without developer  
-- [ ] Sees recent Acquisition-stamped submissions (name / status / source / time)  
-- [ ] Opens one case: routing summary + activity timeline + payload blocks  
-- [ ] No new SoT tables; tests cover list/detail compose  
+- [x] Operator opens Marketing → Diagnostics without developer  
+- [x] Sees recent Acquisition-stamped submissions (name / status / source / time)  
+- [x] Opens one case: routing summary + activity timeline + payload blocks  
+- [x] No new SoT tables; tests cover list/detail compose  
+
+---
+
+## PR2 — List filters (this slice)
+
+### IN
+
+1. Query filters on list: `source`, `flight_id`, `failed_only`  
+2. `failed_only` = Lead `status=failed` **or** routing stamp `status=unresolved` **or** non-empty `Lead.error`  
+3. Marketing Diagnostics filter bar (URL query sync)  
+
+### OUT
+
+- Duplicate decision surface  
+- Mapping-version / Mapping Health  
+- Replay / export  
+
+### Acceptance (PR2)
+
+- [ ] Filter by source narrows list  
+- [ ] Filter by flight_id (UUID) narrows to stamped Flight  
+- [ ] failed_only excludes clean routed/processed rows  
+- [ ] Invalid flight_id → 422  
 
 ---
 
 ## Later epic backlog
 
-- recent submissions filters (source / flight / failed-only)  
 - duplicate decision surface  
 - mapping version used  
 - warnings / Mapping Health drift  
@@ -71,3 +93,4 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 ## History
 
 - 2026-07-29: Epic brief opened; Product Track → Source Diagnostics PR1 (Ad-ID bind UI closed #187).
+- 2026-07-29: PR1 merged (#196); Product Track → PR2 filters.
