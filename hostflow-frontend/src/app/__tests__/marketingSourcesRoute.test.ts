@@ -31,6 +31,7 @@ describe('marketing sources route registration (C-3)', () => {
       'marketing',
       'marketing-sources',
       'marketing-forms',
+      'marketing-diagnostics',
       'acquisition-activity',
     ])
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).not.toContain('marketing-sources')
