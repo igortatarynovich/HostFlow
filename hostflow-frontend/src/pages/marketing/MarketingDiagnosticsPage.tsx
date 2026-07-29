@@ -186,14 +186,14 @@ function CaseDetail({
             </div>
           </dl>
           {row.duplicate.reasons.length ? (
-            <ul className="mt-2 list-disc pl-5 text-xs text-amber-950" data-testid="marketing-diagnostics-duplicate-reasons">
+            <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-amber-950" data-testid="marketing-diagnostics-duplicate-reasons">
               {row.duplicate.reasons.map((r) => (
                 <li key={r}>{r}</li>
               ))}
             </ul>
           ) : null}
           {row.duplicate.hr_blockers.length ? (
-            <ul className="mt-2 list-disc pl-5 text-xs text-rose-900" data-testid="marketing-diagnostics-duplicate-hr">
+            <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-rose-900" data-testid="marketing-diagnostics-duplicate-hr">
               {row.duplicate.hr_blockers.map((r) => (
                 <li key={r}>{r}</li>
               ))}
