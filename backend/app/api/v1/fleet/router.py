@@ -223,6 +223,8 @@ async def delete_operating_line(
     await db.commit()
 
 
+from backend.app.api.v1.fleet.overview import router as fleet_overview_router  # noqa: E402
 from backend.app.api.v1.fleet.park import router as fleet_park_router  # noqa: E402
 
+router.include_router(fleet_overview_router)
 router.include_router(fleet_park_router)

@@ -10,6 +10,31 @@ export async function getFleetStatus(): Promise<FleetStatusResponse> {
   return data
 }
 
+export type FleetOverviewResponse = {
+  vehicles_total: number
+  vehicles_by_status?: Record<string, number>
+  trailers_total: number
+  trailers_by_status?: Record<string, number>
+  drivers_total: number
+  drivers_by_status?: Record<string, number>
+  drivers_with_workforce_total?: number
+  operating_lines_total: number
+  operating_lines_by_status?: Record<string, number>
+  work_models_total: number
+  line_roster_vehicles_total?: number
+  line_roster_drivers_total?: number
+  line_roster_drivers_effective_today_total?: number
+  assignments_total: number
+  assignments_by_status?: Record<string, number>
+  assignments_overlapping_today_utc_total?: number
+  assignments_overlapping_month_utc_total?: number
+}
+
+export async function getFleetOverview(): Promise<FleetOverviewResponse> {
+  const { data } = await api.get<FleetOverviewResponse>('/fleet/overview')
+  return data
+}
+
 export type FleetOperatingLine = {
   id: string
   name: string

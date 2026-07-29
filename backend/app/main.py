@@ -1026,6 +1026,12 @@ app.include_router(candidate_delete_router.router)
 # The issue is that with html=True, StaticFiles returns index.html for 404s
 # We need to raise a proper exception for /uploads so FastAPI tries the explicit route
 public_dir = Path("/app/public")
+# Compose mounts hostflow-frontend/dist here; if the mount is briefly empty/missing
+# during a rebuild, creating the directory keeps StaticFiles from crashing the app.
+try:
+    public_dir.mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass
 if public_dir.is_dir():
     class ExcludeUploadsStaticFiles(StaticFiles):
         def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:

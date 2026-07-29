@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import api, { withTenant } from '../api/client'
 import {
+  getContactAttemptStats,
   getDocumentStats,
+  type ContactAttemptStatsResponse,
   type DocumentStatsResponse,
 } from '../api/analytics'
 import { useI18n } from '../i18n'
@@ -9,6 +11,7 @@ import { useAuth } from '../store/useAuth'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
+import { formatAnalyticsLoadError } from '../modules/dashboard/analyticsLoad'
 import { QUICK_RANGE_OPTIONS } from '../modules/dashboard/constants'
 import type { CandidateSlicesResponse, QuickRange } from '../modules/dashboard/types'
 import { calcRange } from '../modules/dashboard/utils'
@@ -22,6 +25,7 @@ export default function RecruitmentEfficiencyDashboard() {
   const { me } = useAuth()
   const currentTenantId = useCurrentTenantId()
   const scopeTid = currentTenantId ?? (me as { tenant_id?: string })?.tenant_id
+  const loadSeq = useRef(0)
 
   const initialRange = calcRange('all')
   const [dateFrom, setDateFrom] = useState(initialRange.from)
@@ -39,6 +43,7 @@ export default function RecruitmentEfficiencyDashboard() {
   const [errText, setErrText] = useState<string | null>(null)
   const [slices, setSlices] = useState<CandidateSlicesResponse | null>(null)
   const [documentStats, setDocumentStats] = useState<DocumentStatsResponse | null>(null)
+  const [contactStats, setContactStats] = useState<ContactAttemptStatsResponse | null>(null)
   const [periodTotal, setPeriodTotal] = useState(0)
 
   const numberFormatter = useMemo(
@@ -79,6 +84,7 @@ export default function RecruitmentEfficiencyDashboard() {
         return
       }
 
+      const seq = ++loadSeq.current
       setLoading(true)
       setErrText(null)
       try {
@@ -96,31 +102,25 @@ export default function RecruitmentEfficiencyDashboard() {
           companyId: companyId || undefined,
           vacancyId: vacancyId || undefined,
         }
-        const [sliceResp, docResp] = await Promise.all([
+        const [sliceResp, docResp, contactResp] = await Promise.all([
           candidatesClient.get<CandidateSlicesResponse>('/analytics/candidate-slices', { params }),
           getDocumentStats(filterParams).catch(() => null),
+          getContactAttemptStats(filterParams).catch(() => null),
         ])
+
+        if (seq !== loadSeq.current) return
 
         const slicesData = sliceResp.data
         setSlices(slicesData)
         setPeriodTotal(slicesData?.total ?? 0)
         setDocumentStats(docResp)
+        setContactStats(contactResp)
       } catch (e: unknown) {
-        const err = e as { response?: { data?: { detail?: unknown } }; message?: string }
-        const detail = err?.response?.data?.detail
-        const fallback = t('app.dashboard.errors.load_failed')
-        const asText =
-          typeof detail === 'string'
-            ? detail
-            : detail
-              ? JSON.stringify(detail)
-              : err?.message || fallback
-        setErrText(asText)
-        setSlices(null)
-        setPeriodTotal(0)
-        setDocumentStats(null)
+        if (seq !== loadSeq.current) return
+        // Keep previous slices/docs so charts stay mounted and layout does not collapse to -1.
+        setErrText(formatAnalyticsLoadError(e, t))
       } finally {
-        setLoading(false)
+        if (seq === loadSeq.current) setLoading(false)
       }
     },
     [dateFrom, dateTo, companyFilter, vacancyFilter, scopeTid, t],
@@ -266,6 +266,7 @@ export default function RecruitmentEfficiencyDashboard() {
           formatNumber={formatNumber}
           slices={slices}
           documentStats={documentStats}
+          contactStats={contactStats}
           loading={loading}
         />
       </div>
