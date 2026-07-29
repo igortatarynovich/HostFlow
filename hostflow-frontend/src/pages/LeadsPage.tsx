@@ -62,6 +62,7 @@ import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader, Toolbar, DataTableFrame } from '../components/layout'
 import {
+  leadEmailPolicyBlocked,
   leadRodoSatisfied,
   leadRoutingTableAction,
   manualProcessBlockHint,
@@ -2391,9 +2392,18 @@ export default function LeadsPage() {
                             <td className="text-slate-700">{lead.source || '—'}</td>
                             <td className="max-w-[160px] truncate text-slate-800">{lead.vacancy_title || lead.vacancy_id || '—'}</td>
                             <td>
-                              <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                                {statusLabels[lead.status] ?? lead.status}
-                              </span>
+                              <div className="flex flex-col items-start gap-1">
+                                <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                                  {statusLabels[lead.status] ?? lead.status}
+                                </span>
+                                {leadEmailPolicyBlocked(lead) ? (
+                                  <span className="inline-flex items-center rounded-lg bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-800">
+                                    {t('app.leads.filters.email_policy_blocked', {
+                                      defaultValue: 'Email policy blocked',
+                                    })}
+                                  </span>
+                                ) : null}
+                              </div>
                             </td>
                             <td>
                               {lead.next_action_status === 'overdue' ? (

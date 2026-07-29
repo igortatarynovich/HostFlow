@@ -72,7 +72,6 @@ import {
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useAuth } from '../../store/auth'
-import LeadOperationalEmailBindingsCard from '../../components/leads/messages/LeadOperationalEmailBindingsCard'
 import {
   listLeadImportJobs,
   pollLeadImportJob,
@@ -477,10 +476,6 @@ export default function MetaLeadsAdminPage() {
   const effectiveProcessingMode = (settingsDraft.leads_processing_mode_v1 ??
     settings?.leads_processing_mode_v1 ??
     'assisted') as LeadsProcessingModeV1
-  const effectiveLeadRodoSendMode =
-    settingsDraft.lead_rodo_send_mode ?? settings?.lead_rodo_send_mode ?? 'manual'
-  const rodoMessageTemplateId =
-    settingsDraft.lead_rodo_message_template_id ?? settings?.lead_rodo_message_template_id ?? null
   const autoCreateAppliesToMode = effectiveProcessingMode === 'automatic'
 
   const mappingRulesLimit = settings?.plan_field_mapping_rules_limit ?? null
@@ -2421,81 +2416,42 @@ export default function MetaLeadsAdminPage() {
               <span className="block font-medium text-slate-800">
                 {t('admin.meta_leads.settings.lead_rodo_send_mode_label')}
               </span>
-              <select
-                className="input mt-1 w-full max-w-md"
-                value={effectiveLeadRodoSendMode}
-                onChange={(event) =>
-                  handleSettingsChange(
-                    'lead_rodo_send_mode',
-                    event.target.value as MetaLeadSettingsPatch['lead_rodo_send_mode'],
-                  )
-                }
-              >
-                <option value="manual">{t('admin.meta_leads.settings.lead_rodo_send_mode_manual')}</option>
-                <option value="auto_on_lead_created">
-                  {t('admin.meta_leads.settings.lead_rodo_send_mode_auto_created')}
-                </option>
-                <option value="auto_on_first_action">
-                  {t('admin.meta_leads.settings.lead_rodo_send_mode_auto_first_action')}
-                </option>
-              </select>
-              <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.lead_rodo_send_mode_hint')}</p>
-              <label className="mt-2 block text-xs text-slate-600">
-                {t('admin.meta_leads.settings.lead_rodo_message_template_label', { defaultValue: 'RODO email template' })}
-                <select
-                  className="input mt-1 w-full max-w-md"
-                  value={rodoMessageTemplateId ?? ''}
-                  onChange={(event) =>
-                    handleSettingsChange('lead_rodo_message_template_id', event.target.value ? event.target.value : null)
-                  }
+              <div className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+                <p className="font-medium">
+                  {t('admin.meta_leads.settings.lifecycle_email_moved_title', {
+                    defaultValue: 'Lead lifecycle email moved to Communications Control Center',
+                  })}
+                </p>
+                <p className="mt-1 text-xs text-sky-900/80">
+                  {t('admin.meta_leads.settings.lifecycle_email_moved_body', {
+                    defaultValue:
+                      'RODO send mode, ops emails, and templates are configured per company under Settings → Communications. Meta Integrations is deep-link only for this policy.',
+                  })}
+                </p>
+                <Link
+                  className="mt-2 inline-flex text-sm font-medium text-brand-700 underline-offset-2 hover:underline"
+                  to={CRM_APP_PATHS.settingsCommunicationsLeadLifecycleEmail}
                 >
-                  <option value="">{t('admin.meta_leads.settings.template_none', { defaultValue: 'Default built-in text' })}</option>
-                  {messageTemplates.filter((tpl) => tpl.is_active).map((tpl) => (
-                    <option key={tpl.id} value={tpl.id}>
-                      {tpl.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  {t('admin.meta_leads.settings.open_lifecycle_email_control_center', {
+                    defaultValue: 'Open Lead lifecycle email Control Center',
+                  })}
+                </Link>
+              </div>
             </label>
             <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/80 p-4 md:col-span-2">
-              <LeadOperationalEmailBindingsCard
-                includeRodoTemplate={false}
-                templates={messageTemplates}
-                value={{
-                  lead_communication_enabled:
-                    settingsDraft.lead_communication_enabled ?? settings?.lead_communication_enabled ?? false,
-                  send_application_received:
-                    settingsDraft.send_application_received ?? settings?.send_application_received ?? false,
-                  send_rejection_notice:
-                    settingsDraft.send_rejection_notice ?? settings?.send_rejection_notice ?? false,
-                  send_moving_forward_notice:
-                    settingsDraft.send_moving_forward_notice ?? settings?.send_moving_forward_notice ?? false,
-                  application_received_template_id:
-                    settingsDraft.application_received_template_id ?? settings?.application_received_template_id ?? null,
-                  rejection_notice_template_id:
-                    settingsDraft.rejection_notice_template_id ?? settings?.rejection_notice_template_id ?? null,
-                  moving_forward_template_id:
-                    settingsDraft.moving_forward_template_id ?? settings?.moving_forward_template_id ?? null,
-                }}
-                onChange={(next) => {
-                  handleSettingsChange('lead_communication_enabled', Boolean(next.lead_communication_enabled))
-                  handleSettingsChange('send_application_received', Boolean(next.send_application_received))
-                  handleSettingsChange('send_rejection_notice', Boolean(next.send_rejection_notice))
-                  handleSettingsChange('send_moving_forward_notice', Boolean(next.send_moving_forward_notice))
-                  handleSettingsChange('application_received_template_id', next.application_received_template_id ?? null)
-                  handleSettingsChange('rejection_notice_template_id', next.rejection_notice_template_id ?? null)
-                  handleSettingsChange('moving_forward_template_id', next.moving_forward_template_id ?? null)
-                }}
-              />
-              <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+              <div className="mt-0 rounded-lg border border-slate-200 bg-white p-3">
                 <p className="text-sm font-semibold text-slate-900">
                   {t('admin.meta_leads.settings.template_hub_title', { defaultValue: 'Lead Email Template Hub' })}
                 </p>
                 <p className="mt-1 text-xs text-slate-600">
-                  {t('admin.meta_leads.settings.template_hub_hint', { defaultValue: 'Create shared templates once and reuse them in RODO and operational lead emails.' })}
+                  {t('admin.meta_leads.settings.template_hub_hint', {
+                    defaultValue: 'Create shared templates once and bind them in the Lead lifecycle email Control Center.',
+                  })}
                 </p>
-                <Link className="mt-2 inline-flex text-xs font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsMessageTemplates}>
+                <Link
+                  className="mt-2 inline-flex text-xs font-medium text-brand-700 hover:underline"
+                  to={CRM_APP_PATHS.settingsMessageTemplates}
+                >
                   {t('admin.meta_leads.settings.open_template_hub', { defaultValue: 'Open full template hub' })}
                 </Link>
                 <div className="mt-2 grid gap-2 md:grid-cols-3">

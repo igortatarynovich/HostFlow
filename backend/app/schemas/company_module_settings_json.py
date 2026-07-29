@@ -12,9 +12,33 @@ __all__ = (
     "FleetModuleSettingsV1",
     "ServicesModuleSettingsV1",
     "FinanceModuleSettingsV1",
+    "LeadLifecycleEmailPolicyV1",
+    "LeadLifecycleOpsPurposeV1",
     "MODULE_SETTINGS_MODEL_V1",
     "normalize_company_module_settings_json",
 )
+
+
+class LeadLifecycleOpsPurposeV1(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    template_ref: Optional[str] = Field(default=None, max_length=128)
+
+
+class LeadLifecycleEmailPolicyV1(BaseModel):
+    """ADR-033 — company-scoped lead lifecycle email policy."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    version: Literal[1] = 1
+    rodo_send_mode: Literal["manual", "auto_on_lead_created", "auto_on_first_action"] = "manual"
+    rodo_template_ref: Optional[str] = Field(default=None, max_length=128)
+    ops_enabled: bool = False
+    application_received: LeadLifecycleOpsPurposeV1 = Field(default_factory=LeadLifecycleOpsPurposeV1)
+    rejection: LeadLifecycleOpsPurposeV1 = Field(default_factory=LeadLifecycleOpsPurposeV1)
+    moving_forward: LeadLifecycleOpsPurposeV1 = Field(default_factory=LeadLifecycleOpsPurposeV1)
+    channels: list[str] = Field(default_factory=lambda: ["email"])
 
 
 class HrModuleSettingsV1(BaseModel):
@@ -48,6 +72,10 @@ class RecruitmentModuleSettingsV1(BaseModel):
     candidate_document_template_ids: Optional[list[str]] = Field(default=None)
     handoff_rules: Optional[dict[str, Any]] = Field(default=None)
     recruiter_assignment_rules: Optional[dict[str, Any]] = Field(default=None)
+    lead_lifecycle_email_v1: Optional[LeadLifecycleEmailPolicyV1] = Field(
+        default=None,
+        description="ADR-033 company SoT for lead RODO + ops lifecycle emails.",
+    )
 
 
 class FleetModuleSettingsV1(BaseModel):
