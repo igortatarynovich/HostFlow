@@ -3,8 +3,9 @@
 PR1: tenant-scoped recent Acquisition-stamped leads + case detail.
 PR2: list filters — source / flight_id / failed_only.
 PR3: duplicate decision surface (decision_result_v1 + duplicate_match_v1).
-PR4: mapping context — current Mapping Health for linked IntakeSourceProfile
-     (historical ingest mapping version is not stamped yet).
+PR4: mapping context — Mapping Health for linked IntakeSourceProfile.
+PR5: mapping_applied_v1 stamp + drift vs current rules fingerprint.
+PR6: read-only export bundle (same compose; no parallel SoT).
 No parallel submissions store.
 """
 
@@ -446,10 +447,88 @@ async def get_diagnostic_case(
     )
 
 
+def build_diagnostic_export_bundle(detail: DiagnosticsCaseDetail) -> dict[str, Any]:
+    """Serializable ops export of one diagnostics case (no new SoT)."""
+    app = detail.applicant
+    dup = detail.duplicate
+    mapping = detail.mapping
+    return {
+        "schema": "hostflow.marketing_diagnostics_export",
+        "schema_version": 1,
+        "lead_id": app.lead_id,
+        "created_at": app.created_at.isoformat() if app.created_at else None,
+        "full_name": app.full_name,
+        "phone": app.phone,
+        "email": app.email,
+        "lead_status": app.lead_status,
+        "disposition": app.disposition,
+        "status_label": app.status_label,
+        "candidate_id": app.candidate_id,
+        "vacancy_id": app.vacancy_id,
+        "route_intent": app.route_intent,
+        "routing_status": app.routing_status,
+        "source": app.source,
+        "submission_id": detail.submission_id,
+        "campaign_id": detail.campaign_id,
+        "flight_id": detail.flight_id,
+        "lead_error": detail.lead_error,
+        "routing": detail.routing,
+        "decision": detail.decision,
+        "duplicate": {
+            "active": dup.active,
+            "lead_status": dup.lead_status,
+            "disposition": dup.disposition,
+            "match_level": dup.match_level,
+            "suggested_candidate_id": dup.suggested_candidate_id,
+            "attach_candidate_id": dup.attach_candidate_id,
+            "reasons": list(dup.reasons),
+            "hr_blockers": list(dup.hr_blockers),
+            "error_code": dup.error_code,
+            "needs_duplicate_review": dup.needs_duplicate_review,
+            "stamped_at": dup.stamped_at,
+        },
+        "mapping": {
+            "active": mapping.active,
+            "source_id": mapping.source_id,
+            "display_name": mapping.display_name,
+            "provider": mapping.provider,
+            "mapping_health": mapping.mapping_health,
+            "mapping_rules_count": mapping.mapping_rules_count,
+            "rules_source": mapping.rules_source,
+            "meta_form_id": mapping.meta_form_id,
+            "mapping_path": mapping.mapping_path,
+            "profile_updated_at": mapping.profile_updated_at,
+            "historical_version_available": mapping.historical_version_available,
+            "profile_missing": mapping.profile_missing,
+            "applied_rules_count": mapping.applied_rules_count,
+            "applied_rules_fingerprint": mapping.applied_rules_fingerprint,
+            "applied_rules_source": mapping.applied_rules_source,
+            "applied_stamped_at": mapping.applied_stamped_at,
+            "current_rules_fingerprint": mapping.current_rules_fingerprint,
+            "drift": mapping.drift,
+        },
+        "payload": detail.payload,
+        "normalized": detail.normalized,
+        "timeline": [
+            {
+                "id": str(ev.id),
+                "event_type": str(ev.event_type),
+                "occurred_at": ev.occurred_at.isoformat() if ev.occurred_at else None,
+                "campaign_id": str(ev.campaign_id),
+                "flight_id": str(ev.flight_id) if ev.flight_id else None,
+                "submission_id": str(ev.submission_id) if ev.submission_id else None,
+                "payload": dict(ev.payload or {}),
+            }
+            for ev in detail.timeline
+        ],
+    }
+
+
 __all__ = [
     "DiagnosticsCaseDetail",
     "DiagnosticsDuplicateDecision",
     "DiagnosticsMappingContext",
+    "build_diagnostic_export_bundle",
     "compose_duplicate_decision",
     "compose_mapping_context",
     "get_diagnostic_case",

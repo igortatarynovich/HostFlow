@@ -1,4 +1,4 @@
-# Threat Model — Acquisition Source Diagnostics (PR1–PR5)
+# Threat Model — Acquisition Source Diagnostics (PR1–PR6)
 
 ## Assets
 
@@ -6,11 +6,13 @@
   - `GET /api/v1/platform/marketing/diagnostics/submissions`  
     (optional filters: `source`, `flight_id`, `failed_only`)  
   - `GET /api/v1/platform/marketing/diagnostics/submissions/{lead_id}`  
+  - `GET /api/v1/platform/marketing/diagnostics/submissions/{lead_id}/export`  
+    (JSON attachment of case compose; audited CLASS3 export)  
   (`backend/app/api/v1/platform/marketing_diagnostics.py` ·  
   `backend/app/acquisition/ops/source_diagnostics.py`)
 - Ingest stamp `mapping_applied_v1` on Lead.normalized (Meta/webhook reprocess paths)  
   (`backend/app/acquisition/mapping_applied_stamp.py`)
-- Marketing Diagnostics UI — list / case / filters / duplicate / Mapping Health / drift
+- Marketing Diagnostics UI — list / case / filters / duplicate / Mapping Health / drift / Export JSON
 
 ## Trust boundaries
 
@@ -18,7 +20,8 @@
 - Roles: administrator / supervisor / recruiter / client_manager / viewer / hr_officer / superadmin (`_READ`)
 - Frontend Marketing page → browser session only; no write / replay / reprocess from this surface
 - Mapping stamp is written only on authorized ingest / reprocess paths (not on Diagnostics GET)
-- Case detail may expose intake **payload** and **normalized** blocks to authorized operators (ops need)
+- Case detail and export may expose intake **payload** and **normalized** blocks to authorized operators (ops need)
+- Export emits `export.requested` / `export.generated` / `export.denied` with `contains_class3=true`
 
 ## Угрозы
 
@@ -33,14 +36,16 @@
 | ASD-7 | Filter bypass / enumeration | `flight_id` / `source` filters used to probe other tenants |
 | ASD-8 | Cross-tenant Source mapping read | Resolving `intake_source_profile_id` without tenant scope |
 | ASD-9 | Tampered mapping stamp | Client-supplied fingerprint without ingest authority |
+| ASD-10 | Unaudited CLASS3 download | Export without export security events / actor attribution |
 
-## Митигации (PR1–PR5)
+## Митигации (PR1–PR6)
 
-- List / case tenant-scoped; filters AND-narrowing; UUID validation on `flight_id`
+- List / case / export tenant-scoped; filters AND-narrowing; UUID validation on `flight_id` / `lead_id`
 - Mapping compose uses tenant-scoped Sources façade; missing profile → `profile_missing`
 - `mapping_applied_v1` written only in server ingest/reprocess after validated rules
 - Drift is a read-time comparison of fingerprints — no auto remapping
-- Endpoints remain `_READ` only on Diagnostics; no replay/export in this slice
+- Endpoints remain `_READ` only on Diagnostics; export is read-only attachment (no remapping)
+- Export path emits `emit_export_security_event_v1` (`contains_class3`, single-lead scope, no bulk)
 - No new public / unauthenticated surfaces
 
 ## Тесты

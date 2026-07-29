@@ -1,21 +1,33 @@
-"""Marketing Source Diagnostics API — list + case (+ filters + duplicate surface)."""
+"""Marketing Source Diagnostics API — list + case (+ filters / duplicate / mapping / export)."""
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.ops.source_diagnostics import (
+    build_diagnostic_export_bundle,
     get_diagnostic_case,
     list_diagnostic_submissions,
 )
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.security.event_taxonomy import (
+    EVENT_EXPORT_DENIED,
+    EVENT_EXPORT_GENERATED,
+    EVENT_EXPORT_REQUESTED,
+)
+from backend.app.security.export_events import (
+    clip_export_filter_scope,
+    emit_export_security_event_v1,
+)
 
 router = APIRouter(
     prefix="/platform/marketing/diagnostics",
@@ -283,4 +295,87 @@ async def get_submission_case(
             )
             for ev in detail.timeline
         ],
+    )
+
+
+@router.get(
+    "/submissions/{lead_id}/export",
+    dependencies=_READ,
+)
+async def export_submission_case(
+    lead_id: str,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> Response:
+    """Download a single diagnostics case as JSON (ops support; audited export)."""
+    db, tenant_id = db_tenant
+    lid = _require_uuid(lead_id, field="lead_id")
+    access_kind = str(db.info.get("security_access_kind") or "").strip() or None
+    tenant_s = str(tenant_id)
+    _src = "http:marketing.diagnostics:export_case"
+    _et = "marketing_diagnostics_case_json"
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_REQUESTED,
+        result="success",
+        severity="info",
+        source=_src,
+        tenant_id=tenant_s,
+        access_kind=access_kind,
+        entity_type="lead",
+        entity_id=lid,
+        export_type=_et,
+        actor_id=str(ctx.sub),
+        filter_scope=clip_export_filter_scope(f"diagnostics_case:{lid}"),
+        export_scope="single_lead_diagnostics",
+        contains_class3=True,
+        bulk_operation=False,
+    )
+    detail = await get_diagnostic_case(db, tenant_id=tenant_s, lead_id=lid)
+    if detail is None:
+        emit_export_security_event_v1(
+            event_type=EVENT_EXPORT_DENIED,
+            result="denied",
+            severity="low",
+            source=_src,
+            tenant_id=tenant_s,
+            access_kind=access_kind,
+            entity_type="lead",
+            entity_id=lid,
+            export_type=_et,
+            actor_id=str(ctx.sub),
+            filter_scope=clip_export_filter_scope(f"diagnostics_case:{lid}"),
+            export_scope="single_lead_diagnostics",
+            contains_class3=True,
+            bulk_operation=False,
+            reason="submission_not_found",
+            response_mode="attachment_json",
+        )
+        raise HTTPException(status_code=404, detail="submission_not_found")
+
+    bundle = build_diagnostic_export_bundle(detail)
+    body = json.dumps(bundle, ensure_ascii=False, default=str, indent=2).encode("utf-8")
+    emit_export_security_event_v1(
+        event_type=EVENT_EXPORT_GENERATED,
+        result="success",
+        severity="info",
+        source=_src,
+        tenant_id=tenant_s,
+        access_kind=access_kind,
+        entity_type="lead",
+        entity_id=lid,
+        export_type=_et,
+        actor_id=str(ctx.sub),
+        row_count=1,
+        byte_size=len(body),
+        filter_scope=clip_export_filter_scope(f"diagnostics_case:{lid}"),
+        export_scope="single_lead_diagnostics",
+        contains_class3=True,
+        bulk_operation=False,
+        response_mode="attachment_json",
+    )
+    filename = f"diagnostics-case-{lid}.json"
+    return Response(
+        content=body,
+        media_type="application/json; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
