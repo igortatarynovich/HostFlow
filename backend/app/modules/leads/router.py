@@ -563,23 +563,44 @@ async def send_lead_rodo_compliance_endpoint(
 ) -> Dict[str, Any]:
     """Send art.14 RODO notice to the lead contact email; audit lives on ``lead.normalized['rodo']``."""
     from backend.app.modules.leads import crud
-    from backend.app.services.lead_rodo import send_lead_rodo_email
-    from backend.app.services.lead_rodo_settings import get_lead_rodo_settings
+    from backend.app.services.lead_lifecycle_email_policy import (
+        PURPOSE_GDPR_NOTICE,
+        resolve_lifecycle_email_policy_for_lead,
+    )
+    from backend.app.services.lead_rodo import (
+        LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
+        mark_lead_rodo_pending_policy,
+        send_lead_rodo_email,
+    )
+    from backend.app.services.lead_rodo_settings import DEFAULT_LEAD_RODO_CHANNELS
 
     db, tenant_uuid = db_tenant
     tenant_id_str = str(tenant_uuid)
     lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
-    rodo_cfg = await get_lead_rodo_settings(db, tenant_id_str)
+    decision = await resolve_lifecycle_email_policy_for_lead(
+        db, tenant_id=tenant_id_str, lead=lead, purpose=PURPOSE_GDPR_NOTICE
+    )
+    if decision.block_code in ("policy_template_missing", "policy_misconfigured") or not decision.template_ref:
+        mark_lead_rodo_pending_policy(
+            lead,
+            reason=decision.reason or "RODO template_ref is missing; configure Lead lifecycle email policy.",
+            reason_code=str(decision.block_code or LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING),
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=decision.reason or "RODO email policy blocked send (template missing).",
+        )
     ok, msg = await send_lead_rodo_email(
         db,
         lead=lead,
         tenant_id=tenant_id_str,
         actor_id=str(current_user.sub or "").strip() or None,
-        channels=rodo_cfg.channels,
-        template_id=rodo_cfg.template_id,
-        message_template_id=rodo_cfg.message_template_id,
+        channels=DEFAULT_LEAD_RODO_CHANNELS,
+        template_id=None,
+        message_template_id=decision.template_ref,
     )
     if not ok:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)

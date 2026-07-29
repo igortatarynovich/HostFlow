@@ -138,6 +138,7 @@ export const CRM_APP_PATHS = {
   settingsCommunicationsSla: "/app/settings/communications/sla",
   settingsCommunicationsTemplates: "/app/settings/communications/templates",
   settingsCommunicationsAutomation: "/app/settings/communications/automation",
+  settingsCommunicationsLeadLifecycleEmail: "/app/settings/communications/lead-lifecycle-email",
   settingsTeam: "/app/settings/team",
   settingsRiskIntel: "/app/settings/risk-intel",
   settingsHiringPipelineGates: "/app/settings/hiring-pipeline-gates",

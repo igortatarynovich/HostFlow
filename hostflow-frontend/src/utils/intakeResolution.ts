@@ -54,6 +54,7 @@ export type LeadRodoNoticeStatus =
   | 'sent'
   | 'failed'
   | 'pending_channel'
+  | 'pending_policy'
   | 'manual_required'
   | 'source_provided'
 
@@ -72,7 +73,37 @@ export function leadRodoNoticeStatus(
   if (st === 'sent' || st === 'satisfied' || Boolean(String(block.sent_at || '').trim())) return 'sent'
   if (st === 'failed') return 'failed'
   if (st === 'pending_channel') return 'pending_channel'
+  if (st === 'pending_policy') return 'pending_policy'
   return 'manual_required'
+}
+
+/** True when RODO or ops email is blocked by lifecycle email policy (ADR-033). */
+export function leadEmailPolicyBlocked(lead: Pick<Lead, 'normalized' | 'candidate_id'> | null): boolean {
+  if (!lead || lead.candidate_id) return false
+  const n = normalizedRecord(lead as Lead)
+  const rodo = n.rodo
+  if (rodo && typeof rodo === 'object' && !Array.isArray(rodo)) {
+    const block = rodo as Record<string, unknown>
+    const st = String(block.status || '')
+      .trim()
+      .toLowerCase()
+    const code = String(block.failure_reason_code || '')
+      .trim()
+      .toLowerCase()
+    if (st === 'pending_policy' || block.policy_blocked === true || code.startsWith('policy_')) return true
+  }
+  const raw = n.lead_communication_v1
+  const comm = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {}
+  for (const ev of ['application_received', 'lead_rejected', 'moving_forward'] as const) {
+    const rec = comm[ev]
+    if (!rec || typeof rec !== 'object' || Array.isArray(rec)) continue
+    const r = rec as Record<string, unknown>
+    const code = String(r.failure_reason_code || '')
+      .trim()
+      .toLowerCase()
+    if (r.policy_blocked === true || code.startsWith('policy_')) return true
+  }
+  return false
 }
 
 export type LeadCommunicationRailLine = {
@@ -102,7 +133,18 @@ export function leadCommunicationRailLine(
       parts.push(t(`app.leads.intake_workspace.decision_rail.comm_${ev}_sent`, { defaultValue: `${ev}: sent` }))
     } else if (st === 'failed') {
       hasFailed = true
-      parts.push(t(`app.leads.intake_workspace.decision_rail.comm_${ev}_failed`, { defaultValue: `${ev}: failed` }))
+      const code = String((rec as { failure_reason_code?: string }).failure_reason_code || '')
+        .trim()
+        .toLowerCase()
+      if (code.startsWith('policy_') || (rec as { policy_blocked?: boolean }).policy_blocked) {
+        parts.push(
+          t('app.leads.intake_workspace.decision_rail.comm_policy_blocked', {
+            defaultValue: `${ev}: email policy blocked`,
+          }),
+        )
+      } else {
+        parts.push(t(`app.leads.intake_workspace.decision_rail.comm_${ev}_failed`, { defaultValue: `${ev}: failed` }))
+      }
     } else if (st === 'pending_channel') {
       parts.push(
         t(`app.leads.intake_workspace.decision_rail.comm_${ev}_pending`, { defaultValue: `${ev}: no email` }),

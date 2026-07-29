@@ -34,8 +34,11 @@ def lead_normalized_rodo_block(normalized: Optional[Dict[str, Any]]) -> Dict[str
 
 # Negative delivery outcomes block gates even when ``sent_at`` remains for audit.
 LEAD_RODO_NEGATIVE_STATUSES: frozenset[str] = frozenset(
-    {"failed", "deferred", "undelivered", "pending_channel"}
+    {"failed", "deferred", "undelivered", "pending_channel", "pending_policy"}
 )
+
+LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING = "policy_template_missing"
+LEAD_RODO_REASON_POLICY_MISCONFIGURED = "policy_misconfigured"
 
 # Human-facing reason codes written by delivery feedback (mailbox DSN / callbacks).
 LEAD_RODO_REASON_INVALID_RECIPIENT = "invalid_recipient"
@@ -75,6 +78,8 @@ def lead_rodo_notice_status_from_normalized(normalized: Optional[Dict[str, Any]]
         return "failed"
     if st == "pending_channel":
         return "pending_channel"
+    if st == "pending_policy":
+        return "pending_policy"
     if st in ("sent", "satisfied") or block.get("sent_at"):
         return "sent"
     return "manual_required"
@@ -87,6 +92,32 @@ def mark_lead_rodo_pending_channel(lead: Lead, *, reason: str = "no_channel") ->
     block["pending_reason"] = str(reason or "no_channel").strip()[:256]
     norm["rodo"] = block
     lead.normalized = norm
+
+
+def mark_lead_rodo_pending_policy(
+    lead: Lead,
+    *,
+    reason: str,
+    reason_code: str = LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
+) -> None:
+    """Fail-closed RODO when lifecycle email policy cannot resolve a template (ADR-033)."""
+    from sqlalchemy.orm.attributes import flag_modified
+
+    code = str(reason_code or LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING).strip().lower()[:64]
+    if code not in (
+        LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
+        LEAD_RODO_REASON_POLICY_MISCONFIGURED,
+    ):
+        code = LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING
+    norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    block: Dict[str, Any] = {**lead_normalized_rodo_block(norm)}
+    block["status"] = "pending_policy"
+    block["failure_reason"] = str(reason or "").strip()[:2000]
+    block["failure_reason_code"] = code
+    block["policy_blocked"] = True
+    norm["rodo"] = block
+    lead.normalized = norm
+    flag_modified(lead, "normalized")
 
 
 def mark_lead_rodo_failed(lead: Lead, *, reason: str) -> None:
@@ -367,6 +398,30 @@ async def send_lead_rodo_email(
         first_name=first_name,
         rodo_link=link,
     )
+    # ADR-033: when a template_ref is required, never silently fall back to HostFlow marketing copy.
+    if message_template_id and not resolved.template_id:
+        mark_lead_rodo_pending_policy(
+            lead,
+            reason="RODO template_ref is set but could not be resolved.",
+            reason_code=LEAD_RODO_REASON_POLICY_MISCONFIGURED,
+        )
+        await db.flush()
+        await log_audit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type=AuditEventType.rodo_sent_failed,
+            entity_type=AuditEntityType.lead,
+            entity_id=str(lead.id),
+            actor_id=actor_id,
+            payload={
+                "reason": "policy_misconfigured",
+                "notice_status": "pending_policy",
+                "template_ref": message_template_id,
+                "auto_trigger": auto_trigger,
+                "ingest_source": ingest_source,
+            },
+        )
+        return False, "RODO template could not be resolved"
     subject = resolved.subject
     body = resolved.body
 
@@ -926,12 +981,15 @@ __all__ = [
     "LEAD_RODO_REASON_DEFERRED",
     "LEAD_RODO_REASON_DELIVERY_FAILED",
     "LEAD_RODO_REASON_INVALID_RECIPIENT",
+    "LEAD_RODO_REASON_POLICY_MISCONFIGURED",
+    "LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING",
     "LEAD_RODO_REASON_SPF_REJECTED",
     "lead_normalized_rodo_block",
     "lead_rodo_notice_status_from_normalized",
     "lead_rodo_required_block_code",
     "mark_lead_rodo_failed",
     "mark_lead_rodo_pending_channel",
+    "mark_lead_rodo_pending_policy",
     "mark_lead_rodo_undelivered",
     "lead_rodo_satisfied",
     "lead_rodo_satisfied_from_normalized",

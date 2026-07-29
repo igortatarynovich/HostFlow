@@ -113,7 +113,9 @@ UI: карточка client lead (`ClientLeadDetailView`) — блок «Рез�
 
 ### Lead-stage RODO (art. 14)
 
-Политика арендатора в **`Tenant.settings.lead_rodo_v1`**, поля в **`GET/PATCH /api/v1/settings/leads/settings`**:
+**Канон политики (ADR-033):** operational SoT — Company Module Settings `lead_lifecycle_email_v1` (+ sparse Vacancy override); см. [lead-lifecycle-email-policy.md](../workflows/lead-lifecycle-email-policy.md). Tenant JSON ниже — preset / cutover.
+
+Политика арендатора (preset) в **`Tenant.settings.lead_rodo_v1`**, поля в **`GET/PATCH /api/v1/settings/leads/settings`**:
 
 - `lead_rodo_send_mode` — `manual` | `auto_on_lead_created` | `auto_on_first_action`
 - `lead_rodo_channels` — по умолчанию `["email"]`

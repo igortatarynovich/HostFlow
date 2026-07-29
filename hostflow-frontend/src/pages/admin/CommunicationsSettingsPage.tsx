@@ -55,6 +55,19 @@ export default function CommunicationsSettingsPage() {
         defaultValue: 'Open automation',
       }),
     },
+    {
+      key: 'lead-lifecycle-email',
+      title: t('admin.settings.cards.lead_lifecycle_email.label', {
+        defaultValue: 'Lead lifecycle email',
+      }),
+      description: t('admin.settings.cards.lead_lifecycle_email.description', {
+        defaultValue: 'RODO and ops emails per company, with vacancy overrides and effective preview.',
+      }),
+      to: P.settingsCommunicationsLeadLifecycleEmail,
+      cta: t('admin.communications_settings.open_lead_lifecycle_email', {
+        defaultValue: 'Open Control Center',
+      }),
+    },
   ]
 
   return (

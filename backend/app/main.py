@@ -170,6 +170,7 @@ try:
     from backend.app.api.v1.settings import intake_forms as settings_intake_forms_router
     from backend.app.api.v1.settings import email as settings_email_router
     from backend.app.api.v1.settings import communications as settings_communications_router
+    from backend.app.api.v1.settings import lead_lifecycle_email as settings_lead_lifecycle_email_router
     from backend.app.api.v1.admin import users as admin_users_router
     from backend.app.api.v1.admin import companies_access as admin_companies_access_router
     from backend.app.api.v1.admin import audit as admin_audit_router
@@ -264,6 +265,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1.settings import intake_forms as settings_intake_forms_router  # type: ignore[no-redef]
     from .api.v1.settings import email as settings_email_router  # type: ignore[no-redef]
     from .api.v1.settings import communications as settings_communications_router  # type: ignore[no-redef]
+    from .api.v1.settings import lead_lifecycle_email as settings_lead_lifecycle_email_router  # type: ignore[no-redef]
     from .api.v1.admin import users as admin_users_router  # type: ignore[no-redef]
     from .api.v1.admin import companies_access as admin_companies_access_router  # type: ignore[no-redef]
     from .api.v1.admin import audit as admin_audit_router  # type: ignore[no-redef]
@@ -924,6 +926,7 @@ app.include_router(settings_lead_forms_router.router, prefix="/api/v1/settings")
 app.include_router(settings_intake_forms_router.router, prefix="/api/v1/settings")
 app.include_router(settings_email_router.router, prefix="/api/v1/settings")
 app.include_router(settings_communications_router.router, prefix="/api/v1/settings")
+app.include_router(settings_lead_lifecycle_email_router.router, prefix="/api/v1/settings")
 app.include_router(public_intake_router.router, prefix="/api/v1", tags=["public-intake"])
 app.include_router(public_notifications_router.router, prefix="/api/v1", tags=["public-notifications"])
 app.include_router(public_client_portal_router.router, prefix="/api/v1", tags=["public-client-portal"])

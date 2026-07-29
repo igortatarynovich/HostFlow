@@ -354,7 +354,9 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 
 **Delivery (ADR-031):** compliance **gates and audit** stay on Lead (`normalized.rodo`). When outbound email is required, **send** must use Communication Pipeline with opaque result (`sales_inquiry` \| `application`) via module binders — not business-module SMTP. Permanent path: [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) · [task](../tasks/compliance-outbound-pipeline-early-result.md). Legacy `lead_rodo` SMTP is migration debt (C0.1b allowlist) until removed.
 
-**Tenant policy** (`Tenant.settings.lead_rodo_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings`):
+**Company policy (ADR-033, target SoT):** operational RODO/ops email policy resolves via [lead-lifecycle-email-policy.md](lead-lifecycle-email-policy.md) — Vacancy override → Company `lead_lifecycle_email_v1` → tenant preset. Control Center: **Настройки → Коммуникации → Lead lifecycle email**. Tenant JSON below remains preset/cutover adapter.
+
+**Tenant policy** (`Tenant.settings.lead_rodo_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings` — **preset / migration**):
 
 | `lead_rodo_send_mode` | Behaviour |
 |-------------------------|-----------|

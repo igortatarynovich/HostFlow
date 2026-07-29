@@ -18,6 +18,7 @@ import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import {
   INTAKE_REJECT_REASON_CODES,
   leadCommunicationRailLine,
+  leadEmailPolicyBlocked,
   leadRodoNoticeStatus,
   leadRodoSatisfied,
   leadRoutingTableAction,
@@ -83,6 +84,7 @@ export default function LeadIntakeDecisionRail({
 
   const rodoOk = useMemo(() => leadRodoSatisfied(lead), [lead])
   const rodoStatus = useMemo(() => leadRodoNoticeStatus(lead), [lead])
+  const policyBlocked = useMemo(() => leadEmailPolicyBlocked(lead), [lead])
   const commLine = useMemo(() => leadCommunicationRailLine(lead, t), [lead, t])
 
   const src = String(lead.source || '').toLowerCase()
@@ -350,10 +352,23 @@ export default function LeadIntakeDecisionRail({
               <p className="text-xs leading-relaxed text-amber-900/95">
                 {rodoStatus === 'pending_channel'
                   ? t('app.leads.intake_workspace.decision_rail.rodo_pending_channel')
-                  : rodoStatus === 'failed'
-                    ? t('app.leads.intake_workspace.decision_rail.rodo_failed')
-                    : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
+                  : rodoStatus === 'pending_policy'
+                    ? t('app.leads.intake_workspace.decision_rail.rodo_pending_policy', {
+                        defaultValue:
+                          'Email policy blocked RODO send (missing or invalid template). Configure Lead lifecycle email in Communications settings.',
+                      })
+                    : rodoStatus === 'failed'
+                      ? t('app.leads.intake_workspace.decision_rail.rodo_failed')
+                      : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
               </p>
+              {policyBlocked ? (
+                <p className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-900 ring-1 ring-rose-900/10">
+                  <IconAlertTriangle size={14} aria-hidden />
+                  {t('app.leads.intake_workspace.decision_rail.email_policy_blocked_badge', {
+                    defaultValue: 'Email policy blocked',
+                  })}
+                </p>
+              ) : null}
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <button
                   type="button"
