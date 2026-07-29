@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
+from backend.app.security.event_taxonomy import EVENT_SEARCH_RETRIEVAL_COMPLETED
+from backend.app.security.retrieval_events import emit_retrieval_security_event_v1
 from backend.app.services.global_search_v1 import run_global_search_v1
 
 router = APIRouter(prefix="/search", tags=["search"], redirect_slashes=False)
@@ -75,5 +77,25 @@ async def global_search(
         limit_per_type=limit,
         max_results=max_results,
         assignee_scope=assignee_scope,
+    )
+    items = payload.get("items") if isinstance(payload, dict) else None
+    returned = len(items) if isinstance(items, list) else 0
+    scope = str(scope_tenant_id or tenant_uuid)
+    ak = db.info.get("security_access_kind")
+    emit_retrieval_security_event_v1(
+        event_type=EVENT_SEARCH_RETRIEVAL_COMPLETED,
+        result="success",
+        severity="info",
+        source="http:GET /api/v1/search",
+        tenant_id=scope,
+        access_kind=str(ak).strip() if ak else "tenant_bound",
+        entity_type="tenant",
+        entity_id=scope,
+        actor_id=str(getattr(current_user, "sub", "") or "") or None,
+        retrieval_type="global_search_v1",
+        retrieval_scope="tenant",
+        returned_count=returned,
+        contains_class3=False,
+        response_mode="json_list",
     )
     return GlobalSearchResponse.model_validate(payload)

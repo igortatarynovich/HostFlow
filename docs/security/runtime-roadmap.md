@@ -112,11 +112,20 @@ Observability для HF трактуется как **часть security archit
 **Spike (реализовано, узкий scope — не «platform»):**
 
 - **Canonical schema v1** (enforced): `emit_security_event_v1` в `backend/app/security/canonical_emit.py` — поля `schema_version`, `event_id`, `event_type`, `category`, `severity`, `timestamp`, `tenant_id`, `actor_id`, `correlation_id`, `access_kind`, `action`, `entity_type`, `entity_id`, `result`, `source`, `extra`. Transport остаётся только structured log (`hostflow.security.events`); продьюсеры не знают SIEM/queue.
-- **Taxonomy:** `backend/app/security/event_taxonomy.py` — allowlist префиксов (`auth.`, `rls.`, `superadmin.`, …), константы spike-событий, `validate_event_type`.
+- **Taxonomy:** `backend/app/security/event_taxonomy.py` — allowlist префиксов (`auth.`, `rls.`, `access.`, `superadmin.`, …), константы spike-событий, `validate_event_type`.
 - **Redaction:** `backend/app/security/event_redaction.py` — запрещённые/чувствительные ключи, allowlist для `extra`, лимит размера JSON.
 - **Legacy shim:** `emit_security_event` в `backend/app/security/events.py` — маппинг старых `action` на v1 + fallback старый payload для неизвестных строк.
 - **Call sites (canonical):** `get_db_with_tenant` (superadmin elevated + auth impersonation), `get_db_with_meta_leads_effective_tenant` (operational remap), `TenantEnforcingAsyncSession` (RLS deny).
 - **Governance (process):** [`security-events-governance.md`](./security-events-governance.md) — как добавлять `event_type`/prefixes, bump `schema_version`, запрет raw events, rollout без drift; **CI gate** на raw `emit_security_event(` (см. раздел *CI enforcement* там и job `no-raw-emit-security-event` в `security-gates.yml`).
+
+**Golden path list + export (код, 2026-07-29):**
+
+- **List:** prefix `access.*` + helper `access_events.emit_access_security_event_v1` (`query_class`, `route`, `row_count`, `duration_ms`, …). Call site: `GET /api/v1/candidates` (`access.list.completed`).
+- **Export:** уже Phase 4 v1 (`export.*` на documents/analytics/org_units export).
+- **Search (Phase 6 first call site):** `GET /api/v1/search` → `search.retrieval.completed` via `retrieval_events` (без сырого `q` в `extra`).
+- **Runbook (correlation):** HTTP middleware / deps выставляют `correlation_id` в contextvar; ищите цепочку в structured log `hostflow.security.events` по `correlation_id` + `tenant_id` + `actor_id` (list → export / search на том же запросе-сессии).
+
+**Статус фазы:** spike + golden path list/export **started** (list wired; export уже был; dashboards / Prometheus — backlog).
 
 **Направления работ**
 

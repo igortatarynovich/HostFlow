@@ -12,6 +12,7 @@ ALLOWED_EVENT_PREFIXES: tuple[str, ...] = (
     "auth.",
     "rls.",
     "db.",
+    "access.",
     "export.",
     "upload.",
     "document.",
@@ -29,6 +30,10 @@ EVENT_SUPERADMIN_ELEVATED_DB_BIND = "superadmin.elevated.db_bind"
 EVENT_AUTH_IMPERSONATION_DB_BIND = "auth.impersonation.db_bind"
 EVENT_RLS_TENANT_CONTEXT_EXECUTE_DENIED = "rls.tenant_context.execute_denied"
 EVENT_SUPERADMIN_META_LEADS_OPERATIONAL_REMAP = "superadmin.meta_leads.operational_remap"
+
+# Mass list / CRM read surfaces (Phase 2 golden path — list half; export uses export.*)
+EVENT_ACCESS_LIST_COMPLETED = "access.list.completed"
+EVENT_ACCESS_LIST_DENIED = "access.list.denied"
 
 # Document / signed URL access (Phase 3 — v1 telemetry)
 EVENT_DOCUMENT_METADATA_READ = "document.metadata.read"

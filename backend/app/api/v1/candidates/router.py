@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import List, Tuple
 from uuid import UUID
 from datetime import date, datetime, timezone
@@ -94,6 +95,11 @@ class CreateCandidateIn(BaseModel):
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
+from backend.app.security.access_events import (
+    clip_access_filter_scope,
+    emit_access_security_event_v1,
+)
+from backend.app.security.event_taxonomy import EVENT_ACCESS_LIST_COMPLETED
 
 from backend.app.api.v1.candidates import service as cand_service
 from backend.app.api.v1.tenants import service as tenant_service
@@ -756,11 +762,35 @@ async def list_candidates(
     List endpoint с фильтрами и пагинацией. Возвращает: {"total": int, "items": [ ... ]}
     """
     db, tenant_id = db_tenant
+    _list_started = time.perf_counter()
     # Scope list by: query param > X-Tenant-Id header > JWT. So when UI sends X-Tenant-Id (e.g. Citronex), we use it even if user's JWT tenant is agency.
     scope_tenant = (
         str(scope_tenant_id) if scope_tenant_id
         else (str(tenant_id).strip() or str(current_user.tenant_id).strip() or str(tenant_id))
     )
+
+    def _emit_candidates_list_access(*, row_count: int, filter_scope: str | None = None) -> None:
+        ak = db.info.get("security_access_kind")
+        emit_access_security_event_v1(
+            event_type=EVENT_ACCESS_LIST_COMPLETED,
+            result="success",
+            severity="info",
+            source="http:GET /api/v1/candidates",
+            tenant_id=str(scope_tenant),
+            access_kind=str(ak).strip() if ak else "tenant_bound",
+            entity_type="tenant",
+            entity_id=str(scope_tenant),
+            query_class="list",
+            route="GET /api/v1/candidates",
+            actor_id=str(getattr(current_user, "sub", "") or "") or None,
+            row_count=int(row_count),
+            limit=int(limit),
+            offset=int(offset),
+            duration_ms=int((time.perf_counter() - _list_started) * 1000),
+            filter_scope=clip_access_filter_scope(filter_scope),
+            response_mode="json_list",
+        )
+
     await ensure_candidate_scope_access(
         db,
         header_tenant=tenant_id,
@@ -828,6 +858,7 @@ async def list_candidates(
     response.headers["X-User-Role"] = user_role_lower
 
     if not await apply_agency_acl_filters(db, scope_tenant, current_user, client_tenant, filters):
+        _emit_candidates_list_access(row_count=0, filter_scope="acl=empty")
         return {"total": 0, "items": []}
 
     # Funnel position: ``Candidate.stage`` only (``?stage`` / ``?stages``).
@@ -1458,6 +1489,13 @@ async def list_candidates(
     out: dict[str, Any] = {"total": total, "items": processed_items}
     if include_insights and insights_payload is not None:
         out["insights"] = insights_payload
+    _emit_candidates_list_access(
+        row_count=int(total) if total is not None else len(processed_items),
+        filter_scope=(
+            f"client={1 if client_tenant else 0};compact={1 if compact else 0}"
+            f";q={'1' if (q or '').strip() else '0'}"
+        ),
+    )
     return out
 
 
