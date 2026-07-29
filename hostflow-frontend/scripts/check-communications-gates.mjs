@@ -38,6 +38,7 @@ const EXPECTED_COMM_GATES = {
   'settings-communications-sla': { type: 'feature', features: ['communicationsAdmin'] },
   'settings-communications-templates': { type: 'feature', features: ['communicationsAdmin'] },
   'settings-communications-automation': { type: 'feature', features: ['communicationsAdmin'] },
+  'settings-communications-lead-lifecycle-email': { type: 'feature', features: ['communicationsAdmin'] },
 }
 
 function parseComponentGate(node) {
