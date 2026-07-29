@@ -56,6 +56,11 @@ async def update_client_account_service(
         if data.primary_company_id:
             await _assert_company_tenant(db, tenant_id=tenant_id, company_id=data.primary_company_id)
         account.primary_company_id = data.primary_company_id or None
+    if "commercial_defaults" in data.model_fields_set:
+        if data.commercial_defaults is None:
+            account.commercial_defaults = None
+        else:
+            account.commercial_defaults = data.commercial_defaults.model_dump(mode="json", exclude_none=True)
     await db.flush()
     return account
 

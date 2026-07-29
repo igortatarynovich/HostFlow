@@ -56,6 +56,10 @@ class ClientAccount(Base):
     creation_origin_v1: Mapped[Optional[dict[str, Any]]] = mapped_column(
         JSONType, nullable=True, default=None
     )
+    # ADR-032: Sales commercial defaults only (never rewrite existing orders).
+    commercial_defaults: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONType, nullable=True, default=None
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

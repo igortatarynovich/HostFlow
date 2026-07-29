@@ -140,7 +140,7 @@ Recruitment Result → evaluate Order Line billing rules → Billable Item → I
 - Recruitment: Vacancy create/patch bind to Order Line with server enforcement.
 - Acquisition: unchanged CampaignTarget(vacancy); Flight remains executor.
 
-Follow-on (explicitly out of V1 merge if needed): Client Account defaults UI, amendment versioning, Flight KPI gap-to-line. Auto billable accrual + Invoice composer from pending billables — **shipped**.
+Follow-on (explicitly out of V1 merge if needed): amendment versioning, Flight KPI gap-to-line. Auto billable accrual + Invoice composer + Client Account commercial defaults — **shipped**.
 
 ---
 
@@ -174,3 +174,4 @@ Supersedes the interim product lock «1 Client Order = 1 Vacancy → invoice on 
 - 2026-07-28: Accepted — Order + Order Line + Billable Item; Client defaults vs snapshot; Flight executor; naming split from Services `service_orders`.
 - 2026-07-28: Runtime — auto Billable Item V1 for `candidate_hired` / `candidate_started_work` / `headcount_completed` via Sales `contracts` facade (Recruitment + HR hooks).
 - 2026-07-29: Runtime — Invoice composer from pending `sales_billable_items` (`POST …/sales-orders/{id}/invoices`).
+- 2026-07-29: Runtime — Client Account `commercial_defaults` JSON + create-time prefill / save-defaults UI (never rewrites open orders).
