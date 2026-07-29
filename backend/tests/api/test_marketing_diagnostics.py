@@ -139,6 +139,76 @@ async def test_diagnostics_list_and_case(client: AsyncClient, auth_headers: Dict
     assert body["routing"]["unresolved_reason"] == "missing_campaign_flight"
     assert body["payload"]["ad_id"] == "120249011467340547"
     assert isinstance(body["timeline"], list)
+    assert body["duplicate"]["active"] is False
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_case_duplicate_surface(
+    client: AsyncClient, auth_headers: Dict[str, str]
+):
+    lead_id = str(uuid4())
+    candidate_id = str(uuid4())
+    async with async_session_maker() as db:
+        await _ensure_tenant(db, DEFAULT_TENANT_ID)
+        db.add(
+            Lead(
+                id=lead_id,
+                tenant_id=DEFAULT_TENANT_ID,
+                source="meta",
+                status="duplicate_review",
+                lead_type="candidate",
+                lead_target_type="candidate",
+                external_id=f"meta-lead-{uuid4().hex[:10]}",
+                normalized={
+                    "full_name": "Dup Person",
+                    ACQUISITION_ROUTING_V1_KEY: {
+                        "status": "routed",
+                        "campaign_id": str(uuid4()),
+                        "campaign_run_id": str(uuid4()),
+                        "route_intent": "candidate_application",
+                    },
+                    "decision_result_v1": {
+                        "disposition": "blocked_duplicate",
+                        "attach_candidate_id": candidate_id,
+                        "duplicate_match": {
+                            "level": "probable",
+                            "candidate_id": candidate_id,
+                            "reasons": ["phone_match"],
+                            "hr_blockers": ["workforce_active"],
+                            "needs_duplicate_review": True,
+                        },
+                        "blocking_reasons": ["duplicate_review"],
+                        "warnings": [],
+                    },
+                    "duplicate_match_v1": {
+                        "level": "probable",
+                        "suggested_candidate_id": candidate_id,
+                        "reasons": ["phone_match"],
+                        "hr_blockers": ["workforce_active"],
+                        "error_code": "DUPLICATE_REVIEW_PROBABLE",
+                        "stamped_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                },
+                payload={},
+            )
+        )
+        await db.commit()
+
+    case_resp = await client.get(
+        f"/api/v1/platform/marketing/diagnostics/submissions/{lead_id}",
+        headers=_headers(auth_headers),
+    )
+    assert case_resp.status_code == 200, case_resp.text
+    dup = case_resp.json()["duplicate"]
+    assert dup["active"] is True
+    assert dup["lead_status"] == "duplicate_review"
+    assert dup["disposition"] == "blocked_duplicate"
+    assert dup["match_level"] == "probable"
+    assert dup["suggested_candidate_id"] == candidate_id
+    assert dup["error_code"] == "DUPLICATE_REVIEW_PROBABLE"
+    assert dup["needs_duplicate_review"] is True
+    assert "phone_match" in dup["reasons"]
+    assert "workforce_active" in dup["hr_blockers"]
 
 
 @pytest.mark.asyncio

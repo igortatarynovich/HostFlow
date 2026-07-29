@@ -27,6 +27,20 @@ export type DiagnosticsTimelineEvent = {
   payload: Record<string, unknown>
 }
 
+export type DiagnosticsDuplicate = {
+  active: boolean
+  lead_status: string
+  disposition?: string | null
+  match_level?: string | null
+  suggested_candidate_id?: string | null
+  attach_candidate_id?: string | null
+  reasons: string[]
+  hr_blockers: string[]
+  error_code?: string | null
+  needs_duplicate_review: boolean
+  stamped_at?: string | null
+}
+
 export type DiagnosticsCase = DiagnosticsSubmission & {
   submission_id?: string | null
   campaign_id?: string | null
@@ -36,6 +50,7 @@ export type DiagnosticsCase = DiagnosticsSubmission & {
   payload: Record<string, unknown>
   normalized: Record<string, unknown>
   lead_error?: string | null
+  duplicate: DiagnosticsDuplicate
   timeline: DiagnosticsTimelineEvent[]
 }
 

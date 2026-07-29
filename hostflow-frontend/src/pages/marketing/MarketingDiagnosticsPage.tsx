@@ -116,6 +116,92 @@ function CaseDetail({
         </div>
       ) : null}
 
+      {row.duplicate?.active ? (
+        <section
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3"
+          data-testid="marketing-diagnostics-duplicate"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-amber-950">Duplicate decision</h3>
+              <p className="mt-1 text-xs text-amber-900/80">
+                Read-only compose from decision_result_v1 + duplicate_match_v1. Resolve in CRM Lead.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                className="btn-secondary btn-sm"
+                to={`${CRM_APP_PATHS.leads}/${encodeURIComponent(row.lead_id)}`}
+                data-testid="marketing-diagnostics-duplicate-open-lead"
+              >
+                Resolve in Lead
+              </Link>
+              {row.duplicate.suggested_candidate_id || row.duplicate.attach_candidate_id ? (
+                <Link
+                  className="btn-secondary btn-sm"
+                  to={`${CRM_APP_PATHS.candidates}/${encodeURIComponent(
+                    row.duplicate.suggested_candidate_id || row.duplicate.attach_candidate_id || '',
+                  )}`}
+                  data-testid="marketing-diagnostics-duplicate-open-candidate"
+                >
+                  Open candidate
+                </Link>
+              ) : null}
+            </div>
+          </div>
+          <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+            <div>
+              <dt className="text-amber-900/70">Lead status</dt>
+              <dd className="font-medium text-amber-950" data-testid="marketing-diagnostics-duplicate-status">
+                {row.duplicate.lead_status || '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-amber-900/70">Disposition</dt>
+              <dd className="font-medium text-amber-950">{row.duplicate.disposition || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-amber-900/70">Match level</dt>
+              <dd className="font-medium text-amber-950" data-testid="marketing-diagnostics-duplicate-level">
+                {row.duplicate.match_level || '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-amber-900/70">Error code</dt>
+              <dd className="font-mono text-amber-950">{row.duplicate.error_code || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-amber-900/70">Needs review</dt>
+              <dd className="font-medium text-amber-950">
+                {row.duplicate.needs_duplicate_review ? 'yes' : 'no'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-amber-900/70">Suggested candidate</dt>
+              <dd className="truncate font-mono text-amber-950">
+                {row.duplicate.suggested_candidate_id ||
+                  row.duplicate.attach_candidate_id ||
+                  '—'}
+              </dd>
+            </div>
+          </dl>
+          {row.duplicate.reasons.length ? (
+            <ul className="mt-2 list-disc pl-5 text-xs text-amber-950" data-testid="marketing-diagnostics-duplicate-reasons">
+              {row.duplicate.reasons.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          ) : null}
+          {row.duplicate.hr_blockers.length ? (
+            <ul className="mt-2 list-disc pl-5 text-xs text-rose-900" data-testid="marketing-diagnostics-duplicate-hr">
+              {row.duplicate.hr_blockers.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
           <div className="text-xs text-slate-500">Routing</div>

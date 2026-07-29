@@ -1,6 +1,6 @@
 # Source Diagnostics — Marketing ops console (Product Epic)
 
-**Status:** **ACTIVE** — PR2 implementing (PR1 ✅ #196)  
+**Status:** **ACTIVE** — PR3 implementing (PR1 ✅ #196 · PR2 ✅ #199)  
 **Date:** 2026-07-29  
 **Product Track:** after FlightAdBinding Ad-ID bind UI (**DONE** #187)  
 **Parents:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) § After cutover · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)
@@ -32,22 +32,6 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ## PR1 — Recent submissions + case detail ✅ #196
 
-### IN
-
-1. Path `marketingDiagnostics` → `/app/marketing/diagnostics` (+ `/:leadId` detail)  
-2. Marketing rail sibling (after Sources / Forms; before or beside Activity)  
-3. **List:** recent Leads with Acquisition routing stamp (`acquisition_routing_v1`), person row (reuse Live Intake applicant projection)  
-4. **Detail:** Lead routing / decision / raw+normalized + Acquisition Activity timeline by `submission_id` when uniquely resolvable  
-5. Deep-link to CRM Lead Detail for full repair actions  
-
-### OUT (later PRs)
-
-- Replay / export product actions  
-- Mapping-version stamp per submission  
-- Mapping Health drift alerts on the case  
-- Meta-only unmapped console as Diagnostics home  
-- Comms DeliveryDiagnostics patterns  
-
 ### Acceptance (PR1)
 
 - [x] Operator opens Marketing → Diagnostics without developer  
@@ -57,32 +41,41 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ---
 
-## PR2 — List filters (this slice)
-
-### IN
-
-1. Query filters on list: `source`, `flight_id`, `failed_only`  
-2. `failed_only` = Lead `status=failed` **or** routing stamp `status=unresolved` **or** non-empty `Lead.error`  
-3. Marketing Diagnostics filter bar (URL query sync)  
-
-### OUT
-
-- Duplicate decision surface  
-- Mapping-version / Mapping Health  
-- Replay / export  
+## PR2 — List filters ✅ #199
 
 ### Acceptance (PR2)
 
-- [ ] Filter by source narrows list  
-- [ ] Filter by flight_id (UUID) narrows to stamped Flight  
-- [ ] failed_only excludes clean routed/processed rows  
-- [ ] Invalid flight_id → 422  
+- [x] Filter by source narrows list  
+- [x] Filter by flight_id (UUID) narrows to stamped Flight  
+- [x] failed_only excludes clean routed/processed rows  
+- [x] Invalid flight_id → 422  
+
+---
+
+## PR3 — Duplicate decision surface (this slice)
+
+### IN
+
+1. Case API field `duplicate` composed from `decision_result_v1` + `duplicate_match_v1` + Lead status  
+2. Marketing case panel: match level, reasons, HR blockers, suggested candidate, deep-links to Lead / Candidate  
+3. **Read-only** — no attach/create/ignore writes from Diagnostics (resolve in CRM Lead)
+
+### OUT
+
+- Mapping-version stamp / Mapping Health drift  
+- Replay / export  
+- Writing duplicate decisions from Diagnostics  
+
+### Acceptance (PR3)
+
+- [ ] Case with duplicate stamp returns `duplicate.active=true` + match fields  
+- [ ] Clean routed case returns `duplicate.active=false`  
+- [ ] UI shows panel only when active; Resolve in Lead CTA present  
 
 ---
 
 ## Later epic backlog
 
-- duplicate decision surface  
 - mapping version used  
 - warnings / Mapping Health drift  
 - replay submission  
@@ -94,3 +87,4 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 - 2026-07-29: Epic brief opened; Product Track → Source Diagnostics PR1 (Ad-ID bind UI closed #187).
 - 2026-07-29: PR1 merged (#196); Product Track → PR2 filters.
+- 2026-07-29: PR2 merged (#199); Product Track → PR3 duplicate decision surface.
