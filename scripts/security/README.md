@@ -8,8 +8,9 @@
 | `npm_audit_gate.mjs` | Падает при high/critical в чувствительных frontend-пакетах (axios, react-router, …). |
 | `check_no_raw_emit_security_event.py` | Запрещает raw `emit_security_event(` вне allowlist; см. `docs/security/security-events-governance.md`. |
 | `emit_security_event_allowlist.txt` | Burn-down allowlist для legacy shim / временной миграции. |
-| `check_tenant_bind_auth.py` | Fail-closed: `get_db_with_tenant` требует `get_current_user`; `get_db_with_tenant_public` только по allowlist. |
+| `check_tenant_bind_auth.py` | Fail-closed: `get_db_with_tenant` / meta-leads dep требуют `get_current_user`; `get_db_with_tenant_public` только по allowlist; route с `X-Tenant-Id` без auth — только по header allowlist. |
 | `tenant_bind_public_allowlist.txt` | Разрешённые call sites для anonymous signed-webhook tenant bind. |
+| `tenant_header_public_allowlist.txt` | Route handlers, которым разрешён `X-Tenant-Id` без CRM JWT (public/webhooks). |
 
 Локально:
 

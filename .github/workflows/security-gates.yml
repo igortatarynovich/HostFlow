@@ -38,7 +38,7 @@ jobs:
         run: python3 scripts/security/check_no_raw_emit_security_event.py
 
   tenant-bind-auth:
-    name: Fail-closed get_db_with_tenant + public allowlist
+    name: Fail-closed tenant bind + X-Tenant-Id auth scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
