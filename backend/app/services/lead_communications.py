@@ -213,6 +213,7 @@ def _stamp_event(
     channel: Optional[str] = None,
     recipient: Optional[str] = None,
     reason: Optional[str] = None,
+    reason_code: Optional[str] = None,
 ) -> None:
     norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
     block: Dict[str, Any] = dict(lead_communication_block(norm))
@@ -226,6 +227,10 @@ def _stamp_event(
         rec["recipient"] = recipient
     if reason:
         rec["failure_reason"] = str(reason)[:2000]
+    if reason_code:
+        rec["failure_reason_code"] = str(reason_code).strip().lower()[:64]
+        if reason_code.startswith("policy_"):
+            rec["policy_blocked"] = True
     block[event_type] = rec
     norm[COMMUNICATION_NORMALIZED_KEY] = block
     lead.normalized = norm
@@ -284,15 +289,50 @@ async def maybe_send_lead_communication(
     if ev not in _COMMUNICATION_EVENTS:
         return False
 
+    from backend.app.services.lead_lifecycle_email_policy import (
+        OPS_EVENT_TO_PURPOSE,
+        resolve_lifecycle_email_policy_for_lead,
+    )
+
+    purpose_key = OPS_EVENT_TO_PURPOSE.get(ev)
+    if not purpose_key:
+        return False
+    decision = await resolve_lifecycle_email_policy_for_lead(
+        db, tenant_id=tenant_id, lead=lead, purpose=purpose_key
+    )
+    if decision.block_code == "disabled" or not decision.enabled:
+        return False
+    if decision.block_code in ("policy_template_missing", "policy_misconfigured") or (
+        decision.enabled and not decision.template_ref
+    ):
+        _stamp_event(
+            lead,
+            ev,
+            status="failed",
+            reason=decision.reason or "Lifecycle email policy blocked send.",
+            reason_code=str(decision.block_code or "policy_template_missing"),
+        )
+        await db.flush()
+        await log_audit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type=AuditEventType.communication_delivery_failed,
+            entity_type=AuditEntityType.lead,
+            entity_id=str(lead.id),
+            actor_id=None,
+            payload=_delivery_failure_payload(
+                event_type=ev,
+                reason_code=str(decision.block_code or "policy_template_missing"),
+                notice_status="failed",
+                extra={"detail": decision.reason, "policy": decision.to_dict()},
+            ),
+        )
+        return False
+    if not decision.send:
+        return False
+
+    # Keep cfg for optional subject/body overlays from tenant preset during migration.
     cfg = cfg or await get_lead_communication_settings(db, tenant_id)
-    if not cfg.enabled:
-        return False
-    if ev == EVENT_APPLICATION_RECEIVED and not cfg.send_application_received:
-        return False
-    if ev == EVENT_LEAD_REJECTED and not cfg.send_rejection_notice:
-        return False
-    if ev == EVENT_MOVING_FORWARD and not cfg.send_moving_forward_notice:
-        return False
 
     norm = _lead_norm_for_communication(lead, pipeline_normalized)
     if communication_event_sent(norm, ev):
@@ -542,11 +582,36 @@ async def maybe_send_lead_communication(
     resolved = await resolve_lead_email_message(
         db,
         tenant_id=tenant_id,
-        template_id=_template_id_for_event(cfg, ev),
+        template_id=decision.template_ref,
         fallback_subject=default_subject,
         fallback_body=default_body,
         first_name=first_name,
     )
+    # ADR-033: enabled purpose must not silently send HostFlow marketing copy.
+    if not resolved.template_id:
+        _stamp_event(
+            lead,
+            ev,
+            status="failed",
+            reason="Lifecycle email template_ref could not be resolved.",
+            reason_code="policy_misconfigured",
+        )
+        await db.flush()
+        await log_audit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type=AuditEventType.communication_delivery_failed,
+            entity_type=AuditEntityType.lead,
+            entity_id=str(lead.id),
+            actor_id=None,
+            payload=_delivery_failure_payload(
+                event_type=ev,
+                reason_code="policy_misconfigured",
+                notice_status="failed",
+                extra={"template_ref": decision.template_ref},
+            ),
+        )
+        return False
     subject = resolved.subject
     body = resolved.body
 

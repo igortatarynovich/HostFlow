@@ -137,6 +137,12 @@ async def bulk_retry_lead_rodo(
     items: list[LeadRodoBulkRetryItem] = []
     sent_n = skipped_n = failed_n = 0
 
+    from backend.app.services.lead_lifecycle_email_policy import (
+        PURPOSE_GDPR_NOTICE,
+        resolve_lifecycle_email_policy_for_lead,
+    )
+    from backend.app.services.lead_rodo_settings import DEFAULT_LEAD_RODO_CHANNELS
+
     for lead in candidates:
         before = _rodo_status_label(lead.normalized if isinstance(lead.normalized, dict) else None)
         if dry_run:
@@ -152,14 +158,18 @@ async def bulk_retry_lead_rodo(
             skipped_n += 1
             continue
 
+        decision = await resolve_lifecycle_email_policy_for_lead(
+            db, tenant_id=tid, lead=lead, purpose=PURPOSE_GDPR_NOTICE
+        )
+        channels = tuple(rodo_cfg.channels) if rodo_cfg.channels else DEFAULT_LEAD_RODO_CHANNELS
         ok, msg = await send_lead_rodo_email(
             db,
             lead=lead,
             tenant_id=tid,
             actor_id=actor_id,
-            channels=rodo_cfg.channels,
-            template_id=rodo_cfg.template_id,
-            message_template_id=rodo_cfg.message_template_id,
+            channels=channels,
+            template_id=None,
+            message_template_id=decision.template_ref or rodo_cfg.message_template_id,
             auto_trigger="bulk_retry",
             ingest_source="bulk_rodo_retry",
         )
