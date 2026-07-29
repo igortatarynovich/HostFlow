@@ -69,6 +69,7 @@
 - [ ] Acquisition Activity Timeline / `acquisition_activity_events`: см. [`threat-models/acquisition-activity-timeline.md`](threat-models/acquisition-activity-timeline.md) (append-only, RLS, tenant-scoped idempotency, no Ops FKs).
 - [ ] Acquisition Optimization Signals (Stage 5): см. [`threat-models/acquisition-optimization-signals.md`](threat-models/acquisition-optimization-signals.md) (read-only, company-scope, no Activity on GET, no auto-pause).
 - [ ] Marketing Sources (C-3/C-4): см. [`threat-models/acquisition-marketing-sources.md`](threat-models/acquisition-marketing-sources.md) (C-3 inventory GET; C-4 sample/preview tenant isolation, masked PII, preview no production entity create).
+- [ ] Source Diagnostics (PR1): см. [`threat-models/acquisition-source-diagnostics.md`](threat-models/acquisition-source-diagnostics.md) (read-only Lead + Activity compose; tenant scope; no replay/write on GET).
 
 ---
 

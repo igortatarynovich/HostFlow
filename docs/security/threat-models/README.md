@@ -17,5 +17,6 @@
 | [acquisition-flight-runtime.md](./acquisition-flight-runtime.md) | Stage 4 Flight Runtime: platform campaign/flight APIs, RBAC/company-scope, lifecycle commands, delivery-error activity |
 | [acquisition-optimization-signals.md](./acquisition-optimization-signals.md) | Stage 5 PR-1: read-only optimization signals / `suggest_pause` (no auto-pause, no GET side effects) |
 | [acquisition-marketing-sources.md](./acquisition-marketing-sources.md) | C-3 Marketing Sources: read-only inventory GET, tenant isolation, no write/reprocess side effects |
+| [acquisition-source-diagnostics.md](./acquisition-source-diagnostics.md) | Source Diagnostics PR1: read-only Lead + Activity casework, tenant isolation, no replay/write |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).
