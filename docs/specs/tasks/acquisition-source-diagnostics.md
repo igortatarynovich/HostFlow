@@ -1,8 +1,8 @@
 # Source Diagnostics — Marketing ops console (Product Epic)
 
-**Status:** **ACTIVE** — PR4 implementing (PR1 ✅ #196 · PR2 ✅ #199 · PR3 ✅ #200)  
+**Status:** **PR1–PR4 DONE** · later backlog remains  
 **Date:** 2026-07-29  
-**Product Track:** after FlightAdBinding Ad-ID bind UI (**DONE** #187)  
+**Product Track (next):** [Acquisition Stage 5 PR-2](acquisition-stage-5-optimization.md)  
 **Parents:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) § After cutover · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)
 
 ---
@@ -62,26 +62,13 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ---
 
-## PR4 — Mapping context / Mapping Health (this slice)
-
-### IN
-
-1. Case API field `mapping` from `routing.intake_source_profile_id` + existing Sources mapping façade  
-2. Expose current `mapping_health`, rules count / source, `mapping_path`, `profile_updated_at`  
-3. Explicit `historical_version_available=false` until ingest stamps a revision (no parallel version ledger)  
-4. Case panel + deep-link to Mapping workspace  
-
-### OUT
-
-- Historical ingest mapping version stamp (write path / future)  
-- Automated Mapping Health drift alerts  
-- Replay / export  
+## PR4 — Mapping context / Mapping Health ✅ #201
 
 ### Acceptance (PR4)
 
-- [ ] Case with `intake_source_profile_id` returns `mapping.active=true` + health  
-- [ ] Missing profile → `profile_missing=true` (no 500)  
-- [ ] UI shows Mapping Health panel + Open Mapping CTA  
+- [x] Case with `intake_source_profile_id` returns `mapping.active=true` + health  
+- [x] Missing profile → `profile_missing=true` (no 500)  
+- [x] UI shows Mapping Health panel + Open Mapping CTA  
 
 ---
 
@@ -100,3 +87,4 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 - 2026-07-29: PR1 merged (#196); Product Track → PR2 filters.
 - 2026-07-29: PR2 merged (#199); Product Track → PR3 duplicate decision surface.
 - 2026-07-29: PR3 merged (#200); Product Track → PR4 mapping context / Mapping Health.
+- 2026-07-29: PR4 merged (#201); Product Track → Stage 5 PR-2 explainability / operator ack-dismiss.

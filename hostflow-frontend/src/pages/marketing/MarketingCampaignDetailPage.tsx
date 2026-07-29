@@ -17,6 +17,7 @@ import {
   getLiveIntakeMonitor,
   launchFlight,
   pauseFlight,
+  postFlightOptimizationOperatorAction,
   resumeFlight,
   type Campaign,
   type FlightOptimization,
@@ -144,6 +145,29 @@ export default function MarketingCampaignDetailPage() {
               : completeFlight
       await fn(campaign.id, flight.id)
       await load()
+    } catch (err: unknown) {
+      setError(
+        getFriendlyErrorInfo(
+          err,
+          t('app.marketing.detail.errors.command', { defaultValue: 'Не удалось выполнить действие' }),
+          t,
+        ),
+      )
+    } finally {
+      setActing(false)
+    }
+  }
+
+  async function runOptAction(action: 'acknowledge' | 'dismiss') {
+    if (!campaign || !flight || !optimization?.signal_fingerprint) return
+    setActing(true)
+    setError(null)
+    try {
+      const next = await postFlightOptimizationOperatorAction(campaign.id, flight.id, {
+        action,
+        signal_fingerprint: optimization.signal_fingerprint,
+      })
+      setOptimization(next)
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
@@ -501,6 +525,40 @@ export default function MarketingCampaignDetailPage() {
                 <p className="mt-1 text-amber-900/90">
                   Сигнал только советует — пауза через кнопку «Пауза» выше. Автопаузы нет.
                 </p>
+                {optimization.explanation ? (
+                  <p className="mt-2 text-xs text-amber-900/90" data-testid="marketing-optimization-explanation">
+                    {optimization.explanation}
+                  </p>
+                ) : null}
+                {optimization.observed ? (
+                  <dl
+                    className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-amber-900/80 sm:grid-cols-4"
+                    data-testid="marketing-optimization-observed"
+                  >
+                    <div>
+                      <dt className="text-amber-800/70">Fail rate</dt>
+                      <dd className="font-medium tabular-nums">
+                        {optimization.observed.routing_fail_rate == null
+                          ? '—'
+                          : optimization.observed.routing_fail_rate.toFixed(2)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-amber-800/70">Routing</dt>
+                      <dd className="font-medium tabular-nums">
+                        {optimization.observed.routing_failed}/{optimization.observed.routing_sample}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-amber-800/70">Delivery err</dt>
+                      <dd className="font-medium tabular-nums">{optimization.observed.delivery_errors}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-amber-800/70">Volume</dt>
+                      <dd className="font-medium tabular-nums">{optimization.observed.decision_volume}</dd>
+                    </div>
+                  </dl>
+                ) : null}
                 {optimization.signals.length ? (
                   <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-amber-900/80">
                     {optimization.signals
@@ -510,6 +568,37 @@ export default function MarketingCampaignDetailPage() {
                       ))}
                   </ul>
                 ) : null}
+                {optimization.operator ? (
+                  <p className="mt-2 text-xs text-amber-900/80" data-testid="marketing-optimization-operator-state">
+                    {optimization.operator.action === 'dismiss'
+                      ? 'Отклонено оператором'
+                      : 'Подтверждено оператором'}
+                    {optimization.operator.occurred_at
+                      ? ` · ${formatDateTime(optimization.operator.occurred_at, locale)}`
+                      : ''}
+                  </p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      data-testid="marketing-optimization-acknowledge"
+                      disabled={acting || !optimization.signal_fingerprint}
+                      onClick={() => void runOptAction('acknowledge')}
+                    >
+                      Принять к сведению
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      data-testid="marketing-optimization-dismiss"
+                      disabled={acting || !optimization.signal_fingerprint}
+                      onClick={() => void runOptAction('dismiss')}
+                    >
+                      Отклонить совет
+                    </button>
+                  </div>
+                )}
               </div>
             ) : null}
 

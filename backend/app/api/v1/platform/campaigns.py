@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, List, Literal, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -29,6 +29,9 @@ from backend.app.acquisition.kpi_aggregates import (
     aggregate_flight_kpi,
 )
 from backend.app.acquisition.ops.live_intake_monitor import get_live_intake_monitor
+from backend.app.acquisition.ops.optimization_operator_state import (
+    record_optimization_operator_action,
+)
 from backend.app.acquisition.ops.optimization_signals import get_flight_optimization
 from backend.app.acquisition.ops.runtime_read import get_flight_runtime_snapshot
 from backend.app.api.v1.platform.acquisition_activity import (
@@ -426,6 +429,28 @@ class OptimizationThresholdsOut(BaseModel):
     delivery_error_threshold: int
 
 
+class OptimizationObservedOut(BaseModel):
+    submissions: int
+    routing_completed: int
+    routing_failed: int
+    delivery_errors: int
+    routing_sample: int
+    decision_volume: int
+    routing_fail_rate: float | None = None
+    window_hours: int
+    window_start: str
+    window_end: str
+
+
+class OptimizationOperatorOut(BaseModel):
+    action: str
+    signal_fingerprint: str
+    occurred_at: datetime
+    actor_type: str
+    actor_id: str | None = None
+    note: str | None = None
+
+
 class FlightOptimizationOut(BaseModel):
     tenant_id: str
     campaign_id: str
@@ -444,6 +469,16 @@ class FlightOptimizationOut(BaseModel):
     spend: str
     generated_at: datetime
     thresholds: OptimizationThresholdsOut
+    signal_fingerprint: str = ""
+    explanation: str = ""
+    observed: OptimizationObservedOut | None = None
+    operator: OptimizationOperatorOut | None = None
+
+
+class FlightOptimizationOperatorActionIn(BaseModel):
+    action: Literal["acknowledge", "dismiss"]
+    signal_fingerprint: str = Field(..., min_length=8, max_length=64)
+    note: str | None = Field(None, max_length=500)
 
 
 async def _form_display_map(
@@ -1901,9 +1936,10 @@ async def get_flight_optimization_endpoint(
         description="Observation window in hours (default 24, clamped 1..168).",
     ),
 ):
-    """Stage 5 PR-1 — read-only optimization signals / pause recommendation.
+    """Stage 5 PR-1/PR-2 — optimization signals + explainability.
 
-    Does not mutate Campaign/Flight and does not append Activity events.
+    Does not mutate Campaign/Flight status and does not append Activity on GET.
+    Operator acknowledge/dismiss is a separate write path.
     """
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
@@ -1919,6 +1955,82 @@ async def get_flight_optimization_endpoint(
     except FlightRuntimeError as exc:
         _raise_runtime(exc)
     return FlightOptimizationOut.model_validate(snap.to_dict())
+
+
+@router.post(
+    "/{campaign_id}/flights/{flight_id}/optimization/operator-action",
+    response_model=FlightOptimizationOut,
+    dependencies=_WRITE,
+)
+async def post_flight_optimization_operator_action(
+    campaign_id: str,
+    flight_id: str,
+    body: FlightOptimizationOperatorActionIn,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+    window_hours: Optional[int] = Query(
+        None,
+        ge=1,
+        le=168,
+        description="Observation window in hours (default 24, clamped 1..168).",
+    ),
+):
+    """Stage 5 PR-2 — acknowledge/dismiss recommendation (audit only).
+
+    Does not pause/resume Flight or change assessment calculation.
+    """
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        snap = await get_flight_optimization(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            flight_id=flight_id,
+            own_company_id=own_company_id,
+            window_hours=window_hours,
+        )
+    except FlightRuntimeError as exc:
+        _raise_runtime(exc)
+
+    if snap.recommended_action != "suggest_pause":
+        raise HTTPException(
+            status_code=409,
+            detail="operator action applies only while recommended_action is suggest_pause",
+        )
+    if str(body.signal_fingerprint).strip() != str(snap.signal_fingerprint):
+        raise HTTPException(
+            status_code=409,
+            detail="signal_fingerprint does not match current recommendation",
+        )
+
+    actor_type, actor_id = _activity_actor(ctx)
+    await record_optimization_operator_action(
+        db,
+        tenant_id=str(tenant_uuid),
+        campaign_id=str(snap.campaign_id),
+        flight_id=str(snap.flight_id),
+        action=body.action,
+        signal_fingerprint=str(snap.signal_fingerprint),
+        assessment=str(snap.assessment),
+        recommended_action=str(snap.recommended_action),
+        window_hours=int(snap.window_hours),
+        actor_type=actor_type,
+        actor_id=actor_id,
+        note=body.note,
+    )
+    await db.commit()
+
+    refreshed = await get_flight_optimization(
+        db,
+        tenant_id=str(tenant_uuid),
+        campaign_id=campaign_id,
+        flight_id=flight_id,
+        own_company_id=own_company_id,
+        window_hours=window_hours,
+    )
+    return FlightOptimizationOut.model_validate(refreshed.to_dict())
 
 
 # --- FlightAdBinding (Ad ID → Flight) ---

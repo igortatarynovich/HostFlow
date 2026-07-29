@@ -1,12 +1,12 @@
 # Acquisition Stage 5 — Optimization
 
-**Status:** **PR-1 DONE** ✅ · **PR-2 UNBLOCKED** (may resume after [C-7 PASS](acquisition-ui-cutover-c7-searches-decommission.md))  
+**Status:** **PR-1 DONE** ✅ · **PR-2 IN PROGRESS** (`feat/acquisition-stage-5-pr2-signal-explainability`)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §14 · §14.1  
-**Depends on:** Stage **4 runtime** DONE · Stage **4 product/UI cutover** **PASS**  
+**Depends on:** Stage **4 runtime** DONE · Stage **4 product/UI cutover** **PASS** · Source Diagnostics PR1–PR4 DONE  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · Stage 3E Timeline  
 **PR-1 merge:** [#153](https://github.com/igortatarynovich/HostFlow/pull/153) → `1bf3e7f4` on `integration/release-product-a-b` (2026-07-23)  
 **Deferred (not Stage 5):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md) (D1–D5 remain Instrumentation)  
-**Product Track now:** FlightAdBinding Ad-ID bind UI (cutover closed) — Stage 5 PR-2 may proceed in parallel if capacity allows  
+**Product Track now:** **Stage 5 PR-2** (explainability + operator acknowledge/dismiss)  
 **Next horizon:** Stage 6 Analytics (do not open while 5 incomplete)
 
 > **Improve** rung of the maturity ladder — assisted / automatic optimization **on top of** Stage 4 controls + 3E Timeline.  
@@ -30,7 +30,7 @@
 | PR | Scope | Status |
 |----|--------|--------|
 | **PR-1** | Optimization signals + `suggest_pause` (read-only) | **DONE** (#153 / `1bf3e7f4`) |
-| **PR-2** | Signal explainability + operator dismiss/acknowledge (no Flight mutation) | **UNBLOCKED** — resume after [UI Cutover](acquisition-ui-cutover.md) PASS (2026-07-27) |
+| **PR-2** | Signal explainability + operator dismiss/acknowledge (no Flight mutation) | **IN PROGRESS** — `feat/acquisition-stage-5-pr2-signal-explainability` |
 | **PR-3+** | Auto-apply / auto-pause only with explicit operator/safety contract | Not opened |
 
 **Do not start PR-2 implementation while Подборы / Sales-nested Marketing / Settings-only Form Builder remain the operator path.**  
@@ -132,3 +132,4 @@ Branch (planned): `feat/acquisition-stage-5-pr2-signal-explainability`
 - 2026-07-23: PR-2 boundaries refined — reason codes, observed values, applied thresholds, operator acknowledge/dismiss + audit trail; assessment independent of dismiss; integer-sample note (`>= 0.50`, exact boundary on even sample e.g. 3/6).
 - 2026-07-23: **PR-2 PAUSED** — Product Track switches to [Acquisition UI Cutover](acquisition-ui-cutover.md); Stage 4 runtime DONE but product/UI cutover NOT DONE.
 - 2026-07-27: **PR-2 UNBLOCKED** — [C-7 PASS](acquisition-ui-cutover-c7-searches-decommission.md); Product Track → Ad-ID bind UI; Stage 5 PR-2 may resume.
+- 2026-07-29: Source Diagnostics PR1–PR4 closed (#196–#201); **Product Track → Stage 5 PR-2** explainability + operator acknowledge/dismiss.
