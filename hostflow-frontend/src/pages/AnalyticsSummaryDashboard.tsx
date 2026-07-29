@@ -202,9 +202,9 @@ export default function AnalyticsSummaryDashboard() {
             </section>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-sm text-slate-700">{t('app.dashboard.summary.body')}</p>
-            <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-600">
+            <ul className="mt-4 list-disc space-y-2 pl-4 text-sm text-slate-600">
               <li>{t('app.dashboard.summary.bullets.modules')}</li>
               <li>{t('app.dashboard.summary.bullets.filters')}</li>
               <li>{t('app.dashboard.summary.bullets.owned')}</li>
@@ -218,7 +218,7 @@ export default function AnalyticsSummaryDashboard() {
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
+    <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2">
       <div className="text-[11px] text-slate-500">{label}</div>
       <div className="mt-0.5 text-xl font-semibold tabular-nums text-slate-900">{value}</div>
     </div>

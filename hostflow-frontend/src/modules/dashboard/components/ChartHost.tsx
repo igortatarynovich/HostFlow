@@ -21,7 +21,7 @@ export function ChartHost({
           {children}
         </ResponsiveContainer>
       ) : (
-        <div className="h-full w-full animate-pulse rounded-md bg-slate-100/80" aria-hidden />
+        <div className="h-full w-full animate-pulse rounded bg-slate-100/80" aria-hidden />
       )}
     </div>
   )
