@@ -974,4 +974,18 @@ async def run_global_search_v1(
         *tasks,
     ]
     ranked = merge_and_rank_items(merged, q.strip(), max_out=max_results)
-    return {"q": q.strip(), "items": ranked}
+    return {
+        "q": q.strip(),
+        "items": ranked,
+        "_retrieval_stats": {
+            "merged_count": len(merged),
+            "returned_count": len(ranked),
+            "entity_types": sorted(
+                {
+                    str(it.get("type") or "").strip()
+                    for it in merged
+                    if isinstance(it, dict) and str(it.get("type") or "").strip()
+                }
+            ),
+        },
+    }

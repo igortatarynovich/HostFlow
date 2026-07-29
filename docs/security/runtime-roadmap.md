@@ -236,18 +236,27 @@ Observability для HF трактуется как **часть security archit
 2. **RBAC-scoped** — тот же policy layer, что и для API; никаких «admin search sees all fields».
 3. **Audit-scoped** — логируемые запросы контекста (что включили в prompt / retrieval, какой индекс, какой фильтр), без утечки CLASS 3 в логах.
 
-**Нормативный контракт (начало Phase 6, без call sites):** [`retrieval-audit-governance.md`](./retrieval-audit-governance.md) + `retrieval_events.py` (taxonomy + helper + redaction keys).
+**Нормативный контракт:** [`retrieval-audit-governance.md`](./retrieval-audit-governance.md) + `retrieval_events.py` (taxonomy + helper + redaction keys).
 
-**Направления работ**
+**Реализовано (call sites, 2026-07-29):**
+
+- `GET /api/v1/search` — `search.retrieval.requested` / `.completed` / `.denied` (scope membership fail); counters `returned_count` / `filtered_count`; без сырого `q`.
+- `GET /api/v1/tenants/{id}/links/search-companies` — тот же triad; `retrieval_scope=cross_tenant_company_directory`.
+- Threat model: [`threat-models/global-search.md`](./threat-models/global-search.md).
+- CI: `scripts/security/check_retrieval_call_sites.py` (job в `security-gates`).
+
+**Направления работ (остаток Phase 6)**
 
 - Контракт на «retrieval»: максимальный scope, redaction, запрет на склейку несвязанных кандидатов.
 - Запрет неявного «global search» по всем tenant’ам без platform-only режима с отдельным audit и rate limit.
 - Оценка RAG/vector: кто может писать в индекс, как удаляются вектора при delete/anonymize (GDPR).
+- Analytics drill-down как retrieval — только если появится отдельный слой (не агрегаты).
 
 **Критерии готовности фазы (пример)**
 
-- Threat model обновлён под конкретную AI/search фичу (отдельный файл в `threat-models/` при появлении продукта).
-- Негативные тесты: запрос контекста с чужим `tenant_id` / чужим кандидатом → отказ.
+- ~~Threat model обновлён под search~~ — `threat-models/global-search.md`.
+- ~~Негативные тесты: чужой scope → denied event~~ — unit `test_retrieval_global_search_audit.py`.
+- AI context assembly call sites — backlog до появления продукта.
 
 ---
 

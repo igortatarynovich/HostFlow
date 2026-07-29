@@ -53,6 +53,14 @@ jobs:
       - name: Enforce ARQ jobs use tenant / security job context
         run: python3 scripts/security/check_arq_worker_tenant.py
 
+  retrieval-call-sites:
+    name: Phase 6 retrieval call sites
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce search retrieval audit producers
+        run: python3 scripts/security/check_retrieval_call_sites.py
+
   telemetry-phase34-stability:
     name: Phase 3/4 telemetry stabilization (helpers + logger heuristic)
     runs-on: ubuntu-latest

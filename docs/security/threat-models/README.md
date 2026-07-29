@@ -12,6 +12,7 @@
 | [client-portal.md](./client-portal.md) | Фильтрация данных, company scope, комментарии |
 | [automations.md](./automations.md) | Исходящие HTTP, права сервисных аккаунтов, side effects |
 | [exports.md](./exports.md) | Insider, bulk CSV, скрытые поля, rate limits |
+| [global-search.md](./global-search.md) | CRM global search + tenant link company directory retrieval audit |
 | [client-account-manual-creation.md](./client-account-manual-creation.md) | Manual `ClientAccount` create: tenant/company bind, duplicates, idempotency, origin forgery |
 | [acquisition-activity-timeline.md](./acquisition-activity-timeline.md) | Stage 3E Activity Timeline: append-only audit, RLS, tenant-scoped idempotency, no Ops FKs |
 | [acquisition-flight-runtime.md](./acquisition-flight-runtime.md) | Stage 4 Flight Runtime: platform campaign/flight APIs, RBAC/company-scope, lifecycle commands, delivery-error activity |
