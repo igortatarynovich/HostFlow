@@ -31,6 +31,8 @@ If this path works end-to-end, HostFlow is ready to scale acquisition.
 
 **Allowed narrow form:** `/app/platform/setup` (or equivalent) collects company name / country / activity once — then the user lands in the real CRM with a readiness panel, not another wizard.
 
+**Not user-facing:** Recruitment technical gates G0–G8 (`SetupStatusPanel` / setup-readiness API) stay as **operator/health internals**. They must not appear on the buyer Success Path screens.
+
 ---
 
 ## 3. Success Path (canonical)

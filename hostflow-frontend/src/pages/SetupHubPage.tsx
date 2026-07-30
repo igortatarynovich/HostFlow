@@ -1,28 +1,26 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { IconArrowRight, IconChecklist } from '@tabler/icons-react'
+import { IconArrowRight } from '@tabler/icons-react'
 import { useI18n } from '../i18n'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
-import { SetupStatusPanel } from '../components/onboarding/SetupStatusPanel'
 import { SuccessPathReadinessPanel } from '../components/onboarding/SuccessPathReadinessPanel'
-import { useSetupReadiness } from '../hooks/useSetupReadiness'
+import { useSuccessPathReadiness } from '../hooks/useSuccessPathReadiness'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 export default function SetupHubPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
-  const { snapshot, loading, ready, refresh } = useSetupReadiness()
+  const { pathComplete, nextAction, refresh } = useSuccessPathReadiness()
 
   return (
     <PageShell data-testid="m1-setup-hub">
       <PageShellHeader>
         <PageHeader
           title={t('app.onboarding.success_path.page_title', {
-            defaultValue: 'Get ready to hire',
+            defaultValue: 'Start hiring',
           })}
           subtitle={t('app.onboarding.success_path.page_subtitle', {
-            defaultValue:
-              'Follow the checklist below. When the next step is done, come back here or continue from empty states in the product.',
+            defaultValue: 'Do the next step. Get to your first candidate without support.',
           })}
           kind="browse"
           secondaryActions={
@@ -37,51 +35,22 @@ export default function SetupHubPage() {
         />
       </PageShellHeader>
       <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
-        <section className="rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
-          <div className="inline-flex items-center gap-1 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
-            <IconChecklist size={14} stroke={1.9} />
-            {t('app.onboarding.success_path.hub_badge', { defaultValue: 'Success path' })}
-          </div>
-        </section>
-
         <SuccessPathReadinessPanel showWhenComplete />
 
-        <details className="rounded-xl border border-slate-200 bg-white shadow-sm open:pb-0">
-          <summary className="cursor-pointer list-none px-6 py-4 text-sm font-semibold text-slate-800 marker:content-none [&::-webkit-details-marker]:hidden">
-            {t('app.onboarding.setup_status.technical_gates_summary', {
-              defaultValue: 'Technical Recruitment gates (advanced)',
-            })}
-            <span className="mt-1 block text-xs font-normal text-slate-500">
-              {t('app.onboarding.setup_status.technical_gates_hint', {
-                defaultValue: 'Operational G0–G8 health check — optional detail for admins.',
-              })}
-            </span>
-          </summary>
-          <div className="border-t border-slate-100 px-2 pb-2 pt-2 sm:px-4">
-            <SetupStatusPanel
-              snapshot={snapshot}
-              loading={loading}
-              onActionNavigate={() => {
-                void refresh()
-              }}
-            />
-          </div>
-        </details>
-
-        {ready && snapshot ? (
+        {pathComplete ? (
           <section
-            className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-6 shadow-sm"
+            className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-6 shadow-sm"
             data-testid="m1-route-summary"
           >
-            <h2 className="text-sm font-semibold text-slate-900">
-              {t('app.onboarding.setup_status.route_summary_title', {
-                defaultValue: 'Recruitment is ready to accept people',
+            <h2 className="text-base font-semibold text-slate-900">
+              {t('app.onboarding.success_path.result_ready_title', {
+                defaultValue: 'You are ready to hire',
               })}
             </h2>
             <p className="mt-2 text-sm text-slate-700">
-              {t('app.onboarding.setup_status.route_summary_body', {
+              {t('app.onboarding.success_path.result_ready_body', {
                 defaultValue:
-                  'Candidates can enter through your configured intake. Open Recruitment from Launchpad.',
+                  'Company, vacancy, and pipeline are in place. Open Launchpad and keep processing candidates.',
               })}
             </p>
             <button
@@ -91,32 +60,35 @@ export default function SetupHubPage() {
               aria-hidden
               onClick={() => void refresh()}
             />
-          </section>
-        ) : null}
-
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          {ready ? (
-            <div className="flex justify-end">
+            <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => navigate(CRM_APP_PATHS.launchpad, { replace: true })}
                 data-testid="m1-setup-go-launchpad"
-                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
               >
-                {t('app.onboarding.setup_status.go_launchpad', {
-                  defaultValue: 'Back to Launchpad',
+                {t('app.onboarding.success_path.go_work', {
+                  defaultValue: 'Go to work',
                 })}
                 <IconArrowRight size={14} stroke={1.9} />
               </button>
+              <Link
+                to={CRM_APP_PATHS.vacancies}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                {t('app.onboarding.success_path.go_vacancies', {
+                  defaultValue: 'Open vacancies',
+                })}
+              </Link>
             </div>
-          ) : (
-            <p className="text-xs text-slate-600">
-              {t('app.onboarding.success_path.hub_footer', {
-                defaultValue: 'Use the primary button above for the single next step. Technical gates are optional detail.',
-              })}
-            </p>
-          )}
-        </section>
+          </section>
+        ) : nextAction ? (
+          <p className="px-1 text-xs text-slate-500">
+            {t('app.onboarding.success_path.hub_footer', {
+              defaultValue: 'Finish the step above — that is all you need right now.',
+            })}
+          </p>
+        ) : null}
       </div>
     </PageShell>
   )

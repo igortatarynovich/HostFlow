@@ -16,8 +16,8 @@ import { useAuth } from '../store/useAuth'
 import { getOnboardingStatus } from '../api/client'
 import { getBillingSubscriptionCached } from '../api/billingSubscriptionCache'
 import type { BillingSubscription } from '../api/billing'
-import { useSetupReadiness } from '../hooks/useSetupReadiness'
 import { useSuccessPathReadiness } from '../hooks/useSuccessPathReadiness'
+import { SuccessPathReadinessPanel } from '../components/onboarding/SuccessPathReadinessPanel'
 import { CRM_APP_PATHS, recruitmentSearchPath } from '../app/crmAppPaths'
 import { getBusinessHomePath } from '../app/activationRoutes'
 import { readLastLaunchSearchId } from '../services/launchSearchSession'
@@ -147,9 +147,7 @@ function ModuleCard({
 export default function LaunchpadPage() {
   const { t } = useI18n()
   const { me } = useAuth()
-  const { snapshot, loading: readinessLoading } = useSetupReadiness()
-  const { nextAction: successNext, doneCount: successDone, totalCount: successTotal, pathComplete } =
-    useSuccessPathReadiness()
+  const { pathComplete, loading: readinessLoading, status: successStatus } = useSuccessPathReadiness()
   const [onboardingStatus, setOnboardingStatus] = useState<Awaited<ReturnType<typeof getOnboardingStatus>> | null>(
     null,
   )
@@ -166,12 +164,13 @@ export default function LaunchpadPage() {
     void getBillingSubscriptionCached().then(setBilling).catch(() => setBilling(null))
   }, [])
 
-  const recruitmentReady = Boolean(snapshot?.ready)
+  const effectiveStatus = onboardingStatus ?? successStatus
+  const companyReady = Boolean(effectiveStatus?.steps?.company_created)
+  const hasActiveSearch = Boolean(effectiveStatus?.steps?.first_vacancy_created)
   const recruitmentWorkspaceAvailable =
-    recruitmentReady || Boolean(onboardingStatus && onboardingStatus.activation_required === false)
-  const platformConfigured = Boolean(onboardingStatus && !onboardingStatus.onboarding_required)
-  const businessType = (onboardingStatus?.business_type ?? 'agency') as ActivationBusinessType
-  const hasActiveSearch = Boolean(onboardingStatus?.steps?.first_vacancy_created)
+    (companyReady && hasActiveSearch) || Boolean(effectiveStatus && effectiveStatus.activation_required === false)
+  const platformConfigured = Boolean(effectiveStatus && !effectiveStatus.onboarding_required)
+  const businessType = (effectiveStatus?.business_type ?? 'agency') as ActivationBusinessType
 
   const lastSearchId = readLastLaunchSearchId()
   const recruitmentOpenPath =
@@ -189,23 +188,8 @@ export default function LaunchpadPage() {
       ? t('app.launchpad.open_search', { defaultValue: 'Открыть подбор' })
       : t('app.launchpad.create_campaign', { defaultValue: 'Создать кампанию' })
 
-  const setupPassed = successDone
-  const setupTotal = successTotal
-  const setupProgress = setupTotal > 0 ? Math.round((setupPassed / setupTotal) * 100) : 0
   const trialDays = trialDaysRemaining(billing?.trial_ends_at)
   const showTrial = Boolean(billing?.gate?.trial_active || billing?.status === 'trialing' || trialDays !== null)
-  const setupContinuePath = pathComplete
-    ? CRM_APP_PATHS.setup
-    : successNext?.href?.startsWith('/')
-      ? successNext.href
-      : CRM_APP_PATHS.setup
-  const setupContinueLabel = pathComplete
-    ? t('app.launchpad.open_setup_hub', { defaultValue: 'Open setup hub' })
-    : successNext
-      ? t(`app.onboarding.success_path.items.${successNext.id}.cta`, {
-          defaultValue: t('app.launchpad.continue_setup', { defaultValue: 'Continue setup' }),
-        })
-      : t('app.launchpad.continue_setup', { defaultValue: 'Continue setup' })
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-1 sm:px-0" data-testid="m1-launchpad">
@@ -224,6 +208,8 @@ export default function LaunchpadPage() {
           })}
         </p>
       </header>
+
+      {!pathComplete ? <SuccessPathReadinessPanel /> : null}
 
       <section
         className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-4"
@@ -315,12 +301,12 @@ export default function LaunchpadPage() {
             icon={<IconSearch size={20} stroke={1.8} />}
             title={t('app.launchpad.module_recruitment', { defaultValue: 'Recruitment' })}
             status={
-              readinessLoading ? 'configure' : recruitmentReady && hasActiveSearch ? 'ready' : 'configure'
+              readinessLoading ? 'configure' : recruitmentWorkspaceAvailable && hasActiveSearch ? 'ready' : 'configure'
             }
             statusLabel={
               readinessLoading
                 ? t('common.loading')
-                : recruitmentReady && hasActiveSearch
+                : recruitmentWorkspaceAvailable && hasActiveSearch
                   ? t('app.launchpad.recruitment_ready', { defaultValue: 'Готов' })
                   : recruitmentWorkspaceAvailable && !hasActiveSearch
                     ? t('app.launchpad.recruitment_create_first', {
@@ -428,38 +414,29 @@ export default function LaunchpadPage() {
               </div>
             ) : null}
 
-            <div className="sm:col-span-2 lg:col-span-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t('app.launchpad.company_setup', { defaultValue: 'Getting started' })}
-              </p>
-              <p className="mt-2 text-sm text-slate-700">
-                {readinessLoading
-                  ? t('common.loading')
-                  : t('app.onboarding.success_path.progress', {
-                      defaultValue: '{done} of {total} done',
-                      values: { done: setupPassed, total: setupTotal || 6 },
-                    })}
-              </p>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-brand-600 transition-all"
-                  style={{ width: `${setupProgress}%` }}
-                  role="progressbar"
-                  aria-valuenow={setupPassed}
-                  aria-valuemin={0}
-                  aria-valuemax={setupTotal || 6}
-                />
+            {pathComplete ? (
+              <div className="sm:col-span-2 lg:col-span-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {t('app.launchpad.company_setup', { defaultValue: 'Getting started' })}
+                </p>
+                <p className="mt-2 text-sm font-medium text-emerald-800">
+                  {t('app.onboarding.success_path.complete', {
+                    defaultValue: 'Basics done — keep hiring from Launchpad.',
+                  })}
+                </p>
               </div>
-            </div>
+            ) : null}
           </div>
 
-          <Link
-            to={setupContinuePath}
-            data-testid="m1-launchpad-continue-setup"
-            className="inline-flex w-full shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 lg:w-auto"
-          >
-            {setupContinueLabel}
-          </Link>
+          {pathComplete ? (
+            <Link
+              to={CRM_APP_PATHS.vacancies}
+              data-testid="m1-launchpad-continue-setup"
+              className="inline-flex w-full shrink-0 items-center justify-center rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 lg:w-auto"
+            >
+              {t('app.onboarding.success_path.go_vacancies', { defaultValue: 'Open vacancies' })}
+            </Link>
+          ) : null}
         </div>
       </section>
     </div>

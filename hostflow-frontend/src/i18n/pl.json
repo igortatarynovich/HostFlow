@@ -8717,23 +8717,23 @@
         "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, rekordów i ustawień"
       },
       "success_path": {
-        "loading": "Sprawdzamy kolejne kroki…",
-        "badge": "Start",
-        "title": "Ścieżka do pierwszej wartości",
-        "subtitle": "Jeden jasny następny krok — w zwykłym interfejsie, bez wieloetapowego wizardu.",
+        "loading": "Przygotowujemy kolejny krok…",
+        "badge": "Wynik",
+        "title": "Zamykaj wakaty szybciej — zacznij tutaj",
+        "subtitle": "Jeden krok naraz — do pierwszego zgłoszenia i kontaktu z kandydatem.",
         "progress": "Gotowe {done} z {total}",
         "list_aria": "Checklist Success Path",
         "optional": "opcjonalne",
         "deferred": "później",
         "open": "Otwórz",
         "continue": "Kontynuuj",
-        "next_title": "Następny krok",
-        "defer_meta": "Zrób później",
-        "complete": "Główna ścieżka gotowa — pracuj z Launchpad lub Recruitment.",
-        "page_title": "Przygotuj rekrutację",
-        "page_subtitle": "Idź według checklisty. Po kroku wróć tutaj lub kontynuuj z empty states w produkcie.",
+        "next_title": "Zrób to teraz",
+        "defer_meta": "Pomiń na razie",
+        "complete": "Podstawy gotowe — kontynuuj rekrutację z Launchpad.",
+        "page_title": "Zacznij rekrutację",
+        "page_subtitle": "Zrób kolejny krok. Dojdź do pierwszego kandydata bez wsparcia.",
         "hub_badge": "Success path",
-        "hub_footer": "Główny przycisk = jeden następny krok. Bramy techniczne są opcjonalne.",
+        "hub_footer": "Dokończ krok powyżej — nic więcej teraz nie trzeba.",
         "items": {
           "company": {
             "label": "Utwórz firmę",
@@ -8746,9 +8746,9 @@
             "cta": "Zaproś zespół"
           },
           "meta": {
-            "label": "Podłącz Meta / intake",
-            "hint": "Podłącz Meta lub inny kanał, aby zgłoszenia przychodziły same.",
-            "cta": "Podłącz Meta"
+            "label": "Podłącz reklamy Facebook / Meta",
+            "hint": "Aby zgłoszenia z reklam trafiały do HostFlow automatycznie.",
+            "cta": "Podłącz reklamy"
           },
           "vacancy": {
             "label": "Utwórz pierwszy wakat",
@@ -8765,7 +8765,14 @@
             "hint": "Wykonaj kolejny krok przy leadzie — żeby nic nie wisiało.",
             "cta": "Otwórz leady"
           }
-        }
+        },
+        "title_done": "Możesz zamykać wakaty w systemie",
+        "subtitle_done": "Podstawy gotowe. Prowadź kandydatów w pipeline.",
+        "checklist_title": "Postęp",
+        "result_ready_title": "Możesz rekrutować",
+        "result_ready_body": "Firma, wakat i proces są gotowe. Otwórz Launchpad i prowadź kandydatów.",
+        "go_work": "Do pracy",
+        "go_vacancies": "Otwórz wakaty"
       },
       "setup_status": {
         "technical_gates_summary": "Techniczne bramy Recruitment (advanced)",

@@ -8790,23 +8790,23 @@
         "wayfinding_nav_label": "Jump to dashboard, work hub, inbox, records, and settings"
       },
       "success_path": {
-        "loading": "Checking your next steps…",
-        "badge": "Getting started",
-        "title": "Your path to first value",
-        "subtitle": "One clear next step at a time — stay in the product, no multi-step wizard.",
+        "loading": "Preparing your next step…",
+        "badge": "Result",
+        "title": "Close vacancies faster — start here",
+        "subtitle": "One action at a time until applications land and you contact the first candidate.",
         "progress": "{done} of {total} done",
         "list_aria": "Success path checklist",
         "optional": "optional",
         "deferred": "later",
         "open": "Open",
         "continue": "Continue",
-        "next_title": "Next step",
-        "defer_meta": "Do this later",
-        "complete": "Core path complete — keep working from Launchpad or Recruitment.",
-        "page_title": "Get ready to hire",
-        "page_subtitle": "Follow the checklist. When a step is done, continue from here or from empty states in the product.",
+        "next_title": "Do this now",
+        "defer_meta": "Skip for now",
+        "complete": "Basics done — keep hiring from Launchpad.",
+        "page_title": "Start hiring",
+        "page_subtitle": "Do the next step. Get to your first candidate without support.",
         "hub_badge": "Success path",
-        "hub_footer": "Use the primary button for the single next step. Technical gates are optional detail.",
+        "hub_footer": "Finish the step above — that is all you need right now.",
         "items": {
           "company": {
             "label": "Create company",
@@ -8819,9 +8819,9 @@
             "cta": "Invite teammates"
           },
           "meta": {
-            "label": "Connect Meta / intake",
-            "hint": "Connect Meta ads or another intake channel so applications arrive automatically.",
-            "cta": "Connect Meta"
+            "label": "Connect Facebook / Meta ads",
+            "hint": "So applications from your ads arrive in HostFlow automatically.",
+            "cta": "Connect ads"
           },
           "vacancy": {
             "label": "Create first vacancy",
@@ -8838,7 +8838,14 @@
             "hint": "Take the next action on a lead so nothing sits untouched.",
             "cta": "Open leads"
           }
-        }
+        },
+        "title_done": "You can close vacancies from here",
+        "subtitle_done": "The basics are done. Keep candidates moving in the pipeline.",
+        "checklist_title": "Progress",
+        "result_ready_title": "You are ready to hire",
+        "result_ready_body": "Company, vacancy, and pipeline are in place. Open Launchpad and keep processing candidates.",
+        "go_work": "Go to work",
+        "go_vacancies": "Open vacancies"
       },
       "setup_status": {
         "technical_gates_summary": "Technical Recruitment gates (advanced)",
