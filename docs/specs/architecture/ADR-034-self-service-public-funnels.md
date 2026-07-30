@@ -37,7 +37,7 @@ Additionally, orphan and legacy surfaces (`PublicLanding.tsx` unwired, `/public/
    - remove or never remount orphan `PublicLanding`;
    - aspirational sitemap names in `docs/pipedesign.md` (`/product/*`, `/guides/*`) must not ship as a second IA — prefer shipped `/features|/use-cases|/comparison` until FAQ/docs routes exist under Growth.
 
-6. **Post-signup Success Path** (Growth continuation) is product surface, not marketing chrome: Setup Wizard → first order/vacancy/lead value. Spec: [`self-service-success-path.md`](../journeys/self-service-success-path.md).
+6. **Post-signup Success Path** (Growth continuation) is product surface, not marketing chrome: short company identity form → **guided readiness UI** (checklist + next CTA + empty states) inside the normal shell → first vacancy/lead value. Spec: [`self-service-success-path.md`](../journeys/self-service-success-path.md). **Not** an 8-step Setup Wizard as the primary activation product.
 
 7. **`/app/marketing`** remains operator Acquisition CRM only ([ADR-024](ADR-024-acquisition-campaigns-intake-routing.md)).
 
@@ -57,13 +57,14 @@ Copy sells **result** (e.g. close vacancies faster via Meta / WhatsApp / forms �
 1. All Growth CTAs converge on `/signup` → platform setup → guided first value.
 2. Candidate UX never competes with Growth homepage messaging.
 3. FAQ hub, docs, academy, demo tenant, and SEO factory extend Growth under this ADR — they do not invent new funnels.
-4. Setup Wizard expands existing platform/setup hub paths; it does not create a second public landing.
+4. Activation expands existing platform setup + setup hub / launchpad as a **readiness interface**; it does not create a second public landing or a forced multi-step wizard for optional steps (Meta, invite, vacancy).
 
 ## Alternatives considered
 
 - **Single merged public surface** (marketing + candidate intake): rejected — different trust, SEO (`noindex` on apply), and threat model ([`public-links.md`](../../security/threat-models/public-links.md)).
 - **Separate marketing site / second SPA:** rejected — duplicates IA and drift vs `pipedesign` / UI platform ([ADR-011](ADR-011-hostflow-ui-platform-standard.md)).
 - **Keep apply-old and orphan landings:** rejected — fragments conversion measurement and support.
+- **8-step Setup Wizard as primary activation:** rejected in favor of guided readiness UI (checklist + next CTA + empty states); only company identity stays a short mandatory form.
 
 ## Cross-references
 
@@ -76,4 +77,5 @@ Copy sells **result** (e.g. close vacancies faster via Meta / WhatsApp / forms �
 
 ## History
 
-- 2026-07-30: Accepted — three public funnels; Growth Success Path + Setup Wizard as product layer; legacy entry cleanup normative.
+- 2026-07-30: Accepted — three public funnels; Growth Success Path as product layer; legacy entry cleanup normative.
+- 2026-07-30: Clarified activation UX — **guided readiness UI**, not 8-step Setup Wizard ([`self-service-success-path.md`](../journeys/self-service-success-path.md)).

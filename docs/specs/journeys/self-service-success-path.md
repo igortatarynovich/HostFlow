@@ -1,4 +1,4 @@
-# Self-service Success Path & Setup Wizard
+# Self-service Success Path (guided readiness UI)
 
 **Status:** L2 operating canon (journey + activation)  
 **Owner:** product + frontend  
@@ -17,14 +17,31 @@ If this path works end-to-end, HostFlow is ready to scale acquisition.
 
 ---
 
-## 2. Success Path (canonical)
+## 2. Product decision: clear UI, not wizard magic
+
+**Canonical activation UX is a guided readiness interface inside the normal product shell** — not an 8-step Setup Wizard that traps the user in a separate onboarding mode.
+
+| Do | Do not |
+|----|--------|
+| Always show **where I am** and **what to do next** | Force a linear 1→8 wizard for Meta / invite / vacancy / order |
+| Short **company identity form** only where data is mandatory | Re-ask identity in a multi-screen “tour” after company exists |
+| Persistent **checklist + next CTA** on home / setup hub | Hide progress until the wizard finishes |
+| **Empty states** with one primary action | “Nothing here yet” with no path forward |
+| Allow skip with visible checklist debt | Block the app until every optional step is done |
+
+**Allowed narrow form:** `/app/platform/setup` (or equivalent) collects company name / country / activity once — then the user lands in the real CRM with a readiness panel, not another wizard.
+
+---
+
+## 3. Success Path (canonical)
 
 ```text
 Landing (/)
   → Signup (/signup)
-  → Setup Wizard (/app/platform/setup → guided steps)
-  → Connect Meta (or deferred with checklist debt)
-  → Create order (when Sales path applies) / Create vacancy
+  → Company identity (short form — mandatory once)
+  → Product home / setup hub with readiness checklist + next action
+  → Connect Meta (CTA; deferrable)
+  → Create order (when Sales path applies) / Create vacancy (CTA from empty state)
   → Publish / open intake
   → Receive lead
   → Contact
@@ -37,24 +54,11 @@ Candidate funnel is **out of band** (tokenized `/public/*`) — ADR-034.
 
 ---
 
-## 3. Setup Wizard (target UX)
+## 4. Readiness UI (target)
 
-Post-account HostFlow must **not** drop the user into an empty CRM. Wizard steps:
+Post-account HostFlow must **not** drop the user into an empty CRM with no next step. After company identity:
 
-| Step | Intent | Existing runtime (today) | Target |
-|------|--------|--------------------------|--------|
-| 1 | Company name | Platform setup details | Keep |
-| 2 | Country | Platform setup | Keep |
-| 3 | What the company does | Identity + industry | Keep / clarify copy |
-| 4 | Modules needed | First-module intent | Map to Launchpad enablement |
-| 5 | Connect Meta | Setup hub / integrations | In-wizard or hard next CTA |
-| 6 | Invite colleagues | Team settings | In-wizard or checklist |
-| 7 | First order | Setup / Sales | Guided when Sales on |
-| 8 | First vacancy | `/app/setup/vacancy` | Required for recruitment path |
-
-**Time box:** ≤ 10 minutes to “workspace ready”. Skip allowed with checklist debt (visible until cleared).
-
-### Onboarding checklist (in-app)
+### Readiness checklist (in-app, persistent until cleared)
 
 - [ ] Company created  
 - [ ] Teammates invited (optional)  
@@ -63,13 +67,30 @@ Post-account HostFlow must **not** drop the user into an empty CRM. Wizard steps
 - [ ] First lead received  
 - [ ] First contact with candidate  
 
+### Next-action rule
+
+Exactly **one primary CTA** on the readiness surface (“Create vacancy”, “Connect Meta”, …). Secondary links allowed; no competing heroes.
+
 ### Empty states
 
 Every empty list must state **what to do next** + primary CTA (not “nothing here”).
 
+### Existing runtime (map, do not invent parallel IA)
+
+| Intent | Today | Target |
+|--------|-------|--------|
+| Company identity | `/app/platform/setup` | Keep as short form only |
+| Module / first path | Launchpad | Clarify next step copy |
+| Recruitment setup | `/app/setup` hub | Become readiness home + checklist |
+| Meta | Integrations / setup | Checklist item + deep link CTA |
+| First vacancy | Setup vacancy / empty vacancies | Empty-state CTA |
+| Invite | Team settings | Checklist item + deep link |
+
+**Time box:** ≤ 10 minutes to “workspace ready” (company + first vacancy path visible). Optional steps may remain open as checklist debt.
+
 ---
 
-## 4. Growth surface backlog (priority)
+## 5. Growth surface backlog (priority)
 
 Per ADR-034 and product priority:
 
@@ -77,15 +98,17 @@ Per ADR-034 and product priority:
 |-------|---------|---------|
 | **0** | Canon (this doc + ADR-034) | One IA; no parallel landings |
 | **1** | Landing reposition + how-it-works (≤5) + pricing honesty | Understand value in 10–15s |
-| **2** | Setup Wizard + checklist + empty-state CTAs | First value without support |
+| **2** | Readiness UI + checklist + empty-state CTAs | First value without support |
 | **3** | FAQ hub (`/faq`, ~80–100 Q by section) | SEO + deflection |
 | **4** | SEO factory (industry / role / integration pages) | Organic growth |
-| **5** | User docs + Academy + product tours + context help | Depth after path works |
+| **5** | User docs + Academy + light context help | Depth after path works |
 | **Demo** | Interactive demo tenant | After Phase 2 security/reset policy |
+
+Phase 5 **product tours** (if any) are short contextual tips — not a replacement for readiness UI and not a forced wizard.
 
 ---
 
-## 5. How-it-works (marketing, ≤5 steps)
+## 6. How-it-works (marketing, ≤5 steps)
 
 1. Create company  
 2. Connect Meta  
@@ -95,7 +118,7 @@ Per ADR-034 and product priority:
 
 ---
 
-## 6. Pricing honesty (Growth)
+## 7. Pricing honesty (Growth)
 
 Landing pricing must disclose, aligned to [`plans-matrix.md`](../plans-matrix.md):
 
@@ -107,16 +130,17 @@ Do not invent limits not present in plans-matrix / billing code.
 
 ---
 
-## 7. Acceptance (Phase 1–2)
+## 8. Acceptance (Phase 1–2)
 
 **Phase 1 (landing):** first viewport answers the four ADR-034 questions; how-it-works has five steps; pricing shows trial/limits clarity; all Growth CTAs → `/signup`.
 
-**Phase 2 (wizard):** new tenant completes company + vacancy (and sees Meta/invite checklist) without opening a support ticket; empty vacancies state CTAs to create vacancy.
+**Phase 2 (readiness UI):** new tenant completes company identity, then sees a clear next action toward vacancy/Meta without a multi-step wizard; empty vacancies state CTAs to create vacancy; checklist debt remains visible if Meta/invite skipped.
 
 ---
 
-## 8. Non-goals (this journey)
+## 9. Non-goals (this journey)
 
 - Replacing operator Acquisition CRM (`/app/marketing`).
 - Merging candidate intake into Growth homepage.
 - Shipping Academy/video before Phase 2 path is green.
+- Building an 8-step Setup Wizard as the primary activation product.
