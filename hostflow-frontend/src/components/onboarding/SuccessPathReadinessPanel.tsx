@@ -114,6 +114,12 @@ export function SuccessPathReadinessPanel({
                 {t('app.onboarding.success_path.defer_meta', { defaultValue: 'Skip for now' })}
               </button>
             ) : null}
+            <Link
+              to="/faq"
+              className="rounded-xl px-4 py-3 text-sm font-medium text-brand-700 hover:underline"
+            >
+              {t('app.onboarding.success_path.open_faq', { defaultValue: 'Open FAQ' })}
+            </Link>
           </div>
         </div>
       ) : null}

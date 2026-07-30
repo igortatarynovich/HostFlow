@@ -111,9 +111,9 @@ Per ADR-034 and product priority:
 | **0** | Canon (this doc + ADR-034) | One IA; no parallel landings |
 | **1** | Landing reposition + how-it-works (≤5) + pricing honesty | Understand value in 10–15s |
 | **2** | Readiness UI + checklist + empty-state CTAs | First value without support |
-| **3** | FAQ hub (`/faq`, ~80–100 Q by section) | SEO + deflection |
+| **3** | FAQ hub (`/faq`) + light context help on key terms | SEO + deflection without leaving the screen |
 | **4** | SEO factory (industry / role / integration pages) | Organic growth |
-| **5** | User docs + Academy + light context help | Depth after path works |
+| **5** | User docs + Academy | Depth after path works |
 | **Demo** | Interactive demo tenant | After Phase 2 security/reset policy |
 
 Phase 5 **product tours** (if any) are short contextual tips — not a replacement for readiness UI and not a forced wizard.

@@ -62,6 +62,7 @@ import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner
 import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader, Toolbar, DataTableFrame } from '../components/layout'
+import { ContextHelp } from '../components/help/ContextHelp'
 import {
   leadEmailPolicyBlocked,
   leadRodoSatisfied,
@@ -1690,7 +1691,12 @@ export default function LeadsPage() {
 
       <PageShellHeader>
         <PageHeader
-          title={leadWorkspaceTitle}
+          title={
+            <span className="inline-flex items-center gap-1.5">
+              {leadWorkspaceTitle}
+              <ContextHelp term="lead" />
+            </span>
+          }
           secondaryActions={
             <>
               <Link to={CRM_APP_PATHS.leadsDistribution} className="btn-secondary btn-sm">

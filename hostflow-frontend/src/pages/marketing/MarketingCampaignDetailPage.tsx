@@ -26,6 +26,7 @@ import {
 } from '../../api/platformCampaigns'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { PageHeader } from '../../components/nav/PageHeader'
+import { ContextHelp } from '../../components/help/ContextHelp'
 import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { formatDateTime } from '../../utils/dateFormat'
@@ -269,11 +270,19 @@ export default function MarketingCampaignDetailPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={campaign?.name || t('app.marketing.detail.title', { defaultValue: 'Кампания' })}
+          title={
+            <span className="inline-flex items-center gap-1.5">
+              {campaign?.name || t('app.marketing.detail.title', { defaultValue: 'Кампания' })}
+              <ContextHelp term="campaign" />
+            </span>
+          }
           subtitle={
-            flight
-              ? `Flight · ${statusLabel(flightStatus)}`
-              : t('app.marketing.detail.no_flight', { defaultValue: 'Flight не найден' })
+            <span className="inline-flex items-center gap-1.5">
+              {flight
+                ? `Flight · ${statusLabel(flightStatus)}`
+                : t('app.marketing.detail.no_flight', { defaultValue: 'Flight не найден' })}
+              <ContextHelp term="flight" />
+            </span>
           }
           kind="browse"
           secondaryActions={

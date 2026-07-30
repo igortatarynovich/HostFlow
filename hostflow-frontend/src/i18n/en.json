@@ -8955,6 +8955,40 @@
           "load": "Failed to load sources"
         }
       }
+    },
+    "context_help": {
+      "open_aria": "What is {term}?",
+      "more_faq": "More in FAQ",
+      "terms": {
+        "vacancy": {
+          "title": "Vacancy",
+          "body": "The role you hire for. Leads and candidates attach here so ownership and documents stay clear."
+        },
+        "lead": {
+          "title": "Lead",
+          "body": "An inbound application or inquiry before it becomes a candidate you actively process."
+        },
+        "candidate": {
+          "title": "Candidate",
+          "body": "A person in your hiring pipeline — stages, documents, owner, and next actions until hire."
+        },
+        "order": {
+          "title": "Order",
+          "body": "A commercial client request (who to hire). Vacancies can hang off order lines when Sales is on."
+        },
+        "flight": {
+          "title": "Flight",
+          "body": "A time-bound execution slice of an acquisition campaign (ads run) tied to hiring demand."
+        },
+        "campaign": {
+          "title": "Campaign",
+          "body": "An acquisition plan that groups flights and sources bringing leads into HostFlow."
+        },
+        "meta": {
+          "title": "Meta ads",
+          "body": "Facebook/Instagram lead forms and ads connected so applications land in your inbox automatically."
+        }
+      }
     }
   },
   "public": {
@@ -8979,7 +9013,8 @@
           "document_control": "Document control",
           "high_volume_onboarding": "High-volume onboarding",
           "hostflow_vs_spreadsheets": "HostFlow vs spreadsheets",
-          "trucking_recruitment_use_case": "Trucking recruitment use-case"
+          "trucking_recruitment_use_case": "Trucking recruitment use-case",
+          "faq": "FAQ"
         }
       },
       "comparison_hostflow_vs_spreadsheets": {
@@ -10646,6 +10681,23 @@
     },
     "locale_switcher": {
       "label": "Lang"
+    },
+    "faq": {
+      "badge": "Help",
+      "title": "Frequently asked questions",
+      "subtitle": "From signup to first hire — clear answers so you can move without waiting on support.",
+      "cta_signup": "Start free setup",
+      "cta_pricing": "View pricing",
+      "search_label": "Search FAQ",
+      "search_placeholder": "Search questions…",
+      "sections_aria": "FAQ sections",
+      "no_results": "No questions match your search.",
+      "still_title": "Ready to try it?",
+      "still_body": "Create a workspace and follow the single next step on screen.",
+      "seo": {
+        "title": "HostFlow FAQ — setup, Meta, recruitment, billing",
+        "description": "Answers for getting started, Meta ads, WhatsApp, vacancies, documents, billing, security, and API — hire without waiting on support."
+      }
     }
   },
   "admin": {

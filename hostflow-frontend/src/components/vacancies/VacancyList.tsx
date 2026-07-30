@@ -21,6 +21,7 @@ import EntityListPagination from '../surfaces/EntityListPagination'
 import EntityListShell from '../surfaces/EntityListShell'
 import EntityListTableFrame from '../surfaces/EntityListTableFrame'
 import EmptyStatePanel from '../EmptyStatePanel'
+import { ContextHelp } from '../help/ContextHelp'
 
 // Unify button styles with Candidates page
 const primaryBtn = 'btn-primary'
@@ -755,6 +756,12 @@ export default function VacancyList() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
+          title={
+            <span className="inline-flex items-center gap-1.5">
+              {t('app.nav.items.vacancies', { defaultValue: 'Vacancies' })}
+              <ContextHelp term="vacancy" />
+            </span>
+          }
           primaryAction={
             <Link to={CRM_APP_PATHS.vacancyNew} className="btn-primary btn-sm">
               {t('app.vacancies.list.new_vacancy')}

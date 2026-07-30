@@ -29,6 +29,7 @@ import { usePermissions } from './hooks/usePermissions'
 import PublicIntakeStart from './pages/public/PublicIntakeStart'
 import PublicPortalLanding from './pages/public/PublicPortalLanding'
 import CrmLandingPage from './pages/public/CrmLandingPage'
+import FaqPage from './pages/public/FaqPage'
 import PublicNotFoundPage from './pages/public/PublicNotFoundPage'
 import FeatureCandidatePipelinePage from './pages/public/FeatureCandidatePipelinePage'
 import FeatureDocumentControlPage from './pages/public/FeatureDocumentControlPage'
@@ -197,6 +198,7 @@ export default function App(){
       <Route path="/public/scan-sessions" element={<Navigate to="/public/intake" replace />} />
       <Route path="/public/status/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicStatusPage /></LazyRoute>} />
       <Route path="/client-portal" element={<LazyRoute loadingLabel={t('common.loading')}><ClientPortalPage /></LazyRoute>} />
+      <Route path="/faq" element={<FaqPage />} />
 
       {import.meta.env.DEV ? (
         <Route path="/dev/entity-list-shell" element={<EntityListShellDemoPublicPage />} />

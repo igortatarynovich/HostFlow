@@ -6,6 +6,7 @@ import { listCompanies } from '../../api/client'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { SALES_ORDERS_PATH, salesOrderNewPath, salesOrderPath } from '../../app/salesPaths'
 import { useI18n } from '../../i18n'
+import { ContextHelp } from '../../components/help/ContextHelp'
 
 function statusLabel(status: string, t: ReturnType<typeof useI18n>['t']) {
   const key = `app.sales_orders.status.${status}`
@@ -59,8 +60,9 @@ export default function SalesOrdersListPage() {
     <div className="mx-auto max-w-4xl space-y-4 overflow-y-auto px-4 py-4 sm:px-6" data-testid="sales-orders-list">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="inline-flex items-center gap-1.5 text-lg font-semibold text-slate-900">
             {t('app.sales_orders.list.title', { defaultValue: 'Service Orders' })}
+            <ContextHelp term="order" />
           </h2>
           <p className="mt-1 text-sm text-slate-600">
             {t('app.sales_orders.list.subtitle', {

@@ -745,6 +745,9 @@ export default function CrmLandingPage() {
           <h2 className="text-xl font-semibold text-slate-900">{t('public.crm_landing.guides.title')}</h2>
           <p className="mt-2 text-sm text-slate-600">{t('public.crm_landing.guides.subtitle')}</p>
           <div className="mt-4 flex flex-wrap gap-2">
+            <Link to="/faq" className="btn-secondary btn-sm" onClick={() => trackCta('guide_faq', '/faq')}>
+              {t('public.marketing.common.related.faq', { defaultValue: 'FAQ' })}
+            </Link>
             <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm" onClick={() => trackCta('guide_pipeline', '/features/candidate-pipeline')}>
               {t('public.marketing.common.related.candidate_pipeline', { defaultValue: 'Candidate pipeline' })}
             </Link>

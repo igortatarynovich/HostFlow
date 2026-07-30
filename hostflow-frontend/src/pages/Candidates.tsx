@@ -69,6 +69,7 @@ import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
 import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
 import { PageHeader } from '../components/nav/PageHeader'
+import { ContextHelp } from '../components/help/ContextHelp'
 import { PageShell, PageShellHeader } from '../components/layout'
 import type {
   DateRangeFilter,
@@ -2514,7 +2515,16 @@ export default function Candidates(){
           ) : null}
 
           <PageShellHeader className="shrink-0 pb-1 pt-2">
-            <PageHeader kind="browse" secondaryActions={workPanelToggle} />
+            <PageHeader
+              kind="browse"
+              title={
+                <span className="inline-flex items-center gap-1.5">
+                  {t('app.nav.items.candidates', { defaultValue: 'Candidates' })}
+                  <ContextHelp term="candidate" />
+                </span>
+              }
+              secondaryActions={workPanelToggle}
+            />
           </PageShellHeader>
 
           {candidatesQuotaWarning ? (

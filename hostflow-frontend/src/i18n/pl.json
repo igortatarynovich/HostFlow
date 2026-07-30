@@ -8955,6 +8955,40 @@
           "load": "Nie udało się załadować źródeł"
         }
       }
+    },
+    "context_help": {
+      "open_aria": "Czym jest {term}?",
+      "more_faq": "Więcej w FAQ",
+      "terms": {
+        "vacancy": {
+          "title": "Wakat",
+          "body": "Rola, na którą rekrutujesz. Leady i kandydaci są przypisani — ownership i dokumenty."
+        },
+        "lead": {
+          "title": "Lead",
+          "body": "Zgłoszenie przed przeniesieniem do kandydata, którego aktywnie prowadzisz."
+        },
+        "candidate": {
+          "title": "Kandydat",
+          "body": "Osoba w pipeline rekrutacji — etapy, dokumenty, właściciel i kolejny krok do zatrudnienia."
+        },
+        "order": {
+          "title": "Zamówienie",
+          "body": "Komercyjne żądanie klienta (kogo zatrudnić). Wakaty mogą wynikać z linii zamówienia."
+        },
+        "flight": {
+          "title": "Flight",
+          "body": "Czasowy wycinek kampanii acquisition (emisja reklam) powiązany z popytem rekrutacji."
+        },
+        "campaign": {
+          "title": "Kampania",
+          "body": "Plan pozyskania: grupuje flighty i źródła, z których leady trafiają do HostFlow."
+        },
+        "meta": {
+          "title": "Reklamy Meta",
+          "body": "Formularze i reklamy Facebook/Instagram — zgłoszenia automatycznie trafiają do inbox."
+        }
+      }
     }
   },
   "public": {
@@ -8979,7 +9013,8 @@
           "document_control": "Kontrola dokumentów",
           "high_volume_onboarding": "Onboarding masowy",
           "hostflow_vs_spreadsheets": "HostFlow vs arkusze",
-          "trucking_recruitment_use_case": "Use-case: rekrutacja trucking"
+          "trucking_recruitment_use_case": "Use-case: rekrutacja trucking",
+          "faq": "FAQ"
         }
       },
       "comparison_hostflow_vs_spreadsheets": {
@@ -10646,6 +10681,23 @@
     },
     "locale_switcher": {
       "label": "Język"
+    },
+    "faq": {
+      "badge": "Pomoc",
+      "title": "Najczęstsze pytania",
+      "subtitle": "Od rejestracji do pierwszej rekrutacji — odpowiedzi bez czekania na support.",
+      "cta_signup": "Zacznij konfigurację",
+      "cta_pricing": "Cennik",
+      "search_label": "Szukaj w FAQ",
+      "search_placeholder": "Szukaj pytań…",
+      "sections_aria": "Sekcje FAQ",
+      "no_results": "Brak pytań dla tego wyszukiwania.",
+      "still_title": "Gotowy spróbować?",
+      "still_body": "Utwórz workspace i wykonaj jeden kolejny krok na ekranie.",
+      "seo": {
+        "title": "FAQ HostFlow — start, Meta, rekrutacja, billing",
+        "description": "Odpowiedzi o starcie, Meta, WhatsApp, wakatach, dokumentach, billingu, bezpieczeństwie i API — bez czekania na support."
+      }
     }
   },
   "admin": {

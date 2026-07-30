@@ -5,6 +5,7 @@ Source: `src/app/routes.tsx` + explicit public/auth routes in `src/App.tsx`
 | page_id | route | module | layout_type | owner | status | canonical_match | notes |
 |---|---|---|---|---|---|---|---|
 | marketing_root | / | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | CrmLandingPage (ADR-034 Growth) |
+| marketing_faq | /faq | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | FaqPage (sectional FAQ + JSON-LD) |
 | not-found | /app/* | Platform | UTILITY_LAYOUT_V1 | Platform | Candidate | n/a | NotFoundRedirect |
 | activities-legacy | /app/activities | Platform | UTILITY_LAYOUT_V1 | Platform | Candidate | n/a | LegacyActivitiesRedirect |
 | analytics | /app/analytics | Overview | UTILITY_LAYOUT_V1 | Product | Candidate | n/a | RedirectLegacyAnalyticsToInsights |
