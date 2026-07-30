@@ -22,6 +22,16 @@ const FAQ_ANCHOR: Record<ContextHelpTermId, string> = {
   meta: '/faq#meta',
 }
 
+const DOCS_ANCHOR: Record<ContextHelpTermId, string> = {
+  vacancy: '/docs/first-vacancy',
+  lead: '/docs/first-lead',
+  candidate: '/docs/first-candidate',
+  order: '/docs/getting-started',
+  flight: '/docs/connect-meta',
+  campaign: '/docs/connect-meta',
+  meta: '/docs/connect-meta',
+}
+
 type ContextHelpProps = {
   term: ContextHelpTermId
   className?: string
@@ -90,13 +100,22 @@ export function ContextHelp({ term, className = '' }: ContextHelpProps) {
             </button>
           </span>
           <span className="mt-1 block text-xs leading-relaxed text-slate-600">{body}</span>
-          <Link
-            to={FAQ_ANCHOR[term]}
-            className="mt-2 inline-flex text-xs font-semibold text-brand-700 hover:underline"
-            onClick={() => setOpen(false)}
-          >
-            {t('app.context_help.more_faq', { defaultValue: 'More in FAQ' })}
-          </Link>
+          <span className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+            <Link
+              to={DOCS_ANCHOR[term]}
+              className="inline-flex text-xs font-semibold text-brand-700 hover:underline"
+              onClick={() => setOpen(false)}
+            >
+              {t('app.context_help.more_docs', { defaultValue: 'How-to guide' })}
+            </Link>
+            <Link
+              to={FAQ_ANCHOR[term]}
+              className="inline-flex text-xs font-semibold text-brand-700 hover:underline"
+              onClick={() => setOpen(false)}
+            >
+              {t('app.context_help.more_faq', { defaultValue: 'More in FAQ' })}
+            </Link>
+          </span>
         </span>
       ) : null}
     </span>

@@ -1,6 +1,13 @@
 import { useEffect, useRef } from 'react'
 
-type SeoPageType = 'landing' | 'feature' | 'use_case' | 'comparison'
+type SeoPageType =
+  | 'landing'
+  | 'feature'
+  | 'use_case'
+  | 'comparison'
+  | 'faq'
+  | 'docs'
+  | 'academy'
 
 type SeoTrackingOptions = {
   pageType: SeoPageType

@@ -113,12 +113,14 @@ Per ADR-034 and product priority:
 | **2** | Readiness UI + checklist + empty-state CTAs | First value without support |
 | **3** | FAQ hub (`/faq`) + light context help on key terms | SEO + deflection without leaving the screen |
 | **4** | SEO factory (industry / role / integration pages) | Organic growth — **Wave-2 shipped** via `seoPageCatalog` + `SeoCatalogPage` (8 pages); Wave-1 hand-built pages remain |
-| **5** | User docs + Academy | Depth after path works |
+| **5** | User docs + Academy | Depth after path works — **Wave-1 shipped**: `/docs`, `/docs/:slug` (8 how-tos), `/academy` (lessons → docs; video slots ready) |
 | **Demo** | Interactive demo tenant | After Phase 2 security/reset policy |
 
-Phase 5 **product tours** (if any) are short contextual tips — not a replacement for readiness UI and not a forced wizard.
+Phase 5 **product tours** (if any) are short contextual tips — not a replacement for readiness UI and not a forced wizard. Context help already links FAQ + Docs.
 
 **Phase 4 (Wave-2) routes:** `/use-cases/recruitment-agencies`, `/use-cases/transport-companies`, `/use-cases/driver-recruitment`, `/features/whatsapp-recruitment`, `/features/meta-ads-recruitment`, `/use-cases/ats-for-drivers`, `/use-cases/ats-for-transport`, `/use-cases/ats-europe`. Catalog SoT: `hostflow-frontend/src/content/seo/seoPageCatalog.ts`.
+
+**Phase 5 (Wave-1) routes:** `/docs`, `/docs/getting-started`, `/docs/create-company`, `/docs/connect-meta`, `/docs/first-vacancy`, `/docs/first-lead`, `/docs/first-candidate`, `/docs/documents-basics`, `/docs/invite-team`, `/academy`. Catalog SoT: `hostflow-frontend/src/content/docs/`.
 
 ---
 
@@ -144,7 +146,7 @@ Do not invent limits not present in plans-matrix / billing code.
 
 ---
 
-## 8. Acceptance (Phase 1–4)
+## 8. Acceptance (Phase 1–5)
 
 **Phase 1 (landing):** first viewport answers the four ADR-034 questions; how-it-works has five steps; pricing shows trial/limits clarity; all Growth CTAs → `/signup`.
 
@@ -153,6 +155,8 @@ Do not invent limits not present in plans-matrix / billing code.
 **Phase 3 (FAQ):** `/faq` hub + `ContextHelp` on key product screens; CTAs stay on Growth funnel (`/signup`).
 
 **Phase 4 (SEO factory Wave-2):** catalog-driven pages render from `SEO_PAGE_CATALOG`; unique Title/H1/FAQ; primary CTA → `/signup`; listed in `sitemap.xml` and page registry.
+
+**Phase 5 (Docs + Academy Wave-1):** `/docs` hub + Success Path how-tos; `/academy` lesson index linking to docs (video optional); ContextHelp links to docs + FAQ; primary CTAs still → `/signup`.
 
 ---
 

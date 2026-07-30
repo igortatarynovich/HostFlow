@@ -85,6 +85,20 @@ export default function FaqPage() {
             >
               {t('public.faq.cta_pricing', { defaultValue: 'View pricing' })}
             </Link>
+            <Link
+              to="/docs"
+              className="btn-secondary"
+              onClick={() => trackCta('faq_docs', '/docs')}
+            >
+              {t('public.faq.cta_docs', { defaultValue: 'Docs' })}
+            </Link>
+            <Link
+              to="/academy"
+              className="btn-secondary"
+              onClick={() => trackCta('faq_academy', '/academy')}
+            >
+              {t('public.faq.cta_academy', { defaultValue: 'Academy' })}
+            </Link>
           </div>
           <label className="mt-6 block">
             <span className="sr-only">{t('public.faq.search_label', { defaultValue: 'Search FAQ' })}</span>
