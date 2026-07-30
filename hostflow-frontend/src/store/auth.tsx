@@ -22,7 +22,6 @@ import {
   markSessionRevoked,
   startCrossOriginLogoutBounce,
 } from '../platform/sessionLogout'
-import { isAllowedHandoffNext } from '../platform/deployHosts'
 import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
 
 const IMPERSONATION_BACKUP_KEY = IMPERSONATION_BACKUP_STORAGE_KEY
@@ -81,12 +80,6 @@ const isPublicAuthPath = (path: string): boolean =>
   path.startsWith('/reset-password') ||
   path.startsWith('/invite/accept')
 
-/** Module handoff: /login?next=https://sales.hostflow.cc/... must still hydrate session. */
-function hasModuleHandoffNext(search: string): boolean {
-  const next = new URLSearchParams(search.startsWith('?') ? search : `?${search}`).get('next')?.trim() || ''
-  return Boolean(next && /^https?:\/\//i.test(next) && isAllowedHandoffNext(next))
-}
-
 type AuthCtx = {
   me: WhoAmI | null
   preferences: UserPreferences | null
@@ -133,12 +126,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [])
 
   const refresh = useCallback(async (opts?: { force?: boolean }) => {
-    // В публичных страницах не тянем auth/whoami, чтобы не ловить 401 —
-    // except module handoff on /login?next=https://… where Bearer may still be valid.
+    // В публичных страницах не тянем auth/whoami, чтобы не ловить 401
     const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
-    const search = typeof window !== 'undefined' ? window.location.search || '' : ''
-    const handoff = path === '/login' && hasModuleHandoffNext(search)
-    if (!opts?.force && isPublicAuthPath(path) && !handoff) {
+    if (!opts?.force && isPublicAuthPath(path)) {
       setLoading(false)
       return
     }
@@ -358,8 +348,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const path = location.pathname || ''
-    const handoff = path === '/login' && hasModuleHandoffNext(location.search || '')
-    if (isPublicAuthPath(path) && !handoff) {
+    if (isPublicAuthPath(path)) {
       setLoading(false)
       return
     }
@@ -368,9 +357,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return
     }
     if (!me) {
-      void refresh(handoff ? { force: true } : undefined)
+      void refresh()
     }
-  }, [location.pathname, location.search, me, refresh])
+  }, [location.pathname, me, refresh])
 
   const updateProfile = useCallback((update: Partial<WhoAmI>) => {
     setMe((prev) => (prev ? { ...prev, ...update } : prev))

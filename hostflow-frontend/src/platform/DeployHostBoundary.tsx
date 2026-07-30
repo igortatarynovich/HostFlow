@@ -8,7 +8,6 @@ import {
   moduleHomePath,
   resolveDeployHost,
   resolvePathDeployHost,
-  shellLoginUrl,
   type ModuleDeployHost,
 } from './deployHosts'
 
@@ -73,11 +72,15 @@ export function DeployHostBoundary({ children }: { children: React.ReactNode }) 
     setBlocked(true)
     void (async () => {
       // Cross-subdomain hard nav: mint Domain=.hostflow.cc cookies first.
-      // Never navigate unauthenticated — that lands on ModuleHostAuthRedirect → login loop.
       const synced = await ensureSharedSessionCookies()
       if (cancelled) return
       if (!synced) {
-        window.location.replace(shellLoginUrl(target))
+        // Do not send users to /login?next=module (login↔module loops). Keep work on shell
+        // with hf_module so the SPA stays usable until cookies can be minted.
+        const url = new URL(targetPath, window.location.origin)
+        url.searchParams.set('hf_module', targetHost)
+        if (url.hash.startsWith(`#${AUTH_HANDOFF_HASH_PREFIX}`)) url.hash = ''
+        window.location.replace(`${url.pathname}${url.search}${url.hash}`)
         return
       }
       window.location.replace(target)

@@ -1,7 +1,7 @@
-import { Suspense, lazy, useEffect, useMemo } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from './store/useAuth'
-import { ensureSharedSessionCookies, setToken } from './api/client'
+import { ensureSharedSessionCookies } from './api/client'
 import Login from './pages/Login'
 import { AppShell } from './app/AppShell'
 import { WorkAreaLayout } from './app/WorkAreaLayout'
@@ -120,38 +120,35 @@ function SignupRedirectForAuthed() {
 }
 
 function AuthedDefaultAppNavigate() {
-  const { refresh } = useAuth()
   const { can } = usePermissions()
   const { t } = useI18n()
   const [searchParams] = useSearchParams()
   const nextRaw = (searchParams.get('next') || '').trim()
   const allowedNext = nextRaw && isAllowedHandoffNext(nextRaw) ? nextRaw : null
   const absoluteNext = Boolean(allowedNext && /^https?:\/\//i.test(allowedNext))
+  const [absoluteHandoffReady, setAbsoluteHandoffReady] = useState(!absoluteNext)
 
-  // Already-authed visit to /login?next=https://recruitment... must return to the module host.
-  // Ensure Domain cookies exist first — otherwise module host bounces straight back here.
+  // Already-authed visit to /login?next=https://module... used to hard-navigate back to the
+  // module host. When Domain cookies are missing that races ModuleHostAuthRedirect into an
+  // infinite login↔module reload loop. Stay on shell instead; sidebar sync still opens modules.
   useEffect(() => {
-    if (!absoluteNext || !allowedNext) return
+    if (!absoluteNext) return
     let cancelled = false
     void (async () => {
-      const synced = await ensureSharedSessionCookies()
+      await ensureSharedSessionCookies()
       if (cancelled) return
-      if (!synced) {
-        // Cannot mint Domain cookies from this session — drop Bearer and rehydrate as logged-out
-        // Login so the user can sign in again (next= preserved). Do not soft-loop the spinner.
-        setToken(null)
-        await refresh({ force: true })
-        return
-      }
-      window.location.replace(allowedNext)
+      setAbsoluteHandoffReady(true)
     })()
     return () => {
       cancelled = true
     }
-  }, [absoluteNext, allowedNext, refresh])
+  }, [absoluteNext])
 
-  if (absoluteNext) {
+  if (absoluteNext && !absoluteHandoffReady) {
     return <div className="grid h-screen place-items-center text-slate-500">{t('common.loading')}</div>
+  }
+  if (absoluteNext) {
+    return <Navigate to={CRM_APP_PATHS.appShellPrefix} replace />
   }
   if (allowedNext && allowedNext.startsWith('/')) {
     return <Navigate to={allowedNext} replace />

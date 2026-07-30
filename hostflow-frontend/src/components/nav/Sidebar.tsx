@@ -47,7 +47,6 @@ import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 import { useTeamOverviewNav } from '../../contexts/TeamOverviewNavContext'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { ensureSharedSessionCookies } from '../../api/client'
-import { shellLoginUrl } from '../../platform/deployHosts'
 import { APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS } from '../../nav/appShellNav'
 import {
   SIDEBAR_AGENCY_ANALYTICS_ORDER,
@@ -599,7 +598,18 @@ export function Sidebar({
             void (async () => {
               const synced = await ensureSharedSessionCookies()
               if (!synced) {
-                window.location.assign(shellLoginUrl(itemPath))
+                // Stay on shell with module context — never bounce to /login?next= from a nav click.
+                try {
+                  const u = new URL(itemPath)
+                  const local = new URL(`${u.pathname}${u.search}`, window.location.origin)
+                  const owner = u.hostname.split('.')[0]
+                  if (owner && owner !== 'hostflow' && owner !== 'www') {
+                    local.searchParams.set('hf_module', owner)
+                  }
+                  window.location.assign(`${local.pathname}${local.search}${local.hash}`)
+                } catch {
+                  window.location.assign(itemPath)
+                }
                 return
               }
               window.location.assign(itemPath)
