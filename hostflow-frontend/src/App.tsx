@@ -30,6 +30,7 @@ import PublicIntakeStart from './pages/public/PublicIntakeStart'
 import PublicPortalLanding from './pages/public/PublicPortalLanding'
 import CrmLandingPage from './pages/public/CrmLandingPage'
 import FaqPage from './pages/public/FaqPage'
+import SeoCatalogPage from './pages/public/SeoCatalogPage'
 import PublicNotFoundPage from './pages/public/PublicNotFoundPage'
 import FeatureCandidatePipelinePage from './pages/public/FeatureCandidatePipelinePage'
 import FeatureDocumentControlPage from './pages/public/FeatureDocumentControlPage'
@@ -85,6 +86,7 @@ import {
   withDeployAwareNavPaths,
 } from './platform/deployHosts'
 import { ModuleHostAuthRedirect } from './platform/ModuleHostAuthRedirect'
+import { SEO_PAGE_CATALOG } from './content/seo/seoPageCatalog'
 
 const PublicIntakeNew = lazy(() => import('./pages/public/PublicIntakeNew'))
 const CompanyIntakePage = lazy(() => import('./pages/public/CompanyIntakePage'))
@@ -216,6 +218,13 @@ export default function App(){
               <Route path="/use-cases/high-volume-onboarding" element={<UseCaseHighVolumeOnboardingPage />} />
               <Route path="/comparison/hostflow-vs-spreadsheets" element={<ComparisonHostflowVsSpreadsheetsPage />} />
               <Route path="/comparison/recruitment-crm-vs-ats" element={<ComparisonRecruitmentCrmVsAtsPage />} />
+              {SEO_PAGE_CATALOG.map((page) => (
+                <Route
+                  key={page.id}
+                  path={page.path}
+                  element={<SeoCatalogPage pageId={page.id} />}
+                />
+              ))}
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />

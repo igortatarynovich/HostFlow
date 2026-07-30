@@ -112,11 +112,13 @@ Per ADR-034 and product priority:
 | **1** | Landing reposition + how-it-works (≤5) + pricing honesty | Understand value in 10–15s |
 | **2** | Readiness UI + checklist + empty-state CTAs | First value without support |
 | **3** | FAQ hub (`/faq`) + light context help on key terms | SEO + deflection without leaving the screen |
-| **4** | SEO factory (industry / role / integration pages) | Organic growth |
+| **4** | SEO factory (industry / role / integration pages) | Organic growth — **Wave-2 shipped** via `seoPageCatalog` + `SeoCatalogPage` (8 pages); Wave-1 hand-built pages remain |
 | **5** | User docs + Academy | Depth after path works |
 | **Demo** | Interactive demo tenant | After Phase 2 security/reset policy |
 
 Phase 5 **product tours** (if any) are short contextual tips — not a replacement for readiness UI and not a forced wizard.
+
+**Phase 4 (Wave-2) routes:** `/use-cases/recruitment-agencies`, `/use-cases/transport-companies`, `/use-cases/driver-recruitment`, `/features/whatsapp-recruitment`, `/features/meta-ads-recruitment`, `/use-cases/ats-for-drivers`, `/use-cases/ats-for-transport`, `/use-cases/ats-europe`. Catalog SoT: `hostflow-frontend/src/content/seo/seoPageCatalog.ts`.
 
 ---
 
@@ -142,11 +144,15 @@ Do not invent limits not present in plans-matrix / billing code.
 
 ---
 
-## 8. Acceptance (Phase 1–2)
+## 8. Acceptance (Phase 1–4)
 
 **Phase 1 (landing):** first viewport answers the four ADR-034 questions; how-it-works has five steps; pricing shows trial/limits clarity; all Growth CTAs → `/signup`.
 
 **Phase 2 (readiness UI):** new tenant completes company identity, then sees a clear next action toward vacancy/Meta without a multi-step wizard; empty vacancies state CTAs to create vacancy; checklist debt remains visible if Meta/invite skipped.
+
+**Phase 3 (FAQ):** `/faq` hub + `ContextHelp` on key product screens; CTAs stay on Growth funnel (`/signup`).
+
+**Phase 4 (SEO factory Wave-2):** catalog-driven pages render from `SEO_PAGE_CATALOG`; unique Title/H1/FAQ; primary CTA → `/signup`; listed in `sitemap.xml` and page registry.
 
 ---
 

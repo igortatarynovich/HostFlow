@@ -79,3 +79,4 @@ Copy sells **result** (e.g. close vacancies faster via Meta / WhatsApp / forms �
 
 - 2026-07-30: Accepted — three public funnels; Growth Success Path as product layer; legacy entry cleanup normative.
 - 2026-07-30: Clarified activation UX — **guided readiness UI**, not 8-step Setup Wizard ([`self-service-success-path.md`](../journeys/self-service-success-path.md)).
+- 2026-07-30: Phase 4 Wave-2 SEO factory — catalog + `SeoCatalogPage` (8 industry/role/integration pages); Wave-1 hand pages remain.

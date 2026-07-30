@@ -129,3 +129,11 @@ Source: `src/app/routes.tsx` + explicit public/auth routes in `src/App.tsx`
 | auth_signup | /signup | Auth | AUTH_LAYOUT_V1 | Platform | Candidate | n/a | SignupPage |
 | marketing_use-cases_high-volume-onboarding | /use-cases/high-volume-onboarding | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | UseCaseHighVolumeOnboardingPage |
 | marketing_use-cases_trucking-recruitment | /use-cases/trucking-recruitment | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | UseCaseTruckingRecruitmentPage |
+| marketing_use-cases_recruitment-agencies | /use-cases/recruitment-agencies | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_use-cases_transport-companies | /use-cases/transport-companies | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_use-cases_driver-recruitment | /use-cases/driver-recruitment | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_features_whatsapp-recruitment | /features/whatsapp-recruitment | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_features_meta-ads-recruitment | /features/meta-ads-recruitment | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_use-cases_ats-for-drivers | /use-cases/ats-for-drivers | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_use-cases_ats-for-transport | /use-cases/ats-for-transport | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_use-cases_ats-europe | /use-cases/ats-europe | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |

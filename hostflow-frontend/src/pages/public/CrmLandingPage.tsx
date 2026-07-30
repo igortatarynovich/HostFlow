@@ -766,6 +766,21 @@ export default function CrmLandingPage() {
             <Link to="/comparison/recruitment-crm-vs-ats" className="btn-secondary btn-sm" onClick={() => trackCta('guide_crm_vs_ats', '/comparison/recruitment-crm-vs-ats')}>
               {t('public.marketing.common.related.crm_vs_ats', { defaultValue: 'Recruitment CRM vs ATS' })}
             </Link>
+            <Link to="/use-cases/recruitment-agencies" className="btn-secondary btn-sm" onClick={() => trackCta('guide_recruitment_agencies', '/use-cases/recruitment-agencies')}>
+              {t('public.marketing.common.related.recruitment_agencies', { defaultValue: 'Recruitment agencies' })}
+            </Link>
+            <Link to="/use-cases/transport-companies" className="btn-secondary btn-sm" onClick={() => trackCta('guide_transport_companies', '/use-cases/transport-companies')}>
+              {t('public.marketing.common.related.transport_companies', { defaultValue: 'Transport companies' })}
+            </Link>
+            <Link to="/features/meta-ads-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_meta_ads', '/features/meta-ads-recruitment')}>
+              {t('public.marketing.common.related.meta_ads_recruitment', { defaultValue: 'Meta ads recruitment' })}
+            </Link>
+            <Link to="/features/whatsapp-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_whatsapp', '/features/whatsapp-recruitment')}>
+              {t('public.marketing.common.related.whatsapp_recruitment', { defaultValue: 'WhatsApp recruitment' })}
+            </Link>
+            <Link to="/use-cases/ats-for-drivers" className="btn-secondary btn-sm" onClick={() => trackCta('guide_ats_drivers', '/use-cases/ats-for-drivers')}>
+              {t('public.marketing.common.related.ats_for_drivers', { defaultValue: 'ATS for drivers' })}
+            </Link>
           </div>
         </section>
 
