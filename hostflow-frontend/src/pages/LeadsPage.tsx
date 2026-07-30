@@ -57,6 +57,7 @@ import { LeadQueueQuickRejectModal, LeadQueueQuickRequestInfoModal } from '../co
 import LostReasonForLostStageModal from '../components/leads/LostReasonForLostStageModal'
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
 import { CRM_APP_DRILLDOWN_HREFS, CRM_APP_PATHS } from '../app/crmAppPaths'
+import { useSuccessPathReadiness } from '../hooks/useSuccessPathReadiness'
 import { QuotaNearLimitBanner } from '../components/billing/QuotaNearLimitBanner'
 import { useBillingQuotaWarnings } from '../hooks/useBillingQuotaWarnings'
 import { PageHeader } from '../components/nav/PageHeader'
@@ -207,7 +208,7 @@ export default function LeadsPage() {
   const planLimitModal = usePlanLimitModal()
   const { warningFor: quotaWarningFor } = useBillingQuotaWarnings()
   const leadQuotaWarning = quotaWarningFor('leads_monthly')
-  const { entitySingular, openEntityLabel } = useBusinessTerminology()
+  const { entitySingular } = useBusinessTerminology()
   const location = useLocation()
   const navigate = useNavigate()
   const [status, setStatus] = useState<'' | LeadStatus>('')
@@ -720,7 +721,40 @@ export default function LeadsPage() {
   const vacancyColumnLabel = isServicesTenant ? t('app.leads.table.service_order') : t('app.leads.table.vacancy')
   const emptyTitle = isServicesTenant ? t('app.leads.states.empty_title_services') : t('app.leads.states.empty_title')
   const emptyDescription = isServicesTenant ? t('app.leads.states.empty_desc_services') : t('app.leads.states.empty_desc')
-  const secondaryEmptyLabel = isServicesTenant ? t('app.leads.states.empty_cta_clients') : openEntityLabel
+  const { itemDone } = useSuccessPathReadiness({ enabled: !isServicesTenant })
+  const vacancyReady = itemDone('vacancy')
+  const leadsEmptyPrimary = isServicesTenant
+    ? {
+        label: t('app.leads.states.empty_cta_connect'),
+        to: CRM_APP_PATHS.settingsIntegrationsMeta,
+      }
+    : !vacancyReady
+      ? {
+          label: t('app.leads.states.empty_cta_vacancy', {
+            defaultValue: 'Create vacancy',
+          }),
+          to: CRM_APP_PATHS.setupVacancy,
+        }
+      : {
+          label: t('app.leads.states.empty_cta_connect'),
+          to: CRM_APP_PATHS.settingsIntegrationsMeta,
+        }
+  const leadsEmptySecondary = isServicesTenant
+    ? {
+        label: t('app.leads.states.empty_cta_clients'),
+        to: CRM_APP_PATHS.clientsDirectory,
+      }
+    : vacancyReady
+      ? {
+          label: t('app.leads.states.empty_cta_setup', {
+            defaultValue: 'Getting started',
+          }),
+          to: CRM_APP_PATHS.setup,
+        }
+      : {
+          label: t('app.leads.states.empty_cta_connect'),
+          to: CRM_APP_PATHS.settingsIntegrationsMeta,
+        }
   const recruitmentLeadsTable = !isServicesTenant
   const tableColCount = recruitmentLeadsTable ? 7 : 9
 
@@ -2136,16 +2170,10 @@ export default function LeadsPage() {
                         description={emptyDescription}
                         whyHint={t('app.leads.states.empty_why', {
                           defaultValue:
-                            'Leads is your inbox of potential candidates and clients. Connect a channel (Meta, public form, webhook) so HostFlow auto-creates a row + NBA reminder for each new request.',
+                            'Applications land here first. Connect ads or create a vacancy so the next candidate has somewhere to go.',
                         })}
-                        primaryAction={{
-                          label: t('app.leads.states.empty_cta_connect'),
-                          to: CRM_APP_PATHS.settingsIntegrationsMeta,
-                        }}
-                        secondaryAction={{
-                          label: secondaryEmptyLabel,
-                          to: CRM_APP_PATHS.clientsDirectory,
-                        }}
+                        primaryAction={leadsEmptyPrimary}
+                        secondaryAction={leadsEmptySecondary}
                       />
                     </td>
                   </tr>

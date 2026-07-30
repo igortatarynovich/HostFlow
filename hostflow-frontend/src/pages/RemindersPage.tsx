@@ -2091,15 +2091,15 @@ export default function RemindersPage() {
                   description={t('app.reminders.states.empty_desc')}
                   whyHint={t('app.reminders.states.empty_why', {
                     defaultValue:
-                      'Tasks bring SLA, follow-ups and «next-best-actions» into one queue. Each lead, candidate and document creates tasks here automatically — your daily plan in one screen.',
+                      'After you contact a lead, the next follow-up appears here — so nothing sits untouched.',
                   })}
                   primaryAction={{
-                    label: t('app.reminders.states.empty_cta_create'),
-                    onClick: openQuickReminderComposer,
-                  }}
-                  secondaryAction={{
                     label: t('app.reminders.states.empty_cta_leads'),
                     to: CRM_APP_PATHS.leads,
+                  }}
+                  secondaryAction={{
+                    label: t('app.reminders.states.empty_cta_create'),
+                    onClick: openQuickReminderComposer,
                   }}
                 />
               </div>

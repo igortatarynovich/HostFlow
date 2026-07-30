@@ -2836,14 +2836,17 @@ export default function Candidates(){
                 <div className="mx-auto max-w-2xl">
                   <EmptyStatePanel
                     compact
-                    title={t('app.candidates.table.empty_title', { defaultValue: 'No candidates found' })}
+                    title={t('app.candidates.table.empty_title', {
+                      defaultValue: 'No candidates yet',
+                    })}
                     description={
                       hasActiveTableFilters
                         ? t('app.candidates.table.empty_with_filters_desc', {
-                            defaultValue: 'Current filters returned no results. Reset filters or adjust conditions.',
+                            defaultValue: 'Nothing matches these filters. Reset them to see everyone.',
                           })
                         : t('app.candidates.table.empty_no_data_desc', {
-                            defaultValue: 'Add the first lead or candidate to start pipeline operations.',
+                            defaultValue:
+                              'Candidates appear after you qualify a lead. Open leads, contact someone, then convert them here.',
                           })
                     }
                     whyHint={
@@ -2851,7 +2854,7 @@ export default function Candidates(){
                         ? undefined
                         : t('app.candidates.table.empty_why', {
                             defaultValue:
-                              'Candidates are people you actively work with — qualified leads, contacted prospects, hires in pipeline. Convert a lead from the Leads inbox or import a list to start.',
+                              'This is your hiring pipeline list — people you actively work with until hire.',
                           })
                     }
                     primaryAction={
@@ -2872,8 +2875,10 @@ export default function Candidates(){
                             to: CRM_APP_PATHS.leads,
                           }
                         : {
-                            label: t('app.candidates.table.empty_cta_pipeline', { defaultValue: 'Open pipeline' }),
-                            to: CRM_APP_PATHS.pipeline,
+                            label: t('app.candidates.table.empty_cta_vacancy', {
+                              defaultValue: 'Create vacancy',
+                            }),
+                            to: CRM_APP_PATHS.setupVacancy,
                           }
                     }
                   />

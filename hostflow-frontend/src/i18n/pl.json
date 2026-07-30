@@ -6211,13 +6211,13 @@
         "click_to_sort": "Kliknij, aby posortować",
         "deselect": "Odznacz",
         "deselect_all": "Odznacz wszystko",
-        "empty_cta_leads": "Puste leady CTA",
-        "empty_cta_pipeline": "Pusty potok CTA",
-        "empty_cta_reset": "Pusty reset CTA",
-        "empty_no_data_desc": "Puste, brak opisu danych",
+        "empty_cta_leads": "Otwórz leady",
+        "empty_cta_pipeline": "Otwórz pipeline",
+        "empty_cta_reset": "Resetuj filtry",
+        "empty_no_data_desc": "Kandydaci pojawiają się po kwalifikacji leada. Otwórz leady, skontaktuj się i przenieś tutaj.",
         "empty_partial": "Pusta częściowa",
-        "empty_title": "Pusty tytuł",
-        "empty_with_filters_desc": "Pusty z filtrami opis",
+        "empty_title": "Brak kandydatów",
+        "empty_with_filters_desc": "Filtry nic nie zwróciły. Zresetuj je, aby zobaczyć wszystkich.",
         "loading_hint": "Ładowanie podpowiedzi",
         "masked_label": "Zamaskowana etykieta",
         "masked_label_short_id": "Krótki identyfikator zamaskowanej etykiety",
@@ -6233,7 +6233,9 @@
         "select_all": "Zaznacz wszystko",
         "select_candidate": "Wybierz kandydata",
         "sort_by": "Sortuj według",
-        "updating": "Aktualizowanie"
+        "updating": "Aktualizowanie",
+        "empty_why": "To Twoja lista rekrutacji — osoby, z którymi pracujesz do zatrudnienia.",
+        "empty_cta_vacancy": "Utwórz wakat"
       },
       "bulk": {
         "selected": "Wybrano: {count}",
@@ -6331,14 +6333,16 @@
         "error_load": "Nie udało się wczytać lejka",
         "error_update_stage": "Nie udało się zaktualizować etapu kandydata",
         "error_update_stages": "Nie udało się zaktualizować etapów dla części kandydatów",
-        "column_empty_cta_candidates": "Kolumna pusta, kandydaci do CTA",
-        "column_empty_desc": "Kolumna pusta opis",
-        "column_empty_title": "Tytuł kolumny pusty",
-        "empty_cta_candidates": "Puści kandydaci do CTA",
-        "empty_cta_leads": "Puste leady CTA",
-        "empty_desc": "Pusty opis",
-        "empty_title": "Pusty tytuł",
-        "view_in_list": "Zobacz na liście"
+        "column_empty_cta_candidates": "Otwórz listę",
+        "column_empty_desc": "Przenieś kandydata tutaj, gdy dojdzie do kroku — lub otwórz listę.",
+        "column_empty_title": "Nikt na tym etapie",
+        "empty_cta_candidates": "Otwórz kandydatów",
+        "empty_cta_leads": "Otwórz leady",
+        "empty_desc": "Przenieś leada do kandydata — potem prowadź go przez etapy aż do zamknięcia wakatu.",
+        "empty_title": "Pipeline jest pusty",
+        "view_in_list": "Zobacz na liście",
+        "empty_why": "Pipeline pokazuje, kto utknął i co dalej. Zacznij od leadów.",
+        "empty_cta_vacancy": "Utwórz wakat"
       },
       "menu": {
         "open": "Otwórz menu",
@@ -6633,12 +6637,13 @@
         "empty": "Brak przypomnień.",
         "badge_direct": "dla Ciebie",
         "badge_new": "nowe",
-        "empty_cta_create": "Utwórz przypomnienie",
+        "empty_cta_create": "Dodaj follow-up",
         "empty_cta_leads": "Otwórz leady",
-        "empty_desc": "Utwórz pierwsze przypomnienie, żeby nie gubić follow-upów.",
-        "empty_title": "Brak przypomnień",
+        "empty_desc": "Skontaktuj się z leadem — kolejny krok pojawi się tutaj, żeby nic nie wisiało.",
+        "empty_title": "Brak follow-upów",
         "events_empty": "Brak zdarzeń.",
-        "unread": "Niewykształcony"
+        "unread": "Niewykształcony",
+        "empty_why": "To Twoja kolejka kontaktów po pierwszym zgłoszeniu."
       },
       "errors": {
         "load": "Nie udało się wczytać przypomnień",
@@ -6943,11 +6948,14 @@
       "states": {
         "empty": "Brak leadów.",
         "empty_cta_clients": "Otwórz klientów",
-        "empty_cta_connect": "Podłącz źródła",
-        "empty_desc": "Podłącz źródła reklam lub zaimportuj leady, aby uruchomić routing i przypisywanie.",
-        "empty_desc_services": "Podłącz źródła leadów lub dodaj pierwszego klienta, aby prowadzić sprzedaż usług i follow-up.",
-        "empty_title": "Brak leadów",
-        "empty_title_services": "Brak zapytań"
+        "empty_cta_connect": "Podłącz reklamy",
+        "empty_desc": "Utwórz wakat i podłącz reklamy Facebook / Meta — zgłoszenia pojawią się tutaj same.",
+        "empty_desc_services": "Podłącz źródło lub dodaj klienta — zapytania trafią tutaj.",
+        "empty_title": "Brak zgłoszeń",
+        "empty_title_services": "Brak zapytań",
+        "empty_why": "Stąd zaczyna się rekrutacja. Dalej: kontakt i przeniesienie do kandydatów.",
+        "empty_cta_vacancy": "Utwórz wakat",
+        "empty_cta_setup": "Start"
       },
       "messages": {
         "load_failed": "Nie udało się załadować leadów.",

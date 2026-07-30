@@ -2,34 +2,37 @@
  * Empty pipeline (no cards after filters / load).
  */
 
-import EmptyStatePanel from '../../components/EmptyStatePanel';
-import { CRM_APP_PATHS } from '../../app/crmAppPaths';
-import { useI18n } from '../../i18n';
+import EmptyStatePanel from '../../components/EmptyStatePanel'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { useI18n } from '../../i18n'
 
 export function PipelineMainEmptyState() {
-  const { t } = useI18n();
+  const { t } = useI18n()
   return (
     <div className="card p-4">
       <EmptyStatePanel
         compact
-        title={t('app.candidates.pipeline.empty_title', { defaultValue: 'Pipeline is empty' })}
+        title={t('app.candidates.pipeline.empty_title', {
+          defaultValue: 'Nobody in the pipeline yet',
+        })}
         description={t('app.candidates.pipeline.empty_desc', {
           defaultValue:
-            'No candidates are currently in pipeline. Add candidates from leads or open candidates list.',
+            'Process a lead into a candidate — then move them across stages here until the vacancy is closed.',
         })}
         whyHint={t('app.candidates.pipeline.empty_why', {
-          defaultValue:
-            'Pipeline is your kanban view of candidates moving through stages — from first contact to placement. Drag cards across columns to update stage, owner and SLA at once.',
+          defaultValue: 'Pipeline shows who is stuck and what to do next. Start from leads.',
         })}
         primaryAction={{
-          label: t('app.candidates.pipeline.empty_cta_candidates', { defaultValue: 'Open candidates' }),
-          to: CRM_APP_PATHS.candidates,
-        }}
-        secondaryAction={{
           label: t('app.candidates.pipeline.empty_cta_leads', { defaultValue: 'Open leads' }),
           to: CRM_APP_PATHS.leads,
         }}
+        secondaryAction={{
+          label: t('app.candidates.pipeline.empty_cta_vacancy', {
+            defaultValue: 'Create vacancy',
+          }),
+          to: CRM_APP_PATHS.setupVacancy,
+        }}
       />
     </div>
-  );
+  )
 }

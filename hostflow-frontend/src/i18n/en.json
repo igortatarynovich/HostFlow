@@ -6284,13 +6284,13 @@
         "click_to_sort": "Click to sort",
         "deselect": "Deselect",
         "deselect_all": "Deselect all",
-        "empty_cta_leads": "Empty CTA leads",
-        "empty_cta_pipeline": "Empty CTA pipeline",
-        "empty_cta_reset": "Empty CTA reset",
-        "empty_no_data_desc": "Empty no data desc",
+        "empty_cta_leads": "Open leads",
+        "empty_cta_pipeline": "Open pipeline",
+        "empty_cta_reset": "Reset filters",
+        "empty_no_data_desc": "Candidates appear after you qualify a lead. Open leads, contact someone, then convert them here.",
         "empty_partial": "Empty partial",
-        "empty_title": "Empty title",
-        "empty_with_filters_desc": "Empty with filters desc",
+        "empty_title": "No candidates yet",
+        "empty_with_filters_desc": "Nothing matches these filters. Reset them to see everyone.",
         "loading_hint": "Loading hint",
         "masked_label": "Masked label",
         "masked_label_short_id": "Masked label short id",
@@ -6306,7 +6306,9 @@
         "select_all": "Select all",
         "select_candidate": "Select candidate",
         "sort_by": "Sort by",
-        "updating": "Updating"
+        "updating": "Updating",
+        "empty_why": "This is your hiring list — people you actively work with until hire.",
+        "empty_cta_vacancy": "Create vacancy"
       },
       "bulk": {
         "selected": "Selected: {count}",
@@ -6404,14 +6406,16 @@
         "error_load": "Failed to load pipeline",
         "error_update_stage": "Failed to update candidate stage",
         "error_update_stages": "Failed to update stages for some candidates",
-        "column_empty_cta_candidates": "Column empty CTA candidates",
-        "column_empty_desc": "Column empty desc",
-        "column_empty_title": "Column empty title",
-        "empty_cta_candidates": "Empty CTA candidates",
-        "empty_cta_leads": "Empty CTA leads",
-        "empty_desc": "Empty desc",
-        "empty_title": "Empty title",
-        "view_in_list": "View in list"
+        "column_empty_cta_candidates": "Open list",
+        "column_empty_desc": "Move a candidate here when they reach this step — or open the list.",
+        "column_empty_title": "No one in this stage",
+        "empty_cta_candidates": "Open candidates",
+        "empty_cta_leads": "Open leads",
+        "empty_desc": "Process a lead into a candidate — then move them across stages until the vacancy is closed.",
+        "empty_title": "Nobody in the pipeline yet",
+        "view_in_list": "View in list",
+        "empty_why": "Pipeline shows who is stuck and what to do next. Start from leads.",
+        "empty_cta_vacancy": "Create vacancy"
       },
       "menu": {
         "open": "Open menu",
@@ -6706,12 +6710,13 @@
         "empty": "No reminders yet.",
         "badge_direct": "for you",
         "badge_new": "new",
-        "empty_cta_create": "Create reminder",
+        "empty_cta_create": "Add a follow-up",
         "empty_cta_leads": "Open leads",
-        "empty_desc": "Create your first reminder to track follow-ups and never lose a lead.",
-        "empty_title": "No reminders yet",
+        "empty_desc": "Contact a lead — the next step will show up here so nothing sits untouched.",
+        "empty_title": "No follow-ups yet",
         "events_empty": "No events yet.",
-        "unread": "Unread"
+        "unread": "Unread",
+        "empty_why": "This is your daily contact queue after the first application arrives."
       },
       "errors": {
         "load": "Failed to load reminders",
@@ -7016,11 +7021,14 @@
       "states": {
         "empty": "No leads found.",
         "empty_cta_clients": "Open clients",
-        "empty_cta_connect": "Connect sources",
-        "empty_desc": "Connect ad sources or import leads to start routing and assignment.",
-        "empty_desc_services": "Connect lead sources or add your first client to start service sales and follow-up.",
-        "empty_title": "No leads yet",
-        "empty_title_services": "No inquiries yet"
+        "empty_cta_connect": "Connect ads",
+        "empty_desc": "Create a vacancy, then connect Facebook / Meta ads — applications will land here automatically.",
+        "empty_desc_services": "Connect a source or add a client so inquiries land here for follow-up.",
+        "empty_title": "No applications yet",
+        "empty_title_services": "No inquiries yet",
+        "empty_why": "This inbox is where hiring starts. Next: contact the person and move them to candidates.",
+        "empty_cta_vacancy": "Create vacancy",
+        "empty_cta_setup": "Getting started"
       },
       "messages": {
         "load_failed": "Failed to load leads.",

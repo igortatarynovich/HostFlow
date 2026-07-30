@@ -194,5 +194,6 @@ export function useSuccessPathReadiness(options: UseSuccessPathReadinessOptions 
     error,
     refresh,
     deferMeta,
+    itemDone: (id: SuccessPathItemId) => Boolean(items.find((i) => i.id === id)?.done),
   }
 }

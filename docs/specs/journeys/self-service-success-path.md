@@ -77,6 +77,16 @@ Exactly **one primary CTA** on the readiness surface (“Create vacancy”, “C
 
 Every empty list must state **what to do next** + primary CTA (not “nothing here”).
 
+Canonical empty CTAs for the Success Path:
+
+| Screen | Empty message focus | Primary CTA |
+|--------|---------------------|-------------|
+| Vacancies | Create first vacancy (~30s) | Create vacancy |
+| Leads | Applications will land here | Create vacancy → then Connect ads |
+| Candidates | Appear after qualifying a lead | Open leads |
+| Pipeline | Process a lead into a candidate | Open leads |
+| Follow-ups / tasks | Appear after first contact | Open leads |
+
 ### Existing runtime (map, do not invent parallel IA)
 
 | Intent | Today | Target |
