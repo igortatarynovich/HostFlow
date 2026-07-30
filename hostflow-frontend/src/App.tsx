@@ -120,6 +120,7 @@ function SignupRedirectForAuthed() {
 }
 
 function AuthedDefaultAppNavigate() {
+  const { refresh } = useAuth()
   const { can } = usePermissions()
   const { t } = useI18n()
   const [searchParams] = useSearchParams()
@@ -136,12 +137,10 @@ function AuthedDefaultAppNavigate() {
       const synced = await ensureSharedSessionCookies()
       if (cancelled) return
       if (!synced) {
-        // localStorage-only session cannot survive cross-subdomain nav — force password login
-        // so /auth/login mints Domain=.hostflow.cc cookies.
+        // Cannot mint Domain cookies from this session — drop Bearer and rehydrate as logged-out
+        // Login so the user can sign in again (next= preserved). Do not soft-loop the spinner.
         setToken(null)
-        const url = new URL(window.location.href)
-        // Keep next= for after the user signs in again.
-        window.location.replace(`${url.pathname}${url.search}`)
+        await refresh({ force: true })
         return
       }
       window.location.replace(allowedNext)
@@ -149,7 +148,7 @@ function AuthedDefaultAppNavigate() {
     return () => {
       cancelled = true
     }
-  }, [absoluteNext, allowedNext])
+  }, [absoluteNext, allowedNext, refresh])
 
   if (absoluteNext) {
     return <div className="grid h-screen place-items-center text-slate-500">{t('common.loading')}</div>

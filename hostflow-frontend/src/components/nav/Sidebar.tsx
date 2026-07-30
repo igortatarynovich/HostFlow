@@ -46,6 +46,8 @@ import type { TenantModuleSettings } from '../../api/types'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 import { useTeamOverviewNav } from '../../contexts/TeamOverviewNavContext'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { ensureSharedSessionCookies } from '../../api/client'
+import { shellLoginUrl } from '../../platform/deployHosts'
 import { APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS } from '../../nav/appShellNav'
 import {
   SIDEBAR_AGENCY_ANALYTICS_ORDER,
@@ -584,13 +586,25 @@ export function Sidebar({
     )
 
     // Foreign modules are absolute https://sales.hostflow.cc/... — must be <a>, not React Router.
+    // Sync Domain cookies before leaving the shell, otherwise the module host has no session → /login.
     if (crossHost) {
       return (
         <a
           key={item.key}
           href={itemPath}
           title={getItemLabel(item)}
-          onClick={handleNavigate}
+          onClick={(event) => {
+            event.preventDefault()
+            handleNavigate()
+            void (async () => {
+              const synced = await ensureSharedSessionCookies()
+              if (!synced) {
+                window.location.assign(shellLoginUrl(itemPath))
+                return
+              }
+              window.location.assign(itemPath)
+            })()
+          }}
           className={navClass(false)}
         >
           {inner}

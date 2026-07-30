@@ -11,6 +11,7 @@ import { PlanLimitModalProvider } from './contexts/PlanLimitModalContext'
 import { installStaleChunkReloadRecovery } from './utils/staleChunkReload'
 import { initSentry } from './lib/observability'
 import { consumeLogoutWipeAndContinue } from './platform/sessionLogout'
+import { DeployHostBoundary } from './platform/DeployHostBoundary'
 import { applyAuthIsolationWipeOnce } from './api/client'
 
 import './styles/components.css'
@@ -41,7 +42,9 @@ if (consumeLogoutWipeAndContinue()) {
             <PlanLimitModalProvider>
               <AuthProvider>
                 <ToastProvider>
-                  <App />
+                  <DeployHostBoundary>
+                    <App />
+                  </DeployHostBoundary>
                 </ToastProvider>
               </AuthProvider>
             </PlanLimitModalProvider>

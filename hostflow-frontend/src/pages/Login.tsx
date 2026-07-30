@@ -15,6 +15,8 @@ import {
 } from '../utils/friendlyError'
 import { consumeLoginNotice } from '../store/auth'
 import { useSeoMeta } from '../hooks/useSeoMeta'
+import { ensureSharedSessionCookies } from '../api/client'
+import { isAllowedHandoffNext } from '../platform/deployHosts'
 
 export default function Login(){
   const { login } = useAuth()
@@ -47,6 +49,19 @@ export default function Login(){
     setLoading(true)
     try{
       await login(email, password)
+      const next = (searchParams.get('next') || '').trim()
+      if (next && isAllowedHandoffNext(next)) {
+        if (/^https?:\/\//i.test(next)) {
+          const synced = await ensureSharedSessionCookies()
+          if (synced) {
+            window.location.replace(next)
+            return
+          }
+        } else if (next.startsWith('/')) {
+          nav(next, { replace: true })
+          return
+        }
+      }
       nav('/', { replace: true })
     }catch(err:any){
       if(err?.response?.status === 401){

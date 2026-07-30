@@ -425,17 +425,31 @@ async function refreshAccessTokenViaCookie(): Promise<string | null> {
 /**
  * Mint Domain=.hostflow.cc cookies from the current Bearer / access cookie.
  * Required before hard-navigating shell → module host (Stage 6B).
+ *
+ * `/auth/session/sync` is excluded from the 401 refresh interceptor, so a stale
+ * Bearer alone would fail here while normal API calls still work via refresh.
+ * Retry once after cookie refresh so module navigation matches in-shell UX.
  */
 export async function ensureSharedSessionCookies(): Promise<boolean> {
-  try {
+  const syncOnce = async (): Promise<boolean> => {
     const { data } = await apiInstance.post("/auth/session/sync", {});
     const token = typeof data?.access_token === "string" ? data.access_token : null;
     if (token) {
       setToken(token);
     }
     return true;
+  };
+
+  try {
+    return await syncOnce();
   } catch {
-    return false;
+    const refreshed = await refreshAccessTokenViaCookie();
+    if (!refreshed) return false;
+    try {
+      return await syncOnce();
+    } catch {
+      return false;
+    }
   }
 }
 

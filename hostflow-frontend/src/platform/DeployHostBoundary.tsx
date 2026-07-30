@@ -8,6 +8,7 @@ import {
   moduleHomePath,
   resolveDeployHost,
   resolvePathDeployHost,
+  shellLoginUrl,
   type ModuleDeployHost,
 } from './deployHosts'
 
@@ -72,8 +73,14 @@ export function DeployHostBoundary({ children }: { children: React.ReactNode }) 
     setBlocked(true)
     void (async () => {
       // Cross-subdomain hard nav: mint Domain=.hostflow.cc cookies first.
-      await ensureSharedSessionCookies()
-      if (!cancelled) window.location.replace(target)
+      // Never navigate unauthenticated — that lands on ModuleHostAuthRedirect → login loop.
+      const synced = await ensureSharedSessionCookies()
+      if (cancelled) return
+      if (!synced) {
+        window.location.replace(shellLoginUrl(target))
+        return
+      }
+      window.location.replace(target)
     })()
     return () => {
       cancelled = true
