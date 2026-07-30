@@ -754,6 +754,9 @@ export default function CrmLandingPage() {
             <Link to="/academy" className="btn-secondary btn-sm" onClick={() => trackCta('guide_academy', '/academy')}>
               {t('public.marketing.common.related.academy', { defaultValue: 'Academy' })}
             </Link>
+            <Link to="/demo" className="btn-secondary btn-sm" onClick={() => trackCta('guide_demo', '/demo')}>
+              {t('public.marketing.common.related.demo', { defaultValue: 'Interactive demo' })}
+            </Link>
             <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm" onClick={() => trackCta('guide_pipeline', '/features/candidate-pipeline')}>
               {t('public.marketing.common.related.candidate_pipeline', { defaultValue: 'Candidate pipeline' })}
             </Link>

@@ -114,13 +114,23 @@ Per ADR-034 and product priority:
 | **3** | FAQ hub (`/faq`) + light context help on key terms | SEO + deflection without leaving the screen |
 | **4** | SEO factory (industry / role / integration pages) | Organic growth — **Wave-2 shipped** via `seoPageCatalog` + `SeoCatalogPage` (8 pages); Wave-1 hand-built pages remain |
 | **5** | User docs + Academy | Depth after path works — **Wave-1 shipped**: `/docs`, `/docs/:slug` (8 how-tos), `/academy` (lessons → docs; video slots ready) |
-| **Demo** | Interactive demo tenant | After Phase 2 security/reset policy |
+| **Demo** | Interactive demo | **Wave-1 shipped**: public `/demo` + per-tenant sample pack (seed/clear). Shared anonymous guest tenant = deferred (see security threat model) |
 
 Phase 5 **product tours** (if any) are short contextual tips — not a replacement for readiness UI and not a forced wizard. Context help already links FAQ + Docs.
 
 **Phase 4 (Wave-2) routes:** `/use-cases/recruitment-agencies`, `/use-cases/transport-companies`, `/use-cases/driver-recruitment`, `/features/whatsapp-recruitment`, `/features/meta-ads-recruitment`, `/use-cases/ats-for-drivers`, `/use-cases/ats-for-transport`, `/use-cases/ats-europe`. Catalog SoT: `hostflow-frontend/src/content/seo/seoPageCatalog.ts`.
 
 **Phase 5 (Wave-1) routes:** `/docs`, `/docs/getting-started`, `/docs/create-company`, `/docs/connect-meta`, `/docs/first-vacancy`, `/docs/first-lead`, `/docs/first-candidate`, `/docs/documents-basics`, `/docs/invite-team`, `/academy`. Catalog SoT: `hostflow-frontend/src/content/docs/`.
+
+**Demo (Wave-1):** `/demo` (Growth). In-app: readiness panel «Load sample data» / «Clear sample data» → `POST /onboarding/demo/seed` / `POST /onboarding/clear-demo-data`. Policy: [`interactive-demo.md`](../../security/threat-models/interactive-demo.md).
+
+### Demo policy (normative)
+
+| Do | Do not (Wave-1) |
+|----|-----------------|
+| Own workspace via `/signup`, then seed sample pack | Shared guest login everyone mutates |
+| Clear sample pack in one action | Leave demo rows indistinguishable from real CRM data |
+| Market `/demo` as the explanation + CTA into signup | Expose live tenant data to anonymous visitors |
 
 ---
 
@@ -157,6 +167,8 @@ Do not invent limits not present in plans-matrix / billing code.
 **Phase 4 (SEO factory Wave-2):** catalog-driven pages render from `SEO_PAGE_CATALOG`; unique Title/H1/FAQ; primary CTA → `/signup`; listed in `sitemap.xml` and page registry.
 
 **Phase 5 (Docs + Academy Wave-1):** `/docs` hub + Success Path how-tos; `/academy` lesson index linking to docs (video optional); ContextHelp links to docs + FAQ; primary CTAs still → `/signup`.
+
+**Demo (Wave-1):** `/demo` explains interactive try path; sample pack seed/clear inside the buyer’s own tenant; no shared anonymous guest tenant ([`interactive-demo.md`](../../security/threat-models/interactive-demo.md)).
 
 ---
 

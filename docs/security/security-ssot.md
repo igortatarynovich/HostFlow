@@ -64,6 +64,8 @@ HTTP-запросы часто безопасны, а **фоновые джоб�
 
 Детализация по поверхностям: `docs/security/threat-models/`.
 
+Interactive Growth demo (per-tenant sample pack, no shared guest tenant in Wave-1): [`threat-models/interactive-demo.md`](threat-models/interactive-demo.md).
+
 ---
 
 ## 2. Классификация данных (Data Classification)

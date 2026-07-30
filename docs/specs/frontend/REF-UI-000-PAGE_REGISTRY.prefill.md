@@ -9,6 +9,7 @@ Source: `src/app/routes.tsx` + explicit public/auth routes in `src/App.tsx`
 | marketing_docs | /docs | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | DocsHubPage (Phase 5) |
 | marketing_docs_slug | /docs/:slug | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | DocsArticlePage (Phase 5) |
 | marketing_academy | /academy | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | AcademyPage (Phase 5) |
+| marketing_demo | /demo | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | DemoPage (Demo Wave-1) |
 | not-found | /app/* | Platform | UTILITY_LAYOUT_V1 | Platform | Candidate | n/a | NotFoundRedirect |
 | activities-legacy | /app/activities | Platform | UTILITY_LAYOUT_V1 | Platform | Candidate | n/a | LegacyActivitiesRedirect |
 | analytics | /app/analytics | Overview | UTILITY_LAYOUT_V1 | Product | Candidate | n/a | RedirectLegacyAnalyticsToInsights |

@@ -33,6 +33,7 @@ import FaqPage from './pages/public/FaqPage'
 import DocsHubPage from './pages/public/DocsHubPage'
 import DocsArticlePage from './pages/public/DocsArticlePage'
 import AcademyPage from './pages/public/AcademyPage'
+import DemoPage from './pages/public/DemoPage'
 import SeoCatalogPage from './pages/public/SeoCatalogPage'
 import PublicNotFoundPage from './pages/public/PublicNotFoundPage'
 import FeatureCandidatePipelinePage from './pages/public/FeatureCandidatePipelinePage'
@@ -207,6 +208,7 @@ export default function App(){
       <Route path="/docs" element={<DocsHubPage />} />
       <Route path="/docs/:slug" element={<DocsArticlePage />} />
       <Route path="/academy" element={<AcademyPage />} />
+      <Route path="/demo" element={<DemoPage />} />
 
       {import.meta.env.DEV ? (
         <Route path="/dev/entity-list-shell" element={<EntityListShellDemoPublicPage />} />

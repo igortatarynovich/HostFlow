@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconArrowRight,
@@ -6,6 +7,11 @@ import {
   IconLoader2,
 } from '@tabler/icons-react'
 
+import {
+  clearOnboardingDemoData,
+  seedOnboardingDemo,
+} from '../../api/client'
+import { ACTIVATION_PATHS } from '../../app/activationRoutes'
 import { useI18n } from '../../i18n'
 import {
   useSuccessPathReadiness,
@@ -23,8 +29,48 @@ export function SuccessPathReadinessPanel({
   showWhenComplete = false,
 }: SuccessPathReadinessPanelProps) {
   const { t } = useI18n()
-  const { items, nextAction, doneCount, totalCount, pathComplete, loading, deferMeta, refresh } =
+  const { items, nextAction, doneCount, totalCount, pathComplete, loading, deferMeta, refresh, status } =
     useSuccessPathReadiness()
+  const [demoBusy, setDemoBusy] = useState(false)
+  const [demoError, setDemoError] = useState<string | null>(null)
+
+  const companyDone = Boolean(items.find((i) => i.id === 'company')?.done)
+  const demoSeeded = Boolean(status?.demo_seeded)
+  const showDemoActions = companyDone && !pathComplete
+
+  const handleSeedDemo = async () => {
+    setDemoBusy(true)
+    setDemoError(null)
+    try {
+      await seedOnboardingDemo()
+      await refresh()
+    } catch {
+      setDemoError(
+        t('app.onboarding.success_path.demo_seed_error', {
+          defaultValue: 'Could not load sample data. Admin role required.',
+        }),
+      )
+    } finally {
+      setDemoBusy(false)
+    }
+  }
+
+  const handleClearDemo = async () => {
+    setDemoBusy(true)
+    setDemoError(null)
+    try {
+      await clearOnboardingDemoData()
+      await refresh()
+    } catch {
+      setDemoError(
+        t('app.onboarding.success_path.demo_clear_error', {
+          defaultValue: 'Could not clear sample data. Admin role required.',
+        }),
+      )
+    } finally {
+      setDemoBusy(false)
+    }
+  }
 
   if (loading && items.every((i) => !i.done)) {
     return (
@@ -120,6 +166,77 @@ export function SuccessPathReadinessPanel({
             >
               {t('app.onboarding.success_path.open_faq', { defaultValue: 'Open FAQ' })}
             </Link>
+            <Link
+              to="/demo"
+              className="rounded-xl px-4 py-3 text-sm font-medium text-brand-700 hover:underline"
+            >
+              {t('app.onboarding.success_path.open_demo', { defaultValue: 'How demo works' })}
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
+      {showDemoActions ? (
+        <div
+          className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3"
+          data-testid="success-path-demo-pack"
+        >
+          <p className="text-sm font-semibold text-slate-900">
+            {t('app.onboarding.success_path.demo_title', {
+              defaultValue: 'Explore with sample data',
+            })}
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            {demoSeeded
+              ? t('app.onboarding.success_path.demo_active_hint', {
+                  defaultValue:
+                    'Sample pack is loaded. Open Leads to click through, or clear it when you start real hiring.',
+                })
+              : t('app.onboarding.success_path.demo_hint', {
+                  defaultValue:
+                    'Load a sample pack (leads, candidates, tasks) to learn the product. You can wipe it in one click.',
+                })}
+          </p>
+          {demoError ? <p className="mt-2 text-xs text-rose-700">{demoError}</p> : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {demoSeeded ? (
+              <>
+                <Link
+                  to={ACTIVATION_PATHS.leads}
+                  className="btn-secondary btn-sm"
+                  data-testid="success-path-demo-open-leads"
+                >
+                  {t('app.onboarding.success_path.demo_open_leads', { defaultValue: 'Open Leads' })}
+                </Link>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  data-testid="success-path-demo-clear"
+                  disabled={demoBusy}
+                  onClick={() => void handleClearDemo()}
+                >
+                  {demoBusy
+                    ? t('common.saving', { defaultValue: 'Working…' })
+                    : t('app.onboarding.success_path.demo_clear', {
+                        defaultValue: 'Clear sample data',
+                      })}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                data-testid="success-path-demo-seed"
+                disabled={demoBusy}
+                onClick={() => void handleSeedDemo()}
+              >
+                {demoBusy
+                  ? t('common.saving', { defaultValue: 'Working…' })
+                  : t('app.onboarding.success_path.demo_seed', {
+                      defaultValue: 'Load sample data',
+                    })}
+              </button>
+            )}
           </div>
         </div>
       ) : null}

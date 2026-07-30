@@ -35,7 +35,7 @@ Additionally, orphan and legacy surfaces (`PublicLanding.tsx` unwired, `/public/
 5. **Legacy cleanup (normative):**
    - `/public/apply-old/:token` → redirect to `/public/apply/:token`;
    - remove or never remount orphan `PublicLanding`;
-   - aspirational sitemap names in `docs/pipedesign.md` (`/product/*`, `/guides/*`) must not ship as a second IA — prefer shipped `/features|/use-cases|/comparison|/faq|/docs|/academy` under Growth.
+   - aspirational sitemap names in `docs/pipedesign.md` (`/product/*`, `/guides/*`) must not ship as a second IA — prefer shipped `/features|/use-cases|/comparison|/faq|/docs|/academy|/demo` under Growth.
 
 6. **Post-signup Success Path** (Growth continuation) is product surface, not marketing chrome: short company identity form → **guided readiness UI** (checklist + next CTA + empty states) inside the normal shell → first vacancy/lead value. Spec: [`self-service-success-path.md`](../journeys/self-service-success-path.md). **Not** an 8-step Setup Wizard as the primary activation product.
 
@@ -81,3 +81,4 @@ Copy sells **result** (e.g. close vacancies faster via Meta / WhatsApp / forms �
 - 2026-07-30: Clarified activation UX — **guided readiness UI**, not 8-step Setup Wizard ([`self-service-success-path.md`](../journeys/self-service-success-path.md)).
 - 2026-07-30: Phase 4 Wave-2 SEO factory — catalog + `SeoCatalogPage` (8 industry/role/integration pages); Wave-1 hand pages remain.
 - 2026-07-30: Phase 5 Wave-1 — `/docs` + `/academy` under Growth; how-tos for Success Path; video slots optional.
+- 2026-07-30: Demo Wave-1 — `/demo` + per-tenant sample pack; shared guest tenant deferred ([`interactive-demo.md`](../../security/threat-models/interactive-demo.md)).

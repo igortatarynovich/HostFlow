@@ -51,6 +51,11 @@ export const FAQ_SECTIONS: FaqSection[] = [
         q: { en: "Can I start without talking to sales or support?", ru: "Можно ли начать без поддержки и sales?", pl: "Czy mogę zacząć bez supportu i sales?" },
         a: { en: "Yes. Self-serve signup, company setup, vacancy, and Meta connect are designed so you reach first value without a call.", ru: "Да. Регистрация, компания, вакансия и Meta рассчитаны на самостоятельный старт без звонка.", pl: "Tak. Rejestracja, firma, wakat i Meta są zaprojektowane pod start bez rozmowy." },
       },
+      {
+        id: "interactive_demo",
+        q: { en: "Is there an interactive demo?", ru: "Есть ли интерактивное демо?", pl: "Czy jest interaktywne demo?" },
+        a: { en: "Yes. Open /demo, create your workspace, then Load sample data on Getting started. You explore your own tenant and can clear the sample pack in one click — there is no shared guest login.", ru: "Да. Откройте /demo, создайте workspace и нажмите «Загрузить sample data» на Getting started. Вы работаете в своём tenant и можете очистить пакет одним кликом — общего guest-логина нет.", pl: "Tak. Otwórz /demo, utwórz workspace i wczytaj sample data na Getting started. Pracujesz we własnym tenancie i możesz wyczyścić pakiet jednym kliknięciem — bez wspólnego guest login." },
+      },
     ],
   },
   {

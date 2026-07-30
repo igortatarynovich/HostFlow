@@ -99,6 +99,13 @@ export default function FaqPage() {
             >
               {t('public.faq.cta_academy', { defaultValue: 'Academy' })}
             </Link>
+            <Link
+              to="/demo"
+              className="btn-secondary"
+              onClick={() => trackCta('faq_demo', '/demo')}
+            >
+              {t('public.faq.cta_demo', { defaultValue: 'Interactive demo' })}
+            </Link>
           </div>
           <label className="mt-6 block">
             <span className="sr-only">{t('public.faq.search_label', { defaultValue: 'Search FAQ' })}</span>
