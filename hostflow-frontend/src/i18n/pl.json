@@ -1377,7 +1377,12 @@
         "errors": {
           "unauthorized": "Brak autoryzacji: zaloguj się i spróbuj ponownie.",
           "load_failed": "Nie udało się załadować wakatów"
-        }
+        },
+        "empty_title": "Nie masz jeszcze wakatów",
+        "empty_description": "Utwórz pierwszy wakat w ok. 30 sekund, aby przyjmować i obsługiwać kandydatów.",
+        "empty_why": "Wakat to rola, na którą rekrutujesz. Leady i kandydaci są do niego przypisani.",
+        "empty_cta": "Utwórz wakat",
+        "empty_cta_setup": "Otwórz start"
       },
       "form": {
         "save_failed": "Nie udało się zapisać oferty"
@@ -8710,6 +8715,61 @@
         "title": "Trzy kroki do pracy",
         "wayfinding_title": "Gdzie pracować w CRM",
         "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, rekordów i ustawień"
+      },
+      "success_path": {
+        "loading": "Sprawdzamy kolejne kroki…",
+        "badge": "Start",
+        "title": "Ścieżka do pierwszej wartości",
+        "subtitle": "Jeden jasny następny krok — w zwykłym interfejsie, bez wieloetapowego wizardu.",
+        "progress": "Gotowe {done} z {total}",
+        "list_aria": "Checklist Success Path",
+        "optional": "opcjonalne",
+        "deferred": "później",
+        "open": "Otwórz",
+        "continue": "Kontynuuj",
+        "next_title": "Następny krok",
+        "defer_meta": "Zrób później",
+        "complete": "Główna ścieżka gotowa — pracuj z Launchpad lub Recruitment.",
+        "page_title": "Przygotuj rekrutację",
+        "page_subtitle": "Idź według checklisty. Po kroku wróć tutaj lub kontynuuj z empty states w produkcie.",
+        "hub_badge": "Success path",
+        "hub_footer": "Główny przycisk = jeden następny krok. Bramy techniczne są opcjonalne.",
+        "items": {
+          "company": {
+            "label": "Utwórz firmę",
+            "hint": "Podaj nazwę i profil — tożsamość operacyjna workspace.",
+            "cta": "Utwórz firmę"
+          },
+          "invite": {
+            "label": "Zaproś zespół",
+            "hint": "Zaproś rekruterów, gdy będziesz gotowy — możesz później.",
+            "cta": "Zaproś zespół"
+          },
+          "meta": {
+            "label": "Podłącz Meta / intake",
+            "hint": "Podłącz Meta lub inny kanał, aby zgłoszenia przychodziły same.",
+            "cta": "Podłącz Meta"
+          },
+          "vacancy": {
+            "label": "Utwórz pierwszy wakat",
+            "hint": "Otwórz rolę, na którą rekrutujesz — ok. 30 sekund.",
+            "cta": "Utwórz wakat"
+          },
+          "lead": {
+            "label": "Odbierz pierwszy lead",
+            "hint": "Pierwsze zgłoszenie w inbox z Meta, formularza lub ręcznie.",
+            "cta": "Otwórz leady"
+          },
+          "contact": {
+            "label": "Skontaktuj się z kandydatem",
+            "hint": "Wykonaj kolejny krok przy leadzie — żeby nic nie wisiało.",
+            "cta": "Otwórz leady"
+          }
+        }
+      },
+      "setup_status": {
+        "technical_gates_summary": "Techniczne bramy Recruitment (advanced)",
+        "technical_gates_hint": "Operacyjny health check G0–G8 — opcjonalnie dla adminów."
       }
     },
     "reset_password": {

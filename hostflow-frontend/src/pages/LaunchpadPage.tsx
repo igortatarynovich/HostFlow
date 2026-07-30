@@ -17,6 +17,7 @@ import { getOnboardingStatus } from '../api/client'
 import { getBillingSubscriptionCached } from '../api/billingSubscriptionCache'
 import type { BillingSubscription } from '../api/billing'
 import { useSetupReadiness } from '../hooks/useSetupReadiness'
+import { useSuccessPathReadiness } from '../hooks/useSuccessPathReadiness'
 import { CRM_APP_PATHS, recruitmentSearchPath } from '../app/crmAppPaths'
 import { getBusinessHomePath } from '../app/activationRoutes'
 import { readLastLaunchSearchId } from '../services/launchSearchSession'
@@ -147,6 +148,8 @@ export default function LaunchpadPage() {
   const { t } = useI18n()
   const { me } = useAuth()
   const { snapshot, loading: readinessLoading } = useSetupReadiness()
+  const { nextAction: successNext, doneCount: successDone, totalCount: successTotal, pathComplete } =
+    useSuccessPathReadiness()
   const [onboardingStatus, setOnboardingStatus] = useState<Awaited<ReturnType<typeof getOnboardingStatus>> | null>(
     null,
   )
@@ -186,14 +189,23 @@ export default function LaunchpadPage() {
       ? t('app.launchpad.open_search', { defaultValue: 'Открыть подбор' })
       : t('app.launchpad.create_campaign', { defaultValue: 'Создать кампанию' })
 
-  const setupPassed = snapshot?.gates.filter((gate) => gate.applicable && gate.status === 'pass').length ?? 0
-  const setupTotal = snapshot?.gates.filter((gate) => gate.applicable).length ?? 0
+  const setupPassed = successDone
+  const setupTotal = successTotal
   const setupProgress = setupTotal > 0 ? Math.round((setupPassed / setupTotal) * 100) : 0
   const trialDays = trialDaysRemaining(billing?.trial_ends_at)
   const showTrial = Boolean(billing?.gate?.trial_active || billing?.status === 'trialing' || trialDays !== null)
-  const setupContinuePath = snapshot?.next_action?.handler_ref?.startsWith('/')
-    ? snapshot.next_action.handler_ref
-    : CRM_APP_PATHS.setup
+  const setupContinuePath = pathComplete
+    ? CRM_APP_PATHS.setup
+    : successNext?.href?.startsWith('/')
+      ? successNext.href
+      : CRM_APP_PATHS.setup
+  const setupContinueLabel = pathComplete
+    ? t('app.launchpad.open_setup_hub', { defaultValue: 'Open setup hub' })
+    : successNext
+      ? t(`app.onboarding.success_path.items.${successNext.id}.cta`, {
+          defaultValue: t('app.launchpad.continue_setup', { defaultValue: 'Continue setup' }),
+        })
+      : t('app.launchpad.continue_setup', { defaultValue: 'Continue setup' })
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-1 sm:px-0" data-testid="m1-launchpad">
@@ -418,14 +430,14 @@ export default function LaunchpadPage() {
 
             <div className="sm:col-span-2 lg:col-span-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t('app.launchpad.company_setup', { defaultValue: 'Настройка компании' })}
+                {t('app.launchpad.company_setup', { defaultValue: 'Getting started' })}
               </p>
               <p className="mt-2 text-sm text-slate-700">
                 {readinessLoading
                   ? t('common.loading')
-                  : t('app.launchpad.setup_steps_progress', {
-                      defaultValue: '{passed}/{total} шагов пройдено',
-                      values: { passed: setupPassed, total: setupTotal || 8 },
+                  : t('app.onboarding.success_path.progress', {
+                      defaultValue: '{done} of {total} done',
+                      values: { done: setupPassed, total: setupTotal || 6 },
                     })}
               </p>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
@@ -435,7 +447,7 @@ export default function LaunchpadPage() {
                   role="progressbar"
                   aria-valuenow={setupPassed}
                   aria-valuemin={0}
-                  aria-valuemax={setupTotal || 8}
+                  aria-valuemax={setupTotal || 6}
                 />
               </div>
             </div>
@@ -446,7 +458,7 @@ export default function LaunchpadPage() {
             data-testid="m1-launchpad-continue-setup"
             className="inline-flex w-full shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50 lg:w-auto"
           >
-            {t('app.launchpad.continue_setup', { defaultValue: 'Продолжить настройку' })}
+            {setupContinueLabel}
           </Link>
         </div>
       </section>

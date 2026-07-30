@@ -20,6 +20,7 @@ import EntityListBulkBar from '../surfaces/EntityListBulkBar'
 import EntityListPagination from '../surfaces/EntityListPagination'
 import EntityListShell from '../surfaces/EntityListShell'
 import EntityListTableFrame from '../surfaces/EntityListTableFrame'
+import EmptyStatePanel from '../EmptyStatePanel'
 
 // Unify button styles with Candidates page
 const primaryBtn = 'btn-primary'
@@ -918,7 +919,35 @@ export default function VacancyList() {
             <EntityListTableFrame
               status={tableStatus}
               loading={<div className="px-4 py-8 text-center text-sm text-slate-500">{t('common.loading')}</div>}
-              empty={<p className="px-4 py-8 text-center text-sm text-slate-500">{t('app.vacancies.list.not_found')}</p>}
+              empty={
+                <div className="px-4 py-6">
+                  <EmptyStatePanel
+                    compact
+                    title={t('app.vacancies.list.empty_title', {
+                      defaultValue: 'You have no vacancies yet',
+                    })}
+                    description={t('app.vacancies.list.empty_description', {
+                      defaultValue: 'Create your first vacancy in about 30 seconds to start receiving and processing candidates.',
+                    })}
+                    whyHint={t('app.vacancies.list.empty_why', {
+                      defaultValue:
+                        'A vacancy is the role you hire for. Leads and candidates attach to it so ownership and documents stay clear.',
+                    })}
+                    primaryAction={{
+                      label: t('app.vacancies.list.empty_cta', {
+                        defaultValue: 'Create vacancy',
+                      }),
+                      to: CRM_APP_PATHS.setupVacancy,
+                    }}
+                    secondaryAction={{
+                      label: t('app.vacancies.list.empty_cta_setup', {
+                        defaultValue: 'Open getting started',
+                      }),
+                      to: CRM_APP_PATHS.setup,
+                    }}
+                  />
+                </div>
+              }
               error={errorBanner}
               table={
                 <DataTable

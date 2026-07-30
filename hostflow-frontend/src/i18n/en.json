@@ -1395,7 +1395,12 @@
         "errors": {
           "unauthorized": "Unauthorized: sign in and try again.",
           "load_failed": "Failed to load vacancies"
-        }
+        },
+        "empty_title": "You have no vacancies yet",
+        "empty_description": "Create your first vacancy in about 30 seconds to start receiving and processing candidates.",
+        "empty_why": "A vacancy is the role you hire for. Leads and candidates attach to it so ownership and documents stay clear.",
+        "empty_cta": "Create vacancy",
+        "empty_cta_setup": "Open getting started"
       },
       "form": {
         "save_failed": "Could not save vacancy"
@@ -8783,6 +8788,61 @@
         "title": "Start working in 3 steps",
         "wayfinding_title": "Where to work in CRM",
         "wayfinding_nav_label": "Jump to dashboard, work hub, inbox, records, and settings"
+      },
+      "success_path": {
+        "loading": "Checking your next steps…",
+        "badge": "Getting started",
+        "title": "Your path to first value",
+        "subtitle": "One clear next step at a time — stay in the product, no multi-step wizard.",
+        "progress": "{done} of {total} done",
+        "list_aria": "Success path checklist",
+        "optional": "optional",
+        "deferred": "later",
+        "open": "Open",
+        "continue": "Continue",
+        "next_title": "Next step",
+        "defer_meta": "Do this later",
+        "complete": "Core path complete — keep working from Launchpad or Recruitment.",
+        "page_title": "Get ready to hire",
+        "page_subtitle": "Follow the checklist. When a step is done, continue from here or from empty states in the product.",
+        "hub_badge": "Success path",
+        "hub_footer": "Use the primary button for the single next step. Technical gates are optional detail.",
+        "items": {
+          "company": {
+            "label": "Create company",
+            "hint": "Add your company name and profile so the workspace has an operating identity.",
+            "cta": "Create company"
+          },
+          "invite": {
+            "label": "Invite teammates",
+            "hint": "Invite recruiters when you are ready — you can do this later.",
+            "cta": "Invite teammates"
+          },
+          "meta": {
+            "label": "Connect Meta / intake",
+            "hint": "Connect Meta ads or another intake channel so applications arrive automatically.",
+            "cta": "Connect Meta"
+          },
+          "vacancy": {
+            "label": "Create first vacancy",
+            "hint": "Open the role you need to fill — about 30 seconds.",
+            "cta": "Create vacancy"
+          },
+          "lead": {
+            "label": "Receive first lead",
+            "hint": "Get the first application into your inbox from Meta, a form, or a manual lead.",
+            "cta": "Open leads"
+          },
+          "contact": {
+            "label": "Contact a candidate",
+            "hint": "Take the next action on a lead so nothing sits untouched.",
+            "cta": "Open leads"
+          }
+        }
+      },
+      "setup_status": {
+        "technical_gates_summary": "Technical Recruitment gates (advanced)",
+        "technical_gates_hint": "Operational G0–G8 health check — optional detail for admins."
       }
     },
     "reset_password": {
