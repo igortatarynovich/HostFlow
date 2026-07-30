@@ -1938,8 +1938,8 @@
     },
     "seo": {
       "landing": {
-        "title": "CRM dla zespołów rekrutacyjnych",
-        "description": "HostFlow pomaga zespołom rekrutacji prowadzić leady, kandydatów, dokumenty i operacje w jednym CRM."
+        "title": "Zamykaj wakaty szybciej — HostFlow",
+        "description": "HostFlow zbiera kandydatów z Meta, WhatsApp i formularzy, przypisuje ich rekruterom i kontroluje proces rekrutacji — od leada do zatrudnienia."
       },
       "pricing": {
         "title": "Cennik CRM dla rekrutacji",
@@ -10215,12 +10215,12 @@
         "q2": "Czy zespół dołączymy później?",
         "q3": "Co jeśli wybierzemy zły plan?",
         "title": "FAQ",
-        "launch_q": "Ile czasu zajmuje start?",
-        "launch_a": "10–30 minut: przestrzeń, firma, pierwszy kandydat lub lead.",
+        "launch_q": "Jak zacząć bez wsparcia?",
+        "launch_a": "Rejestracja → kreator firmy → Meta (lub odłóż) → pierwszy wakat. Checklist pokazuje kolejny krok.",
         "training_q": "Czy potrzebne jest szkolenie?",
-        "training_a": "Nie — interfejs jest pod codzienną pracę rekrutera; wskazówki są w przepływie.",
-        "processes_q": "Czy pasuje do różnych procesów?",
-        "processes_a": "Tak — etapy, role i lejki dostosujesz do swojej rekrutacji."
+        "training_a": "Dla głównej ścieżki — nie. Kreator i checklist prowadzą do pierwszej wartości; FAQ i docs — później.",
+        "processes_q": "Co z danymi przy zmianie planu?",
+        "processes_a": "Workspace zostaje. Limity i moduły idą za matrycą planów — upgrade odblokowuje miejsca, automatykę i portale."
       },
       "final_cta": {
         "button": "Utwórz przestrzeń roboczą",
@@ -10276,31 +10276,37 @@
         "closing": "Efekt widać już w pierwszych dniach."
       },
       "how": {
-        "badge": "Przepływ",
-        "title": "Jak wygląda praca w systemie",
+        "badge": "Jak to działa",
+        "title": "Zrozum system w minutę",
         "step_label": "Krok {n}",
         "steps": {
           "0": {
-            "title": "Dodajesz kandydata lub zbierasz lead",
-            "caption": "Tworzenie kandydata / formularz leada — jedno wejście.",
+            "title": "Utwórz firmę",
+            "caption": "Nazwa, kraj i model rekrutacji — profil operacyjny.",
             "screenshot_src": "/landing/step-lead.svg"
           },
           "1": {
-            "title": "Ustawiasz status i następny krok",
-            "caption": "Etap lejka: co zrobione, co dalej.",
+            "title": "Podłącz Meta",
+            "caption": "Połącz reklamy i formularze — zgłoszenia przychodzą same.",
             "screenshot_src": "/landing/step-pipeline.svg"
           },
           "2": {
-            "title": "System utrwala proces i przypomina",
-            "caption": "Zadania i przypomnienia — nic nie „wypada”.",
+            "title": "Utwórz wakat",
+            "caption": "Otwórz rolę i ustaw ścieżkę kandydata.",
             "screenshot_src": "/landing/step-tasks.svg"
           },
           "3": {
-            "title": "Widzisz, kto utknął i gdzie jest problem",
-            "caption": "Przegląd i analityka: wąskie gardła na widoku.",
+            "title": "Odbieraj zgłoszenia",
+            "caption": "Leady w pipeline z właścicielem — nie we wspólnej skrzynce.",
             "screenshot_src": "/landing/step-analytics.svg"
+          },
+          "4": {
+            "title": "Obsługuj kandydatów",
+            "caption": "Etapy, dokumenty i kolejne kroki — aż do zamknięcia wakatu.",
+            "screenshot_src": "/landing/hero.svg"
           }
-        }
+        },
+        "lead": "Pięć kroków od pustego workspace do obsługi prawdziwych zgłoszeń."
       },
       "pain": {
         "badge": "Prawda",
@@ -10367,20 +10373,38 @@
         "footer": "Proces nie rozsypie się po cichu."
       },
       "hero": {
-        "badge": "CRM operacji rekrutacji",
-        "primary_cta": "Utwórz przestrzeń roboczą",
-        "secondary_cta": "Masz konto? Zaloguj się",
-        "subtitle": "Bez gubienia kandydatów, chaosu i ręcznego gaszenia pożarów. Zespół, proces i dokumenty — w jednym systemie.",
-        "title": "Kontroluj rekrutację od pierwszego leada do pierwszego dnia kandydata",
+        "badge": "Platforma operacji rekrutacyjnych",
+        "primary_cta": "Rozpocznij konfigurację",
+        "secondary_cta": "Zaloguj się",
+        "subtitle": "HostFlow automatycznie zbiera kandydatów z Meta, WhatsApp i formularzy, rozdziela ich między rekruterów i kontroluje proces zatrudnienia.",
+        "title": "Zamykaj wakaty szybciej",
         "bullets": {
-          "0": "Żaden kandydat nie ginie",
-          "1": "Jasne, kto za co odpowiada",
-          "2": "Widzisz, gdzie proces staje",
-          "3": "Dokumenty i etapy pod kontrolą"
+          "0": "Leady wpływają do jednego zarządzanego pipeline’u",
+          "1": "Każdy kandydat ma właściciela",
+          "2": "Dokumenty i etapy są zawsze widoczne",
+          "3": "Mniej chaosu między reklamami, czatami i arkuszami"
         },
-        "cta_subline": "Pierwszy kandydat w systemie — w 2 minuty",
-        "screenshot_caption": "Główny widok: lejek i kandydaci — poczucie kontroli od razu.",
-        "screenshot_src": "/landing/hero.svg"
+        "cta_subline": "Self-service — pierwsza wakat w kilka minut, bez rozmowy z supportem",
+        "screenshot_caption": "Pipeline i kandydaci — kontrola rekrutacji na jednym ekranie.",
+        "screenshot_src": "/landing/hero.svg",
+        "answers": {
+          "what": {
+            "label": "Co to jest",
+            "body": "System operacyjny rekrutacji od leada do startu pracy — nie generyczny CRM z listą funkcji."
+          },
+          "who": {
+            "label": "Dla kogo",
+            "body": "Agencje i pracodawcy z realnym wolumenem kandydatów z reklam, WhatsApp i formularzy."
+          },
+          "get": {
+            "label": "Co zyskujesz",
+            "body": "Zarządzany pipeline, automatyczny intake, kontrolę dokumentów i widoczne wąskie gardła."
+          },
+          "why": {
+            "label": "Dlaczego HostFlow",
+            "body": "Zbudowany pod Meta → wakat → pracę rekrutera — żeby kandydaci nie ginęli między narzędziami."
+          }
+        }
       },
       "objections": {
         "0": "Za dużo ustawień zanim zacznie się praca.",
@@ -10391,7 +10415,7 @@
       "pricing": {
         "badge": "Cennik",
         "contact_sales_cta": "Kontakt sprzedaży",
-        "note": "Ceny w EUR. Okres próbny przed płatnością; płatność przy starcie produkcyjnym (Regulamin / Billing).",
+        "note": "Ceny w EUR. Limity i moduły zgodne z matrycą planów. Trial przy rejestracji; po Trial — wybrany plan płatny.",
         "featured_badge": "Polecany",
         "enterprise": {
           "name": "Enterprise",
@@ -10438,7 +10462,30 @@
           "price": "€129/mies. · €109/mies. przy rocznej opłacie",
           "seats": "Do 3 użytkowników · 1 przestrzeń"
         },
-        "title": "Wybierz plan dopasowany do zespołu"
+        "title": "Wybierz plan dopasowany do zespołu",
+        "clarity": {
+          "includes_title": "W cenie",
+          "excludes_title": "Poza zakresem / ograniczone",
+          "limits_title": "Limity",
+          "after_trial_title": "Po Trial",
+          "includes": {
+            "0": "Pipeline leadów/kandydatów i ownership",
+            "1": "Wakaty i statusy dokumentów",
+            "2": "Meta / formularze na odpowiednich planach",
+            "3": "Miejsca w zespole wg planu (Solo → Business)"
+          },
+          "excludes": {
+            "0": "SSO / SLA (tylko Enterprise)",
+            "1": "Fakturowanie i głębszy multi-workspace (Business+)",
+            "2": "Pełna automatyka na Solo (tylko assisted)"
+          },
+          "limits": {
+            "0": "Solo: 1 użytkownik, 1 workspace, ~200 leadów/mies., 5 otwartych wakatów",
+            "1": "Team: do 3 użytkowników, 1 workspace, wyższe limity leadów",
+            "2": "Business: do 10 użytkowników, do 3 workspace"
+          },
+          "after_trial": "Trial ma obniżone limity. Po zakończeniu wybierasz Solo / Team / Business albo Enterprise przez sales. Dane workspace zostają; funkcje zależą od planu."
+        }
       }
     },
     "documents_upload": {

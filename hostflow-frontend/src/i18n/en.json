@@ -2011,8 +2011,8 @@
     },
     "seo": {
       "landing": {
-        "title": "CRM for Recruitment Teams",
-        "description": "HostFlow helps recruitment teams run leads, candidates, documents, and operations in one CRM."
+        "title": "Close vacancies faster — HostFlow recruitment operations",
+        "description": "HostFlow collects candidates from Meta, WhatsApp and forms, assigns them to recruiters, and keeps hiring under control — from first lead to hire."
       },
       "pricing": {
         "title": "Pricing for Recruitment CRM",
@@ -10215,12 +10215,12 @@
         "q2": "Can we invite team later?",
         "q3": "What if we choose wrong plan?",
         "title": "FAQ",
-        "launch_q": "How long to get started?",
-        "launch_a": "10–30 minutes: workspace, company, first candidate or lead.",
-        "training_q": "Do we need training?",
-        "training_a": "No — the UI is built for daily recruiter work; guidance is embedded in the flow.",
-        "processes_q": "Does it fit different processes?",
-        "processes_a": "Yes — stages, roles, and funnels adapt to how you hire."
+        "launch_q": "How do I start without support?",
+        "launch_a": "Sign up → create company in the setup wizard → connect Meta (or skip) → create your first vacancy. The checklist keeps the next step visible.",
+        "training_q": "Do we need training or an onboarding call?",
+        "training_a": "No for the core path. Guided setup and in-product checklist cover first value; deeper docs and FAQ expand later.",
+        "processes_q": "What happens to my data if I change plan?",
+        "processes_a": "Your workspace stays. Limits and modules follow the plan matrix — upgrade unlocks more seats, automation, and portals."
       },
       "final_cta": {
         "button": "Create workspace",
@@ -10276,31 +10276,37 @@
         "closing": "You see impact within the first days."
       },
       "how": {
-        "badge": "Flow",
-        "title": "What working in the system looks like",
+        "badge": "How it works",
+        "title": "Understand the system in one minute",
         "step_label": "Step {n}",
         "steps": {
           "0": {
-            "title": "Add a candidate or capture a lead",
-            "caption": "Candidate create / lead form — a single intake.",
+            "title": "Create your company",
+            "caption": "Name, country, and how you hire — your operating profile.",
             "screenshot_src": "/landing/step-lead.svg"
           },
           "1": {
-            "title": "Set status and the next step",
-            "caption": "Pipeline stages: what's done and what's next.",
+            "title": "Connect Meta",
+            "caption": "Link ads and lead forms so applications arrive automatically.",
             "screenshot_src": "/landing/step-pipeline.svg"
           },
           "2": {
-            "title": "The system tracks the process and reminds you",
-            "caption": "Tasks & reminders — nothing slips through.",
+            "title": "Create a vacancy",
+            "caption": "Open the role you need to fill and set the hiring path.",
             "screenshot_src": "/landing/step-tasks.svg"
           },
           "3": {
-            "title": "See who is stuck and where it hurts",
-            "caption": "Overview & analytics: bottlenecks visible.",
+            "title": "Receive applications",
+            "caption": "Leads land in the pipeline with ownership — not in a shared inbox.",
             "screenshot_src": "/landing/step-analytics.svg"
+          },
+          "4": {
+            "title": "Process candidates",
+            "caption": "Stages, documents, and next actions stay in one place until hire.",
+            "screenshot_src": "/landing/hero.svg"
           }
-        }
+        },
+        "lead": "Five steps from empty workspace to processing real applications."
       },
       "pain": {
         "badge": "Reality check",
@@ -10367,20 +10373,38 @@
         "footer": "The process can't silently fall apart."
       },
       "hero": {
-        "badge": "CRM for hiring operations",
-        "primary_cta": "Create workspace",
-        "secondary_cta": "Already have an account? Sign in",
-        "subtitle": "No lost candidates, chaos, or manual firefighting. Team, process, and documents — in one system.",
-        "title": "Control hiring from first lead to the new hire's start",
+        "badge": "Recruitment operations platform",
+        "primary_cta": "Start free setup",
+        "secondary_cta": "Sign in",
+        "subtitle": "HostFlow automatically collects candidates from Meta, WhatsApp and forms, assigns them to recruiters, and controls the hiring process end to end.",
+        "title": "Close vacancies faster",
         "bullets": {
-          "0": "No candidate gets dropped",
-          "1": "Clear ownership",
-          "2": "You see where the process stalls",
-          "3": "Documents and stages under control"
+          "0": "Inbound leads land in one owned pipeline",
+          "1": "Clear recruiter ownership on every candidate",
+          "2": "Documents and stages stay visible",
+          "3": "Less chaos between ads, chats, and spreadsheets"
         },
-        "cta_subline": "First candidate in the system — within 2 minutes",
-        "screenshot_caption": "Main screen: pipeline and candidates — control at a glance.",
-        "screenshot_src": "/landing/hero.svg"
+        "cta_subline": "Self-serve setup — first vacancy in minutes, without a sales call",
+        "screenshot_caption": "Pipeline and candidates — hiring control at a glance.",
+        "screenshot_src": "/landing/hero.svg",
+        "answers": {
+          "what": {
+            "label": "What it is",
+            "body": "An operations system that runs hiring from lead to hire — not a generic CRM checklist."
+          },
+          "who": {
+            "label": "Who it is for",
+            "body": "Agencies and employers with real candidate volume from ads, WhatsApp, and forms."
+          },
+          "get": {
+            "label": "What you get",
+            "body": "Owned pipeline, automatic intake, document control, and visible bottlenecks."
+          },
+          "why": {
+            "label": "Why HostFlow",
+            "body": "Built for Meta → vacancy → recruiter work — so candidates stop disappearing between tools."
+          }
+        }
       },
       "objections": {
         "0": "Too many settings before work starts.",
@@ -10391,7 +10415,7 @@
       "pricing": {
         "badge": "Pricing",
         "contact_sales_cta": "Contact sales",
-        "note": "Prices in EUR. Trial before purchase; checkout connects at go-live (see Terms / Billing).",
+        "note": "Prices in EUR. Limits and modules follow the live plan matrix. Trial starts on signup; paid plan applies when trial ends or you upgrade.",
         "featured_badge": "Most popular",
         "enterprise": {
           "name": "Enterprise",
@@ -10438,7 +10462,30 @@
           "price": "€129/mo · €109/mo billed yearly",
           "seats": "Up to 3 users · 1 workspace"
         },
-        "title": "Choose a plan that fits your team"
+        "title": "Choose a plan that fits your team",
+        "clarity": {
+          "includes_title": "Included",
+          "excludes_title": "Not included / limited",
+          "limits_title": "Typical limits",
+          "after_trial_title": "After trial",
+          "includes": {
+            "0": "Candidate / lead pipeline and ownership",
+            "1": "Vacancy workflow and document statuses",
+            "2": "Meta / forms intake on eligible plans",
+            "3": "Team seats per plan (Solo → Business)"
+          },
+          "excludes": {
+            "0": "Enterprise SSO / custom SLAs (Enterprise only)",
+            "1": "Invoicing & multi-workspace depth (Business+)",
+            "2": "Unlimited automation on Solo (assisted only)"
+          },
+          "limits": {
+            "0": "Solo: 1 user, 1 workspace, ~200 leads/mo, 5 open vacancies",
+            "1": "Team: up to 3 users, 1 workspace, higher lead caps",
+            "2": "Business: up to 10 users, up to 3 workspaces"
+          },
+          "after_trial": "Trial uses reduced caps. When trial ends you choose a paid plan (Solo / Team / Business) or contact sales for Enterprise. Workspace data stays; features follow the selected plan."
+        }
       }
     },
     "documents_upload": {

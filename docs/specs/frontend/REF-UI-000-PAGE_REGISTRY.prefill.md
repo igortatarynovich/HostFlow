@@ -4,7 +4,7 @@ Source: `src/app/routes.tsx` + explicit public/auth routes in `src/App.tsx`
 
 | page_id | route | module | layout_type | owner | status | canonical_match | notes |
 |---|---|---|---|---|---|---|---|
-| marketing_root | / | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | CrmLandingPage |
+| marketing_root | / | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | CrmLandingPage (ADR-034 Growth) |
 | not-found | /app/* | Platform | UTILITY_LAYOUT_V1 | Platform | Candidate | n/a | NotFoundRedirect |
 | activities-legacy | /app/activities | Platform | UTILITY_LAYOUT_V1 | Platform | Candidate | n/a | LegacyActivitiesRedirect |
 | analytics | /app/analytics | Overview | UTILITY_LAYOUT_V1 | Product | Candidate | n/a | RedirectLegacyAnalyticsToInsights |
@@ -116,7 +116,7 @@ Source: `src/app/routes.tsx` + explicit public/auth routes in `src/App.tsx`
 | auth_login | /login | Auth | AUTH_LAYOUT_V1 | Platform | Candidate | n/a | Login |
 | marketing_pricing | /pricing | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | CrmLandingPage |
 | public_public | /public | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | Navigate |
-| public_public_apply-old_token | /public/apply-old/:token | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | LazyRoute |
+| public_public_apply-old_token | /public/apply-old/:token | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | Navigate → /public/apply/:token (ADR-034) |
 | public_public_apply_token | /public/apply/:token | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | LazyRoute |
 | public_public_documents_token | /public/documents/:token | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | LazyRoute |
 | public_public_intake | /public/intake | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | PublicIntakeStart |

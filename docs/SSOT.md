@@ -31,6 +31,7 @@
 
 - Workflow / UX: **`docs/pipe.md`**
 - Лендинг / SEO / токены: **`docs/pipedesign.md`**
+- Публичные воронки Growth / Auth / Candidate + Success Path: **[ADR-034](specs/architecture/ADR-034-self-service-public-funnels.md)**, **[`self-service-success-path.md`](specs/journeys/self-service-success-path.md)**
 - Модульные спеки: **`docs/specs/**`**
 
 ### 1.6 Платформа (superadmin) vs операционный тенант (агентство)

@@ -256,6 +256,7 @@
 
 ## История
 
+- 2026-07-30: **ADR-034** (Accepted) — three canonical public funnels (Growth / Auth / Candidate); Success Path + Setup Wizard journey [`self-service-success-path.md`](../journeys/self-service-success-path.md); no parallel product landings.
 - 2026-07-29: **ADR-033** (Accepted) — Company-owned lead lifecycle email policy + sparse Vacancy override; Control Center under Communications; [`lead-lifecycle-email-policy.md`](../workflows/lead-lifecycle-email-policy.md).
 - 2026-07-28: **ADR-032** (Accepted) — Sales Service Order → Order Line → Vacancy → Billable Item; tables `sales_*`; Flight executor only.
 - 2026-07-26: **ADR-031** (Proposed) — compliance/ops outbound requires opaque module result; task [`compliance-outbound-pipeline-early-result.md`](../tasks/compliance-outbound-pipeline-early-result.md).

@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo } from 'react'
-import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from './store/useAuth'
 import { ensureSharedSessionCookies, setToken } from './api/client'
 import Login from './pages/Login'
@@ -28,7 +28,6 @@ import { RoutePermissionGuard } from './app/RoutePermissionGuard'
 import { usePermissions } from './hooks/usePermissions'
 import PublicIntakeStart from './pages/public/PublicIntakeStart'
 import PublicPortalLanding from './pages/public/PublicPortalLanding'
-import PublicLanding from './pages/public/PublicLanding'
 import CrmLandingPage from './pages/public/CrmLandingPage'
 import PublicNotFoundPage from './pages/public/PublicNotFoundPage'
 import FeatureCandidatePipelinePage from './pages/public/FeatureCandidatePipelinePage'
@@ -86,7 +85,6 @@ import {
 } from './platform/deployHosts'
 import { ModuleHostAuthRedirect } from './platform/ModuleHostAuthRedirect'
 
-const PublicApplyPage = lazy(() => import('./pages/public/PublicApplyPage'))
 const PublicIntakeNew = lazy(() => import('./pages/public/PublicIntakeNew'))
 const CompanyIntakePage = lazy(() => import('./pages/public/CompanyIntakePage'))
 const ClientInquiryLandingPage = lazy(() => import('./pages/public/ClientInquiryLandingPage'))
@@ -97,6 +95,12 @@ const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage'))
 
 function LazyRoute({ children, loadingLabel }: { children: JSX.Element; loadingLabel: string }) {
   return <Suspense fallback={<div className="grid h-screen place-items-center text-slate-500">{loadingLabel}</div>}>{children}</Suspense>
+}
+
+/** ADR-034: legacy apply-old → canonical candidate apply. */
+function RedirectPublicApplyOld() {
+  const { token } = useParams<{ token: string }>()
+  return <Navigate to={`/public/apply/${token ?? ''}`} replace />
 }
 
 function SignupRedirectForAuthed() {
@@ -188,7 +192,7 @@ export default function App(){
       <Route path="/forms/client-inquiry/:publicToken/apply" element={<LazyRoute loadingLabel={t('common.loading')}><ClientInquiryFormPage /></LazyRoute>} />
       <Route path="/public/apply/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicIntakeNew /></LazyRoute>} />
       <Route path="/public/documents/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicDocumentsUploadPage /></LazyRoute>} />
-      <Route path="/public/apply-old/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicApplyPage /></LazyRoute>} />
+      <Route path="/public/apply-old/:token" element={<RedirectPublicApplyOld />} />
       <Route path="/public/scan" element={<Navigate to="/public/intake" replace />} />
       <Route path="/public/scan-sessions" element={<Navigate to="/public/intake" replace />} />
       <Route path="/public/status/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicStatusPage /></LazyRoute>} />
