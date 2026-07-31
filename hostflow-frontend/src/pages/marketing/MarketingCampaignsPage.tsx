@@ -4,9 +4,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CRM_APP_PATHS, marketingCampaignPath } from '../../app/crmAppPaths'
-import { listAcquisitionActivity } from '../../api/acquisitionActivity'
 import {
   currentFlight,
+  getLiveIntakeMonitor,
   launchFlight,
   listCampaigns,
   pauseFlight,
@@ -20,7 +20,6 @@ import { useI18n } from '../../i18n'
 import { formatDateTime } from '../../utils/dateFormat'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import {
-  countFlightFunnel,
   destinationSummary,
   primaryForm,
   primarySource,
@@ -41,12 +40,14 @@ export default function MarketingCampaignsPage() {
   const loadCounts = useCallback(async (campaigns: Campaign[]) => {
     const entries = await Promise.all(
       campaigns.map(async (c) => {
+        const flight = currentFlight(c)
+        if (!flight) return [c.id, { received: 0 }] as const
         try {
-          const res = await listAcquisitionActivity({ campaign_id: c.id, limit: 100 })
-          const flight = currentFlight(c)
-          return [c.id, countFlightFunnel(res.items, flight?.id)] as const
+          // Same SoT as detail KPI «Заявки»: Flight-attributed people, not Activity.
+          const mon = await getLiveIntakeMonitor(c.id, flight.id, { limit: 1 })
+          return [c.id, { received: mon.counters?.submissions ?? 0 }] as const
         } catch {
-          return [c.id, { received: 0, routed: 0, routingFailed: 0, duplicates: 0 }] as const
+          return [c.id, { received: 0 }] as const
         }
       }),
     )

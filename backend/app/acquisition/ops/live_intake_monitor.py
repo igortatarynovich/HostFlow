@@ -47,6 +47,7 @@ _MAX_LIMIT = 200
 
 @dataclass(frozen=True)
 class LiveIntakeCounters:
+    # Person count on this Flight (same SoT as applicants list) — not Activity.
     submissions: int
     leads_activity: int
     candidates: int
@@ -148,10 +149,14 @@ async def _count_by_type(
 
 
 def _counters_from(
-    counts: dict[str, int], kpi: FlightKpiAggregate
+    counts: dict[str, int],
+    kpi: FlightKpiAggregate,
+    *,
+    submissions: int,
 ) -> LiveIntakeCounters:
     return LiveIntakeCounters(
-        submissions=counts.get("SubmissionReceived", 0),
+        # Align with applicants list: Lead rows stamped to this Flight.
+        submissions=int(submissions),
         leads_activity=counts.get("LeadCreated", 0),
         candidates=counts.get("CandidateCreated", 0),
         routing_completed=counts.get("RoutingCompleted", 0),
@@ -162,6 +167,19 @@ def _counters_from(
         cost_per_lead=None if kpi.cost_per_lead is None else str(kpi.cost_per_lead),
         currency=kpi.currency,
     )
+
+
+async def count_flight_applicants(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    flight_id: str,
+) -> int:
+    """Total person-facing applicants attributed to a Flight (same filter as list)."""
+    stmt = select(func.count()).select_from(Lead).where(
+        _flight_attributed_lead_filter(tenant_id=tenant_id, flight_id=flight_id)
+    )
+    return int((await db.execute(stmt)).scalar_one() or 0)
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
@@ -365,6 +383,11 @@ async def get_live_intake_monitor(
         campaign_id=str(campaign.id),
         flight_id=str(flight.id),
     )
+    submissions = await count_flight_applicants(
+        db,
+        tenant_id=str(tenant_id),
+        flight_id=str(flight.id),
+    )
     # Fetch limit+1 for next_cursor detection (same pattern as 3E read API).
     rows = await list_activity_events(
         db,
@@ -399,7 +422,7 @@ async def get_live_intake_monitor(
         flight_id=str(flight.id),
         campaign_status=str(campaign.status or ""),
         flight_status=str(flight.status or ""),
-        counters=_counters_from(counts, kpi),
+        counters=_counters_from(counts, kpi, submissions=submissions),
         items=page,
         applicants=applicants,
         next_cursor=next_cursor,
@@ -414,6 +437,7 @@ __all__ = [
     "LiveIntakeApplicantRow",
     "LiveIntakeCounters",
     "LiveIntakeMonitorPage",
+    "count_flight_applicants",
     "get_live_intake_monitor",
     "list_flight_applicants",
 ]

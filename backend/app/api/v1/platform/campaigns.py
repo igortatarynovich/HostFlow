@@ -359,6 +359,7 @@ class FlightRuntimeOut(BaseModel):
 
 
 class LiveIntakeCountersOut(BaseModel):
+    # Person count on Flight (= applicants list SoT), not Activity SubmissionReceived.
     submissions: int
     leads_activity: int
     candidates: int

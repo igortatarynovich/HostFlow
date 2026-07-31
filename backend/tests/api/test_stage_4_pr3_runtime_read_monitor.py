@@ -11,8 +11,10 @@ from sqlalchemy import select
 
 from backend.app.acquisition import append_activity_event
 from backend.app.acquisition.kpi_aggregates import aggregate_flight_kpi
+from backend.app.acquisition.submission_routing import ACQUISITION_ROUTING_V1_KEY
 from backend.app.db.session import async_session_maker
 from backend.app.models.acquisition_activity_event import ACTOR_TYPE_SYSTEM
+from backend.app.models.lead import Lead
 from backend.app.models.own_company import OwnCompany
 from backend.tests.conftest import _init_data, _set_tenant
 
@@ -164,7 +166,8 @@ async def test_live_intake_monitor_counters_and_allowlist(
     )
     assert mon.status_code == 200, mon.text
     body = mon.json()
-    assert body["counters"]["submissions"] == 2
+    # submissions = Flight-attributed Lead rows (applicants), not Activity SubmissionReceived
+    assert body["counters"]["submissions"] == 0
     assert body["counters"]["leads_activity"] == 1
     assert body["counters"]["routing_failed"] == 1
     assert body["counters"]["candidates"] == 0
@@ -175,6 +178,45 @@ async def test_live_intake_monitor_counters_and_allowlist(
     assert "FlightCreated" not in types
     assert "FlightCreated" not in body["event_types"]
     assert isinstance(body.get("applicants"), list)
+
+    # Stamp two applicants onto this Flight — counter must match list SoT
+    async with async_session_maker() as session:
+        await _set_tenant(session, tenant_id)
+        for i in range(2):
+            lid = str(uuid4())
+            session.add(
+                Lead(
+                    id=lid,
+                    tenant_id=tenant_id,
+                    source="meta",
+                    status="processed",
+                    lead_type="candidate",
+                    lead_target_type="candidate",
+                    external_id=f"pr3-app-{i}-{uuid4().hex[:8]}",
+                    normalized={
+                        "full_name": f"Applicant {i}",
+                        "phone": f"+48111000{i:03d}",
+                        ACQUISITION_ROUTING_V1_KEY: {
+                            "status": "routed",
+                            "campaign_id": campaign_id,
+                            "campaign_run_id": flight_id,
+                            "route_intent": "candidate_application",
+                        },
+                    },
+                    payload={"ad_id": "120000000000000001"},
+                )
+            )
+        await session.commit()
+
+    mon2 = await client.get(
+        f"/api/v1/platform/campaigns/{campaign_id}/flights/{flight_id}/monitor/live-intake",
+        headers=headers,
+        params={"limit": 10},
+    )
+    assert mon2.status_code == 200, mon2.text
+    body2 = mon2.json()
+    assert body2["counters"]["submissions"] == 2
+    assert len(body2["applicants"]) == 2
 
     # Filtered subset
     filtered = await client.get(
