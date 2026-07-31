@@ -37,6 +37,38 @@ export default function SalesInquiryTimelineSection({ leadId, refreshToken = 0 }
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const kindTitle = (kind: string, title: string | null | undefined) => {
+    const key = String(kind || '').trim()
+    if (key === 'lead_received') {
+      return t('app.leads.detail.timeline_kinds.lead_received', {
+        defaultValue: 'Обращение получено',
+      })
+    }
+    if (key === 'call_result') {
+      return t('app.leads.detail.timeline_kinds.call_result', { defaultValue: 'Результат звонка' })
+    }
+    if (key === 'stage_changed') {
+      return t('app.leads.detail.timeline_kinds.stage_changed', { defaultValue: 'Смена этапа' })
+    }
+    if (key === 'questionnaire_email') {
+      return t('app.leads.detail.timeline_kinds.questionnaire_email', {
+        defaultValue: 'Анкета отправлена',
+      })
+    }
+    if (key === 'questionnaire_submitted') {
+      return t('app.leads.detail.timeline_kinds.questionnaire_submitted', {
+        defaultValue: 'Анкета получена',
+      })
+    }
+    const raw = String(title || '').trim()
+    if (raw === 'lead.received' || raw === 'lead.created') {
+      return t('app.leads.detail.timeline_kinds.lead_received', {
+        defaultValue: 'Обращение получено',
+      })
+    }
+    return title || kind || '—'
+  }
+
   const load = useCallback(async () => {
     if (!leadId) return
     setLoading(true)
@@ -102,7 +134,7 @@ export default function SalesInquiryTimelineSection({ leadId, refreshToken = 0 }
             aria-hidden
           />
           <div className="text-xs text-slate-500">{formatAt(item.at, locale)}</div>
-          <div className="text-sm font-medium text-slate-900">{item.title || item.kind || '—'}</div>
+          <div className="text-sm font-medium text-slate-900">{kindTitle(item.kind, item.title)}</div>
           {item.description ? <div className="text-sm text-slate-600">{item.description}</div> : null}
         </li>
       ))}
