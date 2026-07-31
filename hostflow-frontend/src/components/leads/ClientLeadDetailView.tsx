@@ -1,11 +1,12 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import type { LeadCallResultCode } from '../../api/client'
 import type { Lead } from '../../api/types'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useI18n } from '../../i18n'
-import { leadIntakeResolutionRejected } from '../../utils/intakeResolution'
+import SalesInquiryRodoSection from '../sales/SalesInquiryRodoSection'
+import { leadIntakeResolutionRejected, leadRodoSatisfied } from '../../utils/intakeResolution'
 import {
   LEAD_CALL_RESULT_CODES,
   leadCallResultHistory,
@@ -110,9 +111,14 @@ export default function ClientLeadDetailView({
   const { t } = useI18n()
   const [callResult, setCallResult] = useState<LeadCallResultCode>('callback_requested')
   const [callNote, setCallNote] = useState('')
+  const [leadState, setLeadState] = useState(lead)
+  useEffect(() => {
+    setLeadState(lead)
+  }, [lead])
+  const rodoOk = leadRodoSatisfied(leadState)
 
-  const normalized = record(lead.normalized)
-  const payload = record(lead.payload)
+  const normalized = record(leadState.normalized)
+  const payload = record(leadState.payload)
   const company = record(normalized.company_profile)
   const payloadCompany = record(payload.company)
   const contact = record(normalized.contact_person)
@@ -134,21 +140,21 @@ export default function ClientLeadDetailView({
     text(normalized.company_name) ||
     text(normalized.company_name_hint) ||
     text(payloadCompany.name) ||
-    lead.company_name ||
+    leadState.company_name ||
     'Client Lead'
-  const convertedId = text(lead.converted_client_id)
-  const terminal = leadIntakeResolutionRejected(lead)
+  const convertedId = text(leadState.converted_client_id)
+  const terminal = leadIntakeResolutionRejected(leadState)
   const statusLabel = terminal
     ? 'Отклонён'
     : convertedId
       ? 'Клиент создан'
-      : lead.status === 'processed'
+      : leadState.status === 'processed'
         ? 'Новая анкета'
-        : lead.status === 'rejected'
+        : leadState.status === 'rejected'
           ? 'Отклонён'
-          : lead.status
+          : leadState.status
 
-  const history = useMemo(() => leadCallResultHistory(lead), [lead])
+  const history = useMemo(() => leadCallResultHistory(leadState), [leadState])
 
   const resultLabel = (code: string) =>
     t(`app.leads.detail.call_result.results.${code}`, { defaultValue: code })
@@ -213,7 +219,7 @@ export default function ClientLeadDetailView({
             )}
             {!terminal ? (
               <>
-                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={busy} onClick={() => void onStage('contacted')}>
+                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={busy || !rodoOk} onClick={() => void onStage('contacted')} title={!rodoOk ? t('app.leads.messages.process_blocked.LEAD_RODO_REQUIRED', { defaultValue: 'RODO required first' }) : undefined}>
                   Контакт установлен
                 </button>
                 <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={busy} onClick={() => void onStage('qualified')}>
@@ -229,15 +235,23 @@ export default function ClientLeadDetailView({
       </header>
 
       {!terminal && onCallResult ? (
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-900">
-            {t('app.leads.detail.call_result.title', { defaultValue: 'Результат звонка' })}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {t('app.leads.detail.call_result.subtitle', {
-              defaultValue: 'Перезвонить или что ещё хотят / думают — зафиксируйте после разговора.',
-            })}
-          </p>
+        <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <SalesInquiryRodoSection
+            leadId={String(leadState.id)}
+            lead={leadState}
+            disabled={busy}
+            onUpdated={setLeadState}
+          />
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {t('app.leads.detail.call_result.title', { defaultValue: 'Результат звонка' })}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {t('app.leads.detail.call_result.subtitle', {
+                defaultValue: 'Перезвонить или что ещё хотят / думают — зафиксируйте после разговора.',
+              })}
+            </p>
+          </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="block text-sm">
               <span className="mb-1 block text-xs font-medium text-slate-600">
@@ -246,7 +260,7 @@ export default function ClientLeadDetailView({
               <select
                 className="input w-full"
                 value={callResult}
-                disabled={busy}
+                disabled={busy || !rodoOk}
                 onChange={(e) => setCallResult(e.target.value as LeadCallResultCode)}
               >
                 {LEAD_CALL_RESULT_CODES.map((code) => (
@@ -276,7 +290,7 @@ export default function ClientLeadDetailView({
                   className="textarea mt-0 w-full"
                   rows={3}
                   maxLength={2000}
-                  disabled={busy}
+                  disabled={busy || !rodoOk}
                   value={callNote}
                   onChange={(e) => setCallNote(e.target.value)}
                   placeholder={t('app.leads.detail.call_result.fields.note_placeholder', {
@@ -295,7 +309,14 @@ export default function ClientLeadDetailView({
             <button
               type="button"
               className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60"
-              disabled={busy}
+              disabled={busy || !rodoOk}
+              title={
+                !rodoOk
+                  ? t('app.leads.messages.process_blocked.LEAD_RODO_REQUIRED', {
+                      defaultValue: 'Send RODO or mark covered at source before saving a call result.',
+                    })
+                  : undefined
+              }
               onClick={() => {
                 void Promise.resolve(
                   onCallResult({ result: callResult, note: callNote.trim() }),

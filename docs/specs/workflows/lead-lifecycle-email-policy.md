@@ -151,7 +151,7 @@ All sends go through `prepare_and_send_communication` with opaque module result 
 | P4 | Cutover seed snapshot + Meta deep-link |
 | **A** | **Own-company SoT resolver + own-company cutover** (this errata) |
 | **B** | Control Center: own-company selector + client override IA |
-| **C** | Sales inquiry rail: RODO status + Send / source-provided |
+| **C** | Sales inquiry rail: RODO status + Send / source-provided (**done** — `SalesInquiryRodoSection` on call notes / client lead detail) |
 
 ---
 

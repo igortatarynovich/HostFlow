@@ -10,11 +10,13 @@ import { useToast } from '../Toast'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
+import { leadRodoSatisfied } from '../../utils/intakeResolution'
 import {
   LEAD_CALL_RESULT_CODES,
   leadCallResultHistory,
   type LeadCallResultEntry,
 } from '../../utils/leadCallResult'
+import SalesInquiryRodoSection from './SalesInquiryRodoSection'
 
 type Props = {
   leadId: string
@@ -64,6 +66,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
   }, [load])
 
   const history = leadCallResultHistory(lead)
+  const rodoOk = leadRodoSatisfied(lead)
   const noteRecommended =
     callResult === 'callback_requested' || callResult === 'answered' || callResult === 'interested'
 
@@ -71,7 +74,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
     t(`app.leads.detail.call_result.results.${code}`, { defaultValue: code })
 
   const handleSave = async () => {
-    if (!leadId || saving || disabled) return
+    if (!leadId || saving || disabled || !rodoOk) return
     setSaving(true)
     try {
       const updated = await logLeadCallResult(leadId, {
@@ -110,6 +113,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
         description: [info.detail, info.hint].filter(Boolean).join(' '),
         variant: 'error',
       })
+      void load()
     } finally {
       setSaving(false)
     }
@@ -125,6 +129,13 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
 
   return (
     <section className="space-y-3" data-testid="sales-call-notes">
+      <SalesInquiryRodoSection
+        leadId={leadId}
+        lead={lead}
+        disabled={disabled || saving}
+        onUpdated={(next) => setLead(next)}
+      />
+
       <div>
         <h3 className="text-sm font-semibold text-slate-900">
           {t('app.leads.detail.call_result.title', { defaultValue: 'Результат звонка' })}
@@ -143,7 +154,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
         <select
           className="input w-full"
           value={callResult}
-          disabled={saving || disabled}
+          disabled={saving || disabled || !rodoOk}
           onChange={(e) => setCallResult(e.target.value as LeadCallResultCode)}
         >
           {LEAD_CALL_RESULT_CODES.map((code) => (
@@ -173,7 +184,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
           className="textarea mt-0 w-full"
           rows={3}
           maxLength={2000}
-          disabled={saving || disabled}
+          disabled={saving || disabled || !rodoOk}
           value={callNote}
           onChange={(e) => setCallNote(e.target.value)}
           placeholder={t('app.leads.detail.call_result.fields.note_placeholder', {
@@ -186,8 +197,15 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
         <button
           type="button"
           className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60"
-          disabled={saving || disabled}
+          disabled={saving || disabled || !rodoOk}
           onClick={() => void handleSave()}
+          title={
+            !rodoOk
+              ? t('app.leads.messages.process_blocked.LEAD_RODO_REQUIRED', {
+                  defaultValue: 'Send RODO or mark covered at source before saving a call result.',
+                })
+              : undefined
+          }
         >
           {saving
             ? t('common.saving', { defaultValue: 'Сохранение…' })
