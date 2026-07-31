@@ -46,7 +46,7 @@ import type { TenantModuleSettings } from '../../api/types'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 import { useTeamOverviewNav } from '../../contexts/TeamOverviewNavContext'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import { ensureSharedSessionCookies } from '../../api/client'
+import { navigateToModuleHost } from '../../api/client'
 import { APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS } from '../../nav/appShellNav'
 import {
   SIDEBAR_AGENCY_ANALYTICS_ORDER,
@@ -595,25 +595,7 @@ export function Sidebar({
           onClick={(event) => {
             event.preventDefault()
             handleNavigate()
-            void (async () => {
-              const synced = await ensureSharedSessionCookies()
-              if (!synced) {
-                // Stay on shell with module context — never bounce to /login?next= from a nav click.
-                try {
-                  const u = new URL(itemPath)
-                  const local = new URL(`${u.pathname}${u.search}`, window.location.origin)
-                  const owner = u.hostname.split('.')[0]
-                  if (owner && owner !== 'hostflow' && owner !== 'www') {
-                    local.searchParams.set('hf_module', owner)
-                  }
-                  window.location.assign(`${local.pathname}${local.search}${local.hash}`)
-                } catch {
-                  window.location.assign(itemPath)
-                }
-                return
-              }
-              window.location.assign(itemPath)
-            })()
+            void navigateToModuleHost(itemPath)
           }}
           className={navClass(false)}
         >

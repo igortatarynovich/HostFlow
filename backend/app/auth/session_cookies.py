@@ -106,11 +106,21 @@ def set_session_cookies(
 ) -> None:
     names = session_cookie_names()
     common = cookie_common_kwargs(request)
-    # When writing Domain=.hostflow.cc cookies, drop legacy host-only copies first.
-    # Otherwise shell keeps a host-only session while module hosts see nothing → redirect loop.
-    if "domain" in common:
-        for key in (names["access"], names["refresh"], names["csrf"]):
-            response.delete_cookie(key=key, path="/")
+    secure = bool(common.get("secure"))
+    samesite = str(common.get("samesite") or "lax")
+    # Clear host-only leftovers with the same Secure/SameSite flags browsers require to
+    # expire a prior cookie — otherwise shell keeps a host-only hf_access that never
+    # reaches module subdomains (Domain=.hostflow.cc session looks "logged out" there).
+    for key in (names["access"], names["refresh"], names["csrf"]):
+        response.delete_cookie(key=key, path="/", secure=secure, samesite=samesite)
+        if "domain" in common:
+            response.delete_cookie(
+                key=key,
+                path="/",
+                domain=str(common["domain"]),
+                secure=secure,
+                samesite=samesite,
+            )
     response.set_cookie(
         key=names["access"],
         value=access_token,
@@ -138,12 +148,18 @@ def set_session_cookies(
 def clear_session_cookies(response: Response, request: Request) -> None:
     names = session_cookie_names()
     common = cookie_common_kwargs(request)
+    secure = bool(common.get("secure"))
+    samesite = str(common.get("samesite") or "lax")
     for key in (names["access"], names["refresh"], names["csrf"]):
-        response.delete_cookie(key=key, path="/", domain=common.get("domain"))
-        # Also clear host-only variants from older local sessions.
+        response.delete_cookie(key=key, path="/", secure=secure, samesite=samesite)
         if "domain" in common:
-            response.delete_cookie(key=key, path="/")
-
+            response.delete_cookie(
+                key=key,
+                path="/",
+                domain=str(common["domain"]),
+                secure=secure,
+                samesite=samesite,
+            )
 
 def read_access_token(request: Request) -> str | None:
     names = session_cookie_names()

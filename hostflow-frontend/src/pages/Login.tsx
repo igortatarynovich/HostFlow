@@ -15,7 +15,7 @@ import {
 } from '../utils/friendlyError'
 import { consumeLoginNotice } from '../store/auth'
 import { useSeoMeta } from '../hooks/useSeoMeta'
-import { ensureSharedSessionCookies } from '../api/client'
+import { ensureSharedSessionCookies, buildSameOriginModuleHref } from '../api/client'
 import { isAllowedHandoffNext } from '../platform/deployHosts'
 
 export default function Login(){
@@ -53,10 +53,8 @@ export default function Login(){
       if (next && isAllowedHandoffNext(next)) {
         if (/^https?:\/\//i.test(next)) {
           const synced = await ensureSharedSessionCookies()
-          if (synced) {
-            window.location.replace(next)
-            return
-          }
+          window.location.replace(synced ? next : buildSameOriginModuleHref(next))
+          return
         } else if (next.startsWith('/')) {
           nav(next, { replace: true })
           return

@@ -428,7 +428,8 @@ async function refreshAccessTokenViaCookie(): Promise<string | null> {
  *
  * `/auth/session/sync` is excluded from the 401 refresh interceptor, so a stale
  * Bearer alone would fail here while normal API calls still work via refresh.
- * Retry once after cookie refresh so module navigation matches in-shell UX.
+ * Retry once after cookie refresh, then prove the Domain cookie works without Bearer
+ * (module hosts start with empty localStorage).
  */
 export async function ensureSharedSessionCookies(): Promise<boolean> {
   const syncOnce = async (): Promise<boolean> => {
@@ -437,7 +438,11 @@ export async function ensureSharedSessionCookies(): Promise<boolean> {
     if (token) {
       setToken(token);
     }
-    return true;
+    // Module hosts authenticate from Domain cookie only — verify before cross-host nav.
+    const { data: who } = await apiInstance.get("/auth/whoami-verify", {
+      __hfSkipBearer: true,
+    } as any);
+    return Boolean(who && (who.sub || who.email));
   };
 
   try {
@@ -451,6 +456,35 @@ export async function ensureSharedSessionCookies(): Promise<boolean> {
       return false;
     }
   }
+}
+
+/** Same-origin module emulation when Domain cookies cannot be proven. */
+export function buildSameOriginModuleHref(absoluteModuleUrl: string): string {
+  try {
+    const u = new URL(absoluteModuleUrl);
+    const local = new URL(`${u.pathname}${u.search}${u.hash}`, window.location.origin);
+    const labels = u.hostname.split(".");
+    const owner = labels[0] || "";
+    if (owner && owner !== "www" && owner !== "hostflow") {
+      local.searchParams.set("hf_module", owner);
+    }
+    return `${local.pathname}${local.search}${local.hash}`;
+  } catch {
+    return absoluteModuleUrl;
+  }
+}
+
+/**
+ * Hard-navigate to a module host only after Domain cookie session is proven.
+ * Falls back to same-origin ?hf_module= so the CRM stays usable.
+ */
+export async function navigateToModuleHost(absoluteModuleUrl: string): Promise<void> {
+  const synced = await ensureSharedSessionCookies();
+  if (!synced) {
+    window.location.assign(buildSameOriginModuleHref(absoluteModuleUrl));
+    return;
+  }
+  window.location.assign(absoluteModuleUrl);
 }
 
 /**
