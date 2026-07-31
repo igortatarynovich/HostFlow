@@ -1,11 +1,11 @@
 # Lead lifecycle email policy (v1)
 
 **Status:** NORMATIVE (L2 — workflow / operating canon)  
-**Date:** 2026-07-29  
+**Date:** 2026-07-29 · **Updated:** 2026-07-31 (own-company SoT)  
 **Owner:** Communication capability (settings + templates); Leads module consumes resolver  
 **Parents:** [ADR-033](../architecture/ADR-033-lead-lifecycle-email-company-policy.md) · [ADR-005](../architecture/ADR-005-three-level-settings-hierarchy.md) · [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) · [c0-0 Communication canon §14](../tasks/c0-0-communication-canon.md) · [§8.0.1–8.0.2 intake continuity](lead-intake-resolution-and-activity-continuity.md)
 
-> Control Center + company/vacancy policy for **lead lifecycle emails only**.  
+> Control Center + **own-company** policy for **lead lifecycle emails only**.  
 > Delivery remains Communication Pipeline only (INV-17 / ADR-031). No second SMTP path.
 
 ---
@@ -21,27 +21,29 @@
 
 ---
 
-## 2. Hierarchy (locked 1A / 2A)
+## 2. Hierarchy (locked — own-company SoT)
 
 ```text
 Vacancy sparse override (vacancies.settings_json.lead_lifecycle_email_override_v1)
-  → Company Module Settings (recruitment.settings_json.lead_lifecycle_email_v1)
-    → Tenant preset (lead_rodo_v1 / lead_communication_v1) — missing keys only
-      → Fail-closed (no silent HostFlow marketing body)
+  → Client company overlay (optional; company_module_settings.recruitment.lead_lifecycle_email_v1)
+    → OwnCompany.extra.lead_lifecycle_email_v1  (SoT — operating firm / data controller)
+      → Tenant preset (lead_rodo_v1 / lead_communication_v1) — missing keys / pre-cutover only
+        → Fail-closed (no silent HostFlow marketing body)
 ```
 
-- **Client** = `Lead.company_id` (Company).
+- **Own company** = `Lead.own_company_id` → `own_companies` (firm that operates the workspace).
+- **Client** = `Lead.company_id` → employer / B2B account in `companies` — **optional overlay** when that client must be named in notice copy or needs a different template (white-label / joint controller). Not required for send.
 - **Tenant JSON** after cutover = preset + migration adapter, not live SoT.
-- **Net-new company** defaults: ops emails **off**; RODO `manual`.
-- **Cutover:** every existing company receives a **snapshot** of the then-current tenant preset (not “all off”).
+- **Net-new own company** defaults: ops emails **off**; RODO `manual`.
+- **Cutover:** every existing **own company** receives a **snapshot** of the then-current tenant preset. Pre-existing client-company `lead_lifecycle_email_v1` rows remain as overlays.
+
+**Product rule:** default is **one firm RODO**. Per-client RODO is the exception, not the model.
 
 ---
 
-## 3. Company settings shape (`lead_lifecycle_email_v1`)
+## 3. Policy shape (`lead_lifecycle_email_v1`)
 
-Stored under `company_module_settings` where `module_key = recruitment` (Sales path may mirror later under `sales`).
-
-Runtime JSON (flat keys; nested plan notation maps 1:1):
+Same JSON on OwnCompany (`extra`) and as optional client overlay in `company_module_settings` (`module_key = recruitment`).
 
 | Field | Meaning |
 |-------|---------|
@@ -51,10 +53,14 @@ Runtime JSON (flat keys; nested plan notation maps 1:1):
 | `application_received` / `rejection` / `moving_forward` | `{ enabled: bool, template_ref?: str }` |
 | `channels` | MVP `["email"]` |
 
+### Client overlay
+
+Non-empty `lead_lifecycle_email_v1` on the client company **overlays** the own-company policy (set fields win). Empty / missing client block → firm policy only.
+
 ### Vacancy override
 
 JSONB column `vacancies.settings_json` key `lead_lifecycle_email_override_v1`: sparse map  
-`purpose → { enabled?: bool, template_ref?: str }` (ops keys may use `application_received` / `rejection` / `moving_forward`). Missing purpose keys inherit company.
+`purpose → { enabled?: bool, template_ref?: str }` (ops keys may use `application_received` / `rejection` / `moving_forward`). Missing purpose keys inherit own company (+ client overlay).
 
 ---
 
@@ -81,47 +87,50 @@ If purpose is **enabled** (or RODO mode requires outbound) but template is missi
 2. **Stamp the lead:**
    - RODO: `normalized.rodo.status = pending_policy` with `failure_reason_code` ∈ `{policy_template_missing, policy_misconfigured}` + `failure_reason`; gate stays unsatisfied (`LEAD_RODO_REQUIRED`).
    - Ops: `normalized.lead_communication_v1.<event>.status = failed` with the same codes.
-3. **Surface:** Intake Decision rail alert + lead queue badge/filter **email policy blocked**. Control Center lists misconfigured company purposes.
+3. **Surface:** Intake Decision rail alert + lead queue badge/filter **email policy blocked**. Control Center lists misconfigured purposes. **Sales rail** must expose the same RODO unlock (Send / source-provided) — product slice C.
 
 Recipient silence without operator signal = **spec FAIL**.
 
 Undelivered / deferred delivery outcomes (DSN feedback) remain separate and still block conversion.
 
+Missing `own_company_id` on the lead → `block_code = missing_own_company` (no send).
+
 ---
 
 ## 6. Resolver SoT
 
-`resolve_lifecycle_email_policy(tenant_id, company_id, vacancy_id, purpose) → PolicyDecision`:
+`resolve_lifecycle_email_policy(tenant_id, own_company_id, company_id?, vacancy_id?, purpose) → PolicyDecision`:
 
 - `send: bool`
 - `template_ref: str | null`
-- `source_layer: vacancy | company | tenant_preset | none`
-- `block_code: null | disabled | policy_template_missing | policy_misconfigured | …`
+- `source_layer: vacancy | client | own_company | tenant_preset | none`
+- `block_code: null | disabled | policy_template_missing | policy_misconfigured | missing_own_company | …`
 - `send_mode` (RODO only)
 
-Runtime callers: `lead_rodo`, `lead_communications`. Binders still use Pipeline; template metadata comes from the decision.
+Runtime callers: `lead_rodo`, `lead_communications` via `resolve_lifecycle_email_policy_for_lead` (reads `lead.own_company_id` + optional `lead.company_id`). Binders still use Pipeline; template metadata comes from the decision.
 
-**Resolve-preview (mandatory):** `GET /api/v1/settings/communications/lead-lifecycle-email/resolve-preview` returns the same `PolicyDecision` the runtime uses.
+**Resolve-preview (mandatory):** `GET /api/v1/settings/communications/lead-lifecycle-email/resolve-preview` returns the same `PolicyDecision` the runtime uses (`own_company_id` required; `company_id` optional overlay).
 
 ---
 
 ## 7. Control Center IA
 
 - Route: `/app/settings/communications/lead-lifecycle-email`
-- Company selector → four purpose cards → **Effective policy** panel (resolve-preview) → Vacancy overrides → links to SMTP + templates.
+- **Target IA (slice B):** Own Company selector → four purpose cards → **Effective policy** panel (resolve-preview) → optional Client overlay → Vacancy overrides → links to SMTP + templates.
+- **Until slice B:** client-company GET/PUT remain for overlay editing; own-company GET/PUT address the SoT blob on `OwnCompany.extra`.
 - Meta Integrations: **deep-link only** (not SoT UI).
-- Misconfiguration strip: `enabled && !template_ref`.
+- Misconfiguration strip: `enabled && !template_ref` (auto RODO modes).
 
 ### RBAC
 
 | Action | Permission |
 |--------|------------|
-| Write company/vacancy policy | `admin.users` + Communications admin feature (`communicationsAdmin`) — same class as other Communications settings; **not** ordinary recruiter |
+| Write own-company / client / vacancy policy | `admin.users` + Communications admin feature (`communicationsAdmin`) — same class as other Communications settings; **not** ordinary recruiter |
 | Read / resolve-preview | Managers with lead/settings view may read; write remains restricted |
 
 ### Audit
 
-Every successful PATCH of company `lead_lifecycle_email_v1` or vacancy `lead_lifecycle_email_override_v1` emits an audit event: actor, timestamp, company/vacancy id, before/after summary (mode, flags, template_ref).
+Every successful PATCH of own-company `lead_lifecycle_email_v1`, client overlay, or vacancy `lead_lifecycle_email_override_v1` emits an audit event: actor, timestamp, ids, before/after summary (mode, flags, template_ref).
 
 ---
 
@@ -135,11 +144,14 @@ All sends go through `prepare_and_send_communication` with opaque module result 
 
 | Slice | Deliverable |
 |-------|-------------|
-| P0 | This spec + ADR-033 + linkages |
+| P0 | Spec + ADR-033 + linkages |
 | P1 | Schema + resolver + resolve-preview + audit hooks |
 | P2 | Wire send paths + lead stamps |
 | P3 | Control Center UI + rail badge + RBAC |
 | P4 | Cutover seed snapshot + Meta deep-link |
+| **A** | **Own-company SoT resolver + own-company cutover** (this errata) |
+| **B** | Control Center: own-company selector + client override IA |
+| **C** | Sales inquiry rail: RODO status + Send / source-provided |
 
 ---
 

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { listCompanies } from '../../api/client'
+import { listCompanies, listOwnCompanies } from '../../api/client'
 import { listLeadMessageTemplates } from '../../api/metaLeads'
 import {
   getLeadLifecycleEmailPolicy,
+  getOwnCompanyLeadLifecycleEmailPolicy,
   putLeadLifecycleEmailPolicy,
+  putOwnCompanyLeadLifecycleEmailPolicy,
   putVacancyLifecycleEmailOverride,
   resolveLeadLifecycleEmailPreview,
   type LeadLifecycleEmailPolicy,
@@ -79,7 +81,9 @@ export default function LeadLifecycleEmailSettingsPage() {
 
   const [companies, setCompanies] = useState<Array<{ id: string; name: string }>>([])
   const [companyId, setCompanyId] = useState('')
-  const [policySource, setPolicySource] = useState('company')
+  const [ownCompanyId, setOwnCompanyId] = useState('')
+  const [ownCompanies, setOwnCompanies] = useState<Array<{ id: string; name: string }>>([])
+  const [policySource, setPolicySource] = useState('own_company')
   const [policy, setPolicy] = useState<LeadLifecycleEmailPolicy>(emptyPolicy)
   const [templates, setTemplates] = useState<LeadMessageTemplate[]>([])
   const [vacancies, setVacancies] = useState<Array<{ id: string; title: string }>>([])
@@ -109,14 +113,20 @@ export default function LeadLifecycleEmailSettingsPage() {
   }, [policy])
 
   const loadCompanies = useCallback(async () => {
-    const rows = await listCompanies({ limit: 200 })
+    const [rows, ownRes] = await Promise.all([
+      listCompanies({ limit: 200 }),
+      listOwnCompanies().catch(() => ({ items: [] as Array<{ id: string; name?: string }>, active_own_company_id: null })),
+    ])
     const list = (Array.isArray(rows) ? rows : (rows as { items?: unknown[] })?.items || []) as Array<{
       id: string
       name?: string
     }>
     setCompanies(list.map((c) => ({ id: String(c.id), name: String(c.name || c.id) })))
-    if (!companyId && list[0]?.id) setCompanyId(String(list[0].id))
-  }, [companyId])
+    const owns = Array.isArray(ownRes?.items) ? ownRes.items : []
+    setOwnCompanies(owns.map((c) => ({ id: String(c.id), name: String(c.name || c.id) })))
+    const active = String(ownRes?.active_own_company_id || owns[0]?.id || '').trim()
+    if (active) setOwnCompanyId((prev) => prev || active)
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -151,32 +161,23 @@ export default function LeadLifecycleEmailSettingsPage() {
   }, [loadCompanies, planLimitModal, t])
 
   useEffect(() => {
-    if (!companyId) return
+    if (!ownCompanyId) return
     let mounted = true
     ;(async () => {
       setError(null)
       try {
-        const [out, vacs] = await Promise.all([
-          getLeadLifecycleEmailPolicy(companyId),
-          listVacancies({ company_id: companyId, limit: 100 }),
-        ])
+        const out = await getOwnCompanyLeadLifecycleEmailPolicy(ownCompanyId)
         if (!mounted) return
         setPolicy({ ...emptyPolicy(), ...(out.policy || {}) })
         setPolicySource(out.source)
-        setVacancies(
-          (Array.isArray(vacs) ? vacs : []).map((v) => ({
-            id: String(v.id),
-            title: String((v as { title?: string }).title || v.id),
-          })),
-        )
-        setVacancyId('')
-        setOverrideDraft({})
       } catch (err: unknown) {
         if (!mounted) return
         setError(
           getFriendlyErrorInfo(
             err,
-            t('admin.lead_lifecycle_email.errors.load_company', { defaultValue: 'Failed to load company policy' }),
+            t('admin.lead_lifecycle_email.errors.load_company', {
+              defaultValue: 'Failed to load own-company policy',
+            }),
             t,
           ),
         )
@@ -185,13 +186,43 @@ export default function LeadLifecycleEmailSettingsPage() {
     return () => {
       mounted = false
     }
-  }, [companyId, t])
+  }, [ownCompanyId, t])
+
+  useEffect(() => {
+    if (!companyId) {
+      setVacancies([])
+      setVacancyId('')
+      setOverrideDraft({})
+      return
+    }
+    let mounted = true
+    ;(async () => {
+      try {
+        const vacs = await listVacancies({ company_id: companyId, limit: 100 })
+        if (!mounted) return
+        setVacancies(
+          (Array.isArray(vacs) ? vacs : []).map((v) => ({
+            id: String(v.id),
+            title: String((v as { title?: string }).title || v.id),
+          })),
+        )
+        setVacancyId('')
+        setOverrideDraft({})
+      } catch {
+        if (mounted) setVacancies([])
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [companyId])
 
   const refreshPreview = useCallback(async () => {
-    if (!companyId) return
+    if (!ownCompanyId) return
     try {
       const d = await resolveLeadLifecycleEmailPreview({
-        company_id: companyId,
+        own_company_id: ownCompanyId,
+        company_id: companyId || null,
         purpose: previewPurpose,
         vacancy_id: vacancyId || null,
       })
@@ -199,19 +230,19 @@ export default function LeadLifecycleEmailSettingsPage() {
     } catch {
       setPreview(null)
     }
-  }, [companyId, previewPurpose, vacancyId])
+  }, [ownCompanyId, companyId, previewPurpose, vacancyId])
 
   useEffect(() => {
     void refreshPreview()
   }, [refreshPreview])
 
   const saveCompany = async () => {
-    if (!companyId) return
+    if (!ownCompanyId) return
     setSaveBusy(true)
     setSaveNotice(null)
     setError(null)
     try {
-      const out = await putLeadLifecycleEmailPolicy(companyId, policy)
+      const out = await putOwnCompanyLeadLifecycleEmailPolicy(ownCompanyId, policy)
       setPolicy({ ...emptyPolicy(), ...(out.policy || {}) })
       setPolicySource(out.source)
       setSaveNotice(t('common.saved', { defaultValue: 'Saved' }))
@@ -226,6 +257,50 @@ export default function LeadLifecycleEmailSettingsPage() {
       )
     } finally {
       setSaveBusy(false)
+    }
+  }
+
+  const saveClientOverlay = async () => {
+    if (!companyId) return
+    setSaveBusy(true)
+    setSaveNotice(null)
+    setError(null)
+    try {
+      await putLeadLifecycleEmailPolicy(companyId, policy)
+      setSaveNotice(
+        t('admin.lead_lifecycle_email.client_overlay_saved', {
+          defaultValue: 'Client overlay saved (optional white-label)',
+        }),
+      )
+      await refreshPreview()
+    } catch (err: unknown) {
+      setError(
+        getFriendlyErrorInfo(
+          err,
+          t('admin.lead_lifecycle_email.errors.save_failed', { defaultValue: 'Failed to save policy' }),
+          t,
+        ),
+      )
+    } finally {
+      setSaveBusy(false)
+    }
+  }
+
+  const loadClientOverlay = async () => {
+    if (!companyId) return
+    setError(null)
+    try {
+      const out = await getLeadLifecycleEmailPolicy(companyId)
+      setPolicy({ ...emptyPolicy(), ...(out.policy || {}) })
+      setPolicySource(out.source)
+    } catch (err: unknown) {
+      setError(
+        getFriendlyErrorInfo(
+          err,
+          t('admin.lead_lifecycle_email.errors.load_company', { defaultValue: 'Failed to load company policy' }),
+          t,
+        ),
+      )
     }
   }
 
@@ -271,7 +346,8 @@ export default function LeadLifecycleEmailSettingsPage() {
       kicker="Communications"
       title={t('admin.lead_lifecycle_email.page_title', { defaultValue: 'Lead lifecycle email' })}
       subtitle={t('admin.lead_lifecycle_email.subtitle', {
-        defaultValue: 'Per-company RODO and ops email policy. Vacancy overrides are optional.',
+        defaultValue:
+          'Firm (own company) RODO and ops email policy. Optional client and vacancy overlays.',
       })}
       actions={
         <div className="flex flex-wrap gap-2">
@@ -308,11 +384,26 @@ export default function LeadLifecycleEmailSettingsPage() {
         </div>
       ) : null}
 
-      <div className="mb-4">
+      <div className="mb-4 grid gap-3 md:grid-cols-2">
         <label className="text-sm font-medium text-slate-800">
-          Company
+          Own company (firm SoT)
+          <select
+            className="input mt-1 w-full max-w-lg"
+            value={ownCompanyId}
+            onChange={(e) => setOwnCompanyId(e.target.value)}
+          >
+            <option value="">Select own company…</option>
+            {ownCompanies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm font-medium text-slate-800">
+          Client overlay (optional)
           <select className="input mt-1 w-full max-w-lg" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
-            <option value="">Select company…</option>
+            <option value="">None — firm policy only</option>
             {companies.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -320,13 +411,15 @@ export default function LeadLifecycleEmailSettingsPage() {
             ))}
           </select>
         </label>
-        {companyId ? (
-          <p className="mt-1 text-xs text-slate-500">Source: {policySource}</p>
+        {ownCompanyId ? (
+          <p className="md:col-span-2 text-xs text-slate-500">
+            Source: {policySource}. Save writes the firm SoT on OwnCompany. Client overlay is optional white-label.
+          </p>
         ) : null}
       </div>
 
-      {!companyId ? (
-        <p className="text-sm text-slate-600">Select a company to edit lifecycle email policy.</p>
+      {!ownCompanyId ? (
+        <p className="text-sm text-slate-600">Select an own company to edit firm lifecycle email policy.</p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -532,10 +625,30 @@ export default function LeadLifecycleEmailSettingsPage() {
         </div>
       )}
 
-      <div className="mt-6 flex gap-2">
-        <button type="button" className="btn-primary" disabled={!companyId || saveBusy} onClick={() => void saveCompany()}>
-          {saveBusy ? 'Saving…' : 'Save company policy'}
+      <div className="mt-6 flex flex-wrap gap-2">
+        <button type="button" className="btn-primary" disabled={!ownCompanyId || saveBusy} onClick={() => void saveCompany()}>
+          {saveBusy ? 'Saving…' : 'Save firm policy'}
         </button>
+        {companyId ? (
+          <>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={saveBusy}
+              onClick={() => void loadClientOverlay()}
+            >
+              Load client overlay into editor
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled={saveBusy}
+              onClick={() => void saveClientOverlay()}
+            >
+              Save as client overlay
+            </button>
+          </>
+        ) : null}
       </div>
     </SettingsSubpageHeader>
   )

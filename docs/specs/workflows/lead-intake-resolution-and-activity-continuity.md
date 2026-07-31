@@ -362,7 +362,9 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 |-------------------------|-----------|
 | `manual` (default) | Recruiter sends from intake rail / API; no outbound on ingest. |
 | `auto_on_lead_created` | After **new** lead row + custom-field sync: auto-send for eligible ingest sources when email channel exists (MVP: Meta, generic webhook, `csv_import`, import, Telegram*, public form). |
-| `auto_on_first_action` | Outbound attempt immediately before first gated action (process, request_info, stage `contacted`). |
+| `auto_on_first_action` | Outbound attempt immediately before first gated action (process, request_info, stage `contacted`, `communication_call`). |
+
+**Policy SoT (ADR-033):** firm **OwnCompany** `lead_lifecycle_email_v1`; optional client + vacancy override — [lead-lifecycle-email-policy.md](lead-lifecycle-email-policy.md).
 
 Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_id` (active `rodo_clause` version override).
 

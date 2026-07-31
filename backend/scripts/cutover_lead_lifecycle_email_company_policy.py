@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""P4 cutover: snapshot tenant lead email preset onto every company (ADR-033).
+"""Cutover: snapshot tenant lead email preset onto OwnCompany (ADR-033 slice A).
 
 For each tenant:
   - Build lead_lifecycle_email_v1 from tenant lead_rodo_v1 + lead_communication_v1
-  - Upsert into company_module_settings (module_key=recruitment) for every company
-    that does not already have a non-empty lead_lifecycle_email_v1 block
-  - Mark tenant.settings.lead_lifecycle_email_cutover_v1.completed_at
+  - Write into OwnCompany.extra.lead_lifecycle_email_v1 when missing (unless --force)
+  - Optionally also seed client companies (legacy P4 behaviour) via --also-client-companies
+  - Mark tenant.settings.lead_lifecycle_email_own_company_cutover_v1.completed_at
 
 Usage (from repo root, with DB env loaded)::
 
@@ -28,23 +28,71 @@ from sqlalchemy.orm.attributes import flag_modified
 from backend.app.db.session import AsyncSessionLocal
 from backend.app.models.company import Company
 from backend.app.models.company_module_settings import CompanyModuleSettings
+from backend.app.models.own_company import OwnCompany
 from backend.app.models.tenant import Tenant
 from backend.app.schemas.company_module_settings_json import normalize_company_module_settings_json
 from backend.app.services.lead_lifecycle_email_policy import (
-    CUTOVER_SETTINGS_KEY,
     cutover_completed,
     mark_cutover_completed,
+    mark_own_company_cutover_completed,
+    own_company_cutover_completed,
+    set_own_company_lifecycle_policy,
     tenant_preset_to_company_policy,
 )
 
 
-async def _cutover_tenant(
+async def _cutover_own_companies(
     db,
     tenant: Tenant,
     *,
     apply: bool,
     force: bool,
 ) -> dict[str, Any]:
+    tid = str(tenant.id)
+    settings = dict(tenant.settings) if isinstance(tenant.settings, dict) else {}
+    already = own_company_cutover_completed(settings)
+    preset = tenant_preset_to_company_policy(settings)
+
+    owns = (
+        await db.execute(select(OwnCompany).where(OwnCompany.tenant_id == tid))
+    ).scalars().all()
+
+    updated = 0
+    skipped = 0
+    for own in owns:
+        extra = dict(own.extra or {}) if isinstance(own.extra, dict) else {}
+        existing = dict(extra.get("lead_lifecycle_email_v1") or {})
+        if existing and not force:
+            skipped += 1
+            continue
+        if not apply:
+            updated += 1
+            continue
+        set_own_company_lifecycle_policy(own, preset)
+        flag_modified(own, "extra")
+        updated += 1
+
+    if apply and (force or not already):
+        now = datetime.now(timezone.utc).isoformat()
+        tenant.settings = mark_own_company_cutover_completed(settings, at_iso=now)
+        flag_modified(tenant, "settings")
+
+    return {
+        "own_companies": len(owns),
+        "would_update" if not apply else "updated": updated,
+        "skipped_existing": skipped,
+        "already_own_cutover": already,
+    }
+
+
+async def _cutover_client_companies(
+    db,
+    tenant: Tenant,
+    *,
+    apply: bool,
+    force: bool,
+) -> dict[str, Any]:
+    """Legacy P4: snapshot onto every client company as overlay seed."""
     tid = str(tenant.id)
     settings = dict(tenant.settings) if isinstance(tenant.settings, dict) else {}
     already = cutover_completed(settings)
@@ -96,17 +144,40 @@ async def _cutover_tenant(
 
     if apply and (force or not already):
         now = datetime.now(timezone.utc).isoformat()
+        # Re-read settings in case own cutover already mutated tenant.settings
+        settings = dict(tenant.settings) if isinstance(tenant.settings, dict) else {}
         tenant.settings = mark_cutover_completed(settings, at_iso=now)
         flag_modified(tenant, "settings")
 
     return {
-        "tenant_id": tid,
-        "companies": len(companies),
+        "client_companies": len(companies),
         "would_update" if not apply else "updated": updated,
         "skipped_existing": skipped,
-        "already_cutover": already,
+        "already_client_cutover": already,
+    }
+
+
+async def _cutover_tenant(
+    db,
+    tenant: Tenant,
+    *,
+    apply: bool,
+    force: bool,
+    also_client_companies: bool,
+) -> dict[str, Any]:
+    tid = str(tenant.id)
+    settings = dict(tenant.settings) if isinstance(tenant.settings, dict) else {}
+    preset = tenant_preset_to_company_policy(settings)
+    own_stats = await _cutover_own_companies(db, tenant, apply=apply, force=force)
+    client_stats: dict[str, Any] = {}
+    if also_client_companies:
+        client_stats = await _cutover_client_companies(db, tenant, apply=apply, force=force)
+    return {
+        "tenant_id": tid,
         "preset_rodo_mode": preset.get("rodo_send_mode"),
         "preset_ops_enabled": preset.get("ops_enabled"),
+        "own": own_stats,
+        "client": client_stats or None,
     }
 
 
@@ -118,7 +189,12 @@ async def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Overwrite companies that already have lead_lifecycle_email_v1",
+        help="Overwrite own companies (and client rows if requested) that already have a policy block",
+    )
+    parser.add_argument(
+        "--also-client-companies",
+        action="store_true",
+        help="Also seed client company_module_settings overlays (legacy P4)",
     )
     args = parser.parse_args(argv)
     apply = bool(args.apply) and not bool(args.dry_run)
@@ -130,7 +206,15 @@ async def main(argv: Optional[list[str]] = None) -> int:
         tenants = (await db.execute(q)).scalars().all()
         results = []
         for tenant in tenants:
-            results.append(await _cutover_tenant(db, tenant, apply=apply, force=args.force))
+            results.append(
+                await _cutover_tenant(
+                    db,
+                    tenant,
+                    apply=apply,
+                    force=args.force,
+                    also_client_companies=bool(args.also_client_companies),
+                )
+            )
         if apply:
             await db.commit()
         for row in results:

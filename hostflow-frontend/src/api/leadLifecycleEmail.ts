@@ -19,7 +19,8 @@ export type LeadLifecycleEmailPolicy = {
 }
 
 export type LeadLifecycleEmailPolicyOut = {
-  company_id: string
+  company_id?: string | null
+  own_company_id?: string | null
   policy: LeadLifecycleEmailPolicy
   source: string
 }
@@ -58,15 +59,37 @@ export async function putLeadLifecycleEmailPolicy(
   return data
 }
 
+export async function getOwnCompanyLeadLifecycleEmailPolicy(
+  ownCompanyId: string,
+): Promise<LeadLifecycleEmailPolicyOut> {
+  const { data } = await api.get<LeadLifecycleEmailPolicyOut>(
+    `${BASE}/own-companies/${encodeURIComponent(ownCompanyId)}`,
+  )
+  return data
+}
+
+export async function putOwnCompanyLeadLifecycleEmailPolicy(
+  ownCompanyId: string,
+  policy: LeadLifecycleEmailPolicy,
+): Promise<LeadLifecycleEmailPolicyOut> {
+  const { data } = await api.put<LeadLifecycleEmailPolicyOut>(
+    `${BASE}/own-companies/${encodeURIComponent(ownCompanyId)}`,
+    { policy },
+  )
+  return data
+}
+
 export async function resolveLeadLifecycleEmailPreview(params: {
-  company_id: string
+  own_company_id: string
   purpose: string
+  company_id?: string | null
   vacancy_id?: string | null
 }): Promise<LifecycleEmailPolicyDecision> {
   const { data } = await api.get<LifecycleEmailPolicyDecision>(`${BASE}/resolve-preview`, {
     params: {
-      company_id: params.company_id,
+      own_company_id: params.own_company_id,
       purpose: params.purpose,
+      company_id: params.company_id || undefined,
       vacancy_id: params.vacancy_id || undefined,
     },
   })

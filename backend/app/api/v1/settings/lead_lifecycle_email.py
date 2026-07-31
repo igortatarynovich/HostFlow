@@ -1,4 +1,8 @@
-"""ADR-033 Control Center API — lead lifecycle email policy + resolve-preview."""
+"""ADR-033 Control Center API — lead lifecycle email policy + resolve-preview.
+
+Own-company SoT (slice A): policy blob on ``OwnCompany.extra.lead_lifecycle_email_v1``.
+Client-company routes remain as optional overlay editors until Control Center IA (slice B).
+"""
 
 from __future__ import annotations
 
@@ -9,11 +13,13 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.company import Company
+from backend.app.models.own_company import OwnCompany
 from backend.app.models.vacancy import Vacancy
 from backend.app.schemas.company_module_settings_json import (
     LeadLifecycleEmailPolicyV1,
@@ -25,6 +31,7 @@ from backend.app.services.communications_access import assert_comm_feature_acces
 from backend.app.services.lead_lifecycle_email_policy import (
     LIFECYCLE_PURPOSES,
     resolve_lifecycle_email_policy,
+    set_own_company_lifecycle_policy,
     tenant_preset_to_company_policy,
 )
 
@@ -39,9 +46,10 @@ _WRITE_ROLES = Depends(require_roles(Role.administrator, Role.supervisor))
 class LeadLifecycleEmailPolicyOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    company_id: str
+    company_id: Optional[str] = None
+    own_company_id: Optional[str] = None
     policy: dict[str, Any]
-    source: str  # company | tenant_preset_default
+    source: str  # own_company | company | tenant_preset_default
 
 
 class LeadLifecycleEmailPolicyPatch(BaseModel):
@@ -71,6 +79,13 @@ async def _require_company(db: AsyncSession, tenant_id: str, company_id: str) ->
     return row
 
 
+async def _require_own_company(db: AsyncSession, tenant_id: str, own_company_id: str) -> OwnCompany:
+    row = await db.get(OwnCompany, own_company_id)
+    if row is None or str(row.tenant_id) != tenant_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Own company not found")
+    return row
+
+
 async def _assert_comms_admin(
     db: AsyncSession,
     *,
@@ -90,25 +105,120 @@ async def _assert_comms_admin(
 
 @router.get("/resolve-preview")
 async def resolve_preview(
-    company_id: str = Query(...),
     purpose: str = Query(...),
+    own_company_id: Optional[str] = Query(
+        None,
+        description="Operating firm SoT (preferred).",
+    ),
+    company_id: Optional[str] = Query(
+        None,
+        description="Optional client overlay. Legacy callers may pass only this; "
+        "preview then requires own_company_id as well.",
+    ),
     vacancy_id: Optional[str] = Query(None),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> dict[str, Any]:
     db, tid = db_tenant
     await _assert_comms_admin(db, tenant_id=str(tid), current_user=current_user)
-    await _require_company(db, str(tid), company_id)
     if purpose not in LIFECYCLE_PURPOSES:
         raise HTTPException(status_code=422, detail="Unknown purpose")
+
+    oid = (own_company_id or "").strip() or None
+    cid = (company_id or "").strip() or None
+    if not oid:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "own_company_id_required",
+                "message": "resolve-preview requires own_company_id (firm SoT).",
+            },
+        )
+    await _require_own_company(db, str(tid), oid)
+    if cid:
+        await _require_company(db, str(tid), cid)
+
     decision = await resolve_lifecycle_email_policy(
         db,
         tenant_id=str(tid),
-        company_id=company_id,
+        own_company_id=oid,
+        company_id=cid,
         vacancy_id=vacancy_id,
         purpose=purpose,
     )
     return decision.to_dict()
+
+
+@router.get("/own-companies/{own_company_id}", response_model=LeadLifecycleEmailPolicyOut)
+async def get_own_company_lifecycle_email_policy(
+    own_company_id: UUID,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> LeadLifecycleEmailPolicyOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    await _assert_comms_admin(db, tenant_id=tenant_id, current_user=current_user)
+    oid = str(own_company_id)
+    own = await _require_own_company(db, tenant_id, oid)
+    extra = own.extra if isinstance(own.extra, dict) else {}
+    block = extra.get("lead_lifecycle_email_v1")
+    if isinstance(block, dict) and block:
+        return LeadLifecycleEmailPolicyOut(
+            own_company_id=oid,
+            policy=block,
+            source="own_company",
+        )
+    from backend.app.models.tenant import Tenant
+
+    tenant = await db.get(Tenant, tenant_id)
+    preset = tenant_preset_to_company_policy(tenant.settings if tenant else None)
+    return LeadLifecycleEmailPolicyOut(
+        own_company_id=oid,
+        policy=preset,
+        source="tenant_preset_default",
+    )
+
+
+@router.put(
+    "/own-companies/{own_company_id}",
+    response_model=LeadLifecycleEmailPolicyOut,
+    dependencies=[_WRITE_ROLES],
+)
+async def put_own_company_lifecycle_email_policy(
+    own_company_id: UUID,
+    payload: LeadLifecycleEmailPolicyPatch,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> LeadLifecycleEmailPolicyOut:
+    db, tid = db_tenant
+    tenant_id = str(tid)
+    await _assert_comms_admin(db, tenant_id=tenant_id, current_user=current_user)
+    oid = str(own_company_id)
+    own = await _require_own_company(db, tenant_id, oid)
+    extra = dict(own.extra or {}) if isinstance(own.extra, dict) else {}
+    before = dict(extra.get("lead_lifecycle_email_v1") or {})
+    new_policy = payload.policy.model_dump(mode="json")
+    set_own_company_lifecycle_policy(own, new_policy)
+    flag_modified(own, "extra")
+    await log_audit_event(
+        db,
+        tenant_id=tenant_id,
+        event_type="lead_lifecycle_email_policy_updated",
+        entity_type="own_company",
+        entity_id=oid,
+        actor_id=str(getattr(current_user, "sub", None) or getattr(current_user, "id", "") or "") or None,
+        payload={
+            "scope": "own_company",
+            "own_company_id": oid,
+            "before": before,
+            "after": new_policy,
+            "at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    await db.commit()
+    await db.refresh(own)
+    block = dict((own.extra or {}).get("lead_lifecycle_email_v1") or new_policy)
+    return LeadLifecycleEmailPolicyOut(own_company_id=oid, policy=block, source="own_company")
 
 
 @router.get("/companies/{company_id}", response_model=LeadLifecycleEmailPolicyOut)
@@ -117,6 +227,7 @@ async def get_company_lifecycle_email_policy(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> LeadLifecycleEmailPolicyOut:
+    """Client-company overlay (optional). Prefer own-companies SoT endpoints for firm policy."""
     db, tid = db_tenant
     tenant_id = str(tid)
     await _assert_comms_admin(db, tenant_id=tenant_id, current_user=current_user)
@@ -146,6 +257,7 @@ async def put_company_lifecycle_email_policy(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> LeadLifecycleEmailPolicyOut:
+    """Write client-company overlay (optional white-label). Firm SoT = own-companies PUT."""
     db, tid = db_tenant
     tenant_id = str(tid)
     await _assert_comms_admin(db, tenant_id=tenant_id, current_user=current_user)
@@ -174,7 +286,7 @@ async def put_company_lifecycle_email_policy(
         entity_id=cid,
         actor_id=str(getattr(current_user, "sub", None) or getattr(current_user, "id", "") or "") or None,
         payload={
-            "scope": "company",
+            "scope": "client_overlay",
             "company_id": cid,
             "before": before,
             "after": new_policy,
