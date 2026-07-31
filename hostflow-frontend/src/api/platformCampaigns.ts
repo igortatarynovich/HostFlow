@@ -133,6 +133,8 @@ export type IntakeSourceOption = {
   provider: string
   code: string
   is_active: boolean
+  /** True when option is a Meta form seen on leads but not yet an IntakeSourceProfile. */
+  needs_create?: boolean
   display_title?: string | null
   lead_form_name?: string | null
   meta_form_id?: string | null
@@ -175,12 +177,28 @@ export async function attachCampaignForm(
 
 export async function attachCampaignIntakeSource(
   campaignId: string,
-  intakeSourceProfileId: string,
+  input:
+    | string
+    | {
+        intake_source_profile_id?: string
+        meta_form_id?: string
+        page_id?: string | null
+        role?: string
+      },
   role = 'primary',
 ): Promise<Campaign> {
+  const body =
+    typeof input === 'string'
+      ? { intake_source_profile_id: input, role }
+      : {
+          intake_source_profile_id: input.intake_source_profile_id,
+          meta_form_id: input.meta_form_id,
+          page_id: input.page_id || undefined,
+          role: input.role || role,
+        }
   const { data } = await api.post<Campaign>(
     `/platform/campaigns/${encodeURIComponent(campaignId)}/intake-sources`,
-    { intake_source_profile_id: intakeSourceProfileId, role },
+    body,
   )
   return data
 }

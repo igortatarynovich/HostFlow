@@ -126,9 +126,9 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
         <div>
           <h3 className="text-sm font-semibold text-slate-900">Привязка Ad ID → Flight</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Нужна, когда одно Meta-объявление должно идти в конкретный Flight (несколько Flight
-            на одну форму). Без привязки Connect Source по-прежнему маршрутизирует через Form /
-            Profile. Привязка побеждает Form/Source.
+            Override: когда одна Meta-форма кормит несколько Flight — привяжите конкретный Ad ID
+            сюда. Обычный путь: Connect Source (Lead Form) на странице «Подключить источник»; без
+            Ad bind все объявления формы идут в Flight формы.
           </p>
           <p className="mt-1 text-xs text-slate-500">
             Flight: <span className="font-medium text-slate-700">{flight.name || flight.code}</span>

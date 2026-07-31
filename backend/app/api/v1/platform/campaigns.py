@@ -7,7 +7,7 @@ from typing import Any, List, Literal, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -144,8 +144,32 @@ class FormLinkIn(BaseModel):
 
 
 class IntakeSourceLinkIn(BaseModel):
-    intake_source_profile_id: str
+    """Attach existing IntakeSourceProfile or ensure+attach a discovered Meta form."""
+
+    intake_source_profile_id: Optional[str] = None
+    meta_form_id: Optional[str] = None
+    page_id: Optional[str] = None
     role: str = "primary"
+
+    @model_validator(mode="after")
+    def _require_profile_or_meta_form(self) -> "IntakeSourceLinkIn":
+        from backend.app.acquisition.connect_source_picker import parse_discovered_form_id
+
+        pid = str(self.intake_source_profile_id or "").strip() or None
+        fid = str(self.meta_form_id or "").strip() or None
+        if pid and not fid:
+            discovered = parse_discovered_form_id(pid)
+            if discovered:
+                self.intake_source_profile_id = None
+                self.meta_form_id = discovered
+                fid = discovered
+                pid = None
+        if not pid and not fid:
+            raise ValueError("intake_source_profile_id or meta_form_id is required")
+        self.intake_source_profile_id = pid
+        self.meta_form_id = fid
+        self.page_id = str(self.page_id or "").strip() or None
+        return self
 
 
 class AdLinkIn(BaseModel):
@@ -776,6 +800,61 @@ async def _resolve_company(
     return await resolve_own_company_id_for_session(db, str(tenant_id), ctx, x_own_company_id)
 
 
+async def _resolve_attach_intake_profile_id(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str,
+    campaign_id: str,
+    payload: "IntakeSourceLinkIn",
+) -> str:
+    """Return profile id; ensure+create from meta_form_id when Connect Source discovered."""
+    pid = str(payload.intake_source_profile_id or "").strip()
+    if pid:
+        return pid
+    fid = str(payload.meta_form_id or "").strip()
+    if not fid:
+        raise HTTPException(
+            status_code=422,
+            detail="intake_source_profile_id or meta_form_id is required",
+        )
+    from backend.app.acquisition.ensure_meta_intake_source import ensure_meta_form_intake_source
+
+    route_intent = "candidate_application"
+    try:
+        camp = await campaign_service.get_campaign(
+            db,
+            tenant_id=str(tenant_id),
+            campaign_id=campaign_id,
+            own_company_id=own_company_id,
+        )
+        primary = next(
+            (
+                t
+                for t in (camp.targets or [])
+                if str(getattr(t, "role", "") or "").strip().lower() == "primary"
+            ),
+            None,
+        )
+        if primary is not None and getattr(primary, "route_intent", None):
+            route_intent = str(primary.route_intent)
+    except CampaignServiceError:
+        pass
+
+    try:
+        profile = await ensure_meta_form_intake_source(
+            db,
+            tenant_id=str(tenant_id),
+            own_company_id=own_company_id,
+            form_id=fid,
+            page_id=payload.page_id,
+            route_intent=route_intent,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return str(profile.id)
+
+
 @router.get("/registries", dependencies=_READ)
 async def get_campaign_registries(
     _: UserCtx = Depends(get_current_user),
@@ -793,8 +872,8 @@ class IntakeSourceOptionOut(BaseModel):
     """Picker option for Marketing Workspace — bindable IntakeSourceProfile rows.
 
     Enrichment: ``campaign_source_cards`` + optional Meta Graph hydrate
-    (``connect_source_picker``). See
-    ``docs/specs/tasks/acquisition-ui-cutover-connect-source-picker-enrichment.md``.
+    (``connect_source_picker``). Discovered Meta forms from leads may appear with
+    ``needs_create=true`` until Connect materializes a profile.
     """
 
     id: str
@@ -802,6 +881,7 @@ class IntakeSourceOptionOut(BaseModel):
     provider: str
     code: str
     is_active: bool
+    needs_create: bool = False
     display_title: Optional[str] = None
     lead_form_name: Optional[str] = None
     meta_form_id: Optional[str] = None
@@ -823,26 +903,35 @@ async def list_intake_source_options(
     x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
     provider: Optional[str] = Query(default=None),
 ):
-    """List active intake sources for the current company (Marketing setup picker)."""
+    """List active intake sources for the current company (Marketing setup picker).
+
+    For provider=meta (or unset), also includes Meta Lead Forms discovered from
+    recent leads that are not yet IntakeSourceProfile rows (``needs_create``).
+    """
     from backend.app.acquisition.connect_source_picker import build_intake_source_options
 
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    provider_n = str(provider or "").strip().lower() or None
     stmt = select(IntakeSourceProfile).where(
         IntakeSourceProfile.tenant_id == str(tenant_uuid),
         IntakeSourceProfile.own_company_id == own_company_id,
         IntakeSourceProfile.is_active.is_(True),
     )
-    if provider and str(provider).strip():
-        stmt = stmt.where(IntakeSourceProfile.provider == str(provider).strip().lower())
+    if provider_n:
+        stmt = stmt.where(IntakeSourceProfile.provider == provider_n)
     stmt = stmt.order_by(IntakeSourceProfile.name.asc())
     rows = (await db.execute(stmt)).scalars().all()
+    include_discovered = provider_n in (None, "meta")
     enriched = await build_intake_source_options(
         db,
         tenant_id=str(tenant_uuid),
         profiles=list(rows),
         hydrate_graph=True,
+        include_discovered=include_discovered,
     )
+    if provider_n and provider_n != "meta":
+        enriched = [row for row in enriched if str(row.get("provider") or "").lower() == provider_n]
     return [IntakeSourceOptionOut(**row) for row in enriched]
 
 @router.get("", response_model=List[CampaignOut], dependencies=_READ)
@@ -1244,11 +1333,18 @@ async def attach_intake_source_current_flight(
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
     actor_type, actor_id = _activity_actor(ctx)
     try:
+        profile_id = await _resolve_attach_intake_profile_id(
+            db,
+            tenant_id=str(tenant_uuid),
+            own_company_id=own_company_id,
+            campaign_id=campaign_id,
+            payload=payload,
+        )
         campaign = await binding_service.attach_intake_source(
             db,
             tenant_id=str(tenant_uuid),
             campaign_id=campaign_id,
-            intake_source_profile_id=payload.intake_source_profile_id,
+            intake_source_profile_id=profile_id,
             own_company_id=own_company_id,
             role=payload.role,
             actor_type=actor_type,
@@ -1657,11 +1753,18 @@ async def attach_intake_source_on_flight(
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
     actor_type, actor_id = _activity_actor(ctx)
     try:
+        profile_id = await _resolve_attach_intake_profile_id(
+            db,
+            tenant_id=str(tenant_uuid),
+            own_company_id=own_company_id,
+            campaign_id=campaign_id,
+            payload=payload,
+        )
         campaign = await binding_service.attach_intake_source(
             db,
             tenant_id=str(tenant_uuid),
             campaign_id=campaign_id,
-            intake_source_profile_id=payload.intake_source_profile_id,
+            intake_source_profile_id=profile_id,
             own_company_id=own_company_id,
             flight_id=flight_id,
             role=payload.role,

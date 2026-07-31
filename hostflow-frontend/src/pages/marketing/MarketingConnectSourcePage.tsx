@@ -178,7 +178,16 @@ export default function MarketingConnectSourcePage() {
       if (sourceKind === 'public_form') {
         await attachCampaignForm(campaign.id, formId, 'primary')
       } else {
-        await attachCampaignIntakeSource(campaign.id, metaSourceId, 'primary')
+        const selected = metaSources.find((s) => s.id === metaSourceId)
+        if (selected?.needs_create && selected.meta_form_id) {
+          await attachCampaignIntakeSource(campaign.id, {
+            meta_form_id: selected.meta_form_id,
+            page_id: selected.page_id,
+            role: 'primary',
+          })
+        } else {
+          await attachCampaignIntakeSource(campaign.id, metaSourceId, 'primary')
+        }
       }
       navigate(marketingCampaignPath(campaign.id))
     } catch (err) {
@@ -247,7 +256,8 @@ export default function MarketingConnectSourcePage() {
             <p className="text-sm text-slate-600">
               Источник заявок для кампании «{campaign.name}». Routing наследует Primary Target
               кампании ({campaign.targets?.find((x) => x.role === 'primary')?.route_intent || '—'}
-              ).
+              ). Список Meta = Lead Form (не отдельное объявление). Формы, уже приходившие в лидах,
+              тоже здесь — даже если профиль ещё не создан. Точечный Ad ID — на карточке кампании.
             </p>
 
             <div className="grid gap-3" role="radiogroup" aria-label="Тип источника">
@@ -281,8 +291,8 @@ export default function MarketingConnectSourcePage() {
                   {!canMeta
                     ? 'Primary Meta-источник уже подключён к этому Flight.'
                     : metaSources.length
-                      ? 'Привязать существующий Lead Form (Meta) как источник заявок.'
-                      : 'Нет активных Meta-источников — настройте интеграцию Meta.'}
+                      ? 'Привязать Lead Form (Meta) как источник — все объявления формы пойдут в этот Flight.'
+                      : 'Нет Meta-форм в каталоге и в лидах — настройте Meta или дождитесь первого лида.'}
                 </span>
               </MarketingOptionCard>
             </div>
@@ -409,6 +419,14 @@ export default function MarketingConnectSourcePage() {
                         data-testid={`marketing-connect-meta-title-${s.id}`}
                       >
                         {title}
+                        {s.needs_create ? (
+                          <span
+                            className="ml-2 inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-inset ring-amber-200"
+                            data-testid={`marketing-connect-meta-discovered-${s.id}`}
+                          >
+                            из лидов
+                          </span>
+                        ) : null}
                       </span>
                       <span className="mt-1 block text-xs text-slate-600">
                         {formId ? (
