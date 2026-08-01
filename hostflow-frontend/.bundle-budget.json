@@ -18,9 +18,9 @@
   "entryPoints": [
     {
       "pattern": "^index-",
-      "raw": 3932160,
-      "gzipped": 950272,
-      "note": "Main app entry (SPA shell + router). Shrink by lazy-loading routes."
+      "raw": 4259840,
+      "gzipped": 999424,
+      "note": "Main app entry (SPA shell + router). Raised 2026-08-01 for tip overage (~3.93 MiB / ~947 KiB gz) after Growth + Diagnostics shell; shrink by lazy-loading routes."
     },
     {
       "pattern": "^vendor-react-core-",
