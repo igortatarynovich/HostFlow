@@ -1,10 +1,11 @@
 import type { AcquisitionActivityEvent } from '../../api/acquisitionActivity'
 import type { Campaign, CampaignFlight } from '../../api/platformCampaigns'
 
-export type MarketingFlowKind = 'candidates' | 'clients' | 'service'
+/** Subject of the campaign after client is chosen — mutually exclusive lists. */
+export type MarketingSubjectKind = 'vacancy' | 'service_order' | 'service'
 
-export type FlowPreset = {
-  kind: MarketingFlowKind
+export type SubjectPreset = {
+  kind: MarketingSubjectKind
   label: string
   description: string
   goal_type: string
@@ -12,40 +13,67 @@ export type FlowPreset = {
   target_type: string
   route_intent: string
   destinationLabel: string
+  /** When true, list is filtered by selected client Company; else full tenant catalog. */
+  scopedToClient: boolean
 }
 
-export const FLOW_PRESETS: FlowPreset[] = [
+export const SUBJECT_PRESETS: SubjectPreset[] = [
   {
-    kind: 'candidates',
-    label: 'Кандидаты',
-    description: 'Клиент → вакансия → заявки в Recruitment',
+    kind: 'vacancy',
+    label: 'Вакансия',
+    description: 'Заявки кандидатов на вакансию этого клиента → Recruitment',
     goal_type: 'hiring',
     primary_kpi: 'applications',
     target_type: 'vacancy',
     route_intent: 'candidate_application',
     destinationLabel: 'Вакансия',
+    scopedToClient: true,
   },
   {
-    kind: 'clients',
-    label: 'B2B / клиенты',
-    description: 'Клиент → услуга (таргетинг и др.) → Sales inquiry',
+    kind: 'service_order',
+    label: 'Заказ',
+    description: 'Кампания вокруг сервисного заказа → Sales / service flow',
+    goal_type: 'sales',
+    primary_kpi: 'revenue',
+    target_type: 'service_order',
+    route_intent: 'service_request',
+    destinationLabel: 'Заказ',
+    scopedToClient: false,
+  },
+  {
+    kind: 'service',
+    label: 'Услуга',
+    description: 'Каталог услуг (таргетинг и др.) → Sales inquiry',
     goal_type: 'sales',
     primary_kpi: 'qualified_leads',
     target_type: 'service',
     route_intent: 'sales_inquiry',
     destinationLabel: 'Услуга',
-  },
-  {
-    kind: 'service',
-    label: 'Заявки на услугу',
-    description: 'Клиент → услуга каталога → Service flow',
-    goal_type: 'sales',
-    primary_kpi: 'revenue',
-    target_type: 'service',
-    route_intent: 'service_request',
-    destinationLabel: 'Услуга',
+    scopedToClient: false,
   },
 ]
+
+/** @deprecated Use SUBJECT_PRESETS / MarketingSubjectKind — kept for deep-link compat. */
+export type MarketingFlowKind = 'candidates' | 'clients' | 'service'
+
+/** @deprecated Use SUBJECT_PRESETS */
+export type FlowPreset = SubjectPreset & { kind: MarketingFlowKind | MarketingSubjectKind }
+
+/** Map legacy ?flow= query values onto subject kinds. */
+export function subjectKindFromFlowParam(flow: string): MarketingSubjectKind | '' {
+  const f = String(flow || '').trim()
+  if (f === 'candidates' || f === 'vacancy') return 'vacancy'
+  if (f === 'service_order' || f === 'order') return 'service_order'
+  if (f === 'clients' || f === 'service') return 'service'
+  if (SUBJECT_PRESETS.some((p) => p.kind === f)) return f as MarketingSubjectKind
+  return ''
+}
+
+/** @deprecated Prefer SUBJECT_PRESETS */
+export const FLOW_PRESETS: FlowPreset[] = SUBJECT_PRESETS.map((p) => ({
+  ...p,
+  kind: p.kind as MarketingFlowKind | MarketingSubjectKind,
+}))
 
 export type MarketingSourceKind = 'public_form' | 'meta'
 
@@ -167,6 +195,7 @@ export function destinationSummary(campaign: Campaign): string {
   const labels: Record<string, string> = {
     vacancy: 'Вакансия',
     service: 'Услуга',
+    service_order: 'Заказ',
     search: 'Поиск',
     client_account: 'Клиент',
   }

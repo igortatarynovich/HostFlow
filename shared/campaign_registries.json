@@ -52,6 +52,12 @@
       "label": "Service"
     },
     {
+      "target_type": "service_order",
+      "target_module": "sales",
+      "allowed_route_intents": ["sales_inquiry", "service_request"],
+      "label": "Service Order"
+    },
+    {
       "target_type": "client_account",
       "target_module": "sales",
       "allowed_route_intents": ["sales_inquiry"],

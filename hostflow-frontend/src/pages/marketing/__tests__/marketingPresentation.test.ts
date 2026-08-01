@@ -46,6 +46,23 @@ describe('marketingPresentation', () => {
     expect(summary).not.toContain('uuid-here')
   })
 
+  it('labels service_order destinations', () => {
+    const campaign = {
+      targets: [{ target_type: 'service_order', target_id: 'ord-1', route_intent: 'service_request' }],
+    } as Campaign
+    expect(destinationSummary(campaign)).toContain('Заказ')
+  })
+
+  it('maps legacy flow query to subject kinds', async () => {
+    const { subjectKindFromFlowParam, SUBJECT_PRESETS } = await import('../marketingPresentation')
+    expect(subjectKindFromFlowParam('candidates')).toBe('vacancy')
+    expect(subjectKindFromFlowParam('clients')).toBe('service')
+    expect(subjectKindFromFlowParam('service_order')).toBe('service_order')
+    expect(SUBJECT_PRESETS.map((p) => p.kind)).toEqual(['vacancy', 'service_order', 'service'])
+    expect(SUBJECT_PRESETS.find((p) => p.kind === 'vacancy')?.scopedToClient).toBe(true)
+    expect(SUBJECT_PRESETS.find((p) => p.kind === 'service')?.scopedToClient).toBe(false)
+  })
+
   it('labels statuses in Russian', () => {
     expect(statusLabel('active')).toBe('Активна')
     expect(statusLabel('paused')).toBe('На паузе')

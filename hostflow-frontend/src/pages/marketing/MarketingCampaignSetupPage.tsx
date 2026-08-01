@@ -1,33 +1,51 @@
 /**
- * Create Campaign — business goal + Primary Target (+ optional context).
+ * Create Campaign — Client (Company) → subject type → primary target.
  * Sources connect later via MarketingConnectSourcePage.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CRM_APP_PATHS, marketingCampaignPath } from '../../app/crmAppPaths'
-import { listAdditionalServices } from '../../api/additionalServices'
+import { listAdditionalServices, listServiceOrders } from '../../api/additionalServices'
 import { listClientAccounts, type ClientAccount } from '../../api/clientAccounts'
 import {
+  listCompanies,
   listOwnCompanies,
   ownCompanySettings,
   type OwnCompanyRecord,
 } from '../../api/client'
 import { createCampaign } from '../../api/platformCampaigns'
 import { listVacancies, type Vacancy } from '../../api/vacancies'
-import type { AdditionalService } from '../../api/types'
+import type { AdditionalService, AdditionalServiceOrder, Company } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { PageHeader } from '../../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../../components/layout'
 import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import {
-  FLOW_PRESETS,
-  type FlowPreset,
-  type MarketingFlowKind,
+  SUBJECT_PRESETS,
+  subjectKindFromFlowParam,
+  type MarketingSubjectKind,
+  type SubjectPreset,
 } from './marketingPresentation'
 import { MarketingOptionCard } from './MarketingOptionCard'
 
 const TOTAL_STEPS = 4
+
+function asCompanyList(data: unknown): Company[] {
+  if (Array.isArray(data)) return data as Company[]
+  if (data && typeof data === 'object' && Array.isArray((data as { items?: unknown }).items)) {
+    return (data as { items: Company[] }).items
+  }
+  return []
+}
+
+function orderLabel(order: AdditionalServiceOrder): string {
+  const notes = String(order.notes || '').trim()
+  const status = String(order.status || '').trim()
+  const short = String(order.id || '').slice(0, 8)
+  if (notes) return `${notes.slice(0, 80)}${notes.length > 80 ? '…' : ''}`
+  return `Заказ ${short}${status ? ` · ${status}` : ''}`
+}
 
 export default function MarketingCampaignSetupPage() {
   const { t } = useI18n()
@@ -36,53 +54,60 @@ export default function MarketingCampaignSetupPage() {
   const [step, setStep] = useState(1)
   const [name, setName] = useState(() => (searchParams.get('name') || '').trim().slice(0, 160))
   const [description, setDescription] = useState('')
-  const [flowKind, setFlowKind] = useState<MarketingFlowKind | ''>(() => {
-    const flow = (searchParams.get('flow') || '').trim()
-    return FLOW_PRESETS.some((p) => p.kind === flow) ? (flow as MarketingFlowKind) : ''
-  })
+  const [subjectKind, setSubjectKind] = useState<MarketingSubjectKind | ''>(() =>
+    subjectKindFromFlowParam(searchParams.get('flow') || ''),
+  )
   const [targetId, setTargetId] = useState(() => {
     const targetType = (searchParams.get('target_type') || '').trim()
     const id = (searchParams.get('target_id') || '').trim()
     return targetType === 'vacancy' && id ? id : ''
   })
-  const [contextClientId, setContextClientId] = useState('')
+  const [clientCompanyId, setClientCompanyId] = useState('')
   const [ownCompanyId, setOwnCompanyId] = useState(() => ownCompanySettings.get() || '')
   const prefilledFromSearch =
     Boolean(targetId) && (searchParams.get('target_type') || '').trim() === 'vacancy'
 
-  const [companies, setCompanies] = useState<OwnCompanyRecord[]>([])
+  const [ownCompanies, setOwnCompanies] = useState<OwnCompanyRecord[]>([])
+  const [clientCompanies, setClientCompanies] = useState<Company[]>([])
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [services, setServices] = useState<AdditionalService[]>([])
-  const [clients, setClients] = useState<ClientAccount[]>([])
+  const [orders, setOrders] = useState<AdditionalServiceOrder[]>([])
+  const [clientAccounts, setClientAccounts] = useState<ClientAccount[]>([])
   const [optionsLoading, setOptionsLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
 
-  const preset: FlowPreset | null = useMemo(
-    () => FLOW_PRESETS.find((p) => p.kind === flowKind) || null,
-    [flowKind],
+  const preset: SubjectPreset | null = useMemo(
+    () => SUBJECT_PRESETS.find((p) => p.kind === subjectKind) || null,
+    [subjectKind],
   )
 
   const loadOptions = useCallback(async () => {
     setOptionsLoading(true)
     setError(null)
     try {
-      const [companyRes, vacs, svcs, accounts] = await Promise.all([
+      const [ownRes, companiesRaw, vacs, svcs, ords, accounts] = await Promise.all([
         listOwnCompanies().catch(() => ({ items: [] as OwnCompanyRecord[] })),
+        listCompanies({ limit: 500 }).catch(() => [] as Company[]),
         listVacancies().catch(() => [] as Vacancy[]),
         listAdditionalServices().catch(() => [] as AdditionalService[]),
+        listServiceOrders({}).catch(() => [] as AdditionalServiceOrder[]),
         listClientAccounts({ limit: 200 }).catch(() => [] as ClientAccount[]),
       ])
-      const companyItems = Array.isArray(companyRes?.items) ? companyRes.items : []
-      setCompanies(companyItems)
-      if (!ownCompanyId && companyItems.length) {
+      const ownItems = Array.isArray(ownRes?.items) ? ownRes.items : []
+      setOwnCompanies(ownItems)
+      if (!ownCompanyId && ownItems.length) {
         const active =
-          companyItems.find((c) => c.id === ownCompanySettings.get()) || companyItems[0]
+          ownItems.find((c) => c.id === ownCompanySettings.get()) || ownItems[0]
         if (active?.id) setOwnCompanyId(active.id)
       }
+      setClientCompanies(
+        asCompanyList(companiesRaw).filter((c) => !c.is_archived),
+      )
       setVacancies(Array.isArray(vacs) ? vacs.filter((v) => !v.is_archived) : [])
-      setServices(Array.isArray(svcs) ? svcs : [])
-      setClients(Array.isArray(accounts) ? accounts : [])
+      setServices(Array.isArray(svcs) ? svcs.filter((s) => s.is_active !== false) : [])
+      setOrders(Array.isArray(ords) ? ords : [])
+      setClientAccounts(Array.isArray(accounts) ? accounts : [])
     } catch (err) {
       setError(
         getFriendlyErrorInfo(
@@ -104,32 +129,39 @@ export default function MarketingCampaignSetupPage() {
 
   const stepTitle = useMemo(() => {
     if (step === 1) return 'Название кампании'
-    if (step === 2) return 'Тип потока'
-    if (step === 3) return 'Клиент и предмет кампании'
+    if (step === 2) return 'Клиент'
+    if (step === 3) return 'Тип и предмет кампании'
     return 'Проверка'
   }, [step])
 
-  const selectedClient = clients.find((c) => c.id === contextClientId)
+  const selectedClient = clientCompanies.find((c) => c.id === clientCompanyId)
+
+  const linkedClientAccountId = useMemo(() => {
+    if (!clientCompanyId) return ''
+    const byPrimary = clientAccounts.find((a) => {
+      if (String(a.primary_company_id || '') !== clientCompanyId) return false
+      const oc = String(a.own_company_id || '').trim()
+      return !oc || oc === ownCompanyId
+    })
+    return byPrimary?.id || ''
+  }, [clientCompanyId, clientAccounts, ownCompanyId])
 
   const vacanciesForClient = useMemo(() => {
-    if (!contextClientId) return [] as Vacancy[]
-    const primaryCompanyId = String(selectedClient?.primary_company_id || '').trim()
-    if (!primaryCompanyId) return vacancies
-    const matched = vacancies.filter((v) => String(v.company_id || '') === primaryCompanyId)
-    return matched.length ? matched : vacancies
-  }, [contextClientId, selectedClient, vacancies])
+    if (!clientCompanyId) return [] as Vacancy[]
+    return vacancies.filter((v) => String(v.company_id || '') === clientCompanyId)
+  }, [clientCompanyId, vacancies])
 
   const canNext = useMemo(() => {
     if (step === 1) return name.trim().length >= 2 && Boolean(ownCompanyId)
-    if (step === 2) return Boolean(flowKind)
-    if (step === 3) return Boolean(targetId && preset && contextClientId)
+    if (step === 2) return Boolean(clientCompanyId)
+    if (step === 3) return Boolean(targetId && preset)
     return Boolean(
-      preset && targetId && ownCompanyId && contextClientId && name.trim().length >= 2,
+      preset && targetId && ownCompanyId && clientCompanyId && name.trim().length >= 2,
     )
-  }, [step, name, ownCompanyId, flowKind, targetId, preset, contextClientId])
+  }, [step, name, ownCompanyId, clientCompanyId, targetId, preset])
 
   async function handleCreate() {
-    if (!preset || !targetId || !ownCompanyId || !contextClientId) return
+    if (!preset || !targetId || !ownCompanyId || !clientCompanyId) return
     setSubmitting(true)
     setError(null)
     try {
@@ -147,15 +179,17 @@ export default function MarketingCampaignSetupPage() {
           role: 'primary',
           sort_order: 0,
         },
-        {
+      ]
+      // Optional Sales context when Client Account exists for this Company.
+      if (linkedClientAccountId) {
+        targets.push({
           target_type: 'client_account',
-          target_id: contextClientId,
-          // Registry requires an allowed intent for client_account; routing uses Primary only.
+          target_id: linkedClientAccountId,
           route_intent: 'sales_inquiry',
           role: 'context',
           sort_order: 1,
-        },
-      ]
+        })
+      }
       const campaign = await createCampaign({
         name: name.trim(),
         description: description.trim() || undefined,
@@ -182,7 +216,8 @@ export default function MarketingCampaignSetupPage() {
 
   const selectedVacancy = vacancies.find((v) => v.id === targetId)
   const selectedService = services.find((s) => s.id === targetId)
-  const selectedCompany = companies.find((c) => c.id === ownCompanyId)
+  const selectedOrder = orders.find((o) => o.id === targetId)
+  const selectedOwnCompany = ownCompanies.find((c) => c.id === ownCompanyId)
 
   return (
     <PageShell>
@@ -205,8 +240,8 @@ export default function MarketingCampaignSetupPage() {
 
         {prefilledFromSearch ? (
           <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-            Вакансия подставлена из Подбора. Дальше задайте цель кампании — источник подключите на
-            странице кампании.
+            Вакансия подставлена из Подбора. Дальше задайте клиента и тип предмета — источник
+            подключите на странице кампании.
           </p>
         ) : null}
 
@@ -241,106 +276,100 @@ export default function MarketingCampaignSetupPage() {
                 data-testid="marketing-setup-own-company"
               >
                 <option value="">Выберите компанию</option>
-                {companies.map((c) => (
+                {ownCompanies.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name || c.id}
                   </option>
                 ))}
               </select>
               <span className="mt-1 block text-xs text-slate-500">
-                Campaign принадлежит tenant и этой компании. Клиент/заказ — только контекст, не
-                владелец.
+                Владелец кампании (ваша юрлицо). Клиент выбирается на следующем шаге.
               </span>
             </label>
           </div>
         ) : null}
 
         {step === 2 ? (
-          <div className="grid gap-3" role="radiogroup" aria-label="Тип потока">
-            {FLOW_PRESETS.map((p) => (
-              <MarketingOptionCard
-                key={p.kind}
-                selected={flowKind === p.kind}
-                onClick={() => {
-                  setFlowKind(p.kind)
-                  setTargetId((prev) => {
-                    const current = FLOW_PRESETS.find((x) => x.kind === flowKind)
-                    if (current && current.target_type !== p.target_type) return ''
-                    return prev
-                  })
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">
+              Кого обслуживает кампания — клиент из справочника «Клиенты» (Company).
+            </p>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-slate-800">Клиент (обязательно)</span>
+              <select
+                className="input w-full"
+                value={clientCompanyId}
+                onChange={(e) => {
+                  setClientCompanyId(e.target.value)
+                  setTargetId('')
                 }}
-                testId={`marketing-setup-flow-${p.kind}`}
+                data-testid="marketing-setup-client-company"
               >
-                <span className="font-medium text-slate-900">{p.label}</span>
-                <span className="mt-1 block text-slate-600">{p.description}</span>
-              </MarketingOptionCard>
-            ))}
+                <option value="">Выберите клиента</option>
+                {clientCompanies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name || c.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!clientCompanies.length ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Нет клиентов.{' '}
+                <Link to={CRM_APP_PATHS.clientNew} className="underline">
+                  Создать клиента
+                </Link>
+              </p>
+            ) : (
+              <p className="text-xs text-slate-500">
+                Для вакансий список будет только этого клиента. Заказы и услуги — полный каталог
+                (не привязаны к клиенту в архитектуре).{' '}
+                <Link to={CRM_APP_PATHS.clientNew} className="underline">
+                  Новый клиент
+                </Link>
+              </p>
+            )}
           </div>
         ) : null}
 
-        {step === 3 && preset ? (
+        {step === 3 && clientCompanyId ? (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Кампания обслуживает <span className="font-medium text-slate-800">клиента</span>. Primary
-              Target — вакансия или услуга/заказ этого клиента; routing и KPI идут через него.
+              Клиент: <span className="font-medium text-slate-800">{selectedClient?.name}</span>.
+              Выберите тип предмета — списки не смешиваются.
             </p>
 
-            <div>
-              <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-800">Клиент (обязательно)</span>
-                <select
-                  className="input w-full"
-                  value={contextClientId}
-                  onChange={(e) => {
-                    setContextClientId(e.target.value)
+            <div className="grid gap-2" role="radiogroup" aria-label="Тип предмета">
+              {SUBJECT_PRESETS.map((p) => (
+                <MarketingOptionCard
+                  key={p.kind}
+                  selected={subjectKind === p.kind}
+                  onClick={() => {
+                    setSubjectKind(p.kind)
                     setTargetId('')
                   }}
-                  data-testid="marketing-setup-context-client"
+                  testId={`marketing-setup-subject-${p.kind}`}
                 >
-                  <option value="">Выберите клиента</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.display_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {!clients.length ? (
-                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  Нет Client Account.{' '}
-                  <Link to={CRM_APP_PATHS.clientNew} className="underline">
-                    Создать клиента
-                  </Link>{' '}
-                  в Sales, затем вернитесь сюда.
-                </p>
-              ) : (
-                <p className="mt-1 text-xs text-slate-500">
-                  Сохраняется как CampaignTarget(role=context, client_account). Статистика по клиенту —
-                  отсюда.{' '}
-                  <Link to={CRM_APP_PATHS.clientNew} className="underline">
-                    Новый клиент
-                  </Link>
-                </p>
-              )}
+                  <span className="font-medium text-slate-900">{p.label}</span>
+                  <span className="mt-1 block text-slate-600">{p.description}</span>
+                </MarketingOptionCard>
+              ))}
             </div>
 
-            {contextClientId ? (
+            {preset ? (
               <div className="border-t border-slate-200 pt-4 space-y-3">
                 <p className="text-sm font-medium text-slate-800">
-                  Предмет кампании · {preset.destinationLabel}
+                  {preset.destinationLabel}
+                  {preset.scopedToClient ? ' · только этого клиента' : ' · весь каталог'}
                 </p>
-                <p className="text-xs text-slate-500">
-                  Primary Target задаёт <code className="text-xs">route_intent</code> для всех
-                  источников кампании.
-                </p>
-                {preset.target_type === 'vacancy' ? (
+                {preset.kind === 'vacancy' ? (
                   !vacanciesForClient.length ? (
                     <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                      Нет вакансий для этого клиента.{' '}
+                      Нет вакансий у этого клиента.{' '}
                       <Link to={CRM_APP_PATHS.vacancyNew} className="underline">
                         Создать вакансию
                       </Link>{' '}
-                      в Recruitment (Вакансии).
+                      в Recruitment.
                     </p>
                   ) : (
                     <div className="grid gap-2" role="radiogroup" aria-label="Вакансия">
@@ -359,31 +388,67 @@ export default function MarketingCampaignSetupPage() {
                       ))}
                     </div>
                   )
-                ) : !services.length ? (
-                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    Нет услуг.{' '}
-                    <Link to={CRM_APP_PATHS.services} className="underline">
-                      Открыть услуги
-                    </Link>
-                  </p>
-                ) : (
-                  <div className="grid gap-2" role="radiogroup" aria-label="Услуга">
-                    {services.map((s) => (
-                      <MarketingOptionCard
-                        key={s.id}
-                        selected={targetId === s.id}
-                        onClick={() => setTargetId(s.id)}
-                        testId={`marketing-setup-service-${s.id}`}
-                      >
-                        <span className="font-medium text-slate-900">{s.name || s.id}</span>
-                      </MarketingOptionCard>
-                    ))}
-                  </div>
-                )}
+                ) : null}
+
+                {preset.kind === 'service_order' ? (
+                  !orders.length ? (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                      Нет заказов.{' '}
+                      <Link to={CRM_APP_PATHS.services} className="underline">
+                        Открыть услуги / заказы
+                      </Link>
+                    </p>
+                  ) : (
+                    <div className="grid gap-2" role="radiogroup" aria-label="Заказ">
+                      {orders.map((o) => (
+                        <MarketingOptionCard
+                          key={o.id}
+                          selected={targetId === o.id}
+                          onClick={() => setTargetId(o.id)}
+                          testId={`marketing-setup-order-${o.id}`}
+                        >
+                          <span className="font-medium text-slate-900">{orderLabel(o)}</span>
+                          <span className="mt-0.5 block text-xs text-slate-500">
+                            {[o.status, o.company_id ? `client ${String(o.company_id).slice(0, 8)}` : null]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                        </MarketingOptionCard>
+                      ))}
+                    </div>
+                  )
+                ) : null}
+
+                {preset.kind === 'service' ? (
+                  !services.length ? (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                      Нет услуг.{' '}
+                      <Link to={CRM_APP_PATHS.services} className="underline">
+                        Открыть услуги
+                      </Link>
+                    </p>
+                  ) : (
+                    <div className="grid gap-2" role="radiogroup" aria-label="Услуга">
+                      {services.map((s) => (
+                        <MarketingOptionCard
+                          key={s.id}
+                          selected={targetId === s.id}
+                          onClick={() => setTargetId(s.id)}
+                          testId={`marketing-setup-service-${s.id}`}
+                        >
+                          <span className="font-medium text-slate-900">{s.name || s.id}</span>
+                          {s.code ? (
+                            <span className="mt-0.5 block text-xs text-slate-500">{s.code}</span>
+                          ) : null}
+                        </MarketingOptionCard>
+                      ))}
+                    </div>
+                  )
+                ) : null}
               </div>
             ) : (
               <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                Сначала выберите клиента — затем вакансию (hiring) или услугу (B2B).
+                Выберите тип: вакансия, заказ или услуга.
               </p>
             )}
           </div>
@@ -401,26 +466,36 @@ export default function MarketingCampaignSetupPage() {
             <div>
               <div className="text-xs text-slate-500">Компания-владелец</div>
               <div className="font-medium text-slate-900">
-                {selectedCompany?.name || ownCompanyId}
+                {selectedOwnCompany?.name || ownCompanyId}
               </div>
             </div>
             <div>
-              <div className="text-xs text-slate-500">Поток</div>
-              <div className="font-medium text-slate-900">{preset.label}</div>
-            </div>
-            <div>
-              <div className="text-xs text-slate-500">Клиент (обслуживаем)</div>
+              <div className="text-xs text-slate-500">Клиент</div>
               <div className="font-medium text-slate-900">
-                {selectedClient?.display_name || contextClientId}
+                {selectedClient?.name || clientCompanyId}
               </div>
-              <div className="text-xs text-slate-500">CampaignTarget · role=context</div>
+              {linkedClientAccountId ? (
+                <div className="text-xs text-slate-500">
+                  + Client Account context · {linkedClientAccountId.slice(0, 8)}…
+                </div>
+              ) : (
+                <div className="text-xs text-slate-500">
+                  Client Account не найден — контекст не пишется; Primary Target достаточен.
+                </div>
+              )}
             </div>
             <div>
-              <div className="text-xs text-slate-500">Primary Target · route_intent</div>
+              <div className="text-xs text-slate-500">Тип · Primary Target</div>
               <div className="font-medium text-slate-900">
-                {preset.target_type === 'vacancy'
+                {preset.label}
+                {' · '}
+                {preset.kind === 'vacancy'
                   ? selectedVacancy?.title || targetId
-                  : selectedService?.name || targetId}
+                  : preset.kind === 'service_order'
+                    ? selectedOrder
+                      ? orderLabel(selectedOrder)
+                      : targetId
+                    : selectedService?.name || targetId}
               </div>
               <div className="text-xs text-slate-500">{preset.route_intent}</div>
             </div>

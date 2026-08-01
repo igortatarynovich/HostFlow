@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.validation import CampaignValidationError
-from backend.app.models.additional_service import Service
+from backend.app.models.additional_service import Service, ServiceOrder
 from backend.app.models.client_account import ClientAccount
 from backend.app.models.fleet_vehicle import FleetVehicle
 from backend.app.models.vacancy import Vacancy
@@ -43,6 +43,9 @@ async def assert_promotion_target_accessible(
         return
     if tt == "service":
         await _assert_service(db, tenant_id=tenant_id, target_id=tid)
+        return
+    if tt == "service_order":
+        await _assert_service_order(db, tenant_id=tenant_id, target_id=tid)
         return
     if tt == "client_account":
         await _assert_client_account(
@@ -86,6 +89,18 @@ async def _assert_service(db: AsyncSession, *, tenant_id: str, target_id: str) -
             Service.id == target_id,
             Service.tenant_id == tenant_id,
             Service.is_active.is_(True),
+        )
+    )
+    if row.scalar_one_or_none() is None:
+        raise CampaignValidationError("Promotion target not found", status_code=404)
+
+
+async def _assert_service_order(db: AsyncSession, *, tenant_id: str, target_id: str) -> None:
+    # Orders are tenant-scoped; company_id is the client counterparty (optional).
+    row = await db.execute(
+        select(ServiceOrder.id).where(
+            ServiceOrder.id == target_id,
+            ServiceOrder.tenant_id == tenant_id,
         )
     )
     if row.scalar_one_or_none() is None:

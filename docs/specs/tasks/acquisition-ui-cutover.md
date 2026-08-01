@@ -34,7 +34,7 @@
 Nav fact: Marketing is top-level after **C-1** (#157). Sales bucket no longer owns Marketing.
 
 **Campaign create vs Connect Source (UI split):**  
-`/app/marketing/new` creates Campaign only (`own_company_id` + Primary Target + optional `CampaignTarget(role=context)`). Sources bind later via `/app/marketing/:campaignId/sources/new` to the current Flight. Detail shows empty state / bindings list; CTA is gated so UI does not offer a second **primary** of the same endpoint type (multi-primary sources = later runtime PR). Not Form Builder and not full Source onboarding / mapping.
+`/app/marketing/new` creates Campaign (`own_company_id` + **Client Company** + exclusive subject **Vacancy|Order|Service** as Primary Target + optional `CampaignTarget(role=context, client_account)` when linked). Vacancies are scoped to the client; orders/services use the full catalog. Sources bind later via `/app/marketing/:campaignId/sources/new` to the current Flight. Detail shows empty state / bindings list; CTA is gated so UI does not offer a second **primary** of the same endpoint type (multi-primary sources = later runtime PR). Not Form Builder and not full Source onboarding / mapping.
 
 **Campaign Detail Source cards (PR2):** bindings render as business cards — Lead Form (Meta) / анкета HostFlow — with page/form labels, binding & publication status, last submission when available from activity/SoT compose. Technical IDs only under «Подробнее». Terminology: Source ≠ Connection ≠ Endpoint.
 
@@ -522,6 +522,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-07-28: **Marketing Setup client subject types** — Client = Company (directory); then exclusive subject type Vacancy|Order|Service; vacancies filtered by `company_id`; orders/services = full catalog (A); optional `client_account` context when linked; registry + resolver add `service_order`.
 - 2026-07-27: **Vacancies back in Recruitment nav** + Marketing Setup requires Client (context `client_account`) then Vacancy|Service primary — stats by client + subject; Vacancies SoT stays Recruitment (not Marketing).
 - 2026-07-27: **C-7 PASS** — #184 nav/redirects · #185 audience/bindings 410 · reconciliation inventory documented · production Marketing nav smoke; Stage 5 PR-2 may resume; Product Track → **Ad-ID bind UI**.
 - 2026-07-27: **Queue lock** — after C-7 PASS: **FlightAdBinding Ad-ID bind UI** (API #161 exists; UI missing), then Source Diagnostics. Not in C-7 scope.
