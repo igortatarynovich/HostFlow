@@ -1,4 +1,4 @@
-/** Marketing Source Diagnostics API — list + case (+ PR2 filters). */
+/** Marketing Source Diagnostics API — list + case (+ filters / drift alerts). */
 import { api } from './client'
 
 export type DiagnosticsSubmission = {
@@ -15,6 +15,7 @@ export type DiagnosticsSubmission = {
   route_intent?: string | null
   routing_status?: string | null
   source?: string | null
+  mapping_drift?: boolean | null
 }
 
 export type DiagnosticsTimelineEvent = {
@@ -79,6 +80,7 @@ export type DiagnosticsCase = DiagnosticsSubmission & {
 export type DiagnosticsListResponse = {
   items: DiagnosticsSubmission[]
   next_cursor?: { created_at: string; id: string } | null
+  drift_alert_count?: number
 }
 
 export type DiagnosticsListParams = {
@@ -88,6 +90,7 @@ export type DiagnosticsListParams = {
   source?: string
   flight_id?: string
   failed_only?: boolean
+  drift_only?: boolean
 }
 
 export async function listDiagnosticsSubmissions(

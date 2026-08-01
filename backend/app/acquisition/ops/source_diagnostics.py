@@ -6,6 +6,7 @@ PR3: duplicate decision surface (decision_result_v1 + duplicate_match_v1).
 PR4: mapping context — Mapping Health for linked IntakeSourceProfile.
 PR5: mapping_applied_v1 stamp + drift vs current rules fingerprint.
 PR6: read-only export bundle (same compose; no parallel SoT).
+PR7: drift_only list filter + per-row mapping_drift (detection / alerts Wave-1).
 No parallel submissions store.
 """
 
@@ -24,6 +25,11 @@ from backend.app.acquisition.candidate_activity import (
     read_acquisition_routing_stamp,
     resolve_unique_submission_id,
 )
+from backend.app.acquisition.mapping_applied_stamp import (
+    MAPPING_APPLIED_V1_KEY,
+    fingerprint_mapping_rules,
+    read_mapping_applied_stamp,
+)
 from backend.app.acquisition.ops.live_intake_monitor import (
     LiveIntakeApplicantRow,
     _applicant_from_lead,
@@ -33,9 +39,12 @@ from backend.app.acquisition.sources_read import build_source_paths
 from backend.app.acquisition.submission_routing import ACQUISITION_ROUTING_V1_KEY
 from backend.app.models.acquisition_activity_event import AcquisitionActivityEvent
 from backend.app.models.lead import Lead
+from backend.app.modules.intake_routing import crud as intake_crud
 
 _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
+# Max Acquisition leads scanned when filtering drift_only (fingerprint compare).
+_DRIFT_SCAN_CAP = 500
 
 
 @dataclass(frozen=True)
@@ -81,6 +90,14 @@ class DiagnosticsMappingContext:
     applied_stamped_at: Optional[str] = None
     current_rules_fingerprint: Optional[str] = None
     drift: bool = False
+
+
+@dataclass(frozen=True)
+class DiagnosticsListItem:
+    """List row: Live Intake applicant fields + optional mapping drift flag."""
+
+    applicant: LiveIntakeApplicantRow
+    mapping_drift: Optional[bool] = None
 
 
 @dataclass(frozen=True)
@@ -192,11 +209,6 @@ async def compose_mapping_context(
     normalized: Mapping[str, Any] | None = None,
 ) -> DiagnosticsMappingContext:
     """Resolve current Mapping Health + optional ingest ``mapping_applied_v1`` stamp."""
-    from backend.app.acquisition.mapping_applied_stamp import (
-        fingerprint_mapping_rules,
-        read_mapping_applied_stamp,
-    )
-
     applied = read_mapping_applied_stamp(normalized)
     applied_fp = str(applied.get("rules_fingerprint") or "").strip() or None
     applied_count = int(applied.get("rules_count") or 0)
@@ -272,8 +284,6 @@ async def compose_mapping_context(
     )
     path = str(summary.get("mapping_path") or mapping_path or "").strip() or mapping_path
 
-    from backend.app.modules.intake_routing import crud as intake_crud
-
     profile = await intake_crud.get_profile_by_id(
         db, tenant_id=str(tenant_id), profile_id=source_id
     )
@@ -322,6 +332,7 @@ def _list_filters(
     source: str | None,
     flight_id: str | None,
     failed_only: bool,
+    require_mapping_stamp: bool = False,
 ):
     """Optional list narrowing — still within stamped Acquisition set."""
     clauses = []
@@ -341,7 +352,97 @@ def _list_filters(
                 and_(Lead.error.isnot(None), Lead.error != ""),
             )
         )
+    if require_mapping_stamp:
+        stamp = Lead.normalized[MAPPING_APPLIED_V1_KEY]
+        clauses.append(stamp.isnot(None))
     return and_(*clauses) if clauses else None
+
+
+async def _current_rules_fingerprint(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    source_id: str,
+    cache: dict[str, str | None],
+) -> str | None:
+    if source_id in cache:
+        return cache[source_id]
+    profile = await intake_crud.get_profile_by_id(
+        db, tenant_id=str(tenant_id), profile_id=source_id
+    )
+    if profile is None:
+        cache[source_id] = None
+        return None
+    rules = profile.mapping_rules if isinstance(profile.mapping_rules, list) else []
+    fp = fingerprint_mapping_rules([r for r in rules if isinstance(r, Mapping)])
+    cache[source_id] = fp
+    return fp
+
+
+async def compute_lead_mapping_drift(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    fingerprint_cache: dict[str, str | None] | None = None,
+) -> bool | None:
+    """Return True/False when stamp present; None when no ingest stamp."""
+    cache = fingerprint_cache if fingerprint_cache is not None else {}
+    normalized = _as_dict(getattr(lead, "normalized", None))
+    applied = read_mapping_applied_stamp(normalized)
+    applied_fp = str(applied.get("rules_fingerprint") or "").strip() or None
+    if not applied_fp:
+        return None
+    routing = read_acquisition_routing_stamp(lead)
+    source_id = (
+        str(routing.get("intake_source_profile_id") or "").strip()
+        or str(applied.get("source_id") or "").strip()
+        or None
+    )
+    if not source_id:
+        return False
+    current_fp = await _current_rules_fingerprint(
+        db, tenant_id=str(tenant_id), source_id=source_id, cache=cache
+    )
+    if not current_fp:
+        return False
+    return applied_fp != current_fp
+
+
+async def _fetch_leads_page(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    limit: int,
+    after_created_at: datetime | None,
+    after_id: str | None,
+    source: str | None,
+    flight_id: str | None,
+    failed_only: bool,
+    require_mapping_stamp: bool = False,
+) -> list[Lead]:
+    stmt = (
+        select(Lead)
+        .where(_acquisition_stamped_filter(tenant_id=tenant_id))
+        .order_by(Lead.created_at.desc(), Lead.id.desc())
+    )
+    extra = _list_filters(
+        source=source,
+        flight_id=flight_id,
+        failed_only=failed_only,
+        require_mapping_stamp=require_mapping_stamp,
+    )
+    if extra is not None:
+        stmt = stmt.where(extra)
+    if after_created_at is not None and after_id is not None:
+        stmt = stmt.where(
+            or_(
+                Lead.created_at < after_created_at,
+                and_(Lead.created_at == after_created_at, Lead.id < str(after_id)),
+            )
+        )
+    stmt = stmt.limit(limit)
+    return list((await db.execute(stmt)).scalars().all())
 
 
 async def list_diagnostic_submissions(
@@ -354,36 +455,101 @@ async def list_diagnostic_submissions(
     source: str | None = None,
     flight_id: str | None = None,
     failed_only: bool = False,
-) -> tuple[list[LiveIntakeApplicantRow], tuple[datetime, str] | None]:
+    drift_only: bool = False,
+) -> tuple[list[DiagnosticsListItem], tuple[datetime, str] | None]:
     if (after_created_at is None) ^ (after_id is None):
         raise ValueError("after_created_at and after_id must be provided together")
     lim = max(1, min(int(limit or _DEFAULT_LIMIT), _MAX_LIMIT))
-    stmt = (
-        select(Lead)
-        .where(_acquisition_stamped_filter(tenant_id=tenant_id))
-        .order_by(Lead.created_at.desc(), Lead.id.desc())
-    )
-    extra = _list_filters(source=source, flight_id=flight_id, failed_only=failed_only)
-    if extra is not None:
-        stmt = stmt.where(extra)
-    if after_created_at is not None and after_id is not None:
-        stmt = stmt.where(
-            or_(
-                Lead.created_at < after_created_at,
-                and_(Lead.created_at == after_created_at, Lead.id < str(after_id)),
-            )
+    fp_cache: dict[str, str | None] = {}
+
+    if not drift_only:
+        leads = await _fetch_leads_page(
+            db,
+            tenant_id=tenant_id,
+            limit=lim + 1,
+            after_created_at=after_created_at,
+            after_id=after_id,
+            source=source,
+            flight_id=flight_id,
+            failed_only=failed_only,
         )
-    stmt = stmt.limit(lim + 1)
-    leads = list((await db.execute(stmt)).scalars().all())
-    has_more = len(leads) > lim
-    page = leads[:lim]
-    next_cursor: tuple[datetime, str] | None = None
-    if has_more and page:
-        last = page[-1]
-        created = getattr(last, "created_at", None)
+        has_more = len(leads) > lim
+        page = leads[:lim]
+        next_cursor: tuple[datetime, str] | None = None
+        if has_more and page:
+            last = page[-1]
+            created = getattr(last, "created_at", None)
+            if created is not None:
+                next_cursor = (created, str(last.id))
+        items: list[DiagnosticsListItem] = []
+        for lead in page:
+            drift = await compute_lead_mapping_drift(
+                db, tenant_id=tenant_id, lead=lead, fingerprint_cache=fp_cache
+            )
+            items.append(
+                DiagnosticsListItem(
+                    applicant=_applicant_from_lead(lead),
+                    mapping_drift=drift,
+                )
+            )
+        return items, next_cursor
+
+    # drift_only: scan stamped leads with mapping_applied_v1; cursor = last scanned.
+    matched: list[DiagnosticsListItem] = []
+    cursor_at = after_created_at
+    cursor_id = after_id
+    scanned = 0
+    last_scanned: Lead | None = None
+    while len(matched) < lim + 1 and scanned < _DRIFT_SCAN_CAP:
+        batch_size = min(50, _DRIFT_SCAN_CAP - scanned, (lim + 1 - len(matched)) * 4 + 10)
+        batch = await _fetch_leads_page(
+            db,
+            tenant_id=tenant_id,
+            limit=batch_size,
+            after_created_at=cursor_at,
+            after_id=cursor_id,
+            source=source,
+            flight_id=flight_id,
+            failed_only=failed_only,
+            require_mapping_stamp=True,
+        )
+        if not batch:
+            break
+        for lead in batch:
+            scanned += 1
+            last_scanned = lead
+            created = getattr(lead, "created_at", None)
+            if created is not None:
+                cursor_at = created
+                cursor_id = str(lead.id)
+            drift = await compute_lead_mapping_drift(
+                db, tenant_id=tenant_id, lead=lead, fingerprint_cache=fp_cache
+            )
+            if drift is True:
+                matched.append(
+                    DiagnosticsListItem(
+                        applicant=_applicant_from_lead(lead),
+                        mapping_drift=True,
+                    )
+                )
+                if len(matched) >= lim + 1:
+                    break
+        if len(batch) < batch_size:
+            break
+
+    has_more = len(matched) > lim
+    page_items = matched[:lim]
+    next_cursor = None
+    if has_more and last_scanned is not None:
+        created = getattr(last_scanned, "created_at", None)
         if created is not None:
-            next_cursor = (created, str(last.id))
-    return [_applicant_from_lead(lead) for lead in page], next_cursor
+            next_cursor = (created, str(last_scanned.id))
+    elif scanned >= _DRIFT_SCAN_CAP and last_scanned is not None and len(page_items) >= lim:
+        # Cap hit with a full page — allow continue via cursor on last scanned.
+        created = getattr(last_scanned, "created_at", None)
+        if created is not None:
+            next_cursor = (created, str(last_scanned.id))
+    return page_items, next_cursor
 
 
 async def get_diagnostic_case(
@@ -527,10 +693,12 @@ def build_diagnostic_export_bundle(detail: DiagnosticsCaseDetail) -> dict[str, A
 __all__ = [
     "DiagnosticsCaseDetail",
     "DiagnosticsDuplicateDecision",
+    "DiagnosticsListItem",
     "DiagnosticsMappingContext",
     "build_diagnostic_export_bundle",
     "compose_duplicate_decision",
     "compose_mapping_context",
+    "compute_lead_mapping_drift",
     "get_diagnostic_case",
     "list_diagnostic_submissions",
 ]

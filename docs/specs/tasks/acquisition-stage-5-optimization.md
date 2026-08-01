@@ -1,13 +1,14 @@
 # Acquisition Stage 5 — Optimization
 
-**Status:** **PR-1 DONE** ✅ · **PR-2 IN PROGRESS** (`feat/acquisition-stage-5-pr2-signal-explainability`)  
+**Status:** **PR-1 DONE** ✅ · **PR-2 DONE** ✅ [#203](https://github.com/igortatarynovich/HostFlow/pull/203)  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) §14 · §14.1  
 **Depends on:** Stage **4 runtime** DONE · Stage **4 product/UI cutover** **PASS** · Source Diagnostics PR1–PR4 DONE  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · Stage 3E Timeline  
 **PR-1 merge:** [#153](https://github.com/igortatarynovich/HostFlow/pull/153) → `1bf3e7f4` on `integration/release-product-a-b` (2026-07-23)  
+**PR-2 merge:** [#203](https://github.com/igortatarynovich/HostFlow/pull/203)  
 **Deferred (not Stage 5):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md) (D1–D5 remain Instrumentation)  
-**Product Track now:** **Stage 5 PR-2** (explainability + operator acknowledge/dismiss)  
-**Next horizon:** Stage 6 Analytics (do not open while 5 incomplete)
+**Product Track now:** [Source Diagnostics PR7](acquisition-source-diagnostics.md) (Stage 5 closed)  
+**Next horizon:** Stage 6 Analytics (after Diagnostics PR7 / queue lock)
 
 > **Improve** rung of the maturity ladder — assisted / automatic optimization **on top of** Stage 4 controls + 3E Timeline.  
 > Does **not** redefine Runtime commands or Timeline append contract.
@@ -20,7 +21,7 @@
 |-------|--------|------|--------|
 | **3E** | Observability | See | **DONE** (#130–#133) |
 | **4** | Operations | Control | **Runtime DONE** · UI cutover [PASS](acquisition-ui-cutover.md) |
-| **5** | Optimization | Improve | **PR-1 DONE** · **PR-2 UNBLOCKED** |
+| **5** | Optimization | Improve | **PR-1 DONE** · **PR-2 DONE** (#203) |
 | **6** | Analytics | Decide | Future horizon |
 
 ---
@@ -30,7 +31,7 @@
 | PR | Scope | Status |
 |----|--------|--------|
 | **PR-1** | Optimization signals + `suggest_pause` (read-only) | **DONE** (#153 / `1bf3e7f4`) |
-| **PR-2** | Signal explainability + operator dismiss/acknowledge (no Flight mutation) | **IN PROGRESS** — `feat/acquisition-stage-5-pr2-signal-explainability` |
+| **PR-2** | Signal explainability + operator dismiss/acknowledge (no Flight mutation) | **DONE** (#203) |
 | **PR-3+** | Auto-apply / auto-pause only with explicit operator/safety contract | Not opened |
 
 **Do not start PR-2 implementation while Подборы / Sales-nested Marketing / Settings-only Form Builder remain the operator path.**  

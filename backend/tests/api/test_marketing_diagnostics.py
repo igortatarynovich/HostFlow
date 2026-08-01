@@ -456,6 +456,120 @@ async def test_diagnostics_case_mapping_drift_from_applied_stamp(
 
 
 @pytest.mark.asyncio
+async def test_diagnostics_list_drift_only_filter(
+    client: AsyncClient, auth_headers: Dict[str, str]
+):
+    from backend.app.acquisition.mapping_applied_stamp import fingerprint_mapping_rules
+
+    drifted_id = str(uuid4())
+    stable_id = str(uuid4())
+    profile_id = str(uuid4())
+    applied_rules = [{"source": "email", "target": "email"}]
+    current_rules = [
+        {"source": "email", "target": "email"},
+        {"source": "phone", "target": "phone"},
+    ]
+    flight_id = str(uuid4())
+    async with async_session_maker() as db:
+        await _ensure_tenant(db, DEFAULT_TENANT_ID)
+        oc = (
+            await db.execute(
+                select(OwnCompany.id)
+                .where(OwnCompany.tenant_id == DEFAULT_TENANT_ID)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if oc is None:
+            oc = str(uuid4())
+            db.add(OwnCompany(id=oc, tenant_id=DEFAULT_TENANT_ID, name="Diag OC Drift List"))
+            await db.flush()
+        db.add(
+            IntakeSourceProfile(
+                id=profile_id,
+                tenant_id=DEFAULT_TENANT_ID,
+                code=f"diag-drift-list-{uuid4().hex[:8]}",
+                name="Diag Drift List Source",
+                provider="meta",
+                channel="paid",
+                own_company_id=str(oc),
+                route_intent="candidate_application",
+                mapping_rules=current_rules,
+                is_active=True,
+            )
+        )
+        stamp_old = {
+            "source_id": profile_id,
+            "rules_source": "profile",
+            "rules_count": 1,
+            "rules_fingerprint": fingerprint_mapping_rules(applied_rules),
+            "stamped_at": datetime.now(timezone.utc).isoformat(),
+        }
+        stamp_match = {
+            "source_id": profile_id,
+            "rules_source": "profile",
+            "rules_count": 2,
+            "rules_fingerprint": fingerprint_mapping_rules(current_rules),
+            "stamped_at": datetime.now(timezone.utc).isoformat(),
+        }
+        for lead_id, stamp in ((drifted_id, stamp_old), (stable_id, stamp_match)):
+            db.add(
+                Lead(
+                    id=lead_id,
+                    tenant_id=DEFAULT_TENANT_ID,
+                    source="meta",
+                    status="processed",
+                    lead_type="candidate",
+                    lead_target_type="candidate",
+                    external_id=f"meta-lead-{uuid4().hex[:10]}",
+                    normalized={
+                        "full_name": f"Person {lead_id[:8]}",
+                        ACQUISITION_ROUTING_V1_KEY: {
+                            "status": "routed",
+                            "campaign_id": str(uuid4()),
+                            "campaign_run_id": flight_id,
+                            "route_intent": "candidate_application",
+                            "intake_source_profile_id": profile_id,
+                        },
+                        "mapping_applied_v1": stamp,
+                        "submissions_v1": [
+                            {
+                                "submission_id": str(uuid4()),
+                                "submitted_at": datetime.now(timezone.utc).isoformat(),
+                            }
+                        ],
+                    },
+                    payload={},
+                )
+            )
+        await db.commit()
+
+    drifted = await client.get(
+        "/api/v1/platform/marketing/diagnostics/submissions",
+        headers=_headers(auth_headers),
+        params={"drift_only": True, "limit": 50},
+    )
+    assert drifted.status_code == 200, drifted.text
+    body = drifted.json()
+    ids = {row["lead_id"] for row in body["items"]}
+    assert drifted_id in ids
+    assert stable_id not in ids
+    for row in body["items"]:
+        if row["lead_id"] == drifted_id:
+            assert row["mapping_drift"] is True
+    assert body["drift_alert_count"] >= 1
+
+    unfiltered = await client.get(
+        "/api/v1/platform/marketing/diagnostics/submissions",
+        headers=_headers(auth_headers),
+        params={"flight_id": flight_id, "limit": 50},
+    )
+    assert unfiltered.status_code == 200, unfiltered.text
+    by_id = {row["lead_id"]: row for row in unfiltered.json()["items"]}
+    assert by_id[drifted_id]["mapping_drift"] is True
+    assert by_id[stable_id]["mapping_drift"] is False
+
+
+@pytest.mark.asyncio
 async def test_diagnostics_case_export_json(client: AsyncClient, auth_headers: Dict[str, str]):
     lead_id = str(uuid4())
     flight_id = str(uuid4())

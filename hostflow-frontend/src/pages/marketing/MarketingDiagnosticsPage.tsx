@@ -1,6 +1,7 @@
 /**
  * Marketing Source Diagnostics — recent Acquisition submissions + case detail.
  * PR2: list filters (source / flight / failed-only).
+ * PR7: mapping drift filter + list badges + alert strip.
  * SoT: Lead + Acquisition Activity. Sibling of Sources, not a tab.
  */
 import { useCallback, useEffect, useState } from 'react'
@@ -376,12 +377,14 @@ export default function MarketingDiagnosticsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [items, setItems] = useState<DiagnosticsSubmission[]>([])
+  const [driftAlertCount, setDriftAlertCount] = useState(0)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [loading, setLoading] = useState(true)
 
   const sourceFilter = (searchParams.get('source') || '').trim()
   const flightFilter = (searchParams.get('flight_id') || '').trim()
   const failedOnly = searchParams.get('failed_only') === '1'
+  const driftOnly = searchParams.get('drift_only') === '1'
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -392,8 +395,10 @@ export default function MarketingDiagnosticsPage() {
         ...(sourceFilter ? { source: sourceFilter } : {}),
         ...(flightFilter ? { flight_id: flightFilter } : {}),
         ...(failedOnly ? { failed_only: true } : {}),
+        ...(driftOnly ? { drift_only: true } : {}),
       })
       setItems(res.items || [])
+      setDriftAlertCount(Number(res.drift_alert_count || 0))
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
@@ -405,10 +410,11 @@ export default function MarketingDiagnosticsPage() {
         ),
       )
       setItems([])
+      setDriftAlertCount(0)
     } finally {
       setLoading(false)
     }
-  }, [failedOnly, flightFilter, sourceFilter, t])
+  }, [driftOnly, failedOnly, flightFilter, sourceFilter, t])
 
   useEffect(() => {
     if (!leadId) void load()
@@ -418,6 +424,7 @@ export default function MarketingDiagnosticsPage() {
     source?: string
     flight_id?: string
     failed_only?: boolean
+    drift_only?: boolean
   }) => {
     const next = new URLSearchParams(searchParams)
     if (patch.source !== undefined) {
@@ -433,6 +440,10 @@ export default function MarketingDiagnosticsPage() {
     if (patch.failed_only !== undefined) {
       if (patch.failed_only) next.set('failed_only', '1')
       else next.delete('failed_only')
+    }
+    if (patch.drift_only !== undefined) {
+      if (patch.drift_only) next.set('drift_only', '1')
+      else next.delete('drift_only')
     }
     setSearchParams(next, { replace: true })
   }
@@ -463,7 +474,7 @@ export default function MarketingDiagnosticsPage() {
         ) : (
           <>
             <form
-              key={`${sourceFilter}|${flightFilter}|${failedOnly ? '1' : '0'}`}
+              key={`${sourceFilter}|${flightFilter}|${failedOnly ? '1' : '0'}|${driftOnly ? '1' : '0'}`}
               className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
               data-testid="marketing-diagnostics-filters"
               onSubmit={(e) => {
@@ -473,6 +484,7 @@ export default function MarketingDiagnosticsPage() {
                   source: String(fd.get('source') || ''),
                   flight_id: String(fd.get('flight_id') || ''),
                   failed_only: fd.get('failed_only') === 'on',
+                  drift_only: fd.get('drift_only') === 'on',
                 })
               }}
             >
@@ -505,10 +517,42 @@ export default function MarketingDiagnosticsPage() {
                 />
                 Только failed / unresolved
               </label>
+              <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  name="drift_only"
+                  defaultChecked={driftOnly}
+                  data-testid="marketing-diagnostics-filter-drift"
+                />
+                Только mapping drift
+              </label>
               <button type="submit" className="btn-secondary btn-sm" data-testid="marketing-diagnostics-filter-apply">
                 Применить
               </button>
             </form>
+
+            {!driftOnly && driftAlertCount > 0 ? (
+              <div
+                className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+                data-testid="marketing-diagnostics-drift-alert"
+              >
+                <span>
+                  {t('app.marketing.diagnostics.drift_alert', {
+                    defaultValue:
+                      'На этой странице {{count}} заявк(и) с Mapping drift — правила Source изменились после ingest.',
+                    count: driftAlertCount,
+                  })}
+                </span>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  data-testid="marketing-diagnostics-drift-alert-filter"
+                  onClick={() => patchFilters({ drift_only: true })}
+                >
+                  Показать drift
+                </button>
+              </div>
+            ) : null}
 
             {error ? <ErrorRecoveryBanner error={error} onRetry={() => void load()} /> : null}
             {loading ? (
@@ -533,8 +577,18 @@ export default function MarketingDiagnosticsPage() {
                       data-testid={`marketing-diagnostics-row-${row.lead_id}`}
                     >
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-slate-900">
-                          {row.full_name || row.email || row.phone || row.lead_id}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="truncate font-medium text-slate-900">
+                            {row.full_name || row.email || row.phone || row.lead_id}
+                          </span>
+                          {row.mapping_drift ? (
+                            <span
+                              className="inline-flex rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-800"
+                              data-testid="marketing-diagnostics-drift-badge"
+                            >
+                              drift
+                            </span>
+                          ) : null}
                         </div>
                         <div className="mt-0.5 text-xs text-slate-500">
                           {row.status_label}
