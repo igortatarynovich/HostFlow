@@ -72,6 +72,7 @@ import { listTenantLinks, getContactPolicy, type TenantLink } from '../api/tenan
 import { AddClientModal } from '../components/clients/AddClientModal'
 import { ClientAccessPanel } from '../components/clients/ClientAccessPanel'
 import { ClientLeadOriginPanel } from '../components/clients/ClientLeadOriginPanel'
+import EntityCorrespondenceOpen from '../components/communications/EntityCorrespondenceOpen'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { useAuth } from '../store/useAuth'
 import { useToast } from '../components/Toast'
@@ -2157,6 +2158,16 @@ export default function Companies(){
             }
             secondaryActions={
               <>
+                {!isOperatingCompany && id && id !== 'new' ? (
+                  <EntityCorrespondenceOpen
+                    refs={[
+                      { entityType: 'company', entityId: String(id) },
+                      { entityType: 'client_account', entityId: String(id) },
+                    ]}
+                    className="btn-secondary btn-sm inline-flex items-center gap-1.5"
+                    testId="client-correspondence-open"
+                  />
+                ) : null}
                 {isOperatingCompany ? (
                   <>
                     <Link to={CRM_APP_PATHS.invoiceNew} className="btn-secondary btn-sm">

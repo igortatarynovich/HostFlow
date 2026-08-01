@@ -13,6 +13,7 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useToast } from '../../components/Toast'
 import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
+import EntityCorrespondenceOpen from '../../components/communications/EntityCorrespondenceOpen'
 import { ContextRail } from '../context-rail'
 import {
   APPLICATION_STATUS_BADGE,
@@ -227,13 +228,37 @@ export function ApplicationRecruitmentDetailPanel({
             </Link>
           ) : null,
           contacts: (
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3" data-testid="recruitment-rail-contact">
               <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-800">
                 {applicationInitial(application)}
               </span>
-              <span className="text-sm text-slate-600">{contactName}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-slate-800">{contactName}</p>
+                {application.contact.phone ? (
+                  <a
+                    href={`tel:${String(application.contact.phone).replace(/\s/g, '')}`}
+                    className="mt-1 block break-all text-2xl font-semibold tracking-wide text-slate-900 hover:text-brand-700"
+                  >
+                    {application.contact.phone}
+                  </a>
+                ) : null}
+                <div className="mt-3">
+                  <EntityCorrespondenceOpen
+                    refs={[
+                      ...(candidateId ? [{ entityType: 'candidate', entityId: candidateId }] : []),
+                      { entityType: 'lead', entityId: application.id },
+                    ]}
+                    candidateId={candidateId || undefined}
+                    size="md"
+                    testId="recruitment-rail-correspondence"
+                  />
+                </div>
+              </div>
             </div>
           ),
+        }}
+        contextTitles={{
+          contacts: t('app.sales_inquiry.contact_title', { defaultValue: 'Контакт' }),
         }}
       />
 

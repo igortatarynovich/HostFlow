@@ -22,6 +22,7 @@ import type { CandidatePipelineOverride } from '../../../api/candidatePipelineOv
 import type { WorkPanelRequirementsSummary } from '../../../utils/workPanelRequirements'
 import { canonicalStageKey } from '../../../utils/stageLabels'
 import { formatDateSafe } from '../candidateUtils'
+import EntityCorrespondenceOpen from '../../../components/communications/EntityCorrespondenceOpen'
 import { buildInboxHubPath } from '../../../utils/inboxDeepLinks'
 import type { FriendlyErrorInfo } from '../../../utils/friendlyError'
 
@@ -169,7 +170,6 @@ export function CandidatesSelectedPanel({
   if (!selectedCandidate) return null
 
   const cid = String(selectedCandidate.id)
-  const inboxHref = buildInboxHubPath({ candidateId: cid })
   const messagesHref =
     workPanelCommsLinks?.messagesRelativeUrl ?? buildInboxHubPath({ candidateId: cid, channel: 'messages' })
   const emailHref =
@@ -402,9 +402,12 @@ export function CandidatesSelectedPanel({
           <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
             {t('app.candidates.preview.comms_title', { defaultValue: 'Comms' })}
           </div>
-          <button type="button" className="btn-secondary btn-xs w-full" onClick={() => navigate(inboxHref)}>
-            {t('app.candidates.preview.open_unified_inbox', { defaultValue: 'Inbox (all channels)' })}
-          </button>
+          <EntityCorrespondenceOpen
+            refs={[{ entityType: 'candidate', entityId: cid }]}
+            candidateId={cid}
+            className="btn-secondary btn-xs inline-flex w-full items-center justify-center gap-1"
+            testId="candidates-panel-correspondence"
+          />
           <div className="flex flex-wrap gap-2">
             <button
               type="button"

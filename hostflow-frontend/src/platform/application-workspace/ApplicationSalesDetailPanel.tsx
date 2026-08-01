@@ -6,6 +6,7 @@ import SalesInquiryPossibleDuplicatesSection from '../../components/sales/SalesI
 import SalesInquiryQuestionnaireSection from '../../components/sales/SalesInquiryQuestionnaireSection'
 import SalesInquiryCallNotesSection from '../../components/sales/SalesInquiryCallNotesSection'
 import SalesInquiryTimelineSection from '../../components/sales/SalesInquiryTimelineSection'
+import EntityCorrespondenceOpen from '../../components/communications/EntityCorrespondenceOpen'
 import { ContextRail } from '../context-rail'
 import {
   APPLICATION_STATUS_BADGE,
@@ -149,6 +150,21 @@ export function ApplicationSalesDetailPanel({
                   {contactEmail}
                 </a>
               ) : null}
+              <div className="mt-3">
+                <EntityCorrespondenceOpen
+                  refs={[
+                    { entityType: 'lead', entityId: application.id },
+                    ...(convertedId
+                      ? [
+                          { entityType: 'client_account', entityId: convertedId },
+                          { entityType: 'company', entityId: convertedId },
+                        ]
+                      : []),
+                  ]}
+                  size="md"
+                  testId="sales-rail-correspondence"
+                />
+              </div>
             </div>
           </div>
         ),

@@ -61,7 +61,7 @@ import { getFunnel } from '../api/funnels'
 import { validateRequiredFields } from '../utils/profileUtils'
 import { getCardSectionOrder, isCardSectionVisible } from '../utils/fieldLayoutUtils'
 import { useEffectiveCandidateLayout } from '../hooks/useEffectiveCandidateLayout'
-import { buildInboxHubPath } from '../utils/inboxDeepLinks'
+import EntityCorrespondenceOpen from '../components/communications/EntityCorrespondenceOpen'
 import { isCandidateRecruiterIdCanonEnabled, isDossierLegacyEnabled, isRequirementsWorkspaceEnabled } from '../utils/featureFlags'
 import { usePermissions } from '../hooks/usePermissions'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
@@ -4915,12 +4915,13 @@ export default function CandidateCard(){
                   </div>
                 </div>
                 <div className="mt-3">
-                  <Link
-                    to={buildInboxHubPath({ candidateId: String(model.id) })}
-                    className="btn-secondary btn-sm w-full text-center"
-                  >
-                    {t('app.candidate_card.control.open_unified_inbox')}
-                  </Link>
+                  <EntityCorrespondenceOpen
+                    refs={[{ entityType: 'candidate', entityId: String(model.id) }]}
+                    candidateId={String(model.id)}
+                    className="btn-secondary btn-sm inline-flex w-full items-center justify-center gap-1.5"
+                    size="md"
+                    testId="candidate-card-correspondence"
+                  />
                 </div>
               </div>
 
