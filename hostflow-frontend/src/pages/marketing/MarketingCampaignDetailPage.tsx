@@ -36,11 +36,13 @@ import {
   primaryForm,
   primarySource,
   canConnectAnySource,
+  canConnectSourceKind,
   statusLabel,
   statusTone,
 } from './marketingPresentation'
 import { HostFlowFormSourceCard, MetaLeadFormSourceCard } from './MarketingSourceCards'
 import { MarketingAdBindingsPanel } from './MarketingAdBindingsPanel'
+import { MarketingConnectMetaAdvertising } from './MarketingConnectMetaAdvertising'
 
 export default function MarketingCampaignDetailPage() {
   const { t, locale } = useI18n()
@@ -54,6 +56,7 @@ export default function MarketingCampaignDetailPage() {
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [metaWizardOpen, setMetaWizardOpen] = useState(false)
 
   const load = useCallback(async () => {
     if (!campaignId) return
@@ -243,6 +246,11 @@ export default function MarketingCampaignDetailPage() {
   const intakeLinks = flight?.intake_sources?.filter((s) => s.is_active) || []
   const hasAnySourceBinding = formLinks.length > 0 || intakeLinks.length > 0
   const showConnectCta = Boolean(flight && canConnectAnySource(flight))
+  const showPublicConnectOnly = Boolean(flight && canConnectSourceKind(flight, 'public_form'))
+  const showMetaConnect = Boolean(flight)
+  const showPublicPrimaryLimitNote = Boolean(
+    flight && !canConnectSourceKind(flight, 'public_form') && formLinks.length > 0,
+  )
   const primaryTarget = campaign?.targets?.find((x) => x.role === 'primary')
   const contextTargets = campaign?.targets?.filter((x) => x.role === 'context') || []
   const counters = monitor?.counters
@@ -435,19 +443,31 @@ export default function MarketingCampaignDetailPage() {
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900">Источники заявок</h2>
                   <p className="mt-1 text-xs text-slate-500">
-                    Source = откуда приходят заявки (Lead Form Meta или анкета HostFlow). Connection
-                    (OAuth) настраивается в Integrations. Routing наследует Primary Target кампании.
+                    Подключите Meta-рекламу (кампания → формы и объявления) или анкету HostFlow.
+                    Connection (OAuth) — в Integrations. Routing наследует Primary Target кампании.
                   </p>
                 </div>
-                {showConnectCta ? (
-                  <Link
-                    to={marketingConnectSourcePath(campaign.id)}
-                    className="btn-primary btn-sm"
-                    data-testid="marketing-connect-source-cta"
-                  >
-                    Подключить источник
-                  </Link>
-                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  {showMetaConnect ? (
+                    <button
+                      type="button"
+                      className="btn-primary btn-sm"
+                      onClick={() => setMetaWizardOpen(true)}
+                      data-testid="marketing-connect-meta-advertising-cta"
+                    >
+                      Подключить Meta-рекламу
+                    </button>
+                  ) : null}
+                  {showPublicConnectOnly ? (
+                    <Link
+                      to={`${marketingConnectSourcePath(campaign.id)}?kind=public_form`}
+                      className="btn-secondary btn-sm"
+                      data-testid="marketing-connect-source-cta"
+                    >
+                      Анкета HostFlow
+                    </Link>
+                  ) : null}
+                </div>
               </div>
 
               {!hasAnySourceBinding ? (
@@ -457,21 +477,21 @@ export default function MarketingCampaignDetailPage() {
                 >
                   <p className="text-sm font-medium text-slate-800">Источников пока нет</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Подключите Meta Lead Ads или публичную анкету HostFlow — без повторного создания
-                    кампании.
+                    Выберите рекламную кампанию Meta — подключим её Lead Forms и объявления к Flight.
                   </p>
-                  {showConnectCta ? (
-                    <Link
-                      to={marketingConnectSourcePath(campaign.id)}
+                  {showMetaConnect ? (
+                    <button
+                      type="button"
                       className="btn-primary btn-sm mt-4 inline-flex"
+                      onClick={() => setMetaWizardOpen(true)}
                       data-testid="marketing-sources-empty-cta"
                     >
-                      Подключить источник
-                    </Link>
+                      Подключить Meta-рекламу
+                    </button>
                   ) : null}
                 </div>
               ) : (
-                <ul className="mt-4 space-y-3">
+                <ul className="mt-4 space-y-3" data-testid="marketing-sources-list">
                   {formLinks.map((f) => (
                     <HostFlowFormSourceCard key={f.id} link={f} locale={locale} />
                   ))}
@@ -481,25 +501,57 @@ export default function MarketingCampaignDetailPage() {
                 </ul>
               )}
 
-              {!showConnectCta && hasAnySourceBinding ? (
+              {flight?.ad_bindings?.filter((b) => b.is_active).length ? (
+                <div className="mt-4" data-testid="marketing-ad-bindings-summary">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Объявления (Ad → Flight)
+                  </h3>
+                  <ul className="mt-2 space-y-1">
+                    {flight.ad_bindings
+                      .filter((b) => b.is_active)
+                      .map((b) => (
+                        <li key={b.id} className="font-mono text-xs text-slate-700">
+                          {b.provider_ad_id}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {showPublicPrimaryLimitNote ? (
                 <p
                   className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600"
                   data-testid="marketing-sources-primary-limit"
                 >
-                  Primary-слоты анкеты HostFlow и Meta-источника для этого Flight заняты. Несколько
-                  равноправных источников одного типа появятся в следующем обновлении — сейчас UI не
-                  предлагает подключение, которое завершится ошибкой.
+                  Primary-слот анкеты HostFlow для этого Flight занят. Дополнительные Meta Lead Forms
+                  можно подключать как secondary через «Подключить Meta-рекламу».
                 </p>
               ) : null}
 
-              {flight ? (
-                <MarketingAdBindingsPanel
-                  campaignId={campaign.id}
-                  flight={flight}
-                  onChanged={load}
-                  t={t}
-                />
-              ) : null}
+              <details className="mt-4 border-t border-slate-100 pt-3" data-testid="marketing-sources-advanced">
+                <summary className="cursor-pointer text-xs font-medium text-slate-600">
+                  Дополнительно: одна форма / ручной Ad ID
+                </summary>
+                <div className="mt-3 space-y-3">
+                  {showConnectCta ? (
+                    <Link
+                      to={marketingConnectSourcePath(campaign.id)}
+                      className="btn-secondary btn-sm inline-flex"
+                      data-testid="marketing-connect-source-advanced"
+                    >
+                      Подключить один источник вручную
+                    </Link>
+                  ) : null}
+                  {flight ? (
+                    <MarketingAdBindingsPanel
+                      campaignId={campaign.id}
+                      flight={flight}
+                      onChanged={load}
+                      t={t}
+                    />
+                  ) : null}
+                </div>
+              </details>
 
               {contextTargets.length ? (
                 <div className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-600">
@@ -681,6 +733,18 @@ export default function MarketingCampaignDetailPage() {
           </>
         ) : null}
       </div>
+      {campaign ? (
+        <MarketingConnectMetaAdvertising
+          campaignId={campaign.id}
+          open={metaWizardOpen}
+          onClose={() => setMetaWizardOpen(false)}
+          onConnected={async () => {
+            await load()
+            setMetaWizardOpen(false)
+          }}
+          t={t}
+        />
+      ) : null}
     </PageShell>
   )
 }

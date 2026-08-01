@@ -148,17 +148,23 @@ export function activePrimaryIntakeSource(
   return flight.intake_sources.find((s) => s.is_active && s.role === 'primary') || null
 }
 
-/** PR1: only offer Connect when a primary slot of that endpoint type is free (no secondary UX). */
+/** Public HostFlow form: one active primary. Meta: more forms attach as secondary. */
 export function canConnectSourceKind(
   flight: CampaignFlight | null,
   kind: MarketingSourceKind,
 ): boolean {
+  if (!flight) return false
   if (kind === 'public_form') return !activePrimaryForm(flight)
-  return !activePrimaryIntakeSource(flight)
+  return true
 }
 
 export function canConnectAnySource(flight: CampaignFlight | null): boolean {
   return canConnectSourceKind(flight, 'public_form') || canConnectSourceKind(flight, 'meta')
+}
+
+/** Role for the next Meta intake attach (primary if free, else secondary). */
+export function nextMetaIntakeRole(flight: CampaignFlight | null): 'primary' | 'secondary' {
+  return activePrimaryIntakeSource(flight) ? 'secondary' : 'primary'
 }
 
 export function destinationSummary(campaign: Campaign): string {

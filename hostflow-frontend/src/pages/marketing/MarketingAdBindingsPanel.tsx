@@ -126,9 +126,8 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
         <div>
           <h3 className="text-sm font-semibold text-slate-900">Привязка Ad ID → Flight</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Override: когда одна Meta-форма кормит несколько Flight — привяжите конкретный Ad ID
-            сюда. Обычный путь: Connect Source (Lead Form) на странице «Подключить источник»; без
-            Ad bind все объявления формы идут в Flight формы.
+            Ручной override: когда одна Meta-форма кормит несколько Flight. Основной путь —
+            «Подключить Meta-рекламу» на карточке кампании (формы + объявления сразу).
           </p>
           <p className="mt-1 text-xs text-slate-500">
             Flight: <span className="font-medium text-slate-700">{flight.name || flight.code}</span>
