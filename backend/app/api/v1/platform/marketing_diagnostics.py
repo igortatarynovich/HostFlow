@@ -1,4 +1,4 @@
-"""Marketing Source Diagnostics API — list + case (+ filters / duplicate / mapping / export)."""
+"""Marketing Source Diagnostics API — list + case (+ filters / duplicate / mapping / export / drift)."""
 
 from __future__ import annotations
 
@@ -72,11 +72,14 @@ class DiagnosticsSubmissionOut(BaseModel):
     route_intent: Optional[str] = None
     routing_status: Optional[str] = None
     source: Optional[str] = None
+    # PR7: True when mapping_applied_v1 fingerprint ≠ current Source rules; null if no stamp.
+    mapping_drift: Optional[bool] = None
 
 
 class DiagnosticsListOut(BaseModel):
     items: list[DiagnosticsSubmissionOut]
     next_cursor: Optional[DiagnosticsCursorOut] = None
+    drift_alert_count: int = 0
 
 
 class DiagnosticsTimelineEventOut(BaseModel):
@@ -168,6 +171,7 @@ async def list_submissions(
     source: Optional[str] = Query(default=None, max_length=64),
     flight_id: Optional[str] = Query(default=None),
     failed_only: bool = Query(default=False),
+    drift_only: bool = Query(default=False),
 ) -> DiagnosticsListOut:
     db, tenant_id = db_tenant
     cursor_id = _require_uuid(after_id, field="after_id") if after_id is not None else None
@@ -184,31 +188,35 @@ async def list_submissions(
             source=source,
             flight_id=flight,
             failed_only=bool(failed_only),
+            drift_only=bool(drift_only),
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    drift_alert_count = sum(1 for row in rows if row.mapping_drift is True)
     return DiagnosticsListOut(
         items=[
             DiagnosticsSubmissionOut(
-                lead_id=row.lead_id,
-                created_at=row.created_at,
-                full_name=row.full_name,
-                phone=row.phone,
-                email=row.email,
-                lead_status=row.lead_status,
-                disposition=row.disposition,
-                status_label=row.status_label,
-                candidate_id=row.candidate_id,
-                vacancy_id=row.vacancy_id,
-                route_intent=row.route_intent,
-                routing_status=row.routing_status,
-                source=row.source,
+                lead_id=row.applicant.lead_id,
+                created_at=row.applicant.created_at,
+                full_name=row.applicant.full_name,
+                phone=row.applicant.phone,
+                email=row.applicant.email,
+                lead_status=row.applicant.lead_status,
+                disposition=row.applicant.disposition,
+                status_label=row.applicant.status_label,
+                candidate_id=row.applicant.candidate_id,
+                vacancy_id=row.applicant.vacancy_id,
+                route_intent=row.applicant.route_intent,
+                routing_status=row.applicant.routing_status,
+                source=row.applicant.source,
+                mapping_drift=row.mapping_drift,
             )
             for row in rows
         ],
         next_cursor=(
             DiagnosticsCursorOut(created_at=cursor[0], id=cursor[1]) if cursor else None
         ),
+        drift_alert_count=drift_alert_count,
     )
 
 

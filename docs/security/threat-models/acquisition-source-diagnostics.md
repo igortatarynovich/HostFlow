@@ -1,10 +1,10 @@
-# Threat Model — Acquisition Source Diagnostics (PR1–PR6)
+# Threat Model — Acquisition Source Diagnostics (PR1–PR7)
 
 ## Assets
 
 - Read-only Marketing diagnostics HTTP surface  
   - `GET /api/v1/platform/marketing/diagnostics/submissions`  
-    (optional filters: `source`, `flight_id`, `failed_only`)  
+    (optional filters: `source`, `flight_id`, `failed_only`, `drift_only`)  
   - `GET /api/v1/platform/marketing/diagnostics/submissions/{lead_id}`  
   - `GET /api/v1/platform/marketing/diagnostics/submissions/{lead_id}/export`  
     (JSON attachment of case compose; audited CLASS3 export)  
@@ -12,7 +12,7 @@
   `backend/app/acquisition/ops/source_diagnostics.py`)
 - Ingest stamp `mapping_applied_v1` on Lead.normalized (Meta/webhook reprocess paths)  
   (`backend/app/acquisition/mapping_applied_stamp.py`)
-- Marketing Diagnostics UI — list / case / filters / duplicate / Mapping Health / drift / Export JSON
+- Marketing Diagnostics UI — list / case / filters / duplicate / Mapping Health / drift alerts / Export JSON
 
 ## Trust boundaries
 
@@ -37,13 +37,15 @@
 | ASD-8 | Cross-tenant Source mapping read | Resolving `intake_source_profile_id` without tenant scope |
 | ASD-9 | Tampered mapping stamp | Client-supplied fingerprint without ingest authority |
 | ASD-10 | Unaudited CLASS3 download | Export without export security events / actor attribution |
+| ASD-11 | Drift filter as write / remap | Treating `drift_only` as authority to mutate mapping_rules |
 
-## Митигации (PR1–PR6)
+## Митигации (PR1–PR7)
 
 - List / case / export tenant-scoped; filters AND-narrowing; UUID validation on `flight_id` / `lead_id`
 - Mapping compose uses tenant-scoped Sources façade; missing profile → `profile_missing`
 - `mapping_applied_v1` written only in server ingest/reprocess after validated rules
 - Drift is a read-time comparison of fingerprints — no auto remapping
+- `drift_only` only narrows the read list (scan cap); does not mutate Lead / Source / Flight
 - Endpoints remain `_READ` only on Diagnostics; export is read-only attachment (no remapping)
 - Export path emits `emit_export_security_event_v1` (`contains_class3`, single-lead scope, no bulk)
 - No new public / unauthenticated surfaces
