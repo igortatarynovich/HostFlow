@@ -583,7 +583,7 @@ export default function MarketingDiagnosticsPage() {
                           </span>
                           {row.mapping_drift ? (
                             <span
-                              className="inline-flex rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-800"
+                              className="inline-flex rounded bg-rose-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-rose-800"
                               data-testid="marketing-diagnostics-drift-badge"
                             >
                               drift
