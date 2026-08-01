@@ -1,6 +1,6 @@
 /**
  * Connect Source — bind Meta Lead Form or HostFlow public анкета to current Flight.
- * Does not create Campaign. PR1: only primary slots (no multi-primary promise).
+ * Meta forms beyond the first attach as secondary. Prefer Connect Meta Advertising on campaign card.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -32,6 +32,7 @@ import {
 import { launchSearchIntakeFields } from '../../utils/launchSearchIntakeFields'
 import {
   canConnectSourceKind,
+  nextMetaIntakeRole,
   type MarketingSourceKind,
 } from './marketingPresentation'
 import { MarketingOptionCard } from './MarketingOptionCard'
@@ -178,15 +179,16 @@ export default function MarketingConnectSourcePage() {
       if (sourceKind === 'public_form') {
         await attachCampaignForm(campaign.id, formId, 'primary')
       } else {
+        const metaRole = nextMetaIntakeRole(flight)
         const selected = metaSources.find((s) => s.id === metaSourceId)
         if (selected?.needs_create && selected.meta_form_id) {
           await attachCampaignIntakeSource(campaign.id, {
             meta_form_id: selected.meta_form_id,
             page_id: selected.page_id,
-            role: 'primary',
+            role: metaRole,
           })
         } else {
-          await attachCampaignIntakeSource(campaign.id, metaSourceId, 'primary')
+          await attachCampaignIntakeSource(campaign.id, metaSourceId, metaRole)
         }
       }
       navigate(marketingCampaignPath(campaign.id))
@@ -236,11 +238,11 @@ export default function MarketingConnectSourcePage() {
             data-testid="marketing-connect-limit"
             role="status"
           >
-            <p className="font-medium">Лимит primary-источников для этого Flight</p>
+            <p className="font-medium">Лимит primary-анкеты HostFlow</p>
             <p className="mt-1">
-              Сейчас можно иметь не больше одной активной primary анкеты HostFlow и одного primary
-              Meta-источника. Несколько равноправных источников одного типа появятся позже — UI не
-              предлагает заведомо недоступное подключение.
+              Primary-слот публичной анкеты HostFlow занят. Дополнительные Meta Lead Forms можно
+              подключать как secondary (роль secondary) — с карточки кампании через «Подключить
+              Meta-рекламу» или здесь, выбрав Meta.
             </p>
             <Link
               to={marketingCampaignPath(campaignId)}

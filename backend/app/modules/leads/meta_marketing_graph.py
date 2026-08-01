@@ -127,7 +127,10 @@ async def fetch_campaign_lead_ads(campaign_id: str, access_token: str, *, limit:
         f"{campaign_id}/ads",
         access_token=access_token,
         params={
-            "fields": "id,name,status,effective_status,creative{lead_gen_form_id,name,object_story_spec}",
+            "fields": (
+                "id,name,status,effective_status,adset_id,"
+                "creative{lead_gen_form_id,name,object_story_spec}"
+            ),
         },
         limit=limit,
     )
@@ -141,6 +144,7 @@ async def fetch_campaign_lead_ads(campaign_id: str, access_token: str, *, limit:
             {
                 "ad_id": str(row.get("id") or "").strip(),
                 "ad_name": str(row.get("name") or "").strip(),
+                "adset_id": str(row.get("adset_id") or "").strip() or None,
                 "lead_gen_form_id": str(form_id).strip(),
                 "form_name": str(creative.get("name") or "").strip() or None,
             }

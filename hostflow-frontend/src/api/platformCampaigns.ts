@@ -560,3 +560,97 @@ export function currentFlight(campaign: Campaign | null | undefined): CampaignFl
   }
   return campaign.flights[0] ?? null
 }
+
+export type MetaAdvertisingFormPreview = {
+  form_id: string
+  form_name?: string | null
+  ad_ids: string[]
+}
+
+export type MetaAdvertisingAdPreview = {
+  ad_id: string
+  ad_name?: string | null
+  form_id?: string | null
+  adset_id?: string | null
+}
+
+export type MetaAdvertisingPreview = {
+  meta_campaign_id: string
+  meta_campaign_name?: string | null
+  meta_adset_id?: string | null
+  forms: MetaAdvertisingFormPreview[]
+  ads: MetaAdvertisingAdPreview[]
+  source: string
+  warning?: string | null
+}
+
+export type MetaAdvertisingConnectResult = {
+  campaign: Campaign
+  forms_attached: string[]
+  forms_skipped: string[]
+  ads_attached: string[]
+  ads_skipped: string[]
+  reprocess?: {
+    matched?: number
+    processed?: number
+    skipped?: number
+    batches?: number
+    errors?: Array<{ lead_id?: string; error?: string }>
+    ads?: Array<Record<string, unknown>>
+  } | null
+}
+
+/** Extract Meta Campaign / Ad Set IDs from Ads Manager URL or raw digits. */
+export function parseMetaAdvertisingIds(input: string): {
+  meta_campaign_id?: string
+  meta_adset_id?: string
+} {
+  const text = String(input || '').trim()
+  if (!text) return {}
+  const campaignFromUrl =
+    text.match(/[?&]campaign_id=(\d+)/i)?.[1] ||
+    text.match(/\/campaigns\/(\d+)/i)?.[1] ||
+    undefined
+  const adsetFromUrl =
+    text.match(/[?&]adset_id=(\d+)/i)?.[1] ||
+    text.match(/\/adsets\/(\d+)/i)?.[1] ||
+    undefined
+  if (campaignFromUrl || adsetFromUrl) {
+    return { meta_campaign_id: campaignFromUrl, meta_adset_id: adsetFromUrl }
+  }
+  const digits = text.match(/^\d{5,}$/)
+  if (digits) return { meta_campaign_id: digits[0] }
+  return {}
+}
+
+export async function previewMetaAdvertising(
+  campaignId: string,
+  params: { meta_campaign_id: string; meta_adset_id?: string },
+): Promise<MetaAdvertisingPreview> {
+  const { data } = await api.get<MetaAdvertisingPreview>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/meta-advertising/preview`,
+    {
+      params: {
+        meta_campaign_id: params.meta_campaign_id,
+        meta_adset_id: params.meta_adset_id || undefined,
+      },
+    },
+  )
+  return data
+}
+
+export async function connectMetaAdvertising(
+  campaignId: string,
+  payload: {
+    meta_campaign_id: string
+    meta_adset_id?: string
+    form_ids: string[]
+    ad_ids: string[]
+  },
+): Promise<MetaAdvertisingConnectResult> {
+  const { data } = await api.post<MetaAdvertisingConnectResult>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/meta-advertising/connect`,
+    payload,
+  )
+  return data
+}

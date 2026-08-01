@@ -199,6 +199,61 @@ class AdBindingOut(BaseModel):
     reprocess: Optional[dict] = None
 
 
+class MetaAdvertisingFormPreviewOut(BaseModel):
+    form_id: str
+    form_name: Optional[str] = None
+    ad_ids: List[str] = Field(default_factory=list)
+
+
+class MetaAdvertisingAdPreviewOut(BaseModel):
+    ad_id: str
+    ad_name: Optional[str] = None
+    form_id: Optional[str] = None
+    adset_id: Optional[str] = None
+
+
+class MetaAdvertisingPreviewOut(BaseModel):
+    meta_campaign_id: str
+    meta_campaign_name: Optional[str] = None
+    meta_adset_id: Optional[str] = None
+    forms: List[MetaAdvertisingFormPreviewOut] = Field(default_factory=list)
+    ads: List[MetaAdvertisingAdPreviewOut] = Field(default_factory=list)
+    source: str
+    warning: Optional[str] = None
+
+
+class MetaAdvertisingConnectIn(BaseModel):
+    meta_campaign_id: str = Field(..., min_length=1, max_length=64)
+    meta_adset_id: Optional[str] = Field(default=None, max_length=64)
+    form_ids: List[str] = Field(default_factory=list)
+    ad_ids: List[str] = Field(default_factory=list)
+
+    @field_validator("meta_campaign_id", "meta_adset_id", mode="before")
+    @classmethod
+    def _strip_optional_ids(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    @field_validator("form_ids", "ad_ids", mode="before")
+    @classmethod
+    def _clean_id_lists(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise ValueError("must be a list")
+        out: list[str] = []
+        seen: set[str] = set()
+        for item in value:
+            text = str(item or "").strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            out.append(text)
+        return out
+
+
 class LinkPatchIn(BaseModel):
     """Update association flags only — does not mutate Form / Intake Source SoT."""
 
@@ -315,6 +370,15 @@ class CampaignOut(BaseModel):
     updated_at: Optional[datetime] = None
     targets: List[CampaignTargetOut] = Field(default_factory=list)
     flights: List[CampaignFlightOut] = Field(default_factory=list)
+
+
+class MetaAdvertisingConnectOut(BaseModel):
+    campaign: CampaignOut
+    forms_attached: List[str] = Field(default_factory=list)
+    forms_skipped: List[str] = Field(default_factory=list)
+    ads_attached: List[str] = Field(default_factory=list)
+    ads_skipped: List[str] = Field(default_factory=list)
+    reprocess: Optional[dict] = None
 
 
 class FlightCommandOut(BaseModel):
@@ -2135,6 +2199,108 @@ async def post_flight_optimization_operator_action(
         window_hours=window_hours,
     )
     return FlightOptimizationOut.model_validate(refreshed.to_dict())
+
+
+# --- Meta Advertising (Campaign → forms + ads connect-all) ---
+
+
+@router.get(
+    "/{campaign_id}/meta-advertising/preview",
+    response_model=MetaAdvertisingPreviewOut,
+    dependencies=_READ,
+)
+async def preview_meta_advertising_for_campaign(
+    campaign_id: str,
+    meta_campaign_id: str = Query(..., min_length=1, max_length=64),
+    meta_adset_id: Optional[str] = Query(None, max_length=64),
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    from backend.app.acquisition.meta_advertising import preview_meta_advertising
+
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        preview = await preview_meta_advertising(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            meta_campaign_id=meta_campaign_id,
+            meta_adset_id=meta_adset_id,
+            own_company_id=own_company_id,
+        )
+    except CampaignServiceError as exc:
+        _raise_service(exc)
+    return MetaAdvertisingPreviewOut(**preview.to_dict())
+
+
+@router.post(
+    "/{campaign_id}/meta-advertising/connect",
+    response_model=MetaAdvertisingConnectOut,
+    dependencies=_WRITE,
+)
+async def connect_meta_advertising_for_campaign(
+    campaign_id: str,
+    payload: MetaAdvertisingConnectIn,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    from backend.app.acquisition.meta_advertising import connect_meta_advertising
+
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    actor_type, actor_id = _activity_actor(ctx)
+    try:
+        result = await connect_meta_advertising(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            meta_campaign_id=payload.meta_campaign_id,
+            meta_adset_id=payload.meta_adset_id,
+            form_ids=payload.form_ids,
+            ad_ids=payload.ad_ids,
+            own_company_id=own_company_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
+        await db.commit()
+    except CampaignServiceError as exc:
+        await db.rollback()
+        _raise_service(exc)
+
+    reprocess_summary: dict[str, Any] = {
+        "matched": 0,
+        "processed": 0,
+        "skipped": 0,
+        "batches": 0,
+        "errors": [],
+        "ads": [],
+    }
+    for aid in result.ads_attached:
+        one = await _reprocess_after_ad_binding_commit(
+            tenant_id=str(tenant_uuid),
+            provider="meta",
+            provider_ad_id=aid,
+        )
+        reprocess_summary["matched"] += int(one.get("matched") or 0)
+        reprocess_summary["processed"] += int(one.get("processed") or 0)
+        reprocess_summary["skipped"] += int(one.get("skipped") or 0)
+        reprocess_summary["batches"] += int(one.get("batches") or 0)
+        errs = one.get("errors") or []
+        if isinstance(errs, list):
+            reprocess_summary["errors"].extend(errs)
+        reprocess_summary["ads"].append({"provider_ad_id": aid, **one})
+
+    return MetaAdvertisingConnectOut(
+        campaign=await _campaign_out(db, result.campaign),
+        forms_attached=result.forms_attached,
+        forms_skipped=result.forms_skipped,
+        ads_attached=result.ads_attached,
+        ads_skipped=result.ads_skipped,
+        reprocess=reprocess_summary,
+    )
 
 
 # --- FlightAdBinding (Ad ID → Flight) ---

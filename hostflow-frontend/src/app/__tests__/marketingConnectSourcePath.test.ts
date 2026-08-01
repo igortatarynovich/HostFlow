@@ -1,9 +1,11 @@
 /** @vitest-environment node */
 import { describe, expect, it } from 'vitest'
 import { marketingCampaignPath, marketingConnectSourcePath } from '../crmAppPaths'
+import { parseMetaAdvertisingIds } from '../../api/platformCampaigns'
 import {
   canConnectAnySource,
   canConnectSourceKind,
+  nextMetaIntakeRole,
   type CampaignFlight,
 } from '../../pages/marketing/marketingPresentation'
 
@@ -27,7 +29,7 @@ describe('marketingConnectSourcePath', () => {
   })
 })
 
-describe('canConnectSourceKind (PR1 primary-slot gate)', () => {
+describe('canConnectSourceKind (public primary gate; Meta multi-form)', () => {
   it('allows Meta and public form when empty', () => {
     const f = flight({})
     expect(canConnectSourceKind(f, 'meta')).toBe(true)
@@ -35,7 +37,7 @@ describe('canConnectSourceKind (PR1 primary-slot gate)', () => {
     expect(canConnectAnySource(f)).toBe(true)
   })
 
-  it('blocks only the occupied primary endpoint type', () => {
+  it('blocks only HostFlow public primary; Meta stays open as secondary', () => {
     const withForm = flight({
       forms: [{ id: 'l1', form_id: 'form-1', role: 'primary', is_active: true, title: 'drivers' }],
     })
@@ -53,17 +55,38 @@ describe('canConnectSourceKind (PR1 primary-slot gate)', () => {
         },
       ],
     })
-    expect(canConnectSourceKind(withMeta, 'meta')).toBe(false)
+    expect(canConnectSourceKind(withMeta, 'meta')).toBe(true)
     expect(canConnectSourceKind(withMeta, 'public_form')).toBe(true)
+    expect(canConnectAnySource(withMeta)).toBe(true)
+    expect(nextMetaIntakeRole(withMeta)).toBe('secondary')
   })
 
-  it('reports no connect when both primary slots filled', () => {
+  it('still allows Meta when both primary slots filled', () => {
     const full = flight({
       forms: [{ id: 'l1', form_id: 'form-1', role: 'primary', is_active: true }],
       intake_sources: [
         { id: 'l2', intake_source_profile_id: 'p1', role: 'primary', is_active: true },
       ],
     })
-    expect(canConnectAnySource(full)).toBe(false)
+    expect(canConnectSourceKind(full, 'public_form')).toBe(false)
+    expect(canConnectSourceKind(full, 'meta')).toBe(true)
+    expect(canConnectAnySource(full)).toBe(true)
+    expect(nextMetaIntakeRole(full)).toBe('secondary')
+  })
+})
+
+describe('parseMetaAdvertisingIds', () => {
+  it('parses raw campaign id and Ads Manager URL', () => {
+    expect(parseMetaAdvertisingIds('120253341522370547')).toEqual({
+      meta_campaign_id: '120253341522370547',
+    })
+    expect(
+      parseMetaAdvertisingIds(
+        'https://adsmanager.facebook.com/adsmanager/manage/campaigns?campaign_id=120253341522370547&adset_id=120253342594270547',
+      ),
+    ).toEqual({
+      meta_campaign_id: '120253341522370547',
+      meta_adset_id: '120253342594270547',
+    })
   })
 })
