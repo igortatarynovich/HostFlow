@@ -233,11 +233,11 @@ async def create_binding(
         is_active=bool(is_active),
         priority=int(priority or 0),
     )
-    db.add(entry)
     try:
-        await db.flush()
+        async with db.begin_nested():
+            db.add(entry)
+            await db.flush()
     except IntegrityError as exc:
-        await db.rollback()
         raise IntakeRoutingValidationError(
             "binding must be unique per tenant, provider, and external_key"
         ) from exc

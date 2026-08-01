@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +24,14 @@ async def intake_profile_for_lead_form(
     tenant_id: str,
     lead_form: TenantLeadForm,
 ) -> IntakeSourceProfile | None:
-    form_id = str(lead_form.id)
+    # lead_form may be expired after a concurrent IntegrityError rollback / flush.
+    state = sa_inspect(lead_form)
+    if state.expired or not state.identity:
+        await db.refresh(lead_form)
+        state = sa_inspect(lead_form)
+    form_id = str(state.identity[0]) if state.identity else str(lead_form.id)
+    public_slug = str(lead_form.public_slug or "").strip()
+
     bindings = (
         await db.execute(
             select(IntakeSourceBinding).where(
@@ -42,7 +50,6 @@ async def intake_profile_for_lead_form(
         ):
             return profile
 
-    public_slug = str(lead_form.public_slug or "").strip()
     if not public_slug:
         return None
     return await db.scalar(

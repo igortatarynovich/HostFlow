@@ -289,6 +289,13 @@ async def maybe_send_lead_communication(
     if ev not in _COMMUNICATION_EVENTS:
         return False
 
+    # ``application_received`` is recruitment application ack — not for B2B client inquiries.
+    if ev == EVENT_APPLICATION_RECEIVED:
+        from backend.app.modules.leads.service.intake_decision import is_client_lead
+
+        if is_client_lead(lead):
+            return False
+
     from backend.app.services.lead_lifecycle_email_policy import (
         OPS_EVENT_TO_PURPOSE,
         resolve_lifecycle_email_policy_for_lead,
@@ -921,6 +928,11 @@ async def maybe_send_application_received_on_ingest(
     pipeline_normalized: Optional[Dict[str, Any]] = None,
 ) -> None:
     if getattr(lead, "candidate_id", None):
+        return
+    # Recruitment-only: never send "application received" to B2B / client inquiries.
+    from backend.app.modules.leads.service.intake_decision import is_client_lead
+
+    if is_client_lead(lead):
         return
     # Compatibility guard: in some replay/import paths a lead may already exist
     # but still miss the initial communication stamp. We allow one backfill run

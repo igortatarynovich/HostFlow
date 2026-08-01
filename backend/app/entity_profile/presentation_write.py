@@ -209,11 +209,11 @@ async def upsert_tenant_intake_presentation(
         presentation_overrides=dict(presentation_overrides),
         is_active=True,
     )
-    db.add(row)
     try:
-        await db.flush()
+        async with db.begin_nested():
+            db.add(row)
+            await db.flush()
     except IntegrityError as exc:
-        await db.rollback()
         raise PresentationWriteError(
             code="presentation_code_taken",
             message=f"Presentation code already exists: {code}",
@@ -255,11 +255,13 @@ async def create_tenant_intake_presentation_if_absent(
         presentation_overrides=dict(presentation_overrides),
         is_active=True,
     )
-    db.add(row)
     try:
-        await db.flush()
+        # Nested savepoint: concurrent create must not roll back the whole request
+        # transaction (avoids expired ORM / MissingGreenlet on callers).
+        async with db.begin_nested():
+            db.add(row)
+            await db.flush()
     except IntegrityError:
-        await db.rollback()
         existing = await db.scalar(
             select(EpIntakePresentation).where(
                 EpIntakePresentation.tenant_id == tenant_scope,

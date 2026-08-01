@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { createLeadQuestionnaireInvite, getLead, type LeadQuestionnaireInviteResult } from '../../api/client'
+import { getLead, getLeadQuestionnaireInvite, type LeadQuestionnaireInviteResult } from '../../api/client'
 import type { Lead } from '../../api/types'
 import { useI18n } from '../../i18n'
 import SalesQuestionnairePanel from '../leads/SalesQuestionnairePanel'
@@ -11,7 +11,7 @@ import {
 } from '../../utils/salesQuestionnaire'
 import { submissionHasDisplayableAnswers } from '../../utils/salesQuestionnaireSubmission'
 
-/** POST hydrate is allowed only for in-flight invites; never on page load for not_sent/submitted. */
+/** GET hydrate only for in-flight invites; never mint on page load for not_sent/submitted. */
 const HYDRATE_INVITE_STATUSES: ReadonlySet<SalesQuestionnaireStatus> = new Set([
   'sent',
   'opened',
@@ -61,14 +61,10 @@ export default function SalesInquiryQuestionnaireSection({ leadId, onUpdated }: 
     }
     setInviteLoading(true)
     try {
-      const result = await createLeadQuestionnaireInvite(row.id, { mark_sent: false })
+      // Read-only hydrate — never POST/mint here (avoids repair races after successful email send).
+      const result = await getLeadQuestionnaireInvite(row.id)
       setInvite(result)
     } catch (err: unknown) {
-      const httpStatus = (err as { response?: { status?: number } })?.response?.status
-      if (httpStatus === 404) {
-        setInvite(null)
-        return
-      }
       const detail =
         (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
         (err as Error)?.message ??

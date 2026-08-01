@@ -25,7 +25,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
 
-from backend.app.db.session import AsyncSessionLocal
+from backend.app.db.session import async_session_maker as AsyncSessionLocal
 from backend.app.models.company import Company
 from backend.app.models.company_module_settings import CompanyModuleSettings
 from backend.app.models.own_company import OwnCompany

@@ -84,6 +84,33 @@ describe('SalesInquiryQuestionnaireSection', () => {
     renderSection()
     await screen.findByTestId('sales-inquiry-questionnaire')
 
+    // Section must not mint; panel may GET invite (returns null for not_sent).
+    expect(createLeadQuestionnaireInvite).not.toHaveBeenCalled()
+  })
+
+  it('hydrates invite via GET when status is already sent', async () => {
+    getLead.mockResolvedValue({
+      ...clientLead,
+      normalized: {
+        ...clientLead.normalized,
+        sales_questionnaire_status: 'sent',
+      },
+    })
+    getLeadQuestionnaireInvite.mockResolvedValue({
+      id: 'invite-1',
+      lead_id: clientLead.id,
+      token: 'abc',
+      apply_url: '/public/apply/abc',
+      status: 'sent',
+      sent_at: '2026-07-14T12:00:00.000Z',
+    })
+
+    renderSection()
+    await screen.findByTestId('sales-inquiry-questionnaire')
+
+    await waitFor(() => {
+      expect(getLeadQuestionnaireInvite).toHaveBeenCalledWith(clientLead.id)
+    })
     expect(createLeadQuestionnaireInvite).not.toHaveBeenCalled()
   })
 

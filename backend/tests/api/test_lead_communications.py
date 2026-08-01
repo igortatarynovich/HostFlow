@@ -136,6 +136,75 @@ async def test_application_received_skipped_without_destination_pipeline(
 
 
 @pytest.mark.anyio
+async def test_application_received_not_sent_for_b2b_client_lead(tenant_id, monkeypatch):
+    """B2B client inquiries must never get recruitment application_received mail."""
+    sent: List[dict[str, Any]] = []
+
+    async def _fake_send(*_args, **kwargs):
+        sent.append(kwargs)
+
+    monkeypatch.setattr(
+        "backend.app.communications.prepare_send.prepare_and_send_communication",
+        _fake_send,
+    )
+    resolve_policy = AsyncMock(
+        return_value=type(
+            "Dec",
+            (),
+            {
+                "block_code": None,
+                "enabled": True,
+                "send": True,
+                "template_ref": "tpl-app-received",
+                "reason": None,
+                "to_dict": lambda self: {},
+            },
+        )()
+    )
+    monkeypatch.setattr(
+        "backend.app.services.lead_lifecycle_email_policy.resolve_lifecycle_email_policy_for_lead",
+        resolve_policy,
+    )
+
+    from types import SimpleNamespace
+
+    from backend.app.services.lead_communications import (
+        maybe_send_application_received_on_ingest,
+        maybe_send_lead_communication,
+    )
+
+    lead = SimpleNamespace(
+        id=str(uuid.uuid4()),
+        tenant_id=str(tenant_id),
+        candidate_id=None,
+        lead_type="client",
+        lead_target_type="client_lead",
+        normalized={"email": "b2b@example.com", "first_name": "Marcin"},
+    )
+    db = AsyncMock()
+    db.flush = AsyncMock()
+
+    await maybe_send_application_received_on_ingest(
+        db,
+        tenant_id=str(tenant_id),
+        lead=lead,
+        is_new_lead=True,
+        pipeline_normalized=lead.normalized,
+    )
+    ok = await maybe_send_lead_communication(
+        db,
+        tenant_id=str(tenant_id),
+        lead=lead,
+        event_type=EVENT_APPLICATION_RECEIVED,
+    )
+    assert ok is False
+    assert len(sent) == 0
+    assert resolve_policy.await_count == 0
+    block = (lead.normalized or {}).get(COMMUNICATION_NORMALIZED_KEY) or {}
+    assert EVENT_APPLICATION_RECEIVED not in block
+
+
+@pytest.mark.anyio
 async def test_replay_does_not_reach_transport_without_pipeline(
     client, manager_headers, tenant_id, monkeypatch
 ):

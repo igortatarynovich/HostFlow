@@ -169,6 +169,8 @@ async def repair_targeted_advertising_form(
 ) -> dict[str, Any]:
     """Repair one sales questionnaire form; idempotent and non-destructive."""
     repaired: dict[str, bool] = {}
+    # Capture scalars before awaits — concurrent repair may expire the ORM instance.
+    form_id = str(lead_form.id)
     public_slug = str(getattr(lead_form, "public_slug", None) or "").strip()
     if not public_slug:
         return {"repaired": repaired, "error": "missing_public_slug"}
@@ -200,6 +202,9 @@ async def repair_targeted_advertising_form(
     if presentation_created:
         repaired["tenant_presentation"] = True
 
+    # Re-bind after presentation create (may have used a savepoint / concurrent flush).
+    lead_form = await db.get(TenantLeadForm, form_id) or lead_form
+
     intake_profile = await intake_profile_for_lead_form(
         db,
         tenant_id=str(tenant_id),
@@ -221,7 +226,7 @@ async def repair_targeted_advertising_form(
         intake_profile.supported_languages = "pl,en,ru"
         repaired["intake_supported_languages"] = True
 
-    form_binding_key = f"lead_form_id:{lead_form.id}"
+    form_binding_key = f"lead_form_id:{form_id}"
     binding = await db.scalar(
         select(IntakeSourceBinding).where(
             IntakeSourceBinding.tenant_id == str(tenant_id),
