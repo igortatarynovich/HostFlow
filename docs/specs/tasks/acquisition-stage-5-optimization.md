@@ -7,7 +7,7 @@
 **PR-1 merge:** [#153](https://github.com/igortatarynovich/HostFlow/pull/153) → `1bf3e7f4` on `integration/release-product-a-b` (2026-07-23)  
 **PR-2 merge:** [#203](https://github.com/igortatarynovich/HostFlow/pull/203)  
 **Deferred (not Stage 5):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md) (D1–D5 remain Instrumentation)  
-**Product Track now:** [Source Diagnostics PR7](acquisition-source-diagnostics.md) (Stage 5 closed)  
+**Product Track now:** [Source Diagnostics PR8](acquisition-source-diagnostics.md) (Stage 5 closed)  
 **Next horizon:** Stage 6 Analytics (after Diagnostics PR7 / queue lock)
 
 > **Improve** rung of the maturity ladder — assisted / automatic optimization **on top of** Stage 4 controls + 3E Timeline.  

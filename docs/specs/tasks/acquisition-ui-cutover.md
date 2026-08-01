@@ -1,6 +1,6 @@
 # Acquisition UI Cutover
 
-**Status:** **PASS** — Stage 4 product/UI cutover closed (2026-07-27); **Ad-ID bind UI DONE** (#187); Diagnostics PR1–PR6 ✅ (#196–#205); **Product Track → Source Diagnostics PR7**  
+**Status:** **PASS** — Stage 4 product/UI cutover closed (2026-07-27); **Ad-ID bind UI DONE** (#187); Diagnostics PR1–PR7 ✅ (#196–#206); **Product Track → Source Diagnostics PR8**  
 **Canon:** [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [acquisition/module-scope.md](../../acquisition/module-scope.md)  
 **Depends on:** Stage **4 runtime** DONE (#136 / #148–#151) · C-3 Sources ✅ #160 · C-3.1 ✅ · C-4 ✅ · C-5 ✅ · C-6 ✅ · **C-7 PASS** · **Ad-ID bind UI ✅ #187**  
 **C-7 brief:** [acquisition-ui-cutover-c7-searches-decommission.md](acquisition-ui-cutover-c7-searches-decommission.md) · **PASS** (#184 · #185 · inventory)  
@@ -10,7 +10,7 @@
 **Source Diagnostics:** [acquisition-source-diagnostics.md](acquisition-source-diagnostics.md)  
 **Parents:** [Stage 4 — Flight Runtime](acquisition-stage-4-flight-runtime.md) · [Stage 5 — Optimization](acquisition-stage-5-optimization.md) (PR-2 ✅ #203)  
 **Shipped tip:** `integration/release-product-a-b` @ Diagnostics #205 + C-7  
-**Active slice:** [Source Diagnostics PR7](acquisition-source-diagnostics.md) Mapping Health drift alerts — `/app/marketing/diagnostics`
+**Active slice:** [Source Diagnostics PR8](acquisition-source-diagnostics.md) replay submission — `/app/marketing/diagnostics`
 
 > Stage 4 **runtime** is DONE. Stage 4 **product/UI cutover** is **PASS** (C-7).  
 > Operator launch path is Marketing-only: Connect → Source → Test Lead → Mapping → Form → Campaign → Flight → Lead.  
@@ -453,11 +453,12 @@ After that, work is **product evolution**, not migration onto the Campaign/Fligh
 | After C-7 | Nature |
 |-----------|--------|
 | **FlightAdBinding Ad-ID bind UI** | **DONE** #187 — Campaign Detail panel; Campaign GET `ad_bindings`; attach/toggle/detach |
-| **Source Diagnostics** | **ACTIVE** — [brief](acquisition-source-diagnostics.md); PR1–PR6 ✅ · **PR7 drift alerts** |
+| **Source Diagnostics** | **ACTIVE** — [brief](acquisition-source-diagnostics.md); PR1–PR7 ✅ · **PR8 replay** |
 | Stage 5 Optimization | **DONE** PR-1 #153 · PR-2 #203 |
 | Stage 6 Analytics / automation / AI assistants / campaign recommendations | Exploitation & growth features |
 
-**Queue lock (2026-08-01):** Diagnostics PR6 ✅ #205 → **PR7 Mapping Health drift alerts**.  
+**Queue lock (2026-08-01):** Diagnostics PR7 ✅ #206 → **PR8 replay submission**.  
+**Prior lock (2026-08-01):** Diagnostics PR6 ✅ #205 → PR7 drift alerts.  
 **Prior lock (2026-07-29):** Ad-ID ✅ #187 → Diagnostics PR1–5 → PR6 export.  
 **Prior lock (2026-07-27):** after **C-7 PASS**: Ad-ID → Flight bind UI, then Source Diagnostics.
 
@@ -524,6 +525,7 @@ Minimum epic intent (lock later in its own task doc):
 
 ## History
 
+- 2026-08-01: Diagnostics **PR7 ✅ #206**; Product Track → **PR8 replay submission**.
 - 2026-08-01: Diagnostics **PR6 ✅ #205**; Product Track → **PR7 Mapping Health drift alerts**.
 - 2026-07-29: Diagnostics **PR4 merged** (#201); Product Track → **PR5 ingest mapping stamp + drift**.
 - 2026-07-29: Diagnostics **PR3 merged** (#200); Product Track → **PR4 mapping context / Mapping Health**.

@@ -2,11 +2,13 @@
  * Marketing Source Diagnostics — recent Acquisition submissions + case detail.
  * PR2: list filters (source / flight / failed-only).
  * PR7: mapping drift filter + list badges + alert strip.
+ * PR8: Replay CTA → existing Leads process façade (not a Diagnostics writer).
  * SoT: Lead + Acquisition Activity. Sibling of Sources, not a tab.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { processLead } from '../../api/client'
 import {
   exportDiagnosticsCase,
   getDiagnosticsCase,
@@ -45,6 +47,8 @@ function CaseDetail({
   const [row, setRow] = useState<DiagnosticsCase | null>(null)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [exportError, setExportError] = useState<FriendlyErrorInfo | null>(null)
+  const [replayError, setReplayError] = useState<FriendlyErrorInfo | null>(null)
+  const [replaying, setReplaying] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -103,6 +107,28 @@ function CaseDetail({
     }
   }
 
+  const onReplay = async () => {
+    setReplayError(null)
+    setReplaying(true)
+    try {
+      // Leads process façade — Diagnostics stays read-compose only (PR8 boundary).
+      await processLead(leadId)
+      await load()
+    } catch (err: unknown) {
+      setReplayError(
+        getFriendlyErrorInfo(
+          err,
+          t('app.marketing.diagnostics.errors.replay', {
+            defaultValue: 'Не удалось выполнить Replay (process lead)',
+          }),
+          t,
+        ),
+      )
+    } finally {
+      setReplaying(false)
+    }
+  }
+
   return (
     <div className="space-y-4" data-testid="marketing-diagnostics-case">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -133,6 +159,20 @@ function CaseDetail({
           >
             Export JSON
           </button>
+          <button
+            type="button"
+            className="btn-primary btn-sm"
+            disabled={replaying}
+            onClick={() => void onReplay()}
+            data-testid="marketing-diagnostics-replay"
+            title={t('app.marketing.diagnostics.replay_hint', {
+              defaultValue: 'Повторно прогнать lead через process pipeline (POST /leads/{id}/process)',
+            })}
+          >
+            {replaying
+              ? t('app.marketing.diagnostics.replaying', { defaultValue: 'Replay…' })
+              : t('app.marketing.diagnostics.replay', { defaultValue: 'Replay' })}
+          </button>
           <Link
             className="btn-secondary btn-sm"
             to={`${CRM_APP_PATHS.leads}/${encodeURIComponent(row.lead_id)}`}
@@ -145,6 +185,9 @@ function CaseDetail({
 
       {exportError ? (
         <ErrorRecoveryBanner error={exportError} onRetry={() => void onExport()} />
+      ) : null}
+      {replayError ? (
+        <ErrorRecoveryBanner error={replayError} onRetry={() => void onReplay()} />
       ) : null}
 
       {row.lead_error ? (
