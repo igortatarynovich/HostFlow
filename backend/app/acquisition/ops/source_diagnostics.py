@@ -7,13 +7,14 @@ PR4: mapping context — Mapping Health for linked IntakeSourceProfile.
 PR5: mapping_applied_v1 stamp + drift vs current rules fingerprint.
 PR6: read-only export bundle (same compose; no parallel SoT).
 PR7: drift_only list filter + per-row mapping_drift (detection / alerts Wave-1).
+PR9: windowed drift summary count for in-app notification (no email/webhook).
 No parallel submissions store.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Optional
 
 from fastapi import HTTPException
@@ -45,6 +46,8 @@ _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
 # Max Acquisition leads scanned when filtering drift_only (fingerprint compare).
 _DRIFT_SCAN_CAP = 500
+_DEFAULT_DRIFT_WINDOW_HOURS = 168  # 7 days
+_MAX_DRIFT_WINDOW_HOURS = 24 * 30
 
 
 @dataclass(frozen=True)
@@ -98,6 +101,16 @@ class DiagnosticsListItem:
 
     applicant: LiveIntakeApplicantRow
     mapping_drift: Optional[bool] = None
+
+
+@dataclass(frozen=True)
+class DiagnosticsDriftSummary:
+    """Tenant-scoped windowed count of mapping-drift leads (PR9 in-app alert)."""
+
+    drift_count: int
+    window_hours: int
+    scanned: int
+    scan_capped: bool
 
 
 @dataclass(frozen=True)
@@ -690,9 +703,51 @@ def build_diagnostic_export_bundle(detail: DiagnosticsCaseDetail) -> dict[str, A
     }
 
 
+async def summarize_mapping_drift_alerts(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    window_hours: int = _DEFAULT_DRIFT_WINDOW_HOURS,
+    scan_cap: int = _DRIFT_SCAN_CAP,
+) -> DiagnosticsDriftSummary:
+    """Count recent Acquisition leads whose ingest mapping stamp drifted.
+
+    Read-only fingerprint compare (same as PR7). Scans at most ``scan_cap``
+    stamped leads created within ``window_hours``.
+    """
+    hours = max(1, min(int(window_hours or _DEFAULT_DRIFT_WINDOW_HOURS), _MAX_DRIFT_WINDOW_HOURS))
+    cap = max(1, min(int(scan_cap or _DRIFT_SCAN_CAP), _DRIFT_SCAN_CAP))
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    stamp = Lead.normalized[MAPPING_APPLIED_V1_KEY]
+    stmt = (
+        select(Lead)
+        .where(_acquisition_stamped_filter(tenant_id=tenant_id))
+        .where(stamp.isnot(None))
+        .where(Lead.created_at >= cutoff)
+        .order_by(Lead.created_at.desc(), Lead.id.desc())
+        .limit(cap)
+    )
+    leads = list((await db.execute(stmt)).scalars().all())
+    fp_cache: dict[str, str | None] = {}
+    drift_count = 0
+    for lead in leads:
+        drifted = await compute_lead_mapping_drift(
+            db, tenant_id=tenant_id, lead=lead, fingerprint_cache=fp_cache
+        )
+        if drifted is True:
+            drift_count += 1
+    return DiagnosticsDriftSummary(
+        drift_count=drift_count,
+        window_hours=hours,
+        scanned=len(leads),
+        scan_capped=len(leads) >= cap,
+    )
+
+
 __all__ = [
     "DiagnosticsCaseDetail",
     "DiagnosticsDuplicateDecision",
+    "DiagnosticsDriftSummary",
     "DiagnosticsListItem",
     "DiagnosticsMappingContext",
     "build_diagnostic_export_bundle",
@@ -701,4 +756,5 @@ __all__ = [
     "compute_lead_mapping_drift",
     "get_diagnostic_case",
     "list_diagnostic_submissions",
+    "summarize_mapping_drift_alerts",
 ]

@@ -2,7 +2,7 @@
 
 **Status:** **PR1–PR8 DONE** · later backlog remains  
 **Date:** 2026-08-02  
-**Product Track (next):** [PR9 drift notification Wave-1](#pr9--drift-notification-wave-1-next)  
+**Product Track (next):** Source Diagnostics epic close-out / later backlog (PR9 ✅)  
 **Parents:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) § After cutover · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)
 
 ---
@@ -61,7 +61,7 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ---
 
-## PR9 — Drift notification Wave-1 (next)
+## PR9 — Drift notification Wave-1 ✅
 
 ### IN
 
@@ -78,9 +78,9 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ### Acceptance (PR9)
 
-- [ ] Authenticated `_READ` summary endpoint or list compose field for drift count in window  
-- [ ] UI shows count + link to filtered Diagnostics list  
-- [ ] No notification channel outside the SPA  
+- [x] Authenticated `_READ` `GET …/diagnostics/drift-summary` (windowed count + scan meta)  
+- [x] UI shows count + link to filtered Diagnostics list (`?drift_only=1`) on Diagnostics + Sources  
+- [x] No notification channel outside the SPA  
 
 ---
 
@@ -94,6 +94,7 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ## History
 
+- 2026-08-02: PR9 drift-summary + in-app banner (this PR); epic Wave-1 notifications closed.  
 - 2026-08-02: PR8 merged (#210); Product Track → **PR9 drift notification Wave-1**.  
 - 2026-08-01: PR7 merged (#206); Product Track → PR8 replay.  
 - 2026-08-01: PR6 closed as ✅ #205; Product Track → PR7.  

@@ -117,3 +117,21 @@ export async function exportDiagnosticsCase(leadId: string): Promise<Blob> {
   )
   return data
 }
+
+export type DiagnosticsDriftSummary = {
+  drift_count: number
+  window_hours: number
+  scanned: number
+  scan_capped: boolean
+  diagnostics_href: string
+}
+
+export async function getDiagnosticsDriftSummary(
+  windowHours?: number,
+): Promise<DiagnosticsDriftSummary> {
+  const { data } = await api.get<DiagnosticsDriftSummary>(
+    '/platform/marketing/diagnostics/drift-summary',
+    { params: windowHours != null ? { window_hours: windowHours } : undefined },
+  )
+  return data
+}

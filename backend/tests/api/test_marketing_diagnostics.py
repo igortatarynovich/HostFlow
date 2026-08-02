@@ -570,6 +570,107 @@ async def test_diagnostics_list_drift_only_filter(
 
 
 @pytest.mark.asyncio
+async def test_diagnostics_drift_summary_window(
+    client: AsyncClient, auth_headers: Dict[str, str]
+):
+    from backend.app.acquisition.mapping_applied_stamp import fingerprint_mapping_rules
+
+    drifted_id = str(uuid4())
+    stable_id = str(uuid4())
+    profile_id = str(uuid4())
+    applied_rules = [{"source": "email", "target": "email"}]
+    current_rules = [
+        {"source": "email", "target": "email"},
+        {"source": "phone", "target": "phone"},
+    ]
+    async with async_session_maker() as db:
+        await _ensure_tenant(db, DEFAULT_TENANT_ID)
+        oc = (
+            await db.execute(
+                select(OwnCompany.id)
+                .where(OwnCompany.tenant_id == DEFAULT_TENANT_ID)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if oc is None:
+            oc = str(uuid4())
+            db.add(OwnCompany(id=oc, tenant_id=DEFAULT_TENANT_ID, name="Diag OC Drift Summary"))
+            await db.flush()
+        db.add(
+            IntakeSourceProfile(
+                id=profile_id,
+                tenant_id=DEFAULT_TENANT_ID,
+                code=f"diag-drift-sum-{uuid4().hex[:8]}",
+                name="Diag Drift Summary Source",
+                provider="meta",
+                channel="paid",
+                own_company_id=str(oc),
+                route_intent="candidate_application",
+                mapping_rules=current_rules,
+                is_active=True,
+            )
+        )
+        stamp_old = {
+            "source_id": profile_id,
+            "rules_source": "profile",
+            "rules_count": 1,
+            "rules_fingerprint": fingerprint_mapping_rules(applied_rules),
+            "stamped_at": datetime.now(timezone.utc).isoformat(),
+        }
+        stamp_match = {
+            "source_id": profile_id,
+            "rules_source": "profile",
+            "rules_count": 2,
+            "rules_fingerprint": fingerprint_mapping_rules(current_rules),
+            "stamped_at": datetime.now(timezone.utc).isoformat(),
+        }
+        for lead_id, stamp in ((drifted_id, stamp_old), (stable_id, stamp_match)):
+            db.add(
+                Lead(
+                    id=lead_id,
+                    tenant_id=DEFAULT_TENANT_ID,
+                    source="meta",
+                    status="processed",
+                    lead_type="candidate",
+                    lead_target_type="candidate",
+                    external_id=f"meta-lead-{uuid4().hex[:10]}",
+                    normalized={
+                        "full_name": f"Person {lead_id[:8]}",
+                        ACQUISITION_ROUTING_V1_KEY: {
+                            "status": "routed",
+                            "campaign_id": str(uuid4()),
+                            "campaign_run_id": str(uuid4()),
+                            "route_intent": "candidate_application",
+                            "intake_source_profile_id": profile_id,
+                        },
+                        "mapping_applied_v1": stamp,
+                        "submissions_v1": [
+                            {
+                                "submission_id": str(uuid4()),
+                                "submitted_at": datetime.now(timezone.utc).isoformat(),
+                            }
+                        ],
+                    },
+                    payload={},
+                )
+            )
+        await db.commit()
+
+    resp = await client.get(
+        "/api/v1/platform/marketing/diagnostics/drift-summary",
+        headers=_headers(auth_headers),
+        params={"window_hours": 168},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["window_hours"] == 168
+    assert body["drift_count"] >= 1
+    assert body["scanned"] >= 1
+    assert "drift_only=1" in body["diagnostics_href"]
+    assert isinstance(body["scan_capped"], bool)
+
+
+@pytest.mark.asyncio
 async def test_diagnostics_case_export_json(client: AsyncClient, auth_headers: Dict[str, str]):
     lead_id = str(uuid4())
     flight_id = str(uuid4())

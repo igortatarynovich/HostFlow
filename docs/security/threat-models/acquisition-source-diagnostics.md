@@ -1,4 +1,4 @@
-# Threat Model — Acquisition Source Diagnostics (PR1–PR8)
+# Threat Model — Acquisition Source Diagnostics (PR1–PR9)
 
 ## Assets
 
@@ -8,11 +8,14 @@
   - `GET /api/v1/platform/marketing/diagnostics/submissions/{lead_id}`  
   - `GET /api/v1/platform/marketing/diagnostics/submissions/{lead_id}/export`  
     (JSON attachment of case compose; audited CLASS3 export)  
+  - `GET /api/v1/platform/marketing/diagnostics/drift-summary`  
+    (windowed in-app Mapping drift count; no email/webhook)  
   (`backend/app/api/v1/platform/marketing_diagnostics.py` ·  
   `backend/app/acquisition/ops/source_diagnostics.py`)
 - Ingest stamp `mapping_applied_v1` on Lead.normalized (Meta/webhook reprocess paths)  
   (`backend/app/acquisition/mapping_applied_stamp.py`)
-- Marketing Diagnostics UI — list / case / filters / duplicate / Mapping Health / drift alerts / Export JSON / Replay CTA
+- Marketing Diagnostics UI — list / case / filters / duplicate / Mapping Health / drift alerts / Export JSON / Replay CTA / drift-summary banner
+- Sources UI health strip — deep-link to Diagnostics `?drift_only=1` when windowed drift > 0
 - Replay CTA invokes existing Leads write: `POST /api/v1/leads/{lead_id}/process`  
   (`backend/app/modules/leads/router.py` · `reprocess_stored_lead_payload`)
 
@@ -24,6 +27,7 @@
 - Mapping stamp is written only on authorized ingest / reprocess paths (not on Diagnostics GET)
 - Case detail and export may expose intake **payload** and **normalized** blocks to authorized operators (ops need)
 - Export emits `export.requested` / `export.generated` / `export.denied` with `contains_class3=true`
+- Drift summary is SPA-only (no email / webhook / push from this surface)
 
 ## Угрозы
 
@@ -41,18 +45,20 @@
 | ASD-10 | Unaudited CLASS3 download | Export without export security events / actor attribution |
 | ASD-11 | Drift filter as write / remap | Treating `drift_only` as authority to mutate mapping_rules |
 | ASD-12 | Replay bypasses Leads RBAC | Fake Diagnostics writer that reprocesses without process roles |
+| ASD-13 | Drift summary as external notify | Using summary endpoint to trigger email/webhook without channel review |
 
-## Митигации (PR1–PR8)
+## Митигации (PR1–PR9)
 
-- List / case / export tenant-scoped; filters AND-narrowing; UUID validation on `flight_id` / `lead_id`
+- List / case / export / drift-summary tenant-scoped; filters AND-narrowing; UUID validation on `flight_id` / `lead_id`
 - Mapping compose uses tenant-scoped Sources façade; missing profile → `profile_missing`
 - `mapping_applied_v1` written only in server ingest/reprocess after validated rules
 - Drift is a read-time comparison of fingerprints — no auto remapping
 - `drift_only` only narrows the read list (scan cap); does not mutate Lead / Source / Flight
+- Drift-summary is windowed + scan-capped read compose; returns count/meta + SPA href only
 - Diagnostics HTTP remains `_READ` only; export is read-only attachment (no remapping)
 - Replay CTA uses existing `POST /leads/{id}/process` (Leads RBAC + `manual_process` audit) — no Diagnostics write route
 - Export path emits `emit_export_security_event_v1` (`contains_class3`, single-lead scope, no bulk)
-- No new public / unauthenticated surfaces
+- No new public / unauthenticated surfaces; no email/webhook/push producers in PR9
 
 ## Тесты
 

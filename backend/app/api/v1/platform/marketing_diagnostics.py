@@ -16,8 +16,10 @@ from backend.app.acquisition.ops.source_diagnostics import (
     build_diagnostic_export_bundle,
     get_diagnostic_case,
     list_diagnostic_submissions,
+    summarize_mapping_drift_alerts,
 )
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.constants.spa_paths import MARKETING_DIAGNOSTICS
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.security.event_taxonomy import (
     EVENT_EXPORT_DENIED,
@@ -51,11 +53,25 @@ _READ = [
 
 _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
+_DEFAULT_DRIFT_WINDOW_HOURS = 168
+_MAX_DRIFT_WINDOW_HOURS = 24 * 30
 
 
 class DiagnosticsCursorOut(BaseModel):
     created_at: datetime
     id: str
+
+
+_DRIFT_ONLY_HREF = f"{MARKETING_DIAGNOSTICS}?drift_only=1"
+
+
+class DiagnosticsDriftSummaryOut(BaseModel):
+    drift_count: int = 0
+    window_hours: int = _DEFAULT_DRIFT_WINDOW_HOURS
+    scanned: int = 0
+    scan_capped: bool = False
+    # Deep-link path for SPA (relative to CRM shell).
+    diagnostics_href: str = _DRIFT_ONLY_HREF
 
 
 class DiagnosticsSubmissionOut(BaseModel):
@@ -160,6 +176,31 @@ def _require_uuid(value: str, *, field: str) -> str:
         return str(UUID(raw))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=f"invalid {field}") from exc
+
+
+@router.get("/drift-summary", response_model=DiagnosticsDriftSummaryOut, dependencies=_READ)
+async def get_drift_summary(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    window_hours: int = Query(
+        default=_DEFAULT_DRIFT_WINDOW_HOURS,
+        ge=1,
+        le=_MAX_DRIFT_WINDOW_HOURS,
+    ),
+) -> DiagnosticsDriftSummaryOut:
+    """In-app Mapping Health drift alert count (PR9) — no email/webhook."""
+    db, tenant_id = db_tenant
+    summary = await summarize_mapping_drift_alerts(
+        db,
+        tenant_id=str(tenant_id),
+        window_hours=int(window_hours),
+    )
+    return DiagnosticsDriftSummaryOut(
+        drift_count=summary.drift_count,
+        window_hours=summary.window_hours,
+        scanned=summary.scanned,
+        scan_capped=summary.scan_capped,
+        diagnostics_href=_DRIFT_ONLY_HREF,
+    )
 
 
 @router.get("/submissions", response_model=DiagnosticsListOut, dependencies=_READ)
