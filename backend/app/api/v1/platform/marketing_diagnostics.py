@@ -19,6 +19,7 @@ from backend.app.acquisition.ops.source_diagnostics import (
     summarize_mapping_drift_alerts,
 )
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.constants.spa_paths import MARKETING_DIAGNOSTICS
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.security.event_taxonomy import (
     EVENT_EXPORT_DENIED,
@@ -61,13 +62,16 @@ class DiagnosticsCursorOut(BaseModel):
     id: str
 
 
+_DRIFT_ONLY_HREF = f"{MARKETING_DIAGNOSTICS}?drift_only=1"
+
+
 class DiagnosticsDriftSummaryOut(BaseModel):
     drift_count: int = 0
     window_hours: int = _DEFAULT_DRIFT_WINDOW_HOURS
     scanned: int = 0
     scan_capped: bool = False
     # Deep-link path for SPA (relative to CRM shell).
-    diagnostics_href: str = "/app/marketing/diagnostics?drift_only=1"
+    diagnostics_href: str = _DRIFT_ONLY_HREF
 
 
 class DiagnosticsSubmissionOut(BaseModel):
@@ -195,7 +199,7 @@ async def get_drift_summary(
         window_hours=summary.window_hours,
         scanned=summary.scanned,
         scan_capped=summary.scan_capped,
-        diagnostics_href="/app/marketing/diagnostics?drift_only=1",
+        diagnostics_href=_DRIFT_ONLY_HREF,
     )
 
 
