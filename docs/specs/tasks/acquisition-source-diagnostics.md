@@ -1,8 +1,8 @@
 # Source Diagnostics — Marketing ops console (Product Epic)
 
-**Status:** **ACTIVE** — PR8 replay submission (PR1–PR7 ✅)  
-**Date:** 2026-08-01  
-**Product Track:** Source Diagnostics PR8 (PR7 drift alerts ✅ #206)  
+**Status:** **PR1–PR8 DONE** · later backlog remains  
+**Date:** 2026-08-02  
+**Product Track (next):** [PR9 drift notification Wave-1](#pr9--drift-notification-wave-1-next)  
 **Parents:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) § After cutover · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)
 
 ---
@@ -30,70 +30,72 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ---
 
-## PR1–PR7 ✅
+## PR1–PR8 ✅
 
-- PR1 #196 list + case · PR2 #199 filters · PR3 #200 duplicate · PR4 #201 Mapping Health · PR5 #202 mapping stamp + drift · PR6 #205 case export · PR7 #206 drift alerts
+| PR | Deliverable | Merge |
+|----|-------------|-------|
+| PR1 | List + case | #196 |
+| PR2 | List filters | #199 |
+| PR3 | Duplicate decision | #200 |
+| PR4 | Mapping Health | #201 |
+| PR5 | Mapping stamp + drift | #202 |
+| PR6 | Case export JSON | #205 |
+| PR7 | Drift list alerts | #206 |
+| PR8 | Replay via Leads process | #210 |
 
 ---
 
-## PR7 — Mapping Health drift alerts ✅ #206
+## PR8 — Replay submission ✅ #210
 
 ### Delivered
 
-1. List query `drift_only=true` — fingerprint compare (scan capped)  
-2. List items `mapping_drift` + page `drift_alert_count`  
-3. Diagnostics UI filter / badge / alert strip  
-
-### Acceptance (PR7)
-
-- [x] `drift_only=true` returns only leads with `mapping_drift=true`  
-- [x] Matching stamp not in drift_only results  
-- [x] FE filter + badge + alert strip  
-
----
-
-## PR8 — Replay submission (this slice)
-
-### IN
-
-1. Case UI **Replay** — calls existing Leads write contract `POST /api/v1/leads/{lead_id}/process` (same pipeline as CRM Process)  
-2. On success, reload Diagnostics case compose (routing / mapping / timeline)  
-3. Surface process errors (422 block codes / missing payload) without inventing a second remapping engine  
-
-### OUT
-
-- New Diagnostics HTTP write / remapping endpoint  
-- New Acquisition Activity event type for replay  
-- Dry-run normalize-only (no Lead mutation)  
-- Bulk replay  
-- Notification channels for drift  
+1. Case UI **Replay** → `POST /api/v1/leads/{lead_id}/process`  
+2. Success reloads Diagnostics case compose  
+3. Errors via recovery banner; no Diagnostics write route  
 
 ### Acceptance (PR8)
 
-- [x] Case view has Replay control (`data-testid="marketing-diagnostics-replay"`)  
-- [x] Replay uses `processLead` → `POST /leads/{id}/process` (not a Diagnostics writer)  
+- [x] `data-testid="marketing-diagnostics-replay"`  
+- [x] Uses `processLead` / Leads process façade  
 - [x] Success refreshes case; failure shows recovery banner  
 
-**Boundary lock:** Diagnostics remains a **read compose** surface. Replay is an ops CTA into the **Leads** process façade (admin/manager/recruiter RBAC on that route).
+---
+
+## PR9 — Drift notification Wave-1 (next)
+
+### IN
+
+1. Tenant-scoped summary: count of recent Acquisition leads with `mapping_drift=true` (reuse PR7 compare; capped window)  
+2. Surface on Diagnostics page header / Sources health strip (in-app only)  
+3. Deep-link to Diagnostics list with `drift_only=1`  
+
+### OUT
+
+- Email / webhook / push providers  
+- Auto remapping  
+- Dry-run normalize preview  
+- New Activity event type  
+
+### Acceptance (PR9)
+
+- [ ] Authenticated `_READ` summary endpoint or list compose field for drift count in window  
+- [ ] UI shows count + link to filtered Diagnostics list  
+- [ ] No notification channel outside the SPA  
 
 ---
 
 ## Later epic backlog
 
-- Mapping Health drift alerts — notification channels (email / in-app beyond list)  
 - Dry-run / remapping preview without entity writes  
 - Dedicated Activity event for operator replay (optional observability)  
+- Email / webhook drift notifications (after Wave-1)  
 
 ---
 
 ## History
 
-- 2026-08-01: PR7 merged (#206); Product Track → **PR8 replay submission** (Leads process façade from case UI).  
-- 2026-08-01: PR6 closed as ✅ #205 (code already merged; docs catch-up); Product Track → PR7.  
-- 2026-07-29: Stage 5 PR-2 merged (#203); Product Track → Source Diagnostics PR6 case export.  
-- 2026-07-29: PR5 merged (#202); Product Track briefly → Stage 5 PR-2 explainability / operator ack-dismiss.  
-- 2026-07-29: PR4 merged (#201); Product Track → PR5 ingest mapping stamp + drift.  
-- 2026-07-29: PR3 merged (#200); Product Track → PR4 mapping context.  
-- 2026-07-29: PR2 merged (#199); Product Track → PR3 duplicate decision surface.  
-- 2026-07-29: PR1 merged (#196); Product Track → PR2 filters.  
-- 2026-07-29: Epic brief opened; Product Track → Source Diagnostics PR1 (Ad-ID bind UI closed #187).
+- 2026-08-02: PR8 merged (#210); Product Track → **PR9 drift notification Wave-1**.  
+- 2026-08-01: PR7 merged (#206); Product Track → PR8 replay.  
+- 2026-08-01: PR6 closed as ✅ #205; Product Track → PR7.  
+- 2026-07-29: Stage 5 PR-2 merged (#203); Product Track → Source Diagnostics PR6.  
+- 2026-07-29: PR5–PR1 merges (#202…#196); epic opened after Ad-ID bind UI #187.
