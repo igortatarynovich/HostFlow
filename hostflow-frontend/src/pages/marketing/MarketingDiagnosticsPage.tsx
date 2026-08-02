@@ -3,6 +3,7 @@
  * PR2: list filters (source / flight / failed-only).
  * PR7: mapping drift filter + list badges + alert strip.
  * PR8: Replay CTA → existing Leads process façade (not a Diagnostics writer).
+ * PR9: windowed drift-summary banner + deep-link to drift_only list.
  * SoT: Lead + Acquisition Activity. Sibling of Sources, not a tab.
  */
 import { useCallback, useEffect, useState } from 'react'
@@ -12,8 +13,10 @@ import { processLead } from '../../api/client'
 import {
   exportDiagnosticsCase,
   getDiagnosticsCase,
+  getDiagnosticsDriftSummary,
   listDiagnosticsSubmissions,
   type DiagnosticsCase,
+  type DiagnosticsDriftSummary,
   type DiagnosticsSubmission,
 } from '../../api/marketingDiagnostics'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
@@ -421,6 +424,7 @@ export default function MarketingDiagnosticsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [items, setItems] = useState<DiagnosticsSubmission[]>([])
   const [driftAlertCount, setDriftAlertCount] = useState(0)
+  const [driftSummary, setDriftSummary] = useState<DiagnosticsDriftSummary | null>(null)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -428,6 +432,15 @@ export default function MarketingDiagnosticsPage() {
   const flightFilter = (searchParams.get('flight_id') || '').trim()
   const failedOnly = searchParams.get('failed_only') === '1'
   const driftOnly = searchParams.get('drift_only') === '1'
+
+  const loadSummary = useCallback(async () => {
+    try {
+      const summary = await getDiagnosticsDriftSummary()
+      setDriftSummary(summary)
+    } catch {
+      setDriftSummary(null)
+    }
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -460,8 +473,11 @@ export default function MarketingDiagnosticsPage() {
   }, [driftOnly, failedOnly, flightFilter, sourceFilter, t])
 
   useEffect(() => {
-    if (!leadId) void load()
-  }, [leadId, load])
+    if (!leadId) {
+      void load()
+      void loadSummary()
+    }
+  }, [leadId, load, loadSummary])
 
   const patchFilters = (patch: {
     source?: string
@@ -502,6 +518,38 @@ export default function MarketingDiagnosticsPage() {
           })}
         />
       </PageShellHeader>
+
+      {!leadId && driftSummary && driftSummary.drift_count > 0 ? (
+        <div
+          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          data-testid="marketing-diagnostics-drift-summary"
+        >
+          <span>
+            {t('app.marketing.diagnostics.drift_summary', {
+              defaultValue:
+                'За {{hours}} ч: {{count}} заявк(и) с Mapping drift (просмотрено {{scanned}}).',
+              hours: driftSummary.window_hours,
+              count: driftSummary.drift_count,
+              scanned: driftSummary.scanned,
+            })}
+            {driftSummary.scan_capped
+              ? t('app.marketing.diagnostics.drift_summary_capped', {
+                  defaultValue: ' Скан ограничен.',
+                })
+              : ''}
+          </span>
+          {!driftOnly ? (
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              data-testid="marketing-diagnostics-drift-summary-link"
+              onClick={() => patchFilters({ drift_only: true })}
+            >
+              {t('app.marketing.diagnostics.show_drift', { defaultValue: 'Показать drift' })}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-4">
         {leadId ? (

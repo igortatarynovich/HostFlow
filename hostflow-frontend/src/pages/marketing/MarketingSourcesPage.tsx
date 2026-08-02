@@ -6,6 +6,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
+  getDiagnosticsDriftSummary,
+  type DiagnosticsDriftSummary,
+} from '../../api/marketingDiagnostics'
+import {
   listMarketingSources,
   type MarketingSourceSummary,
 } from '../../api/marketingSources'
@@ -57,6 +61,7 @@ function healthTone(status: string): string {
 export default function MarketingSourcesPage() {
   const { t, locale } = useI18n()
   const [items, setItems] = useState<MarketingSourceSummary[]>([])
+  const [driftSummary, setDriftSummary] = useState<DiagnosticsDriftSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
 
@@ -82,9 +87,18 @@ export default function MarketingSourcesPage() {
     }
   }, [t])
 
+  const loadDriftSummary = useCallback(async () => {
+    try {
+      setDriftSummary(await getDiagnosticsDriftSummary())
+    } catch {
+      setDriftSummary(null)
+    }
+  }, [])
+
   useEffect(() => {
     void load()
-  }, [load])
+    void loadDriftSummary()
+  }, [load, loadDriftSummary])
 
   return (
     <PageShell data-testid="marketing-sources-page">
@@ -107,6 +121,31 @@ export default function MarketingSourcesPage() {
           }
         />
       </PageShellHeader>
+
+      {driftSummary && driftSummary.drift_count > 0 ? (
+        <div
+          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          data-testid="marketing-sources-drift-summary"
+        >
+          <span>
+            {t('app.marketing.sources.drift_summary', {
+              defaultValue:
+                'Mapping drift: {{count}} заявк(и) за {{hours}} ч. Откройте Diagnostics.',
+              count: driftSummary.drift_count,
+              hours: driftSummary.window_hours,
+            })}
+          </span>
+          <Link
+            to={`${CRM_APP_PATHS.marketingDiagnostics}?drift_only=1`}
+            className="btn-secondary btn-sm"
+            data-testid="marketing-sources-drift-summary-link"
+          >
+            {t('app.marketing.sources.actions.open_drift', {
+              defaultValue: 'Diagnostics · drift',
+            })}
+          </Link>
+        </div>
+      ) : null}
 
       {error ? (
         <div data-testid="marketing-sources-error">
