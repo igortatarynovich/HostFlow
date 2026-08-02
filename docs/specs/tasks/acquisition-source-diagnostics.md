@@ -1,8 +1,8 @@
 # Source Diagnostics — Marketing ops console (Product Epic)
 
-**Status:** **ACTIVE** — PR7 Mapping Health drift alerts (PR1–PR6 ✅)  
+**Status:** **ACTIVE** — PR8 replay submission (PR1–PR7 ✅)  
 **Date:** 2026-08-01  
-**Product Track:** Source Diagnostics PR7 (PR6 export ✅ #205 · Stage 5 PR-2 ✅ #203)  
+**Product Track:** Source Diagnostics PR8 (PR7 drift alerts ✅ #206)  
 **Parents:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) § After cutover · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)
 
 ---
@@ -30,61 +30,66 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ---
 
-## PR1–PR6 ✅
+## PR1–PR7 ✅
 
-- PR1 #196 list + case · PR2 #199 filters · PR3 #200 duplicate · PR4 #201 Mapping Health · PR5 #202 mapping stamp + drift · PR6 #205 case export JSON
+- PR1 #196 list + case · PR2 #199 filters · PR3 #200 duplicate · PR4 #201 Mapping Health · PR5 #202 mapping stamp + drift · PR6 #205 case export · PR7 #206 drift alerts
 
 ---
 
-## PR6 — Case export payload ✅ #205
+## PR7 — Mapping Health drift alerts ✅ #206
 
 ### Delivered
 
-1. `GET /api/v1/platform/marketing/diagnostics/submissions/{lead_id}/export` — JSON attachment (`hostflow.marketing_diagnostics_export`)  
-2. Export security events (`export.requested` / `export.generated` / `export.denied`) with `contains_class3=true`, `bulk_operation=false`  
-3. Case UI — **Export JSON** download button  
-
-### Acceptance (PR6)
-
-- [x] Authenticated `_READ` export returns `application/json` attachment with schema `hostflow.marketing_diagnostics_export`  
-- [x] Missing lead → 404 + `export.denied`  
-- [x] FE downloads file from case view  
-
----
-
-## PR7 — Mapping Health drift alerts (this slice)
-
-### IN
-
-1. List query `drift_only=true` — return Acquisition leads whose `mapping_applied_v1.rules_fingerprint` ≠ current Source `mapping_rules` fingerprint (read-time compare; scan capped)  
-2. List items expose `mapping_drift: true|false|null` + page `drift_alert_count`  
-3. Diagnostics UI — **Только mapping drift** filter, list badge, and alert strip when the current page has drift  
-
-### OUT
-
-- Email / webhook / push notification channels  
-- Auto remapping or rewrite of `mapping_rules`  
-- Replay submission (separate later slice)  
-- Bulk export of drifted cases  
+1. List query `drift_only=true` — fingerprint compare (scan capped)  
+2. List items `mapping_drift` + page `drift_alert_count`  
+3. Diagnostics UI filter / badge / alert strip  
 
 ### Acceptance (PR7)
 
-- [x] `drift_only=true` returns only leads with `mapping_drift=true` (tenant-scoped `_READ`)  
-- [x] Unchanged profile rules → lead with matching stamp is **not** in drift_only results  
-- [x] FE filter + badge + alert strip (`data-testid` for filter / badge / alert)  
+- [x] `drift_only=true` returns only leads with `mapping_drift=true`  
+- [x] Matching stamp not in drift_only results  
+- [x] FE filter + badge + alert strip  
+
+---
+
+## PR8 — Replay submission (this slice)
+
+### IN
+
+1. Case UI **Replay** — calls existing Leads write contract `POST /api/v1/leads/{lead_id}/process` (same pipeline as CRM Process)  
+2. On success, reload Diagnostics case compose (routing / mapping / timeline)  
+3. Surface process errors (422 block codes / missing payload) without inventing a second remapping engine  
+
+### OUT
+
+- New Diagnostics HTTP write / remapping endpoint  
+- New Acquisition Activity event type for replay  
+- Dry-run normalize-only (no Lead mutation)  
+- Bulk replay  
+- Notification channels for drift  
+
+### Acceptance (PR8)
+
+- [x] Case view has Replay control (`data-testid="marketing-diagnostics-replay"`)  
+- [x] Replay uses `processLead` → `POST /leads/{id}/process` (not a Diagnostics writer)  
+- [x] Success refreshes case; failure shows recovery banner  
+
+**Boundary lock:** Diagnostics remains a **read compose** surface. Replay is an ops CTA into the **Leads** process façade (admin/manager/recruiter RBAC on that route).
 
 ---
 
 ## Later epic backlog
 
 - Mapping Health drift alerts — notification channels (email / in-app beyond list)  
-- replay submission  
+- Dry-run / remapping preview without entity writes  
+- Dedicated Activity event for operator replay (optional observability)  
 
 ---
 
 ## History
 
-- 2026-08-01: PR6 closed as ✅ #205 (code already merged; docs catch-up); Product Track → **PR7 Mapping Health drift alerts**.  
+- 2026-08-01: PR7 merged (#206); Product Track → **PR8 replay submission** (Leads process façade from case UI).  
+- 2026-08-01: PR6 closed as ✅ #205 (code already merged; docs catch-up); Product Track → PR7.  
 - 2026-07-29: Stage 5 PR-2 merged (#203); Product Track → Source Diagnostics PR6 case export.  
 - 2026-07-29: PR5 merged (#202); Product Track briefly → Stage 5 PR-2 explainability / operator ack-dismiss.  
 - 2026-07-29: PR4 merged (#201); Product Track → PR5 ingest mapping stamp + drift.  
