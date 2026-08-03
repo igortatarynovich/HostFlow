@@ -25,16 +25,17 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 ## Immediate rule (through Epic C)
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
+**A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
 Locked handoff:
 
 ```text
-Epic C Complete Gate PASS_WITH_CONSTRAINTS → A2 Governance → Stage 3 / Meta → …
+Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → …
 ```
 
-Order **after Epic C — complete**:
+Order **after A2**:
 
-1. **A2 — Platform Governance Review (L0 gate)** — boundary-principle audit across platforms ← **next**  
-2. **Phase B — Acquisition / Stage 3 + Meta**  
+1. **A2 — Platform Governance Review** — ✅ PASS_WITH_CONSTRAINTS ([gate](../gates/platform-governance-review-a2.md))  
+2. **Phase B — Acquisition / Stage 3 + Meta** ← **next**  
 3. Forms → Entity Workspace → Documents → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
@@ -69,11 +70,12 @@ See [communication-platform-foundation.md](communication-platform-foundation.md)
 **Not** a product feature. Final Communication capability gate — see [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md).
 
 Runs **after C2** (C2.4 may remain frozen), **before** A2 Governance.  
-Decision 2026-08-03: **PASS_WITH_CONSTRAINTS** → **Epic C — complete**. Next = A2.
+Decision 2026-08-03: **PASS_WITH_CONSTRAINTS** → **Epic C — complete**. A2 closed same day.
 
-### A2. Platform Governance Review (L0 gate) ← **active next**
+### A2. Platform Governance Review (L0 gate) ← **PASS_WITH_CONSTRAINTS**
 
-**Not** a product feature. Cross-platform audit **after Epic C — complete**.
+**Not** a product feature. Cross-platform audit **after Epic C — complete**.  
+**Decision:** [platform-governance-review-a2.md](../gates/platform-governance-review-a2.md) **PASS_WITH_CONSTRAINTS** (2026-08-03).
 
 Purpose: verify the boundary principle was not violated during platform growth  
 (platforms independent; modules integrate only via public contracts/adapters) —  
@@ -85,16 +87,18 @@ not a re-validation of Communication wiring (that is the Epic C Complete Gate).
 - ADR + Canon + Catalog + AGENTS aligned
 - Legacy migration map current
 
-**Result:** platforms treated as stable enough for Acquisition completion and Forms infrastructure.
+**Result:** platforms treated as stable enough for Acquisition completion and Forms infrastructure.  
+**Next Product Track:** Phase B — Meta Intake Completeness → Stage 3 slice 3–4.  
+**Constraint:** Catalog Notifications↔Communication → Architecture RFC (A2-F1); Catalog not rewritten in A2.
 
-**Suggested branch:** `docs/platform-governance-review-post-epic-c`  
-**DoD:** written review checklist + findings + ordered follow-ups (no drive-by refactors in the same PR unless trivial).
+**Branch:** `docs/platform-governance-review-post-epic-c`  
+**DoD:** ✅ written review checklist + findings + ordered follow-ups.
 
 ---
 
 ## Phase B — Acquisition Completion (Epic P / Stage 3)
 
-Return to Acquisition only after **Epic C — complete** (Complete Gate PASS) + **A2 Governance**.
+Return to Acquisition only after **Epic C — complete** + **A2 Governance** (both PASS_WITH_CONSTRAINTS, 2026-08-03). **Phase B is now open.**
 
 Close:
 
@@ -180,9 +184,9 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Order | Phase | One-line outcome |
 |------:|-------|------------------|
-| 1 | **A1** Epic C Communication | Unified comms platform |
-| 2 | **A2** Platform Governance Review | Stable SoT / contracts gate |
-| 3 | **B** Acquisition / Stage 3 | Full Campaign→Service Order chain |
+| 1 | **A1** Epic C Communication | ✅ Unified comms platform (`PASS_WITH_CONSTRAINTS`) |
+| 2 | **A2** Platform Governance Review | ✅ Stable SoT / contracts gate (`PASS_WITH_CONSTRAINTS`) |
+| 3 | **B** Acquisition / Stage 3 + Meta | ← **next** Full Campaign→Service Order chain |
 | 4 | **C** Forms Platform | Shared form runtime contracts |
 | 5 | **D** Universal Entity Workspace | One workspace composition |
 | 6 | **E** Documents Platform | Full document lifecycle |
@@ -193,12 +197,13 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 ## Anti-patterns (forbidden without amending this roadmap)
 
-1. Starting Stage 3 slice 3+ **before** Governance Review (A2) — Epic C Complete Gate must already be closed.  
+1. Starting Stage 3 slice 3+ **before** Governance Review (A2) closes — A2 is now **PASS_WITH_CONSTRAINTS**; Phase B may proceed.  
 2. Forms Builder before Forms Platform infrastructure (Phase C).  
 3. Entity Workspace redesign as a temporary shell before Phases A–C foundations.  
 4. AI features that create their own message/document/entity stores.  
 5. Parallel product branches that compete across phases (one active product slice).  
-6. Unfreezing C2.4 Scheduling without an explicit queue amendment.
+6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
+7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.
 
 ---
 
@@ -217,5 +222,6 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-03: A2 Platform Governance Review **PASS_WITH_CONSTRAINTS**; Product Track → **Phase B Meta / Stage 3**; Catalog Notifications↔Communication deferred to Architecture RFC.  
 - 2026-08-03: Epic C Complete Gate **PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
 - 2026-07-20: Locked Phase A→G after Communication platform work; Stage 3 deferred until Epic C + Governance Review.  

@@ -104,17 +104,19 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 Platform maturity (Foundation / Workspace / Automation / Complete):  
 [`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
 
-Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — Product Track = **A2 Platform Governance Review** (Epic C Complete Gate **PASS_WITH_CONSTRAINTS**).
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — Product Track = **Meta Intake Completeness** (A2 **PASS_WITH_CONSTRAINTS**).
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
 [`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/epic-c-complete-gate.md`](docs/specs/gates/epic-c-complete-gate.md). C2.4 Scheduling remains frozen.
 
-**Active close-out:** [A2 Platform Governance Review](docs/specs/architecture/platform-completion-roadmap.md) → Stage 3 / Meta → Forms → Entity Workspace → Documents → Billing → AI.
+**A2 Platform Governance Review** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/platform-governance-review-a2.md`](docs/specs/gates/platform-governance-review-a2.md).
 
-**Locked:** Platform Governance Review → Acquisition/Stage 3 → Forms Platform → Entity Workspace → Documents → Billing → AI.  
-Do **not** open Stage 3 product slices until A2 Governance is done unless the roadmap is explicitly amended.
+**Active close-out:** Phase B — [Meta Intake Completeness](docs/specs/tasks/meta-intake-completeness.md) → Stage 3 slice 3–4 → Forms → Entity Workspace → Documents → Billing → AI.
+
+**Locked:** Acquisition/Stage 3 (Phase B) → Forms Platform → Entity Workspace → Documents → Billing → AI.  
+Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) — do not rewrite L0 Catalog without RFC.
 
 ## Documentation governance
 

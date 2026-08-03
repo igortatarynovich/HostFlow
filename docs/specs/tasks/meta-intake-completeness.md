@@ -1,7 +1,7 @@
 # Meta Intake Completeness
 
-**Status:** Queued (Phase B — Acquisition; after Epic C + Platform Governance Review)  
-**Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · Acquisition / Flights / SalesInquiry
+**Status:** **Product Track next** (Phase B — Acquisition; after Epic C + A2 PASS_WITH_CONSTRAINTS)  
+**Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [A2 Governance](../gates/platform-governance-review-a2.md) · Acquisition / Flights / SalesInquiry
 
 ## Problem
 

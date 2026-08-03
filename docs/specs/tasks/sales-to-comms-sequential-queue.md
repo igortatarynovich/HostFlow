@@ -5,8 +5,8 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-03 strategy:** Acquisition Stage 6 DONE. C2.3 landed (#219). **Epic C Complete Gate PASS_WITH_CONSTRAINTS** → **Epic C — complete**. **Product Track** = **A2 Platform Governance Review**. **Engineering Track** = legacy full-repo pytest / CI debt.  
-> C2.4 **frozen** (gate residual R1).  
+> **2026-08-03 strategy:** Acquisition Stage 6 DONE. C2.3 landed (#219). Epic C Complete Gate + **A2 Platform Governance Review** both **PASS_WITH_CONSTRAINTS**. **Product Track** = **Phase B — Meta Intake Completeness** (then Stage 3 slice 3–4). **Engineering Track** = legacy full-repo pytest / CI debt.  
+> C2.4 **frozen** (gate residual R1). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
 ---
@@ -28,8 +28,8 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **A2 Platform Governance Review** (next) — Epic C Complete Gate PASS_WITH_CONSTRAINTS; C2.4 frozen | Almost all capacity |
-| **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred) | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
+| **Product** | **Meta Intake Completeness** (next) — A2 PASS_WITH_CONSTRAINTS; then Stage 3 slice 3–4 | Almost all capacity |
+| **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
 
@@ -43,7 +43,9 @@
 - C2.3 Campaign Orchestrator ← **DONE** (landed on tip; #121–#126 superseded; **#219**)  
 - C2.4 Scheduling ← **frozen** (gate residual R1; do not start)  
 - **Epic C Complete Gate** ← **PASS_WITH_CONSTRAINTS** (2026-08-03) — [gate](../gates/epic-c-complete-gate.md)  
-- Meta intake completeness · Sales Stage 3 slice 3–4 — after **A2 Governance**; see also 3E deferred D1–D2
+- **A2 Platform Governance Review** ← **PASS_WITH_CONSTRAINTS** (2026-08-03) — [gate](../gates/platform-governance-review-a2.md)  
+- **Meta intake completeness** ← **Product Track next** — [meta-intake-completeness.md](meta-intake-completeness.md)  
+- Sales Stage 3 slice 3–4 — after Meta (or with Meta per roadmap Phase B); see also 3E deferred D1–D2
 
 ---
 
@@ -71,11 +73,12 @@
 | **7d** | **C2.4** Scheduling | *(frozen)* | Do not start (gate residual R1) |
 | **8** | **Epic C Complete Gate** | `docs/epic-c-complete-gate` | ✅ **PASS_WITH_CONSTRAINTS** (2026-08-03) |
 | **8b** | **Compliance outbound (ADR-031)** | [compliance-outbound-pipeline-early-result](compliance-outbound-pipeline-early-result.md) | Early opaque result + RODO/ops binders; **Engineering track**; no SMTP bypass |
-| **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | ← **Product Track next** |
-| **10+** | Meta / Sales slices | after A2 | Per roadmap Phase B |
+| **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | ✅ **PASS_WITH_CONSTRAINTS** — [gate](../gates/platform-governance-review-a2.md) |
+| **10** | **Meta Intake Completeness** | per [meta-intake](meta-intake-completeness.md) | ← **Product Track next** |
+| **11+** | Stage 3 slice 3–4 / Forms… | after Meta | Per roadmap Phase B–C |
 
-**C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete** (`PASS_WITH_CONSTRAINTS`).  
-**Active (Product):** **A2 Platform Governance Review** — [roadmap § A2](../architecture/platform-completion-roadmap.md).  
+**C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.**  
+**Active (Product):** **Meta Intake Completeness** — [task](meta-intake-completeness.md).  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -98,10 +101,9 @@
 **Slice 1 ✅** — [stage-3-sales-pipeline-product-wiring.md](stage-3-sales-pipeline-product-wiring.md) (PR #98)  
 **Slice 2 ✅** — [stage-3-sales-pipeline-convert-entrypoints.md](stage-3-sales-pipeline-convert-entrypoints.md) (PR #99)
 
-### Slice 3+ — **blocked until A2 Platform Governance Review**
+### Slice 3+ — **open after A2** (sequence with Meta)
 
-Do **not** start Stage 3 slice 3 until **A2 Platform Governance Review** is done (Epic C Complete Gate already **PASS_WITH_CONSTRAINTS**), unless the [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) is explicitly amended.  
-Meta Intake Completeness runs at the start of Phase B (with Stage 3), not as a shortcut past A2.
+A2 Platform Governance Review is **PASS_WITH_CONSTRAINTS**. Start **Meta Intake Completeness** first, then Stage 3 slice 3–4, unless the [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) is explicitly amended.
 
 ---
 
@@ -149,18 +151,18 @@ Merge gates: Intent-only egress · no second pipeline · capability isolation ·
 
 ---
 
-## 5c. A2 — Platform Governance Review ← **Product Track next**
+## 5c. A2 — Platform Governance Review ← **PASS_WITH_CONSTRAINTS**
 
-Short L0 gate — see [Platform Completion Roadmap § A2](../architecture/platform-completion-roadmap.md). Not a feature sprint.  
-**Suggested branch:** `docs/platform-governance-review-post-epic-c`. Hand off gate residuals **R3** / **R5** from [Epic C Complete Gate](../gates/epic-c-complete-gate.md).
+Short L0 gate — [platform-governance-review-a2.md](../gates/platform-governance-review-a2.md) (2026-08-03).  
+Catalog Notifications↔Communication deferred to Architecture RFC (A2-F1). **Next Product Track:** Meta Intake Completeness.
 
 ---
 
-## 6. Meta Intake Completeness (Phase B — with Acquisition)
+## 6. Meta Intake Completeness (Phase B) ← **Product Track next**
 
 **Task:** [meta-intake-completeness.md](meta-intake-completeness.md)
 
-Separate from Communication. Chain: Meta payload → Submission raw → normalized → SalesInquiry → UI. No answer may disappear before normalization (show as additional answers). Runs **after** A2, before/with Stage 3 slice 3.
+Separate from Communication. Chain: Meta payload → Submission raw → normalized → SalesInquiry → UI. No answer may disappear before normalization (show as additional answers). Runs **after** A2 (now closed).
 
 ---
 
@@ -176,14 +178,15 @@ Next branch only after:
 4. Stale worktrees pruned  
 5. One dedicated worktree  
 
-**Do not** start C2.4 while Product Track is on A2 / Phase B.  
+**Do not** start C2.4 while Product Track is on Phase B.  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
-**Do** amend this queue when switching Product Active (this revision: → A2 Governance).
+**Do** amend this queue when switching Product Active (this revision: → Meta Intake Completeness).
 
 ---
 
 ## 8. History
 
+- 2026-08-03: **A2 PASS_WITH_CONSTRAINTS**; Product Track → **Meta Intake Completeness** (Phase B).  
 - 2026-08-03: **Epic C Complete Gate PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
 - 2026-08-03: Stage 6 **PR-4 ✅ #216**; Product Track → **Stage 6 PR-5 month buckets**.  
 - 2026-08-03: Stage 6 **PR-3 ✅ #215**; Product Track → **Stage 6 PR-4 portfolio**.  
