@@ -348,6 +348,15 @@ class CampaignOutcome(Base, TimestampMixin):
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     failed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Stage 6 PR-6a — declared commercial value snapshot (contract-only writer).
+    commercial_value_amount: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(18, 4), nullable=True
+    )
+    commercial_value_currency: Mapped[Optional[str]] = mapped_column(String(3), nullable=True)
+    commercial_value_source: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    commercial_value_set_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     result_links: Mapped[list["CampaignOutcomeResultLink"]] = relationship(
         "CampaignOutcomeResultLink",

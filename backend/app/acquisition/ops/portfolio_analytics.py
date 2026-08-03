@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.acquisition.campaign_service import list_campaigns
 from backend.app.acquisition.kpi_aggregates import (
     KpiAggregateError,
+    _roi,
     aggregate_campaign_kpi,
 )
 
@@ -49,6 +50,8 @@ class PortfolioCampaignRow:
     cost_per_lead: Optional[Decimal]
     cost_per_qualified: Optional[Decimal]
     cost_per_outcome: Optional[Decimal]
+    outcome_value: Optional[Decimal]
+    roi: Optional[Decimal]
     is_best_cpl: bool
 
     def to_dict(self) -> dict:
@@ -69,6 +72,8 @@ class PortfolioCampaignRow:
             "cost_per_outcome": None
             if self.cost_per_outcome is None
             else str(self.cost_per_outcome),
+            "outcome_value": None if self.outcome_value is None else str(self.outcome_value),
+            "roi": None if self.roi is None else str(self.roi),
             "is_best_cpl": self.is_best_cpl,
         }
 
@@ -85,6 +90,8 @@ class PortfolioBundle:
     outcomes_completed: int
     cost_per_lead: Optional[Decimal]
     cost_per_outcome: Optional[Decimal]
+    outcome_value: Optional[Decimal]
+    roi: Optional[Decimal]
     campaigns: tuple[PortfolioCampaignRow, ...]
     scan_capped: bool
 
@@ -102,6 +109,8 @@ class PortfolioBundle:
             "cost_per_outcome": None
             if self.cost_per_outcome is None
             else str(self.cost_per_outcome),
+            "outcome_value": None if self.outcome_value is None else str(self.outcome_value),
+            "roi": None if self.roi is None else str(self.roi),
             "campaigns": [c.to_dict() for c in self.campaigns],
             "scan_capped": self.scan_capped,
         }
@@ -155,12 +164,17 @@ async def compose_campaign_portfolio(
     total_qualified = 0
     total_converted = 0
     total_outcomes = 0
+    total_value = ZERO
+    any_value = False
     for campaign_id, name, status, kpi in draft:
         total_spend += kpi.spend
         total_leads += kpi.leads
         total_qualified += kpi.qualified
         total_converted += kpi.converted
         total_outcomes += kpi.outcomes_completed
+        if kpi.outcome_value is not None:
+            total_value += kpi.outcome_value
+            any_value = True
         is_best = (
             best_cpl is not None
             and kpi.cost_per_lead is not None
@@ -180,11 +194,14 @@ async def compose_campaign_portfolio(
                 cost_per_lead=kpi.cost_per_lead,
                 cost_per_qualified=kpi.cost_per_qualified,
                 cost_per_outcome=kpi.cost_per_outcome,
+                outcome_value=kpi.outcome_value,
+                roi=kpi.roi,
                 is_best_cpl=is_best,
             )
         )
 
     total_spend = _money(total_spend)
+    outcome_value = _money(total_value) if any_value else None
     return PortfolioBundle(
         tenant_id=str(tenant_id),
         own_company_id=str(own_company_id) if own_company_id else None,
@@ -196,6 +213,8 @@ async def compose_campaign_portfolio(
         outcomes_completed=total_outcomes,
         cost_per_lead=_ratio(total_spend, total_leads),
         cost_per_outcome=_ratio(total_spend, total_outcomes),
+        outcome_value=outcome_value,
+        roi=_roi(outcome_value, total_spend),
         campaigns=tuple(rows),
         scan_capped=scan_capped,
     )

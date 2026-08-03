@@ -20,6 +20,7 @@ import {
   launchFlight,
   pauseFlight,
   postFlightOptimizationOperatorAction,
+  putOutcomeCommercialValue,
   resumeFlight,
   type Campaign,
   type CohortSeries,
@@ -61,6 +62,11 @@ export default function MarketingCampaignDetailPage() {
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [valueOutcomeId, setValueOutcomeId] = useState('')
+  const [valueAmount, setValueAmount] = useState('')
+  const [valueCurrency, setValueCurrency] = useState('EUR')
+  const [valueBusy, setValueBusy] = useState(false)
+  const [valueMsg, setValueMsg] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!campaignId) return
@@ -575,6 +581,8 @@ export default function MarketingCampaignDetailPage() {
                         <th className="py-2 pr-3 font-medium">Leads</th>
                         <th className="py-2 pr-3 font-medium">Share</th>
                         <th className="py-2 pr-3 font-medium">CPL</th>
+                        <th className="py-2 pr-3 font-medium">Value</th>
+                        <th className="py-2 pr-3 font-medium">ROI</th>
                         <th className="py-2 font-medium">Δ CPL</th>
                       </tr>
                     </thead>
@@ -614,6 +622,14 @@ export default function MarketingCampaignDetailPage() {
                             {row.cost_per_lead != null
                               ? `${row.cost_per_lead}${row.currency ? ` ${row.currency}` : ''}`
                               : '—'}
+                          </td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-900">
+                            {row.outcome_value != null
+                              ? `${row.outcome_value}${row.currency ? ` ${row.currency}` : ''}`
+                              : '—'}
+                          </td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-900">
+                            {row.roi != null ? row.roi : '—'}
                           </td>
                           <td className="py-2 tabular-nums text-slate-700">
                             {row.cpl_delta != null ? row.cpl_delta : '—'}
@@ -680,7 +696,7 @@ export default function MarketingCampaignDetailPage() {
                   </div>
                 </div>
                 <div
-                  className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
+                  className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
                   data-testid="marketing-campaign-cohorts-totals"
                 >
                   <div>
@@ -708,6 +724,18 @@ export default function MarketingCampaignDetailPage() {
                       {cohorts.cost_per_outcome != null ? cohorts.cost_per_outcome : '—'}
                     </div>
                   </div>
+                  <div>
+                    <div className="text-xs text-slate-500">Value</div>
+                    <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                      {cohorts.outcome_value != null ? cohorts.outcome_value : '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500">ROI</div>
+                    <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                      {cohorts.roi != null ? cohorts.roi : '—'}
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-3 overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
@@ -724,7 +752,9 @@ export default function MarketingCampaignDetailPage() {
                         <th className="py-2 pr-3 font-medium">Leads</th>
                         <th className="py-2 pr-3 font-medium">Outcomes</th>
                         <th className="py-2 pr-3 font-medium">CPL</th>
-                        <th className="py-2 font-medium">CAC proxy</th>
+                        <th className="py-2 pr-3 font-medium">CAC proxy</th>
+                        <th className="py-2 pr-3 font-medium">Value</th>
+                        <th className="py-2 font-medium">ROI</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -748,14 +778,103 @@ export default function MarketingCampaignDetailPage() {
                           <td className="py-2 pr-3 tabular-nums text-slate-700">
                             {row.cost_per_lead != null ? row.cost_per_lead : '—'}
                           </td>
-                          <td className="py-2 tabular-nums text-slate-700">
+                          <td className="py-2 pr-3 tabular-nums text-slate-700">
                             {row.cost_per_outcome != null ? row.cost_per_outcome : '—'}
+                          </td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-700">
+                            {row.outcome_value != null ? row.outcome_value : '—'}
+                          </td>
+                          <td className="py-2 tabular-nums text-slate-700">
+                            {row.roi != null ? row.roi : '—'}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+              </section>
+            ) : null}
+
+            {campaign ? (
+              <section
+                className="rounded-xl border border-slate-200 bg-white px-4 py-4"
+                data-testid="marketing-outcome-commercial-value"
+              >
+                <h2 className="text-sm font-semibold text-slate-900">
+                  {t('app.marketing.detail.outcome_value.title', {
+                    defaultValue: 'Commercial value (Outcome)',
+                  })}
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  {t('app.marketing.detail.outcome_value.subtitle', {
+                    defaultValue:
+                      'Declare value on a completed Outcome (declared_v1). ROI uses (value − spend) / spend.',
+                  })}
+                </p>
+                <form
+                  className="mt-3 flex flex-wrap items-end gap-2"
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    if (!campaign || !valueOutcomeId.trim() || !valueAmount.trim()) return
+                    setValueBusy(true)
+                    setValueMsg(null)
+                    try {
+                      const res = await putOutcomeCommercialValue(
+                        campaign.id,
+                        valueOutcomeId.trim(),
+                        { amount: valueAmount.trim(), currency: valueCurrency.trim() || 'EUR' },
+                      )
+                      setValueMsg(`Saved ${res.amount} ${res.currency}`)
+                      await load()
+                    } catch (err) {
+                      setValueMsg(getFriendlyErrorInfo(err).message)
+                    } finally {
+                      setValueBusy(false)
+                    }
+                  }}
+                >
+                  <label className="text-xs text-slate-600">
+                    Outcome ID
+                    <input
+                      className="mt-1 block w-56 rounded border border-slate-300 px-2 py-2 text-sm"
+                      data-testid="marketing-outcome-value-id"
+                      value={valueOutcomeId}
+                      onChange={(ev) => setValueOutcomeId(ev.target.value)}
+                    />
+                  </label>
+                  <label className="text-xs text-slate-600">
+                    Amount
+                    <input
+                      className="mt-1 block w-28 rounded border border-slate-300 px-2 py-2 text-sm"
+                      data-testid="marketing-outcome-value-amount"
+                      value={valueAmount}
+                      onChange={(ev) => setValueAmount(ev.target.value)}
+                    />
+                  </label>
+                  <label className="text-xs text-slate-600">
+                    Currency
+                    <input
+                      className="mt-1 block w-20 rounded border border-slate-300 px-2 py-2 text-sm uppercase"
+                      data-testid="marketing-outcome-value-currency"
+                      value={valueCurrency}
+                      onChange={(ev) => setValueCurrency(ev.target.value)}
+                      maxLength={3}
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    className="btn-primary btn-sm"
+                    data-testid="marketing-outcome-value-save"
+                    disabled={valueBusy}
+                  >
+                    Save value
+                  </button>
+                </form>
+                {valueMsg ? (
+                  <p className="mt-2 text-xs text-slate-600" data-testid="marketing-outcome-value-msg">
+                    {valueMsg}
+                  </p>
+                ) : null}
               </section>
             ) : null}
 

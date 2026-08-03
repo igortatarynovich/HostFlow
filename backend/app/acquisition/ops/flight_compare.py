@@ -36,6 +36,8 @@ class FlightCompareRow:
     cost_per_lead: Optional[Decimal]
     cost_per_qualified: Optional[Decimal]
     cost_per_outcome: Optional[Decimal]
+    outcome_value: Optional[Decimal]
+    roi: Optional[Decimal]
     lead_share: Optional[Decimal]
     cpl_delta: Optional[Decimal]
     is_best_cpl: bool
@@ -60,6 +62,8 @@ class FlightCompareRow:
             "cost_per_outcome": None
             if self.cost_per_outcome is None
             else str(self.cost_per_outcome),
+            "outcome_value": None if self.outcome_value is None else str(self.outcome_value),
+            "roi": None if self.roi is None else str(self.roi),
             "lead_share": None if self.lead_share is None else str(self.lead_share),
             "cpl_delta": None if self.cpl_delta is None else str(self.cpl_delta),
             "is_best_cpl": self.is_best_cpl,
@@ -79,6 +83,8 @@ class FlightCompareBundle:
     cost_per_lead: Optional[Decimal]
     cost_per_qualified: Optional[Decimal]
     cost_per_outcome: Optional[Decimal]
+    outcome_value: Optional[Decimal]
+    roi: Optional[Decimal]
     flights: tuple[FlightCompareRow, ...]
 
     def to_dict(self) -> dict:
@@ -98,6 +104,8 @@ class FlightCompareBundle:
             "cost_per_outcome": None
             if self.cost_per_outcome is None
             else str(self.cost_per_outcome),
+            "outcome_value": None if self.outcome_value is None else str(self.outcome_value),
+            "roi": None if self.roi is None else str(self.roi),
             "flights": [f.to_dict() for f in self.flights],
         }
 
@@ -169,6 +177,8 @@ async def compose_flight_compare(
                 cost_per_lead=agg.cost_per_lead,
                 cost_per_qualified=agg.cost_per_qualified,
                 cost_per_outcome=agg.cost_per_outcome,
+                outcome_value=agg.outcome_value,
+                roi=agg.roi,
                 lead_share=_lead_share(agg.leads, kpi.leads),
                 cpl_delta=_cpl_delta(agg.cost_per_lead, kpi.cost_per_lead),
                 is_best_cpl=flight_id in best_ids,
@@ -188,6 +198,8 @@ async def compose_flight_compare(
         cost_per_lead=kpi.cost_per_lead,
         cost_per_qualified=kpi.cost_per_qualified,
         cost_per_outcome=kpi.cost_per_outcome,
+        outcome_value=kpi.outcome_value,
+        roi=kpi.roi,
         flights=tuple(rows),
     )
 

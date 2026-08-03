@@ -507,7 +507,7 @@ Campaign (Goal Type + Primary KPI) → Flight → Results → Outcomes
 | **3E** | Activity Timeline (observability) | **DONE** — [`../tasks/acquisition-stage-3e-activity-timeline.md`](../tasks/acquisition-stage-3e-activity-timeline.md) (PR #130–#133). `AcquisitionActivityEvent` + catalog; Timeline ≠ Automation bus. Deferred gaps — [`../tasks/acquisition-stage-3e-deferred.md`](../tasks/acquisition-stage-3e-deferred.md) |
 | **4** *(post-3E)* | Flight Runtime (operations) | **Product Track next** — [`../tasks/acquisition-stage-4-flight-runtime.md`](../tasks/acquisition-stage-4-flight-runtime.md). Campaign/Flight CRUD, Endpoint management, Launch/Pause/Resume, Intake Monitor, basic metrics. Uses 3E Timeline as infrastructure |
 | **5** *(horizon)* | Optimization | **FUTURE** — automatic decisions, recommendations, anomaly detection, Auto Pause/Resume, AI-assisted optimization. Depends on Stage 4 operations + 3E Timeline events |
-| **6** *(horizon)* | Analytics & strategic attribution | **FUTURE** — ROI, CPL, CAC, cohorts, Campaign/Flight compare. Depends on Stages 3D–5 facts; does not redefine Timeline store |
+| **6** | Analytics & strategic attribution | **DONE** — Wave-1 compare/cohorts/portfolio + declared-value ROI (PR-1…PR-6b). `sales_order_v2` value linkage deferred. Does not redefine Timeline store |
 
 #### 14.1 Acquisition maturity ladder (locked)
 

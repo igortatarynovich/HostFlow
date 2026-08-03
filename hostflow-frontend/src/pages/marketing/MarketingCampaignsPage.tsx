@@ -157,7 +157,7 @@ export default function MarketingCampaignsPage() {
               </p>
             </div>
             <div
-              className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
+              className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
               data-testid="marketing-campaign-portfolio-totals"
             >
               <div>
@@ -185,6 +185,18 @@ export default function MarketingCampaignsPage() {
                   {portfolio.cost_per_outcome != null ? portfolio.cost_per_outcome : '—'}
                 </div>
               </div>
+              <div>
+                <div className="text-xs text-slate-500">Value</div>
+                <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  {portfolio.outcome_value != null ? portfolio.outcome_value : '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">ROI</div>
+                <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  {portfolio.roi != null ? portfolio.roi : '—'}
+                </div>
+              </div>
             </div>
             <div className="mt-3 overflow-x-auto">
               <table className="min-w-full text-left text-sm">
@@ -195,7 +207,9 @@ export default function MarketingCampaignsPage() {
                     <th className="py-2 pr-3 font-medium">Spend</th>
                     <th className="py-2 pr-3 font-medium">Leads</th>
                     <th className="py-2 pr-3 font-medium">CPL</th>
-                    <th className="py-2 font-medium">CAC proxy</th>
+                    <th className="py-2 pr-3 font-medium">CAC proxy</th>
+                    <th className="py-2 pr-3 font-medium">Value</th>
+                    <th className="py-2 font-medium">ROI</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -227,8 +241,14 @@ export default function MarketingCampaignsPage() {
                       <td className="py-2 pr-3 tabular-nums text-slate-700">
                         {row.cost_per_lead != null ? row.cost_per_lead : '—'}
                       </td>
-                      <td className="py-2 tabular-nums text-slate-700">
+                      <td className="py-2 pr-3 tabular-nums text-slate-700">
                         {row.cost_per_outcome != null ? row.cost_per_outcome : '—'}
+                      </td>
+                      <td className="py-2 pr-3 tabular-nums text-slate-700">
+                        {row.outcome_value != null ? row.outcome_value : '—'}
+                      </td>
+                      <td className="py-2 tabular-nums text-slate-700">
+                        {row.roi != null ? row.roi : '—'}
                       </td>
                     </tr>
                   ))}

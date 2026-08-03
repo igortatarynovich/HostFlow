@@ -17,7 +17,7 @@
 | [acquisition-activity-timeline.md](./acquisition-activity-timeline.md) | Stage 3E Activity Timeline: append-only audit, RLS, tenant-scoped idempotency, no Ops FKs |
 | [acquisition-flight-runtime.md](./acquisition-flight-runtime.md) | Stage 4 Flight Runtime: platform campaign/flight APIs, RBAC/company-scope, lifecycle commands, delivery-error activity |
 | [acquisition-optimization-signals.md](./acquisition-optimization-signals.md) | Stage 5 PR-1: read-only optimization signals / `suggest_pause` (no auto-pause, no GET side effects) |
-| [acquisition-stage-6-analytics.md](./acquisition-stage-6-analytics.md) | Stage 6 PR-1…PR-5: Flight compare, day/week/month cohorts, CAC proxy, company portfolio (no new ledger, no Runtime writes) |
+| [acquisition-stage-6-analytics.md](./acquisition-stage-6-analytics.md) | Stage 6 PR-1…PR-6: compare, cohorts, portfolio, Outcome commercial value, declared-value ROI |
 | [acquisition-marketing-sources.md](./acquisition-marketing-sources.md) | C-3 Marketing Sources: read-only inventory GET, tenant isolation, no write/reprocess side effects |
 | [acquisition-source-diagnostics.md](./acquisition-source-diagnostics.md) | Source Diagnostics PR1–PR9: read-only Lead + Activity casework, filters, duplicate, Mapping Health, drift alerts/summary, export, Replay via Leads process; SPA-only drift notify |
 
