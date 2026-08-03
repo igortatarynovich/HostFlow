@@ -1996,8 +1996,9 @@ async def get_campaign_cohorts_endpoint(
         ge=1,
         le=_MAX_WINDOW_DAYS,
     ),
+    bucket: str = Query(default="day", pattern="^(day|week)$"),
 ):
-    """Stage 6 PR-2 — read-only UTC day cohort series (Attribution / Spend / Outcome)."""
+    """Stage 6 PR-2/PR-3 — read-only UTC day/week cohort series."""
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
     try:
@@ -2012,6 +2013,7 @@ async def get_campaign_cohorts_endpoint(
             tenant_id=str(tenant_uuid),
             campaign_id=campaign_id,
             window_days=int(window_days),
+            bucket=str(bucket),
         )
     except CampaignServiceError as exc:
         _raise_service(exc)
