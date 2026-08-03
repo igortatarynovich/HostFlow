@@ -5,8 +5,8 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-03 strategy:** Acquisition Stage 6 DONE. C2.3 landed (#219). Epic C Complete Gate + **A2 Platform Governance Review** both **PASS_WITH_CONSTRAINTS**. **Product Track** = **Phase B — Meta Intake Completeness** (then Stage 3 slice 3–4). **Engineering Track** = legacy full-repo pytest / CI debt.  
-> C2.4 **frozen** (gate residual R1). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
+> **2026-08-03 strategy:** Acquisition Stage 6 DONE. Epic C + A2 **PASS_WITH_CONSTRAINTS**. **Product Track** = **Meta Intake Completeness** (`feat/meta-intake-completeness`). Then Stage 3 slice 3–4. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
+> C2.4 **frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
 ---
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Meta Intake Completeness** (next) — A2 PASS_WITH_CONSTRAINTS; then Stage 3 slice 3–4 | Almost all capacity |
+| **Product** | **Meta Intake Completeness** (active) — [task](meta-intake-completeness.md); then Stage 3 slice 3–4 | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**

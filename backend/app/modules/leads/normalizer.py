@@ -146,11 +146,109 @@ DRIVING_EXPERIENCE_ALIASES = (
     "опыт вождения",
 )
 
+# Meta Lead Ads custom questions that map into structured sales blocks.
+_SALES_CUSTOM_QUESTION_ALIASES = (
+    "kogo_obecnie_poszukujesz?",
+    "kogo_obecnie_poszukujesz",
+    "kogo obecnie poszukujesz?",
+    "kogo obecnie poszukujesz",
+    "whom_are_you_looking_for",
+    "who_are_you_looking_for",
+    "какая_цель_для_вас_сейчас_наиболее_актуальна?",
+    "какая_цель_для_вас_сейчас_наиболее_актуальна",
+    "czy_prowadzisz_obecnie_płatne_kampanie_reklamowe?",
+    "czy_prowadzisz_obecnie_płatne_kampanie_reklamowe",
+    "czy prowadzisz obecnie płatne kampanie reklamowe?",
+    "использовали_ли_вы_ранее_рекламу_у_блогеров?",
+    "использовали_ли_вы_ранее_рекламу_у_блогеров",
+    "чем_занимается_ваш_бизнес?",
+    "чем_занимается_ваш_бизнес",
+    "чем занимается ваш бизнес?",
+    "ссылка_на_instagram/сайт_вашего_бизнеса",
+    "ссылка_на_instagram/сайт_вашего_бизнеса?",
+    "website",
+    "site",
+    "instagram",
+)
+
+# B2B inquiry title fallback when no company name is present on the payload.
+B2B_INQUIRY_COMPANY_FALLBACK = "Компания"
+
 
 def _normalize_field_name(value: Any) -> str:
     if value is None:
         return ""
     return str(value).strip().lower()
+
+
+def _structured_field_alias_keys() -> Set[str]:
+    """Normalized Meta field names that map into structured lead fields."""
+    aliases: Iterable[str] = (
+        *PHONE_ALIASES,
+        *NAME_ALIASES,
+        *FIRST_NAME_ALIASES,
+        *LAST_NAME_ALIASES,
+        *COUNTRY_ALIASES,
+        *GEO_COUNTRY_ALIASES,
+        *CONTACT_ALIASES,
+        *COMPANY_ALIASES,
+        *IN_POLAND_ALIASES,
+        *POLAND_STAY_BASIS_ALIASES,
+        *DRIVING_EXPERIENCE_ALIASES,
+        *_SALES_CUSTOM_QUESTION_ALIASES,
+        "email",
+        "work_email",
+        "vacancy_id",
+        "vacancy",
+        "position_id",
+        "ad_id",
+        "adset_id",
+        "adgroup_id",
+    )
+    return {_normalize_field_name(item) for item in aliases if _normalize_field_name(item)}
+
+
+_STRUCTURED_FIELD_ALIAS_KEYS = _structured_field_alias_keys()
+
+
+def resolve_b2b_inquiry_company_name(
+    normalized: Optional[Dict[str, Any]] = None,
+    *,
+    lead_company_name: Optional[str] = None,
+    fallback: str = B2B_INQUIRY_COMPANY_FALLBACK,
+) -> str:
+    """B2B inquiry naming rules (Meta / Sales operator title).
+
+    Priority (first non-empty wins):
+    1. ``company_profile.name``
+    2. ``company_name``
+    3. ``company_name_hint``
+    4. Lead column ``company_name`` (caller-supplied)
+    5. Fallback literal (default ``Компания``)
+
+    Never invent a company title from contact first/last name alone.
+    """
+    data = normalized if isinstance(normalized, dict) else {}
+    profile = data.get("company_profile") if isinstance(data.get("company_profile"), dict) else {}
+    for candidate in (
+        profile.get("name"),
+        data.get("company_name"),
+        data.get("company_name_hint"),
+        lead_company_name,
+    ):
+        text = str(candidate or "").strip()
+        if text:
+            return text
+    return fallback
+
+
+def _is_additional_meta_answer(raw_name: str) -> bool:
+    key = _normalize_field_name(raw_name)
+    if not key:
+        return False
+    if key.startswith("utm"):
+        return False
+    return key not in _STRUCTURED_FIELD_ALIAS_KEYS
 
 
 def _set_nested_value(target: Dict[str, Any], path: str, value: Any) -> None:
@@ -754,8 +852,13 @@ def normalize_meta_payload(
         if not str(profile.get("name") or "").strip():
             profile = {**profile, "name": company_name_hint}
             normalized["company_profile"] = profile
-    if field_answers:
+    # Always retain every Meta form answer; unknown fields → additional_answers (never drop).
+    if field_data:
         normalized["field_answers"] = field_answers
+        additional_answers = [
+            row for row in field_answers if isinstance(row, dict) and _is_additional_meta_answer(str(row.get("name") or ""))
+        ]
+        normalized["additional_answers"] = additional_answers
     # Contact person for client-lead detail/convert (Meta often only has top-level name/email/phone).
     if full_name or email or phone:
         contact = normalized.get("contact_person") if isinstance(normalized.get("contact_person"), dict) else {}

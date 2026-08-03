@@ -112,6 +112,13 @@ def _merge_lead_normalized_fallback(normalized: Dict[str, Any], prior: Any) -> N
         "intake_vacancy_confirm_v1",
         "intake_resolution_v1",
         "recruitment_pool_intent_v1",
+        "field_answers",
+        "additional_answers",
+        "raw_field_names",
+        "company_name",
+        "company_name_hint",
+        "company_profile",
+        "company_hints",
     ):
         if preserve_key not in prior:
             continue
@@ -123,8 +130,12 @@ def _merge_lead_normalized_fallback(normalized: Dict[str, Any], prior: Any) -> N
             normalized[preserve_key] = pv
         elif isinstance(pv, dict) and isinstance(cur, dict) and not cur and pv:
             normalized[preserve_key] = pv
+        elif isinstance(pv, list) and (not cur) and pv:
+            normalized[preserve_key] = pv
         elif preserve_key == "recruitment_pool_intent_v1" and pv is True and cur is not True:
             normalized[preserve_key] = True
+        elif preserve_key in {"company_name", "company_name_hint"} and _empty(cur) and not _empty(pv):
+            normalized[preserve_key] = pv
 
 
 async def refresh_meta_lead_normalized_from_stored_payload(
