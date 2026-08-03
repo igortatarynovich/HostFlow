@@ -106,6 +106,7 @@ export const SIDEBAR_HUB_NAV_ITEM_KEYS = [
   'settings-communications-templates',
   'settings-communications-automation',
   'settings-communications-lead-lifecycle-email',
+  'settings-communications-campaigns',
   'settings-ruleset',
   'settings-audit',
 ] as const

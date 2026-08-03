@@ -45,6 +45,7 @@ export const SIDEBAR_ITEM_ICON: Partial<Record<string, SidebarIconSpec>> = {
   'settings-communications-queue': { kind: 'ui', id: 'filter' },
   'settings-communications-sla': { kind: 'ui', id: 'часы' },
   'settings-communications-lead-lifecycle-email': { kind: 'ui', id: 'email' },
+  'settings-communications-campaigns': { kind: 'ui', id: 'email' },
   'team-availability': { kind: 'ui', id: 'calendar' },
   'my-availability': { kind: 'ui', id: 'calendar' },
   'time-off': { kind: 'ui', id: 'отпуска' },
