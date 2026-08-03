@@ -375,6 +375,83 @@ async def test_campaign_cohorts_week_bucket_rolls_up(
     bad = await client.get(
         f"/api/v1/platform/campaigns/{campaign['id']}/analytics/cohorts",
         headers=_company_headers(auth_headers, oc),
-        params={"bucket": "month"},
+        params={"bucket": "year"},
     )
     assert bad.status_code == 422, bad.text
+
+
+@pytest.mark.asyncio
+async def test_campaign_cohorts_month_bucket_rolls_up(
+    client: AsyncClient, auth_headers: dict, monkeypatch
+):
+    monkeypatch.setattr("backend.app.acquisition.campaign_service.enforce_module_gate", _allow_gate)
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    oc = await _default_own_company_id(tenant_id)
+    vac = await _seed_vacancy(tenant_id=tenant_id, own_company_id=oc, company_id=data["company_id"])
+    campaign = await _create_campaign(client, auth_headers, own_company_id=oc, vac_id=vac)
+    flight_id = campaign["flights"][0]["id"]
+
+    # Jul 31 + Aug 2 within 90d window → two calendar months.
+    now = datetime(2026, 8, 3, 15, 0, tzinfo=timezone.utc)
+    day_jul = datetime(2026, 7, 31, 10, 0, tzinfo=timezone.utc)
+    day_aug = datetime(2026, 8, 2, 11, 0, tzinfo=timezone.utc)
+
+    async with async_session_maker() as session:
+        camp = await session.get(Campaign, campaign["id"])
+        flight = await session.get(CampaignRun, flight_id)
+        assert camp and flight
+        camp.status = "active"
+        flight.status = "active"
+        await session.commit()
+
+    await _attr_at(
+        tenant_id=tenant_id,
+        campaign_id=campaign["id"],
+        flight_id=flight_id,
+        created_at=day_jul,
+    )
+    await _attr_at(
+        tenant_id=tenant_id,
+        campaign_id=campaign["id"],
+        flight_id=flight_id,
+        created_at=day_aug,
+    )
+
+    async with async_session_maker() as session:
+        s0 = await record_flight_spend(
+            session, tenant_id=tenant_id, flight_id=flight_id, amount="25.00", currency="EUR"
+        )
+        s1 = await record_flight_spend(
+            session, tenant_id=tenant_id, flight_id=flight_id, amount="75.00", currency="EUR"
+        )
+        s0.created_at = day_jul
+        s1.created_at = day_aug
+        await session.commit()
+
+    async with async_session_maker() as session:
+        series = await compose_campaign_cohorts(
+            session,
+            tenant_id=tenant_id,
+            campaign_id=campaign["id"],
+            window_days=10,
+            bucket="month",
+            now=now,
+        )
+
+    assert series.bucket == "month"
+    assert len(series.buckets) == 2
+    assert series.buckets[0].bucket_start.date().isoformat() == "2026-07-01"
+    assert series.buckets[0].spend == Decimal("25.0000")
+    assert series.buckets[0].leads == 1
+    assert series.buckets[1].bucket_start.date().isoformat() == "2026-08-01"
+    assert series.buckets[1].spend == Decimal("75.0000")
+    assert series.buckets[1].leads == 1
+
+    resp = await client.get(
+        f"/api/v1/platform/campaigns/{campaign['id']}/analytics/cohorts",
+        headers=_company_headers(auth_headers, oc),
+        params={"window_days": 10, "bucket": "month"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["bucket"] == "month"

@@ -2062,9 +2062,9 @@ async def get_campaign_cohorts_endpoint(
         ge=1,
         le=_MAX_WINDOW_DAYS,
     ),
-    bucket: str = Query(default="day", pattern="^(day|week)$"),
+    bucket: str = Query(default="day", pattern="^(day|week|month)$"),
 ):
-    """Stage 6 PR-2/PR-3 — read-only UTC day/week cohort series."""
+    """Stage 6 PR-2…PR-5 — read-only UTC day/week/month cohort series."""
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
     try:

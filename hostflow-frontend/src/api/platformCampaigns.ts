@@ -473,11 +473,11 @@ export type CohortSeries = {
   buckets: CohortBucket[]
 }
 
-/** Stage 6 PR-2/PR-3 — read-only UTC day/week cohort series. */
+/** Stage 6 PR-2…PR-5 — read-only UTC day/week/month cohort series. */
 export async function getCampaignCohorts(
   campaignId: string,
   windowDays = 14,
-  bucket: 'day' | 'week' = 'day',
+  bucket: 'day' | 'week' | 'month' = 'day',
 ): Promise<CohortSeries> {
   const { data } = await api.get<CohortSeries>(
     `/platform/campaigns/${encodeURIComponent(campaignId)}/analytics/cohorts`,

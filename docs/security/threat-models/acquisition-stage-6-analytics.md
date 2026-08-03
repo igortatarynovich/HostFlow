@@ -1,11 +1,11 @@
-# Threat Model — Acquisition Stage 6 Analytics (PR-1…PR-4)
+# Threat Model — Acquisition Stage 6 Analytics (PR-1…PR-5)
 
 ## Assets
 
 - Read-only Flight wave compare  
   - `GET /api/v1/platform/campaigns/{campaign_id}/analytics/flight-compare`  
-- Read-only windowed day/week cohorts + CAC proxy (`cost_per_outcome`)  
-  - `GET /api/v1/platform/campaigns/{campaign_id}/analytics/cohorts?window_days=&bucket=day|week`  
+- Read-only windowed day/week/month cohorts + CAC proxy (`cost_per_outcome`)  
+  - `GET /api/v1/platform/campaigns/{campaign_id}/analytics/cohorts?window_days=&bucket=day|week|month`  
 - Read-only company portfolio  
   - `GET /api/v1/platform/campaigns/analytics/portfolio?limit=`  
   (`backend/app/api/v1/platform/campaigns.py` ·  
@@ -19,7 +19,7 @@
 - Authenticated tenant operator → platform campaigns read (JWT + `X-Tenant-Id` + company scope + RLS)
 - Roles: same `_READ` as Campaign KPI endpoints
 - No write path; no Activity append on GET
-- Cohort window capped (1–90 days); UTC day or Monday-start week buckets
+- Cohort window capped (1–90 days); UTC day / Monday-start week / calendar month buckets
 - Portfolio campaign scan capped (`limit` ≤ 100)
 
 ## Угрозы

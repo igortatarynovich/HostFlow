@@ -55,7 +55,7 @@ export default function MarketingCampaignDetailPage() {
   const [optimization, setOptimization] = useState<FlightOptimization | null>(null)
   const [flightCompare, setFlightCompare] = useState<FlightCompare | null>(null)
   const [cohorts, setCohorts] = useState<CohortSeries | null>(null)
-  const [cohortBucket, setCohortBucket] = useState<'day' | 'week'>('day')
+  const [cohortBucket, setCohortBucket] = useState<'day' | 'week' | 'month'>('day')
   const [destinationLabel, setDestinationLabel] = useState<string>('—')
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
@@ -137,7 +137,7 @@ export default function MarketingCampaignDetailPage() {
     void load()
   }, [load])
 
-  const switchCohortBucket = (next: 'day' | 'week') => {
+  const switchCohortBucket = (next: 'day' | 'week' | 'month') => {
     if (next === cohortBucket) return
     setCohortBucket(next)
   }
@@ -667,6 +667,16 @@ export default function MarketingCampaignDetailPage() {
                     >
                       Week
                     </button>
+                    <button
+                      type="button"
+                      className={
+                        cohortBucket === 'month' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'
+                      }
+                      data-testid="marketing-cohorts-bucket-month"
+                      onClick={() => switchCohortBucket('month')}
+                    >
+                      Month
+                    </button>
                   </div>
                 </div>
                 <div
@@ -704,7 +714,11 @@ export default function MarketingCampaignDetailPage() {
                     <thead className="text-xs text-slate-500">
                       <tr>
                         <th className="py-2 pr-3 font-medium">
-                          {cohorts.bucket === 'week' ? 'Week start (UTC)' : 'Day (UTC)'}
+                          {cohorts.bucket === 'week'
+                            ? 'Week start (UTC)'
+                            : cohorts.bucket === 'month'
+                              ? 'Month start (UTC)'
+                              : 'Day (UTC)'}
                         </th>
                         <th className="py-2 pr-3 font-medium">Spend</th>
                         <th className="py-2 pr-3 font-medium">Leads</th>
