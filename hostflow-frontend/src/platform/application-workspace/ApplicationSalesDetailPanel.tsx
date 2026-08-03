@@ -55,6 +55,10 @@ export function ApplicationSalesDetailPanel({
   const contactEmail = application.contact.email?.trim() || ''
   const telHref = contactPhone ? `tel:${contactPhone.replace(/\s/g, '')}` : null
   const busy = patching || converting
+  // Lead-backed sections until questionnaire/notes APIs are SI-native.
+  const transportLeadId = String(
+    application.transport_lead_id || application.extensions?.transport_lead_id || application.id || '',
+  ).trim()
 
   const decision = resolveSalesApplicationDecision({
     application,
@@ -160,7 +164,7 @@ export function ApplicationSalesDetailPanel({
               additionalAnswers={application.extensions?.additional_answers}
             />
             <SalesInquiryCallNotesSection
-              leadId={application.id}
+              leadId={transportLeadId}
               disabled={busy}
               onSaved={() => {
                 setTimelineRefresh((n) => n + 1)
@@ -169,7 +173,7 @@ export function ApplicationSalesDetailPanel({
             />
             <SalesInquiryPossibleDuplicatesSection applicationId={application.id} />
             <SalesInquiryQuestionnaireSection
-              leadId={application.id}
+              leadId={transportLeadId}
               onUpdated={() => {
                 setTimelineRefresh((n) => n + 1)
                 onQuestionnaireUpdated?.()
@@ -178,7 +182,7 @@ export function ApplicationSalesDetailPanel({
           </div>
         ),
         history: (
-          <SalesInquiryTimelineSection leadId={application.id} refreshToken={timelineRefresh} />
+          <SalesInquiryTimelineSection leadId={transportLeadId} refreshToken={timelineRefresh} />
         ),
       }}
       contextTitles={{

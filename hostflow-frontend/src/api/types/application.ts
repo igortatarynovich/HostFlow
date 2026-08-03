@@ -29,6 +29,10 @@ export type Application = {
   extensions?: Record<string, unknown>
   outcome_entity_id?: string | null
   outcome_entity_type?: string | null
+  /** Stage 3 slice 3 — SalesInquiry product id (same as id when SI-backed). */
+  sales_inquiry_id?: string | null
+  /** Transport Lead id for Lead-only sections (questionnaire, notes, timeline). */
+  transport_lead_id?: string | null
 }
 
 export type ApplicationListResponse = {

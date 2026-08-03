@@ -11,7 +11,7 @@ from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.applications import mutations
 from backend.app.modules.applications.mappers import (
     lead_to_recruitment_application,
-    lead_to_sales_inquiry,
+    sales_inquiry_to_application,
 )
 from backend.app.modules.applications.listing import (
     count_recruitment_inbox,
@@ -20,6 +20,7 @@ from backend.app.modules.applications.listing import (
     normalize_recruitment_inbox_tab,
     recruitment_inbox_tab_counts,
 )
+from backend.app.modules.applications.sales_resolve import resolve_sales_inquiry_and_lead
 from backend.app.modules.applications.schemas import (
     ApplicationAssignIn,
     ApplicationFollowUpIn,
@@ -66,7 +67,15 @@ async def list_sales_inquiries(
         limit=limit,
         offset=offset,
     )
-    items = [lead_to_sales_inquiry(row) for row in result.items]
+    items = []
+    for row in result.items:
+        inquiry, lead = await resolve_sales_inquiry_and_lead(
+            db,
+            tenant_id=str(tenant_id),
+            application_id=str(row.id),
+            ensure_if_lead=True,
+        )
+        items.append(sales_inquiry_to_application(inquiry, lead))
     return ApplicationListResponse(items=items, total=result.total)
 
 

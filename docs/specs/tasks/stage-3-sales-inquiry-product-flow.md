@@ -1,8 +1,8 @@
 # Stage 3 slice 3 — SalesInquiry product flow
 
-**Status:** **BRIEF SEALED** (docs) · code not started  
-**Branch (docs):** `docs/stage-3-slice-3-sales-inquiry-product-flow`  
-**Branch (code, later):** `feat/stage-3-slice-3-sales-inquiry-product-flow`  
+**Status:** **IN PROGRESS** (code — `feat/stage-3-slice-3-sales-inquiry-product-flow`)  
+**Branch (docs):** `docs/stage-3-slice-3-sales-inquiry-product-flow` ✅ merged #223  
+**Branch (code):** `feat/stage-3-slice-3-sales-inquiry-product-flow`  
 **Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase B](../architecture/platform-completion-roadmap.md) · [Pipeline v1 seal](../architecture/sales-domain-pipeline-v1.md) · Stage 3 [slice 1](stage-3-sales-pipeline-product-wiring.md) · [slice 2](stage-3-sales-pipeline-convert-entrypoints.md) · [Meta Intake Completeness](meta-intake-completeness.md) · [ADR-022 Flow Spec](../workflows/adr022-phase2-sales-only-capability-flow.md) · [Intake Runtime Split](intake-runtime-split-v1.md)
 
 > Product identity for Sales inbox/workspace = **SalesInquiry**.  
@@ -99,9 +99,10 @@ Do **not** mix slice 4 into slice 3.
 
 ---
 
-## DoD (this docs PR)
+## DoD
 
 - [x] Brief sealed with in/out + acceptance  
-- [x] Queue + roadmap point at this brief; Product Track notes Meta → slice 3 feat  
+- [x] Queue + roadmap point at this brief  
 - [x] Boundary vs slice 4 / R6 explicit  
-- [ ] Code feat PR (separate)  
+- [ ] Code feat PR — list/get/patch SI identity + `transport_lead_id`; FE Lead sections use transport id  
+- [ ] Contract tests green  

@@ -128,7 +128,9 @@ async def test_product_convert_uses_mapping_and_is_idempotent(db, tenant_id: str
     assert inquiry.status == "converted"
     assert inquiry.meta[CONVERT_MAPPING_KEY]["client_account_id"]
     account_id = inquiry.meta[CONVERT_MAPPING_KEY]["client_account_id"]
-    assert first.id == str(lead.id)
+    assert first.id == str(inquiry.id)
+    assert first.sales_inquiry_id == str(inquiry.id)
+    assert first.transport_lead_id == str(lead.id)
 
     second = await mutations.convert_sales_inquiry(
         db,
@@ -139,7 +141,8 @@ async def test_product_convert_uses_mapping_and_is_idempotent(db, tenant_id: str
     )
     await db.refresh(inquiry)
     assert inquiry.meta[CONVERT_MAPPING_KEY]["client_account_id"] == account_id
-    assert second.id == str(lead.id)
+    assert second.id == str(inquiry.id)
+    assert second.transport_lead_id == str(lead.id)
 
     account_count = await db.scalar(
         select(func.count())
