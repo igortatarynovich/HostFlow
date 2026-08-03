@@ -102,8 +102,8 @@ Return to Acquisition only after **Epic C — complete** + **A2 Governance** (bo
 
 Close:
 
-- Meta Intake Completeness (payload retention / visibility — Acquisition-adjacent)
-- Stage 3 slice 3 — SalesInquiry product flow
+- Meta Intake Completeness (payload retention / visibility — Acquisition-adjacent) — [#222](https://github.com/igortatarynovich/HostFlow/pull/222)
+- Stage 3 slice 3 — SalesInquiry product flow — [brief](../tasks/stage-3-sales-inquiry-product-flow.md) sealed; code after Meta
 - Stage 3 slice 4 — hard module separation
 
 **End-to-end chain (must be complete):**

@@ -51,6 +51,10 @@ Operator can open a Sales inquiry and see every answer from the Meta form; compa
 ## Explicitly deferred
 
 - Moving Meta into Forms `FormSubmissionEnvelope`  
-- Persisting answers on `sales_inquiries` columns (R6 SoT)  
+- Persisting answers on `sales_inquiries` columns (R6 SoT) — see [Stage 3 slice 3](stage-3-sales-inquiry-product-flow.md) (join Lead for display)  
 - Live Meta Graph form mapping audit / admin verify gate  
 - Historical DB backfill job  
+
+## Next
+
+After this slice merges: **Stage 3 slice 3** SalesInquiry product flow ([brief](stage-3-sales-inquiry-product-flow.md)).

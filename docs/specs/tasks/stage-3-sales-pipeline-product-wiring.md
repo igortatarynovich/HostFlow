@@ -21,7 +21,7 @@ Wire **product** Sales convert to domain Convert Mapping and apply Review SoT.
 ## Out of scope
 
 - Communication product branches  
-- Full Lead demotion across Sales UI/API (later Stage 3 slice)  
+- Full Lead demotion across Sales UI/API — **Stage 3 slice 3** ([brief](stage-3-sales-inquiry-product-flow.md))  
 - Closing non-canonical Lead `POST /leads/{id}/convert-client` (tracked; not deleted here)  
 - Manual-create UI  
 

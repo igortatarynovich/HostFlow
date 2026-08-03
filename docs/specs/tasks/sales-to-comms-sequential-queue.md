@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-03 strategy:** Acquisition Stage 6 DONE. Epic C + A2 **PASS_WITH_CONSTRAINTS**. **Product Track** = **Meta Intake Completeness** (`feat/meta-intake-completeness`). Then Stage 3 slice 3–4. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
+> **2026-08-03 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta Intake Completeness on tip of Product stack ([#222](https://github.com/igortatarynovich/HostFlow/pull/222)). **Next after Meta:** Stage 3 slice 3 — [SalesInquiry product flow brief](stage-3-sales-inquiry-product-flow.md) (docs sealed; code feat after Meta merge). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
 > C2.4 **frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Meta Intake Completeness** (active) — [task](meta-intake-completeness.md); then Stage 3 slice 3–4 | Almost all capacity |
+| **Product** | Meta Intake Completeness ([#222](https://github.com/igortatarynovich/HostFlow/pull/222)) → Stage 3 slice 3 brief sealed → **feat** SI product flow | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -44,8 +44,9 @@
 - C2.4 Scheduling ← **frozen** (gate residual R1; do not start)  
 - **Epic C Complete Gate** ← **PASS_WITH_CONSTRAINTS** (2026-08-03) — [gate](../gates/epic-c-complete-gate.md)  
 - **A2 Platform Governance Review** ← **PASS_WITH_CONSTRAINTS** (2026-08-03) — [gate](../gates/platform-governance-review-a2.md)  
-- **Meta intake completeness** ← **Product Track next** — [meta-intake-completeness.md](meta-intake-completeness.md)  
-- Sales Stage 3 slice 3–4 — after Meta (or with Meta per roadmap Phase B); see also 3E deferred D1–D2
+- **Meta intake completeness** ← active stack [#222](https://github.com/igortatarynovich/HostFlow/pull/222) — [meta-intake-completeness.md](meta-intake-completeness.md)  
+- **Stage 3 slice 3 — SalesInquiry product flow** ← brief sealed — [stage-3-sales-inquiry-product-flow.md](stage-3-sales-inquiry-product-flow.md); code after Meta merge  
+- Stage 3 slice 4 — hard module separation — after slice 3; see also 3E deferred D1–D2
 
 ---
 
@@ -74,11 +75,12 @@
 | **8** | **Epic C Complete Gate** | `docs/epic-c-complete-gate` | ✅ **PASS_WITH_CONSTRAINTS** (2026-08-03) |
 | **8b** | **Compliance outbound (ADR-031)** | [compliance-outbound-pipeline-early-result](compliance-outbound-pipeline-early-result.md) | Early opaque result + RODO/ops binders; **Engineering track**; no SMTP bypass |
 | **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | ✅ **PASS_WITH_CONSTRAINTS** — [gate](../gates/platform-governance-review-a2.md) |
-| **10** | **Meta Intake Completeness** | per [meta-intake](meta-intake-completeness.md) | ← **Product Track next** |
-| **11+** | Stage 3 slice 3–4 / Forms… | after Meta | Per roadmap Phase B–C |
+| **10** | **Meta Intake Completeness** | `feat/meta-intake-completeness` | [#222](https://github.com/igortatarynovich/HostFlow/pull/222) — answers + B2B naming |
+| **11** | **Stage 3 slice 3** SalesInquiry product flow | `docs/…` → `feat/…` | Brief sealed — [brief](stage-3-sales-inquiry-product-flow.md) |
+| **12** | Stage 3 slice 4 hard separation | after slice 3 | ADR-023 / R6 boundary |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.**  
-**Active (Product):** **Meta Intake Completeness** — [task](meta-intake-completeness.md).  
+**Active (Product):** Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222); next code = Stage 3 slice 3 feat after brief.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -101,9 +103,15 @@
 **Slice 1 ✅** — [stage-3-sales-pipeline-product-wiring.md](stage-3-sales-pipeline-product-wiring.md) (PR #98)  
 **Slice 2 ✅** — [stage-3-sales-pipeline-convert-entrypoints.md](stage-3-sales-pipeline-convert-entrypoints.md) (PR #99)
 
-### Slice 3+ — **open after A2** (sequence with Meta)
+### Slice 3 — SalesInquiry product flow
 
-A2 Platform Governance Review is **PASS_WITH_CONSTRAINTS**. Start **Meta Intake Completeness** first, then Stage 3 slice 3–4, unless the [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) is explicitly amended.
+**Brief sealed** — [stage-3-sales-inquiry-product-flow.md](stage-3-sales-inquiry-product-flow.md).  
+**Code:** `feat/stage-3-slice-3-sales-inquiry-product-flow` after Meta Intake Completeness merges.  
+Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 4.
+
+### Slice 4 — hard module separation
+
+After slice 3. ADR-023 operational independence — do not mix into slice 3.
 
 ---
 
@@ -186,6 +194,7 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-08-03: Stage 3 slice 3 **brief sealed** ([stage-3-sales-inquiry-product-flow.md](stage-3-sales-inquiry-product-flow.md)); code after Meta #222.  
 - 2026-08-03: **A2 PASS_WITH_CONSTRAINTS**; Product Track → **Meta Intake Completeness** (Phase B).  
 - 2026-08-03: **Epic C Complete Gate PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
 - 2026-08-03: Stage 6 **PR-4 ✅ #216**; Product Track → **Stage 6 PR-5 month buckets**.  
