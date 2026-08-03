@@ -23,6 +23,11 @@ from backend.app.acquisition.campaign_source_cards import (
 from backend.app.acquisition.endpoint_activity import form_endpoint_id, intake_source_endpoint_id
 from backend.app.acquisition.flights import runtime_commands
 from backend.app.acquisition.flights.runtime_commands import FlightRuntimeError
+from backend.app.acquisition.contracts.outcome_commercial_value import (
+    OutcomeCommercialValueError,
+    get_outcome_commercial_value,
+    set_outcome_commercial_value,
+)
 from backend.app.acquisition.kpi_aggregates import (
     KpiAggregateError,
     aggregate_campaign_kpi,
@@ -353,6 +358,8 @@ class FlightKpiOut(BaseModel):
     cost_per_lead: Optional[str] = None
     cost_per_qualified: Optional[str] = None
     cost_per_outcome: Optional[str] = None
+    outcome_value: Optional[str] = None
+    roi: Optional[str] = None
 
 
 class CampaignKpiOut(BaseModel):
@@ -367,6 +374,8 @@ class CampaignKpiOut(BaseModel):
     cost_per_lead: Optional[str] = None
     cost_per_qualified: Optional[str] = None
     cost_per_outcome: Optional[str] = None
+    outcome_value: Optional[str] = None
+    roi: Optional[str] = None
     flights: List[FlightKpiOut] = Field(default_factory=list)
 
 
@@ -385,6 +394,8 @@ class FlightCompareRowOut(BaseModel):
     cost_per_lead: Optional[str] = None
     cost_per_qualified: Optional[str] = None
     cost_per_outcome: Optional[str] = None
+    outcome_value: Optional[str] = None
+    roi: Optional[str] = None
     lead_share: Optional[str] = None
     cpl_delta: Optional[str] = None
     is_best_cpl: bool = False
@@ -402,6 +413,8 @@ class FlightCompareOut(BaseModel):
     cost_per_lead: Optional[str] = None
     cost_per_qualified: Optional[str] = None
     cost_per_outcome: Optional[str] = None
+    outcome_value: Optional[str] = None
+    roi: Optional[str] = None
     flights: List[FlightCompareRowOut] = Field(default_factory=list)
 
 
@@ -414,6 +427,8 @@ class CohortBucketOut(BaseModel):
     outcomes_completed: int
     cost_per_lead: Optional[str] = None
     cost_per_outcome: Optional[str] = None
+    outcome_value: Optional[str] = None
+    roi: Optional[str] = None
 
 
 class CohortSeriesOut(BaseModel):
@@ -429,6 +444,8 @@ class CohortSeriesOut(BaseModel):
     outcomes_completed: int
     cost_per_lead: Optional[str] = None
     cost_per_outcome: Optional[str] = None
+    outcome_value: Optional[str] = None
+    roi: Optional[str] = None
     buckets: List[CohortBucketOut] = Field(default_factory=list)
 
 
@@ -445,6 +462,8 @@ class PortfolioCampaignRowOut(BaseModel):
     cost_per_lead: Optional[str] = None
     cost_per_qualified: Optional[str] = None
     cost_per_outcome: Optional[str] = None
+    outcome_value: Optional[str] = None
+    roi: Optional[str] = None
     is_best_cpl: bool = False
 
 
@@ -459,8 +478,24 @@ class PortfolioOut(BaseModel):
     outcomes_completed: int
     cost_per_lead: Optional[str] = None
     cost_per_outcome: Optional[str] = None
+    outcome_value: Optional[str] = None
+    roi: Optional[str] = None
     campaigns: List[PortfolioCampaignRowOut] = Field(default_factory=list)
     scan_capped: bool = False
+
+
+class OutcomeCommercialValueIn(BaseModel):
+    amount: str = Field(..., min_length=1, max_length=32)
+    currency: str = Field(..., min_length=3, max_length=3)
+    source: str = Field(default="declared_v1", max_length=32)
+
+
+class OutcomeCommercialValueOut(BaseModel):
+    outcome_id: str
+    amount: str
+    currency: str
+    source: str
+    as_of: datetime
 
 
 class EndpointsSummaryOut(BaseModel):
@@ -1984,6 +2019,97 @@ async def detach_intake_source_on_flight(
 
 
 # Stage 4 PR-3 — Runtime Read API + Live Intake Monitor
+
+
+@router.put(
+    "/{campaign_id}/outcomes/{outcome_id}/commercial-value",
+    response_model=OutcomeCommercialValueOut,
+    dependencies=_WRITE,
+)
+async def put_outcome_commercial_value_endpoint(
+    campaign_id: str,
+    outcome_id: str,
+    payload: OutcomeCommercialValueIn,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    """Stage 6 PR-6a — declare commercial value on a completed Outcome."""
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        campaign = await campaign_service.get_campaign(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            own_company_id=own_company_id,
+        )
+        from backend.app.models.campaign import CampaignOutcome
+
+        row = await db.get(CampaignOutcome, str(outcome_id))
+        if (
+            row is None
+            or str(row.tenant_id) != str(tenant_uuid)
+            or str(row.campaign_id) != str(campaign.id)
+        ):
+            raise HTTPException(status_code=404, detail="outcome not found")
+        value = await set_outcome_commercial_value(
+            db,
+            tenant_id=str(tenant_uuid),
+            outcome_id=str(outcome_id),
+            amount=payload.amount,
+            currency=payload.currency,
+            source=payload.source,
+        )
+        await db.commit()
+    except CampaignServiceError as exc:
+        await db.rollback()
+        _raise_service(exc)
+    except OutcomeCommercialValueError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return OutcomeCommercialValueOut.model_validate(value.to_dict())
+
+
+@router.get(
+    "/{campaign_id}/outcomes/{outcome_id}/commercial-value",
+    response_model=OutcomeCommercialValueOut,
+    dependencies=_READ,
+)
+async def get_outcome_commercial_value_endpoint(
+    campaign_id: str,
+    outcome_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    """Stage 6 PR-6a — read commercial value snapshot for an Outcome."""
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        campaign = await campaign_service.get_campaign(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            own_company_id=own_company_id,
+        )
+        from backend.app.models.campaign import CampaignOutcome
+
+        row = await db.get(CampaignOutcome, str(outcome_id))
+        if (
+            row is None
+            or str(row.tenant_id) != str(tenant_uuid)
+            or str(row.campaign_id) != str(campaign.id)
+        ):
+            raise HTTPException(status_code=404, detail="outcome not found")
+        value = await get_outcome_commercial_value(
+            db, tenant_id=str(tenant_uuid), outcome_id=str(outcome_id)
+        )
+    except CampaignServiceError as exc:
+        _raise_service(exc)
+    if value is None:
+        raise HTTPException(status_code=404, detail="commercial value not set")
+    return OutcomeCommercialValueOut.model_validate(value.to_dict())
 
 
 @router.get(

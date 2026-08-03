@@ -15,7 +15,7 @@ from typing import Literal, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.acquisition.kpi_aggregates import KpiAggregateError
+from backend.app.acquisition.kpi_aggregates import KpiAggregateError, _roi
 from backend.app.acquisition.outcome_service import STATUS_COMPLETED
 from backend.app.models.campaign import (
     Campaign,
@@ -54,6 +54,8 @@ class CohortBucket:
     outcomes_completed: int
     cost_per_lead: Optional[Decimal]
     cost_per_outcome: Optional[Decimal]
+    outcome_value: Optional[Decimal]
+    roi: Optional[Decimal]
 
     def to_dict(self) -> dict:
         return {
@@ -67,6 +69,8 @@ class CohortBucket:
             "cost_per_outcome": None
             if self.cost_per_outcome is None
             else str(self.cost_per_outcome),
+            "outcome_value": None if self.outcome_value is None else str(self.outcome_value),
+            "roi": None if self.roi is None else str(self.roi),
         }
 
 
@@ -84,6 +88,8 @@ class CohortSeries:
     outcomes_completed: int
     cost_per_lead: Optional[Decimal]
     cost_per_outcome: Optional[Decimal]
+    outcome_value: Optional[Decimal]
+    roi: Optional[Decimal]
     buckets: tuple[CohortBucket, ...]
 
     def to_dict(self) -> dict:
@@ -103,6 +109,8 @@ class CohortSeries:
             "cost_per_outcome": None
             if self.cost_per_outcome is None
             else str(self.cost_per_outcome),
+            "outcome_value": None if self.outcome_value is None else str(self.outcome_value),
+            "roi": None if self.roi is None else str(self.roi),
             "buckets": [b.to_dict() for b in self.buckets],
         }
 
@@ -242,6 +250,8 @@ async def compose_campaign_cohorts(
         leads_by_day.setdefault(key, set()).add((str(attr.result_type), str(attr.result_id)))
 
     outcomes_by_day: dict[date, int] = {}
+    value_by_day: dict[date, Decimal] = {}
+    value_currency: Optional[str] = None
     for outcome in outcomes:
         stamp = outcome.completed_at or outcome.created_at
         if stamp is None:
@@ -251,11 +261,34 @@ async def compose_campaign_cohorts(
             continue
         key = _day_key(stamp_utc)
         outcomes_by_day[key] = outcomes_by_day.get(key, 0) + 1
+        if outcome.commercial_value_amount is None or not outcome.commercial_value_currency:
+            continue
+        vcur = str(outcome.commercial_value_currency).strip().upper()
+        if len(vcur) != 3 or not vcur.isalpha():
+            raise KpiAggregateError(f"invalid currency: {outcome.commercial_value_currency!r}")
+        if value_currency is None:
+            value_currency = vcur
+        elif value_currency != vcur:
+            raise KpiAggregateError(
+                f"mixed currencies in outcome commercial value: {value_currency} vs {vcur}"
+            )
+        if currency is not None and vcur != currency:
+            raise KpiAggregateError(
+                f"outcome value currency {vcur} does not match spend currency {currency}"
+            )
+        value_by_day[key] = _money(
+            value_by_day.get(key, ZERO) + _money(Decimal(outcome.commercial_value_amount))
+        )
+
+    if currency is None and value_currency is not None:
+        currency = value_currency
 
     buckets: list[CohortBucket] = []
     total_spend = ZERO
     total_leads = 0
     total_outcomes = 0
+    total_value = ZERO
+    any_value = False
     for period_start, period_end_excl in _period_bounds(bucket_kind, start_day, end_day):
         b_start = _utc_day_start(period_start)
         b_end = _utc_day_start(period_end_excl)
@@ -264,17 +297,26 @@ async def compose_campaign_cohorts(
         spend = ZERO
         lead_keys: set[tuple[str, str]] = set()
         outs = 0
+        value = ZERO
+        day_has_value = False
         day = agg_from
         while day <= agg_to:
             spend += spend_by_day.get(day, ZERO)
             lead_keys |= leads_by_day.get(day, set())
             outs += outcomes_by_day.get(day, 0)
+            if day in value_by_day:
+                value += value_by_day[day]
+                day_has_value = True
             day += timedelta(days=1)
         spend = _money(spend)
         leads = len(lead_keys)
+        outcome_value = _money(value) if day_has_value else None
         total_spend += spend
         total_leads += leads
         total_outcomes += outs
+        if outcome_value is not None:
+            total_value += outcome_value
+            any_value = True
         buckets.append(
             CohortBucket(
                 bucket_start=b_start,
@@ -285,10 +327,13 @@ async def compose_campaign_cohorts(
                 outcomes_completed=outs,
                 cost_per_lead=_ratio(spend, leads),
                 cost_per_outcome=_ratio(spend, outs),
+                outcome_value=outcome_value,
+                roi=_roi(outcome_value, spend),
             )
         )
 
     total_spend = _money(total_spend)
+    series_value = _money(total_value) if any_value else None
     return CohortSeries(
         tenant_id=str(tenant_id),
         campaign_id=str(campaign_id),
@@ -302,6 +347,8 @@ async def compose_campaign_cohorts(
         outcomes_completed=total_outcomes,
         cost_per_lead=_ratio(total_spend, total_leads),
         cost_per_outcome=_ratio(total_spend, total_outcomes),
+        outcome_value=series_value,
+        roi=_roi(series_value, total_spend),
         buckets=tuple(buckets),
     )
 

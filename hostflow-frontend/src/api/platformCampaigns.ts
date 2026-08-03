@@ -315,6 +315,8 @@ export type FlightKpi = {
   cost_per_lead?: string | null
   cost_per_qualified?: string | null
   cost_per_outcome?: string | null
+  outcome_value?: string | null
+  roi?: string | null
 }
 
 export type CampaignKpi = Omit<FlightKpi, 'flight_id'> & {
@@ -418,6 +420,8 @@ export type FlightCompareRow = {
   cost_per_lead?: string | null
   cost_per_qualified?: string | null
   cost_per_outcome?: string | null
+  outcome_value?: string | null
+  roi?: string | null
   lead_share?: string | null
   cpl_delta?: string | null
   is_best_cpl: boolean
@@ -435,6 +439,8 @@ export type FlightCompare = {
   cost_per_lead?: string | null
   cost_per_qualified?: string | null
   cost_per_outcome?: string | null
+  outcome_value?: string | null
+  roi?: string | null
   flights: FlightCompareRow[]
 }
 
@@ -455,6 +461,8 @@ export type CohortBucket = {
   outcomes_completed: number
   cost_per_lead?: string | null
   cost_per_outcome?: string | null
+  outcome_value?: string | null
+  roi?: string | null
 }
 
 export type CohortSeries = {
@@ -470,6 +478,8 @@ export type CohortSeries = {
   outcomes_completed: number
   cost_per_lead?: string | null
   cost_per_outcome?: string | null
+  outcome_value?: string | null
+  roi?: string | null
   buckets: CohortBucket[]
 }
 
@@ -499,6 +509,8 @@ export type PortfolioCampaignRow = {
   cost_per_lead?: string | null
   cost_per_qualified?: string | null
   cost_per_outcome?: string | null
+  outcome_value?: string | null
+  roi?: string | null
   is_best_cpl: boolean
 }
 
@@ -513,8 +525,41 @@ export type CampaignPortfolio = {
   outcomes_completed: number
   cost_per_lead?: string | null
   cost_per_outcome?: string | null
+  outcome_value?: string | null
+  roi?: string | null
   campaigns: PortfolioCampaignRow[]
   scan_capped: boolean
+}
+
+export type OutcomeCommercialValue = {
+  outcome_id: string
+  amount: string
+  currency: string
+  source: string
+  as_of: string
+}
+
+/** Stage 6 PR-6a — declare commercial value on a completed Outcome. */
+export async function putOutcomeCommercialValue(
+  campaignId: string,
+  outcomeId: string,
+  payload: { amount: string; currency: string; source?: string },
+): Promise<OutcomeCommercialValue> {
+  const { data } = await api.put<OutcomeCommercialValue>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/outcomes/${encodeURIComponent(outcomeId)}/commercial-value`,
+    payload,
+  )
+  return data
+}
+
+export async function getOutcomeCommercialValue(
+  campaignId: string,
+  outcomeId: string,
+): Promise<OutcomeCommercialValue> {
+  const { data } = await api.get<OutcomeCommercialValue>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/outcomes/${encodeURIComponent(outcomeId)}/commercial-value`,
+  )
+  return data
 }
 
 /** Stage 6 PR-4 — company-scoped Campaign KPI portfolio. */

@@ -47,6 +47,8 @@ class FlightKpiAggregate:
     cost_per_lead: Optional[Decimal]
     cost_per_qualified: Optional[Decimal]
     cost_per_outcome: Optional[Decimal]
+    outcome_value: Optional[Decimal]
+    roi: Optional[Decimal]
 
     def to_dict(self) -> dict:
         return {
@@ -66,6 +68,8 @@ class FlightKpiAggregate:
             "cost_per_outcome": None
             if self.cost_per_outcome is None
             else str(self.cost_per_outcome),
+            "outcome_value": None if self.outcome_value is None else str(self.outcome_value),
+            "roi": None if self.roi is None else str(self.roi),
         }
 
 
@@ -82,6 +86,8 @@ class CampaignKpiAggregate:
     cost_per_lead: Optional[Decimal]
     cost_per_qualified: Optional[Decimal]
     cost_per_outcome: Optional[Decimal]
+    outcome_value: Optional[Decimal]
+    roi: Optional[Decimal]
     flights: tuple[FlightKpiAggregate, ...]
 
     def to_dict(self) -> dict:
@@ -101,6 +107,8 @@ class CampaignKpiAggregate:
             "cost_per_outcome": None
             if self.cost_per_outcome is None
             else str(self.cost_per_outcome),
+            "outcome_value": None if self.outcome_value is None else str(self.outcome_value),
+            "roi": None if self.roi is None else str(self.roi),
             "flights": [f.to_dict() for f in self.flights],
         }
 
@@ -113,6 +121,45 @@ def _ratio(spend: Decimal, denominator: int) -> Optional[Decimal]:
     if denominator <= 0:
         return None
     return (Decimal(spend) / Decimal(denominator)).quantize(RATIO_QUANT, rounding=ROUND_HALF_UP)
+
+
+def _roi(outcome_value: Optional[Decimal], spend: Decimal) -> Optional[Decimal]:
+    """Locked Stage 6 formula: (outcome_value − spend) / spend when spend > 0."""
+    if outcome_value is None or spend <= ZERO:
+        return None
+    return ((Decimal(outcome_value) - Decimal(spend)) / Decimal(spend)).quantize(
+        RATIO_QUANT, rounding=ROUND_HALF_UP
+    )
+
+
+def _sum_outcome_values(
+    outcomes: list[CampaignOutcome],
+    *,
+    spend_currency: Optional[str],
+) -> Optional[Decimal]:
+    """Sum declared commercial values on completed outcomes; null if none set."""
+    total = ZERO
+    value_currency: Optional[str] = None
+    any_value = False
+    for row in outcomes:
+        if row.commercial_value_amount is None or not row.commercial_value_currency:
+            continue
+        cur = _normalize_currency(str(row.commercial_value_currency))
+        if value_currency is None:
+            value_currency = cur
+        elif value_currency != cur:
+            raise KpiAggregateError(
+                f"mixed currencies in outcome commercial value: {value_currency} vs {cur}"
+            )
+        if spend_currency is not None and cur != spend_currency:
+            raise KpiAggregateError(
+                f"outcome value currency {cur} does not match spend currency {spend_currency}"
+            )
+        total += _money(Decimal(row.commercial_value_amount))
+        any_value = True
+    if not any_value:
+        return None
+    return _money(total)
 
 
 def _normalize_currency(code: str) -> str:
@@ -255,6 +302,7 @@ async def aggregate_flight_kpi(
     ).scalars().all()
     outcomes_n = len(outcomes_completed)
     converted = outcomes_n
+    outcome_value = _sum_outcome_values(list(outcomes_completed), spend_currency=currency)
 
     return FlightKpiAggregate(
         tenant_id=str(tenant_id),
@@ -269,6 +317,8 @@ async def aggregate_flight_kpi(
         cost_per_lead=_ratio(spend, leads),
         cost_per_qualified=_ratio(spend, qualified),
         cost_per_outcome=_ratio(spend, outcomes_n),
+        outcome_value=outcome_value,
+        roi=_roi(outcome_value, spend),
     )
 
 
@@ -303,6 +353,8 @@ async def aggregate_campaign_kpi(
     qualified = 0
     converted = 0
     outcomes_completed = 0
+    outcome_value_total = ZERO
+    any_outcome_value = False
     for fa in flight_aggs:
         if fa.currency is not None:
             if currency is None:
@@ -316,8 +368,12 @@ async def aggregate_campaign_kpi(
         qualified += fa.qualified
         converted += fa.converted
         outcomes_completed += fa.outcomes_completed
+        if fa.outcome_value is not None:
+            outcome_value_total += fa.outcome_value
+            any_outcome_value = True
 
     spend = _money(spend)
+    outcome_value = _money(outcome_value_total) if any_outcome_value else None
     return CampaignKpiAggregate(
         tenant_id=str(tenant_id),
         campaign_id=str(campaign_id),
@@ -330,5 +386,7 @@ async def aggregate_campaign_kpi(
         cost_per_lead=_ratio(spend, leads),
         cost_per_qualified=_ratio(spend, qualified),
         cost_per_outcome=_ratio(spend, outcomes_completed),
+        outcome_value=outcome_value,
+        roi=_roi(outcome_value, spend),
         flights=tuple(flight_aggs),
     )
