@@ -403,6 +403,49 @@ export async function getCampaignKpi(campaignId: string): Promise<CampaignKpi> {
   return data
 }
 
+export type FlightCompareRow = {
+  flight_id: string
+  code: string
+  name: string
+  status: string
+  is_current: boolean
+  currency?: string | null
+  spend: string
+  leads: number
+  qualified: number
+  converted: number
+  outcomes_completed: number
+  cost_per_lead?: string | null
+  cost_per_qualified?: string | null
+  cost_per_outcome?: string | null
+  lead_share?: string | null
+  cpl_delta?: string | null
+  is_best_cpl: boolean
+}
+
+export type FlightCompare = {
+  tenant_id: string
+  campaign_id: string
+  currency?: string | null
+  spend: string
+  leads: number
+  qualified: number
+  converted: number
+  outcomes_completed: number
+  cost_per_lead?: string | null
+  cost_per_qualified?: string | null
+  cost_per_outcome?: string | null
+  flights: FlightCompareRow[]
+}
+
+/** Stage 6 PR-1 — read-only Flight wave compare. */
+export async function getCampaignFlightCompare(campaignId: string): Promise<FlightCompare> {
+  const { data } = await api.get<FlightCompare>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/analytics/flight-compare`,
+  )
+  return data
+}
+
 export async function getFlightKpi(campaignId: string, flightId: string): Promise<FlightKpi> {
   const { data } = await api.get<FlightKpi>(
     `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/kpi`,

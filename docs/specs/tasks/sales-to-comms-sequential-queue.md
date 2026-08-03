@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Source Diagnostics PR9** ✅ (this PR) → later backlog / Stage 6 horizon | Almost all capacity |
+| **Product** | **Acquisition Stage 6 PR-1** — Flight wave compare ([brief](acquisition-stage-6-analytics.md)) | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred) | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -37,9 +37,9 @@
 - **Acquisition Stage 4 / Flight Runtime** ← **Runtime DONE** (#136 / #148–#151) — [stage-4](acquisition-stage-4-flight-runtime.md)  
 - **Acquisition UI Cutover** ← **PASS** — [cutover](acquisition-ui-cutover.md) · [C-7](acquisition-ui-cutover-c7-searches-decommission.md) (C-1…C-7 closed 2026-07-27; Stage 5 PR-2 may resume)
 - **FlightAdBinding Ad-ID bind UI** ← **DONE** (#187) — Campaign Detail Ad→Flight panel  
-- **Source Diagnostics** ← **PR1–PR9 ✅** (#196–#211 + this PR) — [brief](acquisition-source-diagnostics.md); Wave-1 notifications closed (SPA-only)  
+- **Source Diagnostics** ← **PR1–PR9 ✅** (#196–#212) — [brief](acquisition-source-diagnostics.md); Wave-1 notifications closed (SPA-only)  
 - **Acquisition Stage 5 / Optimization** ← PR-1 DONE · **PR-2 DONE** (#203) — [stage-5](acquisition-stage-5-optimization.md)  
-- **Acquisition Stage 6 Analytics** ← future horizon (ADR-024 §14.1); eligible after Diagnostics Wave-1 close  
+- **Acquisition Stage 6 Analytics** ← **ACTIVE Product Track** — PR-1 Flight wave compare — [brief](acquisition-stage-6-analytics.md)  
 - C2.3 stack merge + C2.4 + Epic C Complete Gate — Engineering / later Communication close-out (**C2.4 frozen**)  
 - Meta intake completeness · Sales Stage 3 slice 3–4 — after Flight V1 vertical (3A–3E) as needed; see also 3E deferred D1–D2
 
@@ -73,7 +73,7 @@
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
 **C0–C2.2** ✅. **C2.3** implemented (merge opportunistic). **C2.4 frozen.**  
-**Active (Product):** Source Diagnostics **PR9** drift notification Wave-1 (this PR; PR1–8 ✅ [#196](https://github.com/igortatarynovich/HostFlow/pull/196)–[#210](https://github.com/igortatarynovich/HostFlow/pull/210)). Stage 5 PR-2 ✅ [#203](https://github.com/igortatarynovich/HostFlow/pull/203).  
+**Active (Product):** **Acquisition Stage 6 PR-1** Flight wave compare ([brief](acquisition-stage-6-analytics.md)). Source Diagnostics PR1–9 ✅ [#196](https://github.com/igortatarynovich/HostFlow/pull/196)–[#212](https://github.com/igortatarynovich/HostFlow/pull/212). Stage 5 PR-2 ✅ [#203](https://github.com/igortatarynovich/HostFlow/pull/203).  
 **Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap. Stage 4 merge (2026-07-23) accepted with known baseline debt — Stage 4 tests/gates green; full suite red outside scope.
 
 ---
@@ -181,7 +181,8 @@ Next branch only after:
 
 ## 8. History
 
-- 2026-08-02: Source Diagnostics **PR9** drift-summary Wave-1 (this PR); SPA-only notifications closed.  
+- 2026-08-03: Source Diagnostics **PR9 ✅ #212**; Product Track → **Stage 6 PR-1 Flight wave compare**.  
+- 2026-08-02: Source Diagnostics **PR9** drift-summary Wave-1 (merged #212); SPA-only notifications closed.  
 - 2026-08-02: Source Diagnostics **PR8 ✅ #210**; Product Track → **PR9 drift notification Wave-1**.  
 - 2026-08-01: Source Diagnostics **PR7 ✅ #206**; Product Track → **PR8 replay submission**.  
 - 2026-08-01: Source Diagnostics **PR6 ✅ #205**; Product Track → **PR7 Mapping Health drift alerts**.  

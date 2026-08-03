@@ -7,8 +7,8 @@
 **PR-1 merge:** [#153](https://github.com/igortatarynovich/HostFlow/pull/153) → `1bf3e7f4` on `integration/release-product-a-b` (2026-07-23)  
 **PR-2 merge:** [#203](https://github.com/igortatarynovich/HostFlow/pull/203)  
 **Deferred (not Stage 5):** [acquisition-stage-3e-deferred.md](acquisition-stage-3e-deferred.md) (D1–D5 remain Instrumentation)  
-**Product Track now:** [Source Diagnostics PR9](acquisition-source-diagnostics.md) (Stage 5 closed)  
-**Next horizon:** Stage 6 Analytics (after Diagnostics PR7 / queue lock)
+**Product Track now:** [Stage 6 PR-1 Flight wave compare](acquisition-stage-6-analytics.md) (Stage 5 closed)  
+**Next horizon:** Stage 6 PR-2+ (cohorts / ROI–CAC) after PR-1
 
 > **Improve** rung of the maturity ladder — assisted / automatic optimization **on top of** Stage 4 controls + 3E Timeline.  
 > Does **not** redefine Runtime commands or Timeline append contract.
