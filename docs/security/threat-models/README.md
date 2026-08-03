@@ -11,6 +11,7 @@
 | [handoff.md](./handoff.md) | Cross-tenant visibility, ACCESS CONTEXT, IDOR |
 | [client-portal.md](./client-portal.md) | Фильтрация данных, company scope, комментарии |
 | [automations.md](./automations.md) | Исходящие HTTP, права сервисных аккаунтов, side effects |
+| [communication-campaign-orchestrator.md](./communication-campaign-orchestrator.md) | C2.3 Campaign Orchestrator: tenant scope, Intent-only egress, no provider/Thread, audience snapshot |
 | [exports.md](./exports.md) | Insider, bulk CSV, скрытые поля, rate limits |
 | [global-search.md](./global-search.md) | CRM global search + tenant link company directory retrieval audit |
 | [client-account-manual-creation.md](./client-account-manual-creation.md) | Manual `ClientAccount` create: tenant/company bind, duplicates, idempotency, origin forgery |

@@ -68,6 +68,19 @@ export default function CommunicationsSettingsPage() {
         defaultValue: 'Open Control Center',
       }),
     },
+    {
+      key: 'campaigns',
+      title: t('admin.settings.cards.communications_campaigns.label', {
+        defaultValue: 'Campaigns',
+      }),
+      description: t('admin.settings.cards.communications_campaigns.description', {
+        defaultValue: 'Audience + plan → Intent per recipient (operator tools).',
+      }),
+      to: P.settingsCommunicationsCampaigns,
+      cta: t('admin.communications_settings.open_campaigns', {
+        defaultValue: 'Open campaigns',
+      }),
+    },
   ]
 
   return (

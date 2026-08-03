@@ -131,6 +131,9 @@ export const CommunicationAutomationRulesPage = lazy(() =>
 export const LeadLifecycleEmailSettingsPage = lazy(() =>
   loadComms().then((m) => ({ default: m.LeadLifecycleEmailSettingsPage })),
 )
+export const CommunicationCampaignsPage = lazy(() =>
+  loadComms().then((m) => ({ default: m.CommunicationCampaignsPage })),
+)
 
 export const UsersPage = lazy(() => loadAdmin().then((m) => ({ default: m.UsersPage })))
 export const TenantsPage = lazy(() => loadAdmin().then((m) => ({ default: m.TenantsPage })))
