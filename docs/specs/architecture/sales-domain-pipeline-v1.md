@@ -56,7 +56,7 @@ These are **architecture follow-ups**, not silent exceptions:
 
 1. **Wire product convert** to `convert_sales_inquiry_mapping` (retire Sales spine use of Lead `convert-client` without review).  
 2. **Convert must consume Review SoT** (`match_existing` / `create_new`) — gate alone is insufficient.  
-3. **Demote Lead in Sales UI/API** to transport facade; SalesInquiry is product SoT.  
+3. **Demote Lead in Sales UI/API** to transport facade; SalesInquiry is product SoT — **Stage 3 slice 3** ([brief](../tasks/stage-3-sales-inquiry-product-flow.md)).  
 4. **ClientAccount Creation Origins v1** — ✅ docs sealed (PR #94); runtime `create_client_account_manually` is Stage 2 of the locked queue.  
 5. **Capability UI** — display-only (Stage 1 of locked queue); UI must not invent domain decisions.
 

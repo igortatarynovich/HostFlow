@@ -104,7 +104,7 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 Platform maturity (Foundation / Workspace / Automation / Complete):  
 [`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
 
-Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — Product Track = **Meta Intake Completeness** ([task](docs/specs/tasks/meta-intake-completeness.md)).
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — Product Track = Meta Intake Completeness → [Stage 3 slice 3 brief](docs/specs/tasks/stage-3-sales-inquiry-product-flow.md).
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
 [`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
