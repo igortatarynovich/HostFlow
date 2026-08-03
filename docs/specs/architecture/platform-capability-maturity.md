@@ -27,7 +27,7 @@ Legend: ✅ done · 🔄 in progress · ⏳ not started
 
 | Platform | Foundation | Workspace | Automation | Complete |
 |----------|------------|-----------|------------|----------|
-| **Communication** | ✅ | ✅ (C1) | 🔄 (C2) | ⏳ |
+| **Communication** | ✅ | ✅ (C1) | ✅ (C2.1–C2.3; C2.4 frozen) | ✅ `PASS_WITH_CONSTRAINTS` |
 | **Acquisition** | ✅ | ✅ | 🔄 | ⏳ |
 | **Forms** | ⏳ | ⏳ | ⏳ | ⏳ |
 | **Documents** | 🔄 | ⏳ | ⏳ | ⏳ |
@@ -37,9 +37,9 @@ Notes:
 
 - Communication Foundation = C0.0–C0.3 ([foundation doc](communication-platform-foundation.md)).  
 - Communication Workspace = C1 Inbox Workspace ✅ (C1.1–C1.3; closed 2026-07-21 — [evidence](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21)).
-- Communication Automation = C2 capability epic (**active**, slice **C2.1 Template Platform**) — Intent-only; no Thread mutation; capability isolation.
-- Communication Complete = [Epic C Complete Gate](../gates/epic-c-complete-gate.md) PASS → **Epic C — complete**.  
-- Acquisition Automation in progress = Stage 3 / Meta / campaign automation remaining work (see roadmap Phase B).  
+- Communication Automation = C2.1–C2.3 ✅ (Intent-only; capability isolation); **C2.4 Scheduling frozen** (gate residual R1).
+- Communication Complete = [Epic C Complete Gate](../gates/epic-c-complete-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-03) → **Epic C — complete**. Residuals R1–R5 tracked on the gate; Catalog naming → A2.  
+- Acquisition Automation in progress = Stage 3 / Meta / campaign automation remaining work (see roadmap Phase B — after A2).  
 - Documents Foundation in progress = platform lifecycle contracts still consolidating (roadmap Phase E).
 
 Entity Workspace and AI are sequenced later on the roadmap; they appear in the matrix when they become platform SoTs under active delivery.

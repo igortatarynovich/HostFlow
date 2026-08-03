@@ -24,16 +24,16 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 ## Immediate rule (through Epic C)
 
-Do **not** return to Stage 3 while Communication Phase A is open.  
-Locked Communication close-out:
+**Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
+Locked handoff:
 
 ```text
-C1 → C2 → Epic C Complete Gate → A2 Governance → Stage 3 / Meta → …
+Epic C Complete Gate PASS_WITH_CONSTRAINTS → A2 Governance → Stage 3 / Meta → …
 ```
 
-Order **after Epic C — complete** (gate PASS):
+Order **after Epic C — complete**:
 
-1. **A2 — Platform Governance Review (L0 gate)** — boundary-principle audit across platforms  
+1. **A2 — Platform Governance Review (L0 gate)** — boundary-principle audit across platforms ← **next**  
 2. **Phase B — Acquisition / Stage 3 + Meta**  
 3. Forms → Entity Workspace → Documents → Billing → AI  
 
@@ -47,7 +47,7 @@ Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/
 
 **Communication Platform Foundation — complete** (after C0.3 / PR #104).  
 See [communication-platform-foundation.md](communication-platform-foundation.md).  
-This is **not** “Epic C complete” — C2 + **Epic C Complete Gate** remain (C1 closed 2026-07-21).
+**Epic C — complete** via [Epic C Complete Gate](../gates/epic-c-complete-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-03; C2.4 frozen residual).
 
 | Slice | Focus | Status |
 |-------|--------|--------|
@@ -56,11 +56,11 @@ This is **not** “Epic C complete” — C2 + **Epic C Complete Gate** remain (
 | C0.2 Inbound Resolver | Linked or explicit unresolved | ✅ (PR #102) |
 | C0.3 Delivery Diagnostics | Attempts + canonical diagnostics | ✅ (PR #104) |
 | **C1** Communication Inbox Workspace | Thread workplace for managers | ✅ closed 2026-07-21 |
-| **C2** Capability epic (Intent-only) | Templates → Automation → Campaigns → Schedule | **active (C2.1)** |
-| **Epic C Complete Gate** | Single Communication capability check | queued |
+| **C2** Capability epic (Intent-only) | Templates → Automation → Campaigns (C2.4 Schedule frozen) | ✅ C2.1–C2.3 (PR #219) |
+| **Epic C Complete Gate** | Single Communication capability check | ✅ **PASS_WITH_CONSTRAINTS** |
 
 **Foundation result:** Intent, Policy, Registry, Sender, Snapshot, Inbound Resolver, G13, unresolved inbound, delivery attempts/diagnostics/retry/callbacks/timeline.  
-**Epic C — complete** only after [Epic C Complete Gate](../gates/epic-c-complete-gate.md) PASS (not after C2 alone).
+**Epic C — complete** = Foundation + C1 + C2.1–C2.3 + gate (**not** after C2 alone; C2.4 not required while frozen).
 
 **Refs:** [Foundation](communication-platform-foundation.md) · [C1](../tasks/c1-communication-inbox-workspace.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md) · [Epic C0](../tasks/epic-c0-communication-integrity.md) · [C2 epic](../tasks/epic-c2-communication-campaigns.md) · [Canon](../tasks/c0-0-communication-canon.md)
 
@@ -68,9 +68,10 @@ This is **not** “Epic C complete” — C2 + **Epic C Complete Gate** remain (
 
 **Not** a product feature. Final Communication capability gate — see [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md).
 
-Runs **after C2**, **before** A2 Governance. Only on PASS may status change to **Epic C — complete**.
+Runs **after C2** (C2.4 may remain frozen), **before** A2 Governance.  
+Decision 2026-08-03: **PASS_WITH_CONSTRAINTS** → **Epic C — complete**. Next = A2.
 
-### A2. Platform Governance Review (L0 gate)
+### A2. Platform Governance Review (L0 gate) ← **active next**
 
 **Not** a product feature. Cross-platform audit **after Epic C — complete**.
 
@@ -192,11 +193,12 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 ## Anti-patterns (forbidden without amending this roadmap)
 
-1. Starting Stage 3 slice 3+ **before** Epic C (A1) **and** Governance Review (A2).  
+1. Starting Stage 3 slice 3+ **before** Governance Review (A2) — Epic C Complete Gate must already be closed.  
 2. Forms Builder before Forms Platform infrastructure (Phase C).  
 3. Entity Workspace redesign as a temporary shell before Phases A–C foundations.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice).
+5. Parallel product branches that compete across phases (one active product slice).  
+6. Unfreezing C2.4 Scheduling without an explicit queue amendment.
 
 ---
 
@@ -215,4 +217,5 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-03: Epic C Complete Gate **PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
 - 2026-07-20: Locked Phase A→G after Communication platform work; Stage 3 deferred until Epic C + Governance Review.  

@@ -78,5 +78,6 @@ ORM uses `CommunicationCampaign*` / tables `communication_campaign_*` (distinct 
 
 ## After C2.3
 
-**Next Product Track:** [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → A2 Governance.  
+**Epic C Complete Gate:** [PASS_WITH_CONSTRAINTS](../gates/epic-c-complete-gate.md) (2026-08-03).  
+**Next Product Track:** A2 Platform Governance Review.  
 **C2.4 Scheduling** remains frozen.
