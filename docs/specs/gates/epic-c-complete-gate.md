@@ -19,7 +19,7 @@
 | **Outcome** | `PASS_WITH_CONSTRAINTS` |
 | **Date** | 2026-08-03 |
 | **Epic C status** | **Epic C — complete** (under constraints below) |
-| **Next Product Track** | **A2 Platform Governance Review** |
+| **Next Product Track** | **A2 Platform Governance Review** — ✅ closed; Phase B next |
 | **Not outcome** | Clean `PASS` (C2.4 frozen; legacy SMTP allowlist non-empty; Catalog Naming lag) · `STOP` (no second Campaign/Automation pipeline) |
 
 **Rationale:** C0 foundation + C1 Inbox + C2.1–C2.3 Intent-only capabilities are on tip with enforcement (AST isolation, legacy allowlist freeze, inbound/diagnostics guards, Intent emitters). Communication operates as one platform for shipped slices. Remaining gaps are documented residuals with owners — not silent bypasses of the gate.
@@ -131,9 +131,10 @@ Epic C complete means Foundation + C1 + C2.1–C2.3 + this gate.
 (platforms independent; modules only via public contracts/adapters) was not violated  
 during platform growth — not a re-test of “are integrations wired”.
 
-Governance does not replace this gate. **R3** and **R5** are explicitly handed to A2.
+Governance does not replace this gate. **R3** and **R5** were handed to A2.  
+**A2 decision:** [platform-governance-review-a2.md](platform-governance-review-a2.md) **PASS_WITH_CONSTRAINTS** (2026-08-03) — R5 remains Architecture RFC; Phase B open.
 
-**Suggested A2 branch:** `docs/platform-governance-review-post-epic-c`
+**A2 branch:** `docs/platform-governance-review-post-epic-c`
 
 ---
 
