@@ -5,8 +5,8 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-03 strategy:** Acquisition Stage 6 DONE. **C2.3 Campaign Orchestrator landed.** **Product Track** = Epic C Complete Gate. **Engineering Track** = legacy full-repo pytest / CI debt.  
-> C2.4 **frozen**.  
+> **2026-08-03 strategy:** Acquisition Stage 6 DONE. C2.3 landed (#219). **Epic C Complete Gate PASS_WITH_CONSTRAINTS** → **Epic C — complete**. **Product Track** = **A2 Platform Governance Review**. **Engineering Track** = legacy full-repo pytest / CI debt.  
+> C2.4 **frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
 ---
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Epic C Complete Gate** (next) — C2.3 Campaign Orchestrator landed; C2.4 frozen | Almost all capacity |
+| **Product** | **A2 Platform Governance Review** (next) — Epic C Complete Gate PASS_WITH_CONSTRAINTS; C2.4 frozen | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred) | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -40,9 +40,10 @@
 - **Source Diagnostics** ← **PR1–PR9 ✅** (#196–#212) — [brief](acquisition-source-diagnostics.md); Wave-1 notifications closed (SPA-only)  
 - **Acquisition Stage 5 / Optimization** ← PR-1 DONE · **PR-2 DONE** (#203) — [stage-5](acquisition-stage-5-optimization.md)  
 - **Acquisition Stage 6 Analytics** ← **DONE** (PR-1…PR-6b) — [brief](acquisition-stage-6-analytics.md) · [ownership](../../modules/acquisition/outcome-commercial-value-ownership.md)  
-- C2.3 Campaign Orchestrator ← **DONE** (landed on tip; #121–#126 superseded)  
-- C2.4 Scheduling + Epic C Complete Gate — next Communication close-out (**C2.4 frozen**)  
-- Meta intake completeness · Sales Stage 3 slice 3–4 — after Flight V1 vertical (3A–3E) as needed; see also 3E deferred D1–D2
+- C2.3 Campaign Orchestrator ← **DONE** (landed on tip; #121–#126 superseded; **#219**)  
+- C2.4 Scheduling ← **frozen** (gate residual R1; do not start)  
+- **Epic C Complete Gate** ← **PASS_WITH_CONSTRAINTS** (2026-08-03) — [gate](../gates/epic-c-complete-gate.md)  
+- Meta intake completeness · Sales Stage 3 slice 3–4 — after **A2 Governance**; see also 3E deferred D1–D2
 
 ---
 
@@ -63,19 +64,19 @@
 | **7b** | **C2.2** Automation Engine | PR #116–#120 ✅ | Event → Rules → Policy → Intent (no provider/Thread) |
 | **7c** | **C2.3** Campaign Orchestrator | `feat/communication-c2-3-land-on-tip` | ✅ Landed on tip (supersedes #121–#126) |
 | **7c-eng** | CI / pytest debt | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) · [stabilize](stabilize-integration-pytest-baseline.md) **deferred** | Engineering Track — base-known; not Product-blocking |
-| **7d** | **C2.4** Scheduling | *(frozen)* | Do not start |
 | **P-3E** | **Acquisition Stage 3E** Activity Timeline | PR #130–#133 ✅ | **DONE** — observability vertical closed; deferred — [3e-deferred](acquisition-stage-3e-deferred.md) |
 | **P-4** | **Acquisition Stage 4** Flight Runtime | — | ✅ **Runtime DONE** (#136 / #148–#151) — [stage-4](acquisition-stage-4-flight-runtime.md) |
 | **P-4b** | **Acquisition UI Cutover** | C-1…C-6 ✅ · **C-7 PASS** (#184 · #185 · inventory) | **PASS** — [C-7](acquisition-ui-cutover-c7-searches-decommission.md); Ad-ID bind ✅ #187 → **Diagnostics** — [cutover](acquisition-ui-cutover.md) |
 | **P-5** | **Acquisition Stage 5** Optimization | PR-2 done | **PR-1 DONE** (#153) · **PR-2 DONE** (#203) — [stage-5](acquisition-stage-5-optimization.md) |
-| **8** | **Epic C Complete Gate** | after C2.3 merge + C2.4 (later) | Communication capability closed |
+| **7d** | **C2.4** Scheduling | *(frozen)* | Do not start (gate residual R1) |
+| **8** | **Epic C Complete Gate** | `docs/epic-c-complete-gate` | ✅ **PASS_WITH_CONSTRAINTS** (2026-08-03) |
 | **8b** | **Compliance outbound (ADR-031)** | [compliance-outbound-pipeline-early-result](compliance-outbound-pipeline-early-result.md) | Early opaque result + RODO/ops binders; **Engineering track**; no SMTP bypass |
-| **9** | **A2** Platform Governance Review | after Epic C complete | Boundary principle |
-| **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
+| **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | ← **Product Track next** |
+| **10+** | Meta / Sales slices | after A2 | Per roadmap Phase B |
 
-**C0–C2.3** ✅. **C2.4 frozen.**  
-**Active (Product):** **Epic C Complete Gate** next — C2.3 Campaign Orchestrator landed ([brief](c2-3-campaign-orchestrator.md)); Acquisition Stage 6 DONE.  
-**Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap. Stage 4 merge (2026-07-23) accepted with known baseline debt — Stage 4 tests/gates green; full suite red outside scope.
+**C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete** (`PASS_WITH_CONSTRAINTS`).  
+**Active (Product):** **A2 Platform Governance Review** — [roadmap § A2](../architecture/platform-completion-roadmap.md).  
+**Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
 
@@ -97,10 +98,10 @@
 **Slice 1 ✅** — [stage-3-sales-pipeline-product-wiring.md](stage-3-sales-pipeline-product-wiring.md) (PR #98)  
 **Slice 2 ✅** — [stage-3-sales-pipeline-convert-entrypoints.md](stage-3-sales-pipeline-convert-entrypoints.md) (PR #99)
 
-### Slice 3+ — **blocked until Epic C + Governance Review**
+### Slice 3+ — **blocked until A2 Platform Governance Review**
 
-Do **not** start Stage 3 slice 3 until **A1 Epic C** (through C2) and **A2 Platform Governance Review** are done, unless the [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) is explicitly amended.  
-Meta Intake Completeness runs at the start of Phase B (with Stage 3), not as a shortcut past Epic C.
+Do **not** start Stage 3 slice 3 until **A2 Platform Governance Review** is done (Epic C Complete Gate already **PASS_WITH_CONSTRAINTS**), unless the [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) is explicitly amended.  
+Meta Intake Completeness runs at the start of Phase B (with Stage 3), not as a shortcut past A2.
 
 ---
 
@@ -137,10 +138,10 @@ Not a second CRM and not Settings. Working folders only (Inbox, Unread, Needs re
 
 ---
 
-## 5b. Epic C2 — Communication Capability Epic ← **parked (Engineering)**
+## 5b. Epic C2 — Communication Capability Epic ← **closed (C2.4 frozen)**
 
 **Epic:** [epic-c2-communication-campaigns.md](epic-c2-communication-campaigns.md)  
-**Product active elsewhere:** Acquisition Stage 6 DONE; next = Epic C Complete Gate. C2.4 = frozen.
+**Product active:** **A2 Platform Governance Review**. C2.1–C2.3 ✅; C2.4 = frozen (gate residual R1).
 
 C2 is **not** Communication v2. Sole responsibility: emit `CommunicationIntent` into the existing platform pipeline.  
 Order: Template Platform → Automation → Campaigns → Scheduling → Complete Gate.  
@@ -148,9 +149,10 @@ Merge gates: Intent-only egress · no second pipeline · capability isolation ·
 
 ---
 
-## 5c. A2 — Platform Governance Review (after Epic C)
+## 5c. A2 — Platform Governance Review ← **Product Track next**
 
-Short L0 gate — see [Platform Completion Roadmap § A2](../architecture/platform-completion-roadmap.md). Not a feature sprint.
+Short L0 gate — see [Platform Completion Roadmap § A2](../architecture/platform-completion-roadmap.md). Not a feature sprint.  
+**Suggested branch:** `docs/platform-governance-review-post-epic-c`. Hand off gate residuals **R3** / **R5** from [Epic C Complete Gate](../gates/epic-c-complete-gate.md).
 
 ---
 
@@ -174,14 +176,15 @@ Next branch only after:
 4. Stale worktrees pruned  
 5. One dedicated worktree  
 
-**Do not** start C2.4 while Product Track is on Flights/Acquisition.  
+**Do not** start C2.4 while Product Track is on A2 / Phase B.  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
-**Do** amend this queue when switching Product Active (this revision: → Stage 4).
+**Do** amend this queue when switching Product Active (this revision: → A2 Governance).
 
 ---
 
 ## 8. History
 
+- 2026-08-03: **Epic C Complete Gate PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
 - 2026-08-03: Stage 6 **PR-4 ✅ #216**; Product Track → **Stage 6 PR-5 month buckets**.  
 - 2026-08-03: Stage 6 **PR-3 ✅ #215**; Product Track → **Stage 6 PR-4 portfolio**.  
 - 2026-08-03: Stage 6 **PR-2 ✅ #214**; Product Track → **Stage 6 PR-3 week buckets**.  

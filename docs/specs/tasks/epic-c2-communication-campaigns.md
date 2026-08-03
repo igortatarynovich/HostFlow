@@ -1,8 +1,7 @@
 # Epic C2 — Communication Capability Epic
 
-**Status:** Active (kickoff — after C1 close 2026-07-21)  
+**Status:** **CLOSED** (C2.1–C2.3 shipped; C2.4 frozen; Epic C Complete Gate PASS_WITH_CONSTRAINTS 2026-08-03)  
 **Type:** Capability epic (not Communication v2)  
-**Branch (proposed):** `feat/communication-c2-1-template-platform` (first slice)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [C1 Inbox Workspace](c1-communication-inbox-workspace.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
 
 **Filename note:** path kept as `epic-c2-communication-campaigns.md` for link stability; scope is the full C2 capability epic.
@@ -102,8 +101,8 @@ No Thread / Command / ThreadContext redesign in C2 PRs. Product gaps go to follo
 C2.1 Template Platform
   → C2.2 Automation Engine
   → C2.3 Campaign Orchestrator
-  → C2.4 Scheduling
-  → Epic C Complete Gate
+  → C2.4 Scheduling          ← FROZEN (gate residual R1)
+  → Epic C Complete Gate     ← PASS_WITH_CONSTRAINTS (2026-08-03)
 ```
 
 Logical order: **what** to send → **when/why** → **to whom (bulk)** → **when (time)** → close Epic C  
@@ -113,9 +112,9 @@ without returning to Thread / Commands / ThreadContext architecture.
 |-------|-----|----------------------|
 | **C2.1** | [c2-1-template-platform.md](c2-1-template-platform.md) ✅ | Template Registry product (PR #110–#114) |
 | **C2.2** | [c2-2-automation-engine.md](c2-2-automation-engine.md) ✅ | Event → Rules → Policy → Intent (PR #116–#120) |
-| **C2.3** | [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) ✅ | Audience + plan → Intent — landed on tip |
-| **C2.4** | *(frozen — after C2.3 merge)* | Schedule → Intent → same pipeline |
-| **Gate** | [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md) | Epic C — complete |
+| **C2.3** | [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) ✅ | Audience + plan → Intent — landed on tip (PR #219) |
+| **C2.4** | *(frozen — accepted residual R1)* | Schedule → Intent → same pipeline |
+| **Gate** | [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md) | ✅ **PASS_WITH_CONSTRAINTS** → Epic C — complete |
 
 ---
 
@@ -156,9 +155,10 @@ Slice: [c2-2-automation-engine.md](c2-2-automation-engine.md) (PR #116–#120).
 
 ## C2.3 — Campaigns ← **DONE**
 
-**C2.3:** landed on tip (Engineering land PR; #121–#126 superseded). **C2.4 frozen.**  
-**Next:** [Epic C Complete Gate](../gates/epic-c-complete-gate.md).  
-**Engineering (deferred):** [stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md) · [#127](https://github.com/igortatarynovich/HostFlow/pull/127) (obsolete CI unblock — tip already has gates).
+**C2.3:** landed on tip (PR #219; #121–#126 superseded). **C2.4 frozen.**  
+**Gate:** [Epic C Complete Gate](../gates/epic-c-complete-gate.md) **PASS_WITH_CONSTRAINTS**.  
+**Next Product Track:** A2 Platform Governance Review.  
+**Engineering (deferred):** [stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md) · [#127](https://github.com/igortatarynovich/HostFlow/pull/127).
 
 Campaign is an **orchestrator**, not a sender.
 
@@ -203,7 +203,7 @@ Settings / signatures / compliance UI may share **Настройки → Ком�
 - C0 integrity writers (already done)  
 - Module-owned send engines  
 - Legal drafting of RODO notice text (legal review; architecture from C0.0)  
-- Epic C Complete Gate checklist fill (after C2.1–C2.4)  
+- Epic C Complete Gate checklist fill — ✅ done ([gate](../gates/epic-c-complete-gate.md))
 
 ---
 
@@ -212,10 +212,10 @@ Settings / signatures / compliance UI may share **Настройки → Ком�
 - [x] C2.1 Template Platform shipped under Intent-only + capability-isolation gates  
 - [x] C2.2 Automation emits Intent only (no provider / Thread knowledge)  
 - [x] C2.3 Campaigns orchestrate Intent only  
-- [ ] C2.4 Scheduling emits Intent into the ordinary pipeline  
-- [ ] Contract tests enforce capability isolation + no second pipeline  
-- [ ] [Epic C Complete Gate](../gates/epic-c-complete-gate.md) ready for evidence pass  
+- [ ] C2.4 Scheduling emits Intent into the ordinary pipeline — **FROZEN** (gate residual R1; not required for Epic C complete)  
+- [x] Contract tests enforce capability isolation + no second pipeline (`test_c2_1_*`, `test_c2_2_*`, `test_c2_3_*`)  
+- [x] [Epic C Complete Gate](../gates/epic-c-complete-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-03)
 
-**Product Track (next):** [Epic C Complete Gate](../gates/epic-c-complete-gate.md). **C2.4 frozen.**  
-**C2.3:** ✅ landed on tip.  
+**Product Track (next):** A2 Platform Governance Review. **C2.4 frozen.**  
+**C2.3:** ✅ PR #219.  
 **Engineering (deferred):** [stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md). #127 obsolete.

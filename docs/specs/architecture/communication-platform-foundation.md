@@ -6,7 +6,7 @@
 **Parents:** [Platform Completion Roadmap](platform-completion-roadmap.md) · [C0.0 Canon](../tasks/c0-0-communication-canon.md) · [Epic C0](../tasks/epic-c0-communication-integrity.md)
 
 > This status means the **technical Communication Platform Foundation** is closed.  
-> It does **not** mean Epic C is finished. Inbox (C1) is closed; Templates/Automations/Campaigns (C2) remain before the Complete Gate.
+> **Epic C — complete** is a separate status, set only by the [Epic C Complete Gate](../gates/epic-c-complete-gate.md) (`PASS_WITH_CONSTRAINTS`, 2026-08-03).
 
 ---
 
@@ -57,16 +57,16 @@ Do **not** report this as “Epic C complete”.
 | Status | When |
 |--------|------|
 | **Communication Platform Foundation — complete** | After C0.3 (current) |
-| **Epic C — complete** | Only after [Epic C Complete Gate](../gates/epic-c-complete-gate.md) PASS |
+| **Epic C — complete** | [Epic C Complete Gate](../gates/epic-c-complete-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-03) |
 
-Do **not** promote to Epic C complete after C1 or C2 alone.
+Do **not** promote to Epic C complete after C1 or C2 alone (gate required).
 
 ## Next
 
 1. **C1 — Communication Inbox Workspace** — ✅ closed 2026-07-21 ([evidence](../gates/epic-c-complete-gate.md#c1-close-out-evidence-2026-07-21))  
-2. **C2 — Capability epic** — **active C2.3** ([epic](../tasks/epic-c2-communication-campaigns.md) · [C2.1–C2.2 ✅](../tasks/c2-2-automation-engine.md) · [C2.3](../tasks/c2-3-campaign-orchestrator.md)); Intent-only; no Thread model changes  
-3. **Epic C Complete Gate** — [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md)  
-4. **A2 Platform Governance Review**  
+2. **C2 — Capability epic** — ✅ C2.1–C2.3 closed ([epic](../tasks/epic-c2-communication-campaigns.md)); **C2.4 Scheduling frozen** (gate residual R1)  
+3. **Epic C Complete Gate** — ✅ **PASS_WITH_CONSTRAINTS** ([gate](../gates/epic-c-complete-gate.md))  
+4. **A2 Platform Governance Review** ← **next**  
 5. Acquisition (Stage 3 + Meta) → Forms → Entity Workspace → Documents → Billing → AI  
 
 ---

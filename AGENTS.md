@@ -104,17 +104,17 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 Platform maturity (Foundation / Workspace / Automation / Complete):  
 [`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
 
-Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — Product Track = **Acquisition Stage 6 PR-5** month cohort buckets (PR-4 ✅ #216).
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — Product Track = **A2 Platform Governance Review** (Epic C Complete Gate **PASS_WITH_CONSTRAINTS**).
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
 [`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
-This is **not** Epic C complete.
 
-**Active close-out:** C1 Inbox Workspace → C2 → [Epic C Complete Gate](docs/specs/gates/epic-c-complete-gate.md) → Governance → Stage 3 / Meta → Forms → Entity Workspace → Documents → Billing → AI.  
-**Epic C — complete** only after the Epic C Complete Gate PASS.
+**Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/epic-c-complete-gate.md`](docs/specs/gates/epic-c-complete-gate.md). C2.4 Scheduling remains frozen.
 
-**Locked:** finish Epic C (Communication) → Platform Governance Review → Acquisition/Stage 3 → Forms Platform → Entity Workspace → Documents → Billing → AI.  
-Do **not** open Stage 3 product slices while Communication Phase A is active unless the roadmap is explicitly amended.
+**Active close-out:** [A2 Platform Governance Review](docs/specs/architecture/platform-completion-roadmap.md) → Stage 3 / Meta → Forms → Entity Workspace → Documents → Billing → AI.
+
+**Locked:** Platform Governance Review → Acquisition/Stage 3 → Forms Platform → Entity Workspace → Documents → Billing → AI.  
+Do **not** open Stage 3 product slices until A2 Governance is done unless the roadmap is explicitly amended.
 
 ## Documentation governance
 
