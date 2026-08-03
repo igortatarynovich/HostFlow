@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from backend.app.models import Lead
+from backend.app.modules.leads.normalizer import resolve_b2b_inquiry_company_name
 
 from .schemas import ApplicationContactOut, ApplicationOut, ApplicationStatus, ApplicationTabBucket
 
@@ -134,12 +135,9 @@ def lead_to_sales_inquiry(lead: Lead) -> ApplicationOut:
     Do not use this as destination identity or communication context.
     """
     normalized = _record(getattr(lead, "normalized", None))
-    company = _record(normalized.get("company_profile"))
-    company_name = (
-        _text(company.get("name"))
-        or _text(normalized.get("company_name"))
-        or _text(getattr(lead, "company_name", None))
-        or "Компания"
+    company_name = resolve_b2b_inquiry_company_name(
+        normalized,
+        lead_company_name=_text(getattr(lead, "company_name", None)) or None,
     )
     service = _sales_service_label(lead)
     subtitle = f"Запрос на {service.lower()}" if service else _text(_record(normalized.get("need")).get("summary")) or "B2B заявка"
@@ -150,6 +148,10 @@ def lead_to_sales_inquiry(lead: Lead) -> ApplicationOut:
     outcome_type = "client_account" if client_account_id else ("client" if converted_company else None)
     queue_bucket = _sales_queue_bucket(lead)
     questionnaire_status = _text(normalized.get("sales_questionnaire_status")) or None
+    field_answers = normalized.get("field_answers") if isinstance(normalized.get("field_answers"), list) else []
+    additional_answers = (
+        normalized.get("additional_answers") if isinstance(normalized.get("additional_answers"), list) else []
+    )
     return ApplicationOut(
         id=str(lead.id),
         module="sales",
@@ -174,6 +176,9 @@ def lead_to_sales_inquiry(lead: Lead) -> ApplicationOut:
             "sales_queue_bucket": queue_bucket,
             "questionnaire_status": questionnaire_status,
             "questionnaire_summary": _sales_questionnaire_summary(normalized),
+            "meta_form_answers": field_answers,
+            "additional_answers": additional_answers,
+            "raw_payload_stored": bool(getattr(lead, "payload", None)),
         },
         outcome_entity_id=outcome_id,
         outcome_entity_type=outcome_type,

@@ -45,6 +45,7 @@ export function inquiryCompanyName(lead: Lead): string {
   return (
     text(company.name) ||
     text(normalized.company_name) ||
+    text(normalized.company_name_hint) ||
     text(payloadCompany.name) ||
     text(lead.company_name) ||
     'Компания'

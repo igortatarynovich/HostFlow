@@ -6,6 +6,7 @@ import SalesInquiryPossibleDuplicatesSection from '../../components/sales/SalesI
 import SalesInquiryQuestionnaireSection from '../../components/sales/SalesInquiryQuestionnaireSection'
 import SalesInquiryCallNotesSection from '../../components/sales/SalesInquiryCallNotesSection'
 import SalesInquiryTimelineSection from '../../components/sales/SalesInquiryTimelineSection'
+import { MetaFormAnswersSection } from '../../components/sales/MetaFormAnswersSection'
 import { ContextRail } from '../context-rail'
 import {
   APPLICATION_STATUS_BADGE,
@@ -154,6 +155,10 @@ export function ApplicationSalesDetailPanel({
         ),
         summary: (
           <div className="space-y-5">
+            <MetaFormAnswersSection
+              answers={application.extensions?.meta_form_answers}
+              additionalAnswers={application.extensions?.additional_answers}
+            />
             <SalesInquiryCallNotesSection
               leadId={application.id}
               disabled={busy}
