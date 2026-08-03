@@ -12,6 +12,7 @@ import {
   completeFlight,
   currentFlight,
   getCampaign,
+  getCampaignCohorts,
   getCampaignFlightCompare,
   getFlightOptimization,
   getFlightRuntime,
@@ -21,6 +22,7 @@ import {
   postFlightOptimizationOperatorAction,
   resumeFlight,
   type Campaign,
+  type CohortSeries,
   type FlightCompare,
   type FlightOptimization,
   type FlightRuntime,
@@ -52,6 +54,7 @@ export default function MarketingCampaignDetailPage() {
   const [monitor, setMonitor] = useState<LiveIntakeMonitor | null>(null)
   const [optimization, setOptimization] = useState<FlightOptimization | null>(null)
   const [flightCompare, setFlightCompare] = useState<FlightCompare | null>(null)
+  const [cohorts, setCohorts] = useState<CohortSeries | null>(null)
   const [destinationLabel, setDestinationLabel] = useState<string>('—')
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
@@ -66,23 +69,29 @@ export default function MarketingCampaignDetailPage() {
       const c = await getCampaign(campaignId)
       setCampaign(c)
       const flight = currentFlight(c)
-      const comparePromise = getCampaignFlightCompare(c.id).catch(() => null)
+      const analyticsPromise = Promise.all([
+        getCampaignFlightCompare(c.id).catch(() => null),
+        getCampaignCohorts(c.id, 14).catch(() => null),
+      ])
       if (flight) {
-        const [rt, mon, opt, compare] = await Promise.all([
+        const [rt, mon, opt, [compare, cohortSeries]] = await Promise.all([
           getFlightRuntime(c.id, flight.id),
           getLiveIntakeMonitor(c.id, flight.id, { limit: 40 }),
           getFlightOptimization(c.id, flight.id).catch(() => null),
-          comparePromise,
+          analyticsPromise,
         ])
         setRuntime(rt)
         setMonitor(mon)
         setOptimization(opt)
         setFlightCompare(compare)
+        setCohorts(cohortSeries)
       } else {
         setRuntime(null)
         setMonitor(null)
         setOptimization(null)
-        setFlightCompare(await comparePromise)
+        const [compare, cohortSeries] = await analyticsPromise
+        setFlightCompare(compare)
+        setCohorts(cohortSeries)
       }
 
       const target = c.targets?.[0]
@@ -600,6 +609,98 @@ export default function MarketingCampaignDetailPage() {
                           </td>
                           <td className="py-2 tabular-nums text-slate-700">
                             {row.cpl_delta != null ? row.cpl_delta : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ) : null}
+
+            {cohorts ? (
+              <section
+                className="rounded-xl border border-slate-200 bg-white px-4 py-4"
+                data-testid="marketing-campaign-cohorts"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    {t('app.marketing.detail.cohorts.title', {
+                      defaultValue: 'Когорты по дням',
+                    })}
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    {t('app.marketing.detail.cohorts.subtitle', {
+                      defaultValue: '{{days}} дн. · CAC proxy = cost / completed outcome',
+                      days: cohorts.window_days,
+                    })}
+                  </p>
+                </div>
+                <div
+                  className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
+                  data-testid="marketing-campaign-cohorts-totals"
+                >
+                  <div>
+                    <div className="text-xs text-slate-500">Spend</div>
+                    <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                      {cohorts.spend}
+                      {cohorts.currency ? ` ${cohorts.currency}` : ''}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500">Leads</div>
+                    <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                      {cohorts.leads}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500">CPL</div>
+                    <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                      {cohorts.cost_per_lead != null ? cohorts.cost_per_lead : '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500">CAC proxy</div>
+                    <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                      {cohorts.cost_per_outcome != null ? cohorts.cost_per_outcome : '—'}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="text-xs text-slate-500">
+                      <tr>
+                        <th className="py-2 pr-3 font-medium">Day (UTC)</th>
+                        <th className="py-2 pr-3 font-medium">Spend</th>
+                        <th className="py-2 pr-3 font-medium">Leads</th>
+                        <th className="py-2 pr-3 font-medium">Outcomes</th>
+                        <th className="py-2 pr-3 font-medium">CPL</th>
+                        <th className="py-2 font-medium">CAC proxy</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cohorts.buckets.map((row) => (
+                        <tr
+                          key={row.bucket_start}
+                          className="border-t border-slate-100"
+                          data-testid={`marketing-cohort-row-${row.bucket_start.slice(0, 10)}`}
+                        >
+                          <td className="py-2 pr-3 text-slate-900">
+                            {row.bucket_start.slice(0, 10)}
+                          </td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-900">
+                            {row.spend}
+                            {row.currency ? ` ${row.currency}` : ''}
+                          </td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-900">{row.leads}</td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-900">
+                            {row.outcomes_completed}
+                          </td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-700">
+                            {row.cost_per_lead != null ? row.cost_per_lead : '—'}
+                          </td>
+                          <td className="py-2 tabular-nums text-slate-700">
+                            {row.cost_per_outcome != null ? row.cost_per_outcome : '—'}
                           </td>
                         </tr>
                       ))}

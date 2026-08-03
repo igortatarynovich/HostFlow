@@ -29,6 +29,11 @@ from backend.app.acquisition.kpi_aggregates import (
     aggregate_flight_kpi,
 )
 from backend.app.acquisition.ops.flight_compare import compose_flight_compare
+from backend.app.acquisition.ops.cohort_analytics import (
+    _DEFAULT_WINDOW_DAYS,
+    _MAX_WINDOW_DAYS,
+    compose_campaign_cohorts,
+)
 from backend.app.acquisition.ops.live_intake_monitor import get_live_intake_monitor
 from backend.app.acquisition.ops.optimization_operator_state import (
     record_optimization_operator_action,
@@ -393,6 +398,33 @@ class FlightCompareOut(BaseModel):
     cost_per_qualified: Optional[str] = None
     cost_per_outcome: Optional[str] = None
     flights: List[FlightCompareRowOut] = Field(default_factory=list)
+
+
+class CohortBucketOut(BaseModel):
+    bucket_start: datetime
+    bucket_end: datetime
+    currency: Optional[str] = None
+    spend: str
+    leads: int
+    outcomes_completed: int
+    cost_per_lead: Optional[str] = None
+    cost_per_outcome: Optional[str] = None
+
+
+class CohortSeriesOut(BaseModel):
+    tenant_id: str
+    campaign_id: str
+    window_days: int
+    bucket: str
+    window_start: datetime
+    window_end: datetime
+    currency: Optional[str] = None
+    spend: str
+    leads: int
+    outcomes_completed: int
+    cost_per_lead: Optional[str] = None
+    cost_per_outcome: Optional[str] = None
+    buckets: List[CohortBucketOut] = Field(default_factory=list)
 
 
 class EndpointsSummaryOut(BaseModel):
@@ -1947,6 +1979,45 @@ async def get_campaign_flight_compare_endpoint(
     except KpiAggregateError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return FlightCompareOut.model_validate(bundle.to_dict())
+
+
+@router.get(
+    "/{campaign_id}/analytics/cohorts",
+    response_model=CohortSeriesOut,
+    dependencies=_READ,
+)
+async def get_campaign_cohorts_endpoint(
+    campaign_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+    window_days: int = Query(
+        default=_DEFAULT_WINDOW_DAYS,
+        ge=1,
+        le=_MAX_WINDOW_DAYS,
+    ),
+):
+    """Stage 6 PR-2 — read-only UTC day cohort series (Attribution / Spend / Outcome)."""
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        await campaign_service.get_campaign(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            own_company_id=own_company_id,
+        )
+        series = await compose_campaign_cohorts(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            window_days=int(window_days),
+        )
+    except CampaignServiceError as exc:
+        _raise_service(exc)
+    except KpiAggregateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return CohortSeriesOut.model_validate(series.to_dict())
 
 
 @router.get(

@@ -446,6 +446,45 @@ export async function getCampaignFlightCompare(campaignId: string): Promise<Flig
   return data
 }
 
+export type CohortBucket = {
+  bucket_start: string
+  bucket_end: string
+  currency?: string | null
+  spend: string
+  leads: number
+  outcomes_completed: number
+  cost_per_lead?: string | null
+  cost_per_outcome?: string | null
+}
+
+export type CohortSeries = {
+  tenant_id: string
+  campaign_id: string
+  window_days: number
+  bucket: string
+  window_start: string
+  window_end: string
+  currency?: string | null
+  spend: string
+  leads: number
+  outcomes_completed: number
+  cost_per_lead?: string | null
+  cost_per_outcome?: string | null
+  buckets: CohortBucket[]
+}
+
+/** Stage 6 PR-2 — read-only UTC day cohort series. */
+export async function getCampaignCohorts(
+  campaignId: string,
+  windowDays = 14,
+): Promise<CohortSeries> {
+  const { data } = await api.get<CohortSeries>(
+    `/platform/campaigns/${encodeURIComponent(campaignId)}/analytics/cohorts`,
+    { params: { window_days: windowDays } },
+  )
+  return data
+}
+
 export async function getFlightKpi(campaignId: string, flightId: string): Promise<FlightKpi> {
   const { data } = await api.get<FlightKpi>(
     `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/kpi`,
