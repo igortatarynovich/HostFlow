@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Acquisition Stage 6 PR-3** — week cohort buckets ([brief](acquisition-stage-6-analytics.md); PR-2 ✅ #214) | Almost all capacity |
+| **Product** | **Acquisition Stage 6 PR-4** — cross-campaign portfolio ([brief](acquisition-stage-6-analytics.md); PR-3 ✅ #215) | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred) | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -39,7 +39,7 @@
 - **FlightAdBinding Ad-ID bind UI** ← **DONE** (#187) — Campaign Detail Ad→Flight panel  
 - **Source Diagnostics** ← **PR1–PR9 ✅** (#196–#212) — [brief](acquisition-source-diagnostics.md); Wave-1 notifications closed (SPA-only)  
 - **Acquisition Stage 5 / Optimization** ← PR-1 DONE · **PR-2 DONE** (#203) — [stage-5](acquisition-stage-5-optimization.md)  
-- **Acquisition Stage 6 Analytics** ← **ACTIVE Product Track** — PR-1 ✅ #213 · PR-2 ✅ #214 · **PR-3 week buckets** — [brief](acquisition-stage-6-analytics.md)  
+- **Acquisition Stage 6 Analytics** ← **ACTIVE Product Track** — PR-1…3 ✅ #213–#215 · **PR-4 portfolio** — [brief](acquisition-stage-6-analytics.md)  
 - C2.3 stack merge + C2.4 + Epic C Complete Gate — Engineering / later Communication close-out (**C2.4 frozen**)  
 - Meta intake completeness · Sales Stage 3 slice 3–4 — after Flight V1 vertical (3A–3E) as needed; see also 3E deferred D1–D2
 
@@ -73,7 +73,7 @@
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
 **C0–C2.2** ✅. **C2.3** implemented (merge opportunistic). **C2.4 frozen.**  
-**Active (Product):** **Acquisition Stage 6 PR-3** week cohort buckets ([brief](acquisition-stage-6-analytics.md); PR-2 ✅ [#214](https://github.com/igortatarynovich/HostFlow/pull/214)).  
+**Active (Product):** **Acquisition Stage 6 PR-4** cross-campaign portfolio ([brief](acquisition-stage-6-analytics.md); PR-3 ✅ [#215](https://github.com/igortatarynovich/HostFlow/pull/215)).  
 **Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap. Stage 4 merge (2026-07-23) accepted with known baseline debt — Stage 4 tests/gates green; full suite red outside scope.
 
 ---
@@ -181,6 +181,7 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-08-03: Stage 6 **PR-3 ✅ #215**; Product Track → **Stage 6 PR-4 portfolio**.  
 - 2026-08-03: Stage 6 **PR-2 ✅ #214**; Product Track → **Stage 6 PR-3 week buckets**.  
 - 2026-08-03: Stage 6 **PR-1 ✅ #213**; Product Track → **Stage 6 PR-2 windowed cohorts**.  
 - 2026-08-03: Source Diagnostics **PR9 ✅ #212**; Product Track → **Stage 6 PR-1 Flight wave compare**.  
