@@ -1,7 +1,8 @@
-"""Stage 6 PR-2 — windowed day cohort analytics (read-only).
+"""Stage 6 PR-2/PR-3 — windowed cohort analytics (read-only).
 
-Buckets leads / spend / completed outcomes by UTC calendar day from existing
-Attribution, Spend, and Outcome rows. No second KPI ledger.
+Buckets leads / spend / completed outcomes by UTC calendar day or ISO week
+(Monday start) from existing Attribution, Spend, and Outcome rows.
+No second KPI ledger.
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Optional
+from typing import Literal, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,9 +26,12 @@ from backend.app.models.campaign import (
 
 _DEFAULT_WINDOW_DAYS = 14
 _MAX_WINDOW_DAYS = 90
+_ALLOWED_BUCKETS = frozenset({"day", "week"})
 ZERO = Decimal("0")
 MONEY_QUANT = Decimal("0.0001")
 RATIO_QUANT = Decimal("0.0001")
+
+BucketKind = Literal["day", "week"]
 
 
 def _money(value: Decimal) -> Decimal:
@@ -117,22 +121,35 @@ def _day_key(dt: datetime) -> date:
     return _as_utc(dt).date()
 
 
+def _monday_of(d: date) -> date:
+    return d - timedelta(days=d.weekday())
+
+
+def _normalize_bucket(bucket: str | None) -> BucketKind:
+    raw = str(bucket or "day").strip().lower()
+    if raw not in _ALLOWED_BUCKETS:
+        raise KpiAggregateError(f"unsupported cohort bucket: {bucket!r}")
+    return raw  # type: ignore[return-value]
+
+
 async def compose_campaign_cohorts(
     db: AsyncSession,
     *,
     tenant_id: str,
     campaign_id: str,
     window_days: int = _DEFAULT_WINDOW_DAYS,
+    bucket: str = "day",
     now: Optional[datetime] = None,
 ) -> CohortSeries:
-    """UTC day cohorts for one Campaign over ``window_days`` ending now."""
+    """UTC day or week cohorts for one Campaign over ``window_days`` ending now."""
     days = max(1, min(int(window_days or _DEFAULT_WINDOW_DAYS), _MAX_WINDOW_DAYS))
+    bucket_kind = _normalize_bucket(bucket)
     campaign = await db.get(Campaign, str(campaign_id))
     if campaign is None or str(campaign.tenant_id) != str(tenant_id):
         raise KpiAggregateError("campaign not found for tenant")
 
     end = _as_utc(now or datetime.now(timezone.utc))
-    # Inclusive calendar days: last bucket is today's UTC day.
+    # Inclusive calendar days: last day is today's UTC day.
     end_day = end.date()
     start_day = end_day - timedelta(days=days - 1)
     window_start = _utc_day_start(start_day)
@@ -199,17 +216,40 @@ async def compose_campaign_cohorts(
         key = _day_key(stamp_utc)
         outcomes_by_day[key] = outcomes_by_day.get(key, 0) + 1
 
+    if bucket_kind == "day":
+        period_starts = [start_day + timedelta(days=offset) for offset in range(days)]
+        period_len = timedelta(days=1)
+    else:
+        first_monday = _monday_of(start_day)
+        last_monday = _monday_of(end_day)
+        period_starts = []
+        cur = first_monday
+        while cur <= last_monday:
+            period_starts.append(cur)
+            cur += timedelta(days=7)
+        period_len = timedelta(days=7)
+
     buckets: list[CohortBucket] = []
     total_spend = ZERO
     total_leads = 0
     total_outcomes = 0
-    for offset in range(days):
-        day = start_day + timedelta(days=offset)
-        b_start = _utc_day_start(day)
-        b_end = _utc_day_start(day + timedelta(days=1))
-        spend = spend_by_day.get(day, ZERO)
-        leads = len(leads_by_day.get(day, set()))
-        outs = outcomes_by_day.get(day, 0)
+    for period_start in period_starts:
+        b_start = _utc_day_start(period_start)
+        b_end = _utc_day_start(period_start + period_len)
+        # Clip aggregation to the requested window (partial first/last week).
+        agg_from = max(period_start, start_day)
+        agg_to = min(period_start + period_len - timedelta(days=1), end_day)
+        spend = ZERO
+        lead_keys: set[tuple[str, str]] = set()
+        outs = 0
+        day = agg_from
+        while day <= agg_to:
+            spend += spend_by_day.get(day, ZERO)
+            lead_keys |= leads_by_day.get(day, set())
+            outs += outcomes_by_day.get(day, 0)
+            day += timedelta(days=1)
+        spend = _money(spend)
+        leads = len(lead_keys)
         total_spend += spend
         total_leads += leads
         total_outcomes += outs
@@ -231,7 +271,7 @@ async def compose_campaign_cohorts(
         tenant_id=str(tenant_id),
         campaign_id=str(campaign_id),
         window_days=days,
-        bucket="day",
+        bucket=bucket_kind,
         window_start=window_start,
         window_end=window_end,
         currency=currency,
@@ -247,6 +287,7 @@ async def compose_campaign_cohorts(
 __all__ = [
     "CohortBucket",
     "CohortSeries",
+    "_ALLOWED_BUCKETS",
     "_DEFAULT_WINDOW_DAYS",
     "_MAX_WINDOW_DAYS",
     "compose_campaign_cohorts",

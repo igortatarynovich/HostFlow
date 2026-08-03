@@ -4,8 +4,8 @@
 
 - Read-only Flight wave compare  
   - `GET /api/v1/platform/campaigns/{campaign_id}/analytics/flight-compare`  
-- Read-only windowed day cohorts + CAC proxy (`cost_per_outcome`)  
-  - `GET /api/v1/platform/campaigns/{campaign_id}/analytics/cohorts?window_days=`  
+- Read-only windowed day/week cohorts + CAC proxy (`cost_per_outcome`)  
+  - `GET /api/v1/platform/campaigns/{campaign_id}/analytics/cohorts?window_days=&bucket=day|week`  
   (`backend/app/api/v1/platform/campaigns.py` ·  
   `backend/app/acquisition/ops/flight_compare.py` ·  
   `backend/app/acquisition/ops/cohort_analytics.py`)
@@ -16,7 +16,7 @@
 - Authenticated tenant operator → platform campaigns read (JWT + `X-Tenant-Id` + company scope + RLS)
 - Roles: same `_READ` as Campaign KPI endpoints
 - No write path; no Activity append on GET
-- Cohort window capped (1–90 days); UTC day buckets only in PR-2
+- Cohort window capped (1–90 days); UTC day or Monday-start week buckets in PR-3
 
 ## Угрозы
 

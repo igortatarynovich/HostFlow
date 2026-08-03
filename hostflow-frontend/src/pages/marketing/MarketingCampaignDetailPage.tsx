@@ -55,6 +55,7 @@ export default function MarketingCampaignDetailPage() {
   const [optimization, setOptimization] = useState<FlightOptimization | null>(null)
   const [flightCompare, setFlightCompare] = useState<FlightCompare | null>(null)
   const [cohorts, setCohorts] = useState<CohortSeries | null>(null)
+  const [cohortBucket, setCohortBucket] = useState<'day' | 'week'>('day')
   const [destinationLabel, setDestinationLabel] = useState<string>('—')
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
@@ -71,7 +72,7 @@ export default function MarketingCampaignDetailPage() {
       const flight = currentFlight(c)
       const analyticsPromise = Promise.all([
         getCampaignFlightCompare(c.id).catch(() => null),
-        getCampaignCohorts(c.id, 14).catch(() => null),
+        getCampaignCohorts(c.id, 14, cohortBucket).catch(() => null),
       ])
       if (flight) {
         const [rt, mon, opt, [compare, cohortSeries]] = await Promise.all([
@@ -125,14 +126,21 @@ export default function MarketingCampaignDetailPage() {
       setRuntime(null)
       setMonitor(null)
       setOptimization(null)
+      setFlightCompare(null)
+      setCohorts(null)
     } finally {
       setLoading(false)
     }
-  }, [campaignId, t])
+  }, [campaignId, cohortBucket, t])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const switchCohortBucket = (next: 'day' | 'week') => {
+    if (next === cohortBucket) return
+    setCohortBucket(next)
+  }
 
   const flight = campaign ? currentFlight(campaign) : null
   const form = primaryForm(flight)
@@ -623,18 +631,43 @@ export default function MarketingCampaignDetailPage() {
                 className="rounded-xl border border-slate-200 bg-white px-4 py-4"
                 data-testid="marketing-campaign-cohorts"
               >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 className="text-sm font-semibold text-slate-900">
-                    {t('app.marketing.detail.cohorts.title', {
-                      defaultValue: 'Когорты по дням',
-                    })}
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    {t('app.marketing.detail.cohorts.subtitle', {
-                      defaultValue: '{{days}} дн. · CAC proxy = cost / completed outcome',
-                      days: cohorts.window_days,
-                    })}
-                  </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-900">
+                      {t('app.marketing.detail.cohorts.title', {
+                        defaultValue: 'Когорты',
+                      })}
+                    </h2>
+                    <p className="text-xs text-slate-500">
+                      {t('app.marketing.detail.cohorts.subtitle', {
+                        defaultValue: '{{days}} дн. · {{bucket}} · CAC proxy = cost / outcome',
+                        days: cohorts.window_days,
+                        bucket: cohorts.bucket,
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex gap-2" data-testid="marketing-cohorts-bucket-toggle">
+                    <button
+                      type="button"
+                      className={
+                        cohortBucket === 'day' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'
+                      }
+                      data-testid="marketing-cohorts-bucket-day"
+                      onClick={() => switchCohortBucket('day')}
+                    >
+                      Day
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        cohortBucket === 'week' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'
+                      }
+                      data-testid="marketing-cohorts-bucket-week"
+                      onClick={() => switchCohortBucket('week')}
+                    >
+                      Week
+                    </button>
+                  </div>
                 </div>
                 <div
                   className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
@@ -670,7 +703,9 @@ export default function MarketingCampaignDetailPage() {
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-xs text-slate-500">
                       <tr>
-                        <th className="py-2 pr-3 font-medium">Day (UTC)</th>
+                        <th className="py-2 pr-3 font-medium">
+                          {cohorts.bucket === 'week' ? 'Week start (UTC)' : 'Day (UTC)'}
+                        </th>
                         <th className="py-2 pr-3 font-medium">Spend</th>
                         <th className="py-2 pr-3 font-medium">Leads</th>
                         <th className="py-2 pr-3 font-medium">Outcomes</th>

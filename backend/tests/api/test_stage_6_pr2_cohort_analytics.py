@@ -290,3 +290,91 @@ async def test_campaign_cohorts_cross_company_404(
         params={"window_days": 7},
     )
     assert resp.status_code == 404, resp.text
+
+
+@pytest.mark.asyncio
+async def test_campaign_cohorts_week_bucket_rolls_up(
+    client: AsyncClient, auth_headers: dict, monkeypatch
+):
+    monkeypatch.setattr("backend.app.acquisition.campaign_service.enforce_module_gate", _allow_gate)
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    oc = await _default_own_company_id(tenant_id)
+    vac = await _seed_vacancy(tenant_id=tenant_id, own_company_id=oc, company_id=data["company_id"])
+    campaign = await _create_campaign(client, auth_headers, own_company_id=oc, vac_id=vac)
+    flight_id = campaign["flights"][0]["id"]
+
+    # Sunday 2026-08-02 + Monday 2026-08-03 → two ISO weeks when window_days=2.
+    now = datetime(2026, 8, 3, 15, 0, tzinfo=timezone.utc)
+    day0 = datetime(2026, 8, 2, 10, 0, tzinfo=timezone.utc)
+    day1 = datetime(2026, 8, 3, 11, 0, tzinfo=timezone.utc)
+
+    async with async_session_maker() as session:
+        camp = await session.get(Campaign, campaign["id"])
+        flight = await session.get(CampaignRun, flight_id)
+        assert camp and flight
+        camp.status = "active"
+        flight.status = "active"
+        await session.commit()
+
+    await _attr_at(
+        tenant_id=tenant_id,
+        campaign_id=campaign["id"],
+        flight_id=flight_id,
+        created_at=day0,
+    )
+    await _attr_at(
+        tenant_id=tenant_id,
+        campaign_id=campaign["id"],
+        flight_id=flight_id,
+        created_at=day1,
+    )
+
+    async with async_session_maker() as session:
+        s0 = await record_flight_spend(
+            session, tenant_id=tenant_id, flight_id=flight_id, amount="30.00", currency="EUR"
+        )
+        s1 = await record_flight_spend(
+            session, tenant_id=tenant_id, flight_id=flight_id, amount="70.00", currency="EUR"
+        )
+        s0.created_at = day0
+        s1.created_at = day1
+        await session.commit()
+
+    async with async_session_maker() as session:
+        series = await compose_campaign_cohorts(
+            session,
+            tenant_id=tenant_id,
+            campaign_id=campaign["id"],
+            window_days=2,
+            bucket="week",
+            now=now,
+        )
+
+    assert series.bucket == "week"
+    assert len(series.buckets) == 2
+    assert series.leads == 2
+    assert series.spend == Decimal("100.0000")
+    # First week (Mon 2026-07-27): only Sunday Aug 2 inside window → 30 / 1
+    assert series.buckets[0].bucket_start.date().isoformat() == "2026-07-27"
+    assert series.buckets[0].spend == Decimal("30.0000")
+    assert series.buckets[0].leads == 1
+    # Second week (Mon 2026-08-03): Monday Aug 3 → 70 / 1
+    assert series.buckets[1].bucket_start.date().isoformat() == "2026-08-03"
+    assert series.buckets[1].spend == Decimal("70.0000")
+    assert series.buckets[1].leads == 1
+
+    resp = await client.get(
+        f"/api/v1/platform/campaigns/{campaign['id']}/analytics/cohorts",
+        headers=_company_headers(auth_headers, oc),
+        params={"window_days": 2, "bucket": "week"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["bucket"] == "week"
+
+    bad = await client.get(
+        f"/api/v1/platform/campaigns/{campaign['id']}/analytics/cohorts",
+        headers=_company_headers(auth_headers, oc),
+        params={"bucket": "month"},
+    )
+    assert bad.status_code == 422, bad.text
