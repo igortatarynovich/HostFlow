@@ -486,6 +486,46 @@ export async function getCampaignCohorts(
   return data
 }
 
+export type PortfolioCampaignRow = {
+  campaign_id: string
+  name: string
+  status: string
+  currency?: string | null
+  spend: string
+  leads: number
+  qualified: number
+  converted: number
+  outcomes_completed: number
+  cost_per_lead?: string | null
+  cost_per_qualified?: string | null
+  cost_per_outcome?: string | null
+  is_best_cpl: boolean
+}
+
+export type CampaignPortfolio = {
+  tenant_id: string
+  own_company_id?: string | null
+  currency?: string | null
+  spend: string
+  leads: number
+  qualified: number
+  converted: number
+  outcomes_completed: number
+  cost_per_lead?: string | null
+  cost_per_outcome?: string | null
+  campaigns: PortfolioCampaignRow[]
+  scan_capped: boolean
+}
+
+/** Stage 6 PR-4 — company-scoped Campaign KPI portfolio. */
+export async function getCampaignPortfolio(limit = 50): Promise<CampaignPortfolio> {
+  const { data } = await api.get<CampaignPortfolio>(
+    '/platform/campaigns/analytics/portfolio',
+    { params: { limit } },
+  )
+  return data
+}
+
 export async function getFlightKpi(campaignId: string, flightId: string): Promise<FlightKpi> {
   const { data } = await api.get<FlightKpi>(
     `/platform/campaigns/${encodeURIComponent(campaignId)}/flights/${encodeURIComponent(flightId)}/kpi`,

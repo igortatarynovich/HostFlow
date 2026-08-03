@@ -6,12 +6,14 @@ import { Link } from 'react-router-dom'
 import { CRM_APP_PATHS, marketingCampaignPath } from '../../app/crmAppPaths'
 import {
   currentFlight,
+  getCampaignPortfolio,
   getLiveIntakeMonitor,
   launchFlight,
   listCampaigns,
   pauseFlight,
   resumeFlight,
   type Campaign,
+  type CampaignPortfolio,
 } from '../../api/platformCampaigns'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { PageHeader } from '../../components/nav/PageHeader'
@@ -32,6 +34,7 @@ type RowMeta = { received: number }
 export default function MarketingCampaignsPage() {
   const { t, locale } = useI18n()
   const [items, setItems] = useState<Campaign[]>([])
+  const [portfolio, setPortfolio] = useState<CampaignPortfolio | null>(null)
   const [counts, setCounts] = useState<Record<string, RowMeta>>({})
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
@@ -62,8 +65,12 @@ export default function MarketingCampaignsPage() {
     setLoading(true)
     setError(null)
     try {
-      const rows = await listCampaigns({ limit: 100 })
+      const [rows, folio] = await Promise.all([
+        listCampaigns({ limit: 100 }),
+        getCampaignPortfolio(50).catch(() => null),
+      ])
       setItems(rows)
+      setPortfolio(folio)
       void loadCounts(rows)
     } catch (err: unknown) {
       setError(
@@ -74,6 +81,7 @@ export default function MarketingCampaignsPage() {
         ),
       )
       setItems([])
+      setPortfolio(null)
     } finally {
       setLoading(false)
     }
@@ -129,6 +137,106 @@ export default function MarketingCampaignsPage() {
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
         {error ? <ErrorRecoveryBanner info={error} onRetry={() => void load()} /> : null}
+
+        {portfolio && portfolio.campaigns.length > 0 ? (
+          <section
+            className="rounded-xl border border-slate-200 bg-white px-4 py-4"
+            data-testid="marketing-campaign-portfolio"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold text-slate-900">
+                {t('app.marketing.portfolio.title', { defaultValue: 'Portfolio KPI' })}
+              </h2>
+              <p className="text-xs text-slate-500">
+                {t('app.marketing.portfolio.subtitle', {
+                  defaultValue: 'Сводка по кампаниям компании (только чтение).',
+                })}
+                {portfolio.scan_capped
+                  ? t('app.marketing.portfolio.capped', { defaultValue: ' Список ограничен.' })
+                  : ''}
+              </p>
+            </div>
+            <div
+              className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
+              data-testid="marketing-campaign-portfolio-totals"
+            >
+              <div>
+                <div className="text-xs text-slate-500">Spend</div>
+                <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  {portfolio.spend}
+                  {portfolio.currency ? ` ${portfolio.currency}` : ''}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">Leads</div>
+                <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  {portfolio.leads}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">CPL</div>
+                <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  {portfolio.cost_per_lead != null ? portfolio.cost_per_lead : '—'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">CAC proxy</div>
+                <div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                  {portfolio.cost_per_outcome != null ? portfolio.cost_per_outcome : '—'}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="text-xs text-slate-500">
+                  <tr>
+                    <th className="py-2 pr-3 font-medium">Campaign</th>
+                    <th className="py-2 pr-3 font-medium">Status</th>
+                    <th className="py-2 pr-3 font-medium">Spend</th>
+                    <th className="py-2 pr-3 font-medium">Leads</th>
+                    <th className="py-2 pr-3 font-medium">CPL</th>
+                    <th className="py-2 font-medium">CAC proxy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {portfolio.campaigns.map((row) => (
+                    <tr
+                      key={row.campaign_id}
+                      className="border-t border-slate-100"
+                      data-testid={`marketing-portfolio-row-${row.campaign_id}`}
+                    >
+                      <td className="py-2 pr-3 text-slate-900">
+                        <Link
+                          to={marketingCampaignPath(row.campaign_id)}
+                          className="font-medium hover:underline"
+                        >
+                          {row.name}
+                        </Link>
+                        {row.is_best_cpl ? (
+                          <span className="ml-2 rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                            best CPL
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status)}</td>
+                      <td className="py-2 pr-3 tabular-nums text-slate-900">
+                        {row.spend}
+                        {row.currency ? ` ${row.currency}` : ''}
+                      </td>
+                      <td className="py-2 pr-3 tabular-nums text-slate-900">{row.leads}</td>
+                      <td className="py-2 pr-3 tabular-nums text-slate-700">
+                        {row.cost_per_lead != null ? row.cost_per_lead : '—'}
+                      </td>
+                      <td className="py-2 tabular-nums text-slate-700">
+                        {row.cost_per_outcome != null ? row.cost_per_outcome : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
 
         {!loading && items.length === 0 && !error ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">

@@ -34,6 +34,11 @@ from backend.app.acquisition.ops.cohort_analytics import (
     _MAX_WINDOW_DAYS,
     compose_campaign_cohorts,
 )
+from backend.app.acquisition.ops.portfolio_analytics import (
+    _DEFAULT_LIMIT as _PORTFOLIO_DEFAULT_LIMIT,
+    _MAX_LIMIT as _PORTFOLIO_MAX_LIMIT,
+    compose_campaign_portfolio,
+)
 from backend.app.acquisition.ops.live_intake_monitor import get_live_intake_monitor
 from backend.app.acquisition.ops.optimization_operator_state import (
     record_optimization_operator_action,
@@ -425,6 +430,37 @@ class CohortSeriesOut(BaseModel):
     cost_per_lead: Optional[str] = None
     cost_per_outcome: Optional[str] = None
     buckets: List[CohortBucketOut] = Field(default_factory=list)
+
+
+class PortfolioCampaignRowOut(BaseModel):
+    campaign_id: str
+    name: str
+    status: str
+    currency: Optional[str] = None
+    spend: str
+    leads: int
+    qualified: int
+    converted: int
+    outcomes_completed: int
+    cost_per_lead: Optional[str] = None
+    cost_per_qualified: Optional[str] = None
+    cost_per_outcome: Optional[str] = None
+    is_best_cpl: bool = False
+
+
+class PortfolioOut(BaseModel):
+    tenant_id: str
+    own_company_id: Optional[str] = None
+    currency: Optional[str] = None
+    spend: str
+    leads: int
+    qualified: int
+    converted: int
+    outcomes_completed: int
+    cost_per_lead: Optional[str] = None
+    cost_per_outcome: Optional[str] = None
+    campaigns: List[PortfolioCampaignRowOut] = Field(default_factory=list)
+    scan_capped: bool = False
 
 
 class EndpointsSummaryOut(BaseModel):
@@ -1020,6 +1056,36 @@ async def list_campaigns_endpoint(
         offset=offset,
     )
     return [await _campaign_out(db, r) for r in rows]
+
+
+@router.get(
+    "/analytics/portfolio",
+    response_model=PortfolioOut,
+    dependencies=_READ,
+)
+async def get_campaign_portfolio_endpoint(
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+    limit: int = Query(
+        default=_PORTFOLIO_DEFAULT_LIMIT,
+        ge=1,
+        le=_PORTFOLIO_MAX_LIMIT,
+    ),
+):
+    """Stage 6 PR-4 — company-scoped Campaign KPI portfolio (read-only)."""
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        bundle = await compose_campaign_portfolio(
+            db,
+            tenant_id=str(tenant_uuid),
+            own_company_id=own_company_id,
+            limit=int(limit),
+        )
+    except KpiAggregateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return PortfolioOut.model_validate(bundle.to_dict())
 
 
 @router.post("", response_model=CampaignOut, status_code=201, dependencies=_WRITE)
