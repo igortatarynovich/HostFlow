@@ -113,7 +113,7 @@ without returning to Thread / Commands / ThreadContext architecture.
 |-------|-----|----------------------|
 | **C2.1** | [c2-1-template-platform.md](c2-1-template-platform.md) ✅ | Template Registry product (PR #110–#114) |
 | **C2.2** | [c2-2-automation-engine.md](c2-2-automation-engine.md) ✅ | Event → Rules → Policy → Intent (PR #116–#120) |
-| **C2.3** | [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) | Audience + plan → Intent — implementation complete; merge blocked by integration pytest baseline |
+| **C2.3** | [c2-3-campaign-orchestrator.md](c2-3-campaign-orchestrator.md) ✅ | Audience + plan → Intent — landed on tip |
 | **C2.4** | *(frozen — after C2.3 merge)* | Schedule → Intent → same pipeline |
 | **Gate** | [epic-c-complete-gate.md](../gates/epic-c-complete-gate.md) | Epic C — complete |
 
@@ -154,7 +154,11 @@ Slice: [c2-2-automation-engine.md](c2-2-automation-engine.md) (PR #116–#120).
 
 ---
 
-## C2.3 — Campaigns ← **active**
+## C2.3 — Campaigns ← **DONE**
+
+**C2.3:** landed on tip (Engineering land PR; #121–#126 superseded). **C2.4 frozen.**  
+**Next:** [Epic C Complete Gate](../gates/epic-c-complete-gate.md).  
+**Engineering (deferred):** [stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md) · [#127](https://github.com/igortatarynovich/HostFlow/pull/127) (obsolete CI unblock — tip already has gates).
 
 Campaign is an **orchestrator**, not a sender.
 
@@ -207,11 +211,11 @@ Settings / signatures / compliance UI may share **Настройки → Ком�
 
 - [x] C2.1 Template Platform shipped under Intent-only + capability-isolation gates  
 - [x] C2.2 Automation emits Intent only (no provider / Thread knowledge)  
-- [ ] C2.3 Campaigns orchestrate Intent only  
+- [x] C2.3 Campaigns orchestrate Intent only  
 - [ ] C2.4 Scheduling emits Intent into the ordinary pipeline  
 - [ ] Contract tests enforce capability isolation + no second pipeline  
 - [ ] [Epic C Complete Gate](../gates/epic-c-complete-gate.md) ready for evidence pass  
 
-**Product Track (active):** [Acquisition Stage 3E — Activity Timeline](acquisition-stage-3e-activity-timeline.md) — not C2.4.  
-**C2.3:** implementation complete; merge on Engineering Track when convenient. **C2.4 frozen.**  
-**Engineering (deferred):** [stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md) · [#127](https://github.com/igortatarynovich/HostFlow/pull/127).
+**Product Track (next):** [Epic C Complete Gate](../gates/epic-c-complete-gate.md). **C2.4 frozen.**  
+**C2.3:** ✅ landed on tip.  
+**Engineering (deferred):** [stabilize-integration-pytest-baseline.md](stabilize-integration-pytest-baseline.md). #127 obsolete.

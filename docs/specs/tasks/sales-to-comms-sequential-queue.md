@@ -5,8 +5,8 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-07-21 strategy:** Communication foundation is mature enough. **Product Track** = Acquisition Stage **3E — Activity Timeline** (`AcquisitionActivityEvent`). **Engineering Track** = legacy full-repo pytest / CI debt — must not stop Product unless clean deploy or a Product PR introduces breakage.  
-> C2.4 **frozen**. C2.3 implementation complete — merge opportunistic on Engineering Track.  
+> **2026-08-03 strategy:** Acquisition Stage 6 DONE. **C2.3 Campaign Orchestrator landed.** **Product Track** = Epic C Complete Gate. **Engineering Track** = legacy full-repo pytest / CI debt.  
+> C2.4 **frozen**.  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
 ---
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Acquisition Stage 6 DONE** — next Product Track per [platform-completion-roadmap](../architecture/platform-completion-roadmap.md) (Stage 6 sealed; ROI v1 = declared Outcome value) | Almost all capacity |
+| **Product** | **Epic C Complete Gate** (next) — C2.3 Campaign Orchestrator landed; C2.4 frozen | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred) | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -40,7 +40,8 @@
 - **Source Diagnostics** ← **PR1–PR9 ✅** (#196–#212) — [brief](acquisition-source-diagnostics.md); Wave-1 notifications closed (SPA-only)  
 - **Acquisition Stage 5 / Optimization** ← PR-1 DONE · **PR-2 DONE** (#203) — [stage-5](acquisition-stage-5-optimization.md)  
 - **Acquisition Stage 6 Analytics** ← **DONE** (PR-1…PR-6b) — [brief](acquisition-stage-6-analytics.md) · [ownership](../../modules/acquisition/outcome-commercial-value-ownership.md)  
-- C2.3 stack merge + C2.4 + Epic C Complete Gate — Engineering / later Communication close-out (**C2.4 frozen**)  
+- C2.3 Campaign Orchestrator ← **DONE** (landed on tip; #121–#126 superseded)  
+- C2.4 Scheduling + Epic C Complete Gate — next Communication close-out (**C2.4 frozen**)  
 - Meta intake completeness · Sales Stage 3 slice 3–4 — after Flight V1 vertical (3A–3E) as needed; see also 3E deferred D1–D2
 
 ---
@@ -60,7 +61,7 @@
 | **7** | **C2** Capability epic (Intent-only) | [epic-c2](epic-c2-communication-campaigns.md) | Creates `CommunicationIntent` only; never mutates Thread |
 | **7a** | **C2.1** Template Platform | PR #110–#114 ✅ | Domain → Renderer → Registry → API → UI; `template_version_id` SoT |
 | **7b** | **C2.2** Automation Engine | PR #116–#120 ✅ | Event → Rules → Policy → Intent (no provider/Thread) |
-| **7c** | **C2.3** Campaign Orchestrator | PR #121–#126 — implementation complete; Engineering merge later | Audience + plan → Intent |
+| **7c** | **C2.3** Campaign Orchestrator | `feat/communication-c2-3-land-on-tip` | ✅ Landed on tip (supersedes #121–#126) |
 | **7c-eng** | CI / pytest debt | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) · [stabilize](stabilize-integration-pytest-baseline.md) **deferred** | Engineering Track — base-known; not Product-blocking |
 | **7d** | **C2.4** Scheduling | *(frozen)* | Do not start |
 | **P-3E** | **Acquisition Stage 3E** Activity Timeline | PR #130–#133 ✅ | **DONE** — observability vertical closed; deferred — [3e-deferred](acquisition-stage-3e-deferred.md) |
@@ -72,8 +73,8 @@
 | **9** | **A2** Platform Governance Review | after Epic C complete | Boundary principle |
 | **10+** | Meta / Sales slices | after Flight V1 (3A–3E) as needed | Per roadmap |
 
-**C0–C2.2** ✅. **C2.3** implemented (merge opportunistic). **C2.4 frozen.**  
-**Active (Product):** **Acquisition Stage 6 DONE** — next horizon per [platform-completion-roadmap](../architecture/platform-completion-roadmap.md) ([Stage 6 brief](acquisition-stage-6-analytics.md)).  
+**C0–C2.3** ✅. **C2.4 frozen.**  
+**Active (Product):** **Epic C Complete Gate** next — C2.3 Campaign Orchestrator landed ([brief](c2-3-campaign-orchestrator.md)); Acquisition Stage 6 DONE.  
 **Engineering:** legacy full-repo pytest does **not** stop Acquisition Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap. Stage 4 merge (2026-07-23) accepted with known baseline debt — Stage 4 tests/gates green; full suite red outside scope.
 
 ---
@@ -139,7 +140,7 @@ Not a second CRM and not Settings. Working folders only (Inbox, Unread, Needs re
 ## 5b. Epic C2 — Communication Capability Epic ← **parked (Engineering)**
 
 **Epic:** [epic-c2-communication-campaigns.md](epic-c2-communication-campaigns.md)  
-**Product active elsewhere:** [Stage 3E Activity Timeline](acquisition-stage-3e-activity-timeline.md). C2.3 merge + C2.4 = Engineering / later close-out.
+**Product active elsewhere:** Acquisition Stage 6 DONE; next = Epic C Complete Gate. C2.4 = frozen.
 
 C2 is **not** Communication v2. Sole responsibility: emit `CommunicationIntent` into the existing platform pipeline.  
 Order: Template Platform → Automation → Campaigns → Scheduling → Complete Gate.  

@@ -1,8 +1,7 @@
 # C2.3 — Campaign Orchestrator
 
-**Status:** **Landing on tip** (Engineering Track) — code from PR #121–#126 replayed onto `integration/release-product-a-b` after Stage 6.  
+**Status:** **DONE** (landed on tip via Engineering PR; stacked #121–#126 superseded)  
 **Epic:** [C2 Communication Capability Epic](epic-c2-communication-campaigns.md)  
-**Land branch:** `feat/communication-c2-3-land-on-tip` (supersedes stacked #121–#126)  
 **C2.4 frozen.** Legacy full-repo pytest = base-known debt, not a C2.3 regression.
 
 **Parents:** [C2.2 Automation Engine ✅](c2-2-automation-engine.md) · [C2.1 Template Platform ✅](c2-1-template-platform.md) · [Epic C Complete Gate](../gates/epic-c-complete-gate.md)
@@ -26,8 +25,7 @@ Merge gates (inherited): **Intent-only egress** · **no second pipeline** · **c
 | Plan / orchestrate runs | Call providers |
 | Create `CommunicationIntent` per recipient | Mutate Thread / Message / Delivery |
 
-**Never** a shared “campaign thread”. Frontend must not loop N× Write buttons.  
-**UI is last** — same failure mode as overloaded Threads UX; do not start Campaign screens before domain + resolver + emission + API are stable.
+**Never** a shared “campaign thread”. Frontend must not loop N× Write buttons.
 
 ---
 
@@ -42,9 +40,9 @@ Replaying / inspecting an old run must show the snapshot from that moment — ne
 
 ---
 
-## Domain entities (PR-1)
+## Domain entities
 
-ORM uses `CommunicationCampaign*` / tables `communication_campaign_*`. Spec aliases live in the communications package.
+ORM uses `CommunicationCampaign*` / tables `communication_campaign_*` (distinct from Acquisition `acq_campaigns`).
 
 | Spec | Role |
 |------|------|
@@ -54,8 +52,6 @@ ORM uses `CommunicationCampaign*` / tables `communication_campaign_*`. Spec alia
 | `CampaignRecipient` | Snapshot member belonging to a Run |
 | `CampaignRun` | One execution against a specific `campaign_version_id` |
 | `CampaignRunItem` | Per-recipient outcome in a run (status + reason) |
-| `CampaignStatus` | Head lifecycle constants |
-| `CampaignRunStatus` / item statuses | Run + item lifecycle constants |
 
 ### Invariants
 
@@ -68,21 +64,6 @@ ORM uses `CommunicationCampaign*` / tables `communication_campaign_*`. Spec alia
 - No imports of Recruitment / Sales / HR / Services / Finance  
 - No knowledge of provider, Thread, Sender, or Workspace Commands  
 
-Campaign does **not** send and does **not** create Thread / Message / Delivery in this package.
-
----
-
-## Implementation order (locked)
-
-```text
-PR-1 Campaign Domain
-  → PR-2 Audience / wave planner (no send)
-  → PR-3 Intent fan-out (uses C2.2 emitter patterns / execute_intent)
-  → PR-4 Campaign run orchestration
-  → PR-5 Campaign API
-  → PR-6 Thin operator UI
-```
-
 ---
 
 ## Definition of Done (C2.3)
@@ -92,11 +73,10 @@ PR-1 Campaign Domain
 - [x] PR-3 fan-out uses platform Intent path (no provider / Thread writes)  
 - [x] PR-4 run orchestration  
 - [x] PR-5 API + PR-6 thin UI  
-- [ ] Landed on tip (this Engineering PR)  
-- [ ] Capability-isolation contract tests green on tip  
+- [x] Landed on tip (Engineering land PR)  
 - [x] No Scheduling product code in C2.3  
 
 ## After C2.3
 
-**Epic C Complete Gate** — then A2 Governance.  
+**Next Product Track:** [Epic C Complete Gate](../gates/epic-c-complete-gate.md) → A2 Governance.  
 **C2.4 Scheduling** remains frozen.
