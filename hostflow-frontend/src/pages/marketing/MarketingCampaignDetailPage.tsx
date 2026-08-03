@@ -575,7 +575,7 @@ export default function MarketingCampaignDetailPage() {
                             ) : null}
                             {row.is_best_cpl ? (
                               <span
-                                className="ml-2 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-800"
+                                className="ml-2 rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800"
                                 data-testid="marketing-flight-compare-best-cpl"
                               >
                                 best CPL
