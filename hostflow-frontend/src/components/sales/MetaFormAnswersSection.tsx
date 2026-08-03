@@ -48,7 +48,7 @@ export function MetaFormAnswersSection({ answers, additionalAnswers }: MetaFormA
               <dt className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
                 <span>{name}</span>
                 {isAdditional ? (
-                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                  <span className="rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
                     {t('app.sales_inquiry.additional_answer', { defaultValue: 'доп.' })}
                   </span>
                 ) : null}
