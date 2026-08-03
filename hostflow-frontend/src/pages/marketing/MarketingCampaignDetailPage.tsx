@@ -836,7 +836,7 @@ export default function MarketingCampaignDetailPage() {
                   <label className="text-xs text-slate-600">
                     Outcome ID
                     <input
-                      className="mt-1 block w-56 rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      className="mt-1 block w-56 rounded border border-slate-300 px-2 py-2 text-sm"
                       data-testid="marketing-outcome-value-id"
                       value={valueOutcomeId}
                       onChange={(ev) => setValueOutcomeId(ev.target.value)}
@@ -845,7 +845,7 @@ export default function MarketingCampaignDetailPage() {
                   <label className="text-xs text-slate-600">
                     Amount
                     <input
-                      className="mt-1 block w-28 rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      className="mt-1 block w-28 rounded border border-slate-300 px-2 py-2 text-sm"
                       data-testid="marketing-outcome-value-amount"
                       value={valueAmount}
                       onChange={(ev) => setValueAmount(ev.target.value)}
@@ -854,7 +854,7 @@ export default function MarketingCampaignDetailPage() {
                   <label className="text-xs text-slate-600">
                     Currency
                     <input
-                      className="mt-1 block w-20 rounded border border-slate-300 px-2 py-1.5 text-sm uppercase"
+                      className="mt-1 block w-20 rounded border border-slate-300 px-2 py-2 text-sm uppercase"
                       data-testid="marketing-outcome-value-currency"
                       value={valueCurrency}
                       onChange={(ev) => setValueCurrency(ev.target.value)}
