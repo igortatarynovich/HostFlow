@@ -28,6 +28,7 @@ from backend.app.acquisition.kpi_aggregates import (
     aggregate_campaign_kpi,
     aggregate_flight_kpi,
 )
+from backend.app.acquisition.ops.flight_compare import compose_flight_compare
 from backend.app.acquisition.ops.live_intake_monitor import get_live_intake_monitor
 from backend.app.acquisition.ops.optimization_operator_state import (
     record_optimization_operator_action,
@@ -357,6 +358,41 @@ class CampaignKpiOut(BaseModel):
     cost_per_qualified: Optional[str] = None
     cost_per_outcome: Optional[str] = None
     flights: List[FlightKpiOut] = Field(default_factory=list)
+
+
+class FlightCompareRowOut(BaseModel):
+    flight_id: str
+    code: str
+    name: str
+    status: str
+    is_current: bool = False
+    currency: Optional[str] = None
+    spend: str
+    leads: int
+    qualified: int
+    converted: int
+    outcomes_completed: int
+    cost_per_lead: Optional[str] = None
+    cost_per_qualified: Optional[str] = None
+    cost_per_outcome: Optional[str] = None
+    lead_share: Optional[str] = None
+    cpl_delta: Optional[str] = None
+    is_best_cpl: bool = False
+
+
+class FlightCompareOut(BaseModel):
+    tenant_id: str
+    campaign_id: str
+    currency: Optional[str] = None
+    spend: str
+    leads: int
+    qualified: int
+    converted: int
+    outcomes_completed: int
+    cost_per_lead: Optional[str] = None
+    cost_per_qualified: Optional[str] = None
+    cost_per_outcome: Optional[str] = None
+    flights: List[FlightCompareRowOut] = Field(default_factory=list)
 
 
 class EndpointsSummaryOut(BaseModel):
@@ -1880,6 +1916,37 @@ async def get_campaign_kpi_endpoint(
     except KpiAggregateError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return CampaignKpiOut.model_validate(kpi.to_dict())
+
+
+@router.get(
+    "/{campaign_id}/analytics/flight-compare",
+    response_model=FlightCompareOut,
+    dependencies=_READ,
+)
+async def get_campaign_flight_compare_endpoint(
+    campaign_id: str,
+    db_tenant=Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(None, alias="X-Own-Company-Id"),
+):
+    """Stage 6 PR-1 — read-only Flight wave compare (3D KPI + identity)."""
+    db, tenant_uuid = db_tenant
+    own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    try:
+        await campaign_service.get_campaign(
+            db,
+            tenant_id=str(tenant_uuid),
+            campaign_id=campaign_id,
+            own_company_id=own_company_id,
+        )
+        bundle = await compose_flight_compare(
+            db, tenant_id=str(tenant_uuid), campaign_id=campaign_id
+        )
+    except CampaignServiceError as exc:
+        _raise_service(exc)
+    except KpiAggregateError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return FlightCompareOut.model_validate(bundle.to_dict())
 
 
 @router.get(

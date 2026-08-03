@@ -12,6 +12,7 @@ import {
   completeFlight,
   currentFlight,
   getCampaign,
+  getCampaignFlightCompare,
   getFlightOptimization,
   getFlightRuntime,
   getLiveIntakeMonitor,
@@ -20,6 +21,7 @@ import {
   postFlightOptimizationOperatorAction,
   resumeFlight,
   type Campaign,
+  type FlightCompare,
   type FlightOptimization,
   type FlightRuntime,
   type LiveIntakeMonitor,
@@ -49,6 +51,7 @@ export default function MarketingCampaignDetailPage() {
   const [runtime, setRuntime] = useState<FlightRuntime | null>(null)
   const [monitor, setMonitor] = useState<LiveIntakeMonitor | null>(null)
   const [optimization, setOptimization] = useState<FlightOptimization | null>(null)
+  const [flightCompare, setFlightCompare] = useState<FlightCompare | null>(null)
   const [destinationLabel, setDestinationLabel] = useState<string>('—')
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
@@ -63,19 +66,23 @@ export default function MarketingCampaignDetailPage() {
       const c = await getCampaign(campaignId)
       setCampaign(c)
       const flight = currentFlight(c)
+      const comparePromise = getCampaignFlightCompare(c.id).catch(() => null)
       if (flight) {
-        const [rt, mon, opt] = await Promise.all([
+        const [rt, mon, opt, compare] = await Promise.all([
           getFlightRuntime(c.id, flight.id),
           getLiveIntakeMonitor(c.id, flight.id, { limit: 40 }),
           getFlightOptimization(c.id, flight.id).catch(() => null),
+          comparePromise,
         ])
         setRuntime(rt)
         setMonitor(mon)
         setOptimization(opt)
+        setFlightCompare(compare)
       } else {
         setRuntime(null)
         setMonitor(null)
         setOptimization(null)
+        setFlightCompare(await comparePromise)
       }
 
       const target = c.targets?.[0]
@@ -523,6 +530,84 @@ export default function MarketingCampaignDetailPage() {
                 </div>
               ))}
             </section>
+
+            {flightCompare && flightCompare.flights.length > 0 ? (
+              <section
+                className="rounded-xl border border-slate-200 bg-white px-4 py-4"
+                data-testid="marketing-flight-compare"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    {t('app.marketing.detail.flight_compare.title', {
+                      defaultValue: 'Сравнение Flight',
+                    })}
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    {t('app.marketing.detail.flight_compare.subtitle', {
+                      defaultValue: 'KPI по волнам кампании (только чтение).',
+                    })}
+                  </p>
+                </div>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="text-xs text-slate-500">
+                      <tr>
+                        <th className="py-2 pr-3 font-medium">Flight</th>
+                        <th className="py-2 pr-3 font-medium">Status</th>
+                        <th className="py-2 pr-3 font-medium">Spend</th>
+                        <th className="py-2 pr-3 font-medium">Leads</th>
+                        <th className="py-2 pr-3 font-medium">Share</th>
+                        <th className="py-2 pr-3 font-medium">CPL</th>
+                        <th className="py-2 font-medium">Δ CPL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {flightCompare.flights.map((row) => (
+                        <tr
+                          key={row.flight_id}
+                          className="border-t border-slate-100"
+                          data-testid={`marketing-flight-compare-row-${row.flight_id}`}
+                        >
+                          <td className="py-2 pr-3 text-slate-900">
+                            <span className="font-medium">{row.name || row.code}</span>
+                            {row.is_current ? (
+                              <span className="ml-2 text-xs text-slate-500">current</span>
+                            ) : null}
+                            {row.is_best_cpl ? (
+                              <span
+                                className="ml-2 rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800"
+                                data-testid="marketing-flight-compare-best-cpl"
+                              >
+                                best CPL
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status)}</td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-900">
+                            {row.spend}
+                            {row.currency ? ` ${row.currency}` : ''}
+                          </td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-900">{row.leads}</td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-700">
+                            {row.lead_share != null
+                              ? `${(Number(row.lead_share) * 100).toFixed(1)}%`
+                              : '—'}
+                          </td>
+                          <td className="py-2 pr-3 tabular-nums text-slate-900">
+                            {row.cost_per_lead != null
+                              ? `${row.cost_per_lead}${row.currency ? ` ${row.currency}` : ''}`
+                              : '—'}
+                          </td>
+                          <td className="py-2 tabular-nums text-slate-700">
+                            {row.cpl_delta != null ? row.cpl_delta : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ) : null}
 
             {optimization?.recommended_action === 'suggest_pause' ? (
               <div

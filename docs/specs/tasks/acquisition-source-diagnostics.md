@@ -1,8 +1,8 @@
 # Source Diagnostics — Marketing ops console (Product Epic)
 
-**Status:** **PR1–PR8 DONE** · later backlog remains  
-**Date:** 2026-08-02  
-**Product Track (next):** Source Diagnostics epic close-out / later backlog (PR9 ✅)  
+**Status:** **PR1–PR9 DONE** ✅ (#196–#212)  
+**Date:** 2026-08-03  
+**Product Track (next):** [Acquisition Stage 6 PR-1 — Flight wave compare](acquisition-stage-6-analytics.md)  
 **Parents:** [acquisition-ui-cutover.md](acquisition-ui-cutover.md) § After cutover · [sales-to-comms-sequential-queue.md](sales-to-comms-sequential-queue.md)
 
 ---
@@ -42,6 +42,7 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 | PR6 | Case export JSON | #205 |
 | PR7 | Drift list alerts | #206 |
 | PR8 | Replay via Leads process | #210 |
+| PR9 | In-app drift-summary | #212 |
 
 ---
 
@@ -94,7 +95,8 @@ Do **not** invent a submissions table or fork routing/mapping engines.
 
 ## History
 
-- 2026-08-02: PR9 drift-summary + in-app banner (this PR); epic Wave-1 notifications closed.  
+- 2026-08-03: PR9 ✅ #212; Product Track → Stage 6 Analytics PR-1.  
+- 2026-08-02: PR9 drift-summary + in-app banner (#212); epic Wave-1 notifications closed.  
 - 2026-08-02: PR8 merged (#210); Product Track → **PR9 drift notification Wave-1**.  
 - 2026-08-01: PR7 merged (#206); Product Track → PR8 replay.  
 - 2026-08-01: PR6 closed as ✅ #205; Product Track → PR7.  
