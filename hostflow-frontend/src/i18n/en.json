@@ -5117,6 +5117,7 @@
         "summary": "Summary",
         "general": "Summary",
         "recruitment": "Recruitment",
+        "marketing": "Marketing",
         "sales": "Sales",
         "hr": "HR",
         "finance": "Finance",
@@ -5194,6 +5195,59 @@
           "source_placeholder": "meta, csv…",
           "vacancy": "Vacancy",
           "vacancy_all": "All vacancies"
+        }
+      },
+      "marketing": {
+        "title": "Marketing efficiency",
+        "subtitle": "Acquisition campaign KPIs: spend, leads, CPL. Multi-select campaigns or use presets (e.g. Poltrakt drivers).",
+        "empty": "No campaigns in the selected slice.",
+        "empty_campaigns": "No campaigns available for this company.",
+        "filters": {
+          "currency": "Display currency",
+          "presets": "Presets",
+          "campaigns": "Campaigns",
+          "select_all": "Select all",
+          "clear": "Clear",
+          "selected": "Selected {count} / {total}"
+        },
+        "fx": {
+          "loading": "Loading NBP rates…",
+          "as_of": "NBP mid · {date} ({provider})",
+          "unavailable": "FX rates unavailable — showing source currency",
+          "error": "Could not load NBP rates. Amounts stay in USD until rates are available."
+        },
+        "presets": {
+          "drivers_poltrakt": "Poltrakt drivers",
+          "warehouse": "Warehouse",
+          "dispatcher": "Dispatcher",
+          "ru": "RU leads",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Spend",
+          "leads": "Leads",
+          "cpl": "Cost per lead",
+          "impressions": "Impressions",
+          "reach": "Reach"
+        },
+        "charts": {
+          "trend_title": "Trend",
+          "trend_subtitle": "Daily spend and leads for the selected campaigns and period.",
+          "spend_title": "Spend by campaign",
+          "spend_subtitle": "Ad spend in the selected group.",
+          "leads_title": "Leads by campaign",
+          "leads_subtitle": "Attributed leads (Acquisition results).",
+          "cpl_title": "Cost per lead",
+          "cpl_subtitle": "Lower is better — best CPL highlighted.",
+          "mix_title": "Lead mix",
+          "mix_subtitle": "Share of leads across selected campaigns."
+        },
+        "table": {
+          "title": "Campaign detail",
+          "subtitle": "Selected campaigns with Meta snapshot reach/impressions when available.",
+          "campaign": "Campaign",
+          "best_cpl": "Best CPL"
         }
       },
       "hr": {

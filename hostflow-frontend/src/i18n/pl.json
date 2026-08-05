@@ -4523,6 +4523,7 @@
         "summary": "Podsumowanie",
         "general": "Podsumowanie",
         "recruitment": "Rekrutacja",
+        "marketing": "Marketing",
         "sales": "Sprzedaż",
         "hr": "HR",
         "finance": "Finanse",
@@ -4600,6 +4601,59 @@
           "source_placeholder": "meta, csv…",
           "vacancy": "Wakat",
           "vacancy_all": "Wszystkie wakaty"
+        }
+      },
+      "marketing": {
+        "title": "Efektywność marketingu",
+        "subtitle": "KPI kampanii Acquisition: spend, leady, CPL. Multi-select kampanii lub preset (np. kierowcy Poltrakt).",
+        "empty": "Brak kampanii w wybranym przekroju.",
+        "empty_campaigns": "Brak kampanii dla tej firmy.",
+        "filters": {
+          "currency": "Waluta wyświetlania",
+          "presets": "Presety",
+          "campaigns": "Kampanie",
+          "select_all": "Zaznacz wszystkie",
+          "clear": "Wyczyść",
+          "selected": "Wybrano {count} / {total}"
+        },
+        "fx": {
+          "loading": "Ładowanie kursów NBP…",
+          "as_of": "Kurs średni NBP · {date} ({provider})",
+          "unavailable": "Brak kursów — pokazywana waluta źródłowa",
+          "error": "Nie udało się pobrać kursów NBP. Kwoty pozostają w USD do czasu dostępności kursów."
+        },
+        "presets": {
+          "drivers_poltrakt": "Kierowcy Poltrakt",
+          "warehouse": "Magazyn",
+          "dispatcher": "Dyspozytor",
+          "ru": "Leady RU",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Spend",
+          "leads": "Leady",
+          "cpl": "CPL",
+          "impressions": "Wyświetlenia",
+          "reach": "Zasięg"
+        },
+        "charts": {
+          "trend_title": "Trend",
+          "trend_subtitle": "Dzienny spend i leady dla wybranych kampanii i okresu.",
+          "spend_title": "Spend wg kampanii",
+          "spend_subtitle": "Wydatki reklamowe w wybranej grupie.",
+          "leads_title": "Leady wg kampanii",
+          "leads_subtitle": "Przypisane leady (Acquisition results).",
+          "cpl_title": "Cost per lead",
+          "cpl_subtitle": "Niżej = lepiej; najlepszy CPL wyróżniony.",
+          "mix_title": "Mix leadów",
+          "mix_subtitle": "Udział leadów wśród wybranych kampanii."
+        },
+        "table": {
+          "title": "Szczegóły kampanii",
+          "subtitle": "Wybrane kampanie z wyświetleniami/zasięgiem ze snapshotu Meta, jeśli dostępne.",
+          "campaign": "Kampania",
+          "best_cpl": "Najlepszy CPL"
         }
       },
       "hr": {

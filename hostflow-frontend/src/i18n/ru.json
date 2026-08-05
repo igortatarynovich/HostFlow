@@ -5044,6 +5044,7 @@
         "summary": "Сводка",
         "general": "Сводка",
         "recruitment": "Рекрутинг",
+        "marketing": "Маркетинг",
         "sales": "Продажи",
         "hr": "HR",
         "finance": "Финансы",
@@ -5121,6 +5122,59 @@
           "source_placeholder": "meta, csv…",
           "vacancy": "Вакансия",
           "vacancy_all": "Все вакансии"
+        }
+      },
+      "marketing": {
+        "title": "Эффективность маркетинга",
+        "subtitle": "KPI Acquisition-кампаний: spend, лиды, CPL. Мультивыбор кампаний или пресеты (например водители Poltrakt).",
+        "empty": "Нет кампаний в выбранном срезе.",
+        "empty_campaigns": "Нет кампаний для этой компании.",
+        "filters": {
+          "currency": "Валюта отображения",
+          "presets": "Пресеты",
+          "campaigns": "Кампании",
+          "select_all": "Выбрать все",
+          "clear": "Сбросить",
+          "selected": "Выбрано {count} / {total}"
+        },
+        "fx": {
+          "loading": "Загрузка курсов NBP…",
+          "as_of": "Средний курс NBP · {date} ({provider})",
+          "unavailable": "Курсы недоступны — показана исходная валюта",
+          "error": "Не удалось загрузить курсы NBP. Суммы остаются в USD, пока курсы не появятся."
+        },
+        "presets": {
+          "drivers_poltrakt": "Водители Poltrakt",
+          "warehouse": "Склад",
+          "dispatcher": "Диспетчер",
+          "ru": "RU лиды",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Spend",
+          "leads": "Лиды",
+          "cpl": "CPL",
+          "impressions": "Показы",
+          "reach": "Охват"
+        },
+        "charts": {
+          "trend_title": "Тренд",
+          "trend_subtitle": "Ежедневный spend и лиды по выбранным кампаниям и периоду.",
+          "spend_title": "Spend по кампаниям",
+          "spend_subtitle": "Рекламные расходы в выбранной группе.",
+          "leads_title": "Лиды по кампаниям",
+          "leads_subtitle": "Атрибутированные лиды (Acquisition results).",
+          "cpl_title": "Cost per lead",
+          "cpl_subtitle": "Меньше — лучше; лучший CPL выделен.",
+          "mix_title": "Микс лидов",
+          "mix_subtitle": "Доля лидов среди выбранных кампаний."
+        },
+        "table": {
+          "title": "Детализация кампаний",
+          "subtitle": "Выбранные кампании с показами/охватом из Meta-снимка, если есть.",
+          "campaign": "Кампания",
+          "best_cpl": "Лучший CPL"
         }
       },
       "hr": {
