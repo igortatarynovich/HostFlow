@@ -5118,13 +5118,18 @@
             "callback_requested": "Callback requested",
             "interested": "Interested",
             "not_interested": "Not interested"
-          }
+          },
+          "rodo_missing": "RODO not sent",
+          "blocked_no_rodo": "Contact blocked (no RODO)",
+          "rodo_hint": "RODO missing for {missing} of {total} ({satisfied} satisfied). Without RODO, CRM blocks logging contact attempts — this is a compliance gate, not a call backlog.",
+          "awaiting_hint": "“Awaiting first contact” counts only stage New with RODO already sent and no logged attempt — ready to call.",
+          "open_new_stage": "Open candidates on stage New"
         },
         "cohort_mismatch": "Stage cohort ({slices}) and contact cohort ({contact}) differ — check filters.",
         "sources": {
           "title": "Metric sources",
           "candidates": "Stages, outcomes, and rejection reasons come from candidates (created date in the filter).",
-          "contact": "Contact attempts come from CRM logs on the same candidate cohort (lifetime attempts, not only within the period).",
+          "contact": "Contact attempts come from CRM logs on the same candidate cohort (lifetime). RODO must be sent before an attempt can be logged.",
           "docs": "Documents are files linked to cohort candidates; “complete package” uses file status, not only document pipeline stages.",
           "marketing": "Marketing (separate tab) uses the Acquisition spend ledger and a Meta snapshot — not candidate or lead list counts.",
           "filter_ctx": "Panel slice: {ctx}. Reason drill-down opens candidates by stage, reason, and vacancy.",

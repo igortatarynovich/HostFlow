@@ -28,6 +28,7 @@ from backend.app.models.document import Document
 from backend.app.models.lead import Lead
 from backend.app.models.reminder import Reminder
 from backend.app.models.risk_intel import RiskIntelEntityShadow
+from backend.app.models.rodo_notification import RodoNotification
 from backend.app.models.additional_service import ServiceOrder
 from backend.app.models.tenant import Tenant
 from backend.app.models.user import User
@@ -39,6 +40,7 @@ from backend.app.models.invoice import Invoice
 from backend.app.models.tenant import TenantLink
 from backend.app.services.handoff import is_client_tenant_for_list
 from backend.app.models.enums import CandidateStage
+from backend.app.services.rodo import rodo_lead_audit_satisfied_from_candidate
 from backend.app.constants.stages import (
     LABELS as STAGE_LABELS,
     PIPELINE_COMPLETED_STAGE_CODES,
@@ -2080,19 +2082,56 @@ async def contact_attempt_stats(
     )
     limit_reached_count = sum(1 for c in cand_attempt_counts.values() if c >= 3)
 
-    # Actionable backlog: still on "new" and no CRM-logged contact attempt.
-    # Not the same as without_logged_attempts (legacy / off-CRM work may inflate that).
-    awaiting_stmt = cand_base.where(
-        func.lower(func.coalesce(Candidate.stage, "")) == "new",
-    )
-    if cand_attempt_counts:
-        awaiting_stmt = awaiting_stmt.where(
-            Candidate.id.not_in(list(cand_attempt_counts.keys()))
+    # RODO coverage (same semantics as contact-attempt gate): notification row OR lead audit.
+    cohort_cand_rows = (
+        await db.execute(
+            select(Candidate.id, Candidate.stage).where(
+                Candidate.id.in_(cand_base.scalar_subquery())
+            )
         )
-    candidates_awaiting_first_contact = int(
-        (await db.execute(select(func.count()).select_from(awaiting_stmt.subquery()))).scalar()
-        or 0
-    )
+    ).all()
+    cohort_ids = [str(cid) for cid, _ in cohort_cand_rows]
+    stage_by_id = {str(cid): str(stage or "").strip().lower() for cid, stage in cohort_cand_rows}
+
+    rodo_sent_ids: set[str] = set()
+    if cohort_ids:
+        rodo_sent_ids = {
+            str(cid)
+            for (cid,) in (
+                await db.execute(
+                    select(RodoNotification.candidate_id)
+                    .where(RodoNotification.candidate_id.in_(cohort_ids))
+                    .where(RodoNotification.status == "sent")
+                    .distinct()
+                )
+            ).all()
+        }
+
+    rodo_satisfied_ids: set[str] = set(rodo_sent_ids)
+    missing_notif_ids = [cid for cid in cohort_ids if cid not in rodo_sent_ids]
+    if missing_notif_ids:
+        audit_cands = (
+            await db.execute(select(Candidate).where(Candidate.id.in_(missing_notif_ids)))
+        ).scalars().all()
+        for cand in audit_cands:
+            if rodo_lead_audit_satisfied_from_candidate(cand):
+                rodo_satisfied_ids.add(str(cand.id))
+
+    candidates_rodo_satisfied = len(rodo_satisfied_ids)
+    candidates_rodo_missing = max(0, cohort_total - candidates_rodo_satisfied)
+
+    # new + no attempts: split by RODO — blocked vs ready-to-call backlog.
+    candidates_awaiting_first_contact = 0
+    candidates_contact_blocked_no_rodo = 0
+    for cid in cohort_ids:
+        if stage_by_id.get(cid) != "new":
+            continue
+        if cid in cand_attempt_counts:
+            continue
+        if cid in rodo_satisfied_ids:
+            candidates_awaiting_first_contact += 1
+        else:
+            candidates_contact_blocked_no_rodo += 1
 
     return {
         "cohort_total": cohort_total,
@@ -2101,6 +2140,9 @@ async def contact_attempt_stats(
         "candidates_reached": len(reached_candidates),
         "candidates_without_logged_attempts": candidates_without_logged_attempts,
         "candidates_awaiting_first_contact": candidates_awaiting_first_contact,
+        "candidates_rodo_satisfied": candidates_rodo_satisfied,
+        "candidates_rodo_missing": candidates_rodo_missing,
+        "candidates_contact_blocked_no_rodo": candidates_contact_blocked_no_rodo,
         "avg_per_candidate": round(avg_per_candidate, 2),
         "limit_reached_count": limit_reached_count,
         "by_result": by_result,

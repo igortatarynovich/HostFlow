@@ -4524,13 +4524,18 @@
             "callback_requested": "Oddzwonić",
             "interested": "Zainteresowany",
             "not_interested": "Niezainteresowany"
-          }
+          },
+          "rodo_missing": "RODO nie wysłano",
+          "blocked_no_rodo": "Kontakt zablokowany (brak RODO)",
+          "rodo_hint": "Brak RODO u {missing} z {total} (spełnione: {satisfied}). Bez RODO CRM blokuje rejestrację próby kontaktu — to bramka compliance, nie backlog telefonów.",
+          "awaiting_hint": "„Czekają na pierwszy kontakt” to tylko etap Nowy z już wysłanym RODO i bez próby — można dzwonić.",
+          "open_new_stage": "Otwórz kandydatów na etapie Nowy"
         },
         "cohort_mismatch": "Kohorta etapów ({slices}) i metryki kontaktu ({contact}) się różnią — sprawdź filtry.",
         "sources": {
           "title": "Źródła wskaźników",
           "candidates": "Etapy, wyniki i powody odrzuceń pochodzą z kart kandydatów (data utworzenia w filtrze).",
-          "contact": "Próby kontaktu pochodzą z dziennika CRM dla tej samej kohorty kandydatów (cała historia, nie tylko wybrany okres).",
+          "contact": "Próby kontaktu pochodzą z dziennika CRM dla tej samej kohorty (cała historia). Bez wysłanego RODO nie można zarejestrować próby.",
           "docs": "Dokumenty to pliki powiązane z kandydatami kohorty; „pełny pakiet” liczy się wg statusu pliku, nie tylko etapów dokumentów.",
           "marketing": "Marketing (osobna zakładka) korzysta z rejestru wydatków Acquisition i zrzutu Meta — to nie liczba kandydatów ani leadów z listy.",
           "filter_ctx": "Przekrój panelu: {ctx}. Przejście po powodzie otwiera kandydatów wg etapu, powodu i wakatu.",

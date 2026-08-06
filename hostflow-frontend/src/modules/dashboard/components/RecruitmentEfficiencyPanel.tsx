@@ -306,6 +306,14 @@ export function RecruitmentEfficiencyPanel({
   const noLoggedAttempts =
     contactStats?.candidates_without_logged_attempts ?? Math.max(0, cohortTotal - attempted)
   const awaitingFirstContact = contactStats?.candidates_awaiting_first_contact ?? 0
+  const rodoMissing = contactStats?.candidates_rodo_missing ?? 0
+  const rodoSatisfied = contactStats?.candidates_rodo_satisfied ?? Math.max(0, cohortTotal - rodoMissing)
+  const contactBlockedNoRodo = contactStats?.candidates_contact_blocked_no_rodo ?? 0
+  const newStageHref = candidatesListHref({
+    ...listFilterBase,
+    stage: 'new',
+  })
+
   const contactFunnel = useMemo(
     () =>
       [
@@ -430,7 +438,7 @@ export function RecruitmentEfficiencyPanel({
           {t('app.dashboard.efficiency.contact.title')}
         </h2>
         <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.efficiency.contact.subtitle')}</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label={t('app.dashboard.efficiency.contact.received')}
             value={formatNumber(cohortTotal)}
@@ -452,6 +460,16 @@ export function RecruitmentEfficiencyPanel({
             tone="neutral"
           />
           <StatCard
+            label={t('app.dashboard.efficiency.contact.rodo_missing')}
+            value={formatNumber(rodoMissing)}
+            tone="warning"
+          />
+          <StatCard
+            label={t('app.dashboard.efficiency.contact.blocked_no_rodo')}
+            value={formatNumber(contactBlockedNoRodo)}
+            tone="danger"
+          />
+          <StatCard
             label={t('app.dashboard.efficiency.contact.awaiting_first')}
             value={formatNumber(awaitingFirstContact)}
             tone="warning"
@@ -465,6 +483,26 @@ export function RecruitmentEfficiencyPanel({
         <p className="mt-2 text-xs text-slate-500">
           {t('app.dashboard.efficiency.contact.no_logged_hint')}
         </p>
+        <p className="mt-1 text-xs text-slate-500">
+          {t('app.dashboard.efficiency.contact.rodo_hint', {
+            values: {
+              missing: formatNumber(rodoMissing),
+              total: formatNumber(cohortTotal),
+              satisfied: formatNumber(rodoSatisfied),
+              blocked: formatNumber(contactBlockedNoRodo),
+            },
+          })}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          {t('app.dashboard.efficiency.contact.awaiting_hint')}
+        </p>
+        {(contactBlockedNoRodo > 0 || awaitingFirstContact > 0) && (
+          <p className="mt-1 text-xs">
+            <Link to={newStageHref} className="font-medium text-brand-700 hover:underline">
+              {t('app.dashboard.efficiency.contact.open_new_stage')}
+            </Link>
+          </p>
+        )}
         <p className="mt-1 text-xs text-slate-500">
           {t('app.dashboard.efficiency.contact.funnel_hint', {
             values: {

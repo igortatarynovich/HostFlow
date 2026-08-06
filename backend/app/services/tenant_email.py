@@ -79,15 +79,25 @@ async def send_email_smtp(
     if is_email_delivery_mock():
         return
     password = decrypt_secret(config.smtp_password_encrypted) if config.smtp_password_encrypted else None
+    if config.smtp_password_encrypted and not password:
+        raise ValueError(
+            "SMTP password stored for this tenant cannot be decrypted. "
+            "Re-save the App Password in Email Settings (encryption key mismatch)."
+        )
     if not config.smtp_host or not config.from_email:
         raise ValueError("SMTP host and from_email are required")
+    if not (config.smtp_user or "").strip() or not password:
+        raise ValueError(
+            "SMTP username and password are required. "
+            "Open Email Settings and save a valid SMTP password (Gmail App Password)."
+        )
     port = config.smtp_port or 587
     await asyncio.to_thread(
         _send_smtp_sync,
         host=config.smtp_host,
         port=port,
         user=config.smtp_user or "",
-        password=password or "",
+        password=password,
         use_tls=config.use_tls,
         from_email=config.from_email,
         from_name=config.from_name,
