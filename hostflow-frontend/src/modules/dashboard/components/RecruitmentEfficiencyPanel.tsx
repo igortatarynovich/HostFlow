@@ -536,25 +536,43 @@ export function RecruitmentEfficiencyPanel({
                 </Bar>
               </BarChart>
             </ChartHost>
-            <ChartHost className="h-48 w-full min-w-0" ready={chartsReady}>
-              <PieChart>
-                <Pie
-                  data={contactResultRows}
-                  dataKey="count"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                  paddingAngle={2}
-                >
-                  {contactResultRows.map((entry) => (
-                    <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={tooltipFmt as never} />
-              </PieChart>
-            </ChartHost>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <ChartHost className="h-48 w-full min-w-0 sm:w-1/2" ready={chartsReady}>
+                <PieChart>
+                  <Pie
+                    data={contactResultRows}
+                    dataKey="count"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    paddingAngle={2}
+                  >
+                    {contactResultRows.map((entry) => (
+                      <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={tooltipFmt as never} />
+                </PieChart>
+              </ChartHost>
+              <ul className="w-full space-y-2 sm:w-1/2">
+                {contactResultRows.map((entry) => (
+                  <li key={entry.key} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: entry.fill }}
+                      />
+                      <span className="truncate text-slate-700">{entry.name}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums font-semibold text-slate-900">
+                      {formatNumber(entry.count)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
       </section>
@@ -754,25 +772,43 @@ export function RecruitmentEfficiencyPanel({
 
         {docChartData.length > 0 ? (
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <ChartHost className="h-48 w-full min-w-0" ready={chartsReady}>
-              <PieChart>
-                <Pie
-                  data={docChartData}
-                  dataKey="count"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                  paddingAngle={2}
-                >
-                  {docChartData.map((entry) => (
-                    <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={tooltipFmt as never} />
-              </PieChart>
-            </ChartHost>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <ChartHost className="h-48 w-full min-w-0 sm:w-1/2" ready={chartsReady}>
+                <PieChart>
+                  <Pie
+                    data={docChartData}
+                    dataKey="count"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    paddingAngle={2}
+                  >
+                    {docChartData.map((entry) => (
+                      <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={tooltipFmt as never} />
+                </PieChart>
+              </ChartHost>
+              <ul className="w-full space-y-2 sm:w-1/2">
+                {docChartData.map((entry) => (
+                  <li key={entry.key} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: entry.fill }}
+                      />
+                      <span className="truncate text-slate-700">{entry.name}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums font-semibold text-slate-900">
+                      {formatNumber(entry.count)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
