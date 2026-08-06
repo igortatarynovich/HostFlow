@@ -22,6 +22,7 @@ import type {
 } from '../api/types'
 import { useAuth } from '../store/useAuth'
 import { useI18n, type LocaleCode } from '../i18n'
+import { resolveAssetUrl } from '../api/client'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { usePermissions } from '../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
@@ -62,6 +63,14 @@ function applyLocaleCode(value: string, setLocale: (next: LocaleCode) => void) {
   if (short === 'ru' || short === 'en' || short === 'pl') {
     setLocale(short)
   }
+}
+
+function resolveAvatarPreview(url?: string | null, cacheBust?: number | null): string | null {
+  const resolved = resolveAssetUrl(url)
+  if (!resolved) return null
+  if (!cacheBust) return resolved
+  const sep = resolved.includes('?') ? '&' : '?'
+  return `${resolved}${sep}v=${cacheBust}`
 }
 
 function signatureFromMe(me: { signature?: UserOutgoingSignature | null } | null | undefined): UserOutgoingSignature {
@@ -148,7 +157,7 @@ export default function ProfilePage() {
   })
   const [signatureForm, setSignatureForm] = useState<UserOutgoingSignature>(() => signatureFromMe(me))
 
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(me?.avatar_url ?? null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(() => resolveAvatarPreview(me?.avatar_url))
   const [avatarUploading, setAvatarUploading] = useState(false)
 
   const [uiForm, setUiForm] = useState<UiFormState>({
@@ -280,7 +289,7 @@ export default function ProfilePage() {
       birth_date: me?.birth_date ?? '',
     })
     setSignatureForm(signatureFromMe(me))
-    setAvatarPreview(me?.avatar_url ?? null)
+    setAvatarPreview(resolveAvatarPreview(me?.avatar_url))
   }, [me?.first_name, me?.last_name, me?.position, me?.phone, me?.email, me?.country, me?.city, me?.birth_date, me?.avatar_url, me?.signature])
 
   useEffect(() => {
@@ -655,20 +664,26 @@ export default function ProfilePage() {
 
   const handleAvatarFile = async (file: File | null) => {
     if (!file) return
+    const allowed = new Set(['image/png', 'image/jpeg', 'image/webp'])
+    if (file.type && !allowed.has(file.type)) {
+      window.alert(t('app.profile.messages.avatar_error'))
+      return
+    }
     setAvatarUploading(true)
+    const localPreview = URL.createObjectURL(file)
+    setAvatarPreview(localPreview)
     try {
       const { avatar_url } = await uploadUserAvatar(file)
       updateProfile({ avatar_url })
-      if (avatar_url) {
-        setAvatarPreview(`${avatar_url}?v=${Date.now()}`)
-      } else {
-        setAvatarPreview(null)
-      }
+      setAvatarPreview(resolveAvatarPreview(avatar_url, Date.now()))
     } catch (err) {
       console.warn('[ProfilePage] avatar upload failed', err)
+      setAvatarPreview(resolveAvatarPreview(me?.avatar_url))
       window.alert(t('app.profile.messages.avatar_error'))
     } finally {
       setAvatarUploading(false)
+      // Defer revoke so the last paint of the blob preview is not interrupted.
+      window.setTimeout(() => URL.revokeObjectURL(localPreview), 0)
     }
   }
 
@@ -749,7 +764,7 @@ export default function ProfilePage() {
                 ) : (
                   <span>{t('app.profile.avatar.upload')}</span>
                 )}
-                <input type="file" accept="image/*" className="hidden" onChange={onAvatarInputChange} />
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onAvatarInputChange} />
                 {avatarUploading && (
                   <span className="absolute inset-0 grid place-items-center bg-white/70 text-xs">{t('common.loading')}</span>
                 )}
@@ -839,7 +854,7 @@ export default function ProfilePage() {
                 <pre className="whitespace-pre-wrap font-sans">{signaturePreview}</pre>
                 {(signatureForm.logo_url || avatarPreview) ? (
                   <img
-                    src={String(signatureForm.logo_url || avatarPreview || '/logo_hf.svg')}
+                    src={String(resolveAssetUrl(signatureForm.logo_url) || avatarPreview || '/logo_hf.svg')}
                     alt=""
                     className="mt-3 block h-auto w-[180px] max-w-full"
                   />
