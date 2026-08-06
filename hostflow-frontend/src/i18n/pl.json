@@ -2543,7 +2543,9 @@
             "supervisor": "Koordynatorzy",
             "recruiter": "Rekruterzy",
             "client_manager": "Opiekunowie klienta",
-            "viewer": "Podglądający"
+            "viewer": "Podglądający",
+            "compliance_officer": "Specjalista ds. compliance",
+            "hr_officer": "Specjalista HR"
           }
         },
         "history": {
@@ -3027,7 +3029,9 @@
           "recruiter": "Rekruter",
           "client_manager": "Menedżer klienta",
           "client_processor": "Procesor kandydatów",
-          "viewer": "Podgląd"
+          "viewer": "Podgląd",
+          "compliance_officer": "Specjalista ds. compliance",
+          "hr_officer": "Specjalista HR"
         },
         "form": {
           "email_label": "Email",

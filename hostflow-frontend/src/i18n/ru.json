@@ -2543,7 +2543,9 @@
             "supervisor": "Супервайзеры",
             "recruiter": "Рекрутеры",
             "client_manager": "Менеджеры клиента",
-            "viewer": "Наблюдатели"
+            "viewer": "Наблюдатели",
+            "compliance_officer": "Специалист по compliance",
+            "hr_officer": "HR-специалист"
           }
         },
         "history": {
@@ -3027,7 +3029,9 @@
           "recruiter": "Рекрутер",
           "client_manager": "Менеджер клиента",
           "client_processor": "Процессор кандидатов",
-          "viewer": "Наблюдатель"
+          "viewer": "Наблюдатель",
+          "compliance_officer": "Специалист по compliance",
+          "hr_officer": "HR-специалист"
         },
         "form": {
           "email_label": "Email",

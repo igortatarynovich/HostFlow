@@ -2616,7 +2616,9 @@
             "supervisor": "Supervisors",
             "recruiter": "Recruiters",
             "client_manager": "Client managers",
-            "viewer": "Viewers"
+            "viewer": "Viewers",
+            "compliance_officer": "Compliance officer",
+            "hr_officer": "HR officer"
           }
         },
         "history": {
@@ -3100,7 +3102,9 @@
           "recruiter": "Recruiter",
           "client_manager": "Client manager",
           "client_processor": "Candidate processor",
-          "viewer": "Viewer"
+          "viewer": "Viewer",
+          "compliance_officer": "Compliance officer",
+          "hr_officer": "HR officer"
         },
         "form": {
           "email_label": "Email",
