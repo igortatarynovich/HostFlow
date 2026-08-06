@@ -5127,7 +5127,7 @@
       },
       "marketing": {
         "title": "Эффективность маркетинга",
-        "subtitle": "KPI Acquisition-кампаний: spend, лиды, CPL. Мультивыбор кампаний или пресеты (например водители Poltrakt).",
+        "subtitle": "KPI кампаний Acquisition: расходы, лиды, CPL. Мультивыбор кампаний или пресеты (например водители Poltrakt).",
         "empty": "Нет кампаний в выбранном срезе.",
         "empty_campaigns": "Нет кампаний для этой компании.",
         "filters": {
@@ -5153,20 +5153,20 @@
           "eng": "ENG"
         },
         "stats": {
-          "spend": "Spend",
+          "spend": "Расход",
           "leads": "Лиды",
           "cpl": "CPL",
           "impressions": "Показы",
           "reach": "Охват"
         },
         "charts": {
-          "trend_title": "Тренд",
-          "trend_subtitle": "Ежедневный spend и лиды по выбранным кампаниям и периоду.",
-          "spend_title": "Spend по кампаниям",
+          "trend_title": "Динамика",
+          "trend_subtitle": "Ежедневный расход и лиды по выбранным кампаниям и периоду.",
+          "spend_title": "Расход по кампаниям",
           "spend_subtitle": "Рекламные расходы в выбранной группе.",
           "leads_title": "Лиды по кампаниям",
-          "leads_subtitle": "Атрибутированные лиды (Acquisition results).",
-          "cpl_title": "Cost per lead",
+          "leads_subtitle": "Атрибутированные лиды (Acquisition).",
+          "cpl_title": "Стоимость лида (CPL)",
           "cpl_subtitle": "Меньше — лучше; лучший CPL выделен.",
           "mix_title": "Микс лидов",
           "mix_subtitle": "Доля лидов среди выбранных кампаний."

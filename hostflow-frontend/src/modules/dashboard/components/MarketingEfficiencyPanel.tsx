@@ -66,7 +66,7 @@ const PIE_PALETTE = [
   '#06b6d4',
 ]
 
-function truncateLabel(value: string, max = 22): string {
+function truncateLabel(value: string, max = 18): string {
   const s = String(value || '')
   return s.length > max ? `${s.slice(0, max - 1)}…` : s
 }
@@ -277,18 +277,20 @@ export function MarketingEfficiencyPanel({
           {spendBars.length === 0 ? (
             <p className="mt-6 text-sm text-slate-500">{t('app.dashboard.marketing.empty')}</p>
           ) : (
-            <ChartHost className="mt-2 h-56 w-full min-w-0" ready={chartsReady}>
-              <BarChart data={spendBars} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis
+            <ChartHost className="mt-2 h-64 w-full min-w-0" ready={chartsReady}>
+              <BarChart
+                layout="vertical"
+                data={spendBars}
+                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis
+                  type="category"
                   dataKey="name"
-                  tick={{ fontSize: 10, fill: '#64748b' }}
-                  interval={0}
-                  angle={-28}
-                  textAnchor="end"
-                  height={60}
+                  width={128}
+                  tick={{ fontSize: 10, fill: '#475569' }}
                 />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
                 <Tooltip
                   formatter={((value: number) => [
                     formatMoney(value, totals.currency),
@@ -298,7 +300,7 @@ export function MarketingEfficiencyPanel({
                     String((payload as { payload?: { fullName?: string } }[])?.[0]?.payload?.fullName || ''),
                   ) as never}
                 />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={18}>
                   {spendBars.map((d) => (
                     <Cell key={d.key} fill={d.fill} />
                   ))}
@@ -318,18 +320,20 @@ export function MarketingEfficiencyPanel({
           {leadsBars.length === 0 ? (
             <p className="mt-6 text-sm text-slate-500">{t('app.dashboard.marketing.empty')}</p>
           ) : (
-            <ChartHost className="mt-2 h-56 w-full min-w-0" ready={chartsReady}>
-              <BarChart data={leadsBars} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis
+            <ChartHost className="mt-2 h-64 w-full min-w-0" ready={chartsReady}>
+              <BarChart
+                layout="vertical"
+                data={leadsBars}
+                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis
+                  type="category"
                   dataKey="name"
-                  tick={{ fontSize: 10, fill: '#64748b' }}
-                  interval={0}
-                  angle={-28}
-                  textAnchor="end"
-                  height={60}
+                  width={128}
+                  tick={{ fontSize: 10, fill: '#475569' }}
                 />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
                 <Tooltip
                   formatter={((value: number) => [
                     formatNumber(value),
@@ -339,7 +343,7 @@ export function MarketingEfficiencyPanel({
                     String((payload as { payload?: { fullName?: string } }[])?.[0]?.payload?.fullName || ''),
                   ) as never}
                 />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={18}>
                   {leadsBars.map((d) => (
                     <Cell key={d.key} fill={d.fill} />
                   ))}
@@ -359,18 +363,20 @@ export function MarketingEfficiencyPanel({
           {cplBars.length === 0 ? (
             <p className="mt-6 text-sm text-slate-500">{t('app.dashboard.marketing.empty')}</p>
           ) : (
-            <ChartHost className="mt-2 h-56 w-full min-w-0" ready={chartsReady}>
-              <BarChart data={cplBars} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis
+            <ChartHost className="mt-2 h-64 w-full min-w-0" ready={chartsReady}>
+              <BarChart
+                layout="vertical"
+                data={cplBars}
+                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis
+                  type="category"
                   dataKey="name"
-                  tick={{ fontSize: 10, fill: '#64748b' }}
-                  interval={0}
-                  angle={-28}
-                  textAnchor="end"
-                  height={60}
+                  width={128}
+                  tick={{ fontSize: 10, fill: '#475569' }}
                 />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
                 <Tooltip
                   formatter={((value: number) => [
                     formatMoney(value, totals.currency),
@@ -380,7 +386,7 @@ export function MarketingEfficiencyPanel({
                     String((payload as { payload?: { fullName?: string } }[])?.[0]?.payload?.fullName || ''),
                   ) as never}
                 />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={18}>
                   {cplBars.map((d) => (
                     <Cell key={d.key} fill={d.fill} />
                   ))}

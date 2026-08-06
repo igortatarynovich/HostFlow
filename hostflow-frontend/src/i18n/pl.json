@@ -4606,7 +4606,7 @@
       },
       "marketing": {
         "title": "Efektywność marketingu",
-        "subtitle": "KPI kampanii Acquisition: spend, leady, CPL. Multi-select kampanii lub preset (np. kierowcy Poltrakt).",
+        "subtitle": "KPI kampanii Acquisition: wydatki, leady, CPL. Multi-select kampanii lub preset (np. kierowcy Poltrakt).",
         "empty": "Brak kampanii w wybranym przekroju.",
         "empty_campaigns": "Brak kampanii dla tej firmy.",
         "filters": {
@@ -4632,20 +4632,20 @@
           "eng": "ENG"
         },
         "stats": {
-          "spend": "Spend",
+          "spend": "Wydatki",
           "leads": "Leady",
           "cpl": "CPL",
           "impressions": "Wyświetlenia",
           "reach": "Zasięg"
         },
         "charts": {
-          "trend_title": "Trend",
-          "trend_subtitle": "Dzienny spend i leady dla wybranych kampanii i okresu.",
-          "spend_title": "Spend wg kampanii",
+          "trend_title": "Dynamika",
+          "trend_subtitle": "Dzienne wydatki i leady dla wybranych kampanii i okresu.",
+          "spend_title": "Wydatki wg kampanii",
           "spend_subtitle": "Wydatki reklamowe w wybranej grupie.",
           "leads_title": "Leady wg kampanii",
-          "leads_subtitle": "Przypisane leady (Acquisition results).",
-          "cpl_title": "Cost per lead",
+          "leads_subtitle": "Przypisane leady (Acquisition).",
+          "cpl_title": "Koszt leada (CPL)",
           "cpl_subtitle": "Niżej = lepiej; najlepszy CPL wyróżniony.",
           "mix_title": "Mix leadów",
           "mix_subtitle": "Udział leadów wśród wybranych kampanii."
