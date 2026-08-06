@@ -153,6 +153,11 @@ export function MarketingEfficiencyPanel({
 
   return (
     <div className="space-y-4">
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+        <div className="font-semibold">{t('app.dashboard.marketing.snapshot_badge')}</div>
+        <p className="mt-0.5 text-xs text-amber-900/90">{t('app.dashboard.marketing.snapshot_hint')}</p>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -161,6 +166,9 @@ export function MarketingEfficiencyPanel({
           <div className="mt-1 text-2xl font-semibold text-slate-900">
             {formatMoney(totals.spend, totals.currency)}
           </div>
+          <div className="mt-1 text-[10px] uppercase tracking-wide text-slate-400">
+            {t('app.dashboard.marketing.source_ledger')}
+          </div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -168,6 +176,9 @@ export function MarketingEfficiencyPanel({
           </div>
           <div className="mt-1 text-2xl font-semibold text-slate-900">
             {formatNumber(totals.leads)}
+          </div>
+          <div className="mt-1 text-[10px] uppercase tracking-wide text-slate-400">
+            {t('app.dashboard.marketing.source_attribution')}
           </div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -179,10 +190,16 @@ export function MarketingEfficiencyPanel({
               ? formatMoney(totals.cost_per_lead, totals.currency)
               : '—'}
           </div>
+          <div className="mt-1 text-[10px] uppercase tracking-wide text-slate-400">
+            {t('app.dashboard.marketing.source_derived')}
+          </div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
             {t('app.dashboard.marketing.stats.impressions')}
+            <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold normal-case text-amber-800">
+              {t('app.dashboard.marketing.snapshot_chip')}
+            </span>
           </div>
           <div className="mt-1 text-2xl font-semibold text-slate-900">
             {totals.impressions != null ? formatNumber(totals.impressions) : '—'}
@@ -191,6 +208,9 @@ export function MarketingEfficiencyPanel({
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
             {t('app.dashboard.marketing.stats.reach')}
+            <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold normal-case text-amber-800">
+              {t('app.dashboard.marketing.snapshot_chip')}
+            </span>
           </div>
           <div className="mt-1 text-2xl font-semibold text-slate-900">
             {totals.reach != null ? formatNumber(totals.reach) : '—'}

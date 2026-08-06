@@ -268,6 +268,10 @@ export default function RecruitmentEfficiencyDashboard() {
           documentStats={documentStats}
           contactStats={contactStats}
           loading={loading}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          companyId={companyFilter}
+          vacancyId={vacancyFilter}
         />
       </div>
     </PageShell>

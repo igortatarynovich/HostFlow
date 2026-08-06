@@ -16,6 +16,13 @@ export type ContactAttemptStatsResponse = {
   candidates_with_attempts: number
   /** Distinct candidates with at least one reached result (answered / interested / callback). */
   candidates_reached?: number
+  /**
+   * Cohort members with zero rows in contact_attempts.
+   * Coverage gap in CRM logging — not “unprocessed” (legacy / off-CRM work possible).
+   */
+  candidates_without_logged_attempts?: number
+  /** Stage `new` and no logged contact attempt — actionable first-contact backlog. */
+  candidates_awaiting_first_contact?: number
   avg_per_candidate: number
   limit_reached_count: number
   by_result: Record<string, number>

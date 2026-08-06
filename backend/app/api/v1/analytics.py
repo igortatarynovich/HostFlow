@@ -1006,6 +1006,53 @@ def _apply_period_filters(
     return stmt
 
 
+_TEST_DEMO_NAME_PATTERNS = ("test", "тест", "demo", "демо")
+
+
+def _exclude_test_demo_company_vacancy(stmt):
+    """Exclude candidates whose company/vacancy name looks like test/demo.
+
+    Shared by candidate-slices, contact-attempt-stats, and document-stats so
+    cohort totals stay aligned. Uses coalesce so NULL names are not treated as
+    matching (SQL NOT (NULL OR …) would otherwise drop those rows).
+    Caller must outerjoin Company and Vacancy when needed.
+    """
+    from sqlalchemy import not_ as sql_not
+
+    test_filters = []
+    for pattern in _TEST_DEMO_NAME_PATTERNS:
+        test_filters.append(func.lower(func.coalesce(Company.name, "")).like(f"%{pattern}%"))
+        test_filters.append(func.lower(func.coalesce(Vacancy.title, "")).like(f"%{pattern}%"))
+    return stmt.where(sql_not(or_(*test_filters)))
+
+
+def _candidate_cohort_id_select(
+    *,
+    scope_clause,
+    dfrom: Optional[datetime],
+    dto: Optional[datetime],
+    company_filter: str = "",
+    vacancy_filter: str = "",
+):
+    """Candidate.id subquery: same cohort rules as recruitment efficiency panels."""
+    stmt = (
+        select(Candidate.id)
+        .outerjoin(Company, Candidate.company_id == Company.id)
+        .outerjoin(Vacancy, Candidate.vacancy_id == Vacancy.id)
+        .where(and_(Candidate.deleted_at.is_(None), scope_clause))
+    )
+    stmt = _exclude_test_demo_company_vacancy(stmt)
+    if dfrom:
+        stmt = stmt.where(Candidate.created_at >= dfrom)
+    if dto:
+        stmt = stmt.where(Candidate.created_at <= dto)
+    if company_filter:
+        stmt = stmt.where(Candidate.company_id == company_filter)
+    if vacancy_filter:
+        stmt = stmt.where(Candidate.vacancy_id == vacancy_filter)
+    return stmt
+
+
 # ------- /overview (как было, оставим без изменений) -------
 @router.get("/analytics/overview")
 async def overview(
@@ -1980,7 +2027,11 @@ async def contact_attempt_stats(
         description="Optional vacancy filter (Candidate.vacancy_id).",
     ),
 ):
-    """Aggregate contact attempt stats for candidates in tenant (filter by candidate created_at)."""
+    """Aggregate contact attempt stats for candidates in tenant (filter by candidate created_at).
+
+    Cohort matches candidate-slices (incl. test/demo exclusion). Attempts are lifetime
+    rows for that cohort — not filtered by attempt date.
+    """
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
@@ -1991,15 +2042,13 @@ async def contact_attempt_stats(
     company_filter = str(company_id).strip() if company_id else ""
     vacancy_filter = str(vacancy_id).strip() if vacancy_id else ""
 
-    cand_base = select(Candidate.id).where(and_(Candidate.deleted_at.is_(None), scope_clause))
-    if dfrom:
-        cand_base = cand_base.where(Candidate.created_at >= dfrom)
-    if dto:
-        cand_base = cand_base.where(Candidate.created_at <= dto)
-    if company_filter:
-        cand_base = cand_base.where(Candidate.company_id == company_filter)
-    if vacancy_filter:
-        cand_base = cand_base.where(Candidate.vacancy_id == vacancy_filter)
+    cand_base = _candidate_cohort_id_select(
+        scope_clause=scope_clause,
+        dfrom=dfrom,
+        dto=dto,
+        company_filter=company_filter,
+        vacancy_filter=vacancy_filter,
+    )
 
     cohort_total = int(
         (await db.execute(select(func.count()).select_from(cand_base.subquery()))).scalar() or 0
@@ -2025,16 +2074,33 @@ async def contact_attempt_stats(
             reached_candidates.add(cand_id_str)
 
     candidates_with_attempts = len(cand_attempt_counts)
+    candidates_without_logged_attempts = max(0, cohort_total - candidates_with_attempts)
     avg_per_candidate = (
         total_attempts / candidates_with_attempts if candidates_with_attempts else 0
     )
     limit_reached_count = sum(1 for c in cand_attempt_counts.values() if c >= 3)
+
+    # Actionable backlog: still on "new" and no CRM-logged contact attempt.
+    # Not the same as without_logged_attempts (legacy / off-CRM work may inflate that).
+    awaiting_stmt = cand_base.where(
+        func.lower(func.coalesce(Candidate.stage, "")) == "new",
+    )
+    if cand_attempt_counts:
+        awaiting_stmt = awaiting_stmt.where(
+            Candidate.id.not_in(list(cand_attempt_counts.keys()))
+        )
+    candidates_awaiting_first_contact = int(
+        (await db.execute(select(func.count()).select_from(awaiting_stmt.subquery()))).scalar()
+        or 0
+    )
 
     return {
         "cohort_total": cohort_total,
         "total_attempts": total_attempts,
         "candidates_with_attempts": candidates_with_attempts,
         "candidates_reached": len(reached_candidates),
+        "candidates_without_logged_attempts": candidates_without_logged_attempts,
+        "candidates_awaiting_first_contact": candidates_awaiting_first_contact,
         "avg_per_candidate": round(avg_per_candidate, 2),
         "limit_reached_count": limit_reached_count,
         "by_result": by_result,
@@ -2062,7 +2128,10 @@ async def document_stats(
         description="Optional vacancy filter (Candidate.vacancy_id).",
     ),
 ):
-    """Aggregate document stats for candidates in tenant (filter by candidate created_at)."""
+    """Aggregate document stats for candidates in tenant (filter by candidate created_at).
+
+    Cohort matches candidate-slices (incl. test/demo exclusion).
+    """
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
@@ -2073,18 +2142,13 @@ async def document_stats(
     company_filter = str(company_id).strip() if company_id else ""
     vacancy_filter = str(vacancy_id).strip() if vacancy_id else ""
 
-    cand_subq = (
-        select(Candidate.id)
-        .where(and_(Candidate.deleted_at.is_(None), scope_clause))
+    cand_subq = _candidate_cohort_id_select(
+        scope_clause=scope_clause,
+        dfrom=dfrom,
+        dto=dto,
+        company_filter=company_filter,
+        vacancy_filter=vacancy_filter,
     )
-    if dfrom:
-        cand_subq = cand_subq.where(Candidate.created_at >= dfrom)
-    if dto:
-        cand_subq = cand_subq.where(Candidate.created_at <= dto)
-    if company_filter:
-        cand_subq = cand_subq.where(Candidate.company_id == company_filter)
-    if vacancy_filter:
-        cand_subq = cand_subq.where(Candidate.vacancy_id == vacancy_filter)
 
     docs_stmt = (
         select(Document.status, Document.kind, Document.candidate_id)
@@ -2395,17 +2459,9 @@ async def candidate_slices(
         .where(and_(Candidate.deleted_at.is_(None), scope_clause))
     )
     
-    # Фильтрация тестовых данных: исключаем компании и вакансии с "test", "тест", "demo" в названии
-    test_patterns = ["test", "тест", "demo", "демо"]
-    test_filters = []
-    for pattern in test_patterns:
-        test_filters.append(func.lower(Company.name).like(f"%{pattern}%"))
-        test_filters.append(func.lower(Vacancy.title).like(f"%{pattern}%"))
-    if test_filters:
-        from sqlalchemy import not_ as sql_not
-        test_condition = sql_not(or_(*test_filters))
-        stmt = stmt.where(test_condition)
-    
+    # Same test/demo exclusion as contact-attempt-stats / document-stats.
+    stmt = _exclude_test_demo_company_vacancy(stmt)
+
     stmt = _apply_period_filters(stmt, dfrom, dto, by)
 
     if stage_filters:

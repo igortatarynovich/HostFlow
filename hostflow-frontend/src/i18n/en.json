@@ -5053,14 +5053,19 @@
           "rejected_title": "Rejected by company ({count})",
           "declined_title": "Declined by candidate ({count})",
           "hint": "Reason totals may exceed candidate counts when multiple codes apply.",
-          "empty": "No reasons in this slice."
+          "empty": "No reasons in this slice.",
+          "ops_intro": "Operational analytics: click opens the candidate list for that reason.",
+          "ops_focus": "Ops focus",
+          "ops_badge": "ops",
+          "open_list": "Open candidates with this reason",
+          "share_legend": "Share: of this outcome · of all closed (reject + decline)."
         },
         "docs": {
           "title": "Documents",
-          "subtitle": "Operational docs_wait / docs_got stages and uploaded file statuses.",
+          "subtitle": "docs_wait / docs_got are candidate stages. “Complete package” uses Document file status (not stage).",
           "wait": "Waiting for documents",
           "got": "Documents received",
-          "complete": "Complete package",
+          "complete": "Complete package (by files)",
           "col_status": "File status",
           "col_count": "Count",
           "files_total": "Total files: {count}",
@@ -5089,7 +5094,7 @@
         },
         "contact": {
           "title": "Contact metric",
-          "subtitle": "Received → CRM-logged contact attempts → reached → outcome. Same filters. Not the same as processed / unprocessed.",
+          "subtitle": "Received → CRM-logged attempts → reached. Cohort = candidates by created_at (same as stages). Attempts are lifetime for that cohort. Not the same as processed.",
           "received": "Received",
           "attempted": "Attempted",
           "reached": "Reached",
@@ -5114,6 +5119,17 @@
             "interested": "Interested",
             "not_interested": "Not interested"
           }
+        },
+        "cohort_mismatch": "Stage cohort ({slices}) and contact cohort ({contact}) differ — check filters.",
+        "sources": {
+          "title": "Metric sources",
+          "candidates": "Stages, outcomes, and rejection reasons come from candidates (created date in the filter).",
+          "contact": "Contact attempts come from CRM logs on the same candidate cohort (lifetime attempts, not only within the period).",
+          "docs": "Documents are files linked to cohort candidates; “complete package” uses file status, not only document pipeline stages.",
+          "marketing": "Marketing (separate tab) uses the Acquisition spend ledger and a Meta snapshot — not candidate or lead list counts.",
+          "filter_ctx": "Panel slice: {ctx}. Reason drill-down opens candidates by stage, reason, and vacancy.",
+          "client_id": "client {id}",
+          "period_range": "{from} — {to}"
         }
       },
       "tabs": {
@@ -5203,7 +5219,7 @@
       },
       "marketing": {
         "title": "Marketing efficiency",
-        "subtitle": "Acquisition campaign KPIs: spend, leads, CPL. Multi-select campaigns or use presets (e.g. Poltrakt drivers).",
+        "subtitle": "Campaign KPIs from the Acquisition ledger. Meta reach/impressions are snapshot until live access. Leads here ≠ Recruitment candidates.",
         "empty": "No campaigns in the selected slice.",
         "empty_campaigns": "No campaigns available for this company.",
         "filters": {
@@ -5249,10 +5265,16 @@
         },
         "table": {
           "title": "Campaign detail",
-          "subtitle": "Selected campaigns with Meta snapshot reach/impressions when available.",
+          "subtitle": "Campaigns; reach/impressions from Meta snapshot only (not live).",
           "campaign": "Campaign",
           "best_cpl": "Best CPL"
-        }
+        },
+        "snapshot_badge": "Meta data — snapshot (not live Ads API)",
+        "snapshot_hint": "Impressions and reach come from an imported snapshot / spend notes. No live Graph API yet — do not treat this as an online Meta Ads report.",
+        "snapshot_chip": "snapshot",
+        "source_ledger": "Acquisition spend ledger",
+        "source_attribution": "Result attributions (≠ candidates)",
+        "source_derived": "spend ÷ leads"
       },
       "hr": {
         "title": "HR efficiency",

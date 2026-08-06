@@ -4459,14 +4459,19 @@
           "rejected_title": "Odrzucony przez firmę ({count})",
           "declined_title": "Zrezygnował kandydat ({count})",
           "hint": "Suma powodów może być większa niż liczba kandydatów — część ma kilka kodów.",
-          "empty": "Brak powodów w tym wycinku."
+          "empty": "Brak powodów w tym wycinku.",
+          "ops_intro": "Analityka operacyjna: klik otwiera listę kandydatów z tym powodem.",
+          "ops_focus": "Fokus operacyjny",
+          "ops_badge": "oper.",
+          "open_list": "Otwórz kandydatów z tym powodem",
+          "share_legend": "Udział: w tym wyniku · we wszystkich zamkniętych (odrzucony + zrezygnował)."
         },
         "docs": {
           "title": "Dokumenty",
-          "subtitle": "Etapy docs_wait / docs_got oraz statusy wgranych plików.",
+          "subtitle": "docs_wait / docs_got — etap kandydata. „Pełny pakiet” — wg statusu pliku Document (nie etap).",
           "wait": "Czekamy na dokumenty",
           "got": "Dokumenty otrzymane",
-          "complete": "Pełny pakiet",
+          "complete": "Pełny pakiet (wg plików)",
           "col_status": "Status pliku",
           "col_count": "Liczba",
           "files_total": "Plików łącznie: {count}",
@@ -4495,7 +4500,7 @@
         },
         "contact": {
           "title": "Metryka kontaktu",
-          "subtitle": "Otrzymano → zarejestrowane próby w CRM → dodzwoniono → wynik. Te same filtry. To nie to samo co obsłużony / nieobsłużony.",
+          "subtitle": "Otrzymano → zarejestrowane próby w CRM → dodzwoniono. Kohorta = kandydaci wg created_at (jak etapy). Próby lifetime dla kohorty. To nie to samo co obsłużony.",
           "received": "Otrzymano",
           "attempted": "Była próba",
           "reached": "Dodzwoniono",
@@ -4520,6 +4525,17 @@
             "interested": "Zainteresowany",
             "not_interested": "Niezainteresowany"
           }
+        },
+        "cohort_mismatch": "Kohorta etapów ({slices}) i metryki kontaktu ({contact}) się różnią — sprawdź filtry.",
+        "sources": {
+          "title": "Źródła wskaźników",
+          "candidates": "Etapy, wyniki i powody odrzuceń pochodzą z kart kandydatów (data utworzenia w filtrze).",
+          "contact": "Próby kontaktu pochodzą z dziennika CRM dla tej samej kohorty kandydatów (cała historia, nie tylko wybrany okres).",
+          "docs": "Dokumenty to pliki powiązane z kandydatami kohorty; „pełny pakiet” liczy się wg statusu pliku, nie tylko etapów dokumentów.",
+          "marketing": "Marketing (osobna zakładka) korzysta z rejestru wydatków Acquisition i zrzutu Meta — to nie liczba kandydatów ani leadów z listy.",
+          "filter_ctx": "Przekrój panelu: {ctx}. Przejście po powodzie otwiera kandydatów wg etapu, powodu i wakatu.",
+          "client_id": "klient {id}",
+          "period_range": "{from} — {to}"
         }
       },
       "tabs": {
@@ -4609,7 +4625,7 @@
       },
       "marketing": {
         "title": "Efektywność marketingu",
-        "subtitle": "KPI kampanii Acquisition: wydatki, leady, CPL. Multi-select kampanii lub preset (np. kierowcy Poltrakt).",
+        "subtitle": "KPI kampanii z Acquisition ledger. Meta reach/impressions — snapshot do czasu live. Leady tutaj ≠ kandydaci w Rekrutacji.",
         "empty": "Brak kampanii w wybranym przekroju.",
         "empty_campaigns": "Brak kampanii dla tej firmy.",
         "filters": {
@@ -4655,10 +4671,16 @@
         },
         "table": {
           "title": "Szczegóły kampanii",
-          "subtitle": "Wybrane kampanie z wyświetleniami/zasięgiem ze snapshotu Meta, jeśli dostępne.",
+          "subtitle": "Kampanie; reach/impressions tylko z Meta snapshot (nie live).",
           "campaign": "Kampania",
           "best_cpl": "Najlepszy CPL"
-        }
+        },
+        "snapshot_badge": "Dane Meta — zrzut (nie live Ads API)",
+        "snapshot_hint": "Wyświetlenia i zasięg pochodzą z importowanego zrzutu lub notatek wydatków. Brak live Graph API — nie traktuj tego jak raportu online Meta Ads.",
+        "snapshot_chip": "zrzut",
+        "source_ledger": "Rejestr wydatków Acquisition",
+        "source_attribution": "Atrybucje wyników (≠ kandydaci)",
+        "source_derived": "wydatek ÷ leady"
       },
       "hr": {
         "title": "Efektywność HR",
