@@ -35,9 +35,13 @@ function normalizePlan(value: unknown): PlanTier | null {
 }
 
 function planLabel(t: (key: string, options?: any) => string, plan: PlanTier | null, fallbackKey: string): string {
-  if (!plan) return t(fallbackKey)
+  if (!plan) {
+    return t(fallbackKey, {
+      defaultValue: fallbackKey.endsWith('required_plan_fallback') ? 'a higher' : 'your current',
+    })
+  }
   const key = `app.billing.plan_limit.plan_name.${plan}`
-  const translated = t(key)
+  const translated = t(key, { defaultValue: plan })
   return translated === key ? plan : translated
 }
 
@@ -111,21 +115,22 @@ export function PlanLimitModalProvider({ children }: { children: ReactNode }) {
   return (
     <PlanLimitModalContext.Provider value={value}>
       {children}
-      <Modal open={Boolean(info)} onClose={close} title={t('app.billing.plan_limit.title')}>
+      <Modal open={Boolean(info)} onClose={close} title={t('app.billing.plan_limit.title', { defaultValue: 'Plan limit reached' })}>
         {info ? (
           <div className="space-y-4 text-sm text-slate-700">
             <p>
               {t('app.billing.plan_limit.body', {
+                defaultValue: 'This action requires the {required} plan. Your current plan is {current}.',
                 values: { required: info.requiredPlanLabel, current: info.currentPlanLabel },
               })}
             </p>
             {info.detail ? <p className="whitespace-pre-wrap text-xs text-slate-500">{info.detail}</p> : null}
             <div className="flex flex-wrap gap-2 pt-2">
               <button type="button" className="btn-primary" onClick={onUpgrade}>
-                {t('app.billing.plan_limit.actions.upgrade')}
+                {t('app.billing.plan_limit.actions.upgrade', { defaultValue: 'Upgrade plan' })}
               </button>
               <button type="button" className="btn-secondary" onClick={onTalkToSales}>
-                {t('app.billing.plan_limit.actions.talk_to_sales')}
+                {t('app.billing.plan_limit.actions.talk_to_sales', { defaultValue: 'Talk to sales' })}
               </button>
             </div>
           </div>

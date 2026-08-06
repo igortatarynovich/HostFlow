@@ -9328,6 +9328,24 @@
         "assignee": "Odpowiedzialny",
         "outcome": "Wynik"
       }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Osiągnięto limit planu",
+        "body": "Ta czynność wymaga planu {required}. Twój obecny plan to {current}.",
+        "required_plan_fallback": "wyższy",
+        "current_plan_fallback": "obecny",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        },
+        "actions": {
+          "upgrade": "Ulepsz plan",
+          "talk_to_sales": "Skontaktuj się z sprzedażą"
+        }
+      }
     }
   },
   "public": {

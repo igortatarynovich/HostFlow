@@ -9328,6 +9328,24 @@
         "assignee": "Ответственный",
         "outcome": "Результат"
       }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Достигнут лимит тарифа",
+        "body": "Для этого действия нужен тариф {required}. Ваш текущий тариф — {current}.",
+        "required_plan_fallback": "более высокий",
+        "current_plan_fallback": "текущий",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        },
+        "actions": {
+          "upgrade": "Улучшить тариф",
+          "talk_to_sales": "Связаться с продажами"
+        }
+      }
     }
   },
   "public": {

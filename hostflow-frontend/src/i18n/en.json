@@ -9328,6 +9328,24 @@
         "assignee": "Assignee",
         "outcome": "Result"
       }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Plan limit reached",
+        "body": "This action requires the {required} plan. Your current plan is {current}.",
+        "required_plan_fallback": "a higher",
+        "current_plan_fallback": "your current",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        },
+        "actions": {
+          "upgrade": "Upgrade plan",
+          "talk_to_sales": "Talk to sales"
+        }
+      }
     }
   },
   "public": {
