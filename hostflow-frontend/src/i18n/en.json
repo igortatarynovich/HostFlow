@@ -6593,7 +6593,11 @@
         "employment_pending": "Employment in progress",
         "ready_for_hr": "Ready for HR handoff",
         "processing_by_hr": "In HR processing",
-        "hired": "Accepted by HR"
+        "hired": "Accepted by HR",
+        "open": "Open",
+        "paused": "Paused",
+        "closed": "Closed",
+        "recruitment_completed": "Recruitment completed"
       },
       "row_status": {
         "rejected": "Rejected (status)",
@@ -7071,6 +7075,13 @@
             "failed": "Could not save intake decision",
             "reject_pick_reason": "Select a reject reason."
           }
+        },
+        "timeline_kinds": {
+          "lead_received": "Inquiry received",
+          "call_result": "Call result",
+          "stage_changed": "Stage changed",
+          "questionnaire_email": "Questionnaire sent",
+          "questionnaire_submitted": "Questionnaire received"
         }
       },
       "states": {
@@ -9183,7 +9194,18 @@
         "need_body": "Confirm which service the company wants to buy.",
         "contact_title": "Contact the client",
         "contact_body": "First contact has not been made yet."
-      }
+      },
+      "duplicates": {
+        "title": "Possible duplicates",
+        "hint": "Other inquiries with the same phone or email. Usually one company means one client.",
+        "match_phone_email": "same phone and email",
+        "match_phone": "same phone",
+        "match_email": "same email"
+      },
+      "meta_form_answers": "Answers from Meta form",
+      "additional_answer": "extra",
+      "questionnaire_load_failed": "Failed to load questionnaire",
+      "questionnaire_invite_failed": "Failed to fetch questionnaire link"
     },
     "context_rail": {
       "close": "Close",

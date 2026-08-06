@@ -6520,7 +6520,11 @@
         "employment_pending": "W trakcie zatrudnienia",
         "ready_for_hr": "Gotowy do przekazania do HR",
         "processing_by_hr": "W trakcie obsługi przez HR",
-        "hired": "Przyjęty przez HR"
+        "hired": "Przyjęty przez HR",
+        "open": "Otwarta",
+        "paused": "Wstrzymana",
+        "closed": "Zamknięta",
+        "recruitment_completed": "Rekrutacja zakończona"
       },
       "row_status": {
         "rejected": "Odrzucony (status)",
@@ -6998,6 +7002,13 @@
             "failed": "Nie udało się zapisać decyzji intake",
             "reject_pick_reason": "Wybierz powód odrzucenia."
           }
+        },
+        "timeline_kinds": {
+          "lead_received": "Otrzymano zapytanie",
+          "call_result": "Wynik rozmowy",
+          "stage_changed": "Zmiana etapu",
+          "questionnaire_email": "Ankieta wysłana",
+          "questionnaire_submitted": "Ankieta otrzymana"
         }
       },
       "states": {
@@ -9183,7 +9194,18 @@
         "need_body": "Uściśnij, jaką usługę firma chce kupić.",
         "contact_title": "Skontaktuj się z klientem",
         "contact_body": "Pierwszy kontakt jeszcze nie został wykonany."
-      }
+      },
+      "duplicates": {
+        "title": "Możliwe duplikaty",
+        "hint": "Inne zapytania z tym samym telefonem lub e-mailem. Zwykle jedna firma to jeden klient.",
+        "match_phone_email": "ten sam telefon i e-mail",
+        "match_phone": "ten sam telefon",
+        "match_email": "ten sam e-mail"
+      },
+      "meta_form_answers": "Odpowiedzi z formularza Meta",
+      "additional_answer": "dod.",
+      "questionnaire_load_failed": "Nie udało się wczytać ankiety",
+      "questionnaire_invite_failed": "Nie udało się pobrać linku ankiety"
     },
     "context_rail": {
       "close": "Zamknij",

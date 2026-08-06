@@ -46,7 +46,9 @@ export default function SalesInquiryQuestionnaireSection({ leadId, onUpdated }: 
       const detail =
         (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
         (err as Error)?.message ??
-        t('app.sales_inquiry.questionnaire_load_failed', { defaultValue: 'Nie udało się wczytać ankiety' })
+        t('app.sales_inquiry.questionnaire_load_failed', {
+          defaultValue: 'Failed to load questionnaire',
+        })
       setError(typeof detail === 'string' ? detail : JSON.stringify(detail))
     } finally {
       setLoading(false)
@@ -68,7 +70,9 @@ export default function SalesInquiryQuestionnaireSection({ leadId, onUpdated }: 
       const detail =
         (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
         (err as Error)?.message ??
-        t('app.sales_inquiry.questionnaire_invite_failed', { defaultValue: 'Nie udało się pobrać linku ankiety' })
+        t('app.sales_inquiry.questionnaire_invite_failed', {
+          defaultValue: 'Failed to fetch questionnaire link',
+        })
       setError(typeof detail === 'string' ? detail : JSON.stringify(detail))
     } finally {
       setInviteLoading(false)
@@ -111,7 +115,7 @@ export default function SalesInquiryQuestionnaireSection({ leadId, onUpdated }: 
   }, [loadLead])
 
   if (loading) {
-    return <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Ładowanie…' })}</p>
+    return <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</p>
   }
 
   if (!lead) return null
@@ -122,7 +126,7 @@ export default function SalesInquiryQuestionnaireSection({ leadId, onUpdated }: 
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           <p>{error}</p>
           <button type="button" className="mt-2 text-xs font-semibold text-red-900 underline" onClick={handleRetry}>
-            {t('common.retry', { defaultValue: 'Spróbuj ponownie' })}
+            {t('common.retry', { defaultValue: 'Try again' })}
           </button>
         </div>
       ) : null}

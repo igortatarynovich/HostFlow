@@ -85,7 +85,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
       setCallNote('')
       notify({
         title: t('app.leads.detail.call_result.saved', {
-          defaultValue: 'Результат звонка сохранён',
+          defaultValue: 'Call result saved',
         }),
         variant: 'success',
       })
@@ -95,7 +95,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
         planLimitModal?.showPlanLimitIfNeeded(
           err,
           t('app.leads.detail.call_result.save_failed', {
-            defaultValue: 'Не удалось сохранить результат звонка',
+            defaultValue: 'Could not save call result',
           }),
         )
       ) {
@@ -104,7 +104,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
       const info = getFriendlyErrorInfo(
         err,
         t('app.leads.detail.call_result.save_failed', {
-          defaultValue: 'Не удалось сохранить результат звонка',
+          defaultValue: 'Could not save call result',
         }),
         t,
       )
@@ -122,7 +122,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
   if (loading) {
     return (
       <p className="text-sm text-slate-500" data-testid="sales-call-notes-loading">
-        {t('common.loading', { defaultValue: 'Ładowanie…' })}
+        {t('common.loading', { defaultValue: 'Loading…' })}
       </p>
     )
   }
@@ -138,18 +138,18 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
 
       <div>
         <h3 className="text-sm font-semibold text-slate-900">
-          {t('app.leads.detail.call_result.title', { defaultValue: 'Результат звонка' })}
+          {t('app.leads.detail.call_result.title', { defaultValue: 'Call result' })}
         </h3>
         <p className="mt-0.5 text-xs text-slate-500">
           {t('app.leads.detail.call_result.subtitle', {
-            defaultValue: 'Перезвонить или что ещё хотят / думают — зафиксируйте после разговора.',
+            defaultValue: 'Callback or what else they want / think — capture it after the call.',
           })}
         </p>
       </div>
 
       <label className="block text-sm">
         <span className="mb-1 block text-xs font-medium text-slate-600">
-          {t('app.leads.detail.call_result.fields.result', { defaultValue: 'Результат' })}
+          {t('app.leads.detail.call_result.fields.result', { defaultValue: 'Result' })}
         </span>
         <select
           className="input w-full"
@@ -168,13 +168,13 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
       <label className="block text-sm">
         <span className="mb-1 block text-xs font-medium text-slate-600">
           {t('app.leads.detail.call_result.fields.note', {
-            defaultValue: 'Комментарий',
+            defaultValue: 'Comment',
           })}
           {noteRecommended ? (
             <span className="ml-1 font-normal text-slate-500">
               (
               {t('app.leads.detail.call_result.fields.note_recommended', {
-                defaultValue: 'желательно',
+                defaultValue: 'recommended',
               })}
               )
             </span>
@@ -188,7 +188,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
           value={callNote}
           onChange={(e) => setCallNote(e.target.value)}
           placeholder={t('app.leads.detail.call_result.fields.note_placeholder', {
-            defaultValue: 'Например: перезвонить завтра в 15:00, спрашивает про ставку, думает…',
+            defaultValue: 'E.g. call back tomorrow at 15:00, asking about rate, thinking…',
           })}
         />
       </label>
@@ -208,15 +208,15 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
           }
         >
           {saving
-            ? t('common.saving', { defaultValue: 'Сохранение…' })
-            : t('app.leads.detail.call_result.save', { defaultValue: 'Сохранить' })}
+            ? t('common.saving', { defaultValue: 'Saving…' })
+            : t('app.leads.detail.call_result.save', { defaultValue: 'Save call result' })}
         </button>
       </div>
 
       {history.length > 0 ? (
         <div className="border-t border-slate-100 pt-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('app.leads.detail.call_result.history_title', { defaultValue: 'История звонков' })}
+            {t('app.leads.detail.call_result.history_title', { defaultValue: 'Call history' })}
           </h4>
           <ul className="mt-2 space-y-2">
             {history.map((entry: LeadCallResultEntry, idx: number) => (

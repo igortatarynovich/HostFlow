@@ -41,29 +41,29 @@ export default function SalesInquiryTimelineSection({ leadId, refreshToken = 0 }
     const key = String(kind || '').trim()
     if (key === 'lead_received') {
       return t('app.leads.detail.timeline_kinds.lead_received', {
-        defaultValue: 'Обращение получено',
+        defaultValue: 'Inquiry received',
       })
     }
     if (key === 'call_result') {
-      return t('app.leads.detail.timeline_kinds.call_result', { defaultValue: 'Результат звонка' })
+      return t('app.leads.detail.timeline_kinds.call_result', { defaultValue: 'Call result' })
     }
     if (key === 'stage_changed') {
-      return t('app.leads.detail.timeline_kinds.stage_changed', { defaultValue: 'Смена этапа' })
+      return t('app.leads.detail.timeline_kinds.stage_changed', { defaultValue: 'Stage changed' })
     }
     if (key === 'questionnaire_email') {
       return t('app.leads.detail.timeline_kinds.questionnaire_email', {
-        defaultValue: 'Анкета отправлена',
+        defaultValue: 'Questionnaire sent',
       })
     }
     if (key === 'questionnaire_submitted') {
       return t('app.leads.detail.timeline_kinds.questionnaire_submitted', {
-        defaultValue: 'Анкета получена',
+        defaultValue: 'Questionnaire received',
       })
     }
     const raw = String(title || '').trim()
     if (raw === 'lead.received' || raw === 'lead.created') {
       return t('app.leads.detail.timeline_kinds.lead_received', {
-        defaultValue: 'Обращение получено',
+        defaultValue: 'Inquiry received',
       })
     }
     return title || kind || '—'
@@ -89,7 +89,7 @@ export default function SalesInquiryTimelineSection({ leadId, refreshToken = 0 }
       const detail =
         (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
         (err as Error)?.message ??
-        t('app.leads.detail.timeline_load_failed', { defaultValue: 'Не удалось загрузить историю' })
+        t('app.leads.detail.timeline_load_failed', { defaultValue: 'Failed to load timeline.' })
       setError(typeof detail === 'string' ? detail : JSON.stringify(detail))
       setItems([])
     } finally {
@@ -104,7 +104,7 @@ export default function SalesInquiryTimelineSection({ leadId, refreshToken = 0 }
   if (loading) {
     return (
       <p className="text-sm text-slate-500" data-testid="sales-inquiry-timeline-loading">
-        {t('common.loading', { defaultValue: 'Ładowanie…' })}
+        {t('common.loading', { defaultValue: 'Loading…' })}
       </p>
     )
   }
@@ -120,7 +120,7 @@ export default function SalesInquiryTimelineSection({ leadId, refreshToken = 0 }
   if (items.length === 0) {
     return (
       <p className="text-sm text-slate-500" data-testid="sales-inquiry-timeline-empty">
-        {t('app.leads.detail.timeline_empty', { defaultValue: 'Пока нет событий' })}
+        {t('app.leads.detail.timeline_empty', { defaultValue: 'No timeline events yet.' })}
       </p>
     )
   }

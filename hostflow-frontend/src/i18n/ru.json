@@ -6520,7 +6520,11 @@
         "employment_pending": "На трудоустройстве",
         "ready_for_hr": "Готов к передаче в HR",
         "processing_by_hr": "В обработке у HR",
-        "hired": "Принят HR"
+        "hired": "Принят HR",
+        "open": "Открыта",
+        "paused": "Пауза",
+        "closed": "Закрыта",
+        "recruitment_completed": "Набор завершён"
       },
       "row_status": {
         "rejected": "Отклонён (статус)",
@@ -6998,6 +7002,13 @@
             "failed": "Не удалось сохранить решение intake",
             "reject_pick_reason": "Выберите причину отклонения."
           }
+        },
+        "timeline_kinds": {
+          "lead_received": "Обращение получено",
+          "call_result": "Результат звонка",
+          "stage_changed": "Смена этапа",
+          "questionnaire_email": "Анкета отправлена",
+          "questionnaire_submitted": "Анкета получена"
         }
       },
       "states": {
@@ -9183,7 +9194,18 @@
         "need_body": "Уточните, какую услугу компания хочет купить.",
         "contact_title": "Связаться с клиентом",
         "contact_body": "Первый контакт ещё не выполнен."
-      }
+      },
+      "duplicates": {
+        "title": "Возможные дубли",
+        "hint": "Другие обращения с тем же телефоном или email. Обычно одна фирма — один клиент.",
+        "match_phone_email": "тот же телефон и email",
+        "match_phone": "тот же телефон",
+        "match_email": "тот же email"
+      },
+      "meta_form_answers": "Ответы из формы Meta",
+      "additional_answer": "доп.",
+      "questionnaire_load_failed": "Не удалось загрузить анкету",
+      "questionnaire_invite_failed": "Не удалось получить ссылку на анкету"
     },
     "context_rail": {
       "close": "Закрыть",
