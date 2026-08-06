@@ -242,9 +242,9 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   if (!isOnboardingPage && !isSuperAdmin && onboardingStatus?.onboarding_required === true) {
     return <Navigate to={ACTIVATION_PATHS.onboardingCompany} replace />
   }
-  /** Guided trial: lock down settings except billing checkout and team/modules (seat toggles). */
+  /** Guided trial: lock down settings except billing checkout and team users (seat toggles). */
   const isTrialAllowedSettingsPath =
-    path === ACTIVATION_PATHS.billing || path === CRM_APP_PATHS.settingsTeam
+    path === ACTIVATION_PATHS.billing || path === CRM_APP_PATHS.settingsUsers
   if (guidedTrialWorkspace && path.startsWith(CRM_APP_PATHS.settings) && !isTrialAllowedSettingsPath) {
     return <Navigate to={ACTIVATION_PATHS.overview} replace />
   }
