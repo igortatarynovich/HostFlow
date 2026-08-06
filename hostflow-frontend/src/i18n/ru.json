@@ -4542,7 +4542,8 @@
         "blacklist": "Чёрный список",
         "wrong_phone": "Неверно указан номер",
         "double_crew": "Двойной экипаж",
-        "no_response": "Не отвечает"
+        "no_response": "Не отвечает",
+        "recruitment_completed": "Набор завершён"
       },
       "labels": {
         "no_reason": "Без причины",

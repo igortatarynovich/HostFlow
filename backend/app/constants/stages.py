@@ -225,6 +225,7 @@ STATUS_REASON_CHOICES: Dict[str, List[Dict[str, str]]] = {
         {"code": "wrong_phone", "label": "Неверно указан номер"},
         {"code": "double_crew", "label": "Двойной экипаж"},
         {"code": "no_response", "label": "Не отвечает"},
+        {"code": "recruitment_completed", "label": "Набор завершён"},
     ],
 }
 
