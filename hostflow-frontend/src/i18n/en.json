@@ -4615,7 +4615,8 @@
         "blacklist": "Blacklisted",
         "wrong_phone": "Incorrect phone number",
         "double_crew": "Double crew",
-        "no_response": "No response"
+        "no_response": "No response",
+        "recruitment_completed": "Recruitment completed"
       },
       "labels": {
         "no_reason": "No reason",

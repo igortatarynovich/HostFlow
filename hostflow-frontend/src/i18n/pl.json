@@ -4021,7 +4021,8 @@
         "blacklist": "Czarna lista",
         "wrong_phone": "Nieprawidłowy numer telefonu",
         "double_crew": "Podwójna załoga",
-        "no_response": "Brak odpowiedzi"
+        "no_response": "Brak odpowiedzi",
+        "recruitment_completed": "Rekrutacja zakończona"
       },
       "labels": {
         "no_reason": "Bez powodu",
