@@ -9043,6 +9043,56 @@
           "body": "Facebook/Instagram lead forms and ads connected so applications land in your inbox automatically."
         }
       }
+    },
+    "application_workspace": {
+      "next_action": "Next action",
+      "start_work": "Start work",
+      "sort_newest": "Newest first",
+      "empty_tab": "No records in this tab",
+      "load_more": "Load more ({loaded} of {total})",
+      "open_card": "Open card",
+      "columns": {
+        "contact": "Contact",
+        "details": "Details",
+        "source": "Source",
+        "extra": "Extra",
+        "status": "Status",
+        "time": "Time"
+      },
+      "tabs": {
+        "all": "All",
+        "new": "New",
+        "in_progress": "In progress",
+        "waiting": "Waiting",
+        "completed": "Completed"
+      },
+      "status": {
+        "new": "New",
+        "in_progress": "In progress",
+        "waiting": "Awaiting reply",
+        "questionnaire_submitted": "Reply received",
+        "completed": "Completed",
+        "rejected": "Rejected"
+      },
+      "time": {
+        "just_now": "just now",
+        "minutes_ago": "{count} min ago",
+        "hours_ago": "{count} h ago"
+      },
+      "recruitment": {
+        "title": "Applications",
+        "hero_call_title": "Call {count} new applications",
+        "hero_call_hint": "We'll open applications one by one: call → decide → create candidate.",
+        "hero_empty": "No new applications to call",
+        "list_kind": "Candidate application"
+      },
+      "sales": {
+        "title": "Inquiries",
+        "hero_call_title": "Call {count} new inquiries",
+        "hero_call_hint": "We'll open inquiries one by one: call → clarify need → create client → choose service.",
+        "hero_empty": "No new inquiries to call",
+        "list_kind": "B2B inquiry"
+      }
     }
   },
   "public": {

@@ -9043,6 +9043,56 @@
           "body": "Formularze i reklamy Facebook/Instagram — zgłoszenia automatycznie trafiają do inbox."
         }
       }
+    },
+    "application_workspace": {
+      "next_action": "Następne działanie",
+      "start_work": "Rozpocznij pracę",
+      "sort_newest": "Najpierw nowe",
+      "empty_tab": "Brak rekordów w tej zakładce",
+      "load_more": "Załaduj więcej ({loaded} z {total})",
+      "open_card": "Otwórz kartę",
+      "columns": {
+        "contact": "Kontakt",
+        "details": "Szczegóły",
+        "source": "Źródło",
+        "extra": "Dod.",
+        "status": "Status",
+        "time": "Czas"
+      },
+      "tabs": {
+        "all": "Wszystkie",
+        "new": "Nowe",
+        "in_progress": "W toku",
+        "waiting": "Oczekujące",
+        "completed": "Zakończone"
+      },
+      "status": {
+        "new": "Nowe",
+        "in_progress": "W toku",
+        "waiting": "Oczekujemy odpowiedzi",
+        "questionnaire_submitted": "Otrzymano odpowiedź",
+        "completed": "Zakończono",
+        "rejected": "Odrzucono"
+      },
+      "time": {
+        "just_now": "przed chwilą",
+        "minutes_ago": "{count} min temu",
+        "hours_ago": "{count} godz. temu"
+      },
+      "recruitment": {
+        "title": "Odpowiedzi",
+        "hero_call_title": "Zadzwoń do {count} nowych odpowiedzi",
+        "hero_call_hint": "Otworzymy odpowiedzi po kolei: zadzwonić → podjąć decyzję → utworzyć kandydata.",
+        "hero_empty": "Brak nowych odpowiedzi do telefonu",
+        "list_kind": "Odpowiedź kandydata"
+      },
+      "sales": {
+        "title": "Zapytania",
+        "hero_call_title": "Zadzwoń do {count} nowych zapytań",
+        "hero_call_hint": "Otworzymy zapytania po kolei: zadzwonić → ustalić potrzebę → utworzyć klienta → wybrać usługę.",
+        "hero_empty": "Brak nowych zapytań do telefonu",
+        "list_kind": "Zapytanie B2B"
+      }
     }
   },
   "public": {

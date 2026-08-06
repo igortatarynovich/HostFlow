@@ -10,8 +10,8 @@ import { MetaFormAnswersSection } from '../../components/sales/MetaFormAnswersSe
 import { ContextRail } from '../context-rail'
 import {
   APPLICATION_STATUS_BADGE,
-  APPLICATION_STATUS_TEXT,
   applicationInitial,
+  applicationStatusLabel,
 } from './applicationDisplay'
 import { resolveSalesApplicationDecision } from './resolveSalesApplicationDecision'
 
@@ -77,7 +77,10 @@ export function ApplicationSalesDetailPanel({
         titleHref: clientHref,
         subtitle,
         meta,
-        statusLabel: APPLICATION_STATUS_TEXT[statusKey as keyof typeof APPLICATION_STATUS_TEXT] || statusKey,
+        statusLabel: applicationStatusLabel(
+          (statusKey in APPLICATION_STATUS_BADGE ? statusKey : 'new') as keyof typeof APPLICATION_STATUS_BADGE,
+          t,
+        ),
         statusClassName: `rounded-full px-3 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey as keyof typeof APPLICATION_STATUS_BADGE] || APPLICATION_STATUS_BADGE.new}`,
         entityWorkspaceHref: clientHref,
         entityWorkspaceLabel: openCardLabel,

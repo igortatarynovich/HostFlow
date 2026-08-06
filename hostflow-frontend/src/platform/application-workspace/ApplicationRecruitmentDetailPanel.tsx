@@ -16,8 +16,8 @@ import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 import { ContextRail } from '../context-rail'
 import {
   APPLICATION_STATUS_BADGE,
-  APPLICATION_STATUS_TEXT,
   applicationInitial,
+  applicationStatusLabel,
 } from './applicationDisplay'
 import { resolveRecruitmentApplicationDecision } from './resolveRecruitmentApplicationDecision'
 
@@ -160,7 +160,7 @@ export function ApplicationRecruitmentDetailPanel({
           titleHref: candidateHref,
           subtitle: vacancyTitle || 'Новый отклик',
           meta,
-          statusLabel: APPLICATION_STATUS_TEXT[statusKey],
+          statusLabel: applicationStatusLabel(statusKey, t),
           statusClassName: `rounded-full px-3 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey]}`,
           entityWorkspaceHref: candidateHref,
           entityWorkspaceLabel: openCardLabel,

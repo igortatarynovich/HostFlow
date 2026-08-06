@@ -9043,6 +9043,56 @@
           "body": "Формы и объявления Facebook/Instagram — заявки автоматически попадают в inbox."
         }
       }
+    },
+    "application_workspace": {
+      "next_action": "Следующее действие",
+      "start_work": "Начать работу",
+      "sort_newest": "Сначала новые",
+      "empty_tab": "Нет записей в этой вкладке",
+      "load_more": "Загрузить ещё ({loaded} из {total})",
+      "open_card": "Открыть карточку",
+      "columns": {
+        "contact": "Контакт",
+        "details": "Детали",
+        "source": "Источник",
+        "extra": "Доп.",
+        "status": "Статус",
+        "time": "Время"
+      },
+      "tabs": {
+        "all": "Все",
+        "new": "Новые",
+        "in_progress": "В работе",
+        "waiting": "Ожидают ответа",
+        "completed": "Завершённые"
+      },
+      "status": {
+        "new": "Новое",
+        "in_progress": "В работе",
+        "waiting": "Ожидаем ответ",
+        "questionnaire_submitted": "Ответ получен",
+        "completed": "Завершено",
+        "rejected": "Отклонено"
+      },
+      "time": {
+        "just_now": "только что",
+        "minutes_ago": "{count} мин назад",
+        "hours_ago": "{count} ч назад"
+      },
+      "recruitment": {
+        "title": "Отклики",
+        "hero_call_title": "Позвонить {count} новым откликам",
+        "hero_call_hint": "Откроем отклики по одному: позвонить → принять решение → создать кандидата.",
+        "hero_empty": "Нет новых откликов для звонка",
+        "list_kind": "Отклик кандидата"
+      },
+      "sales": {
+        "title": "Обращения",
+        "hero_call_title": "Позвонить {count} новым обращениям",
+        "hero_call_hint": "Откроем обращения по одному: позвонить → выяснить потребность → создать клиента → выбрать услугу.",
+        "hero_empty": "Нет новых обращений для звонка",
+        "list_kind": "B2B заявка"
+      }
     }
   },
   "public": {
