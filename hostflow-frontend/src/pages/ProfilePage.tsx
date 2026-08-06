@@ -34,11 +34,35 @@ import {
 } from '../utils/defaultAppHome'
 import { formatOutgoingSignaturePlain } from '../utils/outgoingEmailSignature'
 
-const LOCALE_OPTIONS = ['ru-RU', 'pl-PL', 'en-US']
+const LOCALE_OPTIONS = ['ru-RU', 'pl-PL', 'en-US'] as const
 const TIMEZONE_OPTIONS = ['Europe/Warsaw', 'Europe/Moscow', 'UTC']
 const DATE_FORMAT_OPTIONS = ['DD.MM.YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY']
 const PHONE_FORMAT_OPTIONS = ['+CC (AAA) BBB-CC-DD', '+CC BBB BBB BBB', '+CC BBBBB BBBBB']
 const THEME_VALUES = ['system', 'light', 'dark'] as const
+
+type UiFormState = {
+  locale: string
+  timezone: string
+  date_format: string
+  phone_format: string
+  theme: string
+}
+
+/** Map stored preference locale (pl / pl-PL / …) onto the profile select options. */
+function normalizeLocaleOption(value: string | null | undefined): string {
+  const short = String(value || '').trim().toLowerCase().split('-')[0]
+  if (short === 'pl') return 'pl-PL'
+  if (short === 'en') return 'en-US'
+  if (short === 'ru') return 'ru-RU'
+  return LOCALE_OPTIONS[0]
+}
+
+function applyLocaleCode(value: string, setLocale: (next: LocaleCode) => void) {
+  const short = String(value || '').trim().toLowerCase().split('-')[0]
+  if (short === 'ru' || short === 'en' || short === 'pl') {
+    setLocale(short)
+  }
+}
 
 function signatureFromMe(me: { signature?: UserOutgoingSignature | null } | null | undefined): UserOutgoingSignature {
   const sig = me?.signature || {}
@@ -127,8 +151,8 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(me?.avatar_url ?? null)
   const [avatarUploading, setAvatarUploading] = useState(false)
 
-  const [uiForm, setUiForm] = useState({
-    locale: preferences?.ui?.locale ?? LOCALE_OPTIONS[0],
+  const [uiForm, setUiForm] = useState<UiFormState>({
+    locale: normalizeLocaleOption(preferences?.ui?.locale),
     timezone: preferences?.ui?.timezone ?? TIMEZONE_OPTIONS[0],
     date_format: preferences?.ui?.date_format ?? DATE_FORMAT_OPTIONS[0],
     phone_format: preferences?.ui?.phone_format ?? PHONE_FORMAT_OPTIONS[0],
@@ -261,7 +285,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setUiForm({
-      locale: preferences?.ui?.locale ?? LOCALE_OPTIONS[0],
+      locale: normalizeLocaleOption(preferences?.ui?.locale),
       timezone: preferences?.ui?.timezone ?? TIMEZONE_OPTIONS[0],
       date_format: preferences?.ui?.date_format ?? DATE_FORMAT_OPTIONS[0],
       phone_format: preferences?.ui?.phone_format ?? PHONE_FORMAT_OPTIONS[0],
@@ -356,15 +380,44 @@ export default function ProfilePage() {
     uiForm.locale,
   ])
 
-  const handleUiChange = (key: keyof typeof uiForm) => (event: ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value
-    setUiForm((prev) => ({ ...prev, [key]: value }))
-    if (key === 'locale') {
-      const short = value.split('-')[0].toLowerCase()
-      if (short === 'ru' || short === 'en' || short === 'pl') {
-        setLocale(short as LocaleCode)
+  const persistUiPreferences = useCallback(
+    async (nextUi: UiFormState, companyId: string) => {
+      setPrefsSaving(true)
+      setPrefsError(null)
+      try {
+        const result = await patchUserMe({
+          preferences: {
+            ui: { ...nextUi },
+            defaults: { company_id: companyId || null },
+          },
+        })
+        updatePreferences(result.preferences)
+      } catch (err: any) {
+        const detail = err?.response?.data?.detail
+        setPrefsError(typeof detail === 'string' ? detail : t('app.profile.messages.preferences_error'))
+      } finally {
+        setPrefsSaving(false)
       }
+    },
+    [t, updatePreferences],
+  )
+
+  const handleUiChange = (key: keyof UiFormState) => (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value
+    const nextUi: UiFormState = { ...uiForm, [key]: value }
+    setUiForm(nextUi)
+    if (key === 'locale') {
+      applyLocaleCode(value, setLocale)
     }
+    // Language/theme (and other UI prefs) apply immediately — persist so a new tab
+    // does not snap back to the previous server-side value.
+    void persistUiPreferences(nextUi, defaultCompany)
+  }
+
+  const handleDefaultCompanyChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value
+    setDefaultCompany(value)
+    void persistUiPreferences(uiForm, value)
   }
 
   const handleNotificationToggle = (code: string) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -540,15 +593,17 @@ export default function ProfilePage() {
   }
 
   const handlePreferencesReset = () => {
-    setUiForm({
-      locale: preferences?.ui?.locale ?? LOCALE_OPTIONS[0],
+    const nextUi: UiFormState = {
+      locale: normalizeLocaleOption(preferences?.ui?.locale),
       timezone: preferences?.ui?.timezone ?? TIMEZONE_OPTIONS[0],
       date_format: preferences?.ui?.date_format ?? DATE_FORMAT_OPTIONS[0],
       phone_format: preferences?.ui?.phone_format ?? PHONE_FORMAT_OPTIONS[0],
       theme: preferences?.ui?.theme ?? 'system',
-    })
+    }
+    setUiForm(nextUi)
     setDefaultCompany(preferences?.defaults?.company_id ?? '')
     setSavedViews(cloneSavedViews(preferences ?? undefined))
+    applyLocaleCode(nextUi.locale, setLocale)
   }
 
   const handleNotificationsSubmit = async (event: FormEvent) => {
@@ -896,7 +951,7 @@ export default function ProfilePage() {
                 </select>
               </Field>
               <Field label={t('app.profile.preferences.labels.default_company')}>
-                <select className="input" value={defaultCompany} onChange={(event) => setDefaultCompany(event.target.value)}>
+                <select className="input" value={defaultCompany} onChange={handleDefaultCompanyChange}>
                   <option value="">{t('app.profile.preferences.company_placeholder')}</option>
                   {companies.map((company) => (
                     <option key={company.id} value={company.id}>{company.name}</option>
