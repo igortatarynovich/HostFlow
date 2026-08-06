@@ -28,6 +28,7 @@ def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
 
 class HiringPipelineGatesPublicOut(BaseModel):
     version: int
+    enforce_requirement_stage_blocks: bool = True
     stages_without_doc_pipeline_block: List[str]
     stages_verify_uploads_block_forward: List[str]
     stages_require_vacancy_for_forward: List[str]
@@ -38,6 +39,7 @@ class HiringPipelineGatesPublicOut(BaseModel):
 
 
 class HiringPipelineGatesPatch(BaseModel):
+    enforce_requirement_stage_blocks: Optional[bool] = None
     stages_without_doc_pipeline_block: Optional[List[str]] = None
     stages_verify_uploads_block_forward: Optional[List[str]] = None
     stages_require_vacancy_for_forward: Optional[List[str]] = None
@@ -51,6 +53,18 @@ def sanitize_hiring_gates_patch(raw: Dict[str, Any]) -> Dict[str, Any]:
     for k, v in raw.items():
         if v is None:
             out[k] = None
+            continue
+        if k == "enforce_requirement_stage_blocks":
+            if isinstance(v, bool):
+                out[k] = v
+            elif isinstance(v, (int, float)) and v in (0, 1):
+                out[k] = bool(v)
+            elif isinstance(v, str):
+                s = v.strip().lower()
+                if s in ("true", "1", "yes", "on"):
+                    out[k] = True
+                elif s in ("false", "0", "no", "off"):
+                    out[k] = False
             continue
         if not isinstance(v, list):
             continue
