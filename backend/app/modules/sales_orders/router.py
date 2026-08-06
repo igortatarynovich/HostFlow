@@ -21,7 +21,7 @@ from backend.app.models.vacancy import Vacancy
 
 router = APIRouter(tags=["sales-orders"], redirect_slashes=False)
 
-_READ = Depends(require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter, Role.viewer))
+_READ = Depends(require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter))
 _WRITE = Depends(require_roles(Role.admin, Role.manager, Role.supervisor))
 
 

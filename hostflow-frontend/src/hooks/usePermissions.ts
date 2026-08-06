@@ -19,6 +19,8 @@ export type Permission =
   | 'notifications.view'
   | 'companies.view'
   | 'companies.manage'
+  /** Sales workspace (inquiries / orders) — not granted to viewer. */
+  | 'sales.view'
   | 'leads.view'
   | 'vacancies.view'
   | 'candidates.view'
@@ -43,6 +45,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'users.view',
     'companies.view',
     'companies.manage',
+    'sales.view',
     'leads.view',
     'vacancies.view',
     'notifications.view',
@@ -62,6 +65,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
   recruiter: [
     'companies.view',
+    'sales.view',
     'leads.view',
     'notifications.view',
     'vacancies.view',
@@ -101,6 +105,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
    */
   compliance_officer: [
     'companies.view',
+    'sales.view',
     'leads.view',
     'notifications.view',
     'vacancies.view',

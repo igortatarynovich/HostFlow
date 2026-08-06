@@ -54,7 +54,7 @@ async def list_sales_inquiries(
     offset: int = Query(0, ge=0),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
 ) -> ApplicationListResponse:
     db, tenant_id = db_tenant
     result = await service.list_leads(
@@ -75,7 +75,7 @@ async def get_sales_inquiry(
     application_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations._reload_sales(db, str(tenant_id), own_company_id, application_id)
@@ -89,7 +89,7 @@ async def get_sales_inquiry_capability_spine(
     application_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
 ) -> SalesCapabilitySpineOut:
     """Display-only Pipeline v1 spine: Capability / Review / Convert / Traceability.
 
@@ -122,7 +122,7 @@ async def list_sales_inquiry_possible_duplicates(
     limit: int = Query(10, ge=1, le=20),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
 ) -> SalesInquiryDuplicateListResponse:
     """Sibling client inquiries sharing phone and/or email (operator duplicate hint)."""
     from backend.app.modules.applications.sales_inquiry_duplicates import (

@@ -94,7 +94,7 @@ export function OverviewModuleTabs({ active, onChange, onTabsReady }: OverviewMo
     }
 
     const salesLicensed = moduleOn(mods, 'companies') || moduleOn(mods, 'services')
-    if (salesLicensed && (can('companies.view') || can('services.view'))) {
+    if (salesLicensed && can('sales.view')) {
       out.push({
         key: 'sales',
         label: t('app.dashboard.tabs.sales', { defaultValue: 'Sales' }),

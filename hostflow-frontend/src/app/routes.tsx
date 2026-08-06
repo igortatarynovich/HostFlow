@@ -213,7 +213,7 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'app.nav.items.sales',
     path: SALES_HOME_PATH,
     group: 'people',
-    permission: 'companies.view',
+    permission: 'sales.view',
   },
   {
     key: 'marketing',
@@ -248,7 +248,7 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'app.nav.items.client_acquisition',
     path: CRM.clientAcquisitionChannels,
     group: 'people',
-    permission: 'companies.view',
+    permission: 'sales.view',
   },
   {
     key: 'candidates',
@@ -713,7 +713,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
     key: 'client-acquisition-channels',
     path: seg(CRM.clientAcquisitionChannels),
     Component: ClientChannelsListPage,
-    permission: 'companies.view',
+    permission: 'sales.view',
   },
   { key: 'my-company', path: seg(CRM.myCompany), Component: MyCompanyPage, permission: 'companies.view' },
   { key: 'my-company-detail', path: `${seg(CRM.myCompany)}/:id`, Component: Companies, permission: 'companies.view' },

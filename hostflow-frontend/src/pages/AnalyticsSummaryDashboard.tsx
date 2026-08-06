@@ -159,27 +159,29 @@ export default function AnalyticsSummaryDashboard() {
               </ul>
             </section>
 
-            <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-slate-900">
-                {t('app.dashboard.summary.modules.sales')}
-              </h2>
-              <ul className="mt-3 space-y-2 text-sm">
-                <Row
-                  label={t('app.dashboard.summary.kpis.leads')}
-                  value={formatNumber(
-                    (kpis.leads_total as number | undefined) ?? ops?.leads_total,
-                  )}
-                />
-                <Row
-                  label={t('app.dashboard.summary.kpis.leads_overdue')}
-                  value={formatNumber(ops?.leads_overdue)}
-                />
-                <Row
-                  label={t('app.dashboard.summary.kpis.open_orders')}
-                  value={formatNumber(ops?.open_service_orders)}
-                />
-              </ul>
-            </section>
+            {can('sales.view') ? (
+              <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h2 className="text-sm font-semibold text-slate-900">
+                  {t('app.dashboard.summary.modules.sales')}
+                </h2>
+                <ul className="mt-3 space-y-2 text-sm">
+                  <Row
+                    label={t('app.dashboard.summary.kpis.leads')}
+                    value={formatNumber(
+                      (kpis.leads_total as number | undefined) ?? ops?.leads_total,
+                    )}
+                  />
+                  <Row
+                    label={t('app.dashboard.summary.kpis.leads_overdue')}
+                    value={formatNumber(ops?.leads_overdue)}
+                  />
+                  <Row
+                    label={t('app.dashboard.summary.kpis.open_orders')}
+                    value={formatNumber(ops?.open_service_orders)}
+                  />
+                </ul>
+              </section>
+            ) : null}
 
             <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="text-sm font-semibold text-slate-900">

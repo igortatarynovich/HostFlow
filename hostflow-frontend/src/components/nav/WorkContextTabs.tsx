@@ -86,14 +86,14 @@ export default function WorkContextTabs({ businessType = 'agency' }: WorkContext
         label: t('app.nav.items.recruitment_inbox', { defaultValue: 'Отклики' }),
         isActive: (p, _tab) => p.startsWith(RECRUITMENT_INBOX_PATH),
       })
-      if (businessType === 'services') {
-        out.push({
-          key: 'sales',
-          to: CRM_APP_PATHS.sales,
-          label: t('app.nav.items.sales', { defaultValue: 'Обращения' }),
-          isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.sales),
-        })
-      }
+    }
+    if (can('sales.view') && businessType === 'services') {
+      out.push({
+        key: 'sales',
+        to: CRM_APP_PATHS.sales,
+        label: t('app.nav.items.sales', { defaultValue: 'Обращения' }),
+        isActive: (p, _tab) => p.startsWith(CRM_APP_PATHS.sales),
+      })
     }
     if (can('candidates.view')) {
       out.push({
