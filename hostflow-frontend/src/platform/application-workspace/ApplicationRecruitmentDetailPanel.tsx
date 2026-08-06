@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Application } from '../../api/types/application'
 import {
@@ -11,7 +11,7 @@ import {
 import { listVacancies } from '../../api/client'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useToast } from '../../components/Toast'
-import { useI18n } from '../../i18n'
+import { useI18n, type TranslateFn } from '../../i18n'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 import { ContextRail } from '../context-rail'
 import {
@@ -21,30 +21,36 @@ import {
 } from './applicationDisplay'
 import { resolveRecruitmentApplicationDecision } from './resolveRecruitmentApplicationDecision'
 
-const REJECT_REASONS = [
-  { code: 'insufficient_experience', label: 'Не подходит' },
-  { code: 'no_response', label: 'Не отвечает' },
-  { code: 'duplicate_spam', label: 'Дубликат' },
-  { code: 'invalid_contact', label: 'Спам' },
-  { code: 'other', label: 'Другое' },
+const REJECT_REASON_CODES = [
+  'insufficient_experience',
+  'no_response',
+  'duplicate_spam',
+  'invalid_contact',
+  'other',
 ] as const
 
-function recruitmentActionErrorMessage(err: unknown, t: (key: string, options?: Record<string, unknown>) => string): string {
-  const info = getFriendlyErrorInfo(err, 'Не удалось выполнить действие', t)
+const ERROR_CODES = [
+  'INTAKE_INFO_REQUESTED',
+  'VACANCY_NOT_CONFIRMED',
+  'INTAKE_ROUTING_INCOMPLETE',
+  'INTAKE_POOL_PATH_REQUIRED',
+  'NO_INTAKE_CONTEXT',
+  'LEAD_RODO_REQUIRED',
+  'LEAD_INTAKE_ALREADY_REJECTED',
+  'INTAKE_REJECT_REASON_REQUIRED',
+  'LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED',
+] as const
+
+function recruitmentActionErrorMessage(err: unknown, t: TranslateFn): string {
+  const info = getFriendlyErrorInfo(
+    err,
+    t('app.recruitment_inquiry.action_failed', { defaultValue: 'Action failed' }),
+    t,
+  )
   const code = String(info.code || '').toUpperCase()
-  const byCode: Record<string, string> = {
-    INTAKE_INFO_REQUESTED: 'Ранее запросили данные у кандидата. Повторите «Создать кандидата» после обновления.',
-    VACANCY_NOT_CONFIRMED: 'Сначала привяжите подбор в блоке «Вакансия».',
-    INTAKE_ROUTING_INCOMPLETE: 'Не хватает маршрутизации: привяжите подбор.',
-    INTAKE_POOL_PATH_REQUIRED: 'Сначала привяжите подбор в блоке «Вакансия», затем снова нажмите «Создать кандидата».',
-    NO_INTAKE_CONTEXT:
-      'Не удалось создать кандидата: у отклика нет полного intake-контекста. Привяжите актуальный подбор и повторите, либо откройте карточку лида для маршрутизации.',
-    LEAD_RODO_REQUIRED: 'Нужно подтвердить RODO перед этим действием.',
-    LEAD_INTAKE_ALREADY_REJECTED: 'Отклик уже закрыт.',
-    INTAKE_REJECT_REASON_REQUIRED: 'Укажите причину отклонения.',
-    LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED: 'Это действие недоступно для данного источника.',
-  }
-  const mapped = byCode[code]
+  const mapped = ERROR_CODES.includes(code as (typeof ERROR_CODES)[number])
+    ? t(`app.recruitment_inquiry.errors.${code}`)
+    : undefined
   return [mapped || info.title, info.detail, info.hint].filter(Boolean).join(' ')
 }
 
@@ -71,7 +77,7 @@ export function ApplicationRecruitmentDetailPanel({
   onRefresh,
   onStage,
 }: ApplicationRecruitmentDetailPanelProps) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { notify } = useToast()
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
@@ -81,16 +87,32 @@ export function ApplicationRecruitmentDetailPanel({
   const [rejectCode, setRejectCode] = useState('insufficient_experience')
   const [rejectNote, setRejectNote] = useState('')
   const [showFollowUp, setShowFollowUp] = useState(false)
-  const [followUpTitle, setFollowUpTitle] = useState('Перезвонить кандидату')
+  const [followUpTitle, setFollowUpTitle] = useState(() =>
+    t('app.recruitment_inquiry.follow_up_default', { defaultValue: 'Call candidate back' }),
+  )
   const [assigneeId, setAssigneeId] = useState(application.assignee_id || '')
 
-  const contactName = application.contact.name || application.title || 'Кандидат'
+  const contactName =
+    application.contact.name ||
+    application.title ||
+    t('app.recruitment_inquiry.candidate_fallback', { defaultValue: 'Candidate' })
   const statusKey = application.status
   const vacancyTitle = String(application.extensions?.vacancy_title || application.subtitle || '')
   const candidateId =
     application.outcome_entity_type === 'candidate' ? String(application.outcome_entity_id || '').trim() : ''
   const candidateHref = candidateId ? candidateDetailPath(candidateId) : undefined
-  const openCardLabel = t('app.candidates.detail.open_full_profile', { defaultValue: 'Открыть полную карточку' })
+  const openCardLabel = t('app.candidates.detail.open_full_profile', {
+    defaultValue: t('app.recruitment_inquiry.open_full_profile', { defaultValue: 'Open full profile' }),
+  })
+
+  const rejectReasons = useMemo(
+    () =>
+      REJECT_REASON_CODES.map((code) => ({
+        code,
+        label: t(`app.recruitment_inquiry.reject_reasons.${code}`),
+      })),
+    [t],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -129,7 +151,10 @@ export function ApplicationRecruitmentDetailPanel({
         })
         return
       }
-      notify({ title: 'Кандидат создан', variant: 'success' })
+      notify({
+        title: t('app.recruitment_inquiry.candidate_created', { defaultValue: 'Candidate created' }),
+        variant: 'success',
+      })
       navigate(candidateDetailPath(String(result.candidate_id)))
     })
   }, [application.id, navigate, notify, run, t])
@@ -146,10 +171,17 @@ export function ApplicationRecruitmentDetailPanel({
   })
 
   const meta = application.source
-    ? `${application.source}${application.created_at ? ` · ${new Date(application.created_at).toLocaleString()}` : ''}`
+    ? `${application.source}${
+        application.created_at
+          ? ` · ${new Date(application.created_at).toLocaleString(
+              locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : 'en-US',
+            )}`
+          : ''
+      }`
     : undefined
 
   const actionDisabled = patching || busy
+  const cancelLabel = t('app.recruitment_inquiry.cancel', { defaultValue: 'Cancel' })
 
   return (
     <>
@@ -158,7 +190,9 @@ export function ApplicationRecruitmentDetailPanel({
         header={{
           title: contactName,
           titleHref: candidateHref,
-          subtitle: vacancyTitle || 'Новый отклик',
+          subtitle:
+            vacancyTitle ||
+            t('app.recruitment_inquiry.new_application', { defaultValue: 'New application' }),
           meta,
           statusLabel: applicationStatusLabel(statusKey, t),
           statusClassName: `rounded-full px-3 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey]}`,
@@ -167,7 +201,7 @@ export function ApplicationRecruitmentDetailPanel({
         }}
         decision={decision}
         onClose={onClose}
-        closeLabel={t('common.close', { defaultValue: 'Закрыть' })}
+        closeLabel={t('common.close', { defaultValue: 'Close' })}
         contextSlots={{
           vacancy: (
             <div>
@@ -176,7 +210,9 @@ export function ApplicationRecruitmentDetailPanel({
                 onChange={(e) => setSelectedVacancyId(e.target.value)}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
-                <option value="">Выберите подбор</option>
+                <option value="">
+                  {t('app.recruitment_inquiry.select_vacancy', { defaultValue: 'Select vacancy' })}
+                </option>
                 {vacancies.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.title}
@@ -189,12 +225,15 @@ export function ApplicationRecruitmentDetailPanel({
                 onClick={() =>
                   void run(async () => {
                     await confirmRecruitmentApplicationVacancy(application.id, { vacancy_id: selectedVacancyId })
-                    notify({ title: 'Подбор привязан', variant: 'success' })
+                    notify({
+                      title: t('app.recruitment_inquiry.vacancy_linked', { defaultValue: 'Vacancy linked' }),
+                      variant: 'success',
+                    })
                   })
                 }
                 className="mt-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50"
               >
-                Привязать к подбору
+                {t('app.recruitment_inquiry.link_vacancy', { defaultValue: 'Link to vacancy' })}
               </button>
             </div>
           ),
@@ -204,7 +243,9 @@ export function ApplicationRecruitmentDetailPanel({
                 value={assigneeId}
                 onChange={(e) => setAssigneeId(e.target.value)}
                 className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                placeholder="ID пользователя"
+                placeholder={t('app.recruitment_inquiry.assignee_placeholder', {
+                  defaultValue: 'User ID',
+                })}
               />
               <button
                 type="button"
@@ -212,12 +253,15 @@ export function ApplicationRecruitmentDetailPanel({
                 onClick={() =>
                   void run(async () => {
                     await assignRecruitmentApplication(application.id, { assignee_id: assigneeId.trim() })
-                    notify({ title: 'Ответственный назначен', variant: 'success' })
+                    notify({
+                      title: t('app.recruitment_inquiry.assignee_set', { defaultValue: 'Assignee set' }),
+                      variant: 'success',
+                    })
                   })
                 }
                 className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:opacity-50"
               >
-                Назначить
+                {t('app.recruitment_inquiry.assign', { defaultValue: 'Assign' })}
               </button>
             </div>
           ),
@@ -240,13 +284,15 @@ export function ApplicationRecruitmentDetailPanel({
       {showReject ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-4 shadow-xl">
-            <h3 className="font-semibold text-slate-900">Отклонить отклик</h3>
+            <h3 className="font-semibold text-slate-900">
+              {t('app.recruitment_inquiry.reject_title', { defaultValue: 'Reject application' })}
+            </h3>
             <select
               value={rejectCode}
               onChange={(e) => setRejectCode(e.target.value)}
               className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             >
-              {REJECT_REASONS.map((r) => (
+              {rejectReasons.map((r) => (
                 <option key={r.code} value={r.code}>
                   {r.label}
                 </option>
@@ -255,13 +301,13 @@ export function ApplicationRecruitmentDetailPanel({
             <textarea
               value={rejectNote}
               onChange={(e) => setRejectNote(e.target.value)}
-              placeholder="Комментарий"
+              placeholder={t('app.recruitment_inquiry.comment_placeholder', { defaultValue: 'Comment' })}
               className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               rows={3}
             />
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" onClick={() => setShowReject(false)} className="rounded-lg px-3 py-2 text-sm">
-                Отмена
+                {cancelLabel}
               </button>
               <button
                 type="button"
@@ -274,12 +320,17 @@ export function ApplicationRecruitmentDetailPanel({
                       lost_reason_note: rejectNote || undefined,
                     })
                     setShowReject(false)
-                    notify({ title: 'Отклик отклонён', variant: 'success' })
+                    notify({
+                      title: t('app.recruitment_inquiry.rejected_toast', {
+                        defaultValue: 'Application rejected',
+                      }),
+                      variant: 'success',
+                    })
                   })
                 }
                 className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
               >
-                Отклонить
+                {t('app.recruitment_inquiry.reject', { defaultValue: 'Reject' })}
               </button>
             </div>
           </div>
@@ -289,7 +340,9 @@ export function ApplicationRecruitmentDetailPanel({
       {showFollowUp ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-4 shadow-xl">
-            <h3 className="font-semibold text-slate-900">Follow-up</h3>
+            <h3 className="font-semibold text-slate-900">
+              {t('app.recruitment_inquiry.follow_up_title', { defaultValue: 'Follow-up' })}
+            </h3>
             <input
               value={followUpTitle}
               onChange={(e) => setFollowUpTitle(e.target.value)}
@@ -297,7 +350,7 @@ export function ApplicationRecruitmentDetailPanel({
             />
             <div className="mt-4 flex justify-end gap-2">
               <button type="button" onClick={() => setShowFollowUp(false)} className="rounded-lg px-3 py-2 text-sm">
-                Отмена
+                {cancelLabel}
               </button>
               <button
                 type="button"
@@ -306,12 +359,17 @@ export function ApplicationRecruitmentDetailPanel({
                   void run(async () => {
                     await createRecruitmentApplicationFollowUp(application.id, { title: followUpTitle.trim() })
                     setShowFollowUp(false)
-                    notify({ title: 'Напоминание создано', variant: 'success' })
+                    notify({
+                      title: t('app.recruitment_inquiry.reminder_created', {
+                        defaultValue: 'Reminder created',
+                      }),
+                      variant: 'success',
+                    })
                   })
                 }
                 className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white"
               >
-                Сохранить
+                {t('app.recruitment_inquiry.save', { defaultValue: 'Save' })}
               </button>
             </div>
           </div>
