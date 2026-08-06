@@ -33,6 +33,7 @@ from backend.app.services.hiring_pipeline_gates import (
 RULE_KIND_HIRING_PIPELINE_GATES = "hiring_pipeline_gates"
 
 _GATE_CONFIG_KEYS = (
+    "enforce_requirement_stage_blocks",
     "stages_without_doc_pipeline_block",
     "stages_verify_uploads_block_forward",
     "stages_require_vacancy_for_forward",

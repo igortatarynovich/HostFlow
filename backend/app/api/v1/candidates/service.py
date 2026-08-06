@@ -180,6 +180,12 @@ async def _enforce_docs_ready_for_handoff_stage(
         infer_pe_system_stage_code,
         resolve_qualified_system_stage_for_candidate,
     )
+    from backend.app.services.hiring_pipeline_gates import resolve_hiring_pipeline_gates
+
+    # Master kill-switch: same flag as requirement/doc forward blocks.
+    gates = await resolve_hiring_pipeline_gates(db, tenant_id, candidate_id=candidate_id)
+    if not gates.enforce_requirement_stage_blocks:
+        return
 
     # P4: gate uses qualified PE system stage, not raw funnel slug.
     qualified = await resolve_qualified_system_stage_for_candidate(

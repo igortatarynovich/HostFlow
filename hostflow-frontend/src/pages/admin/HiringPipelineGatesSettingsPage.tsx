@@ -29,6 +29,7 @@ export default function HiringPipelineGatesSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [baseline, setBaseline] = useState<HiringPipelineGatesPublic | null>(null)
 
+  const [enforceBlocks, setEnforceBlocks] = useState(true)
   const [withoutBlock, setWithoutBlock] = useState('')
   const [verifyUploads, setVerifyUploads] = useState('')
   const [vacancyStages, setVacancyStages] = useState('')
@@ -44,6 +45,7 @@ export default function HiringPipelineGatesSettingsPage() {
         throw new Error('API returned no data (endpoint missing or unauthorized)')
       }
       setBaseline(g)
+      setEnforceBlocks(g.enforce_requirement_stage_blocks !== false)
       setWithoutBlock(listToLines(g.stages_without_doc_pipeline_block))
       setVerifyUploads(listToLines(g.stages_verify_uploads_block_forward))
       setVacancyStages(listToLines(g.stages_require_vacancy_for_forward))
@@ -73,6 +75,7 @@ export default function HiringPipelineGatesSettingsPage() {
     setSaving(true)
     try {
       const updated = await patchHiringPipelineGates({
+        enforce_requirement_stage_blocks: enforceBlocks,
         stages_without_doc_pipeline_block: linesToList(withoutBlock),
         stages_verify_uploads_block_forward: linesToList(verifyUploads),
         stages_require_vacancy_for_forward: linesToList(vacancyStages),
@@ -81,6 +84,7 @@ export default function HiringPipelineGatesSettingsPage() {
         non_overridable_doc_types_extra: linesToList(nonOverridableExtra),
       })
       setBaseline(updated)
+      setEnforceBlocks(updated.enforce_requirement_stage_blocks !== false)
       await refetchContextGates()
       notify({
         title: t('admin.hiring_gates.saved', { defaultValue: 'Hiring pipeline gates saved' }),
@@ -113,6 +117,36 @@ export default function HiringPipelineGatesSettingsPage() {
         <div className="text-sm text-slate-500">{t('common.loading')}</div>
       ) : (
         <div className="space-y-6">
+          <label className="flex items-start gap-3 settings-panel cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+              checked={enforceBlocks}
+              onChange={(e) => setEnforceBlocks(e.target.checked)}
+              disabled={!isAdmin}
+            />
+            <span>
+              <span className="block text-sm font-semibold text-slate-800">
+                {t('admin.hiring_gates.field.enforce_blocks', {
+                  defaultValue: 'Enforce requirement / document stage blocks',
+                })}
+              </span>
+              <span className="mt-1 block text-xs text-slate-600">
+                {t('admin.hiring_gates.field.enforce_blocks_hint', {
+                  defaultValue:
+                    'When off, candidates can move forward through stages (including ready for handoff) even if requirements or documents are incomplete. Checklist UI remains for visibility.',
+                })}
+              </span>
+              {!enforceBlocks ? (
+                <span className="mt-2 inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-950">
+                  {t('admin.hiring_gates.field.enforce_blocks_off_badge', {
+                    defaultValue: 'Stage blocking is currently disabled',
+                  })}
+                </span>
+              ) : null}
+            </span>
+          </label>
+
           <div className="settings-panel">
             <div className="text-sm font-semibold text-slate-800">
               {t('admin.hiring_gates.effective_non_overridable', {

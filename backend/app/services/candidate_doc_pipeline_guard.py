@@ -306,6 +306,9 @@ async def enforce_pipeline_doc_forward_block(
         db, tenant_id, candidate_id=candidate_id
     )
 
+    if not resolved_gates.enforce_requirement_stage_blocks:
+        return
+
     canon_old = _norm_stage_token(old_stage)
     if not canon_old:
         return

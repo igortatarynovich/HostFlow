@@ -14,9 +14,11 @@ import StageTag from '../../../components/StageTag'
 import {
   docsIssuesPresent,
   docsPipelineBlocksForward,
+  hiringPipelineGatesFromApi,
   pipelineRelaxedRequirementsFromOverrides,
   relaxRequirementBlockers,
 } from '../../../utils/candidateStageDocPolicy'
+import { useHiringPipelineGates } from '../../../contexts/HiringPipelineGatesContext'
 import CandidateRequirementsWorkPanelPreview from '../../../components/candidate/CandidateRequirementsWorkPanelPreview'
 import type { CandidatePipelineOverride } from '../../../api/candidatePipelineOverrides'
 import type { WorkPanelRequirementsSummary } from '../../../utils/workPanelRequirements'
@@ -130,6 +132,8 @@ export function CandidatesSelectedPanel({
 }: CandidatesSelectedPanelProps) {
   const navigate = useNavigate()
   const [reminderModalOpen, setReminderModalOpen] = useState(false)
+  const { gates: hiringGatesApi } = useHiringPipelineGates()
+  const hiringGatesRuntime = useMemo(() => hiringPipelineGatesFromApi(hiringGatesApi), [hiringGatesApi])
 
   useEffect(() => {
     if (nextActionDetailsOpenTrigger > 0) setReminderModalOpen(true)
@@ -161,9 +165,9 @@ export function CandidatesSelectedPanel({
   const docsPipelineBlocking = useMemo(
     () =>
       selectedCandidate && stageCode
-        ? docsPipelineBlocksForward(stageCode, effectiveBlockers, docsBlockersLoading)
+        ? docsPipelineBlocksForward(stageCode, effectiveBlockers, docsBlockersLoading, hiringGatesRuntime)
         : false,
-    [selectedCandidate, stageCode, effectiveBlockers, docsBlockersLoading],
+    [selectedCandidate, stageCode, effectiveBlockers, docsBlockersLoading, hiringGatesRuntime],
   )
 
   if (!selectedCandidate) return null

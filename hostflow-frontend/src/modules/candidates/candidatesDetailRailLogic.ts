@@ -2,7 +2,7 @@ import type { ReminderRecord } from '../../api/types/notification'
 import type { HandoffStatusResponse } from '../../api/handoffs'
 import type { CandidateDocsRailSummarySnapshot } from '../../components/candidate/CandidateDocsRailPanel'
 import type { WorkPanelRequirementsSummary } from '../../utils/workPanelRequirements'
-import type { DocBlockersPayload } from '../../utils/candidateStageDocPolicy'
+import type { DocBlockersPayload, HiringPipelineGatesRuntime } from '../../utils/candidateStageDocPolicy'
 import {
   docsIssuesPresent,
   docsPipelineBlocksForward,
@@ -727,9 +727,21 @@ export function resolveCandidatesNextAction(args: {
   contactAttemptCount?: number
   railMode: CandidateRailMode
   reasonText?: string | null
+  hiringGates?: HiringPipelineGatesRuntime | null
 }): ResolvedNextAction | null {
-  const { t, locale, candidate, reminders, blockers, docsBlockersLoading, stageCode, vacancyId, contactAttemptCount, railMode } =
-    args
+  const {
+    t,
+    locale,
+    candidate,
+    reminders,
+    blockers,
+    docsBlockersLoading,
+    stageCode,
+    vacancyId,
+    contactAttemptCount,
+    railMode,
+    hiringGates,
+  } = args
 
   if (!candidateRailHasRecruiterAction(railMode)) {
     return null
@@ -753,7 +765,7 @@ export function resolveCandidatesNextAction(args: {
 
   const docsIssues = docsIssuesPresent(blockers, docsBlockersLoading)
   const docsPipelineBlocking =
-    canonical && docsPipelineBlocksForward(canonical, blockers, docsBlockersLoading)
+    canonical && docsPipelineBlocksForward(canonical, blockers, docsBlockersLoading, hiringGates)
 
   const nextReminder = pickNextReminder(actionableReminders)
   if (nextReminder?.title) {
