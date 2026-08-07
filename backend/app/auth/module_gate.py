@@ -20,6 +20,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.auth.deps import Role, UserCtx, get_current_user
+from backend.app.auth.trust_roles import (
+    JOB_PROXY_ROLES,
+    PORTAL_LEGACY_ROLES,
+    TrustRole,
+    is_portal_actor,
+    is_team_lead_org_actor,
+    normalize_trust_role,
+)
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.company import Company
 from backend.app.models.tenant import Tenant
@@ -133,24 +141,22 @@ async def enforce_module_gate(
                 detail=f"{key.capitalize()} module is disabled for this company",
             )
 
-        # 4) User ↔ company access (admins bypass)
-        if role not in _ADMIN_ROLES and role != Role.supervisor.value:
+        # 4) User ↔ company access (admins + org team-leads bypass empty-ACL looseness)
+        org_bypass = is_team_lead_org_actor(role) or role == Role.supervisor.value
+        if role not in _ADMIN_ROLES and not org_bypass:
             access_rows = await list_user_access(db, tenant_id=str(tenant_id), user_id=str(ctx.sub))
             allowed_ids = {str(row.company_id) for row in access_rows}
             # Empty ACL table historically means «no restriction» for many roles;
             # only enforce when the tenant has at least one ACL row for this user
-            # OR when the user is a client_* role (always scoped).
+            # OR when the actor is portal-scoped (legacy client_* or access_context=portal).
+            portal_scoped = is_portal_actor(role, getattr(ctx, "access_context", None)) or role in PORTAL_LEGACY_ROLES
             if allowed_ids:
                 if cid not in allowed_ids:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="No access to this company",
                     )
-            elif role in {
-                Role.client_manager.value,
-                Role.client_processor.value,
-                "client",
-            }:
+            elif portal_scoped:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="No access to this company",
@@ -173,15 +179,14 @@ async def enforce_module_gate(
         # If product key missing from matrix entirely, fall back to tenant module on
         # (legacy tenants before matrix keys were expanded).
         if not any(mk in perms for mk in matrix_keys):
+            trust = normalize_trust_role(role)
             visible = True
-            editable = role in {
-                Role.supervisor.value,
-                Role.recruiter.value,
-                Role.hr_officer.value,
-                Role.compliance_officer.value,
-                Role.client_manager.value,
-                "fleet_manager",
-            }
+            editable = (
+                trust == TrustRole.employee.value
+                or role in JOB_PROXY_ROLES
+                or role == Role.client_manager.value
+                or role == "fleet_manager"
+            )
 
         if action == "read" and not visible:
             raise HTTPException(

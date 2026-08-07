@@ -163,10 +163,64 @@ def assert_matrix_role_editable(role: str, *, actor_is_superadmin: bool = False)
 
 def expand_allowed_roles_for_trust(allowed: set[str]) -> set[str]:
     """Bridge: employee satisfies job-proxy require_roles; viewer does not auto-satisfy portal."""
-    out = set(allowed)
+    out = {str(x).strip().lower() for x in allowed if str(x).strip()}
     if out & JOB_PROXY_ROLES:
         out.add(TrustRole.employee.value)
     return out
+
+
+def is_portal_actor(role: str | None, access_context: str | None = None) -> bool:
+    """True when the actor is in portal context (explicit or legacy client_*)."""
+    return infer_access_context(role, access_context) == "portal"
+
+
+def is_hr_workspace_actor(role: str | None) -> bool:
+    """HR operational lane still keyed by legacy role / hr preset (not all employees)."""
+    raw = str(role or "").strip().lower()
+    if raw in {"hr_officer", "hr", "people_ops"}:
+        return True
+    return infer_preset_id(raw) == "hr"
+
+
+def is_team_lead_org_actor(role: str | None) -> bool:
+    """Org-proxy supervisors: legacy supervisor/manager or team_lead preset."""
+    raw = str(role or "").strip().lower()
+    if raw in {"supervisor", "manager", "lead"}:
+        return True
+    return infer_preset_id(raw) == "team_lead"
+
+
+def actor_satisfies_role_allowlist(
+    *,
+    role: str | None,
+    allowed: set[str],
+    access_context: str | None = None,
+) -> bool:
+    """True if actor role may pass a require_roles-style allowlist (ADR-036 bridges).
+
+    - Admins are not handled here (callers short-circuit).
+    - JOB_PROXY allowlists accept canonical ``employee``.
+    - PORTAL_LEGACY allowlists accept ``viewer`` only when ``access_context=portal``
+      (or legacy client_* which implies portal). Tenant viewers do not inherit portal.
+    """
+    ur = str(role or "").strip().lower()
+    if not ur:
+        return False
+    allowed_values = expand_allowed_roles_for_trust(allowed)
+    if ur in allowed_values:
+        return True
+
+    trust = normalize_trust_role(ur)
+    if trust == TrustRole.employee.value and TrustRole.employee.value in allowed_values:
+        return True
+
+    if allowed_values & PORTAL_LEGACY_ROLES:
+        if trust == TrustRole.viewer.value and is_portal_actor(ur, access_context):
+            return True
+        if ur in PORTAL_LEGACY_ROLES:
+            return True
+
+    return False
 
 
 # Named presets (starter packs) — module visible/editable defaults for apply
