@@ -2544,7 +2544,9 @@
             "supervisor": "Супервайзеры",
             "recruiter": "Рекрутеры",
             "client_manager": "Менеджеры клиента",
-            "viewer": "Наблюдатели"
+            "viewer": "Наблюдатели",
+            "compliance_officer": "Специалист по compliance",
+            "hr_officer": "HR-специалист"
           }
         },
         "history": {
@@ -3028,7 +3030,9 @@
           "recruiter": "Рекрутер",
           "client_manager": "Менеджер клиента",
           "client_processor": "Процессор кандидатов",
-          "viewer": "Наблюдатель"
+          "viewer": "Наблюдатель",
+          "compliance_officer": "Специалист по compliance",
+          "hr_officer": "HR-специалист"
         },
         "form": {
           "email_label": "Email",
@@ -8991,6 +8995,24 @@
           "body": "Формы и объявления Facebook/Instagram — заявки автоматически попадают в inbox."
         }
       }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Достигнут лимит тарифа",
+        "body": "Для этого действия нужен тариф {required}. Ваш текущий тариф — {current}.",
+        "required_plan_fallback": "более высокий",
+        "current_plan_fallback": "текущий",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        },
+        "actions": {
+          "upgrade": "Улучшить тариф",
+          "talk_to_sales": "Связаться с продажами"
+        }
+      }
     }
   },
   "public": {
@@ -11139,6 +11161,37 @@
         "pending_review": "Pending review",
         "rejected": "Rejected",
         "satisfied": "Satisfied"
+      },
+      "merge": {
+        "header_kicker": "Документы",
+        "title": "Шаблоны слияния документов",
+        "description": "Управляйте текстовыми шаблонами для генерации документов кандидата по переменным и привязкам.",
+        "include_inactive": "Показать неактивные шаблоны",
+        "empty": "Шаблонов слияния пока нет.",
+        "form_new_title": "Новый шаблон",
+        "form_edit_title": "Редактировать шаблон",
+        "field_code": "Код",
+        "field_name": "Название",
+        "field_mime": "MIME-тип результата",
+        "field_oc": "ID собственной компании (необязательно)",
+        "field_filename": "Шаблон имени выходного файла",
+        "field_bindings": "Привязки переменных (JSON)",
+        "field_body": "Текст",
+        "activate": "Активировать",
+        "deactivate": "Деактивировать",
+        "confirm_delete": "Удалить этот шаблон слияния?",
+        "error_load": "Не удалось загрузить шаблоны слияния",
+        "error_save": "Не удалось сохранить шаблон слияния",
+        "error_delete": "Не удалось удалить шаблон слияния",
+        "bindings_invalid": "Привязки переменных должны быть JSON-объектом",
+        "table": {
+          "code": "Код",
+          "name": "Название",
+          "oc": "Своя компания",
+          "mime": "MIME",
+          "status": "Статус",
+          "actions": "Действия"
+        }
       }
     },
     "integrations_hub": {
@@ -11842,6 +11895,10 @@
         "profile": {
           "description": "Личный профиль, язык, безопасность и локальные настройки.",
           "label": "Мой профиль"
+        },
+        "merge_templates": {
+          "label": "Шаблоны слияния",
+          "description": "Текстовые шаблоны для генерации документов кандидата."
         }
       },
       "audit": {

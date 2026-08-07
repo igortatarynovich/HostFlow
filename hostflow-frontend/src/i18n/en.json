@@ -2617,7 +2617,9 @@
             "supervisor": "Supervisors",
             "recruiter": "Recruiters",
             "client_manager": "Client managers",
-            "viewer": "Viewers"
+            "viewer": "Viewers",
+            "compliance_officer": "Compliance officer",
+            "hr_officer": "HR officer"
           }
         },
         "history": {
@@ -3101,7 +3103,9 @@
           "recruiter": "Recruiter",
           "client_manager": "Client manager",
           "client_processor": "Candidate processor",
-          "viewer": "Viewer"
+          "viewer": "Viewer",
+          "compliance_officer": "Compliance officer",
+          "hr_officer": "HR officer"
         },
         "form": {
           "email_label": "Email",
@@ -8991,6 +8995,24 @@
           "body": "Facebook/Instagram lead forms and ads connected so applications land in your inbox automatically."
         }
       }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Plan limit reached",
+        "body": "This action requires the {required} plan. Your current plan is {current}.",
+        "required_plan_fallback": "a higher",
+        "current_plan_fallback": "your current",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        },
+        "actions": {
+          "upgrade": "Upgrade plan",
+          "talk_to_sales": "Talk to sales"
+        }
+      }
     }
   },
   "public": {
@@ -11139,6 +11161,37 @@
       },
       "template": {
         "select": "Select"
+      },
+      "merge": {
+        "header_kicker": "Documents",
+        "title": "Document merge templates",
+        "description": "Manage text merge templates used to generate candidate documents from variables and bindings.",
+        "include_inactive": "Show inactive templates",
+        "empty": "No merge templates yet.",
+        "form_new_title": "New template",
+        "form_edit_title": "Edit template",
+        "field_code": "Code",
+        "field_name": "Name",
+        "field_mime": "Output MIME type",
+        "field_oc": "Own company ID (optional)",
+        "field_filename": "Output filename pattern",
+        "field_bindings": "Variable bindings (JSON)",
+        "field_body": "Body",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "confirm_delete": "Delete this merge template?",
+        "error_load": "Failed to load merge templates",
+        "error_save": "Failed to save merge template",
+        "error_delete": "Failed to delete merge template",
+        "bindings_invalid": "Variable bindings must be a JSON object",
+        "table": {
+          "code": "Code",
+          "name": "Name",
+          "oc": "Own company",
+          "mime": "MIME",
+          "status": "Status",
+          "actions": "Actions"
+        }
       }
     },
     "integrations_hub": {
@@ -11842,6 +11895,10 @@
         "profile": {
           "description": "Personal profile, language, security and local preferences.",
           "label": "My profile"
+        },
+        "merge_templates": {
+          "label": "Merge templates",
+          "description": "Text merge templates for generated candidate documents."
         }
       },
       "audit": {

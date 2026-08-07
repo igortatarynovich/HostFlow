@@ -2544,7 +2544,9 @@
             "supervisor": "Koordynatorzy",
             "recruiter": "Rekruterzy",
             "client_manager": "Opiekunowie klienta",
-            "viewer": "Podglądający"
+            "viewer": "Podglądający",
+            "compliance_officer": "Specjalista ds. compliance",
+            "hr_officer": "Specjalista HR"
           }
         },
         "history": {
@@ -3028,7 +3030,9 @@
           "recruiter": "Rekruter",
           "client_manager": "Menedżer klienta",
           "client_processor": "Procesor kandydatów",
-          "viewer": "Podgląd"
+          "viewer": "Podgląd",
+          "compliance_officer": "Specjalista ds. compliance",
+          "hr_officer": "Specjalista HR"
         },
         "form": {
           "email_label": "Email",
@@ -8991,6 +8995,24 @@
           "body": "Formularze i reklamy Facebook/Instagram — zgłoszenia automatycznie trafiają do inbox."
         }
       }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Osiągnięto limit planu",
+        "body": "Ta czynność wymaga planu {required}. Twój obecny plan to {current}.",
+        "required_plan_fallback": "wyższy",
+        "current_plan_fallback": "obecny",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        },
+        "actions": {
+          "upgrade": "Ulepsz plan",
+          "talk_to_sales": "Skontaktuj się z sprzedażą"
+        }
+      }
     }
   },
   "public": {
@@ -11139,6 +11161,37 @@
         "pending_review": "Pending review",
         "rejected": "Rejected",
         "satisfied": "Satisfied"
+      },
+      "merge": {
+        "header_kicker": "Dokumenty",
+        "title": "Szablony łączenia dokumentów",
+        "description": "Zarządzaj szablonami tekstowymi do generowania dokumentów kandydata na podstawie zmiennych i powiązań.",
+        "include_inactive": "Pokaż nieaktywne szablony",
+        "empty": "Brak szablonów łączenia.",
+        "form_new_title": "Nowy szablon",
+        "form_edit_title": "Edytuj szablon",
+        "field_code": "Kod",
+        "field_name": "Nazwa",
+        "field_mime": "Typ MIME wyniku",
+        "field_oc": "ID własnej firmy (opcjonalnie)",
+        "field_filename": "Wzorzec nazwy pliku wynikowego",
+        "field_bindings": "Powiązania zmiennych (JSON)",
+        "field_body": "Treść",
+        "activate": "Aktywuj",
+        "deactivate": "Dezaktywuj",
+        "confirm_delete": "Usunąć ten szablon łączenia?",
+        "error_load": "Nie udało się załadować szablonów łączenia",
+        "error_save": "Nie udało się zapisać szablonu łączenia",
+        "error_delete": "Nie udało się usunąć szablonu łączenia",
+        "bindings_invalid": "Powiązania zmiennych muszą być obiektem JSON",
+        "table": {
+          "code": "Kod",
+          "name": "Nazwa",
+          "oc": "Własna firma",
+          "mime": "MIME",
+          "status": "Status",
+          "actions": "Akcje"
+        }
       }
     },
     "integrations_hub": {
@@ -11842,6 +11895,10 @@
         "profile": {
           "description": "Profil osobisty, język, bezpieczeństwo i preferencje lokalne.",
           "label": "Mój profil"
+        },
+        "merge_templates": {
+          "label": "Szablony łączenia",
+          "description": "Szablony tekstowe do generowania dokumentów kandydata."
         }
       },
       "audit": {

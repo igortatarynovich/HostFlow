@@ -149,6 +149,9 @@ export const AuditLogPage = lazy(() => loadAdmin().then((m) => ({ default: m.Aud
 export const TtvReportPage = lazy(() => loadAdmin().then((m) => ({ default: m.TtvReportPage })))
 export const SettingsLandingPage = lazy(() => loadAdmin().then((m) => ({ default: m.SettingsLandingPage })))
 export const DocumentTypesPage = lazy(() => loadAdmin().then((m) => ({ default: m.DocumentTypesPage })))
+export const MergeDocumentTemplatesPage = lazy(() =>
+  loadAdmin().then((m) => ({ default: m.MergeDocumentTemplatesPage })),
+)
 export const CompanyAccessPage = lazy(() => loadAdmin().then((m) => ({ default: m.CompanyAccessPage })))
 export const CandidateProfilesPage = lazy(() => loadAdmin().then((m) => ({ default: m.CandidateProfilesPage })))
 export const FunnelsPage = lazy(() => loadAdmin().then((m) => ({ default: m.FunnelsPage })))
@@ -163,6 +166,9 @@ export const RiskIntelSettingsPage = lazy(() =>
 )
 export const CustomFieldsPage = lazy(() => loadAdmin().then((m) => ({ default: m.CustomFieldsPage })))
 export const BillingWorkspacePage = lazy(() => loadAdmin().then((m) => ({ default: m.BillingWorkspacePage })))
+export const BillingPlanMatrixPage = lazy(() =>
+  loadAdmin().then((m) => ({ default: m.BillingPlanMatrixPage })),
+)
 export const EmailSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.EmailSettingsPage })))
 export const TenantLinksSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.TenantLinksSettingsPage })))
 
