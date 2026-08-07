@@ -13,6 +13,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "i18n:check": "node scripts/check-i18n.mjs",
     "i18n:hardcode:check": "node scripts/check-i18n-hardcode.mjs",
+    "i18n:hardcode:baseline": "node scripts/check-i18n-hardcode.mjs --write-baseline",
     "routes:check": "node scripts/check-route-permissions.mjs",
     "activation:check": "node scripts/check-activation-routes.mjs",
     "comm:gates:check": "node scripts/check-communications-gates.mjs",
@@ -26,7 +27,7 @@
     "bundle:check": "node scripts/check-bundle-size.mjs",
     "foundation:check": "bash scripts/check-foundation-tokens.sh",
     "foundation:scan": "bash scripts/check-foundation-tokens.sh --scan",
-    "qa:static": "python3 ../scripts/codegen/generate_crm_app_paths.py --check && npm run routes:check && npm run activation:check && npm run comm:gates:check && npm run module:permissions:check && npm run permissions:check && npm run i18n:check && npm run build",
+    "qa:static": "python3 ../scripts/codegen/generate_crm_app_paths.py --check && npm run routes:check && npm run activation:check && npm run comm:gates:check && npm run module:permissions:check && npm run permissions:check && npm run i18n:check && npm run i18n:hardcode:check && npm run build",
     "generate:sitemap": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {

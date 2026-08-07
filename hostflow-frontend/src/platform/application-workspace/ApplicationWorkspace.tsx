@@ -12,8 +12,8 @@ import {
 } from '../../services/salesWorkSession'
 import {
   APPLICATION_STATUS_BADGE,
-  APPLICATION_STATUS_TEXT,
   applicationNeedsFirstContact,
+  applicationStatusLabel,
   applicationTabBucket,
   formatApplicationRelativeTime,
   sortApplicationsByCreatedDesc,
@@ -30,7 +30,7 @@ type ApplicationWorkspaceProps = {
 export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: ApplicationWorkspaceProps) {
   const params = useParams<Record<string, string | undefined>>()
   const selectedId = params[routeParam] || params.leadId || null
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const navigate = useNavigate()
   const { notify } = useToast()
 
@@ -83,7 +83,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
           }))
         }
       } catch {
-        setError(t('common.load_failed', { defaultValue: 'Не удалось загрузить данные' }))
+        setError(t('common.load_failed', { defaultValue: 'Failed to load data' }))
         if (!append) setAllApplications([])
       } finally {
         if (append) setLoadingMore(false)
@@ -172,7 +172,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
         const res = await config.listApplications({ tab: 'new', limit: 200, scope: 'all' })
         queue = res.items.filter(applicationNeedsFirstContact)
       } catch {
-        notify({ title: t('common.load_failed', { defaultValue: 'Не удалось загрузить данные' }), variant: 'error' })
+        notify({ title: t('common.load_failed', { defaultValue: 'Failed to load data' }), variant: 'error' })
         return
       }
     }
@@ -236,7 +236,10 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                   className="block truncate font-semibold text-brand-700 hover:text-brand-800 hover:underline"
                   data-entity-link="primary"
                   onClick={(e) => e.stopPropagation()}
-                  title={config.primaryEntityLabel ?? 'Открыть карточку'}
+                  title={
+                    config.primaryEntityLabel ??
+                    t('app.application_workspace.open_card', { defaultValue: 'Open card' })
+                  }
                 >
                   {app.title}
                 </Link>
@@ -255,10 +258,12 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
         <td className="px-4 py-3 text-sm text-slate-600">{badge || '—'}</td>
         <td className="px-4 py-3">
           <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[status as keyof typeof APPLICATION_STATUS_BADGE]}`}>
-            {APPLICATION_STATUS_TEXT[status as keyof typeof APPLICATION_STATUS_TEXT]}
+            {applicationStatusLabel(status as keyof typeof APPLICATION_STATUS_BADGE, t)}
           </span>
         </td>
-        <td className="px-4 py-3 text-sm text-slate-500">{formatApplicationRelativeTime(app.created_at)}</td>
+        <td className="px-4 py-3 text-sm text-slate-500">
+          {formatApplicationRelativeTime(app.created_at, t, locale)}
+        </td>
       </tr>
     )
   }
@@ -276,7 +281,9 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                   <IconPhone size={20} stroke={1.9} />
                 </span>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Следующее действие</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+                    {t('app.application_workspace.next_action', { defaultValue: 'Next action' })}
+                  </p>
                   <p className="mt-1 text-lg font-bold text-slate-900">{config.heroCallTitle(newToContactCount)}</p>
                   <p className="mt-1 text-sm text-slate-600">{config.heroCallHint}</p>
                 </div>
@@ -286,7 +293,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                 onClick={() => void startCallSession()}
                 className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800"
               >
-                Начать работу
+                {t('app.application_workspace.start_work', { defaultValue: 'Start work' })}
                 <IconArrowRight size={16} stroke={2} />
               </button>
             </div>
@@ -321,7 +328,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
           >
             <IconFilter size={14} stroke={1.9} />
-            Сначала новые
+            {t('app.application_workspace.sort_newest', { defaultValue: 'Newest first' })}
           </button>
         </div>
       </div>
@@ -344,18 +351,32 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
             <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
               <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Контакт</th>
-                  <th className="px-4 py-3">Детали</th>
-                  <th className="px-4 py-3">Источник</th>
-                  <th className="px-4 py-3">Доп.</th>
-                  <th className="px-4 py-3">Статус</th>
-                  <th className="px-4 py-3">Время</th>
+                  <th className="px-4 py-3">
+                    {t('app.application_workspace.columns.contact', { defaultValue: 'Contact' })}
+                  </th>
+                  <th className="px-4 py-3">
+                    {t('app.application_workspace.columns.details', { defaultValue: 'Details' })}
+                  </th>
+                  <th className="px-4 py-3">
+                    {t('app.application_workspace.columns.source', { defaultValue: 'Source' })}
+                  </th>
+                  <th className="px-4 py-3">
+                    {t('app.application_workspace.columns.extra', { defaultValue: 'Extra' })}
+                  </th>
+                  <th className="px-4 py-3">
+                    {t('app.application_workspace.columns.status', { defaultValue: 'Status' })}
+                  </th>
+                  <th className="px-4 py-3">
+                    {t('app.application_workspace.columns.time', { defaultValue: 'Time' })}
+                  </th>
                 </tr>
               </thead>
               <tbody>{filteredApplications.map((app) => renderListItem(app))}</tbody>
             </table>
             {filteredApplications.length === 0 ? (
-              <p className="p-8 text-center text-sm text-slate-500">Нет записей в этой вкладке</p>
+              <p className="p-8 text-center text-sm text-slate-500">
+                {t('app.application_workspace.empty_tab', { defaultValue: 'No records in this tab' })}
+              </p>
             ) : null}
             {hasMore ? (
               <div className="border-t border-slate-100 p-4 text-center">
@@ -365,7 +386,12 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                   onClick={() => void loadList({ tab, offset: allApplications.length, append: true })}
                   className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                 >
-                  {loadingMore ? t('common.loading') : `Загрузить ещё (${allApplications.length} из ${listTotal})`}
+                  {loadingMore
+                    ? t('common.loading')
+                    : t('app.application_workspace.load_more', {
+                        defaultValue: 'Load more ({loaded} of {total})',
+                        values: { loaded: allApplications.length, total: listTotal },
+                      })}
                 </button>
               </div>
             ) : null}

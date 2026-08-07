@@ -248,9 +248,8 @@ export async function patchUserMe(payload: UserMeUpdatePayload): Promise<UserMe>
 export async function uploadUserAvatar(file: File | Blob): Promise<UserAvatar> {
   const form = new FormData()
   form.append('file', file)
-  const { data } = await api.post('/users/me/avatar', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  // Do not set Content-Type — axios/browser must add multipart boundary.
+  const { data } = await api.post('/users/me/avatar', form)
   return data as UserAvatar
 }
 

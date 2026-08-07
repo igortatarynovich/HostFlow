@@ -21,7 +21,6 @@ const LINKS: { to: string; labelKey: string; end?: boolean }[] = [
   { to: CRM_APP_PATHS.fleetReconciliation, labelKey: 'app.fleet.nav.reconciliation' },
   { to: CRM_APP_PATHS.fleetPayroll, labelKey: 'app.fleet.nav.payroll' },
   { to: CRM_APP_PATHS.fleetReports, labelKey: 'app.fleet.nav.reports' },
-  { to: CRM_APP_PATHS.fleetSettings, labelKey: 'app.fleet.nav.settings' },
 ]
 
 export default function FleetNav() {

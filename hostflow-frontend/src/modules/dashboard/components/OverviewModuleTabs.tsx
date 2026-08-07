@@ -7,7 +7,14 @@ import { usePermissions } from '../../../hooks/usePermissions'
 import { useI18n } from '../../../i18n'
 
 /** Analytics hub tabs — system summary + licensed business modules (module-owned content). */
-export type OverviewModuleTab = 'summary' | 'recruitment' | 'sales' | 'hr' | 'finance' | 'fleet'
+export type OverviewModuleTab =
+  | 'summary'
+  | 'recruitment'
+  | 'marketing'
+  | 'sales'
+  | 'hr'
+  | 'finance'
+  | 'fleet'
 
 export type OverviewModuleTabsProps = {
   active: OverviewModuleTab
@@ -77,8 +84,17 @@ export function OverviewModuleTabs({ active, onChange, onTabsReady }: OverviewMo
       })
     }
 
+    // Marketing = Acquisition under Sales host (ADR-023); not a 6th product deploy host.
+    const marketingLicensed = moduleOn(mods, 'companies') || moduleOn(mods, 'leads')
+    if (marketingLicensed && (can('companies.view') || can('leads.view'))) {
+      out.push({
+        key: 'marketing',
+        label: t('app.dashboard.tabs.marketing', { defaultValue: 'Marketing' }),
+      })
+    }
+
     const salesLicensed = moduleOn(mods, 'companies') || moduleOn(mods, 'services')
-    if (salesLicensed && (can('companies.view') || can('services.view'))) {
+    if (salesLicensed && can('sales.view')) {
       out.push({
         key: 'sales',
         label: t('app.dashboard.tabs.sales', { defaultValue: 'Sales' }),
@@ -155,6 +171,7 @@ export function parseOverviewModuleTab(raw: string | null | undefined): Overview
     .toLowerCase()
   if (v === 'summary' || v === 'general' || v === 'overview' || v === 'platform') return 'summary'
   if (v === 'recruitment' || v === 'recruit') return 'recruitment'
+  if (v === 'marketing' || v === 'acquisition' || v === 'ads') return 'marketing'
   if (v === 'sales' || v === 'commercial') return 'sales'
   if (v === 'hr' || v === 'workforce') return 'hr'
   if (v === 'finance' || v === 'invoices') return 'finance'

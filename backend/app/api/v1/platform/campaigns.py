@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any, List, Literal, Optional
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, List, Literal, Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -465,6 +465,25 @@ class PortfolioCampaignRowOut(BaseModel):
     outcome_value: Optional[str] = None
     roi: Optional[str] = None
     is_best_cpl: bool = False
+    impressions: Optional[int] = None
+    reach: Optional[int] = None
+
+
+class PortfolioDayPointOut(BaseModel):
+    day: str
+    spend: str
+    leads: int
+    impressions: int = 0
+    reach: int = 0
+
+
+class PortfolioDayCampaignPointOut(BaseModel):
+    day: str
+    campaign_id: str
+    spend: str
+    leads: int
+    impressions: int = 0
+    reach: int = 0
 
 
 class PortfolioOut(BaseModel):
@@ -482,6 +501,12 @@ class PortfolioOut(BaseModel):
     roi: Optional[str] = None
     campaigns: List[PortfolioCampaignRowOut] = Field(default_factory=list)
     scan_capped: bool = False
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
+    series: List[PortfolioDayPointOut] = Field(default_factory=list)
+    series_by_campaign: List[PortfolioDayCampaignPointOut] = Field(default_factory=list)
+    impressions: Optional[int] = None
+    reach: Optional[int] = None
 
 
 class OutcomeCommercialValueIn(BaseModel):
@@ -939,6 +964,39 @@ async def _resolve_company(
     return await resolve_own_company_id_for_session(db, str(tenant_id), ctx, x_own_company_id)
 
 
+def _parse_portfolio_window(
+    date_from: Optional[str],
+    date_to: Optional[str],
+) -> Tuple[Optional[datetime], Optional[datetime]]:
+    """Inclusive YYYY-MM-DD → UTC [start, end_exclusive)."""
+    if not date_from and not date_to:
+        return None, None
+
+    def _day(raw: str, *, label: str) -> date:
+        try:
+            return date.fromisoformat(str(raw).strip())
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=422, detail=f"invalid {label}: expected YYYY-MM-DD"
+            ) from exc
+
+    start_d = _day(date_from, label="date_from") if date_from else None
+    end_d = _day(date_to, label="date_to") if date_to else None
+    if start_d and end_d and start_d > end_d:
+        raise HTTPException(status_code=422, detail="date_from must be <= date_to")
+    window_start = (
+        datetime(start_d.year, start_d.month, start_d.day, tzinfo=timezone.utc)
+        if start_d
+        else None
+    )
+    window_end = (
+        datetime(end_d.year, end_d.month, end_d.day, tzinfo=timezone.utc) + timedelta(days=1)
+        if end_d
+        else None
+    )
+    return window_start, window_end
+
+
 async def _resolve_attach_intake_profile_id(
     db: AsyncSession,
     *,
@@ -1107,16 +1165,27 @@ async def get_campaign_portfolio_endpoint(
         ge=1,
         le=_PORTFOLIO_MAX_LIMIT,
     ),
+    date_from: Optional[str] = Query(
+        default=None,
+        description="Inclusive start day YYYY-MM-DD (UTC). Filters spend/leads by created_at.",
+    ),
+    date_to: Optional[str] = Query(
+        default=None,
+        description="Inclusive end day YYYY-MM-DD (UTC). Filters spend/leads by created_at.",
+    ),
 ):
     """Stage 6 PR-4 — company-scoped Campaign KPI portfolio (read-only)."""
     db, tenant_uuid = db_tenant
     own_company_id = await _resolve_company(db, tenant_uuid, ctx, x_own_company_id)
+    window_start, window_end = _parse_portfolio_window(date_from, date_to)
     try:
         bundle = await compose_campaign_portfolio(
             db,
             tenant_id=str(tenant_uuid),
             own_company_id=own_company_id,
             limit=int(limit),
+            date_from=window_start,
+            date_to=window_end,
         )
     except KpiAggregateError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -2543,7 +2543,9 @@
             "supervisor": "Koordynatorzy",
             "recruiter": "Rekruterzy",
             "client_manager": "Opiekunowie klienta",
-            "viewer": "Podglądający"
+            "viewer": "Podglądający",
+            "compliance_officer": "Specjalista ds. compliance",
+            "hr_officer": "Specjalista HR"
           }
         },
         "history": {
@@ -3027,7 +3029,9 @@
           "recruiter": "Rekruter",
           "client_manager": "Menedżer klienta",
           "client_processor": "Procesor kandydatów",
-          "viewer": "Podgląd"
+          "viewer": "Podgląd",
+          "compliance_officer": "Specjalista ds. compliance",
+          "hr_officer": "Specjalista HR"
         },
         "form": {
           "email_label": "Email",
@@ -4459,14 +4463,19 @@
           "rejected_title": "Odrzucony przez firmę ({count})",
           "declined_title": "Zrezygnował kandydat ({count})",
           "hint": "Suma powodów może być większa niż liczba kandydatów — część ma kilka kodów.",
-          "empty": "Brak powodów w tym wycinku."
+          "empty": "Brak powodów w tym wycinku.",
+          "ops_intro": "Analityka operacyjna: klik otwiera listę kandydatów z tym powodem.",
+          "ops_focus": "Fokus operacyjny",
+          "ops_badge": "oper.",
+          "open_list": "Otwórz kandydatów z tym powodem",
+          "share_legend": "Udział: w tym wyniku · we wszystkich zamkniętych (odrzucony + zrezygnował)."
         },
         "docs": {
           "title": "Dokumenty",
-          "subtitle": "Etapy docs_wait / docs_got oraz statusy wgranych plików.",
+          "subtitle": "docs_wait / docs_got — etap kandydata. „Pełny pakiet” — wg statusu pliku Document (nie etap).",
           "wait": "Czekamy na dokumenty",
           "got": "Dokumenty otrzymane",
-          "complete": "Pełny pakiet",
+          "complete": "Pełny pakiet (wg plików)",
           "col_status": "Status pliku",
           "col_count": "Liczba",
           "files_total": "Plików łącznie: {count}",
@@ -4495,11 +4504,14 @@
         },
         "contact": {
           "title": "Metryka kontaktu",
-          "subtitle": "Otrzymano → próby kontaktu → dodzwoniono → wynik. Z prób kontaktu w CRM (te same filtry).",
+          "subtitle": "Otrzymano → zarejestrowane próby w CRM → dodzwoniono. Kohorta = kandydaci wg created_at (jak etapy). Próby lifetime dla kohorty. To nie to samo co obsłużony.",
           "received": "Otrzymano",
           "attempted": "Była próba",
           "reached": "Dodzwoniono",
-          "untouched": "Bez prób",
+          "untouched": "Brak zarejestrowanych prób",
+          "no_logged": "Brak zarejestrowanych prób",
+          "no_logged_hint": "Brak wpisu w rejestrze prób kontaktu CRM. Część mogła być obsługiwana przed wdrożeniem rejestracji lub poza HostFlow — to nie backlog nieobsłużonych.",
+          "awaiting_first": "Czekają na pierwszy kontakt",
           "attempts_total": "Łącznie prób",
           "funnel_received": "Otrzymano",
           "funnel_attempted": "Próba",
@@ -4516,7 +4528,23 @@
             "callback_requested": "Oddzwonić",
             "interested": "Zainteresowany",
             "not_interested": "Niezainteresowany"
-          }
+          },
+          "rodo_missing": "RODO nie wysłano",
+          "blocked_no_rodo": "Kontakt zablokowany (brak RODO)",
+          "rodo_hint": "Brak RODO u {missing} z {total} (spełnione: {satisfied}). Bez RODO CRM blokuje rejestrację próby kontaktu — to bramka compliance, nie backlog telefonów.",
+          "awaiting_hint": "„Czekają na pierwszy kontakt” to tylko etap Nowy z już wysłanym RODO i bez próby — można dzwonić.",
+          "open_new_stage": "Otwórz kandydatów na etapie Nowy"
+        },
+        "cohort_mismatch": "Kohorta etapów ({slices}) i metryki kontaktu ({contact}) się różnią — sprawdź filtry.",
+        "sources": {
+          "title": "Źródła wskaźników",
+          "candidates": "Etapy, wyniki i powody odrzuceń pochodzą z kart kandydatów (data utworzenia w filtrze).",
+          "contact": "Próby kontaktu pochodzą z dziennika CRM dla tej samej kohorty (cała historia). Bez wysłanego RODO nie można zarejestrować próby.",
+          "docs": "Dokumenty to pliki powiązane z kandydatami kohorty; „pełny pakiet” liczy się wg statusu pliku, nie tylko etapów dokumentów.",
+          "marketing": "Marketing (osobna zakładka) korzysta z rejestru wydatków Acquisition i zrzutu Meta — to nie liczba kandydatów ani leadów z listy.",
+          "filter_ctx": "Przekrój panelu: {ctx}. Przejście po powodzie otwiera kandydatów wg etapu, powodu i wakatu.",
+          "client_id": "klient {id}",
+          "period_range": "{from} — {to}"
         }
       },
       "tabs": {
@@ -4524,6 +4552,7 @@
         "summary": "Podsumowanie",
         "general": "Podsumowanie",
         "recruitment": "Rekrutacja",
+        "marketing": "Marketing",
         "sales": "Sprzedaż",
         "hr": "HR",
         "finance": "Finanse",
@@ -4602,6 +4631,65 @@
           "vacancy": "Wakat",
           "vacancy_all": "Wszystkie wakaty"
         }
+      },
+      "marketing": {
+        "title": "Efektywność marketingu",
+        "subtitle": "KPI kampanii z Acquisition ledger. Meta reach/impressions — snapshot do czasu live. Leady tutaj ≠ kandydaci w Rekrutacji.",
+        "empty": "Brak kampanii w wybranym przekroju.",
+        "empty_campaigns": "Brak kampanii dla tej firmy.",
+        "filters": {
+          "currency": "Waluta wyświetlania",
+          "presets": "Presety",
+          "campaigns": "Kampanie",
+          "select_all": "Zaznacz wszystkie",
+          "clear": "Wyczyść",
+          "selected": "Wybrano {count} / {total}"
+        },
+        "fx": {
+          "loading": "Ładowanie kursów NBP…",
+          "as_of": "Kurs średni NBP · {date} ({provider})",
+          "unavailable": "Brak kursów — pokazywana waluta źródłowa",
+          "error": "Nie udało się pobrać kursów NBP. Kwoty pozostają w USD do czasu dostępności kursów."
+        },
+        "presets": {
+          "drivers_poltrakt": "Kierowcy Poltrakt",
+          "warehouse": "Magazyn",
+          "dispatcher": "Dyspozytor",
+          "ru": "Leady RU",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Wydatki",
+          "leads": "Leady",
+          "cpl": "CPL",
+          "impressions": "Wyświetlenia",
+          "reach": "Zasięg"
+        },
+        "charts": {
+          "trend_title": "Dynamika",
+          "trend_subtitle": "Dzienne wydatki i leady dla wybranych kampanii i okresu.",
+          "spend_title": "Wydatki wg kampanii",
+          "spend_subtitle": "Wydatki reklamowe w wybranej grupie.",
+          "leads_title": "Leady wg kampanii",
+          "leads_subtitle": "Przypisane leady (Acquisition).",
+          "cpl_title": "Koszt leada (CPL)",
+          "cpl_subtitle": "Niżej = lepiej; najlepszy CPL wyróżniony.",
+          "mix_title": "Mix leadów",
+          "mix_subtitle": "Udział leadów wśród wybranych kampanii."
+        },
+        "table": {
+          "title": "Szczegóły kampanii",
+          "subtitle": "Kampanie; reach/impressions tylko z Meta snapshot (nie live).",
+          "campaign": "Kampania",
+          "best_cpl": "Najlepszy CPL"
+        },
+        "snapshot_badge": "Dane Meta — zrzut (nie live Ads API)",
+        "snapshot_hint": "Wyświetlenia i zasięg pochodzą z importowanego zrzutu lub notatek wydatków. Brak live Graph API — nie traktuj tego jak raportu online Meta Ads.",
+        "snapshot_chip": "zrzut",
+        "source_ledger": "Rejestr wydatków Acquisition",
+        "source_attribution": "Atrybucje wyników (≠ kandydaci)",
+        "source_derived": "wydatek ÷ leady"
       },
       "hr": {
         "title": "Efektywność HR",
@@ -6466,7 +6554,11 @@
         "employment_pending": "W trakcie zatrudnienia",
         "ready_for_hr": "Gotowy do przekazania do HR",
         "processing_by_hr": "W trakcie obsługi przez HR",
-        "hired": "Przyjęty przez HR"
+        "hired": "Przyjęty przez HR",
+        "open": "Otwarta",
+        "paused": "Wstrzymana",
+        "closed": "Zamknięta",
+        "recruitment_completed": "Rekrutacja zakończona"
       },
       "row_status": {
         "rejected": "Odrzucony (status)",
@@ -6944,6 +7036,13 @@
             "failed": "Nie udało się zapisać decyzji intake",
             "reject_pick_reason": "Wybierz powód odrzucenia."
           }
+        },
+        "timeline_kinds": {
+          "lead_received": "Otrzymano zapytanie",
+          "call_result": "Wynik rozmowy",
+          "stage_changed": "Zmiana etapu",
+          "questionnaire_email": "Ankieta wysłana",
+          "questionnaire_submitted": "Ankieta otrzymana"
         }
       },
       "states": {
@@ -7466,6 +7565,79 @@
         "col_inbox": "Skrzynka (new)",
         "hint": "Te same filtry co w tabeli; w każdej kolumnie do limitu poniżej.",
         "view_all": "Wszystkie na liście"
+      },
+      "client_detail": {
+        "fallback_summary": "Ankieta firmy transportowej",
+        "status_rejected": "Odrzucono",
+        "status_client_created": "Klient utworzony",
+        "status_new_form": "Nowa ankieta",
+        "rejected_banner": "Lead odrzucony i wykluczony z przetwarzania kandydatów.",
+        "open_client": "Otwórz klienta",
+        "creating": "Tworzenie…",
+        "create_client": "Utwórz klienta",
+        "mark_contacted": "Kontakt nawiązany",
+        "qualify": "Kwalifikuj",
+        "reject": "Odrzuć",
+        "more_section": "Historia i dane systemowe",
+        "sections": {
+          "company": "Firma",
+          "contact": "Osoba kontaktowa",
+          "need": "Potrzeba",
+          "meta_answers": "Odpowiedzi z formularza Meta",
+          "terms": "Warunki pracy",
+          "source": "Źródło i zgłoszenie",
+          "consent": "Zgody / RODO"
+        },
+        "fields": {
+          "name": "Nazwa",
+          "legal_name": "Nazwa prawna",
+          "tax_id": "NIP / VAT",
+          "country": "Kraj",
+          "city": "Miasto",
+          "website": "Strona",
+          "fleet_size": "Wielkość floty",
+          "transport_type": "Rodzaj transportu",
+          "full_name": "Imię i nazwisko",
+          "role": "Stanowisko",
+          "email": "E-mail",
+          "phone": "Telefon",
+          "whatsapp": "WhatsApp",
+          "what_needed": "Czego potrzebują",
+          "summary": "Podsumowanie",
+          "people_count": "Liczba osób",
+          "cooperation_type": "Typ współpracy",
+          "when_needed": "Kiedy potrzebni",
+          "requirements": "Wymagania",
+          "runs_paid_ads": "Kampanie płatne",
+          "rate": "Stawka",
+          "rate_amount": "Kwota",
+          "rate_currency": "Waluta",
+          "rate_period": "Okres",
+          "rate_tax_mode": "Netto / brutto / B2B",
+          "bonus": "Premie / bonusy",
+          "schedule": "Grafik",
+          "work_systems": "System pracy",
+          "route_directions": "Kierunki tras",
+          "night_driving": "Jazda nocna",
+          "body_types": "Rodzaj naczepy / transportu",
+          "work_conditions": "Warunki dodatkowe",
+          "base": "Baza",
+          "truck_brands": "Pojazdy",
+          "body_type": "Typ nadwozia",
+          "additional": "Dodatkowo",
+          "source_profile": "Profil źródła",
+          "landing_page": "Landing page",
+          "language": "Język",
+          "created_at": "Utworzono",
+          "converted_client": "Utworzony klient",
+          "rodo_consent": "Zgoda RODO",
+          "privacy_policy": "Polityka prywatności",
+          "regulamin": "Regulamin",
+          "consent_timestamp": "Czas zgody",
+          "marketing_contact": "Kontakt marketingowy",
+          "terms_version": "Wersja regulaminu",
+          "privacy_version": "Wersja polityki"
+        }
       }
     },
     "common": {
@@ -8988,6 +9160,194 @@
         "meta": {
           "title": "Reklamy Meta",
           "body": "Formularze i reklamy Facebook/Instagram — zgłoszenia automatycznie trafiają do inbox."
+        }
+      }
+    },
+    "application_workspace": {
+      "next_action": "Następne działanie",
+      "start_work": "Rozpocznij pracę",
+      "sort_newest": "Najpierw nowe",
+      "empty_tab": "Brak rekordów w tej zakładce",
+      "load_more": "Załaduj więcej ({loaded} z {total})",
+      "open_card": "Otwórz kartę",
+      "columns": {
+        "contact": "Kontakt",
+        "details": "Szczegóły",
+        "source": "Źródło",
+        "extra": "Dod.",
+        "status": "Status",
+        "time": "Czas"
+      },
+      "tabs": {
+        "all": "Wszystkie",
+        "new": "Nowe",
+        "in_progress": "W toku",
+        "waiting": "Oczekujące",
+        "completed": "Zakończone"
+      },
+      "status": {
+        "new": "Nowe",
+        "in_progress": "W toku",
+        "waiting": "Oczekujemy odpowiedzi",
+        "questionnaire_submitted": "Otrzymano odpowiedź",
+        "completed": "Zakończono",
+        "rejected": "Odrzucono"
+      },
+      "time": {
+        "just_now": "przed chwilą",
+        "minutes_ago": "{count} min temu",
+        "hours_ago": "{count} godz. temu"
+      },
+      "recruitment": {
+        "title": "Odpowiedzi",
+        "hero_call_title": "Zadzwoń do {count} nowych odpowiedzi",
+        "hero_call_hint": "Otworzymy odpowiedzi po kolei: zadzwonić → podjąć decyzję → utworzyć kandydata.",
+        "hero_empty": "Brak nowych odpowiedzi do telefonu",
+        "list_kind": "Odpowiedź kandydata"
+      },
+      "sales": {
+        "title": "Zapytania",
+        "hero_call_title": "Zadzwoń do {count} nowych zapytań",
+        "hero_call_hint": "Otworzymy zapytania po kolei: zadzwonić → ustalić potrzebę → utworzyć klienta → wybrać usługę.",
+        "hero_empty": "Brak nowych zapytań do telefonu",
+        "list_kind": "Zapytanie B2B"
+      }
+    },
+    "recruitment_inquiry": {
+      "call": "Zadzwoń",
+      "follow_up": "Follow-up",
+      "candidate_fallback": "Kandydat",
+      "new_application": "Nowa odpowiedź",
+      "open_full_profile": "Otwórz pełną kartę",
+      "outcome_title": "Kandydat utworzony",
+      "outcome_body": "Odpowiedź przetworzona. Kontynuuj w karcie kandydata.",
+      "closed_title": "Odpowiedź zamknięta",
+      "rejected_body": "Odpowiedź odrzucona.",
+      "rejected_body_terminal": "Odpowiedź odrzucona. Brak dalszych działań.",
+      "completed_body": "Przetwarzanie zakończone.",
+      "contact_title": "Skontaktuj się z kandydatem",
+      "contact_why": "Pierwszy kontakt jeszcze nie został wykonany.",
+      "called": "Zadzwoniłem",
+      "reject": "Odrzuć",
+      "after_call_hint": "Po rozmowie powiąż ofertę i utwórz kandydata.",
+      "process_title": "Przetwórz odpowiedź",
+      "process_body": "Powiąż ofertę i utwórz kandydata — albo odrzuć odpowiedź.",
+      "create_candidate": "Utwórz kandydata",
+      "candidate_created": "Kandydat utworzony",
+      "select_vacancy": "Wybierz ofertę",
+      "link_vacancy": "Powiąż z ofertą",
+      "vacancy_linked": "Oferta powiązana",
+      "assignee_placeholder": "ID użytkownika",
+      "assign": "Przypisz",
+      "assignee_set": "Osoba odpowiedzialna przypisana",
+      "reject_title": "Odrzuć odpowiedź",
+      "comment_placeholder": "Komentarz",
+      "cancel": "Anuluj",
+      "rejected_toast": "Odpowiedź odrzucona",
+      "follow_up_title": "Follow-up",
+      "follow_up_default": "Oddzwonić do kandydata",
+      "reminder_created": "Przypomnienie utworzone",
+      "save": "Zapisz",
+      "action_failed": "Nie udało się wykonać działania",
+      "errors": {
+        "INTAKE_INFO_REQUESTED": "Wcześniej poproszono o dane kandydata. Ponów „Utwórz kandydata” po aktualizacji.",
+        "VACANCY_NOT_CONFIRMED": "Najpierw powiąż ofertę w bloku „Oferta”.",
+        "INTAKE_ROUTING_INCOMPLETE": "Brakuje routingu: powiąż ofertę.",
+        "INTAKE_POOL_PATH_REQUIRED": "Najpierw powiąż ofertę w bloku „Oferta”, potem ponownie naciśnij „Utwórz kandydata”.",
+        "NO_INTAKE_CONTEXT": "Nie udało się utworzyć kandydata: odpowiedź nie ma pełnego kontekstu intake. Powiąż aktualną ofertę i spróbuj ponownie albo otwórz kartę leada do routingu.",
+        "LEAD_RODO_REQUIRED": "Przed tą czynnością wymagane jest potwierdzenie RODO.",
+        "LEAD_INTAKE_ALREADY_REJECTED": "Odpowiedź jest już zamknięta.",
+        "INTAKE_REJECT_REASON_REQUIRED": "Podaj powód odrzucenia.",
+        "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "Ta czynność jest niedostępna dla tego źródła."
+      },
+      "reject_reasons": {
+        "insufficient_experience": "Nie pasuje",
+        "no_response": "Nie odpowiada",
+        "duplicate_spam": "Duplikat",
+        "invalid_contact": "Spam",
+        "other": "Inne"
+      }
+    },
+    "sales_inquiry": {
+      "call": "Zadzwoń",
+      "called": "Zadzwoniłem",
+      "interested": "Zainteresowany",
+      "creating": "Tworzenie…",
+      "create_client": "Utwórz klienta",
+      "open_client_card": "Otwórz pełną kartę",
+      "no_phone": "Brak numeru telefonu",
+      "contact_fallback": "Kontakt",
+      "contact_title": "Kontakt",
+      "work_title": "Praca nad zapytaniem",
+      "b2b_subtitle": "Zapytanie B2B",
+      "closed": "Zapytanie zamknięte",
+      "completed": "Zapytanie zakończone",
+      "interested_later": "Zainteresowany, ale później",
+      "close": "Zamknij zapytanie",
+      "after_call_hint": "Po rozmowie oznacz „Zadzwoniłem”.",
+      "workflow": {
+        "contact": "Kontakt",
+        "need": "Potrzeba",
+        "client": "Klient",
+        "service": "Usługa",
+        "order": "Zamówienie"
+      },
+      "step": {
+        "service_title": "Dodaj usługę",
+        "service_body": "Klient utworzony. Otwórz kartę i dodaj pierwszą usługę.",
+        "client_title": "Utwórz klienta",
+        "client_body": "Firma jest zainteresowana. Zapisz ją jako klienta.",
+        "need_title": "Ustal potrzebę",
+        "need_body": "Uściśnij, jaką usługę firma chce kupić.",
+        "contact_title": "Skontaktuj się z klientem",
+        "contact_body": "Pierwszy kontakt jeszcze nie został wykonany."
+      },
+      "duplicates": {
+        "title": "Możliwe duplikaty",
+        "hint": "Inne zapytania z tym samym telefonem lub e-mailem. Zwykle jedna firma to jeden klient.",
+        "match_phone_email": "ten sam telefon i e-mail",
+        "match_phone": "ten sam telefon",
+        "match_email": "ten sam e-mail"
+      },
+      "meta_form_answers": "Odpowiedzi z formularza Meta",
+      "additional_answer": "dod.",
+      "questionnaire_load_failed": "Nie udało się wczytać ankiety",
+      "questionnaire_invite_failed": "Nie udało się pobrać linku ankiety"
+    },
+    "context_rail": {
+      "close": "Zamknij",
+      "open_full_card": "Otwórz pełną kartę",
+      "outcome": "Wynik",
+      "why": "Dlaczego",
+      "next_action": "Następne działanie",
+      "blocks": {
+        "contacts": "Kontakt",
+        "documents": "Dokumenty",
+        "history": "Historia",
+        "handoff": "Handoff",
+        "relations": "Powiązania",
+        "summary": "Kontekst",
+        "workflow": "Etapy",
+        "vacancy": "Oferta",
+        "assignee": "Odpowiedzialny",
+        "outcome": "Wynik"
+      }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Osiągnięto limit planu",
+        "body": "Ta czynność wymaga planu {required}. Twój obecny plan to {current}.",
+        "required_plan_fallback": "wyższy",
+        "current_plan_fallback": "obecny",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        },
+        "actions": {
+          "upgrade": "Ulepsz plan",
+          "talk_to_sales": "Skontaktuj się z sprzedażą"
         }
       }
     }
@@ -11138,6 +11498,37 @@
         "pending_review": "Pending review",
         "rejected": "Rejected",
         "satisfied": "Satisfied"
+      },
+      "merge": {
+        "header_kicker": "Dokumenty",
+        "title": "Szablony łączenia dokumentów",
+        "description": "Zarządzaj szablonami tekstowymi do generowania dokumentów kandydata na podstawie zmiennych i powiązań.",
+        "include_inactive": "Pokaż nieaktywne szablony",
+        "empty": "Brak szablonów łączenia.",
+        "form_new_title": "Nowy szablon",
+        "form_edit_title": "Edytuj szablon",
+        "field_code": "Kod",
+        "field_name": "Nazwa",
+        "field_mime": "Typ MIME wyniku",
+        "field_oc": "ID własnej firmy (opcjonalnie)",
+        "field_filename": "Wzorzec nazwy pliku wynikowego",
+        "field_bindings": "Powiązania zmiennych (JSON)",
+        "field_body": "Treść",
+        "activate": "Aktywuj",
+        "deactivate": "Dezaktywuj",
+        "confirm_delete": "Usunąć ten szablon łączenia?",
+        "error_load": "Nie udało się załadować szablonów łączenia",
+        "error_save": "Nie udało się zapisać szablonu łączenia",
+        "error_delete": "Nie udało się usunąć szablonu łączenia",
+        "bindings_invalid": "Powiązania zmiennych muszą być obiektem JSON",
+        "table": {
+          "code": "Kod",
+          "name": "Nazwa",
+          "oc": "Własna firma",
+          "mime": "MIME",
+          "status": "Status",
+          "actions": "Akcje"
+        }
       }
     },
     "integrations_hub": {
@@ -11841,6 +12232,10 @@
         "profile": {
           "description": "Profil osobisty, język, bezpieczeństwo i preferencje lokalne.",
           "label": "Mój profil"
+        },
+        "merge_templates": {
+          "label": "Szablony łączenia",
+          "description": "Szablony tekstowe do generowania dokumentów kandydata."
         }
       },
       "audit": {

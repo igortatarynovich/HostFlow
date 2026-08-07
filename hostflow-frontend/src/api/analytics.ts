@@ -16,6 +16,23 @@ export type ContactAttemptStatsResponse = {
   candidates_with_attempts: number
   /** Distinct candidates with at least one reached result (answered / interested / callback). */
   candidates_reached?: number
+  /**
+   * Cohort members with zero rows in contact_attempts.
+   * Coverage gap in CRM logging — not “unprocessed” (legacy / off-CRM work possible).
+   */
+  candidates_without_logged_attempts?: number
+  /**
+   * Stage `new`, no logged attempt, RODO already satisfied — actionable first-contact backlog.
+   */
+  candidates_awaiting_first_contact?: number
+  /** Cohort members with RODO satisfied (notification sent or lead audit). */
+  candidates_rodo_satisfied?: number
+  /** Cohort members without RODO — contact attempts are blocked in CRM. */
+  candidates_rodo_missing?: number
+  /**
+   * Stage `new`, no attempt, RODO missing — cannot log a call until RODO is sent.
+   */
+  candidates_contact_blocked_no_rodo?: number
   avg_per_candidate: number
   limit_reached_count: number
   by_result: Record<string, number>

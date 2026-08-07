@@ -22,6 +22,7 @@ import type {
 } from '../api/types'
 import { useAuth } from '../store/useAuth'
 import { useI18n, type LocaleCode } from '../i18n'
+import { resolveAssetUrl } from '../api/client'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { usePermissions } from '../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
@@ -34,11 +35,43 @@ import {
 } from '../utils/defaultAppHome'
 import { formatOutgoingSignaturePlain } from '../utils/outgoingEmailSignature'
 
-const LOCALE_OPTIONS = ['ru-RU', 'pl-PL', 'en-US']
+const LOCALE_OPTIONS = ['ru-RU', 'pl-PL', 'en-US'] as const
 const TIMEZONE_OPTIONS = ['Europe/Warsaw', 'Europe/Moscow', 'UTC']
 const DATE_FORMAT_OPTIONS = ['DD.MM.YYYY', 'YYYY-MM-DD', 'MM/DD/YYYY']
 const PHONE_FORMAT_OPTIONS = ['+CC (AAA) BBB-CC-DD', '+CC BBB BBB BBB', '+CC BBBBB BBBBB']
 const THEME_VALUES = ['system', 'light', 'dark'] as const
+
+type UiFormState = {
+  locale: string
+  timezone: string
+  date_format: string
+  phone_format: string
+  theme: string
+}
+
+/** Map stored preference locale (pl / pl-PL / …) onto the profile select options. */
+function normalizeLocaleOption(value: string | null | undefined): string {
+  const short = String(value || '').trim().toLowerCase().split('-')[0]
+  if (short === 'pl') return 'pl-PL'
+  if (short === 'en') return 'en-US'
+  if (short === 'ru') return 'ru-RU'
+  return LOCALE_OPTIONS[0]
+}
+
+function applyLocaleCode(value: string, setLocale: (next: LocaleCode) => void) {
+  const short = String(value || '').trim().toLowerCase().split('-')[0]
+  if (short === 'ru' || short === 'en' || short === 'pl') {
+    setLocale(short)
+  }
+}
+
+function resolveAvatarPreview(url?: string | null, cacheBust?: number | null): string | null {
+  const resolved = resolveAssetUrl(url)
+  if (!resolved) return null
+  if (!cacheBust) return resolved
+  const sep = resolved.includes('?') ? '&' : '?'
+  return `${resolved}${sep}v=${cacheBust}`
+}
 
 function signatureFromMe(me: { signature?: UserOutgoingSignature | null } | null | undefined): UserOutgoingSignature {
   const sig = me?.signature || {}
@@ -124,11 +157,11 @@ export default function ProfilePage() {
   })
   const [signatureForm, setSignatureForm] = useState<UserOutgoingSignature>(() => signatureFromMe(me))
 
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(me?.avatar_url ?? null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(() => resolveAvatarPreview(me?.avatar_url))
   const [avatarUploading, setAvatarUploading] = useState(false)
 
-  const [uiForm, setUiForm] = useState({
-    locale: preferences?.ui?.locale ?? LOCALE_OPTIONS[0],
+  const [uiForm, setUiForm] = useState<UiFormState>({
+    locale: normalizeLocaleOption(preferences?.ui?.locale),
     timezone: preferences?.ui?.timezone ?? TIMEZONE_OPTIONS[0],
     date_format: preferences?.ui?.date_format ?? DATE_FORMAT_OPTIONS[0],
     phone_format: preferences?.ui?.phone_format ?? PHONE_FORMAT_OPTIONS[0],
@@ -256,12 +289,12 @@ export default function ProfilePage() {
       birth_date: me?.birth_date ?? '',
     })
     setSignatureForm(signatureFromMe(me))
-    setAvatarPreview(me?.avatar_url ?? null)
+    setAvatarPreview(resolveAvatarPreview(me?.avatar_url))
   }, [me?.first_name, me?.last_name, me?.position, me?.phone, me?.email, me?.country, me?.city, me?.birth_date, me?.avatar_url, me?.signature])
 
   useEffect(() => {
     setUiForm({
-      locale: preferences?.ui?.locale ?? LOCALE_OPTIONS[0],
+      locale: normalizeLocaleOption(preferences?.ui?.locale),
       timezone: preferences?.ui?.timezone ?? TIMEZONE_OPTIONS[0],
       date_format: preferences?.ui?.date_format ?? DATE_FORMAT_OPTIONS[0],
       phone_format: preferences?.ui?.phone_format ?? PHONE_FORMAT_OPTIONS[0],
@@ -332,10 +365,7 @@ export default function ProfilePage() {
   const signaturePreview = useMemo(() => {
     const localeCode = String(uiForm.locale || 'pl').split('-')[0].toLowerCase()
     return formatOutgoingSignaturePlain({
-      signature: {
-        ...signatureForm,
-        logo_url: String(signatureForm.logo_url || '').trim() || avatarPreview || '',
-      },
+      signature: signatureForm,
       fallbackFirstName: profileForm.first_name,
       fallbackLastName: profileForm.last_name,
       fallbackFullName: me?.email || '',
@@ -345,7 +375,6 @@ export default function ProfilePage() {
       locale: localeCode,
     })
   }, [
-    avatarPreview,
     me?.email,
     profileForm.email,
     profileForm.first_name,
@@ -356,15 +385,44 @@ export default function ProfilePage() {
     uiForm.locale,
   ])
 
-  const handleUiChange = (key: keyof typeof uiForm) => (event: ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value
-    setUiForm((prev) => ({ ...prev, [key]: value }))
-    if (key === 'locale') {
-      const short = value.split('-')[0].toLowerCase()
-      if (short === 'ru' || short === 'en' || short === 'pl') {
-        setLocale(short as LocaleCode)
+  const persistUiPreferences = useCallback(
+    async (nextUi: UiFormState, companyId: string) => {
+      setPrefsSaving(true)
+      setPrefsError(null)
+      try {
+        const result = await patchUserMe({
+          preferences: {
+            ui: { ...nextUi },
+            defaults: { company_id: companyId || null },
+          },
+        })
+        updatePreferences(result.preferences)
+      } catch (err: any) {
+        const detail = err?.response?.data?.detail
+        setPrefsError(typeof detail === 'string' ? detail : t('app.profile.messages.preferences_error'))
+      } finally {
+        setPrefsSaving(false)
       }
+    },
+    [t, updatePreferences],
+  )
+
+  const handleUiChange = (key: keyof UiFormState) => (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value
+    const nextUi: UiFormState = { ...uiForm, [key]: value }
+    setUiForm(nextUi)
+    if (key === 'locale') {
+      applyLocaleCode(value, setLocale)
     }
+    // Language/theme (and other UI prefs) apply immediately — persist so a new tab
+    // does not snap back to the previous server-side value.
+    void persistUiPreferences(nextUi, defaultCompany)
+  }
+
+  const handleDefaultCompanyChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value
+    setDefaultCompany(value)
+    void persistUiPreferences(uiForm, value)
   }
 
   const handleNotificationToggle = (code: string) => (event: ChangeEvent<HTMLInputElement>) => {
@@ -540,15 +598,17 @@ export default function ProfilePage() {
   }
 
   const handlePreferencesReset = () => {
-    setUiForm({
-      locale: preferences?.ui?.locale ?? LOCALE_OPTIONS[0],
+    const nextUi: UiFormState = {
+      locale: normalizeLocaleOption(preferences?.ui?.locale),
       timezone: preferences?.ui?.timezone ?? TIMEZONE_OPTIONS[0],
       date_format: preferences?.ui?.date_format ?? DATE_FORMAT_OPTIONS[0],
       phone_format: preferences?.ui?.phone_format ?? PHONE_FORMAT_OPTIONS[0],
       theme: preferences?.ui?.theme ?? 'system',
-    })
+    }
+    setUiForm(nextUi)
     setDefaultCompany(preferences?.defaults?.company_id ?? '')
     setSavedViews(cloneSavedViews(preferences ?? undefined))
+    applyLocaleCode(nextUi.locale, setLocale)
   }
 
   const handleNotificationsSubmit = async (event: FormEvent) => {
@@ -600,20 +660,26 @@ export default function ProfilePage() {
 
   const handleAvatarFile = async (file: File | null) => {
     if (!file) return
+    const allowed = new Set(['image/png', 'image/jpeg', 'image/webp'])
+    if (file.type && !allowed.has(file.type)) {
+      window.alert(t('app.profile.messages.avatar_error'))
+      return
+    }
     setAvatarUploading(true)
+    const localPreview = URL.createObjectURL(file)
+    setAvatarPreview(localPreview)
     try {
       const { avatar_url } = await uploadUserAvatar(file)
       updateProfile({ avatar_url })
-      if (avatar_url) {
-        setAvatarPreview(`${avatar_url}?v=${Date.now()}`)
-      } else {
-        setAvatarPreview(null)
-      }
+      setAvatarPreview(resolveAvatarPreview(avatar_url, Date.now()))
     } catch (err) {
       console.warn('[ProfilePage] avatar upload failed', err)
+      setAvatarPreview(resolveAvatarPreview(me?.avatar_url))
       window.alert(t('app.profile.messages.avatar_error'))
     } finally {
       setAvatarUploading(false)
+      // Defer revoke so the last paint of the blob preview is not interrupted.
+      window.setTimeout(() => URL.revokeObjectURL(localPreview), 0)
     }
   }
 
@@ -694,7 +760,7 @@ export default function ProfilePage() {
                 ) : (
                   <span>{t('app.profile.avatar.upload')}</span>
                 )}
-                <input type="file" accept="image/*" className="hidden" onChange={onAvatarInputChange} />
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onAvatarInputChange} />
                 {avatarUploading && (
                   <span className="absolute inset-0 grid place-items-center bg-white/70 text-xs">{t('common.loading')}</span>
                 )}
@@ -784,7 +850,7 @@ export default function ProfilePage() {
                 <pre className="whitespace-pre-wrap font-sans">{signaturePreview}</pre>
                 {(signatureForm.logo_url || avatarPreview) ? (
                   <img
-                    src={String(signatureForm.logo_url || avatarPreview || '/logo_hf.svg')}
+                    src={String(resolveAssetUrl(signatureForm.logo_url) || avatarPreview || '/logo_hf.svg')}
                     alt=""
                     className="mt-3 block h-auto w-[180px] max-w-full"
                   />
@@ -896,7 +962,7 @@ export default function ProfilePage() {
                 </select>
               </Field>
               <Field label={t('app.profile.preferences.labels.default_company')}>
-                <select className="input" value={defaultCompany} onChange={(event) => setDefaultCompany(event.target.value)}>
+                <select className="input" value={defaultCompany} onChange={handleDefaultCompanyChange}>
                   <option value="">{t('app.profile.preferences.company_placeholder')}</option>
                   {companies.map((company) => (
                     <option key={company.id} value={company.id}>{company.name}</option>

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Bar,
   BarChart,
@@ -10,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
 import type { TranslateFn } from '../../../i18n'
 import type { ContactAttemptStatsResponse, DocumentStatsResponse } from '../../../api/analytics'
 import type { CandidateSlicesResponse, NamedCount } from '../types'
@@ -18,6 +20,18 @@ import { ChartHost } from './ChartHost'
 const TERMINAL_STAGES = new Set(['rejected', 'declined'])
 const DOCS_WAIT_KEYS = new Set(['docs_wait', 'waiting_docs'])
 const DOCS_GOT_KEYS = new Set(['docs_got'])
+
+/** Reject reasons that usually mean ops follow-up (contact / eligibility), not preference. */
+const OPS_REJECT_REASON_CODES = new Set([
+  'no_response',
+  'wrong_phone',
+  'language',
+  'awaiting_residence',
+  'no_visa',
+  'no_ce_experience',
+  'no_code95',
+  'no_chip',
+])
 
 const OUTCOME_COLORS = {
   rejected: '#e11d48',
@@ -105,6 +119,20 @@ export interface RecruitmentEfficiencyPanelProps {
   documentStats: DocumentStatsResponse | null
   contactStats?: ContactAttemptStatsResponse | null
   loading: boolean
+  dateFrom?: string
+  dateTo?: string
+  companyId?: string
+  vacancyId?: string
+}
+
+function candidatesListHref(params: Record<string, string | null | undefined>): string {
+  const q = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null || value === '') continue
+    q.set(key, value)
+  }
+  const qs = q.toString()
+  return qs ? `${CRM_APP_PATHS.candidates}?${qs}` : CRM_APP_PATHS.candidates
 }
 
 function translateStageLabel(t: TranslateFn, key: string, fallback?: string): string {
@@ -112,10 +140,15 @@ function translateStageLabel(t: TranslateFn, key: string, fallback?: string): st
 }
 
 function translateReasonLabel(t: TranslateFn, key: string, fallback?: string): string {
-  if (key === 'no_reason' || key === 'Без причины') {
-    return t('app.dashboard.labels.no_reason', { defaultValue: fallback || key })
+  const normalized = String(key || '').trim()
+  if (!normalized || normalized === 'no_reason') {
+    return t('app.dashboard.labels.no_reason', { defaultValue: fallback || 'no_reason' })
   }
-  return t(`app.dashboard.reason_codes.${key}`, { defaultValue: fallback || key })
+  // Legacy free-text reason sometimes stored instead of code.
+  if (normalized.toLowerCase() === 'без причины') {
+    return t('app.dashboard.labels.no_reason')
+  }
+  return t(`app.dashboard.reason_codes.${normalized}`, { defaultValue: fallback || normalized })
 }
 
 function translateDocStatus(t: TranslateFn, status: string): string {
@@ -152,7 +185,32 @@ export function RecruitmentEfficiencyPanel({
   documentStats,
   contactStats = null,
   loading,
+  dateFrom = '',
+  dateTo = '',
+  companyId = '',
+  vacancyId = '',
 }: RecruitmentEfficiencyPanelProps) {
+  const listFilterBase = useMemo(
+    () => ({
+      vacancy_id: vacancyId || undefined,
+    }),
+    [vacancyId],
+  )
+  const filterNote =
+    [
+      dateFrom && dateTo
+        ? t('app.dashboard.efficiency.sources.period_range', {
+            values: { from: dateFrom, to: dateTo },
+          })
+        : null,
+      companyId
+        ? t('app.dashboard.efficiency.sources.client_id', {
+            values: { id: companyId.slice(0, 8) },
+          })
+        : null,
+    ]
+      .filter(Boolean)
+      .join(' · ') || null
   const total = slices?.total ?? 0
   const stages = useMemo(
     () => mergeStagesByKey(slices?.stages ?? [], t),
@@ -245,7 +303,17 @@ export function RecruitmentEfficiencyPanel({
   const cohortTotal = contactStats?.cohort_total ?? total
   const attempted = contactStats?.candidates_with_attempts ?? 0
   const reached = contactStats?.candidates_reached ?? 0
-  const untouched = Math.max(0, cohortTotal - attempted)
+  const noLoggedAttempts =
+    contactStats?.candidates_without_logged_attempts ?? Math.max(0, cohortTotal - attempted)
+  const awaitingFirstContact = contactStats?.candidates_awaiting_first_contact ?? 0
+  const rodoMissing = contactStats?.candidates_rodo_missing ?? 0
+  const rodoSatisfied = contactStats?.candidates_rodo_satisfied ?? Math.max(0, cohortTotal - rodoMissing)
+  const contactBlockedNoRodo = contactStats?.candidates_contact_blocked_no_rodo ?? 0
+  const newStageHref = candidatesListHref({
+    ...listFilterBase,
+    stage: 'new',
+  })
+
   const contactFunnel = useMemo(
     () =>
       [
@@ -267,14 +335,8 @@ export function RecruitmentEfficiencyPanel({
           value: reached,
           fill: '#16a34a',
         },
-        {
-          key: 'closed',
-          name: t('app.dashboard.efficiency.contact.funnel_closed'),
-          value: closed,
-          fill: '#e11d48',
-        },
       ].filter((row) => row.value > 0 || row.key === 'received'),
-    [t, cohortTotal, attempted, reached, closed],
+    [t, cohortTotal, attempted, reached],
   )
   const contactResultRows = useMemo(() => {
     const entries = Object.entries(contactStats?.by_result ?? {}).sort((a, b) => b[1] - a[1])
@@ -310,6 +372,21 @@ export function RecruitmentEfficiencyPanel({
 
   return (
     <div className={`space-y-4 ${loading ? 'opacity-70 transition-opacity' : ''}`}>
+      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <div className="font-medium text-slate-700">{t('app.dashboard.efficiency.sources.title')}</div>
+        <ul className="mt-1 list-disc space-y-0.5 pl-4">
+          <li>{t('app.dashboard.efficiency.sources.candidates')}</li>
+          <li>{t('app.dashboard.efficiency.sources.contact')}</li>
+          <li>{t('app.dashboard.efficiency.sources.docs')}</li>
+          <li>{t('app.dashboard.efficiency.sources.marketing')}</li>
+        </ul>
+        {filterNote ? (
+          <p className="mt-1 text-[11px] text-slate-400">
+            {t('app.dashboard.efficiency.sources.filter_ctx', { values: { ctx: filterNote } })}
+          </p>
+        ) : null}
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('app.dashboard.efficiency.stats.total')} value={formatNumber(total)} tone="neutral" />
         <StatCard
@@ -328,6 +405,17 @@ export function RecruitmentEfficiencyPanel({
           tone="warning"
         />
       </div>
+
+      {contactStats?.cohort_total != null && contactStats.cohort_total !== total ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {t('app.dashboard.efficiency.cohort_mismatch', {
+            values: {
+              slices: formatNumber(total),
+              contact: formatNumber(contactStats.cohort_total),
+            },
+          })}
+        </div>
+      ) : null}
 
       {total > 0 && closed / total >= 0.5 ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -350,7 +438,7 @@ export function RecruitmentEfficiencyPanel({
           {t('app.dashboard.efficiency.contact.title')}
         </h2>
         <p className="mt-0.5 text-xs text-slate-500">{t('app.dashboard.efficiency.contact.subtitle')}</p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label={t('app.dashboard.efficiency.contact.received')}
             value={formatNumber(cohortTotal)}
@@ -367,8 +455,23 @@ export function RecruitmentEfficiencyPanel({
             tone="success"
           />
           <StatCard
-            label={t('app.dashboard.efficiency.contact.untouched')}
-            value={formatNumber(untouched)}
+            label={t('app.dashboard.efficiency.contact.no_logged')}
+            value={formatNumber(noLoggedAttempts)}
+            tone="neutral"
+          />
+          <StatCard
+            label={t('app.dashboard.efficiency.contact.rodo_missing')}
+            value={formatNumber(rodoMissing)}
+            tone="warning"
+          />
+          <StatCard
+            label={t('app.dashboard.efficiency.contact.blocked_no_rodo')}
+            value={formatNumber(contactBlockedNoRodo)}
+            tone="danger"
+          />
+          <StatCard
+            label={t('app.dashboard.efficiency.contact.awaiting_first')}
+            value={formatNumber(awaitingFirstContact)}
             tone="warning"
           />
           <StatCard
@@ -378,6 +481,29 @@ export function RecruitmentEfficiencyPanel({
           />
         </div>
         <p className="mt-2 text-xs text-slate-500">
+          {t('app.dashboard.efficiency.contact.no_logged_hint')}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          {t('app.dashboard.efficiency.contact.rodo_hint', {
+            values: {
+              missing: formatNumber(rodoMissing),
+              total: formatNumber(cohortTotal),
+              satisfied: formatNumber(rodoSatisfied),
+              blocked: formatNumber(contactBlockedNoRodo),
+            },
+          })}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          {t('app.dashboard.efficiency.contact.awaiting_hint')}
+        </p>
+        {(contactBlockedNoRodo > 0 || awaitingFirstContact > 0) && (
+          <p className="mt-1 text-xs">
+            <Link to={newStageHref} className="font-medium text-brand-700 hover:underline">
+              {t('app.dashboard.efficiency.contact.open_new_stage')}
+            </Link>
+          </p>
+        )}
+        <p className="mt-1 text-xs text-slate-500">
           {t('app.dashboard.efficiency.contact.funnel_hint', {
             values: {
               avg: formatNumber(contactStats?.avg_per_candidate ?? 0),
@@ -410,25 +536,43 @@ export function RecruitmentEfficiencyPanel({
                 </Bar>
               </BarChart>
             </ChartHost>
-            <ChartHost className="h-48 w-full min-w-0" ready={chartsReady}>
-              <PieChart>
-                <Pie
-                  data={contactResultRows}
-                  dataKey="count"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                  paddingAngle={2}
-                >
-                  {contactResultRows.map((entry) => (
-                    <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={tooltipFmt as never} />
-              </PieChart>
-            </ChartHost>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <ChartHost className="h-48 w-full min-w-0 sm:w-1/2" ready={chartsReady}>
+                <PieChart>
+                  <Pie
+                    data={contactResultRows}
+                    dataKey="count"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    paddingAngle={2}
+                  >
+                    {contactResultRows.map((entry) => (
+                      <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={tooltipFmt as never} />
+                </PieChart>
+              </ChartHost>
+              <ul className="w-full space-y-2 sm:w-1/2">
+                {contactResultRows.map((entry) => (
+                  <li key={entry.key} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: entry.fill }}
+                      />
+                      <span className="truncate text-slate-700">{entry.name}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums font-semibold text-slate-900">
+                      {formatNumber(entry.count)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
       </section>
@@ -577,6 +721,13 @@ export function RecruitmentEfficiencyPanel({
           formatNumber={formatNumber}
           empty={t('app.dashboard.efficiency.reasons.empty')}
           chartsReady={chartsReady}
+          stageKey="rejected"
+          stageTotal={rejected}
+          closedTotal={closed}
+          cohortTotal={total}
+          listFilterBase={listFilterBase}
+          opsCodes={OPS_REJECT_REASON_CODES}
+          t={t}
         />
         <ReasonsCard
           title={t('app.dashboard.efficiency.reasons.declined_title', {
@@ -589,6 +740,12 @@ export function RecruitmentEfficiencyPanel({
           formatNumber={formatNumber}
           empty={t('app.dashboard.efficiency.reasons.empty')}
           chartsReady={chartsReady}
+          stageKey="declined"
+          stageTotal={declined}
+          closedTotal={closed}
+          cohortTotal={total}
+          listFilterBase={listFilterBase}
+          t={t}
         />
       </div>
 
@@ -615,25 +772,43 @@ export function RecruitmentEfficiencyPanel({
 
         {docChartData.length > 0 ? (
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <ChartHost className="h-48 w-full min-w-0" ready={chartsReady}>
-              <PieChart>
-                <Pie
-                  data={docChartData}
-                  dataKey="count"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={70}
-                  paddingAngle={2}
-                >
-                  {docChartData.map((entry) => (
-                    <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={tooltipFmt as never} />
-              </PieChart>
-            </ChartHost>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <ChartHost className="h-48 w-full min-w-0 sm:w-1/2" ready={chartsReady}>
+                <PieChart>
+                  <Pie
+                    data={docChartData}
+                    dataKey="count"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    paddingAngle={2}
+                  >
+                    {docChartData.map((entry) => (
+                      <Cell key={entry.key} fill={entry.fill} stroke="#fff" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={tooltipFmt as never} />
+                </PieChart>
+              </ChartHost>
+              <ul className="w-full space-y-2 sm:w-1/2">
+                {docChartData.map((entry) => (
+                  <li key={entry.key} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: entry.fill }}
+                      />
+                      <span className="truncate text-slate-700">{entry.name}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums font-semibold text-slate-900">
+                      {formatNumber(entry.count)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
@@ -736,6 +911,13 @@ function ReasonsCard({
   formatNumber,
   empty,
   chartsReady,
+  stageKey,
+  stageTotal,
+  closedTotal,
+  cohortTotal,
+  listFilterBase,
+  opsCodes,
+  t,
 }: {
   title: string
   hint: string
@@ -745,11 +927,34 @@ function ReasonsCard({
   formatNumber: (value?: number) => string
   empty: string
   chartsReady: boolean
+  stageKey: 'rejected' | 'declined'
+  stageTotal: number
+  closedTotal: number
+  cohortTotal: number
+  listFilterBase: Record<string, string | undefined>
+  opsCodes?: Set<string>
+  t: TranslateFn
 }) {
+  const topOps = opsCodes
+    ? rows.filter((r) => opsCodes.has(String(r.key || '').toLowerCase())).slice(0, 3)
+    : []
+
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
       <p className="mt-0.5 text-xs text-slate-500">{hint}</p>
+      <p className="mt-1 text-xs text-slate-500">{t('app.dashboard.efficiency.reasons.ops_intro')}</p>
+      {topOps.length > 0 ? (
+        <div className="mt-2 rounded-md border border-amber-200 bg-amber-50/80 px-2.5 py-1.5 text-xs text-amber-950">
+          <span className="font-medium">{t('app.dashboard.efficiency.reasons.ops_focus')}: </span>
+          {topOps
+            .map(
+              (r) =>
+                `${r.label || r.key} (${formatNumber(r.count)} · ${pct(r.count || 0, stageTotal)})`,
+            )
+            .join(' · ')}
+        </div>
+      ) : null}
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">{empty}</p>
       ) : (
@@ -781,12 +986,33 @@ function ReasonsCard({
             {rows.slice(0, 8).map((row) => {
               const max = rows[0]?.count || 1
               const width = Math.max(4, Math.round(((row.count || 0) / max) * 100))
+              const reasonKey = String(row.key || '')
+              const href = candidatesListHref({
+                ...listFilterBase,
+                stage: stageKey,
+                status_reason: reasonKey === 'no_reason' ? undefined : reasonKey || undefined,
+              })
+              const isOps = opsCodes?.has(reasonKey.toLowerCase())
               return (
                 <div key={row.key}>
                   <div className="mb-0.5 flex items-center justify-between gap-2 text-xs">
-                    <span className="truncate text-slate-600">{row.label || row.key}</span>
-                    <span className="shrink-0 tabular-nums font-medium text-slate-900">
-                      {formatNumber(row.count)}
+                    <Link
+                      to={href}
+                      className={`truncate hover:underline ${isOps ? 'font-medium text-amber-900' : 'text-brand-700'}`}
+                      title={t('app.dashboard.efficiency.reasons.open_list')}
+                    >
+                      {row.label || row.key}
+                      {isOps ? (
+                        <span className="ml-1 text-[10px] uppercase tracking-wide text-amber-700">
+                          {t('app.dashboard.efficiency.reasons.ops_badge')}
+                        </span>
+                      ) : null}
+                    </Link>
+                    <span className="shrink-0 tabular-nums text-slate-700">
+                      <span className="font-medium text-slate-900">{formatNumber(row.count)}</span>
+                      <span className="ml-1 text-slate-500">
+                        {pct(row.count || 0, stageTotal)} / {pct(row.count || 0, closedTotal || cohortTotal)}
+                      </span>
                     </span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded bg-slate-100">
@@ -796,6 +1022,9 @@ function ReasonsCard({
               )
             })}
           </div>
+          <p className="mt-2 text-[11px] text-slate-400">
+            {t('app.dashboard.efficiency.reasons.share_legend')}
+          </p>
         </>
       )}
     </section>

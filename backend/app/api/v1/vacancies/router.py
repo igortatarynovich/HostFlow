@@ -6,7 +6,10 @@ from sqlalchemy import select, update, func
 from pydantic import BaseModel
 
 from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
-from backend.app.api.v1.utils.access import resolve_restricted_acl
+from backend.app.api.v1.utils.access import (
+    resolve_restricted_acl,
+    vacancy_readable_via_candidate_assignment,
+)
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.models.vacancy import Vacancy
@@ -265,7 +268,14 @@ async def get_vacancy(
     except LookupError:
         raise HTTPException(status_code=404, detail="Vacancy not found")
     acl = await resolve_restricted_acl(db, str(tenant_id), current_user)
-    if not is_client and not _vacancy_allowed(vacancy.id, vacancy.company_id, acl):
+    if (
+        not is_client
+        and acl is not None
+        and not _vacancy_allowed(vacancy.id, vacancy.company_id, acl)
+        and not await vacancy_readable_via_candidate_assignment(
+            db, str(tenant_id), str(vacancy.id), acl
+        )
+    ):
         raise HTTPException(status_code=403, detail="Forbidden")
     return vacancy
 
@@ -384,7 +394,14 @@ async def get_vacancy_pipeline(
     vacancy = vrow[0]
 
     acl = await resolve_restricted_acl(db, tid, current_user)
-    if not is_client and not _vacancy_allowed(str(vacancy.id), getattr(vacancy, "company_id", None), acl):
+    if (
+        not is_client
+        and acl is not None
+        and not _vacancy_allowed(str(vacancy.id), getattr(vacancy, "company_id", None), acl)
+        and not await vacancy_readable_via_candidate_assignment(
+            db, tid, str(vacancy.id), acl
+        )
+    ):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     candidates = await db.execute(

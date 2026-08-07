@@ -114,12 +114,12 @@
 **Цель:** «я хочу всё видеть, ничего не сломать».
 **Top-3 JTBD:**
 
-1. Просматривать companies / leads / vacancies / candidates / services view-only.
-2. Нет права создавать/редактировать.
+1. Просматривать Overview Recruitment/Marketing analytics и companies / recruitment leads / vacancies / candidates view-only.
+2. Нет права создавать/редактировать; нет доступа к Sales inquiries.
 3. Нет права смотреть комм-историю чужих тредов (TODO: уточнить comms scope).
 
-**Должен видеть:** все списки, карточки read-only.
-**НЕ должен видеть:** primary-CTA «Создать», bulk-actions, settings.
+**Должен видеть:** Overview (вкладки Summary / Recruitment / Marketing), списки и карточки companies / recruitment leads / vacancies / candidates read-only.
+**НЕ должен видеть:** Sales nav / sales inquiries / вкладку Sales в аналитике; primary-CTA «Создать», bulk-actions, settings.
 **Acceptance:** ни одной кнопки, которая на нажатие вернёт 403. Если вернёт — баг.
 
 **Журнал:** `docs/specs/journeys/viewer.md` — UAT 2.2.H.

@@ -2543,7 +2543,9 @@
             "supervisor": "Супервайзеры",
             "recruiter": "Рекрутеры",
             "client_manager": "Менеджеры клиента",
-            "viewer": "Наблюдатели"
+            "viewer": "Наблюдатели",
+            "compliance_officer": "Специалист по compliance",
+            "hr_officer": "HR-специалист"
           }
         },
         "history": {
@@ -3027,7 +3029,9 @@
           "recruiter": "Рекрутер",
           "client_manager": "Менеджер клиента",
           "client_processor": "Процессор кандидатов",
-          "viewer": "Наблюдатель"
+          "viewer": "Наблюдатель",
+          "compliance_officer": "Специалист по compliance",
+          "hr_officer": "HR-специалист"
         },
         "form": {
           "email_label": "Email",
@@ -4980,14 +4984,19 @@
           "rejected_title": "Отклонён компанией ({count})",
           "declined_title": "Отказался кандидат ({count})",
           "hint": "Сумма причин может быть больше числа кандидатов — у части несколько кодов.",
-          "empty": "Нет причин в этом срезе."
+          "empty": "Нет причин в этом срезе.",
+          "ops_intro": "Операционная аналитика: клик открывает список кандидатов с этой причиной.",
+          "ops_focus": "Фокус операций",
+          "ops_badge": "опер.",
+          "open_list": "Открыть кандидатов с этой причиной",
+          "share_legend": "Доля: от этого исхода · от всех закрытых (отклонён + отказался)."
         },
         "docs": {
           "title": "Документы",
-          "subtitle": "Операционные этапы docs_wait / docs_got и статусы загруженных файлов.",
+          "subtitle": "Этапы docs_wait / docs_got — статус кандидата. «Полный пакет» — по статусу файла Document (не этап).",
           "wait": "Ожидаем документы",
           "got": "Документы получены",
-          "complete": "С полным пакетом",
+          "complete": "Полный пакет (по файлам)",
           "col_status": "Статус файла",
           "col_count": "Кол-во",
           "files_total": "Всего файлов: {count}",
@@ -5016,11 +5025,14 @@
         },
         "contact": {
           "title": "Контактная метрика",
-          "subtitle": "Получено → попытки связи → дозвонились → итог. По попыткам контакта в CRM (те же фильтры).",
+          "subtitle": "Получено → зарегистрированные попытки в CRM → дозвонились. Когорта = кандидаты по created_at (как этапы). Попытки — lifetime по когорте. Не равно «обработан».",
           "received": "Получено",
           "attempted": "Была попытка",
           "reached": "Дозвонились",
-          "untouched": "Без попыток",
+          "untouched": "Нет зарегистрированных попыток",
+          "no_logged": "Нет зарегистрированных попыток",
+          "no_logged_hint": "Нет строки в учёте попыток CRM. Часть могла обрабатываться до внедрения учёта или вне HostFlow — это не бэклог необработанных.",
+          "awaiting_first": "Ждут первого контакта",
           "attempts_total": "Всего попыток",
           "funnel_received": "Получено",
           "funnel_attempted": "Попытка",
@@ -5037,7 +5049,23 @@
             "callback_requested": "Перезвонить",
             "interested": "Заинтересован",
             "not_interested": "Не заинтересован"
-          }
+          },
+          "rodo_missing": "RODO не отправлено",
+          "blocked_no_rodo": "Контакт заблокирован (нет RODO)",
+          "rodo_hint": "RODO нет у {missing} из {total} (удовлетворено: {satisfied}). Без RODO CRM не даёт зарегистрировать попытку контакта — это блокер compliance, а не бэклог звонков.",
+          "awaiting_hint": "«Ждут первого контакта» — только этап «Новый», RODO уже отправлено и попыток нет: можно звонить.",
+          "open_new_stage": "Открыть кандидатов на этапе «Новый»"
+        },
+        "cohort_mismatch": "Когорта этапов ({slices}) и контактной метрики ({contact}) разошлись — проверьте фильтры.",
+        "sources": {
+          "title": "Источники показателей",
+          "candidates": "Этапы, исходы и причины отказов — из карточек кандидатов (дата создания в фильтре).",
+          "contact": "Попытки контакта — из журнала CRM по той же когорте (за всё время). Без отправленного RODO попытку зарегистрировать нельзя.",
+          "docs": "Документы — файлы, привязанные к кандидатам когорты; «полный пакет» считается по статусу файла, а не только по этапам документов.",
+          "marketing": "Маркетинг (отдельная вкладка) — журнал расходов Acquisition и снимок Meta, а не число кандидатов или лидов из списка.",
+          "filter_ctx": "Срез панели: {ctx}. Переход по причине открывает кандидатов по этапу, причине и вакансии.",
+          "client_id": "клиент {id}",
+          "period_range": "{from} — {to}"
         }
       },
       "tabs": {
@@ -5045,6 +5073,7 @@
         "summary": "Сводка",
         "general": "Сводка",
         "recruitment": "Рекрутинг",
+        "marketing": "Маркетинг",
         "sales": "Продажи",
         "hr": "HR",
         "finance": "Финансы",
@@ -5123,6 +5152,65 @@
           "vacancy": "Вакансия",
           "vacancy_all": "Все вакансии"
         }
+      },
+      "marketing": {
+        "title": "Эффективность маркетинга",
+        "subtitle": "KPI кампаний из Acquisition ledger. Meta reach/impressions — snapshot до live-доступа. Лиды здесь ≠ кандидаты на вкладке Рекрутинг.",
+        "empty": "Нет кампаний в выбранном срезе.",
+        "empty_campaigns": "Нет кампаний для этой компании.",
+        "filters": {
+          "currency": "Валюта отображения",
+          "presets": "Пресеты",
+          "campaigns": "Кампании",
+          "select_all": "Выбрать все",
+          "clear": "Сбросить",
+          "selected": "Выбрано {count} / {total}"
+        },
+        "fx": {
+          "loading": "Загрузка курсов NBP…",
+          "as_of": "Средний курс NBP · {date} ({provider})",
+          "unavailable": "Курсы недоступны — показана исходная валюта",
+          "error": "Не удалось загрузить курсы NBP. Суммы остаются в USD, пока курсы не появятся."
+        },
+        "presets": {
+          "drivers_poltrakt": "Водители Poltrakt",
+          "warehouse": "Склад",
+          "dispatcher": "Диспетчер",
+          "ru": "RU лиды",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Расход",
+          "leads": "Лиды",
+          "cpl": "CPL",
+          "impressions": "Показы",
+          "reach": "Охват"
+        },
+        "charts": {
+          "trend_title": "Динамика",
+          "trend_subtitle": "Ежедневный расход и лиды по выбранным кампаниям и периоду.",
+          "spend_title": "Расход по кампаниям",
+          "spend_subtitle": "Рекламные расходы в выбранной группе.",
+          "leads_title": "Лиды по кампаниям",
+          "leads_subtitle": "Атрибутированные лиды (Acquisition).",
+          "cpl_title": "Стоимость лида (CPL)",
+          "cpl_subtitle": "Меньше — лучше; лучший CPL выделен.",
+          "mix_title": "Микс лидов",
+          "mix_subtitle": "Доля лидов среди выбранных кампаний."
+        },
+        "table": {
+          "title": "Детализация кампаний",
+          "subtitle": "Кампании; reach/impressions только из Meta snapshot (не live).",
+          "campaign": "Кампания",
+          "best_cpl": "Лучший CPL"
+        },
+        "snapshot_badge": "Данные Meta — снимок (не live Ads API)",
+        "snapshot_hint": "Показы и охват взяты из импортированного снимка или заметок по расходам. Live Graph API пока нет — не сравнивайте с кабинетом Meta как с онлайн-отчётом.",
+        "snapshot_chip": "снимок",
+        "source_ledger": "Журнал расходов Acquisition",
+        "source_attribution": "Атрибуции результатов (≠ кандидаты)",
+        "source_derived": "расход ÷ лиды"
       },
       "hr": {
         "title": "Эффективность HR",
@@ -6466,7 +6554,11 @@
         "employment_pending": "На трудоустройстве",
         "ready_for_hr": "Готов к передаче в HR",
         "processing_by_hr": "В обработке у HR",
-        "hired": "Принят HR"
+        "hired": "Принят HR",
+        "open": "Открыта",
+        "paused": "Пауза",
+        "closed": "Закрыта",
+        "recruitment_completed": "Набор завершён"
       },
       "row_status": {
         "rejected": "Отклонён (статус)",
@@ -6944,6 +7036,13 @@
             "failed": "Не удалось сохранить решение intake",
             "reject_pick_reason": "Выберите причину отклонения."
           }
+        },
+        "timeline_kinds": {
+          "lead_received": "Обращение получено",
+          "call_result": "Результат звонка",
+          "stage_changed": "Смена этапа",
+          "questionnaire_email": "Анкета отправлена",
+          "questionnaire_submitted": "Анкета получена"
         }
       },
       "states": {
@@ -7466,6 +7565,79 @@
         "col_inbox": "Входящие (new)",
         "hint": "Те же фильтры, что у таблицы; в каждой колонке — до лимита ниже.",
         "view_all": "Все в списке"
+      },
+      "client_detail": {
+        "fallback_summary": "Анкета транспортной компании",
+        "status_rejected": "Отклонён",
+        "status_client_created": "Клиент создан",
+        "status_new_form": "Новая анкета",
+        "rejected_banner": "Лид отклонён и исключён из обработки кандидатов.",
+        "open_client": "Открыть клиента",
+        "creating": "Создаём…",
+        "create_client": "Создать клиента",
+        "mark_contacted": "Контакт установлен",
+        "qualify": "Квалифицировать",
+        "reject": "Отклонить",
+        "more_section": "История и служебные данные",
+        "sections": {
+          "company": "Компания",
+          "contact": "Контактное лицо",
+          "need": "Потребность",
+          "meta_answers": "Ответы из формы Meta",
+          "terms": "Условия работы",
+          "source": "Источник и отправка",
+          "consent": "Согласия / RODO"
+        },
+        "fields": {
+          "name": "Название",
+          "legal_name": "Юр. название",
+          "tax_id": "NIP / VAT",
+          "country": "Страна",
+          "city": "Город",
+          "website": "Сайт",
+          "fleet_size": "Размер флота",
+          "transport_type": "Тип перевозок",
+          "full_name": "Имя",
+          "role": "Должность",
+          "email": "Email",
+          "phone": "Телефон",
+          "whatsapp": "WhatsApp",
+          "what_needed": "Что нужно",
+          "summary": "Сводка",
+          "people_count": "Сколько людей",
+          "cooperation_type": "Тип сотрудничества",
+          "when_needed": "Когда нужны",
+          "requirements": "Требования",
+          "runs_paid_ads": "Платные кампании",
+          "rate": "Ставка",
+          "rate_amount": "Сумма",
+          "rate_currency": "Валюта",
+          "rate_period": "Период",
+          "rate_tax_mode": "Netto / brutto / B2B",
+          "bonus": "Премии / бонусы",
+          "schedule": "График",
+          "work_systems": "Система работы",
+          "route_directions": "Направления рейсов",
+          "night_driving": "Ночная езда",
+          "body_types": "Тип прицепа / транспорта",
+          "work_conditions": "Доп. условия",
+          "base": "База",
+          "truck_brands": "Машины",
+          "body_type": "Тип кузова",
+          "additional": "Дополнительно",
+          "source_profile": "Профиль источника",
+          "landing_page": "Landing page",
+          "language": "Язык",
+          "created_at": "Создано",
+          "converted_client": "Созданный клиент",
+          "rodo_consent": "Согласие RODO",
+          "privacy_policy": "Политика конфиденциальности",
+          "regulamin": "Регламент",
+          "consent_timestamp": "Время согласия",
+          "marketing_contact": "Маркетинговый контакт",
+          "terms_version": "Версия регламента",
+          "privacy_version": "Версия политики"
+        }
       }
     },
     "common": {
@@ -8988,6 +9160,194 @@
         "meta": {
           "title": "Реклама Meta",
           "body": "Формы и объявления Facebook/Instagram — заявки автоматически попадают в inbox."
+        }
+      }
+    },
+    "application_workspace": {
+      "next_action": "Следующее действие",
+      "start_work": "Начать работу",
+      "sort_newest": "Сначала новые",
+      "empty_tab": "Нет записей в этой вкладке",
+      "load_more": "Загрузить ещё ({loaded} из {total})",
+      "open_card": "Открыть карточку",
+      "columns": {
+        "contact": "Контакт",
+        "details": "Детали",
+        "source": "Источник",
+        "extra": "Доп.",
+        "status": "Статус",
+        "time": "Время"
+      },
+      "tabs": {
+        "all": "Все",
+        "new": "Новые",
+        "in_progress": "В работе",
+        "waiting": "Ожидают ответа",
+        "completed": "Завершённые"
+      },
+      "status": {
+        "new": "Новое",
+        "in_progress": "В работе",
+        "waiting": "Ожидаем ответ",
+        "questionnaire_submitted": "Ответ получен",
+        "completed": "Завершено",
+        "rejected": "Отклонено"
+      },
+      "time": {
+        "just_now": "только что",
+        "minutes_ago": "{count} мин назад",
+        "hours_ago": "{count} ч назад"
+      },
+      "recruitment": {
+        "title": "Отклики",
+        "hero_call_title": "Позвонить {count} новым откликам",
+        "hero_call_hint": "Откроем отклики по одному: позвонить → принять решение → создать кандидата.",
+        "hero_empty": "Нет новых откликов для звонка",
+        "list_kind": "Отклик кандидата"
+      },
+      "sales": {
+        "title": "Обращения",
+        "hero_call_title": "Позвонить {count} новым обращениям",
+        "hero_call_hint": "Откроем обращения по одному: позвонить → выяснить потребность → создать клиента → выбрать услугу.",
+        "hero_empty": "Нет новых обращений для звонка",
+        "list_kind": "B2B заявка"
+      }
+    },
+    "recruitment_inquiry": {
+      "call": "Позвонить",
+      "follow_up": "Follow-up",
+      "candidate_fallback": "Кандидат",
+      "new_application": "Новый отклик",
+      "open_full_profile": "Открыть полную карточку",
+      "outcome_title": "Кандидат создан",
+      "outcome_body": "Отклик обработан. Продолжите в карточке кандидата.",
+      "closed_title": "Отклик закрыт",
+      "rejected_body": "Отклик отклонён.",
+      "rejected_body_terminal": "Отклик отклонён. Новых действий нет.",
+      "completed_body": "Обработка завершена.",
+      "contact_title": "Связаться с кандидатом",
+      "contact_why": "Первый контакт ещё не выполнен.",
+      "called": "Позвонил",
+      "reject": "Отклонить",
+      "after_call_hint": "После звонка привяжите подбор и создайте кандидата.",
+      "process_title": "Обработать отклик",
+      "process_body": "Привяжите подбор и создайте кандидата — или отклоните отклик.",
+      "create_candidate": "Создать кандидата",
+      "candidate_created": "Кандидат создан",
+      "select_vacancy": "Выберите подбор",
+      "link_vacancy": "Привязать к подбору",
+      "vacancy_linked": "Подбор привязан",
+      "assignee_placeholder": "ID пользователя",
+      "assign": "Назначить",
+      "assignee_set": "Ответственный назначен",
+      "reject_title": "Отклонить отклик",
+      "comment_placeholder": "Комментарий",
+      "cancel": "Отмена",
+      "rejected_toast": "Отклик отклонён",
+      "follow_up_title": "Follow-up",
+      "follow_up_default": "Перезвонить кандидату",
+      "reminder_created": "Напоминание создано",
+      "save": "Сохранить",
+      "action_failed": "Не удалось выполнить действие",
+      "errors": {
+        "INTAKE_INFO_REQUESTED": "Ранее запросили данные у кандидата. Повторите «Создать кандидата» после обновления.",
+        "VACANCY_NOT_CONFIRMED": "Сначала привяжите подбор в блоке «Вакансия».",
+        "INTAKE_ROUTING_INCOMPLETE": "Не хватает маршрутизации: привяжите подбор.",
+        "INTAKE_POOL_PATH_REQUIRED": "Сначала привяжите подбор в блоке «Вакансия», затем снова нажмите «Создать кандидата».",
+        "NO_INTAKE_CONTEXT": "Не удалось создать кандидата: у отклика нет полного intake-контекста. Привяжите актуальный подбор и повторите, либо откройте карточку лида для маршрутизации.",
+        "LEAD_RODO_REQUIRED": "Нужно подтвердить RODO перед этим действием.",
+        "LEAD_INTAKE_ALREADY_REJECTED": "Отклик уже закрыт.",
+        "INTAKE_REJECT_REASON_REQUIRED": "Укажите причину отклонения.",
+        "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "Это действие недоступно для данного источника."
+      },
+      "reject_reasons": {
+        "insufficient_experience": "Не подходит",
+        "no_response": "Не отвечает",
+        "duplicate_spam": "Дубликат",
+        "invalid_contact": "Спам",
+        "other": "Другое"
+      }
+    },
+    "sales_inquiry": {
+      "call": "Позвонить",
+      "called": "Позвонил",
+      "interested": "Заинтересован",
+      "creating": "Создаём…",
+      "create_client": "Создать клиента",
+      "open_client_card": "Открыть полную карточку",
+      "no_phone": "Телефон не указан",
+      "contact_fallback": "Контакт",
+      "contact_title": "Контакт",
+      "work_title": "Работа по обращению",
+      "b2b_subtitle": "B2B заявка",
+      "closed": "Запрос закрыт",
+      "completed": "Обращение завершено",
+      "interested_later": "Заинтересован, но позже",
+      "close": "Закрыть запрос",
+      "after_call_hint": "После звонка отметьте «Позвонил».",
+      "workflow": {
+        "contact": "Связаться",
+        "need": "Потребность",
+        "client": "Клиент",
+        "service": "Услуга",
+        "order": "Заказ"
+      },
+      "step": {
+        "service_title": "Добавить услугу",
+        "service_body": "Клиент создан. Откройте карточку и добавьте первую услугу.",
+        "client_title": "Создать клиента",
+        "client_body": "Компания заинтересована. Сохраните её в клиенты.",
+        "need_title": "Выяснить потребность",
+        "need_body": "Уточните, какую услугу компания хочет купить.",
+        "contact_title": "Связаться с клиентом",
+        "contact_body": "Первый контакт ещё не выполнен."
+      },
+      "duplicates": {
+        "title": "Возможные дубли",
+        "hint": "Другие обращения с тем же телефоном или email. Обычно одна фирма — один клиент.",
+        "match_phone_email": "тот же телефон и email",
+        "match_phone": "тот же телефон",
+        "match_email": "тот же email"
+      },
+      "meta_form_answers": "Ответы из формы Meta",
+      "additional_answer": "доп.",
+      "questionnaire_load_failed": "Не удалось загрузить анкету",
+      "questionnaire_invite_failed": "Не удалось получить ссылку на анкету"
+    },
+    "context_rail": {
+      "close": "Закрыть",
+      "open_full_card": "Открыть полную карточку",
+      "outcome": "Итог",
+      "why": "Почему",
+      "next_action": "Следующее действие",
+      "blocks": {
+        "contacts": "Контакт",
+        "documents": "Документы",
+        "history": "История",
+        "handoff": "Handoff",
+        "relations": "Связи",
+        "summary": "Контекст",
+        "workflow": "Этапы",
+        "vacancy": "Подбор",
+        "assignee": "Ответственный",
+        "outcome": "Результат"
+      }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Достигнут лимит тарифа",
+        "body": "Для этого действия нужен тариф {required}. Ваш текущий тариф — {current}.",
+        "required_plan_fallback": "более высокий",
+        "current_plan_fallback": "текущий",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        },
+        "actions": {
+          "upgrade": "Улучшить тариф",
+          "talk_to_sales": "Связаться с продажами"
         }
       }
     }
@@ -11138,6 +11498,37 @@
         "pending_review": "Pending review",
         "rejected": "Rejected",
         "satisfied": "Satisfied"
+      },
+      "merge": {
+        "header_kicker": "Документы",
+        "title": "Шаблоны слияния документов",
+        "description": "Управляйте текстовыми шаблонами для генерации документов кандидата по переменным и привязкам.",
+        "include_inactive": "Показать неактивные шаблоны",
+        "empty": "Шаблонов слияния пока нет.",
+        "form_new_title": "Новый шаблон",
+        "form_edit_title": "Редактировать шаблон",
+        "field_code": "Код",
+        "field_name": "Название",
+        "field_mime": "MIME-тип результата",
+        "field_oc": "ID собственной компании (необязательно)",
+        "field_filename": "Шаблон имени выходного файла",
+        "field_bindings": "Привязки переменных (JSON)",
+        "field_body": "Текст",
+        "activate": "Активировать",
+        "deactivate": "Деактивировать",
+        "confirm_delete": "Удалить этот шаблон слияния?",
+        "error_load": "Не удалось загрузить шаблоны слияния",
+        "error_save": "Не удалось сохранить шаблон слияния",
+        "error_delete": "Не удалось удалить шаблон слияния",
+        "bindings_invalid": "Привязки переменных должны быть JSON-объектом",
+        "table": {
+          "code": "Код",
+          "name": "Название",
+          "oc": "Своя компания",
+          "mime": "MIME",
+          "status": "Статус",
+          "actions": "Действия"
+        }
       }
     },
     "integrations_hub": {
@@ -11841,6 +12232,10 @@
         "profile": {
           "description": "Личный профиль, язык, безопасность и локальные настройки.",
           "label": "Мой профиль"
+        },
+        "merge_templates": {
+          "label": "Шаблоны слияния",
+          "description": "Текстовые шаблоны для генерации документов кандидата."
         }
       },
       "audit": {

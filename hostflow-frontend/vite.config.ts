@@ -48,6 +48,15 @@ export default defineConfig({
         target: "http://127.0.0.1:8089",
         changeOrigin: true,
       },
+      // Avatars / uploads must be same-origin under COEP; backend also mounts /api/uploads.
+      "/api/uploads": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
+      "/uploads": {
+        target: "http://127.0.0.1:8000",
+        changeOrigin: true,
+      },
     },
   },
   preview: {

@@ -277,7 +277,14 @@ export default function App(){
               <Route path="sources" element={<Navigate to="acquisition" replace />} />
               <Route path="sources/meta" element={<Navigate to="../acquisition/meta" replace />} />
             </Route>
-            <Route path="sales" element={<SalesWorkspaceLayout />}>
+            <Route
+              path="sales"
+              element={
+                <RoutePermissionGuard permission="sales.view">
+                  <SalesWorkspaceLayout />
+                </RoutePermissionGuard>
+              }
+            >
               <Route index element={<SalesInquiriesEntryPage />} />
               <Route path="inquiries/:leadId" element={<SalesInquiriesEntryPage />} />
               <Route path="orders" element={<SalesOrdersListPage />} />
@@ -286,9 +293,30 @@ export default function App(){
             </Route>
             <Route path="recruitment/inbox" element={<RecruitmentInboxEntryPage />} />
             <Route path="recruitment/inbox/:applicationId" element={<RecruitmentInboxEntryPage />} />
-            <Route path="client-acquisition/channels" element={<ClientChannelsListPage />} />
-            <Route path="client-acquisition/channels/new" element={<CreateClientChannelWizardPage />} />
-            <Route path="client-acquisition/channels/:channelId" element={<ClientChannelWorkspaceLayout />}>
+            <Route
+              path="client-acquisition/channels"
+              element={
+                <RoutePermissionGuard permission="sales.view">
+                  <ClientChannelsListPage />
+                </RoutePermissionGuard>
+              }
+            />
+            <Route
+              path="client-acquisition/channels/new"
+              element={
+                <RoutePermissionGuard permission="sales.view">
+                  <CreateClientChannelWizardPage />
+                </RoutePermissionGuard>
+              }
+            />
+            <Route
+              path="client-acquisition/channels/:channelId"
+              element={
+                <RoutePermissionGuard permission="sales.view">
+                  <ClientChannelWorkspaceLayout />
+                </RoutePermissionGuard>
+              }
+            >
               <Route index element={<ClientChannelHomePage />} />
               <Route path="inquiries/:leadId" element={<ClientInquiryWorkPage />} />
             </Route>

@@ -5,5 +5,5 @@ import type { Permission } from '../hooks/usePermissions'
 export function resolveBrandingSetupHref(can: (p: Permission) => boolean): string {
   if (can('admin.companyAcl')) return CRM_APP_PATHS.settingsTenants
   if (can('companies.view')) return CRM_APP_PATHS.myCompany
-  return `${CRM_APP_PATHS.settings}?section=workspace`
+  return CRM_APP_PATHS.settings
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Application } from '../../api/types/application'
 import { useI18n } from '../../i18n'
 import { clientDetailPath } from '../../services/platformHandoff'
@@ -10,18 +10,12 @@ import { MetaFormAnswersSection } from '../../components/sales/MetaFormAnswersSe
 import { ContextRail } from '../context-rail'
 import {
   APPLICATION_STATUS_BADGE,
-  APPLICATION_STATUS_TEXT,
   applicationInitial,
+  applicationStatusLabel,
 } from './applicationDisplay'
 import { resolveSalesApplicationDecision } from './resolveSalesApplicationDecision'
 
-const WORKFLOW_STEPS = [
-  { key: 'contact', label: 'Связаться' },
-  { key: 'need', label: 'Потребность' },
-  { key: 'client', label: 'Клиент' },
-  { key: 'service', label: 'Услуга' },
-  { key: 'order', label: 'Заказ' },
-] as const
+const WORKFLOW_STEP_KEYS = ['contact', 'need', 'client', 'service', 'order'] as const
 
 export type ApplicationSalesDetailPanelProps = {
   application: Application
@@ -42,19 +36,30 @@ export function ApplicationSalesDetailPanel({
   onConvert,
   onQuestionnaireUpdated,
 }: ApplicationSalesDetailPanelProps) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [timelineRefresh, setTimelineRefresh] = useState(0)
   const companyName = application.title
   const statusKey = application.status === 'rejected' ? 'completed' : application.status
   const activeStep = Number(application.extensions?.workflow_step ?? 1)
   const convertedId = String(application.outcome_entity_id || '').trim()
   const clientHref = convertedId ? clientDetailPath(convertedId) : undefined
-  const subtitle = application.subtitle || 'B2B заявка'
-  const openCardLabel = t('app.sales_inquiry.open_client_card', { defaultValue: 'Открыть полную карточку' })
+  const subtitle =
+    application.subtitle ||
+    t('app.sales_inquiry.b2b_subtitle', { defaultValue: 'B2B inquiry' })
+  const openCardLabel = t('app.sales_inquiry.open_client_card', { defaultValue: 'Open full profile' })
   const contactPhone = application.contact.phone?.trim() || ''
   const contactEmail = application.contact.email?.trim() || ''
   const telHref = contactPhone ? `tel:${contactPhone.replace(/\s/g, '')}` : null
   const busy = patching || converting
+
+  const workflowSteps = useMemo(
+    () =>
+      WORKFLOW_STEP_KEYS.map((key) => ({
+        key,
+        label: t(`app.sales_inquiry.workflow.${key}`),
+      })),
+    [t],
+  )
 
   const decision = resolveSalesApplicationDecision({
     application,
@@ -66,7 +71,13 @@ export function ApplicationSalesDetailPanel({
   })
 
   const meta = application.source
-    ? `${application.source}${application.created_at ? ` · ${new Date(application.created_at).toLocaleString()}` : ''}`
+    ? `${application.source}${
+        application.created_at
+          ? ` · ${new Date(application.created_at).toLocaleString(
+              locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : 'en-US',
+            )}`
+          : ''
+      }`
     : undefined
 
   return (
@@ -77,18 +88,21 @@ export function ApplicationSalesDetailPanel({
         titleHref: clientHref,
         subtitle,
         meta,
-        statusLabel: APPLICATION_STATUS_TEXT[statusKey as keyof typeof APPLICATION_STATUS_TEXT] || statusKey,
+        statusLabel: applicationStatusLabel(
+          (statusKey in APPLICATION_STATUS_BADGE ? statusKey : 'new') as keyof typeof APPLICATION_STATUS_BADGE,
+          t,
+        ),
         statusClassName: `rounded-full px-3 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey as keyof typeof APPLICATION_STATUS_BADGE] || APPLICATION_STATUS_BADGE.new}`,
         entityWorkspaceHref: clientHref,
         entityWorkspaceLabel: openCardLabel,
       }}
       decision={decision}
       onClose={onClose}
-      closeLabel={t('common.close', { defaultValue: 'Закрыть' })}
+      closeLabel={t('common.close', { defaultValue: 'Close' })}
       contextSlots={{
         workflow: (
           <ol className="flex items-center gap-1">
-            {WORKFLOW_STEPS.map((step, idx) => {
+            {workflowSteps.map((step, idx) => {
               const stepNum = idx + 1
               const done = stepNum < activeStep
               const active = stepNum === activeStep
@@ -112,7 +126,7 @@ export function ApplicationSalesDetailPanel({
                   >
                     {step.label}
                   </span>
-                  {idx < WORKFLOW_STEPS.length - 1 ? (
+                  {idx < workflowSteps.length - 1 ? (
                     <span className={`mx-0.5 h-px flex-1 ${done ? 'bg-brand-300' : 'bg-slate-200'}`} />
                   ) : null}
                 </li>
@@ -127,7 +141,8 @@ export function ApplicationSalesDetailPanel({
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-slate-800">
-                {application.contact.name || 'Контакт'}
+                {application.contact.name ||
+                  t('app.sales_inquiry.contact_fallback', { defaultValue: 'Contact' })}
               </p>
               {telHref ? (
                 <a
@@ -139,7 +154,7 @@ export function ApplicationSalesDetailPanel({
                 </a>
               ) : (
                 <p className="mt-1 text-sm text-slate-400">
-                  {t('app.sales_inquiry.no_phone', { defaultValue: 'Телефон не указан' })}
+                  {t('app.sales_inquiry.no_phone', { defaultValue: 'No phone number' })}
                 </p>
               )}
               {contactEmail ? (
@@ -182,9 +197,9 @@ export function ApplicationSalesDetailPanel({
         ),
       }}
       contextTitles={{
-        contacts: t('app.sales_inquiry.contact_title', { defaultValue: 'Контакт' }),
-        summary: t('app.sales_inquiry.work_title', { defaultValue: 'Работа по обращению' }),
-        history: t('app.leads.detail.timeline', { defaultValue: 'История' }),
+        contacts: t('app.sales_inquiry.contact_title', { defaultValue: 'Contact' }),
+        summary: t('app.sales_inquiry.work_title', { defaultValue: 'Work on inquiry' }),
+        history: t('app.leads.detail.timeline', { defaultValue: 'History' }),
       }}
     />
   )

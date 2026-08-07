@@ -23,6 +23,14 @@ describe('docsPipelineBlocksForwardResolved', () => {
     expect(r.softWarnOnly).toBe(false)
   })
 
+  it('does not block when enforceRequirementStageBlocks is false', () => {
+    const r = docsPipelineBlocksForwardResolved('docs_wait', blockers, false, {
+      ...gates,
+      enforceRequirementStageBlocks: false,
+    })
+    expect(r).toEqual({ hard: false, softWarnOnly: false })
+  })
+
   it('returns no block while summary is loading', () => {
     const r = docsPipelineBlocksForwardResolved('docs_wait', blockers, true, gates)
     expect(r).toEqual({ hard: false, softWarnOnly: false })

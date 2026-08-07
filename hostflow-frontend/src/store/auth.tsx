@@ -369,7 +369,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setPreferences(prefs)
     setMe((prev) => (prev ? { ...prev, preferences: prefs } : prev))
     applyTheme(prefs.ui?.theme)
-  }, [applyTheme])
+    const preferredLocale = String(prefs?.ui?.locale || '').trim().toLowerCase()
+    const shortLocale = preferredLocale.split('-')[0]
+    if (shortLocale === 'ru' || shortLocale === 'en' || shortLocale === 'pl') {
+      setLocale(shortLocale as LocaleCode)
+    }
+  }, [applyTheme, setLocale])
 
   const updateSecurity = useCallback((summary: UserSecuritySummary) => {
     setSecurity(summary)

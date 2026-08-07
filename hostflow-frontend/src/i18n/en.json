@@ -2616,7 +2616,9 @@
             "supervisor": "Supervisors",
             "recruiter": "Recruiters",
             "client_manager": "Client managers",
-            "viewer": "Viewers"
+            "viewer": "Viewers",
+            "compliance_officer": "Compliance officer",
+            "hr_officer": "HR officer"
           }
         },
         "history": {
@@ -3100,7 +3102,9 @@
           "recruiter": "Recruiter",
           "client_manager": "Client manager",
           "client_processor": "Candidate processor",
-          "viewer": "Viewer"
+          "viewer": "Viewer",
+          "compliance_officer": "Compliance officer",
+          "hr_officer": "HR officer"
         },
         "form": {
           "email_label": "Email",
@@ -5053,14 +5057,19 @@
           "rejected_title": "Rejected by company ({count})",
           "declined_title": "Declined by candidate ({count})",
           "hint": "Reason totals may exceed candidate counts when multiple codes apply.",
-          "empty": "No reasons in this slice."
+          "empty": "No reasons in this slice.",
+          "ops_intro": "Operational analytics: click opens the candidate list for that reason.",
+          "ops_focus": "Ops focus",
+          "ops_badge": "ops",
+          "open_list": "Open candidates with this reason",
+          "share_legend": "Share: of this outcome · of all closed (reject + decline)."
         },
         "docs": {
           "title": "Documents",
-          "subtitle": "Operational docs_wait / docs_got stages and uploaded file statuses.",
+          "subtitle": "docs_wait / docs_got are candidate stages. “Complete package” uses Document file status (not stage).",
           "wait": "Waiting for documents",
           "got": "Documents received",
-          "complete": "Complete package",
+          "complete": "Complete package (by files)",
           "col_status": "File status",
           "col_count": "Count",
           "files_total": "Total files: {count}",
@@ -5089,11 +5098,14 @@
         },
         "contact": {
           "title": "Contact metric",
-          "subtitle": "Received → contact attempts → reached → outcome. From CRM contact attempts (same filters).",
+          "subtitle": "Received → CRM-logged attempts → reached. Cohort = candidates by created_at (same as stages). Attempts are lifetime for that cohort. Not the same as processed.",
           "received": "Received",
           "attempted": "Attempted",
           "reached": "Reached",
-          "untouched": "No attempts",
+          "untouched": "No logged attempts",
+          "no_logged": "No logged attempts",
+          "no_logged_hint": "No row in CRM contact-attempt tracking. Some may have been handled before tracking existed or outside HostFlow — this is not an unprocessed backlog.",
+          "awaiting_first": "Awaiting first contact",
           "attempts_total": "Total attempts",
           "funnel_received": "Received",
           "funnel_attempted": "Attempted",
@@ -5110,7 +5122,23 @@
             "callback_requested": "Callback requested",
             "interested": "Interested",
             "not_interested": "Not interested"
-          }
+          },
+          "rodo_missing": "RODO not sent",
+          "blocked_no_rodo": "Contact blocked (no RODO)",
+          "rodo_hint": "RODO missing for {missing} of {total} ({satisfied} satisfied). Without RODO, CRM blocks logging contact attempts — this is a compliance gate, not a call backlog.",
+          "awaiting_hint": "“Awaiting first contact” counts only stage New with RODO already sent and no logged attempt — ready to call.",
+          "open_new_stage": "Open candidates on stage New"
+        },
+        "cohort_mismatch": "Stage cohort ({slices}) and contact cohort ({contact}) differ — check filters.",
+        "sources": {
+          "title": "Metric sources",
+          "candidates": "Stages, outcomes, and rejection reasons come from candidates (created date in the filter).",
+          "contact": "Contact attempts come from CRM logs on the same candidate cohort (lifetime). RODO must be sent before an attempt can be logged.",
+          "docs": "Documents are files linked to cohort candidates; “complete package” uses file status, not only document pipeline stages.",
+          "marketing": "Marketing (separate tab) uses the Acquisition spend ledger and a Meta snapshot — not candidate or lead list counts.",
+          "filter_ctx": "Panel slice: {ctx}. Reason drill-down opens candidates by stage, reason, and vacancy.",
+          "client_id": "client {id}",
+          "period_range": "{from} — {to}"
         }
       },
       "tabs": {
@@ -5118,6 +5146,7 @@
         "summary": "Summary",
         "general": "Summary",
         "recruitment": "Recruitment",
+        "marketing": "Marketing",
         "sales": "Sales",
         "hr": "HR",
         "finance": "Finance",
@@ -5196,6 +5225,65 @@
           "vacancy": "Vacancy",
           "vacancy_all": "All vacancies"
         }
+      },
+      "marketing": {
+        "title": "Marketing efficiency",
+        "subtitle": "Campaign KPIs from the Acquisition ledger. Meta reach/impressions are snapshot until live access. Leads here ≠ Recruitment candidates.",
+        "empty": "No campaigns in the selected slice.",
+        "empty_campaigns": "No campaigns available for this company.",
+        "filters": {
+          "currency": "Display currency",
+          "presets": "Presets",
+          "campaigns": "Campaigns",
+          "select_all": "Select all",
+          "clear": "Clear",
+          "selected": "Selected {count} / {total}"
+        },
+        "fx": {
+          "loading": "Loading NBP rates…",
+          "as_of": "NBP mid · {date} ({provider})",
+          "unavailable": "FX rates unavailable — showing source currency",
+          "error": "Could not load NBP rates. Amounts stay in USD until rates are available."
+        },
+        "presets": {
+          "drivers_poltrakt": "Poltrakt drivers",
+          "warehouse": "Warehouse",
+          "dispatcher": "Dispatcher",
+          "ru": "RU leads",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Spend",
+          "leads": "Leads",
+          "cpl": "Cost per lead",
+          "impressions": "Impressions",
+          "reach": "Reach"
+        },
+        "charts": {
+          "trend_title": "Trend",
+          "trend_subtitle": "Daily spend and leads for the selected campaigns and period.",
+          "spend_title": "Spend by campaign",
+          "spend_subtitle": "Ad spend in the selected group.",
+          "leads_title": "Leads by campaign",
+          "leads_subtitle": "Attributed leads (Acquisition results).",
+          "cpl_title": "Cost per lead",
+          "cpl_subtitle": "Lower is better — best CPL highlighted.",
+          "mix_title": "Lead mix",
+          "mix_subtitle": "Share of leads across selected campaigns."
+        },
+        "table": {
+          "title": "Campaign detail",
+          "subtitle": "Campaigns; reach/impressions from Meta snapshot only (not live).",
+          "campaign": "Campaign",
+          "best_cpl": "Best CPL"
+        },
+        "snapshot_badge": "Meta data — snapshot (not live Ads API)",
+        "snapshot_hint": "Impressions and reach come from an imported snapshot / spend notes. No live Graph API yet — do not treat this as an online Meta Ads report.",
+        "snapshot_chip": "snapshot",
+        "source_ledger": "Acquisition spend ledger",
+        "source_attribution": "Result attributions (≠ candidates)",
+        "source_derived": "spend ÷ leads"
       },
       "hr": {
         "title": "HR efficiency",
@@ -6539,7 +6627,11 @@
         "employment_pending": "Employment in progress",
         "ready_for_hr": "Ready for HR handoff",
         "processing_by_hr": "In HR processing",
-        "hired": "Accepted by HR"
+        "hired": "Accepted by HR",
+        "open": "Open",
+        "paused": "Paused",
+        "closed": "Closed",
+        "recruitment_completed": "Recruitment completed"
       },
       "row_status": {
         "rejected": "Rejected (status)",
@@ -7017,6 +7109,13 @@
             "failed": "Could not save intake decision",
             "reject_pick_reason": "Select a reject reason."
           }
+        },
+        "timeline_kinds": {
+          "lead_received": "Inquiry received",
+          "call_result": "Call result",
+          "stage_changed": "Stage changed",
+          "questionnaire_email": "Questionnaire sent",
+          "questionnaire_submitted": "Questionnaire received"
         }
       },
       "states": {
@@ -7539,6 +7638,79 @@
         "col_inbox": "Inbox (new)",
         "hint": "Same filters as the table; each column loads up to the limit below.",
         "view_all": "All in list"
+      },
+      "client_detail": {
+        "fallback_summary": "Transport company questionnaire",
+        "status_rejected": "Rejected",
+        "status_client_created": "Client created",
+        "status_new_form": "New questionnaire",
+        "rejected_banner": "Lead rejected and excluded from candidate processing.",
+        "open_client": "Open client",
+        "creating": "Creating…",
+        "create_client": "Create client",
+        "mark_contacted": "Contact established",
+        "qualify": "Qualify",
+        "reject": "Reject",
+        "more_section": "History and system data",
+        "sections": {
+          "company": "Company",
+          "contact": "Contact person",
+          "need": "Need",
+          "meta_answers": "Answers from Meta form",
+          "terms": "Work terms",
+          "source": "Source and submission",
+          "consent": "Consents / RODO"
+        },
+        "fields": {
+          "name": "Name",
+          "legal_name": "Legal name",
+          "tax_id": "NIP / VAT",
+          "country": "Country",
+          "city": "City",
+          "website": "Website",
+          "fleet_size": "Fleet size",
+          "transport_type": "Transport type",
+          "full_name": "Full name",
+          "role": "Role",
+          "email": "Email",
+          "phone": "Phone",
+          "whatsapp": "WhatsApp",
+          "what_needed": "What is needed",
+          "summary": "Summary",
+          "people_count": "Headcount",
+          "cooperation_type": "Cooperation type",
+          "when_needed": "When needed",
+          "requirements": "Requirements",
+          "runs_paid_ads": "Paid campaigns",
+          "rate": "Rate",
+          "rate_amount": "Amount",
+          "rate_currency": "Currency",
+          "rate_period": "Period",
+          "rate_tax_mode": "Net / gross / B2B",
+          "bonus": "Bonuses",
+          "schedule": "Schedule",
+          "work_systems": "Work system",
+          "route_directions": "Route directions",
+          "night_driving": "Night driving",
+          "body_types": "Trailer / transport type",
+          "work_conditions": "Additional conditions",
+          "base": "Base",
+          "truck_brands": "Trucks",
+          "body_type": "Body type",
+          "additional": "Additional",
+          "source_profile": "Source profile",
+          "landing_page": "Landing page",
+          "language": "Language",
+          "created_at": "Created",
+          "converted_client": "Converted client",
+          "rodo_consent": "RODO consent",
+          "privacy_policy": "Privacy policy",
+          "regulamin": "Terms",
+          "consent_timestamp": "Consent timestamp",
+          "marketing_contact": "Marketing contact",
+          "terms_version": "Terms version",
+          "privacy_version": "Privacy version"
+        }
       }
     },
     "common": {
@@ -8988,6 +9160,194 @@
         "meta": {
           "title": "Meta ads",
           "body": "Facebook/Instagram lead forms and ads connected so applications land in your inbox automatically."
+        }
+      }
+    },
+    "application_workspace": {
+      "next_action": "Next action",
+      "start_work": "Start work",
+      "sort_newest": "Newest first",
+      "empty_tab": "No records in this tab",
+      "load_more": "Load more ({loaded} of {total})",
+      "open_card": "Open card",
+      "columns": {
+        "contact": "Contact",
+        "details": "Details",
+        "source": "Source",
+        "extra": "Extra",
+        "status": "Status",
+        "time": "Time"
+      },
+      "tabs": {
+        "all": "All",
+        "new": "New",
+        "in_progress": "In progress",
+        "waiting": "Waiting",
+        "completed": "Completed"
+      },
+      "status": {
+        "new": "New",
+        "in_progress": "In progress",
+        "waiting": "Awaiting reply",
+        "questionnaire_submitted": "Reply received",
+        "completed": "Completed",
+        "rejected": "Rejected"
+      },
+      "time": {
+        "just_now": "just now",
+        "minutes_ago": "{count} min ago",
+        "hours_ago": "{count} h ago"
+      },
+      "recruitment": {
+        "title": "Applications",
+        "hero_call_title": "Call {count} new applications",
+        "hero_call_hint": "We'll open applications one by one: call → decide → create candidate.",
+        "hero_empty": "No new applications to call",
+        "list_kind": "Candidate application"
+      },
+      "sales": {
+        "title": "Inquiries",
+        "hero_call_title": "Call {count} new inquiries",
+        "hero_call_hint": "We'll open inquiries one by one: call → clarify need → create client → choose service.",
+        "hero_empty": "No new inquiries to call",
+        "list_kind": "B2B inquiry"
+      }
+    },
+    "recruitment_inquiry": {
+      "call": "Call",
+      "follow_up": "Follow-up",
+      "candidate_fallback": "Candidate",
+      "new_application": "New application",
+      "open_full_profile": "Open full profile",
+      "outcome_title": "Candidate created",
+      "outcome_body": "Application processed. Continue in the candidate profile.",
+      "closed_title": "Application closed",
+      "rejected_body": "Application rejected.",
+      "rejected_body_terminal": "Application rejected. No further actions.",
+      "completed_body": "Processing completed.",
+      "contact_title": "Contact the candidate",
+      "contact_why": "First contact has not been made yet.",
+      "called": "Called",
+      "reject": "Reject",
+      "after_call_hint": "After the call, link a vacancy and create a candidate.",
+      "process_title": "Process application",
+      "process_body": "Link a vacancy and create a candidate — or reject the application.",
+      "create_candidate": "Create candidate",
+      "candidate_created": "Candidate created",
+      "select_vacancy": "Select vacancy",
+      "link_vacancy": "Link to vacancy",
+      "vacancy_linked": "Vacancy linked",
+      "assignee_placeholder": "User ID",
+      "assign": "Assign",
+      "assignee_set": "Assignee set",
+      "reject_title": "Reject application",
+      "comment_placeholder": "Comment",
+      "cancel": "Cancel",
+      "rejected_toast": "Application rejected",
+      "follow_up_title": "Follow-up",
+      "follow_up_default": "Call candidate back",
+      "reminder_created": "Reminder created",
+      "save": "Save",
+      "action_failed": "Action failed",
+      "errors": {
+        "INTAKE_INFO_REQUESTED": "Candidate data was requested earlier. Retry “Create candidate” after the update.",
+        "VACANCY_NOT_CONFIRMED": "Link a vacancy in the Vacancy block first.",
+        "INTAKE_ROUTING_INCOMPLETE": "Routing is incomplete: link a vacancy.",
+        "INTAKE_POOL_PATH_REQUIRED": "Link a vacancy in the Vacancy block, then press “Create candidate” again.",
+        "NO_INTAKE_CONTEXT": "Could not create a candidate: the application lacks full intake context. Link a current vacancy and retry, or open the lead card for routing.",
+        "LEAD_RODO_REQUIRED": "RODO confirmation is required before this action.",
+        "LEAD_INTAKE_ALREADY_REJECTED": "Application is already closed.",
+        "INTAKE_REJECT_REASON_REQUIRED": "Provide a rejection reason.",
+        "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "This action is unavailable for this source."
+      },
+      "reject_reasons": {
+        "insufficient_experience": "Not a fit",
+        "no_response": "No response",
+        "duplicate_spam": "Duplicate",
+        "invalid_contact": "Spam",
+        "other": "Other"
+      }
+    },
+    "sales_inquiry": {
+      "call": "Call",
+      "called": "Called",
+      "interested": "Interested",
+      "creating": "Creating…",
+      "create_client": "Create client",
+      "open_client_card": "Open full profile",
+      "no_phone": "No phone number",
+      "contact_fallback": "Contact",
+      "contact_title": "Contact",
+      "work_title": "Work on inquiry",
+      "b2b_subtitle": "B2B inquiry",
+      "closed": "Inquiry closed",
+      "completed": "Inquiry completed",
+      "interested_later": "Interested, but later",
+      "close": "Close inquiry",
+      "after_call_hint": "After the call, mark “Called”.",
+      "workflow": {
+        "contact": "Contact",
+        "need": "Need",
+        "client": "Client",
+        "service": "Service",
+        "order": "Order"
+      },
+      "step": {
+        "service_title": "Add a service",
+        "service_body": "Client created. Open the card and add the first service.",
+        "client_title": "Create client",
+        "client_body": "The company is interested. Save it as a client.",
+        "need_title": "Clarify the need",
+        "need_body": "Confirm which service the company wants to buy.",
+        "contact_title": "Contact the client",
+        "contact_body": "First contact has not been made yet."
+      },
+      "duplicates": {
+        "title": "Possible duplicates",
+        "hint": "Other inquiries with the same phone or email. Usually one company means one client.",
+        "match_phone_email": "same phone and email",
+        "match_phone": "same phone",
+        "match_email": "same email"
+      },
+      "meta_form_answers": "Answers from Meta form",
+      "additional_answer": "extra",
+      "questionnaire_load_failed": "Failed to load questionnaire",
+      "questionnaire_invite_failed": "Failed to fetch questionnaire link"
+    },
+    "context_rail": {
+      "close": "Close",
+      "open_full_card": "Open full profile",
+      "outcome": "Outcome",
+      "why": "Why",
+      "next_action": "Next action",
+      "blocks": {
+        "contacts": "Contact",
+        "documents": "Documents",
+        "history": "History",
+        "handoff": "Handoff",
+        "relations": "Relations",
+        "summary": "Context",
+        "workflow": "Stages",
+        "vacancy": "Vacancy",
+        "assignee": "Assignee",
+        "outcome": "Result"
+      }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Plan limit reached",
+        "body": "This action requires the {required} plan. Your current plan is {current}.",
+        "required_plan_fallback": "a higher",
+        "current_plan_fallback": "your current",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        },
+        "actions": {
+          "upgrade": "Upgrade plan",
+          "talk_to_sales": "Talk to sales"
         }
       }
     }
@@ -11138,6 +11498,37 @@
       },
       "template": {
         "select": "Select"
+      },
+      "merge": {
+        "header_kicker": "Documents",
+        "title": "Document merge templates",
+        "description": "Manage text merge templates used to generate candidate documents from variables and bindings.",
+        "include_inactive": "Show inactive templates",
+        "empty": "No merge templates yet.",
+        "form_new_title": "New template",
+        "form_edit_title": "Edit template",
+        "field_code": "Code",
+        "field_name": "Name",
+        "field_mime": "Output MIME type",
+        "field_oc": "Own company ID (optional)",
+        "field_filename": "Output filename pattern",
+        "field_bindings": "Variable bindings (JSON)",
+        "field_body": "Body",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "confirm_delete": "Delete this merge template?",
+        "error_load": "Failed to load merge templates",
+        "error_save": "Failed to save merge template",
+        "error_delete": "Failed to delete merge template",
+        "bindings_invalid": "Variable bindings must be a JSON object",
+        "table": {
+          "code": "Code",
+          "name": "Name",
+          "oc": "Own company",
+          "mime": "MIME",
+          "status": "Status",
+          "actions": "Actions"
+        }
       }
     },
     "integrations_hub": {
@@ -11841,6 +12232,10 @@
         "profile": {
           "description": "Personal profile, language, security and local preferences.",
           "label": "My profile"
+        },
+        "merge_templates": {
+          "label": "Merge templates",
+          "description": "Text merge templates for generated candidate documents."
         }
       },
       "audit": {

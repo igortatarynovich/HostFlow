@@ -79,6 +79,22 @@ def _as_extra_non_overridable(raw: Any, *, max_items: int = 40) -> FrozenSet[str
     return frozenset(out)
 
 
+def _as_bool(raw: Any, default: bool) -> bool:
+    if raw is None:
+        return default
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, (int, float)) and raw in (0, 1):
+        return bool(raw)
+    if isinstance(raw, str):
+        s = raw.strip().lower()
+        if s in ("true", "1", "yes", "on"):
+            return True
+        if s in ("false", "0", "no", "off"):
+            return False
+    return default
+
+
 @dataclass(frozen=True)
 class HiringPipelineGates:
     """Resolved gates for one tenant (merged defaults + settings)."""
@@ -89,6 +105,8 @@ class HiringPipelineGates:
     contact_attempt_gate_stages: FrozenSet[str]
     stages_doc_block_soft_only: FrozenSet[str]
     non_overridable_doc_types_extra: FrozenSet[str]
+    # When False: skip hard 409 for requirement/doc forward blocks and ready_for_handoff transfer policy.
+    enforce_requirement_stage_blocks: bool = True
 
     def effective_non_overridable_doc_types(self) -> FrozenSet[str]:
         return NON_OVERRIDABLE_DOC_TYPES | self.non_overridable_doc_types_extra
@@ -102,6 +120,7 @@ def default_hiring_pipeline_gates() -> HiringPipelineGates:
         contact_attempt_gate_stages=_DEFAULT_CONTACT_ATTEMPT_STAGES,
         stages_doc_block_soft_only=frozenset(),
         non_overridable_doc_types_extra=frozenset(),
+        enforce_requirement_stage_blocks=True,
     )
 
 
@@ -136,6 +155,10 @@ def merge_hiring_pipeline_gates(raw: Optional[Dict[str, Any]]) -> HiringPipeline
             frozenset(),
         ),
         non_overridable_doc_types_extra=_as_extra_non_overridable(raw.get("non_overridable_doc_types_extra")),
+        enforce_requirement_stage_blocks=_as_bool(
+            raw.get("enforce_requirement_stage_blocks"),
+            base.enforce_requirement_stage_blocks,
+        ),
     )
 
 
@@ -190,6 +213,9 @@ def docs_pipeline_blocks_forward_resolved(
     soft_warn_only: true when stage is in soft-only set and docs would otherwise hard-block
     (caller may still allow move — server skips 409 for soft).
     """
+    if not gates.enforce_requirement_stage_blocks:
+        return False, False
+
     code = (canonical_stage or "").strip().lower()
     if not code:
         return False, False
@@ -227,6 +253,7 @@ def serialize_gates_public(gates: HiringPipelineGates) -> Dict[str, Any]:
     eff = sorted(gates.effective_non_overridable_doc_types())
     return {
         "version": 1,
+        "enforce_requirement_stage_blocks": bool(gates.enforce_requirement_stage_blocks),
         "stages_without_doc_pipeline_block": sorted(gates.stages_without_doc_pipeline_block),
         "stages_verify_uploads_block_forward": sorted(gates.stages_verify_uploads_block_forward),
         "stages_require_vacancy_for_forward": sorted(gates.stages_require_vacancy_for_forward),

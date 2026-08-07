@@ -28,6 +28,7 @@ from backend.app.models.document import Document
 from backend.app.models.lead import Lead
 from backend.app.models.reminder import Reminder
 from backend.app.models.risk_intel import RiskIntelEntityShadow
+from backend.app.models.rodo_notification import RodoNotification
 from backend.app.models.additional_service import ServiceOrder
 from backend.app.models.tenant import Tenant
 from backend.app.models.user import User
@@ -39,6 +40,7 @@ from backend.app.models.invoice import Invoice
 from backend.app.models.tenant import TenantLink
 from backend.app.services.handoff import is_client_tenant_for_list
 from backend.app.models.enums import CandidateStage
+from backend.app.services.rodo import rodo_lead_audit_satisfied_from_candidate
 from backend.app.constants.stages import (
     LABELS as STAGE_LABELS,
     PIPELINE_COMPLETED_STAGE_CODES,
@@ -1003,6 +1005,53 @@ def _apply_period_filters(
         stmt = stmt.where(col >= date_from)
     if date_to:
         stmt = stmt.where(col <= date_to)
+    return stmt
+
+
+_TEST_DEMO_NAME_PATTERNS = ("test", "тест", "demo", "демо")
+
+
+def _exclude_test_demo_company_vacancy(stmt):
+    """Exclude candidates whose company/vacancy name looks like test/demo.
+
+    Shared by candidate-slices, contact-attempt-stats, and document-stats so
+    cohort totals stay aligned. Uses coalesce so NULL names are not treated as
+    matching (SQL NOT (NULL OR …) would otherwise drop those rows).
+    Caller must outerjoin Company and Vacancy when needed.
+    """
+    from sqlalchemy import not_ as sql_not
+
+    test_filters = []
+    for pattern in _TEST_DEMO_NAME_PATTERNS:
+        test_filters.append(func.lower(func.coalesce(Company.name, "")).like(f"%{pattern}%"))
+        test_filters.append(func.lower(func.coalesce(Vacancy.title, "")).like(f"%{pattern}%"))
+    return stmt.where(sql_not(or_(*test_filters)))
+
+
+def _candidate_cohort_id_select(
+    *,
+    scope_clause,
+    dfrom: Optional[datetime],
+    dto: Optional[datetime],
+    company_filter: str = "",
+    vacancy_filter: str = "",
+):
+    """Candidate.id subquery: same cohort rules as recruitment efficiency panels."""
+    stmt = (
+        select(Candidate.id)
+        .outerjoin(Company, Candidate.company_id == Company.id)
+        .outerjoin(Vacancy, Candidate.vacancy_id == Vacancy.id)
+        .where(and_(Candidate.deleted_at.is_(None), scope_clause))
+    )
+    stmt = _exclude_test_demo_company_vacancy(stmt)
+    if dfrom:
+        stmt = stmt.where(Candidate.created_at >= dfrom)
+    if dto:
+        stmt = stmt.where(Candidate.created_at <= dto)
+    if company_filter:
+        stmt = stmt.where(Candidate.company_id == company_filter)
+    if vacancy_filter:
+        stmt = stmt.where(Candidate.vacancy_id == vacancy_filter)
     return stmt
 
 
@@ -1980,7 +2029,11 @@ async def contact_attempt_stats(
         description="Optional vacancy filter (Candidate.vacancy_id).",
     ),
 ):
-    """Aggregate contact attempt stats for candidates in tenant (filter by candidate created_at)."""
+    """Aggregate contact attempt stats for candidates in tenant (filter by candidate created_at).
+
+    Cohort matches candidate-slices (incl. test/demo exclusion). Attempts are lifetime
+    rows for that cohort — not filtered by attempt date.
+    """
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
@@ -1991,15 +2044,13 @@ async def contact_attempt_stats(
     company_filter = str(company_id).strip() if company_id else ""
     vacancy_filter = str(vacancy_id).strip() if vacancy_id else ""
 
-    cand_base = select(Candidate.id).where(and_(Candidate.deleted_at.is_(None), scope_clause))
-    if dfrom:
-        cand_base = cand_base.where(Candidate.created_at >= dfrom)
-    if dto:
-        cand_base = cand_base.where(Candidate.created_at <= dto)
-    if company_filter:
-        cand_base = cand_base.where(Candidate.company_id == company_filter)
-    if vacancy_filter:
-        cand_base = cand_base.where(Candidate.vacancy_id == vacancy_filter)
+    cand_base = _candidate_cohort_id_select(
+        scope_clause=scope_clause,
+        dfrom=dfrom,
+        dto=dto,
+        company_filter=company_filter,
+        vacancy_filter=vacancy_filter,
+    )
 
     cohort_total = int(
         (await db.execute(select(func.count()).select_from(cand_base.subquery()))).scalar() or 0
@@ -2025,16 +2076,73 @@ async def contact_attempt_stats(
             reached_candidates.add(cand_id_str)
 
     candidates_with_attempts = len(cand_attempt_counts)
+    candidates_without_logged_attempts = max(0, cohort_total - candidates_with_attempts)
     avg_per_candidate = (
         total_attempts / candidates_with_attempts if candidates_with_attempts else 0
     )
     limit_reached_count = sum(1 for c in cand_attempt_counts.values() if c >= 3)
+
+    # RODO coverage (same semantics as contact-attempt gate): notification row OR lead audit.
+    cohort_cand_rows = (
+        await db.execute(
+            select(Candidate.id, Candidate.stage).where(
+                Candidate.id.in_(cand_base.scalar_subquery())
+            )
+        )
+    ).all()
+    cohort_ids = [str(cid) for cid, _ in cohort_cand_rows]
+    stage_by_id = {str(cid): str(stage or "").strip().lower() for cid, stage in cohort_cand_rows}
+
+    rodo_sent_ids: set[str] = set()
+    if cohort_ids:
+        rodo_sent_ids = {
+            str(cid)
+            for (cid,) in (
+                await db.execute(
+                    select(RodoNotification.candidate_id)
+                    .where(RodoNotification.candidate_id.in_(cohort_ids))
+                    .where(RodoNotification.status == "sent")
+                    .distinct()
+                )
+            ).all()
+        }
+
+    rodo_satisfied_ids: set[str] = set(rodo_sent_ids)
+    missing_notif_ids = [cid for cid in cohort_ids if cid not in rodo_sent_ids]
+    if missing_notif_ids:
+        audit_cands = (
+            await db.execute(select(Candidate).where(Candidate.id.in_(missing_notif_ids)))
+        ).scalars().all()
+        for cand in audit_cands:
+            if rodo_lead_audit_satisfied_from_candidate(cand):
+                rodo_satisfied_ids.add(str(cand.id))
+
+    candidates_rodo_satisfied = len(rodo_satisfied_ids)
+    candidates_rodo_missing = max(0, cohort_total - candidates_rodo_satisfied)
+
+    # new + no attempts: split by RODO — blocked vs ready-to-call backlog.
+    candidates_awaiting_first_contact = 0
+    candidates_contact_blocked_no_rodo = 0
+    for cid in cohort_ids:
+        if stage_by_id.get(cid) != "new":
+            continue
+        if cid in cand_attempt_counts:
+            continue
+        if cid in rodo_satisfied_ids:
+            candidates_awaiting_first_contact += 1
+        else:
+            candidates_contact_blocked_no_rodo += 1
 
     return {
         "cohort_total": cohort_total,
         "total_attempts": total_attempts,
         "candidates_with_attempts": candidates_with_attempts,
         "candidates_reached": len(reached_candidates),
+        "candidates_without_logged_attempts": candidates_without_logged_attempts,
+        "candidates_awaiting_first_contact": candidates_awaiting_first_contact,
+        "candidates_rodo_satisfied": candidates_rodo_satisfied,
+        "candidates_rodo_missing": candidates_rodo_missing,
+        "candidates_contact_blocked_no_rodo": candidates_contact_blocked_no_rodo,
         "avg_per_candidate": round(avg_per_candidate, 2),
         "limit_reached_count": limit_reached_count,
         "by_result": by_result,
@@ -2062,7 +2170,10 @@ async def document_stats(
         description="Optional vacancy filter (Candidate.vacancy_id).",
     ),
 ):
-    """Aggregate document stats for candidates in tenant (filter by candidate created_at)."""
+    """Aggregate document stats for candidates in tenant (filter by candidate created_at).
+
+    Cohort matches candidate-slices (incl. test/demo exclusion).
+    """
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
@@ -2073,18 +2184,13 @@ async def document_stats(
     company_filter = str(company_id).strip() if company_id else ""
     vacancy_filter = str(vacancy_id).strip() if vacancy_id else ""
 
-    cand_subq = (
-        select(Candidate.id)
-        .where(and_(Candidate.deleted_at.is_(None), scope_clause))
+    cand_subq = _candidate_cohort_id_select(
+        scope_clause=scope_clause,
+        dfrom=dfrom,
+        dto=dto,
+        company_filter=company_filter,
+        vacancy_filter=vacancy_filter,
     )
-    if dfrom:
-        cand_subq = cand_subq.where(Candidate.created_at >= dfrom)
-    if dto:
-        cand_subq = cand_subq.where(Candidate.created_at <= dto)
-    if company_filter:
-        cand_subq = cand_subq.where(Candidate.company_id == company_filter)
-    if vacancy_filter:
-        cand_subq = cand_subq.where(Candidate.vacancy_id == vacancy_filter)
 
     docs_stmt = (
         select(Document.status, Document.kind, Document.candidate_id)
@@ -2395,17 +2501,9 @@ async def candidate_slices(
         .where(and_(Candidate.deleted_at.is_(None), scope_clause))
     )
     
-    # Фильтрация тестовых данных: исключаем компании и вакансии с "test", "тест", "demo" в названии
-    test_patterns = ["test", "тест", "demo", "демо"]
-    test_filters = []
-    for pattern in test_patterns:
-        test_filters.append(func.lower(Company.name).like(f"%{pattern}%"))
-        test_filters.append(func.lower(Vacancy.title).like(f"%{pattern}%"))
-    if test_filters:
-        from sqlalchemy import not_ as sql_not
-        test_condition = sql_not(or_(*test_filters))
-        stmt = stmt.where(test_condition)
-    
+    # Same test/demo exclusion as contact-attempt-stats / document-stats.
+    stmt = _exclude_test_demo_company_vacancy(stmt)
+
     stmt = _apply_period_filters(stmt, dfrom, dto, by)
 
     if stage_filters:

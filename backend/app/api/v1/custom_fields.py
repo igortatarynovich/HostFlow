@@ -125,7 +125,18 @@ async def list_custom_field_definitions(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    # Recruiters need read access: candidate card custom-fields section loads definitions on open.
+    _: None = Depends(
+        require_roles(
+            Role.admin,
+            Role.supervisor,
+            Role.recruiter,
+            Role.compliance_officer,
+            Role.client_manager,
+            Role.client_processor,
+            Role.viewer,
+        )
+    ),
 ) -> List[CustomFieldDefinitionOut]:
     """List custom field definitions for the tenant."""
     db, tenant_id = db_tenant

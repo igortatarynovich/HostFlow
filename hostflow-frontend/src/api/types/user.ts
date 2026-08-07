@@ -258,6 +258,7 @@ export interface TeamOverviewResponse {
 /** `GET/PATCH /settings/team/hiring-pipeline-gates` — tenant hiring pipeline gates (FINAL plan §3 / §12 / §13). */
 export interface HiringPipelineGatesPublic {
   version: number;
+  enforce_requirement_stage_blocks?: boolean;
   stages_without_doc_pipeline_block: string[];
   stages_verify_uploads_block_forward: string[];
   stages_require_vacancy_for_forward: string[];
@@ -268,6 +269,7 @@ export interface HiringPipelineGatesPublic {
 }
 
 export type HiringPipelineGatesPatch = Partial<{
+  enforce_requirement_stage_blocks: boolean | null;
   stages_without_doc_pipeline_block: string[] | null;
   stages_verify_uploads_block_forward: string[] | null;
   stages_require_vacancy_for_forward: string[] | null;

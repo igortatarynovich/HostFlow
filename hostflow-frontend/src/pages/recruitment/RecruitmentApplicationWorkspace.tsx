@@ -9,13 +9,6 @@ import { ApplicationWorkspace } from '../../platform/application-workspace/Appli
 import { ApplicationRecruitmentDetailPanel } from '../../platform/application-workspace/ApplicationRecruitmentDetailPanel'
 import type { ApplicationWorkspaceConfig } from '../../platform/application-workspace/types'
 
-const RECRUITMENT_TABS = [
-  { id: 'all' as const, label: 'Все' },
-  { id: 'new' as const, label: 'Новые' },
-  { id: 'in_progress' as const, label: 'В работе' },
-  { id: 'completed' as const, label: 'Завершённые' },
-]
-
 export function RecruitmentApplicationWorkspace() {
   const { t } = useI18n()
   const { notify } = useToast()
@@ -28,7 +21,10 @@ export function RecruitmentApplicationWorkspace() {
       try {
         await updateRecruitmentApplicationStage(applicationId, { stage })
         setRefreshKey((k) => k + 1)
-        notify({ title: t('app.leads.inbox.stage_updated', { defaultValue: 'Статус обновлён' }), variant: 'success' })
+        notify({
+          title: t('app.leads.inbox.stage_updated', { defaultValue: 'Status updated' }),
+          variant: 'success',
+        })
       } catch (err: unknown) {
         const info = getFriendlyErrorInfo(err, t('app.leads.detail.stage_update_failed'), t)
         notify({ title: info.title, description: [info.detail, info.hint].filter(Boolean).join(' '), variant: 'error' })
@@ -42,26 +38,49 @@ export function RecruitmentApplicationWorkspace() {
   const config: ApplicationWorkspaceConfig = useMemo(
     () => ({
       module: 'recruitment',
-      objectNamePlural: 'Отклики',
+      objectNamePlural: t('app.application_workspace.recruitment.title', { defaultValue: 'Applications' }),
       homePath: RECRUITMENT_INBOX_PATH,
       applicationPath: recruitmentApplicationPath,
       listApplications: listRecruitmentApplications,
       getApplication: getRecruitmentApplication,
       serverTabPagination: true,
-      tabs: RECRUITMENT_TABS,
+      tabs: [
+        { id: 'all' as const, label: t('app.application_workspace.tabs.all', { defaultValue: 'All' }) },
+        { id: 'new' as const, label: t('app.application_workspace.tabs.new', { defaultValue: 'New' }) },
+        {
+          id: 'in_progress' as const,
+          label: t('app.application_workspace.tabs.in_progress', { defaultValue: 'In progress' }),
+        },
+        {
+          id: 'completed' as const,
+          label: t('app.application_workspace.tabs.completed', { defaultValue: 'Completed' }),
+        },
+      ],
       workSessionSurface: 'recruitment',
       workSessionKind: 'recruitment_call',
-      heroCallTitle: (count: number) => `Позвонить ${count} новым откликам`,
-      heroCallHint: 'Откроем отклики по одному: позвонить → принять решение → создать кандидата.',
-      heroEmptyText: 'Нет новых откликов для звонка',
-      listKindLabel: 'Отклик кандидата',
+      heroCallTitle: (count: number) =>
+        t('app.application_workspace.recruitment.hero_call_title', {
+          defaultValue: 'Call {count} new applications',
+          values: { count },
+        }),
+      heroCallHint: t('app.application_workspace.recruitment.hero_call_hint', {
+        defaultValue: "We'll open applications one by one: call → decide → create candidate.",
+      }),
+      heroEmptyText: t('app.application_workspace.recruitment.hero_empty', {
+        defaultValue: 'No new applications to call',
+      }),
+      listKindLabel: t('app.application_workspace.recruitment.list_kind', {
+        defaultValue: 'Candidate application',
+      }),
       extensionBadge: (app) => (app.extensions?.vacancy_title as string | undefined) || null,
       primaryEntityPath: (app) => {
         if (app.outcome_entity_type !== 'candidate') return undefined
         const id = String(app.outcome_entity_id || '').trim()
         return id ? `${CRM_APP_PATHS.candidates}/${encodeURIComponent(id)}` : undefined
       },
-      primaryEntityLabel: t('app.candidates.detail.open_full_profile', { defaultValue: 'Открыть карточку кандидата' }),
+      primaryEntityLabel: t('app.candidates.detail.open_full_profile', {
+        defaultValue: 'Open candidate profile',
+      }),
       renderDetail: ({ application, onRefresh, onClose }) => (
         <ApplicationRecruitmentDetailPanel
           key={`${application.id}-${refreshKey}`}

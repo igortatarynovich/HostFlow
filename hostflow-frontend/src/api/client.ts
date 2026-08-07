@@ -204,46 +204,26 @@ export const DEFAULT_TENANT =
 
 export function resolveAssetUrl(path?: string | null): string | null {
   if (!path) return null;
-  if (/^https?:\/\//i.test(path) || path.startsWith("data:")) {
+  if (/^https?:\/\//i.test(path) || path.startsWith("data:") || path.startsWith("blob:")) {
     return path;
   }
   const normalized = path.startsWith("/") ? path : `/${path}`;
+  // Prefer /api/uploads so SPA origin (Vite proxy / reverse proxy) can serve same-origin
+  // under COEP require-corp without cross-origin CORP headers.
   const needsApiPrefix = normalized.startsWith("/uploads/");
   const withApiPrefix = needsApiPrefix ? `/api${normalized}` : normalized;
 
-  const canUseWindowOrigin =
-    typeof window !== "undefined" &&
-    window.location &&
-    window.location.origin &&
-    !import.meta.env?.DEV;
-
-  if (canUseWindowOrigin) {
+  if (typeof window !== "undefined" && window.location?.origin) {
     return `${window.location.origin}${withApiPrefix}`;
   }
 
   const base = resolveApiBase();
   try {
     const parsed = new URL(base);
-    return `${parsed.protocol}//${parsed.host}${normalized}`;
+    return `${parsed.protocol}//${parsed.host}${withApiPrefix}`;
   } catch {
-    try {
-      if (typeof window !== "undefined") {
-        const resolved = new URL(base, window.location.origin);
-        return `${resolved.protocol}//${resolved.host}${withApiPrefix}`;
-      }
-    } catch {
-      /* ignore */
-    }
+    return withApiPrefix;
   }
-
-  try {
-    if (typeof window !== "undefined" && window.location?.origin) {
-      return `${window.location.origin}${withApiPrefix}`;
-    }
-  } catch {
-    /* ignore */
-  }
-  return normalized;
 }
 
 // --- settings used in UI (Sidebar.tsx expects .get/.set)
@@ -552,7 +532,16 @@ function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: st
     // set JSON content type on write operations if not provided
     const method = (config.method || "get").toLowerCase();
     const isWrite = method === "post" || method === "put" || method === "patch";
-    if (isWrite) {
+    const isFormData =
+      typeof FormData !== "undefined" && config.data instanceof FormData;
+    if (isFormData) {
+      // Browser must set multipart boundary; a bare multipart/form-data header breaks uploads.
+      if (config.headers instanceof AxiosHeaders) {
+        config.headers.delete("Content-Type");
+      } else {
+        delete (config.headers as any)["Content-Type"];
+      }
+    } else if (isWrite) {
       if (config.headers instanceof AxiosHeaders) {
         if (!config.headers.has("Content-Type")) config.headers.set("Content-Type", "application/json");
       } else {

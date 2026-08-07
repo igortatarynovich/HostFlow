@@ -20,6 +20,7 @@ export type DocBlockersPayload = {
 
 /** Resolved gate sets for UI (mirrors backend `HiringPipelineGates`). */
 export type HiringPipelineGatesRuntime = {
+  enforceRequirementStageBlocks: boolean
   stagesWithoutDocPipelineBlock: Set<string>
   stagesVerifyUploadsBlockForward: Set<string>
   stagesRequireVacancyForForward: Set<string>
@@ -49,6 +50,7 @@ const _CONTACT_ATTEMPT_STAGES = ['new'] as const
 
 /** Product defaults (same as `backend/app/services/hiring_pipeline_gates.py`). */
 export const DEFAULT_HIRING_PIPELINE_GATES_RUNTIME: HiringPipelineGatesRuntime = {
+  enforceRequirementStageBlocks: true,
   stagesWithoutDocPipelineBlock: new Set(_STAGES_WITHOUT),
   stagesVerifyUploadsBlockForward: new Set(_STAGES_VERIFY),
   stagesRequireVacancyForForward: new Set(_VACANCY_STAGES),
@@ -72,6 +74,7 @@ export function hiringPipelineGatesFromApi(
 ): HiringPipelineGatesRuntime {
   if (!g) return DEFAULT_HIRING_PIPELINE_GATES_RUNTIME
   return {
+    enforceRequirementStageBlocks: g.enforce_requirement_stage_blocks !== false,
     stagesWithoutDocPipelineBlock: _lowerSet(g.stages_without_doc_pipeline_block),
     stagesVerifyUploadsBlockForward: _lowerSet(g.stages_verify_uploads_block_forward),
     stagesRequireVacancyForForward: _lowerSet(g.stages_require_vacancy_for_forward),
@@ -132,6 +135,9 @@ export function docsPipelineBlocksForwardResolved(
 ): { hard: boolean; softWarnOnly: boolean } {
   if (loading) return { hard: false, softWarnOnly: false }
   const g = gates ?? DEFAULT_HIRING_PIPELINE_GATES_RUNTIME
+  if (!g.enforceRequirementStageBlocks) {
+    return { hard: false, softWarnOnly: false }
+  }
   const raw = String(stageCode || '').trim()
   if (!raw) return { hard: false, softWarnOnly: false }
   const code = canonicalStageKey(raw, null) || raw.toLowerCase()

@@ -188,3 +188,87 @@ async def test_recruiter_can_view_pipeline(client: AsyncClient) -> None:
     assert pipeline_resp.status_code == 200, pipeline_resp.text
     body = pipeline_resp.json()
     assert body["vacancy_id"] == vacancy_id
+
+
+@pytest.mark.anyio
+async def test_recruiter_can_get_vacancy_when_assigned_outside_uca(client: AsyncClient) -> None:
+    """Candidate card opens call GET /vacancies/{id}; assignment must beat company ACL."""
+    data = await _init_data()
+    admin_headers = _admin_headers(data)
+    recruiter_headers = _recruiter_headers(data)
+
+    async with async_session_maker() as session:
+        foreign_company = str(uuid.uuid4())
+        await session.execute(
+            sa.text(
+                "INSERT INTO companies (id, tenant_id, name) VALUES (:id, :tenant_id, :name)"
+            ),
+            {"id": foreign_company, "tenant_id": data["tenant_id"], "name": "Foreign UCA Gap Co"},
+        )
+        await session.commit()
+
+    vac_resp = await client.post(
+        "/api/v1/vacancies",
+        headers=admin_headers,
+        json={"title": "Outside UCA Driver", "company_id": foreign_company, "status": "open"},
+    )
+    assert vac_resp.status_code == 200, vac_resp.text
+    vacancy_id = vac_resp.json()["id"]
+
+    # Without assignment: recruiter must not see foreign-company vacancy.
+    denied = await client.get(f"/api/v1/vacancies/{vacancy_id}", headers=recruiter_headers)
+    assert denied.status_code == 403, denied.text
+
+    create_resp = await client.post(
+        "/api/v1/candidates",
+        headers=admin_headers,
+        json={
+            "first_name": "Outside",
+            "last_name": "Assigned",
+            "company_id": foreign_company,
+            "vacancy_id": vacancy_id,
+            "manager_id": data["recruiter_id"],
+        },
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    candidate_id = create_resp.json()["id"]
+
+    # Ensure recruiter_id / manager path is set (admin create may use manager_id only).
+    async with async_session_maker() as session:
+        await session.execute(
+            sa.text(
+                """
+                UPDATE candidates
+                SET manager = :rid, recruiter_id = :rid, vacancy_id = :vid, company_id = :cid
+                WHERE id = :id
+                """
+            ),
+            {
+                "rid": data["recruiter_id"],
+                "vid": vacancy_id,
+                "cid": foreign_company,
+                "id": candidate_id,
+            },
+        )
+        await session.commit()
+
+    cand_ok = await client.get(f"/api/v1/candidates/{candidate_id}", headers=recruiter_headers)
+    assert cand_ok.status_code == 200, cand_ok.text
+
+    vac_ok = await client.get(f"/api/v1/vacancies/{vacancy_id}", headers=recruiter_headers)
+    assert vac_ok.status_code == 200, vac_ok.text
+    assert vac_ok.json()["id"] == vacancy_id
+
+
+@pytest.mark.anyio
+async def test_recruiter_can_list_custom_field_definitions(client: AsyncClient) -> None:
+    data = await _init_data()
+    headers = _recruiter_headers(data)
+    resp = await client.get(
+        "/api/v1/custom-fields/definitions",
+        headers=headers,
+        params={"scope": "candidate", "is_active": True},
+    )
+    assert resp.status_code == 200, resp.text
+    assert isinstance(resp.json(), list)
+
