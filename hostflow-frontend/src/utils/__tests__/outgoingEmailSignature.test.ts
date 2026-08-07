@@ -48,4 +48,24 @@ describe('outgoingEmailSignature', () => {
   it('returns empty when nothing to show', () => {
     expect(formatOutgoingSignaturePlain({ signature: null, locale: 'pl' })).toBe('')
   })
+
+  it('omits logo URL from plain-text signature', () => {
+    const logo = 'https://recruitment.hostflow.cc/api/uploads/avatars/example.jpg'
+    const text = formatOutgoingSignaturePlain({
+      signature: {
+        first_name: 'Igor',
+        last_name: 'Tatarynovich',
+        company: 'HostFlow',
+        logo_url: logo,
+        show_phone: false,
+        show_email: false,
+        show_website: false,
+      },
+      locale: 'ru',
+    })
+    expect(text).toContain('С уважением,')
+    expect(text).toContain('Igor Tatarynovich')
+    expect(text).not.toContain(logo)
+    expect(text).not.toContain('https://')
+  })
 })

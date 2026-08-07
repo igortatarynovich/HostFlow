@@ -48,7 +48,6 @@ export function formatOutgoingSignaturePlain(input: FormatOutgoingSignatureInput
   const email = String(sig.email || '').trim() || String(input.fallbackEmail || '').trim()
   const websiteRaw = String(sig.website || '').trim()
   const website = websiteRaw ? normalizeWebsiteDisplay(websiteRaw) : ''
-  const logo = String(sig.logo_url || '').trim()
 
   const lines: string[] = [closing, '']
   if (name) lines.push(name)
@@ -65,13 +64,10 @@ export function formatOutgoingSignaturePlain(input: FormatOutgoingSignatureInput
     lines.push('')
     lines.push(...contacts)
   }
-  if (logo) {
-    lines.push('')
-    lines.push(logo)
-  }
+  // Logo is HTML-only (<img>); never dump the URL into plain text / preview.
 
   const body = lines.join('\n').trim()
   // Closing alone is not a useful signature.
-  if (!name && !position && !company && !contacts.length && !logo) return ''
+  if (!name && !position && !company && !contacts.length) return ''
   return body
 }

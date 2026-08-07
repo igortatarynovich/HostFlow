@@ -47,7 +47,7 @@ def test_closing_for_locale() -> None:
     assert closing_for_locale(None) == "Z poważaniem,"
 
 
-def test_plain_text_signature_puts_logo_last() -> None:
+def test_plain_text_signature_omits_logo_url() -> None:
     sig = OutgoingSignature(
         closing="Z poważaniem,",
         full_name="Igor Tatarynovich",
@@ -67,7 +67,9 @@ def test_plain_text_signature_puts_logo_last() -> None:
     assert "☎ +48 504 004 622" in text
     assert "✉ info@hostflow.cc" in text
     assert "↗ hostflow.cc" in text
-    assert text.endswith("https://hostflow.cc/logo_hf.svg")
+    assert "logo_hf.svg" not in text
+    assert "https://" not in text
+    assert text.endswith("↗ hostflow.cc")
 
 
 def test_html_signature_uses_brand_color_and_constrained_logo() -> None:

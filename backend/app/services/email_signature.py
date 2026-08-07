@@ -206,9 +206,7 @@ class OutgoingSignature:
         if contact_lines:
             lines.append("")
             lines.extend(contact_lines)
-        if self.logo_url:
-            lines.append("")
-            lines.append(self.logo_url)
+        # Logo is HTML-only (<img>); never dump the URL into plain text.
         return "\n".join(lines).strip()
 
     def html(self) -> str:

@@ -365,10 +365,7 @@ export default function ProfilePage() {
   const signaturePreview = useMemo(() => {
     const localeCode = String(uiForm.locale || 'pl').split('-')[0].toLowerCase()
     return formatOutgoingSignaturePlain({
-      signature: {
-        ...signatureForm,
-        logo_url: String(signatureForm.logo_url || '').trim() || avatarPreview || '',
-      },
+      signature: signatureForm,
       fallbackFirstName: profileForm.first_name,
       fallbackLastName: profileForm.last_name,
       fallbackFullName: me?.email || '',
@@ -378,7 +375,6 @@ export default function ProfilePage() {
       locale: localeCode,
     })
   }, [
-    avatarPreview,
     me?.email,
     profileForm.email,
     profileForm.first_name,
