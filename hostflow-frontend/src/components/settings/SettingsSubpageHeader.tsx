@@ -103,7 +103,7 @@ export function SettingsSubpageHeader({
   return (
     <PageShell>
       <PageShellHeader>{header}</PageShellHeader>
-      <div className={clsx('flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto', contentClassName)}>
+      <div className={clsx('flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-y-contain px-0 pb-8', contentClassName)}>
         {children}
       </div>
     </PageShell>

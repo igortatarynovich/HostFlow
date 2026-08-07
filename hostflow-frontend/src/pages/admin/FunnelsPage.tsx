@@ -927,7 +927,9 @@ export default function FunnelsPage() {
     <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
       <div>
         <label className="block text-xs font-medium text-slate-600 mb-1">
-          {t('admin.funnels.company_scope', { defaultValue: 'Company' })}
+          {t('admin.funnels.company_scope', {
+            defaultValue: 'Client company (library filter)',
+          })}
         </label>
         <select
           value={companyId}
@@ -938,7 +940,7 @@ export default function FunnelsPage() {
           className="input min-w-[220px]"
         >
           <option value="">
-            {t('admin.funnels.select_company', { defaultValue: 'Select company…' })}
+            {t('admin.funnels.select_company', { defaultValue: 'Select client company…' })}
           </option>
           {companyOptions.map((c) => (
             <option key={c.id} value={c.id}>
@@ -1002,7 +1004,10 @@ export default function FunnelsPage() {
 
   if (loading) {
     return (
-      <SettingsSubpageHeader {...funnelSubpageHeaderProps}>
+      <SettingsSubpageHeader
+      {...funnelSubpageHeaderProps}
+      contentClassName="px-0 pb-10"
+    >
         {companyScopeBar}
         <div className="text-sm text-slate-500">
           {t('common.loading')}
@@ -1013,7 +1018,10 @@ export default function FunnelsPage() {
 
   if (!companyId) {
     return (
-      <SettingsSubpageHeader {...funnelSubpageHeaderProps}>
+      <SettingsSubpageHeader
+      {...funnelSubpageHeaderProps}
+      contentClassName="px-0 pb-10"
+    >
         {errorBanner}
         {companyScopeBar}
         <div className="card p-8 text-center text-slate-600">
@@ -1028,7 +1036,10 @@ export default function FunnelsPage() {
   if (funnels.length === 0) {
     return (
       <>
-      <SettingsSubpageHeader {...funnelSubpageHeaderProps}>
+      <SettingsSubpageHeader
+      {...funnelSubpageHeaderProps}
+      contentClassName="px-0 pb-10"
+    >
         {errorBanner}
         <div className="settings-toolbar">{funnelTabButtons}</div>
         {companyScopeBar}
@@ -1060,47 +1071,67 @@ export default function FunnelsPage() {
 
   return (
     <>
-    <SettingsSubpageHeader {...funnelSubpageHeaderProps}>
+    <SettingsSubpageHeader
+      {...funnelSubpageHeaderProps}
+      contentClassName="px-0 pb-10"
+    >
       {errorBanner}
       <div className="settings-toolbar">{funnelTabButtons}</div>
       {companyScopeBar}
 
-      <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-        <p className="font-medium text-slate-900">
+      <div className="mb-4 rounded-lg border border-teal-200 bg-teal-50/60 px-4 py-3 text-sm text-slate-800">
+        <p className="font-semibold text-slate-900">
           {t('admin.funnels.howto_title', {
-            defaultValue: 'Pipelines are a library — assign on Vacancy',
+            defaultValue: 'Apply pipeline on the Vacancy — not here',
           })}
         </p>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
-          <li>
-            {t('admin.funnels.howto_step_company', {
-              defaultValue: 'Pick the company that owns the pipeline catalog (operating company).',
-            })}
-          </li>
+        <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-slate-700">
           <li>
             {t('admin.funnels.howto_step_select', {
-              defaultValue: 'Create or edit a Recruitment Pipeline here (stages + system transitions).',
+              defaultValue:
+                'Here you only build the library: stages + system transitions (Recruitment / Candidates tab).',
             })}
           </li>
           <li>
             {t('admin.funnels.howto_step_default', {
               defaultValue:
-                'Assign the pipeline on Vacancy → Recruitment Pipeline. That is the SoT — not the company.',
+                'Open Vacancies → create/edit vacancy → field «Recruitment Pipeline» → pick this pipeline → Save. That is the SoT.',
             })}
           </li>
           <li>
             {t('admin.funnels.howto_step_transitions', {
               defaultValue:
-                'Optional: “Default for new vacancies” only prefills the selector when creating a vacancy.',
+                'Candidates on that vacancy inherit the pipeline. «Default for new vacancies» only prefills the field when creating a vacancy.',
             })}
           </li>
         </ol>
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-slate-600">
           {t('admin.funnels.howto_note', {
             defaultValue:
-              'Application/Candidate inherit stages from Vacancy.funnel_id. Company default ≠ assignment.',
+              'Company filter below = which client’s library to edit (same company as on the vacancy). Focus Personnel is the operator, not the board.',
           })}
         </p>
+        <p className="mt-2 text-xs text-slate-600">
+          {t('admin.funnels.howto_modules', {
+            defaultValue:
+              'Modules: Recruitment (this page: Candidates + Leads intake) · HR Employee Pipelines (separate) · Sales Pipelines (separate). Not one shared funnel.',
+          })}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link to={CRM_APP_PATHS.vacancies} className="btn-primary text-sm">
+            {t('admin.funnels.cta_assign_on_vacancy', {
+              defaultValue: 'Go to Vacancies — assign pipeline',
+            })}
+          </Link>
+          <Link
+            to={CRM_APP_PATHS.vacancyNew}
+            className="btn-secondary text-sm"
+          >
+            {t('admin.funnels.cta_new_vacancy', {
+              defaultValue: 'New vacancy',
+            })}
+          </Link>
+        </div>
       </div>
 
       <div className="settings-toolbar">
@@ -1176,8 +1207,8 @@ export default function FunnelsPage() {
         ) : null}
       </div>
 
-      <div className="card overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+      <div className="card flex min-h-0 flex-col overflow-hidden">
+        <div className="shrink-0 p-4 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
               {selectedFunnel?.name || ''} — {t('admin.funnels.stages')}
@@ -1191,6 +1222,11 @@ export default function FunnelsPage() {
                   : t('admin.funnels.delete_funnel_hint', {
                       defaultValue: 'Only unused non-default funnels can be deleted.',
                     })}
+                {stages.length > 4
+                  ? ` · ${t('admin.funnels.stages_scroll_hint', {
+                      defaultValue: 'Scroll the table to see all stages',
+                    })}`
+                  : ''}
               </p>
             ) : null}
           </div>
@@ -1213,45 +1249,47 @@ export default function FunnelsPage() {
             {t('admin.funnels.no_stages')}
           </div>
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-left text-xs uppercase text-slate-500">
-                  <th className="py-2 px-2 w-8" />
-                  <th className="py-2 px-2">{t('admin.funnels.columns.code')}</th>
-                  <th className="py-2 px-2">{t('admin.funnels.columns.label')}</th>
-                  <th className="py-2 px-2">{t('admin.funnels.columns.system')}</th>
-                  {funnelTab === 'lead' ? (
-                    <th className="py-2 px-2">{t('admin.funnels.columns.conversion_root')}</th>
-                  ) : null}
-                  <th className="py-2 px-2">{t('admin.funnels.columns.order')}</th>
-                  <th className="py-2 px-2">{t('admin.funnels.columns.status')}</th>
-                  <th className="py-2 px-2 text-right">{t('admin.funnels.columns.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <SortableContext
-                  items={stages.map((s) => s.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {stages.map((stage) => (
-                    <SortableStageRow
-                      key={stage.id}
-                      stage={stage}
-                      onEdit={() => setEditingStage(stage)}
-                      onDelete={() => handleDeleteStage(stage)}
-                      disabled={saving}
-                      showLeadConversionRoot={funnelTab === 'lead'}
-                    />
-                  ))}
-                </SortableContext>
-              </tbody>
-            </table>
-          </DndContext>
+          <div className="min-h-0 max-h-[min(52vh,28rem)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-sm">
+                  <tr className="text-left text-xs uppercase text-slate-500">
+                    <th className="py-2 px-2 w-8" />
+                    <th className="py-2 px-2">{t('admin.funnels.columns.code')}</th>
+                    <th className="py-2 px-2">{t('admin.funnels.columns.label')}</th>
+                    <th className="py-2 px-2">{t('admin.funnels.columns.system')}</th>
+                    {funnelTab === 'lead' ? (
+                      <th className="py-2 px-2">{t('admin.funnels.columns.conversion_root')}</th>
+                    ) : null}
+                    <th className="py-2 px-2">{t('admin.funnels.columns.order')}</th>
+                    <th className="py-2 px-2">{t('admin.funnels.columns.status')}</th>
+                    <th className="py-2 px-2 text-right">{t('admin.funnels.columns.actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <SortableContext
+                    items={stages.map((s) => s.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {stages.map((stage) => (
+                      <SortableStageRow
+                        key={stage.id}
+                        stage={stage}
+                        onEdit={() => setEditingStage(stage)}
+                        onDelete={() => handleDeleteStage(stage)}
+                        disabled={saving}
+                        showLeadConversionRoot={funnelTab === 'lead'}
+                      />
+                    ))}
+                  </SortableContext>
+                </tbody>
+              </table>
+            </DndContext>
+          </div>
         )}
       </div>
 

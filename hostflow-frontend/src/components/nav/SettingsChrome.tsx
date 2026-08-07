@@ -118,7 +118,7 @@ export function SettingsChrome({ pathname, search, compactMode = false }: Settin
   })
 
   return (
-    <section className="mb-0 rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
+    <section className="mb-0 shrink-0 rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
       <nav className="flex flex-wrap gap-2">
         {visibleItems.map((item) => {
           const active = isSettingsChromeTabActive(item.key, pathname, search)
