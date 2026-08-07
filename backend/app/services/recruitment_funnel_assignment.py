@@ -39,7 +39,7 @@ async def _vacancy_profile_funnel_hint(
     tenant_id: str,
     candidate: Candidate,
 ) -> Optional[str]:
-    """Vacancy/profile funnel hint — passed to resolver as explicit, never returned raw."""
+    """Vacancy assignment first (ADR-035 §12); Candidate Profile funnel_id is legacy only."""
     vacancy_id = str(getattr(candidate, "vacancy_id", None) or "").strip()
     if not vacancy_id:
         return None
@@ -56,6 +56,7 @@ async def _vacancy_profile_funnel_hint(
     vac_funnel = str(getattr(vacancy, "funnel_id", None) or "").strip()
     if vac_funnel:
         return vac_funnel
+    # Legacy strangler: profile.funnel_id until vacancy assignment is universal.
     profile_id = str(getattr(vacancy, "candidate_profile_id", None) or "").strip()
     if not profile_id:
         return None
@@ -71,6 +72,32 @@ async def _vacancy_profile_funnel_hint(
         return None
     prof_funnel = str(getattr(profile, "funnel_id", None) or "").strip()
     return prof_funnel or None
+
+
+async def resolve_funnel_id_for_vacancy(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    vacancy: Vacancy,
+) -> Optional[str]:
+    """Operational pipeline for a vacancy: Vacancy.funnel_id, else legacy profile.funnel_id."""
+    vac_funnel = str(getattr(vacancy, "funnel_id", None) or "").strip()
+    if vac_funnel:
+        return vac_funnel
+    profile_id = str(getattr(vacancy, "candidate_profile_id", None) or "").strip()
+    if not profile_id:
+        return None
+    profile = (
+        await db.execute(
+            select(CandidateProfile).where(
+                CandidateProfile.id == profile_id,
+                CandidateProfile.tenant_id == str(tenant_id),
+            )
+        )
+    ).scalar_one_or_none()
+    if profile is None:
+        return None
+    return str(getattr(profile, "funnel_id", None) or "").strip() or None
 
 
 async def assign_recruitment_funnel_to_lead(
@@ -135,23 +162,44 @@ async def reconcile_candidate_funnel_on_company_change(
     new_company_id: Optional[str],
     changes: dict,
 ) -> None:
-    """When company scope changes, rebind funnel via resolver (no stale cross-company funnel)."""
+    """When company/vacancy scope changes, rebind funnel via Vacancy assignment first."""
     old_company = str(getattr(candidate, "company_id", None) or "").strip() or None
     new_company = str(new_company_id or "").strip() or None if new_company_id is not None else old_company
 
     if "company_id" not in changes and "vacancy_id" not in changes:
         return
-    if str(old_company or "") == str(new_company or ""):
+
+    # Vacancy change within same company still rebinds from Vacancy.funnel_id.
+    vacancy_changed = "vacancy_id" in changes
+    company_changed = str(old_company or "") != str(new_company or "")
+    if not vacancy_changed and not company_changed:
         return
 
     if not new_company:
         changes["funnel_id"] = None
         return
 
+    vacancy_id = changes.get("vacancy_id", getattr(candidate, "vacancy_id", None))
+    explicit: Optional[str] = None
+    if vacancy_id:
+        vacancy = (
+            await db.execute(
+                select(Vacancy).where(
+                    Vacancy.id == str(vacancy_id),
+                    Vacancy.tenant_id == str(tenant_id),
+                )
+            )
+        ).scalar_one_or_none()
+        if vacancy is not None:
+            explicit = await resolve_funnel_id_for_vacancy(
+                db, tenant_id=tenant_id, vacancy=vacancy
+            )
+
     result = await resolve_recruitment_funnel_for_candidate(
         db,
         tenant_id=tenant_id,
         company_id=new_company,
+        explicit_funnel_id=explicit,
     )
     changes["funnel_id"] = result.funnel.id
 

@@ -43,6 +43,7 @@ export interface Funnel {
   is_default: boolean
   is_legacy_readonly?: boolean
   template_key?: string | null
+  vacancy_usage_count?: number
   stages: FunnelStage[]
   transitions?: FunnelTransition[]
 }

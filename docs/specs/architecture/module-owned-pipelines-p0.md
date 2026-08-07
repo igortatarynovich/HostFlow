@@ -131,7 +131,8 @@ Continue using:
 `RecruitmentModuleSettingsV1` (existing fields, now **wired**):
 
 ```yaml
-default_candidate_funnel_id: uuid | null   # optional explicit default for candidate pipelines
+default_candidate_funnel_id: uuid | null   # default for NEW vacancies only (ADR-035 §12); not operational assignment
+# Assignment SoT: Vacancy.funnel_id
 # future P1+: default_lead_funnel_id
 ```
 
@@ -143,15 +144,19 @@ PATCH validates that referenced funnel belongs to **same company** and `module_k
 
 Single service: **`resolve_recruitment_funnel`** (name illustrative) used by all runtime call sites.
 
-**Inputs:** `tenant_id`, `company_id`, pipeline kind (`candidate` | `lead`), optional hints (`profile.funnel_id`, `vacancy` context).
+**Inputs:** `tenant_id`, `company_id`, pipeline kind (`candidate` | `lead`), optional hints (`vacancy.funnel_id`, legacy `profile.funnel_id`).
 
-**Resolution order for `candidate`:**
+**Operational assignment (Recruitment Candidate):** `Vacancy.funnel_id` is the SoT. Application/Candidate inherit via assignment helpers. CMS / company `is_default` are **not** operational assignment — only **default for new vacancies** ([ADR-035](ADR-035-module-object-pipeline-settings.md) §12).
 
-1. **`explicit_funnel_id`** (when passed to resolver): load by id; **Forbidden** if `funnel.company_id` ≠ request company; **NotFound** if missing — **never fallback**.
-2. `company_module_settings.recruitment.settings_json.default_candidate_funnel_id` **if** set and funnel passes ownership check.
-3. Company default: `funnels` where `(company_id, module_key, type, is_default=true)` — **at most one** per scope (partial unique index).
+**Resolution order for `candidate` at runtime:**
+
+1. **`explicit_funnel_id`** (when passed — typically from `Vacancy.funnel_id`, or legacy profile): load by id; **Forbidden** if `funnel.company_id` ≠ request company; **NotFound** if missing — **never fallback**.
+2. `company_module_settings.recruitment.settings_json.default_candidate_funnel_id` **if** set and funnel passes ownership check — **library / new-vacancy default only**, not “pipeline applied to company”.
+3. Company default: `funnels` where `(company_id, module_key, type, is_default=true)` — same semantics as step 2 (prefill helper).
 4. **Legacy strangler:** tenant-scoped funnel (`company_id IS NULL`) — log once per path.
 5. Platform seed funnel `tenant_id='default'`.
+
+On **candidate create** with `vacancy_id`: assignment **must** prefer `Vacancy.funnel_id` as `explicit_funnel_id` before steps 2–5.
 
 **Funnel identity (canon):** `(company_id, module_key, type)` + display `name`. No «company default» without `module_key`.
 

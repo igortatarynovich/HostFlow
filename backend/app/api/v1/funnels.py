@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.tenants import service as tenant_service
@@ -536,6 +536,7 @@ class FunnelOut(BaseModel):
     is_default: bool
     is_legacy_readonly: bool = False
     template_key: Optional[str] = None
+    vacancy_usage_count: int = 0
     stages: List[FunnelStageOut] = []
     transitions: List[FunnelTransitionOut] = []
 
@@ -545,6 +546,8 @@ class FunnelOut(BaseModel):
         f: Funnel,
         stages: Optional[List[FunnelStage]] = None,
         transitions: Optional[List[FunnelTransitionEdge]] = None,
+        *,
+        vacancy_usage_count: int = 0,
     ) -> "FunnelOut":
         stage_list = stages if stages is not None else list(f.stages) if hasattr(f, "stages") else []
         edge_list = (
@@ -565,6 +568,7 @@ class FunnelOut(BaseModel):
             is_default=f.is_default,
             is_legacy_readonly=not bool(company_id),
             template_key=template_key or None,
+            vacancy_usage_count=int(vacancy_usage_count or 0),
             stages=[FunnelStageOut.from_model(s) for s in stage_list],
             transitions=[FunnelTransitionOut.from_model(e) for e in edge_list],
         )
@@ -618,7 +622,18 @@ async def list_funnels(
         stages_result = await db.execute(stages_stmt)
         stages = list(stages_result.scalars().all())
         edges = await _load_transitions(db, f.id)
-        out.append(FunnelOut.from_model(f, stages, edges))
+        usage = 0
+        if f.type == "candidate":
+            usage_row = await db.execute(
+                select(func.count())
+                .select_from(Vacancy)
+                .where(
+                    Vacancy.tenant_id == tenant_str,
+                    Vacancy.funnel_id == f.id,
+                )
+            )
+            usage = int(usage_row.scalar_one() or 0)
+        out.append(FunnelOut.from_model(f, stages, edges, vacancy_usage_count=usage))
     return out
 
 

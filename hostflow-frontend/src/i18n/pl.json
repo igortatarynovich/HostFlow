@@ -11755,7 +11755,7 @@
     },
     "funnels": {
       "title": "Lejki kandydatów",
-      "subtitle": "Utwórz lejek dla firmy i kliknij „Ustaw jako domyślny dla firmy” — nowi kandydaci dostaną te etapy. «Moje firmy» (dane prawne/billing) tu nie pasują.",
+      "subtitle": "Biblioteka Recruitment Pipeline. Przypisanie na Vacancy. ★ = default tylko dla nowych wakansji.",
       "title_leads": "Lejki leadów",
       "subtitle_leads": "Etapy CRM dla leadów. Tablica leadów i automatyzacje korzystają z tego lejka.",
       "tab_candidates": "Kandydaci",
@@ -11772,16 +11772,17 @@
       "validation_funnel_name": "Podaj nazwę lejka",
       "confirm_delete": "Usunąć etap \"{label}\"?",
       "create_funnel": "Utwórz lejek",
-      "default_funnel": "Domyślny lejek dla kandydatów",
+      "default_funnel": "Domyślny dla nowych wakansji",
       "default_funnel_leads": "Domyślny lejek dla leadów",
-      "make_default": "Ustaw jako domyślny dla firmy",
-      "is_company_default": "★ Domyślny dla firmy — stosowany do nowych kandydatów",
-      "howto_title": "Jak przypisać lejek do firmy",
-      "howto_step_company": "Wybierz firmę u góry (np. FOCUS PERSONEL).",
-      "howto_step_select": "Wybierz lejek z listy (★ = obecnie domyślny).",
-      "howto_step_default": "Kliknij „Ustaw jako domyślny dla firmy” — nowi kandydaci tej firmy dostaną te etapy.",
-      "howto_step_transitions": "Opcjonalnie: dodaj poniżej przejścia systemowe (np. przekazanie do HR), aby na karcie kandydata pojawiły się akcje wyjścia.",
-      "howto_note": "Nie szukaj tego w «Moje firmy» (dane prawne / billing). Ustawienia lejków są tylko na tej stronie.",
+      "make_default": "Domyślny dla nowych wakansji",
+      "is_company_default": "★ Domyślny dla nowych wakansji (tylko prefill)",
+      "used_by_vacancies": "Używany w {count} wakansjach",
+      "howto_title": "Pipeline to biblioteka — przypisz na Vacancy",
+      "howto_step_company": "Wybierz firmę-właściciela katalogu pipeline.",
+      "howto_step_select": "Utwórz lub edytuj Recruitment Pipeline tutaj (etapy + przejścia systemowe).",
+      "howto_step_default": "Przypisz pipeline na Vacancy → Recruitment Pipeline. To jest SoT — nie firma.",
+      "howto_step_transitions": "Opcjonalnie: „Domyślny dla nowych wakansji” tylko wypełnia selektor przy tworzeniu.",
+      "howto_note": "Application/Candidate dziedziczą etapy z Vacancy.funnel_id. Company default ≠ assignment.",
       "funnel_name": "Nazwa lejka",
       "new_funnel": "Nowy lejek",
       "header_kicker": "Etapy lejków dla kandydatów i leadów — używane na tablicach i w automatyzacjach.",
@@ -11895,8 +11896,8 @@
           "description": "Jedno wejście do połączeń: Meta, e-mail, komunikatory, webhook, Google. Inbox i administracja komunikacji z huba, gdy potrzebujesz codziennej pracy."
         },
         "funnels": {
-          "label": "Lejki kandydatów (wg firmy)",
-          "description": "Wybierz firmę → utwórz/wybierz lejek → „Ustaw jako domyślny”. Nie mylić z «Moje firmy» (dane prawne/billing)."
+          "label": "Recruitment Pipelines (biblioteka)",
+          "description": "Katalog procesów. Przypisanie na Vacancy. ★ = default dla nowych wakansji."
         },
         "hiring_gates": {
           "label": "Bramki lejka rekrutacji",

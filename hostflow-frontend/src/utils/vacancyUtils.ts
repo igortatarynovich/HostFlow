@@ -158,6 +158,10 @@ export function buildVacancyPayload(
     payload.candidate_profile_id = form.candidate_profile_id || null
   }
 
+  if (typeof form.funnel_id !== 'undefined') {
+    payload.funnel_id = form.funnel_id || null
+  }
+
   if (form.status) {
     const s = String(form.status)
     payload.status = s

@@ -21,6 +21,59 @@ def _to_str_or_none(v: Any) -> Optional[str]:
     s = str(v).strip()
     return s or None
 
+
+async def _validated_or_default_funnel_id(
+    db,
+    *,
+    tenant_id: str,
+    company_id: str,
+    funnel_id: Optional[str],
+    apply_new_vacancy_default: bool,
+) -> Optional[str]:
+    """Validate explicit assignment or prefill default for new vacancies (ADR-035 §12)."""
+    from backend.app.services.recruitment_funnel_resolver import (
+        RecruitmentFunnelForbiddenError,
+        RecruitmentFunnelNotFoundError,
+        RecruitmentModuleNotEnabledError,
+        resolve_recruitment_funnel,
+        validate_recruitment_funnel_id_for_company,
+    )
+
+    cid = str(company_id or "").strip()
+    tid = str(tenant_id or "").strip()
+    explicit = str(funnel_id or "").strip() or None
+    if explicit:
+        try:
+            funnel = await validate_recruitment_funnel_id_for_company(
+                db,
+                tenant_id=tid,
+                company_id=cid,
+                funnel_id=explicit,
+                pipeline_type="candidate",
+            )
+        except RecruitmentFunnelForbiddenError as exc:
+            raise ValueError(str(exc)) from exc
+        except RecruitmentFunnelNotFoundError as exc:
+            raise ValueError(str(exc)) from exc
+        return str(funnel.id)
+    if not apply_new_vacancy_default:
+        return None
+    try:
+        result = await resolve_recruitment_funnel(
+            db,
+            tenant_id=tid,
+            company_id=cid,
+            pipeline_type="candidate",
+        )
+        return str(result.funnel.id)
+    except (
+        RecruitmentModuleNotEnabledError,
+        RecruitmentFunnelNotFoundError,
+        RecruitmentFunnelForbiddenError,
+    ):
+        return None
+
+
 class VacancyService:
     def __init__(self, repo: VacancyRepo) -> None:
         self.repo = repo
@@ -113,6 +166,23 @@ class VacancyService:
             if payload.headcount_target is not None and int(payload.headcount_target) > 0
             else None,
         }
+        funnel_fields_set = getattr(payload, "model_fields_set", None) or set()
+        if "funnel_id" in funnel_fields_set:
+            values["funnel_id"] = await _validated_or_default_funnel_id(
+                self.repo.db,
+                tenant_id=tenant_id,
+                company_id=str(payload.company_id),
+                funnel_id=str(payload.funnel_id) if payload.funnel_id else None,
+                apply_new_vacancy_default=False,
+            )
+        else:
+            values["funnel_id"] = await _validated_or_default_funnel_id(
+                self.repo.db,
+                tenant_id=tenant_id,
+                company_id=str(payload.company_id),
+                funnel_id=None,
+                apply_new_vacancy_default=True,
+            )
         order_line_id = getattr(payload, "order_line_id", None)
         if order_line_id:
             from backend.app.modules.vacancies.order_line_bind import (
@@ -241,13 +311,30 @@ class VacancyService:
         if payload.candidate_profile_id is not None:
             values["candidate_profile_id"] = str(payload.candidate_profile_id) if payload.candidate_profile_id else None
 
+        fields_set = getattr(payload, "model_fields_set", None) or set()
+        if "funnel_id" in fields_set:
+            company_for_funnel = str(
+                values.get("company_id")
+                or getattr(obj, "company_id", None)
+                or ""
+            )
+            if payload.funnel_id is None:
+                values["funnel_id"] = None
+            else:
+                values["funnel_id"] = await _validated_or_default_funnel_id(
+                    self.repo.db,
+                    tenant_id=str(getattr(obj, "tenant_id", "") or ""),
+                    company_id=company_for_funnel,
+                    funnel_id=str(payload.funnel_id),
+                    apply_new_vacancy_default=False,
+                )
+
         if payload.required_documents_template_id is not None:
             values["required_documents_template_id"] = str(payload.required_documents_template_id) if payload.required_documents_template_id else None
 
         if payload.extra is not None:
             values["extra"] = json.dumps(payload.extra, ensure_ascii=False)
 
-        fields_set = getattr(payload, "model_fields_set", None) or set()
         if "headcount_target" in fields_set:
             # Linked vacancies: headcount SoT is Order Line — ignore manual override.
             if getattr(obj, "order_line_id", None) and "order_line_id" not in fields_set:

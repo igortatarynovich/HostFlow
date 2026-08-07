@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   DndContext,
   closestCenter,
@@ -1067,37 +1068,37 @@ export default function FunnelsPage() {
       <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
         <p className="font-medium text-slate-900">
           {t('admin.funnels.howto_title', {
-            defaultValue: 'How to apply a funnel to this company',
+            defaultValue: 'Pipelines are a library — assign on Vacancy',
           })}
         </p>
         <ol className="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
           <li>
             {t('admin.funnels.howto_step_company', {
-              defaultValue: 'Pick the company above (e.g. FOCUS PERSONEL).',
+              defaultValue: 'Pick the company that owns the pipeline catalog (operating company).',
             })}
           </li>
           <li>
             {t('admin.funnels.howto_step_select', {
-              defaultValue: 'Select the funnel in the list (★ = currently applied as default).',
+              defaultValue: 'Create or edit a Recruitment Pipeline here (stages + system transitions).',
             })}
           </li>
           <li>
             {t('admin.funnels.howto_step_default', {
               defaultValue:
-                'Click “Use as company default” — new candidates for this company get these stages.',
+                'Assign the pipeline on Vacancy → Recruitment Pipeline. That is the SoT — not the company.',
             })}
           </li>
           <li>
             {t('admin.funnels.howto_step_transitions', {
               defaultValue:
-                'Optional: add System transitions below (e.g. handoff to HR) so exit actions appear on the candidate card.',
+                'Optional: “Default for new vacancies” only prefills the selector when creating a vacancy.',
             })}
           </li>
         </ol>
         <p className="mt-2 text-xs text-slate-500">
           {t('admin.funnels.howto_note', {
             defaultValue:
-              'Do not look for this under «My companies» (legal/billing). Pipeline settings live on this page.',
+              'Application/Candidate inherit stages from Vacancy.funnel_id. Company default ≠ assignment.',
           })}
         </p>
       </div>
@@ -1119,6 +1120,9 @@ export default function FunnelsPage() {
               <option key={f.id} value={f.id}>
                 {f.name}
                 {f.is_default ? ' ★' : ''}
+                {funnelTab === 'candidate' && typeof f.vacancy_usage_count === 'number'
+                  ? ` (${f.vacancy_usage_count})`
+                  : ''}
               </option>
             ))}
           </select>
@@ -1130,22 +1134,33 @@ export default function FunnelsPage() {
         >
           + {t('admin.funnels.new_funnel')}
         </button>
+        {selectedFunnel && funnelTab === 'candidate' ? (
+          <Link
+            to={CRM_APP_PATHS.vacancies}
+            className="mt-4 inline-flex items-center rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-200"
+          >
+            {t('admin.funnels.used_by_vacancies', {
+              values: { count: selectedFunnel.vacancy_usage_count ?? 0 },
+              defaultValue: 'Used by {count} vacancies',
+            })}
+          </Link>
+        ) : null}
         {selectedFunnel && !selectedFunnel.is_default ? (
           <button
             type="button"
             onClick={() => void handleMakeDefaultFunnel()}
             disabled={saving}
-            className="btn-primary text-sm mt-4"
+            className="btn-secondary text-sm mt-4"
           >
             {t('admin.funnels.make_default', {
-              defaultValue: 'Use as company default',
+              defaultValue: 'Default for new vacancies',
             })}
           </button>
         ) : null}
         {selectedFunnel && selectedFunnel.is_default ? (
-          <span className="mt-4 inline-flex items-center rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+          <span className="mt-4 inline-flex items-center rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700">
             {t('admin.funnels.is_company_default', {
-              defaultValue: '★ Company default — applied to new candidates',
+              defaultValue: '★ Default for new vacancies (prefill only)',
             })}
           </span>
         ) : null}

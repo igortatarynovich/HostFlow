@@ -259,13 +259,13 @@ export function CompanyModuleSettingsPanel({ companyId, canEdit }: Props) {
             <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
               <h3 className="mb-2 text-sm font-semibold text-slate-800">
                 {t('app.companies.detail.sections.module_settings.recruitment.default_funnel_title', {
-                  defaultValue: 'Default candidate pipeline',
+                  defaultValue: 'Default pipeline for new vacancies',
                 })}
               </h3>
               <p className="mb-3 text-xs text-slate-500">
                 {t('app.companies.detail.sections.module_settings.recruitment.default_funnel_hint', {
                   defaultValue:
-                    'Used by the recruitment resolver when no explicit funnel is set on a candidate or profile.',
+                    'Prefills Vacancy → Recruitment Pipeline on create. Assignment SoT remains Vacancy.funnel_id (ADR-035 §12).',
                 })}
               </p>
               <FunnelSelector

@@ -58,6 +58,8 @@ export interface VacancyPayload {
   is_archived?: boolean;
   is_open?: boolean;
   candidate_profile_id?: string | null;
+  /** Recruitment Pipeline assignment (ADR-035 §12) */
+  funnel_id?: string | null;
   /** Planned positions to fill; omit, 0, or null clears */
   headcount_target?: number | null;
   /** ADR-032: Sales Order Line bind (1:1) */
@@ -79,6 +81,7 @@ export interface Vacancy {
   is_archived?: boolean | null;
   candidate_profile_id?: string | null;
   candidate_profile_name?: string | null;
+  funnel_id?: string | null;
   candidate_count?: number;
   last_candidate_activity_at?: string | null;
   headcount_target?: number | null;

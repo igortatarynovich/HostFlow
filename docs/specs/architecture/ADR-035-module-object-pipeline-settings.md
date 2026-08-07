@@ -177,6 +177,50 @@ UI: `Recruitment → Pipelines`, `HR → Employee Pipelines`, `Sales → Sales P
 - [docs/recruitment/module-scope.md](../../recruitment/module-scope.md), [docs/hr/module-scope.md](../../hr/module-scope.md).
 - [docs/specs/tasks/adr035-phase-d-sales-pipeline-cleanup.md](../tasks/adr035-phase-d-sales-pipeline-cleanup.md) — Sales Inquiry→Client only.
 
+### 12. Errata (2026-08-07) — Recruitment Pipeline assignment = Vacancy
+
+**Correction of discovered contour error** (not a new architecture track). Binding a Recruitment Pipeline to the **tenant operating company** as operational assignment is **wrong**.
+
+#### Assignment SoT
+
+```text
+Recruitment Pipeline (library / named instance)
+        ↓ assign
+     Vacancy.funnel_id     ← operational SoT
+        ↓ inherit
+  Application → Candidate pipeline context
+```
+
+- Two vacancies of the same operating company **may** use different Recruitment Pipelines.
+- The operating company (e.g. Focus Personnel) is **data/process owner**, not “one board for all candidates”.
+- Candidate / Application **inherit** pipeline context from the Vacancy they are attached to.
+- **Not** from Candidate Profile `funnel_id` as primary SoT (legacy compatibility only until migration).
+- **Not** from company `is_default` / CMS as operational assignment.
+
+#### Default ≠ assignment
+
+| Concept | Meaning | Storage / UI |
+|---------|---------|--------------|
+| **Assignment** | Which pipeline this vacancy runs | `Vacancy.funnel_id` — create/edit Vacancy selector |
+| **Default for new vacancies** | Prefill when creating a vacancy; user may change | CMS `default_candidate_funnel_id` / funnel `is_default` — label: “Default for new vacancies” only |
+
+Company-level recruitment pipeline setting **must not** mean “this pipeline is applied to the company”.
+
+#### Launch gate
+
+Recruitment / search launch for a vacancy **requires** `Vacancy.funnel_id` (with at least one operational stage). Prefer explicit selector on Vacancy over silent company fallback.
+
+#### System transitions
+
+Exit transitions (`handoff_to_client`, `handoff_to_hr`, …) are configured on the **pipeline instance** assigned to that Vacancy. Other vacancies of the same company are unaffected.
+
+#### Transition rules (design note — follow-on slice)
+
+Pipeline stages define sequence; **transition rules** (manual / automatic) evaluate Candidate/Application against **Vacancy requirements** via Recruitment Evaluator predicates (e.g. `vacancy_requirements_satisfied`). Rules must not hardcode field paths that duplicate Vacancy requirements. Implementation is a later slice; this errata only locks the assignment SoT.
+
+---
+
 ## History
 
 - 2026-08-07: Accepted — frozen Module → Objects → Pipelines → Settings canon; A1/A2 system transitions; four-object rule; Phases B–D implementation track.
+- 2026-08-07: **Errata §12** — Recruitment Pipeline assigned to Vacancy; Default ≠ assignment; Candidate inherits from Vacancy.

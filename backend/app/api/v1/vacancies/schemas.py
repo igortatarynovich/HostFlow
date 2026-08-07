@@ -28,6 +28,10 @@ class VacancyIn(BaseModel):
     status: str = "open"
     manager: Optional[UUID] = None
     candidate_profile_id: Optional[UUID] = None
+    funnel_id: Optional[UUID] = Field(
+        default=None,
+        description="Recruitment Pipeline assignment (ADR-035 §12). SoT for candidate stages on this vacancy.",
+    )
     required_documents_template_id: Optional[UUID] = None
     employment_type: EmploymentType = Field(default=EmploymentType.full_time)
     extra: Dict[str, Any] = Field(default_factory=dict)
@@ -67,6 +71,7 @@ class VacancyOut(BaseModel):
     manager: Optional[str] = None
     candidate_profile_id: Optional[str] = None
     candidate_profile_name: Optional[str] = None
+    funnel_id: Optional[str] = None
     required_documents_template_id: Optional[str] = None
     extra: Dict[str, Any]
     employment_type: EmploymentType
@@ -115,6 +120,10 @@ class VacancyPatch(BaseModel):
     status_alt2: Optional[str] = Field(default=None, alias="stage")
     manager: Optional[UUID] = None
     candidate_profile_id: Optional[UUID] = None
+    funnel_id: Optional[UUID] = Field(
+        default=None,
+        description="Recruitment Pipeline assignment (ADR-035 §12). Null clears.",
+    )
     required_documents_template_id: Optional[UUID] = None
     extra: Optional[Dict[str, Any]] = None
     headcount_target: Optional[int] = Field(

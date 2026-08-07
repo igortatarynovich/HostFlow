@@ -239,7 +239,7 @@ export default function SettingsLandingPage() {
         }),
         description: t('admin.settings.cards.funnels.description', {
           defaultValue:
-            'Pick company → create/select funnel → “Use as company default”. Not «My companies» (legal/billing).',
+            'Process catalog. Assign on Vacancy. ★ = default for new vacancies only.',
         }),
         target: CRM_APP_PATHS.settingsFunnels,
         roles: ['administrator', 'supervisor'],

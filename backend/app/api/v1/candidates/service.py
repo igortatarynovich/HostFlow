@@ -456,6 +456,7 @@ async def create_candidate_full(
     company_id_val: Optional[str] = str(payload.get("company_id")) if payload.get("company_id") else None
     vacancy_id_val: Optional[str] = str(payload.get("vacancy_id")) if payload.get("vacancy_id") else None
     own_company_id_val: Optional[str] = str(payload.get("own_company_id")) if payload.get("own_company_id") else None
+    vacancy_row: Optional[Vacancy] = None
 
     if vacancy_id_val:
         vrow = await db.execute(
@@ -467,6 +468,7 @@ async def create_candidate_full(
         v = vrow.scalar_one_or_none()
         if not v:
             raise HTTPException(status_code=404, detail="Vacancy not found")
+        vacancy_row = v
         vacancy_id_val = v.id
         company_id_val = v.company_id
         if not own_company_id_val:
@@ -480,14 +482,22 @@ async def create_candidate_full(
     resolved_funnel_id: Optional[str] = None
     if company_id_val:
         from backend.app.services.recruitment_funnel_assignment import (
+            resolve_funnel_id_for_vacancy,
             resolve_recruitment_funnel_for_candidate,
         )
         from backend.app.services.recruitment_funnel_resolver import first_funnel_stage_code
+
+        explicit_funnel_id: Optional[str] = None
+        if vacancy_row is not None:
+            explicit_funnel_id = await resolve_funnel_id_for_vacancy(
+                db, tenant_id=tenant_id, vacancy=vacancy_row
+            )
 
         funnel_result = await resolve_recruitment_funnel_for_candidate(
             db,
             tenant_id=tenant_id,
             company_id=company_id_val,
+            explicit_funnel_id=explicit_funnel_id,
         )
         resolved_funnel_id = funnel_result.funnel.id
         if stage_input is None or str(stage_input).strip() == "":

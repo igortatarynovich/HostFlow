@@ -15,6 +15,7 @@ import { EMPLOYMENT_TYPES, VACANCY_STATUSES, createVacancy, getVacancy, normaliz
 import type { EmploymentType, VacancyStatus } from '../../api/vacancies'
 import { listSalesOrderLines, type SalesOrderLine } from '../../api/salesOrders'
 import { listCandidateProfiles, type CandidateProfile } from '../../api/candidate_profiles'
+import FunnelSelector from '../profile/FunnelSelector'
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
@@ -56,6 +57,7 @@ const vacancyFormSchema = z.object({
   is_archived: z.boolean().default(false),
   employment_type: z.enum(EMPLOYMENT_ENUM),
   candidate_profile_id: z.string().optional().or(z.literal('')),
+  funnel_id: z.string().optional().or(z.literal('')),
   // Lead qualification criteria (stored in vacancy.extra.lead_criteria_v1)
   criteria_min_experience_eu_years: z
     .union([z.string(), z.number()])
@@ -183,6 +185,7 @@ function toFormDefaults(source: any | null): VacancyFormValues {
     is_open: typeof source?.is_open === 'boolean' ? source.is_open : normalizedStatus === 'open',
     employment_type: normalizedEmployment,
     candidate_profile_id: source?.candidate_profile_id ?? '',
+    funnel_id: source?.funnel_id ?? '',
     criteria_min_experience_eu_years: crit?.min_experience_eu_years ?? '',
     criteria_requires_documents: Array.isArray(crit?.requires_documents) ? crit.requires_documents.join(', ') : '',
     criteria_requires_candidate_documents_v1: Array.isArray(crit?.requires_candidate_documents_v1)
@@ -1029,6 +1032,43 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 ))}
               </select>
             </label>
+
+            <div className="block md:col-span-2">
+              <div className="label">
+                {t('app.vacancies.detail.recruitment_pipeline', {
+                  defaultValue: 'Recruitment Pipeline',
+                })}
+              </div>
+              <p className="mb-2 text-xs text-slate-500">
+                {t('app.vacancies.detail.recruitment_pipeline_hint', {
+                  defaultValue:
+                    'Assigned to this vacancy (not to the company). Candidates inherit stages from here. Required before launching search.',
+                })}
+              </p>
+              <Controller
+                name="funnel_id"
+                control={control}
+                render={({ field }) => (
+                  <FunnelSelector
+                    companyId={watchCompanyId || null}
+                    value={field.value || null}
+                    onChange={(id) => field.onChange(id || '')}
+                    funnelType="candidate"
+                    moduleKey="recruitment"
+                    hint={t('app.vacancies.detail.recruitment_pipeline_pick_company', {
+                      defaultValue: 'Select a company first to choose a pipeline.',
+                    })}
+                  />
+                )}
+              />
+              {!watch('funnel_id') ? (
+                <p className="mt-2 text-xs text-amber-700">
+                  {t('app.vacancies.detail.recruitment_pipeline_required', {
+                    defaultValue: 'Without a pipeline, recruitment / search launch should not proceed.',
+                  })}
+                </p>
+              ) : null}
+            </div>
 
             <label className="block">
               <div className="label">От (зарплата)</div>

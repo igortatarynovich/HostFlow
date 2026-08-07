@@ -18,7 +18,7 @@
 
 | Сущность | Роль |
 |----------|------|
-| Vacancy | Внутренняя потребность: кого ищем, для какой company, условия, headcount, `owner_company_id`, статус. При связи с Sales **Order Line** (`order_line_id`, ADR-032) headcount/role/location — **проекция линии**, не второй SoT. **Не** кандидат и **не** pipeline кандидата. |
+| Vacancy | Внутренняя потребность: кого ищем, для какой company, условия, headcount, `owner_company_id`, статус. При связи с Sales **Order Line** (`order_line_id`, ADR-032) headcount/role/location — **проекция линии**, не второй SoT. **Операционный контейнер найма:** Campaign/Flight и **assignment Recruitment Pipeline** (`Vacancy.funnel_id`) живут здесь ([ADR-035](../specs/architecture/ADR-035-module-object-pipeline-settings.md) §12). |
 | **Job Post** | Публичная версия вакансии (title, description, язык, зарплата, локация, статус публикации, привязка к **application form**). Одна vacancy → **много** posts (языки, порталы, кампании). |
 | **Publishing Channel** | Куда публикуем: career page, HostFlow job page, Pracuj, Indeed, Meta, LinkedIn, OLX и т.д. |
 | **Application Form** | Контур [**Forms**](../forms/module-scope.md) / [`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md): отклик, файлы, RODO, предквалификация. |
@@ -56,8 +56,9 @@ Recruitment **owns** candidate (and legacy lead) pipeline definitions. Canonical
 | Elements | **Operational stages** + **platform system transitions** (`handoff_to_hr` / `handoff_to_client` / close) — transitions are not board positions |
 | Templates | Platform template catalog → company **instances** (e.g. Poltrakt Drivers) |
 | `company_id` | **Required** for all new operational funnels |
-| Default pointer | `RecruitmentModuleSettingsV1.default_candidate_funnel_id` (company CMS); resolver step 2 |
-| Resolution | Single chain — [`module-owned-pipelines-p0.md`](../specs/architecture/module-owned-pipelines-p0.md) §5 |
+| Default pointer | CMS `default_candidate_funnel_id` = **default for new vacancies only** (not operational assignment) |
+| Assignment SoT | `Vacancy.funnel_id` — Candidate/Application inherit from Vacancy ([ADR-035](../specs/architecture/ADR-035-module-object-pipeline-settings.md) §12) |
+| Resolution | Vacancy first → then CMS/company default for library fallback — [`module-owned-pipelines-p0.md`](../specs/architecture/module-owned-pipelines-p0.md) §5 |
 
 **Runtime entry points** use `recruitment_funnel_assignment` helpers → `resolve_recruitment_funnel`. **Forbidden after P0 gate:** new tenant-wide operational funnels; cross-module funnel rows; gates on legacy `system_stage` alone; new `ready_for_hr`-style operational stages (use catalog transitions).
 

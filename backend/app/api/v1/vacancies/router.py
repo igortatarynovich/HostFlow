@@ -280,12 +280,15 @@ async def create_vacancy(
     svc = _svc(db_tenant, own_company_id=own_company_id)
     _db, tenant_id = db_tenant
     await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(_db, str(tenant_id))
-    return await svc.create(
-        str(tenant_id),
-        payload,
-        own_company_id=own_company_id,
-        actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
-    )
+    try:
+        return await svc.create(
+            str(tenant_id),
+            payload,
+            own_company_id=own_company_id,
+            actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 @router.post(
     "/{vacancy_id}/candidates",
@@ -396,13 +399,52 @@ async def get_vacancy_pipeline(
     )
     rows = candidates.scalars().all()
 
-    # Profile-specific stages (stage_codes, stage_labels, stage_columns)
+    # Profile/Vacancy-specific stages (Vacancy.funnel_id first — ADR-035 §12)
     profile_stages: dict | None = None
     stage_columns_map: dict[str, list[str]] = {}
     stage_codes_order: list[str] = []
     stage_labels: dict[str, dict[str, str]] = {}
 
-    if getattr(vacancy, "candidate_profile_id", None):
+    from backend.app.services.recruitment_funnel_assignment import resolve_funnel_id_for_vacancy
+
+    funnel_id = await resolve_funnel_id_for_vacancy(
+        db, tenant_id=str(tenant_id), vacancy=vacancy
+    )
+    if funnel_id:
+        from backend.app.models.funnel import Funnel, FunnelStage
+
+        funnel_row = await db.execute(
+            select(Funnel).where(
+                Funnel.id == funnel_id,
+                Funnel.tenant_id.in_([str(tenant_id), "default"]),
+            )
+        )
+        funnel = funnel_row.scalar_one_or_none()
+        if funnel:
+            stages_row = await db.execute(
+                select(FunnelStage)
+                .where(FunnelStage.funnel_id == funnel.id)
+                .order_by(FunnelStage.order, FunnelStage.code)
+            )
+            funnel_stages = list(stages_row.scalars().all())
+            if funnel_stages:
+                stage_codes_order = [s.code for s in funnel_stages]
+                stage_labels = {}
+                stage_columns_map = {}
+                for s in funnel_stages:
+                    col = pipeline_for_stage_code(s.code)
+                    stage_columns_map.setdefault(col, []).append(s.code)
+                    if col not in stage_labels:
+                        stage_labels[col] = {}
+                    stage_labels[col][s.code] = s.label
+                column_order_list = list(stage_columns_map.keys())
+                profile_stages = {
+                    "stage_codes": stage_codes_order,
+                    "stage_labels": stage_labels,
+                    "stage_columns": stage_columns_map,
+                    "column_order": column_order_list,
+                }
+    elif getattr(vacancy, "candidate_profile_id", None):
         profile_row = await db.execute(
             select(CandidateProfile).where(
                 CandidateProfile.id == vacancy.candidate_profile_id,
@@ -410,71 +452,35 @@ async def get_vacancy_pipeline(
             )
         )
         profile = profile_row.scalar_one_or_none()
-        if profile:
-            funnel_id = getattr(profile, "funnel_id", None)
-            if funnel_id:
-                from backend.app.models.funnel import Funnel, FunnelStage
-
-                funnel_row = await db.execute(
-                    select(Funnel).where(
-                        Funnel.id == funnel_id,
-                        Funnel.tenant_id.in_([str(tenant_id), "default"]),
-                    )
-                )
-                funnel = funnel_row.scalar_one_or_none()
-                if funnel:
-                    stages_row = await db.execute(
-                        select(FunnelStage)
-                        .where(FunnelStage.funnel_id == funnel.id)
-                        .order_by(FunnelStage.order, FunnelStage.code)
-                    )
-                    funnel_stages = list(stages_row.scalars().all())
-                    if funnel_stages:
-                        stage_codes_order = [s.code for s in funnel_stages]
-                        stage_labels = {}
-                        stage_columns_map = {}
-                        for s in funnel_stages:
-                            col = pipeline_for_stage_code(s.code)
-                            stage_columns_map.setdefault(col, []).append(s.code)
-                            if col not in stage_labels:
-                                stage_labels[col] = {}
-                            stage_labels[col][s.code] = s.label
+        if profile and profile.config:
+            cfg = profile.config or {}
+            stage_codes = cfg.get("stage_codes")
+            if isinstance(stage_codes, list) and stage_codes:
+                stage_codes_order = [str(c) for c in stage_codes if c]
+                sc_map = cfg.get("stage_columns")
+                if isinstance(sc_map, dict):
+                    stage_columns_map = {
+                        str(k): [str(s) for s in v] if isinstance(v, list) else []
+                        for k, v in sc_map.items()
+                    }
+                stage_labels_raw = cfg.get("stage_labels")
+                if isinstance(stage_labels_raw, dict):
+                    stage_labels = {
+                        str(k): v if isinstance(v, dict) else {}
+                        for k, v in stage_labels_raw.items()
+                    }
+                if stage_columns_map:
+                    col_order = cfg.get("column_order")
+                    if isinstance(col_order, list) and col_order:
+                        column_order_list = [str(c) for c in col_order if c]
+                    else:
                         column_order_list = list(stage_columns_map.keys())
-                        profile_stages = {
-                            "stage_codes": stage_codes_order,
-                            "stage_labels": stage_labels,
-                            "stage_columns": stage_columns_map,
-                            "column_order": column_order_list,
-                        }
-            elif profile.config:
-                cfg = profile.config or {}
-                stage_codes = cfg.get("stage_codes")
-                if isinstance(stage_codes, list) and stage_codes:
-                    stage_codes_order = [str(c) for c in stage_codes if c]
-                    sc_map = cfg.get("stage_columns")
-                    if isinstance(sc_map, dict):
-                        stage_columns_map = {
-                            str(k): [str(s) for s in v] if isinstance(v, list) else []
-                            for k, v in sc_map.items()
-                        }
-                    stage_labels_raw = cfg.get("stage_labels")
-                    if isinstance(stage_labels_raw, dict):
-                        stage_labels = {
-                            str(k): v if isinstance(v, dict) else {}
-                            for k, v in stage_labels_raw.items()
-                        }
-                    if stage_columns_map:
-                        col_order = cfg.get("column_order")
-                        if isinstance(col_order, list) and col_order:
-                            column_order_list = [str(c) for c in col_order if c]
-                        else:
-                            column_order_list = list(stage_columns_map.keys())
-                        profile_stages = {
-                            "stage_codes": stage_codes_order,
-                            "stage_labels": stage_labels,
-                            "stage_columns": stage_columns_map,
-                            "column_order": column_order_list,
-                        }
+                    profile_stages = {
+                        "stage_codes": stage_codes_order,
+                        "stage_labels": stage_labels,
+                        "stage_columns": stage_columns_map,
+                        "column_order": column_order_list,
+                    }
 
     # Build column_key -> stage_code mapping
     def _stage_to_column(sc: str) -> str:
