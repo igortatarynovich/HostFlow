@@ -1,5 +1,5 @@
 import React from 'react'
-import { SectionCard } from '../../ui/SectionCard'
+import { SectionCard } from '../../../ui/SectionCard'
 
 type Props = {
   title: string

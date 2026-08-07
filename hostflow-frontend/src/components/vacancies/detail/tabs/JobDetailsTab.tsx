@@ -1,9 +1,9 @@
 import React from 'react'
 import type { FieldErrors, UseFormRegister, UseFormWatch } from 'react-hook-form'
-import { SectionCard } from '../../ui/SectionCard'
-import { EMPLOYMENT_TYPES, type EmploymentType } from '../../../api/vacancies'
-import type { CandidateProfile } from '../../../api/candidate_profiles'
-import type { SalesOrderLine } from '../../../api/salesOrders'
+import { SectionCard } from '../../../ui/SectionCard'
+import { EMPLOYMENT_TYPES, type EmploymentType } from '../../../../api/vacancies'
+import type { CandidateProfile } from '../../../../api/candidate_profiles'
+import type { SalesOrderLine } from '../../../../api/salesOrders'
 
 export type JobDetailsFormFields = {
   title: string

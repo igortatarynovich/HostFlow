@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { SectionCard } from '../../ui/SectionCard'
+import { SectionCard } from '../../../ui/SectionCard'
 import { isDocsWaitStage, isPermitStage, type StageCount } from '../pipelineMetrics'
 
 export type AttentionItem = {

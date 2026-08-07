@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { SectionCard } from '../../ui/SectionCard'
+import { SectionCard } from '../../../ui/SectionCard'
 
 export type RelatedLink = {
   id: string

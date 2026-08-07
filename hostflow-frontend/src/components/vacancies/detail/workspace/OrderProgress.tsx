@@ -1,59 +1,27 @@
-import { useI18n } from '../../../../i18n'
+import React from 'react'
+import { SectionCard } from '../../../ui/SectionCard'
 
 type Props = {
-  quantityNeeded: number
-  hired: number
-  orderLineTitle?: string | null
+  title: string
+  hint: string
+  fulfilled: number
+  needed: number
 }
 
-export function OrderProgress({ quantityNeeded, hired, orderLineTitle }: Props) {
-  const { t } = useI18n()
-
-  const progress = quantityNeeded > 0 ? Math.min(100, Math.round((hired / quantityNeeded) * 100)) : 0
-  const remaining = Math.max(0, quantityNeeded - hired)
-
+export function OrderProgress({ title, hint, fulfilled, needed }: Props) {
+  const pct = needed > 0 ? Math.min(100, Math.round((fulfilled / needed) * 100)) : 0
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-slate-700">
-          {t('app.vacancies.workspace.order_progress.title', { defaultValue: 'Прогресс заказа' })}
-        </h3>
-        <span className="text-xs text-slate-500">
-          {orderLineTitle ? orderLineTitle : t('app.vacancies.workspace.order_progress.line_linked', { defaultValue: 'Order Line' })}
+    <SectionCard title={title}>
+      <p className="mb-2 text-xs text-slate-500">{hint}</p>
+      <div className="flex items-center justify-between text-sm font-medium text-slate-800">
+        <span>
+          {fulfilled} / {needed}
         </span>
+        <span className="tabular-nums text-slate-500">{pct}%</span>
       </div>
-
-      <div className="mb-2 h-3 w-full overflow-hidden rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full bg-blue-500 transition-all duration-300"
-          style={{ width: `${progress}%` }}
-        />
+      <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-teal-600 transition-all" style={{ width: `${pct}%` }} />
       </div>
-
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-600">
-          {t('app.vacancies.workspace.order_progress.filled', {
-            defaultValue: 'Выполнено: {hired} / {total}',
-            values: { hired, total: quantityNeeded },
-          })}
-        </span>
-        <span className="font-medium text-slate-800">{progress}%</span>
-      </div>
-
-      {remaining > 0 && (
-        <p className="mt-2 text-xs text-slate-500">
-          {t('app.vacancies.workspace.order_progress.remaining', {
-            defaultValue: 'Осталось: {remaining} позиций',
-            values: { remaining },
-          })}
-        </p>
-      )}
-
-      <p className="mt-2 text-xs text-amber-600">
-        {t('app.vacancies.workspace.order_progress.note', {
-          defaultValue: 'Прогресс на основе нанятых кандидатов вакансии (до появления Order Fulfillment API)',
-        })}
-      </p>
-    </div>
+    </SectionCard>
   )
 }

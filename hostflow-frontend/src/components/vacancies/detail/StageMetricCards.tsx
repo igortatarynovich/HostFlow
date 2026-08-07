@@ -1,89 +1,57 @@
-import { useI18n } from '../../../i18n'
+import React from 'react'
 import StageTag from '../../StageTag'
 import type { StageMetric } from './pipelineMetrics'
 
+export type { StageMetric }
+
+const ACCENT: Record<string, string> = {
+  new: 'border-sky-200 bg-sky-50',
+  contacted: 'border-blue-200 bg-blue-50',
+  docs_wait: 'border-amber-200 bg-amber-50',
+  permit: 'border-violet-200 bg-violet-50',
+  employed: 'border-emerald-200 bg-emerald-50',
+  hired: 'border-emerald-200 bg-emerald-50',
+  rejected: 'border-rose-200 bg-rose-50',
+  declined: 'border-slate-200 bg-slate-50',
+}
+
+function accentFor(code: string): string {
+  const c = code.toLowerCase()
+  for (const [k, v] of Object.entries(ACCENT)) {
+    if (c === k || c.includes(k)) return v
+  }
+  return 'border-slate-200 bg-white'
+}
+
 type Props = {
   stages: StageMetric[]
-  onStageClick: (stageCode: string) => void
   loading?: boolean
+  viewListLabel: string
+  onSelect: (stageCode: string) => void
 }
 
-export function StageMetricCards({ stages, onStageClick, loading }: Props) {
-  const { t } = useI18n()
-
+export function StageMetricCards({ stages, loading, viewListLabel, onSelect }: Props) {
   if (loading) {
-    return (
-      <div className="flex flex-wrap gap-2">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-16 w-28 animate-pulse rounded-lg border border-slate-200 bg-slate-50"
-          />
-        ))}
-      </div>
-    )
+    return <div className="text-xs text-slate-500">…</div>
   }
-
-  if (stages.length === 0) {
-    return (
-      <p className="text-sm text-slate-500">
-        {t('app.vacancies.workspace.no_pipeline_data', { defaultValue: 'Нет данных по воронке' })}
-      </p>
-    )
-  }
-
-  const sortedStages = [...stages].sort((a, b) => b.count - a.count)
+  if (!stages.length) return null
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {sortedStages.map((stage) => (
+    <div className="flex gap-2 overflow-x-auto pb-1">
+      {stages.map((s) => (
         <button
-          key={stage.code}
+          key={s.code}
           type="button"
-          onClick={() => onStageClick(stage.code)}
-          className="flex flex-col items-start gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+          onClick={() => onSelect(s.code)}
+          className={`min-w-[7.5rem] flex-shrink-0 rounded-xl border px-3 py-2.5 text-left transition hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 ${accentFor(s.code)}`}
         >
-          <span className="text-xl font-semibold text-slate-900">{stage.count}</span>
-          <StageTag code={stage.code} size="sm" />
-          <span className="text-xs text-slate-500">
-            {t('app.vacancies.workspace.view_list', { defaultValue: 'Посмотреть' })}
-          </span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-export function CompactStageStrip({
-  stages,
-  onStageClick,
-}: {
-  stages: StageMetric[]
-  onStageClick: (stageCode: string) => void
-}) {
-  const { t } = useI18n()
-  const sortedStages = [...stages]
-    .filter((s) => s.count > 0)
-    .sort((a, b) => b.count - a.count)
-
-  if (sortedStages.length === 0) return null
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {sortedStages.map((stage) => (
-        <button
-          key={stage.code}
-          type="button"
-          onClick={() => onStageClick(stage.code)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm transition-colors hover:bg-slate-50"
-          title={t('app.vacancies.workspace.click_to_filter', {
-            defaultValue: 'Нажмите для фильтрации по этапу',
-          })}
-        >
-          <StageTag code={stage.code} size="sm" />
-          <span className="min-w-[1.25rem] rounded bg-slate-100 px-1.5 py-0.5 text-center text-xs font-semibold text-slate-700">
-            {stage.count}
-          </span>
+          <div className="text-xl font-semibold tabular-nums text-slate-900">{s.count}</div>
+          <div className="mt-1 line-clamp-2 text-xs text-slate-700">
+            <StageTag code={s.code} />
+          </div>
+          <div className="mt-2 text-[11px] font-medium text-slate-600 underline-offset-2 hover:underline">
+            {viewListLabel}
+          </div>
         </button>
       ))}
     </div>

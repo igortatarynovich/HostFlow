@@ -1,7 +1,7 @@
 import React from 'react'
 import { Controller, type Control, type UseFormRegister } from 'react-hook-form'
-import { SectionCard } from '../../ui/SectionCard'
-import { formatDate } from '../../../utils/vacancyUtils'
+import { SectionCard } from '../../../ui/SectionCard'
+import { formatDate } from '../../../../utils/vacancyUtils'
 
 type Props = {
   control: Control<any>

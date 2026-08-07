@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Controller, type Control, type UseFormSetValue } from 'react-hook-form'
-import { SectionCard } from '../../ui/SectionCard'
-import MultiSelect from '../../controls/MultiSelect'
-import { buildCountryOptions } from '../../../data/countries'
-import { getDocumentTypes, type DocType } from '../../../api/documents/catalog'
+import { SectionCard } from '../../../ui/SectionCard'
+import MultiSelect from '../../../controls/MultiSelect'
+import { buildCountryOptions } from '../../../../data/countries'
+import { getDocumentTypes, type DocType } from '../../../../api/documents/catalog'
 import { DOC_OK_STATUSES } from '../criteriaForm'
-import type { VacancyRequirementsPreset } from '../../../api/tenants'
-import type { LocaleCode } from '../../../i18n'
+import type { VacancyRequirementsPreset } from '../../../../api/tenants'
+import type { LocaleCode } from '../../../../i18n'
 
 type Props = {
   control: Control<any>

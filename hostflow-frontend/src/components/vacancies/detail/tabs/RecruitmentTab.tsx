@@ -1,8 +1,8 @@
 import React from 'react'
 import { Controller, type Control, type UseFormRegister, type UseFormWatch } from 'react-hook-form'
-import { SectionCard } from '../../ui/SectionCard'
-import FunnelSelector from '../../profile/FunnelSelector'
-import type { ManagerOption } from '../../../api/types'
+import { SectionCard } from '../../../ui/SectionCard'
+import FunnelSelector from '../../../profile/FunnelSelector'
+import type { ManagerOption } from '../../../../api/types'
 
 type PoolDraft = Record<string, { selected: boolean; weight: number }>
 

@@ -1,7 +1,7 @@
 import React from 'react'
-import { SectionCard } from '../../ui/SectionCard'
-import StageTag from '../../StageTag'
-import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
+import { SectionCard } from '../../../ui/SectionCard'
+import StageTag from '../../../StageTag'
+import { CRM_APP_PATHS } from '../../../../app/crmAppPaths'
 
 type Props = {
   loading: boolean

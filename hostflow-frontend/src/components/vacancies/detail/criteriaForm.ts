@@ -1,194 +1,242 @@
 /**
- * Lead criteria form utilities for vacancy workspace.
- * Handles conversion between form values (string[]) and API payload.
+ * Lead criteria form helpers — arrays in UI, arrays in lead_criteria_v1.
+ * Mirrors backend DEFAULT_CANDIDATE_DOCUMENT_OK_STATUSES in lead_criteria_eval.py.
  */
 
-/**
- * Document statuses considered "OK" for lead qualification.
- * Mirrors backend DEFAULT_CANDIDATE_DOCUMENT_OK_STATUSES.
- */
 export const DOC_OK_STATUSES = [
-  'approved',
   'completed',
+  'approved',
   'verified',
-  'received',
   'delivered',
+  'received',
   'issued',
   'active',
   'registered',
-  'valid',
-  'confirmed',
 ] as const
 
-export type DocOkStatus = (typeof DOC_OK_STATUSES)[number]
-
-/**
- * Form criteria values (arrays, not CSV strings).
- */
-export type CriteriaFormValues = {
-  minExperienceEuYears: number | null
-  requiresDocuments: string[]
-  requiresCandidateDocumentsV1: string[]
-  candidateDocumentsAllowStatuses: string[]
-  allowedGeoCountries: string[]
-  blockedGeoCountries: string[]
-  preferredDocuments: string[]
-  preferredGeoCountries: string[]
-  leadFitEvaluationEnabled: boolean
-  disableAutoConvertOnFit: boolean
+export type CriteriaFormSlice = {
+  criteria_min_experience_eu_years?: string | number
+  criteria_requires_documents: string[]
+  criteria_requires_candidate_documents_v1: string[]
+  criteria_candidate_documents_allow_statuses: string[]
+  criteria_allowed_geo_countries: string[]
+  criteria_blocked_geo_countries: string[]
+  criteria_preferred_documents: string[]
+  criteria_preferred_languages: string[]
+  vacancy_disable_auto_convert_on_fit: boolean
+  lead_fit_evaluation_enabled: boolean
 }
 
-/**
- * Parse lead_criteria_v1 from vacancy.extra into form values.
- */
-export function criteriaFromExtra(extra: unknown): CriteriaFormValues {
-  const defaults: CriteriaFormValues = {
-    minExperienceEuYears: null,
-    requiresDocuments: [],
-    requiresCandidateDocumentsV1: [],
-    candidateDocumentsAllowStatuses: [],
-    allowedGeoCountries: [],
-    blockedGeoCountries: [],
-    preferredDocuments: [],
-    preferredGeoCountries: [],
-    leadFitEvaluationEnabled: false,
-    disableAutoConvertOnFit: false,
+function asStringArray(v: unknown): string[] {
+  if (Array.isArray(v)) {
+    return v.map((x) => String(x || '').trim()).filter(Boolean)
   }
+  if (typeof v === 'string' && v.trim()) {
+    return v
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  }
+  return []
+}
 
-  if (!extra || typeof extra !== 'object') return defaults
-
-  const ex = extra as Record<string, unknown>
-  const crit = ex.lead_criteria_v1 as Record<string, unknown> | undefined
-
-  if (!crit || typeof crit !== 'object') {
-    // Check explicit fit evaluation flag
-    if (ex.lead_fit_evaluation_enabled_v1 === true) {
-      defaults.leadFitEvaluationEnabled = true
+function parseExtra(raw: unknown): Record<string, unknown> {
+  if (!raw) return {}
+  if (typeof raw === 'string') {
+    try {
+      const p = JSON.parse(raw)
+      return p && typeof p === 'object' && !Array.isArray(p) ? p : {}
+    } catch {
+      return {}
     }
-    if (ex.leads_auto_convert_on_fit_v1 === false) {
-      defaults.disableAutoConvertOnFit = true
-    }
-    return defaults
   }
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, unknown>
+  return {}
+}
 
-  const toArray = (v: unknown): string[] => {
-    if (Array.isArray(v)) return v.map(String).filter(Boolean)
-    if (typeof v === 'string') return v.split(',').map((s) => s.trim()).filter(Boolean)
-    return []
-  }
+export function criteriaDefaultsFromSource(source: any): CriteriaFormSlice {
+  const extra = parseExtra(source?.extra)
+  const crit =
+    extra.lead_criteria_v1 && typeof extra.lead_criteria_v1 === 'object'
+      ? (extra.lead_criteria_v1 as Record<string, unknown>)
+      : {}
 
-  const toNumber = (v: unknown): number | null => {
-    if (v == null) return null
-    const n = Number(v)
-    return Number.isFinite(n) && n > 0 ? n : null
-  }
+  const explicitFit = extra.lead_fit_evaluation_enabled_v1
+  let leadFitEvaluationEnabled = false
+  if (explicitFit === true) leadFitEvaluationEnabled = true
+  else if (explicitFit === false) leadFitEvaluationEnabled = false
+  else leadFitEvaluationEnabled = Object.keys(crit).length > 0
 
   return {
-    minExperienceEuYears: toNumber(crit.min_experience_eu_years),
-    requiresDocuments: toArray(crit.requires_documents),
-    requiresCandidateDocumentsV1: toArray(crit.requires_candidate_documents_v1),
-    candidateDocumentsAllowStatuses: toArray(crit.candidate_documents_allow_statuses),
-    allowedGeoCountries: toArray(crit.allowed_geo_countries).map((s) => s.toUpperCase()),
-    blockedGeoCountries: toArray(crit.blocked_geo_countries).map((s) => s.toUpperCase()),
-    preferredDocuments: toArray(crit.preferred_documents),
-    preferredGeoCountries: toArray(crit.preferred_geo_countries).map((s) => s.toUpperCase()),
-    leadFitEvaluationEnabled:
-      ex.lead_fit_evaluation_enabled_v1 === true ||
-      (Object.keys(crit).length > 0 && ex.lead_fit_evaluation_enabled_v1 !== false),
-    disableAutoConvertOnFit: ex.leads_auto_convert_on_fit_v1 === false,
+    criteria_min_experience_eu_years:
+      crit.min_experience_eu_years != null ? String(crit.min_experience_eu_years) : '',
+    criteria_requires_documents: asStringArray(crit.requires_documents),
+    criteria_requires_candidate_documents_v1: asStringArray(
+      crit.requires_candidate_documents_v1,
+    ),
+    criteria_candidate_documents_allow_statuses: asStringArray(
+      crit.candidate_documents_allow_statuses,
+    ),
+    criteria_allowed_geo_countries: asStringArray(crit.allowed_geo_countries).map((c) =>
+      c.toUpperCase(),
+    ),
+    criteria_blocked_geo_countries: asStringArray(crit.blocked_geo_countries).map((c) =>
+      c.toUpperCase(),
+    ),
+    criteria_preferred_documents: asStringArray(
+      crit.preferred_documents ?? crit.preferred_requires_documents,
+    ),
+    criteria_preferred_languages: asStringArray(
+      crit.preferred_languages ?? crit.requires_languages_any,
+    ),
+    vacancy_disable_auto_convert_on_fit: extra.leads_auto_convert_on_fit_v1 === false,
+    lead_fit_evaluation_enabled: leadFitEvaluationEnabled,
   }
 }
 
-/**
- * Apply form criteria values to vacancy payload.extra.lead_criteria_v1.
- * Mutates the payload in place.
- */
 export function applyCriteriaToPayload(
-  payload: { extra?: Record<string, unknown> },
-  values: CriteriaFormValues,
+  payload: { extra?: Record<string, unknown> | string | null },
+  values: CriteriaFormSlice,
 ): void {
-  if (!payload.extra || typeof payload.extra !== 'object') {
-    payload.extra = {}
-  }
+  const prevExtra =
+    payload.extra && typeof payload.extra === 'object' && !Array.isArray(payload.extra)
+      ? { ...(payload.extra as Record<string, unknown>) }
+      : {}
 
-  const criteria: Record<string, unknown> = {}
+  const prevCrit =
+    prevExtra.lead_criteria_v1 &&
+    typeof prevExtra.lead_criteria_v1 === 'object' &&
+    !Array.isArray(prevExtra.lead_criteria_v1)
+      ? { ...(prevExtra.lead_criteria_v1 as Record<string, unknown>) }
+      : {}
 
-  if (values.minExperienceEuYears != null && values.minExperienceEuYears > 0) {
-    criteria.min_experience_eu_years = Math.floor(values.minExperienceEuYears)
-  }
+  const criteria: Record<string, unknown> = { ...prevCrit }
 
-  if (values.requiresDocuments.length > 0) {
-    criteria.requires_documents = values.requiresDocuments
-  }
-
-  if (values.requiresCandidateDocumentsV1.length > 0) {
-    criteria.requires_candidate_documents_v1 = values.requiresCandidateDocumentsV1
-  }
-
-  if (values.candidateDocumentsAllowStatuses.length > 0) {
-    criteria.candidate_documents_allow_statuses = values.candidateDocumentsAllowStatuses
-  }
-
-  if (values.allowedGeoCountries.length > 0) {
-    criteria.allowed_geo_countries = values.allowedGeoCountries
-  }
-
-  if (values.blockedGeoCountries.length > 0) {
-    criteria.blocked_geo_countries = values.blockedGeoCountries
-  }
-
-  if (values.preferredDocuments.length > 0) {
-    criteria.preferred_documents = values.preferredDocuments
-  }
-
-  if (values.preferredGeoCountries.length > 0) {
-    criteria.preferred_geo_countries = values.preferredGeoCountries
-  }
-
-  payload.extra.lead_criteria_v1 = criteria
-  payload.extra.lead_fit_evaluation_enabled_v1 = values.leadFitEvaluationEnabled
-
-  if (values.disableAutoConvertOnFit) {
-    payload.extra.leads_auto_convert_on_fit_v1 = false
+  const minRaw = values.criteria_min_experience_eu_years
+  if (minRaw !== undefined && minRaw !== null && String(minRaw).trim() !== '') {
+    const parsed = Number(minRaw)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      criteria.min_experience_eu_years = Math.floor(parsed)
+    } else {
+      delete criteria.min_experience_eu_years
+    }
   } else {
-    delete payload.extra.leads_auto_convert_on_fit_v1
+    delete criteria.min_experience_eu_years
   }
+
+  const docs = values.criteria_requires_documents || []
+  if (docs.length) criteria.requires_documents = docs
+  else delete criteria.requires_documents
+
+  const modDocs = values.criteria_requires_candidate_documents_v1 || []
+  if (modDocs.length) criteria.requires_candidate_documents_v1 = modDocs
+  else delete criteria.requires_candidate_documents_v1
+
+  const allowSts = values.criteria_candidate_documents_allow_statuses || []
+  if (allowSts.length) criteria.candidate_documents_allow_statuses = allowSts
+  else delete criteria.candidate_documents_allow_statuses
+
+  const allowedGeo = (values.criteria_allowed_geo_countries || []).map((c) => c.toUpperCase())
+  if (allowedGeo.length) criteria.allowed_geo_countries = allowedGeo
+  else delete criteria.allowed_geo_countries
+
+  const blockedGeo = (values.criteria_blocked_geo_countries || []).map((c) => c.toUpperCase())
+  if (blockedGeo.length) criteria.blocked_geo_countries = blockedGeo
+  else delete criteria.blocked_geo_countries
+
+  const prefDocs = values.criteria_preferred_documents || []
+  if (prefDocs.length) criteria.preferred_documents = prefDocs
+  else delete criteria.preferred_documents
+
+  const prefLang = values.criteria_preferred_languages || []
+  if (prefLang.length) {
+    criteria.preferred_languages = prefLang
+    criteria.requires_languages_any = prefLang
+  } else {
+    delete criteria.preferred_languages
+  }
+
+  prevExtra.lead_criteria_v1 = criteria
+  prevExtra.lead_fit_evaluation_enabled_v1 = Boolean(values.lead_fit_evaluation_enabled)
+  if (values.vacancy_disable_auto_convert_on_fit) {
+    prevExtra.leads_auto_convert_on_fit_v1 = false
+  } else {
+    delete prevExtra.leads_auto_convert_on_fit_v1
+  }
+
+  payload.extra = prevExtra
 }
 
-/**
- * Summarize criteria for display (counts of mandatory vs preferred).
- */
-export type CriteriaSummary = {
-  mandatoryDocsCount: number
-  mandatoryGeoCount: number
-  preferredDocsCount: number
-  preferredGeoCount: number
-  minExperience: number | null
-  hasAnyCriteria: boolean
+export type AutomationRuleView = {
+  id: string
+  when: string
+  then: string
 }
 
-export function summarizeCriteria(values: CriteriaFormValues): CriteriaSummary {
-  const mandatoryDocsCount =
-    values.requiresDocuments.length + values.requiresCandidateDocumentsV1.length
-  const mandatoryGeoCount =
-    values.allowedGeoCountries.length + values.blockedGeoCountries.length
-  const preferredDocsCount = values.preferredDocuments.length
-  const preferredGeoCount = values.preferredGeoCountries.length
-  const minExperience = values.minExperienceEuYears
+export function buildAutomationRules(
+  values: CriteriaFormSlice,
+  labels?: { docsWait?: string; rejected?: string; assign?: string },
+): AutomationRuleView[] {
+  const docsWait = labels?.docsWait || 'Waiting Docs'
+  const rejected = labels?.rejected || 'Rejected'
+  const assign = labels?.assign || 'Assign Recruiter'
+  const rules: AutomationRuleView[] = []
 
-  const hasAnyCriteria =
-    mandatoryDocsCount > 0 ||
-    mandatoryGeoCount > 0 ||
-    preferredDocsCount > 0 ||
-    preferredGeoCount > 0 ||
-    minExperience != null
-
-  return {
-    mandatoryDocsCount,
-    mandatoryGeoCount,
-    preferredDocsCount,
-    preferredGeoCount,
-    minExperience,
-    hasAnyCriteria,
+  const allDocs = [
+    ...(values.criteria_requires_candidate_documents_v1 || []),
+    ...(values.criteria_requires_documents || []),
+  ]
+  for (const doc of allDocs) {
+    rules.push({
+      id: `doc-missing-${doc}`,
+      when: `Missing document: ${doc}`,
+      then: docsWait,
+    })
   }
+
+  const minRaw = values.criteria_min_experience_eu_years
+  if (minRaw != null && String(minRaw).trim() !== '') {
+    const n = Number(minRaw)
+    if (Number.isFinite(n) && n > 0) {
+      rules.push({
+        id: 'exp-min',
+        when: `Experience below ${n} year(s)`,
+        then: rejected,
+      })
+    }
+  }
+
+  for (const c of values.criteria_blocked_geo_countries || []) {
+    rules.push({
+      id: `geo-block-${c}`,
+      when: `Country blocked: ${c}`,
+      then: rejected,
+    })
+  }
+
+  if (values.criteria_allowed_geo_countries?.length) {
+    rules.push({
+      id: 'geo-allow',
+      when: `Location outside allowed: ${values.criteria_allowed_geo_countries.join(', ')}`,
+      then: rejected,
+    })
+  }
+
+  if (allDocs.length && values.lead_fit_evaluation_enabled) {
+    rules.push({
+      id: 'docs-ok',
+      when: 'All required documents OK',
+      then: assign,
+    })
+  }
+
+  if (values.vacancy_disable_auto_convert_on_fit) {
+    rules.push({
+      id: 'no-auto-convert',
+      when: 'Lead fits criteria',
+      then: 'Do not auto-convert (manual review)',
+    })
+  }
+
+  return rules
 }

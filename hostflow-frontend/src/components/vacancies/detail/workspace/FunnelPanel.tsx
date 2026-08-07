@@ -1,6 +1,6 @@
 import React from 'react'
-import { SectionCard } from '../../ui/SectionCard'
-import StageTag from '../../StageTag'
+import { SectionCard } from '../../../ui/SectionCard'
+import StageTag from '../../../StageTag'
 import type { StageCount } from '../pipelineMetrics'
 
 type Props = {

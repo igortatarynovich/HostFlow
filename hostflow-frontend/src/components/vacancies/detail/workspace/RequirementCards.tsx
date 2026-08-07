@@ -1,88 +1,82 @@
-import { useI18n } from '../../../../i18n'
-import type { CriteriaSummary } from '../criteriaForm'
+import React from 'react'
+import { SectionCard } from '../../../ui/SectionCard'
 
-type Props = {
-  summary: CriteriaSummary
+export type RequirementCardModel = {
+  title: string
+  items: string[]
+  empty?: string
 }
 
-function RequirementCard({
-  title,
-  items,
-  emptyText,
-}: {
+type Props = {
   title: string
-  items: { label: string; value: string | number }[]
-  emptyText: string
-}) {
+  mandatoryTitle: string
+  preferredTitle: string
+  preferredEmptyNote: string
+  mandatory: RequirementCardModel[]
+  preferred: RequirementCardModel[]
+  onEdit?: () => void
+  editLabel?: string
+}
+
+function Cards({ models }: { models: RequirementCardModel[] }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
-      <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{title}</h4>
-      {items.length === 0 ? (
-        <p className="text-sm text-slate-400">{emptyText}</p>
-      ) : (
-        <ul className="space-y-1">
-          {items.map((item, idx) => (
-            <li key={idx} className="flex items-center justify-between text-sm">
-              <span className="text-slate-600">{item.label}</span>
-              <span className="font-medium text-slate-800">{item.value}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {models.map((m) => (
+        <div key={m.title} className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="text-sm font-semibold text-slate-800">{m.title}</div>
+          {m.items.length === 0 ? (
+            <p className="mt-2 text-xs text-slate-500">{m.empty || '—'}</p>
+          ) : (
+            <ul className="mt-2 space-y-1">
+              {m.items.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-sm text-slate-700">
+                  <span className="text-emerald-600" aria-hidden>
+                    ✔
+                  </span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
     </div>
   )
 }
 
-export function RequirementCards({ summary }: Props) {
-  const { t } = useI18n()
-
-  const mandatoryItems: { label: string; value: string | number }[] = []
-  const preferredItems: { label: string; value: string | number }[] = []
-
-  if (summary.mandatoryDocsCount > 0) {
-    mandatoryItems.push({
-      label: t('app.vacancies.workspace.requirements.docs', { defaultValue: 'Документы' }),
-      value: summary.mandatoryDocsCount,
-    })
-  }
-  if (summary.mandatoryGeoCount > 0) {
-    mandatoryItems.push({
-      label: t('app.vacancies.workspace.requirements.geo', { defaultValue: 'Страны' }),
-      value: summary.mandatoryGeoCount,
-    })
-  }
-  if (summary.minExperience != null) {
-    mandatoryItems.push({
-      label: t('app.vacancies.workspace.requirements.experience', { defaultValue: 'Мин. опыт (лет)' }),
-      value: summary.minExperience,
-    })
-  }
-
-  if (summary.preferredDocsCount > 0) {
-    preferredItems.push({
-      label: t('app.vacancies.workspace.requirements.docs', { defaultValue: 'Документы' }),
-      value: summary.preferredDocsCount,
-    })
-  }
-  if (summary.preferredGeoCount > 0) {
-    preferredItems.push({
-      label: t('app.vacancies.workspace.requirements.geo', { defaultValue: 'Страны' }),
-      value: summary.preferredGeoCount,
-    })
-  }
+export function RequirementCards({
+  title,
+  mandatoryTitle,
+  preferredTitle,
+  preferredEmptyNote,
+  mandatory,
+  preferred,
+  onEdit,
+  editLabel,
+}: Props) {
+  const preferredHasItems = preferred.some((p) => p.items.length > 0)
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <RequirementCard
-        title={t('app.vacancies.workspace.requirements.mandatory', { defaultValue: 'Обязательно' })}
-        items={mandatoryItems}
-        emptyText={t('app.vacancies.workspace.requirements.none', { defaultValue: 'Не указано' })}
-      />
-      <RequirementCard
-        title={t('app.vacancies.workspace.requirements.preferred', { defaultValue: 'Предпочтительно' })}
-        items={preferredItems}
-        emptyText={t('app.vacancies.workspace.requirements.none', { defaultValue: 'Не указано' })}
-      />
-    </div>
+    <SectionCard title={title}>
+      {onEdit && editLabel ? (
+        <div className="mb-3 flex justify-end">
+          <button type="button" className="btn-secondary btn-xs" onClick={onEdit}>
+            {editLabel}
+          </button>
+        </div>
+      ) : null}
+      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {mandatoryTitle}
+      </div>
+      <Cards models={mandatory} />
+      <div className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {preferredTitle}
+      </div>
+      {preferredHasItems ? (
+        <Cards models={preferred} />
+      ) : (
+        <p className="text-xs text-slate-500">{preferredEmptyNote}</p>
+      )}
+    </SectionCard>
   )
 }
