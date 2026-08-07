@@ -2426,7 +2426,8 @@
             "documents": "Dokumenty",
             "leads": "Leady",
             "services": "Usługi",
-            "client_portal": "Portal klienta"
+            "client_portal": "Portal klienta",
+            "hr": "HR"
           },
           "empty": "Brak danych o modułach dla tego tenanta.",
           "errors": {
@@ -3027,7 +3028,8 @@
           "recruiter": "Rekruter",
           "client_manager": "Menedżer klienta",
           "client_processor": "Procesor kandydatów",
-          "viewer": "Podgląd"
+          "viewer": "Podgląd",
+          "employee": "Pracownik"
         },
         "form": {
           "email_label": "Email",
@@ -11841,6 +11843,10 @@
         "profile": {
           "description": "Profil osobisty, język, bezpieczeństwo i preferencje lokalne.",
           "label": "Mój profil"
+        },
+        "roles_access": {
+          "label": "Role i dostępy",
+          "description": "Role zaufania, macierz modułów i presety uprawnień dla Employee i Viewer."
         }
       },
       "audit": {
@@ -11907,6 +11913,18 @@
           "description": "Profil firmy, tożsamość workspace i zakres dostępu na wysokim poziomie.",
           "label": "Przestrzeń robocza"
         }
+      },
+      "roles_access": {
+        "title": "Role i dostępy",
+        "description": "Role zaufania i widoczność modułów. Stanowiska to presety, nie osobne role security (ADR-036).",
+        "matrix_heading": "Macierz rola × moduł",
+        "matrix_help": "V = widoczne, E = edycja. Kolumna Administrator zablokowana (trust ceiling).",
+        "show_legacy": "Pokaż legacy kolumny ról",
+        "ceiling_locked": "(zablokowane)",
+        "presets_title": "Presety (nie role)",
+        "presets_body": "Recruiter, Team lead, HR, Compliance to pakiety startowe dla Employee. Goście portalu: Viewer + portal context, nie client_manager.",
+        "load_failed": "Nie udało się wczytać macierzy",
+        "save_failed": "Nie udało się zapisać"
       }
     },
     "communications_settings": {

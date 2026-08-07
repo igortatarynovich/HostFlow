@@ -351,6 +351,21 @@ export async function getTenantEffectiveRoleModules(opts?: { tenantId?: string }
   return data
 }
 
+export async function getTenantRoleModuleMatrix(opts?: { tenantId?: string }) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.get<TenantRoleModuleMatrix>('/settings/team/module-matrix')
+  return data
+}
+
+export async function updateTenantRoleModuleMatrix(
+  payload: TenantRoleModuleMatrixPatch,
+  opts?: { tenantId?: string },
+) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.patch<TenantRoleModuleMatrix>('/settings/team/module-matrix', payload)
+  return data
+}
+
 export async function listSeatRequests(opts?: { tenantId?: string }) {
   const client = resolveTenantClient(opts?.tenantId)
   const { data } = await client.get<SeatRequest[]>('/settings/team/seat-requests')

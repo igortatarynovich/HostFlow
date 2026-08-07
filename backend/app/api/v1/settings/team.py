@@ -317,6 +317,40 @@ async def get_module_matrix(
     return TenantRoleModuleMatrix.model_validate(matrix)
 
 
+@router.patch(
+    "/module-matrix",
+    response_model=TenantRoleModuleMatrix,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def patch_module_matrix(
+    payload: platform_schemas.TenantRoleModuleMatrixPatch,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> TenantRoleModuleMatrix:
+    """Tenant admin edits operational role×module matrix within ADR-036 trust ceilings."""
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        matrix = tenant_service.get_role_module_matrix_snapshot(tenant)
+    else:
+        try:
+            matrix = await tenant_service.update_role_module_matrix(
+                db,
+                tenant,
+                updates,  # type: ignore[arg-type]
+                actor_id=ctx.sub,
+                actor_is_superadmin=False,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return TenantRoleModuleMatrix.model_validate(matrix)
+
+
 @router.get(
     "/module-matrix/effective",
     response_model=EffectiveRoleModules,
@@ -324,6 +358,7 @@ async def get_module_matrix(
         Depends(
             require_roles(
                 Role.administrator,
+                Role.employee,
                 Role.supervisor,
                 Role.recruiter,
                 Role.client_manager,
@@ -352,6 +387,9 @@ async def get_effective_module_permissions(
     role_for_matrix = str(ctx.role or "").strip().lower()
     if getattr(tenant, "type", None) == TenantType.company and role_for_matrix == UserRole.recruiter.value:
         role_for_matrix = UserRole.client_processor.value
+    if role_for_matrix == "employee":
+        # Prefer employee matrix column when present
+        pass
     modules = tenant_service.get_effective_role_module_permissions(
         tenant,
         role=role_for_matrix,

@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class UserRole(str, Enum):
     administrator = "administrator"
+    employee = "employee"
     supervisor = "supervisor"
     recruiter = "recruiter"
     client_manager = "client_manager"

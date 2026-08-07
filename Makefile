@@ -65,6 +65,14 @@ test:
 test-search:
 	@$(MAKE) test ARGS=tests/api/test_global_search.py
 
+.PHONY: rbac-role-lint
+rbac-role-lint:
+	@python3 scripts/rbac/check_no_new_job_title_roles.py
+
+.PHONY: rbac-role-scan
+rbac-role-scan:
+	@python3 scripts/rbac/scan_role_usage.py
+
 # ---- Deps ----
 .PHONY: install
 install:

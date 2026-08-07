@@ -82,6 +82,7 @@ export type TenantModuleSettingsPatch = Partial<TenantModuleSettings>;
 
 export type RoleModuleMatrixRole =
   | 'administrator'
+  | 'employee'
   | 'supervisor'
   | 'recruiter'
   | 'client_manager'

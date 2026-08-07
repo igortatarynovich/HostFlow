@@ -2426,7 +2426,8 @@
             "documents": "Документы",
             "leads": "Лиды",
             "services": "Сервисы",
-            "client_portal": "Клиентский портал"
+            "client_portal": "Клиентский портал",
+            "hr": "HR"
           },
           "empty": "Настройки модулей недоступны для этого тенанта.",
           "errors": {
@@ -3027,7 +3028,8 @@
           "recruiter": "Рекрутер",
           "client_manager": "Менеджер клиента",
           "client_processor": "Процессор кандидатов",
-          "viewer": "Наблюдатель"
+          "viewer": "Наблюдатель",
+          "employee": "Сотрудник"
         },
         "form": {
           "email_label": "Email",
@@ -11841,6 +11843,10 @@
         "profile": {
           "description": "Личный профиль, язык, безопасность и локальные настройки.",
           "label": "Мой профиль"
+        },
+        "roles_access": {
+          "label": "Роли и доступы",
+          "description": "Trust-роли, матрица модулей и пресеты прав для Employee и Viewer."
         }
       },
       "audit": {
@@ -11907,6 +11913,18 @@
           "description": "Профиль компании, идентичность воркспейса и общий контур доступа.",
           "label": "Рабочее пространство"
         }
+      },
+      "roles_access": {
+        "title": "Роли и доступы",
+        "description": "Trust-роли и видимость модулей. Должности — пресеты, не отдельные security-роли (ADR-036).",
+        "matrix_heading": "Матрица роль × модуль",
+        "matrix_help": "V = видно, E = редактирование. Колонка Administrator заблокирована (trust ceiling).",
+        "show_legacy": "Показать legacy-колонки ролей",
+        "ceiling_locked": "(заблокировано)",
+        "presets_title": "Пресеты (не роли)",
+        "presets_body": "Recruiter, Team lead, HR, Compliance — стартовые пакеты для Employee. Гости портала — Viewer + portal context, не client_manager.",
+        "load_failed": "Не удалось загрузить матрицу",
+        "save_failed": "Не удалось сохранить"
       }
     },
     "communications_settings": {

@@ -188,6 +188,7 @@ _MODULE_DEFAULTS: Dict[str, bool] = {
 
 _ROLE_MATRIX_ROLES: tuple[str, ...] = (
     UserRole.administrator.value,
+    "employee",  # ADR-036 canonical
     UserRole.supervisor.value,
     UserRole.recruiter.value,
     UserRole.client_manager.value,
@@ -200,6 +201,17 @@ _ROLE_MATRIX_ROLES: tuple[str, ...] = (
 _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
     UserRole.administrator.value: {
         module: {"visible": True, "editable": True} for module in _MODULE_DEFAULTS
+    },
+    "employee": {
+        # Default operational pack ≈ recruiter; presets refine further
+        "candidates": {"visible": True, "editable": True},
+        "companies": {"visible": True, "editable": False},
+        "vacancies": {"visible": True, "editable": False},
+        "documents": {"visible": True, "editable": True},
+        "leads": {"visible": True, "editable": False},
+        "services": {"visible": True, "editable": True},
+        "client_portal": {"visible": False, "editable": False},
+        "hr": {"visible": False, "editable": False},
     },
     UserRole.supervisor.value: {
         "candidates": {"visible": True, "editable": True},
@@ -946,9 +958,12 @@ async def update_role_module_matrix(
     updates: Dict[str, Dict[str, Dict[str, bool]]],
     *,
     actor_id: str | None = None,
+    actor_is_superadmin: bool = False,
 ) -> Dict[str, Dict[str, Dict[str, bool]]]:
     if not updates:
         return get_role_module_matrix_snapshot(tenant)
+
+    from backend.app.auth.trust_roles import assert_matrix_role_editable
 
     modules = get_module_settings_snapshot(tenant)
     current = get_role_module_matrix_snapshot(tenant)
@@ -958,6 +973,7 @@ async def update_role_module_matrix(
         role = str(role_key or "").strip().lower()
         if role not in _ROLE_MATRIX_ROLES:
             raise ValueError(f"unknown_role:{role}")
+        assert_matrix_role_editable(role, actor_is_superadmin=actor_is_superadmin)
         if not isinstance(role_payload, dict):
             raise ValueError(f"invalid_role_payload:{role}")
         for module_key, cell_payload in role_payload.items():
@@ -977,6 +993,9 @@ async def update_role_module_matrix(
                 next_editable = False
             if not next_visible:
                 next_editable = False
+            # Viewer trust ceiling: editable stays off unless portal docs exception via portal columns
+            if role == UserRole.viewer.value and next_editable and module not in {"documents", "client_portal"}:
+                raise ValueError(f"trust_ceiling:viewer_mutable:{module}")
             if (
                 current[role][module]["visible"] != next_visible
                 or current[role][module]["editable"] != next_editable

@@ -25,10 +25,11 @@ JSONType = JSON().with_variant(JSONB, "postgresql")
 
 
 class Role(str, Enum):
-    """Tenant RBAC roles."""
+    """Tenant RBAC roles. Canonical trust: ADR-036 (employee added; legacy job titles remain)."""
 
     superadmin = "superadmin"
     administrator = "administrator"
+    employee = "employee"
     supervisor = "supervisor"
     recruiter = "recruiter"
     client_manager = "client_manager"

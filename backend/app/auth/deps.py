@@ -18,14 +18,17 @@ bearer = HTTPBearer(auto_error=False)
 
 
 class Role(str, Enum):
+    """Storage / require_roles values. Canonical trust = ADR-036 (see trust_roles)."""
+
     superadmin = "superadmin"
     administrator = "administrator"
-    supervisor = "supervisor"
-    recruiter = "recruiter"
-    client_manager = "client_manager"
-    client_processor = "client_processor"  # Handoff: accepts/processes candidates from agency
-    compliance_officer = "compliance_officer"  # Process documents (work permit, residence card, tacho, etc.)
-    hr_officer = "hr_officer"  # HR / people workspace (employees, isolated from recruitment)
+    employee = "employee"  # ADR-036 canonical operational trust role
+    supervisor = "supervisor"  # legacy JOB/ORG proxy → trust employee
+    recruiter = "recruiter"  # legacy JOB proxy → trust employee
+    client_manager = "client_manager"  # legacy PORTAL → trust viewer + portal
+    client_processor = "client_processor"  # legacy PORTAL → trust viewer + portal
+    compliance_officer = "compliance_officer"  # legacy JOB proxy → trust employee
+    hr_officer = "hr_officer"  # legacy JOB proxy → trust employee
     viewer = "viewer"
     admin = administrator
     owner = administrator
@@ -39,6 +42,7 @@ ROLE_VALUES = {r.value for r in Role}
 ROLE_ALIASES = {
     "admin": Role.administrator.value,
     "owner": Role.administrator.value,
+    "employee": Role.employee.value,
     "manager": Role.supervisor.value,
     "supervisor": Role.supervisor.value,
     "recruiter": Role.recruiter.value,
@@ -67,10 +71,11 @@ def _secret() -> str:
 class UserCtx:
     sub: str
     email: str
-    role: str  # payload может прийти строкой
+    role: str  # payload может прийти строкой (legacy or canonical)
     tenant_id: str
     supervisor_id: str | None
     raw: Dict[str, Any]
+    access_context: str = "tenant"  # ADR-036: tenant | portal (orthogonal to role)
 
 
 def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
@@ -98,6 +103,14 @@ def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
     else:
         supervisor_id = None
 
+    from backend.app.auth.trust_roles import infer_access_context
+
+    explicit_ctx = data.get("access_context")
+    access_context = infer_access_context(
+        role,
+        str(explicit_ctx).strip().lower() if explicit_ctx is not None else None,
+    )
+
     return UserCtx(
         sub=sub,
         email=email,
@@ -105,6 +118,7 @@ def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
         tenant_id=tenant_id,
         supervisor_id=supervisor_id,
         raw=data,
+        access_context=access_context,
     )
 
 
@@ -233,7 +247,9 @@ def _to_values(allowed: Iterable[object]) -> set[str]:
 
 
 def require_roles(*allowed: object):
-    allowed_values = _to_values(allowed)
+    from backend.app.auth.trust_roles import expand_allowed_roles_for_trust
+
+    allowed_values = expand_allowed_roles_for_trust(_to_values(allowed))
 
     async def _checker(u: UserCtx = Depends(get_current_user)) -> str:
         ur = (u.role or "").lower()
