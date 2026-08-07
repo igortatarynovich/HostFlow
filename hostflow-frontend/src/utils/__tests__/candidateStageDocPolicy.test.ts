@@ -17,10 +17,18 @@ describe('docsPipelineBlocksForwardResolved', () => {
     },
   )
 
-  it('still hard-blocks active stage with missing documents', () => {
-    const r = docsPipelineBlocksForwardResolved('docs_wait', blockers, false, gates)
+  it('still hard-blocks active stage with missing documents when enforcement is on', () => {
+    const r = docsPipelineBlocksForwardResolved('docs_wait', blockers, false, {
+      ...gates,
+      enforceRequirementStageBlocks: true,
+    })
     expect(r.hard).toBe(true)
     expect(r.softWarnOnly).toBe(false)
+  })
+
+  it('does not block by default (enforcement off)', () => {
+    const r = docsPipelineBlocksForwardResolved('docs_wait', blockers, false, gates)
+    expect(r).toEqual({ hard: false, softWarnOnly: false })
   })
 
   it('does not block when enforceRequirementStageBlocks is false', () => {

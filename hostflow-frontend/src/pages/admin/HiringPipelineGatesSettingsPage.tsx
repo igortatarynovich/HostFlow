@@ -29,7 +29,7 @@ export default function HiringPipelineGatesSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [baseline, setBaseline] = useState<HiringPipelineGatesPublic | null>(null)
 
-  const [enforceBlocks, setEnforceBlocks] = useState(true)
+  const [enforceBlocks, setEnforceBlocks] = useState(false)
   const [withoutBlock, setWithoutBlock] = useState('')
   const [verifyUploads, setVerifyUploads] = useState('')
   const [vacancyStages, setVacancyStages] = useState('')
@@ -45,7 +45,7 @@ export default function HiringPipelineGatesSettingsPage() {
         throw new Error('API returned no data (endpoint missing or unauthorized)')
       }
       setBaseline(g)
-      setEnforceBlocks(g.enforce_requirement_stage_blocks !== false)
+      setEnforceBlocks(g.enforce_requirement_stage_blocks === true)
       setWithoutBlock(listToLines(g.stages_without_doc_pipeline_block))
       setVerifyUploads(listToLines(g.stages_verify_uploads_block_forward))
       setVacancyStages(listToLines(g.stages_require_vacancy_for_forward))
@@ -84,7 +84,7 @@ export default function HiringPipelineGatesSettingsPage() {
         non_overridable_doc_types_extra: linesToList(nonOverridableExtra),
       })
       setBaseline(updated)
-      setEnforceBlocks(updated.enforce_requirement_stage_blocks !== false)
+      setEnforceBlocks(updated.enforce_requirement_stage_blocks === true)
       await refetchContextGates()
       notify({
         title: t('admin.hiring_gates.saved', { defaultValue: 'Hiring pipeline gates saved' }),

@@ -50,7 +50,7 @@ const _CONTACT_ATTEMPT_STAGES = ['new'] as const
 
 /** Product defaults (same as `backend/app/services/hiring_pipeline_gates.py`). */
 export const DEFAULT_HIRING_PIPELINE_GATES_RUNTIME: HiringPipelineGatesRuntime = {
-  enforceRequirementStageBlocks: true,
+  enforceRequirementStageBlocks: false,
   stagesWithoutDocPipelineBlock: new Set(_STAGES_WITHOUT),
   stagesVerifyUploadsBlockForward: new Set(_STAGES_VERIFY),
   stagesRequireVacancyForForward: new Set(_VACANCY_STAGES),
@@ -74,7 +74,8 @@ export function hiringPipelineGatesFromApi(
 ): HiringPipelineGatesRuntime {
   if (!g) return DEFAULT_HIRING_PIPELINE_GATES_RUNTIME
   return {
-    enforceRequirementStageBlocks: g.enforce_requirement_stage_blocks !== false,
+    // Opt-in: only hard-block when API explicitly enables enforcement.
+    enforceRequirementStageBlocks: g.enforce_requirement_stage_blocks === true,
     stagesWithoutDocPipelineBlock: _lowerSet(g.stages_without_doc_pipeline_block),
     stagesVerifyUploadsBlockForward: _lowerSet(g.stages_verify_uploads_block_forward),
     stagesRequireVacancyForForward: _lowerSet(g.stages_require_vacancy_for_forward),

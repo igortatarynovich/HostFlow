@@ -105,8 +105,9 @@ class HiringPipelineGates:
     contact_attempt_gate_stages: FrozenSet[str]
     stages_doc_block_soft_only: FrozenSet[str]
     non_overridable_doc_types_extra: FrozenSet[str]
-    # When False: skip hard 409 for requirement/doc forward blocks and ready_for_handoff transfer policy.
-    enforce_requirement_stage_blocks: bool = True
+    # Opt-in: when False (product default), skip hard 409 for requirement/doc forward blocks
+    # and ready_for_handoff transfer policy. Enable only once automation/blockers are ready.
+    enforce_requirement_stage_blocks: bool = False
 
     def effective_non_overridable_doc_types(self) -> FrozenSet[str]:
         return NON_OVERRIDABLE_DOC_TYPES | self.non_overridable_doc_types_extra
@@ -120,7 +121,7 @@ def default_hiring_pipeline_gates() -> HiringPipelineGates:
         contact_attempt_gate_stages=_DEFAULT_CONTACT_ATTEMPT_STAGES,
         stages_doc_block_soft_only=frozenset(),
         non_overridable_doc_types_extra=frozenset(),
-        enforce_requirement_stage_blocks=True,
+        enforce_requirement_stage_blocks=False,
     )
 
 

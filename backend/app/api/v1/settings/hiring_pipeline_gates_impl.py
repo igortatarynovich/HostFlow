@@ -28,7 +28,7 @@ def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
 
 class HiringPipelineGatesPublicOut(BaseModel):
     version: int
-    enforce_requirement_stage_blocks: bool = True
+    enforce_requirement_stage_blocks: bool = False
     stages_without_doc_pipeline_block: List[str]
     stages_verify_uploads_block_forward: List[str]
     stages_require_vacancy_for_forward: List[str]
