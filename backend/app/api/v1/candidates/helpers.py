@@ -17,7 +17,7 @@ from backend.app.constants.system_transitions import (
     LIFECYCLE_CLOSED,
     is_forbidden_operational_stage,
 )
-from backend.app.constants.stages import LABELS
+from backend.app.constants.stages import LABELS, is_pipeline_completed_stage
 from backend.app.models import Candidate
 from backend.app.models.candidate import next_candidate_short_id
 from backend.app.models.document import Document
@@ -126,18 +126,30 @@ def _validate_stage_transition(
     - Reject empty / unknown global codes (legacy catalog).
     - Reject forbidden pseudo-stages (ready_for_hr, …) as operational positions.
     - When funnel_stage_codes provided, target must be in that set (stage ∈ pipeline).
-    - Closed/archived candidates cannot move board stage.
+    - Archived candidates cannot move board stage.
+    - Closed candidates may move again (reopen) onto a non-completed stage; caller
+      must set ``lifecycle_status=active`` after a successful reopen move.
     """
     if not target:
         raise HTTPException(status_code=422, detail="Stage must not be empty")
 
     target = target.strip()
     life = (lifecycle_status or "").strip().lower()
-    if life in (LIFECYCLE_CLOSED, LIFECYCLE_ARCHIVED):
+    if life == LIFECYCLE_ARCHIVED:
         raise HTTPException(
             status_code=409,
-            detail="Candidate is closed; board stage is read-only (ADR-035). Use system transitions while active.",
+            detail="Candidate is archived; board stage is read-only (ADR-035).",
         )
+    if life == LIFECYCLE_CLOSED:
+        # Reopen only into an active (non-completed) board stage.
+        if is_pipeline_completed_stage(target):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Candidate is closed; choose an active funnel stage to reopen "
+                    "(not declined/rejected/employed)."
+                ),
+            )
 
     if is_forbidden_operational_stage(target):
         raise HTTPException(
@@ -166,6 +178,18 @@ def _validate_stage_transition(
 
     if target not in _STAGE_INDEX:
         raise HTTPException(status_code=422, detail=f"Unknown stage '{target}'")
+
+
+def should_reopen_closed_candidate_lifecycle(
+    *,
+    lifecycle_status: Optional[str],
+    new_stage_code: str,
+) -> bool:
+    """True when a closed candidate moves onto a non-completed stage (board reopen)."""
+    life = (lifecycle_status or "").strip().lower()
+    if life != LIFECYCLE_CLOSED:
+        return False
+    return not is_pipeline_completed_stage(new_stage_code)
 
 def _parse_dt(s: Optional[str]) -> Optional[datetime]:
     if not s:

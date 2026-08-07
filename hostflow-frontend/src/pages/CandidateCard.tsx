@@ -2133,12 +2133,22 @@ export default function CandidateCard(){
           /* ignore */
         }
       }
+      const wasClosed =
+        String((model as { lifecycle_status?: string | null }).lifecycle_status || '')
+          .trim()
+          .toLowerCase() === 'closed'
       const persistStage = async () => {
         await api.patch(`/candidates/${model.id}`, { stage, status_reason: statusReason })
         setRodoSentTrigger((x) => x + 1)
         const m = modelRef.current
         if (m) {
-          const merged = { ...m, stage, status_reason: statusReason } as Candidate
+          const merged = {
+            ...m,
+            stage,
+            status_reason: statusReason,
+            ...(wasClosed ? { lifecycle_status: 'active' } : {}),
+          } as Candidate
+          setModel(merged)
           lastSavedPayloadRef.current = computeAutosaveFingerprint(
             merged,
             candidateEditPhaseRef.current,
@@ -2154,6 +2164,17 @@ export default function CandidateCard(){
       }
       try {
         await persistStage()
+        if (wasClosed) {
+          notify({
+            title: t('app.candidate_card.messages.candidate_reopened', {
+              defaultValue: 'Candidate reopened',
+            }),
+            description: t('app.candidate_card.messages.candidate_reopened_hint', {
+              defaultValue: 'Lifecycle set to active — you can continue the funnel.',
+            }),
+            variant: 'success',
+          })
+        }
       } catch (err: any) {
         if (isRodoStageBlockedError(err)) {
           const shouldSendRodo = window.confirm(t('app.candidate_card.messages.rodo_stage_blocked_confirm'))

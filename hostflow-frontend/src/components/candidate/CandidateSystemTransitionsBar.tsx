@@ -77,7 +77,8 @@ export default function CandidateSystemTransitionsBar({
       {closed ? (
         <p className="mt-2 text-xs text-slate-600">
           {t('candidates.system_transitions.already_closed', {
-            defaultValue: 'Candidate is closed — transitions are no longer available.',
+            defaultValue:
+              'Candidate is closed — pick an active funnel stage on the board to reopen, or leave closed.',
           })}
         </p>
       ) : null}

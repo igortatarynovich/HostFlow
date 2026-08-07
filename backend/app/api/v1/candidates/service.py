@@ -41,7 +41,9 @@ from backend.app.api.v1.candidates.helpers import (
     _merge_dict,
     _generate_unique_short_id,
     _ensure_short_id,
+    should_reopen_closed_candidate_lifecycle,
 )
+from backend.app.constants.system_transitions import LIFECYCLE_ACTIVE
 from backend.app.services.pipeline_sync import sync_candidate_links
 from backend.app.services.tenant_quota import ensure_active_records_quota
 from backend.app.services.recruiter_assignment import (
@@ -1222,6 +1224,11 @@ async def update_candidate_full(
             changes["stage"] = new_stage_code
             changes["status"] = new_stage_code
             stage_changed = True
+            if should_reopen_closed_candidate_lifecycle(
+                lifecycle_status=getattr(c, "lifecycle_status", None),
+                new_stage_code=new_stage_code,
+            ):
+                changes["lifecycle_status"] = LIFECYCLE_ACTIVE
             from backend.app.services.recruitment_funnel_assignment import (
                 resolve_candidate_funnel_id_for_runtime,
             )
@@ -1976,15 +1983,22 @@ async def bulk_update_stage(
             old_stage_bulk = str(getattr(c, "stage", None) or "").strip() or None
             old_status_bulk = str(getattr(c, "status", None) or "").strip() or None
 
+            bulk_values: Dict[str, Any] = {
+                "stage": normalized,
+                "status": normalized,
+                "status_reason": reason_codes,
+                "updated_at": _now_naive(),
+            }
+            if should_reopen_closed_candidate_lifecycle(
+                lifecycle_status=getattr(c, "lifecycle_status", None),
+                new_stage_code=normalized,
+            ):
+                bulk_values["lifecycle_status"] = LIFECYCLE_ACTIVE
+
             await db.execute(
                 update(Candidate)
                 .where(Candidate.id == cid, Candidate.tenant_id == tenant_id)
-                .values(
-                    stage=normalized,
-                    status=normalized,
-                    status_reason=reason_codes,
-                    updated_at=_now_naive(),
-                )
+                .values(**bulk_values)
             )
 
             history_entry = _make_stage_history(
