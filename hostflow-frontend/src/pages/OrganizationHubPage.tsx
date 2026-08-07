@@ -150,8 +150,13 @@ export default function OrganizationHubPage() {
   }, [canLoadBilling, canLoadTeam, planLimitModal, t])
 
   const slots = billing?.company_slots
-  const usedSlots = Number(slots?.used ?? companies.length)
-  const limitSlots = slots?.unlimited ? 0 : Number(slots?.effective_limit ?? billing?.license?.max_companies ?? 0)
+  const usedSlots = Math.max(
+    Number(slots?.used ?? 0),
+    companies.length,
+  )
+  const limitSlots = slots?.unlimited
+    ? 0
+    : Number(slots?.effective_limit ?? billing?.license?.max_companies ?? 0)
   const availableSlots = slots?.unlimited
     ? null
     : Math.max(limitSlots - usedSlots, 0)

@@ -3,10 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.company import Company
+from backend.app.models.own_company import OwnCompany
 from backend.app.models.tenant import Tenant, TenantLicense
 
 
@@ -68,7 +69,21 @@ class OperatingCompanySlots:
         return max(0, self.effective_limit - self.used)
 
 
-async def count_operating_companies(db: AsyncSession, tenant_id: str) -> int:
+async def _count_own_companies(db: AsyncSession, tenant_id: str) -> int:
+    """Canonical slot usage: active OwnCompany rows (own-company-model Stage C)."""
+    result = await db.execute(
+        select(func.count())
+        .select_from(OwnCompany)
+        .where(
+            OwnCompany.tenant_id == tenant_id,
+            OwnCompany.is_archived.is_(False),
+        )
+    )
+    return int(result.scalar_one() or 0)
+
+
+async def _count_legacy_crm_operating_companies(db: AsyncSession, tenant_id: str) -> int:
+    """Legacy CRM Company.extra.company_role='operating' (pre-OwnCompany tenants)."""
     rows = (
         await db.execute(select(Company).where(Company.tenant_id == tenant_id))
     ).scalars().all()
@@ -78,6 +93,18 @@ async def count_operating_companies(db: AsyncSession, tenant_id: str) -> int:
         if _normalize_company_role(extra.get("company_role")) == "operating":
             count += 1
     return count
+
+
+async def count_operating_companies(db: AsyncSession, tenant_id: str) -> int:
+    """
+    Slot usage for operating / own companies.
+
+    Prefer OwnCompany count; keep legacy CRM operating count as a floor so older
+    tenants and tests that only create CRM operating rows still enforce quota.
+    """
+    own_count = await _count_own_companies(db, tenant_id)
+    crm_count = await _count_legacy_crm_operating_companies(db, tenant_id)
+    return max(own_count, crm_count)
 
 
 async def get_operating_company_slots(
