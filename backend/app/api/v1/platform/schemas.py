@@ -99,6 +99,7 @@ class RoleModulePermissions(BaseModel):
 
 class TenantRoleModuleMatrix(BaseModel):
     administrator: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    employee: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
     supervisor: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
     recruiter: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
     client_manager: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
@@ -110,6 +111,7 @@ class TenantRoleModuleMatrix(BaseModel):
 
 class TenantRoleModuleMatrixPatch(BaseModel):
     administrator: Dict[str, RoleModulePermissions] | None = None
+    employee: Dict[str, RoleModulePermissions] | None = None
     supervisor: Dict[str, RoleModulePermissions] | None = None
     recruiter: Dict[str, RoleModulePermissions] | None = None
     client_manager: Dict[str, RoleModulePermissions] | None = None

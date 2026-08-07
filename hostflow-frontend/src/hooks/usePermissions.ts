@@ -37,6 +37,20 @@ export type Permission =
 
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   administrator: ['*'],
+  employee: [
+    'companies.view',
+    'sales.view',
+    'leads.view',
+    'notifications.view',
+    'vacancies.view',
+    'candidates.view',
+    'candidates.manage',
+    'candidates.requestDelete',
+    'candidates.pipeline',
+    'documents.manage',
+    'services.view',
+    'services.orders.manage',
+  ],
   supervisor: [
     'manager.tools',
     'settings.view',
@@ -121,6 +135,7 @@ const ROLE_ALIAS: Record<string, string> = {
   administrator: 'administrator',
   superadmin: 'administrator',
   super_admin: 'administrator',
+  employee: 'employee',
   manager: 'supervisor',
   lead: 'supervisor',
   supervisor: 'supervisor',

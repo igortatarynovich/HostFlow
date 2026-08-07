@@ -67,6 +67,7 @@ import {
 } from '../../modules/tenants/utils'
 import { SeatProgress } from '../../modules/tenants/components/SeatProgress'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
+import { RoleModuleMatrixPanel } from '../../components/admin/RoleModuleMatrixPanel'
 
 const DEFAULT_CREATE_FORM: CreateTenantForm = {
   name: '',
@@ -168,6 +169,7 @@ export default function TenantsPage() {
   const roleOrder: RoleModuleMatrixRole[] = useMemo(
     () => [
       'administrator',
+      'employee',
       'supervisor',
       'recruiter',
       'client_manager',
@@ -181,6 +183,7 @@ export default function TenantsPage() {
   const normalizeRoleKey = useCallback((roleValue?: string | null): RoleModuleMatrixRole => {
     const normalized = String(roleValue || '').trim().toLowerCase()
     if (normalized === 'administrator') return 'administrator'
+    if (normalized === 'employee') return 'employee'
     if (normalized === 'supervisor') return 'supervisor'
     if (normalized === 'recruiter') return 'recruiter'
     if (normalized === 'client_manager') return 'client_manager'
@@ -1769,58 +1772,15 @@ export default function TenantsPage() {
                       {roleMatrixLoading ? (
                         <div className="mt-3 text-xs text-slate-500">{t('common.loading')}</div>
                       ) : roleModuleMatrix && moduleSettings ? (
-                        <div className="mt-3 overflow-x-auto">
-                          <table className="min-w-full divide-y divide-slate-200 text-xs">
-                            <thead>
-                              <tr className="bg-slate-50 text-left text-slate-600">
-                                <th className="px-2 py-2">{t('app.platform.tenants.modules.matrix_module')}</th>
-                                {roleOrder.map((roleKey) => (
-                                  <th key={roleKey} className="px-2 py-2">{t(`app.admin.users.roles.${roleKey}`)}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {(Object.keys(moduleSettings) as Array<keyof TenantModuleSettings>).map((moduleKey) => (
-                                <tr key={moduleKey}>
-                                  <td className="px-2 py-2 font-medium text-slate-700">{t(MODULE_LABELS[moduleKey])}</td>
-                                  {roleOrder.map((roleKey) => {
-                                    const cell = roleModuleMatrix[roleKey]?.[moduleKey]
-                                    const moduleEnabled = moduleSettings[moduleKey]
-                                    return (
-                                      <td key={`${roleKey}:${moduleKey}`} className="px-2 py-2">
-                                        <div className="flex items-center gap-2">
-                                          <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-                                            <input
-                                              type="checkbox"
-                                              className="h-3.5 w-3.5 accent-brand-600"
-                                              checked={Boolean(cell?.visible)}
-                                              disabled={roleMatrixSaving || !moduleEnabled}
-                                              onChange={() => handleRoleMatrixToggle(roleKey, moduleKey, 'visible')}
-                                            />
-                                            V
-                                          </label>
-                                          <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-                                            <input
-                                              type="checkbox"
-                                              className="h-3.5 w-3.5 accent-brand-600"
-                                              checked={Boolean(cell?.editable)}
-                                              disabled={roleMatrixSaving || !moduleEnabled || !cell?.visible}
-                                              onChange={() => handleRoleMatrixToggle(roleKey, moduleKey, 'editable')}
-                                            />
-                                            E
-                                          </label>
-                                        </div>
-                                      </td>
-                                    )
-                                  })}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          <div className="mt-2 text-[11px] text-slate-500">
-                            {t('app.platform.tenants.modules.matrix_hint')}
-                          </div>
-                        </div>
+                        <RoleModuleMatrixPanel
+                          matrix={roleModuleMatrix}
+                          moduleSettings={moduleSettings}
+                          roleOrder={roleOrder}
+                          saving={roleMatrixSaving}
+                          t={t}
+                          onToggle={handleRoleMatrixToggle}
+                          actorIsSuperadmin
+                        />
                       ) : (
                         <div className="mt-3 text-xs text-slate-500">{t('app.platform.tenants.modules.empty')}</div>
                       )}

@@ -6,6 +6,7 @@ import type { AdminUser, UserRole } from '../../api/types';
 
 export const ROLE_LABEL_KEYS: Record<UserRole, string> = {
   administrator: 'app.admin.users.roles.administrator',
+  employee: 'app.admin.users.roles.employee',
   supervisor: 'app.admin.users.roles.supervisor',
   recruiter: 'app.admin.users.roles.recruiter',
   client_manager: 'app.admin.users.roles.client_manager',
@@ -17,6 +18,7 @@ export const ROLE_LABEL_KEYS: Record<UserRole, string> = {
 
 export const ROLE_BADGE_CLASSES: Record<UserRole, string> = {
   administrator: 'bg-brand-50 text-brand-700 border border-brand-100',
+  employee: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
   supervisor: 'bg-purple-50 text-purple-700 border border-purple-100',
   recruiter: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
   client_manager: 'bg-sky-50 text-sky-700 border border-sky-100',

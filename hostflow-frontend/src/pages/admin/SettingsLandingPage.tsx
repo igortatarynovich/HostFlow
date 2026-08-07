@@ -52,6 +52,7 @@ type CardDef = {
 const DEFAULT_CARD_ICON: TablerIcon = IconSettings
 const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
   team: IconUsersGroup,
+  team_modules: IconShield,
   tenants: IconShield,
   notifications: IconBell,
   communications_queue: IconFilter,
@@ -154,8 +155,10 @@ export default function SettingsLandingPage() {
       },
       {
         key: 'team_modules',
-        label: t('admin.settings.cards.team_modules.label'),
-        description: t('admin.settings.cards.team_modules.description'),
+        label: t('admin.settings.cards.roles_access.label', { defaultValue: 'Roles & access' }),
+        description: t('admin.settings.cards.roles_access.description', {
+          defaultValue: 'Trust roles, module matrix, and permission presets for Employee and Viewer.',
+        }),
         target: CRM_APP_PATHS.settingsTeam,
         roles: ['administrator'],
         section: 'team',

@@ -21,5 +21,6 @@
 | [acquisition-stage-6-analytics.md](./acquisition-stage-6-analytics.md) | Stage 6 PR-1…PR-6: compare, cohorts, portfolio, Outcome commercial value, declared-value ROI |
 | [acquisition-marketing-sources.md](./acquisition-marketing-sources.md) | C-3 Marketing Sources: read-only inventory GET, tenant isolation, no write/reprocess side effects |
 | [acquisition-source-diagnostics.md](./acquisition-source-diagnostics.md) | Source Diagnostics PR1–PR9: read-only Lead + Activity casework, filters, duplicate, Mapping Health, drift alerts/summary, export, Replay via Leads process; SPA-only drift notify |
+| [rbac-trust-roles.md](./rbac-trust-roles.md) | ADR-036 four trust roles: ceilings, matrix PATCH, `access_context`, legacy job-title/portal aliases, inventory lint |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).

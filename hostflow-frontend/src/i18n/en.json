@@ -2421,7 +2421,8 @@
             "documents": "Documents",
             "leads": "Leads",
             "services": "Services",
-            "client_portal": "Client portal"
+            "client_portal": "Client portal",
+            "hr": "HR"
           },
           "empty": "Module settings are unavailable for this tenant.",
           "errors": {
@@ -3100,7 +3101,8 @@
           "recruiter": "Recruiter",
           "client_manager": "Client manager",
           "client_processor": "Candidate processor",
-          "viewer": "Viewer"
+          "viewer": "Viewer",
+          "employee": "Employee"
         },
         "form": {
           "email_label": "Email",
@@ -11841,6 +11843,10 @@
         "profile": {
           "description": "Personal profile, language, security and local preferences.",
           "label": "My profile"
+        },
+        "roles_access": {
+          "label": "Roles & access",
+          "description": "Trust roles, module matrix, and permission presets for Employee and Viewer."
         }
       },
       "audit": {
@@ -11907,6 +11913,18 @@
           "description": "Company profile, workspace identity and high-level access scope.",
           "label": "Workspace"
         }
+      },
+      "roles_access": {
+        "title": "Roles & access",
+        "description": "Trust roles and module visibility. Job titles are presets — not separate security roles (ADR-036).",
+        "matrix_heading": "Role × module matrix",
+        "matrix_help": "V = visible, E = editable. Administrator column is locked (trust ceiling).",
+        "show_legacy": "Show legacy role columns",
+        "ceiling_locked": "(locked)",
+        "presets_title": "Presets (not roles)",
+        "presets_body": "Recruiter, Team lead, HR, Compliance are starter packs applied to Employee. Portal guests use Viewer + portal context — not client_manager.",
+        "load_failed": "Failed to load roles matrix",
+        "save_failed": "Failed to save"
       }
     },
     "communications_settings": {
