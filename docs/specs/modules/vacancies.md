@@ -47,11 +47,22 @@
 
 ## UI
 - **VacancyList** — таблица, аналогичная Candidates, с фильтрацией по статусу, компании, типу занятости.  
-- **VacancyCard** — вкладки:
-  - **Candidates** — список связанных кандидатов (канбан-счётчики + таблица).  
-  - **Details** — поля вакансии, редактирование; блок **Assignment**: менеджер вакансии + пул рекрутеров (вес, ротация least-load).  
-- **VacancyForm** — форма создания/редактирования с валидацией enum и обязательного поля `title`.  
-- Кнопка `Toggle Active` переключает `is_open` и `is_active` с подтверждением.  
+- **VacancyCard (Workspace)** — операционное рабочее пространство закрытия позиции (не форма-свалка):
+  - **Sticky header** — название, статус, Edit / Pause, компактные KPI (Headcount / Hired / Remaining / Completion).
+  - **Stage cards** — кликабельная навигация по этапам воронки → вкладка Candidates с фильтром `?stage=`.
+  - **Вкладки:**
+    1. **Workspace** (default; aliases `info` / `overview` / `notes`) — Order Progress (если есть Order Line) + Vacancy Progress (4 KPI + donut), сводка job, карточки требований Mandatory/Preferred, кликабельная воронка, reserved Activity Feed copy, Needs Attention (priority), Quick Actions, Owner, Related hub.
+    2. **Job Details** — бизнес-поля вакансии (название, описание, локация, занятость, зарплата, план, компания, заказ, профиль). Без UUID/CSV.
+    3. **Recruitment** — воронка, менеджер, пул рекрутёров (auto-assignment), reserved SLA / Transition rules / System stages.
+    4. **Candidate Requirements** — Mandatory / Preferred; мультивыбор документов и стран (не CSV); статусы документов чекбоксами; criteria → `extra.lead_criteria_v1` как массивы.
+    5. **Automation** — read-only визуальный if→then flow из текущих criteria/flags (без редактора).
+    6. **Analytics** — зарезервированные слоты (Applications, Conversion, Sources, Cost, Time to Hire, Hire Rate) + live funnel.
+    7. **Settings** — только техника: UUID, timestamps, archive/active/open flags, delete.
+  - **Candidates** — целевой список с фильтром по stage (достигается Stage Cards / Funnel, не primary IA tab в семёрке).
+- **VacancyForm** — форма создания с валидацией enum и обязательного поля `title`.  
+- Кнопка `Toggle Active` / Pause переключает статус (`on_hold`) с сохранением.  
+
+Пользовательский вопрос Workspace: «Как сейчас идёт закрытие этой позиции (и связанного заказа)?» Редактирование вторично (Edit → Job Details / Requirements).
 
 ---
 

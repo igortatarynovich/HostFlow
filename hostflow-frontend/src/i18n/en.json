@@ -1421,8 +1421,16 @@
         "tabs": {
           "candidates": "Candidates",
           "info": "Info",
-          "notes": "Notes"
+          "notes": "Notes",
+          "workspace": "Workspace",
+          "job_details": "Job Details",
+          "recruitment": "Recruitment",
+          "requirements": "Candidate Requirements",
+          "automation": "Automation",
+          "analytics": "Analytics",
+          "settings": "Settings"
         },
+        "not_found": "Vacancy not found or unavailable.",
         "untitled": "Untitled",
         "table": {
           "candidate": "Candidate",
@@ -1476,6 +1484,143 @@
         "work_schedule": {
           "title": "Work schedule options",
           "hint": "Schedules the client offers for this vacancy (candidate preference is separate)"
+        }
+      },
+      "workspace": {
+        "tabs": {
+          "workspace": "Workspace",
+          "job_details": "Job Details",
+          "recruitment": "Recruitment",
+          "requirements": "Candidate Requirements",
+          "automation": "Automation",
+          "analytics": "Analytics",
+          "settings": "Settings",
+          "candidates": "Candidates"
+        },
+        "actions": {
+          "edit": "Edit",
+          "pause": "Pause",
+          "export": "Export report"
+        },
+        "meta": {
+          "client": "Client",
+          "order": "Order",
+          "funnel": "Funnel",
+          "recruiter": "Recruiter"
+        },
+        "kpi": {
+          "headcount": "Headcount",
+          "hired": "Hired",
+          "remaining": "Remaining",
+          "completion": "Completion"
+        },
+        "stage_cards": {
+          "view_list": "View list"
+        },
+        "order_progress": "Order Progress",
+        "order_hint": "Order fulfillment uses vacancy hired count until order-level fulfillment API is available.",
+        "order_none": "— free vacancy (no order) —",
+        "vacancy_progress": "Vacancy Progress",
+        "main": {
+          "title": "Main information",
+          "location": "Location",
+          "employment": "Employment",
+          "salary": "Salary",
+          "currency": "Currency"
+        },
+        "req": {
+          "title": "Candidate requirements",
+          "mandatory": "Mandatory",
+          "preferred": "Preferred",
+          "preferred_empty": "Preferred requirements will appear when configured.",
+          "preferred_note": "Preferred criteria are soft signals. Full preferred schema may expand later.",
+          "documents": "Documents",
+          "experience": "Experience",
+          "years": "years",
+          "countries_allowed": "Allowed countries",
+          "countries_blocked": "Blocked countries",
+          "preferred_docs": "Preferred documents",
+          "languages": "Languages",
+          "languages_hint": "Comma-separated language codes (e.g. pl, en).",
+          "allow_statuses": "Allowed document statuses",
+          "preset": "— requirements preset —",
+          "apply_preset": "Apply preset"
+        },
+        "funnel": "Recruitment funnel",
+        "funnel_empty": "No pipeline data yet.",
+        "activity": {
+          "title": "Recent activity",
+          "message": "Vacancy activity history will appear after Activity Feed is connected."
+        },
+        "attention": {
+          "title": "Needs attention",
+          "no_recruiter": "No manager or recruiter assigned",
+          "waiting_docs": "{count} candidates waiting for documents ({stage})",
+          "permit": "{count} in work permit ({stage})",
+          "empty": "Nothing urgent right now."
+        },
+        "quick": {
+          "title": "Quick actions",
+          "add_candidate": "Add candidate",
+          "assign_recruiter": "Assign recruiter",
+          "create_document": "Create document",
+          "message": "Message candidate",
+          "export": "Export report",
+          "soon": "Coming soon"
+        },
+        "owner": "Owner",
+        "related": {
+          "title": "Related",
+          "company": "Company",
+          "order": "Order",
+          "funnel": "Funnel",
+          "profile": "Candidate profile",
+          "documents": "Documents",
+          "recruiter": "Recruiter",
+          "team": "Team",
+          "meta": "Meta campaigns",
+          "forms": "Forms",
+          "open": "Open",
+          "soon": "Soon"
+        },
+        "profile_none": "— not selected —",
+        "recruitment": {
+          "auto_assign": "Auto assignment",
+          "auto_assign_hint": "Pool weights drive least-load rotation.",
+          "sla": "SLA",
+          "sla_reserved": "SLA configuration will appear here.",
+          "transitions": "Transition rules",
+          "transitions_reserved": "Transition rules will appear here.",
+          "system_stages": "System stages",
+          "system_stages_empty": "No stages loaded yet."
+        },
+        "automation": {
+          "empty": "No automation rules derived from current requirements.",
+          "if": "If",
+          "then": "Then"
+        },
+        "analytics": {
+          "reserved": "No data yet",
+          "applications": "Applications",
+          "conversion": "Conversion",
+          "sources": "Sources",
+          "cost": "Cost",
+          "time_to_hire": "Time to Hire",
+          "hire_rate": "Hire Rate"
+        },
+        "settings": {
+          "created": "Created",
+          "updated": "Updated",
+          "active": "Active",
+          "archived": "Archived",
+          "open": "Open",
+          "status": "Status",
+          "hint": "Technical parameters only. Business fields live on other tabs."
+        },
+        "candidates": {
+          "empty": "No candidates for this vacancy yet.",
+          "filter": "Filter",
+          "clear_filter": "Clear filter"
         }
       }
     },

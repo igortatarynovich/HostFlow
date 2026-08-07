@@ -1403,8 +1403,16 @@
         "tabs": {
           "candidates": "Kandydaci",
           "info": "Informacje",
-          "notes": "Notatki"
+          "notes": "Notatki",
+          "workspace": "Workspace",
+          "job_details": "Szczegóły oferty",
+          "recruitment": "Rekrutacja",
+          "requirements": "Wymagania kandydata",
+          "automation": "Automatyzacja",
+          "analytics": "Analityka",
+          "settings": "Ustawienia"
         },
+        "not_found": "Nie znaleziono wakatu lub brak dostępu.",
         "untitled": "Bez tytułu",
         "table": {
           "candidate": "Kandydat",
@@ -1458,6 +1466,143 @@
         "work_schedule": {
           "title": "Opcje grafiku pracy",
           "hint": "Co oferuje klient na tę wakaturę (preferencja kandydata jest osobno)"
+        }
+      },
+      "workspace": {
+        "tabs": {
+          "workspace": "Workspace",
+          "job_details": "Szczegóły oferty",
+          "recruitment": "Rekrutacja",
+          "requirements": "Wymagania kandydata",
+          "automation": "Automatyzacja",
+          "analytics": "Analityka",
+          "settings": "Ustawienia",
+          "candidates": "Kandydaci"
+        },
+        "actions": {
+          "edit": "Edytuj",
+          "pause": "Wstrzymaj",
+          "export": "Eksport raportu"
+        },
+        "meta": {
+          "client": "Klient",
+          "order": "Zamówienie",
+          "funnel": "Lejek",
+          "recruiter": "Rekruter"
+        },
+        "kpi": {
+          "headcount": "Plan",
+          "hired": "Zatrudnieni",
+          "remaining": "Pozostało",
+          "completion": "Ukończenie"
+        },
+        "stage_cards": {
+          "view_list": "Zobacz listę"
+        },
+        "order_progress": "Postęp zamówienia",
+        "order_hint": "Do czasu API fulfillment zamówienia licznik opiera się na zatrudnionych na wakacie.",
+        "order_none": "— wolny wakat (bez zamówienia) —",
+        "vacancy_progress": "Postęp wakatu",
+        "main": {
+          "title": "Główne informacje",
+          "location": "Lokalizacja",
+          "employment": "Zatrudnienie",
+          "salary": "Wynagrodzenie",
+          "currency": "Waluta"
+        },
+        "req": {
+          "title": "Wymagania kandydata",
+          "mandatory": "Obowiązkowe",
+          "preferred": "Preferowane",
+          "preferred_empty": "Preferowane wymagania pojawią się po konfiguracji.",
+          "preferred_note": "Preferowane kryteria to miękkie sygnały.",
+          "documents": "Dokumenty",
+          "experience": "Doświadczenie",
+          "years": "lat",
+          "countries_allowed": "Dozwolone kraje",
+          "countries_blocked": "Zakazane kraje",
+          "preferred_docs": "Preferowane dokumenty",
+          "languages": "Języki",
+          "languages_hint": "Kody języków po przecinku (np. pl, en).",
+          "allow_statuses": "Dozwolone statusy dokumentów",
+          "preset": "— preset wymagań —",
+          "apply_preset": "Zastosuj preset"
+        },
+        "funnel": "Lejek rekrutacji",
+        "funnel_empty": "Brak danych pipeline.",
+        "activity": {
+          "title": "Ostatnia aktywność",
+          "message": "Historia działań na wakacie pojawi się po podłączeniu Activity Feed."
+        },
+        "attention": {
+          "title": "Na co zwrócić uwagę",
+          "no_recruiter": "Brak managera lub rekrutera",
+          "waiting_docs": "{count} kandydatów czeka na dokumenty ({stage})",
+          "permit": "{count} na pozwoleniu na pracę ({stage})",
+          "empty": "Brak pilnych pozycji."
+        },
+        "quick": {
+          "title": "Szybkie akcje",
+          "add_candidate": "Dodaj kandydata",
+          "assign_recruiter": "Przypisz rekrutera",
+          "create_document": "Utwórz dokument",
+          "message": "Napisz do kandydata",
+          "export": "Eksport raportu",
+          "soon": "Wkrótce"
+        },
+        "owner": "Odpowiedzialny",
+        "related": {
+          "title": "Powiązane",
+          "company": "Firma",
+          "order": "Zamówienie",
+          "funnel": "Lejek",
+          "profile": "Profil kandydata",
+          "documents": "Dokumenty",
+          "recruiter": "Rekruter",
+          "team": "Zespół",
+          "meta": "Kampanie Meta",
+          "forms": "Formularze",
+          "open": "Otwórz",
+          "soon": "Wkrótce"
+        },
+        "profile_none": "— nie wybrano —",
+        "recruitment": {
+          "auto_assign": "Auto-przypisanie",
+          "auto_assign_hint": "Wagi puli sterują rotacją least-load.",
+          "sla": "SLA",
+          "sla_reserved": "Konfiguracja SLA pojawi się tutaj.",
+          "transitions": "Reguły przejść",
+          "transitions_reserved": "Reguły przejść pojawią się tutaj.",
+          "system_stages": "Etapy systemowe",
+          "system_stages_empty": "Brak załadowanych etapów."
+        },
+        "automation": {
+          "empty": "Brak reguł automatyzacji z bieżących wymagań.",
+          "if": "Jeśli",
+          "then": "To"
+        },
+        "analytics": {
+          "reserved": "Brak danych",
+          "applications": "Aplikacje",
+          "conversion": "Konwersja",
+          "sources": "Źródła",
+          "cost": "Koszt",
+          "time_to_hire": "Time to Hire",
+          "hire_rate": "Hire Rate"
+        },
+        "settings": {
+          "created": "Utworzono",
+          "updated": "Zmieniono",
+          "active": "Aktywna",
+          "archived": "W archiwum",
+          "open": "Otwarta",
+          "status": "Status",
+          "hint": "Tylko parametry techniczne. Pola biznesowe są na innych zakładkach."
+        },
+        "candidates": {
+          "empty": "Brak kandydatów na ten wakat.",
+          "filter": "Filtr",
+          "clear_filter": "Wyczyść filtr"
         }
       }
     },
@@ -11853,14 +11998,11 @@
       "default_funnel": "Domyślny dla nowych wakansji",
       "default_funnel_leads": "Domyślny lejek dla leadów",
       "make_default": "Domyślny dla nowych wakansji",
-      "is_company_default": "★ Domyślny dla nowych wakansji (tylko prefill)",
+      "is_company_default": "★ Prefill dla nowych wakansji",
       "used_by_vacancies": "Używany w {count} wakansjach",
       "howto_one_liner": "Utwórz lub edytuj pipeline tutaj, potem przypisz na wakansjach.",
       "cta_assign_on_vacancy": "Wakansje — przypisz",
       "cta_new_vacancy": "Nowa wakansja",
-      "used_by_vacancies": "Używany w {count} wakansjach",
-      "make_default": "Domyślny dla nowych wakansji",
-      "is_company_default": "★ Prefill dla nowych wakansji",
       "funnel_name": "Nazwa lejka",
       "new_funnel": "Nowy lejek",
       "header_kicker": "Lejki",

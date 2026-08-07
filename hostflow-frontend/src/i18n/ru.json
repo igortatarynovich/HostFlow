@@ -1403,8 +1403,16 @@
         "tabs": {
           "candidates": "Кандидаты",
           "info": "Информация",
-          "notes": "Примечания"
+          "notes": "Примечания",
+          "workspace": "Workspace",
+          "job_details": "Детали вакансии",
+          "recruitment": "Рекрутинг",
+          "requirements": "Требования к кандидату",
+          "automation": "Автоматизация",
+          "analytics": "Аналитика",
+          "settings": "Настройки"
         },
+        "not_found": "Вакансия не найдена или недоступна.",
         "untitled": "Без названия",
         "table": {
           "candidate": "Кандидат",
@@ -1458,6 +1466,143 @@
         "work_schedule": {
           "title": "Варианты графика работы",
           "hint": "Что предлагает клиент по вакансии (предпочтение кандидата задаётся отдельно)"
+        }
+      },
+      "workspace": {
+        "tabs": {
+          "workspace": "Workspace",
+          "job_details": "Детали вакансии",
+          "recruitment": "Рекрутинг",
+          "requirements": "Требования к кандидату",
+          "automation": "Автоматизация",
+          "analytics": "Аналитика",
+          "settings": "Настройки",
+          "candidates": "Кандидаты"
+        },
+        "actions": {
+          "edit": "Редактировать",
+          "pause": "Приостановить",
+          "export": "Экспорт отчёта"
+        },
+        "meta": {
+          "client": "Клиент",
+          "order": "Заказ",
+          "funnel": "Воронка",
+          "recruiter": "Рекрутер"
+        },
+        "kpi": {
+          "headcount": "План",
+          "hired": "Трудоустроено",
+          "remaining": "Осталось",
+          "completion": "Закрытие"
+        },
+        "stage_cards": {
+          "view_list": "Смотреть список"
+        },
+        "order_progress": "Прогресс заказа",
+        "order_hint": "Пока нет API fulfillment заказа, счётчик опирается на трудоустроенных по вакансии.",
+        "order_none": "— свободная вакансия (без заказа) —",
+        "vacancy_progress": "Прогресс вакансии",
+        "main": {
+          "title": "Основная информация",
+          "location": "Локация",
+          "employment": "Занятость",
+          "salary": "Зарплата",
+          "currency": "Валюта"
+        },
+        "req": {
+          "title": "Требования к кандидату",
+          "mandatory": "Обязательные",
+          "preferred": "Желательные",
+          "preferred_empty": "Желательные требования появятся после настройки.",
+          "preferred_note": "Желательные критерии — мягкие сигналы.",
+          "documents": "Документы",
+          "experience": "Опыт",
+          "years": "лет",
+          "countries_allowed": "Разрешённые страны",
+          "countries_blocked": "Запрещённые страны",
+          "preferred_docs": "Желательные документы",
+          "languages": "Языки",
+          "languages_hint": "Коды языков через запятую (например pl, en).",
+          "allow_statuses": "Допустимые статусы документов",
+          "preset": "— пресет требований —",
+          "apply_preset": "Применить пресет"
+        },
+        "funnel": "Воронка набора",
+        "funnel_empty": "Пока нет данных пайплайна.",
+        "activity": {
+          "title": "Последние события",
+          "message": "История действий по вакансии появится после подключения Activity Feed."
+        },
+        "attention": {
+          "title": "На что обратить внимание",
+          "no_recruiter": "Нет менеджера или рекрутера",
+          "waiting_docs": "{count} кандидатов ждут документы ({stage})",
+          "permit": "{count} на разрешении на работу ({stage})",
+          "empty": "Срочных пунктов нет."
+        },
+        "quick": {
+          "title": "Быстрые действия",
+          "add_candidate": "Добавить кандидата",
+          "assign_recruiter": "Назначить рекрутера",
+          "create_document": "Создать документ",
+          "message": "Написать кандидату",
+          "export": "Экспорт отчёта",
+          "soon": "Скоро"
+        },
+        "owner": "Ответственный",
+        "related": {
+          "title": "Связанные",
+          "company": "Компания",
+          "order": "Заказ",
+          "funnel": "Воронка",
+          "profile": "Профиль кандидата",
+          "documents": "Документы",
+          "recruiter": "Рекрутер",
+          "team": "Команда",
+          "meta": "Кампании Meta",
+          "forms": "Формы",
+          "open": "Открыть",
+          "soon": "Скоро"
+        },
+        "profile_none": "— не выбран —",
+        "recruitment": {
+          "auto_assign": "Автоназначение",
+          "auto_assign_hint": "Веса пула управляют ротацией least-load.",
+          "sla": "SLA",
+          "sla_reserved": "Настройки SLA появятся здесь.",
+          "transitions": "Правила переходов",
+          "transitions_reserved": "Правила переходов появятся здесь.",
+          "system_stages": "Системные этапы",
+          "system_stages_empty": "Этапы ещё не загружены."
+        },
+        "automation": {
+          "empty": "Нет правил автоматизации из текущих требований.",
+          "if": "Если",
+          "then": "То"
+        },
+        "analytics": {
+          "reserved": "Нет данных",
+          "applications": "Заявки",
+          "conversion": "Конверсия",
+          "sources": "Источники",
+          "cost": "Стоимость",
+          "time_to_hire": "Time to Hire",
+          "hire_rate": "Hire Rate"
+        },
+        "settings": {
+          "created": "Создана",
+          "updated": "Изменена",
+          "active": "Активна",
+          "archived": "В архиве",
+          "open": "Открыта",
+          "status": "Статус",
+          "hint": "Только технические параметры. Бизнес-поля — на других вкладках."
+        },
+        "candidates": {
+          "empty": "Кандидатов по этой вакансии пока нет.",
+          "filter": "Фильтр",
+          "clear_filter": "Сбросить фильтр"
         }
       }
     },
