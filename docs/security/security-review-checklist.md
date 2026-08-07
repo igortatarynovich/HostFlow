@@ -20,6 +20,7 @@
 - [ ] Права проверены на **API**, не только в UI.
 - [ ] Нет новой логики «`if role == ...`» без использования общего guard / permission service.
 - [ ] Скрытые поля (internal notes, payroll, CLASS 3) не попадают в ответы для client/candidate/viewer без явного allowlist.
+- [ ] Если меняются trust roles / matrix / invites: соблюдён инвариант **ADR-036** (4 trust-роли; ceilings; `access_context` ⊥ role); job titles = presets; см. `threat-models/rbac-trust-roles.md`.
 
 ### 3. Handoff и cross-tenant
 
