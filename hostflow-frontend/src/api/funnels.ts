@@ -84,15 +84,16 @@ export interface FunnelUpdate {
 }
 
 export interface ListFunnelsOptions {
-  companyId: string
+  /** Optional. Omit for tenant-wide catalog (Vacancy assignment SoT). */
+  companyId?: string | null
   type?: 'candidate' | 'lead' | 'deal' | 'employee'
   moduleKey?: string
 }
 
-export async function listFunnels(options: ListFunnelsOptions): Promise<Funnel[]> {
-  const params: Record<string, string> = {
-    company_id: options.companyId,
-  }
+export async function listFunnels(options: ListFunnelsOptions = {}): Promise<Funnel[]> {
+  const params: Record<string, string> = {}
+  const companyId = String(options.companyId || '').trim()
+  if (companyId) params.company_id = companyId
   if (options.type) params.type = options.type
   if (options.moduleKey) params.module_key = options.moduleKey
 
@@ -130,12 +131,9 @@ export async function addFunnelStage(
 export async function updateFunnelStage(
   funnelId: string,
   stageId: string,
-  payload: FunnelStageCreate
+  payload: Partial<FunnelStageCreate>
 ): Promise<FunnelStage> {
-  const { data } = await api.patch<FunnelStage>(
-    `/funnels/${funnelId}/stages/${stageId}`,
-    payload
-  )
+  const { data } = await api.patch<FunnelStage>(`/funnels/${funnelId}/stages/${stageId}`, payload)
   return data
 }
 
@@ -148,22 +146,27 @@ export async function listSystemTransitionCatalog(params: {
   sourceObjectType: string
   enabledModules?: string[]
 }): Promise<SystemTransitionCatalogItem[]> {
-  const q: Record<string, string> = {
+  const query: Record<string, string> = {
     source_module: params.sourceModule,
     source_object_type: params.sourceObjectType,
   }
   if (params.enabledModules?.length) {
-    q.enabled_modules = params.enabledModules.join(',')
+    query.enabled_modules = params.enabledModules.join(',')
   }
   const { data } = await api.get<SystemTransitionCatalogItem[]>('/funnels/meta/system-transitions', {
-    params: q,
+    params: query,
   })
   return data || []
 }
 
 export async function addFunnelTransition(
   funnelId: string,
-  payload: { catalog_key: string; from_stage_id?: string | null; order?: number; config_json?: Record<string, unknown> },
+  payload: {
+    catalog_key: string
+    from_stage_id?: string | null
+    order?: number
+    config_json?: Record<string, unknown> | null
+  }
 ): Promise<FunnelTransition> {
   const { data } = await api.post<FunnelTransition>(`/funnels/${funnelId}/transitions`, payload)
   return data

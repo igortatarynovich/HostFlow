@@ -566,8 +566,8 @@ export default function FunnelsPage() {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const [pageError, setPageError] = useState<FriendlyErrorInfo | null>(null)
-  const [companyOptions, setCompanyOptions] = useState<Array<{ id: string; name: string }>>([])
-  const [companyId, setCompanyId] = useState<string>('')
+  /** DB seed for create only — never shown as a client filter (Vacancy is SoT). */
+  const [createCompanyId, setCreateCompanyId] = useState<string>('')
   const [funnelTab, setFunnelTab] = useState<'candidate' | 'lead'>('candidate')
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [selectedFunnel, setSelectedFunnel] = useState<Funnel | null>(null)
@@ -590,47 +590,29 @@ export default function FunnelsPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  const loadCompanies = useCallback(async () => {
+  const seedCreateCompanyId = useCallback(async () => {
     try {
-      const data = await listCompanies({ limit: 200 })
+      const data = await listCompanies({ limit: 50 })
       const source = Array.isArray((data as { items?: unknown[] })?.items)
-        ? (data as { items: Array<{ id?: string; name?: string; title?: string }> }).items
+        ? (data as { items: Array<{ id?: string }> }).items
         : Array.isArray(data)
-          ? (data as Array<{ id?: string; name?: string; title?: string }>)
+          ? (data as Array<{ id?: string }>)
           : []
-      const mapped = source
-        .map((c) => ({
-          id: String(c.id || '').trim(),
-          name: String(c.name || c.title || c.id || '').trim(),
-        }))
-        .filter((c) => c.id)
-      setCompanyOptions(mapped)
-      setCompanyId((prev) => {
-        if (prev && mapped.some((c) => c.id === prev)) return prev
-        return mapped[0]?.id || ''
-      })
+      const first = source.map((c) => String(c.id || '').trim()).find(Boolean) || ''
+      setCreateCompanyId(first)
     } catch {
-      setCompanyOptions([])
-      setCompanyId('')
+      setCreateCompanyId('')
     }
   }, [])
 
   useEffect(() => {
-    void loadCompanies()
-  }, [loadCompanies])
+    void seedCreateCompanyId()
+  }, [seedCreateCompanyId])
 
   const loadFunnels = useCallback(async () => {
-    if (!companyId) {
-      setFunnels([])
-      setSelectedFunnel(null)
-      setStages([])
-      setTransitions([])
-      setLoading(false)
-      return
-    }
     try {
       setPageError(null)
-      const list = await listFunnels({ companyId, type: funnelTab })
+      const list = await listFunnels({ type: funnelTab })
       setFunnels(list)
       if (list.length > 0) {
         setSelectedFunnel((prev) => {
@@ -640,7 +622,7 @@ export default function FunnelsPage() {
       } else {
         setSelectedFunnel(null)
         setStages([])
-      setTransitions([])
+        setTransitions([])
       }
     } catch (err) {
       console.error('Failed to load funnels', err)
@@ -655,11 +637,11 @@ export default function FunnelsPage() {
     } finally {
       setLoading(false)
     }
-  }, [companyId, funnelTab, planLimitModal, t])
+  }, [funnelTab, planLimitModal, t])
 
   useEffect(() => {
     setLoading(true)
-    loadFunnels()
+    void loadFunnels()
   }, [loadFunnels])
 
   useEffect(() => {
@@ -672,9 +654,10 @@ export default function FunnelsPage() {
     setTransitions(selectedFunnel.transitions || [])
     const loadCatalog = async () => {
       let enabledModules = ['recruitment']
-      if (companyId) {
+      const scopeCompany = String(selectedFunnel.company_id || createCompanyId || '').trim()
+      if (scopeCompany) {
         try {
-          const rows = await listCompanyModuleSettings(companyId)
+          const rows = await listCompanyModuleSettings(scopeCompany)
           enabledModules = rows.filter((r) => r.is_enabled).map((r) => r.module_key)
           if (!enabledModules.length) enabledModules = ['recruitment']
         } catch {
@@ -693,7 +676,14 @@ export default function FunnelsPage() {
       }
     }
     void loadCatalog()
-  }, [selectedFunnel, companyId])
+  }, [selectedFunnel, createCompanyId])
+
+  const resolveCreateCompanyId = useCallback(() => {
+    return (
+      String(selectedFunnel?.company_id || '').trim() ||
+      String(createCompanyId || '').trim()
+    )
+  }, [selectedFunnel, createCompanyId])
 
   const refreshSelectedFunnel = useCallback(async () => {
     if (!selectedFunnel) return
@@ -923,42 +913,9 @@ export default function FunnelsPage() {
     [planLimitModal, stages, selectedFunnel, refreshSelectedFunnel, t]
   )
 
-  const companyScopeBar = (
-    <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
-      <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1">
-          {t('admin.funnels.company_scope', {
-            defaultValue: 'Client company (library filter)',
-          })}
-        </label>
-        <select
-          value={companyId}
-          onChange={(e) => {
-            setCompanyId(e.target.value)
-            setLoading(true)
-          }}
-          className="input min-w-[220px]"
-        >
-          <option value="">
-            {t('admin.funnels.select_company', { defaultValue: 'Select client company…' })}
-          </option>
-          {companyOptions.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <span className="inline-flex self-center rounded-lg bg-blue-50 px-2 py-1 text-xs font-medium text-blue-800">
-        recruitment
-      </span>
-    </div>
-  )
-
   const funnelSubpageHeaderProps = {
     className: 'mb-2',
     backLabel: t('admin.settings.subpage.back_all'),
-    kicker: t('admin.funnels.header_kicker'),
     title: funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title'),
     subtitle: funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle'),
   } as const
@@ -1002,32 +959,16 @@ export default function FunnelsPage() {
     />
   ) : null
 
+  const createCompanyForModal = resolveCreateCompanyId()
+
   if (loading) {
     return (
       <SettingsSubpageHeader
       {...funnelSubpageHeaderProps}
       contentClassName="px-0 pb-10"
     >
-        {companyScopeBar}
         <div className="text-sm text-slate-500">
           {t('common.loading')}
-        </div>
-      </SettingsSubpageHeader>
-    )
-  }
-
-  if (!companyId) {
-    return (
-      <SettingsSubpageHeader
-      {...funnelSubpageHeaderProps}
-      contentClassName="px-0 pb-10"
-    >
-        {errorBanner}
-        {companyScopeBar}
-        <div className="card p-8 text-center text-slate-600">
-          {t('admin.funnels.select_company_hint', {
-            defaultValue: 'Select a company to manage its recruitment funnels.',
-          })}
         </div>
       </SettingsSubpageHeader>
     )
@@ -1042,7 +983,6 @@ export default function FunnelsPage() {
     >
         {errorBanner}
         <div className="settings-toolbar">{funnelTabButtons}</div>
-        {companyScopeBar}
         <div className="card p-8 text-center">
           <p className="text-slate-600 mb-4">
             {funnelTab === 'lead' ? t('admin.funnels.no_funnels_leads') : t('admin.funnels.no_funnels')}
@@ -1051,20 +991,21 @@ export default function FunnelsPage() {
             type="button"
             onClick={() => setShowCreateFunnelModal(true)}
             className="btn-primary"
+            disabled={!createCompanyForModal}
           >
             + {t('admin.funnels.create_funnel')}
           </button>
         </div>
       </SettingsSubpageHeader>
-      {showCreateFunnelModal && companyId && (
+      {showCreateFunnelModal && createCompanyForModal ? (
         <FunnelCreateModal
           onClose={() => setShowCreateFunnelModal(false)}
           onSave={handleCreateFunnel}
           disabled={saving}
           funnelType={funnelTab}
-          companyId={companyId}
+          companyId={createCompanyForModal}
         />
-      )}
+      ) : null}
       </>
     )
   }
@@ -1077,61 +1018,18 @@ export default function FunnelsPage() {
     >
       {errorBanner}
       <div className="settings-toolbar">{funnelTabButtons}</div>
-      {companyScopeBar}
 
-      <div className="mb-4 rounded-lg border border-teal-200 bg-teal-50/60 px-4 py-3 text-sm text-slate-800">
-        <p className="font-semibold text-slate-900">
-          {t('admin.funnels.howto_title', {
-            defaultValue: 'Apply pipeline on the Vacancy — not here',
+      <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+        <span>
+          {t('admin.funnels.howto_one_liner', {
+            defaultValue: 'Create or edit a pipeline here, then assign it on the vacancy.',
           })}
-        </p>
-        <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-slate-700">
-          <li>
-            {t('admin.funnels.howto_step_select', {
-              defaultValue:
-                'Here you only build the library: stages + system transitions (Recruitment / Candidates tab).',
-            })}
-          </li>
-          <li>
-            {t('admin.funnels.howto_step_default', {
-              defaultValue:
-                'Open Vacancies → create/edit vacancy → field «Recruitment Pipeline» → pick this pipeline → Save. That is the SoT.',
-            })}
-          </li>
-          <li>
-            {t('admin.funnels.howto_step_transitions', {
-              defaultValue:
-                'Candidates on that vacancy inherit the pipeline. «Default for new vacancies» only prefills the field when creating a vacancy.',
-            })}
-          </li>
-        </ol>
-        <p className="mt-2 text-xs text-slate-600">
-          {t('admin.funnels.howto_note', {
-            defaultValue:
-              'Company filter below = which client’s library to edit (same company as on the vacancy). Focus Personnel is the operator, not the board.',
+        </span>
+        <Link to={CRM_APP_PATHS.vacancies} className="btn-secondary text-sm">
+          {t('admin.funnels.cta_assign_on_vacancy', {
+            defaultValue: 'Vacancies — assign pipeline',
           })}
-        </p>
-        <p className="mt-2 text-xs text-slate-600">
-          {t('admin.funnels.howto_modules', {
-            defaultValue:
-              'Modules: Recruitment (this page: Candidates + Leads intake) · HR Employee Pipelines (separate) · Sales Pipelines (separate). Not one shared funnel.',
-          })}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link to={CRM_APP_PATHS.vacancies} className="btn-primary text-sm">
-            {t('admin.funnels.cta_assign_on_vacancy', {
-              defaultValue: 'Go to Vacancies — assign pipeline',
-            })}
-          </Link>
-          <Link
-            to={CRM_APP_PATHS.vacancyNew}
-            className="btn-secondary text-sm"
-          >
-            {t('admin.funnels.cta_new_vacancy', {
-              defaultValue: 'New vacancy',
-            })}
-          </Link>
-        </div>
+        </Link>
       </div>
 
       <div className="settings-toolbar">
@@ -1207,7 +1105,7 @@ export default function FunnelsPage() {
         ) : null}
       </div>
 
-      <div className="card flex min-h-0 flex-col overflow-hidden">
+      <div className="card">
         <div className="shrink-0 p-4 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
@@ -1222,11 +1120,6 @@ export default function FunnelsPage() {
                   : t('admin.funnels.delete_funnel_hint', {
                       defaultValue: 'Only unused non-default funnels can be deleted.',
                     })}
-                {stages.length > 4
-                  ? ` · ${t('admin.funnels.stages_scroll_hint', {
-                      defaultValue: 'Scroll the table to see all stages',
-                    })}`
-                  : ''}
               </p>
             ) : null}
           </div>
@@ -1249,14 +1142,14 @@ export default function FunnelsPage() {
             {t('admin.funnels.no_stages')}
           </div>
         ) : (
-          <div className="min-h-0 max-h-[min(52vh,28rem)] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+          <div className="overflow-x-auto">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
               <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 shadow-sm">
+                <thead className="border-b border-slate-200 bg-slate-50">
                   <tr className="text-left text-xs uppercase text-slate-500">
                     <th className="py-2 px-2 w-8" />
                     <th className="py-2 px-2">{t('admin.funnels.columns.code')}</th>
@@ -1294,22 +1187,22 @@ export default function FunnelsPage() {
       </div>
 
       {selectedFunnel ? (
-        <div className="card overflow-hidden mt-4">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
-            <div>
+        <div className="card mt-4">
+          <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
               <h2 className="text-sm font-semibold text-slate-900">
                 {t('admin.funnels.system_transitions', {
                   defaultValue: 'System transitions',
                 })}
               </h2>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
                 {t('admin.funnels.system_transitions_help', {
                   defaultValue:
-                    'Locked platform exits (handoff / close). Not board stages — objects never sit on these nodes (ADR-035).',
+                    'Platform exits (handoff / close). Not board stages — candidates never sit on these nodes.',
                 })}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2">
               {catalogItems
                 .filter((c) => !transitions.some((tr) => tr.catalog_key === c.key))
                 .map((c) => (
@@ -1342,27 +1235,27 @@ export default function FunnelsPage() {
             </div>
           </div>
           {transitions.length === 0 ? (
-            <div className="p-6 text-sm text-slate-500">
+            <div className="p-4 text-sm leading-relaxed text-slate-500">
               {t('admin.funnels.no_transitions', {
-                defaultValue: 'No system transitions wired on this pipeline yet.',
+                defaultValue: 'No system transitions on this pipeline yet. Use the buttons above to add one.',
               })}
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">
               {transitions.map((tr) => (
                 <li key={tr.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                  <div>
-                    <span className="inline-flex items-center gap-2 font-medium text-slate-900">
+                  <div className="min-w-0">
+                    <span className="inline-flex flex-wrap items-center gap-2 font-medium text-slate-900">
                       <span className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-800">
                         locked
                       </span>
                       {tr.label || tr.catalog_key}
                     </span>
-                    <div className="text-xs text-slate-500 font-mono mt-0.5">{tr.catalog_key}</div>
+                    <div className="mt-0.5 font-mono text-xs text-slate-500">{tr.catalog_key}</div>
                   </div>
                   <button
                     type="button"
-                    className="text-xs text-red-600 hover:underline"
+                    className="shrink-0 text-xs text-red-600 hover:underline"
                     disabled={saving}
                     onClick={async () => {
                       if (!selectedFunnel) return
@@ -1424,15 +1317,15 @@ export default function FunnelsPage() {
           funnelType={funnelTab}
         />
       )}
-      {showCreateFunnelModal && companyId && (
+      {showCreateFunnelModal && createCompanyForModal ? (
         <FunnelCreateModal
           onClose={() => setShowCreateFunnelModal(false)}
           onSave={handleCreateFunnel}
           disabled={saving}
           funnelType={funnelTab}
-          companyId={companyId}
+          companyId={createCompanyForModal}
         />
-      )}
+      ) : null}
     </SettingsSubpageHeader>
     </>
   )

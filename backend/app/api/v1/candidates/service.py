@@ -1216,18 +1216,28 @@ async def update_candidate_full(
             changes["stage"] = new_stage_code
             changes["status"] = new_stage_code
             stage_changed = True
-            if getattr(c, "funnel_id", None):
+            from backend.app.services.recruitment_funnel_assignment import (
+                resolve_candidate_funnel_id_for_runtime,
+            )
+
+            runtime_funnel_id = await resolve_candidate_funnel_id_for_runtime(
+                db, tenant_id=tenant_id, candidate=c
+            )
+            if runtime_funnel_id:
                 from backend.app.models.funnel import FunnelStage as _FS2
 
                 _sid = await db.execute(
                     select(_FS2.id).where(
-                        _FS2.funnel_id == str(c.funnel_id),
+                        _FS2.funnel_id == str(runtime_funnel_id),
                         _FS2.code == new_stage_code,
                     )
                 )
                 stage_row_id = _sid.scalar_one_or_none()
                 if stage_row_id:
                     changes["pipeline_stage_id"] = stage_row_id
+                # Keep Candidate.funnel_id aligned with Vacancy SoT.
+                if str(getattr(c, "funnel_id", None) or "") != str(runtime_funnel_id):
+                    changes["funnel_id"] = str(runtime_funnel_id)
             if (
                 candidate_home_tenant
                 and not await _is_client_tenant(db, candidate_home_tenant)

@@ -1055,8 +1055,8 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                     onChange={(id) => field.onChange(id || '')}
                     funnelType="candidate"
                     moduleKey="recruitment"
-                    hint={t('app.vacancies.detail.recruitment_pipeline_pick_company', {
-                      defaultValue: 'Select a company first to choose a pipeline.',
+                    hint={t('app.vacancies.detail.recruitment_pipeline_hint_short', {
+                      defaultValue: 'Pick any recruitment pipeline for this vacancy.',
                     })}
                   />
                 )}

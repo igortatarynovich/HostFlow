@@ -5,11 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 
-def test_funnels_api_requires_company_id_on_list() -> None:
+def test_funnels_api_list_company_id_optional_tenant_catalog() -> None:
     source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
-    assert "company_id: str = Query(..., min_length=1" in source
-    assert "Funnel.company_id ==" in source
+    assert "company_id: Optional[str] = Query(" in source
+    assert "Funnel.company_id.is_not(None)" in source
     assert "Funnel.module_key ==" in source
+    assert "Vacancy assignment SoT" in source
 
 
 def test_funnels_api_create_sets_module_key_and_company() -> None:

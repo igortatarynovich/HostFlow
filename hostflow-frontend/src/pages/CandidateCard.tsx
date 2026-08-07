@@ -837,23 +837,35 @@ export default function CandidateCard(){
   )
   const [profileFunnelStages, setProfileFunnelStages] = useState<Array<{ code: string; label: string }>>([])
   const [profileFunnelTransitions, setProfileFunnelTransitions] = useState<FunnelTransition[]>([])
+  /** ADR-035 §12: Vacancy.funnel_id is SoT for the card pipeline (not Candidate Profile). */
+  const [vacancyFunnelId, setVacancyFunnelId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!candidateProfile?.funnel_id) {
+    const funnelId =
+      String(vacancyFunnelId || '').trim() ||
+      String(candidateProfile?.funnel_id || '').trim() ||
+      ''
+    if (!funnelId) {
       setProfileFunnelStages([])
       setProfileFunnelTransitions([])
       return
     }
-    getFunnel(candidateProfile.funnel_id)
+    let cancelled = false
+    getFunnel(funnelId)
       .then((f) => {
+        if (cancelled) return
         setProfileFunnelStages((f.stages || []).map((s) => ({ code: s.code, label: s.label })))
         setProfileFunnelTransitions(f.transitions || [])
       })
       .catch(() => {
+        if (cancelled) return
         setProfileFunnelStages([])
         setProfileFunnelTransitions([])
       })
-  }, [candidateProfile?.funnel_id])
+    return () => {
+      cancelled = true
+    }
+  }, [vacancyFunnelId, candidateProfile?.funnel_id])
 
   // Полный список этапов профиля (без фильтра по роли)
   const profileStageCodes = useMemo(() => {
@@ -1161,6 +1173,7 @@ export default function CandidateCard(){
   const loadProfileFromVacancy = useCallback(async (vacancyId: string | null) => {
     if (!vacancyId) {
       setCandidateProfile(null)
+      setVacancyFunnelId(null)
       return
     }
 
@@ -1174,6 +1187,7 @@ export default function CandidateCard(){
         // Client can legitimately get 404/403 for agency vacancy.
         // Keep card usable and fallback to default candidate profile.
         if (status === 404 || status === 403) {
+          setVacancyFunnelId(null)
           try {
             const profiles = await listCandidateProfiles()
             const defaultProfile = profiles.find((p) => p.code === DEFAULT_PROFILE_CODE)
@@ -1185,6 +1199,7 @@ export default function CandidateCard(){
         }
         throw vacancyErr
       }
+      setVacancyFunnelId(String(vacancy?.funnel_id || '').trim() || null)
       if (!vacancy?.candidate_profile_id) {
         try {
           const profiles = await listCandidateProfiles()

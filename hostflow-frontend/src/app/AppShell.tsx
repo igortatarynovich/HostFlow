@@ -100,8 +100,9 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     isOrganizationHubPage ||
     isAutomationsWorkspacePage ||
     isCalendarOrDocumentsPage ||
-    isSetupFlowPage ||
-    isSettingsArea
+    isSetupFlowPage
+  // Settings pages scroll on `main` (content height grows). Do not put them in the
+  // full-bleed overflow-hidden chain — it clips long funnels/forms mid-block.
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(false)
 
@@ -296,20 +297,22 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
 
             <main
               className={
-                isFullBleedListPage
-                  ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
-                  : 'min-h-0 flex-1 overflow-y-auto'
+                isSettingsArea
+                  ? 'min-h-0 flex-1 overflow-y-auto'
+                  : isFullBleedListPage
+                    ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+                    : 'min-h-0 flex-1 overflow-y-auto'
               }
             >
               <div
                 className={
                   isCrmWorkspace
                     ? clsx(
-                        'flex min-h-0 w-full flex-1 flex-col',
+                        'w-full',
                         isSettingsArea
                           ? 'px-4 pb-10 pt-1 sm:px-6 lg:px-8'
-                          : 'px-0 py-0',
-                        isFullBleedListPage && 'overflow-hidden',
+                          : 'flex min-h-0 w-full flex-1 flex-col px-0 py-0',
+                        !isSettingsArea && isFullBleedListPage && 'overflow-hidden',
                       )
                     : isFullBleedListPage
                       ? 'flex min-h-0 w-full flex-1 flex-col overflow-hidden px-6 py-6 lg:px-10'
@@ -330,12 +333,14 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                   className={clsx(
                     'app-ui min-h-0',
                     isSettingsArea && 'settings-surface',
-                    (isCrmWorkspace || isSetupFlowPage) && 'crm-workspace-fill',
+                    !isSettingsArea && (isCrmWorkspace || isSetupFlowPage) && 'crm-workspace-fill',
                     isCrmWorkspace &&
                       !isSettingsArea &&
                       !isFullBleedListPage &&
                       'crm-page-inset',
-                    isFullBleedListPage && 'flex min-h-0 flex-1 flex-col overflow-hidden',
+                    !isSettingsArea &&
+                      isFullBleedListPage &&
+                      'flex min-h-0 flex-1 flex-col overflow-hidden',
                   )}
                 >
                   <Outlet />

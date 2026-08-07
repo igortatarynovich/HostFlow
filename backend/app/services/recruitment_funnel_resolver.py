@@ -308,11 +308,9 @@ async def _resolve_explicit_funnel(
     if funnel is None:
         raise RecruitmentFunnelNotFoundError(f"explicit funnel not found: {funnel_id}")
 
-    f_company = str(funnel.company_id or "").strip() or None
-    if f_company and f_company != str(company_id).strip():
-        raise RecruitmentFunnelForbiddenError(
-            f"funnel {funnel_id} belongs to company {f_company}, not {company_id}"
-        )
+    # ADR-035 §12: Vacancy.funnel_id is SoT. Funnel.company_id is library metadata only —
+    # do not block assigning a tenant recruitment pipeline to a vacancy of another client.
+    _ = company_id
 
     f_module = str(funnel.module_key or "").strip() or None
     if f_module and f_module != RECRUITMENT_MODULE_KEY:

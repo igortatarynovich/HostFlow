@@ -88,11 +88,21 @@ async def _funnel_stage_codes_for_candidate(
     db: AsyncSession,
     candidate: Candidate,
 ) -> Optional[set[str]]:
-    """Return operational stage codes for the candidate's pipeline, if bound."""
-    funnel_id = getattr(candidate, "funnel_id", None)
+    """Return operational stage codes for the candidate's pipeline, if bound.
+
+    Uses Vacancy.funnel_id SoT via ``resolve_candidate_funnel_id_for_runtime``.
+    """
+    from backend.app.models.funnel import FunnelStage
+    from backend.app.services.recruitment_funnel_assignment import (
+        resolve_candidate_funnel_id_for_runtime,
+    )
+
+    tenant_id = str(getattr(candidate, "tenant_id", None) or "").strip()
+    funnel_id = await resolve_candidate_funnel_id_for_runtime(
+        db, tenant_id=tenant_id, candidate=candidate
+    )
     if not funnel_id:
         return None
-    from backend.app.models.funnel import FunnelStage
 
     res = await db.execute(
         select(FunnelStage.code).where(FunnelStage.funnel_id == str(funnel_id))

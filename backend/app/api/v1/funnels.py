@@ -578,37 +578,56 @@ class FunnelOut(BaseModel):
 @router.get("", response_model=List[FunnelOut])
 @router.get("/", response_model=List[FunnelOut], include_in_schema=False)
 async def list_funnels(
-    company_id: str = Query(..., min_length=1, max_length=36),
+    company_id: Optional[str] = Query(
+        None,
+        min_length=1,
+        max_length=36,
+        description="Optional client filter. Omit to list all writable funnels in the tenant (Vacancy assignment SoT).",
+    ),
     type_filter: Optional[str] = Query(None, alias="type"),
     module_key: str = Query(RECRUITMENT_MODULE_KEY, min_length=1, max_length=32),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> List[FunnelOut]:
-    """List company-scoped operational funnels (excludes legacy tenant-wide rows)."""
+    """List operational funnels (excludes legacy tenant-wide readonly rows).
+
+    ADR-035 §12: assignment SoT is Vacancy.funnel_id. ``company_id`` is an optional
+    library filter only — omit it for the tenant pipeline catalog.
+    """
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
-    company_str = str(company_id).strip()
+    company_str = str(company_id or "").strip() or None
     module_str = str(module_key).strip()
     if module_str not in {RECRUITMENT_MODULE_KEY, HR_MODULE_KEY}:
         raise HTTPException(status_code=422, detail=f"unsupported module_key {module_key!r}")
     _validate_list_module_type(module_str, type_filter)
 
-    await _enforce_company_module_scope(
-        db,
-        tenant_id=tenant_str,
-        company_id=company_str,
-        module_key=module_str,
-        current_user=current_user,
-    )
+    if company_str:
+        await _enforce_company_module_scope(
+            db,
+            tenant_id=tenant_str,
+            company_id=company_str,
+            module_key=module_str,
+            current_user=current_user,
+        )
+    else:
+        # Tenant catalog: still require auth; ACL may narrow visible companies.
+        _ = current_user
 
     stmt = (
         select(Funnel)
         .where(
             Funnel.tenant_id == tenant_str,
-            Funnel.company_id == company_str,
+            Funnel.company_id.is_not(None),
             Funnel.module_key == module_str,
         )
     )
+    if company_str:
+        stmt = stmt.where(Funnel.company_id == company_str)
+    else:
+        acl = await resolve_restricted_acl(db, tenant_str, current_user)
+        if acl is not None and acl.company_ids:
+            stmt = stmt.where(Funnel.company_id.in_(list(acl.company_ids)))
     if type_filter:
         stmt = stmt.where(Funnel.type == type_filter)
     elif module_str == HR_MODULE_KEY:

@@ -262,14 +262,17 @@ async def resolve_candidate_funnel_id_for_runtime(
     tenant_id: str,
     candidate: Candidate,
 ) -> Optional[str]:
-    """Runtime funnel id for PE mapping — resolver only, no direct tenant default queries."""
-    company_id = str(getattr(candidate, "company_id", None) or "").strip()
-    explicit = str(getattr(candidate, "funnel_id", None) or "").strip() or None
+    """Runtime funnel id — Vacancy.funnel_id is SoT (ADR-035 §12).
 
-    if not explicit:
-        explicit = await _vacancy_profile_funnel_hint(
-            db, tenant_id=tenant_id, candidate=candidate
-        )
+    Order: vacancy assignment → legacy Candidate.funnel_id → company default via resolver.
+    """
+    company_id = str(getattr(candidate, "company_id", None) or "").strip()
+    vacancy_funnel = await _vacancy_profile_funnel_hint(
+        db, tenant_id=tenant_id, candidate=candidate
+    )
+    candidate_funnel = str(getattr(candidate, "funnel_id", None) or "").strip() or None
+    # Vacancy SoT wins over a stale Candidate.funnel_id stamp.
+    explicit = vacancy_funnel or candidate_funnel
 
     if company_id:
         try:

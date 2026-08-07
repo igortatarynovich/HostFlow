@@ -431,6 +431,22 @@ class VacancyService:
             was_rec = uos_auto_activities.vacancy_is_recruiting(obj)
             values["updated_at"] = _now_utc()
             obj = await self.repo.update(obj, values)
+            # ADR-035 §12: Vacancy.funnel_id is SoT — stamp linked candidates so boards/cards match.
+            if "funnel_id" in fields_set:
+                from sqlalchemy import update as sa_update
+
+                from backend.app.models.candidate import Candidate
+
+                new_funnel = values.get("funnel_id")
+                await self.repo.db.execute(
+                    sa_update(Candidate)
+                    .where(
+                        Candidate.tenant_id == str(getattr(obj, "tenant_id", "") or ""),
+                        Candidate.vacancy_id == str(obj.id),
+                    )
+                    .values(funnel_id=new_funnel)
+                )
+                await self.repo.db.commit()
             # Reload with related data
             row = await self.repo.get(obj.id)
             if row:

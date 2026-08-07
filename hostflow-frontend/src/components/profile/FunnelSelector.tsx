@@ -4,7 +4,8 @@ import { listFunnels, type Funnel } from '../../api/funnels'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 interface FunnelSelectorProps {
-  companyId: string | null | undefined
+  /** Optional legacy filter; omit for tenant-wide catalog (Vacancy assignment SoT). */
+  companyId?: string | null | undefined
   value: string | null | undefined
   onChange: (funnelId: string | null) => void
   disabled?: boolean
@@ -28,15 +29,11 @@ export default function FunnelSelector({
   const scopeCompanyId = String(companyId || '').trim()
 
   const load = useCallback(async () => {
-    if (!scopeCompanyId) {
-      setFunnels([])
-      setLoading(false)
-      return
-    }
     setLoading(true)
     try {
       const list = await listFunnels({
-        companyId: scopeCompanyId,
+        // Vacancy SoT: show tenant catalog; companyId only narrows if explicitly needed elsewhere.
+        companyId: funnelType === 'candidate' || funnelType === 'lead' ? undefined : scopeCompanyId || undefined,
         type: funnelType,
         moduleKey,
       })
@@ -53,14 +50,6 @@ export default function FunnelSelector({
   }, [load])
 
   const selectedFunnel = funnels.find((f) => f.id === value)
-
-  if (!scopeCompanyId) {
-    return (
-      <p className="text-sm text-slate-500">
-        Выберите компанию (client), чтобы привязать company-scoped воронку.
-      </p>
-    )
-  }
 
   if (loading) {
     return <div className="text-sm text-slate-500">Загрузка воронок…</div>
@@ -85,13 +74,13 @@ export default function FunnelSelector({
           ))}
         </select>
         <p className="mt-1 text-xs text-slate-500">
-          {hint ?? 'Этапы берутся из company-scoped воронок.'}{' '}
+          {hint ?? 'Назначение pipeline — на вакансии.'}{' '}
           <Link to={CRM_APP_PATHS.settingsFunnels} className="text-brand-600 hover:underline">
             Редактировать воронки
           </Link>
         </p>
       </div>
-      {selectedFunnel && selectedFunnel.stages && selectedFunnel.stages.length > 0 && (
+      {selectedFunnel && selectedFunnel.stages && selectedFunnel.stages.length > 0 ? (
         <div>
           <div className="text-sm font-medium text-slate-700 mb-2">Этапы выбранной воронки</div>
           <div className="flex flex-wrap gap-2">
@@ -100,12 +89,12 @@ export default function FunnelSelector({
                 key={s.id}
                 className="inline-flex rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700"
               >
-                {s.label} <span className="text-slate-500 font-mono">({s.code})</span>
+                {s.label} <span className="font-mono text-slate-500">({s.code})</span>
               </span>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
