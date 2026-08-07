@@ -99,7 +99,7 @@ export function SidebarOwnCompanySection() {
                   className="rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
                   onClick={oc.openBilling}
                 >
-                  {t('app.topbar.own_company_open_billing')}
+                  {t('app.nav.items.organization', { defaultValue: 'Organization' })}
                 </button>
               ) : null}
               <button

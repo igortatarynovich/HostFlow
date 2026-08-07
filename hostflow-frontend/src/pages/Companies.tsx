@@ -2162,9 +2162,6 @@ export default function Companies(){
                     <Link to={CRM_APP_PATHS.invoiceNew} className="btn-secondary btn-sm">
                       {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
                     </Link>
-                    <Link to={CRM_APP_PATHS.settingsBilling} className="btn-secondary btn-sm">
-                      {t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
-                    </Link>
                   </>
                 ) : (
                   <Link

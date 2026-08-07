@@ -12120,7 +12120,7 @@
           "label": "Team"
         },
         "workspace": {
-          "description": "Company profile, workspace identity and high-level access scope.",
+          "description": "Organization hub and company profiles. Subscription and payment settings live under Billing.",
           "label": "Workspace"
         }
       }

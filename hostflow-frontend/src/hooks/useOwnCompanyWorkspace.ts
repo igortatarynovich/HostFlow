@@ -112,7 +112,7 @@ export function useOwnCompanyWorkspace() {
 
   const openBilling = useCallback(() => {
     setCreateOpen(false)
-    navigate(CRM_APP_PATHS.settingsBilling)
+    navigate(CRM_APP_PATHS.organization)
   }, [navigate])
 
   const visible = ownCompanies.length > 0 || canAddOwnCompany

@@ -113,7 +113,8 @@ export const CRM_APP_PATHS = {
   teamAvailability: "/app/team-availability",
   timeOff: "/app/time-off",
   clientNew: "/app/clients/new",
-  companiesOperatingBilling: "/app/my-company?section=billing",
+  /** Deep-link to OwnCompany bank tab (issuer bank/legal data). Tenant subscription lives at organization / settingsBilling — do not reuse this for plan billing. */
+  companiesOperatingBilling: "/app/my-company?tab=bank",
   settings: "/app/settings",
   settingsUsers: "/app/settings/users",
   settingsBilling: "/app/settings/billing",

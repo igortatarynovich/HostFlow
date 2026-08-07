@@ -12120,7 +12120,7 @@
           "label": "Zespół"
         },
         "workspace": {
-          "description": "Profil firmy, tożsamość workspace i zakres dostępu na wysokim poziomie.",
+          "description": "Hub organizacji i profile firm. Subskrypcja i płatności są w sekcji Billing.",
           "label": "Przestrzeń robocza"
         }
       }

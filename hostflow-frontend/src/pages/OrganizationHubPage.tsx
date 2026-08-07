@@ -402,7 +402,7 @@ export default function OrganizationHubPage() {
                   {t('app.organization.modules.empty', { defaultValue: 'Module list unavailable.' })}
                 </p>
               )}
-              <Link className="inline-flex text-sm font-medium text-brand-700 hover:text-brand-800" to={CRM_APP_PATHS.settingsTeam}>
+              <Link className="inline-flex text-sm font-medium text-brand-700 hover:text-brand-800" to={CRM_APP_PATHS.settingsUsers}>
                 {t('app.organization.modules.all', { defaultValue: 'All modules' })} →
               </Link>
             </section>

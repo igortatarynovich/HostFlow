@@ -949,7 +949,7 @@ export default function InvoiceCreatePage() {
                     className="font-semibold underline"
                     onClick={() => navigate(CRM_APP_PATHS.companiesOperatingBilling)}
                   >
-                    {t('app.companies.my_company.open_billing', { defaultValue: 'Open billing' })}
+                    {t('app.my_company.profile.bank.title', { defaultValue: 'Bank accounts' })}
                   </button>
                 </div>
               )}

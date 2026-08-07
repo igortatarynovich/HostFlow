@@ -46,6 +46,8 @@ type CardDef = {
   requiresCommFeatures?: CommunicationsFeatureKey[]
   superadminOnly?: boolean
   requiresCompaniesView?: boolean
+  /** Organization hub: companies.view OR settings.view OR admin.users */
+  requiresOrganizationAccess?: boolean
   /** Single entry to `/settings/integrations` (connections); duplicate per-integration cards live only in the hub. */
   integrationsHubEntry?: boolean
 }
@@ -111,7 +113,9 @@ export default function SettingsLandingPage() {
     () => ({
       workspace: {
         label: t('admin.settings.sections.workspace.label', { defaultValue: 'Workspace' }),
-        description: t('admin.settings.sections.workspace.description', { defaultValue: 'Company profile, workspace identity and high-level access scope.' }),
+        description: t('admin.settings.sections.workspace.description', {
+          defaultValue: 'Organization hub and company profiles. Subscription/billing live under Billing.',
+        }),
       },
       crm_setup: {
         label: t('admin.settings.sections.crm_setup.label', { defaultValue: 'CRM Setup' }),
@@ -171,7 +175,7 @@ export default function SettingsLandingPage() {
         target: CRM_APP_PATHS.organization,
         roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'compliance_officer', 'hr_officer', 'viewer'],
         section: 'workspace',
-        requiresCompaniesView: true,
+        requiresOrganizationAccess: true,
       },
       {
         key: 'my_company',
@@ -381,6 +385,12 @@ export default function SettingsLandingPage() {
       allCards.filter((c) => {
         if (c.superadminOnly && !isSuperAdmin) return false
         if (c.requiresCompaniesView && !can('companies.view')) return false
+        if (
+          c.requiresOrganizationAccess &&
+          !(can('companies.view') || can('settings.view') || can('admin.users'))
+        ) {
+          return false
+        }
         if (c.integrationsHubEntry) {
           const hubOk =
             can('admin.metaLeads') ||

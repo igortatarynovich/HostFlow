@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import type { FunnelTransition } from '../api/funnels'
-import { fireCandidateSystemTransition } from '../api/candidateSystemTransitions'
-import { useI18n } from '../i18n'
-import { getFriendlyErrorInfo } from '../utils/friendlyError'
+import type { FunnelTransition } from '../../api/funnels'
+import { fireCandidateSystemTransition } from '../../api/candidateSystemTransitions'
+import { useI18n } from '../../i18n'
+import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 
 type Props = {
   candidateId: string
