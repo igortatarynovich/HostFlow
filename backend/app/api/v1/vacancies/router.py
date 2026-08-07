@@ -428,16 +428,11 @@ async def get_vacancy_pipeline(
             )
             funnel_stages = list(stages_row.scalars().all())
             if funnel_stages:
+                # ADR-035 §12: one kanban column per vacancy funnel stage (not aggregated legacy groups).
                 stage_codes_order = [s.code for s in funnel_stages]
-                stage_labels = {}
-                stage_columns_map = {}
-                for s in funnel_stages:
-                    col = pipeline_for_stage_code(s.code)
-                    stage_columns_map.setdefault(col, []).append(s.code)
-                    if col not in stage_labels:
-                        stage_labels[col] = {}
-                    stage_labels[col][s.code] = s.label
-                column_order_list = list(stage_columns_map.keys())
+                stage_columns_map = {s.code: [s.code] for s in funnel_stages}
+                stage_labels = {s.code: {s.code: s.label} for s in funnel_stages}
+                column_order_list = list(stage_codes_order)
                 profile_stages = {
                     "stage_codes": stage_codes_order,
                     "stage_labels": stage_labels,

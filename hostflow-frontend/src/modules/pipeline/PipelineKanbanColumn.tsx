@@ -15,29 +15,32 @@ import { normalizeStageCode, summarizePipelineColumnHealth } from './utils';
 export type DragRegistryEntry = { candidateId: string; fromColumn: string; stage?: string };
 
 export type PipelineKanbanColumnProps = {
-  code: string;
-  columnStages: Record<string, string[]>;
-  colItems: unknown[];
-  totalUnfilteredCount: number;
-  viewInListHref: string;
-  canManage: boolean;
-  selectedIds: string[];
-  onToggleAllInColumn: (colIds: string[], select: boolean) => void;
-  dragRegistry: MutableRefObject<Record<string, DragRegistryEntry>>;
-  savingIds: Record<string, boolean>;
-  isSelected: (id: string) => boolean;
-  onToggleSelected: (id: string) => void;
-  onCardContextMenu: (clientX: number, clientY: number, candidateId: string) => void;
-  managers: ManagerItem[];
-  vacancies: Vacancy[];
-  vacancyId: string;
-  canViewTasks: boolean;
-  shouldSuppressLinkClick: (id: string) => boolean;
-};
+  code: string
+  columnStages: Record<string, string[]>
+  /** Vacancy funnel SoT labels: columnCode → stageCode → label */
+  stageLabels?: Record<string, Record<string, string>> | null
+  colItems: unknown[]
+  totalUnfilteredCount: number
+  viewInListHref: string
+  canManage: boolean
+  selectedIds: string[]
+  onToggleAllInColumn: (colIds: string[], select: boolean) => void
+  dragRegistry: MutableRefObject<Record<string, DragRegistryEntry>>
+  savingIds: Record<string, boolean>
+  isSelected: (id: string) => boolean
+  onToggleSelected: (id: string) => void
+  onCardContextMenu: (clientX: number, clientY: number, candidateId: string) => void
+  managers: ManagerItem[]
+  vacancies: Vacancy[]
+  vacancyId: string
+  canViewTasks: boolean
+  shouldSuppressLinkClick: (id: string) => boolean
+}
 
 export function PipelineKanbanColumn({
   code,
   columnStages,
+  stageLabels,
   colItems,
   totalUnfilteredCount,
   viewInListHref,
@@ -57,6 +60,10 @@ export function PipelineKanbanColumn({
 }: PipelineKanbanColumnProps) {
   const { t } = useI18n();
   const colHealth = summarizePipelineColumnHealth(colItems);
+  const columnLabel =
+    stageLabels?.[code]?.[code] ||
+    Object.values(stageLabels?.[code] || {})[0] ||
+    null
 
   const subtitle = (() => {
     const stages = (columnStages?.[code] || []).filter(Boolean);
@@ -64,7 +71,11 @@ export function PipelineKanbanColumn({
     return (
       <div className="mt-1 flex flex-wrap gap-1">
         {stages.map((stageCode) => (
-          <StageTag key={`${code}:${stageCode}`} code={stageCode} />
+          <StageTag
+            key={`${code}:${stageCode}`}
+            code={stageCode}
+            label={stageLabels?.[code]?.[stageCode] || stageLabels?.[stageCode]?.[stageCode]}
+          />
         ))}
       </div>
     );
@@ -98,7 +109,7 @@ export function PipelineKanbanColumn({
   return (
     <DroppableColumn
       id={code}
-      title={<StageTag code={code} />}
+      title={<StageTag code={code} label={columnLabel} />}
       subtitle={subtitle}
       count={colItems.length}
       total={totalUnfilteredCount}

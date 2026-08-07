@@ -709,6 +709,7 @@ export default function Pipeline(){
             filteredColumns={filteredColumns}
             data={data}
             columnStages={columnStages}
+            stageLabels={profileStages?.stage_labels || null}
             selectedIds={selectedIds}
             onToggleAllInColumn={toggleAllInColumn}
             dragRegistry={dragRegistry}

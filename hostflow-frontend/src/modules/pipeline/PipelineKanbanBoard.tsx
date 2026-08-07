@@ -26,6 +26,8 @@ export type PipelineKanbanBoardProps = {
   filteredColumns: Record<string, unknown[]> | undefined;
   data: PipelineOut | null;
   columnStages: Record<string, string[]>;
+  /** Vacancy funnel SoT labels from profile_stages.stage_labels */
+  stageLabels?: Record<string, Record<string, string>> | null;
   selectedIds: string[];
   onToggleAllInColumn: (colIds: string[], select: boolean) => void;
   dragRegistry: MutableRefObject<Record<string, DragRegistryEntry>>;
@@ -49,6 +51,7 @@ export function PipelineKanbanBoard({
   filteredColumns,
   data,
   columnStages,
+  stageLabels,
   selectedIds,
   onToggleAllInColumn,
   dragRegistry,
@@ -87,6 +90,7 @@ export function PipelineKanbanBoard({
               key={code}
               code={code}
               columnStages={columnStages}
+              stageLabels={stageLabels}
               colItems={colItems}
               totalUnfilteredCount={data?.columns?.[code]?.length || 0}
               viewInListHref={viewInListHref}

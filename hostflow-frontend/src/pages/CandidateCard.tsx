@@ -891,6 +891,13 @@ export default function CandidateCard(){
   const stageOptions = useMemo(() => {
     const FORBIDDEN = new Set(['ready_for_hr', 'processing_by_hr', 'ready_for_fleet', 'processing_by_client'])
     const codes = profileStageCodes.filter((code) => !FORBIDDEN.has(String(code).toLowerCase()))
+    // ADR-035 §12: vacancy funnel stages are SoT — do not drop codes missing from global meta.
+    if (profileFunnelStages.length > 0) {
+      if (isClientTenant && meta?.meta) {
+        return codes.filter((code) => meta.meta?.[code]?.visible_for_client)
+      }
+      return codes
+    }
     if (!meta?.meta) return codes
     if (isClientTenant) {
       return codes.filter((code) => meta.meta?.[code]?.visible_for_client)
@@ -905,7 +912,13 @@ export default function CandidateCard(){
       })
     }
     return codes
-  }, [profileStageCodes, meta, isClientTenant, isHandoffEnabledForCurrentCompany])
+  }, [
+    profileStageCodes,
+    profileFunnelStages.length,
+    meta,
+    isClientTenant,
+    isHandoffEnabledForCurrentCompany,
+  ])
 
   const existingStageCodesSet = useMemo(
     () => new Set((profileStageCodes || []).map((code) => String(code).trim()).filter(Boolean)),
@@ -926,6 +939,10 @@ export default function CandidateCard(){
 
   const stageLabelIntl = useCallback((code: string) => {
     const funnelStage = profileFunnelStages.find((s) => s.code === code)
+    // Vacancy funnel SoT: configured label wins over global i18n/meta (same names as Settings).
+    if (funnelStage?.label && String(funnelStage.label).trim()) {
+      return String(funnelStage.label).trim()
+    }
     let profileLabel: string | null = null
     if (candidateProfile?.config?.stage_configs) {
       const profileStage = candidateProfile.config.stage_configs.find(
@@ -933,8 +950,7 @@ export default function CandidateCard(){
       )
       if (profileStage?.stage_label) profileLabel = String(profileStage.stage_label)
     }
-    const fallback = profileLabel || funnelStage?.label || meta?.labels?.[code] || code
-    // IMPORTANT: always translate via canonical stage key; do not render Polish labels directly.
+    const fallback = profileLabel || meta?.labels?.[code] || code
     return translateStageLabel(t, code, fallback)
   }, [candidateProfile, meta?.labels, profileFunnelStages, t])
 
@@ -3533,6 +3549,52 @@ export default function CandidateCard(){
     stageJourneyOutcomeStage,
     stageJourneySignals,
   } = useMemo(() => {
+    const FORBIDDEN = new Set(['ready_for_hr', 'processing_by_hr', 'ready_for_fleet', 'processing_by_client'])
+    const hasVacancyFunnel = profileFunnelStages.length > 0
+
+    // ADR-035 §12: vacancy funnel SoT — same ordered stages for strip, dropdown, and moves.
+    if (hasVacancyFunnel && !isClientTenant) {
+      const funnelStages = profileFunnelStages
+        .filter((s) => !FORBIDDEN.has(String(s.code).toLowerCase()))
+        .map((s) => ({
+          code: s.code,
+          label: stageLabelIntl(s.code),
+        }))
+      const terminal = new Set(['rejected', 'declined', 'employed'])
+      const main = funnelStages.filter((s) => !terminal.has(String(s.code).toLowerCase()))
+      const outcomes = funnelStages.filter((s) => terminal.has(String(s.code).toLowerCase()))
+      const currentCode = String(model?.stage || '')
+      const currentCanonical = canonicalStageKey(currentCode, null) || ''
+      const journeySignals: Array<{ key: string; label: string }> = []
+      if (currentCanonical === 'no_answer') {
+        journeySignals.push({ key: 'no_answer', label: stageLabelIntl('no_answer') })
+      }
+      const intakeSubmitted = Boolean(
+        (model as any)?.intake_submitted_at || (model as any)?.intake_status === 'submitted',
+      )
+      if (currentCanonical === 'questionnaire_submitted' || intakeSubmitted) {
+        journeySignals.push({
+          key: 'questionnaire_submitted',
+          label: stageLabelIntl('questionnaire_submitted'),
+        })
+      }
+      let displayStage = currentCode || null
+      if (currentCanonical === 'no_answer' || currentCanonical === 'questionnaire_submitted') {
+        const contacted =
+          funnelStages.find((s) => (canonicalStageKey(s.code, null) || '') === 'contacted')?.code ||
+          'contacted'
+        displayStage = String(contacted)
+      }
+      return {
+        stageJourneyStagesPipeline: main.length ? main : funnelStages,
+        stageJourneyStagesDisplay: main.length ? main : funnelStages,
+        stageOutcomeStages: outcomes,
+        stageJourneyDisplayStage: displayStage,
+        stageJourneyOutcomeStage: null as string | null,
+        stageJourneySignals: journeySignals,
+      }
+    }
+
     const codesForDisplay = profileFunnelStages.length > 0 ? profileFunnelStages.map((s) => s.code) : stageOptions
     const codesForPipeline = isClientTenant
       ? stageOptions
