@@ -97,7 +97,7 @@
     },
     "and_more": "i więcej",
     "cancel": "Anulować",
-    "save": "Ratować",
+    "save": "Zapisz",
     "sending": "Przesyłka…",
     "sort": {
       "asc": "Rosnąco",
@@ -126,7 +126,8 @@
     "plan": "plan",
     "available": "Dostępne",
     "active": "Aktywny",
-    "required": "Wymagane"
+    "required": "Wymagane",
+    "reload": "Odśwież"
   },
   "scanner": {
     "place_in_frame": "Place the document inside the frame",
@@ -12444,7 +12445,8 @@
         "last_name": "Nazwisko",
         "email": "E-mail",
         "phone": "Telefon"
-      }
+      },
+      "deprecation_banner": "Profile kandydatów są legacy. Do nowej konfiguracji preferuj Entity Profile i formularze intake; edycja tutaj może być ograniczona dla profili już zmapowanych na Entity Profile."
     },
     "email": {
       "title": "E-mail (SMTP)",
@@ -12660,6 +12662,30 @@
         "load_detail": "Failed to load intake form",
         "copy": "Could not copy",
         "smoke": "Smoke test failed"
+      }
+    },
+    "hiring_gates": {
+      "title": "Bramki pipeline rekrutacji",
+      "blurb": "Ustaw, na których etapach obowiązują reguły dokumentów, wakatu i prób kontaktu. Zapisane w ustawieniach tenanta (hiring_stage_gates_v1).",
+      "load_error": "Nie udało się załadować bramek pipeline",
+      "save_error": "Nie udało się zapisać",
+      "saved": "Bramki pipeline zapisane",
+      "read_only": "Tylko administratorzy workspace mogą edytować te listy.",
+      "effective_non_overridable": "Obowiązujące typy dokumentów bez możliwości zwolnienia (tylko odczyt)",
+      "effective_non_overridable_hint": "Globalny zestaw fail-safe oraz dodatkowe typy tenanta poniżej.",
+      "field": {
+        "without_block": "Etapy bez blokady pipeline dokumentów",
+        "without_block_hint": "Jeden kod etapu w wierszu (np. new, contacted).",
+        "verify_uploads": "Etapy, na których niezweryfikowane uploady mogą blokować przejście dalej",
+        "verify_uploads_hint": "Dokumenty w toku (oczekujące na przegląd) mogą blokować z tych etapów.",
+        "vacancy": "Etapy wymagające wakatu przed przejściem dalej",
+        "vacancy_hint": "Zwykle contacted, questionnaire_submitted.",
+        "contact_attempt": "Etapy z bramką próby kontaktu",
+        "contact_attempt_hint": "Gdy polityka jest włączona, przejście dalej z tych etapów wymaga ≥1 zarejestrowanej próby (domyślnie: new).",
+        "soft_only": "Miękka blokada dokumentów (doradcza, bez 409 na serwerze)",
+        "soft_only_hint": "Jeśli etap jest tu wymieniony i inaczej zablokowałby dokumenty, API pozwala iść dalej; UI pokazuje ostrzeżenie.",
+        "non_overridable_extra": "Dodatkowe typy dokumentów bez zwolnienia (tenant)",
+        "non_overridable_extra_hint": "Kanoniczne kody typów dokumentów, jeden na wiersz."
       }
     }
   }

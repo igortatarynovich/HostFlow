@@ -126,7 +126,8 @@
     "plan": "plan",
     "available": "Available",
     "active": "Active",
-    "required": "Required"
+    "required": "Required",
+    "reload": "Reload"
   },
   "scanner": {
     "place_in_frame": "Place the document inside the frame",
@@ -12500,7 +12501,8 @@
         "last_name": "Last name",
         "email": "Email",
         "phone": "Phone"
-      }
+      },
+      "deprecation_banner": "Candidate profiles are legacy. Prefer Entity Profile + intake forms for new setup; edits here may be limited for profiles already mapped to Entity Profile."
     },
     "email": {
       "title": "Email (SMTP)",
@@ -12660,6 +12662,30 @@
         "saving": "Saving…",
         "key_placeholder": "custom_field_key",
         "option_placeholder": "Type option and press Enter"
+      }
+    },
+    "hiring_gates": {
+      "title": "Hiring pipeline gates",
+      "blurb": "Configure which stages enforce document, vacancy, and contact-attempt rules. Stored in tenant settings (hiring_stage_gates_v1).",
+      "load_error": "Failed to load hiring pipeline gates",
+      "save_error": "Save failed",
+      "saved": "Hiring pipeline gates saved",
+      "read_only": "Only workspace administrators can edit these lists.",
+      "effective_non_overridable": "Effective non-waivable document types (read-only)",
+      "effective_non_overridable_hint": "Global fail-safe set plus tenant extras below.",
+      "field": {
+        "without_block": "Stages without document pipeline block",
+        "without_block_hint": "One stage code per line (e.g. new, contacted).",
+        "verify_uploads": "Stages where unverified uploads may block forward",
+        "verify_uploads_hint": "In-progress (awaiting review) documents can block from these stages.",
+        "vacancy": "Stages requiring vacancy before forward",
+        "vacancy_hint": "Typically contacted, questionnaire_submitted.",
+        "contact_attempt": "Contact-attempt gate stages",
+        "contact_attempt_hint": "When policy is on, forward from these stages requires ≥1 logged attempt (default: new).",
+        "soft_only": "Soft-only document block (advisory, no server 409)",
+        "soft_only_hint": "If a stage is listed here and would otherwise hard-block on docs, the API allows forward; UI shows advisory.",
+        "non_overridable_extra": "Extra non-waivable document types (tenant)",
+        "non_overridable_extra_hint": "Canonical doc type codes, one per line."
       }
     }
   }

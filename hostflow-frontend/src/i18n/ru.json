@@ -97,7 +97,7 @@
     },
     "and_more": "и многое другое",
     "cancel": "Отмена",
-    "save": "Сохранять",
+    "save": "Сохранить",
     "sending": "Отправка…",
     "sort": {
       "asc": "восходящий",
@@ -126,7 +126,8 @@
     "plan": "план",
     "available": "Доступно",
     "active": "Активен",
-    "required": "Обязательно"
+    "required": "Обязательно",
+    "reload": "Обновить"
   },
   "scanner": {
     "place_in_frame": "Разместите документ внутри рамки",
@@ -12444,7 +12445,8 @@
         "last_name": "Фамилия",
         "email": "Email",
         "phone": "Телефон"
-      }
+      },
+      "deprecation_banner": "Профили кандидатов — legacy. Для новой настройки предпочитайте Entity Profile и intake-формы; правки здесь могут быть ограничены для профилей, уже сопоставленных с Entity Profile."
     },
     "email": {
       "title": "Почта (SMTP)",
@@ -12660,6 +12662,30 @@
         "load_detail": "Failed to load intake form",
         "copy": "Could not copy",
         "smoke": "Smoke test failed"
+      }
+    },
+    "hiring_gates": {
+      "title": "Гейты hiring pipeline",
+      "blurb": "Настройте, на каких этапах действуют правила документов, вакансии и попыток контакта. Хранится в настройках тенанта (hiring_stage_gates_v1).",
+      "load_error": "Не удалось загрузить гейты hiring pipeline",
+      "save_error": "Не удалось сохранить",
+      "saved": "Гейты hiring pipeline сохранены",
+      "read_only": "Редактировать эти списки могут только администраторы workspace.",
+      "effective_non_overridable": "Действующие типы документов без возможности обхода (только чтение)",
+      "effective_non_overridable_hint": "Глобальный fail-safe набор плюс доп. типы тенанта ниже.",
+      "field": {
+        "without_block": "Этапы без блокировки document pipeline",
+        "without_block_hint": "Один код этапа в строке (например new, contacted).",
+        "verify_uploads": "Этапы, где непроверенные загрузки могут блокировать переход вперёд",
+        "verify_uploads_hint": "Документы в работе (ожидают проверки) могут блокировать с этих этапов.",
+        "vacancy": "Этапы, требующие вакансию перед переходом вперёд",
+        "vacancy_hint": "Обычно contacted, questionnaire_submitted.",
+        "contact_attempt": "Этапы с гейтом попытки контакта",
+        "contact_attempt_hint": "Когда политика включена, переход вперёд с этих этапов требует ≥1 зафиксированной попытки (по умолчанию: new).",
+        "soft_only": "Мягкая блокировка документов (advisory, без 409 на сервере)",
+        "soft_only_hint": "Если этап указан здесь и иначе блокировал бы по документам, API разрешает переход; UI показывает предупреждение.",
+        "non_overridable_extra": "Доп. типы документов без обхода (tenant)",
+        "non_overridable_extra_hint": "Канонические коды типов документов, по одному в строке."
       }
     }
   }
