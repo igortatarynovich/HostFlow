@@ -839,6 +839,31 @@ export default function FunnelsPage() {
     }
   }, [loadFunnels, planLimitModal, selectedFunnel, t])
 
+  const handleMakeDefaultFunnel = useCallback(async () => {
+    if (!selectedFunnel || selectedFunnel.is_default) return
+    try {
+      setSaving(true)
+      setPageError(null)
+      const updated = await updateFunnel(selectedFunnel.id, {
+        type: selectedFunnel.type,
+        name: selectedFunnel.name,
+        is_default: true,
+      })
+      await loadFunnels()
+      setSelectedFunnel(updated)
+      refreshMetaStagesCache()
+    } catch (err: unknown) {
+      const fb = t('admin.funnels.errors.make_default_failed', {
+        defaultValue: 'Could not set default funnel',
+      })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setPageError(getFriendlyErrorInfo(err, fb, t))
+      }
+    } finally {
+      setSaving(false)
+    }
+  }, [loadFunnels, planLimitModal, selectedFunnel, t])
+
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event
@@ -1039,6 +1064,44 @@ export default function FunnelsPage() {
       <div className="settings-toolbar">{funnelTabButtons}</div>
       {companyScopeBar}
 
+      <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+        <p className="font-medium text-slate-900">
+          {t('admin.funnels.howto_title', {
+            defaultValue: 'How to apply a funnel to this company',
+          })}
+        </p>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+          <li>
+            {t('admin.funnels.howto_step_company', {
+              defaultValue: 'Pick the company above (e.g. FOCUS PERSONEL).',
+            })}
+          </li>
+          <li>
+            {t('admin.funnels.howto_step_select', {
+              defaultValue: 'Select the funnel in the list (★ = currently applied as default).',
+            })}
+          </li>
+          <li>
+            {t('admin.funnels.howto_step_default', {
+              defaultValue:
+                'Click “Use as company default” — new candidates for this company get these stages.',
+            })}
+          </li>
+          <li>
+            {t('admin.funnels.howto_step_transitions', {
+              defaultValue:
+                'Optional: add System transitions below (e.g. handoff to HR) so exit actions appear on the candidate card.',
+            })}
+          </li>
+        </ol>
+        <p className="mt-2 text-xs text-slate-500">
+          {t('admin.funnels.howto_note', {
+            defaultValue:
+              'Do not look for this under «My companies» (legal/billing). Pipeline settings live on this page.',
+          })}
+        </p>
+      </div>
+
       <div className="settings-toolbar">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">
@@ -1067,6 +1130,25 @@ export default function FunnelsPage() {
         >
           + {t('admin.funnels.new_funnel')}
         </button>
+        {selectedFunnel && !selectedFunnel.is_default ? (
+          <button
+            type="button"
+            onClick={() => void handleMakeDefaultFunnel()}
+            disabled={saving}
+            className="btn-primary text-sm mt-4"
+          >
+            {t('admin.funnels.make_default', {
+              defaultValue: 'Use as company default',
+            })}
+          </button>
+        ) : null}
+        {selectedFunnel && selectedFunnel.is_default ? (
+          <span className="mt-4 inline-flex items-center rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+            {t('admin.funnels.is_company_default', {
+              defaultValue: '★ Company default — applied to new candidates',
+            })}
+          </span>
+        ) : null}
         {selectedFunnel && !selectedFunnel.is_default ? (
           <button
             type="button"

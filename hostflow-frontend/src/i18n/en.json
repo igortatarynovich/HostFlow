@@ -11679,7 +11679,7 @@
     },
     "funnels": {
       "title": "Candidate funnels",
-      "subtitle": "Manage candidate pipeline stages. Pipeline and Dashboard use these stages.",
+      "subtitle": "Create a funnel for the company and click “Use as company default” so new candidates use those stages. «My companies» (legal/billing) is unrelated.",
       "title_leads": "Lead funnels",
       "subtitle_leads": "Manage lead CRM stages. Lead board and automation use this funnel.",
       "tab_candidates": "Candidates",
@@ -11698,6 +11698,14 @@
       "create_funnel": "Create funnel",
       "default_funnel": "Default funnel for candidates",
       "default_funnel_leads": "Default funnel for leads",
+      "make_default": "Use as company default",
+      "is_company_default": "★ Company default — applied to new candidates",
+      "howto_title": "How to apply a funnel to this company",
+      "howto_step_company": "Pick the company above (e.g. FOCUS PERSONEL).",
+      "howto_step_select": "Select the funnel in the list (★ = currently applied as default).",
+      "howto_step_default": "Click “Use as company default” — new candidates for this company get these stages.",
+      "howto_step_transitions": "Optional: add System transitions below (e.g. handoff to HR) so exit actions appear on the candidate card.",
+      "howto_note": "Do not look for this under «My companies» (legal/billing). Pipeline settings live on this page.",
       "funnel_name": "Funnel name",
       "new_funnel": "New funnel",
       "header_kicker": "Pipeline stages for candidates and leads — used on boards and in automation.",
@@ -11755,7 +11763,9 @@
         "unknown": "Unknown error",
         "load_failed": "Could not load funnels",
         "save_failed": "Could not save funnel changes",
-        "reorder_failed": "Could not reorder stages"
+        "reorder_failed": "Could not reorder stages",
+        "make_default_failed": "Could not set default funnel",
+        "delete_funnel_failed": "Could not delete funnel"
       }
     },
     "settings": {
@@ -11809,8 +11819,8 @@
           "description": "Agency profile, branding and company-level data (outside the settings subtree)."
         },
         "funnels": {
-          "label": "Funnels & stages",
-          "description": "Manage candidate and lead pipeline stages."
+          "label": "Candidate funnels (by company)",
+          "description": "Pick company → create/select funnel → “Use as company default”. Not «My companies» (legal/billing)."
         },
         "hiring_gates": {
           "label": "Hiring pipeline gates",

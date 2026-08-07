@@ -239,7 +239,7 @@ export default function SettingsLandingPage() {
         }),
         description: t('admin.settings.cards.funnels.description', {
           defaultValue:
-            'Module-owned candidate pipelines: operational stages + locked system transitions (ADR-035). Not a global funnel dump.',
+            'Pick company → create/select funnel → “Use as company default”. Not «My companies» (legal/billing).',
         }),
         target: CRM_APP_PATHS.settingsFunnels,
         roles: ['administrator', 'supervisor'],
