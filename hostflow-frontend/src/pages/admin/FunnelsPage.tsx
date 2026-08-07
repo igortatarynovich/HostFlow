@@ -31,11 +31,16 @@ import {
   addFunnelStage,
   updateFunnelStage,
   deleteFunnelStage,
+  listSystemTransitionCatalog,
+  addFunnelTransition,
+  deleteFunnelTransition,
   type Funnel,
   type FunnelStage,
   type FunnelStageCreate,
   type FunnelStageContractV1,
   type FunnelCreate,
+  type FunnelTransition,
+  type SystemTransitionCatalogItem,
 } from '../../api/funnels'
 import { Modal } from '../../components/Modal'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
@@ -565,6 +570,8 @@ export default function FunnelsPage() {
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [selectedFunnel, setSelectedFunnel] = useState<Funnel | null>(null)
   const [stages, setStages] = useState<FunnelStage[]>([])
+  const [transitions, setTransitions] = useState<FunnelTransition[]>([])
+  const [catalogItems, setCatalogItems] = useState<SystemTransitionCatalogItem[]>([])
   const [loading, setLoading] = useState(true)
   const [editingStage, setEditingStage] = useState<FunnelStage | null>(null)
   const [showCreateStageModal, setShowCreateStageModal] = useState(false)
@@ -615,6 +622,7 @@ export default function FunnelsPage() {
       setFunnels([])
       setSelectedFunnel(null)
       setStages([])
+      setTransitions([])
       setLoading(false)
       return
     }
@@ -630,6 +638,7 @@ export default function FunnelsPage() {
       } else {
         setSelectedFunnel(null)
         setStages([])
+      setTransitions([])
       }
     } catch (err) {
       console.error('Failed to load funnels', err)
@@ -640,6 +649,7 @@ export default function FunnelsPage() {
       setFunnels([])
       setSelectedFunnel(null)
       setStages([])
+      setTransitions([])
     } finally {
       setLoading(false)
     }
@@ -653,9 +663,18 @@ export default function FunnelsPage() {
   useEffect(() => {
     if (!selectedFunnel) {
       setStages([])
+      setTransitions([])
       return
     }
     setStages(selectedFunnel.stages || [])
+    setTransitions(selectedFunnel.transitions || [])
+    void listSystemTransitionCatalog({
+      sourceModule: selectedFunnel.module_key || 'recruitment',
+      sourceObjectType: selectedFunnel.type === 'employee' ? 'employee' : 'candidate',
+      enabledModules: ['recruitment', 'hr', 'fleet'],
+    })
+      .then(setCatalogItems)
+      .catch(() => setCatalogItems([]))
   }, [selectedFunnel])
 
   const refreshSelectedFunnel = useCallback(async () => {
@@ -1120,6 +1139,99 @@ export default function FunnelsPage() {
           </DndContext>
         )}
       </div>
+
+      {selectedFunnel ? (
+        <div className="card overflow-hidden mt-4">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                {t('admin.funnels.system_transitions', {
+                  defaultValue: 'System transitions',
+                })}
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                {t('admin.funnels.system_transitions_help', {
+                  defaultValue:
+                    'Locked platform exits (handoff / close). Not board stages — objects never sit on these nodes (ADR-035).',
+                })}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {catalogItems
+                .filter((c) => !transitions.some((tr) => tr.catalog_key === c.key))
+                .map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    disabled={saving}
+                    className="btn-secondary text-xs"
+                    onClick={async () => {
+                      if (!selectedFunnel) return
+                      setSaving(true)
+                      try {
+                        const from = stages.find((s) => s.code === 'accepted') || stages[stages.length - 1]
+                        const edge = await addFunnelTransition(selectedFunnel.id, {
+                          catalog_key: c.key,
+                          from_stage_id: from?.id ?? null,
+                          order: transitions.length,
+                        })
+                        setTransitions((prev) => [...prev, edge])
+                      } catch (e) {
+                        setPageError(getFriendlyErrorInfo(e))
+                      } finally {
+                        setSaving(false)
+                      }
+                    }}
+                  >
+                    + {c.label}
+                  </button>
+                ))}
+            </div>
+          </div>
+          {transitions.length === 0 ? (
+            <div className="p-6 text-sm text-slate-500">
+              {t('admin.funnels.no_transitions', {
+                defaultValue: 'No system transitions wired on this pipeline yet.',
+              })}
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {transitions.map((tr) => (
+                <li key={tr.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                  <div>
+                    <span className="inline-flex items-center gap-2 font-medium text-slate-900">
+                      <span className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-800">
+                        locked
+                      </span>
+                      {tr.label || tr.catalog_key}
+                    </span>
+                    <div className="text-xs text-slate-500 font-mono mt-0.5">{tr.catalog_key}</div>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-xs text-red-600 hover:underline"
+                    disabled={saving}
+                    onClick={async () => {
+                      if (!selectedFunnel) return
+                      setSaving(true)
+                      try {
+                        await deleteFunnelTransition(selectedFunnel.id, tr.id)
+                        setTransitions((prev) => prev.filter((x) => x.id !== tr.id))
+                      } catch (e) {
+                        setPageError(getFriendlyErrorInfo(e))
+                      } finally {
+                        setSaving(false)
+                      }
+                    }}
+                  >
+                    {t('common.actions.remove', { defaultValue: 'Remove' })}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
 
       <div className="settings-panel">
         <h2 className="text-sm font-semibold text-slate-900 mb-2">

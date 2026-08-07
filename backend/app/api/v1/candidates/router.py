@@ -3063,6 +3063,51 @@ async def delete_candidate(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/{candidate_id}/system-transitions/{catalog_key}")
+async def fire_candidate_system_transition(
+    candidate_id: UUID,
+    catalog_key: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(require_roles(*ALLOW_MANAGER_ROLES)),
+) -> dict:
+    """ADR-035: fire a platform system transition (closes Candidate; never sets stage=transition)."""
+    from backend.app.services.company_module_access import get_effective_company_modules
+    from backend.app.services.system_transition_runtime import (
+        fire_candidate_system_transition as _fire,
+    )
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    c = await cand_repo.get_candidate(db, tenant_id_str, str(candidate_id))
+    if not c:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    enabled: set[str] = set()
+    if getattr(c, "company_id", None):
+        from backend.app.models.company import Company
+
+        tenant_row = await db.get(Tenant, tenant_id_str)
+        company_row = await db.get(Company, str(c.company_id))
+        if tenant_row and company_row:
+            mods = get_effective_company_modules(tenant_row, company_row)
+            enabled = {k for k, v in (mods or {}).items() if v}
+
+    await _fire(
+        db,
+        candidate=c,
+        catalog_key=catalog_key,
+        enabled_modules=enabled,
+    )
+    await db.commit()
+    await db.refresh(c)
+    return {
+        "candidate_id": str(c.id),
+        "catalog_key": catalog_key,
+        "lifecycle_status": getattr(c, "lifecycle_status", None),
+        "stage": getattr(c, "stage", None),
+    }
+
+
 from backend.app.api.v1.candidates import pipeline_overrides_api as _pipeline_overrides_api  # noqa: E402
 from backend.app.api.v1.candidates import next_action_api as _next_action_api  # noqa: E402
 

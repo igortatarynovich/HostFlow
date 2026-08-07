@@ -131,7 +131,7 @@
 
 **Текущий код** частично кладёт всё в `tenant.settings`; новые фичи — с company scope и ADR-005.
 
-**Architecture gate (P0, блокирует модульную независимость):** [`module-owned-pipelines-p0.md`](module-owned-pipelines-p0.md) — company-scoped funnels, module ownership, Recruitment resolver, strangler для legacy `system_stage`. **HR manifest / employee pipeline / typed module-settings UI — только после закрытия P0 gate.**
+**Architecture gate (P0, блокирует модульную независимость):** [`module-owned-pipelines-p0.md`](module-owned-pipelines-p0.md) — company-scoped funnels, module ownership, Recruitment resolver, strangler для legacy `system_stage`. **Target canon:** [`ADR-035`](ADR-035-module-object-pipeline-settings.md) (Module → Objects → Pipelines → Settings; system transitions). **HR manifest / employee pipeline / typed module-settings UI — только после закрытия P0 gate.**
 
 ---
 
@@ -256,6 +256,7 @@
 
 ## История
 
+- 2026-08-07: **ADR-035** (Accepted, frozen) — Module → Objects → Pipelines → Settings; operational stages vs platform system transitions; four-object rule; [`ADR-035-module-object-pipeline-settings.md`](ADR-035-module-object-pipeline-settings.md).
 - 2026-07-30: **ADR-034** (Accepted) — three canonical public funnels (Growth / Auth / Candidate); Success Path via guided readiness UI [`self-service-success-path.md`](../journeys/self-service-success-path.md); no parallel product landings.
 - 2026-07-29: **ADR-033** (Accepted) — Company-owned lead lifecycle email policy + sparse Vacancy override; Control Center under Communications; [`lead-lifecycle-email-policy.md`](../workflows/lead-lifecycle-email-policy.md).
 - 2026-07-31: **ADR-033 errata** — SoT = OwnCompany (firm); client company + vacancy = optional override; resolver slice A.

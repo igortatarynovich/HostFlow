@@ -123,6 +123,7 @@ AcquisitionActivityEvent = _load_model_module(
 funnel_module = _load_model_module("funnel")
 Funnel = funnel_module.Funnel  # type: ignore[attr-defined]
 FunnelStage = funnel_module.FunnelStage  # type: ignore[attr-defined]
+FunnelTransitionEdge = funnel_module.FunnelTransitionEdge  # type: ignore[attr-defined]
 pe_module = _load_model_module("process_engine")
 PeSystemStage = pe_module.PeSystemStage  # type: ignore[attr-defined]
 PeStageTemplate = pe_module.PeStageTemplate  # type: ignore[attr-defined]
@@ -411,6 +412,7 @@ __all__ = [
     "Vacancy",
     "Funnel",
     "FunnelStage",
+    "FunnelTransitionEdge",
     "PeSystemStage",
     "PeStageTemplate",
     "PeProcessProfile",

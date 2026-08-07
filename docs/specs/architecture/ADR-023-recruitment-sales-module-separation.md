@@ -26,6 +26,8 @@ Product goals (approved):
 
 **Same pattern:** Recruitment initiates Employee handoff but does not own Employee Workspace. Sales initiates Invoice but does not own invoice model, statuses, or financial rules.
 
+**ADR-035:** Sales never moves `Candidate`. Spine is Inquiry → Opportunity → Client; Recruitment consumes Client demand as a separate object graph. See [`ADR-035`](ADR-035-module-object-pipeline-settings.md) and [`adr035-phase-d-sales-pipeline-cleanup.md`](../tasks/adr035-phase-d-sales-pipeline-cleanup.md).
+
 ---
 
 ## 2. Decision — Stage 1 (done / correcting)

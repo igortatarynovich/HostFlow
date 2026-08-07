@@ -17,7 +17,13 @@ from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_profile import CandidateProfile
 from backend.app.models.company import Company
-from backend.app.models.funnel import Funnel, FunnelStage
+from backend.app.models.funnel import Funnel, FunnelStage, FunnelTransitionEdge
+from backend.app.constants.system_transitions import (
+    ALL_CATALOG_KEYS,
+    available_transitions,
+    get_transition,
+    is_forbidden_operational_stage,
+)
 from backend.app.models.lead import Lead
 from backend.app.models.tenant import Tenant
 from backend.app.models.user import Role
@@ -34,6 +40,15 @@ from backend.app.constants.funnel_types import (
 from backend.app.services.plan_feature_gates import ensure_custom_funnel_create_allowed
 
 router = APIRouter(prefix="/funnels", tags=["funnels"])
+
+
+async def _load_transitions(db: AsyncSession, funnel_id: str) -> list[FunnelTransitionEdge]:
+    res = await db.execute(
+        select(FunnelTransitionEdge)
+        .where(FunnelTransitionEdge.funnel_id == funnel_id)
+        .order_by(FunnelTransitionEdge.order)
+    )
+    return list(res.scalars().all())
 
 
 async def _enforce_company_module_scope(
@@ -468,6 +483,49 @@ class FunnelPatchIn(BaseModel):
     is_default: bool = False
 
 
+class FunnelTransitionOut(BaseModel):
+    id: str
+    funnel_id: str
+    catalog_key: str
+    label: str
+    from_stage_id: Optional[str] = None
+    order: int = 0
+    config_json: Optional[Dict[str, Any]] = None
+    locks_semantics: bool = True
+
+    @classmethod
+    def from_model(cls, e: FunnelTransitionEdge) -> "FunnelTransitionOut":
+        tdef = get_transition(e.catalog_key)
+        return cls(
+            id=e.id,
+            funnel_id=e.funnel_id,
+            catalog_key=e.catalog_key,
+            label=(tdef.label if tdef else e.catalog_key),
+            from_stage_id=e.from_stage_id,
+            order=int(e.order or 0),
+            config_json=e.config_json if isinstance(e.config_json, dict) else None,
+            locks_semantics=True,
+        )
+
+
+class FunnelTransitionIn(BaseModel):
+    catalog_key: str = Field(..., min_length=1, max_length=64)
+    from_stage_id: Optional[str] = None
+    order: int = Field(0, ge=0)
+    config_json: Optional[Dict[str, Any]] = None
+
+
+class SystemTransitionCatalogItem(BaseModel):
+    key: str
+    label: str
+    source_module: str
+    source_object_type: str
+    target_module: Optional[str] = None
+    target_object_type: Optional[str] = None
+    requires_enabled_module: Optional[str] = None
+    locks_semantics: bool = True
+
+
 class FunnelOut(BaseModel):
     id: str
     tenant_id: str
@@ -477,13 +535,26 @@ class FunnelOut(BaseModel):
     name: str
     is_default: bool
     is_legacy_readonly: bool = False
+    template_key: Optional[str] = None
     stages: List[FunnelStageOut] = []
+    transitions: List[FunnelTransitionOut] = []
 
     @classmethod
-    def from_model(cls, f: Funnel, stages: Optional[List[FunnelStage]] = None) -> "FunnelOut":
+    def from_model(
+        cls,
+        f: Funnel,
+        stages: Optional[List[FunnelStage]] = None,
+        transitions: Optional[List[FunnelTransitionEdge]] = None,
+    ) -> "FunnelOut":
         stage_list = stages if stages is not None else list(f.stages) if hasattr(f, "stages") else []
+        edge_list = (
+            transitions
+            if transitions is not None
+            else (list(f.transitions) if hasattr(f, "transitions") else [])
+        )
         company_id = str(f.company_id).strip() if getattr(f, "company_id", None) else None
         module_key = str(f.module_key).strip() if getattr(f, "module_key", None) else None
+        template_key = str(f.template_key).strip() if getattr(f, "template_key", None) else None
         return cls(
             id=f.id,
             tenant_id=f.tenant_id,
@@ -493,7 +564,9 @@ class FunnelOut(BaseModel):
             name=f.name,
             is_default=f.is_default,
             is_legacy_readonly=not bool(company_id),
+            template_key=template_key or None,
             stages=[FunnelStageOut.from_model(s) for s in stage_list],
+            transitions=[FunnelTransitionOut.from_model(e) for e in edge_list],
         )
 
 
@@ -544,8 +617,42 @@ async def list_funnels(
         stages_stmt = select(FunnelStage).where(FunnelStage.funnel_id == f.id).order_by(FunnelStage.order)
         stages_result = await db.execute(stages_stmt)
         stages = list(stages_result.scalars().all())
-        out.append(FunnelOut.from_model(f, stages))
+        edges = await _load_transitions(db, f.id)
+        out.append(FunnelOut.from_model(f, stages, edges))
     return out
+
+
+@router.get("/meta/system-transitions", response_model=List[SystemTransitionCatalogItem])
+async def list_system_transition_catalog(
+    source_module: str = Query(..., min_length=1),
+    source_object_type: str = Query(..., min_length=1),
+    enabled_modules: Optional[str] = Query(
+        None,
+        description="Comma-separated company enabled module keys (e.g. hr,fleet)",
+    ),
+    current_user: UserCtx = Depends(get_current_user),
+) -> List[SystemTransitionCatalogItem]:
+    """ADR-035 A2: platform catalog filtered by source + enabled modules."""
+    _ = current_user
+    enabled = [p.strip() for p in str(enabled_modules or "").split(",") if p.strip()]
+    items = available_transitions(
+        source_module=source_module,
+        source_object_type=source_object_type,
+        enabled_modules=enabled,
+    )
+    return [
+        SystemTransitionCatalogItem(
+            key=t.key,
+            label=t.label,
+            source_module=t.source_module,
+            source_object_type=t.source_object_type,
+            target_module=t.target_module,
+            target_object_type=t.target_object_type,
+            requires_enabled_module=t.requires_enabled_module,
+            locks_semantics=t.locks_semantics,
+        )
+        for t in items
+    ]
 
 
 @router.get("/{funnel_id}", response_model=FunnelOut)
@@ -575,7 +682,8 @@ async def get_funnel(
         select(FunnelStage).where(FunnelStage.funnel_id == funnel.id).order_by(FunnelStage.order)
     )
     stages = list(stages_result.scalars().all())
-    return FunnelOut.from_model(funnel, stages)
+    edges = await _load_transitions(db, funnel.id)
+    return FunnelOut.from_model(funnel, stages, edges)
 
 
 @router.post("", response_model=FunnelOut, status_code=status.HTTP_201_CREATED)
@@ -719,7 +827,8 @@ async def update_funnel(
     stages_result = await db.execute(
         select(FunnelStage).where(FunnelStage.funnel_id == funnel.id).order_by(FunnelStage.order)
     )
-    return FunnelOut.from_model(funnel, list(stages_result.scalars().all()))
+    edges = await _load_transitions(db, funnel.id)
+    return FunnelOut.from_model(funnel, list(stages_result.scalars().all()), edges)
 
 
 @router.post("/{funnel_id}/stages", response_model=FunnelStageOut, status_code=status.HTTP_201_CREATED)
@@ -756,6 +865,15 @@ async def add_funnel_stage(
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail=f"Stage code '{payload.code}' already exists")
+
+    if is_forbidden_operational_stage(payload.code):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Stage code '{payload.code}' is a legacy handoff pseudo-stage and cannot be an "
+                "operational board column (ADR-035). Add a system transition instead."
+            ),
+        )
 
     resolved_system_stage = _resolve_system_stage(payload.system_stage, payload.code)
     cr_db = _resolve_conversion_root_v1_db(
@@ -964,3 +1082,95 @@ async def delete_funnel(
 
     await db.delete(funnel)
     await db.commit()
+
+
+@router.post(
+    "/{funnel_id}/transitions",
+    response_model=FunnelTransitionOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_funnel_transition(
+    funnel_id: str,
+    payload: FunnelTransitionIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+) -> FunnelTransitionOut:
+    import uuid
+
+    db, tenant_id = db_tenant
+    tenant_str = str(tenant_id)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_str)
+    funnel = await _load_funnel_for_tenant(db, funnel_id=funnel_id, tenant_str=tenant_str)
+    if not funnel:
+        raise HTTPException(status_code=404, detail="Funnel not found")
+    _ensure_funnel_mutable(funnel)
+    await _enforce_funnel_module_access(
+        db, funnel=funnel, tenant_id=tenant_str, current_user=current_user
+    )
+
+    key = str(payload.catalog_key or "").strip()
+    if key not in ALL_CATALOG_KEYS:
+        raise HTTPException(status_code=422, detail=f"Unknown catalog_key '{key}'")
+    tdef = get_transition(key)
+    assert tdef is not None
+
+    if funnel.company_id and tdef.requires_enabled_module:
+        tenant_obj = await db.get(Tenant, tenant_str)
+        company_obj = await db.get(Company, str(funnel.company_id))
+        if tenant_obj and company_obj:
+            if not company_allows_module(
+                tenant_obj, company_obj, tdef.requires_enabled_module
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"Transition '{key}' requires module "
+                        f"'{tdef.requires_enabled_module}' enabled for company"
+                    ),
+                )
+
+    edge = FunnelTransitionEdge(
+        id=str(uuid.uuid4()),
+        funnel_id=funnel_id,
+        catalog_key=key,
+        from_stage_id=payload.from_stage_id,
+        order=payload.order,
+        config_json=payload.config_json,
+    )
+    db.add(edge)
+    await db.commit()
+    await db.refresh(edge)
+    return FunnelTransitionOut.from_model(edge)
+
+
+@router.delete(
+    "/{funnel_id}/transitions/{transition_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_funnel_transition(
+    funnel_id: str,
+    transition_id: str,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+) -> Response:
+    db, tenant_id = db_tenant
+    tenant_str = str(tenant_id)
+    funnel = await _load_funnel_for_tenant(db, funnel_id=funnel_id, tenant_str=tenant_str)
+    if not funnel:
+        raise HTTPException(status_code=404, detail="Funnel not found")
+    _ensure_funnel_mutable(funnel)
+    await _enforce_funnel_module_access(
+        db, funnel=funnel, tenant_id=tenant_str, current_user=current_user
+    )
+    res = await db.execute(
+        select(FunnelTransitionEdge).where(
+            FunnelTransitionEdge.id == transition_id,
+            FunnelTransitionEdge.funnel_id == funnel_id,
+        )
+    )
+    edge = res.scalar_one_or_none()
+    if not edge:
+        raise HTTPException(status_code=404, detail="Transition not found")
+    await db.delete(edge)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

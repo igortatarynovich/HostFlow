@@ -32,11 +32,11 @@ def _base_candidate_presets() -> dict[str, dict[str, Any]]:
                 ("contacted", "Contacted", "in_progress", False),
                 ("docs_wait", "Waiting for documents", "in_progress", False),
                 ("docs_got", "Documents received", "in_progress", False),
-                ("ready_for_handoff", "Ready for client", "in_progress", False),
-                ("processing_by_client", "Handoff", "in_progress", False),
-                ("hired", "Hired", "hired", True),
+                ("accepted", "Accepted", "in_progress", False),
                 ("rejected", "Rejected", "declined_rejected", True),
             ],
+            # ADR-035: exits via system transitions (not board stages)
+            "default_transitions": ["handoff_to_client", "close_success", "close_declined"],
         },
         "employer": {
             "name": "Hiring Pipeline",
@@ -44,10 +44,10 @@ def _base_candidate_presets() -> dict[str, dict[str, Any]]:
                 ("new", "New", "new", False),
                 ("questionnaire_submitted", "Screening", "in_progress", False),
                 ("docs_got", "Interview", "in_progress", False),
-                ("employment_pending", "Offer", "in_progress", False),
-                ("hired", "Hired", "hired", True),
+                ("accepted", "Accepted", "in_progress", False),
                 ("rejected", "Rejected", "declined_rejected", True),
             ],
+            "default_transitions": ["handoff_to_hr", "close_success", "close_declined"],
         },
     }
 
@@ -65,7 +65,9 @@ def _base_lead_presets() -> dict[str, dict[str, Any]]:
             ],
         },
         "services": {
-            "name": "Service Sales Pipeline",
+            # LEGACY under recruitment.lead — Sales product path is Inquiry→Client (ADR-023/035).
+            # Do not use for new Sales work; Phase D removes product coupling.
+            "name": "Service Sales Pipeline (legacy lead)",
             "stages": [
                 ("new", "New lead", "new", False),
                 ("contacted", "Contacted", "in_progress", False),
@@ -74,6 +76,7 @@ def _base_lead_presets() -> dict[str, dict[str, Any]]:
                 ("won", "Won", "hired", True),
                 ("lost", "Lost", "declined_rejected", True),
             ],
+            "legacy_sales_under_recruitment": True,
         },
     }
 
@@ -91,9 +94,7 @@ def _candidate_industry_override(company_type: str, industry: str) -> dict[str, 
                 ("permit_ordered", "Work permit ordered", "in_progress", False),
                 ("permit_received", "Permit received", "in_progress", False),
                 ("trip_plan", "Arrival planning", "in_progress", False),
-                ("ready_for_handoff", "Ready for client", "in_progress", False),
-                ("processing_by_client", "Handoff", "in_progress", False),
-                ("hired", "Hired", "hired", True),
+                ("accepted", "Accepted", "in_progress", False),
                 ("rejected", "Rejected", "declined_rejected", True),
             ],
         }
@@ -107,9 +108,7 @@ def _candidate_industry_override(company_type: str, industry: str) -> dict[str, 
                 ("docs_wait", "Certs & docs", "in_progress", False),
                 ("docs_got", "Documents OK", "in_progress", False),
                 ("permit_ordered", "Permits / safety clearance", "in_progress", False),
-                ("ready_for_handoff", "Ready for site / client", "in_progress", False),
-                ("processing_by_client", "Handoff", "in_progress", False),
-                ("hired", "Hired", "hired", True),
+                ("accepted", "Accepted", "in_progress", False),
                 ("rejected", "Rejected", "declined_rejected", True),
             ],
         }

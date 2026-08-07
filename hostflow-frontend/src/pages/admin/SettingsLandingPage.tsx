@@ -242,8 +242,13 @@ export default function SettingsLandingPage() {
       },
       {
         key: 'funnels',
-        label: t('admin.settings.cards.funnels.label', { defaultValue: 'Funnels' }),
-        description: t('admin.settings.cards.funnels.description', { defaultValue: 'Candidate and lead stages.' }),
+        label: t('admin.settings.cards.funnels.label', {
+          defaultValue: 'Recruitment Pipelines',
+        }),
+        description: t('admin.settings.cards.funnels.description', {
+          defaultValue:
+            'Module-owned candidate pipelines: operational stages + locked system transitions (ADR-035). Not a global funnel dump.',
+        }),
         target: CRM_APP_PATHS.settingsFunnels,
         roles: ['administrator', 'supervisor'],
         section: 'crm_setup',

@@ -1,4 +1,8 @@
-"""Universal Funnel model for flexible pipeline stages (candidates, leads, deals, HR employees)."""
+"""Universal Funnel model for flexible pipeline stages (candidates, leads, deals, HR employees).
+
+ADR-035: product name is Module Pipeline (Recruitment / HR / Sales). Storage table
+remains ``funnels``. System transitions are edges — not FunnelStage rows.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class Funnel(Base):
-    """Funnel definition (e.g. Driver Recruitment, Lead Sales)."""
+    """Pipeline instance (e.g. Driver Recruitment). Storage: funnels."""
 
     __tablename__ = "funnels"
 
@@ -39,11 +43,13 @@ class Funnel(Base):
     )
     type: Mapped[str] = mapped_column(
         String(32), nullable=False, index=True
-    )  # candidate | lead | deal | employee (HR)
+    )  # candidate | lead | deal | employee (HR) — object pipeline kind
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_default: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    # ADR-035: platform template key this instance was cloned from (optional).
+    template_key: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
 
     __table_args__ = (
         Index("ix_funnels_tenant_company_module", "tenant_id", "company_id", "module_key"),
@@ -54,6 +60,12 @@ class Funnel(Base):
         "FunnelStage",
         back_populates="funnel",
         order_by="FunnelStage.order",
+        cascade="all, delete-orphan",
+    )
+    transitions: Mapped[list["FunnelTransitionEdge"]] = relationship(
+        "FunnelTransitionEdge",
+        back_populates="funnel",
+        order_by="FunnelTransitionEdge.order",
         cascade="all, delete-orphan",
     )
 
@@ -98,3 +110,44 @@ class FunnelStage(Base):
     )
 
     funnel: Mapped["Funnel"] = relationship("Funnel", back_populates="stages")
+
+
+class FunnelTransitionEdge(Base):
+    """ADR-035 system transition edge on a pipeline instance (not a board position)."""
+
+    __tablename__ = "funnel_transition_edges"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4())
+    )
+    funnel_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("funnels.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    catalog_key: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        comment="Platform catalog key (handoff_to_hr, close_success, …)",
+    )
+    from_stage_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("funnel_stages.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    # Instance config only — does not redefine catalog semantics.
+    config_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "funnel_id",
+            "catalog_key",
+            "from_stage_id",
+            name="uq_funnel_transition_edge",
+        ),
+    )
+
+    funnel: Mapped["Funnel"] = relationship("Funnel", back_populates="transitions")

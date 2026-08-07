@@ -42,7 +42,31 @@ export interface Funnel {
   name: string
   is_default: boolean
   is_legacy_readonly?: boolean
+  template_key?: string | null
   stages: FunnelStage[]
+  transitions?: FunnelTransition[]
+}
+
+export interface FunnelTransition {
+  id: string
+  funnel_id: string
+  catalog_key: string
+  label: string
+  from_stage_id?: string | null
+  order: number
+  config_json?: Record<string, unknown> | null
+  locks_semantics?: boolean
+}
+
+export interface SystemTransitionCatalogItem {
+  key: string
+  label: string
+  source_module: string
+  source_object_type: string
+  target_module?: string | null
+  target_object_type?: string | null
+  requires_enabled_module?: string | null
+  locks_semantics: boolean
 }
 
 export interface FunnelCreate {
@@ -116,4 +140,34 @@ export async function updateFunnelStage(
 
 export async function deleteFunnelStage(funnelId: string, stageId: string): Promise<void> {
   await api.delete(`/funnels/${funnelId}/stages/${stageId}`)
+}
+
+export async function listSystemTransitionCatalog(params: {
+  sourceModule: string
+  sourceObjectType: string
+  enabledModules?: string[]
+}): Promise<SystemTransitionCatalogItem[]> {
+  const q: Record<string, string> = {
+    source_module: params.sourceModule,
+    source_object_type: params.sourceObjectType,
+  }
+  if (params.enabledModules?.length) {
+    q.enabled_modules = params.enabledModules.join(',')
+  }
+  const { data } = await api.get<SystemTransitionCatalogItem[]>('/funnels/meta/system-transitions', {
+    params: q,
+  })
+  return data || []
+}
+
+export async function addFunnelTransition(
+  funnelId: string,
+  payload: { catalog_key: string; from_stage_id?: string | null; order?: number; config_json?: Record<string, unknown> },
+): Promise<FunnelTransition> {
+  const { data } = await api.post<FunnelTransition>(`/funnels/${funnelId}/transitions`, payload)
+  return data
+}
+
+export async function deleteFunnelTransition(funnelId: string, transitionId: string): Promise<void> {
+  await api.delete(`/funnels/${funnelId}/transitions/${transitionId}`)
 }

@@ -1,14 +1,24 @@
-# ADR-005: Три уровня настроек — Tenant, Company, Module (per company)
+# ADR-005: Иерархия настроек — System, Tenant, Company, Module (per company)
 
 ## Status
 
 Accepted (architecture). **Имплементация поэтапная.** Текущий код частично хранит всё в `tenant.settings` и в сущностях без явного слоя **Company Module Settings** — новая разработка и миграции должны следовать этому ADR.
 
+**2026-08-07:** Уточнение уровней — явный слой **System** (platform) над Tenant; pipelines живут только в **Module Settings** под владеющим модулем ([`ADR-035`](ADR-035-module-object-pipeline-settings.md)). Запрещён продуктовый дом `Settings → Funnels`.
+
 ## Context
 
-HostFlow — multi-company workspace внутри tenant. Настройки смешивались на уровне тенанта (модули, брендинг, процессы), что мешает сценариям «один tenant — несколько компаний с разными модулями и разными пайплайнами». Нужна **иерархия из трёх уровней**, согласованная с [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md) (tenant vs company) и [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) (пять модулей).
+HostFlow — multi-company workspace внутри tenant. Настройки смешивались на уровне тенанта (модули, брендинг, процессы), что мешает сценариям «один tenant — несколько компаний с разными модулями и разными пайплайнами». Нужна **иерархия**, согласованная с [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md) (tenant vs company), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md) (пять модулей), P-04/P-05 ([`ADR-028`](ADR-028-configuration-ownership.md), [`ADR-029`](ADR-029-settings-contract.md)).
 
-## Decision: три уровня
+## Decision: четыре уровня
+
+### 0. System Settings (platform / superadmin)
+
+**Назначение:** инфраструктура и платформенные knobs **без** операционных процессов company.
+
+**Входит (не исчерпывающе):** OAuth, Email/SMS providers, Meta, AI, Storage, logs, backup, superadmin, platform language/currency defaults.
+
+**Не входит:** recruitment/HR/Sales pipelines, candidate profiles, company module automations — см. Module Settings и [`ADR-035`](ADR-035-module-object-pipeline-settings.md).
 
 ### 1. Tenant Settings (глобально по workspace)
 
@@ -50,8 +60,8 @@ Company Settings — **основной operational configuration layer** для
 
 | Модуль | Примеры содержимого Company Module Settings |
 |--------|---------------------------------------------|
-| **Recruitment** | candidate pipelines, lead sources, vacancy templates, candidate document templates, handoff rules, recruiter assignment rules |
-| **HR** | employee pipelines, employment templates, HR document templates, contract templates, ZUS checklist, work permit rules, HR assignment rules |
+| **Recruitment** | candidate **pipeline instances** (from platform templates), profiles, evaluation, duplicates, documents, automations, SLA; **system transition** wiring (`handoff_to_hr` / `handoff_to_client` / close) — [`ADR-035`](ADR-035-module-object-pipeline-settings.md) |
+| **HR** | employee pipeline instances, employment templates, HR document templates, contract templates, ZUS checklist, work permit rules; transitions e.g. `handoff_to_fleet` |
 | **Fleet** | vehicle types, vehicle document templates, handover checklist templates, assignment rules, damage report settings, inspection templates |
 | **Services** | service catalog, order statuses, service templates, delivery workflows, pricing rules |
 | **Finance** | invoice numbering, VAT rates, payment terms, billing rules, payment statuses, correction rules |
@@ -114,6 +124,7 @@ Company Settings — **основной operational configuration layer** для
 
 ## История
 
+- 2026-08-07: **ADR-035** — System level explicit; Module → Objects → Pipelines → Settings; no global Funnels home.
 - 2026-05: первичная фиксация трёх уровней и рекомендуемой таблицы `company_module_settings`.
 - 2026-05: добавлены миграция `202605080001_cms`, модель `CompanyModuleSettings`, API `GET/PATCH /api/v1/companies/{company_id}/module-settings/...` (проверка `company_allows_module`, ACL company для не-админов).
 - 2026-05: для ключей `hr` \| `recruitment` \| `fleet` \| `services` \| `finance` — схемы `*ModuleSettingsV1` в `company_module_settings_json.py` (PATCH валидирует, GET приводит битый JSON к умолчаниям); в SPA на карточке компании — минимальный блок настроек модулей (JSON + `is_enabled`).

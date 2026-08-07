@@ -46,8 +46,16 @@ class Candidate(Base):
     # JSON-список языков
     languages = Column(SQLiteJSON, nullable=True)
 
-    # этап в виде КОДА
+    # этап в виде КОДА (legacy board code — strangler; prefer pipeline_stage_id)
     stage: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
+    # ADR-035: lifecycle orthogonal to board position
+    lifecycle_status: Mapped[Optional[str]] = mapped_column(
+        String(32),
+        index=True,
+        nullable=True,
+        default="active",
+        comment="active | closed | archived (ADR-035)",
+    )
     status: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
     status_reason: Mapped[Optional[list[str]]] = mapped_column(
         MutableList.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql")),
@@ -84,6 +92,13 @@ class Candidate(Base):
     funnel_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("funnels.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    # ADR-035: FK to operational FunnelStage of the same pipeline (not a system transition)
+    pipeline_stage_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("funnel_stages.id", ondelete="SET NULL"),
         index=True,
         nullable=True,
     )

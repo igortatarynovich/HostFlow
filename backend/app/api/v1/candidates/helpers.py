@@ -12,6 +12,11 @@ from backend.app.constants.catalogs import DIAL_CODES
 from fastapi import HTTPException
 
 from backend.app.constants.stages_adapter import STAGES, PIPELINE_SEQUENCE
+from backend.app.constants.system_transitions import (
+    LIFECYCLE_ARCHIVED,
+    LIFECYCLE_CLOSED,
+    is_forbidden_operational_stage,
+)
 from backend.app.constants.stages import LABELS
 from backend.app.models import Candidate
 from backend.app.models.candidate import next_candidate_short_id
@@ -79,30 +84,76 @@ def _normalize_stage_to_code(value: Optional[str]) -> Optional[str]:
     return code_for_label(v) or code_for_label(v_lower) or None
 
 
+async def _funnel_stage_codes_for_candidate(
+    db: AsyncSession,
+    candidate: Candidate,
+) -> Optional[set[str]]:
+    """Return operational stage codes for the candidate's pipeline, if bound."""
+    funnel_id = getattr(candidate, "funnel_id", None)
+    if not funnel_id:
+        return None
+    from backend.app.models.funnel import FunnelStage
+
+    res = await db.execute(
+        select(FunnelStage.code).where(FunnelStage.funnel_id == str(funnel_id))
+    )
+    codes = {str(r[0]).strip().lower() for r in res.all() if r and r[0]}
+    return codes or None
+
+
 def _validate_stage_transition(
     current: Optional[str],
     target: str,
     *,
     allow_revert: bool = True,
     max_skip: int = 1,
+    funnel_stage_codes: Optional[set[str]] = None,
+    lifecycle_status: Optional[str] = None,
 ) -> None:
     """
-    Validate stage code but DO NOT restrict transition order.
+    Validate stage code for Candidate board moves (ADR-035).
 
-    Исторически функция ограничивала переходы по пайплайну (нельзя было
-    «перепрыгивать» через несколько этапов). По факту это мешает работе
-    в нестандартных ситуациях, когда рекрутеру или клиенту нужно
-    вручную проставить любой этап в любой момент.
-
-    Текущая политика:
-    - Запрещаем только пустой и неизвестный код стадии.
-    - Любые переходы между валидными стадиями разрешены (вперёд, назад,
-      через сколько угодно шагов).
+    - Reject empty / unknown global codes (legacy catalog).
+    - Reject forbidden pseudo-stages (ready_for_hr, …) as operational positions.
+    - When funnel_stage_codes provided, target must be in that set (stage ∈ pipeline).
+    - Closed/archived candidates cannot move board stage.
     """
     if not target:
         raise HTTPException(status_code=422, detail="Stage must not be empty")
 
     target = target.strip()
+    life = (lifecycle_status or "").strip().lower()
+    if life in (LIFECYCLE_CLOSED, LIFECYCLE_ARCHIVED):
+        raise HTTPException(
+            status_code=409,
+            detail="Candidate is closed; board stage is read-only (ADR-035). Use system transitions while active.",
+        )
+
+    if is_forbidden_operational_stage(target):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Stage '{target}' is a legacy handoff pseudo-stage and cannot be an "
+                f"operational board position (ADR-035). Fire a system transition instead "
+                f"(handoff_to_hr / handoff_to_client / close_*)."
+            ),
+        )
+
+    if funnel_stage_codes is not None:
+        allowed = {c.strip().lower() for c in funnel_stage_codes if c}
+        # Allow current position even if legacy forbidden (strangler read)
+        if target.lower() not in allowed and target not in _STAGE_INDEX:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Stage '{target}' is not in the candidate's recruitment pipeline",
+            )
+        if target.lower() not in allowed:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Stage '{target}' is not in the candidate's recruitment pipeline",
+            )
+        return
+
     if target not in _STAGE_INDEX:
         raise HTTPException(status_code=422, detail=f"Unknown stage '{target}'")
 

@@ -35,6 +35,7 @@ from backend.app.api.v1.candidates.helpers import (
     _ensure_langs,
     _normalize_stage_to_code,
     _validate_stage_transition,
+    _funnel_stage_codes_for_candidate,
     _dump_json_str,
     _as_dict_safe,
     _merge_dict,
@@ -429,7 +430,7 @@ async def create_candidate_full(
             detail=f"Stage '{stage_code}' is not allowed for client tenant",
         )
 
-    _validate_stage_transition(None, stage_code)
+    # Stage ∈ pipeline validated after funnel resolution (ADR-035) below.
     await _enforce_rodo_before_contact_stage(
         db,
         candidate_id=cand_id,
@@ -495,6 +496,14 @@ async def create_candidate_full(
                 normalized_first = _normalize_stage_to_code(str(first_code))
                 if normalized_first:
                     stage_code = normalized_first
+
+    create_funnel_codes: Optional[set[str]] = None
+    if resolved_funnel_id:
+        from backend.app.models.funnel import FunnelStage as _FS
+
+        _fs_res = await db.execute(select(_FS.code).where(_FS.funnel_id == resolved_funnel_id))
+        create_funnel_codes = {str(r[0]).strip().lower() for r in _fs_res.all() if r and r[0]} or None
+    _validate_stage_transition(None, stage_code, funnel_stage_codes=create_funnel_codes)
 
     _mgr_in = payload.get("manager") if payload.get("manager") is not None else payload.get("manager_id")
     manager_val: Optional[str] = (str(_mgr_in or "").strip() or None)
@@ -610,6 +619,7 @@ async def create_candidate_full(
         "tags": tags,
         "is_favorite": is_favorite,
         "stage": stage_code,
+        "lifecycle_status": "active",
         "email": payload.get("email"),
         "note": payload.get("note"),
         "manager": manager_val,
@@ -1130,7 +1140,12 @@ async def update_candidate_full(
                     detail=f"Stage '{new_stage_code}' is not allowed for client tenant",
                 )
 
-            _validate_stage_transition(getattr(c, "stage", None), new_stage_code)
+            _validate_stage_transition(
+                getattr(c, "stage", None),
+                new_stage_code,
+                funnel_stage_codes=await _funnel_stage_codes_for_candidate(db, c),
+                lifecycle_status=getattr(c, "lifecycle_status", None),
+            )
             await _enforce_rodo_before_contact_stage(
                 db,
                 candidate_id=candidate_id,
@@ -1191,6 +1206,18 @@ async def update_candidate_full(
             changes["stage"] = new_stage_code
             changes["status"] = new_stage_code
             stage_changed = True
+            if getattr(c, "funnel_id", None):
+                from backend.app.models.funnel import FunnelStage as _FS2
+
+                _sid = await db.execute(
+                    select(_FS2.id).where(
+                        _FS2.funnel_id == str(c.funnel_id),
+                        _FS2.code == new_stage_code,
+                    )
+                )
+                stage_row_id = _sid.scalar_one_or_none()
+                if stage_row_id:
+                    changes["pipeline_stage_id"] = stage_row_id
             if (
                 candidate_home_tenant
                 and not await _is_client_tenant(db, candidate_home_tenant)
@@ -1838,7 +1865,12 @@ async def bulk_update_stage(
                 )
                 continue
 
-            _validate_stage_transition(getattr(c, "stage", None), normalized)
+            _validate_stage_transition(
+                getattr(c, "stage", None),
+                normalized,
+                funnel_stage_codes=await _funnel_stage_codes_for_candidate(db, c),
+                lifecycle_status=getattr(c, "lifecycle_status", None),
+            )
             await _enforce_rodo_before_contact_stage(
                 db,
                 candidate_id=cid,

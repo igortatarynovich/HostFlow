@@ -10,7 +10,7 @@
 
 1. **Documents are never copied between modules** — один канонический `Document` / storage ref; между модулями только links, permissions, review context.
 
-2. **Recruitment never owns Employee lifecycle** — найм/онбординг/контракт/ZUS как процесс владения HR (Workforce и спутники), не «тихий» side-effect карточки кандидата без явного handoff.
+2. **Recruitment never owns Employee lifecycle** — найм/онбординг/контракт/ZUS как процесс владения HR (Workforce и спутники), не «тихий» side-effect карточки кандидата без явного handoff / system transition.
 
 3. **HR never owns Recruitment pipeline** — стадии воронки рекрутмента и решения по qualification не являются источником истины в HR-модуле.
 
@@ -21,6 +21,12 @@
 6. **Company type never restricts module availability** — пресеты компании не превращаются в жёсткий запрет модулей (см. [ADR-003](ADR-003-tenant-company-module-data-boundaries.md)).
 
 7. **Internal (одна company) и company-to-company handoff используют одну абстракцию handoff** — различается scope и поля, не «два несовместимых мира».
+
+8. **Pipeline = operational stages + platform system transitions** ([ADR-035](ADR-035-module-object-pipeline-settings.md) A1/A2) — объект никогда не «стоит» на transition; запрещены псевдоэтапы `ready_for_hr` / `processing_by_hr` / `ready_for_fleet` как текущая позиция Candidate (legacy codes = strangler only).
+
+9. **Four objects** — Sales creates Client; Recruitment creates Candidate; HR creates Employee; Fleet creates Assignment. Linked, not one growing row.
+
+10. **Module → Objects → Pipelines → Settings** — pipelines не живут в глобальном Settings dump; ownership order fixed by ADR-035.
 
 ---
 

@@ -46,6 +46,8 @@ HR-модуль в целом должен давать тенанту отве�
 
 **Employee pipeline (P0, shipped):** company-scoped воронки `module_key=hr`, `type=employee` — bootstrap, `resolve_hr_employee_funnel`, runtime binding на `WorkforceEmployee.meta.employee_pipeline`, `/meta/stages?pipeline_type=employee`. Gate: [`hr-employee-pipeline-p0.md`](../specs/architecture/hr-employee-pipeline-p0.md) (**CLOSED**). Recruitment не обязателен для HR-only tenant.
 
+**ADR-035:** HR pipelines are **object-typed** (`WorkforceEmployee`), built from **operational stages** + platform **system transitions** (e.g. `handoff_to_fleet`, close). Templates → company instances. Exit to Fleet creates Fleet assignment linked to Employee — not a renamed Employee. See [`ADR-035-module-object-pipeline-settings.md`](../specs/architecture/ADR-035-module-object-pipeline-settings.md).
+
 Публичный сбор данных (анкеты сотрудника, ZUS, согласия и т.д.) — контур **Forms** как платформенной capability, см. [`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md) и [`../forms/module-scope.md`](../forms/module-scope.md). Кадровые документы и reuse файлов из Recruitment — **Document Hub** ([`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md), [`../document-hub/module-scope.md`](../document-hub/module-scope.md)).
 
 **Настройки (канон):** три уровня — **Tenant → Company → Company Module Settings**; см. [`ADR-005`](../specs/architecture/ADR-005-three-level-settings-hierarchy.md). Кратко:

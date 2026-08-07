@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted — implemented incrementally starting 2026-05-06.
+Accepted — implemented incrementally starting 2026-05-06.  
+**2026-08-07:** Target model amended by [`ADR-035`](ADR-035-module-object-pipeline-settings.md) — **handoff is a system transition (event), not an operational stage**. Codes `ready_for_hr` / `processing_by_hr` / `hired` on Candidate remain **legacy strangler** until Phase C cutover; new pipelines must not add them as board positions.
 
 ## Context
 
@@ -10,11 +11,12 @@ HostFlow mixed recruitment progress and post-hire HR work on a single candidate 
 
 ## Decision
 
-1. Introduce canonical candidate stages **`ready_for_hr`** and **`hired`** as **recruitment-closed** success codes (alongside legacy **`employed`**).
-2. Treat **`PIPELINE_COMPLETED_STAGE_CODES`** as «операционная воронка кандидата закрыта» (no recruiter next-action / list noise), **not** «вся работа компании завершена». HR continues on `WorkforceEmployee` and related satellites.
-3. Extend **`WORKFORCE_HANDOFF_STAGE_CODES`** so a **`WorkforceEmployee`** row is ensured when the case enters HR-owned stages, including `ready_for_hr`, `hired`, and `processing_by_hr`, not only `employment_pending` / `employed`.
-4. Export **`RECRUITMENT_SUCCESS_STAGE_CODES`** for analytics and dashboards (hired-like counts without conflating with rejected/declined).
-5. **Стадии и роли при включённом agency handoff:** **`ready_for_hr`** — финальное действие **Recruitment** (рекрутер может выставить). **`hired`** / **`employed`** (и прочий post-handoff lane) — зона **HR**; рекрутер не переводит на `hired` через PATCH кандидата. Константа **`RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES`** не включает `ready_for_hr`; включает `hired`, `employed`, клиентский/HR lane. Подробнее: [`invariants-recruitment-hr-document-hub.md`](invariants-recruitment-hr-document-hub.md).
+1. **Target (ADR-035):** Recruitment ends on operational stages such as `accepted` / `ready_for_client`; exit via platform catalog transitions (`handoff_to_hr`, `handoff_to_client`, `close_*`). Candidate lifecycle → `closed` (read-only). Employee is created only when `hr` is enabled and the process keeps the person in HostFlow HR.
+2. **Legacy (strangler):** Introduce / keep candidate stage codes **`ready_for_hr`** and **`hired`** as **recruitment-closed** success codes (alongside legacy **`employed`**) until cutover maps them to catalog transitions.
+3. Treat **`PIPELINE_COMPLETED_STAGE_CODES`** as «операционная воронка кандидата закрыта» (no recruiter next-action / list noise), **not** «вся работа компании завершена». HR continues on `WorkforceEmployee` and related satellites.
+4. Extend **`WORKFORCE_HANDOFF_STAGE_CODES`** so a **`WorkforceEmployee`** row is ensured when the case enters HR-owned stages, including `ready_for_hr`, `hired`, and `processing_by_hr`, not only `employment_pending` / `employed` (**legacy path**; target path = fire `handoff_to_hr`).
+5. Export **`RECRUITMENT_SUCCESS_STAGE_CODES`** for analytics and dashboards (hired-like counts without conflating with rejected/declined).
+6. **Стадии и роли при включённом agency handoff (legacy):** **`ready_for_hr`** — финальное действие **Recruitment** (рекрутер может выставить). **`hired`** / **`employed`** (и прочий post-handoff lane) — зона **HR**; рекрутер не переводит на `hired` через PATCH кандидата. Константа **`RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES`** не включает `ready_for_hr`; включает `hired`, `employed`, клиентский/HR lane. Подробнее: [`invariants-recruitment-hr-document-hub.md`](invariants-recruitment-hr-document-hub.md). **Target:** recruiter fires `handoff_to_hr` / `handoff_to_client`; never sits Candidate on HR board stages.
 
 ## Consequences
 
@@ -25,7 +27,8 @@ HostFlow mixed recruitment progress and post-hire HR work on a single candidate 
 
 ## References
 
-- [`handoff-contract.md`](handoff-contract.md) — продуктовый маппинг `ready_for_hr` / `ready_for_handoff` и типы handoff (internal vs client portal)
+- [`ADR-035-module-object-pipeline-settings.md`](ADR-035-module-object-pipeline-settings.md) — Module → Objects → Pipelines → Settings; system transitions catalog
+- [`handoff-contract.md`](handoff-contract.md) — продуктовый маппинг `ready_for_hr` / `ready_for_handoff` и типы handoff (internal vs client portal); target = catalog transitions
 - [`operational-event-boundaries.md`](operational-event-boundaries.md) — границы операционных фактов: смена стадии vs создание handoff vs материализация HR
 - `backend/app/constants/stages.py` — `PIPELINE_COMPLETED_STAGE_CODES`, `RECRUITMENT_SUCCESS_STAGE_CODES`
 - `backend/app/services/workforce_employees.py` — `WORKFORCE_HANDOFF_STAGE_CODES`

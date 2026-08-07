@@ -1,14 +1,33 @@
 # Handoff Contract: события передачи Recruitment ↔ HR ↔ Client
 
-**Статус:** канон для продуктовых и архитектурных решений; дополняет [ADR-002](ADR-002-modular-recruitment-hr-boundary.md) и [invariants-recruitment-hr-document-hub.md](invariants-recruitment-hr-document-hub.md).  
+**Статус:** канон для продуктовых и архитектурных решений; дополняет [ADR-002](ADR-002-modular-recruitment-hr-boundary.md), [ADR-035](ADR-035-module-object-pipeline-settings.md) и [invariants-recruitment-hr-document-hub.md](invariants-recruitment-hr-document-hub.md).  
 **Не заменяет** дорожную карту фазы 1 — см. [implementation-roadmap-single-tenant-hr-handoff.md](../workflows/implementation-roadmap-single-tenant-hr-handoff.md).  
-**Границы операционных фактов** (stage vs handoff vs materialization, без отдельных `candidate_ready_for_*` событий в MVP): [operational-event-boundaries.md](operational-event-boundaries.md).
+**Границы операционных фактов:** [operational-event-boundaries.md](operational-event-boundaries.md).
 
 ---
 
-## Часть A. Продуктовый контракт стадий (Stage mapping)
+## Target model (ADR-035) — read first
 
-Цель — чтобы агенты и разработчики **не угадывали**, какая стадия что запускает.
+**Handoff is a system transition (event), not a pipeline stage and not the object's board position.**
+
+| Catalog key | Meaning |
+|-------------|---------|
+| `handoff_to_hr` | Recruitment → HR; may create `WorkforceEmployee`; Candidate lifecycle → `closed` |
+| `handoff_to_client` | Recruitment → client portal / client responsibility; Employee optional / often absent |
+| `handoff_to_fleet` | HR → Fleet assignment (not a Candidate stage) |
+| `close_success` / `close_declined` | Close without cross-module handoff |
+
+Last **operational** Recruitment stages are e.g. `accepted` / `ready_for_client`. Builder wires a **locked** system transition after them. Object never “sits” on the transition node.
+
+**Employee creation is optional:** only when company has `hr` enabled and the process provides for managing the employee in HostFlow.
+
+Legacy stage codes below (`ready_for_hr`, `ready_for_handoff`, …) are **strangler** until Phase C cutover maps writers to catalog transition fire.
+
+---
+
+## Часть A. Продуктовый контракт стадий (Stage mapping) — LEGACY STRANGLER
+
+Цель — чтобы агенты и разработчики **не угадывали**, какая стадия что запускает **в текущем runtime**. Новые pipelines/presets — по Target model выше.
 
 ### A.1 `ready_for_hr` (канонический Recruitment → HR)
 

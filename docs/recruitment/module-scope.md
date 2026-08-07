@@ -43,21 +43,27 @@
 - **HR:** handoff кандидата на сотрудника — см. [`ADR-002`](../specs/architecture/ADR-002-modular-recruitment-hr-boundary.md).
 - **Finance:** только **Billing Events** как возможный выход (ADR-004); прямых invoices из Recruitment не проектируем.
 
-## Pipeline ownership (module-owned pipelines P0 — gate closed 2026-06-30)
+## Pipeline ownership (module-owned pipelines P0 — gate closed 2026-06-30; **ADR-035 target**)
 
-Recruitment **owns** candidate and lead pipeline definitions. Canonical scope:
+Recruitment **owns** candidate (and legacy lead) pipeline definitions. Canonical scope:
 
 | Dimension | Value |
 |-----------|--------|
+| Ownership order | **Module → Objects → Pipelines → Settings** ([ADR-035](../specs/architecture/ADR-035-module-object-pipeline-settings.md)) |
 | `module_key` | `recruitment` |
+| Object type | **Candidate** (primary); `lead` = legacy intake CRM only |
 | `funnel.type` | `candidate` \| `lead` (`deal` — legacy CRM, not Recruitment P0) |
+| Elements | **Operational stages** + **platform system transitions** (`handoff_to_hr` / `handoff_to_client` / close) — transitions are not board positions |
+| Templates | Platform template catalog → company **instances** (e.g. Poltrakt Drivers) |
 | `company_id` | **Required** for all new operational funnels |
 | Default pointer | `RecruitmentModuleSettingsV1.default_candidate_funnel_id` (company CMS); resolver step 2 |
 | Resolution | Single chain — [`module-owned-pipelines-p0.md`](../specs/architecture/module-owned-pipelines-p0.md) §5 |
 
-**Runtime entry points** use `recruitment_funnel_assignment` helpers → `resolve_recruitment_funnel`. **Forbidden after P0 gate:** new tenant-wide operational funnels; cross-module funnel rows; gates on legacy `system_stage` alone.
+**Runtime entry points** use `recruitment_funnel_assignment` helpers → `resolve_recruitment_funnel`. **Forbidden after P0 gate:** new tenant-wide operational funnels; cross-module funnel rows; gates on legacy `system_stage` alone; new `ready_for_hr`-style operational stages (use catalog transitions).
 
-**Temporary strangler:** pre-migration tenant funnels (`company_id IS NULL`) remain readable via resolver step 4 and analytics `legacy_tenant=true` until backfill + dashboard migration. See spec §7.3.
+**Temporary strangler:** pre-migration tenant funnels (`company_id IS NULL`) remain readable via resolver step 4 and analytics `legacy_tenant=true` until backfill + dashboard migration. See spec §7.3. Legacy stage codes `ready_for_hr` / `processing_by_hr` — map to transitions (Phase C).
+
+**Sales:** Recruitment does **not** own SalesInquiry pipelines; Sales never moves Candidate ([ADR-023](../specs/architecture/ADR-023-recruitment-sales-module-separation.md), ADR-035).
 
 ## Сопровождение
 

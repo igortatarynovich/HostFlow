@@ -11,12 +11,15 @@
 
 | Имя (vocabulary) | Смысл | Источник истины |
 |------------------|--------|-----------------|
-| **candidate_stage_changed** | Факт смены стадии кандидата в recruitment pipeline | Recruitment |
-| **ready_for_hr** / **ready_for_handoff** | *Не отдельные события в MVP* — смысловые значения стадии при том же факте `candidate_stage_changed` | — |
+| **candidate_stage_changed** | Факт смены **operational** стадии кандидата в recruitment pipeline | Recruitment |
+| **system_transition_fired** | Сработала platform catalog transition (`handoff_to_hr`, `handoff_to_client`, …) — **не** позиция на доске ([ADR-035](ADR-035-module-object-pipeline-settings.md)) | Owning module of source object |
+| **ready_for_hr / ready_for_handoff (legacy)** | *Не отдельные события* — legacy stage codes; strangler map → `system_transition_fired` | — |
 | **handoff_created** | Создан конкретный контекст передачи (тип, source/destination, правила) | Handoff |
-| **workforce_employee_created** | Материализован сотрудник (связь с `source_candidate_id` и т.п.) | HR |
+| **workforce_employee_created** | Материализован сотрудник (связь с `source_candidate_id` и т.п.) — **optional** | HR |
 | **hr_case_created** | Создан HR operational case (onboarding/compliance), отдельно от профиля сотрудника | HR |
 | **document_*** | Факты жизненного цикла документа (upload, link, verify, review, …) | Document Hub |
+
+**ADR-035:** Trigger for cross-module work is **system transition fire**, not “Candidate.stage = ready_for_hr”. Legacy stage-driven paths remain until Phase C cutover.
 
 ---
 

@@ -75,6 +75,7 @@ async def _ensure_company_recruitment_funnel(
     funnel_type: str,
     name: str,
     stages: list[StageRow],
+    hr_enabled: bool = False,
 ) -> Funnel:
     existing = await _load_company_funnel(
         db, tenant_id=tenant_id, company_id=company_id, funnel_type=funnel_type
@@ -140,6 +141,16 @@ async def _ensure_company_recruitment_funnel(
                     db, stage, tenant_id=tenant_id, module=RECRUITMENT_MODULE_KEY
                 )
 
+            from backend.app.services.system_transition_runtime import (
+                ensure_default_recruitment_transitions,
+            )
+
+            await ensure_default_recruitment_transitions(
+                db,
+                funnel=target,
+                hr_enabled=hr_enabled,
+            )
+
     return target
 
 
@@ -188,6 +199,7 @@ async def bootstrap_recruitment_funnels_for_company(
 
     presets = business_funnel_presets(company_type, industry)
     out: dict[str, str] = {}
+    hr_enabled = bool(get_effective_company_modules(tenant, company).get("hr"))
 
     if create_candidate:
         candidate = presets["candidate"]
@@ -198,6 +210,7 @@ async def bootstrap_recruitment_funnels_for_company(
             funnel_type="candidate",
             name=str(candidate["name"]),
             stages=list(candidate["stages"]),
+            hr_enabled=hr_enabled,
         )
         out["candidate"] = funnel.id
         await _maybe_set_default_candidate_funnel_cms(
