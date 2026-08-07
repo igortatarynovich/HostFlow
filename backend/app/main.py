@@ -102,6 +102,7 @@ try:
     from backend.app.modules.leads import inbound_public as leads_inbound_public
     from backend.app.modules.leads import webhook as meta_webhook
     from backend.app.modules.companies.router import router as companies_router
+    from backend.app.api.v1.company_module_settings import router as company_module_settings_router
     from backend.app.modules.companies.ensure_schema import ensure_companies_schema
     from backend.app.modules.notifications.ensure_schema import ensure_notifications_schema
     from backend.app.services.ensure_reminders_schema import ensure_reminders_schema
@@ -222,6 +223,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .modules.leads import inbound_public as leads_inbound_public  # type: ignore[no-redef]
     from .modules.leads import webhook as meta_webhook  # type: ignore[no-redef]
     from .modules.companies.router import router as companies_router  # type: ignore[no-redef]
+    from .api.v1.company_module_settings import router as company_module_settings_router  # type: ignore[no-redef]
     from .modules.companies.ensure_schema import ensure_companies_schema  # type: ignore[no-redef]
     from .modules.notifications.ensure_schema import ensure_notifications_schema  # type: ignore[no-redef]
     from .services.ensure_reminders_schema import ensure_reminders_schema  # type: ignore[no-redef]
@@ -945,6 +947,7 @@ app.include_router(invoices_router, prefix="/api/v1", tags=["invoices"])
 
 # Домен
 app.include_router(companies_router, prefix="/api/v1", tags=["companies"])
+app.include_router(company_module_settings_router, prefix="/api/v1", tags=["company-module-settings"])
 app.include_router(client_accounts_router, prefix="/api/v1")
 app.include_router(sales_orders_router, prefix="/api/v1")
 app.include_router(vacancies_router, prefix="/api/v1", tags=["vacancies"])
