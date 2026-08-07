@@ -153,14 +153,6 @@ export default function SettingsLandingPage() {
         section: 'team',
       },
       {
-        key: 'team_modules',
-        label: t('admin.settings.cards.team_modules.label'),
-        description: t('admin.settings.cards.team_modules.description'),
-        target: CRM_APP_PATHS.settingsTeam,
-        roles: ['administrator'],
-        section: 'team',
-      },
-      {
         key: 'tenants',
         label: t('admin.settings.cards.tenants.label'),
         description: t('admin.settings.cards.tenants.description'),
