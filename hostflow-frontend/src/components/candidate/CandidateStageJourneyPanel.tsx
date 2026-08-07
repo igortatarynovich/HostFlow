@@ -4,6 +4,7 @@ import { formatDistanceToNowStrict } from 'date-fns'
 import { enUS, pl, ru } from 'date-fns/locale'
 import { useI18n } from '../../i18n'
 import { formatDateSafe } from '../../modules/candidates/candidateUtils'
+import { isJourneyStageCompletedByPosition } from '../../utils/journeyStageProgress'
 
 type Stage = { code: string; label: string }
 
@@ -18,6 +19,10 @@ type Props = {
   currentOutcomeStage?: string | null | undefined
   signals?: Array<{ key: string; label: string }>
   stageSinceAt: string | null | undefined
+  /**
+   * @deprecated Ignored for recruitment journey paint. Progress is position-based
+   * (stages before current only). Kept optional for call-site compatibility.
+   */
   completedStageCodes?: Set<string>
   canEdit?: boolean
   onStageChange?: (stage: string) => void | Promise<void>
@@ -37,7 +42,7 @@ export default function CandidateStageJourneyPanel({
   currentOutcomeStage,
   signals,
   stageSinceAt,
-  completedStageCodes,
+  completedStageCodes: _completedStageCodes,
   canEdit = false,
   onStageChange,
   onOpenStageHistory,
@@ -143,7 +148,7 @@ export default function CandidateStageJourneyPanel({
               <div className="relative flex items-start justify-between gap-4">
                 {stages.map((s, idx) => {
                   const isCurrent = currentStage ? s.code === currentStage : idx === 0
-                  const isCompleted = completedStageCodes?.has(s.code) || (currentIdx >= 0 && idx < currentIdx)
+                  const isCompleted = isJourneyStageCompletedByPosition(idx, currentIdx)
                   const dotClass = isCurrent
                     ? (blocked ? 'bg-rose-600 ring-rose-200' : 'bg-brand-600 ring-brand-200')
                     : isCompleted
@@ -185,7 +190,7 @@ export default function CandidateStageJourneyPanel({
           <div className="space-y-2">
             {stages.map((s, idx) => {
               const isCurrent = currentStage ? s.code === currentStage : idx === 0
-              const isCompleted = completedStageCodes?.has(s.code) || (currentIdx >= 0 && idx < currentIdx)
+              const isCompleted = isJourneyStageCompletedByPosition(idx, currentIdx)
               const dotClass = isCurrent
                 ? (blocked ? 'bg-rose-600 ring-rose-200' : 'bg-brand-600 ring-brand-200')
                 : isCompleted

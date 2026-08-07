@@ -86,6 +86,8 @@ class FunnelStage(Base):
     )
     code: Mapped[str] = mapped_column(String(64), nullable=False)
     label: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Per-locale display titles: {"pl": "…", "ru": "…", "en": "…"}. Primary `label` remains fallback.
+    labels_i18n: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     # Canonical system skeleton bucket used for analytics and workflow invariants.
     system_stage: Mapped[str] = mapped_column(
         String(32), nullable=False, default="in_progress", server_default="in_progress"

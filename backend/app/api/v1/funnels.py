@@ -42,6 +42,26 @@ from backend.app.services.plan_feature_gates import ensure_custom_funnel_create_
 
 router = APIRouter(prefix="/funnels", tags=["funnels"])
 
+_ALLOWED_LABEL_LOCALES = frozenset({"en", "ru", "pl"})
+
+
+def _normalize_labels_i18n(raw: Any) -> Optional[dict[str, str]]:
+    """Keep only en/ru/pl non-empty string titles."""
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        return None
+    out: dict[str, str] = {}
+    for key, value in raw.items():
+        loc = str(key or "").strip().lower()[:8]
+        if loc not in _ALLOWED_LABEL_LOCALES:
+            continue
+        text = str(value or "").strip()
+        if not text:
+            continue
+        out[loc] = text[:255]
+    return out or None
+
 
 async def _load_transitions(db: AsyncSession, funnel_id: str) -> list[FunnelTransitionEdge]:
     res = await db.execute(
@@ -434,6 +454,10 @@ class FunnelStageIn(BaseModel):
         default=None,
         description="Optional pipeline contract (owner_role, required_actions, sla_hours, auto_rules).",
     )
+    labels_i18n: Optional[Dict[str, str]] = Field(
+        default=None,
+        description='Per-locale titles: {"pl":"…","ru":"…","en":"…"}. Send null to clear.',
+    )
 
 
 class FunnelStageOut(BaseModel):
@@ -446,6 +470,7 @@ class FunnelStageOut(BaseModel):
     is_terminal: bool
     conversion_root_v1: Optional[str] = None
     stage_contract: Optional[StageContractV1] = None
+    labels_i18n: Optional[Dict[str, str]] = None
 
     @classmethod
     def from_model(cls, s: FunnelStage) -> "FunnelStageOut":
@@ -468,6 +493,7 @@ class FunnelStageOut(BaseModel):
             is_terminal=s.is_terminal,
             conversion_root_v1=cr_out,
             stage_contract=contract,
+            labels_i18n=_normalize_labels_i18n(getattr(s, "labels_i18n", None)),
         )
 
 
@@ -930,6 +956,8 @@ async def add_funnel_stage(
     )
     if "stage_contract" in payload.model_fields_set:
         stage_kwargs["stage_contract_v1"] = _stage_contract_db_value(payload.stage_contract)
+    if "labels_i18n" in payload.model_fields_set:
+        stage_kwargs["labels_i18n"] = _normalize_labels_i18n(payload.labels_i18n)
     stage = FunnelStage(**stage_kwargs)
     db.add(stage)
     await _require_funnel_stage_pe_mapping(
@@ -1000,6 +1028,8 @@ async def update_funnel_stage(
         )
     if "stage_contract" in payload.model_fields_set:
         stage.stage_contract_v1 = _stage_contract_db_value(payload.stage_contract)
+    if "labels_i18n" in payload.model_fields_set:
+        stage.labels_i18n = _normalize_labels_i18n(payload.labels_i18n)
     await _require_funnel_stage_pe_mapping(
         db, tenant_id=tenant_str, funnel=funnel_row, stage=stage
     )

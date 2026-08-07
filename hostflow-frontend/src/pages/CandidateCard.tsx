@@ -70,6 +70,7 @@ import { useI18n, type TranslateFn } from '../i18n'
 import { PREFERRED_CONTACT_VALUES } from '../data/preferredContactChannels'
 import { isCandidateOperationallyTerminal, isPipelineCompletedCanonicalStage } from '../utils/candidatePipelineCompleted'
 import { canonicalStageKey, translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
+import { resolveFunnelStageLabel } from '../utils/resolveFunnelStageLabel'
 import { scoreMissingHintForStage } from '../utils/candidateMissingDataHints'
 import {
   contactAttemptPipelineBlocksForward,
@@ -835,7 +836,9 @@ export default function CandidateCard(){
     },
     [layoutFromApi, effectiveLayout],
   )
-  const [profileFunnelStages, setProfileFunnelStages] = useState<Array<{ code: string; label: string }>>([])
+  const [profileFunnelStages, setProfileFunnelStages] = useState<
+    Array<{ code: string; label: string; labels_i18n?: Record<string, string> | null }>
+  >([])
   const [profileFunnelTransitions, setProfileFunnelTransitions] = useState<FunnelTransition[]>([])
   /** ADR-035 §12: Vacancy.funnel_id is SoT for the card pipeline (not Candidate Profile). */
   const [vacancyFunnelId, setVacancyFunnelId] = useState<string | null>(null)
@@ -854,7 +857,13 @@ export default function CandidateCard(){
     getFunnel(funnelId)
       .then((f) => {
         if (cancelled) return
-        setProfileFunnelStages((f.stages || []).map((s) => ({ code: s.code, label: s.label })))
+        setProfileFunnelStages(
+          (f.stages || []).map((s) => ({
+            code: s.code,
+            label: s.label,
+            labels_i18n: s.labels_i18n || null,
+          })),
+        )
         setProfileFunnelTransitions(f.transitions || [])
       })
       .catch(() => {
@@ -939,9 +948,8 @@ export default function CandidateCard(){
 
   const stageLabelIntl = useCallback((code: string) => {
     const funnelStage = profileFunnelStages.find((s) => s.code === code)
-    // Vacancy funnel SoT: configured label wins over global i18n/meta (same names as Settings).
-    if (funnelStage?.label && String(funnelStage.label).trim()) {
-      return String(funnelStage.label).trim()
+    if (funnelStage) {
+      return resolveFunnelStageLabel(funnelStage, locale, t)
     }
     let profileLabel: string | null = null
     if (candidateProfile?.config?.stage_configs) {
@@ -952,7 +960,7 @@ export default function CandidateCard(){
     }
     const fallback = profileLabel || meta?.labels?.[code] || code
     return translateStageLabel(t, code, fallback)
-  }, [candidateProfile, meta?.labels, profileFunnelStages, t])
+  }, [candidateProfile, locale, meta?.labels, profileFunnelStages, t])
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -4314,14 +4322,8 @@ export default function CandidateCard(){
     return { pending, approved }
   }, [pipelineOverrides])
 
-  const completedStageCodes = useMemo(() => {
-    const set = new Set<string>()
-    stageHistory.forEach((h) => {
-      if (h.from_code) set.add(String(h.from_code))
-      if (h.to_code) set.add(String(h.to_code))
-    })
-    return set
-  }, [stageHistory])
+  /** Position-based journey paint only — do not mark rolled-back history stages as done. */
+  const completedStageCodes = useMemo(() => new Set<string>(), [])
 
   const handleStageJourneyChange = useCallback(async (nextStage: string) => {
     const terminalClose = isRecruitmentTerminalStageCode(nextStage)

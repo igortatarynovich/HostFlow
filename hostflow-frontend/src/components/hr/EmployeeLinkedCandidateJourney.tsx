@@ -25,6 +25,7 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import CandidateStageDecisionPanel from '../candidate/CandidateStageDecisionPanel'
 import CandidateTimelinePanel from '../candidate/CandidateTimelinePanel'
 import { canonicalStageKey, translateStageLabel } from '../../utils/stageLabels'
+import { resolveFunnelStageLabel } from '../../utils/resolveFunnelStageLabel'
 import { isPipelineCompletedCanonicalStage } from '../../utils/candidatePipelineCompleted'
 import {
   docsPipelineBlocksForwardResolved,
@@ -94,7 +95,9 @@ export default function EmployeeLinkedCandidateJourney({
   const [model, setModel] = useState<Candidate | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null)
-  const [profileFunnelStages, setProfileFunnelStages] = useState<Array<{ code: string; label: string }>>([])
+  const [profileFunnelStages, setProfileFunnelStages] = useState<
+    Array<{ code: string; label: string; labels_i18n?: Record<string, string> | null }>
+  >([])
   const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
   const [stageSinceAt, setStageSinceAt] = useState<string | null>(null)
   const [notes, setNotes] = useState<CandidateNote[]>([])
@@ -163,7 +166,15 @@ export default function EmployeeLinkedCandidateJourney({
       return
     }
     getFunnel(candidateProfile.funnel_id)
-      .then((f) => setProfileFunnelStages((f.stages || []).map((s) => ({ code: s.code, label: s.label }))))
+      .then((f) =>
+        setProfileFunnelStages(
+          (f.stages || []).map((s) => ({
+            code: s.code,
+            label: s.label,
+            labels_i18n: s.labels_i18n || null,
+          })),
+        ),
+      )
       .catch(() => setProfileFunnelStages([]))
   }, [candidateProfile?.funnel_id])
 
@@ -335,6 +346,9 @@ export default function EmployeeLinkedCandidateJourney({
   const stageLabelIntl = useCallback(
     (code: string) => {
       const funnelStage = profileFunnelStages.find((s) => s.code === code)
+      if (funnelStage) {
+        return resolveFunnelStageLabel(funnelStage, locale, t)
+      }
       let profileLabel: string | null = null
       if (candidateProfile?.config?.stage_configs) {
         const profileStage = candidateProfile.config.stage_configs.find(
@@ -342,10 +356,10 @@ export default function EmployeeLinkedCandidateJourney({
         ) as { stage_label?: string } | undefined
         if (profileStage?.stage_label) profileLabel = String(profileStage.stage_label)
       }
-      const fallback = profileLabel || funnelStage?.label || meta?.labels?.[code] || code
+      const fallback = profileLabel || meta?.labels?.[code] || code
       return translateStageLabel(t, code, fallback)
     },
-    [candidateProfile, meta?.labels, profileFunnelStages, t],
+    [candidateProfile, locale, meta?.labels, profileFunnelStages, t],
   )
 
   const postHandoffStripOnly = hrPostHandoffOnly
@@ -492,14 +506,8 @@ export default function EmployeeLinkedCandidateJourney({
   )
   const contactAttemptPipelineBlockingValue = false
 
-  const completedStageCodes = useMemo(() => {
-    const set = new Set<string>()
-    stageHistory.forEach((h) => {
-      if (h.from_code) set.add(String(h.from_code))
-      if (h.to_code) set.add(String(h.to_code))
-    })
-    return set
-  }, [stageHistory])
+  /** Position-based journey paint only — history must not mark rolled-back stages as done. */
+  const completedStageCodes = useMemo(() => new Set<string>(), [])
 
   const canMutateStages = Boolean(model?.can_edit !== false && can('candidates.pipeline'))
 

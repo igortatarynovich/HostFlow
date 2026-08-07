@@ -13,6 +13,8 @@ export interface FunnelStage {
   funnel_id: string
   code: string
   label: string
+  /** Per-locale titles (pl/ru/en). Primary `label` remains fallback. */
+  labels_i18n?: Record<string, string> | null
   system_stage: 'new' | 'in_progress' | 'hired' | 'declined_rejected'
   order: number
   is_terminal: boolean
@@ -24,6 +26,7 @@ export interface FunnelStage {
 export interface FunnelStageCreate {
   code: string
   label: string
+  labels_i18n?: Record<string, string> | null
   system_stage?: 'new' | 'in_progress' | 'hired' | 'declined_rejected'
   order?: number
   is_terminal?: boolean

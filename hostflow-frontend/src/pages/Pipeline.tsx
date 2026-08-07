@@ -23,6 +23,7 @@ import {
 } from '../modules/pipeline/constants'
 import type { AnyObj, ManagerItem } from '../modules/pipeline/types'
 import { normalizeStageCode } from '../modules/pipeline/utils'
+import { resolveFunnelStageLabel, normalizeUiLocale } from '../utils/resolveFunnelStageLabel'
 import { PipelineOverlays } from '../modules/pipeline/PipelineOverlays'
 import { PipelineBulkSelectionBar } from '../modules/pipeline/PipelineBulkSelectionBar'
 import { PipelineKanbanBoard } from '../modules/pipeline/PipelineKanbanBoard'
@@ -62,12 +63,36 @@ export default function Pipeline(){
   const [profileStages, setProfileStages] = useState<{
     stage_codes?: string[]
     stage_labels?: Record<string, Record<string, string>>
+    stage_labels_i18n?: Record<string, Record<string, string>>
     stage_columns?: Record<string, string[]>
     column_order?: string[]
   } | null>(null)
   const { orderedStageCodes, stageToColumn, resolveColumnStage, buildStagePath } =
     usePipelineStagePath(columnStages, stageSequence, columnOrder)
   const [savingIds, setSavingIds] = useState<Record<string, boolean>>({})
+
+  const kanbanStageLabels = useMemo(() => {
+    if (!profileStages) return null
+    const loc = normalizeUiLocale(locale)
+    const codes =
+      profileStages.stage_codes ||
+      Object.keys(profileStages.stage_labels || {}) ||
+      Object.keys(profileStages.stage_columns || {})
+    const out: Record<string, Record<string, string>> = {}
+    for (const code of codes) {
+      const label = resolveFunnelStageLabel(
+        {
+          code,
+          label: profileStages.stage_labels?.[code]?.[code] || null,
+          labels_i18n: profileStages.stage_labels_i18n?.[code] || null,
+        },
+        loc,
+        t,
+      )
+      out[code] = { [code]: label }
+    }
+    return Object.keys(out).length ? out : null
+  }, [profileStages, locale, t])
 
   // selection & managers (for bulk actions)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -85,7 +110,7 @@ export default function Pipeline(){
     to: '',   // yyyy-mm-dd
   })
   const { can } = usePermissions()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const navigate = useNavigate()
   const meta = useMetaStages()
@@ -709,7 +734,7 @@ export default function Pipeline(){
             filteredColumns={filteredColumns}
             data={data}
             columnStages={columnStages}
-            stageLabels={profileStages?.stage_labels || null}
+            stageLabels={kanbanStageLabels}
             selectedIds={selectedIds}
             onToggleAllInColumn={toggleAllInColumn}
             dragRegistry={dragRegistry}

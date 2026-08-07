@@ -2895,6 +2895,7 @@ async def patch_candidate(
                 tenant_id=tenant_id_str,
                 user=current_user,
                 new_stage_code=str(data["stage"]),
+                candidate_id=str(candidate_id),
             )
 
     _candidate_patch_side_effect_fields = frozenset(

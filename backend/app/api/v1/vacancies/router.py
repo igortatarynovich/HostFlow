@@ -432,10 +432,23 @@ async def get_vacancy_pipeline(
                 stage_codes_order = [s.code for s in funnel_stages]
                 stage_columns_map = {s.code: [s.code] for s in funnel_stages}
                 stage_labels = {s.code: {s.code: s.label} for s in funnel_stages}
+                stage_labels_i18n = {
+                    s.code: (
+                        {
+                            str(k).strip().lower(): str(v).strip()
+                            for k, v in (s.labels_i18n or {}).items()
+                            if str(k or "").strip() and str(v or "").strip()
+                        }
+                        if isinstance(getattr(s, "labels_i18n", None), dict)
+                        else {}
+                    )
+                    for s in funnel_stages
+                }
                 column_order_list = list(stage_codes_order)
                 profile_stages = {
                     "stage_codes": stage_codes_order,
                     "stage_labels": stage_labels,
+                    "stage_labels_i18n": stage_labels_i18n,
                     "stage_columns": stage_columns_map,
                     "column_order": column_order_list,
                 }

@@ -49,6 +49,7 @@ import { refreshMetaStagesCache } from '../../store/useMeta'
 import { DEFAULT_STAGE_CODES } from '../../modules/dashboard/constants'
 import { listCompanies } from '../../api/client'
 import { listCompanyModuleSettings } from '../../api/companyModuleSettings'
+import { resolveFunnelStageLabel } from '../../utils/resolveFunnelStageLabel'
 
 function SortableStageRow({
   stage,
@@ -63,7 +64,7 @@ function SortableStageRow({
   disabled?: boolean
   showLeadConversionRoot?: boolean
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const {
     attributes,
     listeners,
@@ -78,6 +79,8 @@ function SortableStageRow({
     transition,
     opacity: isDragging ? 0.5 : 1,
   }
+
+  const displayLabel = resolveFunnelStageLabel(stage, locale, t)
 
   return (
     <tr
@@ -97,7 +100,7 @@ function SortableStageRow({
         </div>
       </td>
       <td className="py-2 pr-2 font-mono text-sm">{stage.code}</td>
-      <td className="py-2 pr-2 font-medium">{stage.label}</td>
+      <td className="py-2 pr-2 font-medium">{displayLabel}</td>
       <td className="py-2 pr-2">
         <span className="inline-flex rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
           {stage.system_stage}
@@ -164,6 +167,9 @@ function StageCreateEditModal({
   const { t } = useI18n()
   const [code, setCode] = useState(stage?.code || '')
   const [label, setLabel] = useState(stage?.label || '')
+  const [labelEn, setLabelEn] = useState(stage?.labels_i18n?.en || '')
+  const [labelRu, setLabelRu] = useState(stage?.labels_i18n?.ru || '')
+  const [labelPl, setLabelPl] = useState(stage?.labels_i18n?.pl || '')
   const [systemStage, setSystemStage] = useState<FunnelStageCreate['system_stage']>(stage?.system_stage || 'in_progress')
   const [order, setOrder] = useState(stage?.order ?? 0)
   const [isTerminal, setIsTerminal] = useState(stage?.is_terminal ?? false)
@@ -175,6 +181,9 @@ function StageCreateEditModal({
 
   useEffect(() => {
     setConversionRoot(stage?.conversion_root_v1 ?? '')
+    setLabelEn(stage?.labels_i18n?.en || '')
+    setLabelRu(stage?.labels_i18n?.ru || '')
+    setLabelPl(stage?.labels_i18n?.pl || '')
   }, [stage])
 
   useEffect(() => {
@@ -230,6 +239,16 @@ function StageCreateEditModal({
       system_stage: systemStage || 'in_progress',
       order: order || 0,
       is_terminal: isTerminal,
+    }
+    const labelsI18n: Record<string, string> = {}
+    if (labelEn.trim()) labelsI18n.en = labelEn.trim()
+    if (labelRu.trim()) labelsI18n.ru = labelRu.trim()
+    if (labelPl.trim()) labelsI18n.pl = labelPl.trim()
+    // Always send on update (null clears); on create only when any locale set.
+    if (stage) {
+      payload.labels_i18n = Object.keys(labelsI18n).length ? labelsI18n : null
+    } else if (Object.keys(labelsI18n).length) {
+      payload.labels_i18n = labelsI18n
     }
     if (funnelType === 'lead') {
       const cr = conversionRoot.trim().toLowerCase()
@@ -292,6 +311,34 @@ function StageCreateEditModal({
             placeholder={t('admin.funnels.placeholders.stage_label')}
             disabled={disabled}
           />
+          <p className="mt-1 text-xs text-slate-500">
+            {t('admin.funnels.label_primary_hint', {
+              defaultValue: 'Primary title (fallback when a locale translation is missing).',
+            })}
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {(
+              [
+                ['en', labelEn, setLabelEn, 'English'],
+                ['ru', labelRu, setLabelRu, 'Русский'],
+                ['pl', labelPl, setLabelPl, 'Polski'],
+              ] as const
+            ).map(([loc, value, setter, title]) => (
+              <label key={loc} className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-600">
+                  {t(`admin.funnels.label_${loc}`, { defaultValue: title })}
+                </span>
+                <input
+                  type="text"
+                  value={value}
+                  onChange={(e) => setter(e.target.value)}
+                  className="input w-full text-sm"
+                  placeholder={title}
+                  disabled={disabled}
+                />
+              </label>
+            ))}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">

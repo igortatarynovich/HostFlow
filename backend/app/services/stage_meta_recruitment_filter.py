@@ -183,16 +183,29 @@ async def enforce_agency_handoff_stage_change_allowed(
     tenant_id: str,
     user: UserCtx,
     new_stage_code: str,
+    candidate_id: str | None = None,
+    funnel_stage_codes: set[str] | frozenset[str] | None = None,
 ) -> None:
     """403 if agency user tries to set a stage outside their lane while handoff is enabled.
 
-    Recruitment (recruiter/supervisor/viewer): may set ``ready_for_hr`` (финал Recruitment);
-    blocked codes — ``RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES`` (e.g. ``hired``, ``employed``, post-handoff lane).
+    Recruitment (recruiter/supervisor/viewer): may set stages on the vacancy recruitment
+    funnel (ADR-035 SoT) even when those codes appear in the legacy hidden set (e.g.
+    ``permit_ordered``). Truly off-funnel HR/client lane codes remain blocked when
+    ``enforce_requirement_stage_blocks`` is on.
     """
     tid = (tenant_id or "").strip()
     if not tid or (user.tenant_id or "").strip() != tid:
         return
     if await is_client_tenant(db, tid):
+        return
+
+    from backend.app.services.hiring_pipeline_gates import resolve_hiring_pipeline_gates
+
+    gates = await resolve_hiring_pipeline_gates(
+        db, tid, candidate_id=str(candidate_id) if candidate_id else None
+    )
+    # Same master kill-switch as document/requirement forward blocks — free manual stage moves until ready.
+    if not gates.enforce_requirement_stage_blocks:
         return
 
     links = await list_links_for_agency(db, tid)
@@ -207,8 +220,24 @@ async def enforce_agency_handoff_stage_change_allowed(
     if role in (UserRole.administrator.value, UserRole.superadmin.value):
         return
 
+    allowed_funnel: set[str] | None = None
+    if funnel_stage_codes is not None:
+        allowed_funnel = {str(c).strip().lower() for c in funnel_stage_codes if str(c or "").strip()}
+    elif candidate_id:
+        from backend.app.models.candidate import Candidate
+        from backend.app.api.v1.candidates.helpers import _funnel_stage_codes_for_candidate
+
+        cand = await db.get(Candidate, str(candidate_id))
+        if cand is not None and str(getattr(cand, "tenant_id", "") or "") == tid:
+            codes = await _funnel_stage_codes_for_candidate(db, cand)
+            if codes:
+                allowed_funnel = {str(c).strip().lower() for c in codes}
+
     if role in RECRUITMENT_PIPELINE_STAGE_FILTER_ROLES:
-        if code in RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES:
+        code_l = code.lower()
+        if allowed_funnel is not None and code_l in allowed_funnel:
+            return
+        if code_l in RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES:
             raise HTTPException(
                 status_code=403,
                 detail="Stage change not allowed for recruitment role after handoff is enabled",
