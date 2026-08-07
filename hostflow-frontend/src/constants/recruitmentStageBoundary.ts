@@ -5,7 +5,9 @@
 export const RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES: ReadonlySet<string> = new Set([
   'hired',
   'employed',
+  'ready_for_hr',
   'processing_by_hr',
+  'ready_for_fleet',
   'processing_by_client',
   'docs_submitted_permit',
   'employment_pending',

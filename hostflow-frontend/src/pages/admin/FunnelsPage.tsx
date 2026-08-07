@@ -47,6 +47,7 @@ import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpage
 import { refreshMetaStagesCache } from '../../store/useMeta'
 import { DEFAULT_STAGE_CODES } from '../../modules/dashboard/constants'
 import { listCompanies } from '../../api/client'
+import { listCompanyModuleSettings } from '../../api/companyModuleSettings'
 
 function SortableStageRow({
   stage,
@@ -668,14 +669,30 @@ export default function FunnelsPage() {
     }
     setStages(selectedFunnel.stages || [])
     setTransitions(selectedFunnel.transitions || [])
-    void listSystemTransitionCatalog({
-      sourceModule: selectedFunnel.module_key || 'recruitment',
-      sourceObjectType: selectedFunnel.type === 'employee' ? 'employee' : 'candidate',
-      enabledModules: ['recruitment', 'hr', 'fleet'],
-    })
-      .then(setCatalogItems)
-      .catch(() => setCatalogItems([]))
-  }, [selectedFunnel])
+    const loadCatalog = async () => {
+      let enabledModules = ['recruitment']
+      if (companyId) {
+        try {
+          const rows = await listCompanyModuleSettings(companyId)
+          enabledModules = rows.filter((r) => r.is_enabled).map((r) => r.module_key)
+          if (!enabledModules.length) enabledModules = ['recruitment']
+        } catch {
+          enabledModules = ['recruitment', 'hr', 'fleet']
+        }
+      }
+      try {
+        const items = await listSystemTransitionCatalog({
+          sourceModule: selectedFunnel.module_key || 'recruitment',
+          sourceObjectType: selectedFunnel.type === 'employee' ? 'employee' : 'candidate',
+          enabledModules,
+        })
+        setCatalogItems(items)
+      } catch {
+        setCatalogItems([])
+      }
+    }
+    void loadCatalog()
+  }, [selectedFunnel, companyId])
 
   const refreshSelectedFunnel = useCallback(async () => {
     if (!selectedFunnel) return
@@ -683,6 +700,7 @@ export default function FunnelsPage() {
       const f = await getFunnel(selectedFunnel.id)
       setSelectedFunnel(f)
       setStages(f.stages || [])
+      setTransitions(f.transitions || [])
     } catch {
       loadFunnels()
     }

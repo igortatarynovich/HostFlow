@@ -57,7 +57,7 @@ function translateCandidateFieldKey(t: TranslateFn, fieldKey: string, label: str
 }
 
 type CandidateEditPhase = 'idle' | 'picking_reason' | 'editing'
-import { getFunnel } from '../api/funnels'
+import { getFunnel, type FunnelTransition } from '../api/funnels'
 import { validateRequiredFields } from '../utils/profileUtils'
 import { getCardSectionOrder, isCardSectionVisible } from '../utils/fieldLayoutUtils'
 import { useEffectiveCandidateLayout } from '../hooks/useEffectiveCandidateLayout'
@@ -106,6 +106,7 @@ import CandidateRodoSection from '../components/candidate/CandidateRodoSection'
 import CandidateContactAttemptsSection from '../components/candidate/CandidateContactAttemptsSection'
 import CandidateTimelinePanel from '../components/candidate/CandidateTimelinePanel'
 import CandidateStageDecisionPanel from '../components/candidate/CandidateStageDecisionPanel'
+import CandidateSystemTransitionsBar from '../components/candidate/CandidateSystemTransitionsBar'
 import { Input, SearchableSelect } from '../components/candidate/shared/FormComponents'
 // CandidateCard layout: Info (top) / Control (right) / Content (main)
 // Documents are rendered as a single compact panel inside the rail.
@@ -835,15 +836,23 @@ export default function CandidateCard(){
     [layoutFromApi, effectiveLayout],
   )
   const [profileFunnelStages, setProfileFunnelStages] = useState<Array<{ code: string; label: string }>>([])
+  const [profileFunnelTransitions, setProfileFunnelTransitions] = useState<FunnelTransition[]>([])
 
   useEffect(() => {
     if (!candidateProfile?.funnel_id) {
       setProfileFunnelStages([])
+      setProfileFunnelTransitions([])
       return
     }
     getFunnel(candidateProfile.funnel_id)
-      .then((f) => setProfileFunnelStages((f.stages || []).map((s) => ({ code: s.code, label: s.label }))))
-      .catch(() => setProfileFunnelStages([]))
+      .then((f) => {
+        setProfileFunnelStages((f.stages || []).map((s) => ({ code: s.code, label: s.label })))
+        setProfileFunnelTransitions(f.transitions || [])
+      })
+      .catch(() => {
+        setProfileFunnelStages([])
+        setProfileFunnelTransitions([])
+      })
   }, [candidateProfile?.funnel_id])
 
   // Полный список этапов профиля (без фильтра по роли)
@@ -868,7 +877,8 @@ export default function CandidateCard(){
 
   // Ограничиваем список для селекта с учетом роли клиента
   const stageOptions = useMemo(() => {
-    const codes = profileStageCodes
+    const FORBIDDEN = new Set(['ready_for_hr', 'processing_by_hr', 'ready_for_fleet', 'processing_by_client'])
+    const codes = profileStageCodes.filter((code) => !FORBIDDEN.has(String(code).toLowerCase()))
     if (!meta?.meta) return codes
     if (isClientTenant) {
       return codes.filter((code) => meta.meta?.[code]?.visible_for_client)
@@ -4523,6 +4533,17 @@ export default function CandidateCard(){
               onMoveStage={handleStageJourneyChange}
               onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
             />
+            {!isNew && model?.id && profileFunnelTransitions.length > 0 ? (
+              <CandidateSystemTransitionsBar
+                candidateId={String(model.id)}
+                transitions={profileFunnelTransitions}
+                lifecycleStatus={(model as { lifecycle_status?: string | null }).lifecycle_status}
+                canEdit={model.can_edit !== false}
+                onFired={() => {
+                  void fetchCandidate(String(model.id), model)
+                }}
+              />
+            ) : null}
           </div>
         ) : null}
       />

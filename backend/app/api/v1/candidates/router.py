@@ -3070,7 +3070,7 @@ async def fire_candidate_system_transition(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(require_roles(*ALLOW_MANAGER_ROLES)),
 ) -> dict:
-    """ADR-035: fire a platform system transition (closes Candidate; never sets stage=transition)."""
+    """ADR-035: fire a platform system transition (closes Candidate; may create Employee)."""
     from backend.app.services.company_module_access import get_effective_company_modules
     from backend.app.services.system_transition_runtime import (
         fire_candidate_system_transition as _fire,
@@ -3092,20 +3092,20 @@ async def fire_candidate_system_transition(
             mods = get_effective_company_modules(tenant_row, company_row)
             enabled = {k for k, v in (mods or {}).items() if v}
 
-    await _fire(
+    actor_id = str(getattr(current_user, "sub", None) or "").strip()
+    if not actor_id:
+        raise HTTPException(status_code=401, detail="Missing actor")
+
+    result = await _fire(
         db,
         candidate=c,
         catalog_key=catalog_key,
+        tenant_id=tenant_id_str,
+        actor_user_id=actor_id,
         enabled_modules=enabled,
     )
     await db.commit()
-    await db.refresh(c)
-    return {
-        "candidate_id": str(c.id),
-        "catalog_key": catalog_key,
-        "lifecycle_status": getattr(c, "lifecycle_status", None),
-        "stage": getattr(c, "stage", None),
-    }
+    return result
 
 
 from backend.app.api.v1.candidates import pipeline_overrides_api as _pipeline_overrides_api  # noqa: E402
