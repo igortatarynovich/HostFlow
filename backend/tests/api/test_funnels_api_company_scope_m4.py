@@ -29,3 +29,11 @@ def test_funnels_api_schema_allows_employee_type_constant() -> None:
     source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
     assert "FUNNEL_TYPE_PATTERN" in source
     assert "pattern=FUNNEL_TYPE_PATTERN" in source
+
+
+def test_funnels_mutate_handlers_inject_userctx_not_role_string() -> None:
+    """require_roles() returns str; ACL needs UserCtx — mixing them caused DELETE stage 500."""
+    source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
+    assert "current_user: UserCtx = Depends(require_roles" not in source
+    assert "current_user: UserCtx = Depends(get_current_user)" in source
+    assert "_role: str = Depends(require_roles" in source

@@ -584,7 +584,8 @@ async def get_funnel(
 async def create_funnel(
     payload: FunnelIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin, Role.hr_officer)),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.hr_officer)),
 ) -> FunnelOut:
     """Create a company-scoped operational funnel (recruitment or HR employee)."""
     import uuid
@@ -667,7 +668,8 @@ async def update_funnel(
     funnel_id: str,
     payload: FunnelPatchIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_roles(Role.manager, Role.admin)),
 ) -> FunnelOut:
     """Update a company-scoped funnel."""
     db, tenant_id = db_tenant
@@ -728,7 +730,8 @@ async def add_funnel_stage(
     funnel_id: str,
     payload: FunnelStageIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_roles(Role.manager, Role.admin)),
 ) -> FunnelStageOut:
     """Add stage to funnel."""
     import uuid
@@ -794,7 +797,8 @@ async def update_funnel_stage(
     stage_id: str,
     payload: FunnelStageIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_roles(Role.manager, Role.admin)),
 ) -> FunnelStageOut:
     """Update funnel stage."""
     db, tenant_id = db_tenant
@@ -866,7 +870,8 @@ async def delete_funnel_stage(
     funnel_id: str,
     stage_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.admin)),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_roles(Role.admin)),
 ) -> None:
     """Delete funnel stage."""
     db, tenant_id = db_tenant
@@ -922,7 +927,8 @@ async def delete_funnel_stage(
 async def delete_funnel(
     funnel_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_roles(Role.manager, Role.admin)),
 ) -> None:
     """Delete a custom funnel when it is not default and not referenced anywhere."""
     db, tenant_id = db_tenant
