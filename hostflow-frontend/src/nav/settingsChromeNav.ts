@@ -22,6 +22,8 @@ const SETTINGS_PATH_PREFIX_TAB: { prefix: string; tab: SettingsChromeTabKey }[] 
   { prefix: CRM_APP_PATHS.settingsTenants, tab: 'workspace' },
   { prefix: CRM_APP_PATHS.settingsLegal, tab: 'workspace' },
   { prefix: CRM_APP_PATHS.settingsTenantLinks, tab: 'workspace' },
+  { prefix: CRM_APP_PATHS.organization, tab: 'workspace' },
+  { prefix: CRM_APP_PATHS.myCompany, tab: 'workspace' },
   { prefix: CRM_APP_PATHS.settingsTtvReport, tab: 'recruitment_setup' },
   { prefix: CRM_APP_PATHS.settingsCustomFields, tab: 'recruitment_setup' },
   { prefix: CRM_APP_PATHS.settingsCandidateProfiles, tab: 'recruitment_setup' },
@@ -59,6 +61,12 @@ export function settingsChromeActiveTab(pathname: string, search: string): Setti
   if (pathname === CRM_APP_PATHS.settingsBilling || pathname.startsWith(`${CRM_APP_PATHS.settingsBilling}/`)) {
     return 'billing'
   }
+  if (pathname === CRM_APP_PATHS.organization || pathname.startsWith(`${CRM_APP_PATHS.organization}/`)) {
+    return 'workspace'
+  }
+  if (pathname === CRM_APP_PATHS.myCompany || pathname.startsWith(`${CRM_APP_PATHS.myCompany}/`)) {
+    return 'workspace'
+  }
 
   if (pathname === CRM_APP_PATHS.settings || pathname === `${CRM_APP_PATHS.settings}/`) {
     return 'overview'
@@ -79,7 +87,7 @@ export function settingsChromeTabHref(tab: SettingsChromeTabKey): string {
     case 'overview':
       return CRM_APP_PATHS.settings
     case 'workspace':
-      return CRM_APP_PATHS.myCompany
+      return CRM_APP_PATHS.organization
     case 'recruitment_setup':
       return CRM_APP_PATHS.settingsFunnels
     case 'sales_setup':

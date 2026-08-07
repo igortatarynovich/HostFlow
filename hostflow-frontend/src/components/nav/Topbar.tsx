@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   IconAlertTriangle,
   IconBell,
+  IconBuilding,
   IconChecklist,
   IconHome,
   IconLayoutSidebarLeftExpand,
@@ -1054,7 +1055,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                   </button>
                 </div>
 
-                {can('companies.view') && (
+                {(can('companies.view') || can('settings.view') || can('admin.users')) && (
                   <div className="border-b border-slate-100 px-4 py-2">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                       {t('app.shell.sidebar.section_organization')}
@@ -1064,12 +1065,25 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                       className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
                       onClick={() => {
                         setMenuOpen(false)
-                        navigate(CRM_APP_PATHS.myCompany)
+                        navigate(CRM_APP_PATHS.organization)
                       }}
                     >
                       <IconHome size={16} stroke={1.8} />
-                      <span>{t('app.nav.items.my_company')}</span>
+                      <span>{t('app.nav.items.organization', { defaultValue: 'Organization' })}</span>
                     </button>
+                    {can('companies.view') ? (
+                      <button
+                        type="button"
+                        className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
+                        onClick={() => {
+                          setMenuOpen(false)
+                          navigate(CRM_APP_PATHS.myCompany)
+                        }}
+                      >
+                        <IconBuilding size={16} stroke={1.8} />
+                        <span>{t('app.nav.items.my_company')}</span>
+                      </button>
+                    ) : null}
                   </div>
                 )}
 

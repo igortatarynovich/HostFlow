@@ -106,6 +106,8 @@ export const CRM_APP_PATHS = {
   /** Legacy aggregate URL kept for redirects/bookmarks. */
   communicationsLegacyHub: "/app/communications",
   profile: "/app/profile",
+  /** Tenant organization hub — subscription, modules, users, operating companies list (not OwnCompany legal profile). */
+  organization: "/app/organization",
   myCompany: "/app/my-company",
   myAvailability: "/app/my-availability",
   teamAvailability: "/app/team-availability",

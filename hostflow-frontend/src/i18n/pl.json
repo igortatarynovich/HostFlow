@@ -928,7 +928,8 @@
         "automation_rules": "Reguły automatyzacji",
         "settings_hiring_gates": "Bramki lejka rekrutacji",
         "settings_risk_intel": "Ryzyko operacyjne",
-        "hr_inbox": "HR Inbox"
+        "hr_inbox": "HR Inbox",
+        "organization": "Organizacja"
       },
       "hr": {
         "workspace": {
@@ -9089,6 +9090,73 @@
           "talk_to_sales": "Skontaktuj się z sprzedażą"
         }
       }
+    },
+    "organization": {
+      "title": "Organizacja",
+      "subtitle": "Subskrypcja workspace, moduły, użytkownicy i firmy operacyjne.",
+      "errors": {
+        "load_failed": "Nie udało się wczytać huba organizacji"
+      },
+      "identity": {
+        "workspace": "Workspace",
+        "companies": "Firmy",
+        "owner": "Właściciel",
+        "hint": "Dane prawne firmy są w profilu firmy, nie tutaj."
+      },
+      "subscription": {
+        "title": "Subskrypcja",
+        "plan": "Plan",
+        "period": "Okres",
+        "slots": "Sloty firm",
+        "available": "Dostępne",
+        "payment": "Płatność",
+        "paid": "Opłacone",
+        "unpaid": "Sprawdź billing",
+        "manage": "Zarządzaj subskrypcją",
+        "no_access": "Szczegóły billingu są dostępne dla administratorów.",
+        "status": {
+          "active": "Aktywna",
+          "trialing": "Trial",
+          "trial": "Trial",
+          "past_due": "Zaległa",
+          "canceled": "Anulowana",
+          "unknown": "Nieznany",
+          "restricted": "Brak dostępu"
+        }
+      },
+      "operations": {
+        "title": "Sloty firm",
+        "unlimited": "Nielimitowane sloty firm w tym planie.",
+        "used_label": "slotów użytych",
+        "used": "Użyte: {count}",
+        "available": "Dostępne: {count}",
+        "details": "Szczegóły slotów"
+      },
+      "modules": {
+        "title": "Moduły",
+        "subtitle": "Moduły włączone w tym workspace.",
+        "empty": "Lista modułów niedostępna.",
+        "all": "Wszystkie moduły"
+      },
+      "companies": {
+        "title": "Firmy",
+        "subtitle": "Profile firm operacyjnych w tym workspace.",
+        "empty": "Brak firm operacyjnych.",
+        "open_profile": "Otwórz profil firmy",
+        "create": "Utwórz firmę"
+      },
+      "users": {
+        "title": "Użytkownicy",
+        "subtitle": "Aktywni użytkownicy workspace.",
+        "empty": "Lista użytkowników niedostępna.",
+        "manage": "Zarządzaj użytkownikami"
+      },
+      "billing_docs": {
+        "title": "Billing i dokumenty",
+        "subtitle": "Płatności i dokumenty rozliczeniowe workspace.",
+        "history": "Historia płatności",
+        "closing": "Dokumenty rozliczeniowe"
+      }
     }
   },
   "public": {
@@ -11889,7 +11957,7 @@
           "description": "Tworzenie i obsługa przestrzeni klientów."
         },
         "my_company": {
-          "description": "Profil agencji, branding i dane na poziomie firmy (poza drzewem ustawień)."
+          "description": "Profil podmiotu prawnego: dane firmowe, bank, branding i kontakty."
         },
         "integrations_hub": {
           "label": "Hub integracji",
@@ -11986,6 +12054,9 @@
         "merge_templates": {
           "label": "Szablony łączenia",
           "description": "Szablony tekstowe do generowania dokumentów kandydata."
+        },
+        "organization": {
+          "description": "Subskrypcja workspace, moduły, użytkownicy i firmy operacyjne."
         }
       },
       "audit": {

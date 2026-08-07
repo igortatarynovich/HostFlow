@@ -69,7 +69,7 @@ export const SIDEBAR_AGENCY_DOCUMENTS_ORDER = ['documents'] as const
 export const SIDEBAR_AGENCY_AUTOMATIONS_ORDER = ['automations'] as const
 export const SIDEBAR_AGENCY_INTEGRATIONS_ORDER = ['settings-integrations'] as const
 export const SIDEBAR_AGENCY_ANALYTICS_ORDER = [] as const
-export const SIDEBAR_AGENCY_ORGANIZATION_ORDER = ['my-company'] as const
+export const SIDEBAR_AGENCY_ORGANIZATION_ORDER = ['organization'] as const
 export const SIDEBAR_AGENCY_SETTINGS_HUB_ORDER = ['settings'] as const
 export const SIDEBAR_AGENCY_PROFILE_ORDER = ['profile'] as const
 
@@ -80,6 +80,7 @@ export function financeSidebarOrder(_showFinanceSection: boolean): readonly stri
 
 /** Deep links opened from Automations / Settings / Integrations hubs — not primary rail rows. */
 export const SIDEBAR_HUB_NAV_ITEM_KEYS = [
+  'my-company',
   'automation-rules',
   'automation-log',
   'leads-distribution',

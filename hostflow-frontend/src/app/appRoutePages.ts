@@ -20,6 +20,7 @@ export const Candidates = lazy(() => loadCandidatesList().then((m) => ({ default
 export const CandidateCard = lazy(() => loadCandidateCard().then((m) => ({ default: m.CandidateCard })))
 export const Companies = lazy(() => loadCrmCore().then((m) => ({ default: m.Companies })))
 export const MyCompanyPage = lazy(() => loadCrmCore().then((m) => ({ default: m.MyCompanyPage })))
+export const OrganizationHubPage = lazy(() => loadCrmCore().then((m) => ({ default: m.OrganizationHubPage })))
 export const Vacancies = lazy(() => loadCrmCore().then((m) => ({ default: m.Vacancies })))
 export const VacancyDetailRoute = lazy(() => loadCrmCore().then((m) => ({ default: m.VacancyDetailRoute })))
 export const ServicesPage = lazy(() => loadCrmServices().then((m) => ({ default: m.ServicesPage })))

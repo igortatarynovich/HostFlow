@@ -67,6 +67,7 @@ const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
   legal: IconShield,
   tenant_links: IconLink,
   my_company: IconHome,
+  organization: IconHome,
   billing: IconCreditCard,
   integrations_hub: IconPlugConnected,
   ruleset: IconSettings,
@@ -162,9 +163,22 @@ export default function SettingsLandingPage() {
         superadminOnly: true,
       },
       {
+        key: 'organization',
+        label: t('app.nav.items.organization', { defaultValue: 'Organization' }),
+        description: t('admin.settings.cards.organization.description', {
+          defaultValue: 'Workspace subscription, modules, users and operating companies.',
+        }),
+        target: CRM_APP_PATHS.organization,
+        roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'compliance_officer', 'hr_officer', 'viewer'],
+        section: 'workspace',
+        requiresCompaniesView: true,
+      },
+      {
         key: 'my_company',
         label: t('app.nav.items.my_company'),
-        description: t('admin.settings.cards.my_company.description'),
+        description: t('admin.settings.cards.my_company.description', {
+          defaultValue: 'Legal entity profile: requisites, bank accounts, branding and contacts.',
+        }),
         target: CRM_APP_PATHS.myCompany,
         roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'compliance_officer', 'hr_officer', 'viewer'],
         section: 'workspace',

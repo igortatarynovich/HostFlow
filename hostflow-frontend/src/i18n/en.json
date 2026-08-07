@@ -946,7 +946,8 @@
         "marketing_diagnostics": "Diagnostics",
         "automation_rules": "Automation rules",
         "settings_hiring_gates": "Hiring pipeline gates",
-        "settings_risk_intel": "Risk intelligence"
+        "settings_risk_intel": "Risk intelligence",
+        "organization": "Organization"
       },
       "hr": {
         "workspace": {
@@ -9089,6 +9090,73 @@
           "talk_to_sales": "Talk to sales"
         }
       }
+    },
+    "organization": {
+      "title": "Organization",
+      "subtitle": "Manage workspace subscription, modules, users and operating companies.",
+      "errors": {
+        "load_failed": "Failed to load organization hub"
+      },
+      "identity": {
+        "workspace": "Workspace",
+        "companies": "Companies",
+        "owner": "Owner",
+        "hint": "Legal entity details live in each company profile, not here."
+      },
+      "subscription": {
+        "title": "Subscription",
+        "plan": "Plan",
+        "period": "Period",
+        "slots": "Company slots",
+        "available": "Available",
+        "payment": "Payment",
+        "paid": "Paid",
+        "unpaid": "Check billing",
+        "manage": "Manage subscription",
+        "no_access": "Billing details are available to administrators.",
+        "status": {
+          "active": "Active",
+          "trialing": "Trial",
+          "trial": "Trial",
+          "past_due": "Past due",
+          "canceled": "Canceled",
+          "unknown": "Unknown",
+          "restricted": "Restricted"
+        }
+      },
+      "operations": {
+        "title": "Company slots",
+        "unlimited": "Unlimited company slots on this plan.",
+        "used_label": "slots used",
+        "used": "Used: {count}",
+        "available": "Available: {count}",
+        "details": "Slot details"
+      },
+      "modules": {
+        "title": "Modules",
+        "subtitle": "Modules enabled for this workspace.",
+        "empty": "Module list unavailable.",
+        "all": "All modules"
+      },
+      "companies": {
+        "title": "Companies",
+        "subtitle": "Operating company profiles in this workspace.",
+        "empty": "No operating companies yet.",
+        "open_profile": "Open company profile",
+        "create": "Create company"
+      },
+      "users": {
+        "title": "Users",
+        "subtitle": "Active users in this workspace.",
+        "empty": "User list unavailable.",
+        "manage": "Manage users"
+      },
+      "billing_docs": {
+        "title": "Billing & documents",
+        "subtitle": "Payments and closing documents for this workspace.",
+        "history": "Payment history",
+        "closing": "Closing documents"
+      }
     }
   },
   "public": {
@@ -11893,7 +11961,7 @@
           "description": "Single entry for connecting Meta, email, messengers, webhook, and Google placeholder. Open a tile, then use Inbox or Automations for day-to-day work."
         },
         "my_company": {
-          "description": "Agency profile, branding and company-level data (outside the settings subtree)."
+          "description": "Legal entity profile: requisites, bank accounts, branding and contacts."
         },
         "funnels": {
           "label": "Recruitment Pipelines (library)",
@@ -11986,6 +12054,9 @@
         "merge_templates": {
           "label": "Merge templates",
           "description": "Text merge templates for generated candidate documents."
+        },
+        "organization": {
+          "description": "Workspace subscription, modules, users and operating companies."
         }
       },
       "audit": {
