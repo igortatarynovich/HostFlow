@@ -129,9 +129,13 @@ export async function fetchUserAudit(
   return ensureArray<UserAuditEntry>(data)
 }
 
-export async function listTenantManagers(opts?: { tenantId?: string }): Promise<ManagerOption[]> {
+export async function listTenantManagers(
+  opts?: { tenantId?: string; roles?: string[] },
+): Promise<ManagerOption[]> {
   const client = resolveClient(opts?.tenantId)
-  const { data } = await client.get('/users/managers')
+  const params =
+    opts?.roles && opts.roles.length > 0 ? { roles: opts.roles.join(',') } : undefined
+  const { data } = await client.get('/users/managers', { params })
   return ensureArray<ManagerOption>(data)
 }
 

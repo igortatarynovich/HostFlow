@@ -11,10 +11,12 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { SectionCard } from '../ui/SectionCard'
 import { useI18n } from '../../i18n'
 import type { LocaleCode } from '../../i18n'
-import { EMPLOYMENT_TYPES, VACANCY_STATUSES, createVacancy, getVacancy, normalizeVacancyStatus, updateVacancy } from '../../api/vacancies'
-import type { EmploymentType, VacancyStatus } from '../../api/vacancies'
+import { EMPLOYMENT_TYPES, VACANCY_STATUSES, createVacancy, getVacancy, getVacancyRecruiters, normalizeVacancyStatus, putVacancyRecruiters, updateVacancy } from '../../api/vacancies'
+import type { EmploymentType, VacancyRecruiterPoolItem, VacancyStatus } from '../../api/vacancies'
 import { listSalesOrderLines, type SalesOrderLine } from '../../api/salesOrders'
 import { listCandidateProfiles, type CandidateProfile } from '../../api/candidate_profiles'
+import { listTenantManagers } from '../../api/users'
+import type { ManagerOption } from '../../api/types'
 import FunnelSelector from '../profile/FunnelSelector'
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -58,6 +60,8 @@ const vacancyFormSchema = z.object({
   employment_type: z.enum(EMPLOYMENT_ENUM),
   candidate_profile_id: z.string().optional().or(z.literal('')),
   funnel_id: z.string().optional().or(z.literal('')),
+  /** Primary vacancy owner (single). */
+  manager: z.string().optional().or(z.literal('')),
   // Lead qualification criteria (stored in vacancy.extra.lead_criteria_v1)
   criteria_min_experience_eu_years: z
     .union([z.string(), z.number()])
@@ -112,7 +116,7 @@ function ensurePersistedFields(normalized: any, source: any) {
     'status', 'state', 'stage',
     'salary_from', 'salary_to', 'currency',
     'is_open', 'is_active', 'is_archived',
-    'employment_type', 'location', 'company_id',
+    'employment_type', 'location', 'company_id', 'manager',
     'created_at', 'updated_at', 'tenant_id', 'company_name', 'headcount_target', 'candidate_count'
   ] as const
 
@@ -186,6 +190,7 @@ function toFormDefaults(source: any | null): VacancyFormValues {
     employment_type: normalizedEmployment,
     candidate_profile_id: source?.candidate_profile_id ?? '',
     funnel_id: source?.funnel_id ?? '',
+    manager: source?.manager ?? '',
     criteria_min_experience_eu_years: crit?.min_experience_eu_years ?? '',
     criteria_requires_documents: Array.isArray(crit?.requires_documents) ? crit.requires_documents.join(', ') : '',
     criteria_requires_candidate_documents_v1: Array.isArray(crit?.requires_candidate_documents_v1)
@@ -314,6 +319,9 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   const [requirementsPresets, setRequirementsPresets] = useState<VacancyRequirementsPreset[]>([])
   const [selectedPresetId, setSelectedPresetId] = useState<string>('')
   const [orderLines, setOrderLines] = useState<SalesOrderLine[]>([])
+  const [managerOptions, setManagerOptions] = useState<ManagerOption[]>([])
+  const [recruiterOptions, setRecruiterOptions] = useState<ManagerOption[]>([])
+  const [poolDraft, setPoolDraft] = useState<Record<string, { selected: boolean; weight: number }>>({})
   const isCreate = !item && routeId === 'new'
 
   const {
@@ -370,6 +378,65 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   useEffect(() => {
     resetForm(toFormDefaults(model))
   }, [model, resetForm])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [managers, recruiters] = await Promise.all([
+          listTenantManagers(),
+          listTenantManagers({ roles: ['recruiter'] }),
+        ])
+        if (!cancelled) {
+          setManagerOptions(managers)
+          setRecruiterOptions(recruiters)
+        }
+      } catch {
+        if (!cancelled) {
+          setManagerOptions([])
+          setRecruiterOptions([])
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const syncPoolDraftFromItems = useCallback(
+    (items: VacancyRecruiterPoolItem[], recruiters: ManagerOption[]) => {
+      const next: Record<string, { selected: boolean; weight: number }> = {}
+      for (const opt of recruiters) {
+        next[opt.id] = { selected: false, weight: 1 }
+      }
+      for (const item of items) {
+        next[item.user_id] = {
+          selected: true,
+          weight: Math.max(1, Number(item.weight) || 1),
+        }
+      }
+      setPoolDraft(next)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!model?.id || isCreate) {
+      syncPoolDraftFromItems([], recruiterOptions)
+      return
+    }
+    let cancelled = false
+    getVacancyRecruiters(String(model.id))
+      .then((data) => {
+        if (!cancelled) syncPoolDraftFromItems(data.items, recruiterOptions)
+      })
+      .catch(() => {
+        if (!cancelled) syncPoolDraftFromItems([], recruiterOptions)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [model?.id, isCreate, recruiterOptions, syncPoolDraftFromItems])
 
   useEffect(() => {
     let cancelled = false
@@ -590,7 +657,21 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
           ? await updateVacancy(model!.id, payload)
           : await createVacancy(payload)
 
-        const latest = mode === 'update' ? await getVacancy(model!.id) : response
+        const vacancyId = String(
+          mode === 'update' ? model!.id : (response?.id || response?.vacancy_id || ''),
+        )
+        if (vacancyId) {
+          const poolItems = Object.entries(poolDraft)
+            .filter(([, row]) => row.selected)
+            .map(([userId, row]) => ({
+              user_id: userId,
+              weight: Math.max(1, Math.min(100, Number(row.weight) || 1)),
+              is_active: true,
+            }))
+          await putVacancyRecruiters(vacancyId, poolItems)
+        }
+
+        const latest = mode === 'update' ? await getVacancy(model!.id) : (vacancyId ? await getVacancy(vacancyId) : response)
         const hydrated = hydrateSavedWithForm(latest, values, payload)
         const ensured = ensurePersistedFields(hydrated, latest)
 
@@ -617,7 +698,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         setSaving(false)
       }
     },
-    [model, planLimitModal, resetForm, t, bumpNextActionTick]
+    [model, planLimitModal, poolDraft, resetForm, t, bumpNextActionTick]
   )
 
   const save = useCallback(async () => {
@@ -1068,6 +1149,110 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                   })}
                 </p>
               ) : null}
+            </div>
+
+            <div className="block md:col-span-2 space-y-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+              <div>
+                <div className="label">
+                  {t('app.vacancies.detail.assignment.title', { defaultValue: 'Assignment' })}
+                </div>
+                <p className="text-xs text-slate-500">
+                  {t('app.vacancies.detail.assignment.hint', {
+                    defaultValue:
+                      'Manager is the primary owner. Recruiters in the pool receive new candidates (least-load / rotation). If the pool is empty, assignment falls back to manager, then admins.',
+                  })}
+                </p>
+              </div>
+
+              <label className="block max-w-xl">
+                <div className="label">
+                  {t('app.vacancies.detail.assignment.manager', { defaultValue: 'Vacancy manager' })}
+                </div>
+                <select className="input" {...register('manager')}>
+                  <option value="">
+                    {t('app.vacancies.detail.assignment.manager_none', { defaultValue: '— not set —' })}
+                  </option>
+                  {managerOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label || opt.full_name || opt.email || opt.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div>
+                <div className="label">
+                  {t('app.vacancies.detail.assignment.recruiters', {
+                    defaultValue: 'Recruiters on this vacancy',
+                  })}
+                </div>
+                {recruiterOptions.length === 0 ? (
+                  <p className="text-xs text-amber-700">
+                    {t('app.vacancies.detail.assignment.no_recruiters', {
+                      defaultValue: 'No active recruiters in this tenant. Invite a user with role Recruiter first.',
+                    })}
+                  </p>
+                ) : (
+                  <ul className="mt-1 space-y-2">
+                    {recruiterOptions.map((opt) => {
+                      const row = poolDraft[opt.id] || { selected: false, weight: 1 }
+                      return (
+                        <li
+                          key={opt.id}
+                          className="flex flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2"
+                        >
+                          <label className="flex min-w-[12rem] flex-1 items-center gap-2 text-sm text-slate-800">
+                            <input
+                              type="checkbox"
+                              checked={row.selected}
+                              onChange={(e) => {
+                                const checked = e.target.checked
+                                setPoolDraft((prev) => ({
+                                  ...prev,
+                                  [opt.id]: {
+                                    selected: checked,
+                                    weight: prev[opt.id]?.weight ?? 1,
+                                  },
+                                }))
+                              }}
+                            />
+                            <span>{opt.label || opt.full_name || opt.email || opt.id}</span>
+                          </label>
+                          <label className="flex items-center gap-2 text-xs text-slate-600">
+                            <span>
+                              {t('app.vacancies.detail.assignment.weight', { defaultValue: 'Weight' })}
+                            </span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              className="input w-20"
+                              disabled={!row.selected}
+                              value={row.weight}
+                              onChange={(e) => {
+                                const n = Math.max(1, Math.min(100, Number(e.target.value) || 1))
+                                setPoolDraft((prev) => ({
+                                  ...prev,
+                                  [opt.id]: {
+                                    selected: prev[opt.id]?.selected ?? false,
+                                    weight: n,
+                                  },
+                                }))
+                              }}
+                            />
+                          </label>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                <p className="mt-2 text-xs text-slate-500">
+                  {t('app.vacancies.detail.assignment.rotation_hint', {
+                    defaultValue:
+                      'Equal weights rotate by load and last assignment. Higher weight receives more candidates.',
+                  })}
+                </p>
+              </div>
             </div>
 
             <label className="block">

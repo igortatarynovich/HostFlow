@@ -1426,6 +1426,16 @@
           "headcount_target": "Docelowy headcount (etaty)",
           "headcount_hint": "Planowane zatrudnienia na tę rolę. Zostaw puste, jeśli nieużywane."
         },
+        "assignment": {
+          "title": "Przypisanie",
+          "hint": "Manager jest głównym właścicielem wakatu. Rekruterzy z puli dostają nowych kandydatów (least-load / rotacja). Jeśli pula jest pusta, przypisanie spada na managera, potem na adminów.",
+          "manager": "Manager wakatu",
+          "manager_none": "— nie wybrano —",
+          "recruiters": "Rekruterzy na tym wakacie",
+          "no_recruiters": "Brak aktywnych rekruterów w tenancie. Najpierw zaproś użytkownika z rolą Recruiter.",
+          "weight": "Waga",
+          "rotation_hint": "Równe wagi rotują wg obciążenia i ostatniego przypisania. Wyższa waga = więcej kandydatów."
+        },
         "criteria": {
           "title": "Kryteria leadów (auto-kwalifikacja)",
           "documents_placeholder": "np. karta_pobytu, wp_a",

@@ -305,13 +305,13 @@ class VacancyService:
         if stage_val is not None:
             values["stage"] = stage_val
 
-        if payload.manager is not None:
+        fields_set = getattr(payload, "model_fields_set", None) or set()
+        if "manager" in fields_set:
             values["manager"] = str(payload.manager) if payload.manager else None
 
         if payload.candidate_profile_id is not None:
             values["candidate_profile_id"] = str(payload.candidate_profile_id) if payload.candidate_profile_id else None
 
-        fields_set = getattr(payload, "model_fields_set", None) or set()
         if "funnel_id" in fields_set:
             company_for_funnel = str(
                 values.get("company_id")

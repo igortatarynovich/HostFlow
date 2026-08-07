@@ -30,7 +30,9 @@
 | `GET /api/v1/vacancies` | Список вакансий с фильтрами | ✅ |
 | `GET /api/v1/vacancies/{id}` | Детали вакансии | ✅ |
 | `POST /api/v1/vacancies` | Создание вакансии | ✅ (Owner, Manager) |
-| `PATCH /api/v1/vacancies/{id}` | Обновление данных | ✅ (Owner, Manager) |
+| `PATCH /api/v1/vacancies/{id}` | Обновление данных (в т.ч. `manager`) | ✅ (Owner, Manager) |
+| `GET /api/v1/vacancies/{id}/recruiters` | Пул рекрутеров вакансии (auto-assign) | ✅ |
+| `PUT /api/v1/vacancies/{id}/recruiters` | Полная замена пула (`user_id`, `weight`, `is_active`) | ✅ (admin / supervisor) |
 | `PATCH /api/v1/vacancies/{id}/toggle-active` | Переключение статуса активности | ✅ (Owner) |
 | `GET /api/v1/vacancies?company_id={id}` | Получить вакансии конкретной компании | ✅ |
 
@@ -47,7 +49,7 @@
 - **VacancyList** — таблица, аналогичная Candidates, с фильтрацией по статусу, компании, типу занятости.  
 - **VacancyCard** — вкладки:
   - **Candidates** — список связанных кандидатов (канбан-счётчики + таблица).  
-  - **Details** — поля вакансии, редактирование.  
+  - **Details** — поля вакансии, редактирование; блок **Assignment**: менеджер вакансии + пул рекрутеров (вес, ротация least-load).  
 - **VacancyForm** — форма создания/редактирования с валидацией enum и обязательного поля `title`.  
 - Кнопка `Toggle Active` переключает `is_open` и `is_active` с подтверждением.  
 

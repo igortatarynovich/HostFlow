@@ -162,6 +162,10 @@ export function buildVacancyPayload(
     payload.funnel_id = form.funnel_id || null
   }
 
+  if (typeof form.manager !== 'undefined') {
+    payload.manager = form.manager || null
+  }
+
   if (form.status) {
     const s = String(form.status)
     payload.status = s

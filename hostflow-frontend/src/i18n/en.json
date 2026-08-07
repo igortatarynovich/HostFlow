@@ -1444,6 +1444,16 @@
           "headcount_target": "Target headcount (positions)",
           "headcount_hint": "Planned hires for this role. Leave empty if not used."
         },
+        "assignment": {
+          "title": "Assignment",
+          "hint": "Manager is the primary owner. Recruiters in the pool receive new candidates (least-load / rotation). If the pool is empty, assignment falls back to manager, then admins.",
+          "manager": "Vacancy manager",
+          "manager_none": "— not set —",
+          "recruiters": "Recruiters on this vacancy",
+          "no_recruiters": "No active recruiters in this tenant. Invite a user with role Recruiter first.",
+          "weight": "Weight",
+          "rotation_hint": "Equal weights rotate by load and last assignment. Higher weight receives more candidates."
+        },
         "criteria": {
           "title": "Lead criteria (auto-qualification)",
           "documents_placeholder": "e.g. karta_pobytu, wp_a",
