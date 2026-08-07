@@ -8575,18 +8575,18 @@
       "compact_hint": "Compact hint",
       "company_type": "Company type",
       "company_type_hint": "Company type hint",
-      "create": "Create",
+      "create": "Create my company",
       "empty": {
-        "limit_reached": "Limit reached",
-        "subtitle": "Subtitle",
-        "title": "Title"
+        "limit_reached": "Operating company slots are fully used. Add an extra slot in Billing to create another company.",
+        "subtitle": "Create your own company profile first. Client companies do not replace your operating profile.",
+        "title": "No operating company yet"
       },
       "manage_access": "Manage access",
       "missing_tax_id": "Missing tax ID",
       "open_billing": "Open billing",
       "open_invoices": "Open invoices",
-      "subtitle": "Subtitle",
-      "title": "Title",
+      "subtitle": "Operating company profile: legal data, bank details, branding and contacts.",
+      "title": "My Company",
       "workspace": {
         "bank_accounts": "Bank accounts",
         "billing": "Billing",
@@ -8594,6 +8594,82 @@
         "legal": "Legal",
         "subtitle": "Subtitle",
         "title": "Title"
+      },
+      "profile": {
+        "switch_label": "Company profile",
+        "type_unknown": "Company",
+        "copied": "Copied",
+        "copy_failed": "Could not copy",
+        "status": {
+          "active": "Active",
+          "archived": "Archived"
+        },
+        "tabs": {
+          "overview": "Overview",
+          "requisites": "Requisites",
+          "bank": "Bank accounts",
+          "documents": "Documents",
+          "contacts": "Contacts",
+          "related": "Related entities",
+          "history": "History"
+        },
+        "basic": {
+          "title": "Basic information",
+          "legal_name": "Legal name",
+          "type": "Company type",
+          "industry": "Industry",
+          "created": "Created",
+          "status": "Status"
+        },
+        "stats": {
+          "title": "Quick stats",
+          "employees": "Employees",
+          "vacancies": "Vacancies",
+          "clients": "Clients",
+          "orders": "Orders",
+          "go_employees": "Go to employees",
+          "go_vacancies": "Go to vacancies",
+          "go_clients": "Go to clients",
+          "go_orders": "Go to orders"
+        },
+        "legal": {
+          "title": "Legal data",
+          "edit": "Edit details",
+          "address": "Legal address",
+          "country": "Country"
+        },
+        "bank": {
+          "title": "Bank accounts",
+          "add": "Add account",
+          "empty": "No bank accounts yet.",
+          "view_all": "View all accounts",
+          "primary": "Primary"
+        },
+        "branding": {
+          "title": "Branding",
+          "primary": "Primary",
+          "secondary": "Secondary",
+          "edit": "Edit branding"
+        },
+        "contacts": {
+          "title": "Company contacts",
+          "add": "Add contact",
+          "empty": "No contacts yet."
+        },
+        "documents": {
+          "title": "Company documents",
+          "add": "Add document",
+          "empty": "Company documents will appear here when attached to this profile."
+        },
+        "history": {
+          "title": "Recent changes",
+          "updated": "Profile updated",
+          "created": "Company created",
+          "empty": "No recent changes."
+        },
+        "related": {
+          "hint": "Clients, vacancies and orders linked to this operating company."
+        }
       }
     },
     "onboarding": {

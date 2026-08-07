@@ -8502,18 +8502,18 @@
       "compact_hint": "Kompaktowa wskazówka",
       "company_type": "Typ firmy",
       "company_type_hint": "Wskazówka dotycząca rodzaju firmy",
-      "create": "Utwórz",
+      "create": "Utwórz firmę",
       "empty": {
-        "limit_reached": "Limit osiągnięty",
-        "subtitle": "Podtytuł",
-        "title": "Tytuł"
+        "limit_reached": "Limit firm operacyjnych wyczerpany. Dodaj slot w Billing, aby utworzyć kolejną.",
+        "subtitle": "Najpierw utwórz profil własnej firmy. Firmy klientów go nie zastępują.",
+        "title": "Brak firmy operacyjnej"
       },
       "manage_access": "Zarządzaj dostępem",
       "missing_tax_id": "Brak identyfikatora podatkowego",
       "open_billing": "Otwórz rozliczenia",
       "open_invoices": "Otwarte faktury",
-      "subtitle": "Podtytuł",
-      "title": "Tytuł",
+      "subtitle": "Profil firmy operacyjnej: dane prawne, bank, branding i kontakty.",
+      "title": "Moja firma",
       "workspace": {
         "bank_accounts": "Konta bankowe",
         "billing": "Rozliczenia",
@@ -8521,6 +8521,82 @@
         "legal": "Legalne",
         "subtitle": "Podtytuł",
         "title": "Tytuł"
+      },
+      "profile": {
+        "switch_label": "Profil firmy",
+        "type_unknown": "Firma",
+        "copied": "Skopiowano",
+        "copy_failed": "Nie udało się skopiować",
+        "status": {
+          "active": "Aktywna",
+          "archived": "Zarchiwizowana"
+        },
+        "tabs": {
+          "overview": "Przegląd",
+          "requisites": "Dane firmowe",
+          "bank": "Konta bankowe",
+          "documents": "Dokumenty",
+          "contacts": "Kontakty",
+          "related": "Powiązane podmioty",
+          "history": "Historia"
+        },
+        "basic": {
+          "title": "Podstawowe informacje",
+          "legal_name": "Nazwa prawna",
+          "type": "Typ firmy",
+          "industry": "Branża",
+          "created": "Data utworzenia",
+          "status": "Status"
+        },
+        "stats": {
+          "title": "Szybkie statystyki",
+          "employees": "Pracownicy",
+          "vacancies": "Wakaty",
+          "clients": "Klienci",
+          "orders": "Zamówienia",
+          "go_employees": "Przejdź do pracowników",
+          "go_vacancies": "Przejdź do wakatów",
+          "go_clients": "Przejdź do klientów",
+          "go_orders": "Przejdź do zamówień"
+        },
+        "legal": {
+          "title": "Dane prawne",
+          "edit": "Edytuj dane",
+          "address": "Adres prawny",
+          "country": "Kraj"
+        },
+        "bank": {
+          "title": "Konta bankowe",
+          "add": "Dodaj konto",
+          "empty": "Brak kont bankowych.",
+          "view_all": "Wszystkie konta",
+          "primary": "Główne"
+        },
+        "branding": {
+          "title": "Branding",
+          "primary": "Główny",
+          "secondary": "Dodatkowy",
+          "edit": "Edytuj branding"
+        },
+        "contacts": {
+          "title": "Kontakty firmy",
+          "add": "Dodaj kontakt",
+          "empty": "Brak kontaktów."
+        },
+        "documents": {
+          "title": "Dokumenty firmy",
+          "add": "Dodaj dokument",
+          "empty": "Dokumenty firmy pojawią się tutaj po przypisaniu do profilu."
+        },
+        "history": {
+          "title": "Ostatnie zmiany",
+          "updated": "Zaktualizowano profil",
+          "created": "Utworzono firmę",
+          "empty": "Brak ostatnich zmian."
+        },
+        "related": {
+          "hint": "Klienci, wakaty i zamówienia powiązane z tą firmą operacyjną."
+        }
       }
     },
     "onboarding": {
