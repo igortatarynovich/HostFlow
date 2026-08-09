@@ -63,7 +63,7 @@ export function SuccessPathReadinessPanel({
     } catch {
       setDemoError(
         t('app.onboarding.success_path.demo_seed_error', {
-          defaultValue: 'Could not load sample data. Admin role required.',
+          defaultValue: 'Не удалось загрузить учебные данные. Нужны права администратора.',
         }),
       )
     } finally {
@@ -80,7 +80,7 @@ export function SuccessPathReadinessPanel({
     } catch {
       setDemoError(
         t('app.onboarding.success_path.demo_clear_error', {
-          defaultValue: 'Could not clear sample data. Admin role required.',
+          defaultValue: 'Не удалось удалить учебные данные. Нужны права администратора.',
         }),
       )
     } finally {
@@ -97,7 +97,7 @@ export function SuccessPathReadinessPanel({
       >
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <IconLoader2 size={18} className="animate-spin" aria-hidden />
-          {t('app.onboarding.success_path.loading', { defaultValue: 'Preparing your next step…' })}
+          {t('app.onboarding.success_path.loading', { defaultValue: 'Готовим следующий шаг…' })}
         </div>
       </section>
     )
@@ -127,18 +127,18 @@ export function SuccessPathReadinessPanel({
       data-business-type={businessType}
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-        {t('app.onboarding.success_path.badge', { defaultValue: 'Result' })}
+        {t('app.onboarding.success_path.badge', { defaultValue: 'С чего начать' })}
       </p>
       <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
         {pathComplete
           ? t(titleKey, {
               defaultValue: t('app.onboarding.success_path.title_done', {
-                defaultValue: 'You can close vacancies from here',
+                defaultValue: 'Можно работать в системе',
               }),
             })
           : t(titleKey, {
               defaultValue: t('app.onboarding.success_path.title', {
-                defaultValue: 'Close vacancies faster — start here',
+                defaultValue: 'Первые шаги в HostFlow',
               }),
             })}
       </h2>
@@ -146,13 +146,13 @@ export function SuccessPathReadinessPanel({
         {pathComplete
           ? t(subtitleKey, {
               defaultValue: t('app.onboarding.success_path.subtitle_done', {
-                defaultValue: 'The basics are done. Keep candidates moving in the pipeline.',
+                defaultValue: 'База готова. Ведите людей по этапам дальше.',
               }),
             })
           : t(subtitleKey, {
               defaultValue: t('app.onboarding.success_path.subtitle', {
                 defaultValue:
-                  'One action at a time until applications land and you contact the first candidate.',
+                  'Закройте шаги по одному: так появятся вакансия, заявка и контакт с человеком.',
               }),
             })}
       </p>
@@ -160,7 +160,7 @@ export function SuccessPathReadinessPanel({
       {nextAction ? (
         <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50/60 p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">
-            {t('app.onboarding.success_path.next_title', { defaultValue: 'Do this now' })}
+            {t('app.onboarding.success_path.next_title', { defaultValue: 'Сделайте сейчас' })}
           </p>
           <p className="mt-2 text-base font-semibold text-slate-900">
             {t(`app.onboarding.success_path.items.${nextAction.id}.label`, {
@@ -189,7 +189,7 @@ export function SuccessPathReadinessPanel({
                 onClick={() => deferMeta()}
                 className="rounded-xl px-4 py-3 text-sm font-medium text-slate-600 hover:bg-white hover:text-slate-900"
               >
-                {t('app.onboarding.success_path.defer_meta', { defaultValue: 'Skip for now' })}
+                {t('app.onboarding.success_path.defer_meta', { defaultValue: 'Пока пропустить' })}
               </button>
             ) : null}
             {needsLeadEscape && !demoSeeded ? (
@@ -203,7 +203,7 @@ export function SuccessPathReadinessPanel({
                 {demoBusy
                   ? t('common.saving', { defaultValue: 'Working…' })
                   : t('app.onboarding.success_path.demo_seed', {
-                      defaultValue: 'Load sample data',
+                      defaultValue: 'Загрузить учебные данные',
                     })}
               </button>
             ) : null}
@@ -213,20 +213,20 @@ export function SuccessPathReadinessPanel({
                 data-testid="success-path-next-open-leads"
                 className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50"
               >
-                {t('app.onboarding.success_path.demo_open_leads', { defaultValue: 'Open Leads' })}
+                {t('app.onboarding.success_path.demo_open_leads', { defaultValue: 'Открыть заявки' })}
               </Link>
             ) : null}
             <Link
               to={FAQ_LAUNCH}
               className="rounded-xl px-4 py-3 text-sm font-medium text-brand-700 hover:underline"
             >
-              {t('app.onboarding.success_path.open_faq', { defaultValue: 'Stuck? Open FAQ' })}
+              {t('app.onboarding.success_path.open_faq', { defaultValue: 'Застряли? Открыть FAQ' })}
             </Link>
             <Link
               to={DOCS_START}
               className="rounded-xl px-4 py-3 text-sm font-medium text-brand-700 hover:underline"
             >
-              {t('app.onboarding.success_path.open_docs', { defaultValue: 'Getting started guide' })}
+              {t('app.onboarding.success_path.open_docs', { defaultValue: 'Гайд «С чего начать»' })}
             </Link>
           </div>
           {demoError ? <p className="mt-2 text-xs text-rose-700">{demoError}</p> : null}
@@ -234,7 +234,7 @@ export function SuccessPathReadinessPanel({
             <p className="mt-3 text-xs text-slate-600">
               {t('app.onboarding.success_path.lead_escape_hint', {
                 defaultValue:
-                  'No ads yet? Load sample data, choose manual intake, or skip Meta — you will not get stuck.',
+                  'Нет рекламы? Загрузите учебные данные, выберите способ получения заявок или пропустите Meta.',
               })}
             </p>
           ) : null}
@@ -246,21 +246,21 @@ export function SuccessPathReadinessPanel({
         >
           <p className="text-sm font-semibold text-slate-900">
             {t('app.onboarding.success_path.recovery_title', {
-              defaultValue: 'Need a way forward?',
+              defaultValue: 'Нужен выход?',
             })}
           </p>
           <p className="mt-1 text-sm text-slate-700">
             {t('app.onboarding.success_path.recovery_body', {
               defaultValue:
-                'Open Getting started, load sample data, or read the launch FAQ. There is always a next step.',
+                'Откройте «Начать работу», загрузите учебные данные или FAQ по запуску. Следующий шаг всегда есть.',
             })}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link to={CRM_APP_PATHS.setup} className="btn-primary btn-sm">
-              {t('app.onboarding.success_path.recovery_setup', { defaultValue: 'Open start checklist' })}
+              {t('app.onboarding.success_path.recovery_setup', { defaultValue: 'Открыть чек-лист старта' })}
             </Link>
             <Link to={FAQ_LAUNCH} className="btn-secondary btn-sm">
-              {t('app.onboarding.success_path.open_faq', { defaultValue: 'Stuck? Open FAQ' })}
+              {t('app.onboarding.success_path.open_faq', { defaultValue: 'Застряли? Открыть FAQ' })}
             </Link>
             {!demoSeeded ? (
               <button
@@ -269,7 +269,7 @@ export function SuccessPathReadinessPanel({
                 disabled={demoBusy}
                 onClick={() => void handleSeedDemo()}
               >
-                {t('app.onboarding.success_path.demo_seed', { defaultValue: 'Load sample data' })}
+                {t('app.onboarding.success_path.demo_seed', { defaultValue: 'Загрузить учебные данные' })}
               </button>
             ) : null}
           </div>
@@ -283,18 +283,18 @@ export function SuccessPathReadinessPanel({
         >
           <p className="text-sm font-semibold text-slate-900">
             {t('app.onboarding.success_path.demo_title', {
-              defaultValue: 'Explore with sample data',
+              defaultValue: 'Посмотреть на примерах',
             })}
           </p>
           <p className="mt-1 text-sm text-slate-600">
             {demoSeeded
               ? t('app.onboarding.success_path.demo_active_hint', {
                   defaultValue:
-                    'Sample pack is loaded. Open Leads to click through, or clear it when you start real hiring.',
+                    'Учебные данные загружены. Откройте заявки или удалите их перед реальной работой.',
                 })
               : t('app.onboarding.success_path.demo_hint', {
                   defaultValue:
-                    'Load a sample pack (leads, candidates, tasks) to learn the product. You can wipe it in one click.',
+                    'Загрузите учебные заявки и кандидатов, чтобы понять экраны. Перед реальной работой удалите одним нажатием.',
                 })}
           </p>
           {demoError ? <p className="mt-2 text-xs text-rose-700">{demoError}</p> : null}
@@ -306,7 +306,7 @@ export function SuccessPathReadinessPanel({
                   className="btn-secondary btn-sm"
                   data-testid="success-path-demo-open-leads"
                 >
-                  {t('app.onboarding.success_path.demo_open_leads', { defaultValue: 'Open Leads' })}
+                  {t('app.onboarding.success_path.demo_open_leads', { defaultValue: 'Открыть заявки' })}
                 </Link>
                 <button
                   type="button"
@@ -318,7 +318,7 @@ export function SuccessPathReadinessPanel({
                   {demoBusy
                     ? t('common.saving', { defaultValue: 'Working…' })
                     : t('app.onboarding.success_path.demo_clear', {
-                        defaultValue: 'Clear sample data',
+                        defaultValue: 'Удалить учебные данные',
                       })}
                 </button>
               </>
@@ -333,7 +333,7 @@ export function SuccessPathReadinessPanel({
                 {demoBusy
                   ? t('common.saving', { defaultValue: 'Working…' })
                   : t('app.onboarding.success_path.demo_seed', {
-                      defaultValue: 'Load sample data',
+                      defaultValue: 'Загрузить учебные данные',
                     })}
               </button>
             )}

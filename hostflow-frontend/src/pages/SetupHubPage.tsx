@@ -17,10 +17,10 @@ export default function SetupHubPage() {
       <PageShellHeader>
         <PageHeader
           title={t('app.onboarding.success_path.page_title', {
-            defaultValue: 'Start hiring',
+            defaultValue: 'Начать работу',
           })}
           subtitle={t('app.onboarding.success_path.page_subtitle', {
-            defaultValue: 'Do the next step. Get to your first candidate without support.',
+            defaultValue: 'Один следующий шаг на экране — пока не будет заявки и контакта.',
           })}
           kind="browse"
           secondaryActions={
@@ -29,7 +29,7 @@ export default function SetupHubPage() {
               className="btn-secondary btn-sm"
               data-testid="m1-setup-back-launchpad"
             >
-              {t('app.launchpad.back', { defaultValue: '← Back to Launchpad' })}
+              {t('app.launchpad.back', { defaultValue: '← К началу работы' })}
             </Link>
           }
         />
@@ -44,13 +44,13 @@ export default function SetupHubPage() {
           >
             <h2 className="text-base font-semibold text-slate-900">
               {t('app.onboarding.success_path.result_ready_title', {
-                defaultValue: 'You are ready to hire',
+                defaultValue: 'Готово к работе',
               })}
             </h2>
             <p className="mt-2 text-sm text-slate-700">
               {t('app.onboarding.success_path.result_ready_body', {
                 defaultValue:
-                  'Company, vacancy, and pipeline are in place. Open Launchpad and keep processing candidates.',
+                  'Компания и первые шаги на месте. Откройте меню и продолжайте.',
               })}
             </p>
             <button

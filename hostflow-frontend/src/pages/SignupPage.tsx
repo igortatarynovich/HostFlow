@@ -23,6 +23,11 @@ import {
 import { recordTtvStepCompleted } from '../api/analytics'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
+function FieldHint({ children }: { children: string }) {
+  if (!children.trim()) return null
+  return <p className="mt-1 text-xs leading-relaxed text-slate-500">{children}</p>
+}
+
 export default function SignupPage() {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
@@ -124,7 +129,7 @@ export default function SignupPage() {
       await login(email.trim(), password)
       const params = signupContextToSearchParams(signupContext)
       navigate(`${CRM_APP_PATHS.onboardingCompany}?${params.toString()}`, { replace: true })
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (typeof window !== 'undefined') {
         try {
           window.sessionStorage.removeItem(SIGNUP_SUCCESS_CONTEXT_KEY)
@@ -148,33 +153,25 @@ export default function SignupPage() {
         <div className="card p-8">
           <PublicBrandingLogo showWordmark />
           <h1 className="mt-6 text-2xl font-semibold text-slate-900">
-            {t('app.signup.title', { defaultValue: 'Create your HostFlow account' })}
+            {t('app.signup.title', { defaultValue: 'Sign up for HostFlow' })}
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             {planLabel
               ? t('app.signup.subtitle_with_plan', {
                   defaultValue:
-                    'Selected plan: {plan}. After signup you’ll set up your company — billing is in Settings when you are ready.',
+                    'Plan {plan} was selected on Pricing. After this form you will describe your company, then you can confirm payment in Billing.',
                   values: { plan: planLabel },
                 })
               : t('app.signup.subtitle', {
                   defaultValue:
-                    'Enter your details. Next you’ll set up your company and take the first step in the product.',
+                    'Create login access so you can run vacancies, applications, and candidates in one place.',
                 })}
           </p>
-          {planLabel ? (
-            <p className="mt-2 text-xs font-medium text-brand-700">
-              {t('app.signup.selected_plan', {
-                defaultValue: 'Plan from pricing: {plan}',
-                values: { plan: planLabel },
-              })}
-            </p>
-          ) : null}
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <div>
               <label className="label">
-                {t('app.signup.fields.workspace', { defaultValue: 'Company name' })}
+                {t('app.signup.fields.workspace', { defaultValue: 'Your company name' })}
               </label>
               <input
                 className="input"
@@ -187,18 +184,30 @@ export default function SignupPage() {
                   defaultValue: 'e.g. Acme Recruiting',
                 })}
               />
+              <FieldHint>
+                {t('app.signup.fields.workspace_hint', {
+                  defaultValue: 'Shown in the product as your organization name.',
+                })}
+              </FieldHint>
             </div>
             <div>
-              <label className="label">{t('app.signup.fields.full_name', { defaultValue: 'Full name (optional)' })}</label>
+              <label className="label">
+                {t('app.signup.fields.full_name', { defaultValue: 'Your name (optional)' })}
+              </label>
               <input
                 className="input"
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                placeholder={t('app.signup.fields.full_name_placeholder', {
+                  defaultValue: 'How we should address you',
+                })}
               />
             </div>
             <div>
-              <label className="label">{t('app.login.fields.email')}</label>
+              <label className="label">
+                {t('app.signup.fields.email', { defaultValue: 'Work email' })}
+              </label>
               <input
                 className="input"
                 type="email"
@@ -206,10 +215,20 @@ export default function SignupPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder={t('app.signup.fields.email_placeholder', {
+                  defaultValue: 'you@company.com',
+                })}
               />
+              <FieldHint>
+                {t('app.signup.fields.email_hint', {
+                  defaultValue: 'Used to sign in and receive important account messages.',
+                })}
+              </FieldHint>
             </div>
             <div>
-              <label className="label">{t('app.signup.fields.password', { defaultValue: 'Password' })}</label>
+              <label className="label">
+                {t('app.signup.fields.password', { defaultValue: 'Password for sign-in' })}
+              </label>
               <input
                 className="input"
                 type="password"
@@ -219,9 +238,16 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <FieldHint>
+                {t('app.signup.fields.password_hint', {
+                  defaultValue: 'At least 8 characters.',
+                })}
+              </FieldHint>
             </div>
             <div>
-              <label className="label">{t('app.signup.fields.confirm', { defaultValue: 'Confirm password' })}</label>
+              <label className="label">
+                {t('app.signup.fields.confirm', { defaultValue: 'Repeat password' })}
+              </label>
               <input
                 className="input"
                 type="password"
@@ -231,6 +257,11 @@ export default function SignupPage() {
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
               />
+              <FieldHint>
+                {t('app.signup.fields.confirm_hint', {
+                  defaultValue: 'Must match the password above.',
+                })}
+              </FieldHint>
             </div>
             {error && (
               <ErrorRecoveryBanner
@@ -285,18 +316,12 @@ export default function SignupPage() {
             >
               {loading
                 ? t('common.loading')
-                : t('app.signup.submit', { defaultValue: 'Create account' })}
+                : t('app.signup.submit', { defaultValue: 'Create account and continue' })}
             </button>
             <p className="text-xs leading-relaxed text-slate-500">
-              {t('app.signup.legal_notice', { defaultValue: 'By creating an account, you confirm that you reviewed:' })}{' '}
-              <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
-                {t('app.signup.legal_notice_terms', { defaultValue: 'Terms of Service' })}
-              </a>
-              {', '}
-              <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
-                {t('app.signup.legal_notice_privacy', { defaultValue: 'Privacy Policy' })}
-              </a>
-              {', '}
+              {t('app.signup.legal_notice', {
+                defaultValue: 'Cookie use is described in the',
+              })}{' '}
               <a href="/legal/cookies.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
                 {t('app.signup.legal_notice_cookies', { defaultValue: 'Cookie Policy' })}
               </a>

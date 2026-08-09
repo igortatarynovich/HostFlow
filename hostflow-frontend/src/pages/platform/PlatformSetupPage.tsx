@@ -305,16 +305,16 @@ export default function PlatformSetupPage() {
   const stepSubtitle = useMemo(() => {
     if (step === 'identity') {
       return t('app.platform_setup.identity_subtitle', {
-        defaultValue: 'HostFlow подстроит терминологию и рекомендации под ваш контекст.',
+        defaultValue: 'От этого зависит, что вы увидите дальше: клиенты, вакансии или заявки.',
       })
     }
     if (step === 'intent') {
       return t('app.platform_setup.intent_subtitle', {
-        defaultValue: 'Первый модуль определяет, с чего начнём настройку.',
+        defaultValue: 'Выберите, с чего хотите начать работу в первый день.',
       })
     }
     return t('app.platform_setup.details_subtitle', {
-      defaultValue: 'Минимум данных — чтобы запустить выбранный модуль.',
+      defaultValue: 'Коротко о компании — чтобы открыть нужные экраны.',
     })
   }, [step, t])
 
@@ -323,16 +323,17 @@ export default function PlatformSetupPage() {
       <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="inline-flex items-center gap-1 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
           <IconChecklist size={14} stroke={1.9} />
-          {t('app.platform_setup.badge', { defaultValue: 'Настройка платформы' })}
+          {t('app.platform_setup.badge', { defaultValue: 'Компания' })}
         </div>
         <h1 className="mt-3 text-2xl font-semibold text-slate-900">
           {t('app.platform_setup.welcome_title', {
-            defaultValue: 'Давайте настроим HostFlow под ваш бизнес',
+            defaultValue: 'Расскажите о своей компании',
           })}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
           {t('app.platform_setup.welcome_subtitle', {
-            defaultValue: 'Это не регистрация — вы уже в системе. Осталось рассказать о бизнесе.',
+            defaultValue:
+              'Аккаунт уже создан. Эти ответы нужны, чтобы показать правильные экраны: для агентства, работодателя или услуг.',
           })}
         </p>
       </section>
@@ -549,7 +550,7 @@ export default function PlatformSetupPage() {
                 disabled={loading || (!slotGuardLoading && !hasAvailableOperatingSlots)}
                 className="btn-primary flex-1 py-3 disabled:opacity-50"
               >
-                {loading ? t('common.saving') : t('app.platform_setup.finish', { defaultValue: 'Открыть Launchpad' })}
+                {loading ? t('common.saving') : t('app.platform_setup.finish', { defaultValue: 'Перейти к первым шагам' })}
               </button>
             </div>
           </form>

@@ -27,9 +27,9 @@ const INTAKE_CARDS: IntakeCard[] = [
     id: 'sample',
     emoji: '🟧',
     titleKey: 'app.onboarding.setup.intake.sample.title',
-    titleDefault: 'Sample data',
+    titleDefault: 'Учебные данные',
     subtitleKey: 'app.onboarding.setup.intake.sample.subtitle',
-    subtitleDefault: 'Load example leads and try the product now — clear later in one click',
+    subtitleDefault: 'Загрузить примеры заявок и сразу попробовать систему — потом удалить одним нажатием',
     enabled: true,
     testId: 'm1-setup-intake-sample',
   },
@@ -162,13 +162,13 @@ export default function SetupCandidateIntakePage() {
   return (
     <SetupFlowChrome
       testId="m1-setup-intake-flow"
-      stepLabel={t('app.onboarding.setup.intake.badge', { defaultValue: 'Настройка · Кандидаты' })}
+      stepLabel={t('app.onboarding.setup.intake.badge', { defaultValue: 'Заявки' })}
       title={t('app.onboarding.setup.intake.title', {
-        defaultValue: 'Как вы хотите получать первых кандидатов?',
+        defaultValue: 'Как получать первые заявки?',
       })}
       subtitle={t('app.onboarding.setup.intake.subtitle', {
         defaultValue:
-          'Выберите способ. Нет рекламы сейчас — загрузите sample data или начните вручную. Meta можно позже.',
+          'Выберите способ. Нет рекламы сейчас — загрузите учебные данные или добавьте человека вручную. Рекламу Meta можно подключить позже.',
       })}
     >
       <div className="space-y-4">

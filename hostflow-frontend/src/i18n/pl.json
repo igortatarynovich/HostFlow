@@ -2324,21 +2324,29 @@
       "accept_terms_link": "Regulamin",
       "accept_privacy_prefix": "Akceptuję",
       "accept_privacy_link": "Politykę prywatności",
-      "legal_notice": "Tworząc konto, potwierdzasz, że zapoznałeś(-aś) się z:",
-      "legal_notice_terms": "Regulaminem",
-      "legal_notice_privacy": "Polityką prywatności",
-      "legal_notice_cookies": "Polityką cookies",
+      "legal_notice": "Jak używamy cookies — w",
+      "legal_notice_terms": "Regulaminie",
+      "legal_notice_privacy": "Polityce prywatności",
+      "legal_notice_cookies": "Polityce cookies",
       "errors": {
-        "consent_required": "Aby kontynuować, musisz zaakceptować Regulamin i Politykę prywatności.",
+        "consent_required": "Aby kontynuować, zaakceptuj Regulamin i Politykę prywatności.",
         "generic": "Rejestracja nie powiodła się. Spróbuj ponownie.",
         "password_mismatch": "Hasła nie są takie same",
-        "password_short": "Hasło musi mieć co najmniej 8 znaków"
+        "password_short": "Hasło musi mieć co najmniej 8 znaków",
+        "captcha_required": "Potwierdź, że nie jesteś robotem."
       },
       "fields": {
         "confirm": "Powtórz hasło",
-        "full_name": "Imię i nazwisko (opcjonalnie)",
-        "password": "Hasło",
-        "workspace": "Nazwa firmy",
+        "confirm_hint": "Musi być takie samo jak hasło powyżej.",
+        "email": "Firmowy email",
+        "email_hint": "Do logowania i ważnych wiadomości o koncie.",
+        "email_placeholder": "you@company.com",
+        "full_name": "Jak się do Ciebie zwracać (opcjonalnie)",
+        "full_name_placeholder": "Imię i nazwisko",
+        "password": "Hasło do logowania",
+        "password_hint": "Minimum 8 znaków.",
+        "workspace": "Nazwa Twojej firmy",
+        "workspace_hint": "Tak firma będzie widoczna w HostFlow (wakaty, zgłoszenia, zespół).",
         "workspace_placeholder": "np. Acme Recruiting"
       },
       "have_account": "Masz już konto?",
@@ -2349,10 +2357,10 @@
       },
       "selected_plan": "Plan z cennika: {plan}",
       "sign_in": "Zaloguj się",
-      "submit": "Utwórz konto",
-      "subtitle": "Podaj dane. Potem skonfigurujesz firmę i zrobisz pierwszy krok w produkcie.",
-      "subtitle_with_plan": "Wybrany plan: {plan}. Po rejestracji skonfigurujesz firmę — płatność w Billing, gdy będziesz gotowy.",
-      "title": "Utwórz konto HostFlow"
+      "submit": "Utwórz konto i kontynuuj",
+      "subtitle": "Załóż dostęp do logowania, aby prowadzić wakaty, zgłoszenia i kandydatów w jednym miejscu.",
+      "subtitle_with_plan": "Na cenniku wybrano plan {plan}. Po tym formularzu opiszesz firmę; płatność potwierdzisz w Billing, gdy będziesz gotowy.",
+      "title": "Rejestracja w HostFlow"
     },
     "login": {
       "title": "Zaloguj się do HostFlow",
@@ -7629,7 +7637,8 @@
         "col_inbox": "Skrzynka (new)",
         "hint": "Te same filtry co w tabeli; w każdej kolumnie do limitu poniżej.",
         "view_all": "Wszystkie na liście"
-      }
+      },
+      "empty_desc": "Utwórz wakat, potem wybierz: reklamy Meta, dane przykładowe albo wpis ręczny — zgłoszenia pojawią się tutaj."
     },
     "common": {
       "messages": {
@@ -8966,98 +8975,118 @@
       },
       "success_path": {
         "loading": "Przygotowujemy kolejny krok…",
-        "badge": "Wynik",
-        "title": "Zamykaj wakaty szybciej — zacznij tutaj",
-        "title_agency": "Zamykaj zlecenia szybciej — zacznij tutaj",
-        "title_employer": "Rekrutuj szybciej — zacznij tutaj",
-        "title_services": "Obsługuj klientów szybciej — zacznij tutaj",
-        "subtitle": "Jeden krok naraz — do pierwszego zgłoszenia i kontaktu z kandydatem.",
-        "subtitle_agency": "Jeden krok naraz: klient → wakat → zgłoszenie → kontakt.",
-        "subtitle_employer": "Jeden krok naraz: wakat → zgłoszenie → kontakt.",
-        "subtitle_services": "Jeden krok naraz: klient lub zapytanie → kontakt. Kandydaci opcjonalnie później.",
+        "badge": "Od czego zacząć",
+        "title": "Pierwsze kroki w HostFlow",
+        "title_agency": "Pierwsze kroki dla agencji",
+        "title_employer": "Pierwsze kroki dla pracodawcy",
+        "title_services": "Pierwsze kroki dla firmy usługowej",
+        "subtitle": "Wykonuj kroki po kolei, aż będzie zgłoszenie i kontakt.",
+        "subtitle_agency": "Kolejno: klient → wakat → zgłoszenie → kontakt.",
+        "subtitle_employer": "Kolejno: wakat → zgłoszenie → kontakt.",
+        "subtitle_services": "Kolejno: klient lub zgłoszenie → kontakt.",
         "progress": "Gotowe {done} z {total}",
-        "list_aria": "Checklist Success Path",
+        "list_aria": "Checklista pierwszego uruchomienia",
         "optional": "opcjonalne",
         "deferred": "później",
         "open": "Otwórz",
         "continue": "Kontynuuj",
         "next_title": "Zrób to teraz",
         "defer_meta": "Pomiń na razie",
-        "complete": "Podstawy gotowe — kontynuuj rekrutację z Launchpad.",
+        "complete": "Podstawy gotowe — pracuj dalej z menu.",
         "page_title": "Zacznij pracę",
-        "page_subtitle": "Wykonaj kolejny krok na ekranie — do pierwszego zgłoszenia i kontaktu.",
-        "hub_badge": "Success path",
-        "hub_footer": "Dokończ krok powyżej — nic więcej teraz nie trzeba.",
+        "page_subtitle": "Wykonaj kolejny krok na ekranie — do zgłoszenia i kontaktu.",
+        "hub_badge": "Start",
+        "hub_footer": "Zrób krok powyżej — na razie wystarczy.",
         "open_faq": "Utknąłeś? Otwórz FAQ",
         "open_faq_short": "FAQ",
         "open_docs": "Przewodnik startowy",
-        "open_demo": "Jak działa demo",
-        "lead_escape_hint": "Brak reklam? Wczytaj sample data, wybierz sposób zgłoszeń lub pomiń Meta — bez ślepego zaułka.",
+        "open_demo": "Jak działają dane przykładowe",
+        "lead_escape_hint": "Brak reklam? Wczytaj dane przykładowe, wybierz sposób zgłoszeń albo pomiń Meta.",
         "recovery_title": "Potrzebujesz wyjścia?",
-        "recovery_body": "Otwórz Start, wczytaj sample data lub FAQ uruchomienia. Zawsze jest kolejny krok.",
+        "recovery_body": "Otwórz „Zacznij pracę”, wczytaj dane przykładowe lub FAQ uruchomienia. Zawsze jest kolejny krok.",
         "recovery_setup": "Otwórz checklistę startu",
-        "demo_title": "Poznaj na sample data",
-        "demo_hint": "Wczytaj pakiet przykładów (leady, kandydaci, zadania), żeby poznać produkt. Czyścisz jednym kliknięciem.",
-        "demo_active_hint": "Sample pack jest wczytany. Otwórz Leady albo wyczyść przed realną pracą.",
-        "demo_seed": "Wczytaj sample data",
-        "demo_clear": "Wyczyść sample data",
-        "demo_open_leads": "Otwórz leady",
-        "demo_seed_error": "Nie udało się wczytać sample data. Wymagana rola administratora.",
-        "demo_clear_error": "Nie udało się wyczyścić sample data. Wymagana rola administratora.",
+        "demo_title": "Zobacz na przykładach",
+        "demo_hint": "Wczytaj przykładowe zgłoszenia i kandydatów, żeby poznać ekrany. Przed realną pracą usuń jednym kliknięciem.",
+        "demo_active_hint": "Dane przykładowe są wczytane. Otwórz zgłoszenia albo usuń je przed realną pracą.",
+        "demo_seed": "Wczytaj dane przykładowe",
+        "demo_clear": "Usuń dane przykładowe",
+        "demo_open_leads": "Otwórz zgłoszenia",
+        "demo_seed_error": "Nie udało się wczytać danych. Wymagana rola administratora.",
+        "demo_clear_error": "Nie udało się usunąć danych. Wymagana rola administratora.",
         "items": {
           "company": {
-            "label": "Utwórz firmę",
-            "hint": "Podaj nazwę i profil — tożsamość operacyjna workspace.",
-            "cta": "Utwórz firmę"
+            "label": "Podaj firmę",
+            "hint": "Żeby wakaty i zgłoszenia należały do Twojej organizacji.",
+            "cta": "Podaj firmę"
           },
           "invite": {
             "label": "Zaproś zespół",
-            "hint": "Zaproś kolegów, gdy będziesz gotowy — możesz później.",
+            "hint": "Jeśli nie pracujesz sam — wyślij zaproszenia. Opcjonalne.",
             "cta": "Zaproś zespół"
           },
           "meta": {
             "label": "Podłącz reklamy Facebook / Meta",
-            "hint": "Aby zgłoszenia z reklam trafiały do HostFlow automatycznie. Możesz pominąć i użyć sample data.",
+            "hint": "Żeby zgłoszenia z reklam wpadały tutaj same. Możesz pominąć i wczytać dane przykładowe.",
             "cta": "Podłącz reklamy"
           },
           "client": {
             "label": "Dodaj pierwszego klienta",
-            "hint": "Utwórz firmę lub klienta, z którym pracujesz — ok. minuta.",
+            "hint": "Firma lub zleceniodawca, dla którego rekrutujesz lub świadczysz usługę.",
             "cta": "Dodaj klienta"
           },
           "vacancy": {
             "label": "Utwórz pierwszy wakat",
-            "hint": "Otwórz rolę, na którą rekrutujesz — ok. 30 sekund.",
+            "hint": "Rola, na którą szukasz ludzi — ok. minuta.",
             "cta": "Utwórz wakat"
           },
           "lead": {
             "label": "Odbierz pierwsze zgłoszenie",
-            "hint": "Meta, sample data lub ręczny intake — nie czekaj na pustą listę.",
-            "cta": "Zdobądź zgłoszenia"
+            "hint": "Wybierz: reklamy Meta, dane przykładowe albo wpis ręczny.",
+            "cta": "Jak zbierać zgłoszenia"
           },
           "contact": {
             "label": "Skontaktuj się z osobą",
-            "hint": "Wykonaj kolejny krok przy leadzie — żeby nic nie wisiało.",
-            "cta": "Otwórz leady"
+            "hint": "Otwórz zgłoszenie i wykonaj kolejny krok, żeby nic nie wisiało.",
+            "cta": "Otwórz zgłoszenia"
           }
         },
-        "title_done": "Możesz zamykać wakaty w systemie",
-        "title_done_agency": "Możesz zamykać zlecenia w systemie",
+        "title_done": "Możesz pracować w systemie",
+        "title_done_agency": "Możesz prowadzić zlecenia w systemie",
         "title_done_employer": "Możesz rekrutować w systemie",
         "title_done_services": "Możesz obsługiwać klientów w systemie",
-        "subtitle_done": "Podstawy gotowe. Prowadź kandydatów w pipeline.",
+        "subtitle_done": "Podstawy gotowe. Prowadź ludzi dalej po etapach.",
         "subtitle_done_agency": "Podstawy gotowe. Prowadź placementy dalej.",
         "subtitle_done_employer": "Podstawy gotowe. Prowadź kandydatów dalej.",
         "subtitle_done_services": "Podstawy gotowe. Prowadź zapytania i klientów dalej.",
         "checklist_title": "Postęp",
-        "result_ready_title": "Możesz pracować",
-        "result_ready_body": "Firma i pierwsza ścieżka są gotowe. Otwórz Launchpad i kontynuuj.",
+        "result_ready_title": "Gotowe do pracy",
+        "result_ready_body": "Firma i pierwsze kroki są na miejscu. Kontynuuj z menu.",
         "go_work": "Do pracy",
         "go_vacancies": "Otwórz wakaty"
       },
       "setup_status": {
-        "technical_gates_summary": "Techniczne bramy Recruitment (advanced)",
-        "technical_gates_hint": "Operacyjny health check G0–G8 — opcjonalnie dla adminów."
+        "technical_gates_summary": "Dodatkowe sprawdzenia Recruitment (dla adminów)",
+        "technical_gates_hint": "Szczegółowy status gotowości — tylko gdy potrzebna diagnostyka techniczna."
+      },
+      "setup": {
+        "intake": {
+          "badge": "Zgłoszenia",
+          "title": "Jak chcesz zbierać pierwsze zgłoszenia?",
+          "subtitle": "Wybierz sposób. Brak reklam — wczytaj dane przykładowe albo dodaj osobę ręcznie. Meta możesz później.",
+          "faq_link": "Utknąłeś? FAQ uruchomienia — częste problemy i odpowiedzi",
+          "sample": {
+            "title": "Dane przykładowe",
+            "subtitle": "Wczytaj przykładowe zgłoszenia i od razu sprawdź system — potem usuń jednym kliknięciem"
+          },
+          "manual": {
+            "title": "Ręcznie",
+            "subtitle": "Dodaj osobę samodzielnie"
+          },
+          "meta": {
+            "title": "Reklamy Facebook / Instagram",
+            "subtitle": "Podłącz reklamy, żeby zgłoszenia wpadały same"
+          }
+        }
       }
     },
     "reset_password": {
@@ -9346,6 +9375,31 @@
         "subtitle": "Płatności i dokumenty rozliczeniowe workspace.",
         "history": "Historia płatności",
         "closing": "Dokumenty rozliczeniowe"
+      }
+    },
+    "platform_setup": {
+      "badge": "Firma",
+      "welcome_title": "Opowiedz o swojej firmie",
+      "welcome_subtitle": "Konto już jest. Te odpowiedzi ustawią właściwe ekrany: agencja, pracodawca albo usługi.",
+      "identity_title": "Co najlepiej opisuje Twój biznes?",
+      "identity_subtitle": "Od tego zależy, co zobaczysz dalej: klienci, wakaty albo zgłoszenia.",
+      "intent_title": "Jakie zadanie chcesz rozwiązać jako pierwsze?",
+      "intent_subtitle": "Wybierz, od czego zacząć pierwszego dnia.",
+      "details_title": "Kilka szczegółów o firmie",
+      "details_subtitle": "Krótko o firmie — żeby otworzyć właściwe ekrany.",
+      "name_label": "Nazwa firmy",
+      "industry_label": "Branża",
+      "industry_placeholder": "Wybierz…",
+      "team_size_label": "Wielkość firmy",
+      "country_label": "Kraj",
+      "finish": "Przejdź do pierwszych kroków",
+      "errors": {
+        "identity_required": "Wybierz, co najlepiej opisuje Twój biznes.",
+        "module_required": "Wybierz, od czego zacząć.",
+        "module_unavailable": "Ta opcja jest na razie niedostępna — wybierz rekrutację.",
+        "name_required": "Podaj nazwę firmy.",
+        "incomplete": "Uzupełnij wszystkie pola.",
+        "generic": "Nie udało się zapisać. Spróbuj ponownie."
       }
     }
   },
@@ -10691,7 +10745,7 @@
         "processes_a": "Workspace zostaje. Limity i moduły idą za matrycą planów — upgrade odblokowuje miejsca, automatykę i portale."
       },
       "final_cta": {
-        "button": "Utwórz przestrzeń roboczą",
+        "button": "Utwórz konto",
         "subtitle": "Pierwsza wartość — już w pierwsze minuty",
         "title": "Zacznij budować kontrolowany proces rekrutacji"
       },
@@ -10700,7 +10754,7 @@
         "subtitle": "Zacznij od strony najbliższej Twojemu aktualnemu wyzwaniu i przejdź do kolejnego powiązanego przewodnika."
       },
       "benefits": {
-        "badge": "Efekt",
+        "badge": "Korzyści",
         "title": "Co się zmienia po wdrożeniu",
         "items": {
           "0": "Przejrzysty lejek rekrutacji",

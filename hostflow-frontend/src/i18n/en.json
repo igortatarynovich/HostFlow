@@ -2397,21 +2397,29 @@
       "accept_terms_link": "Terms of Service",
       "accept_privacy_prefix": "I accept the",
       "accept_privacy_link": "Privacy Policy",
-      "legal_notice": "By creating an account, you confirm that you reviewed:",
+      "legal_notice": "How we use cookies is described in the",
       "legal_notice_terms": "Terms of Service",
       "legal_notice_privacy": "Privacy Policy",
       "legal_notice_cookies": "Cookie Policy",
       "errors": {
-        "consent_required": "You must accept Terms and Privacy Policy to continue.",
+        "consent_required": "To continue, accept the Terms and Privacy Policy.",
         "generic": "Registration failed. Please try again.",
         "password_mismatch": "Passwords do not match",
-        "password_short": "Password must be at least 8 characters"
+        "password_short": "Password must be at least 8 characters",
+        "captcha_required": "Please complete the check that you are not a robot."
       },
       "fields": {
-        "confirm": "Confirm password",
-        "full_name": "Full name (optional)",
-        "password": "Password",
-        "workspace": "Company name",
+        "confirm": "Repeat password",
+        "confirm_hint": "Must match the password above.",
+        "email": "Work email",
+        "email_hint": "Used to sign in and receive important account messages.",
+        "email_placeholder": "you@company.com",
+        "full_name": "Your name (optional)",
+        "full_name_placeholder": "How we should address you",
+        "password": "Password for sign-in",
+        "password_hint": "At least 8 characters.",
+        "workspace": "Your company name",
+        "workspace_hint": "How your organization appears in HostFlow (vacancies, applications, team).",
         "workspace_placeholder": "e.g. Acme Recruiting"
       },
       "have_account": "Already have an account?",
@@ -2422,10 +2430,10 @@
       },
       "selected_plan": "Plan from pricing: {plan}",
       "sign_in": "Sign in",
-      "submit": "Create account",
-      "subtitle": "Enter your details. Next you’ll set up your company and take the first step in the product.",
-      "subtitle_with_plan": "Selected plan: {plan}. After signup you’ll set up your company — billing is in Settings when you are ready.",
-      "title": "Create your HostFlow account"
+      "submit": "Create account and continue",
+      "subtitle": "Create login access so you can run vacancies, applications, and candidates in one place.",
+      "subtitle_with_plan": "Plan {plan} was selected on Pricing. After this form you will describe your company; confirm payment in Billing when ready.",
+      "title": "Sign up for HostFlow"
     },
     "login": {
       "title": "Sign in to HostFlow",
@@ -7702,7 +7710,8 @@
         "col_inbox": "Inbox (new)",
         "hint": "Same filters as the table; each column loads up to the limit below.",
         "view_all": "All in list"
-      }
+      },
+      "empty_desc": "Create a vacancy, then choose Meta ads, example data, or manual entry — applications appear here."
     },
     "common": {
       "messages": {
@@ -9039,98 +9048,118 @@
       },
       "success_path": {
         "loading": "Preparing your next step…",
-        "badge": "Result",
-        "title": "Close vacancies faster — start here",
-        "title_agency": "Place candidates faster — start here",
-        "title_employer": "Hire faster — start here",
-        "title_services": "Serve clients faster — start here",
-        "subtitle": "One action at a time until applications land and you contact the first candidate.",
-        "subtitle_agency": "One action at a time: client → vacancy → application → contact.",
-        "subtitle_employer": "One action at a time: vacancy → application → contact.",
-        "subtitle_services": "One action at a time: client or inquiry → contact. Candidates are optional later.",
+        "badge": "Getting started",
+        "title": "Your first steps in HostFlow",
+        "title_agency": "First steps for agencies",
+        "title_employer": "First steps for employers",
+        "title_services": "First steps for service companies",
+        "subtitle": "Complete one step at a time until you have an application and a contact.",
+        "subtitle_agency": "In order: client → vacancy → application → contact.",
+        "subtitle_employer": "In order: vacancy → application → contact.",
+        "subtitle_services": "In order: client or application → contact.",
         "progress": "{done} of {total} done",
-        "list_aria": "Success path checklist",
+        "list_aria": "First-run checklist",
         "optional": "optional",
         "deferred": "later",
         "open": "Open",
         "continue": "Continue",
         "next_title": "Do this now",
         "defer_meta": "Skip for now",
-        "complete": "Basics done — keep hiring from Launchpad.",
+        "complete": "Basics done — keep working from the menu.",
         "page_title": "Start working",
-        "page_subtitle": "Do the next step on screen — until the first application and contact.",
-        "hub_badge": "Success path",
-        "hub_footer": "Finish the step above — that is all you need right now.",
+        "page_subtitle": "Do the next step on screen until you have an application and a contact.",
+        "hub_badge": "Start",
+        "hub_footer": "Do the step above — that is enough for now.",
         "open_faq": "Stuck? Open FAQ",
         "open_faq_short": "FAQ",
         "open_docs": "Getting started guide",
-        "open_demo": "How demo works",
-        "lead_escape_hint": "No ads yet? Load sample data, choose how to get applications, or skip Meta — you will not get stuck.",
+        "open_demo": "How example data works",
+        "lead_escape_hint": "No ads yet? Load example data, choose how applications arrive, or skip Meta.",
         "recovery_title": "Need a way forward?",
-        "recovery_body": "Open Getting started, load sample data, or read the launch FAQ. There is always a next step.",
+        "recovery_body": "Open Start working, load example data, or read the launch FAQ. There is always a next step.",
         "recovery_setup": "Open start checklist",
-        "demo_title": "Explore with sample data",
-        "demo_hint": "Load a sample pack (leads, candidates, tasks) to learn the product. You can wipe it in one click.",
-        "demo_active_hint": "Sample pack is loaded. Open Leads to click through, or clear it when you start real work.",
-        "demo_seed": "Load sample data",
-        "demo_clear": "Clear sample data",
-        "demo_open_leads": "Open Leads",
-        "demo_seed_error": "Could not load sample data. Admin role required.",
-        "demo_clear_error": "Could not clear sample data. Admin role required.",
+        "demo_title": "Explore with example data",
+        "demo_hint": "Load sample applications and candidates to learn the screens. Clear them in one click before real work.",
+        "demo_active_hint": "Example data is loaded. Open applications or clear it before real work.",
+        "demo_seed": "Load example data",
+        "demo_clear": "Clear example data",
+        "demo_open_leads": "Open applications",
+        "demo_seed_error": "Could not load example data. Administrator role required.",
+        "demo_clear_error": "Could not clear example data. Administrator role required.",
         "items": {
           "company": {
-            "label": "Create company",
-            "hint": "Add your company name and profile so the workspace has an operating identity.",
-            "cta": "Create company"
+            "label": "Add your company",
+            "hint": "So vacancies and applications belong to your organization.",
+            "cta": "Add company"
           },
           "invite": {
             "label": "Invite teammates",
-            "hint": "Invite colleagues when you are ready — you can do this later.",
+            "hint": "If you are not working alone — send invites. Optional.",
             "cta": "Invite teammates"
           },
           "meta": {
             "label": "Connect Facebook / Meta ads",
-            "hint": "So applications from your ads arrive in HostFlow automatically. You can skip and use sample data.",
+            "hint": "So ad applications arrive here automatically. You can skip and use example data.",
             "cta": "Connect ads"
           },
           "client": {
             "label": "Add first client",
-            "hint": "Create the company or client you work for — about a minute.",
+            "hint": "The company or customer you hire or serve for.",
             "cta": "Add client"
           },
           "vacancy": {
             "label": "Create first vacancy",
-            "hint": "Open the role you need to fill — about 30 seconds.",
+            "hint": "The role you are hiring for — about a minute.",
             "cta": "Create vacancy"
           },
           "lead": {
-            "label": "Receive first application",
-            "hint": "Choose Meta, sample data, or manual intake — never wait on an empty list.",
-            "cta": "Get applications"
+            "label": "Get first application",
+            "hint": "Choose Meta ads, example data, or manual intake.",
+            "cta": "How to get applications"
           },
           "contact": {
-            "label": "Contact a person",
-            "hint": "Take the next action on a lead so nothing sits untouched.",
-            "cta": "Open leads"
+            "label": "Contact the person",
+            "hint": "Open the application and take the next step so it does not sit idle.",
+            "cta": "Open applications"
           }
         },
-        "title_done": "You can close vacancies from here",
-        "title_done_agency": "You can place candidates from here",
+        "title_done": "You can work from here",
+        "title_done_agency": "You can run placements from here",
         "title_done_employer": "You can hire from here",
         "title_done_services": "You can serve clients from here",
-        "subtitle_done": "The basics are done. Keep candidates moving in the pipeline.",
+        "subtitle_done": "Basics are done. Keep people moving through stages.",
         "subtitle_done_agency": "The basics are done. Keep placements moving.",
         "subtitle_done_employer": "The basics are done. Keep candidates moving.",
         "subtitle_done_services": "The basics are done. Keep inquiries and clients moving.",
         "checklist_title": "Progress",
-        "result_ready_title": "You are ready to work",
-        "result_ready_body": "Company and first path are in place. Open Launchpad and keep processing.",
+        "result_ready_title": "Ready to work",
+        "result_ready_body": "Company and first steps are in place. Continue from the menu.",
         "go_work": "Go to work",
         "go_vacancies": "Open vacancies"
       },
       "setup_status": {
-        "technical_gates_summary": "Technical Recruitment gates (advanced)",
-        "technical_gates_hint": "Operational G0–G8 health check — optional detail for admins."
+        "technical_gates_summary": "Extra Recruitment checks (for admins)",
+        "technical_gates_hint": "Detailed readiness status — only if you need technical diagnostics."
+      },
+      "setup": {
+        "intake": {
+          "badge": "Applications",
+          "title": "How do you want to get first applications?",
+          "subtitle": "Pick a way. No ads yet — load example data or add a person manually. Meta ads can wait.",
+          "faq_link": "Stuck? Launch FAQ — common problems and answers",
+          "sample": {
+            "title": "Example data",
+            "subtitle": "Load sample applications and try the product now — clear later in one click"
+          },
+          "manual": {
+            "title": "Manually",
+            "subtitle": "Add a person yourself"
+          },
+          "meta": {
+            "title": "Facebook / Instagram ads",
+            "subtitle": "Connect ads so applications arrive automatically"
+          }
+        }
       }
     },
     "reset_password": {
@@ -9346,6 +9375,31 @@
         "subtitle": "Payments and closing documents for this workspace.",
         "history": "Payment history",
         "closing": "Closing documents"
+      }
+    },
+    "platform_setup": {
+      "badge": "Company",
+      "welcome_title": "Tell us about your company",
+      "welcome_subtitle": "Your account is ready. These answers decide which screens you see: agency, employer, or services.",
+      "identity_title": "What best describes your business?",
+      "identity_subtitle": "This decides what you see next: clients, vacancies, or applications.",
+      "intent_title": "What do you want to solve first?",
+      "intent_subtitle": "Pick where you want to start on day one.",
+      "details_title": "A few company details",
+      "details_subtitle": "Short company info — so we can open the right screens.",
+      "name_label": "Company name",
+      "industry_label": "Industry",
+      "industry_placeholder": "Choose…",
+      "team_size_label": "Company size",
+      "country_label": "Country",
+      "finish": "Go to first steps",
+      "errors": {
+        "identity_required": "Choose what best describes your business.",
+        "module_required": "Choose where to start.",
+        "module_unavailable": "This option is not available yet — pick recruiting.",
+        "name_required": "Enter a company name.",
+        "incomplete": "Fill in all fields.",
+        "generic": "Could not save. Try again."
       }
     }
   },
@@ -10691,7 +10745,7 @@
         "processes_a": "Your workspace stays. Limits and modules follow the plan matrix — upgrade unlocks more seats, automation, and portals."
       },
       "final_cta": {
-        "button": "Create workspace",
+        "button": "Create account",
         "subtitle": "First value within minutes",
         "title": "Start building a managed hiring process"
       },
@@ -10700,7 +10754,7 @@
         "subtitle": "Start with the page closest to your current challenge and move to the next linked guide."
       },
       "benefits": {
-        "badge": "Outcome",
+        "badge": "Benefits",
         "title": "What changes after you implement it",
         "items": {
           "0": "A transparent hiring pipeline",

@@ -294,7 +294,7 @@ export default function LaunchpadPage() {
 
       <section>
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.launchpad.modules_title', { defaultValue: 'Ваши модули' })}
+          {t('app.launchpad.modules_title', { defaultValue: 'Чем вы можете работать' })}
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <ModuleCard
@@ -421,7 +421,7 @@ export default function LaunchpadPage() {
                 </p>
                 <p className="mt-2 text-sm font-medium text-emerald-800">
                   {t('app.onboarding.success_path.complete', {
-                    defaultValue: 'Basics done — keep hiring from Launchpad.',
+                    defaultValue: 'Базовые шаги сделаны — продолжайте работу из меню.',
                   })}
                 </p>
               </div>

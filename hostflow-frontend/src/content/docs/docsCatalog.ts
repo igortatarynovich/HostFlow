@@ -54,29 +54,29 @@ export const DOCS_ARTICLES: DocsArticle[] = [
       {
         title: { en: 'Follow the single next step', ru: 'Сделайте один следующий шаг', pl: 'Wykonaj jeden kolejny krok' },
         body: {
-          en: 'On Setup / Launchpad, use the readiness checklist. Exactly one primary CTA is highlighted — do that first.',
-          ru: 'На Setup / Launchpad смотрите readiness-чеклист. Подсвечен ровно один primary CTA — начните с него.',
-          pl: 'Na Setup / Launchpad patrz na checklistę readiness. Podświetlony jest jeden primary CTA — zacznij od niego.',
+          en: 'On “Start working”, use the checklist. Exactly one main button is highlighted — do that first.',
+          ru: 'На экране «Начать работу» смотрите чек-лист. Подсвечена ровно одна главная кнопка — начните с неё.',
+          pl: 'Na ekranie „Zacznij pracę” patrz na checklistę. Podświetlony jest jeden główny przycisk — zacznij od niego.',
         },
       },
       {
-        title: { en: 'Create a vacancy, then open intake', ru: 'Создайте вакансию и откройте intake', pl: 'Utwórz wakat i otwórz intake' },
+        title: { en: 'Create a vacancy, then choose how applications arrive', ru: 'Создайте вакансию и выберите, как получать заявки', pl: 'Utwórz wakat i wybierz sposób zbierania zgłoszeń' },
         body: {
-          en: 'Empty vacancies point you to Create vacancy. Publish or open intake so applications have somewhere to land.',
-          ru: 'Пустой список вакансий ведёт к «Создать вакансию». Опубликуйте / откройте intake, чтобы заявкам было куда падать.',
-          pl: 'Pusta lista wakatów prowadzi do «Utwórz wakat». Opublikuj / otwórz intake, żeby zgłoszenia miały gdzie wylądować.',
+          en: 'Empty vacancies point you to Create vacancy. Then choose Meta ads, example data, or manual entry so applications have somewhere to land.',
+          ru: 'Пустой список вакансий ведёт к «Создать вакансию». Затем выберите рекламу Meta, учебные данные или ручной ввод — чтобы заявкам было куда падать.',
+          pl: 'Pusta lista wakatów prowadzi do «Utwórz wakat». Potem wybierz reklamy Meta, dane przykładowe albo wpis ręczny — żeby zgłoszenia miały gdzie wylądować.',
         },
       },
       {
-        title: { en: 'Connect Meta or skip with debt', ru: 'Подключите Meta или отложите', pl: 'Podłącz Meta albo odłóż' },
+        title: { en: 'Connect Meta ads or skip for now', ru: 'Подключите рекламу Meta или отложите', pl: 'Podłącz reklamy Meta albo odłóż' },
         body: {
-          en: 'Meta is optional on day one. If you skip, the checklist keeps it visible as remaining work.',
-          ru: 'Meta в первый день необязательна. Если отложите — пункт останется в чеклисте как долг.',
-          pl: 'Meta pierwszego dnia jest opcjonalna. Jeśli odłożysz — pozycja zostanie na checkliście.',
+          en: 'Meta ads are optional on day one. If you skip, the checklist keeps the step visible as remaining work.',
+          ru: 'Реклама Meta в первый день необязательна. Если отложите — пункт останется в чек-листе.',
+          pl: 'Reklamy Meta pierwszego dnia są opcjonalne. Jeśli odłożysz — pozycja zostanie na checkliście.',
         },
       },
       {
-        title: { en: 'Contact the first lead', ru: 'Свяжитесь с первым лидом', pl: 'Skontaktuj się z pierwszym leadem' },
+        title: { en: 'Contact the first applicant', ru: 'Свяжитесь с первым человеком', pl: 'Skontaktuj się z pierwszą osobą' },
         body: {
           en: 'When a lead arrives, open Leads, claim ownership, and contact. Convert to candidate when qualified.',
           ru: 'Когда придёт лид — откройте Leads, возьмите ownership и свяжитесь. Квалифицированного конвертируйте в кандидата.',
