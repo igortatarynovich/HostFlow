@@ -1,17 +1,19 @@
-import { useCallback, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useI18n } from '../i18n'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
+import { ConsentRow } from '../components/public/ConsentRow'
+import { InlineFieldError } from '../components/forms/InlineFieldError'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import TurnstileWidget from '../components/TurnstileWidget'
 import { usePublicAuthConfig } from '../hooks/usePublicAuthConfig'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import {
   friendlyErrorBannerSecondary,
-  friendlyFormHintError,
   getFriendlyErrorInfo,
   type FriendlyErrorInfo,
 } from '../utils/friendlyError'
+import { fieldControlClass, focusFirstInvalid } from '../utils/formFieldValidation'
 import { registerSelfService } from '../api/users'
 import { useAuth } from '../store/useAuth'
 import { useSeoMeta } from '../hooks/useSeoMeta'
@@ -22,6 +24,8 @@ import {
 } from '../constants/signupContext'
 import { recordTtvStepCompleted } from '../api/analytics'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+
+type FieldKey = 'password' | 'confirm' | 'terms' | 'privacy' | 'captcha'
 
 function FieldHint({ children }: { children: string }) {
   if (!children.trim()) return null
@@ -51,7 +55,15 @@ export default function SignupPage() {
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({})
+  const [submitError, setSubmitError] = useState<FriendlyErrorInfo | null>(null)
+
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const confirmRef = useRef<HTMLInputElement>(null)
+  const termsRef = useRef<HTMLInputElement>(null)
+  const privacyRef = useRef<HTMLInputElement>(null)
+  const captchaRef = useRef<HTMLDivElement>(null)
+
   const publicAuthConfig = usePublicAuthConfig()
   const captchaRequired = Boolean(
     publicAuthConfig.turnstile_enabled && publicAuthConfig.turnstile_sitekey,
@@ -59,6 +71,14 @@ export default function SignupPage() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const handleCaptchaToken = useCallback((token: string | null) => {
     setCaptchaToken(token)
+    if (token) {
+      setFieldErrors((prev) => {
+        if (!prev.captcha) return prev
+        const next = { ...prev }
+        delete next.captcha
+        return next
+      })
+    }
   }, [])
 
   const planLabel = useMemo(() => {
@@ -69,39 +89,63 @@ export default function SignupPage() {
     return preselectedPlan
   }, [preselectedPlan, t])
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    if (password !== confirm) {
-      setError(friendlyFormHintError(t('app.signup.errors.password_mismatch', { defaultValue: 'Passwords do not match' }), t))
-      return
-    }
+  function clearFieldError(key: FieldKey) {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
+  function validateClient(): boolean {
+    const next: Partial<Record<FieldKey, string>> = {}
     if (password.length < 8) {
-      setError(
-        friendlyFormHintError(t('app.signup.errors.password_short', { defaultValue: 'Password must be at least 8 characters' }), t),
-      )
-      return
+      next.password = t('app.signup.errors.password_short', {
+        defaultValue: 'Пароль должен быть не короче 8 символов',
+      })
     }
-    if (!acceptTerms || !acceptPrivacy) {
-      setError(
-        friendlyFormHintError(
-          t('app.signup.errors.consent_required', { defaultValue: 'You must accept Terms and Privacy Policy to continue.' }),
-          t,
-        ),
-      )
-      return
+    if (password !== confirm) {
+      next.confirm = t('app.signup.errors.password_mismatch', {
+        defaultValue: 'Пароли не совпадают — повторите в этом поле',
+      })
+    }
+    if (!acceptTerms) {
+      next.terms = t('app.signup.errors.terms_required', {
+        defaultValue: 'Отметьте это поле: согласие с Условиями использования',
+      })
+    }
+    if (!acceptPrivacy) {
+      next.privacy = t('app.signup.errors.privacy_required', {
+        defaultValue: 'Отметьте это поле: согласие с Политикой конфиденциальности',
+      })
     }
     if (captchaRequired && !captchaToken) {
-      setError(
-        friendlyFormHintError(
-          t('app.signup.errors.captcha_required', {
-            defaultValue: 'Please complete the challenge to verify you are human.',
-          }),
-          t,
-        ),
-      )
-      return
+      next.captcha = t('app.signup.errors.captcha_required', {
+        defaultValue: 'Пройдите проверку ниже, чтобы подтвердить, что вы человек',
+      })
     }
+    setFieldErrors(next)
+    if (Object.keys(next).length === 0) return true
+
+    const focusOrder: FieldKey[] = ['password', 'confirm', 'terms', 'privacy', 'captcha']
+    const first = focusOrder.find((key) => next[key])
+    const refMap: Record<FieldKey, HTMLElement | null> = {
+      password: passwordRef.current,
+      confirm: confirmRef.current,
+      terms: termsRef.current,
+      privacy: privacyRef.current,
+      captcha: captchaRef.current,
+    }
+    if (first) focusFirstInvalid([refMap[first]])
+    return false
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    setSubmitError(null)
+    if (!validateClient()) return
+
     setLoading(true)
     try {
       const registration = await registerSelfService({
@@ -139,12 +183,14 @@ export default function SignupPage() {
       }
       const fb = t('app.signup.errors.generic', { defaultValue: 'Registration failed' })
       if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
-        setError(getFriendlyErrorInfo(err, fb, t))
+        setSubmitError(getFriendlyErrorInfo(err, fb, t))
       }
     } finally {
       setLoading(false)
     }
   }
+
+  const inputBase = 'input'
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#f6fbff] px-4 py-10 flex items-center justify-center">
@@ -168,13 +214,14 @@ export default function SignupPage() {
                 })}
           </p>
 
-          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
             <div>
-              <label className="label">
+              <label className="label" htmlFor="signup-workspace">
                 {t('app.signup.fields.workspace', { defaultValue: 'Your company name' })}
               </label>
               <input
-                className="input"
+                id="signup-workspace"
+                className={inputBase}
                 type="text"
                 required
                 minLength={2}
@@ -191,11 +238,12 @@ export default function SignupPage() {
               </FieldHint>
             </div>
             <div>
-              <label className="label">
+              <label className="label" htmlFor="signup-full-name">
                 {t('app.signup.fields.full_name', { defaultValue: 'Your name (optional)' })}
               </label>
               <input
-                className="input"
+                id="signup-full-name"
+                className={inputBase}
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -205,11 +253,12 @@ export default function SignupPage() {
               />
             </div>
             <div>
-              <label className="label">
+              <label className="label" htmlFor="signup-email">
                 {t('app.signup.fields.email', { defaultValue: 'Work email' })}
               </label>
               <input
-                className="input"
+                id="signup-email"
+                className={inputBase}
                 type="email"
                 required
                 autoComplete="email"
@@ -226,93 +275,130 @@ export default function SignupPage() {
               </FieldHint>
             </div>
             <div>
-              <label className="label">
+              <label className="label" htmlFor="signup-password">
                 {t('app.signup.fields.password', { defaultValue: 'Password for sign-in' })}
               </label>
               <input
-                className="input"
+                id="signup-password"
+                ref={passwordRef}
+                className={fieldControlClass(inputBase, Boolean(fieldErrors.password))}
                 type="password"
                 required
                 minLength={8}
                 autoComplete="new-password"
+                aria-invalid={fieldErrors.password ? true : undefined}
+                aria-describedby={fieldErrors.password ? 'signup-password-error' : undefined}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  clearFieldError('password')
+                  clearFieldError('confirm')
+                }}
               />
               <FieldHint>
                 {t('app.signup.fields.password_hint', {
                   defaultValue: 'At least 8 characters.',
                 })}
               </FieldHint>
+              <InlineFieldError id="signup-password-error" message={fieldErrors.password} />
             </div>
             <div>
-              <label className="label">
+              <label className="label" htmlFor="signup-confirm">
                 {t('app.signup.fields.confirm', { defaultValue: 'Repeat password' })}
               </label>
               <input
-                className="input"
+                id="signup-confirm"
+                ref={confirmRef}
+                className={fieldControlClass(inputBase, Boolean(fieldErrors.confirm))}
                 type="password"
                 required
                 minLength={8}
                 autoComplete="new-password"
+                aria-invalid={fieldErrors.confirm ? true : undefined}
+                aria-describedby={fieldErrors.confirm ? 'signup-confirm-error' : undefined}
                 value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
+                onChange={(e) => {
+                  setConfirm(e.target.value)
+                  clearFieldError('confirm')
+                }}
               />
               <FieldHint>
                 {t('app.signup.fields.confirm_hint', {
                   defaultValue: 'Must match the password above.',
                 })}
               </FieldHint>
+              <InlineFieldError id="signup-confirm-error" message={fieldErrors.confirm} />
             </div>
-            {error && (
-              <ErrorRecoveryBanner
-                info={error}
-                {...friendlyErrorBannerSecondary(error, '/login', t('app.login.title', { defaultValue: 'Sign in' }))}
-                compact
-              />
-            )}
-            <label className="flex items-start gap-2 text-xs text-slate-600">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+
+            <div className="space-y-2">
+              <ConsentRow
+                id="signup-accept-terms"
+                ref={termsRef}
                 checked={acceptTerms}
-                onChange={(e) => setAcceptTerms(e.target.checked)}
-              />
-              <span>
+                showError={Boolean(fieldErrors.terms)}
+                errorMessage={fieldErrors.terms}
+                onChange={(checked) => {
+                  setAcceptTerms(checked)
+                  if (checked) clearFieldError('terms')
+                }}
+              >
                 {t('app.signup.accept_terms_prefix', { defaultValue: 'I accept the' })}{' '}
                 <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
                   {t('app.signup.accept_terms_link', { defaultValue: 'Terms of Service' })}
                 </a>
                 .
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-xs text-slate-600">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+              </ConsentRow>
+              <ConsentRow
+                id="signup-accept-privacy"
+                ref={privacyRef}
                 checked={acceptPrivacy}
-                onChange={(e) => setAcceptPrivacy(e.target.checked)}
-              />
-              <span>
+                showError={Boolean(fieldErrors.privacy)}
+                errorMessage={fieldErrors.privacy}
+                onChange={(checked) => {
+                  setAcceptPrivacy(checked)
+                  if (checked) clearFieldError('privacy')
+                }}
+              >
                 {t('app.signup.accept_privacy_prefix', { defaultValue: 'I accept the' })}{' '}
                 <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
                   {t('app.signup.accept_privacy_link', { defaultValue: 'Privacy Policy' })}
                 </a>
                 .
-              </span>
-            </label>
-            {captchaRequired && publicAuthConfig.turnstile_sitekey && (
-              <div className="pt-1">
+              </ConsentRow>
+            </div>
+
+            {captchaRequired && publicAuthConfig.turnstile_sitekey ? (
+              <div
+                ref={captchaRef}
+                tabIndex={-1}
+                data-invalid={fieldErrors.captcha ? 'true' : undefined}
+                className={
+                  fieldErrors.captcha
+                    ? 'rounded-lg border border-rose-400 bg-rose-50/50 p-3 outline outline-2 outline-rose-500 outline-offset-1'
+                    : 'pt-1'
+                }
+              >
                 <TurnstileWidget
                   sitekey={publicAuthConfig.turnstile_sitekey}
                   action="signup"
                   onToken={handleCaptchaToken}
                 />
+                <InlineFieldError id="signup-captcha-error" message={fieldErrors.captcha} />
               </div>
-            )}
+            ) : null}
+
+            {submitError ? (
+              <ErrorRecoveryBanner
+                info={submitError}
+                {...friendlyErrorBannerSecondary(submitError)}
+                compact
+              />
+            ) : null}
+
             <button
               type="submit"
               className="btn-primary w-full justify-center py-3 text-center text-base font-bold tracking-wide"
-              disabled={loading || (captchaRequired && !captchaToken)}
+              disabled={loading}
             >
               {loading
                 ? t('common.loading')

@@ -32,6 +32,8 @@ export const ConsentRow = forwardRef<HTMLInputElement, ConsentRowProps>(function
           }`}
           checked={checked}
           disabled={disabled}
+          aria-invalid={invalid || undefined}
+          data-invalid={invalid ? 'true' : undefined}
           onChange={(event) => onChange(event.target.checked)}
         />
         <span className="leading-snug">{children}</span>

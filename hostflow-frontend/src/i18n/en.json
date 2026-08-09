@@ -2402,11 +2402,13 @@
       "legal_notice_privacy": "Privacy Policy",
       "legal_notice_cookies": "Cookie Policy",
       "errors": {
-        "consent_required": "To continue, accept the Terms and Privacy Policy.",
+        "consent_required": "Check the boxes below — Terms and Privacy Policy",
         "generic": "Registration failed. Please try again.",
-        "password_mismatch": "Passwords do not match",
+        "password_mismatch": "Passwords do not match — fix this field",
         "password_short": "Password must be at least 8 characters",
-        "captcha_required": "Please complete the check that you are not a robot."
+        "captcha_required": "Complete the check below to verify you are human",
+        "terms_required": "Check this box: accept the Terms of Service",
+        "privacy_required": "Check this box: accept the Privacy Policy"
       },
       "fields": {
         "confirm": "Repeat password",

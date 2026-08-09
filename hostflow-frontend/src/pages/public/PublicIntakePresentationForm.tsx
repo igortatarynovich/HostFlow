@@ -202,17 +202,32 @@ export default function PublicIntakePresentationForm({ intake, presentation }: P
 
   const validateRequired = useCallback(() => {
     const nextErrors: Record<string, string> = {}
+    let firstInvalidCode: string | null = null
     for (const field of evaluatedFields) {
       if (!field.evaluated.visible) continue
       if (field.evaluated.intake_level !== 'required') continue
       if (!presentationFieldHasValue(values[field.qualified_code])) {
         nextErrors[field.qualified_code] = t('public.intake.presentation.required', {
-          defaultValue: 'Pole wymagane',
+          defaultValue: 'To pole jest wymagane — wypełnij je tutaj',
         })
+        if (!firstInvalidCode) firstInvalidCode = field.qualified_code
       }
     }
     setFieldErrors(nextErrors)
-    return Object.keys(nextErrors).length === 0
+    if (!firstInvalidCode) return true
+    // Reveal after paint so aria-invalid / borders are present.
+    window.requestAnimationFrame(() => {
+      const el =
+        (document.querySelector(
+          `[name="${CSS.escape(firstInvalidCode)}"]`,
+        ) as HTMLElement | null) ||
+        (document.querySelector(
+          `[data-invalid="true"]`,
+        ) as HTMLElement | null)
+      el?.focus({ preventScroll: true })
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    return false
   }, [evaluatedFields, values, t])
 
   const patchAgreements = useCallback(

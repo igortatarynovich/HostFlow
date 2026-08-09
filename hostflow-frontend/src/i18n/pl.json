@@ -2329,11 +2329,13 @@
       "legal_notice_privacy": "Polityce prywatności",
       "legal_notice_cookies": "Polityce cookies",
       "errors": {
-        "consent_required": "Aby kontynuować, zaakceptuj Regulamin i Politykę prywatności.",
+        "consent_required": "Zaznacz zgody poniżej — Regulamin i Politykę prywatności",
         "generic": "Rejestracja nie powiodła się. Spróbuj ponownie.",
-        "password_mismatch": "Hasła nie są takie same",
+        "password_mismatch": "Hasła się nie zgadzają — popraw to pole",
         "password_short": "Hasło musi mieć co najmniej 8 znaków",
-        "captcha_required": "Potwierdź, że nie jesteś robotem."
+        "captcha_required": "Przejdź weryfikację poniżej, aby potwierdzić, że jesteś człowiekiem",
+        "terms_required": "Zaznacz to pole: akceptacja Regulaminu",
+        "privacy_required": "Zaznacz to pole: akceptacja Polityki prywatności"
       },
       "fields": {
         "confirm": "Powtórz hasło",

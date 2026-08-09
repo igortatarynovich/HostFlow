@@ -36,7 +36,13 @@ export type FriendlyErrorTranslateFn = (
   options?: { values?: Record<string, string | number> },
 ) => string
 
-/** Title + localized generic retry hint (form validation, public auth pages). */
+/**
+ * Title + localized generic retry hint for *transport / API* failures.
+ *
+ * Do not use for client-side field validation (missing consent, empty required
+ * input, password mismatch). Those must highlight the control in place — see
+ * `utils/formFieldValidation.ts` and `ConsentRow` / `InlineFieldError`.
+ */
 export function friendlyFormHintError(title: string, t?: FriendlyErrorTranslateFn): FriendlyErrorInfo {
   return {
     title,

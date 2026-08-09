@@ -1,9 +1,12 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { getCompanyIntakeConfig, submitCompanyIntake } from '../../api/companyIntake'
+import { ConsentRow } from '../../components/public/ConsentRow'
+import { InlineFieldError } from '../../components/forms/InlineFieldError'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 import { useSeoMeta } from '../../hooks/useSeoMeta'
 import { type LocaleCode, useI18n } from '../../i18n'
+import { fieldControlClass, focusFirstInvalid } from '../../utils/formFieldValidation'
 import { PublicPageShell } from './components/PublicPageShell'
 
 type StepId =
@@ -191,11 +194,20 @@ function countryCodeFor(country: string): string {
   return map[country] || ''
 }
 
-function Field({ label, children }: { label: string; children: JSX.Element }) {
+function Field({
+  label,
+  children,
+  error,
+}: {
+  label: string
+  children: JSX.Element
+  error?: string | null
+}) {
   return (
     <label className="block">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <div className="mt-1">{children}</div>
+      <InlineFieldError message={error} />
     </label>
   )
 }
@@ -274,6 +286,16 @@ export default function CompanyIntakePage() {
   const [loading, setLoading] = useState(false)
   const [configLoading, setConfigLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [showConsentErrors, setShowConsentErrors] = useState(false)
+  const companyNameRef = useRef<HTMLInputElement>(null)
+  const contactNameRef = useRef<HTMLInputElement>(null)
+  const contactEmailRef = useRef<HTMLInputElement>(null)
+  const contactPhoneRef = useRef<HTMLInputElement>(null)
+  const consentTermsRef = useRef<HTMLInputElement>(null)
+  const consentPrivacyRef = useRef<HTMLInputElement>(null)
+  const consentDataRef = useRef<HTMLInputElement>(null)
+  const consentAccuracyRef = useRef<HTMLInputElement>(null)
   const [submittedLeadId, setSubmittedLeadId] = useState<string | null>(null)
   const [supportedLanguages, setSupportedLanguages] = useState<LocaleCode[]>([])
   const [configuredSource, setConfiguredSource] = useState<string | null>(null)
@@ -403,18 +425,65 @@ export default function CompanyIntakePage() {
     { value: 'b2b', label: 'B2B' },
   ]
 
-  const canContinue = () => {
-    if (currentStep === 'contact') return Boolean(form.contact.full_name.trim() && (form.contact.email.trim() || form.contact.phone.trim()))
-    if (currentStep === 'company') return Boolean(form.company.name.trim())
-    return true
-  }
   const allRequiredConsentsAccepted =
     form.consent.terms_accepted &&
     form.consent.privacy_accepted &&
     form.consent.data_processing_accepted &&
     form.consent.accuracy_confirmed
 
-  const canSubmit = allRequiredConsentsAccepted
+  const requiredMsg = t('public.company_intake.errors.field_required', {
+    defaultValue: 'Заполните это поле',
+  })
+  const contactReachMsg = t('public.company_intake.errors.contact_reach', {
+    defaultValue: 'Укажите email или телефон — хотя бы одно',
+  })
+  const consentMsg = t('public.company_intake.errors.consent_field', {
+    defaultValue: 'Отметьте это согласие, чтобы отправить анкету',
+  })
+
+  const validateCurrentStep = (): boolean => {
+    const next: Record<string, string> = {}
+    if (currentStep === 'company') {
+      if (!form.company.name.trim()) next.company_name = requiredMsg
+    }
+    if (currentStep === 'contact') {
+      if (!form.contact.full_name.trim()) next.contact_name = requiredMsg
+      if (!form.contact.email.trim() && !form.contact.phone.trim()) {
+        next.contact_email = contactReachMsg
+        next.contact_phone = contactReachMsg
+      }
+    }
+    setFieldErrors(next)
+    if (Object.keys(next).length === 0) return true
+    focusFirstInvalid([
+      next.company_name ? companyNameRef.current : null,
+      next.contact_name ? contactNameRef.current : null,
+      next.contact_email ? contactEmailRef.current : null,
+      next.contact_phone ? contactPhoneRef.current : null,
+    ])
+    return false
+  }
+
+  const validateConsents = (): boolean => {
+    setShowConsentErrors(true)
+    if (allRequiredConsentsAccepted) return true
+    focusFirstInvalid([
+      !form.consent.terms_accepted ? consentTermsRef.current : null,
+      !form.consent.privacy_accepted ? consentPrivacyRef.current : null,
+      !form.consent.data_processing_accepted ? consentDataRef.current : null,
+      !form.consent.accuracy_confirmed ? consentAccuracyRef.current : null,
+    ])
+    return false
+  }
+
+  const clearFieldError = (key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev
+      const copy = { ...prev }
+      delete copy[key]
+      return copy
+    })
+  }
 
   const toggleAllRequiredConsents = (checked: boolean) => {
     setForm((prev) => ({
@@ -427,24 +496,24 @@ export default function CompanyIntakePage() {
         accuracy_confirmed: checked,
       },
     }))
+    if (checked) setShowConsentErrors(false)
   }
 
   const goNext = () => {
-    if (!canContinue()) {
-      setError(t('public.company_intake.errors.required', { defaultValue: 'Company name, contact name, and email or phone are required.' }))
-      return
-    }
+    if (!validateCurrentStep()) return
     setError(null)
     setStepIndex((idx) => Math.min(idx + 1, STEPS.length - 1))
   }
 
   const goBack = () => {
     setError(null)
+    setFieldErrors({})
     setStepIndex((idx) => Math.max(idx - 1, 0))
   }
 
   const goToStep = (step: StepId) => {
     setError(null)
+    setFieldErrors({})
     setStepIndex(STEPS.indexOf(step))
   }
 
@@ -458,6 +527,7 @@ export default function CompanyIntakePage() {
 
   const updateConsent = (field: keyof CompanyForm['consent'], value: boolean) => {
     setForm((prev) => ({ ...prev, consent: { ...prev.consent, [field]: value } }))
+    if (value) setShowConsentErrors(false)
   }
 
   const updateBaseCountry = (country: string) => {
@@ -473,14 +543,25 @@ export default function CompanyIntakePage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!form.company.name.trim() || !form.contact.full_name.trim() || (!form.contact.email.trim() && !form.contact.phone.trim())) {
-      setError(t('public.company_intake.errors.required', { defaultValue: 'Company name, contact name, and email or phone are required.' }))
+    // Re-validate contact/company if user jumped to review via edit links.
+    const contactOk =
+      Boolean(form.contact.full_name.trim()) &&
+      Boolean(form.contact.email.trim() || form.contact.phone.trim())
+    const companyOk = Boolean(form.company.name.trim())
+    if (!companyOk || !contactOk) {
+      const next: Record<string, string> = {}
+      if (!companyOk) next.company_name = requiredMsg
+      if (!form.contact.full_name.trim()) next.contact_name = requiredMsg
+      if (!form.contact.email.trim() && !form.contact.phone.trim()) {
+        next.contact_email = contactReachMsg
+        next.contact_phone = contactReachMsg
+      }
+      setFieldErrors(next)
+      if (!companyOk) goToStep('company')
+      else goToStep('contact')
       return
     }
-    if (!canSubmit) {
-      setError(t('public.company_intake.errors.consents_required', { defaultValue: 'Required consents must be accepted before submitting the form.' }))
-      return
-    }
+    if (!validateConsents()) return
     setLoading(true)
     setError(null)
     try {
@@ -649,17 +730,56 @@ export default function CompanyIntakePage() {
       case 'contact':
         return (
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('public.company_intake.fields.contact_name', { defaultValue: 'Name' })}>
-              <input className={inputClass} value={form.contact.full_name} onChange={(e) => update('contact', 'full_name', e.target.value)} />
+            <Field
+              label={t('public.company_intake.fields.contact_name', { defaultValue: 'Name' })}
+              error={fieldErrors.contact_name}
+            >
+              <input
+                ref={contactNameRef}
+                className={fieldControlClass(inputClass, Boolean(fieldErrors.contact_name))}
+                aria-invalid={fieldErrors.contact_name ? true : undefined}
+                value={form.contact.full_name}
+                onChange={(e) => {
+                  update('contact', 'full_name', e.target.value)
+                  clearFieldError('contact_name')
+                }}
+              />
             </Field>
             <Field label={t('public.company_intake.fields.role', { defaultValue: 'Role' })}>
               <input className={inputClass} value={form.contact.role} onChange={(e) => update('contact', 'role', e.target.value)} />
             </Field>
-            <Field label={t('public.company_intake.fields.email', { defaultValue: 'Email' })}>
-              <input className={inputClass} type="email" value={form.contact.email} onChange={(e) => update('contact', 'email', e.target.value)} />
+            <Field
+              label={t('public.company_intake.fields.email', { defaultValue: 'Email' })}
+              error={fieldErrors.contact_email}
+            >
+              <input
+                ref={contactEmailRef}
+                className={fieldControlClass(inputClass, Boolean(fieldErrors.contact_email))}
+                type="email"
+                aria-invalid={fieldErrors.contact_email ? true : undefined}
+                value={form.contact.email}
+                onChange={(e) => {
+                  update('contact', 'email', e.target.value)
+                  clearFieldError('contact_email')
+                  clearFieldError('contact_phone')
+                }}
+              />
             </Field>
-            <Field label={t('public.company_intake.fields.phone', { defaultValue: 'Phone' })}>
-              <input className={inputClass} value={form.contact.phone} onChange={(e) => update('contact', 'phone', e.target.value)} />
+            <Field
+              label={t('public.company_intake.fields.phone', { defaultValue: 'Phone' })}
+              error={fieldErrors.contact_phone}
+            >
+              <input
+                ref={contactPhoneRef}
+                className={fieldControlClass(inputClass, Boolean(fieldErrors.contact_phone))}
+                aria-invalid={fieldErrors.contact_phone ? true : undefined}
+                value={form.contact.phone}
+                onChange={(e) => {
+                  update('contact', 'phone', e.target.value)
+                  clearFieldError('contact_phone')
+                  clearFieldError('contact_email')
+                }}
+              />
             </Field>
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <input type="checkbox" checked={form.contact.whatsapp} onChange={(e) => update('contact', 'whatsapp', e.target.checked)} />
@@ -670,8 +790,20 @@ export default function CompanyIntakePage() {
       case 'company':
         return (
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('public.company_intake.fields.company_name', { defaultValue: 'Company name' })}>
-              <input className={inputClass} value={form.company.name} onChange={(e) => update('company', 'name', e.target.value)} />
+            <Field
+              label={t('public.company_intake.fields.company_name', { defaultValue: 'Company name' })}
+              error={fieldErrors.company_name}
+            >
+              <input
+                ref={companyNameRef}
+                className={fieldControlClass(inputClass, Boolean(fieldErrors.company_name))}
+                aria-invalid={fieldErrors.company_name ? true : undefined}
+                value={form.company.name}
+                onChange={(e) => {
+                  update('company', 'name', e.target.value)
+                  clearFieldError('company_name')
+                }}
+              />
             </Field>
             <Field label={t('public.company_intake.fields.tax_id', { defaultValue: 'NIP / VAT' })}>
               <input className={inputClass} value={form.company.tax_id} onChange={(e) => update('company', 'tax_id', e.target.value)} />
@@ -768,51 +900,79 @@ export default function CompanyIntakePage() {
                   />
                   <span>{t('public.company_intake.consents.select_all_required')}</span>
                 </label>
-                <label className="flex gap-3 text-sm text-slate-700">
-                  <input type="checkbox" checked={form.consent.terms_accepted} onChange={(e) => updateConsent('terms_accepted', e.target.checked)} />
-                  <span>
-                    {t('public.company_intake.consents.terms_prefix', { defaultValue: 'I accept the' })}{' '}
-                    <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/terms.html" target="_blank" rel="noreferrer">
-                      {t('public.company_intake.consents.terms_link', { defaultValue: 'Terms of use' })}
-                    </a>.
-                  </span>
-                </label>
-                <label className="flex gap-3 text-sm text-slate-700">
-                  <input type="checkbox" checked={form.consent.privacy_accepted} onChange={(e) => updateConsent('privacy_accepted', e.target.checked)} />
-                  <span>
-                    {t('public.company_intake.consents.privacy_prefix', { defaultValue: 'I have read the' })}{' '}
-                    <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/privacy.html" target="_blank" rel="noreferrer">
-                      {t('public.company_intake.consents.privacy_link', { defaultValue: 'Privacy Policy' })}
-                    </a>.
-                  </span>
-                </label>
-                <label className="flex gap-3 text-sm text-slate-700">
-                  <input type="checkbox" checked={form.consent.data_processing_accepted} onChange={(e) => updateConsent('data_processing_accepted', e.target.checked)} />
-                  <span>
-                    {t('public.company_intake.consents.data_processing_prefix', { defaultValue: 'I consent to personal data processing according to' })}{' '}
-                    <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/rodo.html" target="_blank" rel="noreferrer">
-                      {t('public.company_intake.consents.rodo_link', { defaultValue: 'RODO information' })}
-                    </a>.
-                  </span>
-                </label>
-                <label className="flex gap-3 text-sm text-slate-700">
-                  <input type="checkbox" checked={form.consent.accuracy_confirmed} onChange={(e) => updateConsent('accuracy_confirmed', e.target.checked)} />
-                  <span>
-                    {t('public.company_intake.consents.accuracy_prefix', { defaultValue: 'I declare that the information is correct under the' })}{' '}
-                    <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/terms.html" target="_blank" rel="noreferrer">
-                      {t('public.company_intake.consents.terms_link', { defaultValue: 'Terms of use' })}
-                    </a>.
-                  </span>
-                </label>
-                <label className="flex gap-3 text-sm text-slate-700">
-                  <input type="checkbox" checked={form.consent.marketing_contact_accepted} onChange={(e) => updateConsent('marketing_contact_accepted', e.target.checked)} />
-                  <span>
-                    {t('public.company_intake.consents.marketing_prefix', { defaultValue: 'I consent to marketing contact as described in the' })}{' '}
-                    <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/privacy.html" target="_blank" rel="noreferrer">
-                      {t('public.company_intake.consents.privacy_link', { defaultValue: 'Privacy Policy' })}
-                    </a>.
-                  </span>
-                </label>
+                <ConsentRow
+                  id="company-intake-terms"
+                  ref={consentTermsRef}
+                  checked={form.consent.terms_accepted}
+                  showError={showConsentErrors && !form.consent.terms_accepted}
+                  errorMessage={consentMsg}
+                  onChange={(checked) => updateConsent('terms_accepted', checked)}
+                >
+                  {t('public.company_intake.consents.terms_prefix', { defaultValue: 'I accept the' })}{' '}
+                  <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/terms.html" target="_blank" rel="noreferrer">
+                    {t('public.company_intake.consents.terms_link', { defaultValue: 'Terms of use' })}
+                  </a>
+                  .
+                </ConsentRow>
+                <ConsentRow
+                  id="company-intake-privacy"
+                  ref={consentPrivacyRef}
+                  checked={form.consent.privacy_accepted}
+                  showError={showConsentErrors && !form.consent.privacy_accepted}
+                  errorMessage={consentMsg}
+                  onChange={(checked) => updateConsent('privacy_accepted', checked)}
+                >
+                  {t('public.company_intake.consents.privacy_prefix', { defaultValue: 'I have read the' })}{' '}
+                  <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/privacy.html" target="_blank" rel="noreferrer">
+                    {t('public.company_intake.consents.privacy_link', { defaultValue: 'Privacy Policy' })}
+                  </a>
+                  .
+                </ConsentRow>
+                <ConsentRow
+                  id="company-intake-data"
+                  ref={consentDataRef}
+                  checked={form.consent.data_processing_accepted}
+                  showError={showConsentErrors && !form.consent.data_processing_accepted}
+                  errorMessage={consentMsg}
+                  onChange={(checked) => updateConsent('data_processing_accepted', checked)}
+                >
+                  {t('public.company_intake.consents.data_processing_prefix', {
+                    defaultValue: 'I consent to personal data processing according to',
+                  })}{' '}
+                  <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/rodo.html" target="_blank" rel="noreferrer">
+                    {t('public.company_intake.consents.rodo_link', { defaultValue: 'RODO information' })}
+                  </a>
+                  .
+                </ConsentRow>
+                <ConsentRow
+                  id="company-intake-accuracy"
+                  ref={consentAccuracyRef}
+                  checked={form.consent.accuracy_confirmed}
+                  showError={showConsentErrors && !form.consent.accuracy_confirmed}
+                  errorMessage={consentMsg}
+                  onChange={(checked) => updateConsent('accuracy_confirmed', checked)}
+                >
+                  {t('public.company_intake.consents.accuracy_prefix', {
+                    defaultValue: 'I declare that the information is correct under the',
+                  })}{' '}
+                  <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/terms.html" target="_blank" rel="noreferrer">
+                    {t('public.company_intake.consents.terms_link', { defaultValue: 'Terms of use' })}
+                  </a>
+                  .
+                </ConsentRow>
+                <ConsentRow
+                  id="company-intake-marketing"
+                  checked={form.consent.marketing_contact_accepted}
+                  onChange={(checked) => updateConsent('marketing_contact_accepted', checked)}
+                >
+                  {t('public.company_intake.consents.marketing_prefix', {
+                    defaultValue: 'I consent to marketing contact as described in the',
+                  })}{' '}
+                  <a className="font-semibold text-brand-700 hover:text-brand-900" href="/legal/privacy.html" target="_blank" rel="noreferrer">
+                    {t('public.company_intake.consents.privacy_link', { defaultValue: 'Privacy Policy' })}
+                  </a>
+                  .
+                </ConsentRow>
               </div>
             </div>
           </div>
@@ -867,7 +1027,7 @@ export default function CompanyIntakePage() {
           {currentStep === 'review' ? (
             <button
               type="submit"
-              disabled={loading || !canSubmit}
+              disabled={loading}
               className="rounded-md bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? t('common.saving', { defaultValue: 'Saving...' }) : t('public.company_intake.submit', { defaultValue: 'Submit questionnaire' })}
