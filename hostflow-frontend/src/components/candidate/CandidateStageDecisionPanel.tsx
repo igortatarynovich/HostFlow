@@ -2,7 +2,10 @@ import { useMemo } from 'react'
 import clsx from 'clsx'
 import CandidateStageJourneyPanel from './CandidateStageJourneyPanel'
 import { useI18n } from '../../i18n'
-import { isCandidateOperationallyTerminal } from '../../utils/candidatePipelineCompleted'
+import {
+  isCandidateOperationallyTerminal,
+  isPipelineCompletedCanonicalStage,
+} from '../../utils/candidatePipelineCompleted'
 import { canonicalStageKey } from '../../utils/stageLabels'
 import { operationalHintForStageResolved } from '../../utils/stageOperationalHints'
 
@@ -126,9 +129,28 @@ export default function CandidateStageDecisionPanel({
     return pipelineSteps.findIndex((s) => s.code === currentCode)
   }, [currentCode, pipelineSteps])
 
-  const prevStage = currentIdx >= 1 ? pipelineSteps[currentIdx - 1] : null
-  const nextStage = currentIdx >= 0 && currentIdx < pipelineSteps.length - 1 ? pipelineSteps[currentIdx + 1] : null
+  /**
+   * From a terminal/closed board position, "Move back" must skip other completed
+   * codes (declined→rejected→employed all 409 on reopen). Jump to the nearest
+   * earlier active stage so recruiters can return the candidate to processing.
+   */
+  const prevStage = useMemo(() => {
+    if (currentIdx < 1) return null
+    if (pipelineCompleted) {
+      for (let i = currentIdx - 1; i >= 0; i -= 1) {
+        const step = pipelineSteps[i]
+        if (step && !isPipelineCompletedCanonicalStage(step.code)) return step
+      }
+      return null
+    }
+    return pipelineSteps[currentIdx - 1] ?? null
+  }, [currentIdx, pipelineCompleted, pipelineSteps])
+  const nextStage =
+    pipelineCompleted || currentIdx < 0 || currentIdx >= pipelineSteps.length - 1
+      ? null
+      : pipelineSteps[currentIdx + 1] ?? null
   const nextStageCode = nextStage?.code ?? null
+  const reopenTargetStage = pipelineCompleted ? prevStage : null
 
   const requiredCodes = useMemo(() => {
     const out: string[] = []
@@ -242,7 +264,16 @@ export default function CandidateStageDecisionPanel({
           <div className="mt-1 text-sm font-semibold text-slate-900 truncate">
             {currentCode ? stageLabelIntl(currentCode) : t('common.labels.not_available')}
           </div>
-          {!hasAnyPipelineBarrier ? (
+          {reopenTargetStage ? (
+            <div className="mt-2 text-xs font-medium text-amber-800">
+              {t('app.candidate_card.stage_decision.reopen_hint', {
+                defaultValue: 'Candidate is closed. Return to processing to continue the funnel.',
+              })}
+              <span className="mt-0.5 block text-amber-700/80">
+                → {reopenTargetStage.label || stageLabelIntl(reopenTargetStage.code)}
+              </span>
+            </div>
+          ) : !hasAnyPipelineBarrier ? (
             <div className="mt-2 text-xs font-medium text-emerald-700">
               {t('app.candidate_card.stage_decision.no_blockers', { defaultValue: 'No blockers' })}
             </div>
@@ -378,43 +409,63 @@ export default function CandidateStageDecisionPanel({
         </div>
 
         <div className="shrink-0 flex flex-col items-end gap-2">
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            disabled={!prevStage || !canMutatePipeline}
-            onClick={() => prevStage && onMoveStage(prevStage.code)}
-          >
-            {t('app.candidate_card.stage_decision.move_back', { defaultValue: 'Move back' })}
-          </button>
-          <button
-            type="button"
-            className="btn-primary btn-sm"
-            disabled={!nextStage || !canMutatePipeline || pipelineForwardBlocked}
-            onClick={() => nextStage && onMoveStage(nextStage.code)}
-            title={
-              docsPipelineBlocking
-                ? blockerLabelMode === 'requirement'
-                  ? t('app.candidate_card.stage_decision.blocked_title_requirements', {
-                      defaultValue: 'Blocked by unconfirmed requirements',
-                    })
-                  : t('app.candidate_card.stage_decision.blocked_title', { defaultValue: 'Blocked by required documents' })
-                : docsSoftAdvisory
-                  ? t('app.candidate_card.stage_decision.soft_docs_title', {
-                      defaultValue: 'Documents recommended — forward move still allowed',
-                    })
-                  : contactAttemptPipelineBlocking
-                  ? t('app.candidate_card.stage_decision.blocked_title_contact_attempt', {
-                      defaultValue: 'Register a contact attempt before moving forward',
-                    })
-                  : vacancyPipelineBlocking
-                    ? t('app.candidate_card.stage_decision.blocked_title_vacancy', {
-                        defaultValue: 'Assign a vacancy before moving forward',
-                      })
-                    : undefined
-            }
-          >
-            {t('app.candidate_card.stage_decision.move_forward', { defaultValue: 'Move forward' })}
-          </button>
+          {reopenTargetStage ? (
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              disabled={!canMutatePipeline}
+              onClick={() => onMoveStage(reopenTargetStage.code)}
+              title={t('app.candidate_card.stage_decision.reopen_title', {
+                defaultValue: 'Return to the last active funnel stage and reopen the candidate',
+              })}
+            >
+              {t('app.candidate_card.stage_decision.reopen_processing', {
+                defaultValue: 'Return to processing',
+              })}
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={!prevStage || !canMutatePipeline}
+                onClick={() => prevStage && onMoveStage(prevStage.code)}
+              >
+                {t('app.candidate_card.stage_decision.move_back', { defaultValue: 'Move back' })}
+              </button>
+              <button
+                type="button"
+                className="btn-primary btn-sm"
+                disabled={!nextStage || !canMutatePipeline || pipelineForwardBlocked}
+                onClick={() => nextStage && onMoveStage(nextStage.code)}
+                title={
+                  docsPipelineBlocking
+                    ? blockerLabelMode === 'requirement'
+                      ? t('app.candidate_card.stage_decision.blocked_title_requirements', {
+                          defaultValue: 'Blocked by unconfirmed requirements',
+                        })
+                      : t('app.candidate_card.stage_decision.blocked_title', {
+                          defaultValue: 'Blocked by required documents',
+                        })
+                    : docsSoftAdvisory
+                      ? t('app.candidate_card.stage_decision.soft_docs_title', {
+                          defaultValue: 'Documents recommended — forward move still allowed',
+                        })
+                      : contactAttemptPipelineBlocking
+                        ? t('app.candidate_card.stage_decision.blocked_title_contact_attempt', {
+                            defaultValue: 'Register a contact attempt before moving forward',
+                          })
+                        : vacancyPipelineBlocking
+                          ? t('app.candidate_card.stage_decision.blocked_title_vacancy', {
+                              defaultValue: 'Assign a vacancy before moving forward',
+                            })
+                          : undefined
+                }
+              >
+                {t('app.candidate_card.stage_decision.move_forward', { defaultValue: 'Move forward' })}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

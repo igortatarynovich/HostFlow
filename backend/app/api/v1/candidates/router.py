@@ -350,6 +350,7 @@ def _serialize_candidate_row(row: Tuple[_Any, ...]) -> Dict[str, Any]:
         "note": getattr(c, "note", None),
         "notes": getattr(c, "note", None),  # alias for legacy consumers
         "stage": getattr(c, "stage", None),
+        "lifecycle_status": getattr(c, "lifecycle_status", None) or "active",
         "row_status": getattr(c, "status", None),
         "status": getattr(c, "status", None) or getattr(c, "stage", None),
         "stage_label": stage_label,

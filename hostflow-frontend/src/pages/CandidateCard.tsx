@@ -2226,6 +2226,34 @@ export default function CandidateCard(){
         }
         if (Number(err?.response?.status || 0) === 409) {
           const d = err?.response?.data?.detail
+          if (typeof d === 'string') {
+            const detailLower = d.toLowerCase()
+            if (detailLower.includes('choose an active funnel stage to reopen') || detailLower.includes('candidate is closed')) {
+              notify({
+                title: t('app.candidate_card.messages.reopen_needs_active_stage', {
+                  defaultValue: 'Choose an active funnel stage',
+                }),
+                description: t('app.candidate_card.messages.reopen_needs_active_stage_hint', {
+                  defaultValue:
+                    'Closed candidates cannot move between final outcomes. Use “Return to processing” or pick Contacted / Documents / etc.',
+                }),
+                variant: 'error',
+              })
+              await revertStageOptimistic()
+              return
+            }
+            if (detailLower.includes('archived')) {
+              notify({
+                title: t('app.candidate_card.messages.candidate_archived', {
+                  defaultValue: 'Candidate is archived',
+                }),
+                description: d,
+                variant: 'error',
+              })
+              await revertStageOptimistic()
+              return
+            }
+          }
           if (d && typeof d === 'object') {
             const code = String((d as any).code || '')
             if (code === 'stage_blocked_by_risk_gate') {
