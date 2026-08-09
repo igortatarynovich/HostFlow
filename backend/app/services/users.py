@@ -191,18 +191,31 @@ async def _tenant_row_has_license(db: AsyncSession, tenant_id: str) -> bool:
     return (await db.execute(stmt)).scalar_one_or_none() is not None
 
 
-def _quota_attr_for_tenant_role(role: str) -> Optional[str]:
-    mapping = {
-        Role.employee.value: "max_recruiters",  # interim until seats PR (Admin/Employee/Viewer)
-        Role.recruiter.value: "max_recruiters",
-        Role.compliance_officer.value: "max_recruiters",
-        Role.hr_officer.value: "max_recruiters",
-        Role.supervisor.value: "max_supervisors",
-        Role.client_manager.value: "max_client_managers",
-        Role.client_processor.value: "max_client_managers",
-        Role.viewer.value: "max_viewers",
-    }
-    return mapping.get(role)
+def _quota_attr_for_tenant_role(
+    role: str,
+    *,
+    preset_id: str | None = None,
+    access_context: str | None = None,
+) -> Optional[str]:
+    """Map role → TenantLicense seat column (ADR-036 trust seats; portal → None)."""
+    from backend.app.auth.trust_roles import seat_quota_attr_for_role
+
+    return seat_quota_attr_for_role(
+        role, access_context=access_context, preset_id=preset_id
+    )
+
+
+def _apply_preset_access_context(user: User, preset_id: str | None) -> None:
+    """Persist preset_id + access_context=portal for portal_guest (JWT / seats)."""
+    prefs = dict(user.preferences or {})
+    pid = str(preset_id or "").strip().lower() or None
+    if pid:
+        prefs["preset_id"] = pid
+    if pid == "portal_guest":
+        prefs["access_context"] = "portal"
+    elif pid is not None and prefs.get("access_context") == "portal":
+        prefs["access_context"] = "tenant"
+    user.preferences = prefs
 
 
 async def _get_membership_role_for_tenant(
@@ -217,39 +230,71 @@ async def _get_membership_role_for_tenant(
     return (await db.execute(stmt)).scalar_one_or_none()
 
 
-async def _count_active_users_in_tenant_role(
+async def _count_active_users_in_seat_bucket(
     db: AsyncSession,
     tenant_id: str,
-    role: str,
+    bucket: str,
     *,
     exclude_user_id: Optional[str] = None,
 ) -> int:
+    """Count active memberships that consume a billable trust seat bucket."""
+    from backend.app.auth.trust_roles import (
+        PORTAL_LEGACY_ROLES,
+        membership_roles_for_seat_bucket,
+    )
+
+    roles = membership_roles_for_seat_bucket(bucket)
+    if not roles:
+        return 0
+    role_lower = func.lower(user_memberships.c.role)
+    access_ctx = func.lower(
+        func.coalesce(User.preferences.op("->>")("access_context"), "")
+    )
+    preset_pref = func.lower(
+        func.coalesce(User.preferences.op("->>")("preset_id"), "")
+    )
+    is_portal = sa.or_(
+        role_lower.in_(tuple(PORTAL_LEGACY_ROLES)),
+        access_ctx == "portal",
+        preset_pref == "portal_guest",
+    )
     stmt = (
         select(func.count())
         .select_from(user_memberships)
         .join(User, User.id == user_memberships.c.user_id)
         .where(user_memberships.c.tenant_id == tenant_id)
-        .where(user_memberships.c.role == role)
+        .where(role_lower.in_(tuple(roles)))
         .where(User.is_active.is_(True))
         .where(User.deleted_at.is_(None))
+        .where(sa.not_(is_portal))
     )
     if exclude_user_id:
         stmt = stmt.where(User.id != exclude_user_id)
     return int((await db.execute(stmt)).scalar_one() or 0)
 
 
-async def _count_pending_invites_for_role(
+async def _count_pending_invites_for_seat_bucket(
     db: AsyncSession,
     tenant_id: str,
-    role: str,
+    bucket: str,
     *,
     exclude_invite_email: Optional[str] = None,
 ) -> int:
+    from backend.app.auth.trust_roles import membership_roles_for_seat_bucket
+
+    roles = membership_roles_for_seat_bucket(bucket)
+    if not roles:
+        return 0
+    role_lower = func.lower(UserInvite.role)
+    preset_meta = func.lower(
+        func.coalesce(UserInvite.metadata_json.op("->>")("preset_id"), "")
+    )
     stmt = (
         select(func.count())
         .select_from(UserInvite)
         .where(UserInvite.tenant_id == tenant_id)
-        .where(UserInvite.role == role)
+        .where(role_lower.in_(tuple(roles)))
+        .where(preset_meta != "portal_guest")
         .where(UserInvite.revoked_at.is_(None))
         .where(UserInvite.accepted_at.is_(None))
     )
@@ -265,11 +310,17 @@ async def _ensure_role_seat_available_for_invite_or_user_add(
     role: str,
     *,
     exclude_invite_email: Optional[str] = None,
+    preset_id: str | None = None,
 ) -> None:
-    """Hard seat gate when TenantLicense exists (§2.2 / §2.16)."""
+    """Hard seat gate when TenantLicense exists (§2.2 / §2.16). Portal guests skip."""
+    from backend.app.auth.trust_roles import billable_seat_bucket
+
     if not await _tenant_row_has_license(db, tenant_id):
         return
-    attr = _quota_attr_for_tenant_role(role)
+    bucket = billable_seat_bucket(role, preset_id=preset_id)
+    if not bucket:
+        return
+    attr = _quota_attr_for_tenant_role(role, preset_id=preset_id)
     if not attr:
         return
     limits = await get_tenant_limits(db, tenant_id)
@@ -278,22 +329,22 @@ async def _ensure_role_seat_available_for_invite_or_user_add(
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": role,
+                "role": bucket,
                 "limit": limit,
                 "current": 0,
             },
             403,
         )
-    active = await _count_active_users_in_tenant_role(db, tenant_id, role)
-    pending = await _count_pending_invites_for_role(
-        db, tenant_id, role, exclude_invite_email=exclude_invite_email
+    active = await _count_active_users_in_seat_bucket(db, tenant_id, bucket)
+    pending = await _count_pending_invites_for_seat_bucket(
+        db, tenant_id, bucket, exclude_invite_email=exclude_invite_email
     )
     total = active + pending
     if total >= limit:
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": role,
+                "role": bucket,
                 "limit": limit,
                 "current": total,
             },
@@ -308,12 +359,19 @@ async def _ensure_role_change_respects_seat_cap(
     user_id: str,
     old_role: Optional[str],
     new_role: str,
+    new_preset_id: str | None = None,
 ) -> None:
-    if old_role == new_role:
+    from backend.app.auth.trust_roles import billable_seat_bucket
+
+    old_bucket = billable_seat_bucket(old_role) if old_role else None
+    new_bucket = billable_seat_bucket(new_role, preset_id=new_preset_id)
+    if old_bucket == new_bucket:
+        return
+    if not new_bucket:
         return
     if not await _tenant_row_has_license(db, tenant_id):
         return
-    attr = _quota_attr_for_tenant_role(new_role)
+    attr = _quota_attr_for_tenant_role(new_role, preset_id=new_preset_id)
     if not attr:
         return
     limits = await get_tenant_limits(db, tenant_id)
@@ -322,21 +380,21 @@ async def _ensure_role_change_respects_seat_cap(
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": new_role,
+                "role": new_bucket,
                 "limit": limit,
                 "current": 0,
             },
             403,
         )
-    active = await _count_active_users_in_tenant_role(
-        db, tenant_id, new_role, exclude_user_id=user_id
+    active = await _count_active_users_in_seat_bucket(
+        db, tenant_id, new_bucket, exclude_user_id=user_id
     )
-    pending = await _count_pending_invites_for_role(db, tenant_id, new_role)
+    pending = await _count_pending_invites_for_seat_bucket(db, tenant_id, new_bucket)
     if active + pending >= limit:
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": new_role,
+                "role": new_bucket,
                 "limit": limit,
                 "current": active + pending,
             },
@@ -345,12 +403,21 @@ async def _ensure_role_change_respects_seat_cap(
 
 
 async def _ensure_invite_accept_seat_still_valid(
-    db: AsyncSession, tenant_id: str, role: str
+    db: AsyncSession,
+    tenant_id: str,
+    role: str,
+    *,
+    preset_id: str | None = None,
 ) -> None:
     """Blocks accept if license was tightened below current commitments."""
+    from backend.app.auth.trust_roles import billable_seat_bucket
+
     if not await _tenant_row_has_license(db, tenant_id):
         return
-    attr = _quota_attr_for_tenant_role(role)
+    bucket = billable_seat_bucket(role, preset_id=preset_id)
+    if not bucket:
+        return
+    attr = _quota_attr_for_tenant_role(role, preset_id=preset_id)
     if not attr:
         return
     limits = await get_tenant_limits(db, tenant_id)
@@ -359,19 +426,19 @@ async def _ensure_invite_accept_seat_still_valid(
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": role,
+                "role": bucket,
                 "limit": limit,
                 "current": 0,
             },
             403,
         )
-    active = await _count_active_users_in_tenant_role(db, tenant_id, role)
-    pending = await _count_pending_invites_for_role(db, tenant_id, role)
+    active = await _count_active_users_in_seat_bucket(db, tenant_id, bucket)
+    pending = await _count_pending_invites_for_seat_bucket(db, tenant_id, bucket)
     if active + pending > limit:
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": role,
+                "role": bucket,
                 "limit": limit,
                 "current": active + pending,
             },
@@ -382,6 +449,7 @@ async def _ensure_invite_accept_seat_still_valid(
 def _apply_global_role(user: User, tenant_role: str) -> None:
     mapping = {
         Role.viewer.value: Role.viewer,
+        Role.employee.value: Role.employee,
         Role.recruiter.value: Role.recruiter,
         Role.supervisor.value: Role.supervisor,
         Role.administrator.value: Role.administrator,
@@ -734,7 +802,12 @@ async def create_invite(
     normalized_email = email.strip().lower()
     company_ids = company_ids or []
 
-    await _ensure_role_seat_available_for_invite_or_user_add(db, tenant_id, normalized_role)
+    await _ensure_role_seat_available_for_invite_or_user_add(
+        db,
+        tenant_id,
+        normalized_role,
+        preset_id=effective_preset,
+    )
 
     existing_invite_stmt = (
         select(UserInvite)
@@ -917,6 +990,7 @@ async def create_user(
             tenant_id,
             normalized_role,
             exclude_invite_email=normalized_email,
+            preset_id=effective_preset,
         )
 
     generated_password: Optional[str] = None
@@ -966,6 +1040,7 @@ async def create_user(
 
     if not cross_tenant:
         _apply_global_role(user, normalized_role)
+    _apply_preset_access_context(user, effective_preset)
     await db.flush()
 
     await _replace_company_access(
@@ -1026,9 +1101,11 @@ async def change_user_role(
         user_id=user_id,
         old_role=prev_membership,
         new_role=normalized_role,
+        new_preset_id=effective_preset,
     )
 
     _apply_global_role(user, normalized_role)
+    _apply_preset_access_context(user, effective_preset)
     user.updated_at = _now()
     await db.flush()
 
@@ -1724,7 +1801,9 @@ async def accept_invite(
     assignable_role, effective_preset = _normalize_assignable_role(
         invite.role, preset_id=str(invite_preset) if invite_preset else None
     )
-    await _ensure_invite_accept_seat_still_valid(db, tenant_id, assignable_role)
+    await _ensure_invite_accept_seat_still_valid(
+        db, tenant_id, assignable_role, preset_id=effective_preset
+    )
     supervisor_candidate_id = invite.supervisor_id
 
     user: User | None = None
@@ -1775,6 +1854,7 @@ async def accept_invite(
         user.short_id = short_value or None
     user.supervisor_id = supervisor_ref.id if supervisor_ref else None
     _apply_global_role(user, assignable_role)
+    _apply_preset_access_context(user, effective_preset)
     user.updated_at = now
     await db.flush()
 

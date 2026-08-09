@@ -63,32 +63,61 @@ async def ensure_slug_unique(db: AsyncSession, slug: str, exclude_id: str | None
 
 
 def _usage_subquery():
+    """Seat usage by ADR-036 trust buckets (portal guests excluded from viewer)."""
+    from backend.app.auth.trust_roles import (
+        ADMINISTRATOR_SEAT_ROLES,
+        EMPLOYEE_SEAT_ROLES,
+        PORTAL_LEGACY_ROLES,
+        TENANT_VIEWER_SEAT_ROLES,
+    )
+
     membership = user_memberships.alias("membership")
     users = User.__table__
     role_lower = sa.func.lower(membership.c.role)
+    access_ctx = sa.func.lower(
+        sa.func.coalesce(users.c.preferences.op("->>")("access_context"), "")
+    )
+    preset_pref = sa.func.lower(
+        sa.func.coalesce(users.c.preferences.op("->>")("preset_id"), "")
+    )
+    is_portal = sa.or_(
+        role_lower.in_(tuple(PORTAL_LEGACY_ROLES)),
+        access_ctx == "portal",
+        preset_pref == "portal_guest",
+    )
 
-    def _count(*roles: str):
-        normalized = [str(role or "").strip().lower() for role in roles if role]
+    def _count_roles(roles: frozenset[str], *, exclude_portal: bool = True):
+        normalized = sorted(str(r).strip().lower() for r in roles if r)
         if not normalized:
             return sa.literal(0)
-        condition = role_lower.in_(normalized) if len(normalized) > 1 else role_lower == normalized[0]
+        condition = role_lower.in_(normalized)
+        if exclude_portal:
+            condition = sa.and_(condition, sa.not_(is_portal))
         return sa.func.coalesce(
-            sa.func.sum(
-                sa.case(
-                    (condition, 1),
-                    else_=0,
-                )
-            ),
+            sa.func.sum(sa.case((condition, 1), else_=0)),
             0,
         )
+
+    admin_count = _count_roles(ADMINISTRATOR_SEAT_ROLES)
+    employee_count = _count_roles(EMPLOYEE_SEAT_ROLES)
+    viewer_count = _count_roles(TENANT_VIEWER_SEAT_ROLES)
+    portal_count = sa.func.coalesce(
+        sa.func.sum(sa.case((is_portal, 1), else_=0)),
+        0,
+    )
 
     return (
         sa.select(
             membership.c.tenant_id.label("tenant_id"),
-            _count("recruiter").label("recruiter_count"),
-            _count("supervisor", "administrator").label("supervisor_count"),
-            _count("client_manager").label("client_manager_count"),
-            _count("viewer").label("viewer_count"),
+            # Canonical ADR-036 seat counters
+            admin_count.label("administrator_count"),
+            employee_count.label("employee_count"),
+            viewer_count.label("viewer_count"),
+            portal_count.label("portal_guest_count"),
+            # Legacy aliases (same values) for older FE/API consumers
+            employee_count.label("recruiter_count"),
+            admin_count.label("supervisor_count"),
+            portal_count.label("client_manager_count"),
             sa.literal(0).label("storage_used_gb"),
         )
         .select_from(membership)
@@ -107,17 +136,25 @@ def _usage_subquery():
 
 
 def _usage_from_row(
-    recruiter: int | None,
-    supervisor: int | None,
-    client_manager: int | None,
+    administrator: int | None,
+    employee: int | None,
     viewer: int | None,
+    portal_guest: int | None,
     storage: int | float | None,
 ) -> Dict[str, float]:
+    admin_n = int(administrator or 0)
+    employee_n = int(employee or 0)
+    viewer_n = int(viewer or 0)
+    portal_n = int(portal_guest or 0)
     return {
-        "recruiter_count": int(recruiter or 0),
-        "supervisor_count": int(supervisor or 0),
-        "client_manager_count": int(client_manager or 0),
-        "viewer_count": int(viewer or 0),
+        "administrator_count": admin_n,
+        "employee_count": employee_n,
+        "viewer_count": viewer_n,
+        "portal_guest_count": portal_n,
+        # Legacy aliases
+        "recruiter_count": employee_n,
+        "supervisor_count": admin_n,
+        "client_manager_count": portal_n,
         "storage_used_gb": float(storage or 0),
     }
 
@@ -397,10 +434,10 @@ async def get_tenant_with_details(
         sa.select(
             Tenant,
             TenantLicense,
-            usage_subq.c.recruiter_count,
-            usage_subq.c.supervisor_count,
-            usage_subq.c.client_manager_count,
+            usage_subq.c.administrator_count,
+            usage_subq.c.employee_count,
             usage_subq.c.viewer_count,
+            usage_subq.c.portal_guest_count,
             usage_subq.c.storage_used_gb,
         )
         .outerjoin(TenantLicense, TenantLicense.tenant_id == Tenant.id)
@@ -411,8 +448,8 @@ async def get_tenant_with_details(
     row = (await db.execute(stmt)).first()
     if not row:
         return None
-    tenant, license_entry, recruiter, supervisor, client_manager, viewer, storage = row
-    usage = _usage_from_row(recruiter, supervisor, client_manager, viewer, storage)
+    tenant, license_entry, admin, employee, viewer, portal, storage = row
+    usage = _usage_from_row(admin, employee, viewer, portal, storage)
     return tenant, license_entry, usage
 
 
@@ -431,10 +468,10 @@ async def list_tenants_with_licenses(
         sa.select(
             Tenant,
             TenantLicense,
-            usage_subq.c.recruiter_count,
-            usage_subq.c.supervisor_count,
-            usage_subq.c.client_manager_count,
+            usage_subq.c.administrator_count,
+            usage_subq.c.employee_count,
             usage_subq.c.viewer_count,
+            usage_subq.c.portal_guest_count,
             usage_subq.c.storage_used_gb,
         )
         .outerjoin(TenantLicense, TenantLicense.tenant_id == Tenant.id)
@@ -479,8 +516,8 @@ async def list_tenants_with_licenses(
     total = (await db.execute(count_stmt)).scalar_one()
     rows = await db.execute(stmt)
     items: list[Tuple[Tenant, Optional[TenantLicense], Dict[str, float]]] = []
-    for tenant, license_entry, recruiter, supervisor, client_manager, viewer, storage in rows:
-        usage = _usage_from_row(recruiter, supervisor, client_manager, viewer, storage)
+    for tenant, license_entry, admin, employee, viewer, portal, storage in rows:
+        usage = _usage_from_row(admin, employee, viewer, portal, storage)
         items.append((tenant, license_entry, usage))
     return items, int(total)
 
@@ -665,10 +702,10 @@ async def get_usage_snapshot(db: AsyncSession, tenant_id: str) -> Dict[str, floa
     usage_subq = _usage_subquery()
     stmt = (
         sa.select(
-            usage_subq.c.recruiter_count,
-            usage_subq.c.supervisor_count,
-            usage_subq.c.client_manager_count,
+            usage_subq.c.administrator_count,
+            usage_subq.c.employee_count,
             usage_subq.c.viewer_count,
+            usage_subq.c.portal_guest_count,
             usage_subq.c.storage_used_gb,
         )
         .where(usage_subq.c.tenant_id == tenant_id)
@@ -678,8 +715,8 @@ async def get_usage_snapshot(db: AsyncSession, tenant_id: str) -> Dict[str, floa
     if not row:
         base = _usage_from_row(0, 0, 0, 0, 0)
     else:
-        recruiter, supervisor, client_manager, viewer, storage = row
-        base = _usage_from_row(recruiter, supervisor, client_manager, viewer, storage)
+        admin, employee, viewer, portal, storage = row
+        base = _usage_from_row(admin, employee, viewer, portal, storage)
     leads_m, cand, docs, vac_open, portals = await asyncio.gather(
         _count_leads_created_this_month(db, tenant_id),
         _count_candidates_active(db, tenant_id),
@@ -1036,8 +1073,16 @@ async def apply_permission_preset_to_user(
 ) -> Dict[str, Dict[str, Dict[str, bool]]]:
     """Fill user_overrides from ADR-036 PERMISSION_PRESETS (does not change trust role)."""
     from backend.app.auth.trust_roles import get_permission_preset
+    from backend.app.models.user import User
+    from backend.app.services.users import _apply_preset_access_context
 
     modules = get_permission_preset(preset_id)
+    user = (
+        await db.execute(sa.select(User).where(User.id == str(user_id)).limit(1))
+    ).scalar_one_or_none()
+    if user is not None:
+        _apply_preset_access_context(user, preset_id)
+        await db.flush()
     return await update_user_module_overrides(
         db,
         tenant,

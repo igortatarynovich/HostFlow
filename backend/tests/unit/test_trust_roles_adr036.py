@@ -130,3 +130,22 @@ def test_matrix_ceiling_locks_administrator_for_tenant_admin() -> None:
         assert_matrix_role_editable("administrator", actor_is_superadmin=False)
     assert_matrix_role_editable("employee", actor_is_superadmin=False)
     assert_matrix_role_editable("administrator", actor_is_superadmin=True)
+
+
+def test_billable_seat_buckets_and_portal_non_billable() -> None:
+    from backend.app.auth.trust_roles import (
+        billable_seat_bucket,
+        seat_quota_attr_for_role,
+    )
+
+    assert billable_seat_bucket("administrator") == "administrator"
+    assert billable_seat_bucket("recruiter") == "employee"
+    assert billable_seat_bucket("employee") == "employee"
+    assert billable_seat_bucket("viewer") == "viewer"
+    assert billable_seat_bucket("client_manager") is None
+    assert billable_seat_bucket("viewer", access_context="portal") is None
+    assert billable_seat_bucket("viewer", preset_id="portal_guest") is None
+    assert seat_quota_attr_for_role("employee") == "max_recruiters"
+    assert seat_quota_attr_for_role("administrator") == "max_supervisors"
+    assert seat_quota_attr_for_role("viewer") == "max_viewers"
+    assert seat_quota_attr_for_role("client_processor") is None
