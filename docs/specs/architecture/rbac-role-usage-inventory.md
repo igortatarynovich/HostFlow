@@ -155,7 +155,7 @@
 | `hostflow-frontend/src/pages/CommunicationsInboxHubPage.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
 | `hostflow-frontend/src/pages/MyCompanyPage.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
 | `hostflow-frontend/src/pages/Pipeline.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
-| `hostflow-frontend/src/pages/ProfilePage.tsx` | 2 | ORG_PROXY,SEAT | client_manager,supervisor | recount seats Admin/Employee/Viewer | open |
+| `hostflow-frontend/src/pages/ProfilePage.tsx` | 2 | ORG_PROXY,SEAT | client_manager,supervisor | recount seats Admin/Employee/Viewer | migrated |
 | `hostflow-frontend/src/pages/RemindersPage.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
 | `hostflow-frontend/src/pages/WorkHubPage.tsx` | 1 | ORG_PROXY | recruiter,supervisor | employee + supervisor_id/org + permission | open |
 | `hostflow-frontend/src/pages/admin/BillingTeamPage.tsx` | 2 | PORTAL_LEGACY,SEAT | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | trust seats + portal non-billable | migrated |
