@@ -39,3 +39,13 @@ def test_to_options_localized_catalog_shape():
     assert rows[0]["value"]
     assert rows[0]["label"]
     assert rows[0]["meta"]["label_en"]
+
+
+def test_list_team_sizes_accepts_onboarding_flag():
+    from backend.app.reference.company_setup_catalogs import list_team_sizes
+
+    assert list_team_sizes() == list_team_sizes(onboarding=False)
+    assert list_team_sizes(onboarding=True)
+    assert {item.code for item in list_team_sizes(onboarding=True)} == {
+        item.code for item in list_team_sizes(onboarding=False)
+    }

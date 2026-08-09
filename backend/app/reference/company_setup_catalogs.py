@@ -218,7 +218,13 @@ def list_industries() -> tuple[LocalizedCatalogItem, ...]:
     return INDUSTRIES
 
 
-def list_team_sizes() -> tuple[LocalizedCatalogItem, ...]:
+def list_team_sizes(*, onboarding: bool = False) -> tuple[LocalizedCatalogItem, ...]:
+    """Return team-size buckets.
+
+    ``onboarding`` is reserved for a tighter wizard subset; today both paths share
+    the same canonical catalog so callers (API + reference foundation) stay compatible.
+    """
+    _ = onboarding
     return TEAM_SIZES
 
 

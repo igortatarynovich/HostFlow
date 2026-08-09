@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   fetchCompanySetupCatalogs,
   type CatalogOptionDto,
@@ -71,20 +71,30 @@ export function useCompanySetupCatalogs(locale?: string) {
   const fallback = useMemo(() => fallbackCompanySetup(locale), [locale])
   const [catalogs, setCatalogs] = useState<CompanySetupCatalogsDto>(fallback)
   const [loading, setLoading] = useState(true)
+  const fetchedForLocale = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
+    const localeKey = locale ?? ''
+    // One attempt per locale — prevents retry storms when the catalog API fails.
+    if (fetchedForLocale.current === localeKey) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     void fetchCompanySetupCatalogs()
       .then((data) => {
         if (cancelled) return
+        fetchedForLocale.current = localeKey
         setCatalogs({
           ...data,
           countries: withOtherCountryOption(data.countries ?? fallback.countries, locale),
         })
       })
       .catch(() => {
-        if (!cancelled) setCatalogs(fallback)
+        if (cancelled) return
+        fetchedForLocale.current = localeKey
+        setCatalogs(fallback)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
