@@ -11,7 +11,8 @@ from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.audit import ActivityLog
 
@@ -56,7 +57,7 @@ router = APIRouter(prefix="/automation-log", tags=["automation-log"])
 @router.get(
     "",
     response_model=AutomationLogListOut,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin, Role.recruiter, Role.administrator, Role.supervisor, Role.superadmin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_automation_log(
     target_type: Optional[str] = Query(None, description="Filter by target_type (e.g. candidate, lead, document)."),

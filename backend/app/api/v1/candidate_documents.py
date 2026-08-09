@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, root_validator
 from sqlalchemy import and_, or_, select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
+from backend.app.auth.deps import Role, get_current_user, UserCtx
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
@@ -55,6 +55,7 @@ from backend.app.services.handoff import (
 )
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    can_override_recruitment_handoff_lock,
     agency_candidate_has_internal_hr_handoff_lane,
     is_recruitment_recruiter_write_locked_by_handoff,
 )
@@ -93,16 +94,13 @@ except Exception:  # pragma: no cover
     DocumentType = None  # type: ignore
 
 router = APIRouter(prefix="/candidates", tags=["candidate-documents"])
-DOCUMENT_ROLES = (
-    Role.manager,
-    Role.admin,
-    Role.recruiter,
-    Role.compliance_officer,
-    Role.hr_officer,
-    Role.supervisor,
-    Role.administrator,
+from backend.app.auth.trust_role_deps import (
+    TRUST_WRITE_ROLES,
+    require_trust_write,
+    require_trust_write_or_portal,
 )
-DOCUMENT_MUTATE_ROLES = (*DOCUMENT_ROLES, Role.client_manager, Role.client_processor)
+DOCUMENT_ROLES = TRUST_WRITE_ROLES
+DOCUMENT_MUTATE_ROLES = TRUST_WRITE_ROLES  # portal mutate via require_trust_write_or_portal below
 
 STATUSES = {status.value for status in DocumentStatus}
 
@@ -651,12 +649,12 @@ class AppliedTemplateResponse(BaseModel):
 @router.get(
     "/candidate/{candidate_id}/documents",
     response_model=List[CandDoc],
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 @router.get(
     "/{candidate_id}/documents",
     response_model=List[CandDoc],
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_candidate_documents(
     candidate_id: UUID,
@@ -775,7 +773,7 @@ async def _check_document_edit_permission(
         return None
     role_l = str(getattr(current_user, "role", "") or "").strip().lower() if current_user else ""
     or_s = str(override_reason or "").strip()
-    if role_l in RECRUITMENT_LOCK_OVERRIDE_ROLES and or_s:
+    if can_override_recruitment_handoff_lock(role_l) and or_s:
         return {"lock_reason": lock_reason or "handoff", "override_reason": or_s}
     if role_l == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
         db, agency_tenant_id=tenant_id_str, candidate_id=candidate_id_str
@@ -839,13 +837,13 @@ def _doc_payload_override_reason(payload: Any) -> Optional[str]:
     "/candidate/{candidate_id}/documents",
     response_model=CandDoc,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+    dependencies=[Depends(require_trust_write_or_portal())],
 )
 @router.post(
     "/{candidate_id}/documents",
     response_model=CandDoc,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+    dependencies=[Depends(require_trust_write_or_portal())],
 )
 async def create_candidate_document(
     candidate_id: UUID,
@@ -999,12 +997,12 @@ async def create_candidate_document(
 @router.patch(
     "/candidate/{candidate_id}/documents/{doc_id}",
     response_model=CandDoc,
-    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+    dependencies=[Depends(require_trust_write_or_portal())],
 )
 @router.patch(
     "/{candidate_id}/documents/{doc_id}",
     response_model=CandDoc,
-    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+    dependencies=[Depends(require_trust_write_or_portal())],
 )
 async def update_candidate_document(
     candidate_id: UUID,
@@ -1487,12 +1485,12 @@ async def apply_template_to_candidate_impl(
 @router.post(
     "/candidate/{candidate_id}/documents/apply-template",
     response_model=AppliedTemplateResponse,
-    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+    dependencies=[Depends(require_trust_write_or_portal())],
 )
 @router.post(
     "/{candidate_id}/documents/apply-template",
     response_model=AppliedTemplateResponse,
-    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+    dependencies=[Depends(require_trust_write_or_portal())],
 )
 async def apply_document_template(
     candidate_id: UUID,
@@ -1541,11 +1539,11 @@ async def apply_document_template(
 # --------- delete ---------
 @router.delete(
     "/candidate/{candidate_id}/documents/{doc_id}",
-    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+    dependencies=[Depends(require_trust_write_or_portal())],
 )
 @router.delete(
     "/{candidate_id}/documents/{doc_id}",
-    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+    dependencies=[Depends(require_trust_write_or_portal())],
 )
 async def delete_candidate_document(
     candidate_id: UUID,
@@ -1617,12 +1615,12 @@ async def delete_candidate_document(
 @router.post(
     "/candidate/{candidate_id}/documents/upload",
     response_model=CandDoc,
-    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+    dependencies=[Depends(require_trust_write_or_portal())],
 )
 @router.post(
     "/{candidate_id}/documents/upload",
     response_model=CandDoc,
-    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+    dependencies=[Depends(require_trust_write_or_portal())],
 )
 async def upload_candidate_document(
     candidate_id: UUID,
@@ -1817,11 +1815,11 @@ async def upload_candidate_document(
 # --------- прямой доступ к файлу ---------
 @router.get(
     "/candidate/{candidate_id}/documents/{doc_id}/file",
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 @router.get(
     "/{candidate_id}/documents/{doc_id}/file",
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_candidate_document_file(
     candidate_id: UUID,

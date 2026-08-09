@@ -32,82 +32,82 @@
 
 | path | hits | classes | legacy_roles_seen | target_mapping | status |
 |------|------|---------|-------------------|----------------|--------|
-| `backend/app/api/public/intake.py` | 4 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/admin/companies_access.py` | 3 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/automation_log.py` | 1 | ORG_PROXY | admin,administrator,manager,recruiter,superadmin,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/automation_rules.py` | 4 | ORG_PROXY | admin,administrator,manager,superadmin,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/candidate_documents.py` | 5 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/candidate_employments.py` | 4 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/candidate_notes/router.py` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/candidate_permits.py` | 5 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/candidate_profile.py` | 1 | PORTAL_LEGACY | admin,client_manager,client_processor,manager | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/candidate_profiles.py` | 2 | PORTAL_LEGACY | client_manager,client_processor | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/candidate_requirements.py` | 4 | JOB_PROXY | compliance_officer,recruiter,viewer | employee + permission/module gate + preset | open |
+| `backend/app/api/public/intake.py` | 4 | JOB_PROXY | recruiter | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/admin/companies_access.py` | 3 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/automation_log.py` | 1 | ORG_PROXY | admin,administrator,manager,recruiter,superadmin,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/automation_rules.py` | 4 | ORG_PROXY | admin,administrator,manager,superadmin,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/candidate_documents.py` | 5 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/candidate_employments.py` | 4 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/candidate_notes/router.py` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/candidate_permits.py` | 5 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/candidate_profile.py` | 1 | PORTAL_LEGACY | admin,client_manager,client_processor,manager | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/candidate_profiles.py` | 2 | PORTAL_LEGACY | client_manager,client_processor | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/candidate_requirements.py` | 4 | JOB_PROXY | compliance_officer,recruiter,viewer | employee + permission/module gate + preset | migrated |
 | `backend/app/api/v1/candidates/acl.py` | 8 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
-| `backend/app/api/v1/candidates/pipeline_overrides_api.py` | 10 | PORTAL_LEGACY | client_manager,client_processor | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/candidates/router.py` | 2 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/candidates_delete.py` | 5 | JOB_PROXY,ORG_PROXY | administrator,recruiter,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/communications/routes/dispatch.py` | 2 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/communications/routes/planner.py` | 4 | JOB_PROXY,ORG_PROXY,PORTAL_LEGACY | administrator,client_manager,client_processor,recruiter,supervisor | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/company_module_settings.py` | 3 | ORG_PROXY | administrator,hr_officer,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/custom_fields.py` | 7 | ORG_PROXY | admin,administrator,recruiter,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/document_merge/router.py` | 4 | JOB_PROXY | compliance_officer,hr_officer,recruiter | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/document_policies.py` | 4 | ORG_PROXY | admin,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/documents.py` | 1 | JOB_PROXY | admin,manager,recruiter | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/funnels.py` | 1 | JOB_PROXY | admin,hr_officer,manager | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/global_search.py` | 4 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,recruiter | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/handoffs.py` | 1 | JOB_PROXY | hr_officer | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/hr_dashboard.py` | 4 | ORG_PROXY | administrator,hr_officer,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/hr_inbox.py` | 8 | ORG_PROXY | administrator,hr_officer,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/next_actions.py` | 1 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/notifications.py` | 1 | ORG_PROXY | administrator,superadmin,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/own_companies.py` | 2 | ORG_PROXY | admin,administrator,manager,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/platform/acquisition_activity.py` | 4 | JOB_PROXY,PORTAL_LEGACY | administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/platform/campaigns.py` | 5 | JOB_PROXY,PORTAL_LEGACY | administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/platform/forms_builder.py` | 3 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/platform/marketing_diagnostics.py` | 4 | JOB_PROXY,PORTAL_LEGACY | administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/platform/marketing_sources.py` | 5 | JOB_PROXY,ORG_PROXY,PORTAL_LEGACY | administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/recruiters/router.py` | 1 | ORG_PROXY | admin,manager,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/services.py` | 12 | ORG_PROXY | administrator,recruiter,supervisor,viewer | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/settings/billing/routes.py` | 3 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/settings/communications.py` | 5 | JOB_PROXY,ORG_PROXY,PORTAL_LEGACY | administrator,client_manager,client_processor,recruiter,supervisor | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/settings/hiring_pipeline_gates_impl.py` | 3 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,recruiter | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/settings/intake_forms.py` | 6 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/settings/lead_forms.py` | 1 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/settings/lead_lifecycle_email.py` | 1 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/settings/leads.py` | 16 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/api/v1/settings/team.py` | 20 | JOB_PROXY,ORG_PROXY,PORTAL_LEGACY | administrator,client_manager,client_processor,compliance_officer,employee,hr_officer,manager,recruiter,supervisor,viewer | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/tenants/router.py` | 4 | JOB_PROXY | admin,compliance_officer,hr_officer,manager,owner,recruiter | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/tenants/service.py` | 24 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/vacancies/launch_search_setup_api.py` | 1 | JOB_PROXY | admin,manager,recruiter | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/vacancies/router.py` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/workforce/router.py` | 6 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
-| `backend/app/api/v1/workforce/zus_workspace_router.py` | 1 | JOB_PROXY | hr_officer | employee + permission/module gate + preset | open |
+| `backend/app/api/v1/candidates/pipeline_overrides_api.py` | 10 | PORTAL_LEGACY | client_manager,client_processor | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/candidates/router.py` | 2 | JOB_PROXY | recruiter | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/candidates_delete.py` | 5 | JOB_PROXY,ORG_PROXY | administrator,recruiter,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/communications/routes/dispatch.py` | 2 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/communications/routes/planner.py` | 4 | JOB_PROXY,ORG_PROXY,PORTAL_LEGACY | administrator,client_manager,client_processor,recruiter,supervisor | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/company_module_settings.py` | 3 | ORG_PROXY | administrator,hr_officer,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/custom_fields.py` | 7 | ORG_PROXY | admin,administrator,recruiter,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/document_merge/router.py` | 4 | JOB_PROXY | compliance_officer,hr_officer,recruiter | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/document_policies.py` | 4 | ORG_PROXY | admin,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/documents.py` | 1 | JOB_PROXY | admin,manager,recruiter | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/funnels.py` | 1 | JOB_PROXY | admin,hr_officer,manager | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/global_search.py` | 4 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,recruiter | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/handoffs.py` | 1 | JOB_PROXY | hr_officer | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/hr_dashboard.py` | 4 | ORG_PROXY | administrator,hr_officer,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/hr_inbox.py` | 8 | ORG_PROXY | administrator,hr_officer,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/next_actions.py` | 1 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/notifications.py` | 1 | ORG_PROXY | administrator,superadmin,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/own_companies.py` | 2 | ORG_PROXY | admin,administrator,manager,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/platform/acquisition_activity.py` | 4 | JOB_PROXY,PORTAL_LEGACY | administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/platform/campaigns.py` | 5 | JOB_PROXY,PORTAL_LEGACY | administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/platform/forms_builder.py` | 3 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/platform/marketing_diagnostics.py` | 4 | JOB_PROXY,PORTAL_LEGACY | administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/platform/marketing_sources.py` | 5 | JOB_PROXY,ORG_PROXY,PORTAL_LEGACY | administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/recruiters/router.py` | 1 | ORG_PROXY | admin,manager,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/services.py` | 12 | ORG_PROXY | administrator,recruiter,supervisor,viewer | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/settings/billing/routes.py` | 3 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/settings/communications.py` | 5 | JOB_PROXY,ORG_PROXY,PORTAL_LEGACY | administrator,client_manager,client_processor,recruiter,supervisor | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/settings/hiring_pipeline_gates_impl.py` | 3 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,recruiter | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/settings/intake_forms.py` | 6 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/settings/lead_forms.py` | 1 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/settings/lead_lifecycle_email.py` | 1 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/settings/leads.py` | 16 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/api/v1/settings/team.py` | 20 | JOB_PROXY,ORG_PROXY,PORTAL_LEGACY | administrator,client_manager,client_processor,compliance_officer,employee,hr_officer,manager,recruiter,supervisor,viewer | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/tenants/router.py` | 4 | JOB_PROXY | admin,compliance_officer,hr_officer,manager,owner,recruiter | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/tenants/service.py` | 24 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/vacancies/launch_search_setup_api.py` | 1 | JOB_PROXY | admin,manager,recruiter | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/vacancies/router.py` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | migrated |
+| `backend/app/api/v1/workforce/router.py` | 6 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
+| `backend/app/api/v1/workforce/zus_workspace_router.py` | 1 | JOB_PROXY | hr_officer | employee + permission/module gate + preset | migrated |
 | `backend/app/auth/deps.py` | 11 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
 | `backend/app/auth/fleet_access.py` | 4 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,recruiter | viewer + access_context=portal + scope | migrated |
 | `backend/app/auth/hiring_workspace_roles.py` | 8 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
 | `backend/app/auth/module_gate.py` | 6 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
-| `backend/app/auth/router.py` | 7 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,hr_officer,recruiter | viewer + access_context=portal + scope | open |
+| `backend/app/auth/router.py` | 7 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
 | `backend/app/db/seeds/recruitment_team_flow_scenario.py` | 3 | JOB_PROXY | hr_officer,recruiter | employee + permission/module gate + preset | open |
 | `backend/app/jobs/hr_operational_alerts_dispatch.py` | 2 | JOB_PROXY | hr_officer | employee + permission/module gate + preset | open |
-| `backend/app/modules/applications/router.py` | 14 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | open |
-| `backend/app/modules/client_accounts/router.py` | 5 | ORG_PROXY | admin,manager,recruiter,supervisor,viewer | employee + supervisor_id/org + permission | open |
-| `backend/app/modules/companies/router.py` | 16 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | open |
-| `backend/app/modules/documents/router.py` | 1 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | open |
-| `backend/app/modules/leads/next_action_api.py` | 1 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | open |
-| `backend/app/modules/leads/router.py` | 27 | JOB_PROXY,ORG_PROXY | admin,manager,recruiter,supervisor,viewer | employee + supervisor_id/org + permission | open |
-| `backend/app/modules/sales_orders/router.py` | 2 | ORG_PROXY | admin,manager,recruiter,supervisor,viewer | employee + supervisor_id/org + permission | open |
-| `backend/app/modules/vacancies/router.py` | 5 | ORG_PROXY | administrator,recruiter,supervisor,viewer | employee + supervisor_id/org + permission | open |
+| `backend/app/modules/applications/router.py` | 14 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | migrated |
+| `backend/app/modules/client_accounts/router.py` | 5 | ORG_PROXY | admin,manager,recruiter,supervisor,viewer | employee + supervisor_id/org + permission | migrated |
+| `backend/app/modules/companies/router.py` | 16 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | migrated |
+| `backend/app/modules/documents/router.py` | 1 | ORG_PROXY | administrator,supervisor | employee + supervisor_id/org + permission | migrated |
+| `backend/app/modules/leads/next_action_api.py` | 1 | JOB_PROXY | admin,manager,recruiter,viewer | employee + permission/module gate + preset | migrated |
+| `backend/app/modules/leads/router.py` | 27 | JOB_PROXY,ORG_PROXY | admin,manager,recruiter,supervisor,viewer | employee + supervisor_id/org + permission | migrated |
+| `backend/app/modules/sales_orders/router.py` | 2 | ORG_PROXY | admin,manager,recruiter,supervisor,viewer | employee + supervisor_id/org + permission | migrated |
+| `backend/app/modules/vacancies/router.py` | 5 | ORG_PROXY | administrator,recruiter,supervisor,viewer | employee + supervisor_id/org + permission | migrated |
 | `backend/app/services/candidate_deletion.py` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
-| `backend/app/services/document_dossier_access.py` | 6 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
-| `backend/app/services/global_search_v1.py` | 2 | PORTAL_LEGACY | client_manager,client_processor | viewer + access_context=portal + scope | open |
+| `backend/app/services/document_dossier_access.py` | 6 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
+| `backend/app/services/global_search_v1.py` | 2 | PORTAL_LEGACY | client_manager,client_processor | viewer + access_context=portal + scope | migrated |
 | `backend/app/services/handoff.py` | 2 | JOB_PROXY | hr_officer | employee + permission/module gate + preset | open |
-| `backend/app/services/handoff_snapshot_acl.py` | 5 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
+| `backend/app/services/handoff_snapshot_acl.py` | 5 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
 | `backend/app/services/hr_operational_alerts.py` | 1 | JOB_PROXY | hr_officer | employee + permission/module gate + preset | open |
 | `backend/app/services/lead_distribution.py` | 2 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `backend/app/services/recruiter_assignment.py` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `backend/app/services/recruitment_lead_assignee.py` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
-| `backend/app/services/stage_meta_recruitment_filter.py` | 6 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,hr_officer | viewer + access_context=portal + scope | open |
+| `backend/app/services/stage_meta_recruitment_filter.py` | 6 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,hr_officer | viewer + access_context=portal + scope | migrated |
 | `backend/app/services/users.py` | 30 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
 | `hostflow-frontend/src/api/analytics.ts` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/api/billing.ts` | 1 | SEAT | client_manager | recount seats Admin/Employee/Viewer | open |
@@ -185,7 +185,14 @@ Migrated (runtime bridges + trust-aware ACL/gates):
 - `backend/app/auth/module_gate.py` — portal via `access_context`; employee write fallback; team-lead org bypass
 - `backend/app/api/v1/candidates/acl.py` — trust/org/hr helpers; subordinates include `employee`
 
-Still `open` for next inventory PRs: router-level `require_roles(...)` lists, services, FE seats/UI, enum delete.
+### Slice progress (require_roles → trust deps — this PR)
+
+- `backend/app/auth/trust_role_deps.py` — `require_trust_read/write/admin`, `require_trust_write_or_portal`, `require_portal_context`
+- Backend router/module `require_roles(job/portal…)` call sites rewritten to trust deps
+- HR workspace routes: trust write + `require_hr_workforce_module_access` (module matrix permission)
+- Services ACL helpers: dossier / handoff snapshot / global search / stage meta / handoff lock override
+
+Still `open` (next RBAC PRs, not this one): Users UI + presets; seats / portal billing; `services/users.py` seat maps; FE; enum delete; seed/job role strings.
 
 ## DB appendix
 

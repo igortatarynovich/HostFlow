@@ -15,24 +15,21 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from backend.app.auth.deps import Role, get_current_user, require_roles, UserCtx
+from backend.app.auth.deps import Role, get_current_user, UserCtx
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.db.session import async_session_maker
 from backend.app.services.audit import log_audit_event
 from backend.app.services.handoff import is_client_tenant
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    can_override_recruitment_handoff_lock,
     is_recruitment_recruiter_write_locked_by_handoff,
 )
 
 router = APIRouter(prefix="/api/v1/candidates", tags=["candidate-notes"])
 
-ALLOW_NOTES_ROLES = (
-    Role.supervisor,
-    Role.administrator,
-    Role.recruiter,
-    Role.superadmin,
-)
+from backend.app.auth.trust_role_deps import TRUST_WRITE_ROLES, require_trust_write
+ALLOW_NOTES_ROLES = TRUST_WRITE_ROLES
 
 
 async def _get_db(request: Request) -> Any:
@@ -92,7 +89,7 @@ async def list_candidate_notes(
     candidate_id: str,
     request: Request,
     user: UserCtx = Depends(get_current_user),
-    _=Depends(require_roles(*ALLOW_NOTES_ROLES)),
+    _=Depends(require_trust_write()),
 ):
     dbi = await _get_db(request)
     rows = await dbi.fetch_all(
@@ -115,7 +112,7 @@ async def add_candidate_note(
     payload: NoteIn,
     request: Request,
     user: UserCtx = Depends(get_current_user),
-    _=Depends(require_roles(*ALLOW_NOTES_ROLES)),
+    _=Depends(require_trust_write()),
 ):
     """Append a tenant-scoped note row.
 
@@ -166,7 +163,7 @@ async def add_candidate_note(
                 if locked:
                     role_l = str(getattr(user, "role", "") or "").strip().lower()
                     or_ok = str(payload.override_reason or "").strip()
-                    if role_l not in RECRUITMENT_LOCK_OVERRIDE_ROLES or not or_ok:
+                    if not can_override_recruitment_handoff_lock(role_l) or not or_ok:
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
                             detail=(

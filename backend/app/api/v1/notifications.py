@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, get_current_user
 from backend.app.auth.deps import UserCtx
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import user_notifications
@@ -215,7 +216,7 @@ async def reconcile_notifications(
 @router.post(
     "/reconcile-tenant",
     response_model=NotificationTenantReconcileResponse,
-    dependencies=[Depends(require_roles(Role.supervisor, Role.administrator, Role.superadmin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def reconcile_notifications_tenant(
     max_users: int = Query(2000, ge=1, le=10000),

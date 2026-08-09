@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.services.candidate_evidence_service import (
@@ -28,14 +28,17 @@ from backend.app.services.operational_requirements_service import (
 from backend.app.services.requirements_workspace_service import build_requirements_workspace
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    can_override_recruitment_handoff_lock,
     is_recruitment_recruiter_write_locked_by_handoff,
 )
 
 router = APIRouter(prefix="/candidates", tags=["candidate-requirements"], redirect_slashes=False)
 
-WRITE_ROLES = (Role.manager, Role.admin, Role.recruiter, Role.supervisor)
+from backend.app.auth.trust_role_deps import TRUST_WRITE_ROLES, TRUST_READ_ROLES, require_trust_read, require_trust_write
+WRITE_ROLES = TRUST_WRITE_ROLES
 RESTRICTED_ROLES = {
-    Role.recruiter.value,
+    Role.employee.value,
+    Role.recruiter.value,  # legacy DB
     Role.supervisor.value,
     Role.manager.value,
 }
@@ -90,7 +93,7 @@ async def _ensure_candidate_write(
         agency_tenant_id=tenant_id,
         candidate_id=candidate_id,
     )
-    if locked and role not in RECRUITMENT_LOCK_OVERRIDE_ROLES:
+    if locked and not can_override_recruitment_handoff_lock(role):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Recruitment locked ({lock_reason or 'handoff'}): requirement evidence cannot be changed",
@@ -100,7 +103,7 @@ async def _ensure_candidate_write(
 
 @router.get(
     "/{candidate_id}/requirements/checklist",
-    dependencies=[Depends(require_roles(*WRITE_ROLES, Role.viewer, Role.compliance_officer))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_requirements_checklist(
     candidate_id: uuid.UUID,
@@ -121,7 +124,7 @@ async def get_requirements_checklist(
 
 @router.get(
     "/{candidate_id}/requirements/workspace",
-    dependencies=[Depends(require_roles(*WRITE_ROLES, Role.viewer, Role.compliance_officer))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_requirements_workspace(
     candidate_id: uuid.UUID,
@@ -147,7 +150,7 @@ async def get_requirements_workspace(
 
 @router.post(
     "/{candidate_id}/requirements/{requirement_code}/select-evidence",
-    dependencies=[Depends(require_roles(*WRITE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def post_select_evidence(
     candidate_id: uuid.UUID,
@@ -175,7 +178,7 @@ async def post_select_evidence(
 
 @router.post(
     "/{candidate_id}/requirements/evidence/{evidence_id}/documents",
-    dependencies=[Depends(require_roles(*WRITE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def post_link_document(
     candidate_id: uuid.UUID,
@@ -202,7 +205,7 @@ async def post_link_document(
 
 @router.post(
     "/{candidate_id}/requirements/evidence/{evidence_id}/approve",
-    dependencies=[Depends(require_roles(*WRITE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def post_approve_evidence(
     candidate_id: uuid.UUID,
@@ -227,7 +230,7 @@ async def post_approve_evidence(
 
 @router.post(
     "/{candidate_id}/requirements/evidence/{evidence_id}/reject",
-    dependencies=[Depends(require_roles(*WRITE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def post_reject_evidence(
     candidate_id: uuid.UUID,
@@ -254,7 +257,7 @@ async def post_reject_evidence(
 
 @router.post(
     "/{candidate_id}/requirements/{requirement_code}/replace-evidence",
-    dependencies=[Depends(require_roles(*WRITE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def post_replace_evidence(
     candidate_id: uuid.UUID,
@@ -283,7 +286,7 @@ async def post_replace_evidence(
 @router.post(
     "/{candidate_id}/requirements/{requirement_code}/complete-activity",
     response_model=OperationalRequirementOut,
-    dependencies=[Depends(require_roles(*WRITE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def post_complete_operational_activity(
     candidate_id: uuid.UUID,

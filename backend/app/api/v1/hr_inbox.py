@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 
 from backend.app.api.v1.handoffs import HandoffOut
 from backend.app.api.v1.reminders_v2 import ReminderListResponse, ReminderOut
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.auth.hr_workforce_access import require_hr_workforce_module_access
 from backend.app.constants.hr_task_types import HR_TASK_TYPES
 from backend.app.db.deps import get_db_with_tenant
@@ -146,7 +147,7 @@ async def hr_handoffs_pending(
     db_tenant=Depends(get_db_with_tenant),
     _current_user: UserCtx = Depends(get_current_user),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     rows, total = await list_internal_hr_handoffs_for_hr_inbox(
@@ -165,7 +166,7 @@ async def hr_handoffs_pending(
 async def hr_inbox_context(
     db_tenant=Depends(get_db_with_tenant),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     delayed = await delayed_hr_workforce_creation_enabled(db, str(tid))
@@ -179,7 +180,7 @@ async def hr_handoffs_accepted(
     db_tenant=Depends(get_db_with_tenant),
     _current_user: UserCtx = Depends(get_current_user),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     rows, total = await list_internal_hr_handoffs_for_hr_inbox(
@@ -199,7 +200,7 @@ async def hr_handoff_inbox_row(
     handoff_id: str,
     db_tenant=Depends(get_db_with_tenant),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     row = await get_internal_hr_handoff_inbox_row(db, tenant_id=str(tid), handoff_id=str(handoff_id))
@@ -215,7 +216,7 @@ async def hr_tasks(
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     aid = _hr_assignee_scope_resolve(
@@ -259,7 +260,7 @@ async def hr_documents_hub(
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     """Read-model over ``workforce_hr_document_contexts`` (linked docs + employee + compliance + handoff snapshot)."""
     hz = _horizon_days(horizon_days)
@@ -295,7 +296,7 @@ async def hr_documents_missing(
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     rows, total = await list_hr_documents_missing(
@@ -331,7 +332,7 @@ async def hr_documents_expiring(
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     hz = _horizon_days(horizon_days)
     db, tid = db_tenant

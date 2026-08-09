@@ -8,7 +8,8 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile, s
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
 from backend.app.api.v1.platform import schemas as platform_schemas
 from backend.app.api.v1.tenants import service as tenant_service
@@ -89,7 +90,7 @@ class RiskModelV1SettingsOut(BaseModel):
 @router.get(
     "",
     response_model=TeamOverviewResponse,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_team_overview(
     ctx: UserCtx = Depends(get_current_user),
@@ -128,7 +129,7 @@ async def get_team_overview(
 @router.patch(
     "/branding",
     response_model=TeamTenantSummary,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_branding(
     payload: TenantBrandingPatch,
@@ -160,7 +161,7 @@ async def update_branding(
 @router.post(
     "/branding/logo",
     response_model=TeamTenantSummary,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def upload_branding_logo(
     file: UploadFile = File(...),
@@ -194,16 +195,7 @@ async def upload_branding_logo(
     response_model=TenantModuleSettings,
     dependencies=[
         Depends(
-            require_roles(
-                Role.administrator,
-                Role.supervisor,
-                Role.recruiter,
-                Role.client_manager,
-                Role.client_processor,
-                Role.compliance_officer,
-                Role.hr_officer,
-                Role.viewer,
-            )
+            require_trust_read()
         )
     ],
 )
@@ -224,7 +216,7 @@ async def get_module_settings(
 @router.get(
     "/vacancy-requirements-presets",
     response_model=VacancyRequirementsPresetListOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_vacancy_requirements_presets(
     ctx: UserCtx = Depends(get_current_user),
@@ -243,7 +235,7 @@ async def list_vacancy_requirements_presets(
 @router.put(
     "/vacancy-requirements-presets/{preset_id}",
     response_model=VacancyRequirementsPresetListOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def upsert_vacancy_requirements_preset(
     preset_id: str,
@@ -274,7 +266,7 @@ async def upsert_vacancy_requirements_preset(
 @router.delete(
     "/vacancy-requirements-presets/{preset_id}",
     response_model=VacancyRequirementsPresetListOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def delete_vacancy_requirements_preset(
     preset_id: str,
@@ -301,7 +293,7 @@ async def delete_vacancy_requirements_preset(
 @router.get(
     "/module-matrix",
     response_model=TenantRoleModuleMatrix,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def get_module_matrix(
     ctx: UserCtx = Depends(get_current_user),
@@ -320,7 +312,7 @@ async def get_module_matrix(
 @router.patch(
     "/module-matrix",
     response_model=TenantRoleModuleMatrix,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def patch_module_matrix(
     payload: platform_schemas.TenantRoleModuleMatrixPatch,
@@ -356,17 +348,7 @@ async def patch_module_matrix(
     response_model=EffectiveRoleModules,
     dependencies=[
         Depends(
-            require_roles(
-                Role.administrator,
-                Role.employee,
-                Role.supervisor,
-                Role.recruiter,
-                Role.client_manager,
-                Role.client_processor,
-                Role.compliance_officer,
-                Role.hr_officer,
-                Role.viewer,
-            )
+            require_trust_read()
         )
     ],
 )
@@ -401,7 +383,7 @@ async def get_effective_module_permissions(
 @router.patch(
     "/modules",
     response_model=TenantModuleSettings,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_module_settings(
     payload: TenantModuleSettingsPatch,
@@ -430,7 +412,7 @@ async def update_module_settings(
 @router.get(
     "/seat-requests",
     response_model=List[SeatRequestOut],
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def list_seat_requests(
     ctx: UserCtx = Depends(get_current_user),
@@ -448,7 +430,7 @@ async def list_seat_requests(
     "/seat-requests",
     response_model=SeatRequestOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_seat_request(
     payload: SeatRequestCreate,
@@ -477,7 +459,7 @@ async def create_seat_request(
 @router.get(
     "/hiring-pipeline-gates",
     response_model=HiringPipelineGatesPublicOut,
-    dependencies=[Depends(require_roles(*HIRING_GATES_READ_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_hiring_pipeline_gates(
     ctx: UserCtx = Depends(get_current_user),
@@ -489,7 +471,7 @@ async def get_hiring_pipeline_gates(
 @router.patch(
     "/hiring-pipeline-gates",
     response_model=HiringPipelineGatesPublicOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def patch_hiring_pipeline_gates(
     payload: HiringPipelineGatesPatch,
@@ -501,7 +483,7 @@ async def patch_hiring_pipeline_gates(
 
 @router.get(
     "/transfer-policy",
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_transfer_policy_settings(
     ctx: UserCtx = Depends(get_current_user),
@@ -518,7 +500,7 @@ async def get_transfer_policy_settings(
 @router.get(
     "/risk-model-v1",
     response_model=RiskModelV1SettingsOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.client_manager))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_risk_model_v1_settings(
     ctx: UserCtx = Depends(get_current_user),
@@ -537,7 +519,7 @@ async def get_risk_model_v1_settings(
 @router.patch(
     "/risk-model-v1",
     response_model=RiskModelV1SettingsOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def patch_risk_model_v1_settings(
     payload: Annotated[Dict[str, Any], Body()],

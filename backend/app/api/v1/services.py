@@ -8,7 +8,8 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.additional_services import (
     ServiceAttachmentCreate,
@@ -75,7 +76,7 @@ def _ensure_single_owner(
 @router.get(
     "/services",
     response_model=List[ServiceOut],
-    dependencies=[Depends(require_roles(Role.viewer, Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def list_services(
     include_inactive: bool = Query(False, description="Return inactive catalog items as well"),
@@ -115,7 +116,7 @@ async def list_services(
 @router.post(
     "/services",
     response_model=ServiceOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.owner, Role.admin))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_service(
     payload: ServiceCreate,
@@ -132,7 +133,7 @@ async def create_service(
 @router.patch(
     "/services/{service_id}",
     response_model=ServiceOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.owner, Role.admin))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_service(
     service_id: str,
@@ -153,7 +154,7 @@ async def update_service(
 @router.get(
     "/service-orders",
     response_model=List[ServiceOrderOut],
-    dependencies=[Depends(require_roles(Role.viewer, Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def list_service_orders(
     candidate_id: Optional[UUID] = Query(None),
@@ -180,7 +181,7 @@ async def list_service_orders(
 @router.get(
     "/service-orders/{order_id}",
     response_model=ServiceOrderOut,
-    dependencies=[Depends(require_roles(Role.viewer, Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_service_order(
     order_id: str,
@@ -197,7 +198,7 @@ async def get_service_order(
 @router.get(
     "/candidates/{candidate_id}/service-orders",
     response_model=List[ServiceOrderOut],
-    dependencies=[Depends(require_roles(Role.viewer, Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def list_candidate_service_orders(
     candidate_id: UUID,
@@ -220,7 +221,7 @@ async def list_candidate_service_orders(
 @router.post(
     "/service-orders",
     response_model=ServiceOrderOut,
-    dependencies=[Depends(require_roles(Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_service_order(
     payload: ServiceOrderCreate,
@@ -270,7 +271,7 @@ async def create_service_order(
 @router.patch(
     "/service-orders/{order_id}",
     response_model=ServiceOrderOut,
-    dependencies=[Depends(require_roles(Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def patch_service_order(
     order_id: str,
@@ -299,7 +300,7 @@ async def patch_service_order(
 @router.post(
     "/service-orders/{order_id}/items",
     response_model=ServiceItemOut,
-    dependencies=[Depends(require_roles(Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def add_service_item(
     order_id: str,
@@ -320,7 +321,7 @@ async def add_service_item(
 @router.post(
     "/service-items/{item_id}/schedule",
     response_model=ServiceScheduleOut,
-    dependencies=[Depends(require_roles(Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def add_service_schedule(
     item_id: str,
@@ -341,7 +342,7 @@ async def add_service_schedule(
 @router.patch(
     "/service-schedule/{schedule_id}",
     response_model=ServiceScheduleOut,
-    dependencies=[Depends(require_roles(Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def patch_service_schedule(
     schedule_id: str,
@@ -364,7 +365,7 @@ async def patch_service_schedule(
 @router.post(
     "/service-items/{item_id}/attachments",
     response_model=ServiceAttachmentOut,
-    dependencies=[Depends(require_roles(Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def add_service_attachment(
     item_id: str,
@@ -385,7 +386,7 @@ async def add_service_attachment(
 @router.post(
     "/service-items/{item_id}/deliver",
     response_model=ServiceItemOut,
-    dependencies=[Depends(require_roles(Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def deliver_service_item(
     item_id: str,
@@ -419,7 +420,7 @@ async def deliver_service_item(
 @router.get(
     "/service-orders/{order_id}/summary",
     response_model=ServiceOrderSummary,
-    dependencies=[Depends(require_roles(Role.viewer, Role.recruiter, Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_service_order_summary(
     order_id: str,

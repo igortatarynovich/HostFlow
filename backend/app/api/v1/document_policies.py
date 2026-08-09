@@ -11,7 +11,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
-from backend.app.auth.deps import get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.document_policy import DocumentPolicy, DocumentPolicyScope, RequirementLevel
 from backend.app.models.user import Role
@@ -92,7 +93,7 @@ async def list_document_policies(
     document_type_id: Optional[str] = Query(None, description="Filter by document type"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_trust_write()),
     active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> List[DocumentPolicyOut]:
     """List document policies for the tenant (scoped to active own-company + legacy rows)."""
@@ -120,7 +121,7 @@ async def create_document_policy(
     payload: DocumentPolicyIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_trust_write()),
     active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> DocumentPolicyOut:
     """Create a new document policy."""
@@ -174,7 +175,7 @@ async def update_document_policy(
     payload: DocumentPolicyIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_trust_write()),
     active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> DocumentPolicyOut:
     """Update an existing document policy."""
@@ -210,7 +211,7 @@ async def delete_document_policy(
     policy_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_trust_write()),
     active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> None:
     """Delete a document policy."""

@@ -6,7 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
 from backend.app.services.search_acquisition_service import (
@@ -106,7 +107,7 @@ async def sync_search_acquisition(
     vacancy_id: UUID,
     db_tenant=Depends(get_db_with_tenant),
     _own_company_id: str = Depends(resolve_active_own_company_id),
-    _user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    _user: UserCtx = Depends(require_trust_write()),
 ):
     db, tenant_id = db_tenant
     try:
@@ -138,7 +139,7 @@ async def create_search_acquisition_activity(
     payload: AcquisitionActivityCreateIn,
     db_tenant=Depends(get_db_with_tenant),
     _own_company_id: str = Depends(resolve_active_own_company_id),
-    _user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    _user: UserCtx = Depends(require_trust_write()),
 ):
     db, tenant_id = db_tenant
     try:
@@ -165,7 +166,7 @@ async def put_search_acquisition_audience(
     payload: AcquisitionAudienceIn,
     db_tenant=Depends(get_db_with_tenant),
     _own_company_id: str = Depends(resolve_active_own_company_id),
-    _user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    _user: UserCtx = Depends(require_trust_write()),
 ):
     db, tenant_id = db_tenant
     try:
@@ -192,7 +193,7 @@ async def post_search_acquisition_activity_action(
     payload: AcquisitionActivityActionIn,
     db_tenant=Depends(get_db_with_tenant),
     _own_company_id: str = Depends(resolve_active_own_company_id),
-    _user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    _user: UserCtx = Depends(require_trust_write()),
 ):
     db, tenant_id = db_tenant
     try:

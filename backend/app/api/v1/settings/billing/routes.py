@@ -36,7 +36,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.platform import schemas as platform_schemas
 from backend.app.api.v1.tenants import service as tenant_service
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.constants.spa_paths import (
     SETTINGS_BILLING,
     SETTINGS_BILLING_CHECKOUT_CANCEL,
@@ -139,7 +140,7 @@ def _get_stripe():
 @router.get(
     "/subscription",
     response_model=BillingSubscriptionOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_billing_subscription(
     ctx: UserCtx = Depends(get_current_user),
@@ -188,7 +189,7 @@ async def get_billing_quota_headroom(
 @router.get(
     "/summary",
     response_model=BillingSummaryOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_billing_summary(
     ctx: UserCtx = Depends(get_current_user),
@@ -245,7 +246,7 @@ async def get_billing_summary(
 @router.get(
     "/plan-matrix",
     response_model=BillingPlanMatrixOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_billing_plan_matrix(
     ctx: UserCtx = Depends(get_current_user),
@@ -330,7 +331,7 @@ async def get_billing_plan_matrix(
 @router.post(
     "/checkout-session",
     response_model=BillingCheckoutOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_checkout_session(
     payload: BillingCheckoutCreateIn,
@@ -433,7 +434,7 @@ async def create_checkout_session(
 @router.post(
     "/portal-candidates-pack/checkout",
     response_model=BillingPortalPackCheckoutOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_portal_candidates_pack_checkout(
     payload: BillingPortalPackCheckoutIn,
@@ -528,7 +529,7 @@ async def create_portal_candidates_pack_checkout(
 @router.post(
     "/addon-pack/checkout",
     response_model=BillingAddonPackCheckoutOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_addon_pack_checkout(
     payload: BillingAddonPackCheckoutIn,
@@ -631,7 +632,7 @@ async def create_addon_pack_checkout(
 @router.post(
     "/checkout-session/{session_id}/simulate",
     response_model=BillingSubscriptionOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def simulate_checkout_resolution(
     session_id: str,
@@ -722,7 +723,7 @@ async def simulate_checkout_resolution(
 @router.post(
     "/change-plan",
     response_model=BillingSummaryOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def change_plan(
     payload: BillingChangePlanIn,
@@ -1024,7 +1025,7 @@ async def change_plan(
 @router.post(
     "/company-slots",
     response_model=BillingSummaryOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_company_slots(
     payload: BillingCompanySlotsUpdateIn,
@@ -1152,7 +1153,7 @@ async def update_company_slots(
 @router.post(
     "/cancel",
     response_model=BillingSummaryOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def cancel_subscription(
     payload: BillingCancelIn,
@@ -1232,7 +1233,7 @@ async def cancel_subscription(
 @router.post(
     "/reactivate",
     response_model=BillingSummaryOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def reactivate_subscription(
     ctx: UserCtx = Depends(get_current_user),
@@ -1307,7 +1308,7 @@ async def reactivate_subscription(
 @router.post(
     "/portal",
     response_model=BillingPortalOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_customer_portal_link(
     ctx: UserCtx = Depends(get_current_user),

@@ -21,7 +21,8 @@ from backend.app.acquisition.sources_sample import (
     preview_source_sample,
     store_sample_from_payload,
 )
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role
 from backend.app.db.deps import get_db_with_tenant
 
 router = APIRouter(
@@ -32,25 +33,13 @@ router = APIRouter(
 
 _READ = [
     Depends(
-        require_roles(
-            Role.administrator,
-            Role.supervisor,
-            Role.recruiter,
-            Role.client_manager,
-            Role.viewer,
-            Role.hr_officer,
-            Role.superadmin,
-        )
+        require_trust_read()
     )
 ]
 
 _WRITE = [
     Depends(
-        require_roles(
-            Role.administrator,
-            Role.supervisor,
-            Role.superadmin,
-        )
+        require_trust_write()
     )
 ]
 

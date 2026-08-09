@@ -21,6 +21,7 @@ from backend.app.services.operational_requirements_service import (
 )
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    can_override_recruitment_handoff_lock,
     is_recruitment_recruiter_write_locked_by_handoff,
 )
 
@@ -221,7 +222,7 @@ async def build_requirements_workspace(
         agency_tenant_id=tenant_str,
         candidate_id=str(candidate.id),
     )
-    can_edit = not locked or role in RECRUITMENT_LOCK_OVERRIDE_ROLES
+    can_edit = not locked or can_override_recruitment_handoff_lock(role)
 
     pipeline_blockers = checklist.get("pipeline_blockers")
     if not isinstance(pipeline_blockers, dict):

@@ -4,7 +4,8 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.user import (
     RefreshRevokeOut,
@@ -49,7 +50,7 @@ def _handle_service_error(exc: UserServiceError) -> None:
 @router.get(
     "",
     response_model=list[UserOut],
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def list_users(
     role: Optional[UserRole] = Query(default=None),
@@ -76,7 +77,7 @@ async def list_users(
 @router.get(
     "/{user_id}",
     response_model=UserDetailOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def get_user(
     user_id: str,
@@ -101,7 +102,7 @@ async def get_user(
     "",
     response_model=UserOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_user(
     payload: UserCreate,
@@ -138,7 +139,7 @@ async def create_user(
     "/invite",
     response_model=UserInviteOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_invite(
     payload: UserCreateInvite,
@@ -205,7 +206,7 @@ async def create_invite(
 @router.delete(
     "/invite/{invite_id}",
     response_model=InviteRevokeOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def revoke_invite(
     invite_id: str,
@@ -232,7 +233,7 @@ async def revoke_invite(
 @router.patch(
     "/{user_id}/role",
     response_model=UserOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_role(
     user_id: str,
@@ -261,7 +262,7 @@ async def update_role(
 @router.patch(
     "/{user_id}/supervisor",
     response_model=UserOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_supervisor(
     user_id: str,
@@ -290,7 +291,7 @@ async def update_supervisor(
 @router.patch(
     "/{user_id}/companies",
     response_model=UserDetailOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_user_companies(
     user_id: str,
@@ -319,7 +320,7 @@ async def update_user_companies(
 @router.patch(
     "/{user_id}/own-company-access",
     response_model=UserDetailOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_user_own_company_access(
     user_id: str,
@@ -348,7 +349,7 @@ async def update_user_own_company_access(
 @router.post(
     "/{user_id}/sessions/revoke",
     response_model=RefreshRevokeOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def revoke_sessions(
     user_id: str,
@@ -375,7 +376,7 @@ async def revoke_sessions(
 @router.post(
     "/{user_id}/revoke-refresh",
     response_model=RefreshRevokeOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def revoke_refresh_legacy(
     user_id: str,
@@ -388,7 +389,7 @@ async def revoke_refresh_legacy(
 @router.post(
     "/{user_id}/password/reset",
     response_model=UserPasswordResetOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def reset_password(
     user_id: str,
@@ -415,7 +416,7 @@ async def reset_password(
 @router.post(
     "/{user_id}/password",
     response_model=RefreshRevokeOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def change_password(
     user_id: str,
@@ -445,7 +446,7 @@ async def change_password(
 @router.post(
     "/{user_id}/activate",
     response_model=UserOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def activate_user(
     user_id: str,
@@ -473,7 +474,7 @@ async def activate_user(
 @router.post(
     "/{user_id}/deactivate",
     response_model=UserOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def deactivate_user(
     user_id: str,
@@ -503,7 +504,7 @@ async def deactivate_user(
 @router.delete(
     "/{user_id}",
     response_model=UserDeleteOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def delete_user(
     user_id: str,
@@ -530,7 +531,7 @@ async def delete_user(
 @router.get(
     "/{user_id}/audit",
     response_model=list[UserAuditOut],
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def user_audit(
     user_id: str,

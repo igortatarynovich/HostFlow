@@ -14,7 +14,8 @@ from sqlalchemy import select
 from backend.app.models.tenant import Tenant, TenantLicense
 from backend.app.services import billing_restrictions
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant, get_db_with_tenant_public
 from backend.app.schemas.additional_services import ServiceOrderOut
 from backend.app.modules.companies import schemas as company_schemas
@@ -151,7 +152,7 @@ async def list_leads_endpoint(
     offset: int = Query(0, ge=0),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadListResponse:
     db, tenant_id = db_tenant
     tid = str(tenant_id)
@@ -269,7 +270,7 @@ def _distribution_response(snap: dict) -> LeadDistributionOut:
 @router.get("/distribution", response_model=LeadDistributionOut)
 async def get_lead_distribution(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ):
     db, tenant_uuid = db_tenant
     snap = await build_distribution_snapshot(db, tenant_id=str(tenant_uuid))
@@ -281,7 +282,7 @@ async def patch_lead_distribution(
     payload: LeadDistributionPatch,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ):
     db, tenant_uuid = db_tenant
     tid = str(tenant_uuid)
@@ -309,7 +310,7 @@ async def patch_lead_distribution(
 async def lead_stage_health_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadStageHealthResponse:
     db, tenant_uuid = db_tenant
     return await service.lead_stage_health_snapshot(
@@ -346,7 +347,7 @@ async def lead_conversion_funnel_endpoint(
     ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadConversionFunnelResponse:
     db, tenant_uuid = db_tenant
     tid = str(tenant_uuid)
@@ -425,7 +426,7 @@ async def lead_conversion_funnel_endpoint(
 @router.get("/questionnaire-context", response_model=SalesQuestionnaireContextOut)
 async def get_lead_questionnaire_context_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ) -> SalesQuestionnaireContextOut:
     from backend.app.services.questionnaire_sales_resolver import resolve_sales_questionnaire_context
 
@@ -438,7 +439,7 @@ async def get_lead_questionnaire_context_endpoint(
 @router.get("/questionnaire-forms", response_model=list[LeadQuestionnaireFormOptionOut])
 async def list_lead_questionnaire_forms_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ) -> list[LeadQuestionnaireFormOptionOut]:
     from backend.app.modules.leads.lead_questionnaire_invite import list_questionnaire_forms_for_targeted_advertising
 
@@ -452,7 +453,7 @@ async def get_lead_detail_endpoint(
     lead_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadOut:
     """Full lead row (same shape as GET /leads items) for workspace / deep links."""
     db, tenant_uuid = db_tenant
@@ -472,7 +473,7 @@ async def get_lead_detail_endpoint(
 @router.post(
     "/{lead_id}/call-result",
     response_model=LeadOut,
-    dependencies=[Depends(require_roles(Role.admin, Role.manager, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def log_lead_call_result_endpoint(
     lead_id: str,
@@ -554,7 +555,7 @@ async def log_lead_call_result_endpoint(
 @router.post(
     "/{lead_id}/compliance/rodo/send",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_roles(Role.admin, Role.manager, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def send_lead_rodo_compliance_endpoint(
     lead_id: str,
@@ -612,7 +613,7 @@ async def send_lead_rodo_compliance_endpoint(
     "/bulk/compliance/rodo/retry",
     response_model=BulkLeadRodoRetryResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_roles(Role.admin, Role.manager))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def bulk_retry_lead_rodo_endpoint(
     body: BulkLeadRodoRetryRequest,
@@ -661,7 +662,7 @@ async def bulk_retry_lead_rodo_endpoint(
 @router.post(
     "/{lead_id}/compliance/rodo/source-provided",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_roles(Role.admin, Role.manager, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def mark_lead_rodo_source_provided_endpoint(
     lead_id: str,
@@ -693,7 +694,7 @@ async def update_lead_stage_endpoint(
     payload: LeadStageUpdate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadOut:
     """Update lead CRM stage (new, contacted, qualified, converted, lost)."""
     from backend.app.modules.leads import crud
@@ -965,7 +966,7 @@ async def delete_lead_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> Response:
     """Permanently remove a lead (e.g. test / mistaken ingest). Does not delete linked candidates."""
     from backend.app.modules.leads import crud
@@ -1019,7 +1020,7 @@ async def bulk_auto_process_meta_queue_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> BulkAutoProcessQueueResponse:
     """
     §2.3 Auto-fix: re-run lead processing for Meta **and csv_import** leads stuck in needs_routing / failed
@@ -1067,7 +1068,7 @@ async def bulk_process_new_meta_queue_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> BulkAutoProcessQueueResponse:
     """
     §2.10 NBA: batch-run Meta pipeline for leads still in status=new (up to max_items, FIFO by created_at).
@@ -1114,7 +1115,7 @@ async def bulk_update_leads_endpoint(
     payload: BulkLeadUpdateRequest,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> BulkLeadUpdateResponse:
     from backend.app.modules.leads import crud
 
@@ -1296,7 +1297,7 @@ async def create_service_order_from_lead(
     lead_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ):
     from backend.app.modules.leads import crud
 
@@ -1369,7 +1370,7 @@ async def get_lead_questionnaire_invite_endpoint(
     lead_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadQuestionnaireInviteOut:
     from backend.app.modules.leads import crud
     from backend.app.modules.leads.lead_questionnaire_invite import (
@@ -1416,7 +1417,7 @@ async def create_lead_questionnaire_invite_endpoint(
     payload: LeadQuestionnaireInviteRequest,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadQuestionnaireInviteOut:
     from backend.app.modules.leads import crud
     from backend.app.modules.leads.lead_questionnaire_invite import attach_questionnaire_invite_to_lead
@@ -1551,7 +1552,7 @@ async def preview_lead_questionnaire_invite_email(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ) -> QuestionnaireInviteEmailPreviewOut:
     from backend.app.modules.leads import crud
 
@@ -1616,7 +1617,7 @@ async def send_lead_questionnaire_invite_email(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ) -> QuestionnaireInviteEmailSendOut:
     from backend.app.api.v1.communications._helpers.billing import (
         _load_tenant_license_row,
@@ -1683,7 +1684,7 @@ async def convert_client_lead_to_client_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadOut:
     """Compatibility facade — same engine as ``POST /sales/inquiries/{id}/convert-client``.
 
@@ -1751,7 +1752,7 @@ async def lead_duplicate_decision_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadOut:
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -1791,7 +1792,7 @@ async def confirm_lead_vacancy_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadOut:
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -1827,7 +1828,7 @@ async def lead_intake_decision_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadOut:
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -1865,7 +1866,7 @@ async def process_lead_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> MetaLeadResponse:
     """
     Manually process (route/convert) a stored lead.
@@ -2030,7 +2031,7 @@ async def ingest_meta_lead(
 async def get_lead_timeline_endpoint(
     lead_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadTimelineResponse:
     """Unified lead timeline for side-panel History tab."""
     db, tenant_id = db_tenant

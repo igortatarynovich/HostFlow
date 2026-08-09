@@ -200,8 +200,10 @@ def actor_satisfies_role_allowlist(
 
     - Admins are not handled here (callers short-circuit).
     - JOB_PROXY allowlists accept canonical ``employee``.
-    - PORTAL_LEGACY allowlists accept ``viewer`` only when ``access_context=portal``
-      (or legacy client_* which implies portal). Tenant viewers do not inherit portal.
+    - When ``viewer`` is explicitly allowed, any trust-viewer (incl. legacy client_*)
+      matches; portal-only endpoints must also use ``require_portal_context``.
+    - PORTAL_LEGACY-only allowlists (no ``viewer``) accept ``viewer`` only when
+      ``access_context=portal`` (tenant viewers do not inherit portal).
     """
     ur = str(role or "").strip().lower()
     if not ur:
@@ -212,6 +214,9 @@ def actor_satisfies_role_allowlist(
 
     trust = normalize_trust_role(ur)
     if trust == TrustRole.employee.value and TrustRole.employee.value in allowed_values:
+        return True
+
+    if trust == TrustRole.viewer.value and TrustRole.viewer.value in allowed_values:
         return True
 
     if allowed_values & PORTAL_LEGACY_ROLES:

@@ -13,7 +13,8 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.core.crypto import encrypt_secret
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import TenantEmailConfig
@@ -55,7 +56,7 @@ class EmailTestRequest(BaseModel):
 async def get_email_config(
     db_tenant=Depends(get_db_with_tenant),
     _: UserCtx = Depends(get_current_user),
-    __: None = Depends(require_roles(Role.admin, Role.owner)),
+    __: None = Depends(require_trust_admin()),
 ):
     """Get email (SMTP) configuration for current tenant."""
     db, tenant_id = db_tenant
@@ -82,7 +83,7 @@ async def upsert_email_config(
     payload: EmailConfigUpdate,
     db_tenant=Depends(get_db_with_tenant),
     _: UserCtx = Depends(get_current_user),
-    __: None = Depends(require_roles(Role.admin, Role.owner)),
+    __: None = Depends(require_trust_admin()),
 ):
     """Create or update email (SMTP) configuration."""
     import uuid
@@ -141,7 +142,7 @@ async def send_test_email(
     payload: EmailTestRequest,
     db_tenant=Depends(get_db_with_tenant),
     _: UserCtx = Depends(get_current_user),
-    __: None = Depends(require_roles(Role.admin, Role.owner)),
+    __: None = Depends(require_trust_admin()),
 ):
     """Send a test email to verify SMTP configuration."""
     db, tenant_id = db_tenant

@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.constants.hostflow_canonical_tenants import is_focus_personnel_tenant
 from backend.app.db.deps import get_db_with_tenant
@@ -518,13 +519,7 @@ async def _communications_settings_out(db: AsyncSession, tenant_id: str, tenant:
     response_model=CommunicationsSettingsOut,
     dependencies=[
         Depends(
-            require_roles(
-                Role.administrator,
-                Role.supervisor,
-                Role.recruiter,
-                Role.client_manager,
-                Role.client_processor,
-            )
+            require_trust_read()
         )
     ],
 )
@@ -545,7 +540,7 @@ async def get_communications_settings(
 @router.patch(
     "",
     response_model=CommunicationsSettingsOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def patch_communications_settings(
     patch: CommunicationsSettingsPatch,

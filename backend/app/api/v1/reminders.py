@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import billing_restrictions
 from backend.app.services.reminders import run_expiry_notifications
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/documents", tags=["reminders"])
 
 @router.post(
     "/run-expiry-notifications",
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def run_expiry(db_tenant=Depends(get_db_with_tenant)):
     db, tenant_id = db_tenant

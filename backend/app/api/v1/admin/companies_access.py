@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.access import CompanyAccessEntry, CompanyAccessGrant
 from backend.app.services import access as access_service
@@ -53,7 +54,7 @@ def _filter_entries_for_actor(ctx: UserCtx, rows):
 @router.get(
     "/{company_id}/access",
     response_model=list[CompanyAccessEntry],
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_access(
     company_id: str,
@@ -85,7 +86,7 @@ async def get_access(
 @router.post(
     "/{company_id}/access",
     response_model=CompanyAccessEntry,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def grant_access(
     company_id: str,
@@ -154,7 +155,7 @@ async def grant_access(
 
 @router.delete(
     "/{company_id}/access/{user_id}",
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def revoke_access(
     company_id: str,

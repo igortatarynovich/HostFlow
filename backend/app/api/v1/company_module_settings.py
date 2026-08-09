@@ -15,7 +15,8 @@ from backend.app.schemas.company_module_settings_json import (
     normalize_company_module_settings_json,
 )
 from backend.app.api.v1.utils.access import resolve_restricted_acl
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.company import Company
 from backend.app.models.company_module_settings import CompanyModuleSettings
@@ -128,7 +129,7 @@ async def _load_tenant_company_and_enforce(
     "/{company_id}/module-settings/{module_key}",
     response_model=CompanyModuleSettingsOut,
     dependencies=[
-        Depends(require_roles(Role.administrator, Role.supervisor, Role.hr_officer)),
+        Depends(require_trust_write()),
     ],
 )
 async def get_company_module_settings(
@@ -155,7 +156,7 @@ async def get_company_module_settings(
     "/{company_id}/module-settings",
     response_model=List[CompanyModuleSettingsOut],
     dependencies=[
-        Depends(require_roles(Role.administrator, Role.supervisor, Role.hr_officer)),
+        Depends(require_trust_write()),
     ],
 )
 async def list_company_module_settings(
@@ -191,7 +192,7 @@ async def list_company_module_settings(
     "/{company_id}/module-settings/{module_key}",
     response_model=CompanyModuleSettingsOut,
     dependencies=[
-        Depends(require_roles(Role.administrator, Role.supervisor)),
+        Depends(require_trust_write()),
     ],
 )
 async def patch_company_module_settings(
