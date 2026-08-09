@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import {
+  applyPermissionPresetToEmployeeMatrix,
   getTenantModules,
   getTenantRoleModuleMatrix,
   updateTenantRoleModuleMatrix,
 } from '../../api/tenants'
+import {
+  PRESET_LABEL_KEYS,
+  type PermissionPresetId,
+} from '../../modules/users/roleOptions'
 import type {
   RoleModuleMatrixRole,
   TenantModuleSettings,
@@ -155,7 +160,43 @@ export default function RolesAccessPage() {
         <p className="mt-1">
           {t('admin.settings.roles_access.presets_body', {
             defaultValue:
-              'Recruiter, Team lead, HR, Compliance are starter packs applied to Employee. Portal guests use Viewer + portal context — not client_manager.',
+              'Recruiter, Team lead, HR, Compliance are starter packs applied to the Employee matrix column. They do not create a system role. Portal guest applies to Viewer defaults via Users form (user overrides).',
+          })}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(['recruiter', 'team_lead', 'hr', 'compliance'] as PermissionPresetId[]).map((presetId) => (
+            <button
+              key={presetId}
+              type="button"
+              className="btn-secondary btn-xs"
+              disabled={saving || loading}
+              onClick={async () => {
+                setSaving(true)
+                setError(null)
+                try {
+                  const updated = await applyPermissionPresetToEmployeeMatrix(presetId)
+                  setMatrix(updated)
+                } catch (err) {
+                  setError(
+                    formatErrorMessage(
+                      err,
+                      t('admin.settings.roles_access.preset_apply_failed', {
+                        defaultValue: 'Failed to apply preset',
+                      }),
+                    ),
+                  )
+                } finally {
+                  setSaving(false)
+                }
+              }}
+            >
+              {t(PRESET_LABEL_KEYS[presetId], { defaultValue: presetId })}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-slate-500">
+          {t('admin.settings.roles_access.presets_apply_help', {
+            defaultValue: 'Applies the pack onto the Employee column of the matrix above.',
           })}
         </p>
       </div>

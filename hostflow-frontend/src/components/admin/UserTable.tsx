@@ -17,16 +17,12 @@ interface UserTableProps {
 
 const ROLE_OPTIONS: UserRole[] = [
   'administrator',
-  'supervisor',
-  'recruiter',
-  'client_manager',
-  'client_processor',
-  'compliance_officer',
-  'hr_officer',
+  'employee',
   'viewer',
 ]
 const ROLE_LABELS: Record<UserRole, string> = {
   administrator: 'app.admin.users.roles.administrator',
+  employee: 'app.admin.users.roles.employee',
   supervisor: 'app.admin.users.roles.supervisor',
   recruiter: 'app.admin.users.roles.recruiter',
   client_manager: 'app.admin.users.roles.client_manager',

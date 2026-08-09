@@ -343,6 +343,116 @@ async def patch_module_matrix(
     return TenantRoleModuleMatrix.model_validate(matrix)
 
 
+class PermissionPresetOut(BaseModel):
+    id: str
+    trust_role: str
+    modules: Dict[str, Dict[str, bool]]
+
+
+class PermissionPresetListOut(BaseModel):
+    items: List[PermissionPresetOut]
+
+
+class PermissionPresetApplyUserIn(BaseModel):
+    user_id: str = Field(..., min_length=1)
+
+
+class PermissionPresetApplyMatrixIn(BaseModel):
+    target: str = Field(default="employee", description="Trust matrix column to fill (employee only).")
+
+
+@router.get(
+    "/permission-presets",
+    response_model=PermissionPresetListOut,
+    dependencies=[Depends(require_trust_admin())],
+)
+async def list_permission_presets(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> PermissionPresetListOut:
+    from backend.app.auth.trust_roles import (
+        get_permission_preset,
+        list_permission_preset_ids,
+        trust_role_for_preset,
+    )
+
+    db, tenant_uuid = db_tenant
+    await ensure_user_can_access_tenant(db, ctx, str(tenant_uuid))
+    items = [
+        PermissionPresetOut(
+            id=pid,
+            trust_role=trust_role_for_preset(pid),
+            modules=get_permission_preset(pid),
+        )
+        for pid in list_permission_preset_ids()
+    ]
+    return PermissionPresetListOut(items=items)
+
+
+@router.post(
+    "/permission-presets/{preset_id}/apply-user",
+    response_model=platform_schemas.TenantUserModuleOverrides,
+    dependencies=[Depends(require_trust_admin())],
+)
+async def apply_permission_preset_to_user(
+    preset_id: str,
+    payload: PermissionPresetApplyUserIn,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> platform_schemas.TenantUserModuleOverrides:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    try:
+        overrides = await tenant_service.apply_permission_preset_to_user(
+            db,
+            tenant,
+            user_id=payload.user_id,
+            preset_id=preset_id,
+            actor_id=ctx.sub,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return platform_schemas.TenantUserModuleOverrides.model_validate({"users": overrides})
+
+
+@router.post(
+    "/permission-presets/{preset_id}/apply-matrix",
+    response_model=TenantRoleModuleMatrix,
+    dependencies=[Depends(require_trust_admin())],
+)
+async def apply_permission_preset_to_matrix(
+    preset_id: str,
+    payload: PermissionPresetApplyMatrixIn | None = None,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> TenantRoleModuleMatrix:
+    """Apply a starter-pack preset onto the Employee matrix column (not a new system role)."""
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    target = (payload.target if payload else "employee") or "employee"
+    if target != "employee":
+        raise HTTPException(status_code=422, detail="preset_matrix_target_must_be_employee")
+    try:
+        matrix = await tenant_service.apply_permission_preset_to_employee_matrix(
+            db,
+            tenant,
+            preset_id=preset_id,
+            actor_id=ctx.sub,
+            actor_is_superadmin=False,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return TenantRoleModuleMatrix.model_validate(matrix)
+
+
 @router.get(
     "/module-matrix/effective",
     response_model=EffectiveRoleModules,

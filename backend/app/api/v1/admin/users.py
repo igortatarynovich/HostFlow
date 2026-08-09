@@ -25,6 +25,7 @@ from backend.app.schemas.user import (
     UserUpdateRole,
     UserAuditOut,
 )
+from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.services import billing_restrictions, users as users_service
 from backend.app.services.users import UserServiceError
 
@@ -33,6 +34,24 @@ router = APIRouter(
     tags=["admin-users"],
     redirect_slashes=False,
 )
+
+
+async def _apply_preset_if_any(db, *, tenant_id: str, user_id: str | None, preset_id: str | None, actor_id: str | None) -> None:
+    if not user_id or not preset_id:
+        return
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        return
+    try:
+        await tenant_service.apply_permission_preset_to_user(
+            db,
+            tenant,
+            user_id=str(user_id),
+            preset_id=str(preset_id),
+            actor_id=actor_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
@@ -125,13 +144,23 @@ async def create_user(
             password=payload.password,
             supervisor_id=payload.supervisor_id,
             company_ids=payload.company_ids,
+            preset_id=payload.preset_id,
         )
         await db.commit()
+        await _apply_preset_if_any(
+            db,
+            tenant_id=tenant_id,
+            user_id=entry.get("user_id"),
+            preset_id=entry.get("preset_id") or payload.preset_id,
+            actor_id=ctx.sub,
+        )
     except UserServiceError as exc:
         await db.rollback()
         _handle_service_error(exc)
     if tmp_password:
         entry["temporary_password"] = tmp_password
+    # preset_id is service-only; strip before response schema
+    entry.pop("preset_id", None)
     return UserOut(**entry)
 
 
@@ -160,8 +189,17 @@ async def create_invite(
             supervisor_id=payload.supervisor_id,
             company_ids=payload.company_ids,
             expires_in_hours=payload.expires_in_hours,
+            preset_id=payload.preset_id,
         )
         await db.commit()
+        meta = invite.metadata_json if isinstance(invite.metadata_json, dict) else {}
+        await _apply_preset_if_any(
+            db,
+            tenant_id=tenant_id,
+            user_id=invite.invited_user_id,
+            preset_id=(meta.get("preset_id") if meta else None) or payload.preset_id,
+            actor_id=ctx.sub,
+        )
 
         try:
             from backend.app.core.settings import settings
@@ -251,8 +289,17 @@ async def update_role(
             actor_id=ctx.sub,
             user_id=user_id,
             role=payload.role.value,
+            preset_id=payload.preset_id,
         )
         await db.commit()
+        await _apply_preset_if_any(
+            db,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            preset_id=entry.get("preset_id") or payload.preset_id,
+            actor_id=ctx.sub,
+        )
+        entry.pop("preset_id", None)
     except UserServiceError as exc:
         await db.rollback()
         _handle_service_error(exc)

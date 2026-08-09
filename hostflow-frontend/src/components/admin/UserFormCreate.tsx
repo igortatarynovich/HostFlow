@@ -3,10 +3,21 @@ import { useMemo, useState } from 'react'
 import type { Company, ManagerOption, UserRole } from '../../api/types'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
+import {
+  TRUST_ROLE_LABEL_KEYS,
+  TRUST_ROLE_OPTIONS,
+  PRESET_LABEL_KEYS,
+  asAssignableUserRole,
+  defaultPresetForTrustRole,
+  presetsForTrustRole,
+  type PermissionPresetId,
+  type TrustRoleOption,
+} from '../../modules/users/roleOptions'
 
 export interface CreateUserFormValues {
   email: string
   role: UserRole
+  preset_id?: string | null
   full_name?: string | null
   short_id?: string | null
   password?: string | null
@@ -21,30 +32,10 @@ interface UserFormCreateProps {
   onSubmit: (values: CreateUserFormValues) => Promise<void> | void
 }
 
-const ROLE_OPTIONS: UserRole[] = [
-  'administrator',
-  'supervisor',
-  'recruiter',
-  'client_manager',
-  'client_processor',
-  'compliance_officer',
-  'hr_officer',
-  'viewer',
-]
-const ROLE_LABELS: Record<UserRole, string> = {
-  administrator: 'app.admin.users.roles.administrator',
-  supervisor: 'app.admin.users.roles.supervisor',
-  recruiter: 'app.admin.users.roles.recruiter',
-  client_manager: 'app.admin.users.roles.client_manager',
-  client_processor: 'app.admin.users.roles.client_processor',
-  compliance_officer: 'app.admin.users.roles.compliance_officer',
-  hr_officer: 'app.admin.users.roles.hr_officer',
-  viewer: 'app.admin.users.roles.viewer',
-}
-
 export function UserFormCreate({ loading, managerOptions, companyOptions, onSubmit }: UserFormCreateProps) {
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<UserRole>('supervisor')
+  const [role, setRole] = useState<TrustRoleOption>('employee')
+  const [presetId, setPresetId] = useState<PermissionPresetId | ''>('recruiter')
   const [fullName, setFullName] = useState('')
   const [shortId, setShortId] = useState('')
   const [password, setPassword] = useState('')
@@ -53,8 +44,9 @@ export function UserFormCreate({ loading, managerOptions, companyOptions, onSubm
   const [error, setError] = useState<string | null>(null)
   const { t } = useI18n()
 
-  const showSupervisorSelect = role === 'recruiter' || role === 'supervisor'
-  const supervisorRequired = role === 'recruiter'
+  const presetChoices = presetsForTrustRole(role)
+  const showSupervisorSelect = role === 'employee' && (presetId === 'recruiter' || presetId === 'team_lead')
+  const supervisorRequired = presetId === 'recruiter'
   const showCompanySelect = role !== 'administrator'
 
   const companyOptionsMemo = useMemo(() => companyOptions ?? [], [companyOptions])
@@ -79,7 +71,8 @@ export function UserFormCreate({ loading, managerOptions, companyOptions, onSubm
     setError(null)
     await onSubmit({
       email: nextEmail,
-      role,
+      role: asAssignableUserRole(role),
+      preset_id: presetId || undefined,
       full_name: fullName.trim() || undefined,
       short_id: shortId.trim() || undefined,
       password: trimmedPassword || undefined,
@@ -93,7 +86,8 @@ export function UserFormCreate({ loading, managerOptions, companyOptions, onSubm
     setPassword('')
     setSupervisorId('')
     setCompanyIds([])
-    setRole('supervisor')
+    setRole('employee')
+    setPresetId('recruiter')
   }
 
   return (
@@ -142,20 +136,50 @@ export function UserFormCreate({ loading, managerOptions, companyOptions, onSubm
             className="input w-full"
             value={role}
             onChange={(event) => {
-              const nextRole = event.target.value as UserRole
+              const nextRole = event.target.value as TrustRoleOption
               setRole(nextRole)
-              if (nextRole !== 'recruiter') {
-                setSupervisorId('')
-              }
+              setPresetId(defaultPresetForTrustRole(nextRole))
+              setSupervisorId('')
             }}
           >
-            {ROLE_OPTIONS.map((option) => (
+            {TRUST_ROLE_OPTIONS.map((option) => (
               <option key={option} value={option}>
-                {t(ROLE_LABELS[option])}
+                {t(TRUST_ROLE_LABEL_KEYS[option])}
               </option>
             ))}
           </select>
         </label>
+
+        {presetChoices.length > 0 && (
+          <label className="block">
+            <div className="label">
+              {t('app.admin.users.form.preset_label', { defaultValue: 'Permission preset' })}
+            </div>
+            <select
+              className="input w-full"
+              value={presetId}
+              onChange={(event) => {
+                const next = event.target.value as PermissionPresetId | ''
+                setPresetId(next)
+                if (next !== 'recruiter') setSupervisorId('')
+              }}
+            >
+              <option value="">
+                {t('app.admin.users.form.preset_none', { defaultValue: 'None (role defaults)' })}
+              </option>
+              {presetChoices.map((option) => (
+                <option key={option} value={option}>
+                  {t(PRESET_LABEL_KEYS[option], { defaultValue: option })}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              {t('app.admin.users.form.preset_help', {
+                defaultValue: 'Fills module permissions for this user — does not create a system role.',
+              })}
+            </p>
+          </label>
+        )}
 
         {showSupervisorSelect && (
           <label className="block">

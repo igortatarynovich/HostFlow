@@ -3046,7 +3046,10 @@
           "password_label": "Hasło (opcjonalnie)",
           "password_placeholder": "Zostaw puste — wygenerujemy",
           "submit": "Utwórz użytkownika",
-          "submitting": "Tworzymy…"
+          "submitting": "Tworzymy…",
+          "preset_label": "Preset uprawnień",
+          "preset_none": "Brak (domyślne dla roli)",
+          "preset_help": "Wypełnia uprawnienia modułów użytkownika — nie tworzy roli systemowej."
         },
         "errors": {
           "list_missing_endpoint": "Endpoint /api/v1/admin/users nie znaleziony. Zrestartuj backend po aktualizacjach.",
@@ -3241,6 +3244,13 @@
             "token": "Żeton",
             "valid_until": "Ważne do"
           }
+        },
+        "presets": {
+          "recruiter": "Rekruter",
+          "team_lead": "Team lead",
+          "hr": "HR",
+          "compliance": "Compliance",
+          "portal_guest": "Gość portalu"
         }
       },
       "ruleset": {

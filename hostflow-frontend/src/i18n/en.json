@@ -3119,7 +3119,10 @@
           "password_label": "Password (optional)",
           "password_placeholder": "Leave blank — we will generate it",
           "submit": "Create user",
-          "submitting": "Creating…"
+          "submitting": "Creating…",
+          "preset_label": "Permission preset",
+          "preset_none": "None (role defaults)",
+          "preset_help": "Fills module permissions for this user — does not create a system role."
         },
         "errors": {
           "list_missing_endpoint": "Endpoint /api/v1/admin/users not found. Restart backend after updates.",
@@ -3314,6 +3317,13 @@
             "token": "Token",
             "valid_until": "Valid until"
           }
+        },
+        "presets": {
+          "recruiter": "Recruiter",
+          "team_lead": "Team lead",
+          "hr": "HR",
+          "compliance": "Compliance",
+          "portal_guest": "Portal guest"
         }
       },
       "ruleset": {

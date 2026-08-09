@@ -281,3 +281,25 @@ PERMISSION_PRESETS: Final[dict[str, dict[str, dict[str, bool]]]] = {
         "hr": {"visible": False, "editable": False},
     },
 }
+
+
+def list_permission_preset_ids() -> tuple[str, ...]:
+    return tuple(PERMISSION_PRESETS.keys())
+
+
+def get_permission_preset(preset_id: str) -> dict[str, dict[str, bool]]:
+    key = str(preset_id or "").strip().lower()
+    preset = PERMISSION_PRESETS.get(key)
+    if preset is None:
+        raise ValueError(f"unknown_permission_preset:{key}")
+    return {mod: dict(cell) for mod, cell in preset.items()}
+
+
+def trust_role_for_preset(preset_id: str) -> str:
+    """Presets never invent system roles — portal_guest → viewer, else employee."""
+    key = str(preset_id or "").strip().lower()
+    if key == "portal_guest":
+        return TrustRole.viewer.value
+    if key in PERMISSION_PRESETS:
+        return TrustRole.employee.value
+    raise ValueError(f"unknown_permission_preset:{key}")

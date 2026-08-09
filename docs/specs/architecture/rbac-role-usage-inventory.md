@@ -192,7 +192,13 @@ Migrated (runtime bridges + trust-aware ACL/gates):
 - HR workspace routes: trust write + `require_hr_workforce_module_access` (module matrix permission)
 - Services ACL helpers: dossier / handoff snapshot / global search / stage meta / handoff lock override
 
-Still `open` (next RBAC PRs, not this one): Users UI + presets; seats / portal billing; `services/users.py` seat maps; FE; enum delete; seed/job role strings.
+### Slice progress (Users UI + presets)
+
+- Users create/invite/detail assign only Administrator / Employee / Viewer
+- Job titles are `permission presets` applied as user_overrides (or Employee matrix column)
+- APIs: `GET/POST /settings/team/permission-presets…`, create/invite/role accept `preset_id`
+
+Still `open` (next RBAC PRs): seats / portal billing recount; FE leftover job-role checks outside Users; enum delete; seed/job role strings.
 
 ## DB appendix
 
