@@ -82,7 +82,7 @@ async def _legacy_tenant_funnel_id(
             Funnel.company_id.is_(None),
             Funnel.type == funnel_type,
         )
-        .order_by(Funnel.created_at.asc())
+        .order_by(Funnel.name.asc(), Funnel.id.asc())
         .limit(1)
     )
     fid2 = row2.scalar_one_or_none()
