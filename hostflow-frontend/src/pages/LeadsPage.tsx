@@ -724,10 +724,13 @@ export default function LeadsPage() {
   const emptyDescription = isServicesTenant ? t('app.leads.states.empty_desc_services') : t('app.leads.states.empty_desc')
   const { itemDone } = useSuccessPathReadiness({ enabled: !isServicesTenant })
   const vacancyReady = itemDone('vacancy')
+  // Anti-dead-end: never leave an empty Leads screen with only a blocked Meta path.
   const leadsEmptyPrimary = isServicesTenant
     ? {
-        label: t('app.leads.states.empty_cta_connect'),
-        to: CRM_APP_PATHS.settingsIntegrationsMeta,
+        label: t('app.leads.states.empty_cta_intake', {
+          defaultValue: 'Choose how to get applications',
+        }),
+        to: CRM_APP_PATHS.setupIntake,
       }
     : !vacancyReady
       ? {
@@ -737,25 +740,22 @@ export default function LeadsPage() {
           to: CRM_APP_PATHS.setupVacancy,
         }
       : {
-          label: t('app.leads.states.empty_cta_connect'),
-          to: CRM_APP_PATHS.settingsIntegrationsMeta,
+          label: t('app.leads.states.empty_cta_intake', {
+            defaultValue: 'Choose how to get applications',
+          }),
+          to: CRM_APP_PATHS.setupIntake,
         }
   const leadsEmptySecondary = isServicesTenant
     ? {
         label: t('app.leads.states.empty_cta_clients'),
         to: CRM_APP_PATHS.clientsDirectory,
       }
-    : vacancyReady
-      ? {
-          label: t('app.leads.states.empty_cta_setup', {
-            defaultValue: 'Getting started',
-          }),
-          to: CRM_APP_PATHS.setup,
-        }
-      : {
-          label: t('app.leads.states.empty_cta_connect'),
-          to: CRM_APP_PATHS.settingsIntegrationsMeta,
-        }
+    : {
+        label: t('app.leads.states.empty_cta_setup', {
+          defaultValue: 'Getting started',
+        }),
+        to: CRM_APP_PATHS.setup,
+      }
   const recruitmentLeadsTable = !isServicesTenant
   const tableColCount = recruitmentLeadsTable ? 7 : 9
 

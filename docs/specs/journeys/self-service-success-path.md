@@ -28,10 +28,25 @@ If this path works end-to-end, HostFlow is ready to scale acquisition.
 | Persistent **checklist + next CTA** on home / setup hub | Hide progress until the wizard finishes |
 | **Empty states** with one primary action | “Nothing here yet” with no path forward |
 | Allow skip with visible checklist debt | Block the app until every optional step is done |
+| **Escape hatch** when ads/Meta/team are unavailable (sample data, manual intake, FAQ) | Leave the user on an empty list that only says “Connect Meta” |
+
+**Anti-dead-end rule (normative):** every Start / empty Success Path screen must offer a forward path a novice can complete alone. Optional steps (Meta, invite, WhatsApp, paid upgrade) never gate first value. Payment stays off the critical path during Trial; checkout may be simulated in test environments.
+
+**Launch FAQ:** public `/faq#launch_troubleshooting` — registration, company type, empty screens, no Meta, no leads, sample data, trial vs pay, support. In-product readiness panel links here + `/docs/getting-started`.
 
 **Allowed narrow form:** `/app/platform/setup` (or equivalent) collects company name / country / activity once — then the user lands in the real CRM with a readiness panel, not another wizard.
 
 **Not user-facing:** Recruitment technical gates G0–G8 (`SetupStatusPanel` / setup-readiness API) stay as **operator/health internals**. They must not appear on the buyer Success Path screens.
+
+### Checklist by business type
+
+| Type | Required sequence (optional in parentheses) |
+|------|-----------------------------------------------|
+| **employer** | company → vacancy → (meta) → lead → contact → (invite) |
+| **agency** | company → client → vacancy → (meta) → lead → contact → (invite) |
+| **services** | company → client *or* lead → (meta) → lead → contact → (invite); no vacancy on the primary path |
+
+Lead step CTA opens intake choices (sample data / manual / Meta), not a dead empty Leads list.
 
 ---
 

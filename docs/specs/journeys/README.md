@@ -13,7 +13,7 @@
 | 2.2.I | Candidate portal | external portal user | [candidate-portal.md](./candidate-portal.md) |
 | 2.2.J | Client portal | branded billing / portal | [client-portal.md](./client-portal.md) |
 
-**Growth activation (not a UAT persona file):** [self-service-success-path.md](./self-service-success-path.md) — Success Path via guided readiness UI under [ADR-034](../architecture/ADR-034-self-service-public-funnels.md).
+**Growth activation (not a UAT persona file):** [self-service-success-path.md](./self-service-success-path.md) — Success Path via guided readiness UI under [ADR-034](../architecture/ADR-034-self-service-public-funnels.md). Launch FAQ: `/faq#launch_troubleshooting`.
 
 **G-6 / Work Hub:** прогоны 2.2.C–H обязаны включать шаг **«Work»** (`/app/work`) и подтверждение фразы acceptance: *«вижу на этой странице свой план дня»* — см. первый шаг в каждом CRM-файле.
 

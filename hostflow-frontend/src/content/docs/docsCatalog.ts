@@ -84,7 +84,7 @@ export const DOCS_ARTICLES: DocsArticle[] = [
         },
       },
     ],
-    relatedFaq: '/faq#getting_started',
+    relatedFaq: '/faq#launch_troubleshooting',
     relatedSlugs: ['create-company', 'first-vacancy', 'connect-meta'],
   },
   {
@@ -133,7 +133,7 @@ export const DOCS_ARTICLES: DocsArticle[] = [
         },
       },
     ],
-    relatedFaq: '/faq#getting_started',
+    relatedFaq: '/faq#launch_troubleshooting',
     relatedSlugs: ['getting-started', 'invite-team'],
   },
   {

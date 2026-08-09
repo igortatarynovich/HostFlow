@@ -44,7 +44,7 @@ export const FAQ_SECTIONS: FaqSection[] = [
       {
         id: "first_value",
         q: { en: "What is the fastest path to first value?", ru: "Как быстрее всего получить первую ценность?", pl: "Jaka jest najszybsza droga do pierwszej wartości?" },
-        a: { en: "Create company → create a vacancy → connect Meta ads (or skip) → receive a lead → contact them. The Getting started checklist always shows the single next action.", ru: "Компания → вакансия → Meta (или позже) → заявка → контакт. Чек-лист «Старт» всегда показывает один следующий шаг.", pl: "Firma → wakat → Meta (lub później) → lead → kontakt. Checklista startu zawsze pokazuje jeden kolejny krok." },
+        a: { en: "Create company → follow “Do this now” (client and/or vacancy depending on your type) → connect Meta or skip → get a lead (ads, sample data, or manual path) → contact. Checklist always shows one next step. If ads are not ready, load sample data.", ru: "Компания → «Сделайте сейчас» (клиент и/или вакансия по типу) → Meta или пропуск → заявка (реклама, sample data или вручную) → контакт. Чек-лист всегда показывает один шаг. Нет рекламы — загрузите sample data.", pl: "Firma → „Zrób teraz” (klient i/lub wakat wg typu) → Meta lub pomiń → lead (reklamy, sample data lub ręcznie) → kontakt. Checklista zawsze pokazuje jeden krok. Brak reklam — wczytaj sample data." },
       },
       {
         id: "no_support",
@@ -199,6 +199,159 @@ export const FAQ_SECTIONS: FaqSection[] = [
         id: "doc_control",
         q: { en: "How do I see missing documents across the team?", ru: "Как увидеть недостающие документы по команде?", pl: "Jak zobaczyć braki dokumentów w zespole?" },
         a: { en: "Use candidate lists, dashboards, and reminders filtered by document readiness / expiry.", ru: "Списки кандидатов, дашборды и напоминания с фильтром по готовности / сроку документов.", pl: "Listy kandydatów, dashboardy i przypomnienia z filtrem gotowości / ważności dokumentów." },
+      },
+    ],
+  },
+  {
+    id: "launch_troubleshooting",
+    title: {
+      en: "Launch & problems",
+      ru: "Запуск и проблемы",
+      pl: "Start i problemy",
+    },
+    items: [
+      {
+        id: "where_to_start",
+        q: {
+          en: "I registered — what do I do first?",
+          ru: "Я зарегистрировался — что делать первым?",
+          pl: "Zarejestrowałem się — co najpierw?",
+        },
+        a: {
+          en: "Complete the short company form, then follow the single “Do this now” button on Start / Setup. One step at a time until you have an application and a contact. Guide: /docs/getting-started.",
+          ru: "Заполните короткую форму компании, затем нажмите единственную кнопку «Сделайте сейчас» на Старт / Setup. Один шаг за раз — до заявки и контакта. Гайд: /docs/getting-started.",
+          pl: "Wypełnij krótki formularz firmy, potem kliknij jedną przycisk „Zrób teraz” na Start / Setup. Jeden krok naraz — do zgłoszenia i kontaktu. Przewodnik: /docs/getting-started.",
+        },
+      },
+      {
+        id: "company_type",
+        q: {
+          en: "Which company type should I pick?",
+          ru: "Какой тип компании выбрать?",
+          pl: "Jaki typ firmy wybrać?",
+        },
+        a: {
+          en: "Recruitment agency — you hire for clients. Employer / transport / HoReCa — you hire for your own company. Cleaning / services — clients and service inquiries come first (not the candidate list as home).",
+          ru: "Кадровое агентство — нанимаете для клиентов. Работодатель / транспорт / HoReCa — нанимаете для своей компании. Клининг / services — сначала клиенты и заявки (не список кандидатов как home).",
+          pl: "Agencja rekrutacyjna — rekrutujesz dla klientów. Employer / transport / HoReCa — dla własnej firmy. Cleaning / services — najpierw klienci i zapytania (nie lista kandydatów jako home).",
+        },
+      },
+      {
+        id: "stuck_no_next",
+        q: {
+          en: "I feel stuck — the screen is empty",
+          ru: "Я застрял — экран пустой",
+          pl: "Utknąłem — pusty ekran",
+        },
+        a: {
+          en: "Open Start (/app/setup) and use the highlighted CTA. Empty lists always have a primary action. If Meta is not ready, skip it or load sample data. Still stuck? Use sample data, then Open Leads.",
+          ru: "Откройте Старт (/app/setup) и нажмите подсвеченный CTA. У пустых списков всегда есть primary-действие. Meta не готова — пропустите или загрузите sample data. Всё ещё тупик — sample data → Открыть лиды.",
+          pl: "Otwórz Start (/app/setup) i kliknij podświetlone CTA. Puste listy zawsze mają primary action. Meta niegotowa — pomiń lub wczytaj sample data. Nadal tut — sample data → Otwórz leady.",
+        },
+      },
+      {
+        id: "no_meta_ads",
+        q: {
+          en: "I don’t have Meta ads / Facebook Business yet",
+          ru: "У меня пока нет рекламы Meta / Facebook Business",
+          pl: "Nie mam jeszcze reklam Meta / Facebook Business",
+        },
+        a: {
+          en: "You can start without ads. On the checklist choose Skip for Meta, or on intake pick Sample data / Manual. Connect Meta later from Settings → Integrations when ready.",
+          ru: "Можно начать без рекламы. В чек-листе — «Пока пропустить» для Meta, или на intake — Sample data / Вручную. Meta подключите позже: Настройки → Интеграции.",
+          pl: "Możesz zacząć bez reklam. Na checkliście — „Pomiń na razie” dla Meta, albo na intake — Sample data / Ręcznie. Meta podłącz później: Ustawienia → Integracje.",
+        },
+      },
+      {
+        id: "meta_connect_fails",
+        q: {
+          en: "Meta connect fails or asks for App Review",
+          ru: "Meta не подключается или просит App Review",
+          pl: "Meta nie łączy się lub prosi o App Review",
+        },
+        a: {
+          en: "Usually missing Business admin approval, wrong ad account, or plan limits. Skip Meta for now, load sample data to learn the product, then retry with a Business admin. Details: FAQ → Meta section.",
+          ru: "Чаще нет одобрения админа Business, неверный ad account или лимиты тарифа. Пропустите Meta, загрузите sample data, повторите с админом Business. Детали: FAQ → Meta.",
+          pl: "Zwykle brak akceptacji admina Business, złe konto reklam lub limity planu. Pomiń Meta, wczytaj sample data, spróbuj z adminem Business. Szczegóły: FAQ → Meta.",
+        },
+      },
+      {
+        id: "no_leads",
+        q: {
+          en: "Why aren’t leads arriving?",
+          ru: "Почему не приходят заявки (лиды)?",
+          pl: "Dlaczego nie przychodzą leady?",
+        },
+        a: {
+          en: "Need a vacancy (or client for services), an intake path (Meta mapped / form / manual), and an active source. To unblock learning: Start → Load sample data, then open Leads and contact the sample person.",
+          ru: "Нужны вакансия (или клиент для services), способ intake (Meta / форма / вручную) и активный источник. Чтобы не ждать: Старт → Загрузить sample data → Лиды → связаться с примером.",
+          pl: "Potrzebny wakat (lub klient dla services), ścieżka intake (Meta / formularz / ręcznie) i aktywne źródło. Bez czekania: Start → Wczytaj sample data → Leady → kontakt z przykładem.",
+        },
+      },
+      {
+        id: "sample_data",
+        q: {
+          en: "What is sample data and is it safe?",
+          ru: "Что такое sample data и это безопасно?",
+          pl: "Czym jest sample data i czy to bezpieczne?",
+        },
+        a: {
+          en: "A tagged demo pack in your own workspace (leads, candidates, tasks). It is not shared with other buyers. Clear it anytime with “Clear sample data” before real hiring.",
+          ru: "Помеченный демо-пакет в вашем workspace (лиды, кандидаты, задачи). Не общий с другими покупателями. Очистите «Очистить sample data» перед реальной работой.",
+          pl: "Oznaczony pakiet demo we własnym workspace (leady, kandydaci, zadania). Nie jest współdzielony. Wyczyść „Wyczyść sample data” przed realną pracą.",
+        },
+      },
+      {
+        id: "solo_no_team",
+        q: {
+          en: "Can I start alone without inviting a team?",
+          ru: "Можно ли начать одному без команды?",
+          pl: "Czy mogę zacząć solo bez zespołu?",
+        },
+        a: {
+          en: "Yes. Inviting teammates is optional. Skip invite on the checklist and hire solo; add people later in Settings → Users.",
+          ru: "Да. Приглашение коллег необязательно. Пропустите invite в чек-листе и работайте solo; людей добавите позже в Настройки → Пользователи.",
+          pl: "Tak. Zaproszenie zespołu jest opcjonalne. Pomiń invite na checkliście i pracuj solo; ludzi dodasz później w Ustawienia → Użytkownicy.",
+        },
+      },
+      {
+        id: "whatsapp_required",
+        q: {
+          en: "Do I need WhatsApp on day one?",
+          ru: "Нужен ли WhatsApp в первый день?",
+          pl: "Czy potrzebuję WhatsApp pierwszego dnia?",
+        },
+        a: {
+          en: "No. First value is company → vacancy/client → application → contact. WhatsApp helps later for ongoing chat when your plan includes messaging.",
+          ru: "Нет. Первая ценность: компания → вакансия/клиент → заявка → контакт. WhatsApp — позже для переписки, если тариф включает messaging.",
+          pl: "Nie. Pierwsza wartość: firma → wakat/klient → zgłoszenie → kontakt. WhatsApp później do czatu, jeśli plan obejmuje messaging.",
+        },
+      },
+      {
+        id: "trial_and_pay",
+        q: {
+          en: "Do I have to pay before I can work?",
+          ru: "Нужно ли платить до начала работы?",
+          pl: "Czy muszę płacić przed rozpoczęciem pracy?",
+        },
+        a: {
+          en: "No. Trial gives access immediately after signup. Billing is for upgrading when you are ready. In test environments checkout can be simulated as successful without a real card.",
+          ru: "Нет. Trial даёт доступ сразу после регистрации. Billing — для апгрейда, когда будете готовы. В тестовых средах checkout можно симулировать без реальной карты.",
+          pl: "Nie. Trial daje dostęp od razu po rejestracji. Billing — do upgrade’u, gdy będziesz gotowy. W środowiskach testowych checkout można zasymulować bez karty.",
+        },
+      },
+      {
+        id: "still_blocked",
+        q: {
+          en: "Nothing works — who can help?",
+          ru: "Ничего не получается — куда писать?",
+          pl: "Nic nie działa — gdzie szukać pomocy?",
+        },
+        a: {
+          en: "1) /docs/getting-started 2) this FAQ section 3) /demo explanation 4) contact support from the product or hostflow.cc with your workspace email. Describe the last screen and the button you clicked.",
+          ru: "1) /docs/getting-started 2) этот раздел FAQ 3) /demo 4) support из продукта или hostflow.cc с email workspace. Укажите последний экран и кнопку.",
+          pl: "1) /docs/getting-started 2) ta sekcja FAQ 3) /demo 4) support z produktu lub hostflow.cc z emailem workspace. Podaj ostatni ekran i przycisk.",
+        },
       },
     ],
   },

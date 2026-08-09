@@ -12,6 +12,7 @@ import {
   seedOnboardingDemo,
 } from '../../api/client'
 import { ACTIVATION_PATHS } from '../../app/activationRoutes'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useI18n } from '../../i18n'
 import {
   useSuccessPathReadiness,
@@ -24,19 +25,34 @@ type SuccessPathReadinessPanelProps = {
   showWhenComplete?: boolean
 }
 
+const FAQ_LAUNCH = '/faq#launch_troubleshooting'
+const DOCS_START = '/docs/getting-started'
+
 export function SuccessPathReadinessPanel({
   className = '',
   showWhenComplete = false,
 }: SuccessPathReadinessPanelProps) {
   const { t } = useI18n()
-  const { items, nextAction, doneCount, totalCount, pathComplete, loading, deferMeta, refresh, status } =
-    useSuccessPathReadiness()
+  const {
+    items,
+    nextAction,
+    doneCount,
+    totalCount,
+    pathComplete,
+    loading,
+    deferMeta,
+    refresh,
+    status,
+    businessType,
+  } = useSuccessPathReadiness()
   const [demoBusy, setDemoBusy] = useState(false)
   const [demoError, setDemoError] = useState<string | null>(null)
 
   const companyDone = Boolean(items.find((i) => i.id === 'company')?.done)
   const demoSeeded = Boolean(status?.demo_seeded)
   const showDemoActions = companyDone && !pathComplete
+  const needsLeadEscape =
+    nextAction?.id === 'lead' || nextAction?.id === 'meta' || nextAction?.id === 'contact'
 
   const handleSeedDemo = async () => {
     setDemoBusy(true)
@@ -97,31 +113,47 @@ export function SuccessPathReadinessPanel({
       })
     : null
 
+  const titleKey = pathComplete
+    ? `app.onboarding.success_path.title_done_${businessType}`
+    : `app.onboarding.success_path.title_${businessType}`
+  const subtitleKey = pathComplete
+    ? `app.onboarding.success_path.subtitle_done_${businessType}`
+    : `app.onboarding.success_path.subtitle_${businessType}`
+
   return (
     <section
       className={`rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 ${className}`}
       data-testid="success-path-readiness"
+      data-business-type={businessType}
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
         {t('app.onboarding.success_path.badge', { defaultValue: 'Result' })}
       </p>
       <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
         {pathComplete
-          ? t('app.onboarding.success_path.title_done', {
-              defaultValue: 'You can close vacancies from here',
+          ? t(titleKey, {
+              defaultValue: t('app.onboarding.success_path.title_done', {
+                defaultValue: 'You can close vacancies from here',
+              }),
             })
-          : t('app.onboarding.success_path.title', {
-              defaultValue: 'Close vacancies faster — start here',
+          : t(titleKey, {
+              defaultValue: t('app.onboarding.success_path.title', {
+                defaultValue: 'Close vacancies faster — start here',
+              }),
             })}
       </h2>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
         {pathComplete
-          ? t('app.onboarding.success_path.subtitle_done', {
-              defaultValue: 'The basics are done. Keep candidates moving in the pipeline.',
+          ? t(subtitleKey, {
+              defaultValue: t('app.onboarding.success_path.subtitle_done', {
+                defaultValue: 'The basics are done. Keep candidates moving in the pipeline.',
+              }),
             })
-          : t('app.onboarding.success_path.subtitle', {
-              defaultValue:
-                'One action at a time until applications land and you contact the first candidate.',
+          : t(subtitleKey, {
+              defaultValue: t('app.onboarding.success_path.subtitle', {
+                defaultValue:
+                  'One action at a time until applications land and you contact the first candidate.',
+              }),
             })}
       </p>
 
@@ -160,18 +192,86 @@ export function SuccessPathReadinessPanel({
                 {t('app.onboarding.success_path.defer_meta', { defaultValue: 'Skip for now' })}
               </button>
             ) : null}
+            {needsLeadEscape && !demoSeeded ? (
+              <button
+                type="button"
+                data-testid="success-path-next-demo-seed"
+                disabled={demoBusy}
+                onClick={() => void handleSeedDemo()}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+              >
+                {demoBusy
+                  ? t('common.saving', { defaultValue: 'Working…' })
+                  : t('app.onboarding.success_path.demo_seed', {
+                      defaultValue: 'Load sample data',
+                    })}
+              </button>
+            ) : null}
+            {needsLeadEscape && demoSeeded ? (
+              <Link
+                to={ACTIVATION_PATHS.leads}
+                data-testid="success-path-next-open-leads"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 hover:bg-slate-50"
+              >
+                {t('app.onboarding.success_path.demo_open_leads', { defaultValue: 'Open Leads' })}
+              </Link>
+            ) : null}
             <Link
-              to="/faq"
+              to={FAQ_LAUNCH}
               className="rounded-xl px-4 py-3 text-sm font-medium text-brand-700 hover:underline"
             >
-              {t('app.onboarding.success_path.open_faq', { defaultValue: 'Open FAQ' })}
+              {t('app.onboarding.success_path.open_faq', { defaultValue: 'Stuck? Open FAQ' })}
             </Link>
             <Link
-              to="/demo"
+              to={DOCS_START}
               className="rounded-xl px-4 py-3 text-sm font-medium text-brand-700 hover:underline"
             >
-              {t('app.onboarding.success_path.open_demo', { defaultValue: 'How demo works' })}
+              {t('app.onboarding.success_path.open_docs', { defaultValue: 'Getting started guide' })}
             </Link>
+          </div>
+          {demoError ? <p className="mt-2 text-xs text-rose-700">{demoError}</p> : null}
+          {nextAction.id === 'lead' ? (
+            <p className="mt-3 text-xs text-slate-600">
+              {t('app.onboarding.success_path.lead_escape_hint', {
+                defaultValue:
+                  'No ads yet? Load sample data, choose manual intake, or skip Meta — you will not get stuck.',
+              })}
+            </p>
+          ) : null}
+        </div>
+      ) : !pathComplete ? (
+        <div
+          className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/70 p-5"
+          data-testid="success-path-recovery"
+        >
+          <p className="text-sm font-semibold text-slate-900">
+            {t('app.onboarding.success_path.recovery_title', {
+              defaultValue: 'Need a way forward?',
+            })}
+          </p>
+          <p className="mt-1 text-sm text-slate-700">
+            {t('app.onboarding.success_path.recovery_body', {
+              defaultValue:
+                'Open Getting started, load sample data, or read the launch FAQ. There is always a next step.',
+            })}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link to={CRM_APP_PATHS.setup} className="btn-primary btn-sm">
+              {t('app.onboarding.success_path.recovery_setup', { defaultValue: 'Open start checklist' })}
+            </Link>
+            <Link to={FAQ_LAUNCH} className="btn-secondary btn-sm">
+              {t('app.onboarding.success_path.open_faq', { defaultValue: 'Stuck? Open FAQ' })}
+            </Link>
+            {!demoSeeded ? (
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={demoBusy}
+                onClick={() => void handleSeedDemo()}
+              >
+                {t('app.onboarding.success_path.demo_seed', { defaultValue: 'Load sample data' })}
+              </button>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -237,6 +337,9 @@ export function SuccessPathReadinessPanel({
                     })}
               </button>
             )}
+            <Link to={FAQ_LAUNCH} className="btn-secondary btn-sm">
+              {t('app.onboarding.success_path.open_faq_short', { defaultValue: 'FAQ' })}
+            </Link>
           </div>
         </div>
       ) : null}

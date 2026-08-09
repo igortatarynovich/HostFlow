@@ -7111,8 +7111,9 @@
         "empty": "Brak leadów.",
         "empty_cta_clients": "Otwórz klientów",
         "empty_cta_connect": "Podłącz reklamy",
-        "empty_desc": "Utwórz wakat i podłącz reklamy Facebook / Meta — zgłoszenia pojawią się tutaj same.",
-        "empty_desc_services": "Podłącz źródło lub dodaj klienta — zapytania trafią tutaj.",
+        "empty_cta_intake": "Wybierz sposób zbierania zgłoszeń",
+        "empty_desc": "Utwórz wakat, potem Meta, sample data lub ręczny intake — zgłoszenia pojawią się tutaj.",
+        "empty_desc_services": "Dodaj klienta lub wybierz ścieżkę intake — zapytania trafią tutaj.",
         "empty_title": "Brak zgłoszeń",
         "empty_title_services": "Brak zapytań",
         "empty_why": "Stąd zaczyna się rekrutacja. Dalej: kontakt i przeniesienie do kandydatów.",
@@ -8966,7 +8967,13 @@
         "loading": "Przygotowujemy kolejny krok…",
         "badge": "Wynik",
         "title": "Zamykaj wakaty szybciej — zacznij tutaj",
+        "title_agency": "Zamykaj zlecenia szybciej — zacznij tutaj",
+        "title_employer": "Rekrutuj szybciej — zacznij tutaj",
+        "title_services": "Obsługuj klientów szybciej — zacznij tutaj",
         "subtitle": "Jeden krok naraz — do pierwszego zgłoszenia i kontaktu z kandydatem.",
+        "subtitle_agency": "Jeden krok naraz: klient → wakat → zgłoszenie → kontakt.",
+        "subtitle_employer": "Jeden krok naraz: wakat → zgłoszenie → kontakt.",
+        "subtitle_services": "Jeden krok naraz: klient lub zapytanie → kontakt. Kandydaci opcjonalnie później.",
         "progress": "Gotowe {done} z {total}",
         "list_aria": "Checklist Success Path",
         "optional": "opcjonalne",
@@ -8980,6 +8987,22 @@
         "page_subtitle": "Zrób kolejny krok. Dojdź do pierwszego kandydata bez wsparcia.",
         "hub_badge": "Success path",
         "hub_footer": "Dokończ krok powyżej — nic więcej teraz nie trzeba.",
+        "open_faq": "Utknąłeś? Otwórz FAQ",
+        "open_faq_short": "FAQ",
+        "open_docs": "Przewodnik startowy",
+        "open_demo": "Jak działa demo",
+        "lead_escape_hint": "Brak reklam? Wczytaj sample data, wybierz sposób zgłoszeń lub pomiń Meta — bez ślepego zaułka.",
+        "recovery_title": "Potrzebujesz wyjścia?",
+        "recovery_body": "Otwórz Start, wczytaj sample data lub FAQ uruchomienia. Zawsze jest kolejny krok.",
+        "recovery_setup": "Otwórz checklistę startu",
+        "demo_title": "Poznaj na sample data",
+        "demo_hint": "Wczytaj pakiet przykładów (leady, kandydaci, zadania), żeby poznać produkt. Czyścisz jednym kliknięciem.",
+        "demo_active_hint": "Sample pack jest wczytany. Otwórz Leady albo wyczyść przed realną pracą.",
+        "demo_seed": "Wczytaj sample data",
+        "demo_clear": "Wyczyść sample data",
+        "demo_open_leads": "Otwórz leady",
+        "demo_seed_error": "Nie udało się wczytać sample data. Wymagana rola administratora.",
+        "demo_clear_error": "Nie udało się wyczyścić sample data. Wymagana rola administratora.",
         "items": {
           "company": {
             "label": "Utwórz firmę",
@@ -8988,13 +9011,18 @@
           },
           "invite": {
             "label": "Zaproś zespół",
-            "hint": "Zaproś rekruterów, gdy będziesz gotowy — możesz później.",
+            "hint": "Zaproś kolegów, gdy będziesz gotowy — możesz później.",
             "cta": "Zaproś zespół"
           },
           "meta": {
             "label": "Podłącz reklamy Facebook / Meta",
-            "hint": "Aby zgłoszenia z reklam trafiały do HostFlow automatycznie.",
+            "hint": "Aby zgłoszenia z reklam trafiały do HostFlow automatycznie. Możesz pominąć i użyć sample data.",
             "cta": "Podłącz reklamy"
+          },
+          "client": {
+            "label": "Dodaj pierwszego klienta",
+            "hint": "Utwórz firmę lub klienta, z którym pracujesz — ok. minuta.",
+            "cta": "Dodaj klienta"
           },
           "vacancy": {
             "label": "Utwórz pierwszy wakat",
@@ -9002,21 +9030,27 @@
             "cta": "Utwórz wakat"
           },
           "lead": {
-            "label": "Odbierz pierwszy lead",
-            "hint": "Pierwsze zgłoszenie w inbox z Meta, formularza lub ręcznie.",
-            "cta": "Otwórz leady"
+            "label": "Odbierz pierwsze zgłoszenie",
+            "hint": "Meta, sample data lub ręczny intake — nie czekaj na pustą listę.",
+            "cta": "Zdobądź zgłoszenia"
           },
           "contact": {
-            "label": "Skontaktuj się z kandydatem",
+            "label": "Skontaktuj się z osobą",
             "hint": "Wykonaj kolejny krok przy leadzie — żeby nic nie wisiało.",
             "cta": "Otwórz leady"
           }
         },
         "title_done": "Możesz zamykać wakaty w systemie",
+        "title_done_agency": "Możesz zamykać zlecenia w systemie",
+        "title_done_employer": "Możesz rekrutować w systemie",
+        "title_done_services": "Możesz obsługiwać klientów w systemie",
         "subtitle_done": "Podstawy gotowe. Prowadź kandydatów w pipeline.",
+        "subtitle_done_agency": "Podstawy gotowe. Prowadź placementy dalej.",
+        "subtitle_done_employer": "Podstawy gotowe. Prowadź kandydatów dalej.",
+        "subtitle_done_services": "Podstawy gotowe. Prowadź zapytania i klientów dalej.",
         "checklist_title": "Postęp",
-        "result_ready_title": "Możesz rekrutować",
-        "result_ready_body": "Firma, wakat i proces są gotowe. Otwórz Launchpad i prowadź kandydatów.",
+        "result_ready_title": "Możesz pracować",
+        "result_ready_body": "Firma i pierwsza ścieżka są gotowe. Otwórz Launchpad i kontynuuj.",
         "go_work": "Do pracy",
         "go_vacancies": "Otwórz wakaty"
       },

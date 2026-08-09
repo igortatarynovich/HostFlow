@@ -7184,8 +7184,9 @@
         "empty": "No leads found.",
         "empty_cta_clients": "Open clients",
         "empty_cta_connect": "Connect ads",
-        "empty_desc": "Create a vacancy, then connect Facebook / Meta ads — applications will land here automatically.",
-        "empty_desc_services": "Connect a source or add a client so inquiries land here for follow-up.",
+        "empty_cta_intake": "Choose how to get applications",
+        "empty_desc": "Create a vacancy, then choose Meta, sample data, or manual intake — applications land here.",
+        "empty_desc_services": "Add a client or choose an intake path so inquiries land here for follow-up.",
         "empty_title": "No applications yet",
         "empty_title_services": "No inquiries yet",
         "empty_why": "This inbox is where hiring starts. Next: contact the person and move them to candidates.",
@@ -9039,7 +9040,13 @@
         "loading": "Preparing your next step…",
         "badge": "Result",
         "title": "Close vacancies faster — start here",
+        "title_agency": "Place candidates faster — start here",
+        "title_employer": "Hire faster — start here",
+        "title_services": "Serve clients faster — start here",
         "subtitle": "One action at a time until applications land and you contact the first candidate.",
+        "subtitle_agency": "One action at a time: client → vacancy → application → contact.",
+        "subtitle_employer": "One action at a time: vacancy → application → contact.",
+        "subtitle_services": "One action at a time: client or inquiry → contact. Candidates are optional later.",
         "progress": "{done} of {total} done",
         "list_aria": "Success path checklist",
         "optional": "optional",
@@ -9053,6 +9060,22 @@
         "page_subtitle": "Do the next step. Get to your first candidate without support.",
         "hub_badge": "Success path",
         "hub_footer": "Finish the step above — that is all you need right now.",
+        "open_faq": "Stuck? Open FAQ",
+        "open_faq_short": "FAQ",
+        "open_docs": "Getting started guide",
+        "open_demo": "How demo works",
+        "lead_escape_hint": "No ads yet? Load sample data, choose how to get applications, or skip Meta — you will not get stuck.",
+        "recovery_title": "Need a way forward?",
+        "recovery_body": "Open Getting started, load sample data, or read the launch FAQ. There is always a next step.",
+        "recovery_setup": "Open start checklist",
+        "demo_title": "Explore with sample data",
+        "demo_hint": "Load a sample pack (leads, candidates, tasks) to learn the product. You can wipe it in one click.",
+        "demo_active_hint": "Sample pack is loaded. Open Leads to click through, or clear it when you start real work.",
+        "demo_seed": "Load sample data",
+        "demo_clear": "Clear sample data",
+        "demo_open_leads": "Open Leads",
+        "demo_seed_error": "Could not load sample data. Admin role required.",
+        "demo_clear_error": "Could not clear sample data. Admin role required.",
         "items": {
           "company": {
             "label": "Create company",
@@ -9061,13 +9084,18 @@
           },
           "invite": {
             "label": "Invite teammates",
-            "hint": "Invite recruiters when you are ready — you can do this later.",
+            "hint": "Invite colleagues when you are ready — you can do this later.",
             "cta": "Invite teammates"
           },
           "meta": {
             "label": "Connect Facebook / Meta ads",
-            "hint": "So applications from your ads arrive in HostFlow automatically.",
+            "hint": "So applications from your ads arrive in HostFlow automatically. You can skip and use sample data.",
             "cta": "Connect ads"
+          },
+          "client": {
+            "label": "Add first client",
+            "hint": "Create the company or client you work for — about a minute.",
+            "cta": "Add client"
           },
           "vacancy": {
             "label": "Create first vacancy",
@@ -9075,21 +9103,27 @@
             "cta": "Create vacancy"
           },
           "lead": {
-            "label": "Receive first lead",
-            "hint": "Get the first application into your inbox from Meta, a form, or a manual lead.",
-            "cta": "Open leads"
+            "label": "Receive first application",
+            "hint": "Choose Meta, sample data, or manual intake — never wait on an empty list.",
+            "cta": "Get applications"
           },
           "contact": {
-            "label": "Contact a candidate",
+            "label": "Contact a person",
             "hint": "Take the next action on a lead so nothing sits untouched.",
             "cta": "Open leads"
           }
         },
         "title_done": "You can close vacancies from here",
+        "title_done_agency": "You can place candidates from here",
+        "title_done_employer": "You can hire from here",
+        "title_done_services": "You can serve clients from here",
         "subtitle_done": "The basics are done. Keep candidates moving in the pipeline.",
+        "subtitle_done_agency": "The basics are done. Keep placements moving.",
+        "subtitle_done_employer": "The basics are done. Keep candidates moving.",
+        "subtitle_done_services": "The basics are done. Keep inquiries and clients moving.",
         "checklist_title": "Progress",
-        "result_ready_title": "You are ready to hire",
-        "result_ready_body": "Company, vacancy, and pipeline are in place. Open Launchpad and keep processing candidates.",
+        "result_ready_title": "You are ready to work",
+        "result_ready_body": "Company and first path are in place. Open Launchpad and keep processing.",
         "go_work": "Go to work",
         "go_vacancies": "Open vacancies"
       },
