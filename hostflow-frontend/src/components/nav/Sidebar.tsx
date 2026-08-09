@@ -209,10 +209,10 @@ export function Sidebar({
     const usage = teamOverview?.usage
     if (!usage) return false
     const total =
-      Number(usage.recruiter_count || 0) +
-      Number(usage.supervisor_count || 0) +
-      Number(usage.client_manager_count || 0) +
+      Number(usage.administrator_count ?? usage.supervisor_count ?? 0) +
+      Number(usage.employee_count ?? usage.recruiter_count ?? 0) +
       Number(usage.viewer_count || 0)
+    // Portal guests are non-billable and do not count toward workspace team size.
     return total <= 1
   }, [teamOverview])
 

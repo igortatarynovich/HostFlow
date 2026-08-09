@@ -303,3 +303,101 @@ def trust_role_for_preset(preset_id: str) -> str:
     if key in PERMISSION_PRESETS:
         return TrustRole.employee.value
     raise ValueError(f"unknown_permission_preset:{key}")
+
+
+# --- Seat / license buckets (ADR-036 §4 monetization) ---
+# License columns keep historical names; semantics map to trust seats:
+#   max_supervisors → administrator seats
+#   max_recruiters  → employee seats
+#   max_viewers     → tenant viewer seats
+#   max_client_managers → unused for gates (portal guests are non-billable)
+
+BILLABLE_SEAT_QUOTA_ATTR: Final[dict[str, str]] = {
+    TrustRole.administrator.value: "max_supervisors",
+    TrustRole.employee.value: "max_recruiters",
+    TrustRole.viewer.value: "max_viewers",
+}
+
+ADMINISTRATOR_SEAT_ROLES: Final[frozenset[str]] = frozenset(
+    {
+        TrustRole.administrator.value,
+        TrustRole.superadmin.value,
+        "admin",
+        "owner",
+    }
+)
+
+EMPLOYEE_SEAT_ROLES: Final[frozenset[str]] = frozenset(
+    {
+        TrustRole.employee.value,
+        *JOB_PROXY_ROLES,
+        "supervisor",
+        "recruiter",
+        "hr_officer",
+        "compliance_officer",
+    }
+)
+
+TENANT_VIEWER_SEAT_ROLES: Final[frozenset[str]] = frozenset(
+    {
+        TrustRole.viewer.value,
+        "user",
+    }
+)
+
+
+def is_non_billable_portal_seat(
+    role: str | None,
+    *,
+    access_context: str | None = None,
+    preset_id: str | None = None,
+) -> bool:
+    """Portal guests do not consume Admin/Employee/Viewer CRM seats."""
+    if str(preset_id or "").strip().lower() == "portal_guest":
+        return True
+    return is_portal_actor(role, access_context)
+
+
+def billable_seat_bucket(
+    role: str | None,
+    *,
+    access_context: str | None = None,
+    preset_id: str | None = None,
+) -> str | None:
+    """Return administrator|employee|viewer for seat gates, or None if non-billable."""
+    if is_non_billable_portal_seat(
+        role, access_context=access_context, preset_id=preset_id
+    ):
+        return None
+    trust = normalize_trust_role(role)
+    if trust == TrustRole.superadmin.value:
+        return TrustRole.administrator.value
+    if trust in BILLABLE_SEAT_QUOTA_ATTR:
+        return trust
+    return None
+
+
+def seat_quota_attr_for_role(
+    role: str | None,
+    *,
+    access_context: str | None = None,
+    preset_id: str | None = None,
+) -> str | None:
+    bucket = billable_seat_bucket(
+        role, access_context=access_context, preset_id=preset_id
+    )
+    if bucket is None:
+        return None
+    return BILLABLE_SEAT_QUOTA_ATTR.get(bucket)
+
+
+def membership_roles_for_seat_bucket(bucket: str) -> frozenset[str]:
+    """Legacy + trust membership.role strings that consume a billable bucket."""
+    key = str(bucket or "").strip().lower()
+    if key == TrustRole.administrator.value:
+        return ADMINISTRATOR_SEAT_ROLES
+    if key == TrustRole.employee.value:
+        return EMPLOYEE_SEAT_ROLES
+    if key == TrustRole.viewer.value:
+        return TENANT_VIEWER_SEAT_ROLES
+    return frozenset()

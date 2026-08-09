@@ -878,30 +878,31 @@ export default function TenantsPage() {
   const seatCards = useMemo(() => {
     if (!selected) return []
     const license = selected.license
+    const usage = selected.usage
     return [
       {
-        key: 'recruiters',
-        label: t('app.platform.tenants.usage.recruiters'),
-        used: selected.usage.recruiter_count,
-        limit: license?.max_recruiters ?? 0,
-      },
-      {
-        key: 'supervisors',
-        label: t('app.platform.tenants.usage.supervisors'),
-        used: selected.usage.supervisor_count,
+        key: 'administrators',
+        label: t('app.platform.tenants.usage.administrators'),
+        used: usage.administrator_count ?? usage.supervisor_count,
         limit: license?.max_supervisors ?? 0,
       },
       {
-        key: 'client_managers',
-        label: t('app.platform.tenants.usage.client_managers'),
-        used: selected.usage.client_manager_count,
-        limit: license?.max_client_managers ?? 0,
+        key: 'employees',
+        label: t('app.platform.tenants.usage.employees'),
+        used: usage.employee_count ?? usage.recruiter_count,
+        limit: license?.max_recruiters ?? 0,
       },
       {
         key: 'viewers',
         label: t('app.platform.tenants.usage.viewers'),
-        used: selected.usage.viewer_count,
+        used: usage.viewer_count,
         limit: license?.max_viewers ?? 0,
+      },
+      {
+        key: 'portal_guests',
+        label: t('app.platform.tenants.usage.portal_guests'),
+        used: usage.portal_guest_count ?? usage.client_manager_count,
+        limit: 0,
       },
     ]
   }, [selected, t])

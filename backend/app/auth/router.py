@@ -57,6 +57,7 @@ _ROLE_MAP = {
     "owner": UserRole.administrator.value,
     "admin": UserRole.administrator.value,
     "administrator": UserRole.administrator.value,
+    "employee": UserRole.employee.value,
     "manager": UserRole.supervisor.value,
     "supervisor": UserRole.supervisor.value,
     "recruiter": UserRole.recruiter.value,
@@ -69,6 +70,14 @@ _ROLE_MAP = {
     "hr_officer": UserRole.hr_officer.value,
     "people_ops": UserRole.hr_officer.value,
 }
+
+
+def _access_context_for_user(user: User, role_value: str) -> str:
+    from backend.app.auth.trust_roles import infer_access_context
+
+    prefs = user.preferences if isinstance(user.preferences, dict) else {}
+    explicit = prefs.get("access_context")
+    return infer_access_context(role_value, explicit if isinstance(explicit, str) else None)
 
 class LoginIn(BaseModel):
     email: str
@@ -384,6 +393,7 @@ async def auth_login(payload: LoginIn, request: Request, response: Response) -> 
             "email": email,
             "role": role_value,
             "tenant_id": tenant_id,
+            "access_context": _access_context_for_user(user, role_value),
             "type": "access",
             "jti": str(uuid.uuid4()),
             "iat": int(now.timestamp()),
@@ -505,6 +515,7 @@ async def auth_session_sync(request: Request, response: Response) -> TokenOut:
             "email": email,
             "role": role_value,
             "tenant_id": tenant_id,
+            "access_context": _access_context_for_user(user, role_value),
             "type": "access",
             "jti": str(uuid.uuid4()),
             "iat": int(now.timestamp()),
@@ -604,6 +615,7 @@ async def auth_refresh(request: Request, response: Response) -> TokenOut:
             "email": email,
             "role": role_value,
             "tenant_id": tenant_id,
+            "access_context": _access_context_for_user(user, role_value),
             "type": "access",
             "jti": str(uuid.uuid4()),
             "iat": int(now.timestamp()),
