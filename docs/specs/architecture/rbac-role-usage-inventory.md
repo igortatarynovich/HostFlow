@@ -43,7 +43,7 @@
 | `backend/app/api/v1/candidate_profile.py` | 1 | PORTAL_LEGACY | admin,client_manager,client_processor,manager | viewer + access_context=portal + scope | open |
 | `backend/app/api/v1/candidate_profiles.py` | 2 | PORTAL_LEGACY | client_manager,client_processor | viewer + access_context=portal + scope | open |
 | `backend/app/api/v1/candidate_requirements.py` | 4 | JOB_PROXY | compliance_officer,recruiter,viewer | employee + permission/module gate + preset | open |
-| `backend/app/api/v1/candidates/acl.py` | 8 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
+| `backend/app/api/v1/candidates/acl.py` | 8 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
 | `backend/app/api/v1/candidates/pipeline_overrides_api.py` | 10 | PORTAL_LEGACY | client_manager,client_processor | viewer + access_context=portal + scope | open |
 | `backend/app/api/v1/candidates/router.py` | 2 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `backend/app/api/v1/candidates_delete.py` | 5 | JOB_PROXY,ORG_PROXY | administrator,recruiter,supervisor | employee + supervisor_id/org + permission | open |
@@ -83,10 +83,10 @@
 | `backend/app/api/v1/vacancies/router.py` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `backend/app/api/v1/workforce/router.py` | 6 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
 | `backend/app/api/v1/workforce/zus_workspace_router.py` | 1 | JOB_PROXY | hr_officer | employee + permission/module gate + preset | open |
-| `backend/app/auth/deps.py` | 11 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
-| `backend/app/auth/fleet_access.py` | 4 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,recruiter | viewer + access_context=portal + scope | open |
-| `backend/app/auth/hiring_workspace_roles.py` | 8 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
-| `backend/app/auth/module_gate.py` | 6 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | open |
+| `backend/app/auth/deps.py` | 11 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
+| `backend/app/auth/fleet_access.py` | 4 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,recruiter | viewer + access_context=portal + scope | migrated |
+| `backend/app/auth/hiring_workspace_roles.py` | 8 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
+| `backend/app/auth/module_gate.py` | 6 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter | viewer + access_context=portal + scope | migrated |
 | `backend/app/auth/router.py` | 7 | JOB_PROXY,PORTAL_LEGACY | client_manager,client_processor,hr_officer,recruiter | viewer + access_context=portal + scope | open |
 | `backend/app/db/seeds/recruitment_team_flow_scenario.py` | 3 | JOB_PROXY | hr_officer,recruiter | employee + permission/module gate + preset | open |
 | `backend/app/jobs/hr_operational_alerts_dispatch.py` | 2 | JOB_PROXY | hr_officer | employee + permission/module gate + preset | open |
@@ -173,6 +173,19 @@
 ## Status workflow
 
 `open` → `aliased` (normalize live) → `migrated` → `removed`.
+
+### Slice progress (auth gates — PR follow-up to ADR-036)
+
+Migrated (runtime bridges + trust-aware ACL/gates):
+
+- `backend/app/auth/deps.py` — `require_roles` uses `actor_satisfies_role_allowlist` (employee ↔ JOB_PROXY; viewer+portal ↔ PORTAL_LEGACY)
+- `backend/app/auth/trust_roles.py` — `actor_satisfies_role_allowlist`, `is_portal_actor`, `is_hr_workspace_actor`, `is_team_lead_org_actor`
+- `backend/app/auth/hiring_workspace_roles.py` — canonical `employee` / `viewer` in hiring role tuples
+- `backend/app/auth/fleet_access.py` — trust allowlist + bridges
+- `backend/app/auth/module_gate.py` — portal via `access_context`; employee write fallback; team-lead org bypass
+- `backend/app/api/v1/candidates/acl.py` — trust/org/hr helpers; subordinates include `employee`
+
+Still `open` for next inventory PRs: router-level `require_roles(...)` lists, services, FE seats/UI, enum delete.
 
 ## DB appendix
 

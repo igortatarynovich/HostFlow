@@ -5,10 +5,13 @@ from __future__ import annotations
 import pytest
 
 from backend.app.auth.trust_roles import (
+    actor_satisfies_role_allowlist,
     assert_matrix_role_editable,
     expand_allowed_roles_for_trust,
     infer_access_context,
     infer_preset_id,
+    is_hr_workspace_actor,
+    is_team_lead_org_actor,
     normalize_trust_role,
 )
 
@@ -52,6 +55,47 @@ def test_expand_allowed_roles_for_trust_employee_bridge() -> None:
     allowed = expand_allowed_roles_for_trust({"recruiter", "supervisor"})
     assert "employee" in allowed
     assert "recruiter" in allowed
+
+
+def test_actor_satisfies_employee_on_job_proxy_allowlist() -> None:
+    assert actor_satisfies_role_allowlist(
+        role="employee",
+        allowed={"recruiter", "supervisor"},
+    )
+    assert actor_satisfies_role_allowlist(
+        role="recruiter",
+        allowed={"recruiter"},
+    )
+    assert not actor_satisfies_role_allowlist(
+        role="viewer",
+        allowed={"recruiter"},
+        access_context="tenant",
+    )
+
+
+def test_actor_satisfies_portal_viewer_bridge() -> None:
+    assert actor_satisfies_role_allowlist(
+        role="viewer",
+        allowed={"client_manager", "client_processor"},
+        access_context="portal",
+    )
+    assert not actor_satisfies_role_allowlist(
+        role="viewer",
+        allowed={"client_manager"},
+        access_context="tenant",
+    )
+    assert actor_satisfies_role_allowlist(
+        role="client_manager",
+        allowed={"client_manager"},
+        access_context=None,
+    )
+
+
+def test_hr_and_team_lead_helpers() -> None:
+    assert is_hr_workspace_actor("hr_officer")
+    assert not is_hr_workspace_actor("employee")
+    assert is_team_lead_org_actor("supervisor")
+    assert not is_team_lead_org_actor("recruiter")
 
 
 def test_matrix_ceiling_locks_administrator_for_tenant_admin() -> None:

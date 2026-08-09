@@ -247,9 +247,9 @@ def _to_values(allowed: Iterable[object]) -> set[str]:
 
 
 def require_roles(*allowed: object):
-    from backend.app.auth.trust_roles import expand_allowed_roles_for_trust
+    from backend.app.auth.trust_roles import actor_satisfies_role_allowlist
 
-    allowed_values = expand_allowed_roles_for_trust(_to_values(allowed))
+    allowed_values = _to_values(allowed)
 
     async def _checker(u: UserCtx = Depends(get_current_user)) -> str:
         ur = (u.role or "").lower()
@@ -257,8 +257,12 @@ def require_roles(*allowed: object):
         if ur in {Role.superadmin.value, Role.administrator.value}:
             return ur
 
-        # If a role list is provided, enforce it for non-admins
-        if allowed_values and ur not in allowed_values:
+        # If a role list is provided, enforce it for non-admins (ADR-036 bridges)
+        if allowed_values and not actor_satisfies_role_allowlist(
+            role=ur,
+            allowed=allowed_values,
+            access_context=getattr(u, "access_context", None),
+        ):
             raise HTTPException(status_code=403, detail="Forbidden")
         return ur
 
