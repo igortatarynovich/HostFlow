@@ -1026,6 +1026,47 @@ async def update_role_module_matrix(
     return current
 
 
+async def apply_permission_preset_to_user(
+    db: AsyncSession,
+    tenant: Tenant,
+    *,
+    user_id: str,
+    preset_id: str,
+    actor_id: str | None = None,
+) -> Dict[str, Dict[str, Dict[str, bool]]]:
+    """Fill user_overrides from ADR-036 PERMISSION_PRESETS (does not change trust role)."""
+    from backend.app.auth.trust_roles import get_permission_preset
+
+    modules = get_permission_preset(preset_id)
+    return await update_user_module_overrides(
+        db,
+        tenant,
+        {str(user_id): modules},
+        actor_id=actor_id,
+    )
+
+
+async def apply_permission_preset_to_employee_matrix(
+    db: AsyncSession,
+    tenant: Tenant,
+    *,
+    preset_id: str,
+    actor_id: str | None = None,
+    actor_is_superadmin: bool = False,
+) -> Dict[str, Dict[str, Dict[str, bool]]]:
+    """Apply preset cells onto the Employee trust column of the role matrix."""
+    from backend.app.auth.trust_roles import get_permission_preset
+
+    modules = get_permission_preset(preset_id)
+    return await update_role_module_matrix(
+        db,
+        tenant,
+        {"employee": modules},
+        actor_id=actor_id,
+        actor_is_superadmin=actor_is_superadmin,
+    )
+
+
 async def update_user_module_overrides(
     db: AsyncSession,
     tenant: Tenant,

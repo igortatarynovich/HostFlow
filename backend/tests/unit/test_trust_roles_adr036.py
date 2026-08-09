@@ -104,6 +104,27 @@ def test_hr_and_team_lead_helpers() -> None:
     assert not is_team_lead_org_actor("recruiter")
 
 
+def test_permission_preset_helpers() -> None:
+    from backend.app.auth.trust_roles import (
+        get_permission_preset,
+        list_permission_preset_ids,
+        trust_role_for_preset,
+    )
+
+    assert "recruiter" in list_permission_preset_ids()
+    assert trust_role_for_preset("recruiter") == "employee"
+    assert trust_role_for_preset("portal_guest") == "viewer"
+    assert get_permission_preset("hr")["hr"]["editable"] is True
+
+
+def test_normalize_assignable_role_coerces_legacy() -> None:
+    from backend.app.services.users import _normalize_assignable_role
+
+    assert _normalize_assignable_role("recruiter") == ("employee", "recruiter")
+    assert _normalize_assignable_role("employee", preset_id="hr") == ("employee", "hr")
+    assert _normalize_assignable_role("client_processor")[0] == "viewer"
+
+
 def test_matrix_ceiling_locks_administrator_for_tenant_admin() -> None:
     with pytest.raises(ValueError, match="trust_ceiling"):
         assert_matrix_role_editable("administrator", actor_is_superadmin=False)

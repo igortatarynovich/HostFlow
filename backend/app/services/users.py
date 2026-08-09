@@ -41,13 +41,16 @@ TENANT_ROLE_VALUES = {role.value for role in Role}
 SUPERVISOR_ROLES = {
     Role.superadmin.value,
     Role.administrator.value,
-    Role.supervisor.value,
+    Role.supervisor.value,  # legacy
+    Role.employee.value,  # team_lead preset / org supervisors
 }
 
 ROLE_ALIAS = {
     "owner": Role.administrator.value,
     "admin": Role.administrator.value,
     "administrator": Role.administrator.value,
+    "employee": Role.employee.value,
+    # Legacy job/portal strings still resolve for reads; new assigns coerce to trust (below).
     "manager": Role.supervisor.value,
     "supervisor": Role.supervisor.value,
     "recruiter": Role.recruiter.value,
@@ -65,6 +68,15 @@ ROLE_ALIAS = {
     "people_ops": Role.hr_officer.value,
     "superadmin": Role.superadmin.value,
 }
+
+# ADR-036: only these trust roles are written on create/invite/role-change.
+ASSIGNABLE_TRUST_ROLES = frozenset(
+    {
+        Role.administrator.value,
+        Role.employee.value,
+        Role.viewer.value,
+    }
+)
 
 DEFAULT_NOTIFICATION_EVENTS = {
     "candidate.new_assignment": {"enabled": True, "mode": "immediate"},
@@ -101,10 +113,77 @@ def _now() -> datetime:
 
 
 def _normalize_role(role: str) -> str:
+    """Resolve role aliases (legacy strings included). Does not coerce to trust."""
     value = ROLE_ALIAS.get(str(role or "").strip().lower())
     if not value:
         raise UserServiceError("Unsupported role", 422)
     return value
+
+
+def _normalize_assignable_role(
+    role: str,
+    *,
+    preset_id: str | None = None,
+) -> tuple[str, str | None]:
+    """Return (trust_role, effective_preset_id) for create/invite/role-change.
+
+    Legacy job/portal role strings coerce to employee/viewer + inferred preset.
+    Explicit preset_id wins over inferred preset; portal_guest forces viewer.
+    """
+    from backend.app.auth.trust_roles import (
+        JOB_PROXY_ROLES,
+        PORTAL_LEGACY_ROLES,
+        infer_preset_id,
+        normalize_trust_role,
+        trust_role_for_preset,
+    )
+
+    raw = str(role or "").strip().lower()
+    explicit_preset = str(preset_id or "").strip().lower() or None
+    if explicit_preset:
+        try:
+            trust = trust_role_for_preset(explicit_preset)
+        except ValueError as exc:
+            raise UserServiceError(str(exc), 422) from exc
+        # If caller also sent a trust role, it must match preset ceiling
+        if raw in ASSIGNABLE_TRUST_ROLES or raw in {"admin", "owner", "user"}:
+            requested = normalize_trust_role(raw)
+            if requested == Role.administrator.value and trust != Role.administrator.value:
+                raise UserServiceError("preset_not_allowed_for_administrator", 422)
+            if requested in ASSIGNABLE_TRUST_ROLES and requested != trust and requested != Role.administrator.value:
+                # Allow employee+portal_guest → viewer (preset wins)
+                pass
+        return trust, explicit_preset
+
+    mapped = ROLE_ALIAS.get(raw)
+    if not mapped and raw not in TENANT_ROLE_VALUES:
+        raise UserServiceError("Unsupported role", 422)
+    source = mapped or raw
+
+    if source in ASSIGNABLE_TRUST_ROLES or source == Role.superadmin.value:
+        return source if source != Role.superadmin.value else Role.administrator.value, None
+
+    if source in JOB_PROXY_ROLES or source in {
+        Role.supervisor.value,
+        Role.recruiter.value,
+        Role.hr_officer.value,
+        Role.compliance_officer.value,
+        "manager",
+        "lead",
+    }:
+        return Role.employee.value, infer_preset_id(raw) or infer_preset_id(source)
+
+    if source in PORTAL_LEGACY_ROLES or source in {
+        Role.client_manager.value,
+        Role.client_processor.value,
+    }:
+        return Role.viewer.value, infer_preset_id(raw) or "portal_guest"
+
+    # Fall back to trust normalize
+    trust = normalize_trust_role(source)
+    if trust not in ASSIGNABLE_TRUST_ROLES and trust != Role.superadmin.value:
+        raise UserServiceError("Unsupported role", 422)
+    return (Role.administrator.value if trust == Role.superadmin.value else trust), infer_preset_id(raw)
 
 
 async def _tenant_row_has_license(db: AsyncSession, tenant_id: str) -> bool:
@@ -114,6 +193,7 @@ async def _tenant_row_has_license(db: AsyncSession, tenant_id: str) -> bool:
 
 def _quota_attr_for_tenant_role(role: str) -> Optional[str]:
     mapping = {
+        Role.employee.value: "max_recruiters",  # interim until seats PR (Admin/Employee/Viewer)
         Role.recruiter.value: "max_recruiters",
         Role.compliance_officer.value: "max_recruiters",
         Role.hr_officer.value: "max_recruiters",
@@ -648,8 +728,9 @@ async def create_invite(
     supervisor_id: str | None = None,
     company_ids: Sequence[str] | None = None,
     expires_in_hours: int = 72,
+    preset_id: str | None = None,
 ) -> tuple[UserInvite, str]:
-    normalized_role = _normalize_role(role)
+    normalized_role, effective_preset = _normalize_assignable_role(role, preset_id=preset_id)
     normalized_email = email.strip().lower()
     company_ids = company_ids or []
 
@@ -673,9 +754,9 @@ async def create_invite(
     invited_user_id: Optional[str] = None
     supervisor_ref: Optional[User] = None
 
-    if normalized_role == Role.recruiter.value:
+    if effective_preset == "recruiter":
         if not supervisor_id:
-            raise UserServiceError("Recruiter requires supervisor", 422)
+            raise UserServiceError("Recruiter preset requires supervisor", 422)
         supervisor_ref = await _ensure_supervisor(
             db, tenant_id=tenant_id, supervisor_id=supervisor_id
         )
@@ -726,6 +807,7 @@ async def create_invite(
         invited_user_id=invited_user_id,
         expires_at=expires_at,
         created_by=actor_id,
+        metadata_json={"preset_id": effective_preset} if effective_preset else {},
     )
     db.add(invite)
     await db.flush()
@@ -811,8 +893,9 @@ async def create_user(
     password: str | None,
     supervisor_id: str | None = None,
     company_ids: Sequence[str] | None = None,
+    preset_id: str | None = None,
 ) -> tuple[Dict[str, Any], str | None]:
-    normalized_role = _normalize_role(role)
+    normalized_role, effective_preset = _normalize_assignable_role(role, preset_id=preset_id)
     normalized_email = email.strip().lower()
     company_ids = company_ids or []
 
@@ -839,9 +922,9 @@ async def create_user(
     generated_password: Optional[str] = None
     supervisor_ref: Optional[User] = None
 
-    if normalized_role == Role.recruiter.value:
+    if effective_preset == "recruiter":
         if not supervisor_id:
-            raise UserServiceError("Recruiter requires supervisor", 422)
+            raise UserServiceError("Recruiter preset requires supervisor", 422)
         supervisor_ref = await _ensure_supervisor(
             db, tenant_id=tenant_id, supervisor_id=supervisor_id
         )
@@ -920,6 +1003,7 @@ async def create_user(
 
     entry = await _get_user_entry(db, tenant_id, user.id)
     entry["company_ids"] = list(company_ids)
+    entry["preset_id"] = effective_preset
 
     return entry, (generated_password if password is None else None)
 
@@ -931,8 +1015,9 @@ async def change_user_role(
     actor_id: str | None,
     user_id: str,
     role: str,
+    preset_id: str | None = None,
 ) -> Dict[str, Any]:
-    normalized_role = _normalize_role(role)
+    normalized_role, effective_preset = _normalize_assignable_role(role, preset_id=preset_id)
     user = await _load_user(db, tenant_id=tenant_id, user_id=user_id)
     prev_membership = await _get_membership_role_for_tenant(db, tenant_id, user_id)
     await _ensure_role_change_respects_seat_cap(
@@ -957,7 +1042,7 @@ async def change_user_role(
         actor_id=actor_id,
         target_user_id=user.id,
         action="user.role_changed",
-        payload={"role": normalized_role},
+        payload={"role": normalized_role, "preset_id": effective_preset},
     )
     await log_activity(
         db,
@@ -966,10 +1051,12 @@ async def change_user_role(
         action="user.role_changed",
         target_type="user",
         target_id=user.id,
-        payload={"role": normalized_role},
+        payload={"role": normalized_role, "preset_id": effective_preset},
     )
     await db.flush()
-    return await _get_user_entry(db, tenant_id, user.id)
+    entry = await _get_user_entry(db, tenant_id, user.id)
+    entry["preset_id"] = effective_preset
+    return entry
 
 
 async def update_user_supervisor(
@@ -1632,7 +1719,12 @@ async def accept_invite(
             raise UserServiceError("Invite expired", 410)
 
     tenant_id = invite.tenant_id
-    await _ensure_invite_accept_seat_still_valid(db, tenant_id, invite.role)
+    meta = invite.metadata_json if isinstance(invite.metadata_json, dict) else {}
+    invite_preset = meta.get("preset_id") if isinstance(meta, dict) else None
+    assignable_role, effective_preset = _normalize_assignable_role(
+        invite.role, preset_id=str(invite_preset) if invite_preset else None
+    )
+    await _ensure_invite_accept_seat_still_valid(db, tenant_id, assignable_role)
     supervisor_candidate_id = invite.supervisor_id
 
     user: User | None = None
@@ -1666,7 +1758,7 @@ async def accept_invite(
             tenant_id=tenant_id,
             supervisor_id=supervisor_candidate_id,
         )
-    elif invite.role == Role.recruiter.value:
+    elif effective_preset == "recruiter" or invite.role == Role.recruiter.value:
         raise UserServiceError("Recruiter invite requires supervisor", 422)
 
     # Update user profile
@@ -1682,7 +1774,7 @@ async def accept_invite(
         short_value = short_id.strip()
         user.short_id = short_value or None
     user.supervisor_id = supervisor_ref.id if supervisor_ref else None
-    _apply_global_role(user, invite.role)
+    _apply_global_role(user, assignable_role)
     user.updated_at = now
     await db.flush()
 
@@ -1690,7 +1782,7 @@ async def accept_invite(
         db,
         tenant_id=tenant_id,
         user_id=user.id,
-        role=invite.role,
+        role=assignable_role,
     )
 
     company_ids = [str(cid) for cid in (invite.companies or []) if cid]
@@ -1735,6 +1827,7 @@ async def accept_invite(
     detail["invite_id"] = invite.id
     detail["status"] = _status_for_user(user)
     detail["company_ids"] = [c["company_id"] for c in detail.get("companies", [])]
+    detail["preset_id"] = effective_preset
     return detail
 
 

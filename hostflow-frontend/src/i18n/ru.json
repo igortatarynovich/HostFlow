@@ -3046,7 +3046,10 @@
           "password_label": "Пароль (опционально)",
           "password_placeholder": "Оставьте пустым — сгенерируем",
           "submit": "Создать пользователя",
-          "submitting": "Создаём…"
+          "submitting": "Создаём…",
+          "preset_label": "Пресет прав",
+          "preset_none": "Нет (дефолт роли)",
+          "preset_help": "Заполняет права модулей пользователя — не создаёт системную роль."
         },
         "errors": {
           "list_missing_endpoint": "Endpoint /api/v1/admin/users не найден. Перезапустите backend после обновлений.",
@@ -3241,6 +3244,13 @@
             "token": "Токен",
             "valid_until": "Действительно до"
           }
+        },
+        "presets": {
+          "recruiter": "Рекрутер",
+          "team_lead": "Тимлид",
+          "hr": "HR",
+          "compliance": "Compliance",
+          "portal_guest": "Гость портала"
         }
       },
       "ruleset": {

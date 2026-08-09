@@ -366,6 +366,26 @@ export async function updateTenantRoleModuleMatrix(
   return data
 }
 
+export async function listPermissionPresets(opts?: { tenantId?: string }) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.get<{ items: Array<{ id: string; trust_role: string; modules: Record<string, { visible: boolean; editable: boolean }> }> }>(
+    '/settings/team/permission-presets',
+  )
+  return data.items
+}
+
+export async function applyPermissionPresetToEmployeeMatrix(
+  presetId: string,
+  opts?: { tenantId?: string },
+) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.post<TenantRoleModuleMatrix>(
+    `/settings/team/permission-presets/${encodeURIComponent(presetId)}/apply-matrix`,
+    { target: 'employee' },
+  )
+  return data
+}
+
 export async function listSeatRequests(opts?: { tenantId?: string }) {
   const client = resolveTenantClient(opts?.tenantId)
   const { data } = await client.get<SeatRequest[]>('/settings/team/seat-requests')
