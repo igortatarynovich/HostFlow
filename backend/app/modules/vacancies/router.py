@@ -1,7 +1,8 @@
 from typing import List
 from uuid import UUID
 
-from backend.app.auth.deps import require_roles, Role as AuthRole
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role as AuthRole
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.vacancies import schemas
 from backend.app.modules.vacancies.service import (
@@ -24,7 +25,7 @@ router = APIRouter(
 @router.get(
     "/",
     response_model=List[schemas.VacancyOut],
-    dependencies=[Depends(require_roles(AuthRole.administrator, AuthRole.supervisor, AuthRole.recruiter, AuthRole.viewer))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def list_vacancies(
     company_id: UUID | None = Query(default=None),
@@ -48,7 +49,7 @@ async def list_vacancies(
     "/",
     response_model=schemas.VacancyOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(AuthRole.administrator, AuthRole.supervisor, AuthRole.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_vacancy(
     vacancy_in: schemas.VacancyCreate,
@@ -60,7 +61,7 @@ async def create_vacancy(
 @router.get(
     "/{vacancy_id}",
     response_model=schemas.VacancyOut,
-    dependencies=[Depends(require_roles(AuthRole.administrator, AuthRole.supervisor, AuthRole.recruiter, AuthRole.viewer))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_vacancy(
     vacancy_id: UUID,
@@ -72,7 +73,7 @@ async def get_vacancy(
 @router.put(
     "/{vacancy_id}",
     response_model=schemas.VacancyOut,
-    dependencies=[Depends(require_roles(AuthRole.administrator, AuthRole.supervisor, AuthRole.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def update_vacancy(
     vacancy_id: UUID,
@@ -86,7 +87,7 @@ async def update_vacancy(
 @router.patch(
     "/{vacancy_id}",
     response_model=schemas.VacancyOut,
-    dependencies=[Depends(require_roles(AuthRole.administrator, AuthRole.supervisor, AuthRole.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def patch_vacancy(
     vacancy_id: UUID,
@@ -99,7 +100,7 @@ async def patch_vacancy(
 @router.delete(
     "/{vacancy_id}",
     status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
-    dependencies=[Depends(require_roles(AuthRole.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def archive_vacancy(
     vacancy_id: UUID,
@@ -113,7 +114,7 @@ async def archive_vacancy(
 @router.post(
     "/{vacancy_id}/archive",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_roles(AuthRole.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def archive_vacancy_alias(
     vacancy_id: UUID,
@@ -126,7 +127,7 @@ async def archive_vacancy_alias(
 @router.post(
     "/{vacancy_id}/unarchive",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_roles(AuthRole.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def unarchive_vacancy_alias(
     vacancy_id: UUID,

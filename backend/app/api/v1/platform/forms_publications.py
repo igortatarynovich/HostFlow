@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from backend.app.auth.deps import UserCtx, get_current_user, require_roles
+from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_PROFILE_READ_ROLES
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.forms_platform.handlers import list_registered_handlers

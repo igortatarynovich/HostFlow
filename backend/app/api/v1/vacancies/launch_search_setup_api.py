@@ -6,7 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
 from backend.app.services.launch_search_vacancy_setup import (
@@ -36,7 +37,7 @@ class LaunchSearchSetupOut(BaseModel):
 @router.post(
     "/{vacancy_id}/launch-search/setup",
     response_model=LaunchSearchSetupOut,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def setup_launch_search_vacancy(
     vacancy_id: UUID,

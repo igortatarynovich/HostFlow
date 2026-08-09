@@ -360,9 +360,13 @@ async def _search_companies_slice(
 
 
 def _user_can_global_search_leads(user: UserCtx) -> bool:
-    """Align with GET /leads list roles (no client handoff roles)."""
-    r = (user.role or "").strip().lower()
-    return r not in (Role.client_manager.value, Role.client_processor.value)
+    """Align with GET /leads list roles (no portal guests)."""
+    from backend.app.auth.trust_roles import is_portal_actor
+
+    return not is_portal_actor(
+        user.role,
+        getattr(user, "access_context", None),
+    )
 
 
 async def _search_leads_slice(

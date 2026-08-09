@@ -14,7 +14,8 @@ from backend.app.api.v1.settings.hiring_pipeline_gates_impl import (
     get_hiring_pipeline_gates_core,
     patch_hiring_pipeline_gates_core,
 )
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant, get_db
 from backend.app.api.v1.tenants import schemas
 from backend.app.api.v1.tenants import service
@@ -62,7 +63,7 @@ async def get_me(
 @router.get(
     "/me/hiring-pipeline-gates",
     response_model=HiringPipelineGatesPublicOut,
-    dependencies=[Depends(require_roles(*HIRING_GATES_READ_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_hiring_pipeline_gates_me(
     ctx: UserCtx = Depends(get_current_user),
@@ -75,7 +76,7 @@ async def get_hiring_pipeline_gates_me(
 @router.patch(
     "/me/hiring-pipeline-gates",
     response_model=HiringPipelineGatesPublicOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def patch_hiring_pipeline_gates_me(
     payload: HiringPipelineGatesPatch,
@@ -90,7 +91,7 @@ async def patch_hiring_pipeline_gates_me(
     "/",
     response_model=schemas.TenantOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_tenant(
     payload: schemas.TenantCreate,
@@ -114,7 +115,7 @@ async def create_tenant(
 @router.patch(
     "/{tenant_id}",
     response_model=schemas.TenantOut,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_tenant(
     tenant_id: UUID,
@@ -143,7 +144,7 @@ async def update_tenant(
 @router.get(
     "/{tenant_id}/users",
     response_model=List[schemas.TenantUsersOut],
-    dependencies=[Depends(require_roles(Role.admin, Role.owner, Role.manager))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_users(
     tenant_id: UUID,
@@ -169,7 +170,7 @@ async def list_users(
 @router.post(
     "/{tenant_id}/apikey/reset",
     response_model=schemas.ApiKeyResetOut,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def reset_api_key(
     tenant_id: UUID,
@@ -196,7 +197,7 @@ async def reset_api_key(
 @router.get(
     "/{tenant_id}/links/search-companies",
     response_model=List[schemas.CompanySearchOut],
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def search_companies_for_link(
     tenant_id: UUID,
@@ -285,7 +286,7 @@ async def search_companies_for_link(
     "/{tenant_id}/links",
     response_model=schemas.TenantLinkWithCompanyOut,
     status_code=201,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_tenant_link(
     tenant_id: UUID,
@@ -403,14 +404,7 @@ async def create_tenant_link(
     response_model=List[schemas.TenantLinkWithCompanyOut],
     dependencies=[
         Depends(
-            require_roles(
-                Role.admin,
-                Role.owner,
-                Role.manager,
-                Role.recruiter,
-                Role.hr_officer,
-                Role.compliance_officer,
-            )
+            require_trust_write()
         )
     ],
 )
@@ -453,7 +447,7 @@ async def list_tenant_links(
 @router.patch(
     "/{tenant_id}/links/{link_id}",
     response_model=schemas.TenantLinkWithCompanyOut,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_tenant_link(
     tenant_id: UUID,
@@ -526,7 +520,7 @@ async def update_tenant_link(
 @router.delete(
     "/{tenant_id}/links/{link_id}/portal-link",
     status_code=204,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def revoke_portal_link(
     tenant_id: UUID,
@@ -554,7 +548,7 @@ async def revoke_portal_link(
 @router.post(
     "/{tenant_id}/links/{link_id}/portal-link",
     response_model=schemas.PortalLinkOut,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_or_update_portal_link(
     tenant_id: UUID,

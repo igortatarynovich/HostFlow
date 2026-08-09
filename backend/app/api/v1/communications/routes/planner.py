@@ -36,7 +36,8 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.communication import CommunicationTimeOffRequest
 from backend.app.models.tenant import Tenant
@@ -78,13 +79,8 @@ from ..schemas import (
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["communications"])
 
-_TIMEOFF_ROLES = (
-    Role.administrator,
-    Role.supervisor,
-    Role.recruiter,
-    Role.client_manager,
-    Role.client_processor,
-)
+from backend.app.auth.trust_role_deps import TRUST_WRITE_ROLES
+_TIMEOFF_ROLES = TRUST_WRITE_ROLES
 
 
 async def _sync_manager_queue_availability_from_time_off(
@@ -158,7 +154,7 @@ async def _sync_manager_queue_availability_from_time_off(
 @router.get(
     "/time-off/requests",
     response_model=TimeOffRequestListResponse,
-    dependencies=[Depends(require_roles(*_TIMEOFF_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_time_off_requests(
     limit: int = Query(50, ge=1, le=1000),
@@ -202,7 +198,7 @@ async def list_time_off_requests(
 @router.get(
     "/availability/working-hours",
     response_model=WorkingHoursScheduleOut,
-    dependencies=[Depends(require_roles(*_TIMEOFF_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_my_working_hours(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -228,7 +224,7 @@ async def get_my_working_hours(
 @router.put(
     "/availability/working-hours",
     response_model=WorkingHoursScheduleOut,
-    dependencies=[Depends(require_roles(*_TIMEOFF_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def upsert_my_working_hours(
     body: WorkingHoursScheduleIn,
@@ -257,7 +253,7 @@ async def upsert_my_working_hours(
 @router.get(
     "/availability/notification-settings",
     response_model=NotificationSettingsOut,
-    dependencies=[Depends(require_roles(*_TIMEOFF_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_my_notification_settings(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -282,7 +278,7 @@ async def get_my_notification_settings(
 @router.put(
     "/availability/notification-settings",
     response_model=NotificationSettingsOut,
-    dependencies=[Depends(require_roles(*_TIMEOFF_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def upsert_my_notification_settings(
     body: NotificationSettingsIn,
@@ -312,7 +308,7 @@ async def upsert_my_notification_settings(
     "/time-off/requests",
     response_model=TimeOffRequestOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*_TIMEOFF_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_time_off_request(
     body: TimeOffRequestCreate,
@@ -353,7 +349,7 @@ async def create_time_off_request(
 @router.post(
     "/time-off/requests/{request_id}/cancel",
     response_model=TimeOffRequestOut,
-    dependencies=[Depends(require_roles(*_TIMEOFF_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def cancel_time_off_request(
     request_id: str,
@@ -389,7 +385,7 @@ async def cancel_time_off_request(
 @router.post(
     "/time-off/requests/{request_id}/decision",
     response_model=TimeOffRequestOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def decide_time_off_request(
     request_id: str,

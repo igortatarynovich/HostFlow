@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, get_current_user, require_roles, UserCtx
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, get_current_user, UserCtx
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.legal_document import LegalDocument
 from backend.app.models.rodo_notification import RodoNotification
@@ -96,7 +97,7 @@ class LegalDocumentUpdate(BaseModel):
 @router.get("/", response_model=List[LegalDocumentOut])
 async def list_legal_documents(
     db_tenant=Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(Role.admin, Role.owner)),
+    _: None = Depends(require_trust_admin()),
 ):
     """List all legal documents for tenant (admin only)."""
     db, tenant_id = db_tenant
@@ -113,7 +114,7 @@ async def update_legal_document(
     doc_id: UUID,
     payload: LegalDocumentUpdate,
     db_tenant=Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(Role.admin, Role.owner)),
+    _: None = Depends(require_trust_admin()),
 ):
     """Update legal document (admin only)."""
     from sqlalchemy import update
@@ -155,7 +156,7 @@ async def get_active_docs(
 @router.get(
     "/default-templates/billing-v1",
     response_model=DefaultBillingTemplatesOut,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def get_default_billing_templates(
     _db_tenant=Depends(get_db_with_tenant),
@@ -171,7 +172,7 @@ async def get_default_billing_templates(
 async def create_legal_document(
     payload: LegalDocumentCreate,
     db_tenant=Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(Role.admin, Role.owner)),
+    _: None = Depends(require_trust_admin()),
 ):
     """Create a legal document (admin only)."""
     from backend.app.models.legal_document import LegalDocument

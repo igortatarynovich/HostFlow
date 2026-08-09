@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.custom_field import (
     CustomFieldDefinition,
@@ -125,7 +126,7 @@ async def list_custom_field_definitions(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_trust_write()),
 ) -> List[CustomFieldDefinitionOut]:
     """List custom field definitions for the tenant."""
     db, tenant_id = db_tenant
@@ -151,7 +152,7 @@ async def create_custom_field_definition(
     payload: CustomFieldDefinitionIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_trust_write()),
 ) -> CustomFieldDefinitionOut:
     """Create a new custom field definition."""
     db, tenant_id = db_tenant
@@ -238,7 +239,7 @@ async def update_custom_field_definition(
     payload: CustomFieldDefinitionIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_trust_write()),
 ) -> CustomFieldDefinitionOut:
     """Update an existing custom field definition."""
     db, tenant_id = db_tenant
@@ -273,7 +274,7 @@ async def delete_custom_field_definition(
     definition_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    _: None = Depends(require_trust_write()),
 ) -> None:
     """Delete (deactivate) a custom field definition."""
     db, tenant_id = db_tenant
@@ -301,7 +302,7 @@ async def list_custom_field_values(
     entity_id: Optional[str] = Query(None, description="Filter by entity ID"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.administrator, Role.supervisor, Role.recruiter)),
+    _: None = Depends(require_trust_write()),
 ) -> List[CustomFieldValueOut]:
     """List custom field values."""
     db, tenant_id = db_tenant
@@ -329,7 +330,7 @@ async def set_custom_field_value(
     payload: CustomFieldValueIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.administrator, Role.supervisor, Role.recruiter)),
+    _: None = Depends(require_trust_write()),
 ) -> CustomFieldValueOut:
     """Set or update a custom field value."""
     db, tenant_id = db_tenant
@@ -411,7 +412,7 @@ async def delete_custom_field_value(
     entity_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(Role.administrator, Role.supervisor, Role.recruiter)),
+    _: None = Depends(require_trust_write()),
 ) -> None:
     """Delete a custom field value."""
     db, tenant_id = db_tenant

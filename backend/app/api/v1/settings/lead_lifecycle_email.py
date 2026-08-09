@@ -16,7 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from backend.app.api.v1.tenants import service as tenant_service
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.company import Company
 from backend.app.models.own_company import OwnCompany
@@ -40,7 +41,7 @@ router = APIRouter(
     tags=["lead-lifecycle-email-policy"],
 )
 
-_WRITE_ROLES = Depends(require_roles(Role.administrator, Role.supervisor))
+_WRITE_ROLES = Depends(require_trust_write())
 
 
 class LeadLifecycleEmailPolicyOut(BaseModel):

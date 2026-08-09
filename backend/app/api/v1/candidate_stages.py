@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate_stage import CandidateStageDict
 from backend.app.models.user import Role
@@ -88,7 +89,7 @@ async def list_candidate_stages(
 async def create_candidate_stage(
     payload: CandidateStageIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user=Depends(require_roles(Role.manager, Role.admin)),
+    current_user=Depends(require_trust_write()),
 ):
     """Create a new candidate stage."""
     db, tenant_id = db_tenant
@@ -149,7 +150,7 @@ async def update_candidate_stage(
     stage_id: int,
     payload: CandidateStageIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user=Depends(require_roles(Role.manager, Role.admin)),
+    current_user=Depends(require_trust_write()),
 ):
     """Update a candidate stage."""
     db, tenant_id = db_tenant
@@ -194,7 +195,7 @@ async def update_candidate_stage(
 async def delete_candidate_stage(
     stage_id: int,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user=Depends(require_roles(Role.admin)),
+    current_user=Depends(require_trust_admin()),
 ):
     """Delete a candidate stage."""
     db, tenant_id = db_tenant

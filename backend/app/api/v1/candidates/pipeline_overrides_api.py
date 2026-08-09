@@ -15,7 +15,8 @@ from backend.app.api.v1.candidates.pipeline_overrides_service import (
     reject_override,
     revoke_override,
 )
-from backend.app.auth.deps import Role, get_current_user, require_roles, UserCtx
+from backend.app.auth.trust_role_deps import require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, get_current_user, UserCtx
 from backend.app.auth.hiring_workspace_roles import (
     HIRING_CANDIDATE_MUTATE_ROLES,
     HIRING_CANDIDATE_VIEW_ROLES,
@@ -31,7 +32,8 @@ router = APIRouter()
 _ALLOW_MANAGER_ROLES = HIRING_CANDIDATE_MUTATE_ROLES
 _CANDIDATE_VIEW_ROLES = HIRING_CANDIDATE_VIEW_ROLES
 
-APPROVE_OVERRIDE_ROLES = (Role.manager, Role.administrator, Role.superadmin)
+from backend.app.auth.trust_role_deps import TRUST_WRITE_ROLES
+APPROVE_OVERRIDE_ROLES = TRUST_WRITE_ROLES
 
 
 class PipelineOverrideCreateIn(BaseModel):
@@ -84,7 +86,7 @@ def _map_value_error(exc: Exception) -> HTTPException:
 
 @router.get(
     "/{candidate_id}/pipeline-overrides",
-    dependencies=[Depends(require_roles(*_CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_pipeline_overrides(
     candidate_id: UUID,
@@ -119,7 +121,7 @@ async def get_pipeline_overrides(
 
 @router.post(
     "/{candidate_id}/pipeline-overrides",
-    dependencies=[Depends(require_roles(*_ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     status_code=status.HTTP_201_CREATED,
 )
 async def post_pipeline_override(
@@ -186,7 +188,7 @@ async def post_pipeline_override(
 
 @router.post(
     "/{candidate_id}/pipeline-overrides/{override_id}/approve",
-    dependencies=[Depends(require_roles(*APPROVE_OVERRIDE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def post_pipeline_override_approve(
     candidate_id: UUID,
@@ -253,7 +255,7 @@ async def post_pipeline_override_approve(
 
 @router.post(
     "/{candidate_id}/pipeline-overrides/{override_id}/reject",
-    dependencies=[Depends(require_roles(*APPROVE_OVERRIDE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def post_pipeline_override_reject(
     candidate_id: UUID,
@@ -318,7 +320,7 @@ async def post_pipeline_override_reject(
 
 @router.post(
     "/{candidate_id}/pipeline-overrides/{override_id}/revoke",
-    dependencies=[Depends(require_roles(*APPROVE_OVERRIDE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def post_pipeline_override_revoke(
     candidate_id: UUID,

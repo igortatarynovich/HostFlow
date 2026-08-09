@@ -89,6 +89,12 @@ def test_actor_satisfies_portal_viewer_bridge() -> None:
         allowed={"client_manager"},
         access_context=None,
     )
+    # Explicit viewer allowlist accepts legacy portal roles via trust normalize
+    assert actor_satisfies_role_allowlist(
+        role="client_manager",
+        allowed={"administrator", "employee", "viewer"},
+        access_context=None,
+    )
 
 
 def test_hr_and_team_lead_helpers() -> None:

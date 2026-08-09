@@ -7,7 +7,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from backend.app.auth.deps import Role, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services.draft_reminders import send_draft_reminders
 
@@ -25,7 +26,7 @@ router = APIRouter(
 @router.post(
     "",
     response_model=DraftRemindersOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.superadmin))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def run_draft_reminders(
     tenant_id: Optional[str] = Query(None, description="Optional tenant filter (superadmin only)"),

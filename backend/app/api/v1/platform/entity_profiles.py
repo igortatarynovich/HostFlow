@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+
 from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from backend.app.auth.deps import get_current_user, require_roles
+from backend.app.auth.deps import get_current_user
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_PROFILE_READ_ROLES
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.entity_profile.exceptions import EntityProfileNotFoundError
@@ -29,7 +31,6 @@ router = APIRouter(
     redirect_slashes=False,
 )
 
-
 class CanonicalFieldRefOut(BaseModel):
     id: str
     qualified_code: str
@@ -46,7 +47,6 @@ class CanonicalFieldRefOut(BaseModel):
     registry_version: str
     status: str
 
-
 class EntityProfileFieldOut(BaseModel):
     qualified_code: Optional[str] = None
     sort_order: int
@@ -58,7 +58,6 @@ class EntityProfileFieldOut(BaseModel):
     field: Optional[CanonicalFieldRefOut] = None
     legacy_field_key: Optional[str] = None
     label_override: Optional[str] = None
-
 
 class EntityProfileMetaOut(BaseModel):
     id: str
@@ -75,13 +74,11 @@ class EntityProfileMetaOut(BaseModel):
     version: int
     config: dict[str, Any] = Field(default_factory=dict)
 
-
 class IntakePresentationOut(BaseModel):
     presentation_code: str
     field_subset: List[str]
     presentation_overrides: dict[str, Any] = Field(default_factory=dict)
     intake_source_binding_id: Optional[str] = None
-
 
 class FormPresentationFieldOut(BaseModel):
     qualified_code: str
@@ -92,7 +89,6 @@ class FormPresentationFieldOut(BaseModel):
     field: Optional[dict[str, Any]] = None
     presentation_overrides: dict[str, Any] = Field(default_factory=dict)
     widget_hint: Optional[str] = None
-
 
 class FormPresentationRuntimeOut(BaseModel):
     contract_version: str
@@ -108,7 +104,6 @@ class FormPresentationRuntimeOut(BaseModel):
     intake_source_profile_id: Optional[str] = None
     ownership: str = "display_only"
 
-
 class EffectiveEntityProfileOut(BaseModel):
     profile_code: Optional[str] = None
     entity_profile_code: Optional[str] = None
@@ -123,7 +118,6 @@ class EffectiveEntityProfileOut(BaseModel):
     intake_source_profile_id: Optional[str] = None
     intake_source_profile_code: Optional[str] = None
 
-
 @router.get("/resolve", response_model=EffectiveEntityProfileOut)
 async def resolve_entity_profile(
     entity_profile_code: Optional[str] = Query(None, description="Explicit Entity Profile registry code"),
@@ -132,7 +126,7 @@ async def resolve_entity_profile(
     intake_source_profile_id: Optional[str] = Query(None, description="Intake source profile id (uses its entity_profile_code)"),
     include_presentations: bool = Query(False),
     db_tenant: tuple = Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
     __user=Depends(get_current_user),
 ) -> EffectiveEntityProfileOut:
     """Unified facade: registry when entity_profile_code is set; legacy fallback otherwise."""
@@ -162,14 +156,13 @@ async def resolve_entity_profile(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return EffectiveEntityProfileOut.model_validate(payload)
 
-
 @router.get("/presentations/resolve", response_model=FormPresentationRuntimeOut)
 async def resolve_form_presentation_endpoint(
     presentation_code: str = Query(..., description="Form presentation code, e.g. recruitment.candidate.driver_ce.meta_short"),
     entity_profile_code: Optional[str] = Query(None, description="Entity Profile registry code"),
     intake_source_profile_id: Optional[str] = Query(None, description="Resolve entity_profile_code from intake source"),
     db_tenant: tuple = Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
     __user=Depends(get_current_user),
 ) -> FormPresentationRuntimeOut:
     """Form Presentation Runtime (P5A) — display-only field schema for public/Meta forms."""
@@ -200,14 +193,13 @@ async def resolve_form_presentation_endpoint(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return FormPresentationRuntimeOut.model_validate(payload)
 
-
 @router.get("/{profile_code}/presentations/{presentation_code}", response_model=FormPresentationRuntimeOut)
 async def get_form_presentation(
     profile_code: str,
     presentation_code: str,
     intake_source_profile_id: Optional[str] = Query(None),
     db_tenant: tuple = Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
     __user=Depends(get_current_user),
 ) -> FormPresentationRuntimeOut:
     """Get Form Presentation Runtime schema for a profile + presentation code."""
@@ -224,13 +216,12 @@ async def get_form_presentation(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return FormPresentationRuntimeOut.model_validate(payload)
 
-
 @router.get("/{profile_code}", response_model=EffectiveEntityProfileOut)
 async def get_entity_profile(
     profile_code: str,
     include_presentations: bool = Query(False, description="Include intake presentation subsets"),
     db_tenant: tuple = Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
     __user=Depends(get_current_user),
 ) -> EffectiveEntityProfileOut:
     """Get read-only Entity Profile with Field Registry-backed field definitions."""

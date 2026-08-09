@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+
 from typing import Any, List, Optional
 from uuid import UUID
 
@@ -9,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import get_current_user, require_roles
+from backend.app.auth.deps import get_current_user
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_PROFILE_READ_ROLES
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.module_registry.resolver import is_module_installed, list_installed_modules
@@ -19,7 +21,6 @@ router = APIRouter(
     tags=["module-registry"],
     redirect_slashes=False,
 )
-
 
 class ModuleCapabilityOut(BaseModel):
     id: str
@@ -31,7 +32,6 @@ class ModuleCapabilityOut(BaseModel):
     default_enabled: bool = True
     config: dict[str, Any] = Field(default_factory=dict)
 
-
 class ModuleDependencyOut(BaseModel):
     id: str
     module_code: str
@@ -39,7 +39,6 @@ class ModuleDependencyOut(BaseModel):
     dependency_kind: str
     capability_code: Optional[str] = None
     config: dict[str, Any] = Field(default_factory=dict)
-
 
 class InstalledModuleOut(BaseModel):
     id: str
@@ -60,22 +59,19 @@ class InstalledModuleOut(BaseModel):
     capabilities: List[ModuleCapabilityOut] = Field(default_factory=list)
     dependencies: List[ModuleDependencyOut] = Field(default_factory=list)
 
-
 class InstalledModuleListOut(BaseModel):
     items: List[InstalledModuleOut]
     count: int
-
 
 class ModuleInstalledOut(BaseModel):
     module_code: str
     installed: bool
 
-
 @router.get("/installed-modules", response_model=InstalledModuleListOut)
 async def get_installed_modules(
     include_capabilities: bool = Query(default=True),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
     __user=Depends(get_current_user),
 ) -> InstalledModuleListOut:
     db, tenant_uuid = db_tenant
@@ -89,12 +85,11 @@ async def get_installed_modules(
         count=len(items),
     )
 
-
 @router.get("/installed-modules/{module_code}/installed", response_model=ModuleInstalledOut)
 async def get_module_installed(
     module_code: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
     __user=Depends(get_current_user),
 ) -> ModuleInstalledOut:
     db, tenant_uuid = db_tenant
