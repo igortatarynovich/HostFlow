@@ -100,7 +100,7 @@ export default function DemoPage() {
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link to="/signup" className="btn-primary" onClick={() => trackCta('demo_signup', '/signup')}>
-              {t('public.demo.cta_signup', { defaultValue: 'Start free setup' })}
+              {t('public.demo.cta_signup', { defaultValue: 'Create account' })}
             </Link>
             <Link to="/login" className="btn-secondary" onClick={() => trackCta('demo_login', '/login')}>
               {t('public.demo.cta_login', { defaultValue: 'Sign in to load samples' })}
@@ -174,7 +174,7 @@ export default function DemoPage() {
             className="btn-primary mt-4 inline-flex"
             onClick={() => trackCta('demo_footer_signup', '/signup')}
           >
-            {t('public.demo.cta_signup', { defaultValue: 'Start free setup' })}
+            {t('public.demo.cta_signup', { defaultValue: 'Create account' })}
           </Link>
         </section>
 

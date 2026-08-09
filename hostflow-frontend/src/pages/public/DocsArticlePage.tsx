@@ -60,7 +60,7 @@ function DocsArticleView({ article }: { article: DocsArticle }) {
               {t('public.docs.related_faq', { defaultValue: 'Related FAQ' })}
             </Link>
             <Link to="/signup" className="btn-primary" onClick={() => trackCta('article_signup', '/signup')}>
-              {t('public.docs.cta_signup', { defaultValue: 'Start free setup' })}
+              {t('public.docs.cta_signup', { defaultValue: 'Create account' })}
             </Link>
           </div>
         </section>

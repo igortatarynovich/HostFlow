@@ -2108,8 +2108,8 @@
         "description": "Porównaj plany HostFlow i uruchom trial CRM rekrutacyjnego w kilka minut."
       },
       "signup": {
-        "title": "Utwórz workspace CRM",
-        "description": "Załóż konto HostFlow, uruchom trial i szybko rozpocznij pracę w procesie rekrutacji."
+        "title": "Utwórz konto HostFlow",
+        "description": "Załóż konto HostFlow, skonfiguruj firmę i zacznij pracę rekrutacyjną."
       },
       "login": {
         "title": "Zaloguj się do HostFlow",
@@ -2330,28 +2330,29 @@
       "legal_notice_cookies": "Polityką cookies",
       "errors": {
         "consent_required": "Aby kontynuować, musisz zaakceptować Regulamin i Politykę prywatności.",
-        "generic": "Ogólne",
-        "password_mismatch": "Niezgodność hasła",
-        "password_short": "Hasło krótkie"
+        "generic": "Rejestracja nie powiodła się. Spróbuj ponownie.",
+        "password_mismatch": "Hasła nie są takie same",
+        "password_short": "Hasło musi mieć co najmniej 8 znaków"
       },
       "fields": {
-        "confirm": "Potwierdź",
-        "full_name": "Pełne imię i nazwisko",
+        "confirm": "Powtórz hasło",
+        "full_name": "Imię i nazwisko (opcjonalnie)",
         "password": "Hasło",
-        "workspace": "Obszar roboczy",
-        "workspace_placeholder": "Symbol zastępczy obszaru roboczego"
+        "workspace": "Nazwa firmy",
+        "workspace_placeholder": "np. Acme Recruiting"
       },
-      "have_account": "Posiadaj konto",
+      "have_account": "Masz już konto?",
       "plan_labels": {
         "solo": "Solo",
         "team": "Team",
         "business": "Business"
       },
-      "selected_plan": "Wybrany plan",
+      "selected_plan": "Plan z cennika: {plan}",
       "sign_in": "Zaloguj się",
-      "submit": "Prześlij",
-      "subtitle": "Podtytuł",
-      "title": "Tytuł"
+      "submit": "Utwórz konto",
+      "subtitle": "Podaj dane. Potem skonfigurujesz firmę i zrobisz pierwszy krok w produkcie.",
+      "subtitle_with_plan": "Wybrany plan: {plan}. Po rejestracji skonfigurujesz firmę — płatność w Billing, gdy będziesz gotowy.",
+      "title": "Utwórz konto HostFlow"
     },
     "login": {
       "title": "Zaloguj się do HostFlow",
@@ -8983,8 +8984,8 @@
         "next_title": "Zrób to teraz",
         "defer_meta": "Pomiń na razie",
         "complete": "Podstawy gotowe — kontynuuj rekrutację z Launchpad.",
-        "page_title": "Zacznij rekrutację",
-        "page_subtitle": "Zrób kolejny krok. Dojdź do pierwszego kandydata bez wsparcia.",
+        "page_title": "Zacznij pracę",
+        "page_subtitle": "Wykonaj kolejny krok na ekranie — do pierwszego zgłoszenia i kontaktu.",
         "hub_badge": "Success path",
         "hub_footer": "Dokończ krok powyżej — nic więcej teraz nie trzeba.",
         "open_faq": "Utknąłeś? Otwórz FAQ",
@@ -9360,7 +9361,7 @@
     "marketing": {
       "common": {
         "cta": {
-          "start_trial": "Rozpocznij bezpłatnie",
+          "start_trial": "Utwórz konto",
           "view_pricing": "Zobacz ceny"
         },
         "faq": "FAQ",
@@ -10841,7 +10842,7 @@
       },
       "hero": {
         "badge": "Platforma operacji rekrutacyjnych",
-        "primary_cta": "Rozpocznij konfigurację",
+        "primary_cta": "Utwórz konto",
         "secondary_cta": "Zaloguj się",
         "subtitle": "HostFlow automatycznie zbiera kandydatów z Meta, WhatsApp i formularzy, rozdziela ich między rekruterów i kontroluje proces zatrudnienia.",
         "title": "Zamykaj wakaty szybciej",
@@ -10851,7 +10852,7 @@
           "2": "Dokumenty i etapy są zawsze widoczne",
           "3": "Mniej chaosu między reklamami, czatami i arkuszami"
         },
-        "cta_subline": "Self-service — pierwsza wakat w kilka minut, bez rozmowy z supportem",
+        "cta_subline": "Self-service: firma → pierwszy krok w produkcie, bez rozmowy z supportem",
         "screenshot_caption": "Pipeline i kandydaci — kontrola rekrutacji na jednym ekranie.",
         "screenshot_src": "/landing/hero.svg",
         "answers": {
@@ -10882,7 +10883,7 @@
       "pricing": {
         "badge": "Cennik",
         "contact_sales_cta": "Kontakt sprzedaży",
-        "note": "Ceny w EUR. Limity i moduły zgodne z matrycą planów. Trial przy rejestracji; po Trial — wybrany plan płatny.",
+        "note": "Ceny w EUR. Limity i moduły zgodne z matrycą planów. Dostęp po rejestracji; limity trial obowiązują, dopóki nie wybierzesz lub nie potwierdzisz płatnego planu w Billing.",
         "featured_badge": "Polecany",
         "enterprise": {
           "name": "Enterprise",
@@ -11043,7 +11044,7 @@
       "badge": "Pomoc",
       "title": "Najczęstsze pytania",
       "subtitle": "Od rejestracji do pierwszej rekrutacji — odpowiedzi bez czekania na support.",
-      "cta_signup": "Zacznij konfigurację",
+      "cta_signup": "Utwórz konto",
       "cta_pricing": "Cennik",
       "search_label": "Szukaj w FAQ",
       "search_placeholder": "Szukaj pytań…",

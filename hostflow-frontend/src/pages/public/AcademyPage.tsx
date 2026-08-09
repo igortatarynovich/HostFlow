@@ -43,7 +43,7 @@ export default function AcademyPage() {
               {t('public.academy.cta_docs', { defaultValue: 'Open Docs' })}
             </Link>
             <Link to="/signup" className="btn-secondary" onClick={() => trackCta('academy_signup', '/signup')}>
-              {t('public.academy.cta_signup', { defaultValue: 'Start free setup' })}
+              {t('public.academy.cta_signup', { defaultValue: 'Create account' })}
             </Link>
             <Link to="/faq" className="btn-secondary" onClick={() => trackCta('academy_faq', '/faq')}>
               {t('public.academy.cta_faq', { defaultValue: 'FAQ' })}
@@ -122,7 +122,7 @@ export default function AcademyPage() {
             className="btn-primary mt-4 inline-flex"
             onClick={() => trackCta('academy_footer_signup', '/signup')}
           >
-            {t('public.academy.cta_signup', { defaultValue: 'Start free setup' })}
+            {t('public.academy.cta_signup', { defaultValue: 'Create account' })}
           </Link>
         </section>
 

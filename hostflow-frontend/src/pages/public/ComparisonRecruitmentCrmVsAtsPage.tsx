@@ -52,7 +52,7 @@ export default function ComparisonRecruitmentCrmVsAtsPage() {
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link to="/signup" className="btn-primary" onClick={() => trackCta('primary_signup', '/signup')}>
-              {t('public.marketing.common.cta.start_trial', { defaultValue: 'Start free trial' })}
+              {t('public.marketing.common.cta.start_trial', { defaultValue: 'Create account' })}
             </Link>
             <Link to="/pricing" className="btn-secondary" onClick={() => trackCta('secondary_pricing', '/pricing')}>
               {t('public.marketing.common.cta.view_pricing', { defaultValue: 'View pricing' })}

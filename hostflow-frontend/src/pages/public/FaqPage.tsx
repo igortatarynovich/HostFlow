@@ -76,7 +76,7 @@ export default function FaqPage() {
               className="btn-primary"
               onClick={() => trackCta('faq_signup', '/signup')}
             >
-              {t('public.faq.cta_signup', { defaultValue: 'Start free setup' })}
+              {t('public.faq.cta_signup', { defaultValue: 'Create account' })}
             </Link>
             <Link
               to="/pricing"
@@ -186,7 +186,7 @@ export default function FaqPage() {
             className="btn-primary mt-4 inline-flex"
             onClick={() => trackCta('faq_footer_signup', '/signup')}
           >
-            {t('public.faq.cta_signup', { defaultValue: 'Start free setup' })}
+            {t('public.faq.cta_signup', { defaultValue: 'Create account' })}
           </Link>
         </section>
 

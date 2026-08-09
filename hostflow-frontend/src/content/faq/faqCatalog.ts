@@ -24,12 +24,12 @@ export const FAQ_SECTIONS: FaqSection[] = [
       {
         id: "register",
         q: { en: "How do I register?", ru: "Как зарегистрироваться?", pl: "Jak się zarejestrować?" },
-        a: { en: "Open hostflow.cc, click Start free setup / Create workspace, enter email and password. After signup you create your company and follow the next step on screen.", ru: "Откройте hostflow.cc, нажмите «Начать настройку», укажите email и пароль. После регистрации создайте компанию и сделайте следующий шаг на экране.", pl: "Wejdź na hostflow.cc, kliknij start konfiguracji, podaj email i hasło. Po rejestracji utwórz firmę i wykonaj kolejny krok na ekranie." },
+        a: { en: "Open hostflow.cc, click Create account / Start setup, enter company name, email and password. After signup you create your company profile and follow the next step on screen.", ru: "Откройте hostflow.cc, нажмите «Создать аккаунт» / «Начать настройку», укажите название компании, email и пароль. После регистрации создайте профиль компании и сделайте следующий шаг на экране.", pl: "Wejdź na hostflow.cc, kliknij «Utwórz konto» / start konfiguracji, podaj nazwę firmy, email i hasło. Po rejestracji utwórz profil firmy i wykonaj kolejny krok na ekranie." },
       },
       {
         id: "confirm_email",
         q: { en: "Do I need to confirm email?", ru: "Нужно ли подтверждать email?", pl: "Czy trzeba potwierdzić email?" },
-        a: { en: "If confirmation is enabled for your environment, follow the link in the email before full access. In trial self-serve you usually continue after signup immediately.", ru: "Если подтверждение включено в окружении — перейдите по ссылке из письма. В self-serve trial обычно можно продолжать сразу после регистрации.", pl: "Jeśli potwierdzenie jest włączone — kliknij link z maila. W trial self-serve zwykle kontynuujesz od razu po rejestracji." },
+        a: { en: "If confirmation is enabled for your environment, follow the link in the email before full access. In self-serve signup you usually continue immediately after registration.", ru: "Если подтверждение включено в окружении — перейдите по ссылке из письма. В self-serve обычно можно продолжать сразу после регистрации.", pl: "Jeśli potwierdzenie jest włączone — kliknij link z maila. W self-serve zwykle kontynuujesz od razu po rejestracji." },
       },
       {
         id: "create_company",
@@ -335,9 +335,9 @@ export const FAQ_SECTIONS: FaqSection[] = [
           pl: "Czy muszę płacić przed rozpoczęciem pracy?",
         },
         a: {
-          en: "No. Trial gives access immediately after signup. Billing is for upgrading when you are ready. In test environments checkout can be simulated as successful without a real card.",
-          ru: "Нет. Trial даёт доступ сразу после регистрации. Billing — для апгрейда, когда будете готовы. В тестовых средах checkout можно симулировать без реальной карты.",
-          pl: "Nie. Trial daje dostęp od razu po rejestracji. Billing — do upgrade’u, gdy będziesz gotowy. W środowiskach testowych checkout można zasymulować bez karty.",
+          en: "No. After signup you can set up the company and start working. Plan choice and payment are in Billing when you are ready — including if you already picked a plan on Pricing. Trial limits (if active) are shown in Billing, not as marketing copy on the signup form.",
+          ru: "Нет. После регистрации можно настроить компанию и начать работу. Выбор тарифа и оплата — в Billing, когда будете готовы, в том числе если план уже выбран на Pricing. Лимиты пробного периода (если он активен) видны в Billing, а не как рекламный текст на форме регистрации.",
+          pl: "Nie. Po rejestracji możesz skonfigurować firmę i zacząć pracę. Wybór planu i płatność — w Billing, gdy będziesz gotowy, także jeśli plan wybrałeś na Pricing. Limity trial (jeśli aktywny) widać w Billing, a nie jako marketing na formularzu rejestracji.",
         },
       },
       {

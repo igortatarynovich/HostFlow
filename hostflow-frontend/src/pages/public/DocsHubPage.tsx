@@ -41,7 +41,7 @@ export default function DocsHubPage() {
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link to="/signup" className="btn-primary" onClick={() => trackCta('docs_signup', '/signup')}>
-              {t('public.docs.cta_signup', { defaultValue: 'Start free setup' })}
+              {t('public.docs.cta_signup', { defaultValue: 'Create account' })}
             </Link>
             <Link to="/academy" className="btn-secondary" onClick={() => trackCta('docs_academy', '/academy')}>
               {t('public.docs.cta_academy', { defaultValue: 'Academy' })}

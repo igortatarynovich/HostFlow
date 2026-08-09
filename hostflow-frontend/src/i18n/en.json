@@ -2181,8 +2181,8 @@
         "description": "Compare HostFlow plans and start your recruitment CRM trial in minutes."
       },
       "signup": {
-        "title": "Create CRM Workspace",
-        "description": "Create your HostFlow account, start trial, and launch your recruiting workflow quickly."
+        "title": "Create HostFlow account",
+        "description": "Create a HostFlow account, set up your company, and start hiring workflows."
       },
       "login": {
         "title": "Sign In to HostFlow",
@@ -2403,28 +2403,29 @@
       "legal_notice_cookies": "Cookie Policy",
       "errors": {
         "consent_required": "You must accept Terms and Privacy Policy to continue.",
-        "generic": "Generic",
-        "password_mismatch": "Password mismatch",
-        "password_short": "Password short"
+        "generic": "Registration failed. Please try again.",
+        "password_mismatch": "Passwords do not match",
+        "password_short": "Password must be at least 8 characters"
       },
       "fields": {
-        "confirm": "Confirm",
-        "full_name": "Full name",
+        "confirm": "Confirm password",
+        "full_name": "Full name (optional)",
         "password": "Password",
-        "workspace": "Workspace",
-        "workspace_placeholder": "Workspace placeholder"
+        "workspace": "Company name",
+        "workspace_placeholder": "e.g. Acme Recruiting"
       },
-      "have_account": "Have account",
+      "have_account": "Already have an account?",
       "plan_labels": {
         "solo": "Solo",
         "team": "Team",
         "business": "Business"
       },
-      "selected_plan": "Selected plan",
+      "selected_plan": "Plan from pricing: {plan}",
       "sign_in": "Sign in",
-      "submit": "Submit",
-      "subtitle": "Subtitle",
-      "title": "Title"
+      "submit": "Create account",
+      "subtitle": "Enter your details. Next you’ll set up your company and take the first step in the product.",
+      "subtitle_with_plan": "Selected plan: {plan}. After signup you’ll set up your company — billing is in Settings when you are ready.",
+      "title": "Create your HostFlow account"
     },
     "login": {
       "title": "Sign in to HostFlow",
@@ -9056,8 +9057,8 @@
         "next_title": "Do this now",
         "defer_meta": "Skip for now",
         "complete": "Basics done — keep hiring from Launchpad.",
-        "page_title": "Start hiring",
-        "page_subtitle": "Do the next step. Get to your first candidate without support.",
+        "page_title": "Start working",
+        "page_subtitle": "Do the next step on screen — until the first application and contact.",
         "hub_badge": "Success path",
         "hub_footer": "Finish the step above — that is all you need right now.",
         "open_faq": "Stuck? Open FAQ",
@@ -9360,7 +9361,7 @@
     "marketing": {
       "common": {
         "cta": {
-          "start_trial": "Start free trial",
+          "start_trial": "Create account",
           "view_pricing": "View pricing"
         },
         "faq": "FAQ",
@@ -10841,7 +10842,7 @@
       },
       "hero": {
         "badge": "Recruitment operations platform",
-        "primary_cta": "Start free setup",
+        "primary_cta": "Create account",
         "secondary_cta": "Sign in",
         "subtitle": "HostFlow automatically collects candidates from Meta, WhatsApp and forms, assigns them to recruiters, and controls the hiring process end to end.",
         "title": "Close vacancies faster",
@@ -10851,7 +10852,7 @@
           "2": "Documents and stages stay visible",
           "3": "Less chaos between ads, chats, and spreadsheets"
         },
-        "cta_subline": "Self-serve setup — first vacancy in minutes, without a sales call",
+        "cta_subline": "Self-serve — set up your company and reach the first vacancy without a sales call",
         "screenshot_caption": "Pipeline and candidates — hiring control at a glance.",
         "screenshot_src": "/landing/hero.svg",
         "answers": {
@@ -10882,7 +10883,7 @@
       "pricing": {
         "badge": "Pricing",
         "contact_sales_cta": "Contact sales",
-        "note": "Prices in EUR. Limits and modules follow the live plan matrix. Trial starts on signup; paid plan applies when trial ends or you upgrade.",
+        "note": "Prices in EUR. Limits and modules follow the live plan matrix. Access opens after signup; trial caps apply until you choose or confirm a paid plan in Billing.",
         "featured_badge": "Most popular",
         "enterprise": {
           "name": "Enterprise",
@@ -11043,7 +11044,7 @@
       "badge": "Help",
       "title": "Frequently asked questions",
       "subtitle": "From signup to first hire — clear answers so you can move without waiting on support.",
-      "cta_signup": "Start free setup",
+      "cta_signup": "Create account",
       "cta_pricing": "View pricing",
       "search_label": "Search FAQ",
       "search_placeholder": "Search questions…",

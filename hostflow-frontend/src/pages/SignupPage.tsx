@@ -27,9 +27,9 @@ export default function SignupPage() {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
   useSeoMeta({
-    title: t('app.seo.signup.title', { defaultValue: 'Create CRM Workspace' }),
+    title: t('app.seo.signup.title', { defaultValue: 'Create HostFlow account' }),
     description: t('app.seo.signup.description', {
-      defaultValue: 'Create your HostFlow account, start trial, and launch your recruiting workflow quickly.',
+      defaultValue: 'Create a HostFlow account, set up your company, and start hiring workflows.',
     }),
     canonicalPath: '/signup',
   })
@@ -148,20 +148,34 @@ export default function SignupPage() {
         <div className="card p-8">
           <PublicBrandingLogo showWordmark />
           <h1 className="mt-6 text-2xl font-semibold text-slate-900">
-            {t('app.signup.title', { defaultValue: 'Create your CRM workspace' })}
+            {t('app.signup.title', { defaultValue: 'Create your HostFlow account' })}
           </h1>
           <p className="mt-2 text-sm text-slate-600">
-            {t('app.signup.subtitle', { defaultValue: 'Start with a trial and invite your team later.' })}
+            {planLabel
+              ? t('app.signup.subtitle_with_plan', {
+                  defaultValue:
+                    'Selected plan: {plan}. After signup you’ll set up your company — billing is in Settings when you are ready.',
+                  values: { plan: planLabel },
+                })
+              : t('app.signup.subtitle', {
+                  defaultValue:
+                    'Enter your details. Next you’ll set up your company and take the first step in the product.',
+                })}
           </p>
-          {planLabel && (
-            <p className="mt-2 text-xs text-brand-700">
-              {t('app.signup.selected_plan', { defaultValue: 'Selected plan: {plan}', values: { plan: planLabel } })}
+          {planLabel ? (
+            <p className="mt-2 text-xs font-medium text-brand-700">
+              {t('app.signup.selected_plan', {
+                defaultValue: 'Plan from pricing: {plan}',
+                values: { plan: planLabel },
+              })}
             </p>
-          )}
+          ) : null}
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <div>
-              <label className="label">{t('app.signup.fields.workspace', { defaultValue: 'Workspace name' })}</label>
+              <label className="label">
+                {t('app.signup.fields.workspace', { defaultValue: 'Company name' })}
+              </label>
               <input
                 className="input"
                 type="text"
@@ -169,7 +183,9 @@ export default function SignupPage() {
                 minLength={2}
                 value={workspaceName}
                 onChange={(e) => setWorkspaceName(e.target.value)}
-                placeholder={t('app.signup.fields.workspace_placeholder', { defaultValue: 'Acme Recruiting' })}
+                placeholder={t('app.signup.fields.workspace_placeholder', {
+                  defaultValue: 'e.g. Acme Recruiting',
+                })}
               />
             </div>
             <div>
@@ -264,10 +280,12 @@ export default function SignupPage() {
             )}
             <button
               type="submit"
-              className="btn-primary w-full py-3"
+              className="btn-primary w-full justify-center py-3 text-center text-base font-bold tracking-wide"
               disabled={loading || (captchaRequired && !captchaToken)}
             >
-              {loading ? t('common.loading') : t('app.signup.submit', { defaultValue: 'Create account' })}
+              {loading
+                ? t('common.loading')
+                : t('app.signup.submit', { defaultValue: 'Create account' })}
             </button>
             <p className="text-xs leading-relaxed text-slate-500">
               {t('app.signup.legal_notice', { defaultValue: 'By creating an account, you confirm that you reviewed:' })}{' '}

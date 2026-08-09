@@ -249,7 +249,7 @@ export const SEO_PAGE_CATALOG: SeoPageDefinition[] = [
       { path: "/features/whatsapp-recruitment", label: { en: "WhatsApp hiring", ru: "WhatsApp в найме", pl: "WhatsApp w rekrutacji" } },
       { path: "/use-cases/recruitment-agencies", label: { en: "Agencies", ru: "Агентства", pl: "Agencje" } },
       { path: "/faq#meta", label: { en: "Meta FAQ", ru: "FAQ Meta", pl: "FAQ Meta" } },
-      { path: "/signup", label: { en: "Start free setup", ru: "Начать настройку", pl: "Zacznij konfigurację" } },
+      { path: "/signup", label: { en: "Create account", ru: "Создать аккаунт", pl: "Utwórz konto" } },
     ],
   },
   {
