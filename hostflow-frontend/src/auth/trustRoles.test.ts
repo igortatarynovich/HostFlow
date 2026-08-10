@@ -6,8 +6,10 @@ import {
   inferPresetId,
   isHrWorkspaceActor,
   isPortalActor,
+  isRecruitmentAssigneeRole,
   isTeamLeadOrgActor,
   normalizeTrustRole,
+  RECRUITMENT_ASSIGNEE_CATALOG_ROLES,
   resolvePermissionPersona,
   resolveActorTrustContext,
 } from './trustRoles'
@@ -91,5 +93,13 @@ describe('trustRoles ADR-036', () => {
     expect(canUseTeamOverviewLane({ role: 'employee', presetId: 'recruiter' })).toBe(false)
     expect(isTeamLeadOrgActor('supervisor')).toBe(true)
     expect(isHrWorkspaceActor('employee', 'hr')).toBe(true)
+  })
+
+  it('recruitment assignee catalog roles', () => {
+    expect(isRecruitmentAssigneeRole('employee')).toBe(true)
+    expect(isRecruitmentAssigneeRole('recruiter')).toBe(true)
+    expect(isRecruitmentAssigneeRole('hr_officer')).toBe(false)
+    expect(isRecruitmentAssigneeRole('viewer')).toBe(false)
+    expect(RECRUITMENT_ASSIGNEE_CATALOG_ROLES).toContain('employee')
   })
 })

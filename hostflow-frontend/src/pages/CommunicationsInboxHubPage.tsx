@@ -40,14 +40,14 @@ import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { useToast } from '../components/Toast'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 
 function isActiveThread(th: CommunicationThread): boolean {
   return !th.is_archived && String(th.status || '').toLowerCase() !== 'deleted'
 }
 
 function canPatchCommunicationsSettings(role: string | undefined): boolean {
-  const r = String(role || '').trim().toLowerCase()
-  return r === 'administrator' || r === 'supervisor' || r === 'admin' || r === 'superadmin'
+  return canUseTeamOverviewLane({ role })
 }
 
 function bulkActionPreviewLabel(type: string, value?: string | null): string {

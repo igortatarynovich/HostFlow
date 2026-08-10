@@ -1911,11 +1911,13 @@ async def accept_invite(
     return detail
 
 
-# Роли membership в БД для «операционных» менеджеров (owner хранится отдельно от administrator).
+# Membership roles for operational assignees (ADR-036: employee is canonical).
 _MEMBERSHIP_ROLES_MANAGER_CATALOG = (
+    Role.employee.value,
     Role.supervisor.value,
     Role.administrator.value,
     Role.recruiter.value,
+    Role.compliance_officer.value,
     "owner",
 )
 
