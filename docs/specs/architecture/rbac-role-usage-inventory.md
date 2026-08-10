@@ -112,25 +112,25 @@
 | `hostflow-frontend/src/api/analytics.ts` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/api/billing.ts` | 1 | SEAT | client_manager | recount seats Admin/Employee/Viewer | migrated |
 | `hostflow-frontend/src/api/client.ts` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
-| `hostflow-frontend/src/api/communications.ts` | 1 | PORTAL_LEGACY | client_manager,client_processor,recruiter,supervisor | viewer + access_context=portal + scope | open |
+| `hostflow-frontend/src/api/communications.ts` | 1 | PORTAL_LEGACY | client_manager,client_processor,recruiter,supervisor | viewer + access_context=portal + scope | migrated |
 | `hostflow-frontend/src/api/types.ts` | 2 | SEAT,UI_ONLY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | recount seats Admin/Employee/Viewer | migrated |
 | `hostflow-frontend/src/api/types/document.ts` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/api/types/index.ts` | 1 | UI_ONLY | roles | align FE with BE trust + permissions | open |
 | `hostflow-frontend/src/api/types/user.ts` | 2 | SEAT,UI_ONLY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | recount seats Admin/Employee/Viewer | migrated |
 | `hostflow-frontend/src/api/users.ts` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
-| `hostflow-frontend/src/components/admin/RoleModuleMatrixPanel.tsx` | 1 | UI_ONLY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | align FE with BE trust + permissions | open |
-| `hostflow-frontend/src/components/admin/UserFormCreate.tsx` | 1 | PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | viewer + access_context=portal + scope | open |
-| `hostflow-frontend/src/components/admin/UserFormInvite.tsx` | 1 | PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | viewer + access_context=portal + scope | open |
-| `hostflow-frontend/src/components/admin/UserTable.tsx` | 1 | PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | viewer + access_context=portal + scope | open |
+| `hostflow-frontend/src/components/admin/RoleModuleMatrixPanel.tsx` | 1 | UI_ONLY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | align FE with BE trust + permissions | migrated |
+| `hostflow-frontend/src/components/admin/UserFormCreate.tsx` | 1 | PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | viewer + access_context=portal + scope | migrated |
+| `hostflow-frontend/src/components/admin/UserFormInvite.tsx` | 1 | PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | viewer + access_context=portal + scope | migrated |
+| `hostflow-frontend/src/components/admin/UserTable.tsx` | 1 | PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | viewer + access_context=portal + scope | migrated |
 | `hostflow-frontend/src/components/candidate/CandidateDocsRailPanel.tsx` | 1 | ORG_PROXY | recruiter,supervisor | employee + supervisor_id/org + permission | open |
-| `hostflow-frontend/src/components/communications/CommunicationsInboxWorkflowCard.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
-| `hostflow-frontend/src/components/companies/CompanyModuleSettingsPanel.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
+| `hostflow-frontend/src/components/communications/CommunicationsInboxWorkflowCard.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | migrated |
+| `hostflow-frontend/src/components/companies/CompanyModuleSettingsPanel.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | migrated |
 | `hostflow-frontend/src/components/hr/EmployeeDossierDocumentBlock.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/components/hr/EmployeeLinkedCandidateJourney.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/components/hr/HrDocumentCorrectionForm.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/components/hr/HrSequentialDocumentVerification.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/components/nav/Sidebar.tsx` | 1 | SEAT | client_manager | recount seats Admin/Employee/Viewer | migrated |
-| `hostflow-frontend/src/components/nav/Topbar.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
+| `hostflow-frontend/src/components/nav/Topbar.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | migrated |
 | `hostflow-frontend/src/components/vacancy/useVacancyNextAction.ts` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/constants/communicationsSettingsAccess.ts` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | migrated |
 | `hostflow-frontend/src/content/seo/seoPageCatalog.ts` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
@@ -138,8 +138,8 @@
 | `hostflow-frontend/src/hooks/useLicenseStatus.ts` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | migrated |
 | `hostflow-frontend/src/hooks/useOwnCompanyWorkspace.ts` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | migrated |
 | `hostflow-frontend/src/hooks/usePermissions.ts` | 1 | UI_ONLY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | align FE with BE trust + permissions | migrated |
-| `hostflow-frontend/src/modules/candidates/hooks/useCandidatesCatalogs.ts` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
-| `hostflow-frontend/src/modules/candidates/internal.ts` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
+| `hostflow-frontend/src/modules/candidates/hooks/useCandidatesCatalogs.ts` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | migrated |
+| `hostflow-frontend/src/modules/candidates/internal.ts` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | migrated |
 | `hostflow-frontend/src/modules/dashboard/hooks/useDashboardRiskOps.ts` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/modules/documents/CandidateDocuments.tsx` | 1 | ORG_PROXY | recruiter,supervisor | employee + supervisor_id/org + permission | open |
 | `hostflow-frontend/src/modules/tenants/utils.ts` | 1 | SEAT | client_manager | recount seats Admin/Employee/Viewer | open |
@@ -150,23 +150,23 @@
 | `hostflow-frontend/src/modules/workHub/RiskDigestPanel.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
 | `hostflow-frontend/src/modules/workHub/TodayPlannerPanel.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/modules/workHub/profile.ts` | 1 | PORTAL_LEGACY | client_manager,client_processor,recruiter,supervisor | viewer + access_context=portal + scope | migrated |
-| `hostflow-frontend/src/pages/AutomationRulesPage.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
-| `hostflow-frontend/src/pages/CandidateCard.tsx` | 1 | ORG_PROXY | recruiter,supervisor | employee + supervisor_id/org + permission | open |
-| `hostflow-frontend/src/pages/CommunicationsInboxHubPage.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
+| `hostflow-frontend/src/pages/AutomationRulesPage.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | migrated |
+| `hostflow-frontend/src/pages/CandidateCard.tsx` | 1 | ORG_PROXY | recruiter,supervisor | employee + supervisor_id/org + permission | migrated |
+| `hostflow-frontend/src/pages/CommunicationsInboxHubPage.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | migrated |
 | `hostflow-frontend/src/pages/MyCompanyPage.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | migrated |
-| `hostflow-frontend/src/pages/Pipeline.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
+| `hostflow-frontend/src/pages/Pipeline.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | migrated |
 | `hostflow-frontend/src/pages/ProfilePage.tsx` | 2 | ORG_PROXY,SEAT | client_manager,supervisor | recount seats Admin/Employee/Viewer | migrated |
-| `hostflow-frontend/src/pages/RemindersPage.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
-| `hostflow-frontend/src/pages/WorkHubPage.tsx` | 1 | ORG_PROXY | recruiter,supervisor | employee + supervisor_id/org + permission | open |
+| `hostflow-frontend/src/pages/RemindersPage.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | migrated |
+| `hostflow-frontend/src/pages/WorkHubPage.tsx` | 1 | ORG_PROXY | recruiter,supervisor | employee + supervisor_id/org + permission | migrated |
 | `hostflow-frontend/src/pages/admin/BillingTeamPage.tsx` | 2 | PORTAL_LEGACY,SEAT | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | trust seats + portal non-billable | migrated |
 | `hostflow-frontend/src/pages/admin/BillingWorkspacePage.tsx` | 1 | SEAT | client_manager | recount seats Admin/Employee/Viewer | migrated |
 | `hostflow-frontend/src/pages/admin/DeletionRequestsPage.tsx` | 1 | ORG_PROXY | recruiter,supervisor | employee + supervisor_id/org + permission | open |
-| `hostflow-frontend/src/pages/admin/MetaLeadsAdminPage.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
+| `hostflow-frontend/src/pages/admin/MetaLeadsAdminPage.tsx` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | migrated |
 | `hostflow-frontend/src/pages/admin/RiskIntelSettingsPage.tsx` | 1 | ORG_PROXY | supervisor | employee + supervisor_id/org + permission | open |
-| `hostflow-frontend/src/pages/admin/RolesAccessPage.tsx` | 1 | UI_ONLY | client_manager | align FE with BE trust + permissions | open |
+| `hostflow-frontend/src/pages/admin/RolesAccessPage.tsx` | 1 | UI_ONLY | client_manager | align FE with BE trust + permissions | migrated |
 | `hostflow-frontend/src/pages/admin/SettingsLandingPage.tsx` | 1 | PORTAL_LEGACY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | viewer + access_context=portal + scope | migrated |
 | `hostflow-frontend/src/pages/admin/TenantsPage.tsx` | 2 | SEAT,UI_ONLY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | recount seats Admin/Employee/Viewer | migrated |
-| `hostflow-frontend/src/pages/admin/UsersPage.tsx` | 1 | UI_ONLY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | align FE with BE trust + permissions | open |
+| `hostflow-frontend/src/pages/admin/UsersPage.tsx` | 1 | UI_ONLY | client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor | align FE with BE trust + permissions | migrated |
 | `hostflow-frontend/src/platform/detail-rail/detailRailTypes.ts` | 1 | JOB_PROXY | recruiter | employee + permission/module gate + preset | open |
 | `hostflow-frontend/src/utils/hrDocumentReviewRole.ts` | 1 | JOB_PROXY | hr_officer | employee + permission/module gate + preset | migrated |
 
@@ -211,7 +211,13 @@ Migrated (runtime bridges + trust-aware ACL/gates):
 - `usePermissions` exposes trustRole / accessContext / presetId (+ persona shim)
 - Settings landing, communications access, team-overview / license org-proxy, Work Hub profile, HR review gate aligned
 
-Still `open` (next RBAC PRs): remaining per-widget JOB_PROXY checks (CandidateCard, Pipeline, HR panels, SEO); enum delete; seed/job role strings; license column rename (optional).
+### Slice progress (FE widget leftovers)
+
+- Recruitment assignee catalogs include `employee` (BE default + FE `RECRUITMENT_ASSIGNEE_CATALOG_ROLES`)
+- Team-assignee / org-proxy gates use `canUseTeamAssigneeScope` / `canUseTeamOverviewLane`
+- Communications default role allowlists include trust roles; Meta Leads recruiter picker uses `isRecruitmentAssigneeRole`
+
+Still `open` (next RBAC PRs): SEO/marketing copy; remaining comment-only inventory hits; BE seed job-role strings; enum delete; license column rename (optional).
 
 ## DB appendix
 

@@ -125,8 +125,8 @@ async def list_managers(
         default=None,
         description=(
             "Необязательно: роли membership через запятую "
-            "(например recruiter или recruiter,supervisor). "
-            "По умолчанию — owner, administrator, supervisor, recruiter."
+            "(например employee или employee,recruiter). "
+            "По умолчанию — employee, administrator, supervisor, recruiter, …."
         ),
     ),
 ):

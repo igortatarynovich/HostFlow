@@ -280,3 +280,34 @@ export function canUseTeamOverviewLane(args: {
   if (args.canAdminUsers) return true
   return isTeamLeadOrgActor(args.role, args.presetId)
 }
+
+/**
+ * Membership roles accepted by `/catalogs/managers?roles=` for recruitment assignees.
+ * Includes canonical `employee` plus legacy job titles still present in DB.
+ */
+export const RECRUITMENT_ASSIGNEE_CATALOG_ROLES =
+  'employee,recruiter,supervisor,compliance_officer' as const
+
+/** True when membership role can own candidates / appear in recruiter pickers. */
+export function isRecruitmentAssigneeRole(role: string | null | undefined): boolean {
+  const raw = String(role || '')
+    .trim()
+    .toLowerCase()
+  if (!raw) return false
+  if (raw === 'recruiter' || raw === 'supervisor' || raw === 'compliance_officer') return true
+  const trust = normalizeTrustRole(raw)
+  if (trust === 'employee') {
+    // HR-only lane is not a recruitment assignee by default.
+    if (isHrWorkspaceActor(raw)) return false
+    return true
+  }
+  return false
+}
+
+/** Team-scope assignee UI (Reminders / Candidates work panel / Topbar). */
+export function canUseTeamAssigneeScope(args: {
+  role: string | null | undefined
+  presetId?: string | null
+}): boolean {
+  return canUseTeamOverviewLane(args)
+}

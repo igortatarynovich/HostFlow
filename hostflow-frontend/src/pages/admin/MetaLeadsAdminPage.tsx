@@ -34,6 +34,7 @@ import type { UnmappedAdGroup } from '../../api/metaLeads'
 import { listCompanies, listLeads, listOwnCompanies, listVacancies } from '../../api/client'
 import { createCustomFieldDefinition, listCustomFieldDefinitions } from '../../api/custom_fields'
 import { listAdminUsers } from '../../api/users'
+import { isRecruitmentAssigneeRole } from '../../auth/trustRoles'
 import type {
   Lead,
   LeadsProcessingModeV1,
@@ -613,7 +614,7 @@ export default function MetaLeadsAdminPage() {
       setCompanyOptions(companyOpts)
 
       const recruiterOpts = adminUsers
-        .filter((user) => user.role === 'recruiter')
+        .filter((user) => isRecruitmentAssigneeRole(user.role))
         .map((user) => ({
           id: user.user_id || (user as any).id || user.email || '',
           name: user.full_name || user.email || user.short_id || t('admin.meta_leads.placeholders.recruiter_fallback'),
