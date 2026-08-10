@@ -437,7 +437,7 @@ async def apply_lead_intake_decision(
             tenant_id=tenant_id,
             lead=lead,
             event_type=ev,
-            roles=[Role.administrator, Role.supervisor],
+            roles=[Role.administrator, Role.employee],
             business_type=business_type,
             outcome_entity_type=outcome_entity_type,
             outcome_entity_id=outcome_entity_id,

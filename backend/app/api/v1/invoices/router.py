@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.audit import ActivityLog
 from backend.app.models.invoice import Invoice, InvoiceStatus
@@ -168,7 +168,7 @@ async def create_invoice(
     db, tenant_id = db_tenant
     
     # Only managers and admins can create invoices
-    if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
+    if current_user.role not in (Role.employee, Role.admin, Role.superadmin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only managers and admins can create invoices",
@@ -269,7 +269,7 @@ async def create_invoice_from_service_order(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
 
-    if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
+    if current_user.role not in (Role.employee, Role.admin, Role.superadmin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only managers and admins can create invoices",
@@ -483,7 +483,7 @@ async def update_invoice(
     previous_status = existing_invoice.status if existing_invoice else None
     
     # Only managers and admins can update invoices
-    if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
+    if current_user.role not in (Role.employee, Role.admin, Role.superadmin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only managers and admins can update invoices",
@@ -562,7 +562,7 @@ async def create_payment(
         )
     
     # Only managers and admins can create payments
-    if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
+    if current_user.role not in (Role.employee, Role.admin, Role.superadmin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only managers and admins can create payments",
@@ -611,7 +611,7 @@ async def create_refund(
     db, tenant_id = db_tenant
     
     # Only managers and admins can create refunds
-    if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
+    if current_user.role not in (Role.employee, Role.admin, Role.superadmin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only managers and admins can create refunds",
@@ -681,7 +681,7 @@ async def send_invoice(
     db, tenant_id = db_tenant
     
     # Only managers and admins can send invoices
-    if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
+    if current_user.role not in (Role.employee, Role.admin, Role.superadmin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only managers and admins can send invoices",
@@ -829,7 +829,7 @@ async def cancel_invoice(
     db, tenant_id = db_tenant
     
     # Only managers and admins can cancel invoices
-    if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
+    if current_user.role not in (Role.employee, Role.admin, Role.superadmin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only managers and admins can cancel invoices",

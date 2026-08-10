@@ -3,6 +3,13 @@ import { useAuth } from '../store/useAuth'
 import { useTenantInfo } from '../contexts/TenantInfo'
 import { getTenantEffectiveRoleModules, getTenantModules } from '../api/tenants'
 import type { EffectiveRoleModules, TenantModuleSettings } from '../api/types'
+import {
+  resolveActorTrustContext,
+  resolvePermissionPersona,
+  type AccessContext,
+  type PermissionPresetId,
+  type TrustRole,
+} from '../auth/trustRoles'
 
 export type Permission =
   | '*'
@@ -34,9 +41,25 @@ export type Permission =
   /** HR workspace (`/app/hr/*`) — employees, separate from recruitment. */
   | 'workforce.view'
   | 'workforce.manage'
+  /** Alias used by some settings cards / sales surfaces. */
+  | 'sales.view'
 
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   administrator: ['*'],
+  employee: [
+    'companies.view',
+    'sales.view',
+    'leads.view',
+    'notifications.view',
+    'vacancies.view',
+    'candidates.view',
+    'candidates.manage',
+    'candidates.requestDelete',
+    'candidates.pipeline',
+    'documents.manage',
+    'services.view',
+    'services.orders.manage',
+  ],
   supervisor: [
     'manager.tools',
     'settings.view',
@@ -95,10 +118,6 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'notifications.view',
     'settings.view',
   ],
-  /**
-   * Сопровождение процессных документов (zezwolenie, karta pobytu, tacho, …): полный рабочий контур
-   * в зоне ACL — карточка кандидата, воронка, документы, контекст лидов/услуг без админки.
-   */
   compliance_officer: [
     'companies.view',
     'leads.view',
@@ -111,30 +130,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'services.view',
     'services.orders.manage',
   ],
-  /** People / HR: no recruitment or CRM modules — only the HR workspace. */
   hr_officer: ['notifications.view', 'workforce.view', 'workforce.manage'],
-}
-
-const ROLE_ALIAS: Record<string, string> = {
-  owner: 'administrator',
-  admin: 'administrator',
-  administrator: 'administrator',
-  superadmin: 'administrator',
-  super_admin: 'administrator',
-  manager: 'supervisor',
-  lead: 'supervisor',
-  supervisor: 'supervisor',
-  recruiter: 'recruiter',
-  viewer: 'viewer',
-  user: 'viewer',
-  client_processor: 'client_processor',
-  processor: 'client_processor',
-  client_manager: 'client_manager',
-  compliance_officer: 'compliance_officer',
-  compliance: 'compliance_officer',
-  docs_officer: 'compliance_officer',
-  hr_officer: 'hr_officer',
-  people_ops: 'hr_officer',
 }
 
 const MODULE_DEFAULTS: TenantModuleSettings = {
@@ -205,29 +201,24 @@ export function usePermissions() {
     }
   }, [me?.tenant_id, me?.role])
 
-  const { tenantId, role, permissions, can, isClientTenant } = useMemo(() => {
+  const value = useMemo(() => {
     const currentTenantId =
-      (me as any)?.tenant_id || (me as any)?.tenant?.id || '11111111-1111-1111-1111-111111111111'
+      (me as { tenant_id?: string; tenant?: { id?: string } } | null)?.tenant_id ||
+      (me as { tenant?: { id?: string } } | null)?.tenant?.id ||
+      '11111111-1111-1111-1111-111111111111'
 
-    const membershipRole = Array.isArray((me as any)?.memberships)
-      ? (me as any).memberships.find((m: any) => m?.tenant_id === currentTenantId)?.role
-      : undefined
-
-    const rawRole = (membershipRole as any) || (me as any)?.role || 'viewer'
-    const norm = String(rawRole).toLowerCase().trim()
-    let effectiveRole: string = ROLE_ALIAS[norm] || norm || 'viewer'
-
-    // For client tenants, interpret "recruiter" as "client_processor" by default
-    // so client-side recruiters see only client pipeline and have client permissions.
-    if (tenant?.type === 'company' && effectiveRole === 'recruiter') {
-      effectiveRole = 'client_processor'
-    }
-    const list = ROLE_PERMISSIONS[effectiveRole] || ROLE_PERMISSIONS.viewer
+    const isClientTenant = tenant?.type === 'company'
+    const trust = resolveActorTrustContext(me)
+    const persona = resolvePermissionPersona({
+      role: trust.rawRole,
+      accessContext: trust.accessContext,
+      presetId: trust.presetId,
+      isClientTenant,
+    })
+    const list = ROLE_PERMISSIONS[persona] || ROLE_PERMISSIONS.viewer
     const set = new Set<Permission>(list)
 
     const moduleAccess = (moduleKey: keyof TenantModuleSettings) => {
-      // tenant-level module flags: if a module is disabled for the workspace,
-      // it must be treated as not visible regardless of role matrix.
       const tenantVisible =
         tenantModules && Object.prototype.hasOwnProperty.call(tenantModules, moduleKey)
           ? Boolean(tenantModules[moduleKey])
@@ -256,16 +247,20 @@ export function usePermissions() {
       }
       return true
     }
-    const isClientTenant = tenant?.type === 'company'
 
     return {
       tenantId: currentTenantId,
-      role: effectiveRole,
+      /** @deprecated Prefer trustRole + presetId; persona kept for Work Hub / legacy checks. */
+      role: persona,
+      rawRole: trust.rawRole,
+      trustRole: trust.trustRole as TrustRole,
+      accessContext: trust.accessContext as AccessContext,
+      presetId: trust.presetId as PermissionPresetId | null,
       permissions: Array.from(set),
       can,
       isClientTenant,
     }
   }, [me, tenant, effectiveModules, tenantModules])
 
-  return { tenantId, role, permissions, can, isClientTenant }
+  return value
 }

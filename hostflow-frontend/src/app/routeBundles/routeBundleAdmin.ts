@@ -1,4 +1,5 @@
 export { default as UsersPage } from '../../pages/admin/UsersPage'
+export { default as RolesAccessPage } from '../../pages/admin/RolesAccessPage'
 export { default as TenantsPage } from '../../pages/admin/TenantsPage'
 export { default as RulesetVersionsPage } from '../../pages/admin/RulesetVersionsPage'
 export { default as IntegrationsHubPage } from '../../pages/admin/IntegrationsHubPage'

@@ -92,6 +92,7 @@ import {
   TimeOffRequestsPage,
   TtvReportPage,
   UsersPage,
+  RolesAccessPage,
   Vacancies,
   VacancyDetailRoute,
   WorkHubPage,
@@ -906,6 +907,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'pipeline', path: seg(CRM.pipeline), Component: PipelineRedirect, permission: 'candidates.pipeline' },
   { key: 'settings', path: seg(CRM.settings), Component: SettingsLandingPage, permission: 'settings.view' },
   { key: 'settings-users', path: seg(CRM.settingsUsers), Component: UsersPage, permission: ['admin.users', 'users.manage', 'users.view'] },
+  { key: 'settings-roles-access', path: seg(CRM.settingsTeam), Component: RolesAccessPage, permission: 'admin.users' },
   { key: 'settings-billing', path: seg(CRM.settingsBilling), Component: BillingWorkspacePage, permission: 'admin.users' },
   {
     key: 'settings-billing-plan',

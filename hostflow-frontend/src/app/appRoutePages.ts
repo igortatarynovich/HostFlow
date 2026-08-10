@@ -137,6 +137,7 @@ export const CommunicationCampaignsPage = lazy(() =>
 )
 
 export const UsersPage = lazy(() => loadAdmin().then((m) => ({ default: m.UsersPage })))
+export const RolesAccessPage = lazy(() => loadAdmin().then((m) => ({ default: m.RolesAccessPage })))
 export const TenantsPage = lazy(() => loadAdmin().then((m) => ({ default: m.TenantsPage })))
 export const RulesetVersionsPage = lazy(() => loadAdmin().then((m) => ({ default: m.RulesetVersionsPage })))
 export const IntegrationsHubPage = lazy(() => loadAdmin().then((m) => ({ default: m.IntegrationsHubPage })))

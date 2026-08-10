@@ -17,6 +17,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_MUTATE_ROLES
+from backend.app.auth.trust_roles import is_hr_workspace_actor
 from backend.app.constants.stages import TERMINAL_STATUSES
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.recruitment_application import RecruitmentApplication
@@ -25,7 +26,24 @@ _LOCK_HANDOFF_DESTINATIONS = ("internal_hr", "client_portal", "client_account")
 _LOCK_HANDOFF_STATUSES = ("pending_review", "accepted", "completed")
 
 # API bypass: same contract as candidate PATCH (privileged edit while handoff lock holds).
+# Legacy supervisor remains; team_lead org actors also qualify via helper below.
 RECRUITMENT_LOCK_OVERRIDE_ROLES = frozenset({"administrator", "supervisor", "superadmin"})
+
+
+def can_override_recruitment_handoff_lock(role: str | None) -> bool:
+    from backend.app.auth.trust_roles import (
+        TrustRole,
+        is_team_lead_org_actor,
+        normalize_trust_role,
+    )
+
+    raw = str(role or "").strip().lower()
+    if raw in RECRUITMENT_LOCK_OVERRIDE_ROLES:
+        return True
+    trust = normalize_trust_role(raw)
+    if trust in {TrustRole.superadmin.value, TrustRole.administrator.value}:
+        return True
+    return is_team_lead_org_actor(raw)
 
 RECRUITMENT_TERMINAL_CLOSE_OVERRIDE = "recruitment_terminal_close"
 
@@ -112,11 +130,11 @@ async def require_agency_recruitment_write_allowed(
         raise HTTPException(status_code=403, detail=detail)
     role_l = str(bypass.actor_role or "").strip().lower()
     reason = str(bypass.override_reason or "").strip()
-    if role_l in RECRUITMENT_LOCK_OVERRIDE_ROLES and reason:
+    if can_override_recruitment_handoff_lock(role_l) and reason:
         return
     if reason == RECRUITMENT_TERMINAL_CLOSE_OVERRIDE and role_l in _RECRUITMENT_MUTATE_ROLE_VALUES:
         return
-    if role_l == "hr_officer" and reason == "internal_hr_handoff_lane":
+    if is_hr_workspace_actor(role_l) and reason == "internal_hr_handoff_lane":
         if await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=agency_tenant_id, candidate_id=candidate_id
         ):

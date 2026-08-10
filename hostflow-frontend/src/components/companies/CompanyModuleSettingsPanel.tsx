@@ -12,7 +12,7 @@ const MODULE_TABS: CompanyModuleKey[] = ['hr', 'recruitment', 'fleet', 'services
 
 type Props = {
   companyId: string
-  /** Administrator / supervisor — can PATCH */
+  /** Tenant admin / team-lead lane — can PATCH (caller gates via trust helpers). */
   canEdit: boolean
 }
 

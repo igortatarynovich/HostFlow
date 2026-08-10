@@ -14,7 +14,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.automation_rule import AutomationRule
 from backend.app.services import billing_restrictions
@@ -195,7 +196,7 @@ def _validate_rule_payload(*, trigger: str, conditions: Optional[dict], actions:
 @router.get(
     "",
     response_model=AutomationRuleListOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.superadmin, Role.supervisor, Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_rules(
     trigger: Optional[str] = Query(None),
@@ -238,7 +239,7 @@ async def list_rules(
     "",
     response_model=AutomationRuleOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.administrator, Role.superadmin, Role.supervisor, Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_rule(
     body: AutomationRuleCreateIn,
@@ -290,7 +291,7 @@ async def create_rule(
 @router.patch(
     "/{rule_id}",
     response_model=AutomationRuleOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.superadmin, Role.supervisor, Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def patch_rule(
     rule_id: str,
@@ -354,7 +355,7 @@ async def patch_rule(
 @router.delete(
     "/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
-    dependencies=[Depends(require_roles(Role.administrator, Role.superadmin, Role.supervisor, Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def delete_rule(
     rule_id: str,

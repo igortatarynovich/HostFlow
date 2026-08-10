@@ -87,15 +87,8 @@ def sanitize_hiring_gates_patch(raw: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-HIRING_GATES_READ_ROLES = (
-    Role.administrator,
-    Role.supervisor,
-    Role.recruiter,
-    Role.manager,
-    Role.client_manager,
-    Role.client_processor,
-    Role.viewer,
-)
+from backend.app.auth.trust_role_deps import TRUST_READ_ROLES
+HIRING_GATES_READ_ROLES = TRUST_READ_ROLES
 
 
 async def get_hiring_pipeline_gates_core(

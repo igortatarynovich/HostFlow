@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import WorkforceEmployee
 from backend.app.services.document_merge import (
@@ -22,18 +22,9 @@ from backend.app.services.document_merge import (
 
 router = APIRouter(prefix="/document-merge", tags=["document-merge"])
 
-TEMPLATE_ADMIN_ROLES = (
-    Role.administrator,
-    Role.supervisor,
-    Role.compliance_officer,
-)
-GENERATE_ROLES = (
-    Role.recruiter,
-    Role.manager,
-    Role.admin,
-    Role.compliance_officer,
-    Role.hr_officer,
-)
+from backend.app.auth.trust_role_deps import TRUST_ADMIN_ROLES, TRUST_WRITE_ROLES, require_trust_admin, require_trust_write
+TEMPLATE_ADMIN_ROLES = TRUST_ADMIN_ROLES
+GENERATE_ROLES = TRUST_WRITE_ROLES
 
 
 class MergeTemplateOut(BaseModel):
@@ -118,7 +109,7 @@ def _to_out(row: Any) -> MergeTemplateOut:
 @router.get(
     "/templates",
     response_model=List[MergeTemplateOut],
-    dependencies=[Depends(require_roles(*TEMPLATE_ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def api_list_merge_templates(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -139,7 +130,7 @@ async def api_list_merge_templates(
     "/templates",
     response_model=MergeTemplateOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*TEMPLATE_ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def api_create_merge_template(
     payload: MergeTemplateCreate,
@@ -158,7 +149,7 @@ async def api_create_merge_template(
 @router.get(
     "/templates/{template_id}",
     response_model=MergeTemplateOut,
-    dependencies=[Depends(require_roles(*TEMPLATE_ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def api_get_merge_template(
     template_id: str,
@@ -174,7 +165,7 @@ async def api_get_merge_template(
 @router.patch(
     "/templates/{template_id}",
     response_model=MergeTemplateOut,
-    dependencies=[Depends(require_roles(*TEMPLATE_ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def api_patch_merge_template(
     template_id: str,
@@ -200,7 +191,7 @@ async def api_patch_merge_template(
 @router.delete(
     "/templates/{template_id}",
     status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
-    dependencies=[Depends(require_roles(*TEMPLATE_ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def api_delete_merge_template(
     template_id: str,
@@ -218,7 +209,7 @@ async def api_delete_merge_template(
     "/generate",
     response_model=MergeGenerateOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*GENERATE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def api_generate_merge_document(
     payload: MergeGenerateIn,

@@ -254,7 +254,9 @@ async def run_recruitment_team_flow_scenario(
         full_name: str,
         *,
         supervisor_id: str | None = None,
+        preset_id: str | None = None,
     ) -> User:
+        prefs = {"preset_id": preset_id} if preset_id else {}
         u = await session.scalar(select(User).where(func.lower(User.email) == email.lower()))
         if u is None:
             u = User(
@@ -267,6 +269,7 @@ async def run_recruitment_team_flow_scenario(
                 full_name=full_name,
                 short_id=None,
                 supervisor_id=supervisor_id,
+                preferences=prefs,
             )
             session.add(u)
         else:
@@ -276,13 +279,17 @@ async def run_recruitment_team_flow_scenario(
             u.is_active = True
             u.full_name = full_name
             u.supervisor_id = supervisor_id
+            if preset_id:
+                existing = u.preferences if isinstance(u.preferences, dict) else {}
+                u.preferences = {**existing, "preset_id": preset_id}
         return u
 
     sup = await ensure_user(
         USER_IDS["supervisor"],
         EMAILS.supervisor,
-        UserRole.supervisor,
+        UserRole.employee,
         "Scenario Supervisor",
+        preset_id="team_lead",
     )
     adm = await ensure_user(
         USER_IDS["admin"],
@@ -293,32 +300,45 @@ async def run_recruitment_team_flow_scenario(
     rec_a = await ensure_user(
         USER_IDS["recruiter_a"],
         EMAILS.recruiter_a,
-        UserRole.recruiter,
+        UserRole.employee,
         "Scenario Recruiter A",
         supervisor_id=sup.id,
+        preset_id="recruiter",
     )
     rec_b = await ensure_user(
         USER_IDS["recruiter_b"],
         EMAILS.recruiter_b,
-        UserRole.recruiter,
+        UserRole.employee,
         "Scenario Recruiter B",
         supervisor_id=sup.id,
+        preset_id="recruiter",
     )
     hr = await ensure_user(
         USER_IDS["hr"],
         EMAILS.hr,
-        UserRole.hr_officer,
+        UserRole.employee,
         "Scenario HR Officer",
+        preset_id="hr",
     )
+    # ADR-036: job titles live in preferences.preset_id
+    for u, preset in (
+        (sup, "team_lead"),
+        (rec_a, "recruiter"),
+        (rec_b, "recruiter"),
+        (hr, "hr"),
+    ):
+        prefs = dict(u.preferences or {})
+        prefs["preset_id"] = preset
+        u.preferences = prefs
 
     await session.flush()
 
     role_by_user = {
         adm.id: "administrator",
-        sup.id: "supervisor",
-        rec_a.id: "recruiter",
-        rec_b.id: "recruiter",
-        hr.id: "hr_officer",
+        sup.id: "employee",
+        rec_a.id: "employee",
+        rec_b.id: "employee",
+        hr.id: "employee",
     }
     for uid, r in role_by_user.items():
         await _ensure_membership(session, user_id=uid, tenant_id=tid, role=r)

@@ -40,6 +40,7 @@ export async function fetchUserDetail(userId: string, opts?: { tenantId?: string
 export async function createUserInvite(payload: {
   email: string
   role: UserRole
+  preset_id?: string | null
   supervisor_id?: string | null
   company_ids?: string[]
   expires_in_hours?: number
@@ -61,6 +62,7 @@ export async function revokeUserInvite(inviteId: string, opts?: { tenantId?: str
 export async function createTenantUser(payload: {
   email: string
   role: UserRole
+  preset_id?: string | null
   full_name?: string | null
   short_id?: string | null
   password?: string | null
@@ -99,10 +101,13 @@ export async function updateUserCompanies(
 export async function changeUserRole(
   userId: string,
   role: UserRole,
-  opts?: { tenantId?: string },
+  opts?: { tenantId?: string; preset_id?: string | null },
 ): Promise<AdminUser> {
   const client = resolveClient(opts?.tenantId)
-  const { data } = await client.patch(`/admin/users/${userId}/role`, { role })
+  const { data } = await client.patch(`/admin/users/${userId}/role`, {
+    role,
+    preset_id: opts?.preset_id ?? undefined,
+  })
   return data as AdminUser
 }
 

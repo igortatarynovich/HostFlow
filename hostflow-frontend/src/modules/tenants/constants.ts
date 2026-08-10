@@ -24,6 +24,7 @@ export const MODULE_LABELS: Record<keyof TenantModuleSettings, string> = {
   leads: 'app.platform.tenants.modules.items.leads',
   services: 'app.platform.tenants.modules.items.services',
   client_portal: 'app.platform.tenants.modules.items.client_portal',
+  hr: 'app.platform.tenants.modules.items.hr',
 };
 
 export const SEAT_STATUS_BADGE: Record<SeatRequest['status'], string> = {

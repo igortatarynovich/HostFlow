@@ -29,6 +29,14 @@ jobs:
       - name: Scan backend/app for dynamic SQL literals
         run: python3 backend/scripts/check_sql_fstring_text.py
 
+  rbac-job-title-role-lint:
+    name: ADR-036 no new job-title Role.*
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ban new Role.<job_title> outside shim / inventory baseline
+        run: python3 scripts/rbac/check_no_new_job_title_roles.py
+
   no-raw-emit-security-event:
     name: No raw emit_security_event( outside allowlist
     runs-on: ubuntu-latest

@@ -79,10 +79,16 @@ export type BillingPortalLink = {
 }
 
 export type BillingUsage = {
-  recruiter_count: number
-  supervisor_count: number
-  client_manager_count: number
+  administrator_count?: number
+  employee_count?: number
   viewer_count: number
+  portal_guest_count?: number
+  /** @deprecated alias of employee_count */
+  recruiter_count: number
+  /** @deprecated alias of administrator_count */
+  supervisor_count: number
+  /** @deprecated alias of portal_guest_count */
+  client_manager_count: number
   storage_used_gb: number
   leads_created_this_month: number
   candidates_active_count: number

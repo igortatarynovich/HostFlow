@@ -14,6 +14,7 @@ import { RiskDigestPanel } from '../modules/workHub/RiskDigestPanel'
 import { useWorkHubProfile } from '../modules/workHub/useWorkHubProfile'
 import type { WorkHubSection } from '../modules/workHub/profile'
 import { usePermissions } from '../hooks/usePermissions'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import { PageHeader } from '../components/nav/PageHeader'
@@ -79,7 +80,7 @@ type ActionRow = {
 export default function WorkHubPage() {
   const { t } = useI18n()
   const { me } = useAuth()
-  const { can } = usePermissions()
+  const { can, rawRole, presetId } = usePermissions()
   const profile = useWorkHubProfile()
   const [ops, setOps] = useState<OpsCounters | null>(null)
   const [opsLoading, setOpsLoading] = useState(true)
@@ -143,9 +144,11 @@ export default function WorkHubPage() {
   const showLeads = can('leads.view')
   const showTasks = can('notifications.view')
   const showRiskDigest = useMemo(() => {
-    const r = String((me as { role?: string })?.role ?? '').toLowerCase()
-    return r === 'superadmin' || r === 'administrator' || r === 'supervisor'
-  }, [(me as { role?: string })?.role])
+    return canUseTeamOverviewLane({
+      role: rawRole || (me as { role?: string })?.role,
+      presetId,
+    })
+  }, [me, rawRole, presetId])
   const dataLoading = opsLoading || (showCandidates && insightsLoading)
 
   const bottleneckSum = useMemo(() => {

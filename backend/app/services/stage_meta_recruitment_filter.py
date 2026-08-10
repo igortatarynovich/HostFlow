@@ -8,6 +8,12 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx
+from backend.app.auth.trust_roles import (
+    TrustRole,
+    is_hr_workspace_actor,
+    is_portal_actor,
+    normalize_trust_role,
+)
 from backend.app.constants.stages import (
     CLIENT_HANDOFF_VISIBLE_STAGE_CODES,
     INTERNAL_HR_HANDOFF_VISIBLE_STAGE_CODES,
@@ -21,8 +27,19 @@ from backend.app.services.tenant_links import list_links_for_agency
 
 # Роли «рекрутинг» — воронка до передачи (+ исключения из констант скрытия).
 RECRUITMENT_PIPELINE_STAGE_FILTER_ROLES: frozenset[str] = frozenset(
-    {"recruiter", "supervisor", "viewer"}
+    {"employee", "recruiter", "supervisor", "viewer"}  # trust + legacy
 )
+
+def _is_recruitment_pipeline_actor(role: str, access_context: str | None = None) -> bool:
+    r = (role or "").strip().lower()
+    if r in RECRUITMENT_PIPELINE_STAGE_FILTER_ROLES:
+        return True
+    trust = normalize_trust_role(r)
+    if trust == TrustRole.employee.value and not is_hr_workspace_actor(r):
+        return True
+    if trust == TrustRole.viewer.value and not is_portal_actor(r, access_context):
+        return True
+    return False
 
 STAGE_VISIBILITY_RECRUITMENT = "recruitment_handoff"
 STAGE_VISIBILITY_INTERNAL_HR = "internal_hr_handoff"
@@ -152,14 +169,14 @@ async def apply_handoff_stage_meta_for_user(
     if role in (UserRole.administrator.value, UserRole.superadmin.value):
         return payload
 
-    if role in RECRUITMENT_PIPELINE_STAGE_FILTER_ROLES:
+    if _is_recruitment_pipeline_actor(role, getattr(user, "access_context", None)):
         return filter_meta_stages_payload(
             payload,
             code_allowed=_code_ok_for_recruitment,
             visibility_mode=STAGE_VISIBILITY_RECRUITMENT,
         )
 
-    if role == UserRole.hr_officer.value:
+    if is_hr_workspace_actor(role):
         merged = merge_internal_hr_lane_into_funnel_order(payload)
         return filter_meta_stages_payload(
             merged,
@@ -167,7 +184,7 @@ async def apply_handoff_stage_meta_for_user(
             visibility_mode=STAGE_VISIBILITY_INTERNAL_HR,
         )
 
-    if role in (UserRole.client_processor.value, UserRole.client_manager.value):
+    if is_portal_actor(role, getattr(user, "access_context", None)):
         return filter_meta_stages_payload(
             payload,
             code_allowed=_make_allowed_predicate(CLIENT_HANDOFF_VISIBLE_STAGE_CODES),
@@ -233,7 +250,7 @@ async def enforce_agency_handoff_stage_change_allowed(
             if codes:
                 allowed_funnel = {str(c).strip().lower() for c in codes}
 
-    if role in RECRUITMENT_PIPELINE_STAGE_FILTER_ROLES:
+    if _is_recruitment_pipeline_actor(role, getattr(user, "access_context", None)):
         code_l = code.lower()
         if allowed_funnel is not None and code_l in allowed_funnel:
             return
@@ -244,7 +261,7 @@ async def enforce_agency_handoff_stage_change_allowed(
             )
         return
 
-    if role == UserRole.hr_officer.value:
+    if is_hr_workspace_actor(role):
         pred = _make_allowed_predicate(INTERNAL_HR_HANDOFF_VISIBLE_STAGE_CODES)
         if not pred(code):
             raise HTTPException(
@@ -253,7 +270,7 @@ async def enforce_agency_handoff_stage_change_allowed(
             )
         return
 
-    if role in (UserRole.client_processor.value, UserRole.client_manager.value):
+    if is_portal_actor(role, getattr(user, "access_context", None)):
         pred = _make_allowed_predicate(CLIENT_HANDOFF_VISIBLE_STAGE_CODES)
         if not pred(code):
             raise HTTPException(

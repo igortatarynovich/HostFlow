@@ -37,7 +37,7 @@ async def list_managers(
     db_tenant=Depends(get_db_with_tenant),
     roles: str | None = Query(
         default=None,
-        description="Comma-separated membership roles (default: owner, administrator, supervisor, recruiter).",
+        description="Comma-separated membership roles (default includes employee + legacy recruiter/supervisor).",
     ),
 ):
     """

@@ -53,17 +53,23 @@ export interface WhoAmI {
   is_solo_admin?: boolean;
 }
 
-export type UserRole = 'administrator' | 'supervisor' | 'recruiter' | 'client_manager' | 'client_processor' | 'compliance_officer' | 'hr_officer' | 'viewer';
+export type UserRole = 'superadmin' | 'administrator' | 'employee' | 'viewer';
 export type TenantUserRole = UserRole;
 
 export type TenantType = 'agency' | 'company' | 'platform';
 export type TenantStatus = 'active' | 'suspended' | 'trial';
 
 export interface TenantUsage {
-  recruiter_count: number;
-  supervisor_count: number;
-  client_manager_count: number;
+  administrator_count?: number;
+  employee_count?: number;
   viewer_count: number;
+  portal_guest_count?: number;
+  /** @deprecated alias of employee_count */
+  recruiter_count: number;
+  /** @deprecated alias of administrator_count */
+  supervisor_count: number;
+  /** @deprecated alias of portal_guest_count */
+  client_manager_count: number;
   storage_used_gb: number;
 }
 
@@ -82,6 +88,7 @@ export type TenantModuleSettingsPatch = Partial<TenantModuleSettings>;
 
 export type RoleModuleMatrixRole =
   | 'administrator'
+  | 'employee'
   | 'supervisor'
   | 'recruiter'
   | 'client_manager'

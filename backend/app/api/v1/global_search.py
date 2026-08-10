@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
+from backend.app.auth.deps import Role, get_current_user, UserCtx
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.security.event_taxonomy import (
@@ -21,16 +21,8 @@ from backend.app.services.global_search_v1 import run_global_search_v1
 
 router = APIRouter(prefix="/search", tags=["search"], redirect_slashes=False)
 
-GLOBAL_SEARCH_ROLES = (
-    Role.superadmin,
-    Role.administrator,
-    Role.supervisor,
-    Role.recruiter,
-    Role.viewer,
-    Role.client_manager,
-    Role.client_processor,
-    Role.compliance_officer,
-)
+from backend.app.auth.trust_role_deps import TRUST_READ_ROLES, require_trust_read
+GLOBAL_SEARCH_ROLES = TRUST_READ_ROLES
 
 _GLOBAL_SEARCH_ENTITY_TYPES = (
     "candidate",
@@ -80,7 +72,7 @@ async def global_search(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str | None = Depends(resolve_active_own_company_id_optional),
-    _role: str = Depends(require_roles(*GLOBAL_SEARCH_ROLES)),
+    _role: str = Depends(require_trust_read()),
 ) -> GlobalSearchResponse:
     db, tenant_uuid = db_tenant
     scope = str(scope_tenant_id or tenant_uuid)

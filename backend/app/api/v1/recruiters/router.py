@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services.recruiter_assignment import assign_recruiter as assign_recruiter_service
 
@@ -32,7 +33,7 @@ router = APIRouter(
 @router.post(
     "/assign",
     response_model=AssignRecruiterResponse,
-    dependencies=[Depends(require_roles(Role.admin, Role.manager, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def assign_recruiter_endpoint(
     payload: AssignRecruiterRequest,

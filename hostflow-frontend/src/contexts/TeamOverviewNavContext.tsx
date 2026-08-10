@@ -8,6 +8,7 @@ import {
 
 import { getTeamOverview } from '../api/tenants'
 import type { TeamOverviewResponse } from '../api/types'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 import { usePermissions } from '../hooks/usePermissions'
 
 export type TeamOverviewNavContextValue = {
@@ -24,9 +25,12 @@ export function TeamOverviewNavProvider({
   tenantId,
   children,
 }: PropsWithChildren<{ tenantId: string | null }>) {
-  const { role, can } = usePermissions()
-  const canLoadTeamOverview =
-    role === 'administrator' || role === 'supervisor' || can('admin.users')
+  const { role, can, rawRole, presetId } = usePermissions()
+  const canLoadTeamOverview = canUseTeamOverviewLane({
+    role: rawRole || role,
+    presetId,
+    canAdminUsers: can('admin.users'),
+  })
   const [teamOverview, setTeamOverview] = useState<TeamOverviewResponse | null>(null)
 
   useEffect(() => {

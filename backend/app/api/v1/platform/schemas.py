@@ -58,10 +58,15 @@ class TenantLicenseOut(TenantLicenseBase):
 
 
 class TenantUsageOut(BaseModel):
+    # ADR-036 trust seat counters
+    administrator_count: int = 0
+    employee_count: int = 0
+    viewer_count: int = 0
+    portal_guest_count: int = 0
+    # Legacy aliases (employee→recruiter, administrator→supervisor, portal→client_manager)
     recruiter_count: int = 0
     supervisor_count: int = 0
     client_manager_count: int = 0
-    viewer_count: int = 0
     storage_used_gb: float = 0
     leads_created_this_month: int = 0
     candidates_active_count: int = 0
@@ -99,6 +104,7 @@ class RoleModulePermissions(BaseModel):
 
 class TenantRoleModuleMatrix(BaseModel):
     administrator: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    employee: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
     supervisor: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
     recruiter: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
     client_manager: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
@@ -110,6 +116,7 @@ class TenantRoleModuleMatrix(BaseModel):
 
 class TenantRoleModuleMatrixPatch(BaseModel):
     administrator: Dict[str, RoleModulePermissions] | None = None
+    employee: Dict[str, RoleModulePermissions] | None = None
     supervisor: Dict[str, RoleModulePermissions] | None = None
     recruiter: Dict[str, RoleModulePermissions] | None = None
     client_manager: Dict[str, RoleModulePermissions] | None = None

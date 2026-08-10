@@ -510,14 +510,15 @@ export const DEFAULT_COMMUNICATIONS_SETTINGS: CommunicationsWorkspaceSettings = 
   },
   access: {
     roles: {
-      messages: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
-      email: ['administrator', 'supervisor', 'recruiter', 'client_manager'],
-      calendar: ['administrator', 'supervisor', 'recruiter', 'client_manager'],
-      planner: ['administrator', 'supervisor', 'recruiter', 'client_manager'],
-      teamAvailability: ['administrator', 'supervisor'],
-      myAvailability: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
-      timeOffRequests: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
-      communicationsAdmin: ['administrator', 'supervisor'],
+      // Legacy job/portal strings kept for stored tenant overrides; `employee`/`viewer` are canonical.
+      messages: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
+      email: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager'],
+      calendar: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager'],
+      planner: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager'],
+      teamAvailability: ['administrator', 'employee', 'supervisor'],
+      myAvailability: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
+      timeOffRequests: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
+      communicationsAdmin: ['administrator', 'employee', 'supervisor'],
     },
     usersOverrides: {},
   },

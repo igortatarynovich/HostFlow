@@ -18,7 +18,8 @@ from backend.app.acquisition.ops.source_diagnostics import (
     list_diagnostic_submissions,
     summarize_mapping_drift_alerts,
 )
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.constants.spa_paths import MARKETING_DIAGNOSTICS
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.security.event_taxonomy import (
@@ -39,15 +40,7 @@ router = APIRouter(
 
 _READ = [
     Depends(
-        require_roles(
-            Role.administrator,
-            Role.supervisor,
-            Role.recruiter,
-            Role.client_manager,
-            Role.viewer,
-            Role.hr_officer,
-            Role.superadmin,
-        )
+        require_trust_read()
     )
 ]
 

@@ -1536,15 +1536,26 @@ export default function BillingWorkspacePage() {
         </h3>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <div id="company-slots-usage-card" className="rounded-lg border border-slate-200 p-3 text-sm">
-            {t('app.settings.billing.usage.recruiters', { values: { used: summary?.usage.recruiter_count ?? 0, limit: summary?.license?.max_recruiters ?? 0 },
+            {t('app.settings.billing.usage.employees', {
+              values: {
+                used: summary?.usage.employee_count ?? summary?.usage.recruiter_count ?? 0,
+                limit: summary?.license?.max_recruiters ?? 0,
+              },
             })}
           </div>
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
-            {t('app.settings.billing.usage.supervisors', { values: { used: summary?.usage.supervisor_count ?? 0, limit: summary?.license?.max_supervisors ?? 0 },
+            {t('app.settings.billing.usage.administrators', {
+              values: {
+                used: summary?.usage.administrator_count ?? summary?.usage.supervisor_count ?? 0,
+                limit: summary?.license?.max_supervisors ?? 0,
+              },
             })}
           </div>
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
-            {t('app.settings.billing.usage.client_managers', { values: { used: summary?.usage.client_manager_count ?? 0, limit: summary?.license?.max_client_managers ?? 0 },
+            {t('app.settings.billing.usage.portal_guests', {
+              values: {
+                used: summary?.usage.portal_guest_count ?? summary?.usage.client_manager_count ?? 0,
+              },
             })}
           </div>
           <div className="rounded-lg border border-slate-200 p-3 text-sm">

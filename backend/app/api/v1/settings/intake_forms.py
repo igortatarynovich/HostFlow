@@ -9,7 +9,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services.intake_form_admin_context import (
     build_intake_form_admin_context,
@@ -219,7 +220,7 @@ class IntakeFormMappingTestOut(BaseModel):
 @router.get(
     "/entity-profiles",
     response_model=list[EntityProfileOptionOut],
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_intake_form_entity_profiles(
     ctx: UserCtx = Depends(get_current_user),
@@ -235,7 +236,7 @@ async def list_intake_form_entity_profiles(
 @router.get(
     "/entity-profiles/{profile_code}/fields",
     response_model=EntityProfileFieldsOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_intake_form_entity_profile_fields(
     profile_code: str,
@@ -294,7 +295,7 @@ async def get_intake_form_entity_profile_fields(
 @router.get(
     "/entity-profiles/{profile_code}/presentation-preset",
     response_model=EntityProfilePresentationPresetOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_intake_form_entity_profile_presentation_preset(
     profile_code: str,
@@ -317,7 +318,7 @@ async def get_intake_form_entity_profile_presentation_preset(
 @router.post(
     "",
     response_model=IntakeFormDetailOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_intake_form(
     payload: IntakeFormCreateIn,
@@ -342,7 +343,7 @@ async def create_intake_form(
 @router.get(
     "/{form_id}",
     response_model=IntakeFormDetailOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_intake_form_detail(
     form_id: str,
@@ -359,7 +360,7 @@ async def get_intake_form_detail(
 @router.patch(
     "/{form_id}",
     response_model=IntakeFormDetailOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def patch_intake_form(
     form_id: str,
@@ -387,7 +388,7 @@ async def patch_intake_form(
 @router.put(
     "/{form_id}/presentation",
     response_model=IntakeFormDetailOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def put_intake_form_presentation(
     form_id: str,
@@ -411,7 +412,7 @@ async def put_intake_form_presentation(
 @router.get(
     "/{form_id}/mapping",
     response_model=IntakeFormMappingOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_intake_form_mapping(
     form_id: str,
@@ -428,7 +429,7 @@ async def get_intake_form_mapping(
 @router.put(
     "/{form_id}/mapping",
     response_model=IntakeFormMappingOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def put_intake_form_mapping(
     form_id: str,
@@ -452,7 +453,7 @@ async def put_intake_form_mapping(
 @router.post(
     "/{form_id}/mapping/preview",
     response_model=IntakeFormMappingPreviewOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def post_intake_form_mapping_preview(
     form_id: str,
@@ -477,7 +478,7 @@ async def post_intake_form_mapping_preview(
 @router.post(
     "/{form_id}/mapping/test-ingest",
     response_model=IntakeFormMappingTestOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def post_intake_form_mapping_test_ingest(
     form_id: str,
@@ -502,7 +503,7 @@ async def post_intake_form_mapping_test_ingest(
 @router.post(
     "/{form_id}/smoke-test",
     response_model=IntakeFormSmokeTestOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def smoke_test_intake_form(
     form_id: str,

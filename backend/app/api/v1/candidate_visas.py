@@ -9,7 +9,8 @@ from pydantic import BaseModel
 from sqlalchemy import delete, insert, select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate_children import CandidateVisa
 
@@ -70,7 +71,7 @@ def _visa_to_out(row: CandidateVisa) -> VisaOut:
     "/{candidate_id}/visas",
     response_model=VisaOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_visa(
     candidate_id: uuid.UUID,
@@ -104,7 +105,7 @@ async def create_visa(
 @router.get(
     "/{candidate_id}/visas",
     response_model=list[VisaOut],
-    dependencies=[Depends(require_roles(Role.manager, Role.viewer, Role.admin))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def list_visas(
     candidate_id: uuid.UUID,
@@ -123,7 +124,7 @@ async def list_visas(
 @router.patch(
     "/{candidate_id}/visas/{visa_id}",
     response_model=VisaOut,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def update_visa(
     candidate_id: uuid.UUID,
@@ -178,7 +179,7 @@ async def update_visa(
 @router.delete(
     "/{candidate_id}/visas/{visa_id}",
     status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def delete_visa(
     candidate_id: uuid.UUID,

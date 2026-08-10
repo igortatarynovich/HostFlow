@@ -48,6 +48,11 @@ import {
   USER_STATUS_BADGES,
   USER_STATUS_LABELS,
 } from '../../modules/users/constants'
+import {
+  TRUST_ROLE_LABEL_KEYS,
+  TRUST_ROLE_OPTIONS,
+  toTrustRole,
+} from '../../modules/users/roleOptions'
 import type { DetailTab, AuditState } from '../../modules/users/types'
 import { EMPTY_AUDIT } from '../../modules/users/types'
 import { normalizeList, parseCompanies, extractErrorDetail } from '../../modules/users/utils'
@@ -330,18 +335,18 @@ function UserDetailCard({
                 {t('app.admin.users.detail.fields.role')}
                 <select
                   className="input mt-1"
-                  value={detail.role}
+                  value={toTrustRole(detail.role)}
                   disabled={roleUpdating}
                   onChange={(event) => handleRoleSelect(event.target.value as UserRole)}
                 >
-                  {(Object.keys(ROLE_LABEL_KEYS) as UserRole[]).map((role) => (
+                  {TRUST_ROLE_OPTIONS.map((role) => (
                     <option key={role} value={role}>
-                      {t(ROLE_LABEL_KEYS[role])}
+                      {t(TRUST_ROLE_LABEL_KEYS[role])}
                     </option>
                   ))}
                 </select>
               </label>
-              {detail.role === 'recruiter' && !detail.supervisor_id && (
+              {toTrustRole(detail.role) === 'employee' && !detail.supervisor_id && (
                 <div className="text-[11px] text-amber-600">
                   {t('app.admin.users.errors.supervisor_required_for_recruiter')}
                 </div>
@@ -1181,8 +1186,9 @@ export default function UsersPage() {
           <div className="mt-3 max-h-[520px] space-y-2 overflow-y-auto pr-1">
             {sortedUsers.length ? (
               sortedUsers.map((user) => {
-                const roleKey = ROLE_LABEL_KEYS[user.role] ?? ROLE_LABEL_KEYS.viewer
-                const roleBadge = ROLE_BADGE_CLASSES[user.role] ?? ROLE_BADGE_CLASSES.viewer
+                const trust = toTrustRole(user.role)
+                const roleKey = TRUST_ROLE_LABEL_KEYS[trust] ?? ROLE_LABEL_KEYS.viewer
+                const roleBadge = ROLE_BADGE_CLASSES[trust] ?? ROLE_BADGE_CLASSES.viewer
                 const statusBadge = USER_STATUS_BADGES[user.status]
                 const isSelected = selectedUserId === user.user_id
                 const metaName = user.full_name || user.short_id || notAvailableLabel

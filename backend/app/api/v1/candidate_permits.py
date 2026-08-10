@@ -9,7 +9,8 @@ from pydantic import BaseModel
 from sqlalchemy import delete, select, update, insert, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, get_current_user, UserCtx
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate_children import CandidatePermit
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
@@ -19,9 +20,9 @@ from backend.app.services.candidate_operational_write import ensure_candidate_op
 router = APIRouter(prefix="/candidates", tags=["candidate-permits"], redirect_slashes=False)
 
 RESTRICTED_ROLES = {
-    Role.recruiter.value,
-    Role.supervisor.value,
-    Role.manager.value,
+    Role.employee.value,
+    Role.employee.value,
+    Role.employee.value,
 }
 
 
@@ -76,7 +77,7 @@ def _to_out(row: CandidatePermit) -> PermitOut:
     "/{candidate_id}/permits",
     response_model=PermitOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_permit(
     candidate_id: uuid.UUID,
@@ -123,7 +124,7 @@ async def create_permit(
 @router.get(
     "/{candidate_id}/permits",
     response_model=list[PermitOut],
-    dependencies=[Depends(require_roles(Role.manager, Role.viewer, Role.admin, Role.recruiter))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def list_permits(
     candidate_id: uuid.UUID,
@@ -148,7 +149,7 @@ async def list_permits(
 @router.patch(
     "/{candidate_id}/permits/{permit_id}",
     response_model=PermitOut,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def update_permit(
     candidate_id: uuid.UUID,
@@ -210,7 +211,7 @@ async def update_permit(
 @router.delete(
     "/{candidate_id}/permits/{permit_id}",
     status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def delete_permit(
     candidate_id: uuid.UUID,

@@ -93,8 +93,10 @@ class CreateCandidateIn(BaseModel):
     vacancy_id: Optional[UUID] = None
 
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.auth.trust_roles import is_hr_workspace_actor, is_recruiter_preset_actor, is_team_lead_org_actor
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
-from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
+from backend.app.auth.trust_role_deps import require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, get_current_user, UserCtx
 from backend.app.security.access_events import (
     clip_access_filter_scope,
     emit_access_security_event_v1,
@@ -176,6 +178,7 @@ from backend.app.services.recruitment_application_service import (
 from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    can_override_recruitment_handoff_lock,
     RECRUITMENT_TERMINAL_CLOSE_OVERRIDE,
     AgencyRecruitmentWriteBypass,
     is_recruitment_recruiter_write_locked_by_handoff,
@@ -649,8 +652,8 @@ def _format_actor_label(user: _Any | None, raw_actor: Optional[str]) -> Optional
 
 
 # Compatibility GET list endpoint for frontend
-@router.get("", dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))])
-@router.get("/", include_in_schema=False, dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))])
+@router.get("", dependencies=[Depends(require_trust_read())])
+@router.get("/", include_in_schema=False, dependencies=[Depends(require_trust_read())])
 async def list_candidates(
     response: Response,
     order_by: str = "created_at",
@@ -1503,7 +1506,7 @@ async def list_candidates(
 @router.get(
     "/available-statuses",
     response_model=CandidateListAvailableStatusesOut,
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def candidates_available_statuses(
     scope_tenant_id: UUID | None = Query(
@@ -1561,7 +1564,7 @@ async def candidates_available_statuses(
 @router.get(
     "/no-next-action",
     summary="Operational view: candidates without an active next action (reminder).",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def list_candidates_no_next_action(
     response: Response,
@@ -1704,7 +1707,7 @@ async def list_candidates_no_next_action(
 @router.get(
     "/debug-client-view",
     summary="[Debug] Client view: accepted handoffs to current tenant (same DB as list).",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def debug_client_view(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -1731,7 +1734,7 @@ async def debug_client_view(
 @router.post(
     "/debug-client-view/force-two",
     summary="[Debug] Force only 2 accepted handoffs to current tenant (same as migration 011).",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def debug_force_two_handoffs(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -1779,7 +1782,7 @@ async def debug_force_two_handoffs(
 @router.post(
     "/bulk-stage",
     response_model=List[BulkStageItemOut],
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def bulk_update_stage(
     payload: BulkStageIn,
@@ -1808,7 +1811,7 @@ async def bulk_update_stage(
 @router.post(
     "/bulk-manager",
     response_model=List[BulkManagerItemOut],
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def bulk_update_manager(
     payload: BulkManagerIn,
@@ -1835,7 +1838,7 @@ async def bulk_update_manager(
 @router.post(
     "/bulk-delete",
     response_model=List[BulkDeleteItemOut],
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def bulk_delete_candidates(
     payload: BulkDeleteIn,
@@ -1847,16 +1850,15 @@ async def bulk_delete_candidates(
         return []
 
     # Check permissions - same as single delete
-    if current_user.role == Role.recruiter.value:
+    if is_recruiter_preset_actor(current_user.role, getattr(current_user, "preset_id", None)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Recruiter cannot delete candidates. Create a delete-request instead.",
         )
     if current_user.role not in (
         Role.administrator.value,
-        Role.supervisor.value,
         Role.superadmin.value,
-    ):
+    ) and not is_team_lead_org_actor(current_user.role, getattr(current_user, "preset_id", None)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     acl_raw = await resolve_candidate_acl(db, str(tenant_id), current_user)
@@ -1883,14 +1885,14 @@ async def bulk_delete_candidates(
 @router.post(
     "",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Create candidate",
 )
 @router.post(
     "/",
     status_code=status.HTTP_200_OK,
     include_in_schema=False,
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_candidate(
     payload: CreateCandidateIn,
@@ -1981,7 +1983,7 @@ async def create_candidate(
 # Get candidate by id
 @router.get(
     "/{candidate_id}",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Get candidate by id",
 )
 async def get_candidate(
@@ -2049,7 +2051,7 @@ async def get_candidate(
         agency_can = await can_agency_edit(db, str(candidate_id), tenant_id_str)
         if agency_can:
             out["can_edit"] = True
-        elif user_role_lower == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+        elif is_hr_workspace_actor(user_role_lower) and await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
         ):
             out["can_edit"] = True
@@ -2115,7 +2117,7 @@ async def get_candidate(
 
 @router.get(
     "/{candidate_id}/transfer-readiness",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Transfer Policy readiness report (canonical handoff decision)",
 )
 async def get_candidate_transfer_readiness(
@@ -2146,7 +2148,7 @@ async def get_candidate_transfer_readiness(
 
 @router.get(
     "/{candidate_id}/recruitment-package",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="PR16 dossier-aligned recruitment package readiness",
 )
 async def get_candidate_recruitment_package(
@@ -2191,7 +2193,7 @@ async def get_candidate_recruitment_package(
 @router.get(
     "/{candidate_id}/work-panel",
     response_model=CandidateWorkPanelResponse,
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Work panel bundle (ops profile + reminders + timeline + comms links)",
 )
 async def get_candidate_work_panel(
@@ -2234,7 +2236,7 @@ async def get_candidate_work_panel(
 @router.get(
     "/{candidate_id}/timeline",
     response_model=CandidateTimelineResponse,
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Get candidate unified timeline",
 )
 async def get_candidate_timeline(
@@ -2267,7 +2269,7 @@ async def get_candidate_timeline(
 @router.get(
     "/{candidate_id}/change-log",
     response_model=CandidateChangeLogResponse,
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Get candidate change log (all updates)",
 )
 async def get_candidate_change_log(
@@ -2375,7 +2377,7 @@ def _recruitment_application_to_out(row: RecruitmentApplication) -> RecruitmentA
 @router.get(
     "/{candidate_id}/applications",
     response_model=List[RecruitmentApplicationOut],
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="List recruitment applications (intent) for this candidate",
 )
 async def list_candidate_recruitment_applications(
@@ -2410,7 +2412,7 @@ async def list_candidate_recruitment_applications(
 @router.patch(
     "/{candidate_id}/applications/{application_id}",
     response_model=RecruitmentApplicationOut,
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Update recruitment application status (lifecycle §4)",
 )
 async def patch_candidate_recruitment_application_status(
@@ -2456,7 +2458,7 @@ async def patch_candidate_recruitment_application_status(
 @router.post(
     "/{candidate_id}/applications/{application_id}/switch-vacancy",
     response_model=RecruitmentApplicationOut,
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Switch evaluation to another vacancy (lifecycle §7 — new Application row)",
 )
 async def switch_candidate_recruitment_application_vacancy(
@@ -2504,7 +2506,7 @@ async def switch_candidate_recruitment_application_vacancy(
 @router.post(
     "/{candidate_id}/upload-link",
     response_model=CandidateUploadLinkOut,
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Create or refresh public upload link for candidate",
 )
 async def create_candidate_upload_link(
@@ -2572,7 +2574,7 @@ class NotifyCandidateOut(BaseModel):
 @router.post(
     "/{candidate_id}/notify",
     response_model=NotifyCandidateOut,
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Notify candidate to upload documents",
 )
 async def notify_candidate(
@@ -2646,7 +2648,7 @@ async def notify_candidate(
 # Stage history
 @router.get(
     "/{candidate_id}/stage-history",
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Get candidate stage history",
 )
 async def get_candidate_stage_history(
@@ -2695,7 +2697,7 @@ async def get_candidate_stage_history(
 # Partially update candidate
 @router.patch(
     "/{candidate_id}",
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Partially update candidate",
 )
 async def patch_candidate(
@@ -2715,7 +2717,7 @@ async def patch_candidate(
     )
     acl_raw = await resolve_candidate_acl(db, tenant_id_str, current_user)
     acl: CandidateACL | None = None if acl_raw.unrestricted else acl_raw
-    if acl and str(getattr(current_user, "role", "") or "").strip().lower() == "hr_officer":
+    if acl and is_hr_workspace_actor(str(getattr(current_user, "role", "") or ""), preset_id=getattr(current_user, "preset_id", None)):
         if await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
         ):
@@ -2761,9 +2763,9 @@ async def patch_candidate(
         if operational_locked:
             role_l = str(getattr(current_user, "role", "") or "").strip().lower()
             or_raw = (payload or {}).get("override_reason")
-            if role_l in RECRUITMENT_LOCK_OVERRIDE_ROLES and str(or_raw or "").strip():
+            if can_override_recruitment_handoff_lock(role_l) and str(or_raw or "").strip():
                 recruitment_lock_override_used = True
-            elif role_l == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+            elif is_hr_workspace_actor(role_l) and await agency_candidate_has_internal_hr_handoff_lane(
                 db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
             ):
                 recruitment_lock_override_used = True
@@ -2876,7 +2878,7 @@ async def patch_candidate(
     if (
         not client_tenant
         and recruitment_lock_override_used
-        and str(getattr(current_user, "role", "") or "").strip().lower() == "hr_officer"
+        and is_hr_workspace_actor(str(getattr(current_user, "role", "") or ""), preset_id=getattr(current_user, "preset_id", None))
         and not override_reason
     ):
         override_reason = "internal_hr_handoff_lane"
@@ -2886,7 +2888,9 @@ async def patch_candidate(
 
     if "stage" in data:
         role_lane = str(getattr(current_user, "role", "") or "").strip().lower()
-        if role_lane != "hr_officer":
+        if not is_hr_workspace_actor(
+            role_lane, preset_id=getattr(current_user, "preset_id", None)
+        ):
             from backend.app.services.stage_meta_recruitment_filter import (
                 enforce_agency_handoff_stage_change_allowed,
             )
@@ -2948,7 +2952,7 @@ async def patch_candidate(
         requires_override_reason = (
             recruitment_locked
             or workforce_locked
-            or role_l_owned in RECRUITMENT_LOCK_OVERRIDE_ROLES
+            or can_override_recruitment_handoff_lock(role_l_owned)
         )
         if requires_override_reason:
             raise HTTPException(
@@ -3043,16 +3047,15 @@ async def delete_candidate(
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ) -> Response:
-    if ctx.role == Role.recruiter.value:
+    if is_recruiter_preset_actor(ctx.role, getattr(ctx, "preset_id", None)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Recruiter cannot delete candidates. Create a delete-request instead.",
         )
     if ctx.role not in (
         Role.administrator.value,
-        Role.supervisor.value,
         Role.superadmin.value,
-    ):
+    ) and not is_team_lead_org_actor(ctx.role, getattr(ctx, "preset_id", None)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)

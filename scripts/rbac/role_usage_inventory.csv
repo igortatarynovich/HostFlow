@@ -1,0 +1,1190 @@
+id,surface,path,snippet,legacy_roles,class,target_mapping,risk,status
+TEST-0001,test,backend/tests/test_owner_fk_set_null.py:68,"role=UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-0002,test,backend/tests/test_operating_company_slots_e2e.py:48,"role=UserRole.administrator,",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-0003,test,backend/tests/test_candidate_manager_shadow_write.py:80,"role: UserRole = UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-0004,test,backend/tests/conftest.py:373,"role=UserRole.administrator,",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-0005,test,backend/tests/conftest.py:382,admin.role = UserRole.administrator,administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-0006,test,backend/tests/conftest.py:396,"role=UserRole.viewer,",viewer,TEST,update fixtures/asserts after mapping,L,open
+TEST-0007,test,backend/tests/conftest.py:405,viewer.role = UserRole.viewer,viewer,TEST,update fixtures/asserts after mapping,L,open
+TEST-0008,test,backend/tests/conftest.py:419,"role=UserRole.supervisor,",supervisor,TEST,update fixtures/asserts after mapping,L,open
+TEST-0009,test,backend/tests/conftest.py:428,supervisor.role = UserRole.supervisor,supervisor,TEST,update fixtures/asserts after mapping,L,open
+TEST-0010,test,backend/tests/conftest.py:442,"role=UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-0011,test,backend/tests/conftest.py:452,recruiter.role = UserRole.recruiter,recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-0012,test,backend/tests/conftest.py:467,"role=UserRole.hr_officer,",hr_officer,TEST,update fixtures/asserts after mapping,L,open
+TEST-0013,test,backend/tests/conftest.py:476,hr_officer.role = UserRole.hr_officer,hr_officer,TEST,update fixtures/asserts after mapping,L,open
+TEST-0014,test,backend/tests/test_candidate_assignee_history.py:63,"role: UserRole = UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-0015,test,backend/tests/test_uos_vacancy_follow_up_assignee.py:52,"role: UserRole = UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-0016,test,backend/tests/test_uos_vacancy_follow_up_assignee.py:77,"return await _seed_recruiter(db, tenant_id=tenant_id, role=UserRole.administrator)",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-0017,test,backend/tests/test_vacancy_primary_recruiter_resolver.py:51,"role: UserRole = UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-0018,test,backend/tests/test_vacancy_primary_recruiter_resolver.py:211,"db, tenant_id=tenant_id, role=UserRole.administrator",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-0019,test,backend/tests/test_lead_distribution_ingest.py:17,assert r == {Role.recruiter},recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-0020,test,backend/tests/test_lead_distribution_ingest.py:19,"assert r2 == {Role.supervisor, Role.administrator}",supervisor,TEST,update fixtures/asserts after mapping,L,open
+TEST-0021,test,backend/tests/test_lead_distribution_ingest.py:19,"assert r2 == {Role.supervisor, Role.administrator}",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-0022,test,backend/tests/test_lead_distribution_ingest.py:26,"{""user_id"": ""a"", ""role"": Role.recruiter.value},",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-0023,test,backend/tests/test_lead_distribution_ingest.py:27,"{""user_id"": ""b"", ""role"": Role.supervisor.value},",supervisor,TEST,update fixtures/asserts after mapping,L,open
+TEST-0024,test,backend/tests/test_lead_distribution_ingest.py:29,"out = filter_team_by_pipeline_owner_roles(team, {Role.administrator})",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-0025,test,backend/tests/test_lead_distribution_ingest.py:31,"out2 = filter_team_by_pipeline_owner_roles(team, {Role.recruiter})",recruiter,TEST,update fixtures/asserts after mapping,L,open
+BE-0026,be,backend/scripts/a6_operating_slots_e2e_smoke.py:101,"role=UserRole.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0027,be,backend/app/services/handoff.py:401,"User.role == UserRole.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0028,be,backend/app/services/handoff.py:701,"User.role == UserRole.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0029,be,backend/app/services/users.py:42,"Role.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0030,be,backend/app/services/users.py:43,"Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0031,be,backend/app/services/users.py:44,"Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0032,be,backend/app/services/users.py:48,"""owner"": Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0033,be,backend/app/services/users.py:49,"""admin"": Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0034,be,backend/app/services/users.py:50,"""administrator"": Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0035,be,backend/app/services/users.py:51,"""manager"": Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0036,be,backend/app/services/users.py:52,"""supervisor"": Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0037,be,backend/app/services/users.py:53,"""recruiter"": Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0038,be,backend/app/services/users.py:54,"""hr"": Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0039,be,backend/app/services/users.py:55,"""viewer"": Role.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0040,be,backend/app/services/users.py:56,"""user"": Role.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0041,be,backend/app/services/users.py:57,"""client"": Role.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0042,be,backend/app/services/users.py:58,"""client_manager"": Role.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0043,be,backend/app/services/users.py:59,"""client_processor"": Role.client_processor.value,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0044,be,backend/app/services/users.py:60,"""processor"": Role.client_processor.value,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0045,be,backend/app/services/users.py:61,"""compliance_officer"": Role.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0046,be,backend/app/services/users.py:62,"""compliance"": Role.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0047,be,backend/app/services/users.py:63,"""docs_officer"": Role.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0048,be,backend/app/services/users.py:64,"""hr_officer"": Role.hr_officer.value,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0049,be,backend/app/services/users.py:65,"""people_ops"": Role.hr_officer.value,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0050,be,backend/app/services/users.py:66,"""superadmin"": Role.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0051,be,backend/app/services/users.py:117,"Role.recruiter.value: ""max_recruiters"",",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0052,be,backend/app/services/users.py:118,"Role.compliance_officer.value: ""max_recruiters"",",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0053,be,backend/app/services/users.py:119,"Role.hr_officer.value: ""max_recruiters"",",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0054,be,backend/app/services/users.py:120,"Role.supervisor.value: ""max_supervisors"",",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0055,be,backend/app/services/users.py:121,"Role.client_manager.value: ""max_client_managers"",",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0056,be,backend/app/services/users.py:122,"Role.client_processor.value: ""max_client_managers"",",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0057,be,backend/app/services/users.py:123,"Role.viewer.value: ""max_viewers"",",viewer,TRUST,keep canonical trust role,M,open
+BE-0058,be,backend/app/services/users.py:304,"Role.viewer.value: Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0059,be,backend/app/services/users.py:304,"Role.viewer.value: Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0060,be,backend/app/services/users.py:305,"Role.recruiter.value: Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0061,be,backend/app/services/users.py:305,"Role.recruiter.value: Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0062,be,backend/app/services/users.py:306,"Role.supervisor.value: Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0063,be,backend/app/services/users.py:306,"Role.supervisor.value: Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0064,be,backend/app/services/users.py:307,"Role.administrator.value: Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0065,be,backend/app/services/users.py:307,"Role.administrator.value: Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0066,be,backend/app/services/users.py:308,"Role.client_manager.value: Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0067,be,backend/app/services/users.py:308,"Role.client_manager.value: Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0068,be,backend/app/services/users.py:309,"Role.client_processor.value: Role.client_processor,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0069,be,backend/app/services/users.py:309,"Role.client_processor.value: Role.client_processor,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0070,be,backend/app/services/users.py:310,"Role.compliance_officer.value: Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0071,be,backend/app/services/users.py:310,"Role.compliance_officer.value: Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0072,be,backend/app/services/users.py:311,"Role.hr_officer.value: Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0073,be,backend/app/services/users.py:311,"Role.hr_officer.value: Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0074,be,backend/app/services/users.py:312,"Role.superadmin.value: Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0075,be,backend/app/services/users.py:312,"Role.superadmin.value: Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0076,be,backend/app/services/users.py:314,"user.role = mapping.get(tenant_role, Role.viewer)",viewer,TRUST,keep canonical trust role,M,open
+BE-0077,be,backend/app/services/users.py:676,if normalized_role == Role.recruiter.value:,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0078,be,backend/app/services/users.py:842,if normalized_role == Role.recruiter.value:,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0079,be,backend/app/services/users.py:1574,if user.role == Role.supervisor:,supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0080,be,backend/app/services/users.py:1669,elif invite.role == Role.recruiter.value:,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0081,be,backend/app/services/users.py:1743,"Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0082,be,backend/app/services/users.py:1744,"Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0083,be,backend/app/services/users.py:1745,"Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0084,be,backend/app/services/users.py:2008,"return role in (Role.administrator, Role.superadmin)",administrator,TRUST,keep canonical trust role,M,open
+BE-0085,be,backend/app/services/users.py:2008,"return role in (Role.administrator, Role.superadmin)",superadmin,TRUST,keep canonical trust role,M,open
+BE-0086,be,backend/app/services/document_dossier_access.py:63,"if r in (Role.administrator.value, Role.supervisor.value):",administrator,TRUST,keep canonical trust role,M,open
+BE-0087,be,backend/app/services/document_dossier_access.py:63,"if r in (Role.administrator.value, Role.supervisor.value):",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0088,be,backend/app/services/document_dossier_access.py:65,if r == Role.hr_officer.value:,hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0089,be,backend/app/services/document_dossier_access.py:67,"if r in (Role.recruiter.value, Role.compliance_officer.value):",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0090,be,backend/app/services/document_dossier_access.py:67,"if r in (Role.recruiter.value, Role.compliance_officer.value):",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0091,be,backend/app/services/document_dossier_access.py:69,"if r in (Role.client_manager.value, Role.client_processor.value):",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0092,be,backend/app/services/document_dossier_access.py:69,"if r in (Role.client_manager.value, Role.client_processor.value):",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0093,be,backend/app/services/document_dossier_access.py:78,if r == Role.hr_officer.value:,hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0094,be,backend/app/services/global_search_v1.py:258,is_platform_superadmin = user_role_lower == Role.superadmin.value and not client_tenant,superadmin,TRUST,keep canonical trust role,M,open
+BE-0095,be,backend/app/services/global_search_v1.py:365,"return r not in (Role.client_manager.value, Role.client_processor.value)",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0096,be,backend/app/services/global_search_v1.py:365,"return r not in (Role.client_manager.value, Role.client_processor.value)",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0097,be,backend/app/services/handoff_snapshot_acl.py:23,if role == Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0098,be,backend/app/services/handoff_snapshot_acl.py:29,"client_roles = {Role.client_processor.value, Role.client_manager.value}",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0099,be,backend/app/services/handoff_snapshot_acl.py:29,"client_roles = {Role.client_processor.value, Role.client_manager.value}",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0100,be,backend/app/services/handoff_snapshot_acl.py:31,"Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0101,be,backend/app/services/handoff_snapshot_acl.py:32,"Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0102,be,backend/app/services/handoff_snapshot_acl.py:33,"Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0103,be,backend/app/services/handoff_snapshot_acl.py:34,"Role.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0104,be,backend/app/services/handoff_snapshot_acl.py:40,if role == Role.hr_officer.value:,hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0105,be,backend/app/services/communications_scheduler.py:519,"User.role.in_([Role.superadmin.value, Role.administrator.value, Role.supervisor.value]),",superadmin,TRUST,keep canonical trust role,M,open
+BE-0106,be,backend/app/services/communications_scheduler.py:519,"User.role.in_([Role.superadmin.value, Role.administrator.value, Role.supervisor.value]),",administrator,TRUST,keep canonical trust role,M,open
+BE-0107,be,backend/app/services/communications_scheduler.py:519,"User.role.in_([Role.superadmin.value, Role.administrator.value, Role.supervisor.value]),",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0108,be,backend/app/services/lead_distribution.py:53,out.add(Role.recruiter),recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0109,be,backend/app/services/lead_distribution.py:55,out.add(Role.supervisor),supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0110,be,backend/app/services/lead_distribution.py:57,out.add(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0111,be,backend/app/services/lead_distribution.py:207,"User.role == Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0112,be,backend/app/services/lead_distribution.py:208,"User.role == Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0113,be,backend/app/services/lead_distribution.py:209,"User.role == Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0114,be,backend/app/services/recruitment_setup_readiness.py:522,"User.role == Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0115,be,backend/app/services/recruitment_lead_assignee.py:81,"User.role == UserRole.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0116,be,backend/app/services/hr_operational_alerts.py:138,"hr_ids = await _user_ids_for_roles(db, tenant_id=tid, roles=(UserRole.hr_officer,))",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0117,be,backend/app/services/hr_operational_alerts.py:139,"sup_ids = await _user_ids_for_roles(db, tenant_id=tid, roles=(UserRole.supervisor,))",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0118,be,backend/app/services/communications_access.py:112,if role == Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0119,be,backend/app/services/stage_meta_recruitment_filter.py:152,"if role in (UserRole.administrator.value, UserRole.superadmin.value):",administrator,TRUST,keep canonical trust role,M,open
+BE-0120,be,backend/app/services/stage_meta_recruitment_filter.py:152,"if role in (UserRole.administrator.value, UserRole.superadmin.value):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0121,be,backend/app/services/stage_meta_recruitment_filter.py:162,if role == UserRole.hr_officer.value:,hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0122,be,backend/app/services/stage_meta_recruitment_filter.py:170,"if role in (UserRole.client_processor.value, UserRole.client_manager.value):",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0123,be,backend/app/services/stage_meta_recruitment_filter.py:170,"if role in (UserRole.client_processor.value, UserRole.client_manager.value):",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0124,be,backend/app/services/stage_meta_recruitment_filter.py:207,"if role in (UserRole.administrator.value, UserRole.superadmin.value):",administrator,TRUST,keep canonical trust role,M,open
+BE-0125,be,backend/app/services/stage_meta_recruitment_filter.py:207,"if role in (UserRole.administrator.value, UserRole.superadmin.value):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0126,be,backend/app/services/stage_meta_recruitment_filter.py:218,if role == UserRole.hr_officer.value:,hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0127,be,backend/app/services/stage_meta_recruitment_filter.py:227,"if role in (UserRole.client_processor.value, UserRole.client_manager.value):",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0128,be,backend/app/services/stage_meta_recruitment_filter.py:227,"if role in (UserRole.client_processor.value, UserRole.client_manager.value):",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0129,be,backend/app/services/recruiter_assignment.py:198,"recruiter_alias.role == UserRole.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0130,be,backend/app/services/recruiter_assignment.py:248,"user_alias.role.in_([UserRole.supervisor, UserRole.administrator]),",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0131,be,backend/app/services/recruiter_assignment.py:248,"user_alias.role.in_([UserRole.supervisor, UserRole.administrator]),",administrator,TRUST,keep canonical trust role,M,open
+BE-0132,be,backend/app/services/recruiter_assignment.py:271,"User.role == UserRole.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0133,be,backend/app/services/candidate_deletion.py:53,if requester.role != Role.recruiter:,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0134,be,backend/app/services/candidate_deletion.py:217,"if actor.role not in (Role.administrator, Role.supervisor):",administrator,TRUST,keep canonical trust role,M,open
+BE-0135,be,backend/app/services/candidate_deletion.py:217,"if actor.role not in (Role.administrator, Role.supervisor):",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0136,be,backend/app/services/candidate_deletion.py:220,if actor.role == Role.supervisor and actor.id != request.supervisor_id:,supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0137,be,backend/app/auth/trust_roles.py:25,"""superadmin"": TrustRole.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0138,be,backend/app/auth/trust_roles.py:26,"""super_admin"": TrustRole.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0139,be,backend/app/auth/trust_roles.py:27,"""administrator"": TrustRole.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0140,be,backend/app/auth/trust_roles.py:28,"""admin"": TrustRole.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0141,be,backend/app/auth/trust_roles.py:29,"""owner"": TrustRole.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0142,be,backend/app/auth/trust_roles.py:30,"""employee"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0143,be,backend/app/auth/trust_roles.py:31,"""recruiter"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0144,be,backend/app/auth/trust_roles.py:32,"""supervisor"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0145,be,backend/app/auth/trust_roles.py:33,"""manager"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0146,be,backend/app/auth/trust_roles.py:34,"""lead"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0147,be,backend/app/auth/trust_roles.py:35,"""hr"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0148,be,backend/app/auth/trust_roles.py:36,"""hr_officer"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0149,be,backend/app/auth/trust_roles.py:37,"""people_ops"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0150,be,backend/app/auth/trust_roles.py:38,"""compliance_officer"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0151,be,backend/app/auth/trust_roles.py:39,"""compliance"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0152,be,backend/app/auth/trust_roles.py:40,"""docs_officer"": TrustRole.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0153,be,backend/app/auth/trust_roles.py:41,"""viewer"": TrustRole.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0154,be,backend/app/auth/trust_roles.py:42,"""user"": TrustRole.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0155,be,backend/app/auth/trust_roles.py:43,"""client_manager"": TrustRole.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0156,be,backend/app/auth/trust_roles.py:44,"""client_processor"": TrustRole.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0157,be,backend/app/auth/trust_roles.py:45,"""client"": TrustRole.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0158,be,backend/app/auth/trust_roles.py:46,"""processor"": TrustRole.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0159,be,backend/app/auth/trust_roles.py:92,return TrustRole.viewer.value,viewer,TRUST,keep canonical trust role,M,open
+BE-0160,be,backend/app/auth/trust_roles.py:93,"return TRUST_ROLE_NORMALIZE.get(raw, TrustRole.viewer.value)",viewer,TRUST,keep canonical trust role,M,open
+BE-0161,be,backend/app/auth/trust_roles.py:160,if r not in MATRIX_EDITABLE_BY_TENANT_ADMIN and normalize_trust_role(r) == TrustRole.administrator.value:,administrator,TRUST,keep canonical trust role,M,open
+BE-0162,be,backend/app/auth/trust_roles.py:168,out.add(TrustRole.employee.value),employee,TRUST,keep canonical trust role,M,open
+BE-0163,be,backend/app/auth/deps.py,require_roles(*allowed: object),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0164,be,backend/app/auth/deps.py:43,"""admin"": Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0165,be,backend/app/auth/deps.py:44,"""owner"": Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0166,be,backend/app/auth/deps.py:45,"""employee"": Role.employee.value,",employee,TRUST,keep canonical trust role,M,open
+BE-0167,be,backend/app/auth/deps.py:46,"""manager"": Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0168,be,backend/app/auth/deps.py:47,"""supervisor"": Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0169,be,backend/app/auth/deps.py:48,"""recruiter"": Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0170,be,backend/app/auth/deps.py:49,"""hr"": Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0171,be,backend/app/auth/deps.py:50,"""user"": Role.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0172,be,backend/app/auth/deps.py:51,"""viewer"": Role.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0173,be,backend/app/auth/deps.py:52,"""client"": Role.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0174,be,backend/app/auth/deps.py:53,"""client_manager"": Role.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0175,be,backend/app/auth/deps.py:54,"""client_processor"": Role.client_processor.value,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0176,be,backend/app/auth/deps.py:55,"""processor"": Role.client_processor.value,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0177,be,backend/app/auth/deps.py:56,"""compliance_officer"": Role.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0178,be,backend/app/auth/deps.py:57,"""compliance"": Role.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0179,be,backend/app/auth/deps.py:58,"""docs_officer"": Role.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0180,be,backend/app/auth/deps.py:59,"""hr_officer"": Role.hr_officer.value,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0181,be,backend/app/auth/deps.py:60,"""people_ops"": Role.hr_officer.value,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0182,be,backend/app/auth/deps.py:61,"""superadmin"": Role.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0183,be,backend/app/auth/deps.py:91,role = (raw_role or Role.viewer.value).strip().lower(),viewer,TRUST,keep canonical trust role,M,open
+BE-0184,be,backend/app/auth/deps.py:93,"role = ROLE_ALIASES.get(role, Role.viewer.value)",viewer,TRUST,keep canonical trust role,M,open
+BE-0185,be,backend/app/auth/deps.py:257,"if ur in {Role.superadmin.value, Role.administrator.value}:",superadmin,TRUST,keep canonical trust role,M,open
+BE-0186,be,backend/app/auth/deps.py:257,"if ur in {Role.superadmin.value, Role.administrator.value}:",administrator,TRUST,keep canonical trust role,M,open
+BE-0187,be,backend/app/auth/deps.py:270,if u.role != Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0188,be,backend/app/auth/fleet_access.py:17,"Role.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0189,be,backend/app/auth/fleet_access.py:18,"Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0190,be,backend/app/auth/fleet_access.py:19,"Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0191,be,backend/app/auth/fleet_access.py:20,"Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0192,be,backend/app/auth/fleet_access.py:21,"Role.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0193,be,backend/app/auth/fleet_access.py:22,"Role.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0194,be,backend/app/auth/fleet_access.py:23,"Role.client_processor.value,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0195,be,backend/app/auth/fleet_access.py:24,"Role.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0196,be,backend/app/auth/fleet_access.py:36,if r == Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0197,be,backend/app/auth/tenant_scope.py:25,if role == Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0198,be,backend/app/auth/router.py:57,"""owner"": UserRole.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0199,be,backend/app/auth/router.py:58,"""admin"": UserRole.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0200,be,backend/app/auth/router.py:59,"""administrator"": UserRole.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0201,be,backend/app/auth/router.py:60,"""manager"": UserRole.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0202,be,backend/app/auth/router.py:61,"""supervisor"": UserRole.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0203,be,backend/app/auth/router.py:62,"""recruiter"": UserRole.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0204,be,backend/app/auth/router.py:63,"""viewer"": UserRole.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0205,be,backend/app/auth/router.py:64,"""client_manager"": UserRole.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0206,be,backend/app/auth/router.py:65,"""client"": UserRole.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0207,be,backend/app/auth/router.py:66,"""client_processor"": UserRole.client_processor.value,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0208,be,backend/app/auth/router.py:67,"""processor"": UserRole.client_processor.value,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0209,be,backend/app/auth/router.py:68,"""superadmin"": UserRole.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0210,be,backend/app/auth/router.py:69,"""hr_officer"": UserRole.hr_officer.value,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0211,be,backend/app/auth/router.py:70,"""people_ops"": UserRole.hr_officer.value,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0212,be,backend/app/auth/router.py:108,if raw_user_role == UserRole.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0213,be,backend/app/auth/router.py:109,return UserRole.superadmin.value,superadmin,TRUST,keep canonical trust role,M,open
+BE-0214,be,backend/app/auth/router.py:110,"if isinstance(user_role, UserRole) and user_role == UserRole.superadmin:",superadmin,TRUST,keep canonical trust role,M,open
+BE-0215,be,backend/app/auth/router.py:111,return UserRole.superadmin.value,superadmin,TRUST,keep canonical trust role,M,open
+BE-0216,be,backend/app/auth/router.py:118,raw = str(user_role or UserRole.viewer.value).lower(),viewer,TRUST,keep canonical trust role,M,open
+BE-0217,be,backend/app/auth/router.py:119,"return _ROLE_MAP.get(raw, UserRole.viewer.value)",viewer,TRUST,keep canonical trust role,M,open
+BE-0218,be,backend/app/auth/router.py:250,"role=UserRole.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0219,be,backend/app/auth/router.py:276,"role=UserRole.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0220,be,backend/app/auth/router.py:288,"""role"": UserRole.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0221,be,backend/app/auth/hr_workforce_access.py:25,if r == Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0222,be,backend/app/auth/hiring_workspace_roles.py:17,"Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0223,be,backend/app/auth/hiring_workspace_roles.py:18,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0224,be,backend/app/auth/hiring_workspace_roles.py:19,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0225,be,backend/app/auth/hiring_workspace_roles.py:20,"Role.manager,",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0226,be,backend/app/auth/hiring_workspace_roles.py:21,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0227,be,backend/app/auth/hiring_workspace_roles.py:22,"Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0228,be,backend/app/auth/hiring_workspace_roles.py:23,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0229,be,backend/app/auth/hiring_workspace_roles.py:24,"Role.client_processor,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0230,be,backend/app/auth/hiring_workspace_roles.py:25,"Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0231,be,backend/app/auth/hiring_workspace_roles.py:26,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0232,be,backend/app/auth/hiring_workspace_roles.py:30,"Role.manager,",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0233,be,backend/app/auth/hiring_workspace_roles.py:31,"Role.admin,",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0234,be,backend/app/auth/hiring_workspace_roles.py:32,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0235,be,backend/app/auth/hiring_workspace_roles.py:33,"Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0236,be,backend/app/auth/hiring_workspace_roles.py:34,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0237,be,backend/app/auth/hiring_workspace_roles.py:35,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0238,be,backend/app/auth/hiring_workspace_roles.py:40,"HIRING_CANDIDATE_PROFILE_WRITE_ROLES = (Role.admin, Role.supervisor)",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0239,be,backend/app/auth/hiring_workspace_roles.py:40,"HIRING_CANDIDATE_PROFILE_WRITE_ROLES = (Role.admin, Role.supervisor)",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0240,be,backend/app/auth/module_gate.py:35,"Role.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0241,be,backend/app/auth/module_gate.py:36,"Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0242,be,backend/app/auth/module_gate.py:102,if role == Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0243,be,backend/app/auth/module_gate.py:137,if role not in _ADMIN_ROLES and role != Role.supervisor.value:,supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0244,be,backend/app/auth/module_gate.py:150,"Role.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0245,be,backend/app/auth/module_gate.py:151,"Role.client_processor.value,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0246,be,backend/app/auth/module_gate.py:178,"Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0247,be,backend/app/auth/module_gate.py:179,"Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0248,be,backend/app/auth/module_gate.py:180,"Role.hr_officer.value,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0249,be,backend/app/auth/module_gate.py:181,"Role.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0250,be,backend/app/auth/module_gate.py:182,"Role.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0251,be,backend/app/jobs/hr_operational_alerts_dispatch.py:28,"Role.superadmin.value: 0,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0252,be,backend/app/jobs/hr_operational_alerts_dispatch.py:29,"Role.administrator.value: 1,",administrator,TRUST,keep canonical trust role,M,open
+BE-0253,be,backend/app/jobs/hr_operational_alerts_dispatch.py:30,"Role.hr_officer.value: 2,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0254,be,backend/app/jobs/hr_operational_alerts_dispatch.py:31,"Role.supervisor.value: 3,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0255,be,backend/app/jobs/hr_operational_alerts_dispatch.py:35,"Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0256,be,backend/app/jobs/hr_operational_alerts_dispatch.py:36,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0257,be,backend/app/jobs/hr_operational_alerts_dispatch.py:37,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0258,be,backend/app/jobs/hr_operational_alerts_dispatch.py:38,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0259,be,backend/app/security/api_tenant_context.py:59,if role == Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0260,be,backend/app/models/user.py:58,"default=Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0261,be,backend/app/modules/documents/router.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0262,be,backend/app/modules/documents/router.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0263,be,backend/app/modules/documents/router.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0264,be,backend/app/modules/documents/router.py,"require_roles(Role.supervisor, Role.administrator)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0265,be,backend/app/modules/documents/router.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0266,be,backend/app/modules/leads/pipeline_hooks.py:123,"audience=EventAudience(roles=[Role.administrator, Role.supervisor]),",administrator,TRUST,keep canonical trust role,M,open
+BE-0267,be,backend/app/modules/leads/pipeline_hooks.py:123,"audience=EventAudience(roles=[Role.administrator, Role.supervisor]),",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0268,be,backend/app/modules/leads/lead_questionnaire_invite.py:739,"else EventAudience(roles=(Role.supervisor, Role.administrator))",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0269,be,backend/app/modules/leads/lead_questionnaire_invite.py:739,"else EventAudience(roles=(Role.supervisor, Role.administrator))",administrator,TRUST,keep canonical trust role,M,open
+BE-0270,be,backend/app/modules/leads/next_action_api.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0271,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0272,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter)","admin,manager,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0273,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor)","admin,manager,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0274,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0275,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0276,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)","admin,manager,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0277,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)","admin,manager,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0278,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0279,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0280,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0281,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0282,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0283,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0284,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0285,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0286,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0287,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0288,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0289,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor, Role.viewer)","admin,manager,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0290,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)","admin,manager,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0291,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)","admin,manager,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0292,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.supervisor)","admin,manager,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0293,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor)","admin,manager,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0294,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0295,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0296,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0297,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0298,be,backend/app/modules/leads/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0299,be,backend/app/modules/leads/router.py:903,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0300,be,backend/app/modules/leads/router.py:903,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0301,be,backend/app/modules/leads/meta_tenant_resolve.py:29,if role != Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0302,be,backend/app/modules/leads/duplicate_resolution.py:505,"audience_roles = [UserRole.administrator, UserRole.supervisor]",administrator,TRUST,keep canonical trust role,M,open
+BE-0303,be,backend/app/modules/leads/duplicate_resolution.py:505,"audience_roles = [UserRole.administrator, UserRole.supervisor]",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0304,be,backend/app/modules/companies/crud.py:1241,"allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},",superadmin,TRUST,keep canonical trust role,M,open
+BE-0305,be,backend/app/modules/companies/crud.py:1241,"allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},",administrator,TRUST,keep canonical trust role,M,open
+BE-0306,be,backend/app/modules/companies/crud.py:1241,"allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0307,be,backend/app/modules/companies/crud.py:1380,"allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},",superadmin,TRUST,keep canonical trust role,M,open
+BE-0308,be,backend/app/modules/companies/crud.py:1380,"allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},",administrator,TRUST,keep canonical trust role,M,open
+BE-0309,be,backend/app/modules/companies/crud.py:1380,"allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0310,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0311,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0312,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0313,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0314,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0315,be,backend/app/modules/companies/router.py,require_roles(Role.admin),admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0316,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0317,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0318,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0319,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0320,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0321,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0322,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0323,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0324,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0325,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0326,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0327,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0328,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0329,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0330,be,backend/app/modules/companies/router.py,"require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0331,be,backend/app/modules/companies/router.py:93,effective_include_archived = include_archived or user_role == Role.superadmin.value,superadmin,TRUST,keep canonical trust role,M,open
+BE-0332,be,backend/app/modules/companies/router.py:94,if user_role == Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-0333,be,backend/app/modules/sales_orders/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter, Role.viewer)","admin,manager,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0334,be,backend/app/modules/sales_orders/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor)","admin,manager,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0335,be,backend/app/modules/client_accounts/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter, Role.viewer)","admin,manager,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0336,be,backend/app/modules/client_accounts/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor)","admin,manager,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0337,be,backend/app/modules/client_accounts/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter, Role.viewer)","admin,manager,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0338,be,backend/app/modules/client_accounts/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor)","admin,manager,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0339,be,backend/app/modules/client_accounts/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter, Role.viewer)","admin,manager,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0340,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0341,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0342,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0343,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0344,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0345,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0346,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0347,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0348,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0349,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0350,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0351,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0352,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0353,be,backend/app/modules/applications/router.py,"require_roles(Role.admin, Role.manager, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0354,be,backend/app/modules/vacancies/router.py,"require_roles(AuthRole.administrator, AuthRole.supervisor, AuthRole.recruiter, AuthRole.viewer)","administrator,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0355,be,backend/app/modules/vacancies/router.py,"require_roles(AuthRole.administrator, AuthRole.supervisor, AuthRole.recruiter)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0356,be,backend/app/modules/vacancies/router.py,"require_roles(AuthRole.administrator, AuthRole.supervisor, AuthRole.recruiter, AuthRole.viewer)","administrator,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0357,be,backend/app/modules/vacancies/router.py,"require_roles(AuthRole.administrator, AuthRole.supervisor, AuthRole.recruiter)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0358,be,backend/app/modules/vacancies/router.py,"require_roles(AuthRole.administrator, AuthRole.supervisor, AuthRole.recruiter)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0359,be,backend/app/modules/vacancies/router.py,require_roles(AuthRole.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0360,be,backend/app/modules/vacancies/router.py,require_roles(AuthRole.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0361,be,backend/app/modules/vacancies/router.py,require_roles(AuthRole.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0362,be,backend/app/modules/leads/service/_processing.py:606,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0363,be,backend/app/modules/leads/service/_processing.py:606,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0364,be,backend/app/modules/leads/service/_processing.py:659,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0365,be,backend/app/modules/leads/service/_processing.py:659,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0366,be,backend/app/modules/leads/service/_processing.py:772,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0367,be,backend/app/modules/leads/service/_processing.py:772,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0368,be,backend/app/modules/leads/service/_processing.py:831,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0369,be,backend/app/modules/leads/service/_processing.py:831,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0370,be,backend/app/modules/leads/service/_processing.py:905,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0371,be,backend/app/modules/leads/service/_processing.py:905,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0372,be,backend/app/modules/leads/service/_processing.py:965,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0373,be,backend/app/modules/leads/service/_processing.py:965,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0374,be,backend/app/modules/leads/service/_processing.py:977,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0375,be,backend/app/modules/leads/service/_processing.py:977,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0376,be,backend/app/modules/leads/service/_processing.py:1058,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0377,be,backend/app/modules/leads/service/_processing.py:1058,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0378,be,backend/app/modules/leads/service/_processing.py:1111,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0379,be,backend/app/modules/leads/service/_processing.py:1111,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0380,be,backend/app/modules/leads/service/intake_vacancy_confirm.py:133,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0381,be,backend/app/modules/leads/service/intake_vacancy_confirm.py:133,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0382,be,backend/app/modules/leads/service/intake_decision.py:440,"roles=[Role.administrator, Role.supervisor],",administrator,TRUST,keep canonical trust role,M,open
+BE-0383,be,backend/app/modules/leads/service/intake_decision.py:440,"roles=[Role.administrator, Role.supervisor],",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0384,be,backend/app/api/v1/company_module_settings.py,"require_roles(Role.administrator, Role.supervisor, Role.hr_officer)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0385,be,backend/app/api/v1/company_module_settings.py,"require_roles(Role.administrator, Role.supervisor, Role.hr_officer)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0386,be,backend/app/api/v1/company_module_settings.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0387,be,backend/app/api/v1/global_search.py,require_roles(*GLOBAL_SEARCH_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0388,be,backend/app/api/v1/global_search.py:25,"Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0389,be,backend/app/api/v1/global_search.py:26,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0390,be,backend/app/api/v1/global_search.py:27,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0391,be,backend/app/api/v1/global_search.py:28,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0392,be,backend/app/api/v1/global_search.py:29,"Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0393,be,backend/app/api/v1/global_search.py:30,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0394,be,backend/app/api/v1/global_search.py:31,"Role.client_processor,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0395,be,backend/app/api/v1/global_search.py:32,"Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0396,be,backend/app/api/v1/candidate_profile.py,"require_roles(Role.manager, Role.admin, Role.client_manager, Role.client_processor)","admin,client_manager,client_processor,manager",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0397,be,backend/app/api/v1/candidate_profile.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0398,be,backend/app/api/v1/candidate_profile.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0399,be,backend/app/api/v1/hr_dashboard.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0400,be,backend/app/api/v1/hr_dashboard.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0401,be,backend/app/api/v1/hr_dashboard.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0402,be,backend/app/api/v1/hr_dashboard.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0403,be,backend/app/api/v1/candidate_permits.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0404,be,backend/app/api/v1/candidate_permits.py,"require_roles(Role.manager, Role.viewer, Role.admin, Role.recruiter)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0405,be,backend/app/api/v1/candidate_permits.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0406,be,backend/app/api/v1/candidate_permits.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0407,be,backend/app/api/v1/candidate_permits.py:22,"Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0408,be,backend/app/api/v1/candidate_permits.py:23,"Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0409,be,backend/app/api/v1/candidate_permits.py:24,"Role.manager.value,",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0410,be,backend/app/api/v1/candidate_employments.py,"require_roles(Role.manager, Role.recruiter, Role.admin, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0411,be,backend/app/api/v1/candidate_employments.py,"require_roles(Role.manager, Role.recruiter, Role.admin)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0412,be,backend/app/api/v1/candidate_employments.py,"require_roles(Role.manager, Role.recruiter, Role.admin)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0413,be,backend/app/api/v1/candidate_employments.py,"require_roles(Role.manager, Role.recruiter, Role.admin)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0414,be,backend/app/api/v1/onboarding.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0415,be,backend/app/api/v1/onboarding.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0416,be,backend/app/api/v1/onboarding.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0417,be,backend/app/api/v1/candidates_delete.py,require_roles(Role.recruiter),recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0418,be,backend/app/api/v1/candidates_delete.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0419,be,backend/app/api/v1/candidates_delete.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0420,be,backend/app/api/v1/candidates_delete.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0421,be,backend/app/api/v1/candidates_delete.py:32,if ctx.role == Role.recruiter.value:,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0422,be,backend/app/api/v1/candidates_delete.py:61,supervisor_filter = ctx.sub if ctx.role == Role.supervisor.value else None,supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0423,be,backend/app/api/v1/hr_inbox.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0424,be,backend/app/api/v1/hr_inbox.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0425,be,backend/app/api/v1/hr_inbox.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0426,be,backend/app/api/v1/hr_inbox.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0427,be,backend/app/api/v1/hr_inbox.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0428,be,backend/app/api/v1/hr_inbox.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0429,be,backend/app/api/v1/hr_inbox.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0430,be,backend/app/api/v1/hr_inbox.py,"require_roles(Role.hr_officer, Role.administrator, Role.supervisor)","administrator,hr_officer,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0431,be,backend/app/api/v1/next_actions.py,"require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)","admin,manager,recruiter,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0432,be,backend/app/api/v1/documents.py,"require_roles(Role.recruiter, Role.manager, Role.admin)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0433,be,backend/app/api/v1/documents.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0434,be,backend/app/api/v1/documents.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0435,be,backend/app/api/v1/documents.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0436,be,backend/app/api/v1/documents.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0437,be,backend/app/api/v1/document_policies.py,"require_roles(Role.admin, Role.supervisor)","admin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0438,be,backend/app/api/v1/document_policies.py,"require_roles(Role.admin, Role.supervisor)","admin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0439,be,backend/app/api/v1/document_policies.py,"require_roles(Role.admin, Role.supervisor)","admin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0440,be,backend/app/api/v1/document_policies.py,"require_roles(Role.admin, Role.supervisor)","admin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0441,be,backend/app/api/v1/candidate_links.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0442,be,backend/app/api/v1/own_companies.py,"require_roles(Role.admin, Role.manager, Role.supervisor, Role.administrator)","admin,administrator,manager,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0443,be,backend/app/api/v1/own_companies.py,"require_roles(Role.admin, Role.manager, Role.supervisor, Role.administrator)","admin,administrator,manager,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0444,be,backend/app/api/v1/candidate_stages.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0445,be,backend/app/api/v1/candidate_stages.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0446,be,backend/app/api/v1/candidate_stages.py,require_roles(Role.admin),admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0447,be,backend/app/api/v1/funnels.py,"require_roles(Role.manager, Role.admin, Role.hr_officer)","admin,hr_officer,manager",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0448,be,backend/app/api/v1/funnels.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0449,be,backend/app/api/v1/funnels.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0450,be,backend/app/api/v1/funnels.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0451,be,backend/app/api/v1/funnels.py,require_roles(Role.admin),admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0452,be,backend/app/api/v1/funnels.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0453,be,backend/app/api/v1/meta.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0454,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0455,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0456,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0457,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0458,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0459,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0460,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0461,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0462,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0463,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0464,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0465,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0466,be,backend/app/api/v1/handoffs.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0467,be,backend/app/api/v1/handoffs.py:47,"HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0468,be,backend/app/api/v1/handoffs.py:47,"HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)",administrator,TRUST,keep canonical trust role,M,open
+BE-0469,be,backend/app/api/v1/handoffs.py:47,"HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0470,be,backend/app/api/v1/legal_documents.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0471,be,backend/app/api/v1/legal_documents.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0472,be,backend/app/api/v1/legal_documents.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0473,be,backend/app/api/v1/legal_documents.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0474,be,backend/app/api/v1/services.py,"require_roles(Role.viewer, Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0475,be,backend/app/api/v1/services.py,"require_roles(Role.administrator, Role.owner, Role.admin)","admin,administrator,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0476,be,backend/app/api/v1/services.py,"require_roles(Role.administrator, Role.owner, Role.admin)","admin,administrator,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0477,be,backend/app/api/v1/services.py,"require_roles(Role.viewer, Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0478,be,backend/app/api/v1/services.py,"require_roles(Role.viewer, Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0479,be,backend/app/api/v1/services.py,"require_roles(Role.viewer, Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0480,be,backend/app/api/v1/services.py,"require_roles(Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0481,be,backend/app/api/v1/services.py,"require_roles(Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0482,be,backend/app/api/v1/services.py,"require_roles(Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0483,be,backend/app/api/v1/services.py,"require_roles(Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0484,be,backend/app/api/v1/services.py,"require_roles(Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0485,be,backend/app/api/v1/services.py,"require_roles(Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0486,be,backend/app/api/v1/services.py,"require_roles(Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0487,be,backend/app/api/v1/services.py,"require_roles(Role.viewer, Role.recruiter, Role.supervisor, Role.administrator)","administrator,recruiter,supervisor,viewer",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0488,be,backend/app/api/v1/candidate_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0489,be,backend/app/api/v1/candidate_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0490,be,backend/app/api/v1/candidate_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0491,be,backend/app/api/v1/candidate_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0492,be,backend/app/api/v1/candidate_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0493,be,backend/app/api/v1/candidate_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0494,be,backend/app/api/v1/candidate_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0495,be,backend/app/api/v1/candidate_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0496,be,backend/app/api/v1/candidate_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0497,be,backend/app/api/v1/candidate_profiles.py:507,"if role in (Role.client_processor.value, Role.client_manager.value):",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0498,be,backend/app/api/v1/candidate_profiles.py:507,"if role in (Role.client_processor.value, Role.client_manager.value):",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0499,be,backend/app/api/v1/candidate_requirements.py,"require_roles(*WRITE_ROLES, Role.viewer, Role.compliance_officer)","compliance_officer,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0500,be,backend/app/api/v1/candidate_requirements.py,"require_roles(*WRITE_ROLES, Role.viewer, Role.compliance_officer)","compliance_officer,viewer",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0501,be,backend/app/api/v1/candidate_requirements.py,require_roles(*WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0502,be,backend/app/api/v1/candidate_requirements.py,require_roles(*WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0503,be,backend/app/api/v1/candidate_requirements.py,require_roles(*WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0504,be,backend/app/api/v1/candidate_requirements.py,require_roles(*WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0505,be,backend/app/api/v1/candidate_requirements.py,require_roles(*WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0506,be,backend/app/api/v1/candidate_requirements.py,require_roles(*WRITE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0507,be,backend/app/api/v1/candidate_requirements.py:36,"WRITE_ROLES = (Role.manager, Role.admin, Role.recruiter, Role.supervisor)",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0508,be,backend/app/api/v1/candidate_requirements.py:36,"WRITE_ROLES = (Role.manager, Role.admin, Role.recruiter, Role.supervisor)",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0509,be,backend/app/api/v1/candidate_requirements.py:36,"WRITE_ROLES = (Role.manager, Role.admin, Role.recruiter, Role.supervisor)",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0510,be,backend/app/api/v1/candidate_requirements.py:36,"WRITE_ROLES = (Role.manager, Role.admin, Role.recruiter, Role.supervisor)",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0511,be,backend/app/api/v1/candidate_requirements.py:38,"Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0512,be,backend/app/api/v1/candidate_requirements.py:39,"Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0513,be,backend/app/api/v1/candidate_requirements.py:40,"Role.manager.value,",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0514,be,backend/app/api/v1/custom_fields.py,"require_roles(Role.admin, Role.supervisor)","admin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0515,be,backend/app/api/v1/custom_fields.py,"require_roles(Role.admin, Role.supervisor)","admin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0516,be,backend/app/api/v1/custom_fields.py,"require_roles(Role.admin, Role.supervisor)","admin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0517,be,backend/app/api/v1/custom_fields.py,"require_roles(Role.admin, Role.supervisor)","admin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0518,be,backend/app/api/v1/custom_fields.py,"require_roles(Role.administrator, Role.supervisor, Role.recruiter)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0519,be,backend/app/api/v1/custom_fields.py,"require_roles(Role.administrator, Role.supervisor, Role.recruiter)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0520,be,backend/app/api/v1/custom_fields.py,"require_roles(Role.administrator, Role.supervisor, Role.recruiter)","administrator,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0521,be,backend/app/api/v1/automation_rules.py,"require_roles(Role.administrator, Role.superadmin, Role.supervisor, Role.manager, Role.admin)","admin,administrator,manager,superadmin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0522,be,backend/app/api/v1/automation_rules.py,"require_roles(Role.administrator, Role.superadmin, Role.supervisor, Role.manager, Role.admin)","admin,administrator,manager,superadmin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0523,be,backend/app/api/v1/automation_rules.py,"require_roles(Role.administrator, Role.superadmin, Role.supervisor, Role.manager, Role.admin)","admin,administrator,manager,superadmin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0524,be,backend/app/api/v1/automation_rules.py,"require_roles(Role.administrator, Role.superadmin, Role.supervisor, Role.manager, Role.admin)","admin,administrator,manager,superadmin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0525,be,backend/app/api/v1/candidate_visas.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0526,be,backend/app/api/v1/candidate_visas.py,"require_roles(Role.manager, Role.viewer, Role.admin)","admin,manager,viewer",ALIAS,normalize via normalize_trust_role,M,open
+BE-0527,be,backend/app/api/v1/candidate_visas.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0528,be,backend/app/api/v1/candidate_visas.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0529,be,backend/app/api/v1/reminders.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-0530,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0531,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0532,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_MUTATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0533,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_MUTATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0534,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_MUTATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0535,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_MUTATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0536,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_MUTATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0537,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_MUTATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0538,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_MUTATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0539,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_MUTATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0540,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_MUTATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0541,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_MUTATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0542,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0543,be,backend/app/api/v1/candidate_documents.py,require_roles(*DOCUMENT_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0544,be,backend/app/api/v1/candidate_documents.py:97,"Role.manager,",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0545,be,backend/app/api/v1/candidate_documents.py:98,"Role.admin,",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0546,be,backend/app/api/v1/candidate_documents.py:99,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0547,be,backend/app/api/v1/candidate_documents.py:100,"Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0548,be,backend/app/api/v1/candidate_documents.py:101,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0549,be,backend/app/api/v1/candidate_documents.py:102,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0550,be,backend/app/api/v1/candidate_documents.py:103,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0551,be,backend/app/api/v1/candidate_documents.py:105,"DOCUMENT_MUTATE_ROLES = (*DOCUMENT_ROLES, Role.client_manager, Role.client_processor)",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0552,be,backend/app/api/v1/candidate_documents.py:105,"DOCUMENT_MUTATE_ROLES = (*DOCUMENT_ROLES, Role.client_manager, Role.client_processor)",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0553,be,backend/app/api/v1/automation_log.py,"require_roles(Role.manager, Role.admin, Role.recruiter, Role.administrator, Role.supervisor, Role.superadmin)","admin,administrator,manager,recruiter,superadmin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0554,be,backend/app/api/v1/notifications.py,"require_roles(Role.supervisor, Role.administrator, Role.superadmin)","administrator,superadmin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0555,be,backend/app/api/public/intake.py:283,"audience=EventAudience(roles=(Role.manager, Role.recruiter)),",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0556,be,backend/app/api/public/intake.py:283,"audience=EventAudience(roles=(Role.manager, Role.recruiter)),",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0557,be,backend/app/api/public/intake.py:1988,"audience=EventAudience(roles=(Role.manager, Role.recruiter)),",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0558,be,backend/app/api/public/intake.py:1988,"audience=EventAudience(roles=(Role.manager, Role.recruiter)),",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0559,be,backend/app/api/public/intake.py:4220,"audience=EventAudience(roles=(Role.manager, Role.recruiter)),",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0560,be,backend/app/api/public/intake.py:4220,"audience=EventAudience(roles=(Role.manager, Role.recruiter)),",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0561,be,backend/app/api/public/intake.py:4628,"roles=None if notify_user_ids else (Role.manager, Role.recruiter),",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0562,be,backend/app/api/public/intake.py:4628,"roles=None if notify_user_ids else (Role.manager, Role.recruiter),",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0563,be,backend/app/api/v1/settings/intake_forms.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0564,be,backend/app/api/v1/settings/intake_forms.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0565,be,backend/app/api/v1/settings/intake_forms.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0566,be,backend/app/api/v1/settings/intake_forms.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0567,be,backend/app/api/v1/settings/intake_forms.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0568,be,backend/app/api/v1/settings/intake_forms.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0569,be,backend/app/api/v1/settings/intake_forms.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0570,be,backend/app/api/v1/settings/intake_forms.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0571,be,backend/app/api/v1/settings/intake_forms.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0572,be,backend/app/api/v1/settings/intake_forms.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0573,be,backend/app/api/v1/settings/intake_forms.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0574,be,backend/app/api/v1/settings/intake_forms.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0575,be,backend/app/api/v1/settings/lead_forms.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0576,be,backend/app/api/v1/settings/lead_forms.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0577,be,backend/app/api/v1/settings/lead_forms.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0578,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0579,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0580,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0581,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0582,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0583,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0584,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0585,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0586,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0587,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0588,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0589,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0590,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0591,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0592,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0593,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0594,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0595,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0596,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0597,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0598,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0599,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0600,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0601,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0602,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0603,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0604,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0605,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0606,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0607,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0608,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0609,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0610,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0611,be,backend/app/api/v1/settings/leads.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0612,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0613,be,backend/app/api/v1/settings/leads.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0614,be,backend/app/api/v1/settings/leads.py:447,include_secret = ctx.role == Role.administrator.value,administrator,TRUST,keep canonical trust role,M,open
+BE-0615,be,backend/app/api/v1/settings/team.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0616,be,backend/app/api/v1/settings/team.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0617,be,backend/app/api/v1/settings/team.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0618,be,backend/app/api/v1/settings/team.py,"require_roles(                 Role.administrator,                 Role.supervisor,                 Role.recruiter,                 Role.client_manager,        ","administrator,client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor,viewer",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0619,be,backend/app/api/v1/settings/team.py,"require_roles(Role.administrator, Role.supervisor, Role.manager, Role.recruiter)","administrator,manager,recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0620,be,backend/app/api/v1/settings/team.py,"require_roles(Role.administrator, Role.supervisor, Role.manager)","administrator,manager,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0621,be,backend/app/api/v1/settings/team.py,"require_roles(Role.administrator, Role.supervisor, Role.manager)","administrator,manager,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0622,be,backend/app/api/v1/settings/team.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0623,be,backend/app/api/v1/settings/team.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0624,be,backend/app/api/v1/settings/team.py,"require_roles(                 Role.administrator,                 Role.employee,                 Role.supervisor,                 Role.recruiter,              ","administrator,client_manager,client_processor,compliance_officer,employee,hr_officer,recruiter,supervisor,viewer",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0625,be,backend/app/api/v1/settings/team.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0626,be,backend/app/api/v1/settings/team.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0627,be,backend/app/api/v1/settings/team.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0628,be,backend/app/api/v1/settings/team.py,require_roles(*HIRING_GATES_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0629,be,backend/app/api/v1/settings/team.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0630,be,backend/app/api/v1/settings/team.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0631,be,backend/app/api/v1/settings/team.py,"require_roles(Role.administrator, Role.supervisor, Role.client_manager)","administrator,client_manager,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0632,be,backend/app/api/v1/settings/team.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0633,be,backend/app/api/v1/settings/team.py:198,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0634,be,backend/app/api/v1/settings/team.py:199,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0635,be,backend/app/api/v1/settings/team.py:200,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0636,be,backend/app/api/v1/settings/team.py:201,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0637,be,backend/app/api/v1/settings/team.py:202,"Role.client_processor,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0638,be,backend/app/api/v1/settings/team.py:203,"Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0639,be,backend/app/api/v1/settings/team.py:204,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0640,be,backend/app/api/v1/settings/team.py:205,"Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0641,be,backend/app/api/v1/settings/team.py:360,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0642,be,backend/app/api/v1/settings/team.py:361,"Role.employee,",employee,TRUST,keep canonical trust role,M,open
+BE-0643,be,backend/app/api/v1/settings/team.py:362,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0644,be,backend/app/api/v1/settings/team.py:363,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0645,be,backend/app/api/v1/settings/team.py:364,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0646,be,backend/app/api/v1/settings/team.py:365,"Role.client_processor,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0647,be,backend/app/api/v1/settings/team.py:366,"Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0648,be,backend/app/api/v1/settings/team.py:367,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0649,be,backend/app/api/v1/settings/team.py:368,"Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0650,be,backend/app/api/v1/settings/team.py:388,"if getattr(tenant, ""type"", None) == TenantType.company and role_for_matrix == UserRole.recruiter.value:",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0651,be,backend/app/api/v1/settings/team.py:389,role_for_matrix = UserRole.client_processor.value,client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0652,be,backend/app/api/v1/settings/lead_lifecycle_email.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0653,be,backend/app/api/v1/settings/communications.py,"require_roles(                 Role.administrator,                 Role.supervisor,                 Role.recruiter,                 Role.client_manager,        ","administrator,client_manager,client_processor,recruiter,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0654,be,backend/app/api/v1/settings/communications.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0655,be,backend/app/api/v1/settings/communications.py:26,"if (ctx.role or """").strip().lower() == Role.superadmin.value:",superadmin,TRUST,keep canonical trust role,M,open
+BE-0656,be,backend/app/api/v1/settings/communications.py:522,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0657,be,backend/app/api/v1/settings/communications.py:523,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0658,be,backend/app/api/v1/settings/communications.py:524,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0659,be,backend/app/api/v1/settings/communications.py:525,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0660,be,backend/app/api/v1/settings/communications.py:526,"Role.client_processor,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0661,be,backend/app/api/v1/settings/email.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0662,be,backend/app/api/v1/settings/email.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0663,be,backend/app/api/v1/settings/email.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0664,be,backend/app/api/v1/settings/hiring_pipeline_gates_impl.py:22,"if (ctx.role or """").strip().lower() == Role.superadmin.value:",superadmin,TRUST,keep canonical trust role,M,open
+BE-0665,be,backend/app/api/v1/settings/hiring_pipeline_gates_impl.py:77,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0666,be,backend/app/api/v1/settings/hiring_pipeline_gates_impl.py:78,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0667,be,backend/app/api/v1/settings/hiring_pipeline_gates_impl.py:79,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0668,be,backend/app/api/v1/settings/hiring_pipeline_gates_impl.py:80,"Role.manager,",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0669,be,backend/app/api/v1/settings/hiring_pipeline_gates_impl.py:81,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0670,be,backend/app/api/v1/settings/hiring_pipeline_gates_impl.py:82,"Role.client_processor,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0671,be,backend/app/api/v1/settings/hiring_pipeline_gates_impl.py:83,"Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0672,be,backend/app/api/v1/recruiters/router.py,"require_roles(Role.admin, Role.manager, Role.supervisor)","admin,manager,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0673,be,backend/app/api/v1/invoices/router.py:171,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0674,be,backend/app/api/v1/invoices/router.py:171,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0675,be,backend/app/api/v1/invoices/router.py:171,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0676,be,backend/app/api/v1/invoices/router.py:272,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0677,be,backend/app/api/v1/invoices/router.py:272,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0678,be,backend/app/api/v1/invoices/router.py:272,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0679,be,backend/app/api/v1/invoices/router.py:486,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0680,be,backend/app/api/v1/invoices/router.py:486,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0681,be,backend/app/api/v1/invoices/router.py:486,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0682,be,backend/app/api/v1/invoices/router.py:565,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0683,be,backend/app/api/v1/invoices/router.py:565,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0684,be,backend/app/api/v1/invoices/router.py:565,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0685,be,backend/app/api/v1/invoices/router.py:614,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0686,be,backend/app/api/v1/invoices/router.py:614,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0687,be,backend/app/api/v1/invoices/router.py:614,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0688,be,backend/app/api/v1/invoices/router.py:684,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0689,be,backend/app/api/v1/invoices/router.py:684,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0690,be,backend/app/api/v1/invoices/router.py:684,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0691,be,backend/app/api/v1/invoices/router.py:832,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0692,be,backend/app/api/v1/invoices/router.py:832,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0693,be,backend/app/api/v1/invoices/router.py:832,"if current_user.role not in (Role.manager, Role.admin, Role.superadmin):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0694,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0695,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0696,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0697,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0698,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0699,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0700,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0701,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0702,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0703,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0704,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0705,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0706,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0707,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0708,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0709,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0710,be,backend/app/api/v1/admin/users.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0711,be,backend/app/api/v1/admin/users.py:38,"if (ctx.role or """").strip().lower() == Role.superadmin.value:",superadmin,TRUST,keep canonical trust role,M,open
+BE-0712,be,backend/app/api/v1/admin/companies_access.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0713,be,backend/app/api/v1/admin/companies_access.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0714,be,backend/app/api/v1/admin/companies_access.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0715,be,backend/app/api/v1/admin/companies_access.py:32,if ctx.role == Role.supervisor.value:,supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0716,be,backend/app/api/v1/admin/companies_access.py:34,"if value in {Role.administrator.value, Role.supervisor.value}:",administrator,TRUST,keep canonical trust role,M,open
+BE-0717,be,backend/app/api/v1/admin/companies_access.py:34,"if value in {Role.administrator.value, Role.supervisor.value}:",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0718,be,backend/app/api/v1/admin/companies_access.py:44,if ctx.role != Role.supervisor.value:,supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0719,be,backend/app/api/v1/admin/companies_access.py:108,if _role_value(user.role).lower() == Role.administrator.value:,administrator,TRUST,keep canonical trust role,M,open
+BE-0720,be,backend/app/api/v1/admin/draft_reminders.py,"require_roles(Role.administrator, Role.superadmin)","administrator,superadmin",TRUST,keep canonical trust role,M,open
+BE-0721,be,backend/app/api/v1/admin/org_units.py,require_roles(*_ORG_UNIT_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0722,be,backend/app/api/v1/admin/org_units.py,require_roles(*_ORG_UNIT_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0723,be,backend/app/api/v1/admin/org_units.py,require_roles(*_ORG_UNIT_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0724,be,backend/app/api/v1/admin/org_units.py,require_roles(*_ORG_UNIT_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0725,be,backend/app/api/v1/admin/org_units.py,require_roles(*_ORG_UNIT_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0726,be,backend/app/api/v1/admin/org_units.py,require_roles(*_ORG_UNIT_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0727,be,backend/app/api/v1/admin/org_units.py,require_roles(*_ORG_UNIT_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0728,be,backend/app/api/v1/admin/org_units.py,require_roles(*_ORG_UNIT_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0729,be,backend/app/api/v1/admin/org_units.py,require_roles(*_ORG_UNIT_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0730,be,backend/app/api/v1/admin/org_units.py:26,"_ORG_UNIT_MANAGER_ROLES = (Role.administrator, Role.supervisor)",administrator,TRUST,keep canonical trust role,M,open
+BE-0731,be,backend/app/api/v1/admin/org_units.py:26,"_ORG_UNIT_MANAGER_ROLES = (Role.administrator, Role.supervisor)",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0732,be,backend/app/api/v1/admin/audit.py,"require_roles(Role.administrator, Role.superadmin)","administrator,superadmin",TRUST,keep canonical trust role,M,open
+BE-0733,be,backend/app/api/v1/admin/audit.py:59,"if (ctx.role or """").strip().lower() == Role.superadmin.value:",superadmin,TRUST,keep canonical trust role,M,open
+BE-0734,be,backend/app/api/v1/platform/module_registry.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0735,be,backend/app/api/v1/platform/module_registry.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0736,be,backend/app/api/v1/platform/field_registry.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0737,be,backend/app/api/v1/platform/field_registry.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0738,be,backend/app/api/v1/platform/field_registry.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0739,be,backend/app/api/v1/platform/forms_builder.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0740,be,backend/app/api/v1/platform/forms_builder.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0741,be,backend/app/api/v1/platform/forms_builder.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0742,be,backend/app/api/v1/platform/forms_builder.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0743,be,backend/app/api/v1/platform/forms_builder.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0744,be,backend/app/api/v1/platform/campaigns.py,"require_roles(Role.administrator, Role.supervisor, Role.recruiter, Role.client_manager, Role.superadmin)","administrator,client_manager,recruiter,superadmin,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0745,be,backend/app/api/v1/platform/campaigns.py,"require_roles(             Role.administrator,             Role.supervisor,             Role.recruiter,             Role.client_manager,             Role.viewer","administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0746,be,backend/app/api/v1/platform/campaigns.py:111,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0747,be,backend/app/api/v1/platform/campaigns.py:112,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0748,be,backend/app/api/v1/platform/campaigns.py:113,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0749,be,backend/app/api/v1/platform/campaigns.py:114,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0750,be,backend/app/api/v1/platform/campaigns.py:115,"Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0751,be,backend/app/api/v1/platform/campaigns.py:116,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0752,be,backend/app/api/v1/platform/campaigns.py:117,"Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0753,be,backend/app/api/v1/platform/marketing_sources.py,"require_roles(             Role.administrator,             Role.supervisor,             Role.recruiter,             Role.client_manager,             Role.viewer","administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0754,be,backend/app/api/v1/platform/marketing_sources.py,"require_roles(             Role.administrator,             Role.supervisor,             Role.superadmin,         )","administrator,superadmin,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-0755,be,backend/app/api/v1/platform/marketing_sources.py:36,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0756,be,backend/app/api/v1/platform/marketing_sources.py:37,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0757,be,backend/app/api/v1/platform/marketing_sources.py:38,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0758,be,backend/app/api/v1/platform/marketing_sources.py:39,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0759,be,backend/app/api/v1/platform/marketing_sources.py:40,"Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0760,be,backend/app/api/v1/platform/marketing_sources.py:41,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0761,be,backend/app/api/v1/platform/marketing_sources.py:42,"Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0762,be,backend/app/api/v1/platform/marketing_sources.py:50,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0763,be,backend/app/api/v1/platform/marketing_sources.py:51,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0764,be,backend/app/api/v1/platform/marketing_sources.py:52,"Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0765,be,backend/app/api/v1/platform/entity_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0766,be,backend/app/api/v1/platform/entity_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0767,be,backend/app/api/v1/platform/entity_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0768,be,backend/app/api/v1/platform/entity_profiles.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0769,be,backend/app/api/v1/platform/marketing_diagnostics.py,"require_roles(             Role.administrator,             Role.supervisor,             Role.recruiter,             Role.client_manager,             Role.viewer","administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0770,be,backend/app/api/v1/platform/marketing_diagnostics.py:43,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0771,be,backend/app/api/v1/platform/marketing_diagnostics.py:44,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0772,be,backend/app/api/v1/platform/marketing_diagnostics.py:45,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0773,be,backend/app/api/v1/platform/marketing_diagnostics.py:46,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0774,be,backend/app/api/v1/platform/marketing_diagnostics.py:47,"Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0775,be,backend/app/api/v1/platform/marketing_diagnostics.py:48,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0776,be,backend/app/api/v1/platform/marketing_diagnostics.py:49,"Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0777,be,backend/app/api/v1/platform/requirement_rules.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0778,be,backend/app/api/v1/platform/requirement_rules.py,require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0779,be,backend/app/api/v1/platform/tenant_requirement_overrides.py,require_roles(*ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0780,be,backend/app/api/v1/platform/tenant_requirement_overrides.py,require_roles(*ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0781,be,backend/app/api/v1/platform/tenant_requirement_overrides.py,require_roles(*ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0782,be,backend/app/api/v1/platform/tenants.py:832,"""role"": Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0783,be,backend/app/api/v1/platform/notification_events.py,require_roles(*ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0784,be,backend/app/api/v1/platform/notification_events.py,require_roles(*ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0785,be,backend/app/api/v1/platform/notification_events.py,require_roles(*ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0786,be,backend/app/api/v1/platform/notification_events.py,require_roles(*ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0787,be,backend/app/api/v1/platform/acquisition_activity.py,"require_roles(             Role.administrator,             Role.supervisor,             Role.recruiter,             Role.client_manager,             Role.viewer","administrator,client_manager,hr_officer,recruiter,superadmin,supervisor,viewer",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0788,be,backend/app/api/v1/platform/acquisition_activity.py:31,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0789,be,backend/app/api/v1/platform/acquisition_activity.py:32,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0790,be,backend/app/api/v1/platform/acquisition_activity.py:33,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0791,be,backend/app/api/v1/platform/acquisition_activity.py:34,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0792,be,backend/app/api/v1/platform/acquisition_activity.py:35,"Role.viewer,",viewer,TRUST,keep canonical trust role,M,open
+BE-0793,be,backend/app/api/v1/platform/acquisition_activity.py:36,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0794,be,backend/app/api/v1/platform/acquisition_activity.py:37,"Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0795,be,backend/app/api/v1/workforce/zus_workspace_router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0796,be,backend/app/api/v1/workforce/zus_workspace_router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0797,be,backend/app/api/v1/workforce/zus_workspace_router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0798,be,backend/app/api/v1/workforce/zus_workspace_router.py:25,"HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0799,be,backend/app/api/v1/workforce/zus_workspace_router.py:25,"HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)",administrator,TRUST,keep canonical trust role,M,open
+BE-0800,be,backend/app/api/v1/workforce/zus_workspace_router.py:25,"HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0801,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0802,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0803,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0804,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0805,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0806,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0807,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0808,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0809,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0810,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0811,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0812,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0813,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_DOCUMENT_REVIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0814,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0815,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0816,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0817,be,backend/app/api/v1/workforce/router.py,require_roles(*HANDOFF_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0818,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0819,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0820,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0821,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0822,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0823,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0824,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0825,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0826,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0827,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0828,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0829,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0830,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0831,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0832,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0833,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0834,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0835,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0836,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0837,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0838,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0839,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0840,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0841,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0842,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0843,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0844,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0845,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0846,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0847,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0848,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0849,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0850,be,backend/app/api/v1/workforce/router.py,require_roles(*HR_WORKSPACE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0851,be,backend/app/api/v1/workforce/router.py:94,"HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0852,be,backend/app/api/v1/workforce/router.py:94,"HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)",administrator,TRUST,keep canonical trust role,M,open
+BE-0853,be,backend/app/api/v1/workforce/router.py:94,"HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0854,be,backend/app/api/v1/workforce/router.py:96,"HR_DOCUMENT_REVIEW_ROLES = (Role.hr_officer, Role.administrator)",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0855,be,backend/app/api/v1/workforce/router.py:96,"HR_DOCUMENT_REVIEW_ROLES = (Role.hr_officer, Role.administrator)",administrator,TRUST,keep canonical trust role,M,open
+BE-0856,be,backend/app/api/v1/workforce/router.py:99,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0857,be,backend/app/api/v1/workforce/router.py:100,"Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0858,be,backend/app/api/v1/workforce/router.py:101,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0859,be,backend/app/api/v1/workforce/router.py:102,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0860,be,backend/app/api/v1/workforce/router.py:103,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0861,be,backend/app/api/v1/workforce/router.py:104,"Role.client_processor,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0862,be,backend/app/api/v1/tenants/service.py:190,"UserRole.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0863,be,backend/app/api/v1/tenants/service.py:192,"UserRole.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0864,be,backend/app/api/v1/tenants/service.py:193,"UserRole.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0865,be,backend/app/api/v1/tenants/service.py:194,"UserRole.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0866,be,backend/app/api/v1/tenants/service.py:195,"UserRole.client_processor.value,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0867,be,backend/app/api/v1/tenants/service.py:196,"UserRole.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0868,be,backend/app/api/v1/tenants/service.py:197,"UserRole.hr_officer.value,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0869,be,backend/app/api/v1/tenants/service.py:198,"UserRole.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0870,be,backend/app/api/v1/tenants/service.py:202,UserRole.administrator.value: {,administrator,TRUST,keep canonical trust role,M,open
+BE-0871,be,backend/app/api/v1/tenants/service.py:216,UserRole.supervisor.value: {,supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0872,be,backend/app/api/v1/tenants/service.py:226,UserRole.recruiter.value: {,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0873,be,backend/app/api/v1/tenants/service.py:236,UserRole.client_manager.value: {,client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0874,be,backend/app/api/v1/tenants/service.py:246,UserRole.client_processor.value: {,client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0875,be,backend/app/api/v1/tenants/service.py:256,UserRole.compliance_officer.value: {,compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0876,be,backend/app/api/v1/tenants/service.py:266,UserRole.hr_officer.value: {,hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0877,be,backend/app/api/v1/tenants/service.py:276,UserRole.viewer.value: {,viewer,TRUST,keep canonical trust role,M,open
+BE-0878,be,backend/app/api/v1/tenants/service.py:289,"UserRole.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0879,be,backend/app/api/v1/tenants/service.py:290,"UserRole.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0880,be,backend/app/api/v1/tenants/service.py:291,"UserRole.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0881,be,backend/app/api/v1/tenants/service.py:292,"UserRole.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0882,be,backend/app/api/v1/tenants/service.py:293,"UserRole.hr_officer.value,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0883,be,backend/app/api/v1/tenants/service.py:294,"UserRole.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0884,be,backend/app/api/v1/tenants/service.py:295,"UserRole.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0885,be,backend/app/api/v1/tenants/service.py:318,"defaults[UserRole.recruiter.value][""vacancies""] = {""visible"": True, ""editable"": True}",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0886,be,backend/app/api/v1/tenants/service.py:321,"defaults[UserRole.recruiter.value][""companies""] = {""visible"": True, ""editable"": True}",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0887,be,backend/app/api/v1/tenants/service.py:322,"defaults[UserRole.recruiter.value][""leads""] = {""visible"": True, ""editable"": True}",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0888,be,backend/app/api/v1/tenants/service.py:323,"defaults[UserRole.recruiter.value][""services""] = {""visible"": True, ""editable"": True}",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0889,be,backend/app/api/v1/tenants/service.py:324,"defaults[UserRole.recruiter.value][""candidates""] = {""visible"": False, ""editable"": False}",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0890,be,backend/app/api/v1/tenants/service.py:325,"defaults[UserRole.recruiter.value][""vacancies""] = {""visible"": False, ""editable"": False}",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0891,be,backend/app/api/v1/tenants/service.py:326,"defaults[UserRole.client_manager.value][""leads""] = {""visible"": True, ""editable"": True}",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0892,be,backend/app/api/v1/tenants/service.py:327,"defaults[UserRole.client_manager.value][""services""] = {""visible"": True, ""editable"": True}",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0893,be,backend/app/api/v1/tenants/service.py:328,"defaults[UserRole.client_processor.value][""leads""] = {""visible"": True, ""editable"": True}",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0894,be,backend/app/api/v1/tenants/service.py:329,"defaults[UserRole.client_processor.value][""services""] = {""visible"": True, ""editable"": True}",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0895,be,backend/app/api/v1/tenants/service.py:774,normalized_role = str(role or UserRole.viewer.value).strip().lower(),viewer,TRUST,keep canonical trust role,M,open
+BE-0896,be,backend/app/api/v1/tenants/service.py:776,role_matrix = matrix.get(normalized_role) or matrix.get(UserRole.viewer.value) or {},viewer,TRUST,keep canonical trust role,M,open
+BE-0897,be,backend/app/api/v1/tenants/service.py:997,"if role == UserRole.viewer.value and next_editable and module not in {""documents"", ""client_portal""}:",viewer,TRUST,keep canonical trust role,M,open
+BE-0898,be,backend/app/api/v1/tenants/router.py,require_roles(*HIRING_GATES_READ_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0899,be,backend/app/api/v1/tenants/router.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-0900,be,backend/app/api/v1/tenants/router.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0901,be,backend/app/api/v1/tenants/router.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0902,be,backend/app/api/v1/tenants/router.py,"require_roles(Role.admin, Role.owner, Role.manager)","admin,manager,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0903,be,backend/app/api/v1/tenants/router.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0904,be,backend/app/api/v1/tenants/router.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0905,be,backend/app/api/v1/tenants/router.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0906,be,backend/app/api/v1/tenants/router.py,"require_roles(                 Role.admin,                 Role.owner,                 Role.manager,                 Role.recruiter,                 Role.hr_off","admin,compliance_officer,hr_officer,manager,owner,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0907,be,backend/app/api/v1/tenants/router.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0908,be,backend/app/api/v1/tenants/router.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0909,be,backend/app/api/v1/tenants/router.py,"require_roles(Role.admin, Role.owner)","admin,owner",ALIAS,normalize via normalize_trust_role,M,open
+BE-0910,be,backend/app/api/v1/tenants/router.py:46,"if (ctx.role or """").strip().lower() == Role.superadmin.value and tenant_id_header:",superadmin,TRUST,keep canonical trust role,M,open
+BE-0911,be,backend/app/api/v1/tenants/router.py:407,"Role.admin,",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0912,be,backend/app/api/v1/tenants/router.py:408,"Role.owner,",owner,ALIAS,normalize via normalize_trust_role,M,open
+BE-0913,be,backend/app/api/v1/tenants/router.py:409,"Role.manager,",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0914,be,backend/app/api/v1/tenants/router.py:410,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0915,be,backend/app/api/v1/tenants/router.py:411,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0916,be,backend/app/api/v1/tenants/router.py:412,"Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0917,be,backend/app/api/v1/candidates/acl.py:62,"if role in (Role.administrator.value, Role.superadmin.value):",administrator,TRUST,keep canonical trust role,M,open
+BE-0918,be,backend/app/api/v1/candidates/acl.py:62,"if role in (Role.administrator.value, Role.superadmin.value):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0919,be,backend/app/api/v1/candidates/acl.py:67,if role == UserRole.hr_officer.value:,hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0920,be,backend/app/api/v1/candidates/acl.py:70,"if role in (Role.supervisor.value, Role.manager.value):",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0921,be,backend/app/api/v1/candidates/acl.py:70,"if role in (Role.supervisor.value, Role.manager.value):",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0922,be,backend/app/api/v1/candidates/acl.py:75,.where(User.role == UserRole.recruiter),recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0923,be,backend/app/api/v1/candidates/acl.py:113,"Role.recruiter.value,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0924,be,backend/app/api/v1/candidates/acl.py:114,"Role.client_manager.value,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0925,be,backend/app/api/v1/candidates/acl.py:115,"Role.client_processor.value,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0926,be,backend/app/api/v1/candidates/acl.py:116,"Role.compliance_officer.value,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0927,be,backend/app/api/v1/candidates/acl.py:117,"Role.viewer.value,",viewer,TRUST,keep canonical trust role,M,open
+BE-0928,be,backend/app/api/v1/candidates/acl.py:141,manager_scope = {user_id} if role == Role.recruiter.value else set(),recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0929,be,backend/app/api/v1/candidates/acl.py:235,if role_l == UserRole.hr_officer.value and await agency_candidate_has_internal_hr_handoff_lane(,hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0930,be,backend/app/api/v1/candidates/pipeline_overrides_api.py,require_roles(*_CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0931,be,backend/app/api/v1/candidates/pipeline_overrides_api.py,require_roles(*_ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0932,be,backend/app/api/v1/candidates/pipeline_overrides_api.py,require_roles(*APPROVE_OVERRIDE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0933,be,backend/app/api/v1/candidates/pipeline_overrides_api.py,require_roles(*APPROVE_OVERRIDE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0934,be,backend/app/api/v1/candidates/pipeline_overrides_api.py,require_roles(*APPROVE_OVERRIDE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0935,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:34,"APPROVE_OVERRIDE_ROLES = (Role.manager, Role.administrator, Role.superadmin)",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0936,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:34,"APPROVE_OVERRIDE_ROLES = (Role.manager, Role.administrator, Role.superadmin)",administrator,TRUST,keep canonical trust role,M,open
+BE-0937,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:34,"APPROVE_OVERRIDE_ROLES = (Role.manager, Role.administrator, Role.superadmin)",superadmin,TRUST,keep canonical trust role,M,open
+BE-0938,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:100,"if role in (Role.client_manager.value, Role.client_processor.value):",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0939,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:100,"if role in (Role.client_manager.value, Role.client_processor.value):",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0940,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:137,"if role in (Role.client_manager.value, Role.client_processor.value):",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0941,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:137,"if role in (Role.client_manager.value, Role.client_processor.value):",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0942,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:204,"if role in (Role.client_manager.value, Role.client_processor.value):",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0943,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:204,"if role in (Role.client_manager.value, Role.client_processor.value):",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0944,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:271,"if role in (Role.client_manager.value, Role.client_processor.value):",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0945,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:271,"if role in (Role.client_manager.value, Role.client_processor.value):",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0946,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:336,"if role in (Role.client_manager.value, Role.client_processor.value):",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0947,be,backend/app/api/v1/candidates/pipeline_overrides_api.py:336,"if role in (Role.client_manager.value, Role.client_processor.value):",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-0948,be,backend/app/api/v1/candidates/next_action_api.py,require_roles(*HIRING_CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0949,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0950,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0951,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0952,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0953,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0954,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0955,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0956,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0957,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0958,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0959,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0960,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0961,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0962,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0963,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0964,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0965,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0966,be,backend/app/api/v1/candidates/router.py,require_roles(*CANDIDATE_VIEW_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0967,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0968,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0969,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0970,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0971,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0972,be,backend/app/api/v1/candidates/router.py,require_roles(*ALLOW_MANAGER_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0973,be,backend/app/api/v1/candidates/router.py:841,is_platform_superadmin = user_role_lower == Role.superadmin.value and not client_tenant,superadmin,TRUST,keep canonical trust role,M,open
+BE-0974,be,backend/app/api/v1/candidates/router.py:1035,"if not client_tenant and current_user.role in (Role.admin.value, Role.administrator.value, Role.superadmin.value):",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0975,be,backend/app/api/v1/candidates/router.py:1035,"if not client_tenant and current_user.role in (Role.admin.value, Role.administrator.value, Role.superadmin.value):",administrator,TRUST,keep canonical trust role,M,open
+BE-0976,be,backend/app/api/v1/candidates/router.py:1035,"if not client_tenant and current_user.role in (Role.admin.value, Role.administrator.value, Role.superadmin.value):",superadmin,TRUST,keep canonical trust role,M,open
+BE-0977,be,backend/app/api/v1/candidates/router.py:1849,if current_user.role == Role.recruiter.value:,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0978,be,backend/app/api/v1/candidates/router.py:1855,"Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0979,be,backend/app/api/v1/candidates/router.py:1856,"Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0980,be,backend/app/api/v1/candidates/router.py:1857,"Role.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0981,be,backend/app/api/v1/candidates/router.py:2015,is_platform_superadmin = user_role_lower == Role.superadmin.value and not client_tenant,superadmin,TRUST,keep canonical trust role,M,open
+BE-0982,be,backend/app/api/v1/candidates/router.py:3044,if ctx.role == Role.recruiter.value:,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0983,be,backend/app/api/v1/candidates/router.py:3050,"Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-0984,be,backend/app/api/v1/candidates/router.py:3051,"Role.supervisor.value,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0985,be,backend/app/api/v1/candidates/router.py:3052,"Role.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-0986,be,backend/app/api/v1/document_merge/router.py,require_roles(*TEMPLATE_ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0987,be,backend/app/api/v1/document_merge/router.py,require_roles(*TEMPLATE_ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0988,be,backend/app/api/v1/document_merge/router.py,require_roles(*TEMPLATE_ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0989,be,backend/app/api/v1/document_merge/router.py,require_roles(*TEMPLATE_ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0990,be,backend/app/api/v1/document_merge/router.py,require_roles(*TEMPLATE_ADMIN_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0991,be,backend/app/api/v1/document_merge/router.py,require_roles(*GENERATE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0992,be,backend/app/api/v1/document_merge/router.py:26,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-0993,be,backend/app/api/v1/document_merge/router.py:27,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-0994,be,backend/app/api/v1/document_merge/router.py:28,"Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0995,be,backend/app/api/v1/document_merge/router.py:31,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0996,be,backend/app/api/v1/document_merge/router.py:32,"Role.manager,",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-0997,be,backend/app/api/v1/document_merge/router.py:33,"Role.admin,",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-0998,be,backend/app/api/v1/document_merge/router.py:34,"Role.compliance_officer,",compliance_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-0999,be,backend/app/api/v1/document_merge/router.py:35,"Role.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-1000,be,backend/app/api/v1/candidate_notes/router.py,require_roles(*ALLOW_NOTES_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1001,be,backend/app/api/v1/candidate_notes/router.py,require_roles(*ALLOW_NOTES_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1002,be,backend/app/api/v1/candidate_notes/router.py:31,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1003,be,backend/app/api/v1/candidate_notes/router.py:32,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-1004,be,backend/app/api/v1/candidate_notes/router.py:33,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-1005,be,backend/app/api/v1/candidate_notes/router.py:34,"Role.superadmin,",superadmin,TRUST,keep canonical trust role,M,open
+BE-1006,be,backend/app/api/v1/utils/access.py:18,"if role in {Role.superadmin.value, Role.administrator.value}:",superadmin,TRUST,keep canonical trust role,M,open
+BE-1007,be,backend/app/api/v1/utils/access.py:18,"if role in {Role.superadmin.value, Role.administrator.value}:",administrator,TRUST,keep canonical trust role,M,open
+BE-1008,be,backend/app/api/v1/utils/own_company_acl.py:13,"Role.superadmin.value,",superadmin,TRUST,keep canonical trust role,M,open
+BE-1009,be,backend/app/api/v1/utils/own_company_acl.py:14,"Role.administrator.value,",administrator,TRUST,keep canonical trust role,M,open
+BE-1010,be,backend/app/api/v1/vacancies/acquisition_api.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-1011,be,backend/app/api/v1/vacancies/acquisition_api.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-1012,be,backend/app/api/v1/vacancies/acquisition_api.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-1013,be,backend/app/api/v1/vacancies/acquisition_api.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-1014,be,backend/app/api/v1/vacancies/launch_search_setup_api.py,"require_roles(Role.manager, Role.admin, Role.recruiter)","admin,manager,recruiter",JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-1015,be,backend/app/api/v1/vacancies/router.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-1016,be,backend/app/api/v1/vacancies/router.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-1017,be,backend/app/api/v1/vacancies/router.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-1018,be,backend/app/api/v1/vacancies/router.py,require_roles(*PIPELINE_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1019,be,backend/app/api/v1/vacancies/router.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-1020,be,backend/app/api/v1/vacancies/router.py,"require_roles(Role.manager, Role.admin)","admin,manager",ALIAS,normalize via normalize_trust_role,M,open
+BE-1021,be,backend/app/api/v1/vacancies/router.py:34,"PIPELINE_ROLES = (Role.manager, Role.admin, Role.recruiter)",manager,ALIAS,normalize via normalize_trust_role,M,open
+BE-1022,be,backend/app/api/v1/vacancies/router.py:34,"PIPELINE_ROLES = (Role.manager, Role.admin, Role.recruiter)",admin,ALIAS,normalize via normalize_trust_role,M,open
+BE-1023,be,backend/app/api/v1/vacancies/router.py:34,"PIPELINE_ROLES = (Role.manager, Role.admin, Role.recruiter)",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-1024,be,backend/app/api/v1/vacancies/router.py:163,inc_arch = _as_bool(include_archived) if include_archived is not None else (user_role == Role.superadmin.value),superadmin,TRUST,keep canonical trust role,M,open
+BE-1025,be,backend/app/api/v1/vacancies/router.py:164,if user_role == Role.superadmin.value:,superadmin,TRUST,keep canonical trust role,M,open
+BE-1026,be,backend/app/api/v1/settings/billing/routes.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-1027,be,backend/app/api/v1/settings/billing/routes.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-1028,be,backend/app/api/v1/settings/billing/routes.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-1029,be,backend/app/api/v1/settings/billing/routes.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-1030,be,backend/app/api/v1/settings/billing/routes.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-1031,be,backend/app/api/v1/settings/billing/routes.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-1032,be,backend/app/api/v1/settings/billing/routes.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-1033,be,backend/app/api/v1/settings/billing/routes.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-1034,be,backend/app/api/v1/settings/billing/routes.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-1035,be,backend/app/api/v1/settings/billing/routes.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-1036,be,backend/app/api/v1/settings/billing/routes.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-1037,be,backend/app/api/v1/settings/billing/routes.py,require_roles(Role.administrator),administrator,TRUST,keep canonical trust role,M,open
+BE-1038,be,backend/app/api/v1/settings/billing/_helpers/state.py:70,"if (ctx.role or """").strip().lower() == Role.superadmin.value:",superadmin,TRUST,keep canonical trust role,M,open
+BE-1039,be,backend/app/api/v1/communications/routes/planner.py,require_roles(*_TIMEOFF_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1040,be,backend/app/api/v1/communications/routes/planner.py,require_roles(*_TIMEOFF_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1041,be,backend/app/api/v1/communications/routes/planner.py,require_roles(*_TIMEOFF_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1042,be,backend/app/api/v1/communications/routes/planner.py,require_roles(*_TIMEOFF_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1043,be,backend/app/api/v1/communications/routes/planner.py,require_roles(*_TIMEOFF_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1044,be,backend/app/api/v1/communications/routes/planner.py,require_roles(*_TIMEOFF_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1045,be,backend/app/api/v1/communications/routes/planner.py,require_roles(*_TIMEOFF_ROLES),,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1046,be,backend/app/api/v1/communications/routes/planner.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-1047,be,backend/app/api/v1/communications/routes/planner.py:82,"Role.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-1048,be,backend/app/api/v1/communications/routes/planner.py:83,"Role.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1049,be,backend/app/api/v1/communications/routes/planner.py:84,"Role.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-1050,be,backend/app/api/v1/communications/routes/planner.py:85,"Role.client_manager,",client_manager,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-1051,be,backend/app/api/v1/communications/routes/planner.py:86,"Role.client_processor,",client_processor,PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+BE-1052,be,backend/app/api/v1/communications/routes/planner.py:375,"is_admin_like = (current_user.role or """").strip().lower() in {Role.administrator.value, Role.supervisor.value, Role.superadmin.value}",administrator,TRUST,keep canonical trust role,M,open
+BE-1053,be,backend/app/api/v1/communications/routes/planner.py:375,"is_admin_like = (current_user.role or """").strip().lower() in {Role.administrator.value, Role.supervisor.value, Role.superadmin.value}",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1054,be,backend/app/api/v1/communications/routes/planner.py:375,"is_admin_like = (current_user.role or """").strip().lower() in {Role.administrator.value, Role.supervisor.value, Role.superadmin.value}",superadmin,TRUST,keep canonical trust role,M,open
+BE-1055,be,backend/app/api/v1/communications/routes/dispatch.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-1056,be,backend/app/api/v1/communications/routes/dispatch.py,"require_roles(Role.administrator, Role.supervisor)","administrator,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+BE-1057,be,backend/app/db/seeds/recruitment_team_flow_scenario.py:284,"UserRole.supervisor,",supervisor,JOB_PROXY,employee + permission/module gate + preset,M,open
+BE-1058,be,backend/app/db/seeds/recruitment_team_flow_scenario.py:290,"UserRole.administrator,",administrator,TRUST,keep canonical trust role,M,open
+BE-1059,be,backend/app/db/seeds/recruitment_team_flow_scenario.py:296,"UserRole.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-1060,be,backend/app/db/seeds/recruitment_team_flow_scenario.py:303,"UserRole.recruiter,",recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+BE-1061,be,backend/app/db/seeds/recruitment_team_flow_scenario.py:310,"UserRole.hr_officer,",hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+TEST-1062,test,backend/tests/services/test_workforce_action_audit.py:53,"role=Role.hr_officer,",hr_officer,TEST,update fixtures/asserts after mapping,L,open
+TEST-1063,test,backend/tests/services/test_recruitment_lead_auto_assign.py:77,"role=UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-1064,test,backend/tests/services/test_recruitment_lead_auto_assign.py:137,"User.role == UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-1065,test,backend/tests/services/test_recruitment_lead_auto_assign.py:201,"User.role == UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-1066,test,backend/tests/services/test_recruitment_lead_auto_assign.py:282,"role=UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-1067,test,backend/tests/services/test_recruitment_lead_auto_assign.py:315,"role=UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-1068,test,backend/tests/security/test_api_tenant_context_unit.py:24,"u = _FakeUser(""u1"", ""a@b.c"", Role.administrator.value, ""11111111-1111-1111-1111-111111111111"", {})",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-1069,test,backend/tests/security/test_api_tenant_context_unit.py:36,"u = _FakeUser(""u1"", ""a@b.c"", Role.superadmin.value, ""11111111-1111-1111-1111-111111111111"", {})",superadmin,TEST,update fixtures/asserts after mapping,L,open
+TEST-1070,test,backend/tests/security/test_api_tenant_context_unit.py:51,"Role.administrator.value,",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-1071,test,backend/tests/security/test_api_tenant_context_unit.py:71,"u = _FakeUser(""u1"", ""a@b.c"", Role.recruiter.value, ""11111111-1111-1111-1111-111111111111"", {})",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-1072,test,backend/tests/module_registry/test_module_registry_p1.py:52,"def _ctx(tenant_id: str, role: str = Role.administrator.value) -> UserCtx:",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-1073,test,backend/tests/api/test_recruiter_assignment.py:18,sa.select(User.id).where(User.role == UserRole.recruiter).limit(1),recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-1074,test,backend/tests/api/test_recruiter_assignment.py:75,sa.select(User.id).where(User.role == UserRole.supervisor).limit(1),supervisor,TEST,update fixtures/asserts after mapping,L,open
+TEST-1075,test,backend/tests/api/test_recruiter_assignment.py:116,sa.select(User.id).where(User.role == UserRole.recruiter).limit(1),recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-1076,test,backend/tests/api/test_handoff_snapshot.py:233,"role=UserRole.client_processor,",client_processor,TEST,update fixtures/asserts after mapping,L,open
+TEST-1077,test,backend/tests/api/test_lead_duplicate_decision.py:391,"assert ""User.role.in_([Role.administrator, Role.supervisor])"" in src",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-1078,test,backend/tests/api/test_lead_duplicate_decision.py:391,"assert ""User.role.in_([Role.administrator, Role.supervisor])"" in src",supervisor,TEST,update fixtures/asserts after mapping,L,open
+TEST-1079,test,backend/tests/api/test_candidate_assignment_queue.py:163,"role=UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+TEST-1080,test,backend/tests/api/test_global_search.py:93,".where(User.tenant_id == tenant_id, User.role == UserRole.administrator.value)",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-1081,test,backend/tests/api/test_global_search.py:172,".where(User.tenant_id == tenant_id, User.role == UserRole.administrator.value)",administrator,TEST,update fixtures/asserts after mapping,L,open
+TEST-1082,test,backend/tests/api/test_admin_v2.py:118,"role=UserRole.supervisor,",supervisor,TEST,update fixtures/asserts after mapping,L,open
+TEST-1083,test,backend/tests/api/test_admin_v2.py:128,"role=UserRole.recruiter,",recruiter,TEST,update fixtures/asserts after mapping,L,open
+FE-1084,fe,hostflow-frontend/src/constants/communicationsSettingsAccess.ts,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1085,fe,hostflow-frontend/src/api/analytics.ts,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1086,fe,hostflow-frontend/src/api/billing.ts,seat/counter client_manager,client_manager,SEAT,recount seats Admin/Employee/Viewer,H,open
+FE-1087,fe,hostflow-frontend/src/api/client.ts,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1088,fe,hostflow-frontend/src/api/communications.ts,"client_manager,client_processor,recruiter,supervisor","client_manager,client_processor,recruiter,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+FE-1089,fe,hostflow-frontend/src/api/types.ts,seat/counter client_manager,client_manager,SEAT,recount seats Admin/Employee/Viewer,H,open
+FE-1090,fe,hostflow-frontend/src/api/types.ts,role matrix / permissions map,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",UI_ONLY,align FE with BE trust + permissions,H,open
+FE-1091,fe,hostflow-frontend/src/api/users.ts,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1092,fe,hostflow-frontend/src/utils/hrDocumentReviewRole.ts,hr_officer,hr_officer,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1093,fe,hostflow-frontend/src/hooks/useLicenseStatus.ts,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1094,fe,hostflow-frontend/src/hooks/usePermissions.ts,role matrix / permissions map,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",UI_ONLY,align FE with BE trust + permissions,H,open
+FE-1095,fe,hostflow-frontend/src/hooks/useOwnCompanyWorkspace.ts,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1096,fe,hostflow-frontend/src/modules/workHub/profile.ts,"client_manager,client_processor,recruiter,supervisor","client_manager,client_processor,recruiter,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+FE-1097,fe,hostflow-frontend/src/modules/users/constants.ts,role matrix / permissions map,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",UI_ONLY,align FE with BE trust + permissions,H,open
+FE-1098,fe,hostflow-frontend/src/modules/tenants/utils.ts,seat/counter client_manager,client_manager,SEAT,recount seats Admin/Employee/Viewer,H,open
+FE-1099,fe,hostflow-frontend/src/modules/candidates/candidatesEntityModel.test.ts,recruiter,recruiter,TEST,update fixtures/asserts after mapping,L,open
+FE-1100,fe,hostflow-frontend/src/modules/candidates/internal.ts,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1101,fe,hostflow-frontend/src/modules/dashboard/hooks/useDashboardRiskOps.ts,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1102,fe,hostflow-frontend/src/modules/candidates/hooks/useCandidatesCatalogs.ts,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1103,fe,hostflow-frontend/src/platform/detail-rail/detailRailTypes.ts,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1104,fe,hostflow-frontend/src/content/seo/seoPageCatalog.ts,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1105,fe,hostflow-frontend/src/api/types/user.ts,seat/counter client_manager,client_manager,SEAT,recount seats Admin/Employee/Viewer,H,open
+FE-1106,fe,hostflow-frontend/src/api/types/user.ts,role matrix / permissions map,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",UI_ONLY,align FE with BE trust + permissions,H,open
+FE-1107,fe,hostflow-frontend/src/api/types/index.ts,role matrix / permissions map,roles,UI_ONLY,align FE with BE trust + permissions,H,open
+FE-1108,fe,hostflow-frontend/src/api/types/document.ts,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1109,fe,hostflow-frontend/src/components/vacancy/useVacancyNextAction.ts,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1110,fe,hostflow-frontend/src/components/candidate/__tests__/transferReadinessDisplay.test.ts,recruiter,recruiter,TEST,update fixtures/asserts after mapping,L,open
+FE-1111,fe,hostflow-frontend/src/components/hr/__tests__/hrVerificationFieldMeta.test.ts,recruiter,recruiter,TEST,update fixtures/asserts after mapping,L,open
+FE-1112,fe,hostflow-frontend/src/contexts/TeamOverviewNavContext.tsx,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1113,fe,hostflow-frontend/src/pages/Pipeline.tsx,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1114,fe,hostflow-frontend/src/pages/AutomationRulesPage.tsx,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1115,fe,hostflow-frontend/src/pages/ProfilePage.tsx,seat/counter client_manager,client_manager,SEAT,recount seats Admin/Employee/Viewer,H,open
+FE-1116,fe,hostflow-frontend/src/pages/ProfilePage.tsx,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1117,fe,hostflow-frontend/src/pages/RemindersPage.tsx,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1118,fe,hostflow-frontend/src/pages/MyCompanyPage.tsx,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1119,fe,hostflow-frontend/src/pages/CandidateCard.tsx,"recruiter,supervisor","recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1120,fe,hostflow-frontend/src/pages/WorkHubPage.tsx,"recruiter,supervisor","recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1121,fe,hostflow-frontend/src/pages/CommunicationsInboxHubPage.tsx,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1122,fe,hostflow-frontend/src/modules/workHub/RiskDigestPanel.tsx,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1123,fe,hostflow-frontend/src/modules/workHub/ManagerLoadPanel.tsx,"client_manager,recruiter,supervisor","client_manager,recruiter,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+FE-1124,fe,hostflow-frontend/src/modules/workHub/MyTasksPanel.tsx,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1125,fe,hostflow-frontend/src/modules/workHub/TodayPlannerPanel.tsx,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1126,fe,hostflow-frontend/src/modules/workHub/HandoffQueuePanel.tsx,"client_manager,client_processor","client_manager,client_processor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+FE-1127,fe,hostflow-frontend/src/modules/documents/CandidateDocuments.tsx,"recruiter,supervisor","recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1128,fe,hostflow-frontend/src/components/nav/Topbar.tsx,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1129,fe,hostflow-frontend/src/components/nav/Sidebar.tsx,seat/counter client_manager,client_manager,SEAT,recount seats Admin/Employee/Viewer,H,open
+FE-1130,fe,hostflow-frontend/src/components/candidate/CandidateDocsRailPanel.tsx,"recruiter,supervisor","recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1131,fe,hostflow-frontend/src/components/companies/CompanyModuleSettingsPanel.tsx,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1132,fe,hostflow-frontend/src/components/communications/CommunicationsInboxWorkflowCard.tsx,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1133,fe,hostflow-frontend/src/components/admin/UserFormInvite.tsx,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor","client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+FE-1134,fe,hostflow-frontend/src/components/admin/RoleModuleMatrixPanel.tsx,role matrix / permissions map,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",UI_ONLY,align FE with BE trust + permissions,H,open
+FE-1135,fe,hostflow-frontend/src/components/admin/UserTable.tsx,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor","client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+FE-1136,fe,hostflow-frontend/src/components/admin/UserFormCreate.tsx,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor","client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+FE-1137,fe,hostflow-frontend/src/components/hr/EmployeeLinkedCandidateJourney.tsx,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1138,fe,hostflow-frontend/src/components/hr/HrSequentialDocumentVerification.tsx,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1139,fe,hostflow-frontend/src/components/hr/EmployeeDossierDocumentBlock.tsx,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1140,fe,hostflow-frontend/src/components/hr/HrDocumentCorrectionForm.tsx,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1141,fe,hostflow-frontend/src/components/candidate/__tests__/TransferReadinessReport.test.tsx,recruiter,recruiter,TEST,update fixtures/asserts after mapping,L,open
+FE-1142,fe,hostflow-frontend/src/components/admin/__tests__/UserTable.test.tsx,recruiter,recruiter,TEST,update fixtures/asserts after mapping,L,open
+FE-1143,fe,hostflow-frontend/src/pages/admin/UsersPage.tsx,role matrix / permissions map,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",UI_ONLY,align FE with BE trust + permissions,H,open
+FE-1144,fe,hostflow-frontend/src/pages/admin/DeletionRequestsPage.tsx,"recruiter,supervisor","recruiter,supervisor",ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1145,fe,hostflow-frontend/src/pages/admin/BillingWorkspacePage.tsx,seat/counter client_manager,client_manager,SEAT,recount seats Admin/Employee/Viewer,H,open
+FE-1146,fe,hostflow-frontend/src/pages/admin/RolesAccessPage.tsx,role matrix / permissions map,client_manager,UI_ONLY,align FE with BE trust + permissions,H,open
+FE-1147,fe,hostflow-frontend/src/pages/admin/MetaLeadsAdminPage.tsx,recruiter,recruiter,JOB_PROXY,employee + permission/module gate + preset,H,open
+FE-1148,fe,hostflow-frontend/src/pages/admin/SettingsLandingPage.tsx,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor","client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+FE-1149,fe,hostflow-frontend/src/pages/admin/TenantsPage.tsx,seat/counter client_manager,client_manager,SEAT,recount seats Admin/Employee/Viewer,H,open
+FE-1150,fe,hostflow-frontend/src/pages/admin/TenantsPage.tsx,role matrix / permissions map,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",UI_ONLY,align FE with BE trust + permissions,H,open
+FE-1151,fe,hostflow-frontend/src/pages/admin/RiskIntelSettingsPage.tsx,supervisor,supervisor,ORG_PROXY,employee + supervisor_id/org + permission,H,open
+FE-1152,fe,hostflow-frontend/src/pages/admin/BillingTeamPage.tsx,seat/counter client_manager,client_manager,SEAT,recount seats Admin/Employee/Viewer,H,open
+FE-1153,fe,hostflow-frontend/src/pages/admin/BillingTeamPage.tsx,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor","client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",PORTAL_LEGACY,viewer + access_context=portal + scope,H,open
+FE-1154,fe,hostflow-frontend/src/pages/hr/__tests__/HrEmployeeDocumentsSection.test.tsx,recruiter,recruiter,TEST,update fixtures/asserts after mapping,L,open
+DOC-1155,doc,docs/SSOT.md,legacy role mention,"client_manager,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1156,doc,docs/HOSTFLOW_AUDIT_AND_PLAN.md,legacy role mention,"client_manager,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1157,doc,docs/hr/module-scope.md,legacy role mention,"client_processor,hr_officer,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1158,doc,docs/security/security-ssot.md,legacy role mention,"client_manager,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1159,doc,docs/specs/operations-loop.md,legacy role mention,"client_manager,client_processor,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1160,doc,docs/specs/plans-matrix.md,legacy role mention,legacy,DOC,update to ADR-036 language,L,open
+DOC-1161,doc,docs/specs/lead-types.md,legacy role mention,client_manager,DOC,update to ADR-036 language,L,open
+DOC-1162,doc,docs/specs/rules.md,legacy role mention,"client_manager,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1163,doc,docs/specs/personas.md,legacy role mention,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1164,doc,docs/specs/tenant-types.md,legacy role mention,"client_processor,recruiter",DOC,update to ADR-036 language,L,open
+DOC-1165,doc,docs/specs/core.md,legacy role mention,"client_manager,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1166,doc,docs/fleet/module-scope.md,legacy role mention,"hr_officer,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1167,doc,docs/security/threat-models/client-portal.md,legacy role mention,"client_manager,recruiter",DOC,update to ADR-036 language,L,open
+DOC-1168,doc,docs/security/threat-models/acquisition-source-diagnostics.md,legacy role mention,"client_manager,hr_officer,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1169,doc,docs/specs/workflows/activities-sla-matrix.md,legacy role mention,"recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1170,doc,docs/specs/workflows/activities.md,legacy role mention,"client_manager,client_processor,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1171,doc,docs/specs/workflows/implementation-roadmap-single-tenant-hr-handoff.md,legacy role mention,"hr_officer,recruiter",DOC,update to ADR-036 language,L,open
+DOC-1172,doc,docs/specs/modules/documents.md,legacy role mention,"recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1173,doc,docs/specs/modules/tenants.md,legacy role mention,"client_manager,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1174,doc,docs/specs/modules/documents_workflow_contract.md,legacy role mention,"compliance_officer,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1175,doc,docs/specs/modules/client_portal.md,legacy role mention,client_manager,DOC,update to ADR-036 language,L,open
+DOC-1176,doc,docs/specs/platform/field-registry-card-configuration.md,legacy role mention,hr_officer,DOC,update to ADR-036 language,L,open
+DOC-1177,doc,docs/specs/architecture/hr-operational-risk-layer.md,legacy role mention,"hr_officer,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1178,doc,docs/specs/architecture/candidate-field-zones-hr-internal-lane.md,legacy role mention,"hr_officer,recruiter",DOC,update to ADR-036 language,L,open
+DOC-1179,doc,docs/specs/architecture/hr-inbox-queue-api.md,legacy role mention,"hr_officer,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1180,doc,docs/specs/architecture/rbac_matrix.md,legacy role mention,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1181,doc,docs/specs/architecture/ADR-036-four-trust-roles-rbac.md,legacy role mention,"client_manager,client_processor,compliance_officer,hr_officer,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1182,doc,docs/specs/architecture/hr-dashboard-summary-api.md,legacy role mention,"hr_officer,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1183,doc,docs/specs/architecture/hostflow-core-domain-map-v1.md,legacy role mention,hr_officer,DOC,update to ADR-036 language,L,open
+DOC-1184,doc,docs/specs/architecture/hr-documents-queues-api.md,legacy role mention,"hr_officer,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1185,doc,docs/specs/journeys/README.md,legacy role mention,"client_manager,client_processor,recruiter,supervisor",DOC,update to ADR-036 language,L,open
+DOC-1186,doc,docs/specs/journeys/recruiter.md,legacy role mention,recruiter,DOC,update to ADR-036 language,L,open
+DOC-1187,doc,docs/specs/journeys/client-processor.md,legacy role mention,client_processor,DOC,update to ADR-036 language,L,open
+DOC-1188,doc,docs/specs/journeys/candidate-portal.md,legacy role mention,recruiter,DOC,update to ADR-036 language,L,open
+DOC-1189,doc,docs/specs/journeys/client-manager.md,legacy role mention,client_manager,DOC,update to ADR-036 language,L,open

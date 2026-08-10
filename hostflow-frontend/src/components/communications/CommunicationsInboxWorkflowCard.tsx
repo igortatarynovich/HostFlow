@@ -23,7 +23,7 @@ import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyFormHintError, getFriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 
-const DEFAULT_ESCALATION_ROLE_OPTIONS = ['supervisor', 'admin', 'manager'] as const
+const DEFAULT_ESCALATION_ROLE_OPTIONS = ['administrator', 'employee', 'supervisor', 'admin', 'manager'] as const
 const DEFAULT_ESCALATION_QUEUE_OPTIONS = ['priority', 'manual_review', 'supervisor_desk'] as const
 
 type Props = {

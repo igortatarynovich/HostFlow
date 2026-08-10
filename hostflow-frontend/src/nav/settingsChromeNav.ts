@@ -18,6 +18,7 @@ const SETTINGS_PATH_PREFIX_TAB: { prefix: string; tab: SettingsChromeTabKey }[] 
   { prefix: CRM_APP_PATHS.settingsBilling, tab: 'billing' },
   { prefix: CRM_APP_PATHS.settingsAudit, tab: 'security' },
   { prefix: CRM_APP_PATHS.settingsUsers, tab: 'team' },
+  { prefix: CRM_APP_PATHS.settingsTeam, tab: 'team' },
   { prefix: CRM_APP_PATHS.settingsCompanyAccess, tab: 'team' },
   { prefix: CRM_APP_PATHS.settingsTenants, tab: 'workspace' },
   { prefix: CRM_APP_PATHS.settingsLegal, tab: 'workspace' },

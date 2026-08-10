@@ -376,6 +376,7 @@ async def update_platform_tenant_module_matrix(
             tenant,
             updates,  # type: ignore[arg-type]
             actor_id=ctx.sub,
+            actor_is_superadmin=True,
         )
     return platform_schemas.TenantRoleModuleMatrix.model_validate(matrix)
 

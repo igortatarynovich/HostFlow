@@ -27,6 +27,7 @@ import type {
 import { getNotificationAttentionTier } from '../utils/notificationUos'
 import { resolveNotificationOpenPath } from '../utils/resolveNotificationOpenPath'
 import { useAuth } from '../store/useAuth'
+import { canUseTeamAssigneeScope as teamAssigneeScopeAllowed } from '../auth/trustRoles'
 import { useI18n } from '../i18n'
 import { activateClickOnSpaceEnter, runActionOnSpaceEnter } from '../utils/a11yClick'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
@@ -619,8 +620,6 @@ function notificationRank(item: NotificationItem): number {
   return score
 }
 
-const TEAM_ASSIGNEE_ROLES = new Set(['administrator', 'supervisor', 'superadmin', 'admin', 'manager'])
-
 export default function RemindersPage() {
   const { t, locale } = useI18n()
   const planLimitModal = usePlanLimitModal()
@@ -630,8 +629,7 @@ export default function RemindersPage() {
   const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null)
   const { me } = useAuth()
   const canUseTeamAssigneeScope = useMemo(() => {
-    const r = String(me?.role || '').trim().toLowerCase()
-    return TEAM_ASSIGNEE_ROLES.has(r)
+    return teamAssigneeScopeAllowed({ role: me?.role })
   }, [me?.role])
   const dateLocale = DATE_LOCALES[locale as keyof typeof DATE_LOCALES] || enUS
   const tenantId = (me as any)?.tenant_id || 'default'

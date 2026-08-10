@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from backend.app.auth.deps import UserCtx, get_current_user, require_roles
+from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.entity_profile.constants import DRIVER_CE_PROFILE_CODE
 from backend.app.entity_profile.manifests.recruitment import recruitment_candidate_driver_ce_profile
@@ -24,14 +26,14 @@ from backend.app.requirement_rules.tenant_override_source import (
     validate_tenant_override_policy,
 )
 
-ADMIN_ROLES = ("administrator", "superadmin", "supervisor")
+from backend.app.auth.trust_role_deps import TRUST_ADMIN_ROLES
+ADMIN_ROLES = TRUST_ADMIN_ROLES
 
 router = APIRouter(
     prefix="/platform/requirement-overrides",
     tags=["requirement-overrides"],
     redirect_slashes=False,
 )
-
 
 class TenantRequirementOverrideIn(BaseModel):
     entity_profile_code: Optional[str] = Field(default=None, max_length=128)
@@ -42,7 +44,6 @@ class TenantRequirementOverrideIn(BaseModel):
     target_code: str = Field(..., min_length=1, max_length=191)
     level: Optional[Literal["blocking", "warning"]] = None
     reason: str = Field(..., min_length=3, max_length=2000)
-
 
 class TenantRequirementOverrideOut(BaseModel):
     id: str
@@ -57,7 +58,6 @@ class TenantRequirementOverrideOut(BaseModel):
     status: str
     reason: str
 
-
 def _canonical_field_targets() -> set[str]:
     manifest = recruitment_candidate_driver_ce_profile()
     profile_view = {
@@ -71,7 +71,6 @@ def _canonical_field_targets() -> set[str]:
             if code:
                 targets.add(code)
     return targets
-
 
 def _row_to_out(row: TenantRequirementOverride) -> TenantRequirementOverrideOut:
     return TenantRequirementOverrideOut(
@@ -88,11 +87,10 @@ def _row_to_out(row: TenantRequirementOverride) -> TenantRequirementOverrideOut:
         reason=str(row.reason),
     )
 
-
 @router.get(
     "",
     response_model=list[TenantRequirementOverrideOut],
-    dependencies=[Depends(require_roles(*ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def list_tenant_requirement_overrides(
     db_tenant: tuple = Depends(get_db_with_tenant),
@@ -107,11 +105,10 @@ async def list_tenant_requirement_overrides(
     ).scalars().all()
     return [_row_to_out(row) for row in rows]
 
-
 @router.post(
     "",
     response_model=TenantRequirementOverrideOut,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_tenant_requirement_override(
     body: TenantRequirementOverrideIn,
@@ -146,11 +143,10 @@ async def create_tenant_requirement_override(
     await db.refresh(row)
     return _row_to_out(row)
 
-
 @router.patch(
     "/{override_id}/revoke",
     response_model=TenantRequirementOverrideOut,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def revoke_tenant_requirement_override(
     override_id: str,

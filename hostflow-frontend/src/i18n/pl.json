@@ -1412,7 +1412,6 @@
           "analytics": "Analityka",
           "settings": "Ustawienia"
         },
-        "not_found": "Nie znaleziono wakatu lub brak dostępu.",
         "untitled": "Bez tytułu",
         "table": {
           "candidate": "Kandydat",
@@ -1433,16 +1432,6 @@
           "id": "ID",
           "headcount_target": "Docelowy headcount (etaty)",
           "headcount_hint": "Planowane zatrudnienia na tę rolę. Zostaw puste, jeśli nieużywane."
-        },
-        "assignment": {
-          "title": "Przypisanie",
-          "hint": "Manager jest głównym właścicielem wakatu. Rekruterzy z puli dostają nowych kandydatów (least-load / rotacja). Jeśli pula jest pusta, przypisanie spada na managera, potem na adminów.",
-          "manager": "Manager wakatu",
-          "manager_none": "— nie wybrano —",
-          "recruiters": "Rekruterzy na tym wakacie",
-          "no_recruiters": "Brak aktywnych rekruterów w tenancie. Najpierw zaproś użytkownika z rolą Recruiter.",
-          "weight": "Waga",
-          "rotation_hint": "Równe wagi rotują wg obciążenia i ostatniego przypisania. Wyższa waga = więcej kandydatów."
         },
         "criteria": {
           "title": "Kryteria leadów (auto-kwalifikacja)",
@@ -1466,6 +1455,17 @@
         "work_schedule": {
           "title": "Opcje grafiku pracy",
           "hint": "Co oferuje klient na tę wakaturę (preferencja kandydata jest osobno)"
+        },
+        "not_found": "Nie znaleziono wakatu lub brak dostępu.",
+        "assignment": {
+          "title": "Przypisanie",
+          "hint": "Manager jest głównym właścicielem wakatu. Rekruterzy z puli dostają nowych kandydatów (least-load / rotacja). Jeśli pula jest pusta, przypisanie spada na managera, potem na adminów.",
+          "manager": "Manager wakatu",
+          "manager_none": "— nie wybrano —",
+          "recruiters": "Rekruterzy na tym wakacie",
+          "no_recruiters": "Brak aktywnych rekruterów w tenancie. Najpierw zaproś użytkownika z rolą Recruiter.",
+          "weight": "Waga",
+          "rotation_hint": "Równe wagi rotują wg obciążenia i ostatniego przypisania. Wyższa waga = więcej kandydatów."
         }
       },
       "workspace": {
@@ -2339,17 +2339,17 @@
       },
       "fields": {
         "confirm": "Powtórz hasło",
+        "full_name": "Jak się do Ciebie zwracać (opcjonalnie)",
+        "password": "Hasło do logowania",
+        "workspace": "Nazwa Twojej firmy",
+        "workspace_placeholder": "np. Acme Recruiting",
         "confirm_hint": "Musi być takie samo jak hasło powyżej.",
         "email": "Firmowy email",
         "email_hint": "Do logowania i ważnych wiadomości o koncie.",
         "email_placeholder": "you@company.com",
-        "full_name": "Jak się do Ciebie zwracać (opcjonalnie)",
         "full_name_placeholder": "Imię i nazwisko",
-        "password": "Hasło do logowania",
         "password_hint": "Minimum 8 znaków.",
-        "workspace": "Nazwa Twojej firmy",
-        "workspace_hint": "Tak firma będzie widoczna w HostFlow (wakaty, zgłoszenia, zespół).",
-        "workspace_placeholder": "np. Acme Recruiting"
+        "workspace_hint": "Tak firma będzie widoczna w HostFlow (wakaty, zgłoszenia, zespół)."
       },
       "have_account": "Masz już konto?",
       "plan_labels": {
@@ -2361,8 +2361,8 @@
       "sign_in": "Zaloguj się",
       "submit": "Utwórz konto i kontynuuj",
       "subtitle": "Załóż dostęp do logowania, aby prowadzić wakaty, zgłoszenia i kandydatów w jednym miejscu.",
-      "subtitle_with_plan": "Na cenniku wybrano plan {plan}. Po tym formularzu opiszesz firmę; płatność potwierdzisz w Billing, gdy będziesz gotowy.",
-      "title": "Rejestracja w HostFlow"
+      "title": "Rejestracja w HostFlow",
+      "subtitle_with_plan": "Na cenniku wybrano plan {plan}. Po tym formularzu opiszesz firmę; płatność potwierdzisz w Billing, gdy będziesz gotowy."
     },
     "login": {
       "title": "Zaloguj się do HostFlow",
@@ -2463,6 +2463,9 @@
           "title": "Wykorzystanie miejsc",
           "limit": "Wykorzystano {used} z {limit}",
           "unlimited": "Wykorzystano {used}",
+          "administrators": "Administratorzy",
+          "employees": "Pracownicy",
+          "portal_guests": "Goście portalu (bez opłat)",
           "recruiters": "Rekruterzy",
           "supervisors": "Koordynatorzy",
           "client_managers": "Opiekunowie klienta",
@@ -2594,7 +2597,8 @@
             "documents": "Dokumenty",
             "leads": "Leady",
             "services": "Usługi",
-            "client_portal": "Portal klienta"
+            "client_portal": "Portal klienta",
+            "hr": "HR"
           },
           "empty": "Brak danych o modułach dla tego tenanta.",
           "errors": {
@@ -2681,6 +2685,9 @@
         "subtitle": "Kontroluj liczbę wykorzystanych miejsc, zarządzaj modułami i zgłaszaj potrzebę dodatkowych licencji.",
         "usage": {
           "title": "Zużycie miejsc",
+          "administrators": "Administratorzy",
+          "employees": "Pracownicy",
+          "portal_guests": "Goście portalu (bez opłat)",
           "recruiters": "Rekruterzy",
           "supervisors": "Koordynatorzy",
           "client_managers": "Opiekunowie klienta",
@@ -2708,6 +2715,7 @@
           "submit": "Wyślij prośbę",
           "roles": {
             "administrator": "Administratorzy",
+            "employee": "Pracownicy",
             "supervisor": "Koordynatorzy",
             "recruiter": "Rekruterzy",
             "client_manager": "Opiekunowie klienta",
@@ -2920,6 +2928,9 @@
           "title": "Dokumenty prawne"
         },
         "usage": {
+          "administrators": "Administratorzy: {used} / {limit}",
+          "employees": "Pracownicy: {used} / {limit}",
+          "portal_guests": "Goście portalu (bez opłat): {used}",
           "recruiters": "Rekruterzy: {used} / {limit}",
           "supervisors": "Koordynatorzy: {used} / {limit}",
           "client_managers": "Opiekunowie klienta: {used} / {limit}",
@@ -3198,6 +3209,7 @@
           "client_manager": "Menedżer klienta",
           "client_processor": "Procesor kandydatów",
           "viewer": "Podgląd",
+          "employee": "Pracownik",
           "compliance_officer": "Specjalista ds. compliance",
           "hr_officer": "Specjalista HR"
         },
@@ -3216,7 +3228,10 @@
           "password_label": "Hasło (opcjonalnie)",
           "password_placeholder": "Zostaw puste — wygenerujemy",
           "submit": "Utwórz użytkownika",
-          "submitting": "Tworzymy…"
+          "submitting": "Tworzymy…",
+          "preset_label": "Preset uprawnień",
+          "preset_none": "Brak (domyślne dla roli)",
+          "preset_help": "Wypełnia uprawnienia modułów użytkownika — nie tworzy roli systemowej."
         },
         "errors": {
           "list_missing_endpoint": "Endpoint /api/v1/admin/users nie znaleziony. Zrestartuj backend po aktualizacjach.",
@@ -3411,6 +3426,13 @@
             "token": "Żeton",
             "valid_until": "Ważne do"
           }
+        },
+        "presets": {
+          "recruiter": "Rekruter",
+          "team_lead": "Team lead",
+          "hr": "HR",
+          "compliance": "Compliance",
+          "portal_guest": "Gość portalu"
         }
       },
       "ruleset": {
@@ -7122,14 +7144,14 @@
         "empty": "Brak leadów.",
         "empty_cta_clients": "Otwórz klientów",
         "empty_cta_connect": "Podłącz reklamy",
-        "empty_cta_intake": "Wybierz sposób zbierania zgłoszeń",
         "empty_desc": "Utwórz wakat, potem Meta, sample data lub ręczny intake — zgłoszenia pojawią się tutaj.",
         "empty_desc_services": "Dodaj klienta lub wybierz ścieżkę intake — zapytania trafią tutaj.",
         "empty_title": "Brak zgłoszeń",
         "empty_title_services": "Brak zapytań",
         "empty_why": "Stąd zaczyna się rekrutacja. Dalej: kontakt i przeniesienie do kandydatów.",
         "empty_cta_vacancy": "Utwórz wakat",
-        "empty_cta_setup": "Start"
+        "empty_cta_setup": "Start",
+        "empty_cta_intake": "Wybierz sposób zbierania zgłoszeń"
       },
       "messages": {
         "load_failed": "Nie udało się załadować leadów.",
@@ -8979,13 +9001,7 @@
         "loading": "Przygotowujemy kolejny krok…",
         "badge": "Od czego zacząć",
         "title": "Pierwsze kroki w HostFlow",
-        "title_agency": "Pierwsze kroki dla agencji",
-        "title_employer": "Pierwsze kroki dla pracodawcy",
-        "title_services": "Pierwsze kroki dla firmy usługowej",
         "subtitle": "Wykonuj kroki po kolei, aż będzie zgłoszenie i kontakt.",
-        "subtitle_agency": "Kolejno: klient → wakat → zgłoszenie → kontakt.",
-        "subtitle_employer": "Kolejno: wakat → zgłoszenie → kontakt.",
-        "subtitle_services": "Kolejno: klient lub zgłoszenie → kontakt.",
         "progress": "Gotowe {done} z {total}",
         "list_aria": "Checklista pierwszego uruchomienia",
         "optional": "opcjonalne",
@@ -8999,22 +9015,6 @@
         "page_subtitle": "Wykonaj kolejny krok na ekranie — do zgłoszenia i kontaktu.",
         "hub_badge": "Start",
         "hub_footer": "Zrób krok powyżej — na razie wystarczy.",
-        "open_faq": "Utknąłeś? Otwórz FAQ",
-        "open_faq_short": "FAQ",
-        "open_docs": "Przewodnik startowy",
-        "open_demo": "Jak działają dane przykładowe",
-        "lead_escape_hint": "Brak reklam? Wczytaj dane przykładowe, wybierz sposób zgłoszeń albo pomiń Meta.",
-        "recovery_title": "Potrzebujesz wyjścia?",
-        "recovery_body": "Otwórz „Zacznij pracę”, wczytaj dane przykładowe lub FAQ uruchomienia. Zawsze jest kolejny krok.",
-        "recovery_setup": "Otwórz checklistę startu",
-        "demo_title": "Zobacz na przykładach",
-        "demo_hint": "Wczytaj przykładowe zgłoszenia i kandydatów, żeby poznać ekrany. Przed realną pracą usuń jednym kliknięciem.",
-        "demo_active_hint": "Dane przykładowe są wczytane. Otwórz zgłoszenia albo usuń je przed realną pracą.",
-        "demo_seed": "Wczytaj dane przykładowe",
-        "demo_clear": "Usuń dane przykładowe",
-        "demo_open_leads": "Otwórz zgłoszenia",
-        "demo_seed_error": "Nie udało się wczytać danych. Wymagana rola administratora.",
-        "demo_clear_error": "Nie udało się usunąć danych. Wymagana rola administratora.",
         "items": {
           "company": {
             "label": "Podaj firmę",
@@ -9031,11 +9031,6 @@
             "hint": "Żeby zgłoszenia z reklam wpadały tutaj same. Możesz pominąć i wczytać dane przykładowe.",
             "cta": "Podłącz reklamy"
           },
-          "client": {
-            "label": "Dodaj pierwszego klienta",
-            "hint": "Firma lub zleceniodawca, dla którego rekrutujesz lub świadczysz usługę.",
-            "cta": "Dodaj klienta"
-          },
           "vacancy": {
             "label": "Utwórz pierwszy wakat",
             "hint": "Rola, na którą szukasz ludzi — ok. minuta.",
@@ -9050,21 +9045,48 @@
             "label": "Skontaktuj się z osobą",
             "hint": "Otwórz zgłoszenie i wykonaj kolejny krok, żeby nic nie wisiało.",
             "cta": "Otwórz zgłoszenia"
+          },
+          "client": {
+            "label": "Dodaj pierwszego klienta",
+            "hint": "Firma lub zleceniodawca, dla którego rekrutujesz lub świadczysz usługę.",
+            "cta": "Dodaj klienta"
           }
         },
         "title_done": "Możesz pracować w systemie",
-        "title_done_agency": "Możesz prowadzić zlecenia w systemie",
-        "title_done_employer": "Możesz rekrutować w systemie",
-        "title_done_services": "Możesz obsługiwać klientów w systemie",
         "subtitle_done": "Podstawy gotowe. Prowadź ludzi dalej po etapach.",
-        "subtitle_done_agency": "Podstawy gotowe. Prowadź placementy dalej.",
-        "subtitle_done_employer": "Podstawy gotowe. Prowadź kandydatów dalej.",
-        "subtitle_done_services": "Podstawy gotowe. Prowadź zapytania i klientów dalej.",
         "checklist_title": "Postęp",
         "result_ready_title": "Gotowe do pracy",
         "result_ready_body": "Firma i pierwsze kroki są na miejscu. Kontynuuj z menu.",
         "go_work": "Do pracy",
-        "go_vacancies": "Otwórz wakaty"
+        "go_vacancies": "Otwórz wakaty",
+        "title_agency": "Pierwsze kroki dla agencji",
+        "title_employer": "Pierwsze kroki dla pracodawcy",
+        "title_services": "Pierwsze kroki dla firmy usługowej",
+        "subtitle_agency": "Kolejno: klient → wakat → zgłoszenie → kontakt.",
+        "subtitle_employer": "Kolejno: wakat → zgłoszenie → kontakt.",
+        "subtitle_services": "Kolejno: klient lub zgłoszenie → kontakt.",
+        "open_faq": "Utknąłeś? Otwórz FAQ",
+        "open_faq_short": "FAQ",
+        "open_docs": "Przewodnik startowy",
+        "open_demo": "Jak działają dane przykładowe",
+        "lead_escape_hint": "Brak reklam? Wczytaj dane przykładowe, wybierz sposób zgłoszeń albo pomiń Meta.",
+        "recovery_title": "Potrzebujesz wyjścia?",
+        "recovery_body": "Otwórz „Zacznij pracę”, wczytaj dane przykładowe lub FAQ uruchomienia. Zawsze jest kolejny krok.",
+        "recovery_setup": "Otwórz checklistę startu",
+        "demo_title": "Zobacz na przykładach",
+        "demo_hint": "Wczytaj przykładowe zgłoszenia i kandydatów, żeby poznać ekrany. Przed realną pracą usuń jednym kliknięciem.",
+        "demo_active_hint": "Dane przykładowe są wczytane. Otwórz zgłoszenia albo usuń je przed realną pracą.",
+        "demo_seed": "Wczytaj dane przykładowe",
+        "demo_clear": "Usuń dane przykładowe",
+        "demo_open_leads": "Otwórz zgłoszenia",
+        "demo_seed_error": "Nie udało się wczytać danych. Wymagana rola administratora.",
+        "demo_clear_error": "Nie udało się usunąć danych. Wymagana rola administratora.",
+        "title_done_agency": "Możesz prowadzić zlecenia w systemie",
+        "title_done_employer": "Możesz rekrutować w systemie",
+        "title_done_services": "Możesz obsługiwać klientów w systemie",
+        "subtitle_done_agency": "Podstawy gotowe. Prowadź placementy dalej.",
+        "subtitle_done_employer": "Podstawy gotowe. Prowadź kandydatów dalej.",
+        "subtitle_done_services": "Podstawy gotowe. Prowadź zapytania i klientów dalej."
       },
       "setup_status": {
         "technical_gates_summary": "Dodatkowe sprawdzenia Recruitment (dla adminów)",
@@ -12088,12 +12110,6 @@
       "create_funnel": "Utwórz lejek",
       "default_funnel": "Domyślny dla nowych wakansji",
       "default_funnel_leads": "Domyślny lejek dla leadów",
-      "make_default": "Domyślny dla nowych wakansji",
-      "is_company_default": "★ Prefill dla nowych wakansji",
-      "used_by_vacancies": "Używany w {count} wakansjach",
-      "howto_one_liner": "Utwórz lub edytuj pipeline tutaj, potem przypisz na wakansjach.",
-      "cta_assign_on_vacancy": "Wakansje — przypisz",
-      "cta_new_vacancy": "Nowa wakansja",
       "funnel_name": "Nazwa lejka",
       "new_funnel": "Nowy lejek",
       "header_kicker": "Lejki",
@@ -12154,7 +12170,13 @@
         "reorder_failed": "Nie udało się zmienić kolejności etapów",
         "make_default_failed": "Nie udało się ustawić lejka jako domyślnego",
         "delete_funnel_failed": "Nie udało się usunąć lejka"
-      }
+      },
+      "make_default": "Domyślny dla nowych wakansji",
+      "is_company_default": "★ Prefill dla nowych wakansji",
+      "used_by_vacancies": "Używany w {count} wakansjach",
+      "howto_one_liner": "Utwórz lub edytuj pipeline tutaj, potem przypisz na wakansjach.",
+      "cta_assign_on_vacancy": "Wakansje — przypisz",
+      "cta_new_vacancy": "Nowa wakansja"
     },
     "settings": {
       "subpage": {
@@ -12294,6 +12316,10 @@
           "description": "Profil osobisty, język, bezpieczeństwo i preferencje lokalne.",
           "label": "Mój profil"
         },
+        "roles_access": {
+          "label": "Role i dostępy",
+          "description": "Role zaufania, macierz modułów i presety uprawnień dla Employee i Viewer."
+        },
         "merge_templates": {
           "label": "Szablony łączenia",
           "description": "Szablony tekstowe do generowania dokumentów kandydata."
@@ -12366,6 +12392,18 @@
           "description": "Hub organizacji i profile firm. Subskrypcja i płatności są w sekcji Billing.",
           "label": "Przestrzeń robocza"
         }
+      },
+      "roles_access": {
+        "title": "Role i dostępy",
+        "description": "Role zaufania i widoczność modułów. Stanowiska to presety, nie osobne role security (ADR-036).",
+        "matrix_heading": "Macierz rola × moduł",
+        "matrix_help": "V = widoczne, E = edycja. Kolumna Administrator zablokowana (trust ceiling).",
+        "show_legacy": "Pokaż legacy kolumny ról",
+        "ceiling_locked": "(zablokowane)",
+        "presets_title": "Presety (nie role)",
+        "presets_body": "Recruiter, Team lead, HR, Compliance to pakiety startowe dla Employee. Goście portalu: Viewer + portal context, nie client_manager.",
+        "load_failed": "Nie udało się wczytać macierzy",
+        "save_failed": "Nie udało się zapisać"
       }
     },
     "communications_settings": {

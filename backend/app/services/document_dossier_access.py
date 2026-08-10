@@ -10,6 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import ColumnElement
 
 from backend.app.auth.deps import Role, UserCtx
+from backend.app.auth.trust_roles import (
+    TrustRole,
+    is_hr_workspace_actor,
+    is_portal_actor,
+    is_team_lead_org_actor,
+    normalize_trust_role,
+)
 from backend.app.models.document import Document
 from backend.app.models.document_dossier_share import DocumentDossierShare
 
@@ -57,17 +64,18 @@ def normalize_dossier_zone(value: Optional[str]) -> str:
     return v
 
 
-def allowed_zones_for_role(role: str) -> Set[str]:
+def allowed_zones_for_role(role: str, *, access_context: str | None = None) -> Set[str]:
     """Which zones a user may see when listing/downloading documents."""
     r = (role or "").strip().lower()
-    if r in (Role.administrator.value, Role.supervisor.value):
+    trust = normalize_trust_role(r)
+    if trust in {TrustRole.administrator.value, TrustRole.superadmin.value} or is_team_lead_org_actor(r):
         return set(ALL_ZONES)
-    if r == Role.hr_officer.value:
+    if is_hr_workspace_actor(r):
         return {ZONE_RECRUITMENT, ZONE_INTERNAL_HR}
-    if r in (Role.recruiter.value, Role.compliance_officer.value):
-        return {ZONE_RECRUITMENT}
-    if r in (Role.client_manager.value, Role.client_processor.value):
+    if is_portal_actor(r, access_context):
         return {ZONE_CLIENT}
+    if trust == TrustRole.employee.value:
+        return {ZONE_RECRUITMENT}
     return {ZONE_RECRUITMENT}
 
 
@@ -75,7 +83,7 @@ def default_zone_for_creator(role: str, *, client_tenant: bool) -> str:
     if client_tenant:
         return ZONE_CLIENT
     r = (role or "").strip().lower()
-    if r == Role.hr_officer.value:
+    if is_hr_workspace_actor(r):
         return ZONE_INTERNAL_HR
     return ZONE_RECRUITMENT
 
@@ -94,7 +102,10 @@ def can_assign_zone_on_patch(role: str, new_zone: str, *, client_tenant: bool) -
 
 def dossier_list_condition(user: UserCtx) -> ColumnElement[bool]:
     """SQL: document visible by zone membership or active share to this user."""
-    zones = allowed_zones_for_role(user.role)
+    zones = allowed_zones_for_role(
+        user.role,
+        access_context=getattr(user, "access_context", None),
+    )
     now = datetime.now(timezone.utc)
     share_sq = (
         select(1)
@@ -119,7 +130,10 @@ async def user_can_view_document(
     doc: Document,
 ) -> bool:
     zone = getattr(doc, "dossier_zone", None) or ZONE_RECRUITMENT
-    if zone in allowed_zones_for_role(user.role):
+    if zone in allowed_zones_for_role(
+        user.role,
+        access_context=getattr(user, "access_context", None),
+    ):
         return True
     now = datetime.now(timezone.utc)
     row = await db.scalar(

@@ -1,103 +1,146 @@
-# 🛡️ HostFlow RBAC Matrix & Panels
+# HostFlow RBAC Matrix & Panels
 
-> Официальная матрица ролей, ресурсов и панелей. Используется для backend.guard декораторов, frontend conditional UI и тестов доступа.
+**Status:** NORMATIVE (L2) — operating matrix for trust roles  
+**Parent ADR:** [`ADR-036-four-trust-roles-rbac.md`](ADR-036-four-trust-roles-rbac.md)  
+**Inventory:** [`rbac-role-usage-inventory.md`](rbac-role-usage-inventory.md)
 
----
-
-## 1. Панели и назначение
-
-| Панель | URI-префикс | Роли | Описание |
-|--------|-------------|------|----------|
-| Platform Control Center | `/api/v1/platform/*` | `superadmin` | Управление лицензиями, white-label, глобальными интеграциями, аудитом |
-| Tenant Admin Console | `/api/v1/settings/*` | `administrator` (write), `supervisor` (read-only) | Настройки внутри тенанта: пользователи, ruleset, локализация, импорт CSV, routing |
-| Supervisor Dashboard | `/api/v1/supervisor/*`, `/api/v1/leads/*` (read/all) | `administrator`, `supervisor` | Контроль пайплайнов, unmatched leads, SLA напоминаний и документов |
-| Recruiter Workspace | `/api/v1/leads/*`, `/api/v1/candidates/*`, `/api/v1/documents/*` | `administrator`, `supervisor`, `recruiter` | Операционная работа с лидами/кандидатами/документами |
-| Client Portal | `/api/v1/client/*` | `client_manager` | Доступ компании к своим кандидатам и документам |
-| Candidate Portal | `/api/v1/candidate/*` | `candidate` | Личный кабинет кандидата |
-
-> Настройки всегда располагаются в `/api/v1/platform` или `/api/v1/settings`. Рабочие модули не должны содержать конфигурационных эндпоинтов.
+> Official matrix of **trust roles**, panels, ceilings, and module defaults. Used by backend guards, frontend conditional UI, and access tests.  
+> **Do not** add a fifth canonical role without Architecture RFC. Job titles = presets.
 
 ---
 
-## 2. Роли и соответствие панелям
+## 0. Six axes (summary)
 
-| Роль | Панели | Примечания |
-|------|--------|------------|
-| `superadmin` | Platform Control Center, Tenant Admin Console (impersonation) | Может переключаться между тенантами, видеть все данные |
-| `administrator` (`owner`) | Tenant Admin Console, Supervisor Dashboard, Recruiter Workspace | Управляет пользователями, шаблонами, импортом CSV, локализацией |
-| `supervisor` | Supervisor Dashboard, Recruiter Workspace | Контроль пайплайнов, отмечает напоминания, видит unmatched лиды, но не меняет глобальные настройки |
-| `recruiter` | Recruiter Workspace | CRUD по лидам, кандидатам, документам в пределах доступа |
-| `client_manager` | Client Portal | Ограничен своей компанией (`company_id`) |
-| `candidate` | Candidate Portal | Только собственные данные |
-| `viewer` | Supervisor Dashboard (read-only) | Нет прав на изменения |
-
----
-
-## 3. Матрица ресурсов (основные сущности)
-
-### 3.1 Документы / Documents
-
-| Действие | superadmin | administrator | supervisor | recruiter | client_manager | candidate |
-|----------|------------|---------------|------------|-----------|----------------|-----------|
-| `list` | ✅ (impersonation) | ✅ | ✅ | ✅ | ✅ (только свои компании) | ✅ (только свои) |
-| `read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `create` | ✅ | ✅ | ⚠️ (может создавать процессные шаги/напоминания) | ✅ | ❌ | ✅ (ограниченные типы, upload) |
-| `update` | ✅ | ✅ | ⚠️ (workflow, due_at) | ✅ | ❌ | ⚠️ (только файлы) |
-| `delete` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `manage_templates` | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-
-> ⚠️ Supervisor может менять `workflow.steps[*].due_at` и отмечать выполненными, но не может удалять документы.
-
-### 3.2 Лиды / Leads
-
-| Действие | superadmin | administrator | supervisor | recruiter | client_manager |
-|----------|------------|---------------|------------|-----------|----------------|
-| `list` | ✅ (impersonation) | ✅ | ✅ | ✅ | ❌ |
-| `read` | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `create` | ✅ | ✅ | ⚠️ (может создавать follow-up задачи) | ✅ | ❌ |
-| `update` | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `needs_routing` управление | ✅ | ✅ | ❌ | ❌ | ❌ |
-| `import_csv` | ✅ | ✅ | ❌ | ❌ | ❌ |
-| `webhook_settings` | ✅ | ✅ | ❌ | ❌ | ❌ |
-
-> Распределять лидов, не прошедших маппинг, могут только `administrator` внутри тенанта или `superadmin` от имени тенанта.
-
-> `supervisor` имеет read-only доступ к `/api/v1/settings/leads/**`: может просматривать настройки, credential'ы, маппинг и прогресс import jobs, но не запускать импорт и не изменять конфигурацию.
-
-### 3.3 Напоминания / Reminders
-
-| Действие | superadmin | administrator | supervisor | recruiter | client_manager |
-|----------|------------|---------------|------------|-----------|----------------|
-| `list` | ✅ (audit) | ✅ | ✅ (весь тенант) | ✅ (свои кандидаты/документы) | ✅ (свои документы) |
-| `mark_done` | ✅ | ✅ | ✅ (эскалационные напоминания) | ✅ (свои) | ✅ (свои) |
-| `escalate` | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `configure_sla` | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Axis | SoT |
+|------|-----|
+| Role (trust) | JWT / membership — 4 values + aliases |
+| Permissions | Action keys + module visible/editable matrix |
+| Preset | Named starter packs (`recruiter`, `team_lead`, `hr`, `compliance`, …) |
+| Org | `supervisor_id`, teams (future) |
+| Scope | Company ACL / object ACL |
+| access_context | `tenant` \| `portal` |
 
 ---
 
-## 4. Делегирование прав клиента
+## 1. Canonical trust roles
 
-- Клиент (компания) может назначить дополнительных менеджеров через Client Portal (`POST /api/v1/client/users`).
-- Делегированные менеджеры наследуют роль `client_manager` и видят только данные своей компании.
-- Делегирование хранится в таблице `company_access` (см. `modules/companies.md`).
-- Удаление делегирования немедленно отзывает доступ (audit log обязателен).
+| Role | Who | Notes |
+|------|-----|-------|
+| `superadmin` | HostFlow platform | Tenants, impersonation, platform APIs |
+| `administrator` | Tenant admin / owner | Users, roles/access matrix, billing, tenant settings |
+| `employee` | Operational staff | Configurable operational permissions; **no** Admin-locked capabilities |
+| `viewer` | Observer or portal guest | Read-oriented; portal capabilities only when `access_context=portal` |
+
+**Aliases (normalize → canonical):**
+
+| Alias | Canonical | Extra |
+|-------|-----------|--------|
+| `owner`, `admin` | `administrator` | — |
+| `recruiter`, `supervisor`, `hr_officer`, `compliance_officer`, `hr`, `manager` | `employee` | + preset id |
+| `client_manager`, `client_processor`, `client`, `processor` | `viewer` | + `access_context=portal` preferred |
+| `user` | `viewer` | — |
+
+**Deprecated as security roles (do not assign to new users):** `recruiter`, `supervisor`, `hr_officer`, `compliance_officer`, `client_manager`, `client_processor`.
+
+External: candidate / magic-link — **not** CRM trust roles.
 
 ---
 
-## 5. Проверки и middleware
+## 2. Trust ceilings
 
-- Каждый запрос проходит через `get_current_user` (см. `backend/app/auth/deps.py`), который определяет роль и тенант.
-- Middleware `ensure_auth_multitenancy` устанавливает `app.tenant_id` и проверяет, что пользователь имеет доступ к панели, соответствующей пути.
-- Для `/api/v1/settings/*` требуется `administrator` или `superadmin`; GET-запросы к `/api/v1/settings/leads/**` доступны также `supervisor` (read-only).
-- Для `/api/v1/platform/*` требуется `superadmin`.
-- Для `/api/v1/client/*` — `client_manager` и совпадение `company_id`.
+| Capability | Superadmin | Admin | Employee | Viewer |
+|------------|:----------:|:-----:|:--------:|:------:|
+| Platform / tenants | yes | — | — | — |
+| Tenant settings | yes | yes | — | — |
+| Users / roles / access | yes | yes | — | — |
+| Billing / subscription | yes | yes | — | — |
+| Operational modules | yes | yes | configurable | configurable / read-oriented |
+| Mutate business data | yes | yes | configurable | usually — |
+| Portal capabilities | — | — | — | configurable |
+
+Admin-locked rows are **not** editable for Employee/Viewer in UI or API.
 
 ---
 
-## 6. Тестовый чек-лист
+## 3. Panels
 
-- [ ] Интеграционные тесты подтверждают, что `recruiter` не может вызвать `/api/v1/settings/*`.
-- [ ] Тест на запрет ручного распределения лидов `needs_routing` для `recruiter`/`supervisor`.
-- [ ] Тесты документов проверяют, что `client_manager` видит только свои документы.
-- [ ] Smoke-тест UI скрывает настройки от рекрутёров.
-- [ ] Audit лог фиксирует все эскалации и изменения ролей.
+| Panel | URI prefix | Trust roles | Notes |
+|-------|------------|-------------|--------|
+| Platform Control Center | `/api/v1/platform/*` | `superadmin` | — |
+| Tenant Admin Console | `/api/v1/settings/*` | `administrator` (write); limited read via permissions | Not Employee/Viewer for users/roles/billing |
+| Operational CRM | `/api/v1/leads/*`, `/candidates/*`, … | `administrator`, `employee` (+ permission/module) | Presets shape defaults |
+| Read / portal | scoped APIs | `viewer` | `access_context` + scope |
+
+Settings UI for matrix: **Settings → Team → Roles & access** (`/app/settings/team`).
+
+---
+
+## 4. Default role × module matrix
+
+Defaults live in code: `backend/app/api/v1/tenants/service.py` (`_ROLE_MODULE_DEFAULTS`) and trust canonical keys via aliases during migration.
+
+Target canonical keys in matrix UI: `administrator`, `employee`, `viewer` (superadmin out of tenant matrix).
+
+Legacy matrix columns (`recruiter`, `supervisor`, …) map to **employee** presets until Phase 3 cleanup; `client_*` columns map to **viewer** (portal).
+
+Illustrative employee/viewer defaults (visible / editable):
+
+| Module | administrator | employee (recruiter preset) | employee (hr preset) | viewer (tenant) | viewer (portal) |
+|--------|---------------|------------------------------|----------------------|-----------------|-----------------|
+| candidates | V+E | V+E | — | V | V (scoped) |
+| companies | V+E | V | — | V | V (scoped) |
+| vacancies | V+E | V | — | V | V (scoped) |
+| documents | V+E | V+E | — | — | V+E portal caps |
+| leads | V+E | V | — | — | — |
+| services | V+E | V+E | — | — | — |
+| client_portal | V+E | — | — | — | V |
+| hr | V+E | — | V+E | — | — |
+
+(V = visible, E = editable)
+
+---
+
+## 5. Presets (not roles)
+
+| Preset id | Applies to | Intent |
+|-----------|------------|--------|
+| `recruiter` | employee | Leads/candidates/docs ops |
+| `team_lead` | employee | Ops + manager tools; org via `supervisor_id` |
+| `hr` | employee | HR workspace |
+| `compliance` | employee | Documents / process ops |
+| `portal_guest` | viewer + portal | Scoped read + optional sign/comment |
+
+Applying a preset copies permission/module cells; admin may tighten within ceilings.
+
+---
+
+## 6. access_context
+
+| role | access_context | Typical use |
+|------|----------------|-------------|
+| viewer | tenant | Internal stakeholder read-only |
+| viewer | portal | External client without HF license |
+| employee | tenant | Staff |
+| administrator | tenant | Tenant admin |
+
+---
+
+## 7. Middleware / enforcement
+
+- `get_current_user` + tenant RLS (`app.tenant_id`).
+- Trust normalize: `normalize_trust_role()` / aliases before ceiling checks.
+- Module gate (ADR-023 Stage 2B) + role module matrix + user overrides.
+- Platform routes: `superadmin`.
+- Matrix PATCH: reject Admin-locked escalation for employee/viewer.
+- Object scope: company ACL / entity helpers (unchanged).
+
+---
+
+## 8. Test checklist
+
+- [ ] Employee cannot call users/roles/billing admin APIs.
+- [ ] Viewer cannot mutate business data by default.
+- [ ] Matrix PATCH rejecting Admin-locked grants for employee/viewer.
+- [ ] Portal viewer ≠ treated as tenant admin; `access_context` distinct.
+- [ ] Legacy alias `recruiter` still authenticates as employee trust during migration.
+- [ ] Audit log on role / matrix / preset apply changes.

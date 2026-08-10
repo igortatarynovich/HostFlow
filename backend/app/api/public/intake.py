@@ -280,7 +280,7 @@ async def _maybe_create_client_lead_from_public_intake(
             "candidate_name": cname,
             "href": spa_paths.spa_lead(str(lead.id)),
         },
-        audience=EventAudience(roles=(Role.manager, Role.recruiter)),
+        audience=EventAudience(roles=(Role.employee, Role.employee)),
         entity_type="lead",
         entity_id=str(lead.id),
     )
@@ -1985,7 +1985,7 @@ async def submit_company_intake(
             "language": payload.language,
             "href": spa_paths.spa_lead(str(lead.id)),
         },
-        audience=EventAudience(roles=(Role.manager, Role.recruiter)),
+        audience=EventAudience(roles=(Role.employee, Role.employee)),
         entity_type="lead",
         entity_id=str(lead.id),
     )
@@ -4217,7 +4217,7 @@ async def _finalize_public_client_lead_draft(
             "candidate_name": display_name,
             "href": spa_paths.spa_lead(str(lead.id)),
         },
-        audience=EventAudience(roles=(Role.manager, Role.recruiter)),
+        audience=EventAudience(roles=(Role.employee, Role.employee)),
         entity_type="lead",
         entity_id=str(lead.id),
     )
@@ -4625,7 +4625,7 @@ async def submit_public_intake(
         },
         audience=EventAudience(
             user_ids=notify_user_ids or None,
-            roles=None if notify_user_ids else (Role.manager, Role.recruiter),
+            roles=None if notify_user_ids else (Role.employee, Role.employee),
         ),
         entity_type="candidate",
         entity_id=candidate.id,
