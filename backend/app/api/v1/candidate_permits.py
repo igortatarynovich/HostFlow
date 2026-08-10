@@ -20,9 +20,9 @@ from backend.app.services.candidate_operational_write import ensure_candidate_op
 router = APIRouter(prefix="/candidates", tags=["candidate-permits"], redirect_slashes=False)
 
 RESTRICTED_ROLES = {
-    Role.recruiter.value,
-    Role.supervisor.value,
-    Role.manager.value,
+    Role.employee.value,
+    Role.employee.value,
+    Role.employee.value,
 }
 
 

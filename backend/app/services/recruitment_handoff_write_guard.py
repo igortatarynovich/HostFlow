@@ -17,6 +17,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_MUTATE_ROLES
+from backend.app.auth.trust_roles import is_hr_workspace_actor
 from backend.app.constants.stages import TERMINAL_STATUSES
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.recruitment_application import RecruitmentApplication
@@ -133,7 +134,7 @@ async def require_agency_recruitment_write_allowed(
         return
     if reason == RECRUITMENT_TERMINAL_CLOSE_OVERRIDE and role_l in _RECRUITMENT_MUTATE_ROLE_VALUES:
         return
-    if role_l == "hr_officer" and reason == "internal_hr_handoff_lane":
+    if is_hr_workspace_actor(role_l) and reason == "internal_hr_handoff_lane":
         if await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=agency_tenant_id, candidate_id=candidate_id
         ):

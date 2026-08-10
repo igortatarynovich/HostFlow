@@ -38,9 +38,9 @@ from backend.app.auth.trust_role_deps import TRUST_WRITE_ROLES, TRUST_READ_ROLES
 WRITE_ROLES = TRUST_WRITE_ROLES
 RESTRICTED_ROLES = {
     Role.employee.value,
-    Role.recruiter.value,  # legacy DB
-    Role.supervisor.value,
-    Role.manager.value,
+    Role.employee.value,  # legacy DB
+    Role.employee.value,
+    Role.employee.value,
 }
 
 

@@ -2,7 +2,7 @@
  * User and tenant-related types
  */
 
-export type UserRole = 'administrator' | 'employee' | 'supervisor' | 'recruiter' | 'client_manager' | 'client_processor' | 'compliance_officer' | 'hr_officer' | 'viewer';
+export type UserRole = 'superadmin' | 'administrator' | 'employee' | 'viewer';
 export type TenantUserRole = UserRole;
 
 export type TenantType = 'agency' | 'company' | 'platform';

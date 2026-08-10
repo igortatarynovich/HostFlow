@@ -226,12 +226,12 @@ _MODULE_DEFAULTS: Dict[str, bool] = {
 _ROLE_MATRIX_ROLES: tuple[str, ...] = (
     UserRole.administrator.value,
     "employee",  # ADR-036 canonical
-    UserRole.supervisor.value,
-    UserRole.recruiter.value,
-    UserRole.client_manager.value,
-    UserRole.client_processor.value,
-    UserRole.compliance_officer.value,
-    UserRole.hr_officer.value,
+    "supervisor",  # legacy matrix column (preset team_lead)
+    "recruiter",  # legacy matrix column (preset recruiter)
+    "client_manager",  # legacy portal column
+    "client_processor",  # legacy portal column
+    "compliance_officer",  # legacy matrix column
+    "hr_officer",  # legacy matrix column (preset hr)
     UserRole.viewer.value,
 )
 
@@ -250,7 +250,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": False, "editable": False},
         "hr": {"visible": False, "editable": False},
     },
-    UserRole.supervisor.value: {
+    "supervisor": {
         "candidates": {"visible": True, "editable": True},
         "companies": {"visible": True, "editable": True},
         "vacancies": {"visible": True, "editable": True},
@@ -260,7 +260,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": True, "editable": False},
         "hr": {"visible": True, "editable": True},
     },
-    UserRole.recruiter.value: {
+    "recruiter": {
         "candidates": {"visible": True, "editable": True},
         "companies": {"visible": True, "editable": False},
         "vacancies": {"visible": True, "editable": False},
@@ -270,7 +270,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": False, "editable": False},
         "hr": {"visible": False, "editable": False},
     },
-    UserRole.client_manager.value: {
+    "client_manager": {
         "candidates": {"visible": True, "editable": True},
         "companies": {"visible": True, "editable": False},
         "vacancies": {"visible": True, "editable": False},
@@ -280,7 +280,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": True, "editable": False},
         "hr": {"visible": False, "editable": False},
     },
-    UserRole.client_processor.value: {
+    "client_processor": {
         "candidates": {"visible": True, "editable": True},
         "companies": {"visible": True, "editable": False},
         "vacancies": {"visible": True, "editable": False},
@@ -290,7 +290,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": True, "editable": False},
         "hr": {"visible": False, "editable": False},
     },
-    UserRole.compliance_officer.value: {
+    "compliance_officer": {
         "candidates": {"visible": True, "editable": True},
         "companies": {"visible": True, "editable": False},
         "vacancies": {"visible": True, "editable": False},
@@ -300,7 +300,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": False, "editable": False},
         "hr": {"visible": False, "editable": False},
     },
-    UserRole.hr_officer.value: {
+    "hr_officer": {
         "candidates": {"visible": False, "editable": False},
         "companies": {"visible": False, "editable": False},
         "vacancies": {"visible": False, "editable": False},
@@ -322,14 +322,16 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
     },
 }
 
+# Seat requests may still name legacy job titles; they map to trust buckets in users service.
 _ALLOWED_SEAT_ROLES = {
     UserRole.administrator.value,
-    UserRole.supervisor.value,
-    UserRole.recruiter.value,
-    UserRole.compliance_officer.value,
-    UserRole.hr_officer.value,
-    UserRole.client_manager.value,
+    UserRole.employee.value,
     UserRole.viewer.value,
+    "supervisor",
+    "recruiter",
+    "compliance_officer",
+    "hr_officer",
+    "client_manager",
 }
 
 
@@ -352,18 +354,18 @@ def _role_defaults_for_tenant(tenant: Tenant) -> Dict[str, Dict[str, Dict[str, b
     if business_type == "employer":
         # Employer teams usually run vacancy+candidate loop directly.
         # Recruiter should be able to operate vacancies, not only view them.
-        defaults[UserRole.recruiter.value]["vacancies"] = {"visible": True, "editable": True}
+        defaults["recruiter"]["vacancies"] = {"visible": True, "editable": True}
     elif business_type == "services":
         # Services mode shifts recruiter-like role to leads/services operations.
-        defaults[UserRole.recruiter.value]["companies"] = {"visible": True, "editable": True}
-        defaults[UserRole.recruiter.value]["leads"] = {"visible": True, "editable": True}
-        defaults[UserRole.recruiter.value]["services"] = {"visible": True, "editable": True}
-        defaults[UserRole.recruiter.value]["candidates"] = {"visible": False, "editable": False}
-        defaults[UserRole.recruiter.value]["vacancies"] = {"visible": False, "editable": False}
-        defaults[UserRole.client_manager.value]["leads"] = {"visible": True, "editable": True}
-        defaults[UserRole.client_manager.value]["services"] = {"visible": True, "editable": True}
-        defaults[UserRole.client_processor.value]["leads"] = {"visible": True, "editable": True}
-        defaults[UserRole.client_processor.value]["services"] = {"visible": True, "editable": True}
+        defaults["recruiter"]["companies"] = {"visible": True, "editable": True}
+        defaults["recruiter"]["leads"] = {"visible": True, "editable": True}
+        defaults["recruiter"]["services"] = {"visible": True, "editable": True}
+        defaults["recruiter"]["candidates"] = {"visible": False, "editable": False}
+        defaults["recruiter"]["vacancies"] = {"visible": False, "editable": False}
+        defaults["client_manager"]["leads"] = {"visible": True, "editable": True}
+        defaults["client_manager"]["services"] = {"visible": True, "editable": True}
+        defaults["client_processor"]["leads"] = {"visible": True, "editable": True}
+        defaults["client_processor"]["services"] = {"visible": True, "editable": True}
 
     return defaults
 
@@ -807,10 +809,42 @@ def get_effective_role_module_permissions(
     *,
     role: str,
     user_id: str | None = None,
+    preset_id: str | None = None,
+    access_context: str | None = None,
 ) -> Dict[str, Dict[str, bool]]:
-    normalized_role = str(role or UserRole.viewer.value).strip().lower()
+    from backend.app.auth.trust_roles import (
+        infer_access_context,
+        normalize_trust_role,
+        resolve_preset_id,
+    )
+
+    raw_role = str(role or UserRole.viewer.value).strip().lower()
+    trust = normalize_trust_role(raw_role)
+    pid = resolve_preset_id(raw_role, explicit=preset_id)
+    ctx = infer_access_context(raw_role, access_context)
+
+    # Prefer legacy matrix columns when preset/context still maps to them (migration window).
+    matrix_role = trust
+    if pid == "hr":
+        matrix_role = "hr_officer"
+    elif pid == "team_lead":
+        matrix_role = "supervisor"
+    elif pid == "recruiter":
+        matrix_role = "recruiter"
+    elif pid == "compliance":
+        matrix_role = "compliance_officer"
+    elif pid == "portal_guest" or ctx == "portal":
+        matrix_role = "client_processor"
+    elif trust == UserRole.employee.value:
+        matrix_role = "employee"
+
     matrix = get_role_module_matrix_snapshot(tenant)
-    role_matrix = matrix.get(normalized_role) or matrix.get(UserRole.viewer.value) or {}
+    role_matrix = (
+        matrix.get(matrix_role)
+        or matrix.get(trust)
+        or matrix.get(UserRole.viewer.value)
+        or {}
+    )
     effective = {
         key: {"visible": bool(val.get("visible")), "editable": bool(val.get("editable"))}
         for key, val in role_matrix.items()

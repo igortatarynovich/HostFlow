@@ -15,6 +15,7 @@ from sqlalchemy import and_, or_, select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, get_current_user, UserCtx
+from backend.app.auth.trust_roles import is_hr_workspace_actor
 from backend.app.core.audit_events import AuditEntityType, AuditEventType
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
@@ -775,7 +776,7 @@ async def _check_document_edit_permission(
     or_s = str(override_reason or "").strip()
     if can_override_recruitment_handoff_lock(role_l) and or_s:
         return {"lock_reason": lock_reason or "handoff", "override_reason": or_s}
-    if role_l == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+    if is_hr_workspace_actor(role_l) and await agency_candidate_has_internal_hr_handoff_lane(
         db, agency_tenant_id=tenant_id_str, candidate_id=candidate_id_str
     ):
         return {"lock_reason": lock_reason or "handoff", "override_reason": "internal_hr_handoff_lane"}

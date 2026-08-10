@@ -50,9 +50,9 @@ def roles_for_pipeline_owner_role(raw: Optional[str]) -> Optional[Set[Role]]:
     out: Set[Role] = set()
     for t in tokens:
         if t in ("recruiter", "rec"):
-            out.add(Role.recruiter)
+            out.add(Role.employee)
         elif t in ("supervisor", "manager", "mgr"):
-            out.add(Role.supervisor)
+            out.add(Role.employee)
         elif t in ("administrator", "admin", "owner"):
             out.add(Role.administrator)
     return out or None
@@ -205,8 +205,7 @@ async def _build_distribution_team(
                 User.deleted_at.is_(None),
                 or_(
                     User.role == Role.administrator,
-                    User.role == Role.supervisor,
-                    User.role == Role.recruiter,
+                    User.role == Role.employee,
                 ),
             )
             .order_by(User.created_at.asc())

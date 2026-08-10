@@ -53,7 +53,7 @@ export interface WhoAmI {
   is_solo_admin?: boolean;
 }
 
-export type UserRole = 'administrator' | 'supervisor' | 'recruiter' | 'client_manager' | 'client_processor' | 'compliance_officer' | 'hr_officer' | 'viewer';
+export type UserRole = 'superadmin' | 'administrator' | 'employee' | 'viewer';
 export type TenantUserRole = UserRole;
 
 export type TenantType = 'agency' | 'company' | 'platform';

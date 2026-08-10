@@ -9,7 +9,11 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user
-from backend.app.auth.trust_roles import actor_satisfies_role_allowlist
+from backend.app.auth.trust_roles import (
+    JOB_PROXY_ROLES,
+    PORTAL_LEGACY_ROLES,
+    actor_satisfies_role_allowlist,
+)
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.module_registry.resolver import is_module_installed
 
@@ -20,11 +24,8 @@ _FLEET_MODULE_ROLE_ALLOWLIST = frozenset(
         Role.administrator.value,
         Role.employee.value,
         Role.viewer.value,
-        Role.supervisor.value,
-        Role.recruiter.value,
-        Role.client_manager.value,
-        Role.client_processor.value,
-        Role.compliance_officer.value,
+        *JOB_PROXY_ROLES,
+        *PORTAL_LEGACY_ROLES,
         "fleet_manager",
     }
 )

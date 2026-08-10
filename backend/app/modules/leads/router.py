@@ -901,7 +901,7 @@ async def update_lead_stage_endpoint(
             tenant_id=tenant_id_str,
             lead=lead,
             event_type="lead.status_changed.telegram",
-            roles=[Role.administrator, Role.supervisor],
+            roles=[Role.administrator, Role.employee],
             business_type=business_type,
             outcome_entity_type=outcome_entity_type,
             outcome_entity_id=outcome_entity_id,

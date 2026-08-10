@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.trust_roles import is_team_lead_org_actor
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.access import CompanyAccessEntry, CompanyAccessGrant
@@ -30,9 +31,13 @@ def _role_value(role: object) -> str:
 
 
 def _enforce_supervisor_scope(ctx: UserCtx, user) -> None:
-    if ctx.role == Role.supervisor.value:
+    if is_team_lead_org_actor(ctx.role, getattr(ctx, "preset_id", None)):
         value = _role_value(user.role).lower()
-        if value in {Role.administrator.value, Role.supervisor.value}:
+        if value == Role.administrator.value:
+            raise HTTPException(status_code=403, detail="Supervisor cannot manage this role")
+        # Peer team-leads (employee + team_lead preset) also blocked unless self/report below
+        prefs = user.preferences if isinstance(getattr(user, "preferences", None), dict) else None
+        if is_team_lead_org_actor(value, preferences=prefs) and user.id != ctx.sub:
             raise HTTPException(status_code=403, detail="Supervisor cannot manage this role")
         if user.id != ctx.sub and (user.supervisor_id or "") != ctx.sub:
             raise HTTPException(
@@ -41,8 +46,9 @@ def _enforce_supervisor_scope(ctx: UserCtx, user) -> None:
             )
 
 
+
 def _filter_entries_for_actor(ctx: UserCtx, rows):
-    if ctx.role != Role.supervisor.value:
+    if not is_team_lead_org_actor(ctx.role, getattr(ctx, "preset_id", None)):
         return rows
     filtered = []
     for access, user in rows:

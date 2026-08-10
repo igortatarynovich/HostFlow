@@ -120,7 +120,7 @@ async def record_lead_stage_change(
             payload=payload,
             entity_type="lead",
             entity_id=str(lead.id),
-            audience=EventAudience(roles=[Role.administrator, Role.supervisor]),
+            audience=EventAudience(roles=[Role.administrator, Role.employee]),
         )
     except Exception:
         pass

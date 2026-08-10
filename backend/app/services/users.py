@@ -38,34 +38,41 @@ user_memberships = sa.table(
 )
 
 TENANT_ROLE_VALUES = {role.value for role in Role}
+# Accepted on create/invite/role-change (coerced to trust + preset).
+ASSIGNABLE_INPUT_ROLES = TENANT_ROLE_VALUES | {
+    "admin",
+    "owner",
+    "user",
+    "manager",
+    "supervisor",
+    "recruiter",
+    "hr",
+    "hr_officer",
+    "people_ops",
+    "lead",
+    "compliance_officer",
+    "compliance",
+    "docs_officer",
+    "client",
+    "client_manager",
+    "client_processor",
+    "processor",
+}
 SUPERVISOR_ROLES = {
     Role.superadmin.value,
     Role.administrator.value,
-    Role.supervisor.value,  # legacy
     Role.employee.value,  # team_lead preset / org supervisors
 }
 
+# Input aliases → trust role strings (job titles never persisted after ADR-036 Phase 3).
+# Job/portal labels are NOT listed here so _normalize_assignable_role can infer presets.
 ROLE_ALIAS = {
     "owner": Role.administrator.value,
     "admin": Role.administrator.value,
     "administrator": Role.administrator.value,
     "employee": Role.employee.value,
-    # Legacy job/portal strings still resolve for reads; new assigns coerce to trust (below).
-    "manager": Role.supervisor.value,
-    "supervisor": Role.supervisor.value,
-    "recruiter": Role.recruiter.value,
-    "hr": Role.recruiter.value,
     "viewer": Role.viewer.value,
     "user": Role.viewer.value,
-    "client": Role.client_manager.value,
-    "client_manager": Role.client_manager.value,
-    "client_processor": Role.client_processor.value,
-    "processor": Role.client_processor.value,
-    "compliance_officer": Role.compliance_officer.value,
-    "compliance": Role.compliance_officer.value,
-    "docs_officer": Role.compliance_officer.value,
-    "hr_officer": Role.hr_officer.value,
-    "people_ops": Role.hr_officer.value,
     "superadmin": Role.superadmin.value,
 }
 
@@ -156,7 +163,7 @@ def _normalize_assignable_role(
         return trust, explicit_preset
 
     mapped = ROLE_ALIAS.get(raw)
-    if not mapped and raw not in TENANT_ROLE_VALUES:
+    if not mapped and raw not in ASSIGNABLE_INPUT_ROLES:
         raise UserServiceError("Unsupported role", 422)
     source = mapped or raw
 
@@ -164,18 +171,18 @@ def _normalize_assignable_role(
         return source if source != Role.superadmin.value else Role.administrator.value, None
 
     if source in JOB_PROXY_ROLES or source in {
-        Role.supervisor.value,
-        Role.recruiter.value,
-        Role.hr_officer.value,
-        Role.compliance_officer.value,
+        "supervisor",
+        "recruiter",
+        "hr_officer",
+        "compliance_officer",
         "manager",
         "lead",
     }:
         return Role.employee.value, infer_preset_id(raw) or infer_preset_id(source)
 
     if source in PORTAL_LEGACY_ROLES or source in {
-        Role.client_manager.value,
-        Role.client_processor.value,
+        "client_manager",
+        "client_processor",
     }:
         return Role.viewer.value, infer_preset_id(raw) or "portal_guest"
 
@@ -450,16 +457,13 @@ def _apply_global_role(user: User, tenant_role: str) -> None:
     mapping = {
         Role.viewer.value: Role.viewer,
         Role.employee.value: Role.employee,
-        Role.recruiter.value: Role.recruiter,
-        Role.supervisor.value: Role.supervisor,
         Role.administrator.value: Role.administrator,
-        Role.client_manager.value: Role.client_manager,
-        Role.client_processor.value: Role.client_processor,
-        Role.compliance_officer.value: Role.compliance_officer,
-        Role.hr_officer.value: Role.hr_officer,
         Role.superadmin.value: Role.superadmin,
     }
-    user.role = mapping.get(tenant_role, Role.viewer)
+    from backend.app.auth.trust_roles import normalize_trust_role
+
+    trust = normalize_trust_role(tenant_role)
+    user.role = mapping.get(trust, Role.viewer)
 
 
 async def record_user_audit(
@@ -1735,7 +1739,13 @@ async def get_user_detail(
     ]
     entry["recruiters"] = []
 
-    if user.role == Role.supervisor:
+    from backend.app.auth.trust_roles import is_team_lead_org_actor
+
+    prefs = user.preferences if isinstance(user.preferences, dict) else {}
+    if is_team_lead_org_actor(
+        str(getattr(user.role, "value", user.role) or ""),
+        preferences=prefs,
+    ):
         recruiter_map = await _load_recruiter_map(
             db, tenant_id=tenant_id, supervisor_ids=[user.id]
         )
@@ -1837,7 +1847,7 @@ async def accept_invite(
             tenant_id=tenant_id,
             supervisor_id=supervisor_candidate_id,
         )
-    elif effective_preset == "recruiter" or invite.role == Role.recruiter.value:
+    elif effective_preset == "recruiter" or str(invite.role or "").strip().lower() == "recruiter":
         raise UserServiceError("Recruiter invite requires supervisor", 422)
 
     # Update user profile
@@ -1914,11 +1924,7 @@ async def accept_invite(
 # Membership roles for operational assignees (ADR-036: employee is canonical).
 _MEMBERSHIP_ROLES_MANAGER_CATALOG = (
     Role.employee.value,
-    Role.supervisor.value,
     Role.administrator.value,
-    Role.recruiter.value,
-    Role.compliance_officer.value,
-    "owner",
 )
 
 

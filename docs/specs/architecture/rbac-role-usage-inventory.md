@@ -1,15 +1,23 @@
 # RBAC role usage inventory (ADR-036 migration gate)
 
-**Status:** NORMATIVE checklist (L2) — gate before Phase 2 runtime delete of legacy role branches  
+**Status:** Phase 3 persistence cleanup landed (2026-08-10) — enum members removed; remaining open rows are matrix column keys / copy / gradual preset gates  
 **Parent:** [`ADR-036-four-trust-roles-rbac.md`](ADR-036-four-trust-roles-rbac.md) · [`rbac_matrix.md`](rbac_matrix.md)  
 **Full machine dump:** [`scripts/rbac/role_usage_inventory.csv`](../../../scripts/rbac/role_usage_inventory.csv)  
 **Scanner:** [`scripts/rbac/scan_role_usage.py`](../../../scripts/rbac/scan_role_usage.py)
+**Lint:** `make rbac-role-lint` (CI: security-gates `rbac-job-title-role-lint`)
 
 ## Summary
 
 - Auto-collected call sites: **1189** (see CSV)
 - Distinct High-risk paths: **137**
 - By class: `ALIAS`=93, `DOC`=35, `JOB_PROXY`=466, `ORG_PROXY`=135, `PORTAL_LEGACY`=98, `SEAT`=9, `TEST`=53, `TRUST`=291, `UI_ONLY`=9
+
+### Phase 3 persistence (done)
+
+- Alembic `202608100001_adr036_remap_legacy_trust_roles` remaps DB role strings → trust + `preferences.preset_id` / `access_context`.
+- `backend.app.models.user.Role` and `auth.deps.Role` are trust-only.
+- JWT includes `preset_id`; HR / team-lead lanes use `is_hr_workspace_actor` / `is_team_lead_org_actor`.
+- Legacy **matrix column keys** (`recruiter`, `hr_officer`, …) remain in tenant settings for compatibility.
 
 ### Gate rules
 

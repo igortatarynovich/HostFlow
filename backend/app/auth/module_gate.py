@@ -142,7 +142,9 @@ async def enforce_module_gate(
             )
 
         # 4) User ↔ company access (admins + org team-leads bypass empty-ACL looseness)
-        org_bypass = is_team_lead_org_actor(role) or role == Role.supervisor.value
+        org_bypass = is_team_lead_org_actor(
+            role, getattr(ctx, "preset_id", None)
+        )
         if role not in _ADMIN_ROLES and not org_bypass:
             access_rows = await list_user_access(db, tenant_id=str(tenant_id), user_id=str(ctx.sub))
             allowed_ids = {str(row.company_id) for row in access_rows}
@@ -168,6 +170,8 @@ async def enforce_module_gate(
             tenant,
             role=role,
             user_id=str(ctx.sub),
+            preset_id=getattr(ctx, "preset_id", None),
+            access_context=getattr(ctx, "access_context", None),
         )
         matrix_keys = _USER_MATRIX_KEYS.get(key, (key,))
         visible = False
@@ -184,7 +188,7 @@ async def enforce_module_gate(
             editable = (
                 trust == TrustRole.employee.value
                 or role in JOB_PROXY_ROLES
-                or role == Role.client_manager.value
+                or role in PORTAL_LEGACY_ROLES
                 or role == "fleet_manager"
             )
 

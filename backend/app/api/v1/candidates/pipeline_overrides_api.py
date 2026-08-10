@@ -17,6 +17,7 @@ from backend.app.api.v1.candidates.pipeline_overrides_service import (
 )
 from backend.app.auth.trust_role_deps import require_trust_read, require_trust_write
 from backend.app.auth.deps import Role, get_current_user, UserCtx
+from backend.app.auth.trust_roles import is_portal_actor
 from backend.app.auth.hiring_workspace_roles import (
     HIRING_CANDIDATE_MUTATE_ROLES,
     HIRING_CANDIDATE_VIEW_ROLES,
@@ -99,7 +100,7 @@ async def get_pipeline_overrides(
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     role = (current_user.role or "").lower()
-    if role in (Role.client_manager.value, Role.client_processor.value):
+    if is_portal_actor(role, getattr(current_user, "access_context", None)):
         return {"items": []}
 
     client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
@@ -136,7 +137,7 @@ async def post_pipeline_override(
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     role = (current_user.role or "").lower()
-    if role in (Role.client_manager.value, Role.client_processor.value):
+    if is_portal_actor(role, getattr(current_user, "access_context", None)):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
@@ -203,7 +204,7 @@ async def post_pipeline_override_approve(
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     role = (current_user.role or "").lower()
-    if role in (Role.client_manager.value, Role.client_processor.value):
+    if is_portal_actor(role, getattr(current_user, "access_context", None)):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
@@ -270,7 +271,7 @@ async def post_pipeline_override_reject(
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     role = (current_user.role or "").lower()
-    if role in (Role.client_manager.value, Role.client_processor.value):
+    if is_portal_actor(role, getattr(current_user, "access_context", None)):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
@@ -335,7 +336,7 @@ async def post_pipeline_override_revoke(
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     role = (current_user.role or "").lower()
-    if role in (Role.client_manager.value, Role.client_processor.value):
+    if is_portal_actor(role, getattr(current_user, "access_context", None)):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     client_tenant = await is_client_tenant_for_list(db, tenant_id_str)

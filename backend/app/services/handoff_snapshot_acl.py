@@ -73,11 +73,14 @@ async def assert_handoff_snapshot_readable(
                 return
         raise HTTPException(status_code=403, detail="Not allowed to read this handoff snapshot")
 
-    if agency_staff or trust == TrustRole.administrator.value or role in {
-        Role.supervisor.value,
-        Role.recruiter.value,
-        Role.compliance_officer.value,
+    if agency_staff or trust in {
+        TrustRole.administrator.value,
+        TrustRole.employee.value,
+        TrustRole.superadmin.value,
+    } or role in {
+        Role.employee.value,
         Role.administrator.value,
+        Role.superadmin.value,
     }:
         if workspace_tenant_id != agency_tid:
             raise HTTPException(status_code=403, detail="Not allowed to read this handoff snapshot")

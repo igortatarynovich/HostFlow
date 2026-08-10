@@ -502,7 +502,7 @@ async def record_exact_duplicate_lead_intake(
         "match_reasons": list(match_reasons),
     }
     recruiter_id = getattr(candidate, "recruiter_id", None)
-    audience_roles = [UserRole.administrator, UserRole.supervisor]
+    audience_roles = [UserRole.administrator, UserRole.employee]
     user_ids = [str(recruiter_id)] if recruiter_id else []
     await events.emit_event(
         db,

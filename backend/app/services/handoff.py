@@ -393,19 +393,29 @@ async def _sync_application_after_handoff_returned(
 
 
 async def _first_active_hr_officer_user_id(db: AsyncSession, tenant_id: str) -> str | None:
-    """Prefer the most recently created active HR officer (stable with dev seed + test fixtures)."""
+    """Prefer the most recently created active HR lane actor (preset hr / legacy)."""
+    from backend.app.auth.trust_roles import is_hr_workspace_actor
+
     res = await db.execute(
-        select(User.id)
+        select(User)
         .where(
             User.tenant_id == tenant_id,
-            User.role == UserRole.hr_officer,
+            User.role.in_(
+                (
+                    UserRole.employee.value,
+                    UserRole.administrator.value,
+                )
+            ),
             User.is_active.is_(True),
         )
         .order_by(User.created_at.desc().nulls_last(), User.id.desc())
-        .limit(1)
     )
-    row = res.first()
-    return str(row[0]) if row and row[0] else None
+    for user in res.scalars().all():
+        role = str(getattr(user.role, "value", user.role) or "")
+        prefs = user.preferences if isinstance(user.preferences, dict) else {}
+        if is_hr_workspace_actor(role, preferences=prefs):
+            return str(user.id)
+    return None
 
 
 async def _resolve_internal_hr_activity_assignee(
@@ -695,14 +705,26 @@ async def create_handoff(
         if handoff.assigned_to_user_id:
             notify_ids.append(str(handoff.assigned_to_user_id))
         else:
+            from backend.app.auth.trust_roles import is_hr_workspace_actor
+
             hr_rows = await db.execute(
-                select(User.id).where(
+                select(User).where(
                     User.tenant_id == agency_tenant_id,
-                    User.role == UserRole.hr_officer,
+                    User.role.in_(
+                        (
+                            UserRole.employee.value,
+                            UserRole.administrator.value,
+                        )
+                    ),
                     User.is_active.is_(True),
                 )
             )
-            notify_ids = [str(r[0]) for r in hr_rows.all() if r[0]]
+            notify_ids = []
+            for user in hr_rows.scalars().all():
+                role = str(getattr(user.role, "value", user.role) or "")
+                prefs = user.preferences if isinstance(user.preferences, dict) else {}
+                if is_hr_workspace_actor(role, preferences=prefs):
+                    notify_ids.append(str(user.id))
         if notify_ids:
             await emit_event(
                 db,

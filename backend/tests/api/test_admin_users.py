@@ -67,7 +67,7 @@ async def test_owner_invite_role_change_activation_flow(
     assert invite_resp.status_code == 201, invite_resp.text
     invite_data = invite_resp.json()
     assert invite_data["email"] == new_email
-    assert invite_data["role"] == "recruiter"
+    assert invite_data["role"] == "employee"
     assert "token" in invite_data and invite_data["token"]
 
     # Change viewer role to manager
@@ -78,7 +78,7 @@ async def test_owner_invite_role_change_activation_flow(
     )
     assert role_resp.status_code == 200, role_resp.text
     role_body = role_resp.json()
-    assert role_body["role"] == "supervisor"
+    assert role_body["role"] == "employee"
 
     # Deactivate viewer
     deactivate_resp = await client.post(
@@ -173,7 +173,7 @@ async def test_owner_can_create_user_without_password(client: AsyncClient) -> No
     assert resp.status_code == 201, resp.text
     created = resp.json()
     assert created["email"] == new_email
-    assert created["role"] == "supervisor"
+    assert created["role"] == "employee"
     assert created["status"] == "active"
     assert created.get("temporary_password")
 
