@@ -76,7 +76,14 @@ API and UI **reject / disable** attempts to grant Admin-locked capabilities to E
 
 1. **Inventory gate** — [`rbac-role-usage-inventory.md`](rbac-role-usage-inventory.md) before deleting legacy role branches.
 2. Path: aliases → permission/module gates → remove dead enum usage.
-3. Post-cleanup CI: ban new job-title `Role.*` outside alias allowlist; new canonical role only with RFC.
+3. Post-cleanup CI: ban new job-title `Role.*` outside alias allowlist; new canonical role only with RFC (`make rbac-role-lint` / security-gates).
+
+**Phase 3 (2026-08-10):** persisted `users.role` / memberships remapped to trust only
+(`superadmin|administrator|employee|viewer`) via Alembic
+`202608100001_adr036_remap_legacy_trust_roles`; job/portal semantics live in
+`preferences.preset_id` + `access_context`. Python `Role` enum no longer includes
+job-title members. JWT carries `preset_id`. Legacy matrix column keys remain for
+tenant settings compatibility until a follow-up drops them.
 
 ### 6. Settings surface
 

@@ -174,20 +174,88 @@ def is_portal_actor(role: str | None, access_context: str | None = None) -> bool
     return infer_access_context(role, access_context) == "portal"
 
 
-def is_hr_workspace_actor(role: str | None) -> bool:
-    """HR operational lane still keyed by legacy role / hr preset (not all employees)."""
-    raw = str(role or "").strip().lower()
-    if raw in {"hr_officer", "hr", "people_ops"}:
-        return True
-    return infer_preset_id(raw) == "hr"
+def resolve_preset_id(
+    role: str | None,
+    *,
+    explicit: str | None = None,
+    preferences: dict | None = None,
+) -> str | None:
+    """Explicit JWT/API preset wins; else preferences.preset_id; else infer from legacy role."""
+    if explicit is not None:
+        pid = str(explicit or "").strip().lower()
+        return pid or None
+    if isinstance(preferences, dict):
+        pref = preferences.get("preset_id")
+        if pref is not None:
+            pid = str(pref or "").strip().lower()
+            return pid or None
+    return infer_preset_id(role)
 
 
-def is_team_lead_org_actor(role: str | None) -> bool:
-    """Org-proxy supervisors: legacy supervisor/manager or team_lead preset."""
-    raw = str(role or "").strip().lower()
-    if raw in {"supervisor", "manager", "lead"}:
+def is_hr_workspace_actor(
+    role: str | None,
+    preset_id: str | None = None,
+    *,
+    preferences: dict | None = None,
+) -> bool:
+    """HR operational lane: hr preset (canonical) or legacy hr_officer role string."""
+    pid = resolve_preset_id(role, explicit=preset_id, preferences=preferences)
+    if pid == "hr":
         return True
-    return infer_preset_id(raw) == "team_lead"
+    raw = str(role or "").strip().lower()
+    return raw in {"hr_officer", "hr", "people_ops"}
+
+
+def is_team_lead_org_actor(
+    role: str | None,
+    preset_id: str | None = None,
+    *,
+    preferences: dict | None = None,
+) -> bool:
+    """Org-proxy supervisors: team_lead preset (canonical) or legacy supervisor/manager."""
+    pid = resolve_preset_id(role, explicit=preset_id, preferences=preferences)
+    if pid == "team_lead":
+        return True
+    raw = str(role or "").strip().lower()
+    return raw in {"supervisor", "manager", "lead"}
+
+
+def is_recruiter_preset_actor(
+    role: str | None,
+    preset_id: str | None = None,
+    *,
+    preferences: dict | None = None,
+) -> bool:
+    """Recruitment assignee persona: recruiter preset or legacy recruiter role."""
+    pid = resolve_preset_id(role, explicit=preset_id, preferences=preferences)
+    if pid == "recruiter":
+        return True
+    raw = str(role or "").strip().lower()
+    return raw in {"recruiter", "hr"} and normalize_trust_role(raw) == TrustRole.employee.value
+
+
+# Persisted DB / JWT role values after ADR-036 Phase 3 remap (no job-title strings).
+PERSISTED_TRUST_ROLE_VALUES: Final[frozenset[str]] = frozenset(
+    {
+        TrustRole.superadmin.value,
+        TrustRole.administrator.value,
+        TrustRole.employee.value,
+        TrustRole.viewer.value,
+    }
+)
+
+# User.role values eligible as recruitment/ops assignees (catalogs, auto-assign).
+RECRUITMENT_ASSIGNEE_ROLE_VALUES: Final[tuple[str, ...]] = (
+    TrustRole.employee.value,
+    TrustRole.administrator.value,
+)
+
+# HR / team-lead recipient pools also accept administrators.
+HR_LANE_ROLE_VALUES: Final[tuple[str, ...]] = (
+    TrustRole.employee.value,
+    TrustRole.administrator.value,
+    TrustRole.superadmin.value,
+)
 
 
 def actor_satisfies_role_allowlist(

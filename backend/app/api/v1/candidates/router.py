@@ -93,6 +93,7 @@ class CreateCandidateIn(BaseModel):
     vacancy_id: Optional[UUID] = None
 
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.auth.trust_roles import is_hr_workspace_actor, is_recruiter_preset_actor, is_team_lead_org_actor
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.trust_role_deps import require_trust_read, require_trust_write
 from backend.app.auth.deps import Role, get_current_user, UserCtx
@@ -1848,16 +1849,15 @@ async def bulk_delete_candidates(
         return []
 
     # Check permissions - same as single delete
-    if current_user.role == Role.recruiter.value:
+    if is_recruiter_preset_actor(current_user.role, getattr(current_user, "preset_id", None)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Recruiter cannot delete candidates. Create a delete-request instead.",
         )
     if current_user.role not in (
         Role.administrator.value,
-        Role.supervisor.value,
         Role.superadmin.value,
-    ):
+    ) and not is_team_lead_org_actor(current_user.role, getattr(current_user, "preset_id", None)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     acl_raw = await resolve_candidate_acl(db, str(tenant_id), current_user)
@@ -2050,7 +2050,7 @@ async def get_candidate(
         agency_can = await can_agency_edit(db, str(candidate_id), tenant_id_str)
         if agency_can:
             out["can_edit"] = True
-        elif user_role_lower == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+        elif is_hr_workspace_actor(user_role_lower) and await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
         ):
             out["can_edit"] = True
@@ -2716,7 +2716,7 @@ async def patch_candidate(
     )
     acl_raw = await resolve_candidate_acl(db, tenant_id_str, current_user)
     acl: CandidateACL | None = None if acl_raw.unrestricted else acl_raw
-    if acl and str(getattr(current_user, "role", "") or "").strip().lower() == "hr_officer":
+    if acl and is_hr_workspace_actor(str(getattr(current_user, "role", "") or ""), preset_id=getattr(current_user, "preset_id", None)):
         if await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
         ):
@@ -2764,7 +2764,7 @@ async def patch_candidate(
             or_raw = (payload or {}).get("override_reason")
             if can_override_recruitment_handoff_lock(role_l) and str(or_raw or "").strip():
                 recruitment_lock_override_used = True
-            elif role_l == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+            elif is_hr_workspace_actor(role_l) and await agency_candidate_has_internal_hr_handoff_lane(
                 db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
             ):
                 recruitment_lock_override_used = True
@@ -2877,7 +2877,7 @@ async def patch_candidate(
     if (
         not client_tenant
         and recruitment_lock_override_used
-        and str(getattr(current_user, "role", "") or "").strip().lower() == "hr_officer"
+        and is_hr_workspace_actor(str(getattr(current_user, "role", "") or ""), preset_id=getattr(current_user, "preset_id", None))
         and not override_reason
     ):
         override_reason = "internal_hr_handoff_lane"
@@ -2887,7 +2887,9 @@ async def patch_candidate(
 
     if "stage" in data:
         role_lane = str(getattr(current_user, "role", "") or "").strip().lower()
-        if role_lane != "hr_officer":
+        if not is_hr_workspace_actor(
+            role_lane, preset_id=getattr(current_user, "preset_id", None)
+        ):
             from backend.app.services.stage_meta_recruitment_filter import (
                 enforce_agency_handoff_stage_change_allowed,
             )
@@ -3043,16 +3045,15 @@ async def delete_candidate(
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ) -> Response:
-    if ctx.role == Role.recruiter.value:
+    if is_recruiter_preset_actor(ctx.role, getattr(ctx, "preset_id", None)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Recruiter cannot delete candidates. Create a delete-request instead.",
         )
     if ctx.role not in (
         Role.administrator.value,
-        Role.supervisor.value,
         Role.superadmin.value,
-    ):
+    ) and not is_team_lead_org_actor(ctx.role, getattr(ctx, "preset_id", None)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)

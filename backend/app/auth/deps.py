@@ -18,24 +18,18 @@ bearer = HTTPBearer(auto_error=False)
 
 
 class Role(str, Enum):
-    """Storage / require_roles values. Canonical trust = ADR-036 (see trust_roles)."""
+    """JWT / require_roles storage values. Canonical trust = ADR-036 (see trust_roles).
+
+    Job-title and portal strings are aliases normalized via ROLE_ALIASES / trust_roles;
+    they are not distinct enum members after Phase 3 remap.
+    """
 
     superadmin = "superadmin"
     administrator = "administrator"
-    employee = "employee"  # ADR-036 canonical operational trust role
-    supervisor = "supervisor"  # legacy JOB/ORG proxy → trust employee
-    recruiter = "recruiter"  # legacy JOB proxy → trust employee
-    client_manager = "client_manager"  # legacy PORTAL → trust viewer + portal
-    client_processor = "client_processor"  # legacy PORTAL → trust viewer + portal
-    compliance_officer = "compliance_officer"  # legacy JOB proxy → trust employee
-    hr_officer = "hr_officer"  # legacy JOB proxy → trust employee
+    employee = "employee"
     viewer = "viewer"
     admin = administrator
     owner = administrator
-    manager = supervisor
-    hr = recruiter
-    user = viewer
-    client = client_manager
 
 
 ROLE_VALUES = {r.value for r in Role}
@@ -43,22 +37,23 @@ ROLE_ALIASES = {
     "admin": Role.administrator.value,
     "owner": Role.administrator.value,
     "employee": Role.employee.value,
-    "manager": Role.supervisor.value,
-    "supervisor": Role.supervisor.value,
-    "recruiter": Role.recruiter.value,
-    "hr": Role.recruiter.value,
+    "manager": Role.employee.value,
+    "supervisor": Role.employee.value,
+    "recruiter": Role.employee.value,
+    "hr": Role.employee.value,
     "user": Role.viewer.value,
     "viewer": Role.viewer.value,
-    "client": Role.client_manager.value,
-    "client_manager": Role.client_manager.value,
-    "client_processor": Role.client_processor.value,
-    "processor": Role.client_processor.value,
-    "compliance_officer": Role.compliance_officer.value,
-    "compliance": Role.compliance_officer.value,
-    "docs_officer": Role.compliance_officer.value,
-    "hr_officer": Role.hr_officer.value,
-    "people_ops": Role.hr_officer.value,
+    "client": Role.viewer.value,
+    "client_manager": Role.viewer.value,
+    "client_processor": Role.viewer.value,
+    "processor": Role.viewer.value,
+    "compliance_officer": Role.employee.value,
+    "compliance": Role.employee.value,
+    "docs_officer": Role.employee.value,
+    "hr_officer": Role.employee.value,
+    "people_ops": Role.employee.value,
     "superadmin": Role.superadmin.value,
+    "lead": Role.employee.value,
 }
 
 
@@ -76,6 +71,7 @@ class UserCtx:
     supervisor_id: str | None
     raw: Dict[str, Any]
     access_context: str = "tenant"  # ADR-036: tenant | portal (orthogonal to role)
+    preset_id: str | None = None  # ADR-036 permission preset (orthogonal to trust role)
 
 
 def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
@@ -88,9 +84,13 @@ def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
     elif isinstance(data.get("roles"), (list, tuple)) and data.get("roles"):
         raw_role = str(data["roles"][0])
 
-    role = (raw_role or Role.viewer.value).strip().lower()
-    if role not in ROLE_VALUES:
-        role = ROLE_ALIASES.get(role, Role.viewer.value)
+    from backend.app.auth.trust_roles import infer_access_context, normalize_trust_role, resolve_preset_id
+
+    role_raw = (raw_role or Role.viewer.value).strip().lower()
+    if role_raw in ROLE_VALUES:
+        role = role_raw
+    else:
+        role = ROLE_ALIASES.get(role_raw, normalize_trust_role(role_raw))
 
     tenant_id = str(data.get("tenant_id") or "").strip()
 
@@ -103,12 +103,15 @@ def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
     else:
         supervisor_id = None
 
-    from backend.app.auth.trust_roles import infer_access_context
-
     explicit_ctx = data.get("access_context")
     access_context = infer_access_context(
-        role,
+        role_raw,
         str(explicit_ctx).strip().lower() if explicit_ctx is not None else None,
+    )
+    jwt_preset = data.get("preset_id")
+    preset_id = resolve_preset_id(
+        role_raw,
+        explicit=str(jwt_preset).strip().lower() if jwt_preset is not None else None,
     )
 
     return UserCtx(
@@ -119,6 +122,7 @@ def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
         supervisor_id=supervisor_id,
         raw=data,
         access_context=access_context,
+        preset_id=preset_id,
     )
 
 

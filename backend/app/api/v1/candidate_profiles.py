@@ -505,7 +505,7 @@ async def _resolve_profile_for_read(
     profile_any = (await db.execute(stmt_any)).scalar_one_or_none()
     if profile_any:
         role = (current_user.role or "").lower()
-        if role in (Role.client_processor.value, Role.client_manager.value):
+        if role in (Role.viewer.value, Role.viewer.value):
             link_stmt = (
                 select(TenantLink)
                 .where(TenantLink.client_tenant_id == tenant_id_str)

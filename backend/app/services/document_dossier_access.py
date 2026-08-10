@@ -74,10 +74,7 @@ def allowed_zones_for_role(role: str, *, access_context: str | None = None) -> S
         return {ZONE_RECRUITMENT, ZONE_INTERNAL_HR}
     if is_portal_actor(r, access_context):
         return {ZONE_CLIENT}
-    if trust == TrustRole.employee.value or r in {
-        Role.recruiter.value,
-        Role.compliance_officer.value,
-    }:
+    if trust == TrustRole.employee.value:
         return {ZONE_RECRUITMENT}
     return {ZONE_RECRUITMENT}
 

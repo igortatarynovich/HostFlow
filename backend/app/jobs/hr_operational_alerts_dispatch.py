@@ -27,15 +27,15 @@ _DEFAULT_ACTOR_ID = "system:hr_operational_alerts_dispatch"
 _VIEWER_ROLE_PRIORITY: dict[str, int] = {
     Role.superadmin.value: 0,
     Role.administrator.value: 1,
-    Role.hr_officer.value: 2,
-    Role.supervisor.value: 3,
+    "hr": 2,  # employee + preset_id=hr
+    "team_lead": 3,  # employee + preset_id=team_lead
+    Role.employee.value: 4,
 }
 
 _OPERABLE_ROLES = (
     Role.superadmin,
     Role.administrator,
-    Role.hr_officer,
-    Role.supervisor,
+    Role.employee,
 )
 
 
@@ -52,6 +52,18 @@ def _role_value(role: Role | str) -> str:
     return s.lower()
 
 
+def _viewer_priority(role: Role | str, preferences: dict | None) -> int:
+    from backend.app.auth.trust_roles import is_hr_workspace_actor, is_team_lead_org_actor, resolve_preset_id
+
+    rv = _role_value(role)
+    prefs = preferences if isinstance(preferences, dict) else {}
+    if is_hr_workspace_actor(rv, preferences=prefs):
+        return _VIEWER_ROLE_PRIORITY["hr"]
+    if is_team_lead_org_actor(rv, preferences=prefs):
+        return _VIEWER_ROLE_PRIORITY["team_lead"]
+    return _VIEWER_ROLE_PRIORITY.get(rv, 99)
+
+
 async def resolve_privileged_viewer(
     db: AsyncSession, *, tenant_id: str
 ) -> tuple[str, str] | None:
@@ -60,7 +72,7 @@ async def resolve_privileged_viewer(
     rows = (
         (
             await db.execute(
-                select(User.id, User.role).where(
+                select(User).where(
                     User.tenant_id == tid,
                     User.is_active.is_(True),
                     User.deleted_at.is_(None),
@@ -68,6 +80,7 @@ async def resolve_privileged_viewer(
                 )
             )
         )
+        .scalars()
         .all()
     )
     if not rows:
@@ -75,14 +88,17 @@ async def resolve_privileged_viewer(
     best_uid: str | None = None
     best_role: str | None = None
     best_pri = 99
-    for uid, role in rows:
-        rv = _role_value(role)
-        pri = _VIEWER_ROLE_PRIORITY.get(rv, 99)
+    from backend.app.auth.trust_roles import resolve_preset_id
+
+    for user in rows:
+        rv = _role_value(user.role)
+        prefs = user.preferences if isinstance(user.preferences, dict) else {}
+        pri = _viewer_priority(user.role, prefs)
         if pri < best_pri:
             best_pri = pri
-            best_uid = str(uid)
-            best_role = rv
-    if not best_uid or best_role is None:
+            best_uid = str(user.id)
+            best_role = resolve_preset_id(rv, preferences=prefs) or rv
+    if not best_uid or not best_role:
         return None
     return best_uid, best_role
 

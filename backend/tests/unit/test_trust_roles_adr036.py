@@ -51,6 +51,20 @@ def test_infer_preset_id() -> None:
     assert infer_preset_id("administrator") is None
 
 
+def test_resolve_preset_id_prefers_preferences() -> None:
+    from backend.app.auth.trust_roles import resolve_preset_id
+
+    assert resolve_preset_id("employee", preferences={"preset_id": "hr"}) == "hr"
+    assert resolve_preset_id("recruiter") == "recruiter"
+    assert resolve_preset_id("employee", explicit="team_lead") == "team_lead"
+
+
+def test_is_hr_workspace_actor_with_preset() -> None:
+    assert is_hr_workspace_actor("employee", preferences={"preset_id": "hr"})
+    assert not is_hr_workspace_actor("employee", preferences={"preset_id": "recruiter"})
+    assert is_hr_workspace_actor("hr_officer")
+
+
 def test_expand_allowed_roles_for_trust_employee_bridge() -> None:
     allowed = expand_allowed_roles_for_trust({"recruiter", "supervisor"})
     assert "employee" in allowed

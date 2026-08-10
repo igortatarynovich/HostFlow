@@ -472,20 +472,20 @@ async def get_effective_module_permissions(
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    # Match frontend usePermissions: on client (company) workspaces, JWT role "recruiter"
-    # is treated as client-side hiring staff; permissions use client_processor matrix there.
-    # Using recruiter cells here made documents.manage false when only client_processor had
-    # documents editable in the role matrix.
+    # Match frontend usePermissions: on client (company) workspaces, hiring staff
+    # use client_processor matrix cells (historical recruiter→processor mapping).
     role_for_matrix = str(ctx.role or "").strip().lower()
-    if getattr(tenant, "type", None) == TenantType.company and role_for_matrix == UserRole.recruiter.value:
-        role_for_matrix = UserRole.client_processor.value
-    if role_for_matrix == "employee":
-        # Prefer employee matrix column when present
-        pass
+    if getattr(tenant, "type", None) == TenantType.company and role_for_matrix in {
+        "employee",
+        "recruiter",
+    }:
+        role_for_matrix = "client_processor"
     modules = tenant_service.get_effective_role_module_permissions(
         tenant,
         role=role_for_matrix,
         user_id=ctx.sub,
+        preset_id=getattr(ctx, "preset_id", None),
+        access_context=getattr(ctx, "access_context", None),
     )
     return EffectiveRoleModules(role=ctx.role, modules=modules)
 

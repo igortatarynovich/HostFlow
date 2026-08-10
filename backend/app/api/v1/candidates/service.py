@@ -18,6 +18,7 @@ import uuid as _uuid
 from types import SimpleNamespace
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.candidate import Candidate
+from backend.app.auth.trust_roles import is_hr_workspace_actor
 from backend.app.models.candidate_assignee_history import CandidateAssigneeHistory
 from backend.app.models.candidate_stage_history import CandidateStageHistory
 from backend.app.api.v1.candidates import repo
@@ -874,7 +875,7 @@ async def update_candidate_full(
     payload = dict(payload or {})
 
     role_lane = str(actor_role or "").strip().lower()
-    if role_lane == "hr_officer" and candidate_home_tenant and not await _is_client_tenant(db, candidate_home_tenant):
+    if is_hr_workspace_actor(role_lane) and candidate_home_tenant and not await _is_client_tenant(db, candidate_home_tenant):
         if await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=candidate_home_tenant, candidate_id=str(candidate_id)
         ):

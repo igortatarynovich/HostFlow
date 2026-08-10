@@ -12,8 +12,10 @@ from backend.app.auth.trust_roles import (
     TrustRole,
     is_hr_workspace_actor,
     is_portal_actor,
+    is_recruiter_preset_actor,
     is_team_lead_org_actor,
     normalize_trust_role,
+    resolve_preset_id,
 )
 from backend.app.models.access import UserCompanyAccess
 from backend.app.models.candidate import Candidate
@@ -63,6 +65,7 @@ async def resolve_candidate_acl(
 
     trust = normalize_trust_role(role)
     access_context = getattr(user, "access_context", None)
+    preset_id = getattr(user, "preset_id", None)
 
     # Получаем shared vacancies и companies для тенанта
     visibility = get_tenant_visibility(db, tenant_id)
@@ -74,19 +77,16 @@ async def resolve_candidate_acl(
 
     # HR workspace: default ACL is empty; internal-HR handoff lane widens access in
     # ``ensure_candidate_access`` / PATCH (see ``agency_candidate_has_internal_hr_handoff_lane``).
-    if is_hr_workspace_actor(role):
+    if is_hr_workspace_actor(role, preset_id=preset_id):
         return CandidateACL.restricted(company_ids=[], vacancy_ids=[], manager_ids=[])
 
-    if is_team_lead_org_actor(role):
+    if is_team_lead_org_actor(role, preset_id=preset_id):
         subordinate_rows = await db.execute(
             select(User.id)
             .where(User.tenant_id == tenant_id)
             .where(User.supervisor_id == user_id)
             .where(
-                or_(
-                    User.role == UserRole.recruiter,
-                    User.role == UserRole.employee,
-                )
+                User.role.in_([UserRole.employee, UserRole.administrator]),
             )
             .where(User.deleted_at.is_(None))
             .where(User.is_active.is_(True))
@@ -124,19 +124,10 @@ async def resolve_candidate_acl(
             manager_ids=manager_ids,
         )
 
-    operational_employee = trust == TrustRole.employee.value or role in (
-        Role.recruiter.value,
-        Role.compliance_officer.value,
-    )
+    operational_employee = trust == TrustRole.employee.value
     portal_or_viewer = (
         trust == TrustRole.viewer.value
         or is_portal_actor(role, access_context)
-        or role
-        in (
-            Role.client_manager.value,
-            Role.client_processor.value,
-            Role.viewer.value,
-        )
     )
 
     if operational_employee or portal_or_viewer:
@@ -165,7 +156,11 @@ async def resolve_candidate_acl(
         # Manager self-scope: recruiters and canonical employees (not portal viewers / compliance-only).
         manager_scope = (
             {user_id}
-            if role == Role.recruiter.value or (trust == TrustRole.employee.value and role != Role.compliance_officer.value)
+            if is_recruiter_preset_actor(role)
+            or (
+                trust == TrustRole.employee.value
+                and resolve_preset_id(role) != "compliance"
+            )
             else set()
         )
         return CandidateACL.restricted(
@@ -261,7 +256,11 @@ async def ensure_candidate_access(
 
     if not is_client:
         role_l = str(getattr(user, "role", "") or "").strip().lower()
-        if role_l == UserRole.hr_officer.value and await agency_candidate_has_internal_hr_handoff_lane(
+        prefs = getattr(user, "preferences", None) if not isinstance(user, dict) else None
+        if isinstance(user, dict):
+            prefs = user.get("preferences")
+        preset = getattr(user, "preset_id", None)
+        if is_hr_workspace_actor(role_l, preset_id=preset, preferences=prefs if isinstance(prefs, dict) else None) and await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=tenant_id, candidate_id=candidate_id
         ):
             res = await db.execute(

@@ -368,7 +368,7 @@ async def cancel_time_off_request(
     row = await db.get(CommunicationTimeOffRequest, request_id)
     if row is None or str(row.tenant_id) != tenant_id:
         raise HTTPException(status_code=404, detail="Time-off request not found")
-    is_admin_like = (current_user.role or "").strip().lower() in {Role.administrator.value, Role.supervisor.value, Role.superadmin.value}
+    is_admin_like = (current_user.role or "").strip().lower() in {Role.administrator.value, Role.employee.value, Role.superadmin.value}
     if str(row.requester_user_id) != str(current_user.sub) and not is_admin_like:
         raise HTTPException(status_code=403, detail="Forbidden")
     if str(row.status or "").lower() not in {"pending"}:

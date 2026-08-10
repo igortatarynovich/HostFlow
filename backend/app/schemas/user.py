@@ -8,15 +8,18 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserRole(str, Enum):
+    """API request roles. Persist trust only; legacy labels coerce via normalize_assignable_role."""
+
     administrator = "administrator"
     employee = "employee"
+    viewer = "viewer"
+    # Legacy request aliases (not persisted as distinct system roles after ADR-036 Phase 3)
     supervisor = "supervisor"
     recruiter = "recruiter"
     client_manager = "client_manager"
     client_processor = "client_processor"
     compliance_officer = "compliance_officer"
     hr_officer = "hr_officer"
-    viewer = "viewer"
 
 
 class UserCreateInvite(BaseModel):

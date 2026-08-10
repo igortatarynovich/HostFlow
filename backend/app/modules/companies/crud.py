@@ -1238,7 +1238,7 @@ async def create_company(
         session,
         tenant_id=tenant_id,
         user_id=str(owner_user_id_raw) if owner_user_id_raw else actor_user_id,
-        allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},
+        allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.employee.value},
     )
     manager_user_id = await _validate_company_user(
         session,
@@ -1377,7 +1377,7 @@ async def update_company(db: AsyncSession, company_id: UUID, data) -> Optional[C
             session,
             tenant_id=_tenant_id_from_session(session),
             user_id=str(owner_user_id_raw) if owner_user_id_raw else None,
-            allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},
+            allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.employee.value},
         )
     if manager_user_id_present:
         company.manager_user_id = await _validate_company_user(

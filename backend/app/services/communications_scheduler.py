@@ -516,7 +516,7 @@ async def _pick_ops_assignee_id(db, *, tenant_id: str) -> str | None:
             User.is_active.is_(True),
             sa.or_(User.tenant_id == tenant_id, User.tenant_id.is_(None)),
             # IMPORTANT: keep only real DB enum values (no aliases like "owner").
-            User.role.in_([Role.superadmin.value, Role.administrator.value, Role.supervisor.value]),
+            User.role.in_([Role.superadmin.value, Role.administrator.value, Role.employee.value]),
         )
         .order_by(sa.asc(User.created_at))
         .limit(1)

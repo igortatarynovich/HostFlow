@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.trust_roles import is_recruiter_preset_actor, is_team_lead_org_actor
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.candidate_delete_request import (
@@ -30,7 +31,7 @@ async def request_delete(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    if ctx.role == Role.recruiter.value:
+    if is_recruiter_preset_actor(ctx.role, getattr(ctx, "preset_id", None)):
         await ensure_candidate_access(db, tenant_id, candidate_id, ctx)
     try:
         request = await deletion_service.create_delete_request(
@@ -59,7 +60,7 @@ async def list_requests(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    supervisor_filter = ctx.sub if ctx.role == Role.supervisor.value else None
+    supervisor_filter = ctx.sub if is_team_lead_org_actor(ctx.role, getattr(ctx, "preset_id", None)) else None
     requests = await deletion_service.list_requests(
         db,
         tenant_id=tenant_id,

@@ -58,17 +58,23 @@ _ROLE_MAP = {
     "admin": UserRole.administrator.value,
     "administrator": UserRole.administrator.value,
     "employee": UserRole.employee.value,
-    "manager": UserRole.supervisor.value,
-    "supervisor": UserRole.supervisor.value,
-    "recruiter": UserRole.recruiter.value,
+    "manager": UserRole.employee.value,
+    "supervisor": UserRole.employee.value,
+    "recruiter": UserRole.employee.value,
     "viewer": UserRole.viewer.value,
-    "client_manager": UserRole.client_manager.value,
-    "client": UserRole.client_manager.value,
-    "client_processor": UserRole.client_processor.value,
-    "processor": UserRole.client_processor.value,
+    "client_manager": UserRole.viewer.value,
+    "client": UserRole.viewer.value,
+    "client_processor": UserRole.viewer.value,
+    "processor": UserRole.viewer.value,
     "superadmin": UserRole.superadmin.value,
-    "hr_officer": UserRole.hr_officer.value,
-    "people_ops": UserRole.hr_officer.value,
+    "hr_officer": UserRole.employee.value,
+    "people_ops": UserRole.employee.value,
+    "hr": UserRole.employee.value,
+    "compliance_officer": UserRole.employee.value,
+    "compliance": UserRole.employee.value,
+    "docs_officer": UserRole.employee.value,
+    "lead": UserRole.employee.value,
+    "user": UserRole.viewer.value,
 }
 
 
@@ -78,6 +84,13 @@ def _access_context_for_user(user: User, role_value: str) -> str:
     prefs = user.preferences if isinstance(user.preferences, dict) else {}
     explicit = prefs.get("access_context")
     return infer_access_context(role_value, explicit if isinstance(explicit, str) else None)
+
+
+def _preset_id_for_user(user: User, role_value: str) -> str | None:
+    from backend.app.auth.trust_roles import resolve_preset_id
+
+    prefs = user.preferences if isinstance(user.preferences, dict) else {}
+    return resolve_preset_id(role_value, preferences=prefs)
 
 class LoginIn(BaseModel):
     email: str
@@ -113,6 +126,8 @@ def _normalize_role(
     user_role: Any,
     membership_role: Optional[str],
 ) -> str:
+    from backend.app.auth.trust_roles import normalize_trust_role
+
     raw_user_role = str(user_role or "").lower()
     if raw_user_role == UserRole.superadmin.value:
         return UserRole.superadmin.value
@@ -122,10 +137,11 @@ def _normalize_role(
         mapped = _ROLE_MAP.get(str(membership_role).lower())
         if mapped:
             return mapped
+        return normalize_trust_role(membership_role)
     if isinstance(user_role, UserRole):
-        return user_role.value
+        return normalize_trust_role(user_role.value)
     raw = str(user_role or UserRole.viewer.value).lower()
-    return _ROLE_MAP.get(raw, UserRole.viewer.value)
+    return _ROLE_MAP.get(raw, normalize_trust_role(raw))
 
 
 def _slugify_workspace(raw: str) -> str:
@@ -394,6 +410,7 @@ async def auth_login(payload: LoginIn, request: Request, response: Response) -> 
             "role": role_value,
             "tenant_id": tenant_id,
             "access_context": _access_context_for_user(user, role_value),
+            "preset_id": _preset_id_for_user(user, role_value),
             "type": "access",
             "jti": str(uuid.uuid4()),
             "iat": int(now.timestamp()),
@@ -443,7 +460,7 @@ async def auth_login(payload: LoginIn, request: Request, response: Response) -> 
 
     return TokenOut(
         access_token=token,
-        user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id},
+        user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id, "preset_id": _preset_id_for_user(user, role_value), "access_context": _access_context_for_user(user, role_value)},
         session_id=session_entry.id,
     )
 
@@ -516,6 +533,7 @@ async def auth_session_sync(request: Request, response: Response) -> TokenOut:
             "role": role_value,
             "tenant_id": tenant_id,
             "access_context": _access_context_for_user(user, role_value),
+            "preset_id": _preset_id_for_user(user, role_value),
             "type": "access",
             "jti": str(uuid.uuid4()),
             "iat": int(now.timestamp()),
@@ -560,7 +578,7 @@ async def auth_session_sync(request: Request, response: Response) -> TokenOut:
     )
     return TokenOut(
         access_token=token,
-        user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id},
+        user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id, "preset_id": _preset_id_for_user(user, role_value), "access_context": _access_context_for_user(user, role_value)},
         session_id=session_entry.id,
     )
 
@@ -616,6 +634,7 @@ async def auth_refresh(request: Request, response: Response) -> TokenOut:
             "role": role_value,
             "tenant_id": tenant_id,
             "access_context": _access_context_for_user(user, role_value),
+            "preset_id": _preset_id_for_user(user, role_value),
             "type": "access",
             "jti": str(uuid.uuid4()),
             "iat": int(now.timestamp()),
@@ -654,7 +673,7 @@ async def auth_refresh(request: Request, response: Response) -> TokenOut:
     )
     return TokenOut(
         access_token=token,
-        user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id},
+        user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id, "preset_id": _preset_id_for_user(user, role_value), "access_context": _access_context_for_user(user, role_value)},
         session_id=session_entry.id,
     )
 
