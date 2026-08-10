@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../store/useAuth'
 import { usePermissions } from './usePermissions'
 import { getTeamOverview } from '../api/tenants'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
 
 export type LicenseStatus = {
@@ -18,7 +19,7 @@ export type LicenseStatus = {
  */
 export function useLicenseStatus(): LicenseStatus {
   const { me } = useAuth()
-  const { role, can } = usePermissions()
+  const { role, can, rawRole, presetId } = usePermissions()
   const [state, setState] = useState<LicenseStatus>({
     loading: true,
     expired: false,
@@ -26,7 +27,11 @@ export function useLicenseStatus(): LicenseStatus {
     plan: null,
   })
 
-  const canFetchLicense = role === 'administrator' || role === 'supervisor' || can('admin.users')
+  const canFetchLicense = canUseTeamOverviewLane({
+    role: rawRole || role,
+    presetId,
+    canAdminUsers: can('admin.users'),
+  })
 
   const fetchLicense = useCallback(async () => {
     if (!canFetchLicense || !me?.tenant_id) {

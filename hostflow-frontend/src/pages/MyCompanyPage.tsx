@@ -10,6 +10,7 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePermissions } from '../hooks/usePermissions'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
@@ -17,8 +18,12 @@ export default function MyCompanyPage() {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
-  const { can, role } = usePermissions()
-  const canLoadTeamOverview = role === 'administrator' || role === 'supervisor'
+  const { can, role, rawRole, presetId } = usePermissions()
+  const canLoadTeamOverview = canUseTeamOverviewLane({
+    role: rawRole || role,
+    presetId,
+    canAdminUsers: can('admin.users'),
+  })
   const navigate = useNavigate()
   const [ownCompanies, setOwnCompanies] = useState<OwnCompanyRecord[]>([])
   const [billing, setBilling] = useState<BillingSummary | null>(null)

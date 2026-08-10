@@ -24,6 +24,7 @@ import { useAuth } from '../store/useAuth'
 import { useI18n, type LocaleCode } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { usePermissions } from '../hooks/usePermissions'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
@@ -103,10 +104,14 @@ export default function ProfilePage() {
     updateSecurity,
   } = useAuth()
   const { t, setLocale } = useI18n()
-  const { can, role } = usePermissions()
+  const { can, role, rawRole, presetId } = usePermissions()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const canOpenTasksHome = can('notifications.view')
-  const canLoadTeamOverview = role === 'administrator' || role === 'supervisor'
+  const canLoadTeamOverview = canUseTeamOverviewLane({
+    role: rawRole || role,
+    presetId,
+    canAdminUsers: can('admin.users'),
+  })
 
   const [companies, setCompanies] = useState<Company[]>([])
   const [teamOverview, setTeamOverview] = useState<TeamOverviewResponse | null>(null)

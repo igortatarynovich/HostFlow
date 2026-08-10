@@ -6,14 +6,14 @@ import { useToast } from '../components/Toast'
 import { useTeamOverviewNav } from '../contexts/TeamOverviewNavContext'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 import { usePermissions } from './usePermissions'
 
-export function canCreateOwnCompanyRole(role: string | null | undefined): boolean {
-  const r = String(role || '').trim().toLowerCase()
-  return (
-    ['administrator', 'superadmin', 'admin', 'owner'].includes(r) ||
-    ['supervisor', 'manager', 'lead'].includes(r)
-  )
+export function canCreateOwnCompanyRole(
+  role: string | null | undefined,
+  presetId?: string | null,
+): boolean {
+  return canUseTeamOverviewLane({ role, presetId })
 }
 
 function effectiveOwnCompanyLimit(maxCompanies: number | null | undefined): number | null {
@@ -25,7 +25,7 @@ function effectiveOwnCompanyLimit(maxCompanies: number | null | undefined): numb
 export function useOwnCompanyWorkspace() {
   const { me } = useAuth()
   const navigate = useNavigate()
-  const { can, isClientTenant } = usePermissions()
+  const { can, isClientTenant, rawRole, presetId } = usePermissions()
   const { t } = useI18n()
   const { notify } = useToast()
   const { teamOverview } = useTeamOverviewNav()
@@ -37,7 +37,7 @@ export function useOwnCompanyWorkspace() {
   const [createBusy, setCreateBusy] = useState(false)
 
   const canAddOwnCompany =
-    canCreateOwnCompanyRole(me?.role) && !isClientTenant && Boolean(me?.tenant_id)
+    canCreateOwnCompanyRole(rawRole || me?.role, presetId) && !isClientTenant && Boolean(me?.tenant_id)
   const ownCompanyLimit = effectiveOwnCompanyLimit(teamOverview?.license?.max_companies)
   const atPlanLimit =
     ownCompanyLimit != null && ownCompanies.length >= ownCompanyLimit && teamOverview?.license != null

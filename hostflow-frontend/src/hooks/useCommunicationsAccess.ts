@@ -5,6 +5,7 @@ import {
   type CommunicationsWorkspaceSettings,
 } from '../api/communications'
 import { roleMayLoadFullCommunicationsSettings } from '../constants/communicationsSettingsAccess'
+import { actorSatisfiesRoleAllowlist } from '../auth/trustRoles'
 import { useAuth } from '../store/useAuth'
 import { usePermissions } from './usePermissions'
 
@@ -65,7 +66,7 @@ function normalizeError(err: any): string {
 
 export function useCommunicationsAccess() {
   const { me } = useAuth()
-  const { role } = usePermissions()
+  const { role, rawRole, accessContext, presetId } = usePermissions()
   const [state, setState] = useState<AccessState>(defaultState)
 
   useEffect(() => {
@@ -78,7 +79,7 @@ export function useCommunicationsAccess() {
       }
     }
 
-    if (!roleMayLoadFullCommunicationsSettings(role)) {
+    if (!roleMayLoadFullCommunicationsSettings(rawRole || role, { accessContext, presetId })) {
       setState({ loading: false, settings: DEFAULT_COMMUNICATIONS_SETTINGS, error: null })
       return () => {
         mounted = false
@@ -99,7 +100,7 @@ export function useCommunicationsAccess() {
     return () => {
       mounted = false
     }
-  }, [me?.tenant_id, role])
+  }, [accessContext, me?.tenant_id, presetId, rawRole, role])
 
   const userIdSet = useMemo(() => {
     const ids = new Set<string>()
@@ -133,9 +134,17 @@ export function useCommunicationsAccess() {
 
       const allowedRoles = settings.access?.roles?.[accessKey] || []
       if (!allowedRoles.length) return true
-      return allowedRoles.map((r) => String(r).toLowerCase()).includes(String(role || '').toLowerCase())
+      const personaHit = allowedRoles
+        .map((r) => String(r).toLowerCase())
+        .includes(String(role || '').toLowerCase())
+      if (personaHit) return true
+      return actorSatisfiesRoleAllowlist({
+        role: rawRole || role,
+        allowed: allowedRoles,
+        accessContext,
+      })
     }
-  }, [role, state.settings, userIdSet])
+  }, [accessContext, rawRole, role, state.settings, userIdSet])
 
   return {
     loading: state.loading,

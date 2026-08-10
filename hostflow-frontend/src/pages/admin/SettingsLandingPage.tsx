@@ -17,7 +17,8 @@ import {
   IconUsersGroup,
 } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
-import { usePermissions } from '../../hooks/usePermissions'
+import { usePermissions, type Permission } from '../../hooks/usePermissions'
+import { actorSatisfiesRoleAllowlist } from '../../auth/trustRoles'
 import { getTenantModules } from '../../api/tenants'
 import type { TenantModuleSettings } from '../../api/types'
 import { useCommunicationsAccess, type CommunicationsFeatureKey } from '../../hooks/useCommunicationsAccess'
@@ -40,7 +41,14 @@ type CardDef = {
   label: string
   description: string
   target: string
-  roles: string[]
+  /** @deprecated Prefer requireAny / requireTrustAdmin (ADR-036). */
+  roles?: string[]
+  /** Show when any of these permissions pass (trust ceilings via usePermissions). */
+  requireAny?: Permission[]
+  /** Administrator / superadmin trust only. */
+  requireTrustAdmin?: boolean
+  /** Visible to any authenticated user (profile). */
+  openToAuthenticated?: boolean
   section: SettingsSectionKey
   requiresModules?: Array<keyof TenantModuleSettings>
   requiresCommFeatures?: CommunicationsFeatureKey[]
@@ -77,7 +85,7 @@ const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
 
 export default function SettingsLandingPage() {
   const { t } = useI18n()
-  const { role, can } = usePermissions()
+  const { role, can, trustRole, rawRole, accessContext } = usePermissions()
   const { me } = useAuth()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const isSuperAdmin = useMemo(() => {
@@ -150,7 +158,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.users.label'),
         description: t('admin.settings.cards.users.description'),
         target: CRM_APP_PATHS.settingsUsers,
-        roles: ['administrator', 'supervisor', 'client_manager'],
+        requireAny: ['admin.users', 'users.manage', 'users.view'],
         section: 'team',
       },
       {
@@ -160,7 +168,7 @@ export default function SettingsLandingPage() {
           defaultValue: 'Trust roles, module matrix, and permission presets for Employee and Viewer.',
         }),
         target: CRM_APP_PATHS.settingsTeam,
-        roles: ['administrator'],
+        requireTrustAdmin: true,
         section: 'team',
       },
       {
@@ -168,7 +176,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.tenants.label'),
         description: t('admin.settings.cards.tenants.description'),
         target: CRM_APP_PATHS.settingsTenants,
-        roles: ['administrator'],
+        requireTrustAdmin: true,
         section: 'workspace',
         superadminOnly: true,
       },
@@ -177,7 +185,7 @@ export default function SettingsLandingPage() {
         label: t('app.nav.items.my_company'),
         description: t('admin.settings.cards.my_company.description'),
         target: CRM_APP_PATHS.myCompany,
-        roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'compliance_officer', 'hr_officer', 'viewer'],
+        openToAuthenticated: true,
         section: 'workspace',
         requiresCompaniesView: true,
       },
@@ -186,7 +194,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.company_access.label', { defaultValue: 'Company access' }),
         description: t('admin.settings.cards.company_access.description', { defaultValue: 'Control which companies are visible for selected tenant users.' }),
         target: CRM_APP_PATHS.settingsCompanyAccess,
-        roles: ['administrator'],
+        requireTrustAdmin: true,
         section: 'team',
       },
       {
@@ -194,7 +202,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.notifications.label'),
         description: t('admin.settings.cards.notifications.description'),
         target: CRM_APP_PATHS.tasks,
-        roles: ['administrator', 'supervisor', 'client_manager'],
+        requireAny: ['notifications.view', 'settings.view'],
         section: 'automations',
         requiresModules: ['candidates'],
       },
@@ -203,7 +211,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.integrations_hub.label'),
         description: t('admin.settings.cards.integrations_hub.description'),
         target: CRM_APP_PATHS.settingsIntegrations,
-        roles: ['administrator', 'supervisor', 'client_manager'],
+        requireAny: ['admin.metaLeads', 'admin.users', 'settings.view', 'notifications.view'],
         section: 'integrations',
         integrationsHubEntry: true,
       },
@@ -212,7 +220,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.communications_queue.label', { defaultValue: 'Queue settings' }),
         description: t('admin.settings.cards.communications_queue.description', { defaultValue: 'Routing strategy and manager allocation queue controls.' }),
         target: CRM_APP_PATHS.settingsCommunicationsQueue,
-        roles: ['administrator', 'supervisor'],
+        requireAny: ['settings.view', 'manager.tools'],
         section: 'automations',
         requiresCommFeatures: ['communicationsAdmin'],
       },
@@ -221,7 +229,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.communications_sla.label', { defaultValue: 'SLA settings' }),
         description: t('admin.settings.cards.communications_sla.description', { defaultValue: 'Escalation policy for overdue communication threads.' }),
         target: CRM_APP_PATHS.settingsCommunicationsSla,
-        roles: ['administrator', 'supervisor'],
+        requireAny: ['settings.view', 'manager.tools'],
         section: 'automations',
         requiresCommFeatures: ['communicationsAdmin'],
       },
@@ -230,7 +238,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.documents.label'),
         description: t('admin.settings.cards.documents.description'),
         target: CRM_APP_PATHS.settingsDocs,
-        roles: ['administrator', 'supervisor'],
+        requireAny: ['documents.manage', 'settings.view'],
         section: 'crm_setup',
         requiresModules: ['documents'],
       },
@@ -239,7 +247,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.merge_templates.label'),
         description: t('admin.settings.cards.merge_templates.description'),
         target: CRM_APP_PATHS.settingsMergeTemplates,
-        roles: ['administrator', 'supervisor'],
+        requireAny: ['documents.manage', 'settings.view'],
         section: 'crm_setup',
         requiresModules: ['documents'],
       },
@@ -248,7 +256,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.funnels.label', { defaultValue: 'Funnels' }),
         description: t('admin.settings.cards.funnels.description', { defaultValue: 'Candidate and lead stages.' }),
         target: CRM_APP_PATHS.settingsFunnels,
-        roles: ['administrator', 'supervisor'],
+        requireAny: ['settings.view', 'manager.tools', 'candidates.manage'],
         section: 'crm_setup',
         requiresModules: ['candidates'],
       },
@@ -257,7 +265,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.hiring_gates.label'),
         description: t('admin.settings.cards.hiring_gates.description'),
         target: CRM_APP_PATHS.settingsHiringPipelineGates,
-        roles: ['administrator', 'supervisor', 'recruiter', 'compliance_officer', 'hr_officer', 'viewer'],
+        requireAny: ['candidates.view', 'settings.view', 'manager.tools'],
         section: 'crm_setup',
         requiresModules: ['candidates'],
       },
@@ -268,7 +276,7 @@ export default function SettingsLandingPage() {
           defaultValue: 'Aggregated handoff rules, destinations, and governance in one place.',
         }),
         target: CRM_APP_PATHS.settingsTransferPolicy,
-        roles: ['administrator', 'supervisor'],
+        requireAny: ['settings.view', 'manager.tools'],
         section: 'crm_setup',
         requiresModules: ['candidates'],
       },
@@ -277,7 +285,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.risk_intel.label'),
         description: t('admin.settings.cards.risk_intel.description'),
         target: CRM_APP_PATHS.settingsRiskIntel,
-        roles: ['administrator', 'supervisor', 'client_manager'],
+        requireAny: ['manager.tools', 'settings.view', 'candidates.view'],
         section: 'crm_setup',
         requiresModules: ['candidates'],
       },
@@ -286,7 +294,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.candidate_profiles.label'),
         description: t('admin.settings.cards.candidate_profiles.description'),
         target: CRM_APP_PATHS.settingsCandidateProfiles,
-        roles: ['administrator', 'supervisor'],
+        requireAny: ['settings.view', 'manager.tools'],
         section: 'crm_setup',
         requiresModules: ['candidates'],
       },
@@ -295,7 +303,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.custom_fields.label'),
         description: t('admin.settings.cards.custom_fields.description'),
         target: CRM_APP_PATHS.settingsCustomFields,
-        roles: ['administrator'],
+        requireTrustAdmin: true,
         section: 'crm_setup',
         requiresModules: ['candidates'],
       },
@@ -304,7 +312,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.message_templates.label', { defaultValue: 'Message templates' }),
         description: t('admin.settings.cards.message_templates.description', { defaultValue: 'Shared templates for lead operational emails and RODO notices.' }),
         target: CRM_APP_PATHS.settingsMessageTemplates,
-        roles: ['administrator', 'supervisor'],
+        requireAny: ['settings.view', 'manager.tools'],
         section: 'crm_setup',
       },
       {
@@ -312,7 +320,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.lead_forms.label'),
         description: t('admin.settings.cards.lead_forms.description'),
         target: CRM_APP_PATHS.marketingForms,
-        roles: ['administrator', 'supervisor'],
+        requireAny: ['settings.view', 'manager.tools', 'leads.view'],
         section: 'crm_setup',
         requiresModules: ['leads'],
       },
@@ -321,7 +329,7 @@ export default function SettingsLandingPage() {
         label: t('app.nav.items.settings_billing'),
         description: t('admin.settings.cards.billing.description'),
         target: CRM_APP_PATHS.settingsBilling,
-        roles: ['administrator'],
+        requireTrustAdmin: true,
         section: 'billing',
       },
       {
@@ -329,7 +337,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.legal.label'),
         description: t('admin.settings.cards.legal.description'),
         target: CRM_APP_PATHS.settingsLegal,
-        roles: ['administrator'],
+        requireTrustAdmin: true,
         section: 'workspace',
       },
       {
@@ -337,7 +345,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.tenant_links.label'),
         description: t('admin.settings.cards.tenant_links.description'),
         target: CRM_APP_PATHS.settingsTenantLinks,
-        roles: ['administrator'],
+        requireTrustAdmin: true,
         section: 'workspace',
       },
       {
@@ -345,7 +353,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.ruleset.label'),
         description: t('admin.settings.cards.ruleset.description'),
         target: CRM_APP_PATHS.settingsRuleset,
-        roles: ['administrator', 'supervisor'],
+        requireAny: ['admin.ruleset', 'settings.view', 'manager.tools'],
         section: 'automations',
       },
       {
@@ -353,7 +361,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.audit.label'),
         description: t('admin.settings.cards.audit.description'),
         target: CRM_APP_PATHS.settingsAudit,
-        roles: ['administrator'],
+        requireTrustAdmin: true,
         section: 'workspace',
       },
       {
@@ -361,7 +369,7 @@ export default function SettingsLandingPage() {
         label: t('admin.settings.cards.profile.label', { defaultValue: 'My profile' }),
         description: t('admin.settings.cards.profile.description', { defaultValue: 'Personal profile, language, security and local preferences.' }),
         target: CRM_APP_PATHS.profile,
-        roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'compliance_officer', 'hr_officer', 'viewer'],
+        openToAuthenticated: true,
         section: 'personal',
       },
     ],
@@ -373,6 +381,9 @@ export default function SettingsLandingPage() {
       allCards.filter((c) => {
         if (c.superadminOnly && !isSuperAdmin) return false
         if (c.requiresCompaniesView && !can('companies.view')) return false
+        if (c.requireTrustAdmin && trustRole !== 'administrator' && trustRole !== 'superadmin' && !isSuperAdmin) {
+          return false
+        }
         if (c.integrationsHubEntry) {
           const hubOk =
             can('admin.metaLeads') ||
@@ -382,7 +393,23 @@ export default function SettingsLandingPage() {
               (canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')))
           if (!hubOk) return false
         }
-        if (!c.roles.includes(role)) return false
+        if (!c.openToAuthenticated) {
+          if (c.requireAny && c.requireAny.length > 0) {
+            if (!c.requireAny.some((p) => can(p))) return false
+          } else if (c.roles && c.roles.length > 0) {
+            // Bridge: persona match OR raw trust allowlist (ADR-036)
+            const personaOk = c.roles.includes(role)
+            const allowlistOk = actorSatisfiesRoleAllowlist({
+              role: rawRole,
+              allowed: c.roles,
+              accessContext,
+            })
+            const adminOk =
+              (trustRole === 'administrator' || trustRole === 'superadmin') &&
+              c.roles.includes('administrator')
+            if (!personaOk && !allowlistOk && !adminOk) return false
+          }
+        }
         if (c.requiresModules && modules) {
           for (const mk of c.requiresModules) {
             if (!modules[mk]) return false
@@ -394,7 +421,7 @@ export default function SettingsLandingPage() {
         }
         return true
       }),
-    [allCards, can, canUseCommunicationsFeature, isSuperAdmin, modules, role],
+    [accessContext, allCards, can, canUseCommunicationsFeature, isSuperAdmin, modules, rawRole, role, trustRole],
   )
 
   const grouped = useMemo(
