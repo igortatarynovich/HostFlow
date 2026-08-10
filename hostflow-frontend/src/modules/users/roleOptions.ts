@@ -3,6 +3,7 @@
  */
 
 import type { UserRole } from '../../api/types'
+import { normalizeTrustRole } from '../../auth/trustRoles'
 
 /** Roles that may be assigned in Users admin UI / API. */
 export const TRUST_ROLE_OPTIONS = ['administrator', 'employee', 'viewer'] as const
@@ -33,20 +34,9 @@ export const PRESET_LABEL_KEYS: Record<PermissionPresetId, string> = {
 
 /** Map any stored role (incl. legacy) to a trust role for selects / badges. */
 export function toTrustRole(role: string | null | undefined): TrustRoleOption {
-  const r = String(role || '').trim().toLowerCase()
-  if (r === 'administrator' || r === 'admin' || r === 'owner') return 'administrator'
-  if (
-    r === 'employee' ||
-    r === 'recruiter' ||
-    r === 'supervisor' ||
-    r === 'manager' ||
-    r === 'hr_officer' ||
-    r === 'compliance_officer' ||
-    r === 'hr' ||
-    r === 'compliance'
-  ) {
-    return 'employee'
-  }
+  const trust = normalizeTrustRole(role)
+  if (trust === 'administrator' || trust === 'superadmin') return 'administrator'
+  if (trust === 'employee') return 'employee'
   return 'viewer'
 }
 

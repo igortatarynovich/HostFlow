@@ -1,17 +1,14 @@
 /**
- * Mirrors backend `HR_DOCUMENT_REVIEW_ROLES` (hr_officer, administrator).
+ * Mirrors backend HR document review gate (hr preset / hr_officer + admins).
  * Recruiters/supervisors may have `workforce.manage` in the UI matrix but must not see HR-only review actions.
  */
-export function userMayRecordHrDocumentReview(role: string | undefined | null): boolean {
-  const r = String(role || '')
-    .toLowerCase()
-    .trim()
-  return (
-    r === 'hr_officer' ||
-    r === 'people_ops' ||
-    r === 'administrator' ||
-    r === 'admin' ||
-    r === 'owner' ||
-    r === 'superadmin'
-  )
+import { isHrWorkspaceActor, normalizeTrustRole } from '../auth/trustRoles'
+
+export function userMayRecordHrDocumentReview(
+  role: string | undefined | null,
+  presetId?: string | null,
+): boolean {
+  const trust = normalizeTrustRole(role)
+  if (trust === 'administrator' || trust === 'superadmin') return true
+  return isHrWorkspaceActor(role, presetId)
 }
