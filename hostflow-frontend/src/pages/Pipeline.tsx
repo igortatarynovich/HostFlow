@@ -38,10 +38,10 @@ import {
   computePipelineColumnInsights,
 } from '../modules/pipeline/filterPipelineColumns'
 import {
-import { RECRUITMENT_ASSIGNEE_CATALOG_ROLES } from '../auth/trustRoles'
   normalizeVacancyPipelinePayload,
   rebuildPipelineColumnsFromCandidates,
 } from '../modules/pipeline/normalizeVacancyPipelinePayload'
+import { RECRUITMENT_ASSIGNEE_CATALOG_ROLES } from '../auth/trustRoles'
 import { filterRecruitmentVisibleStageCodes } from '../constants/recruitmentStageSurface'
 import { parseMetaStagesApiResponse } from '../modules/pipeline/parseMetaStagesApiResponse'
 import { parseVacancyPipelineProfileStagesPatch } from '../modules/pipeline/parseVacancyPipelineProfilePatch'

@@ -408,10 +408,6 @@ export default function SettingsLandingPage() {
           c.requiresOrganizationAccess &&
           !(can('companies.view') || can('settings.view') || can('admin.users'))
         ) {
-        if (
-          c.requiresOrganizationAccess &&
-          !(can('companies.view') || can('settings.view') || can('admin.users'))
-        ) {
           return false
         }
         if (c.requireTrustAdmin && trustRole !== 'administrator' && trustRole !== 'superadmin' && !isSuperAdmin) {

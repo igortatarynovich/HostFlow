@@ -1159,7 +1159,7 @@ async def add_funnel_transition(
     funnel_id: str,
     payload: FunnelTransitionIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(require_trust_admin()),
 ) -> FunnelTransitionOut:
     import uuid
 
@@ -1217,7 +1217,7 @@ async def delete_funnel_transition(
     funnel_id: str,
     transition_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(require_trust_admin()),
 ) -> Response:
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)

@@ -22,7 +22,8 @@ from sqlalchemy.orm import aliased
 
 from backend.app.api.v1.utils.access import resolve_restricted_acl
 from backend.app.api.v1.vacancies.repo import VacancyRepo
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user
+from backend.app.auth.trust_role_deps import require_trust_write
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.user import Role as UserRole
 from backend.app.models.user import User
@@ -161,7 +162,7 @@ async def get_vacancy_recruiters(
     "/{vacancy_id}/recruiters",
     response_model=VacancyRecruitersOut,
     summary="Replace the vacancy recruiter auto-assign pool",
-    dependencies=[Depends(require_roles(Role.manager, Role.admin, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def put_vacancy_recruiters(
     vacancy_id: UUID,
@@ -190,7 +191,7 @@ async def put_vacancy_recruiters(
                 User.id.in_(user_ids),
                 User.is_active.is_(True),
                 User.deleted_at.is_(None),
-                User.role == UserRole.recruiter,
+                User.role == UserRole.employee,
                 or_(User.tenant_id.is_(None), User.tenant_id == tenant_id_str),
             )
         )

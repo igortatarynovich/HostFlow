@@ -1036,7 +1036,7 @@ async def list_candidates(
             total,
         )
     # For agency/superadmin: log linked tenants/companies to diagnose scope issues
-    if not client_tenant and current_user.role in (Role.admin.value, Role.administrator.value, Role.superadmin.value):
+    if not client_tenant and current_user.role in (Role.administrator.value, Role.superadmin.value):
         linked_tenants = await db.execute(
             select(TenantLink.client_tenant_id)
             .where(
@@ -3073,7 +3073,7 @@ async def fire_candidate_system_transition(
     candidate_id: UUID,
     catalog_key: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(*ALLOW_MANAGER_ROLES)),
+    current_user: UserCtx = Depends(require_trust_write()),
 ) -> dict:
     """ADR-035: fire a platform system transition (closes Candidate; may create Employee)."""
     from backend.app.services.company_module_access import get_effective_company_modules
