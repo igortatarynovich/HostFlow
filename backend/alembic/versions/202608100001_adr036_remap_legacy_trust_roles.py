@@ -169,6 +169,17 @@ def _remap_invites() -> None:
             )
 
 
+def _ensure_employee_enum_value() -> None:
+    """Postgres native enum ``role`` predates ADR-036 and lacks ``employee``.
+
+    ADD VALUE must commit before the new label can be written (PG rule).
+    """
+    if _bind_dialect() != "postgresql":
+        return
+    with op.get_context().autocommit_block():
+        op.execute(sa.text("ALTER TYPE role ADD VALUE IF NOT EXISTS 'employee'"))
+
+
 def _relax_supervisor_check() -> None:
     bind = op.get_bind()
     dialect = _bind_dialect()
@@ -183,17 +194,18 @@ def _relax_supervisor_check() -> None:
         op.create_check_constraint(
             "ck_users_supervisor_role",
             "users",
-            "(supervisor_id IS NULL) OR (lower(role) IN ('recruiter', 'employee'))",
+            "(supervisor_id IS NULL) OR (lower(role::text) IN ('recruiter', 'employee'))",
         )
     else:
         op.create_check_constraint(
             "ck_users_supervisor_role",
             "users",
-            "(supervisor_id IS NULL) OR (lower(role) IN ('recruiter', 'employee'))",
+            "(supervisor_id IS NULL) OR (lower(role::text) IN ('recruiter', 'employee'))",
         )
 
 
 def upgrade() -> None:
+    _ensure_employee_enum_value()
     _relax_supervisor_check()
     _remap_users_with_preferences()
     insp = sa.inspect(op.get_bind())
