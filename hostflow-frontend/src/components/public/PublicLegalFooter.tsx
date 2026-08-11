@@ -1,4 +1,5 @@
 import clsx from 'clsx'
+import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 
 type PublicLegalFooterProps = {
@@ -6,12 +7,19 @@ type PublicLegalFooterProps = {
   className?: string
 }
 
+const COMPANY_LINKS = [
+  { key: 'about', to: '/about' },
+  { key: 'services', to: '/services' },
+  { key: 'contact', to: '/contact' },
+] as const
+
 const DOC_LINKS = [
   { key: 'privacy', href: '/legal/privacy.html' },
   { key: 'terms', href: '/legal/terms.html' },
   { key: 'cookies', href: '/legal/cookies.html' },
   { key: 'rodo', href: '/legal/rodo.html' },
-]
+  { key: 'data_deletion', href: '/data-deletion.html' },
+] as const
 
 export function PublicLegalFooter({ variant = 'inline', className }: PublicLegalFooterProps) {
   const { t } = useI18n()
@@ -19,6 +27,20 @@ export function PublicLegalFooter({ variant = 'inline', className }: PublicLegal
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0 && !/request a new one/i.test(line) && !/can't find the link/i.test(line))
+
+  const companyNav = (
+    <ul className="space-y-2 text-sm text-brand-700">
+      {COMPANY_LINKS.map(({ key, to }) => (
+        <li key={key}>
+          <Link to={to} className="underline-offset-2 hover:underline">
+            {t(`public.portal.landing.footer.links.${key}`, {
+              defaultValue: t(`public.company.nav.${key}`, { defaultValue: key }),
+            })}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
 
   const docsList = (
     <ul className="space-y-2 text-sm text-brand-700">
@@ -49,7 +71,13 @@ export function PublicLegalFooter({ variant = 'inline', className }: PublicLegal
   )
 
   const content = (
-    <div className="grid gap-8 md:grid-cols-2 md:gap-12">
+    <div className="grid gap-8 md:grid-cols-3 md:gap-10">
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          {t('public.company.nav.aria', { defaultValue: 'Company' })}
+        </div>
+        <div className="mt-3">{companyNav}</div>
+      </div>
       <div>
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {t('public.portal.landing.footer.title')}

@@ -10007,7 +10007,11 @@
             "privacy": "Polityka prywatności",
             "terms": "Regulamin",
             "cookies": "Polityka cookies",
-            "rodo": "Przetwarzanie danych (RODO)"
+            "rodo": "Przetwarzanie danych (RODO)",
+            "about": "About",
+            "services": "Services",
+            "contact": "Contact",
+            "data_deletion": "Data deletion"
           },
           "address_title": "Company details",
           "company": "Host Flow Viktoriia Tatarynovich\nNIP: 7872153072 · REGON: 542991376\nwoj. WIELKOPOLSKIE, pow. szamotulski,\ngm. Szamotuły, miejsc. Przecław,\nul. Leśna 1A/2, 64-514\ninfo@hostflow.cc",
@@ -11133,6 +11137,135 @@
       "seo": {
         "title": "HostFlow FAQ — setup, Meta, recruitment, billing",
         "description": "Answers for getting started, Meta ads, WhatsApp, vacancies, documents, billing, security, and API — hire without waiting on support."
+      }
+    },
+    "company": {
+      "nav": {
+        "aria": "Company pages",
+        "about": "About",
+        "services": "Services",
+        "contact": "Contact",
+        "privacy": "Privacy Policy",
+        "terms": "Terms of Service",
+        "data_deletion": "Data deletion"
+      },
+      "shots": {
+        "workspace": {
+          "badge": "Workspace",
+          "caption": "Company workspace dashboard — leads, pipeline, and ownership in one tenant."
+        },
+        "meta": {
+          "badge": "Meta",
+          "caption": "Meta Lead Ads sync into the client company CRM — Tech Provider model."
+        },
+        "pipeline": {
+          "badge": "Pipeline",
+          "caption": "Hiring pipeline with stages and owners inside the company tenant."
+        },
+        "documents": {
+          "badge": "Documents",
+          "caption": "Document checklist and verification for the recruiting company."
+        }
+      },
+      "about": {
+        "seo": {
+          "title": "About HostFlow — B2B recruitment operations platform",
+          "description": "HostFlow is a B2B SaaS for recruitment agencies and transport companies — not a consumer Facebook app. Learn who we are and how Meta Lead Ads connect to company workspaces."
+        },
+        "badge": "About HostFlow",
+        "title": "B2B recruitment operations for companies",
+        "lead": "HostFlow is a business software platform for recruitment agencies and employers. Companies sign up, run hiring pipelines, and optionally connect their Meta (Facebook/Instagram) Lead Ads so leads land in their private workspace.",
+        "b2b_label": "Important for Meta review:",
+        "b2b_note": "HostFlow is not a public consumer app for individual Facebook users. End customers are companies. Candidates appear as data subjects processed on behalf of those companies.",
+        "who_title": "Who we are",
+        "who_body": "Host Flow — Viktoriia Tatarynovich (NIP 7872153072, REGON 542991376), ul. Leśna 1A/2, 64-514 Przecław, Poland. We build and operate HostFlow as a multi-tenant B2B SaaS for recruitment and workforce onboarding.",
+        "legal_name_label": "Legal name",
+        "product_label": "Product",
+        "model_label": "Business model",
+        "model_value": "B2B SaaS / Tech Provider for Meta Lead Ads",
+        "contact_label": "Contact",
+        "audience": {
+          "title": "Built for",
+          "items": {
+            "0": "Recruitment agencies with distributed hiring teams",
+            "1": "Transport and logistics employers hiring at volume",
+            "2": "Operations / HR teams managing onboarding and documents",
+            "3": "Managers who need pipeline ownership and reporting"
+          }
+        },
+        "not_for": {
+          "title": "Not built for",
+          "items": {
+            "0": "Individual consumers browsing Facebook for personal use",
+            "1": "A public social network or messaging app for end users",
+            "2": "Publishing content to personal timelines as a consumer product"
+          }
+        },
+        "meta_title": "How Meta fits in",
+        "meta_body": "A company administrator connects their own Facebook Page and Lead Ads forms to HostFlow. HostFlow retrieves lead submissions for that business (permissions such as leads_retrieval and pages_show_list) and stores them in the company’s private tenant. HostFlow does not publish content to personal timelines and does not offer a consumer social experience."
+      },
+      "services": {
+        "seo": {
+          "title": "HostFlow services — B2B recruitment CRM & Meta Lead Ads",
+          "description": "Services for companies: Meta Lead Ads intake, candidate pipeline, documents, WhatsApp workflow, team ownership — HostFlow is B2B SaaS, not a consumer app."
+        },
+        "badge": "Services",
+        "title": "What HostFlow provides to businesses",
+        "lead": "HostFlow sells software subscriptions to companies. We help recruitment agencies and employers run hiring from first lead to hire — including optional Meta Lead Ads integration as a Tech Provider.",
+        "items": {
+          "0": {
+            "title": "Meta Lead Ads intake",
+            "body": "Connect a company Facebook Page and lead forms so applications sync into the company CRM workspace (Tech Provider)."
+          },
+          "1": {
+            "title": "Candidate pipeline CRM",
+            "body": "Stages, owners, and next actions so recruiters process applicants inside one company tenant."
+          },
+          "2": {
+            "title": "Document control",
+            "body": "Checklists, uploads, and verification for licences, ID, and onboarding packs required by employers."
+          },
+          "3": {
+            "title": "Communications workflow",
+            "body": "Keep follow-ups (including WhatsApp-oriented recruiting flows) tied to the candidate record."
+          },
+          "4": {
+            "title": "Team & permissions",
+            "body": "Invite company staff, assign ownership, and keep audit-friendly access inside the business account."
+          },
+          "5": {
+            "title": "Company portals & intake links",
+            "body": "Issue secure links so candidates submit data for a specific vacancy owned by the company — not as a public consumer app."
+          }
+        },
+        "customer_title": "Who the customer is",
+        "customer_body": "The paying customer and Meta app user is always a business (agency or employer). Individual candidates may fill lead forms or upload documents through links issued by that business — they are not HostFlow’s B2B customers and do not “install” HostFlow as a consumer Facebook app.",
+        "cta_pricing": "View pricing",
+        "cta_signup": "Create company account"
+      },
+      "contact": {
+        "seo": {
+          "title": "Contact HostFlow — B2B support & Meta review",
+          "description": "Contact HostFlow for business inquiries, Meta integration support, privacy and data deletion requests. B2B SaaS for companies."
+        },
+        "badge": "Contact",
+        "title": "Contact the HostFlow team",
+        "lead": "We support business customers who use HostFlow for recruitment operations. For Meta App Review / Access Verification, use the company details below — HostFlow is a B2B service for companies, not a consumer app.",
+        "channels": {
+          "general": {
+            "title": "General & sales",
+            "body": "Plans, demos, and company onboarding questions."
+          },
+          "privacy": {
+            "title": "Privacy & data deletion",
+            "body": "GDPR requests and Meta lead data deletion."
+          },
+          "meta": {
+            "title": "Meta / integrations",
+            "body": "App Review, Access Verification, and Lead Ads connection help for business clients."
+          }
+        },
+        "company_title": "Company details"
       }
     }
   },

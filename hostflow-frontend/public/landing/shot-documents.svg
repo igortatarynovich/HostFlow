@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" fill="none" aria-hidden="true">
+  <rect width="960" height="600" rx="18" fill="#e8eef5"/>
+  <rect x="12" y="12" width="936" height="576" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+  <rect x="12" y="12" width="936" height="48" rx="14" fill="#0f172a"/>
+  <rect x="12" y="44" width="936" height="16" fill="#0f172a"/>
+  <circle cx="40" cy="36" r="5" fill="#f87171"/>
+  <circle cx="58" cy="36" r="5" fill="#fbbf24"/>
+  <circle cx="76" cy="36" r="5" fill="#34d399"/>
+  <text x="100" y="41" fill="#e2e8f0" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">HostFlow  Document control</text>
+  <text x="40" y="96" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="700">Candidate documents</text>
+  <text x="40" y="118" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Collected and verified inside the company workspace</text>
+  <rect x="40" y="144" width="560" height="420" rx="12" fill="#fff" stroke="#e2e8f0"/>
+  <rect x="40" y="144" width="560" height="48" fill="#f1f5f9" rx="12"/>
+  <rect x="40" y="176" width="560" height="16" fill="#f1f5f9"/>
+  <text x="60" y="174" fill="#475569" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">DOCUMENT</text>
+  <text x="320" y="174" fill="#475569" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">STATUS</text>
+  <text x="460" y="174" fill="#475569" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">UPDATED</text>
+  <text x="60" y="230" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14">Passport / ID</text>
+  <rect x="320" y="212" width="100" height="24" rx="12" fill="#dcfce7"/>
+  <text x="340" y="228" fill="#166534" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">Verified</text>
+  <text x="460" y="230" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Today</text>
+  <text x="60" y="290" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14">CE driving licence</text>
+  <rect x="320" y="272" width="100" height="24" rx="12" fill="#dcfce7"/>
+  <text x="340" y="288" fill="#166534" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">Verified</text>
+  <text x="460" y="290" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Yesterday</text>
+  <text x="60" y="350" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14">Code 95</text>
+  <rect x="320" y="332" width="110" height="24" rx="12" fill="#fef3c7"/>
+  <text x="336" y="348" fill="#92400e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">In review</text>
+  <text x="460" y="350" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">2h ago</text>
+  <text x="60" y="410" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14">Work permit</text>
+  <rect x="320" y="392" width="100" height="24" rx="12" fill="#e2e8f0"/>
+  <text x="338" y="408" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">Missing</text>
+  <text x="460" y="410" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12"></text>
+  <text x="60" y="470" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14">Medical certificate</text>
+  <rect x="320" y="452" width="100" height="24" rx="12" fill="#dbeafe"/>
+  <text x="340" y="468" fill="#1e40af" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">Uploaded</text>
+  <text x="460" y="470" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Today</text>
+  <rect x="624" y="144" width="300" height="420" rx="12" fill="#fff" stroke="#e2e8f0"/>
+  <text x="648" y="184" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="15" font-weight="700">Why companies use this</text>
+  <text x="648" y="220" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">" One checklist per vacancy</text>
+  <text x="648" y="248" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">" Audit trail for HR teams</text>
+  <text x="648" y="276" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">" Candidate portal uploads</text>
+  <text x="648" y="304" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">" No chat-file chaos</text>
+  <rect x="648" y="340" width="252" height="180" rx="10" fill="#ecfeff" stroke="#67e8f9"/>
+  <text x="668" y="380" fill="#0e7490" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="700">B2B service</text>
+  <text x="668" y="410" fill="#155e75" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Documents are processed for</text>
+  <text x="668" y="430" fill="#155e75" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">the hiring company that runs</text>
+  <text x="668" y="450" fill="#155e75" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">HostFlow  not as a public</text>
+  <text x="668" y="470" fill="#155e75" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">consumer Facebook app.</text>
+</svg>

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" fill="none" aria-hidden="true">
+  <rect width="960" height="600" rx="18" fill="#e8eef5"/>
+  <rect x="12" y="12" width="936" height="576" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+  <rect x="12" y="12" width="936" height="48" rx="14" fill="#0f172a"/>
+  <rect x="12" y="44" width="936" height="16" fill="#0f172a"/>
+  <circle cx="40" cy="36" r="5" fill="#f87171"/>
+  <circle cx="58" cy="36" r="5" fill="#fbbf24"/>
+  <circle cx="76" cy="36" r="5" fill="#34d399"/>
+  <text x="100" y="41" fill="#e2e8f0" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">HostFlow  Hiring pipeline</text>
+  <text x="760" y="41" fill="#94a3b8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Vacancy: CE Drivers EU</text>
+  <text x="40" y="96" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="18" font-weight="700">Candidate pipeline</text>
+  <text x="40" y="118" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Stages owned by the recruiting company team</text>
+  <!-- columns -->
+  <g transform="translate(40 140)">
+    <rect width="200" height="420" rx="12" fill="#fff" stroke="#e2e8f0"/>
+    <rect width="200" height="40" rx="12" fill="#f1f5f9"/>
+    <rect y="28" width="200" height="12" fill="#f1f5f9"/>
+    <text x="16" y="26" fill="#475569" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">NEW · 3</text>
+    <rect x="12" y="56" width="176" height="72" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="24" y="82" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">Olena T.</text>
+    <text x="24" y="102" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">Meta · today</text>
+    <rect x="12" y="140" width="176" height="72" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="24" y="166" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">Ivan R.</text>
+    <text x="24" y="186" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">Meta · yesterday</text>
+  </g>
+  <g transform="translate(260 140)">
+    <rect width="200" height="420" rx="12" fill="#fff" stroke="#e2e8f0"/>
+    <rect width="200" height="40" rx="12" fill="#ecfeff"/>
+    <rect y="28" width="200" height="12" fill="#ecfeff"/>
+    <text x="16" y="26" fill="#0e7490" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">CONTACT · 2</text>
+    <rect x="12" y="56" width="176" height="72" rx="8" fill="#f0fdfa" stroke="#99f6e4"/>
+    <text x="24" y="82" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">Andrei K.</text>
+    <text x="24" y="102" fill="#0f766e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">WhatsApp follow-up</text>
+    <rect x="12" y="140" width="176" height="72" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="24" y="166" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">Piotr W.</text>
+    <text x="24" y="186" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">Call scheduled</text>
+  </g>
+  <g transform="translate(480 140)">
+    <rect width="200" height="420" rx="12" fill="#fff" stroke="#e2e8f0"/>
+    <rect width="200" height="40" rx="12" fill="#eff6ff"/>
+    <rect y="28" width="200" height="12" fill="#eff6ff"/>
+    <text x="16" y="26" fill="#1d4ed8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">DOCS · 2</text>
+    <rect x="12" y="56" width="176" height="72" rx="8" fill="#dbeafe" stroke="#93c5fd"/>
+    <text x="24" y="82" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">Sergey M.</text>
+    <text x="24" y="102" fill="#1e40af" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">Licence + Code 95</text>
+    <rect x="12" y="140" width="176" height="72" rx="8" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="24" y="166" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">Maria L.</text>
+    <text x="24" y="186" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">Waiting passport</text>
+  </g>
+  <g transform="translate(700 140)">
+    <rect width="220" height="420" rx="12" fill="#fff" stroke="#e2e8f0"/>
+    <rect width="220" height="40" rx="12" fill="#dcfce7"/>
+    <rect y="28" width="220" height="12" fill="#dcfce7"/>
+    <text x="16" y="26" fill="#166534" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">HIRED · 1</text>
+    <rect x="12" y="56" width="196" height="88" rx="8" fill="#f0fdf4" stroke="#86efac"/>
+    <text x="24" y="86" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">Dmytro S.</text>
+    <text x="24" y="108" fill="#166534" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">Start date confirmed</text>
+    <text x="24" y="128" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">Owner: company HR</text>
+  </g>
+</svg>

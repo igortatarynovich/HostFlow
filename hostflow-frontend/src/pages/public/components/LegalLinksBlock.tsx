@@ -5,6 +5,7 @@ const DOCS = [
   { key: 'privacy', href: '/legal/privacy.html' },
   { key: 'terms', href: '/legal/terms.html' },
   { key: 'cookies', href: '/legal/cookies.html' },
+  { key: 'data_deletion', href: '/data-deletion.html' },
 ]
 
 type Props = {

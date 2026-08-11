@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" fill="none" aria-hidden="true">
+  <rect width="960" height="600" rx="18" fill="#e8eef5"/>
+  <rect x="12" y="12" width="936" height="576" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+  <rect x="12" y="12" width="936" height="48" rx="14" fill="#0f172a"/>
+  <rect x="12" y="44" width="936" height="16" fill="#0f172a"/>
+  <circle cx="40" cy="36" r="5" fill="#f87171"/>
+  <circle cx="58" cy="36" r="5" fill="#fbbf24"/>
+  <circle cx="76" cy="36" r="5" fill="#34d399"/>
+  <text x="100" y="41" fill="#e2e8f0" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">HostFlow  Meta Lead Ads intake</text>
+  <rect x="760" y="26" width="160" height="22" rx="6" fill="#1877F2"/>
+  <text x="778" y="41" fill="#fff" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">Connected Page</text>
+  <!-- left panel -->
+  <rect x="24" y="72" width="300" height="500" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="44" y="108" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="16" font-weight="700">Meta integration</text>
+  <text x="44" y="132" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Business client connects their Page</text>
+  <rect x="44" y="156" width="260" height="72" rx="10" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="60" y="184" fill="#1e40af" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">Facebook Page</text>
+  <text x="60" y="206" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">EU Drivers Jobs  Client Co.</text>
+  <rect x="44" y="244" width="260" height="56" rx="10" fill="#f0fdfa" stroke="#5eead4"/>
+  <text x="60" y="268" fill="#0f766e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">STATUS</text>
+  <text x="60" y="288" fill="#134e4a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">Webhook active · leads syncing</text>
+  <rect x="44" y="316" width="260" height="56" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="60" y="340" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">PERMISSIONS USED</text>
+  <text x="60" y="360" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">leads_retrieval · pages_show_list</text>
+  <text x="44" y="412" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">HostFlow is a B2B Tech Provider:</text>
+  <text x="44" y="432" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">we process lead data for the company</text>
+  <text x="44" y="452" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11">that owns the ads  not for consumers.</text>
+  <!-- right: lead queue -->
+  <rect x="340" y="72" width="592" height="500" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="364" y="108" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="16" font-weight="700">Incoming Meta leads</text>
+  <text x="364" y="130" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Automatically created in the company CRM workspace</text>
+  <rect x="364" y="152" width="544" height="88" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+  <circle cx="400" cy="196" r="18" fill="#dbeafe"/>
+  <text x="393" y="201" fill="#1d4ed8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">AK</text>
+  <text x="432" y="186" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="600">Andrei K. · CE driver</text>
+  <text x="432" y="208" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Form: CE Drivers PL · 2 min ago</text>
+  <rect x="780" y="180" width="100" height="24" rx="12" fill="#dcfce7"/>
+  <text x="800" y="196" fill="#166534" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">Imported</text>
+  <rect x="364" y="256" width="544" height="88" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+  <circle cx="400" cy="300" r="18" fill="#fef3c7"/>
+  <text x="393" y="305" fill="#b45309" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">PW</text>
+  <text x="432" y="290" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="600">Piotr W. · CE driver</text>
+  <text x="432" y="312" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Form: CE Drivers DE · 11 min ago</text>
+  <rect x="780" y="284" width="100" height="24" rx="12" fill="#dbeafe"/>
+  <text x="806" y="300" fill="#1e40af" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">Assigned</text>
+  <rect x="364" y="360" width="544" height="88" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+  <circle cx="400" cy="404" r="18" fill="#e2e8f0"/>
+  <text x="393" y="409" fill="#475569" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="700">OT</text>
+  <text x="432" y="394" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" font-weight="600">Olena T. · CE driver</text>
+  <text x="432" y="416" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Form: CE Drivers NL · 28 min ago</text>
+  <rect x="780" y="388" width="100" height="24" rx="12" fill="#e2e8f0"/>
+  <text x="812" y="404" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">New</text>
+  <rect x="364" y="468" width="544" height="72" rx="10" fill="#ecfeff" stroke="#67e8f9"/>
+  <text x="384" y="500" fill="#0e7490" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">Lead data stays in the client company tenant</text>
+  <text x="384" y="522" fill="#155e75" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">HostFlow does not operate as a consumer social app</text>
+</svg>

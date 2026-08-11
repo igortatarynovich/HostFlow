@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" fill="none" aria-hidden="true">
+  <rect width="960" height="600" rx="18" fill="#e8eef5"/>
+  <rect x="12" y="12" width="936" height="576" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+  <!-- titlebar -->
+  <rect x="12" y="12" width="936" height="48" rx="14" fill="#0f172a"/>
+  <rect x="12" y="44" width="936" height="16" fill="#0f172a"/>
+  <circle cx="40" cy="36" r="5" fill="#f87171"/>
+  <circle cx="58" cy="36" r="5" fill="#fbbf24"/>
+  <circle cx="76" cy="36" r="5" fill="#34d399"/>
+  <text x="100" y="41" fill="#e2e8f0" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" font-weight="600">HostFlow  Company workspace</text>
+  <rect x="780" y="26" width="140" height="22" rx="6" fill="#12b8cb"/>
+  <text x="800" y="41" fill="#fff" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">B2B workspace</text>
+  <!-- sidebar -->
+  <rect x="24" y="72" width="180" height="500" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="40" y="100" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="10" font-weight="700">WORKSPACE</text>
+  <rect x="40" y="114" width="148" height="28" rx="6" fill="#ecfeff" stroke="#67e8f9"/>
+  <text x="52" y="132" fill="#0e7490" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" font-weight="600">Dashboard</text>
+  <rect x="40" y="150" width="148" height="28" rx="6" fill="#f8fafc"/>
+  <text x="52" y="168" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Candidates</text>
+  <rect x="40" y="186" width="148" height="28" rx="6" fill="#f8fafc"/>
+  <text x="52" y="204" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Meta leads</text>
+  <rect x="40" y="222" width="148" height="28" rx="6" fill="#f8fafc"/>
+  <text x="52" y="240" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Documents</text>
+  <rect x="40" y="258" width="148" height="28" rx="6" fill="#f8fafc"/>
+  <text x="52" y="276" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Team</text>
+  <!-- main -->
+  <rect x="220" y="72" width="712" height="500" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="244" y="108" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="20" font-weight="700">Recruitment operations</text>
+  <text x="244" y="132" fill="#64748b" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">For companies  agencies &amp; transport employers</text>
+  <!-- KPI cards -->
+  <rect x="244" y="156" width="200" height="88" rx="10" fill="#f0fdfa" stroke="#99f6e4"/>
+  <text x="260" y="184" fill="#0f766e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">OPEN LEADS</text>
+  <text x="260" y="216" fill="#134e4a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="28" font-weight="700">48</text>
+  <rect x="460" y="156" width="200" height="88" rx="10" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="476" y="184" fill="#1d4ed8" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">IN PIPELINE</text>
+  <text x="476" y="216" fill="#1e3a8a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="28" font-weight="700">126</text>
+  <rect x="676" y="156" width="232" height="88" rx="10" fill="#fff7ed" stroke="#fed7aa"/>
+  <text x="692" y="184" fill="#c2410c" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">DOCS PENDING</text>
+  <text x="692" y="216" fill="#7c2d12" font-family="ui-sans-serif,system-ui,sans-serif" font-size="28" font-weight="700">19</text>
+  <!-- table -->
+  <rect x="244" y="264" width="664" height="280" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+  <rect x="244" y="264" width="664" height="40" rx="10" fill="#f1f5f9"/>
+  <text x="264" y="290" fill="#475569" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">CANDIDATE</text>
+  <text x="460" y="290" fill="#475569" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">SOURCE</text>
+  <text x="600" y="290" fill="#475569" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">STAGE</text>
+  <text x="760" y="290" fill="#475569" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="700">OWNER</text>
+  <text x="264" y="336" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">Andrei K.</text>
+  <text x="460" y="336" fill="#0369a1" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Meta Lead Ads</text>
+  <rect x="600" y="320" width="90" height="22" rx="11" fill="#dcfce7"/>
+  <text x="616" y="335" fill="#166534" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">Qualified</text>
+  <text x="760" y="336" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Anna</text>
+  <text x="264" y="384" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">Piotr W.</text>
+  <text x="460" y="384" fill="#0369a1" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Meta Lead Ads</text>
+  <rect x="600" y="368" width="90" height="22" rx="11" fill="#dbeafe"/>
+  <text x="618" y="383" fill="#1e40af" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">Interview</text>
+  <text x="760" y="384" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Igor</text>
+  <text x="264" y="432" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">Sergey M.</text>
+  <text x="460" y="432" fill="#0369a1" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">WhatsApp</text>
+  <rect x="600" y="416" width="100" height="22" rx="11" fill="#fef3c7"/>
+  <text x="612" y="431" fill="#92400e" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">Docs check</text>
+  <text x="760" y="432" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Maria</text>
+  <text x="264" y="480" fill="#0f172a" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13">Olena T.</text>
+  <text x="460" y="480" fill="#0369a1" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Meta Lead Ads</text>
+  <rect x="600" y="464" width="80" height="22" rx="11" fill="#e2e8f0"/>
+  <text x="616" y="479" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" font-weight="600">New</text>
+  <text x="760" y="480" fill="#334155" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12">Anna</text>
+</svg>

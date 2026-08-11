@@ -30,6 +30,9 @@ import PublicIntakeStart from './pages/public/PublicIntakeStart'
 import PublicPortalLanding from './pages/public/PublicPortalLanding'
 import CrmLandingPage from './pages/public/CrmLandingPage'
 import FaqPage from './pages/public/FaqPage'
+import AboutPage from './pages/public/AboutPage'
+import MarketingServicesPage from './pages/public/MarketingServicesPage'
+import ContactPage from './pages/public/ContactPage'
 import DocsHubPage from './pages/public/DocsHubPage'
 import DocsArticlePage from './pages/public/DocsArticlePage'
 import AcademyPage from './pages/public/AcademyPage'
@@ -201,6 +204,9 @@ export default function App(){
       <Route path="/public/status/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicStatusPage /></LazyRoute>} />
       <Route path="/client-portal" element={<LazyRoute loadingLabel={t('common.loading')}><ClientPortalPage /></LazyRoute>} />
       <Route path="/faq" element={<FaqPage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/services" element={<MarketingServicesPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="/docs" element={<DocsHubPage />} />
       <Route path="/docs/:slug" element={<DocsArticlePage />} />
       <Route path="/academy" element={<AcademyPage />} />
