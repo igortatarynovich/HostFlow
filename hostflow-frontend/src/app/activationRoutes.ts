@@ -60,7 +60,7 @@ export function getBusinessNextActionPath(businessType: ActivationBusinessType):
 
 export function getActivationSetupTarget(status: ActivationStatusLike | null | undefined): string {
   if (!status) return ACTIVATION_PATHS.overview
-  if (status.onboarding_required) return ACTIVATION_PATHS.onboardingCompany
+  if (status.onboarding_required) return CRM_APP_PATHS.platformSetup
   if (status.activation_required) {
     // New tenants with demo pipeline land on overview; legacy tenants keep guided checklist.
     if (status.demo_seeded) return ACTIVATION_PATHS.overview
@@ -80,7 +80,7 @@ export function isBusinessPrimaryStepDone(status: ActivationStatusLike | null | 
 
 export function getRetentionNextPath(status: ActivationStatusLike | null | undefined): string {
   if (!status) return ACTIVATION_PATHS.overview
-  if (!status.steps.company_created) return ACTIVATION_PATHS.onboardingCompany
+  if (!status.steps.company_created) return CRM_APP_PATHS.platformSetup
   if (!isBusinessPrimaryStepDone(status)) return getBusinessNextActionPath(status.business_type)
   if (!status.steps.next_action_created) return ACTIVATION_PATHS.reminders
   return ACTIVATION_PATHS.billing

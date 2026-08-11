@@ -614,6 +614,11 @@ function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: st
         return Promise.reject(error);
       }
       const url = String(original.url || "");
+      // Cookie-only probes (__hfSkipBearer) must not trigger refresh+retry storms.
+      // Callers that need cookie rehydration (ensureSharedSessionCookies) retry explicitly.
+      if (Boolean((original as { __hfSkipBearer?: boolean }).__hfSkipBearer)) {
+        return Promise.reject(error);
+      }
       if (
         url.includes("/auth/login") ||
         url.includes("/auth/refresh") ||

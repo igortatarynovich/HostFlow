@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   fetchCompanySetupCatalogs,
   type CatalogOptionDto,
@@ -16,6 +16,27 @@ import {
 } from '../constants/companySetupCatalog'
 import { buildCountryOptions } from '../data/countries'
 import { withOtherCountryOption } from '../utils/catalogOptions'
+
+/** Survives remounts (auth loading gate / StrictMode) so setup does not refetch in a loop. */
+const catalogCache = new Map<string, CompanySetupCatalogsDto>()
+const catalogInflight = new Map<string, Promise<CompanySetupCatalogsDto>>()
+
+function loadCompanySetupCatalogs(localeKey: string): Promise<CompanySetupCatalogsDto> {
+  const cached = catalogCache.get(localeKey)
+  if (cached) return Promise.resolve(cached)
+  const pending = catalogInflight.get(localeKey)
+  if (pending) return pending
+  const request = fetchCompanySetupCatalogs()
+    .then((data) => {
+      catalogCache.set(localeKey, data)
+      return data
+    })
+    .finally(() => {
+      catalogInflight.delete(localeKey)
+    })
+  catalogInflight.set(localeKey, request)
+  return request
+}
 
 function fallbackCompanySetup(locale?: string): CompanySetupCatalogsDto {
   const isRu = locale?.startsWith('ru')
@@ -69,23 +90,32 @@ function fallbackCompanySetup(locale?: string): CompanySetupCatalogsDto {
 
 export function useCompanySetupCatalogs(locale?: string) {
   const fallback = useMemo(() => fallbackCompanySetup(locale), [locale])
-  const [catalogs, setCatalogs] = useState<CompanySetupCatalogsDto>(fallback)
-  const [loading, setLoading] = useState(true)
-  const fetchedForLocale = useRef<string | null>(null)
+  const localeKey = locale ?? ''
+  const [catalogs, setCatalogs] = useState<CompanySetupCatalogsDto>(() => {
+    const cached = catalogCache.get(localeKey)
+    if (!cached) return fallback
+    return {
+      ...cached,
+      countries: withOtherCountryOption(cached.countries ?? fallback.countries, locale),
+    }
+  })
+  const [loading, setLoading] = useState(() => !catalogCache.has(localeKey))
 
   useEffect(() => {
     let cancelled = false
-    const localeKey = locale ?? ''
-    // One attempt per locale — prevents retry storms when the catalog API fails.
-    if (fetchedForLocale.current === localeKey) {
+    const cached = catalogCache.get(localeKey)
+    if (cached) {
+      setCatalogs({
+        ...cached,
+        countries: withOtherCountryOption(cached.countries ?? fallback.countries, locale),
+      })
       setLoading(false)
       return
     }
     setLoading(true)
-    void fetchCompanySetupCatalogs()
+    void loadCompanySetupCatalogs(localeKey)
       .then((data) => {
         if (cancelled) return
-        fetchedForLocale.current = localeKey
         setCatalogs({
           ...data,
           countries: withOtherCountryOption(data.countries ?? fallback.countries, locale),
@@ -93,7 +123,7 @@ export function useCompanySetupCatalogs(locale?: string) {
       })
       .catch(() => {
         if (cancelled) return
-        fetchedForLocale.current = localeKey
+        catalogCache.set(localeKey, fallback)
         setCatalogs(fallback)
       })
       .finally(() => {
@@ -102,7 +132,7 @@ export function useCompanySetupCatalogs(locale?: string) {
     return () => {
       cancelled = true
     }
-  }, [fallback, locale])
+  }, [fallback, locale, localeKey])
 
   return { catalogs, loading }
 }

@@ -42,7 +42,12 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const path = location.pathname
-  const isOnboardingPage = location.pathname.startsWith(ACTIVATION_PATHS.onboarding)
+  // Company setup lives at /app/platform/setup (onboarding/company only redirects there).
+  // Must be treated as onboarding or AppShell Navigate→onboarding/company→setup loops forever.
+  const isOnboardingPage =
+    path.startsWith(ACTIVATION_PATHS.onboarding) ||
+    path === CRM_APP_PATHS.platformSetup ||
+    path.startsWith(`${CRM_APP_PATHS.platformSetup}/`)
   const isSettingsArea = location.pathname.startsWith(CRM_APP_PATHS.settings)
   const onboardingWizardEnabled = isOnboardingWizardEnabled()
   /** Весь CRM workspace: без внешних отступов у main, компактный topbar (как список кандидатов). Onboarding оставляем с полями. */
@@ -243,7 +248,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   }, [currentTenantId])
 
   if (!isOnboardingPage && !isSuperAdmin && onboardingStatus?.onboarding_required === true) {
-    return <Navigate to={ACTIVATION_PATHS.onboardingCompany} replace />
+    return <Navigate to={CRM_APP_PATHS.platformSetup} replace />
   }
   /** Guided trial: lock down settings except billing checkout and team/modules (seat toggles). */
   const isTrialAllowedSettingsPath =

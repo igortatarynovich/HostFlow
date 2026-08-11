@@ -116,6 +116,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   })
   const logoutInFlightRef = useRef(false)
+  const refreshInFlightRef = useRef<Promise<void> | null>(null)
+  const meRef = useRef<WhoAmI | null>(null)
+  meRef.current = me
 
   const applyTheme = useCallback((theme?: string | null) => {
     const root = document.documentElement
@@ -126,6 +129,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [])
 
   const refresh = useCallback(async (opts?: { force?: boolean }) => {
+    if (refreshInFlightRef.current) {
+      if (!opts?.force) {
+        return refreshInFlightRef.current
+      }
+      // Login / restore must not reuse a stale in-flight probe from cold start.
+      await refreshInFlightRef.current.catch(() => undefined)
+    }
+
+    const run = (async () => {
     // В публичных страницах не тянем auth/whoami, чтобы не ловить 401
     const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
     if (!opts?.force && isPublicAuthPath(path)) {
@@ -138,7 +150,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setMe(null)
       return
     }
-    setLoading(true)
+    // Soft refresh: keep the app mounted when we already have a session.
+    // Full-tree `loading` gate remounts routes and re-fires setup/catalog effects.
+    const coldStart = !meRef.current
+    if (coldStart) {
+      setLoading(true)
+    }
     try {
       // Prefer shared Domain cookie over a stale per-origin Bearer (module-host split-brain).
       await reconcileBearerWithSharedCookie()
@@ -255,6 +272,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } finally {
       setLoading(false)
     }
+    })()
+
+    refreshInFlightRef.current = run.finally(() => {
+      refreshInFlightRef.current = null
+    })
+    return refreshInFlightRef.current
   }, [applyTheme, setLocale])
 
   const login = useCallback(async (email: string, password: string) => {
