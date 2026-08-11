@@ -19,9 +19,9 @@ function ImportProfileModal({ onClose, onImport }: ImportProfileModalProps) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (selectedFile) {
-      // Проверяем, что это JSON файл
+      // Ensure JSON file
       if (!selectedFile.name.endsWith('.json')) {
-        setError(t('app.settings.candidate_profiles.import.errors.invalid_format', { defaultValue: 'Неверный формат файла. Выберите файл JSON (.json)' }))
+        setError(t('app.settings.candidate_profiles.import.errors.invalid_format', { defaultValue: 'Invalid file format. Select a JSON file (.json)' }))
         setFile(null)
         setFileName('')
         return
@@ -34,7 +34,7 @@ function ImportProfileModal({ onClose, onImport }: ImportProfileModalProps) {
 
   const handleImport = async () => {
     if (!file) {
-      setError(t('app.settings.candidate_profiles.import.errors.select_file', { defaultValue: 'Выберите файл для импорта' }))
+      setError(t('app.settings.candidate_profiles.import.errors.select_file', { defaultValue: 'Select a file to import' }))
       return
     }
 
@@ -43,7 +43,7 @@ function ImportProfileModal({ onClose, onImport }: ImportProfileModalProps) {
     try {
       await onImport(file)
     } catch (err: any) {
-      setError(err?.message || t('app.settings.candidate_profiles.import.errors.import_failed', { defaultValue: 'Не удалось импортировать профиль' }))
+      setError(err?.message || t('app.settings.candidate_profiles.import.errors.import_failed', { defaultValue: 'Failed to import profile' }))
     } finally {
       setImporting(false)
     }
@@ -61,7 +61,7 @@ function ImportProfileModal({ onClose, onImport }: ImportProfileModalProps) {
     const droppedFile = e.dataTransfer.files[0]
     if (droppedFile) {
       if (!droppedFile.name.endsWith('.json')) {
-        setError(t('app.settings.candidate_profiles.import.errors.invalid_format', { defaultValue: 'Неверный формат файла. Выберите файл JSON (.json)' }))
+        setError(t('app.settings.candidate_profiles.import.errors.invalid_format', { defaultValue: 'Invalid file format. Select a JSON file (.json)' }))
         setFile(null)
         setFileName('')
         return
@@ -73,12 +73,12 @@ function ImportProfileModal({ onClose, onImport }: ImportProfileModalProps) {
   }
 
   return (
-    <Modal open={true} onClose={onClose} title={t('app.settings.candidate_profiles.import.title', { defaultValue: 'Импорт профиля' })}>
+    <Modal open={true} onClose={onClose} title={t('app.settings.candidate_profiles.import.title', { defaultValue: 'Import profile' })}>
       <div className="space-y-4">
         <div className="text-sm text-slate-600">
           {t('app.settings.candidate_profiles.import.description', {
             defaultValue:
-              'Выберите файл JSON с конфигурацией профиля для импорта. Файл должен содержать структуру профиля, экспортированную из системы.',
+              'Select a JSON file with profile configuration for import. The file must contain a profile structure exported from the system.',
           })}
         </div>
 
@@ -118,7 +118,7 @@ function ImportProfileModal({ onClose, onImport }: ImportProfileModalProps) {
               </svg>
               <div className="text-sm font-medium text-slate-900">{fileName}</div>
               <div className="mt-1 text-xs text-slate-500">
-                {t('app.settings.candidate_profiles.import.select_other', { defaultValue: 'Нажмите, чтобы выбрать другой файл' })}
+                {t('app.settings.candidate_profiles.import.select_other', { defaultValue: 'Click to select another file' })}
               </div>
             </>
           ) : (
@@ -137,10 +137,10 @@ function ImportProfileModal({ onClose, onImport }: ImportProfileModalProps) {
                 />
               </svg>
               <div className="text-sm font-medium text-slate-700">
-                {t('app.settings.candidate_profiles.import.dropzone', { defaultValue: 'Перетащите файл сюда или нажмите для выбора' })}
+                {t('app.settings.candidate_profiles.import.dropzone', { defaultValue: 'Drop file here or click to select' })}
               </div>
               <div className="mt-1 text-xs text-slate-500">
-                {t('app.settings.candidate_profiles.import.json_only', { defaultValue: 'Только файлы JSON (.json)' })}
+                {t('app.settings.candidate_profiles.import.json_only', { defaultValue: 'JSON files only (.json)' })}
               </div>
             </>
           )}
@@ -148,28 +148,28 @@ function ImportProfileModal({ onClose, onImport }: ImportProfileModalProps) {
 
         {error && (
           <ErrorRecoveryBanner
-            info={{ title: error, hint: t('app.settings.candidate_profiles.import.errors.hint', { defaultValue: 'Исправьте файл или повторите действие.' }) }}
+            info={{ title: error, hint: t('app.settings.candidate_profiles.import.errors.hint', { defaultValue: 'Fix the file or retry the action.' }) }}
             compact
           />
         )}
 
         <div className="rounded border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">
-          <div className="font-semibold mb-1">{t('app.settings.candidate_profiles.import.important_title', { defaultValue: 'Важно:' })}</div>
+          <div className="font-semibold mb-1">{t('app.settings.candidate_profiles.import.important_title', { defaultValue: 'Important:' })}</div>
           <ul className="list-disc list-inside space-y-1">
             <li>
               {t('app.settings.candidate_profiles.import.duplicate_suffix_hint', {
                 defaultValue:
-                  'Если профиль с таким кодом уже существует, будет создан новый профиль с суффиксом "_imported"',
+                  'If a profile with this code already exists, a new profile will be created with the "_imported" suffix',
               })}
             </li>
             <li>
               {t('app.settings.candidate_profiles.import.copy_fields_hint', {
-                defaultValue: 'Все поля, этапы и документы из импортируемого профиля будут скопированы',
+                defaultValue: 'All fields, stages and documents from the imported profile will be copied',
               })}
             </li>
             <li>
               {t('app.settings.candidate_profiles.import.new_profile_hint', {
-                defaultValue: 'Импортированный профиль будет создан как новый и не будет связан с оригиналом',
+                defaultValue: 'The imported profile will be created as new and will not be linked to the original',
               })}
             </li>
           </ul>
@@ -182,7 +182,7 @@ function ImportProfileModal({ onClose, onImport }: ImportProfileModalProps) {
             disabled={importing}
             className="btn-secondary"
           >
-            {t('common.actions.cancel', { defaultValue: 'Отмена' })}
+            {t('common.actions.cancel', { defaultValue: 'Cancel' })}
           </button>
           <button
             type="button"
@@ -191,8 +191,8 @@ function ImportProfileModal({ onClose, onImport }: ImportProfileModalProps) {
             className="btn-primary"
           >
             {importing
-              ? t('app.settings.candidate_profiles.import.actions.importing', { defaultValue: 'Импорт...' })
-              : t('app.settings.candidate_profiles.import.actions.import', { defaultValue: 'Импортировать' })}
+              ? t('app.settings.candidate_profiles.import.actions.importing', { defaultValue: 'Importing...' })
+              : t('app.settings.candidate_profiles.import.actions.import', { defaultValue: 'Import' })}
           </button>
         </div>
       </div>

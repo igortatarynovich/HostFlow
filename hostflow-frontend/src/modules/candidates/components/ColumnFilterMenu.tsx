@@ -212,7 +212,7 @@ export function ColumnFilterMenu(props: ColumnFilterMenuProps) {
                 className="btn-primary btn-xs"
                 onClick={handleClose}
               >
-                {t('common.actions.apply') || 'Применить'}
+                {t('common.actions.apply', { defaultValue: 'Apply' })}
               </button>
             </div>
           </>

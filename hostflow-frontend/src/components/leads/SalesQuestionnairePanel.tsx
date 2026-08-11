@@ -78,7 +78,7 @@ export default function SalesQuestionnairePanel({ lead, onLeadUpdated }: Props) 
   const [clarificationRequired, setClarificationRequired] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
 
-  const statusLabel = useMemo(() => salesQuestionnaireStatusLabel(lead, { locale }), [lead, locale])
+  const statusLabel = useMemo(() => salesQuestionnaireStatusLabel(lead, { t, locale }), [lead, locale, t])
   const phone =
     text(lead.normalized?.phone) ||
     text(lead.payload?.phone) ||

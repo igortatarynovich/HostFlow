@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import type { Option } from './Select'
+import { useI18n } from '../../i18n'
 
 export default function MultiSelect({
   options,
   values,
   onChange,
-  placeholder = 'Выберите значения',
+  placeholder,
   className,
 }:{
   options: Option[]
@@ -15,6 +16,9 @@ export default function MultiSelect({
   placeholder?: string
   className?: string
 }){
+  const { t } = useI18n()
+  const resolvedPlaceholder =
+    placeholder ?? t('app.controls.select_values', { defaultValue: 'Select values' })
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
@@ -44,7 +48,7 @@ export default function MultiSelect({
   return (
     <div ref={rootRef} className={clsx('relative', className)}>
       <button type="button" className="input w-full text-left" onClick={()=>setOpen(o=>!o)}>
-        {chips.length === 0 ? <span className="text-slate-500">{placeholder}</span> : (
+        {chips.length === 0 ? <span className="text-slate-500">{resolvedPlaceholder}</span> : (
           <div className="flex flex-wrap gap-1">
             {chips.map(c => (
               <span key={c.value} className="px-2 py-0.5 rounded bg-slate-100 text-slate-800 text-xs">{c.label}</span>
@@ -59,13 +63,17 @@ export default function MultiSelect({
             <input
               autoFocus
               className="w-full px-3 py-2 rounded bg-slate-50 outline-none"
-              placeholder="Поиск…"
+              placeholder={t('app.controls.search_placeholder', { defaultValue: 'Search…' })}
               value={q}
               onChange={e=>setQ(e.target.value)}
             />
           </div>
           <div className="max-h-64 overflow-auto">
-            {filtered.length === 0 && <div className="px-3 py-2 text-sm text-slate-500">нет совпадений</div>}
+            {filtered.length === 0 && (
+              <div className="px-3 py-2 text-sm text-slate-500">
+                {t('app.controls.no_results', { defaultValue: 'No matches' })}
+              </div>
+            )}
             {filtered.map(o => {
               const active = values.includes(o.value)
               return (

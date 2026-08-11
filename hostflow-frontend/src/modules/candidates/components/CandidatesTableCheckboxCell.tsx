@@ -27,11 +27,11 @@ export function CandidatesTableCheckboxCell({
   const maskedName = masked
     ? c.short_id
       ? t('app.candidates.table.masked_label_short_id', {
-          defaultValue: 'Кандидат {short_id}',
+          defaultValue: 'Candidate {short_id}',
           values: { short_id: c.short_id },
         })
       : t('app.candidates.table.masked_label', {
-          defaultValue: 'Кандидат #{id}',
+          defaultValue: 'Candidate #{id}',
           values: { id: (c.id ?? '').slice(0, 8) },
         })
     : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim()
@@ -53,13 +53,18 @@ export function CandidatesTableCheckboxCell({
           onChange={() => toggle(c.id)}
           onClick={(e) => e.stopPropagation()}
           className="cursor-pointer w-4 h-4"
-          title={isChecked ? (t('app.candidates.table.deselect') || 'Снять выделение') : (t('app.candidates.table.select') || 'Выделить')}
+          title={
+            isChecked
+              ? t('app.candidates.table.deselect', { defaultValue: 'Deselect' })
+              : t('app.candidates.table.select', { defaultValue: 'Select' })
+          }
           aria-label={
             t('app.candidates.table.select_candidate', {
+              defaultValue: 'Select candidate {name}',
               values: {
                 name: maskedName,
               },
-            }) || 'Select candidate'
+            })
           }
         />
       </div>

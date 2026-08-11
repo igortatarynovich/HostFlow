@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
@@ -36,6 +36,7 @@ export default function Login(){
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const submitLockRef = useRef(false)
   const valuePropKeys = ['pipeline', 'documents', 'support'] as const
   const valueProps = valuePropKeys.map((key) => ({
     key,
@@ -45,6 +46,8 @@ export default function Login(){
 
   async function onSubmit(e: FormEvent){
     e.preventDefault()
+    if (submitLockRef.current) return
+    submitLockRef.current = true
     setError(null)
     setLoading(true)
     try{
@@ -64,6 +67,16 @@ export default function Login(){
     }catch(err:any){
       if(err?.response?.status === 401){
         setError(friendlyFormHintError(t('app.login.errors.invalid'), t))
+      } else if (err?.response?.status === 429) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('app.login.errors.rate_limited', {
+              defaultValue: 'Too many sign-in attempts. Please wait a minute and try again.',
+            }),
+            t,
+          ),
+        )
       } else {
         const fb = t('app.login.errors.generic')
         if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
@@ -72,6 +85,7 @@ export default function Login(){
       }
     }finally{
       setLoading(false)
+      submitLockRef.current = false
     }
   }
 

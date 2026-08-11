@@ -17,10 +17,10 @@ export default function SetupHubPage() {
       <PageShellHeader>
         <PageHeader
           title={t('app.onboarding.success_path.page_title', {
-            defaultValue: 'Начать работу',
+            defaultValue: 'Start working',
           })}
           subtitle={t('app.onboarding.success_path.page_subtitle', {
-            defaultValue: 'Один следующий шаг на экране — пока не будет заявки и контакта.',
+            defaultValue: 'Do the next step on screen until you have a first application.',
           })}
           kind="browse"
           secondaryActions={
@@ -29,7 +29,7 @@ export default function SetupHubPage() {
               className="btn-secondary btn-sm"
               data-testid="m1-setup-back-launchpad"
             >
-              {t('app.launchpad.back', { defaultValue: '← К началу работы' })}
+              {t('app.launchpad.back', { defaultValue: '← Getting started' })}
             </Link>
           }
         />
@@ -44,13 +44,12 @@ export default function SetupHubPage() {
           >
             <h2 className="text-base font-semibold text-slate-900">
               {t('app.onboarding.success_path.result_ready_title', {
-                defaultValue: 'Готово к работе',
+                defaultValue: 'Ready to work',
               })}
             </h2>
             <p className="mt-2 text-sm text-slate-700">
               {t('app.onboarding.success_path.result_ready_body', {
-                defaultValue:
-                  'Компания и первые шаги на месте. Откройте меню и продолжайте.',
+                defaultValue: 'Company and first steps are in place. Continue from the menu.',
               })}
             </p>
             <button

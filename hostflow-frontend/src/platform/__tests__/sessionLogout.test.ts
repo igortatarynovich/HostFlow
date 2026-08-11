@@ -159,7 +159,8 @@ describe('sessionLogout wipe chain', () => {
     expect(redirected).toBe(true)
     expect(localStorage.getItem('access_token')).toBeNull()
     expect(localStorage.getItem('tenant_id')).toBeNull()
-    expect(isSessionRevoked()).toBe(true)
+    // Intermediate wipe hops must not leave a sticky revoke (blocks later module login).
+    expect(isSessionRevoked()).toBe(false)
     expect(replace).toHaveBeenCalledTimes(1)
     const nextUrl = String(replace.mock.calls[0][0])
     expect(nextUrl).toContain('https://hr.hostflow.cc/login')

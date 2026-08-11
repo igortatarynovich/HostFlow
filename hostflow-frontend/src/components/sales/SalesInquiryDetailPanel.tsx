@@ -12,14 +12,6 @@ import {
 } from '../../utils/clientInquiryLead'
 import { leadIntakeResolutionRejected } from '../../utils/intakeResolution'
 
-const WORKFLOW_STEPS = [
-  { key: 'contact', label: 'Связаться' },
-  { key: 'need', label: 'Потребность' },
-  { key: 'client', label: 'Клиент' },
-  { key: 'service', label: 'Услуга' },
-  { key: 'order', label: 'Заказ' },
-] as const
-
 const STATUS_BADGE: Record<string, string> = {
   new: 'bg-emerald-50 text-emerald-700',
   in_progress: 'bg-amber-50 text-amber-700',
@@ -28,13 +20,7 @@ const STATUS_BADGE: Record<string, string> = {
   completed: 'bg-slate-100 text-slate-600',
 }
 
-const STATUS_TEXT: Record<string, string> = {
-  new: 'Новое',
-  in_progress: 'В работе',
-  waiting: 'Ожидаем ответ',
-  questionnaire_submitted: 'Ответ получен',
-  completed: 'Завершено',
-}
+const WORKFLOW_STEP_KEYS = ['contact', 'need', 'client', 'service', 'order'] as const
 
 type SalesInquiryDetailPanelProps = {
   lead: Lead
@@ -53,7 +39,9 @@ export function SalesInquiryDetailPanel({
 }: SalesInquiryDetailPanelProps) {
   const { t } = useI18n()
   const companyName = inquiryCompanyName(lead)
-  const contactName = inquiryContactName(lead) || 'Контакт'
+  const contactName =
+    inquiryContactName(lead) ||
+    t('app.sales_inquiry.contact_fallback', { defaultValue: 'Contact' })
   const contactPhone = inquiryContactPhone(lead)
   const contactEmail = inquiryContactEmail(lead)
   const statusKey = inquiryStatusKey(lead)
@@ -65,47 +53,81 @@ export function SalesInquiryDetailPanel({
     ? `https://wa.me/${contactPhone.replace(/[^\d+]/g, '').replace(/^\+/, '')}`
     : null
 
+  const statusLabel = t(`app.application_workspace.status.${statusKey}`, {
+    defaultValue:
+      (
+        {
+          new: 'New',
+          in_progress: 'In progress',
+          waiting: 'Awaiting reply',
+          questionnaire_submitted: 'Reply received',
+          completed: 'Completed',
+        } as Record<string, string>
+      )[statusKey] || statusKey,
+  })
+
+  const workflowSteps = WORKFLOW_STEP_KEYS.map((key) => ({
+    key,
+    label: t(`app.sales_inquiry.workflow.${key}`, {
+      defaultValue:
+        (
+          {
+            contact: 'Contact',
+            need: 'Need',
+            client: 'Client',
+            service: 'Service',
+            order: 'Order',
+          } as Record<string, string>
+        )[key] || key,
+    }),
+  }))
+
   const stepGuidance = (() => {
     if (convertedId) {
       return {
-        title: t('app.sales_inquiry.step.service_title', { defaultValue: 'Добавить услугу' }),
+        title: t('app.sales_inquiry.step.service_title', { defaultValue: 'Add a service' }),
         body: t('app.sales_inquiry.step.service_body', {
-          defaultValue: 'Клиент создан. Откройте карточку клиента и добавьте первую услугу через Client Workspace.',
+          defaultValue: 'Client created. Open the card and add the first service.',
         }),
         primary: null as { label: string; action: () => void } | null,
       }
     }
     if (activeStep >= 3) {
       return {
-        title: t('app.sales_inquiry.step.client_title', { defaultValue: 'Создать клиента' }),
+        title: t('app.sales_inquiry.step.client_title', { defaultValue: 'Create client' }),
         body: t('app.sales_inquiry.step.client_body', {
-          defaultValue: 'Компания заинтересована. Сохраните её в клиенты — дальше работа продолжится в Client Workspace.',
+          defaultValue: 'The company is interested. Save it as a client.',
         }),
         primary: {
-          label: converting ? 'Создаём…' : 'Создать клиента',
+          label: converting
+            ? t('app.sales_inquiry.creating_client', { defaultValue: 'Creating…' })
+            : t('app.sales_inquiry.create_client', { defaultValue: 'Create client' }),
           action: () => void onConvert(),
         },
       }
     }
     if (activeStep >= 2) {
       return {
-        title: t('app.sales_inquiry.step.need_title', { defaultValue: 'Выяснить потребность' }),
+        title: t('app.sales_inquiry.step.need_title', { defaultValue: 'Clarify the need' }),
         body: t('app.sales_inquiry.step.need_body', {
-          defaultValue: 'Уточните, какую услугу компания хочет купить. Когда договорились — отметьте «Заинтересован».',
+          defaultValue: 'Confirm which service the company wants to buy.',
         }),
         primary: {
-          label: 'Заинтересован',
+          label: t('app.sales_inquiry.interested', { defaultValue: 'Interested' }),
           action: () => void onStage('qualified'),
         },
       }
     }
     return {
-      title: t('app.sales_inquiry.step.contact_title', { defaultValue: 'Связаться с клиентом' }),
+      title: t('app.sales_inquiry.step.contact_title', { defaultValue: 'Contact the client' }),
       body: t('app.sales_inquiry.step.contact_body', {
-        defaultValue: 'Позвоните или напишите клиенту, чтобы уточнить потребность.',
+        defaultValue: 'First contact has not been made yet.',
       }),
       primary: contactPhone
-        ? { label: 'Позвонил', action: () => void onStage('contacted') }
+        ? {
+            label: t('app.sales_inquiry.called', { defaultValue: 'Called' }),
+            action: () => void onStage('contacted'),
+          }
         : null,
     }
   })()
@@ -119,7 +141,7 @@ export function SalesInquiryDetailPanel({
             <p className="mt-0.5 text-sm text-slate-500">{inquiryRequestTitle(lead)}</p>
           </div>
           <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${STATUS_BADGE[statusKey] || STATUS_BADGE.new}`}>
-            {STATUS_TEXT[statusKey] || statusKey}
+            {statusLabel}
           </span>
         </div>
       </div>
@@ -143,7 +165,7 @@ export function SalesInquiryDetailPanel({
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
               >
                 <IconPhone size={16} stroke={2} />
-                Позвонить
+                {t('app.sales_inquiry.call', { defaultValue: 'Call' })}
               </a>
             ) : null}
             {whatsappHref ? (
@@ -172,10 +194,10 @@ export function SalesInquiryDetailPanel({
 
       <div className="border-b border-slate-100 px-4 py-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.sales_inquiry.workflow_title', { defaultValue: 'Что делать дальше?' })}
+          {t('app.sales_inquiry.workflow_title', { defaultValue: "What's next?" })}
         </p>
         <ol className="flex items-center gap-1">
-          {WORKFLOW_STEPS.map((step, idx) => {
+          {workflowSteps.map((step, idx) => {
             const stepNum = idx + 1
             const done = stepNum < activeStep
             const active = stepNum === activeStep
@@ -199,7 +221,7 @@ export function SalesInquiryDetailPanel({
                 >
                   {step.label}
                 </span>
-                {idx < WORKFLOW_STEPS.length - 1 ? (
+                {idx < workflowSteps.length - 1 ? (
                   <span className={`mx-0.5 h-px flex-1 ${done ? 'bg-brand-300' : 'bg-slate-200'}`} />
                 ) : null}
               </li>
@@ -236,7 +258,7 @@ export function SalesInquiryDetailPanel({
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
             <IconClock size={16} stroke={2} />
-            {t('app.sales_inquiry.interested_later', { defaultValue: 'Заинтересован, но позже' })}
+            {t('app.sales_inquiry.interested_later', { defaultValue: 'Interested, but later' })}
           </button>
           <button
             type="button"
@@ -245,7 +267,7 @@ export function SalesInquiryDetailPanel({
             className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60"
           >
             <IconX size={16} stroke={2} />
-            {t('app.sales_inquiry.close', { defaultValue: 'Закрыть запрос' })}
+            {t('app.sales_inquiry.close', { defaultValue: 'Close request' })}
           </button>
         </div>
       ) : null}

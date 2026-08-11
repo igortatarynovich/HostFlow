@@ -82,8 +82,8 @@ export function CandidateEntityWorkspacePage() {
 
   const summaryOverride = useMemo(() => {
     if (!passport) return undefined
-    return buildCandidateEntityWorkspaceSummary(passport, docsPercentReady)
-  }, [docsPercentReady, passport])
+    return buildCandidateEntityWorkspaceSummary(passport, docsPercentReady, t)
+  }, [docsPercentReady, passport, t])
 
   const contextRail = useMemo((): EntityContextRailModel | undefined => {
     if (!passport) return undefined
@@ -93,9 +93,11 @@ export function CandidateEntityWorkspacePage() {
       actions: actionConfig.contextActions ?? projected.actions,
       onShowAllEvents: projected.recentEvents?.length ? openTimeline : undefined,
       onCreateTask: openTasks,
-      createTaskLabel: 'Создать задачу',
+      createTaskLabel: t('app.entity_workspace.context_rail.create_task', {
+        defaultValue: 'Create task',
+      }),
     }
-  }, [actionConfig, openTasks, openTimeline, passport])
+  }, [actionConfig, openTasks, openTimeline, passport, t])
 
   const headerExtension = useMemo(() => {
     if (!candidate || !passport) return undefined
@@ -103,7 +105,7 @@ export function CandidateEntityWorkspacePage() {
       candidate,
       passport,
       backHref: originPath,
-      backLabel: t('app.candidates.back_to_list', { defaultValue: '← Кандидаты' }),
+      backLabel: t('app.candidates.back_to_list', { defaultValue: '← Candidates' }),
       locale,
     })
     return {

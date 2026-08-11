@@ -166,7 +166,7 @@ export function FacetFilterMenu(props: FacetFilterMenuProps) {
               {t('app.candidates.filters.reset')}
             </button>
             <button type="button" className="btn-primary btn-xs" onClick={handleClose}>
-              {t('common.actions.apply') || 'Применить'}
+              {t('common.actions.apply', { defaultValue: 'Apply' })}
             </button>
           </div>
         </>

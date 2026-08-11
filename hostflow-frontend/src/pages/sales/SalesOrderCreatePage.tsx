@@ -86,7 +86,7 @@ export default function SalesOrderCreatePage() {
     if (prefill.guarantee_days) setGuaranteeDays(prefill.guarantee_days)
     setMessage(
       t('app.sales_orders.create.defaults_applied', {
-        defaultValue: 'Подставлены commercial defaults клиента (только для нового заказа).',
+        defaultValue: 'Client commercial defaults applied (new order only).',
       }),
     )
   }, [clientAccountId, accounts, t])
@@ -95,7 +95,7 @@ export default function SalesOrderCreatePage() {
     if (!clientAccountId) {
       setError(
         t('app.sales_orders.create.defaults_need_account', {
-          defaultValue: 'Выберите Client Account, чтобы сохранить defaults',
+          defaultValue: 'Select a Client Account to save defaults',
         }),
       )
       return
@@ -116,7 +116,7 @@ export default function SalesOrderCreatePage() {
       setAccounts((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)))
       setMessage(
         t('app.sales_orders.create.defaults_saved', {
-          defaultValue: 'Defaults клиента сохранены. Открытые заказы не меняются.',
+          defaultValue: 'Client defaults saved. Open orders are unchanged.',
         }),
       )
     } catch (err) {
@@ -129,7 +129,7 @@ export default function SalesOrderCreatePage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!companyId || !title.trim()) {
-      setError(t('app.sales_orders.create.required', { defaultValue: 'Клиент и название обязательны' }))
+      setError(t('app.sales_orders.create.required', { defaultValue: 'Client and name are required' }))
       return
     }
     setSaving(true)
@@ -157,22 +157,21 @@ export default function SalesOrderCreatePage() {
   return (
     <div className="mx-auto max-w-2xl overflow-y-auto px-4 py-4 sm:px-6" data-testid="sales-order-create">
       <Link to={SALES_ORDERS_PATH} className="text-sm text-slate-600 hover:text-brand-700">
-        ← {t('app.sales_orders.create.back', { defaultValue: 'К списку заказов' })}
+        ← {t('app.sales_orders.create.back', { defaultValue: 'Back to orders' })}
       </Link>
       <h2 className="mt-3 text-lg font-semibold text-slate-900">
-        {t('app.sales_orders.create.title', { defaultValue: 'Новый Service Order' })}
+        {t('app.sales_orders.create.title', { defaultValue: 'New Service Order' })}
       </h2>
       <p className="mt-1 text-sm text-slate-600">
         {t('app.sales_orders.create.subtitle', {
-          defaultValue:
-            'Снимок коммерческих условий сделки. Defaults Client Account подставляются при выборе — существующие заказы не переписываются.',
+          defaultValue: 'Commercial terms snapshot. Client Account defaults are applied on select — existing orders are not rewritten.',
         })}
       </p>
 
       <form className="mt-4 space-y-4" onSubmit={onSubmit}>
         <label className="block">
           <div className="label">
-            {t('app.sales_orders.create.client_account', { defaultValue: 'Client Account (опц.)' })}
+            {t('app.sales_orders.create.client_account', { defaultValue: 'Client Account (optional)' })}
           </div>
           <select
             className="input"
@@ -191,7 +190,7 @@ export default function SalesOrderCreatePage() {
 
         <label className="block">
           <div className="label">
-            {t('app.sales_orders.create.company', { defaultValue: 'Компания клиента' })} *
+            {t('app.sales_orders.create.company', { defaultValue: 'Client company' })} *
           </div>
           <select
             className="input"
@@ -210,7 +209,7 @@ export default function SalesOrderCreatePage() {
         </label>
 
         <label className="block">
-          <div className="label">{t('app.sales_orders.create.name', { defaultValue: 'Название заказа' })} *</div>
+          <div className="label">{t('app.sales_orders.create.name', { defaultValue: 'Order name' })} *</div>
           <input
             className="input"
             value={title}
@@ -222,7 +221,7 @@ export default function SalesOrderCreatePage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
-            <div className="label">{t('app.sales_orders.create.currency', { defaultValue: 'Валюта' })}</div>
+            <div className="label">{t('app.sales_orders.create.currency', { defaultValue: 'Currency' })}</div>
             <input
               className="input"
               value={currency}
@@ -232,7 +231,7 @@ export default function SalesOrderCreatePage() {
           </label>
           <label className="block">
             <div className="label">
-              {t('app.sales_orders.create.payment_term', { defaultValue: 'Отсрочка, дней' })}
+              {t('app.sales_orders.create.payment_term', { defaultValue: 'Payment term, days' })}
             </div>
             <input
               className="input"
@@ -246,7 +245,7 @@ export default function SalesOrderCreatePage() {
           </label>
           <label className="block">
             <div className="label">
-              {t('app.sales_orders.create.payment_model', { defaultValue: 'Модель оплаты' })}
+              {t('app.sales_orders.create.payment_model', { defaultValue: 'Payment model' })}
             </div>
             <input
               className="input"
@@ -267,7 +266,7 @@ export default function SalesOrderCreatePage() {
           </label>
           <label className="block">
             <div className="label">
-              {t('app.sales_orders.create.guarantee', { defaultValue: 'Гарантия, дней' })}
+              {t('app.sales_orders.create.guarantee', { defaultValue: 'Guarantee, days' })}
             </div>
             <input
               className="input"
@@ -283,8 +282,7 @@ export default function SalesOrderCreatePage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
             <p className="text-sm text-slate-600">
               {t('app.sales_orders.create.defaults_hint', {
-                defaultValue:
-                  'Можно сохранить текущие поля как commercial defaults этого Client Account (ADR-032).',
+                defaultValue: 'You can save the current fields as commercial defaults for this Client Account (ADR-032).',
               })}
             </p>
             <button
@@ -295,16 +293,16 @@ export default function SalesOrderCreatePage() {
               data-testid="sales-order-save-defaults"
             >
               {savingDefaults
-                ? t('common.saving', { defaultValue: 'Сохранение…' })
+                ? t('common.saving', { defaultValue: 'Saving…' })
                 : t('app.sales_orders.create.save_defaults', {
-                    defaultValue: 'Сохранить как defaults клиента',
+                    defaultValue: 'Save as client defaults',
                   })}
             </button>
           </div>
         ) : null}
 
         <label className="block">
-          <div className="label">{t('app.sales_orders.create.notes', { defaultValue: 'Коммерческие заметки' })}</div>
+          <div className="label">{t('app.sales_orders.create.notes', { defaultValue: 'Commercial notes' })}</div>
           <textarea
             className="input min-h-[80px]"
             value={billingNotes}
@@ -324,8 +322,8 @@ export default function SalesOrderCreatePage() {
         <div className="flex flex-wrap gap-2">
           <button type="submit" className="btn-primary" disabled={saving} data-testid="sales-order-submit">
             {saving
-              ? t('common.saving', { defaultValue: 'Сохранение…' })
-              : t('app.sales_orders.create.submit', { defaultValue: 'Создать заказ' })}
+              ? t('common.saving', { defaultValue: 'Saving…' })
+              : t('app.sales_orders.create.submit', { defaultValue: 'Create order' })}
           </button>
           <button
             type="button"
@@ -333,7 +331,7 @@ export default function SalesOrderCreatePage() {
             disabled={saving}
             onClick={() => navigate(SALES_ORDERS_PATH)}
           >
-            {t('common.cancel', { defaultValue: 'Отмена' })}
+            {t('common.cancel', { defaultValue: 'Cancel' })}
           </button>
         </div>
       </form>

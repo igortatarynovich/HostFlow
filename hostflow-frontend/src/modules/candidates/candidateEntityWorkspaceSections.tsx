@@ -3,6 +3,7 @@ import type { CandidateProfile } from '../../api/candidate_profiles'
 import type { EntityPassport } from '../../platform/entity-model'
 import type { EntityWorkspaceSectionId, EntityWorkspaceSectionRenderer } from '../../platform/entity-workspace'
 import CandidateDocsWorkspacePanel from '../../components/candidate/CandidateDocsWorkspacePanel'
+import { lookupScopedTranslation, type LocaleCode } from '../../i18n'
 import type { AugmentedCandidate } from './types'
 import {
   CandidateContactsContent,
@@ -19,6 +20,15 @@ export type CandidateEntityWorkspaceSectionContext = {
   locale: string
   candidateProfile: CandidateProfile | null
   effectiveLayout?: EffectiveCardLayout | null
+}
+
+function processActiveLabel(locale: string): string {
+  const code = (locale.startsWith('ru')
+    ? 'ru'
+    : locale.startsWith('pl')
+      ? 'pl'
+      : 'en') as LocaleCode
+  return lookupScopedTranslation(code, 'app.entity_workspace.default', 'process_active') || 'Process is active'
 }
 
 /** Candidate section renderers — mockup-aligned content, no passport JSON dump. */
@@ -47,7 +57,11 @@ export function buildCandidateEntityWorkspaceSectionRenderers(
     outcome: () => {
       const outcome = passport.sections.outcome
       if (!outcome) {
-        return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Процесс активен</p>
+        return (
+          <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+            {processActiveLabel(locale)}
+          </p>
+        )
       }
       return (
         <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

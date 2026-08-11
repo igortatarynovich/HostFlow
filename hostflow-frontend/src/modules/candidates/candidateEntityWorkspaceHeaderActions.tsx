@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { IconChevronDown } from '@tabler/icons-react'
+import { useI18n } from '../../i18n'
 import type { DetailRailAction } from '../../platform/detail-rail/detailRailTypes'
 
 type CandidateEntityWorkspaceHeaderActionsProps = {
@@ -8,6 +9,7 @@ type CandidateEntityWorkspaceHeaderActionsProps = {
 }
 
 export function CandidateEntityWorkspaceHeaderActions({ actions }: CandidateEntityWorkspaceHeaderActionsProps) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
 
   const primaryActions = useMemo(() => actions.filter((a) => a.label), [actions])
@@ -21,7 +23,7 @@ export function CandidateEntityWorkspaceHeaderActions({ actions }: CandidateEnti
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
       >
-        Действия
+        {t('common.actions.actions', { defaultValue: 'Actions' })}
         <IconChevronDown size={16} className={clsx('transition', open && 'rotate-180')} />
       </button>
       {open ? (
@@ -29,7 +31,7 @@ export function CandidateEntityWorkspaceHeaderActions({ actions }: CandidateEnti
           <button
             type="button"
             className="fixed inset-0 z-10 cursor-default"
-            aria-label="Закрыть меню"
+            aria-label={t('common.actions.close_menu', { defaultValue: 'Close menu' })}
             onClick={() => setOpen(false)}
           />
           <div className="absolute right-0 z-20 mt-1 min-w-[200px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-md">

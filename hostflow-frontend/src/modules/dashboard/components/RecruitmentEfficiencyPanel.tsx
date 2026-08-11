@@ -112,8 +112,9 @@ function translateStageLabel(t: TranslateFn, key: string, fallback?: string): st
 }
 
 function translateReasonLabel(t: TranslateFn, key: string, fallback?: string): string {
+  // Legacy matcher: some slices still emit the Russian label as the reason key.
   if (key === 'no_reason' || key === 'Без причины') {
-    return t('app.dashboard.labels.no_reason', { defaultValue: fallback || key })
+    return t('app.dashboard.labels.no_reason', { defaultValue: 'No reason' })
   }
   return t(`app.dashboard.reason_codes.${key}`, { defaultValue: fallback || key })
 }

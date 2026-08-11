@@ -1,4 +1,5 @@
 import { IconMail, IconPhone } from '@tabler/icons-react'
+import { useI18n } from '../../i18n'
 
 type CandidateQuickContactBarProps = {
   phone?: string | null
@@ -15,6 +16,7 @@ export function CandidateQuickContactBar({
   email,
   preferredMessenger,
 }: CandidateQuickContactBarProps) {
+  const { t } = useI18n()
   const phoneTrimmed = String(phone || '').trim()
   const emailTrimmed = String(email || '').trim()
   if (!phoneTrimmed && !emailTrimmed) return null
@@ -30,8 +32,12 @@ export function CandidateQuickContactBar({
       className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm"
       data-testid="m1-candidate-quick-contact"
     >
-      <p className="text-sm font-semibold text-slate-900">Связаться с кандидатом</p>
-      <p className="mt-1 text-sm text-slate-600">Следующий шаг — первый контакт.</p>
+      <p className="text-sm font-semibold text-slate-900">
+        {t('app.candidates.quick_contact.title', { defaultValue: 'Contact the candidate' })}
+      </p>
+      <p className="mt-1 text-sm text-slate-600">
+        {t('app.candidates.quick_contact.subtitle', { defaultValue: 'Next step — first contact.' })}
+      </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {telHref ? (
           <a
@@ -39,7 +45,7 @@ export function CandidateQuickContactBar({
             className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
           >
             <IconPhone size={16} stroke={1.8} />
-            Позвонить
+            {t('app.candidates.quick_contact.call', { defaultValue: 'Call' })}
           </a>
         ) : null}
         {showWhatsApp && waDigits ? (

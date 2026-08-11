@@ -51,20 +51,20 @@ export default function ClientChannelsListPage() {
             className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-brand-700"
           >
             <IconArrowLeft size={14} stroke={1.9} />
-            {t('app.sales_channels.back_launchpad', { defaultValue: 'Стартовая' })}
+            {t('app.sales_channels.back_launchpad', { defaultValue: 'Getting started' })}
           </Link>
           <h1 className="mt-3 text-2xl font-semibold text-slate-900">
-            {t('app.sales_channels.title', { defaultValue: 'Привлечение клиентов' })}
+            {t('app.sales_channels.title', { defaultValue: 'Client acquisition' })}
           </h1>
           <p className="mt-1 text-sm text-slate-600">
             {t('app.sales_channels.subtitle', {
-              defaultValue: 'Откройте канал — ссылка, запросы компаний и следующие шаги в одном месте.',
+              defaultValue: 'Open a channel — link, company inquiries and next steps in one place.',
             })}
           </p>
           <p className="mt-2 text-sm text-slate-500">
             {t('app.sales_channels.explain', {
               defaultValue:
-                'Канал — это ваша ссылка для компаний. Они оставляют заявку, вы звоните, оформляете клиента и запускаете подбор.',
+                'A channel is your link for companies. They submit an inquiry, you call, register the client and start hiring.',
             })}
           </p>
         </div>
@@ -74,27 +74,27 @@ export default function ClientChannelsListPage() {
           data-testid="m1-sales-channels-create"
         >
           <IconPlus size={16} stroke={1.9} />
-          {t('app.sales_channels.create', { defaultValue: 'Новый канал' })}
+          {t('app.sales_channels.create', { defaultValue: 'New channel' })}
         </Link>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p>
+        <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</p>
       ) : rows.length === 0 ? (
         <section className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">
-            {t('app.sales_channels.empty_title', { defaultValue: 'Пока нет каналов' })}
+            {t('app.sales_channels.empty_title', { defaultValue: 'No channels yet' })}
           </h2>
           <p className="mt-2 text-sm text-slate-600">
             {t('app.sales_channels.empty_body', {
-              defaultValue: 'Создайте первый канал — получите ссылку для компаний и начните принимать запросы.',
+              defaultValue: 'Create the first channel — get a link for companies and start receiving inquiries.',
             })}
           </p>
           <Link
             to={CRM_APP_PATHS.clientAcquisitionChannelsNew}
             className="mt-4 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
-            {t('app.sales_channels.create', { defaultValue: 'Новый канал' })}
+            {t('app.sales_channels.create', { defaultValue: 'New channel' })}
           </Link>
         </section>
       ) : (

@@ -27,29 +27,40 @@ export type ClientChannelConfig = {
   landing: ClientChannelLanding
 }
 
+/** English catalog labels — UI should translate via `app.client_acquisition.*` keys. */
 export const CLIENT_AUDIENCE_OPTIONS: {
   id: ClientAudience
   emoji: string
   title: string
   subtitle: string
 }[] = [
-  { id: 'transport', emoji: '🚛', title: 'Транспортные компании', subtitle: 'Перевозчики, логистика, автопарки' },
-  { id: 'manufacturing', emoji: '🏭', title: 'Производственные предприятия', subtitle: 'Заводы и производство' },
-  { id: 'warehouse', emoji: '📦', title: 'Склады', subtitle: 'Логистические центры и склады' },
-  { id: 'construction', emoji: '🏗️', title: 'Строительные компании', subtitle: 'Подрядчики и девелоперы' },
-  { id: 'any', emoji: '🌐', title: 'Любой бизнес', subtitle: 'Универсальная страница заявки' },
+  { id: 'transport', emoji: '🚛', title: 'Transport companies', subtitle: 'Carriers, logistics, fleets' },
+  {
+    id: 'manufacturing',
+    emoji: '🏭',
+    title: 'Manufacturing companies',
+    subtitle: 'Factories and production',
+  },
+  { id: 'warehouse', emoji: '📦', title: 'Warehouses', subtitle: 'Logistics hubs and warehouses' },
+  {
+    id: 'construction',
+    emoji: '🏗️',
+    title: 'Construction companies',
+    subtitle: 'Contractors and developers',
+  },
+  { id: 'any', emoji: '🌐', title: 'Any business', subtitle: 'Universal inquiry page' },
 ]
 
 export const CLIENT_SERVICE_OPTIONS: {
   id: ClientService
   title: string
 }[] = [
-  { id: 'driver_recruitment', title: 'Подбор водителей' },
-  { id: 'warehouse_recruitment', title: 'Подбор складского персонала' },
-  { id: 'office_recruitment', title: 'Подбор офисных сотрудников' },
-  { id: 'outsourcing', title: 'Аутсорсинг' },
-  { id: 'outstaffing', title: 'Аутстаффинг' },
-  { id: 'other', title: 'Другое' },
+  { id: 'driver_recruitment', title: 'Driver recruitment' },
+  { id: 'warehouse_recruitment', title: 'Warehouse staff recruitment' },
+  { id: 'office_recruitment', title: 'Office staff recruitment' },
+  { id: 'outsourcing', title: 'Outsourcing' },
+  { id: 'outstaffing', title: 'Outstaffing' },
+  { id: 'other', title: 'Other' },
 ]
 
 export function audienceLabel(audience: ClientAudience): string {
@@ -63,33 +74,35 @@ export function buildChannelLanding(
   const hasDrivers = services.includes('driver_recruitment')
   const hasWarehouse = services.includes('warehouse_recruitment')
   const hasOffice = services.includes('office_recruitment')
+  const cta = 'Submit inquiry'
 
   if (audience === 'transport' || hasDrivers) {
     return {
-      headline: 'Нужны водители?',
+      headline: 'Need drivers?',
       subheadline:
-        'Мы помогаем транспортным компаниям находить проверенных водителей C+E и закрывать кадровые потребности быстрее.',
-      cta: 'Оставить заявку',
+        'We help transport companies find verified C+E drivers and close staffing needs faster.',
+      cta,
     }
   }
   if (audience === 'warehouse' || hasWarehouse) {
     return {
-      headline: 'Нужен персонал на склад?',
-      subheadline: 'Подберём комплектовщиков, операторов погрузчиков и других сотрудников склада под ваши условия.',
-      cta: 'Оставить заявку',
+      headline: 'Need warehouse staff?',
+      subheadline:
+        'We will find pickers, forklift operators and other warehouse roles for your conditions.',
+      cta,
     }
   }
   if (hasOffice) {
     return {
-      headline: 'Нужны сотрудники в офис?',
-      subheadline: 'Поможем найти диспетчеров, менеджеров и других офисных специалистов для вашей компании.',
-      cta: 'Оставить заявку',
+      headline: 'Need office staff?',
+      subheadline: 'We help find dispatchers, managers and other office specialists for your company.',
+      cta,
     }
   }
   return {
-    headline: 'Нужен персонал?',
-    subheadline: 'Оставьте заявку — мы свяжемся с вами и предложим решение по подбору персонала.',
-    cta: 'Оставить заявку',
+    headline: 'Need staff?',
+    subheadline: 'Submit an inquiry — we will contact you and propose a staffing solution.',
+    cta,
   }
 }
 
@@ -99,7 +112,9 @@ export function buildChannelName(audience: ClientAudience, services: ClientServi
     .slice(0, 2)
     .map((s) => CLIENT_SERVICE_OPTIONS.find((o) => o.id === s)?.title ?? s)
     .join(', ')
-  return servicePart ? `Привлечение — ${audiencePart} (${servicePart})` : `Привлечение — ${audiencePart}`
+  return servicePart
+    ? `Acquisition — ${audiencePart} (${servicePart})`
+    : `Acquisition — ${audiencePart}`
 }
 
 export function slugifyChannel(audience: ClientAudience): string {

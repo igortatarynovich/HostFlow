@@ -29,7 +29,7 @@ import { formatDateSafe } from './candidateUtils'
 import {
   buildBlockerSummary,
   candidateRailHasRecruiterAction,
-  CANDIDATES_PIPELINE_STEP_LABELS,
+  candidatesPipelineStepLabels,
   filterRecruiterActionReminders,
   formatCandidateReasonText,
   isPipelineSystemTimelineItem,
@@ -630,7 +630,7 @@ export function resolveCandidateEntityPassport(args: ResolveCandidateEntityPassp
         rowStatusCode: c.row_status ? String(c.row_status) : undefined,
         rowStatusLabel,
         pipelineStepIndex: pipelineStepIndex(stageCode),
-        pipelineStepLabels: CANDIDATES_PIPELINE_STEP_LABELS,
+        pipelineStepLabels: candidatesPipelineStepLabels(t),
         why: nextAction?.whyBody ?? processOutcome?.whyLabel,
         recruiterWorkActive: workAllowed,
       },

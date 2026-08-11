@@ -45,7 +45,7 @@ export default function AboutPage() {
   })
 
   return (
-    <PublicPageShell maxWidth="5xl">
+    <PublicPageShell maxWidth="6xl">
       <div className="space-y-8">
         <CompanySiteNav />
 
@@ -77,14 +77,16 @@ export default function AboutPage() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <ProductShot
-            src="/landing/shot-workspace.svg"
+            size="feature"
+            src="/landing/shots/shot-workspace.jpg"
             badge={t('public.company.shots.workspace.badge', { defaultValue: 'Workspace' })}
             caption={t('public.company.shots.workspace.caption', {
               defaultValue: 'Company workspace dashboard — leads, pipeline, and ownership in one tenant.',
             })}
           />
           <ProductShot
-            src="/landing/shot-meta-leads.svg"
+            size="feature"
+            src="/landing/shots/shot-meta.jpg"
             badge={t('public.company.shots.meta.badge', { defaultValue: 'Meta' })}
             caption={t('public.company.shots.meta.caption', {
               defaultValue: 'Meta Lead Ads sync into the client company CRM — Tech Provider model.',

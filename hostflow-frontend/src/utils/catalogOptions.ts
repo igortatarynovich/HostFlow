@@ -1,4 +1,10 @@
 import type { CatalogOptionDto } from '../api/catalogs'
+import { detectStoredLocale, lookupScopedTranslation } from '../i18n'
+
+function otherCountryLabel(locale?: string): string {
+  const code = (locale || detectStoredLocale()) as 'en' | 'ru' | 'pl'
+  return lookupScopedTranslation(code, 'app.catalog', 'other_country') || 'Other country'
+}
 
 export function catalogOptionLabel(option: CatalogOptionDto, locale?: string): string {
   const isRu = locale?.startsWith('ru')
@@ -20,7 +26,7 @@ export function catalogCountryLabel(
   countryCode?: string,
 ): string {
   if (countryCode === 'OTHER') {
-    return locale?.startsWith('ru') ? 'Другая страна' : 'Other country'
+    return otherCountryLabel(locale)
   }
   return catalogOptionLabel(option, locale)
 }
@@ -30,14 +36,15 @@ export function withOtherCountryOption(
   locale?: string,
 ): CatalogOptionDto[] {
   if (countries.some((row) => row.value === 'OTHER')) return countries
+  const label = otherCountryLabel(locale)
   return [
     ...countries,
     {
       value: 'OTHER',
-      label: locale?.startsWith('ru') ? 'Другая страна' : 'Other country',
+      label,
       meta: {
-        label_ru: 'Другая страна',
-        label_en: 'Other country',
+        label_ru: lookupScopedTranslation('ru', 'app.catalog', 'other_country') || 'Other country',
+        label_en: lookupScopedTranslation('en', 'app.catalog', 'other_country') || 'Other country',
       },
     },
   ]

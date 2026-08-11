@@ -3,6 +3,7 @@ import { Modal } from '../Modal'
 import { listVacancies, updateVacancy, type Vacancy } from '../../api/vacancies'
 import type { CandidateProfile } from '../../api/candidate_profiles'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
+import { useI18n } from '../../i18n'
 
 interface ApplyProfileToVacanciesModalProps {
   profile: CandidateProfile
@@ -11,6 +12,7 @@ interface ApplyProfileToVacanciesModalProps {
 }
 
 function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProfileToVacanciesModalProps) {
+  const { t } = useI18n()
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState(false)
@@ -30,7 +32,10 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
       const data = await listVacancies({ is_archived: false })
       setVacancies(data)
     } catch (err: any) {
-      setError(err?.message || 'Не удалось загрузить вакансии')
+      setError(
+        err?.message ||
+          t('app.profiles.apply.load_failed', { defaultValue: 'Failed to load vacancies' }),
+      )
     } finally {
       setLoading(false)
     }
@@ -38,14 +43,12 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
 
   const filteredVacancies = useMemo(() => {
     return vacancies.filter((vacancy) => {
-      // Фильтр по поисковому запросу
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
         const matchesTitle = vacancy.title?.toLowerCase().includes(query)
         const matchesCompany = vacancy.company_name?.toLowerCase().includes(query)
         if (!matchesTitle && !matchesCompany) return false
       }
-      // Фильтр по активности
       if (filterActive !== null) {
         if (filterActive && !vacancy.is_active) return false
         if (!filterActive && vacancy.is_active) return false
@@ -74,14 +77,17 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
 
   const handleApply = async () => {
     if (selectedIds.size === 0) {
-      setError('Выберите хотя бы одну вакансию')
+      setError(
+        t('app.profiles.apply.select_at_least_one', {
+          defaultValue: 'Select at least one vacancy',
+        }),
+      )
       return
     }
 
     setApplying(true)
     setError(null)
     try {
-      // Update vacancies one by one with progress tracking
       const vacancyIds = Array.from(selectedIds)
       const results: { success: number; failed: number; errors: string[] } = {
         success: 0,
@@ -97,21 +103,44 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
           results.success++
         } catch (err: any) {
           results.failed++
-          results.errors.push(`${vacancyId}: ${err?.message || 'Неизвестная ошибка'}`)
+          results.errors.push(
+            `${vacancyId}: ${
+              err?.message ||
+              t('app.profiles.apply.unknown_error', { defaultValue: 'Unknown error' })
+            }`,
+          )
         }
       }
 
       if (results.failed > 0) {
+        const details =
+          results.errors.length > 0
+            ? t('app.profiles.apply.details_prefix', {
+                defaultValue: 'Details: {details}',
+                values: { details: results.errors.slice(0, 3).join('; ') },
+              })
+            : ''
         setError(
-          `Применено к ${results.success} вакансиям. Ошибок: ${results.failed}. ` +
-            (results.errors.length > 0 ? `Детали: ${results.errors.slice(0, 3).join('; ')}` : '')
+          t('app.profiles.apply.partial_result', {
+            defaultValue: 'Applied to {success} vacancies. Errors: {failed}. {details}',
+            values: {
+              success: results.success,
+              failed: results.failed,
+              details,
+            },
+          }),
         )
       } else {
         onSuccess?.()
         onClose()
       }
     } catch (err: any) {
-      setError(err?.message || 'Не удалось применить профиль к вакансиям')
+      setError(
+        err?.message ||
+          t('app.profiles.apply.apply_failed', {
+            defaultValue: 'Failed to apply profile to vacancies',
+          }),
+      )
     } finally {
       setApplying(false)
     }
@@ -120,22 +149,45 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
   const alreadyHasProfile = (vacancy: Vacancy) => vacancy.candidate_profile_id === profile.id
 
   return (
-    <Modal open={true} onClose={onClose} title={`Применить профиль "${profile.name}" к вакансиям`}>
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={t('app.profiles.apply.title', {
+        defaultValue: 'Apply profile "{name}" to vacancies',
+        values: { name: profile.name },
+      })}
+    >
       <div className="space-y-4">
         <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-          <div className="font-semibold mb-1">Информация:</div>
+          <div className="font-semibold mb-1">
+            {t('app.profiles.apply.info_title', { defaultValue: 'Information:' })}
+          </div>
           <ul className="list-disc list-inside space-y-1 text-xs">
-            <li>Профиль будет применен к выбранным вакансиям</li>
-            <li>Вакансии, у которых уже установлен этот профиль, будут помечены</li>
-            <li>Операция может занять некоторое время при большом количестве вакансий</li>
+            <li>
+              {t('app.profiles.apply.info_1', {
+                defaultValue: 'The profile will be applied to the selected vacancies',
+              })}
+            </li>
+            <li>
+              {t('app.profiles.apply.info_2', {
+                defaultValue: 'Vacancies that already use this profile will be marked',
+              })}
+            </li>
+            <li>
+              {t('app.profiles.apply.info_3', {
+                defaultValue:
+                  'The operation may take some time for a large number of vacancies',
+              })}
+            </li>
           </ul>
         </div>
 
-        {/* Поиск и фильтры */}
         <div className="space-y-2">
           <input
             type="text"
-            placeholder="Поиск по названию или компании..."
+            placeholder={t('app.profiles.apply.search_placeholder', {
+              defaultValue: 'Search by title or company...',
+            })}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input w-full"
@@ -148,29 +200,40 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
             }}
             className="input"
           >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
+            <option value="all">{t('app.profiles.apply.filter_all', { defaultValue: 'All' })}</option>
+            <option value="active">
+              {t('app.profiles.apply.filter_active', { defaultValue: 'Active' })}
+            </option>
+            <option value="inactive">
+              {t('app.profiles.apply.filter_inactive', { defaultValue: 'Inactive' })}
+            </option>
           </select>
         </div>
 
         {error && (
           <ErrorRecoveryBanner
-            info={{ title: error, hint: 'Повторите действие или обновите страницу.' }}
+            info={{
+              title: error,
+              hint: t('app.profiles.apply.retry_hint', {
+                defaultValue: 'Retry the action or refresh the page.',
+              }),
+            }}
             onRetry={() => void loadVacancies()}
-            retryLabel="Обновить"
+            retryLabel={t('app.profiles.apply.retry', { defaultValue: 'Refresh' })}
             compact
           />
         )}
 
-        {/* Список вакансий */}
         {loading ? (
-          <div className="text-sm text-slate-500">Загрузка вакансий...</div>
+          <div className="text-sm text-slate-500">
+            {t('app.profiles.apply.loading', { defaultValue: 'Loading vacancies...' })}
+          </div>
         ) : filteredVacancies.length === 0 ? (
-          <div className="text-sm text-slate-500">Вакансии не найдены</div>
+          <div className="text-sm text-slate-500">
+            {t('app.profiles.apply.empty', { defaultValue: 'No vacancies found' })}
+          </div>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {/* Select All */}
             <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
               <input
                 type="checkbox"
@@ -180,11 +243,13 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
                 disabled={applying}
               />
               <span className="text-sm font-semibold text-slate-700">
-                Выбрать все ({selectedIds.size} из {filteredVacancies.length})
+                {t('app.profiles.apply.select_all', {
+                  defaultValue: 'Select all ({selected} of {total})',
+                  values: { selected: selectedIds.size, total: filteredVacancies.length },
+                })}
               </span>
             </div>
 
-            {/* Vacancies List */}
             {filteredVacancies.map((vacancy) => {
               const isSelected = selectedIds.has(vacancy.id)
               const hasProfile = alreadyHasProfile(vacancy)
@@ -210,18 +275,28 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
                   <div className="flex-1">
                     <div className="font-medium text-slate-900">{vacancy.title}</div>
                     <div className="text-xs text-slate-500">
-                      {vacancy.company_name || 'Без компании'}
+                      {vacancy.company_name ||
+                        t('app.profiles.apply.no_company', { defaultValue: 'No company' })}
                       {vacancy.location && ` • ${vacancy.location}`}
-                      {vacancy.candidate_count !== undefined && ` • ${vacancy.candidate_count} кандидатов`}
+                      {vacancy.candidate_count !== undefined &&
+                        ` • ${t('app.profiles.apply.candidates_count', {
+                          defaultValue: '{count} candidates',
+                          values: { count: vacancy.candidate_count },
+                        })}`}
                     </div>
                     {hasProfile && (
                       <div className="mt-1 text-xs font-medium text-green-700">
-                        ✓ Профиль уже применен
+                        {t('app.profiles.apply.already_applied', {
+                          defaultValue: '✓ Profile already applied',
+                        })}
                       </div>
                     )}
                     {vacancy.candidate_profile_name && vacancy.candidate_profile_id !== profile.id && (
                       <div className="mt-1 text-xs text-amber-700">
-                        ⚠ Текущий профиль: {vacancy.candidate_profile_name}
+                        {t('app.profiles.apply.current_profile', {
+                          defaultValue: '⚠ Current profile: {name}',
+                          values: { name: vacancy.candidate_profile_name },
+                        })}
                       </div>
                     )}
                   </div>
@@ -231,19 +306,16 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex items-center justify-between border-t border-slate-200 pt-4">
           <div className="text-sm text-slate-600">
-            Выбрано: <span className="font-semibold">{selectedIds.size}</span> вакансий
+            {t('app.profiles.apply.selected', {
+              defaultValue: 'Selected: {count} vacancies',
+              values: { count: selectedIds.size },
+            })}
           </div>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={applying}
-              className="btn-secondary"
-            >
-              Отмена
+            <button type="button" onClick={onClose} disabled={applying} className="btn-secondary">
+              {t('app.profiles.apply.cancel', { defaultValue: 'Cancel' })}
             </button>
             <button
               type="button"
@@ -251,7 +323,12 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
               disabled={selectedIds.size === 0 || applying}
               className="btn-primary"
             >
-              {applying ? 'Применение...' : `Применить к ${selectedIds.size} вакансиям`}
+              {applying
+                ? t('app.profiles.apply.applying', { defaultValue: 'Applying...' })
+                : t('app.profiles.apply.apply_to', {
+                    defaultValue: 'Apply to {count} vacancies',
+                    values: { count: selectedIds.size },
+                  })}
             </button>
           </div>
         </div>

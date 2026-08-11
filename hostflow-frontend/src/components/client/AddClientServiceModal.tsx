@@ -16,7 +16,7 @@ function formatMoney(value: number, currency: string): string {
 }
 
 /**
- * "Добавить услугу" for an existing client. Reuses the same catalog the sales
+ * "Add service" for an existing client. Reuses the same catalog the sales
  * loop uses; on submit calls the create-or-append endpoint so the Service Order
  * is born once. Same component serves the first sale and every later one.
  */
@@ -72,7 +72,7 @@ export function AddClientServiceModal({
 
   const handleSubmit = async () => {
     if (selected.size === 0) {
-      setError(t('app.client_inquiry.service_order.pick_one', { defaultValue: 'Выберите хотя бы одну услугу' }))
+      setError(t('app.client_inquiry.service_order.pick_one', { defaultValue: 'Select at least one service' }))
       return
     }
     setError(null)
@@ -83,7 +83,7 @@ export function AddClientServiceModal({
         [...selected].map((service_id) => ({ service_id, qty: 1 })),
       )
       notify({
-        title: t('app.client_workspace.add_service.done', { defaultValue: 'Услуга добавлена в заказ' }),
+        title: t('app.client_workspace.add_service.done', { defaultValue: 'Service added to the order' }),
         variant: 'success',
       })
       await onAdded?.(order)
@@ -92,7 +92,7 @@ export function AddClientServiceModal({
       const detail =
         (e as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
         (e as Error)?.message ??
-        t('app.client_inquiry.service_order.create_failed', { defaultValue: 'Не удалось создать заказ' })
+        t('app.client_inquiry.service_order.create_failed', { defaultValue: 'Could not create order' })
       setError(typeof detail === 'string' ? detail : JSON.stringify(detail))
     } finally {
       setSubmitting(false)
@@ -106,21 +106,21 @@ export function AddClientServiceModal({
       open={open}
       onClose={onClose}
       size="lg"
-      title={t('app.client_workspace.add_service.title', { defaultValue: 'Добавить услугу' })}
+      title={t('app.client_workspace.add_service.title', { defaultValue: 'Add service' })}
     >
       <p className="text-sm text-slate-600">
         {t('app.client_workspace.add_service.subtitle', {
           defaultValue:
-            'Выберите услуги из каталога. Если у клиента есть открытый заказ — добавим строку, иначе создадим новый.',
+            'Pick services from the catalog. If the client has an open order — we append a line, otherwise we create a new one.',
         })}
       </p>
 
       {loadingCatalog ? (
-        <p className="mt-4 text-sm text-slate-500">{t('app.common.loading', { defaultValue: 'Загрузка…' })}</p>
+        <p className="mt-4 text-sm text-slate-500">{t('app.common.loading', { defaultValue: 'Loading…' })}</p>
       ) : catalogEmpty ? (
         <p className="mt-4 text-sm text-amber-800">
           {t('app.client_inquiry.service_order.empty_catalog', {
-            defaultValue: 'В каталоге нет активных услуг. Добавьте услуги в Services → Каталог.',
+            defaultValue: 'No active services in the catalog. Add services in Services → Catalog.',
           })}
         </p>
       ) : (
@@ -175,7 +175,7 @@ export function AddClientServiceModal({
           className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
           onClick={onClose}
         >
-          {t('common.actions.cancel', { defaultValue: 'Отмена' })}
+          {t('common.actions.cancel', { defaultValue: 'Cancel' })}
         </button>
         <button
           type="button"
@@ -184,13 +184,13 @@ export function AddClientServiceModal({
           onClick={() => void handleSubmit()}
         >
           {submitting
-            ? t('app.client_workspace.add_service.saving', { defaultValue: 'Добавляем…' })
+            ? t('app.client_workspace.add_service.saving', { defaultValue: 'Adding…' })
             : selectedCount > 0
               ? t('app.client_workspace.add_service.submit_n', {
-                  defaultValue: 'Добавить ({{count}})',
+                  defaultValue: 'Add ({count})',
                   values: { count: selectedCount },
                 })
-              : t('app.client_workspace.add_service.submit', { defaultValue: 'Добавить услугу' })}
+              : t('app.client_workspace.add_service.submit', { defaultValue: 'Add service' })}
         </button>
       </div>
     </Modal>

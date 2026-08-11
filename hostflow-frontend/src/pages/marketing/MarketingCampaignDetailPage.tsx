@@ -105,26 +105,34 @@ export default function MarketingCampaignDetailPage() {
       if (target?.target_type === 'vacancy' && target.target_id) {
         try {
           const v = await getVacancy(target.target_id)
-          setDestinationLabel(v?.title || 'Вакансия')
+          setDestinationLabel(
+            v?.title || t('app.marketing.destination.vacancy', { defaultValue: 'Vacancy' }),
+          )
         } catch {
-          setDestinationLabel('Вакансия')
+          setDestinationLabel(t('app.marketing.destination.vacancy', { defaultValue: 'Vacancy' }))
         }
       } else if (target?.target_type === 'service' && target.target_id) {
         try {
           const services = await listAdditionalServices(true)
           const s = services.find((row) => row.id === target.target_id)
-          setDestinationLabel(s?.name || 'Услуга')
+          setDestinationLabel(
+            s?.name || t('app.marketing.destination.service', { defaultValue: 'Service' }),
+          )
         } catch {
-          setDestinationLabel('Услуга')
+          setDestinationLabel(t('app.marketing.destination.service', { defaultValue: 'Service' }))
         }
       } else {
-        setDestinationLabel(target ? target.target_type : 'Не задано')
+        setDestinationLabel(
+          target
+            ? target.target_type
+            : t('app.marketing.destination.unset', { defaultValue: 'Not set' }),
+        )
       }
     } catch (err: unknown) {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.load', { defaultValue: 'Не удалось загрузить кампанию' }),
+          t('app.marketing.detail.errors.load', { defaultValue: 'Failed to load campaign' }),
           t,
         ),
       )
@@ -180,7 +188,7 @@ export default function MarketingCampaignDetailPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.command', { defaultValue: 'Не удалось выполнить действие' }),
+          t('app.marketing.detail.errors.command', { defaultValue: 'Could not run this action' }),
           t,
         ),
       )
@@ -203,7 +211,7 @@ export default function MarketingCampaignDetailPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.command', { defaultValue: 'Не удалось выполнить действие' }),
+          t('app.marketing.detail.errors.command', { defaultValue: 'Could not run this action' }),
           t,
         ),
       )
@@ -227,7 +235,7 @@ export default function MarketingCampaignDetailPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.detail.errors.command', { defaultValue: 'Не удалось выполнить действие' }),
+          t('app.marketing.detail.errors.command', { defaultValue: 'Could not run this action' }),
           t,
         ),
       )
@@ -256,7 +264,7 @@ export default function MarketingCampaignDetailPage() {
         getFriendlyErrorInfo(
           err,
           t('app.marketing.detail.errors.load_more', {
-            defaultValue: 'Не удалось подгрузить заявки',
+            defaultValue: 'Failed to load more applications',
           }),
           t,
         ),
@@ -268,7 +276,11 @@ export default function MarketingCampaignDetailPage() {
 
   const publicUrl = formPublicUrl(form?.public_slug)
   const sourceLabel =
-    source?.name || source?.provider || (form ? 'Публичная анкета HostFlow' : '—')
+    source?.name ||
+    source?.provider ||
+    (form
+      ? t('app.marketing.detail.public_form_hostflow', { defaultValue: 'HostFlow public form' })
+      : '—')
   const formLinks = flight?.forms?.filter((f) => f.is_active) || []
   const intakeLinks = flight?.intake_sources?.filter((s) => s.is_active) || []
   const hasAnySourceBinding = formLinks.length > 0 || intakeLinks.length > 0
@@ -277,10 +289,22 @@ export default function MarketingCampaignDetailPage() {
   const contextTargets = campaign?.targets?.filter((x) => x.role === 'context') || []
   const counters = monitor?.counters
   const kpiTiles = [
-    { label: 'Заявки', value: counters?.submissions ?? 0 },
-    { label: 'Направлено', value: counters?.routing_completed ?? 0 },
-    { label: 'Ошибки маршрута', value: counters?.routing_failed ?? 0 },
-    { label: 'Лиды (KPI)', value: counters?.kpi_leads ?? 0 },
+    {
+      label: t('app.marketing.detail.kpi.applications', { defaultValue: 'Applications' }),
+      value: counters?.submissions ?? 0,
+    },
+    {
+      label: t('app.marketing.detail.kpi.routed', { defaultValue: 'Routed' }),
+      value: counters?.routing_completed ?? 0,
+    },
+    {
+      label: t('app.marketing.detail.kpi.routing_errors', { defaultValue: 'Routing errors' }),
+      value: counters?.routing_failed ?? 0,
+    },
+    {
+      label: t('app.marketing.detail.kpi.leads_kpi', { defaultValue: 'Leads (KPI)' }),
+      value: counters?.kpi_leads ?? 0,
+    },
     {
       label: 'CPL',
       value:
@@ -302,15 +326,15 @@ export default function MarketingCampaignDetailPage() {
         <PageHeader
           title={
             <span className="inline-flex items-center gap-1.5">
-              {campaign?.name || t('app.marketing.detail.title', { defaultValue: 'Кампания' })}
+              {campaign?.name || t('app.marketing.detail.title', { defaultValue: 'Campaign' })}
               <ContextHelp term="campaign" />
             </span>
           }
           subtitle={
             <span className="inline-flex items-center gap-1.5">
               {flight
-                ? `Flight · ${statusLabel(flightStatus)}`
-                : t('app.marketing.detail.no_flight', { defaultValue: 'Flight не найден' })}
+                ? `Flight · ${statusLabel(flightStatus, t)}`
+                : t('app.marketing.detail.no_flight', { defaultValue: 'Flight not found' })}
               <ContextHelp term="flight" />
             </span>
           }
@@ -318,7 +342,7 @@ export default function MarketingCampaignDetailPage() {
           secondaryActions={
             <div className="flex flex-wrap gap-2">
               <Link to={CRM_APP_PATHS.marketing} className="btn-secondary btn-sm">
-                К списку
+                {t('app.marketing.actions.back_to_list', { defaultValue: 'Back to list' })}
               </Link>
               <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading}>
                 {loading ? t('common.loading') : t('common.actions.refresh')}
@@ -336,7 +360,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runFlightCommand('launch')}
                     data-testid="marketing-flight-launch"
                   >
-                    Запустить
+                    {t('app.marketing.actions.launch', { defaultValue: 'Launch' })}
                   </button>
                 ) : null}
                 {canPause ? (
@@ -347,7 +371,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runFlightCommand('pause')}
                     data-testid="marketing-flight-pause"
                   >
-                    Приостановить
+                    {t('app.marketing.actions.pause', { defaultValue: 'Pause' })}
                   </button>
                 ) : null}
                 {canResume ? (
@@ -358,7 +382,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runFlightCommand('resume')}
                     data-testid="marketing-flight-resume"
                   >
-                    Возобновить
+                    {t('app.marketing.actions.resume', { defaultValue: 'Resume' })}
                   </button>
                 ) : null}
                 {canCompleteFlight ? (
@@ -369,7 +393,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runFlightCommand('complete')}
                     data-testid="marketing-flight-complete"
                   >
-                    Завершить Flight
+                    {t('app.marketing.actions.complete_flight', { defaultValue: 'Complete Flight' })}
                   </button>
                 ) : null}
                 {canCompleteCampaign ? (
@@ -380,7 +404,9 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runCampaignCommand('complete')}
                     data-testid="marketing-campaign-complete"
                   >
-                    Завершить кампанию
+                    {t('app.marketing.actions.complete_campaign', {
+                      defaultValue: 'Complete campaign',
+                    })}
                   </button>
                 ) : null}
                 {canArchiveCampaign ? (
@@ -391,7 +417,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runCampaignCommand('archive')}
                     data-testid="marketing-campaign-archive"
                   >
-                    В архив
+                    {t('app.marketing.detail.archive', { defaultValue: 'Archive' })}
                   </button>
                 ) : null}
               </div>
@@ -408,12 +434,14 @@ export default function MarketingCampaignDetailPage() {
           <>
             <section className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <div className="text-xs text-slate-500">Кампания</div>
+                <div className="text-xs text-slate-500">
+                  {t('app.marketing.detail.campaign_label', { defaultValue: 'Campaign' })}
+                </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${statusTone(campaignStatus)}`}
                   >
-                    {statusLabel(campaignStatus)}
+                    {statusLabel(campaignStatus, t)}
                   </span>
                 </div>
                 {runtime ? (
@@ -426,7 +454,9 @@ export default function MarketingCampaignDetailPage() {
                 ) : null}
               </div>
               <div>
-                <div className="text-xs text-slate-500">Анкета HostFlow</div>
+                <div className="text-xs text-slate-500">
+                  {t('app.marketing.detail.hostflow_form', { defaultValue: 'HostFlow form' })}
+                </div>
                 <div className="mt-1 text-sm font-medium text-slate-900">{form?.title || '—'}</div>
                 {publicUrl ? (
                   <a
@@ -435,23 +465,32 @@ export default function MarketingCampaignDetailPage() {
                     rel="noreferrer"
                     className="mt-1 block break-all text-xs text-brand-600 underline"
                   >
-                    Открыть публичную ссылку
+                    {t('app.marketing.detail.open_public_link', { defaultValue: 'Open public link' })}
                   </a>
                 ) : null}
               </div>
               <div>
-                <div className="text-xs text-slate-500">Источник (кратко)</div>
+                <div className="text-xs text-slate-500">
+                  {t('app.marketing.detail.source_short', { defaultValue: 'Source (summary)' })}
+                </div>
                 <div className="mt-1 text-sm font-medium text-slate-900">{sourceLabel}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Куда идут заявки</div>
+                <div className="text-xs text-slate-500">
+                  {t('app.marketing.detail.destination_goes', {
+                    defaultValue: 'Where applications go',
+                  })}
+                </div>
                 <div className="mt-1 text-sm font-medium text-slate-900">{destinationLabel}</div>
                 {primaryTarget ? (
                   <div className="mt-1 text-xs text-slate-500">{primaryTarget.route_intent}</div>
                 ) : null}
                 {flight?.starts_at ? (
                   <div className="mt-1 text-xs text-slate-500">
-                    Запуск: {formatDateTime(flight.starts_at, locale)}
+                    {t('app.marketing.list.launch', {
+                      defaultValue: 'Launch: {value}',
+                      values: { value: formatDateTime(flight.starts_at, locale) },
+                    })}
                   </div>
                 ) : null}
               </div>
@@ -463,10 +502,14 @@ export default function MarketingCampaignDetailPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-900">Источники заявок</h2>
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    {t('app.marketing.detail.sources_title', { defaultValue: 'Application sources' })}
+                  </h2>
                   <p className="mt-1 text-xs text-slate-500">
-                    Source = откуда приходят заявки (Lead Form Meta или анкета HostFlow). Connection
-                    (OAuth) настраивается в Integrations. Routing наследует Primary Target кампании.
+                    {t('app.marketing.detail.sources_help', {
+                      defaultValue:
+                        'Source = where applications come from (Meta Lead Form or HostFlow form). Connection (OAuth) is configured in Integrations. Routing inherits the campaign Primary Target.',
+                    })}
                   </p>
                 </div>
                 {showConnectCta ? (
@@ -475,7 +518,7 @@ export default function MarketingCampaignDetailPage() {
                     className="btn-primary btn-sm"
                     data-testid="marketing-connect-source-cta"
                   >
-                    Подключить источник
+                    {t('app.marketing.detail.connect_source', { defaultValue: 'Connect source' })}
                   </Link>
                 ) : null}
               </div>
@@ -485,10 +528,14 @@ export default function MarketingCampaignDetailPage() {
                   className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center"
                   data-testid="marketing-sources-empty"
                 >
-                  <p className="text-sm font-medium text-slate-800">Источников пока нет</p>
+                  <p className="text-sm font-medium text-slate-800">
+                    {t('app.marketing.detail.sources_empty_title', { defaultValue: 'No sources yet' })}
+                  </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Подключите Meta Lead Ads или публичную анкету HostFlow — без повторного создания
-                    кампании.
+                    {t('app.marketing.detail.sources_empty_body', {
+                      defaultValue:
+                        'Connect Meta Lead Ads or a HostFlow public form — without recreating the campaign.',
+                    })}
                   </p>
                   {showConnectCta ? (
                     <Link
@@ -496,17 +543,17 @@ export default function MarketingCampaignDetailPage() {
                       className="btn-primary btn-sm mt-4 inline-flex"
                       data-testid="marketing-sources-empty-cta"
                     >
-                      Подключить источник
+                      {t('app.marketing.detail.connect_source', { defaultValue: 'Connect source' })}
                     </Link>
                   ) : null}
                 </div>
               ) : (
                 <ul className="mt-4 space-y-3">
                   {formLinks.map((f) => (
-                    <HostFlowFormSourceCard key={f.id} link={f} locale={locale} />
+                    <HostFlowFormSourceCard key={f.id} link={f} locale={locale} t={t} />
                   ))}
                   {intakeLinks.map((s) => (
-                    <MetaLeadFormSourceCard key={s.id} link={s} locale={locale} />
+                    <MetaLeadFormSourceCard key={s.id} link={s} locale={locale} t={t} />
                   ))}
                 </ul>
               )}
@@ -516,9 +563,10 @@ export default function MarketingCampaignDetailPage() {
                   className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600"
                   data-testid="marketing-sources-primary-limit"
                 >
-                  Primary-слоты анкеты HostFlow и Meta-источника для этого Flight заняты. Несколько
-                  равноправных источников одного типа появятся в следующем обновлении — сейчас UI не
-                  предлагает подключение, которое завершится ошибкой.
+                  {t('app.marketing.detail.primary_slots_full', {
+                    defaultValue:
+                      'Primary HostFlow form and Meta source slots for this Flight are taken. Multiple equal sources of the same type will come in a later update — the UI does not offer a connection that would fail.',
+                  })}
                 </p>
               ) : null}
 
@@ -533,7 +581,11 @@ export default function MarketingCampaignDetailPage() {
 
               {contextTargets.length ? (
                 <div className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-600">
-                  <div className="font-medium text-slate-700">Контекст кампании</div>
+                  <div className="font-medium text-slate-700">
+                    {t('app.marketing.detail.context_title', {
+                      defaultValue: 'Campaign context',
+                    })}
+                  </div>
                   <ul className="mt-1 list-inside list-disc">
                     {contextTargets.map((ct) => (
                       <li key={ct.id}>
@@ -562,12 +614,12 @@ export default function MarketingCampaignDetailPage() {
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h2 className="text-sm font-semibold text-slate-900">
                     {t('app.marketing.detail.flight_compare.title', {
-                      defaultValue: 'Сравнение Flight',
+                      defaultValue: 'Flight comparison',
                     })}
                   </h2>
                   <p className="text-xs text-slate-500">
                     {t('app.marketing.detail.flight_compare.subtitle', {
-                      defaultValue: 'KPI по волнам кампании (только чтение).',
+                      defaultValue: 'KPI by campaign waves (read-only).',
                     })}
                   </p>
                 </div>
@@ -607,7 +659,7 @@ export default function MarketingCampaignDetailPage() {
                               </span>
                             ) : null}
                           </td>
-                          <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status)}</td>
+                          <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status, t)}</td>
                           <td className="py-2 pr-3 tabular-nums text-slate-900">
                             {row.spend}
                             {row.currency ? ` ${row.currency}` : ''}
@@ -651,14 +703,16 @@ export default function MarketingCampaignDetailPage() {
                   <div>
                     <h2 className="text-sm font-semibold text-slate-900">
                       {t('app.marketing.detail.cohorts.title', {
-                        defaultValue: 'Когорты',
+                        defaultValue: 'Cohorts',
                       })}
                     </h2>
                     <p className="text-xs text-slate-500">
                       {t('app.marketing.detail.cohorts.subtitle', {
-                        defaultValue: '{{days}} дн. · {{bucket}} · CAC proxy = cost / outcome',
-                        days: cohorts.window_days,
-                        bucket: cohorts.bucket,
+                        defaultValue: '{days} d · {bucket} · CAC proxy = cost / outcome',
+                        values: {
+                          days: cohorts.window_days,
+                          bucket: cohorts.bucket,
+                        },
                       })}
                     </p>
                   </div>
@@ -884,9 +938,16 @@ export default function MarketingCampaignDetailPage() {
                 data-testid="marketing-optimization-suggest-pause"
                 role="status"
               >
-                <div className="font-semibold">Рекомендация: рассмотреть паузу Flight</div>
+                <div className="font-semibold">
+                  {t('app.marketing.detail.optimization.suggest_pause_title', {
+                    defaultValue: 'Recommendation: consider pausing the Flight',
+                  })}
+                </div>
                 <p className="mt-1 text-amber-900/90">
-                  Сигнал только советует — пауза через кнопку «Пауза» выше. Автопаузы нет.
+                  {t('app.marketing.detail.optimization.suggest_pause_body', {
+                    defaultValue:
+                      'This signal is advisory only — pause via the Pause button above. There is no auto-pause.',
+                  })}
                 </p>
                 {optimization.explanation ? (
                   <p className="mt-2 text-xs text-amber-900/90" data-testid="marketing-optimization-explanation">
@@ -934,8 +995,12 @@ export default function MarketingCampaignDetailPage() {
                 {optimization.operator ? (
                   <p className="mt-2 text-xs text-amber-900/80" data-testid="marketing-optimization-operator-state">
                     {optimization.operator.action === 'dismiss'
-                      ? 'Отклонено оператором'
-                      : 'Подтверждено оператором'}
+                      ? t('app.marketing.detail.optimization.dismissed', {
+                          defaultValue: 'Dismissed by operator',
+                        })
+                      : t('app.marketing.detail.optimization.acknowledged', {
+                          defaultValue: 'Acknowledged by operator',
+                        })}
                     {optimization.operator.occurred_at
                       ? ` · ${formatDateTime(optimization.operator.occurred_at, locale)}`
                       : ''}
@@ -949,7 +1014,9 @@ export default function MarketingCampaignDetailPage() {
                       disabled={acting || !optimization.signal_fingerprint}
                       onClick={() => void runOptAction('acknowledge')}
                     >
-                      Принять к сведению
+                      {t('app.marketing.detail.optimization.acknowledge', {
+                        defaultValue: 'Acknowledge',
+                      })}
                     </button>
                     <button
                       type="button"
@@ -958,7 +1025,9 @@ export default function MarketingCampaignDetailPage() {
                       disabled={acting || !optimization.signal_fingerprint}
                       onClick={() => void runOptAction('dismiss')}
                     >
-                      Отклонить совет
+                      {t('app.marketing.detail.optimization.dismiss', {
+                        defaultValue: 'Dismiss advice',
+                      })}
                     </button>
                   </div>
                 )}
@@ -968,9 +1037,16 @@ export default function MarketingCampaignDetailPage() {
             <section className="rounded-xl border border-slate-200 bg-white" data-testid="marketing-live-intake-monitor">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-900">Заявки</h2>
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    {t('app.marketing.detail.applicants.title', {
+                      defaultValue: 'Applications',
+                    })}
+                  </h2>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    Люди, пришедшие на этот Flight. Технический лог — в таймлайне.
+                    {t('app.marketing.detail.applicants.subtitle', {
+                      defaultValue:
+                        'People who arrived on this Flight. Technical log is in the timeline.',
+                    })}
                   </p>
                 </div>
                 <Link
@@ -979,12 +1055,17 @@ export default function MarketingCampaignDetailPage() {
                   }`}
                   className="text-xs font-medium text-brand-600"
                 >
-                  Таймлайн →
+                  {t('app.marketing.detail.applicants.timeline', {
+                    defaultValue: 'Timeline →',
+                  })}
                 </Link>
               </div>
               {!monitor?.applicants?.length ? (
                 <p className="px-4 py-6 text-sm text-slate-500">
-                  Пока нет заявок на этот Flight. После Connect Source новые Meta-лиды появятся здесь.
+                  {t('app.marketing.detail.applicants.empty', {
+                    defaultValue:
+                      'No applications on this Flight yet. After Connect Source, new Meta leads will appear here.',
+                  })}
                 </p>
               ) : (
                 <>
@@ -999,7 +1080,10 @@ export default function MarketingCampaignDetailPage() {
                           <Link to={href} className="block hover:bg-slate-50/80 -mx-4 px-4 py-0.5 rounded">
                             <div className="flex flex-wrap items-baseline justify-between gap-2">
                               <span className="text-sm font-medium text-slate-900">
-                                {row.full_name || 'Без имени'}
+                                {row.full_name ||
+                                  t('app.marketing.detail.applicants.unnamed', {
+                                    defaultValue: 'Unnamed',
+                                  })}
                               </span>
                               <span className="text-xs text-slate-500">
                                 {row.created_at ? formatDateTime(row.created_at, locale) : '—'}
@@ -1025,7 +1109,11 @@ export default function MarketingCampaignDetailPage() {
                         onClick={() => void loadMoreMonitor()}
                         data-testid="marketing-monitor-load-more"
                       >
-                        {loadingMore ? t('common.loading') : 'Ещё заявки'}
+                        {loadingMore
+                          ? t('common.loading')
+                          : t('app.marketing.detail.applicants.load_more', {
+                              defaultValue: 'More applications',
+                            })}
                       </button>
                     </div>
                   ) : null}

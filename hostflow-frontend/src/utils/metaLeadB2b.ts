@@ -1,6 +1,7 @@
 import type { Lead } from '../api/types'
 import type { LeadTargetType } from '../api/types/lead'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { detectStoredLocale, lookupScopedTranslation } from '../i18n'
 
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
@@ -9,6 +10,12 @@ function record(value: unknown): Record<string, unknown> {
 function text(value: unknown): string {
   if (value == null) return ''
   return String(value).trim()
+}
+
+function formFallbackLabel(formId: string): string {
+  const template =
+    lookupScopedTranslation(detectStoredLocale(), 'app.meta', 'form_fallback') || 'form {formId}'
+  return template.split('{formId}').join(formId)
 }
 
 export function metaLeadNormalized(lead: Lead): Record<string, unknown> {
@@ -120,7 +127,7 @@ export function inquiryMetaAttribution(lead: Lead): InquiryMetaAttribution | nul
     text(sourceProfile.name) ||
     text(marketing.form_name) ||
     text(normalized.form_name) ||
-    (formId ? `форма ${formId}` : '')
+    (formId ? formFallbackLabel(formId) : '')
 
   const campaignName =
     text(marketing.campaign_name) ||

@@ -30,7 +30,7 @@ export default function ClientChannelWorkspaceLayout() {
       setChannelName(
         profile?.name ??
           cached?.name ??
-          t('app.client_channel_home.default_title', { defaultValue: 'Привлечение клиентов' }),
+          t('app.client_channel_home.default_title', { defaultValue: 'Client acquisition' }),
       )
       setPublicUrl(slug ? buildPublicClientInquiryUrl(slug) : cached?.publicUrl ?? '')
     } catch {
@@ -67,14 +67,14 @@ export default function ClientChannelWorkspaceLayout() {
           className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-brand-700"
         >
           <IconArrowLeft size={14} stroke={1.9} />
-          {t('app.sales_channels.back_list', { defaultValue: 'Привлечение клиентов' })}
+          {t('app.sales_channels.back_list', { defaultValue: 'Client acquisition' })}
         </Link>
 
         <header className="space-y-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-                {t('app.client_channel_home.kicker', { defaultValue: 'Привлечение клиентов' })}
+                {t('app.client_channel_home.kicker', { defaultValue: 'Client acquisition' })}
               </p>
               <h1 className="mt-1 text-2xl font-semibold text-slate-900">{channelName || '…'}</h1>
             </div>
@@ -88,7 +88,7 @@ export default function ClientChannelWorkspaceLayout() {
           {status?.open_inquiries != null ? (
             <p className="text-sm text-slate-600">
               {t('app.sales_workspace.status_line', {
-                defaultValue: '{open} открытых запросов · сегодня {today} · клиентов {converted}',
+                defaultValue: '{open} open inquiries · today {today} · clients {converted}',
                 values: {
                   open: status.open_inquiries ?? 0,
                   today: status.today_inquiries ?? 0,

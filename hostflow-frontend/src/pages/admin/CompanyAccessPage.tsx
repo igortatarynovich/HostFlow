@@ -63,11 +63,15 @@ export default function CompanyAccessPage() {
         setAllUsers(Array.isArray(usersResp) ? usersResp.filter((user) => !!user.user_id) : [])
       } catch (err) {
         console.error('[CompanyAccessPage] initial load failed', err)
-        setError('Не удалось загрузить исходные данные')
+        setError(
+          t('admin.company_access.load_initial_failed', {
+            defaultValue: 'Failed to load initial data',
+          }),
+        )
       }
     }
     void loadInitial()
-  }, [canManage])
+  }, [canManage, t])
 
   const availableUsers = useMemo(() => {
     return allUsers.filter((user) => user.user_id && user.status !== 'invited')
@@ -83,12 +87,16 @@ export default function CompanyAccessPage() {
         setAccessList(Array.isArray(data) ? data : [])
       } catch (err) {
         console.error('[CompanyAccessPage] access load failed', err)
-        setError('Не удалось загрузить список доступа')
+        setError(
+          t('admin.company_access.load_access_failed', {
+            defaultValue: 'Failed to load access list',
+          }),
+        )
       } finally {
         setLoadingAccess(false)
       }
     },
-    [],
+    [t],
   )
 
   useEffect(() => {
@@ -112,12 +120,16 @@ export default function CompanyAccessPage() {
         await loadAccess(selectedCompanyId)
       } catch (err) {
         console.error('[CompanyAccessPage] grant failed', err)
-        setError('Не удалось выдать доступ компании')
+        setError(
+          t('admin.company_access.grant_failed', {
+            defaultValue: 'Failed to grant company access',
+          }),
+        )
       } finally {
         setSaving(false)
       }
     },
-    [selectedCompanyId, form, loadAccess],
+    [selectedCompanyId, form, loadAccess, t],
   )
 
   const handleToggle = useCallback(
@@ -127,7 +139,11 @@ export default function CompanyAccessPage() {
       setError(null)
       try {
         if (!entry.user_id) {
-          throw new Error('Нет user_id у записи доступа');
+          throw new Error(
+            t('admin.company_access.missing_user_id', {
+              defaultValue: 'Access entry has no user_id',
+            }),
+          )
         }
         await grantCompanyAccess(selectedCompanyId, {
           user_id: entry.user_id,
@@ -136,22 +152,39 @@ export default function CompanyAccessPage() {
         await loadAccess(selectedCompanyId)
       } catch (err) {
         console.error('[CompanyAccessPage] toggle failed', err)
-        setError('Не удалось обновить права доступа')
+        setError(
+          t('admin.company_access.update_failed', {
+            defaultValue: 'Failed to update access permissions',
+          }),
+        )
       } finally {
         setSaving(false)
       }
     },
-    [selectedCompanyId, loadAccess],
+    [selectedCompanyId, loadAccess, t],
   )
 
   const handleRevoke = useCallback(
     async (entry: CompanyAccessEntry) => {
       if (!selectedCompanyId) return
       if (!entry.user_id) {
-        setError('У записи нет user_id');
-        return;
+        setError(
+          t('admin.company_access.missing_user_id', {
+            defaultValue: 'Access entry has no user_id',
+          }),
+        )
+        return
       }
-      if (!window.confirm(`Отозвать доступ у ${entry.email}?`)) return
+      if (
+        !window.confirm(
+          t('admin.company_access.revoke_confirm', {
+            defaultValue: 'Revoke access for {email}?',
+            values: { email: entry.email },
+          }),
+        )
+      ) {
+        return
+      }
       setSaving(true)
       setError(null)
       try {
@@ -159,24 +192,36 @@ export default function CompanyAccessPage() {
         await loadAccess(selectedCompanyId)
       } catch (err) {
         console.error('[CompanyAccessPage] revoke failed', err)
-        setError('Не удалось отозвать доступ')
+        setError(
+          t('admin.company_access.revoke_failed', {
+            defaultValue: 'Failed to revoke access',
+          }),
+        )
       } finally {
         setSaving(false)
       }
     },
-    [selectedCompanyId, loadAccess],
+    [selectedCompanyId, loadAccess, t],
   )
 
   if (!canManage) {
     return (
       <div className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        У вас нет доступа к управлению ACL компаний.
+        {t('admin.company_access.no_permission', {
+          defaultValue: 'You do not have permission to manage company ACL.',
+        })}
       </div>
     )
   }
 
   if (companies.length === 0) {
-    return <div className="text-sm text-slate-600">Нет компаний для настройки доступа.</div>
+    return (
+      <div className="text-sm text-slate-600">
+        {t('admin.company_access.no_companies', {
+          defaultValue: 'No companies available for access setup.',
+        })}
+      </div>
+    )
   }
 
   const selectedCompany = companies.find((company) => company.id === selectedCompanyId)
@@ -184,24 +229,29 @@ export default function CompanyAccessPage() {
   const accessPageErrorBanner: FriendlyErrorInfo | null = error
     ? {
         title: error,
-        hint: 'Повторите действие или обновите страницу.',
+        hint: t('admin.company_access.retry_hint', {
+          defaultValue: 'Retry the action or refresh the page.',
+        }),
       }
     : null
+
+  const pageTitle = t('admin.company_access.title', { defaultValue: 'Company access' })
 
   return (
     <SettingsSubpageHeader
       backHref={CRM_APP_PATHS.settings}
       backLabel={t('admin.settings.subpage.back_all', { defaultValue: '← All settings' })}
       kicker={t('admin.settings.subpage.kicker_workspace_setup', { defaultValue: 'Team & access' })}
-      title={t('admin.company_access.title', { defaultValue: 'Доступ к компаниям' })}
+      title={pageTitle}
       subtitle={
         selectedCompany
           ? t('admin.company_access.subtitle_with_company', {
-              defaultValue: `Компания: ${selectedCompany.name}`,
+              defaultValue: 'Company: {name}',
               values: { name: selectedCompany.name },
             })
           : t('admin.company_access.subtitle', {
-              defaultValue: 'Управляйте доступом сотрудников к карточкам клиентов и кандидатов внутри выбранной компании.',
+              defaultValue:
+                'Manage employee access to client and candidate cards within the selected company.',
             })
       }
       actions={
@@ -209,7 +259,9 @@ export default function CompanyAccessPage() {
           className="input w-full max-w-sm"
           value={selectedCompanyId}
           onChange={(event) => setSelectedCompanyId(event.target.value)}
-          aria-label={t('admin.company_access.company_select_label', { defaultValue: 'Выбор компании' })}
+          aria-label={t('admin.company_access.company_select_label', {
+            defaultValue: 'Select company',
+          })}
         >
           {companies.map((company) => (
             <option key={company.id} value={company.id}>
@@ -219,35 +271,53 @@ export default function CompanyAccessPage() {
         </select>
       }
     >
-
       {accessPageErrorBanner && (
         <ErrorRecoveryBanner
           info={accessPageErrorBanner}
           onRetry={() => selectedCompanyId && void loadAccess(selectedCompanyId)}
-          retryLabel="Обновить"
+          retryLabel={t('admin.company_access.retry', { defaultValue: 'Refresh' })}
           {...friendlyErrorBannerSecondary(
             accessPageErrorBanner,
             CRM_APP_PATHS.settingsCompanyAccess,
-            'Доступ к компаниям',
+            pageTitle,
           )}
           compact
         />
       )}
 
       <section className="rounded-lg border border-slate-200 bg-white p-6 space-y-3">
-        <h2 className="text-lg font-semibold text-slate-900">Текущий доступ</h2>
+        <h2 className="text-lg font-semibold text-slate-900">
+          {t('admin.company_access.current_access', { defaultValue: 'Current access' })}
+        </h2>
         {loadingAccess ? (
-          <div className="text-sm text-slate-500">Загрузка…</div>
+          <div className="text-sm text-slate-500">
+            {t('admin.company_access.loading', { defaultValue: 'Loading…' })}
+          </div>
         ) : accessList.length === 0 ? (
-          <div className="text-sm text-slate-500">Для этой компании пока нет назначенных пользователей.</div>
+          <div className="text-sm text-slate-500">
+            {t('admin.company_access.empty_access', {
+              defaultValue: 'No users assigned to this company yet.',
+            })}
+          </div>
         ) : (
           <ul className="space-y-2 text-sm">
             {accessList.map((entry) => (
-              <li key={entry.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-100 px-3 py-2">
+              <li
+                key={entry.user_id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-100 px-3 py-2"
+              >
                 <div>
                   <div className="font-medium text-slate-900">{entry.email}</div>
                   <div className="text-xs text-slate-500">
-                    Роль: {entry.role} · Права: {entry.can_edit ? 'редактирование' : 'просмотр'}
+                    {t('admin.company_access.role_rights', {
+                      defaultValue: 'Role: {role} · Rights: {rights}',
+                      values: {
+                        role: entry.role,
+                        rights: entry.can_edit
+                          ? t('admin.company_access.rights_edit', { defaultValue: 'edit' })
+                          : t('admin.company_access.rights_view', { defaultValue: 'view' }),
+                      },
+                    })}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -257,7 +327,9 @@ export default function CompanyAccessPage() {
                     disabled={saving}
                     onClick={() => void handleToggle(entry)}
                   >
-                    {entry.can_edit ? 'Только просмотр' : 'Разрешить правки'}
+                    {entry.can_edit
+                      ? t('admin.company_access.set_view_only', { defaultValue: 'View only' })
+                      : t('admin.company_access.allow_edit', { defaultValue: 'Allow edits' })}
                   </button>
                   <button
                     type="button"
@@ -265,7 +337,7 @@ export default function CompanyAccessPage() {
                     disabled={saving}
                     onClick={() => void handleRevoke(entry)}
                   >
-                    Удалить
+                    {t('admin.company_access.remove', { defaultValue: 'Remove' })}
                   </button>
                 </div>
               </li>
@@ -275,17 +347,21 @@ export default function CompanyAccessPage() {
       </section>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">Выдать доступ</h2>
+        <h2 className="text-lg font-semibold text-slate-900">
+          {t('admin.company_access.grant_title', { defaultValue: 'Grant access' })}
+        </h2>
         <form className="space-y-3" onSubmit={handleGrant}>
           <label className="block text-sm">
-            <span className="label">Пользователь</span>
+            <span className="label">{t('admin.company_access.user', { defaultValue: 'User' })}</span>
             <select
               className="input w-full"
               value={form.userId}
               onChange={(event) => setForm((prev) => ({ ...prev, userId: event.target.value }))}
               required
             >
-              <option value="">Выберите пользователя</option>
+              <option value="">
+                {t('admin.company_access.user_placeholder', { defaultValue: 'Select a user' })}
+              </option>
               {availableUsers.map((user) => (
                 <option key={user.user_id} value={user.user_id!}>
                   {user.email} ({user.role})
@@ -300,11 +376,17 @@ export default function CompanyAccessPage() {
               checked={form.canEdit}
               onChange={(event) => setForm((prev) => ({ ...prev, canEdit: event.target.checked }))}
             />
-            <span>Разрешить редактирование данных компании</span>
+            <span>
+              {t('admin.company_access.allow_company_edit', {
+                defaultValue: 'Allow editing company data',
+              })}
+            </span>
           </label>
 
           <button type="submit" className="btn-primary" disabled={saving || !form.userId}>
-            {saving ? 'Сохраняем…' : 'Выдать доступ'}
+            {saving
+              ? t('admin.company_access.saving', { defaultValue: 'Saving…' })
+              : t('admin.company_access.grant', { defaultValue: 'Grant access' })}
           </button>
         </form>
       </section>

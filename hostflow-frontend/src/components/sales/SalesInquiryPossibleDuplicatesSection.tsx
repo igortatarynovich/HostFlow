@@ -14,13 +14,13 @@ function matchLabel(
 ): string {
   if (reason === 'phone_and_email') {
     return t('app.sales_inquiry.duplicates.match_phone_email', {
-      defaultValue: 'тот же телефон и email',
+      defaultValue: 'same phone and email',
     })
   }
   if (reason === 'phone') {
-    return t('app.sales_inquiry.duplicates.match_phone', { defaultValue: 'тот же телефон' })
+    return t('app.sales_inquiry.duplicates.match_phone', { defaultValue: 'same phone' })
   }
-  return t('app.sales_inquiry.duplicates.match_email', { defaultValue: 'тот же email' })
+  return t('app.sales_inquiry.duplicates.match_email', { defaultValue: 'same email' })
 }
 
 /** Operator hint: other client inquiries sharing phone/email. */
@@ -56,11 +56,11 @@ export default function SalesInquiryPossibleDuplicatesSection({ applicationId }:
       data-testid="sales-inquiry-possible-duplicates"
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
-        {t('app.sales_inquiry.duplicates.title', { defaultValue: 'Возможные дубли' })}
+        {t('app.sales_inquiry.duplicates.title', { defaultValue: 'Possible duplicates' })}
       </p>
       <p className="mt-1 text-[11px] text-amber-800/90">
         {t('app.sales_inquiry.duplicates.hint', {
-          defaultValue: 'Другие обращения с тем же телефоном или email. Обычно одна фирма — один клиент.',
+          defaultValue: 'Other inquiries with the same phone or email. Usually one company — one client.',
         })}
       </p>
       <ul className="mt-2 space-y-1.5">

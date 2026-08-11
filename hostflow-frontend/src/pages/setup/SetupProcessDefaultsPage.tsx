@@ -37,7 +37,7 @@ export default function SetupProcessDefaultsPage() {
         getFriendlyErrorInfo(
           err,
           t('app.onboarding.setup.process.errors.generic', {
-            defaultValue: 'Не удалось применить стандартные настройки.',
+            defaultValue: 'Could not apply standard settings.',
           }),
           t,
         ),
@@ -50,13 +50,13 @@ export default function SetupProcessDefaultsPage() {
   return (
     <SetupFlowChrome
       testId="m1-setup-process-flow"
-      stepLabel={t('app.onboarding.setup.process.badge', { defaultValue: 'Настройка · Процесс' })}
+      stepLabel={t('app.onboarding.setup.process.badge', { defaultValue: 'Setup · Process' })}
       title={t('app.onboarding.setup.process.title', {
-        defaultValue: 'Стандартный процесс рекрутинга',
+        defaultValue: 'Standard recruitment process',
       })}
       subtitle={t('app.onboarding.setup.process.subtitle', {
         defaultValue:
-          'Для этой вакансии HostFlow подключит готовую воронку и профиль требований. Изменить можно позже в настройках.',
+          'For this vacancy HostFlow will attach a ready funnel and requirements profile. You can change them later in settings.',
       })}
     >
       <div className="space-y-4">
@@ -66,7 +66,7 @@ export default function SetupProcessDefaultsPage() {
             <span>
               {t('app.onboarding.setup.process.funnel_line', {
                 defaultValue:
-                  'Будет использоваться стандартная воронка рекрутинга с этапами от первого контакта до найма.',
+                  'A standard recruitment funnel will be used — stages from first contact to hire.',
               })}
             </span>
           </li>
@@ -75,7 +75,7 @@ export default function SetupProcessDefaultsPage() {
             <span>
               {t('app.onboarding.setup.process.profile_line', {
                 defaultValue:
-                  'Профиль требований к кандидату подставится автоматически — документы и проверки по шаблону.',
+                  'The candidate requirements profile will be applied automatically — documents and checks from the template.',
               })}
             </span>
           </li>
@@ -84,7 +84,7 @@ export default function SetupProcessDefaultsPage() {
         {applied ? (
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
             {t('app.onboarding.setup.process.applied', {
-              defaultValue: 'Подключено: {funnel} · {profile}',
+              defaultValue: 'Connected: {funnel} · {profile}',
               values: {
                 funnel: applied.funnelName ?? '—',
                 profile: applied.profileName ?? '—',
@@ -104,7 +104,7 @@ export default function SetupProcessDefaultsPage() {
         >
           {loading
             ? t('common.loading')
-            : t('app.onboarding.setup.process.continue', { defaultValue: 'Продолжить' })}
+            : t('app.onboarding.setup.process.continue', { defaultValue: 'Continue' })}
         </button>
       </div>
     </SetupFlowChrome>

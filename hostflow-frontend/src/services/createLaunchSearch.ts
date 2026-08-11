@@ -9,7 +9,7 @@ import {
   type SearchRole,
 } from '../utils/launchSearchRoleDefaults'
 import { buildLaunchSearchTitle } from '../utils/launchSearchI18n'
-import { detectStoredLocale } from '../i18n'
+import { detectStoredLocale, lookupScopedTranslation } from '../i18n'
 import { launchSearchIntakeFields } from '../utils/launchSearchIntakeFields'
 
 export type { SearchRole }
@@ -118,7 +118,10 @@ export async function createLaunchSearch(input: CreateLaunchSearchInput): Promis
 
   if (input.existingClientId) {
     companyId = input.existingClientId
-    companyName = (input.clientName || '').trim() || 'Клиент'
+    companyName =
+      (input.clientName || '').trim() ||
+      lookupScopedTranslation(detectStoredLocale(), 'common.labels', 'client') ||
+      'Client'
     if (!companyId) throw new Error('client_id_required')
   } else if (input.target === 'client') {
     const clientLabel = (input.clientName || '').trim()

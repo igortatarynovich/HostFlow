@@ -76,7 +76,7 @@ export default function MarketingCampaignsPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.errors.load', { defaultValue: 'Не удалось загрузить кампании' }),
+          t('app.marketing.errors.load', { defaultValue: 'Failed to load campaigns' }),
           t,
         ),
       )
@@ -104,7 +104,7 @@ export default function MarketingCampaignsPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.marketing.errors.command', { defaultValue: 'Не удалось выполнить действие' }),
+          t('app.marketing.errors.command', { defaultValue: 'Could not run this action' }),
           t,
         ),
       )
@@ -117,14 +117,14 @@ export default function MarketingCampaignsPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.marketing.title', { defaultValue: 'Маркетинг' })}
+          title={t('app.marketing.title', { defaultValue: 'Marketing' })}
           subtitle={t('app.marketing.subtitle', {
-            defaultValue: 'Кампании, формы и запуск Flight — от идеи до входящих заявок.',
+            defaultValue: 'Campaigns, forms, and Flight launch — from idea to inbound applications.',
           })}
           kind="browse"
           primaryAction={
             <Link to={CRM_APP_PATHS.marketingNew} className="btn-primary btn-sm">
-              {t('app.marketing.actions.create', { defaultValue: 'Создать кампанию' })}
+              {t('app.marketing.actions.create', { defaultValue: 'Create campaign' })}
             </Link>
           }
           secondaryActions={
@@ -149,10 +149,10 @@ export default function MarketingCampaignsPage() {
               </h2>
               <p className="text-xs text-slate-500">
                 {t('app.marketing.portfolio.subtitle', {
-                  defaultValue: 'Сводка по кампаниям компании (только чтение).',
+                  defaultValue: 'Company campaign summary (read-only).',
                 })}
                 {portfolio.scan_capped
-                  ? t('app.marketing.portfolio.capped', { defaultValue: ' Список ограничен.' })
+                  ? t('app.marketing.portfolio.capped', { defaultValue: ' List is capped.' })
                   : ''}
               </p>
             </div>
@@ -232,7 +232,7 @@ export default function MarketingCampaignsPage() {
                           </span>
                         ) : null}
                       </td>
-                      <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status)}</td>
+                      <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status, t)}</td>
                       <td className="py-2 pr-3 tabular-nums text-slate-900">
                         {row.spend}
                         {row.currency ? ` ${row.currency}` : ''}
@@ -261,15 +261,15 @@ export default function MarketingCampaignsPage() {
         {!loading && items.length === 0 && !error ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center">
             <p className="text-sm font-medium text-slate-800">
-              {t('app.marketing.empty_title', { defaultValue: 'Пока нет кампаний' })}
+              {t('app.marketing.empty_title', { defaultValue: 'No campaigns yet' })}
             </p>
             <p className="mt-1 text-sm text-slate-600">
               {t('app.marketing.empty_body', {
-                defaultValue: 'Создайте первую: форма → поток → запуск Flight.',
+                defaultValue: 'Create the first one: form → flow → launch Flight.',
               })}
             </p>
             <Link to={CRM_APP_PATHS.marketingNew} className="btn-primary btn-sm mt-4 inline-flex">
-              {t('app.marketing.actions.create', { defaultValue: 'Создать кампанию' })}
+              {t('app.marketing.actions.create', { defaultValue: 'Create campaign' })}
             </Link>
           </div>
         ) : null}
@@ -279,9 +279,17 @@ export default function MarketingCampaignsPage() {
             const flight = currentFlight(campaign)
             const form = primaryForm(flight)
             const source = primarySource(flight)
-            const sourceLabel = source?.name || source?.provider || (form ? 'Публичная форма' : '—')
+            const sourceLabel =
+              source?.name ||
+              source?.provider ||
+              (form
+                ? t('app.marketing.list.public_form', { defaultValue: 'Public form' })
+                : '—')
             const status = flight?.status || 'planned'
             const busy = actingId === campaign.id
+            const launchValue = flight?.starts_at
+              ? formatDateTime(flight.starts_at, locale)
+              : t('app.marketing.list.not_launched', { defaultValue: 'not launched yet' })
             return (
               <li key={campaign.id} className="px-4 py-3">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -294,32 +302,55 @@ export default function MarketingCampaignsPage() {
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${statusTone(campaign.status)}`}
                       >
-                        {statusLabel(campaign.status)}
+                        {statusLabel(campaign.status, t)}
                       </span>
                       {flight ? (
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${statusTone(flight.status)}`}
                         >
-                          Flight: {statusLabel(flight.status)}
+                          {t('app.marketing.list.flight_prefix', {
+                            defaultValue: 'Flight: {status}',
+                            values: { status: statusLabel(flight.status, t) },
+                          })}
                         </span>
                       ) : null}
                       <span className="text-xs text-slate-500">
-                        Заявок: {counts[campaign.id]?.received ?? '…'}
+                        {t('app.marketing.list.applications', {
+                          defaultValue: 'Applications: {count}',
+                          values: { count: counts[campaign.id]?.received ?? '…' },
+                        })}
                       </span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span>Форма: {form?.title || '—'}</span>
-                      <span>Источник: {sourceLabel}</span>
-                      <span>Куда: {destinationSummary(campaign)}</span>
                       <span>
-                        Запуск:{' '}
-                        {flight?.starts_at ? formatDateTime(flight.starts_at, locale) : 'ещё не запускали'}
+                        {t('app.marketing.list.form', {
+                          defaultValue: 'Form: {value}',
+                          values: { value: form?.title || '—' },
+                        })}
+                      </span>
+                      <span>
+                        {t('app.marketing.list.source', {
+                          defaultValue: 'Source: {value}',
+                          values: { value: sourceLabel },
+                        })}
+                      </span>
+                      <span>
+                        {t('app.marketing.list.destination', {
+                          defaultValue: 'Destination: {value}',
+                          values: { value: destinationSummary(campaign, t) },
+                        })}
+                      </span>
+                      <span>
+                        {t('app.marketing.list.launch', {
+                          defaultValue: 'Launch: {value}',
+                          values: { value: launchValue },
+                        })}
                       </span>
                     </div>
                   </Link>
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <Link to={marketingCampaignPath(campaign.id)} className="btn-secondary btn-sm">
-                      Открыть
+                      {t('app.marketing.actions.open', { defaultValue: 'Open' })}
                     </Link>
                     {status === 'planned' ? (
                       <button
@@ -328,7 +359,7 @@ export default function MarketingCampaignsPage() {
                         disabled={busy || !flight}
                         onClick={() => void runCommand(campaign, 'launch')}
                       >
-                        Запустить
+                        {t('app.marketing.actions.launch', { defaultValue: 'Launch' })}
                       </button>
                     ) : null}
                     {status === 'active' ? (
@@ -338,7 +369,7 @@ export default function MarketingCampaignsPage() {
                         disabled={busy || !flight}
                         onClick={() => void runCommand(campaign, 'pause')}
                       >
-                        Приостановить
+                        {t('app.marketing.actions.pause', { defaultValue: 'Pause' })}
                       </button>
                     ) : null}
                     {status === 'paused' ? (
@@ -348,7 +379,7 @@ export default function MarketingCampaignsPage() {
                         disabled={busy || !flight}
                         onClick={() => void runCommand(campaign, 'resume')}
                       >
-                        Возобновить
+                        {t('app.marketing.actions.resume', { defaultValue: 'Resume' })}
                       </button>
                     ) : null}
                   </div>

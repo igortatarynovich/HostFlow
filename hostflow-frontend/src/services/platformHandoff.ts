@@ -1,8 +1,13 @@
 import { CRM_APP_PATHS, recruitmentSearchPath } from '../app/crmAppPaths'
 import type { PlatformHandoff } from '../api/platformCompletion'
+import { detectStoredLocale, lookupScopedTranslation } from '../i18n'
 import { createLaunchSearch } from './createLaunchSearch'
 import { persistLaunchSearch } from './launchSearchSession'
 import type { SearchRole } from '../utils/launchSearchRoleDefaults'
+
+function fallbackClientName(): string {
+  return lookupScopedTranslation(detectStoredLocale(), 'common.labels', 'client') || 'Client'
+}
 
 export const SALES_CLIENT_ACTIVE_EVENT = 'sales.client_active'
 
@@ -31,7 +36,7 @@ export async function executePlatformHandoff(handoff: PlatformHandoff): Promise<
       role,
       target: 'client',
       existingClientId: clientId,
-      clientName: String(ctx.client_name || '').trim() || 'Клиент',
+      clientName: String(ctx.client_name || '').trim() || fallbackClientName(),
     })
     persistLaunchSearch(created)
     return { navigateTo: recruitmentSearchPath(created.searchId) }

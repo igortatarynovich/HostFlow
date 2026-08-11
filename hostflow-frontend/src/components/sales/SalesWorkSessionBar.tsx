@@ -11,12 +11,6 @@ import {
   parseSalesInquiryLeadId,
 } from '../../services/salesWorkSession'
 
-const KIND_LABEL: Record<string, string> = {
-  call: 'Звонки компаниям',
-  convert: 'Оформление клиентов',
-  recruitment_call: 'Новые отклики',
-}
-
 export function SalesWorkSessionBar() {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -39,6 +33,16 @@ export function SalesWorkSessionBar() {
 
   const total = session.queue.length
   const current = session.index + 1
+  const kindLabel = t(`app.sales_work_session.kind.${session.kind}`, {
+    defaultValue:
+      (
+        {
+          call: 'Company calls',
+          convert: 'Client onboarding',
+          recruitment_call: 'New applications',
+        } as Record<string, string>
+      )[session.kind] || session.kind,
+  })
 
   function handleNext() {
     const nextId = advanceSalesWorkSession()
@@ -62,9 +66,9 @@ export function SalesWorkSessionBar() {
       <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium text-brand-900">
           {t('app.sales_work_session.progress', {
-            defaultValue: '{kind}: запрос {current} из {total}',
+            defaultValue: '{kind}: inquiry {current} of {total}',
             values: {
-              kind: KIND_LABEL[session.kind] || session.kind,
+              kind: kindLabel,
               current,
               total,
             },
@@ -76,14 +80,14 @@ export function SalesWorkSessionBar() {
             onClick={handleNext}
             className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           >
-            {t('app.sales_work_session.next', { defaultValue: 'Готово — следующий' })}
+            {t('app.sales_work_session.next', { defaultValue: 'Done — next' })}
           </button>
           <button
             type="button"
             onClick={handleStop}
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            {t('app.sales_work_session.back_list', { defaultValue: 'Вернуться к списку' })}
+            {t('app.sales_work_session.back_list', { defaultValue: 'Back to list' })}
           </button>
         </div>
       </div>

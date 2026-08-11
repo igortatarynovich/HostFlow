@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Application } from '../../api/types/application'
+import type { Application, ApplicationStatus } from '../../api/types/application'
 import { useI18n } from '../../i18n'
 import { clientDetailPath } from '../../services/platformHandoff'
 import SalesInquiryPossibleDuplicatesSection from '../../components/sales/SalesInquiryPossibleDuplicatesSection'
@@ -10,17 +10,17 @@ import { MetaFormAnswersSection } from '../../components/sales/MetaFormAnswersSe
 import { ContextRail } from '../context-rail'
 import {
   APPLICATION_STATUS_BADGE,
-  APPLICATION_STATUS_TEXT,
   applicationInitial,
+  applicationStatusLabel,
 } from './applicationDisplay'
 import { resolveSalesApplicationDecision } from './resolveSalesApplicationDecision'
 
-const WORKFLOW_STEPS = [
-  { key: 'contact', label: 'Связаться' },
-  { key: 'need', label: 'Потребность' },
-  { key: 'client', label: 'Клиент' },
-  { key: 'service', label: 'Услуга' },
-  { key: 'order', label: 'Заказ' },
+const WORKFLOW_STEP_KEYS = [
+  { key: 'contact', labelKey: 'app.sales_inquiry.workflow.contact', defaultValue: 'Contact' },
+  { key: 'need', labelKey: 'app.sales_inquiry.workflow.need', defaultValue: 'Need' },
+  { key: 'client', labelKey: 'app.sales_inquiry.workflow.client', defaultValue: 'Client' },
+  { key: 'service', labelKey: 'app.sales_inquiry.workflow.service', defaultValue: 'Service' },
+  { key: 'order', labelKey: 'app.sales_inquiry.workflow.order', defaultValue: 'Order' },
 ] as const
 
 export type ApplicationSalesDetailPanelProps = {
@@ -45,12 +45,14 @@ export function ApplicationSalesDetailPanel({
   const { t } = useI18n()
   const [timelineRefresh, setTimelineRefresh] = useState(0)
   const companyName = application.title
-  const statusKey = application.status === 'rejected' ? 'completed' : application.status
+  const statusKey: ApplicationStatus = application.status === 'rejected' ? 'completed' : application.status
   const activeStep = Number(application.extensions?.workflow_step ?? 1)
   const convertedId = String(application.outcome_entity_id || '').trim()
   const clientHref = convertedId ? clientDetailPath(convertedId) : undefined
-  const subtitle = application.subtitle || 'B2B заявка'
-  const openCardLabel = t('app.sales_inquiry.open_client_card', { defaultValue: 'Открыть полную карточку' })
+  const subtitle =
+    application.subtitle ||
+    t('app.sales_inquiry.subtitle_fallback', { defaultValue: 'B2B inquiry' })
+  const openCardLabel = t('app.sales_inquiry.open_full_card', { defaultValue: 'Open full card' })
   const contactPhone = application.contact.phone?.trim() || ''
   const contactEmail = application.contact.email?.trim() || ''
   const telHref = contactPhone ? `tel:${contactPhone.replace(/\s/g, '')}` : null
@@ -77,18 +79,18 @@ export function ApplicationSalesDetailPanel({
         titleHref: clientHref,
         subtitle,
         meta,
-        statusLabel: APPLICATION_STATUS_TEXT[statusKey as keyof typeof APPLICATION_STATUS_TEXT] || statusKey,
-        statusClassName: `rounded-full px-3 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey as keyof typeof APPLICATION_STATUS_BADGE] || APPLICATION_STATUS_BADGE.new}`,
+        statusLabel: applicationStatusLabel(statusKey, t),
+        statusClassName: `rounded-full px-3 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey] || APPLICATION_STATUS_BADGE.new}`,
         entityWorkspaceHref: clientHref,
         entityWorkspaceLabel: openCardLabel,
       }}
       decision={decision}
       onClose={onClose}
-      closeLabel={t('common.close', { defaultValue: 'Закрыть' })}
+      closeLabel={t('common.close', { defaultValue: 'Close' })}
       contextSlots={{
         workflow: (
           <ol className="flex items-center gap-1">
-            {WORKFLOW_STEPS.map((step, idx) => {
+            {WORKFLOW_STEP_KEYS.map((step, idx) => {
               const stepNum = idx + 1
               const done = stepNum < activeStep
               const active = stepNum === activeStep
@@ -110,9 +112,9 @@ export function ApplicationSalesDetailPanel({
                       active ? 'text-brand-800' : done ? 'text-slate-700' : 'text-slate-400'
                     }`}
                   >
-                    {step.label}
+                    {t(step.labelKey, { defaultValue: step.defaultValue })}
                   </span>
-                  {idx < WORKFLOW_STEPS.length - 1 ? (
+                  {idx < WORKFLOW_STEP_KEYS.length - 1 ? (
                     <span className={`mx-0.5 h-px flex-1 ${done ? 'bg-brand-300' : 'bg-slate-200'}`} />
                   ) : null}
                 </li>
@@ -127,7 +129,8 @@ export function ApplicationSalesDetailPanel({
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-slate-800">
-                {application.contact.name || 'Контакт'}
+                {application.contact.name ||
+                  t('app.sales_inquiry.contact_fallback', { defaultValue: 'Contact' })}
               </p>
               {telHref ? (
                 <a
@@ -139,7 +142,7 @@ export function ApplicationSalesDetailPanel({
                 </a>
               ) : (
                 <p className="mt-1 text-sm text-slate-400">
-                  {t('app.sales_inquiry.no_phone', { defaultValue: 'Телефон не указан' })}
+                  {t('app.sales_inquiry.no_phone', { defaultValue: 'No phone number' })}
                 </p>
               )}
               {contactEmail ? (
@@ -182,9 +185,9 @@ export function ApplicationSalesDetailPanel({
         ),
       }}
       contextTitles={{
-        contacts: t('app.sales_inquiry.contact_title', { defaultValue: 'Контакт' }),
-        summary: t('app.sales_inquiry.work_title', { defaultValue: 'Работа по обращению' }),
-        history: t('app.leads.detail.timeline', { defaultValue: 'История' }),
+        contacts: t('app.sales_inquiry.contact_title', { defaultValue: 'Contact' }),
+        summary: t('app.sales_inquiry.work_title', { defaultValue: 'Work on inquiry' }),
+        history: t('app.leads.detail.timeline', { defaultValue: 'History' }),
       }}
     />
   )

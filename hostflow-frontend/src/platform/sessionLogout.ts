@@ -122,6 +122,10 @@ export function startCrossOriginLogoutBounce(): string {
 /**
  * Run before React boot. Clears this origin's auth LS and continues the wipe chain.
  * Returns true when a redirect was scheduled (caller must not mount the app).
+ *
+ * Do NOT leave `hf:session_revoked` stuck on intermediate module hosts — React never
+ * mounts during the wipe bounce, and a sticky flag blocks the next real login when
+ * DeployHostBoundary later hard-navigates shell → module (session looks "logged out").
  */
 export function consumeLogoutWipeAndContinue(): boolean {
   if (typeof window === 'undefined') return false
@@ -129,8 +133,9 @@ export function consumeLogoutWipeAndContinue(): boolean {
   const params = new URLSearchParams(window.location.search)
   if (params.get(LOGOUT_QUERY) !== '1') return false
 
-  markSessionRevoked()
   clearLocalAuthState()
+  // Wipe hop only: drop any prior sticky revoke so a later authenticated visit can hydrate.
+  clearSessionRevoked()
 
   const returnTo = resolveLogoutReturnUrl(params.get(LOGOUT_RETURN_QUERY))
   const hostsRaw = (params.get(LOGOUT_HOSTS_QUERY) || '').trim()

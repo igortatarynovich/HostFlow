@@ -1,5 +1,6 @@
 import type { EntityPassport } from '../../platform/entity-model'
 import type { EntityWorkspaceHeaderExtension } from '../../platform/entity-workspace'
+import { detectStoredLocale, lookupScopedTranslation, type LocaleCode } from '../../i18n'
 import { formatDateSafe } from './candidateUtils'
 import type { AugmentedCandidate } from './types'
 
@@ -9,6 +10,17 @@ type BuildCandidateHeaderExtensionArgs = {
   backHref: string
   backLabel: string
   locale: string
+}
+
+function metaLabel(leaf: string, fallback: string, locale: string): string {
+  const code = (locale.startsWith('ru')
+    ? 'ru'
+    : locale.startsWith('pl')
+      ? 'pl'
+      : locale.startsWith('en')
+        ? 'en'
+        : detectStoredLocale()) as LocaleCode
+  return lookupScopedTranslation(code, 'app.candidates.workspace', leaf) || fallback
 }
 
 export function buildCandidateEntityWorkspaceHeaderExtension(
@@ -30,19 +42,19 @@ export function buildCandidateEntityWorkspaceHeaderExtension(
   const footerMeta: EntityWorkspaceHeaderExtension['footerMeta'] = []
   if (candidate.created_at) {
     footerMeta.push({
-      label: 'Создан',
+      label: metaLabel('meta_created', 'Created', locale),
       value: formatDateSafe(String(candidate.created_at), locale),
     })
   }
   if (candidate.updated_at) {
     footerMeta.push({
-      label: 'Обновлён',
+      label: metaLabel('meta_updated', 'Updated', locale),
       value: formatDateSafe(String(candidate.updated_at), locale),
     })
   }
   if (passport.sections.ownership.managerLabel) {
     footerMeta.push({
-      label: 'Ответственный',
+      label: metaLabel('meta_owner', 'Owner', locale),
       value: passport.sections.ownership.managerLabel,
     })
   }

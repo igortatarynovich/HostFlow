@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { IconX } from '@tabler/icons-react'
+import { useI18n, type TranslateFn } from '../../i18n'
 import type { ObjectDecision, DecisionContextBlockId } from '../decision-model/types'
 import { ContextRailDecisionZone } from './ContextRailDecisionZone'
 
@@ -27,17 +28,19 @@ export type ContextRailProps = {
   railKind?: string
 }
 
-const DEFAULT_CONTEXT_TITLES: Partial<Record<DecisionContextBlockId, string>> = {
-  contacts: 'Контакт',
-  documents: 'Документы',
-  history: 'История',
-  handoff: 'Handoff',
-  relations: 'Связи',
-  summary: 'Контекст',
-  workflow: 'Этапы',
-  vacancy: 'Подбор',
-  assignee: 'Ответственный',
-  outcome: 'Результат',
+function defaultContextTitles(t: TranslateFn): Partial<Record<DecisionContextBlockId, string>> {
+  return {
+    contacts: t('app.context_rail.blocks.contacts', { defaultValue: 'Contact' }),
+    documents: t('app.context_rail.blocks.documents', { defaultValue: 'Documents' }),
+    history: t('app.context_rail.blocks.history', { defaultValue: 'History' }),
+    handoff: 'Handoff',
+    relations: t('app.context_rail.blocks.relations', { defaultValue: 'Relations' }),
+    summary: t('app.context_rail.blocks.summary', { defaultValue: 'Context' }),
+    workflow: t('app.context_rail.blocks.workflow', { defaultValue: 'Stages' }),
+    vacancy: t('app.context_rail.blocks.vacancy', { defaultValue: 'Vacancy' }),
+    assignee: t('app.context_rail.blocks.assignee', { defaultValue: 'Assignee' }),
+    outcome: t('app.context_rail.blocks.outcome', { defaultValue: 'Result' }),
+  }
 }
 
 /**
@@ -47,12 +50,14 @@ export function ContextRail({
   header,
   decision,
   onClose,
-  closeLabel = 'Закрыть',
+  closeLabel,
   contextSlots = {},
   contextTitles = {},
   railKind,
 }: ContextRailProps) {
-  const titles = { ...DEFAULT_CONTEXT_TITLES, ...contextTitles }
+  const { t } = useI18n()
+  const resolvedCloseLabel = closeLabel ?? t('app.context_rail.close', { defaultValue: 'Close' })
+  const titles = { ...defaultContextTitles(t), ...contextTitles }
 
   return (
     <div
@@ -82,7 +87,8 @@ export function ContextRail({
                 className="mt-2 inline-flex text-sm font-medium text-brand-700 hover:underline"
                 data-entity-link="primary"
               >
-                {header.entityWorkspaceLabel ?? 'Открыть полную карточку'}
+                {header.entityWorkspaceLabel ??
+                  t('app.context_rail.open_full_card', { defaultValue: 'Open full card' })}
               </Link>
             ) : null}
           </div>
@@ -91,7 +97,7 @@ export function ContextRail({
               type="button"
               onClick={onClose}
               className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-              aria-label={closeLabel}
+              aria-label={resolvedCloseLabel}
             >
               <IconX size={18} stroke={2} />
             </button>

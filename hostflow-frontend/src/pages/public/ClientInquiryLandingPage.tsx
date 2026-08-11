@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getCompanyIntakeConfig } from '../../api/companyIntake'
+import { useI18n } from '../../i18n'
 import { PublicPageShell } from './components/PublicPageShell'
 import type { ClientChannelLanding } from '../../utils/clientAcquisitionDefaults'
 
-const DEFAULT_LANDING: ClientChannelLanding = {
-  headline: 'Нужен персонал?',
-  subheadline: 'Оставьте заявку — мы свяжемся с вами и предложим решение по подбору персонала.',
-  cta: 'Оставить заявку',
-}
-
 export default function ClientInquiryLandingPage() {
   const { publicToken = '' } = useParams<{ publicToken: string }>()
-  const [landing, setLanding] = useState<ClientChannelLanding>(DEFAULT_LANDING)
+  const { t } = useI18n()
+  const defaultLanding: ClientChannelLanding = {
+    headline: t('app.client_inquiry.landing.headline', { defaultValue: 'Need staff?' }),
+    subheadline: t('app.client_inquiry.landing.subheadline', {
+      defaultValue: 'Leave a request — we will contact you and propose a recruitment solution.',
+    }),
+    cta: t('app.client_inquiry.landing.cta', { defaultValue: 'Submit inquiry' }),
+  }
+  const [landing, setLanding] = useState<ClientChannelLanding>(defaultLanding)
   const [loading, setLoading] = useState(true)
 
   const applyPath = useMemo(
@@ -39,7 +42,9 @@ export default function ClientInquiryLandingPage() {
     <PublicPageShell maxWidth="md" showBrand>
       <div className="rounded-3xl border border-white/70 bg-white/90 p-8 shadow-xl shadow-slate-900/5 sm:p-10">
         {loading ? (
-          <p className="text-center text-sm text-slate-500">Загрузка…</p>
+          <p className="text-center text-sm text-slate-500">
+            {t('common.loading', { defaultValue: 'Loading…' })}
+          </p>
         ) : (
           <div className="space-y-6 text-center">
             <h1 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-2xl">

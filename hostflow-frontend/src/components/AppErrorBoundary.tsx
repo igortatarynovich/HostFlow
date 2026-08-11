@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import * as Sentry from '@sentry/react'
+import { detectStoredLocale, lookupScopedTranslation } from '../i18n'
 import { attemptStaleChunkReload } from '../utils/staleChunkReload'
 
 /**
@@ -14,7 +15,7 @@ import { attemptStaleChunkReload } from '../utils/staleChunkReload'
  *
  * Keep the fallback dependency-free — it must render even if the app bundle
  * crashed during evaluation, so no app-level providers (i18n, theme, router)
- * can be assumed available.
+ * can be assumed available. Static i18n lookup is OK (JSON bundles already loaded).
  */
 export function AppErrorBoundary({
   children,
@@ -35,6 +36,15 @@ function DefaultErrorFallback({ error, resetError }: { error?: unknown; resetErr
     attemptStaleChunkReload(error)
   }, [error])
 
+  const locale = detectStoredLocale()
+  const title =
+    lookupScopedTranslation(locale, 'app.errors', 'boundary_title') || 'Something went wrong'
+  const body =
+    lookupScopedTranslation(locale, 'app.errors', 'boundary_body') ||
+    'We already logged the error. Reload the page or try again — if it keeps happening, contact support.'
+  const reloadLabel = lookupScopedTranslation(locale, 'common', 'reload_page') || 'Reload page'
+  const tryAgainLabel = lookupScopedTranslation(locale, 'common', 'try_again') || 'Try again'
+
   return (
     <div
       role="alert"
@@ -50,11 +60,8 @@ function DefaultErrorFallback({ error, resetError }: { error?: unknown; resetErr
       }}
     >
       <div style={{ maxWidth: 480, textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>Что-то пошло не так</h1>
-        <p style={{ color: '#475569', marginBottom: '1.5rem' }}>
-          Мы уже записали ошибку. Обновите страницу или попробуйте ещё раз — если проблема
-          повторится, напишите в поддержку.
-        </p>
+        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>{title}</h1>
+        <p style={{ color: '#475569', marginBottom: '1.5rem' }}>{body}</p>
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
           <button
             type="button"
@@ -69,7 +76,7 @@ function DefaultErrorFallback({ error, resetError }: { error?: unknown; resetErr
               fontWeight: 600,
             }}
           >
-            Обновить страницу
+            {reloadLabel}
           </button>
           <button
             type="button"
@@ -84,7 +91,7 @@ function DefaultErrorFallback({ error, resetError }: { error?: unknown; resetErr
               fontWeight: 600,
             }}
           >
-            Попробовать ещё раз
+            {tryAgainLabel}
           </button>
         </div>
       </div>

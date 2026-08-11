@@ -336,6 +336,7 @@ export function buildCandidatesDetailRailModel({
   })
 
   const decision = resolveCandidatesObjectDecision({
+    t,
     railMode,
     processOutcome,
     nextAction: nextActionResolved,

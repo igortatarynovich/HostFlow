@@ -66,7 +66,7 @@ export default function SalesOrdersListPage() {
           </h2>
           <p className="mt-1 text-sm text-slate-600">
             {t('app.sales_orders.list.subtitle', {
-              defaultValue: 'Коммерческие заказы клиента: снимок сделки и линии спроса (ADR-032).',
+              defaultValue: 'Client commercial orders: deal snapshot and demand lines (ADR-032).',
             })}
           </p>
         </div>
@@ -77,20 +77,20 @@ export default function SalesOrdersListPage() {
           onClick={() => navigate(salesOrderNewPath())}
         >
           <IconPlus size={16} stroke={1.9} />
-          {t('app.sales_orders.list.create', { defaultValue: 'Новый заказ' })}
+          {t('app.sales_orders.list.create', { defaultValue: 'New order' })}
         </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <label className="text-sm text-slate-600">
-          {t('app.sales_orders.list.filter_status', { defaultValue: 'Статус' })}
+          {t('app.sales_orders.list.filter_status', { defaultValue: 'Status' })}
           <select
             className="input ml-2 w-auto"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             data-testid="sales-orders-status-filter"
           >
-            <option value="">{t('app.sales_orders.list.filter_all', { defaultValue: 'Все' })}</option>
+            <option value="">{t('app.sales_orders.list.filter_all', { defaultValue: 'All' })}</option>
             <option value="open">open</option>
             <option value="in_progress">in_progress</option>
             <option value="completed">completed</option>
@@ -104,15 +104,15 @@ export default function SalesOrdersListPage() {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p>
+        <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</p>
       ) : rows.length === 0 ? (
         <section className="rounded-xl border border-dashed border-slate-200 bg-white p-8 text-center">
           <h3 className="text-base font-semibold text-slate-900">
-            {t('app.sales_orders.list.empty_title', { defaultValue: 'Пока нет заказов' })}
+            {t('app.sales_orders.list.empty_title', { defaultValue: 'No orders yet' })}
           </h3>
           <p className="mt-2 text-sm text-slate-600">
             {t('app.sales_orders.list.empty_body', {
-              defaultValue: 'Создайте Service Order для клиента, затем добавьте Order Lines под вакансии.',
+              defaultValue: 'Create a Service Order for the client, then add Order Lines for vacancies.',
             })}
           </p>
           <button
@@ -120,7 +120,7 @@ export default function SalesOrdersListPage() {
             className="btn-primary mt-4"
             onClick={() => navigate(salesOrderNewPath())}
           >
-            {t('app.sales_orders.list.create', { defaultValue: 'Новый заказ' })}
+            {t('app.sales_orders.list.create', { defaultValue: 'New order' })}
           </button>
         </section>
       ) : (
@@ -138,7 +138,7 @@ export default function SalesOrdersListPage() {
                     {companyNames[order.company_id] || order.company_id.slice(0, 8)}
                     {' · '}
                     {order.lines?.length ?? 0}{' '}
-                    {t('app.sales_orders.list.lines', { defaultValue: 'линий' })}
+                    {t('app.sales_orders.list.lines', { defaultValue: 'lines' })}
                     {order.currency ? ` · ${order.currency}` : ''}
                   </p>
                 </div>
@@ -153,7 +153,7 @@ export default function SalesOrdersListPage() {
 
       <p className="text-xs text-slate-400">
         {t('app.sales_orders.list.services_note', {
-          defaultValue: 'Не путать с услугами доп. сервисов — они остаются на',
+          defaultValue: 'Not to be confused with add-on services — those remain on',
         })}{' '}
         <Link to={CRM_APP_PATHS.orders} className="underline hover:text-brand-700">
           {CRM_APP_PATHS.orders}

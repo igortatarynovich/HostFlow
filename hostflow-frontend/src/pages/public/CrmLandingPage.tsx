@@ -1,78 +1,69 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { PublicPageShell } from './components/PublicPageShell'
+import { PublicCookieBanner } from '../../components/public/PublicCookieBanner'
 import { PublicLegalFooter } from '../../components/public/PublicLegalFooter'
+import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
+import { PublicLogo } from '../../components/public/PublicLogo'
 import { useI18n } from '../../i18n'
 import { useSeoMeta } from '../../hooks/useSeoMeta'
 import { useSeoTracking } from '../../hooks/useSeoTracking'
 
-type PlanCard = {
-  /** Billing `plan_code` for self-service signup; `enterprise` is contact-only. */
-  key: 'starter' | 'team' | 'pro' | 'enterprise'
-  price: string
-  seats: string
-  features: string[]
-  bestFor: string
-  ctaHref: string
-  ctaIsExternal?: boolean
-}
+type PlanKey = 'starter' | 'team' | 'pro' | 'enterprise'
 
-const PLAN_NAME_DEFAULT: Record<PlanCard['key'], string> = {
-  starter: 'Solo',
-  team: 'Team',
+const PLAN_NAME_DEFAULT: Record<PlanKey, string> = {
+  starter: 'Starter',
+  team: 'Growth',
   pro: 'Business',
   enterprise: 'Enterprise',
 }
 
-function ProductShotPlaceholder({ caption, badge }: { caption: string; badge: string }) {
-  return (
-    <div
-      className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-100 via-white to-brand-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
-      role="img"
-      aria-label={caption}
-    >
-      <div
-        className="absolute inset-0 opacity-[0.35]"
-        style={{
-          backgroundImage: `linear-gradient(rgba(15,23,42,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(15,23,42,0.06) 1px, transparent 1px)`,
-          backgroundSize: '24px 24px',
-        }}
-      />
-      <div className="relative flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-        <span className="rounded-full border border-slate-200 bg-white/95 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 shadow-sm">
-          {badge}
-        </span>
-        <p className="max-w-sm text-sm font-medium leading-relaxed text-slate-600">{caption}</p>
-      </div>
-    </div>
-  )
-}
+const TEAL = '#00C2A8'
+const NAVY = '#0B0E14'
+const NAVY_SOFT = '#12151C'
 
-/** `imageSrc` from i18n (e.g. `/landing/hero.webp`); empty → gradient placeholder. */
-function ProductShot({ caption, badge, imageSrc }: { caption: string; badge: string; imageSrc: string }) {
+function ProductShot({
+  caption,
+  imageSrc,
+  size = 'feature',
+}: {
+  caption: string
+  imageSrc: string
+  size?: 'hero' | 'feature'
+}) {
   const src = (imageSrc || '').trim()
-  if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/') || src.startsWith('.')) {
+  const frame =
+    size === 'hero'
+      ? 'min-h-[300px] sm:min-h-[440px] lg:min-h-[520px]'
+      : 'min-h-[260px] sm:min-h-[340px] lg:min-h-[400px]'
+
+  if (!(src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/') || src.startsWith('.'))) {
     return (
-      <figure className="space-y-2">
-        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm">
-          <img
-            src={src}
-            alt={caption}
-            className="h-full w-full object-cover object-top"
-            loading="lazy"
-            decoding="async"
-          />
-        </div>
-        <figcaption className="flex flex-wrap items-center gap-2 text-xs leading-snug text-slate-500">
-          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 font-semibold uppercase tracking-wide text-slate-500">
-            {badge}
-          </span>
-          <span>{caption}</span>
-        </figcaption>
-      </figure>
+      <div
+        className={`flex ${frame} items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-slate-800 to-[#0B0E14] p-6 text-center text-sm text-slate-300`}
+        role="img"
+        aria-label={caption}
+      >
+        {caption}
+      </div>
     )
   }
-  return <ProductShotPlaceholder caption={caption} badge={badge} />
+
+  return (
+    <figure className="overflow-hidden rounded-2xl border border-white/10 bg-[#0F131A] shadow-[0_40px_100px_-40px_rgba(0,0,0,0.85)] ring-1 ring-white/5">
+      <div className={`relative bg-slate-100 ${frame}`}>
+        <img
+          src={src}
+          alt={caption}
+          className="absolute inset-0 h-full w-full object-contain object-top p-1.5 sm:p-2"
+          loading={size === 'hero' ? 'eager' : 'lazy'}
+          decoding="async"
+        />
+      </div>
+      {caption ? (
+        <figcaption className="border-t border-white/10 px-4 py-2.5 text-sm text-slate-400">{caption}</figcaption>
+      ) : null}
+    </figure>
+  )
 }
 
 export default function CrmLandingPage() {
@@ -82,77 +73,97 @@ export default function CrmLandingPage() {
     pageType: 'landing',
     pageKey: location.pathname === '/pricing' ? 'pricing' : 'landing',
   })
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly')
+  const [openFaq, setOpenFaq] = useState<number | null>(0)
 
   const isPricingRoute = location.pathname === '/pricing'
   const canonicalPath = isPricingRoute ? '/pricing' : '/'
   const seoTitle = isPricingRoute
-    ? t('app.seo.pricing.title', { defaultValue: 'Pricing for Recruitment CRM' })
-    : t('app.seo.landing.title', { defaultValue: 'HostFlow — recruitment operations in one system' })
+    ? t('app.seo.pricing.title', { defaultValue: 'Pricing — HostFlow' })
+    : t('app.seo.landing.title', {
+        defaultValue: 'Close vacancies faster — HostFlow',
+      })
   const seoDescription = isPricingRoute
     ? t('app.seo.pricing.description', {
-        defaultValue: 'Compare HostFlow plans and start your recruitment CRM trial in minutes.',
+        defaultValue: 'Simple plans for teams that need to close vacancies faster.',
       })
     : t('app.seo.landing.description', {
         defaultValue:
-          'Control hiring from first lead to hire: pipeline, ownership, documents — without losing candidates to spreadsheet chaos.',
+          'Built by recruiters with 10+ years in international hiring. Close vacancies faster with one process from Meta and WhatsApp to hire.',
       })
 
-  const painItems = useMemo(
-    () => [0, 1, 2, 3, 4, 5].map((i) => t(`public.crm_landing.pain.items.${i}`)),
-    [t],
-  )
-  const roiHidden = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.roi.hidden_items.${i}`)), [t])
-  const solutionSee = useMemo(() => [0, 1, 2].map((i) => t(`public.crm_landing.solution.see_items.${i}`)), [t])
-  const howSteps = useMemo(
+  const proofChips = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.hero.proof.${i}`)), [t])
+  const problemItems = useMemo(
     () =>
       [0, 1, 2, 3, 4].map((i) => ({
-        title: t(`public.crm_landing.how.steps.${i}.title`),
-        caption: t(`public.crm_landing.how.steps.${i}.caption`),
-        imageSrc: t(`public.crm_landing.how.steps.${i}.screenshot_src`, { defaultValue: '' }),
+        icon: t(`public.crm_landing.problem.items.${i}.icon`),
+        title: t(`public.crm_landing.problem.items.${i}.title`),
       })),
     [t],
   )
-  const heroAnswers = useMemo(
+  const authorityPoints = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.authority.points.${i}`)), [t])
+  const flowSteps = useMemo(() => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => t(`public.crm_landing.flow.steps.${i}`)), [t])
+  const todayItems = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.outcome.today.${i}`)), [t])
+  const monthItems = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.outcome.month.${i}`)), [t])
+  const productBlocks = useMemo(
     () =>
-      (['what', 'who', 'get', 'why'] as const).map((key) => ({
-        key,
-        label: t(`public.crm_landing.hero.answers.${key}.label`),
-        body: t(`public.crm_landing.hero.answers.${key}.body`),
+      [0, 1, 2, 3].map((i) => ({
+        title: t(`public.crm_landing.product.blocks.${i}.title`),
+        body: t(`public.crm_landing.product.blocks.${i}.body`),
+        caption: t(`public.crm_landing.product.blocks.${i}.caption`),
+        imageSrc: t(`public.crm_landing.product.blocks.${i}.screenshot_src`, { defaultValue: '' }),
       })),
     [t],
   )
-  const pricingClarity = useMemo(
-    () => ({
-      includes: [0, 1, 2, 3].map((i) => t(`public.crm_landing.pricing.clarity.includes.${i}`)),
-      excludes: [0, 1, 2].map((i) => t(`public.crm_landing.pricing.clarity.excludes.${i}`)),
-      limits: [0, 1, 2].map((i) => t(`public.crm_landing.pricing.clarity.limits.${i}`)),
-      afterTrial: t('public.crm_landing.pricing.clarity.after_trial'),
-    }),
-    [t],
-  )
-
-  const heroShotSrc = t('public.crm_landing.hero.screenshot_src', { defaultValue: '' })
-  const benefitItems = useMemo(() => [0, 1, 2, 3, 4, 5].map((i) => t(`public.crm_landing.benefits.items.${i}`)), [t])
-  const beforeItems = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.before_after.before_items.${i}`)), [t])
-  const afterItems = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.before_after.after_items.${i}`)), [t])
+  const caseBefore = useMemo(() => [0, 1, 2].map((i) => t(`public.crm_landing.case.before.${i}`)), [t])
+  const caseAfter = useMemo(() => [0, 1, 2].map((i) => t(`public.crm_landing.case.after.${i}`)), [t])
   const segmentItems = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.segments.items.${i}`)), [t])
-  const convictionSteps = useMemo(() => [0, 1, 2].map((i) => t(`public.crm_landing.conviction.steps.${i}`)), [t])
+  const includedAll = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.pricing.included.${i}`)), [t])
 
   const faq = useMemo(
-    () => [
-      {
-        q: t('public.crm_landing.faq.launch_q'),
-        a: t('public.crm_landing.faq.launch_a'),
-      },
-      {
-        q: t('public.crm_landing.faq.training_q'),
-        a: t('public.crm_landing.faq.training_a'),
-      },
-      {
-        q: t('public.crm_landing.faq.processes_q'),
-        a: t('public.crm_landing.faq.processes_a'),
-      },
-    ],
+    () =>
+      ['crm_vs_ats', 'meta', 'whatsapp', 'data', 'rodo', 'recruiters', 'launch', 'plan_change'].map((key) => ({
+        q: t(`public.crm_landing.faq.${key}_q`),
+        a: t(`public.crm_landing.faq.${key}_a`),
+      })),
+    [t],
+  )
+
+  const plans = useMemo(
+    () =>
+      (
+        [
+          {
+            key: 'starter' as const,
+            featured: false,
+            ctaHref: '/signup?plan=starter',
+          },
+          {
+            key: 'team' as const,
+            featured: true,
+            ctaHref: '/signup?plan=team',
+          },
+          {
+            key: 'pro' as const,
+            featured: false,
+            ctaHref: '/signup?plan=pro',
+          },
+          {
+            key: 'enterprise' as const,
+            featured: false,
+            ctaHref: 'mailto:info@hostflow.cc?subject=' + encodeURIComponent('HostFlow Enterprise'),
+            external: true,
+          },
+        ] as const
+      ).map((plan) => ({
+        ...plan,
+        name: t(`public.crm_landing.pricing.${plan.key}.name`, { defaultValue: PLAN_NAME_DEFAULT[plan.key] }),
+        priceMonthly: t(`public.crm_landing.pricing.${plan.key}.price_monthly`),
+        priceYearly: t(`public.crm_landing.pricing.${plan.key}.price_yearly`),
+        audience: t(`public.crm_landing.pricing.${plan.key}.audience`),
+        seats: t(`public.crm_landing.pricing.${plan.key}.seats`),
+        line: t(`public.crm_landing.pricing.${plan.key}.line`),
+      })),
     [t],
   )
 
@@ -168,39 +179,9 @@ export default function CrmLandingPage() {
       {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
-        name: 'HostFlow CRM',
+        name: 'HostFlow',
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
-        offers: [
-          {
-            '@type': 'Offer',
-            name: 'Solo',
-            price: '29',
-            priceCurrency: 'EUR',
-            description: 'Per month when billed monthly; yearly billing from €24/mo equivalent (see pricing)',
-          },
-          {
-            '@type': 'Offer',
-            name: 'Team',
-            price: '129',
-            priceCurrency: 'EUR',
-            description: 'Per month when billed monthly; yearly billing from €109/mo equivalent',
-          },
-          {
-            '@type': 'Offer',
-            name: 'Business',
-            price: '249',
-            priceCurrency: 'EUR',
-            description: 'Per month when billed monthly; yearly billing from €219/mo equivalent',
-          },
-          {
-            '@type': 'Offer',
-            name: 'Enterprise',
-            price: '499',
-            priceCurrency: 'EUR',
-            description: 'From €499/mo or custom; contact sales',
-          },
-        ],
         url: `https://hostflow.cc${canonicalPath}`,
         description: seoDescription,
       },
@@ -210,10 +191,7 @@ export default function CrmLandingPage() {
         mainEntity: faq.map((item) => ({
           '@type': 'Question',
           name: item.q,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: item.a,
-          },
+          acceptedAnswer: { '@type': 'Answer', text: item.a },
         })),
       },
     ],
@@ -227,589 +205,561 @@ export default function CrmLandingPage() {
     structuredData,
   })
 
-  const shotBadge = t('public.crm_landing.shot.placeholder_badge', { defaultValue: 'Product screenshot' })
+  const heroShot = t('public.crm_landing.hero.screenshot_src', {
+    defaultValue: '/landing/shots/hero-pipeline.jpg',
+  })
 
-  const plans: PlanCard[] = [
-    {
-      key: 'starter',
-      price: t('public.crm_landing.pricing.starter.price', {
-        defaultValue: '€29/mo · €24/mo billed yearly',
-      }),
-      seats: t('public.crm_landing.pricing.starter.seats', { defaultValue: '1 user · 1 workspace' }),
-      features: [
-        t('public.crm_landing.pricing.starter.features.0'),
-        t('public.crm_landing.pricing.starter.features.1'),
-        t('public.crm_landing.pricing.starter.features.2'),
-      ],
-      bestFor: t('public.crm_landing.pricing.starter.best_for'),
-      ctaHref: '/signup?plan=starter',
-    },
-    {
-      key: 'team',
-      price: t('public.crm_landing.pricing.team.price', {
-        defaultValue: '€129/mo · €109/mo billed yearly',
-      }),
-      seats: t('public.crm_landing.pricing.team.seats', { defaultValue: 'Up to 3 users · 1 workspace' }),
-      features: [
-        t('public.crm_landing.pricing.team.features.0'),
-        t('public.crm_landing.pricing.team.features.1'),
-        t('public.crm_landing.pricing.team.features.2'),
-      ],
-      bestFor: t('public.crm_landing.pricing.team.best_for'),
-      ctaHref: '/signup?plan=team',
-    },
-    {
-      key: 'pro',
-      price: t('public.crm_landing.pricing.pro.price', {
-        defaultValue: '€249/mo · €219/mo billed yearly',
-      }),
-      seats: t('public.crm_landing.pricing.pro.seats', { defaultValue: 'Up to 10 users · up to 3 workspaces' }),
-      features: [
-        t('public.crm_landing.pricing.pro.features.0'),
-        t('public.crm_landing.pricing.pro.features.1'),
-        t('public.crm_landing.pricing.pro.features.2'),
-      ],
-      bestFor: t('public.crm_landing.pricing.pro.best_for'),
-      ctaHref: '/signup?plan=pro',
-    },
-    {
-      key: 'enterprise',
-      price: t('public.crm_landing.pricing.enterprise.price', {
-        defaultValue: 'From €499/mo or custom',
-      }),
-      seats: t('public.crm_landing.pricing.enterprise.seats', {
-        defaultValue: 'Custom seats, workspaces, storage, and SLAs',
-      }),
-      features: [
-        t('public.crm_landing.pricing.enterprise.features.0'),
-        t('public.crm_landing.pricing.enterprise.features.1'),
-        t('public.crm_landing.pricing.enterprise.features.2'),
-      ],
-      bestFor: t('public.crm_landing.pricing.enterprise.best_for'),
-      ctaHref:
-        'mailto:info@hostflow.cc?subject=' + encodeURIComponent('HostFlow Enterprise'),
-      ctaIsExternal: true,
-    },
+  const navLinks = [
+    { href: '#problem', label: t('public.crm_landing.nav.problem') },
+    { href: '#authority', label: t('public.crm_landing.nav.authority') },
+    { href: '#product', label: t('public.crm_landing.nav.product') },
+    { href: '#pricing', label: t('public.crm_landing.nav.pricing') },
+    { href: '#faq', label: t('public.crm_landing.nav.faq') },
   ]
 
-  const comparisonRows = useMemo(
-    () => [
-      {
-        key: 'users',
-        label: t('public.crm_landing.compare.rows.users.label', { defaultValue: 'Users (included)' }),
-        starter: t('public.crm_landing.compare.rows.users.starter', { defaultValue: '1' }),
-        team: t('public.crm_landing.compare.rows.users.team', { defaultValue: 'Up to 3' }),
-        pro: t('public.crm_landing.compare.rows.users.pro', { defaultValue: 'Up to 10' }),
-        enterprise: t('public.crm_landing.compare.rows.users.enterprise', { defaultValue: 'Custom' }),
-      },
-      {
-        key: 'workspaces',
-        label: t('public.crm_landing.compare.rows.workspaces.label', { defaultValue: 'Workspaces / companies' }),
-        starter: t('public.crm_landing.compare.rows.workspaces.starter', { defaultValue: '1' }),
-        team: t('public.crm_landing.compare.rows.workspaces.team', { defaultValue: '1 (add-ons available)' }),
-        pro: t('public.crm_landing.compare.rows.workspaces.pro', { defaultValue: 'Up to 3 included' }),
-        enterprise: t('public.crm_landing.compare.rows.workspaces.enterprise', { defaultValue: 'Custom' }),
-      },
-      {
-        key: 'automation',
-        label: t('public.crm_landing.compare.rows.automation.label', { defaultValue: 'Automation & distribution' }),
-        starter: t('public.crm_landing.compare.rows.automation.starter', { defaultValue: 'Assisted only' }),
-        team: t('public.crm_landing.compare.rows.automation.team', { defaultValue: 'Rules, auto-distribution' }),
-        pro: t('public.crm_landing.compare.rows.automation.pro', { defaultValue: 'Extended rules & workflows' }),
-        enterprise: t('public.crm_landing.compare.rows.automation.enterprise', { defaultValue: 'Custom' }),
-      },
-      {
-        key: 'portals',
-        label: t('public.crm_landing.compare.rows.portals.label', { defaultValue: 'Candidate & client portals' }),
-        starter: t('public.crm_landing.compare.rows.portals.starter', { defaultValue: 'Not included' }),
-        team: t('public.crm_landing.compare.rows.portals.team', { defaultValue: 'Included (plan limits)' }),
-        pro: t('public.crm_landing.compare.rows.portals.pro', { defaultValue: 'Extended limits + branded basics' }),
-        enterprise: t('public.crm_landing.compare.rows.portals.enterprise', { defaultValue: 'Custom' }),
-      },
-      {
-        key: 'finance',
-        label: t('public.crm_landing.compare.rows.finance.label', { defaultValue: 'Services, orders & invoicing' }),
-        starter: t('public.crm_landing.compare.rows.finance.starter', { defaultValue: 'Not included' }),
-        team: t('public.crm_landing.compare.rows.finance.team', { defaultValue: 'Not included' }),
-        pro: t('public.crm_landing.compare.rows.finance.pro', { defaultValue: 'Included' }),
-        enterprise: t('public.crm_landing.compare.rows.finance.enterprise', { defaultValue: 'Custom' }),
-      },
-      {
-        key: 'analytics',
-        label: t('public.crm_landing.compare.rows.analytics.label', { defaultValue: 'Analytics' }),
-        starter: t('public.crm_landing.compare.rows.analytics.starter', { defaultValue: 'Basic funnel' }),
-        team: t('public.crm_landing.compare.rows.analytics.team', { defaultValue: 'Funnel, sources, team' }),
-        pro: t('public.crm_landing.compare.rows.analytics.pro', { defaultValue: 'Advanced slices & reporting' }),
-        enterprise: t('public.crm_landing.compare.rows.analytics.enterprise', { defaultValue: 'Custom' }),
-      },
-    ],
-    [t],
-  )
-
-  const sectionTitle = (k: string) => (
-    <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t(`public.crm_landing.${k}.badge`)}</p>
-  )
-
   return (
-    <PublicPageShell maxWidth="5xl">
-      <div className="space-y-16 md:space-y-20">
-        {/* HERO */}
-        <section className="card cv-auto overflow-hidden p-6 sm:p-8 lg:p-10">
-          <div className="grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:items-center">
-            <div className="space-y-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
-                {t('public.crm_landing.hero.badge')}
-              </p>
-              <h1 className="text-balance text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
-                {t('public.crm_landing.hero.title')}
-              </h1>
-              <p className="text-pretty text-base leading-relaxed text-slate-600 lg:text-lg">
-                {t('public.crm_landing.hero.subtitle')}
-              </p>
-              <dl className="grid gap-3 sm:grid-cols-2">
-                {heroAnswers.map((item) => (
-                  <div
-                    key={item.key}
-                    className="rounded-xl border border-slate-200/90 bg-slate-50/80 px-3.5 py-3"
-                  >
-                    <dt className="text-[11px] font-bold uppercase tracking-wide text-brand-700">{item.label}</dt>
-                    <dd className="mt-1 text-sm font-medium leading-snug text-slate-800">{item.body}</dd>
-                  </div>
-                ))}
-              </dl>
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <Link
-                  to="/signup"
-                  onClick={() => trackCta('hero_primary_signup', '/signup')}
-                  className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-500/30 transition hover:bg-brand-700"
-                >
-                  {t('public.crm_landing.hero.primary_cta')}
-                </Link>
-                <Link
-                  to="/login"
-                  onClick={() => trackCta('hero_secondary_login', '/login')}
-                  className="inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
-                >
-                  {t('public.crm_landing.hero.secondary_cta')}
-                </Link>
-              </div>
-              <p className="text-sm font-medium text-slate-500">{t('public.crm_landing.hero.cta_subline')}</p>
+    <div className="min-h-screen overflow-x-hidden bg-[#F7F8FA] text-slate-900 antialiased">
+      {/* NAV */}
+      <header className="sticky top-0 z-40 border-b border-white/8 bg-[#0B0E14]/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <a href="/" className="shrink-0" aria-label="HostFlow">
+            <PublicLogo showWordmark white size={34} />
+          </a>
+          <nav className="hidden items-center gap-7 text-[13px] font-medium text-slate-400 lg:flex" aria-label="Primary">
+            {navLinks.map((link) => (
+              <a key={link.href} href={link.href} className="transition hover:text-white">
+                {link.label}
+              </a>
+            ))}
+          </nav>
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:block">
+              <PublicLocaleSwitcher className="text-slate-400" />
             </div>
-            <div className="space-y-3">
+            <Link
+              to="/login"
+              onClick={() => trackCta('nav_login', '/login')}
+              className="hidden text-[13px] font-semibold text-slate-300 transition hover:text-white sm:inline"
+            >
+              {t('public.crm_landing.nav.login')}
+            </Link>
+            <Link
+              to="/demo"
+              onClick={() => trackCta('nav_demo', '/demo')}
+              className="inline-flex items-center justify-center rounded-lg bg-[#00C2A8] px-3.5 py-2 text-[13px] font-semibold text-[#04201C] transition hover:bg-[#1ad4bb]"
+            >
+              {t('public.crm_landing.nav.demo')}
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* SCREEN 1 — We solve the problem */}
+      <section
+        className="relative overflow-hidden"
+        style={{ background: `radial-gradient(ellipse 80% 60% at 70% 20%, rgba(0,194,168,0.12), transparent 55%), linear-gradient(180deg, ${NAVY} 0%, ${NAVY_SOFT} 100%)` }}
+      >
+        <div className="mx-auto grid max-w-6xl gap-12 px-4 pb-10 pt-14 sm:px-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-center lg:gap-10 lg:pb-12 lg:pt-20">
+          <div className="space-y-6">
+            <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.4rem]">
+              {t('public.crm_landing.hero.title')}
+              <span className="mt-2 block text-[#00C2A8]">{t('public.crm_landing.hero.title_accent')}</span>
+            </h1>
+            <div className="max-w-xl space-y-3 text-base leading-relaxed text-slate-300 sm:text-[17px]">
+              <p>{t('public.crm_landing.hero.lead')}</p>
+              <p className="font-medium text-white/90">{t('public.crm_landing.hero.system_line')}</p>
+            </div>
+            <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center">
+              <Link
+                to="/demo"
+                onClick={() => trackCta('hero_demo', '/demo')}
+                className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-7 py-3.5 text-base font-semibold text-[#04201C] shadow-[0_12px_40px_-12px_rgba(0,194,168,0.7)] transition hover:bg-[#1ad4bb]"
+              >
+                {t('public.crm_landing.hero.primary_cta')}
+              </Link>
+              <a
+                href="#flow"
+                onClick={() => trackCta('hero_flow', '#flow')}
+                className="inline-flex items-center justify-center gap-2 px-2 py-3 text-sm font-semibold text-slate-300 transition hover:text-white"
+              >
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-[10px]" aria-hidden>
+                  ▶
+                </span>
+                {t('public.crm_landing.hero.secondary_cta')}
+              </a>
+            </div>
+            <ul className="flex flex-wrap gap-x-4 gap-y-2 pt-2 text-sm text-slate-300">
+              {proofChips.map((chip) => (
+                <li key={chip} className="inline-flex items-center gap-1.5">
+                  <span className="text-[#00C2A8]" aria-hidden>
+                    ✓
+                  </span>
+                  {chip}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="relative lg:-mr-4">
+            <div
+              className="pointer-events-none absolute -inset-6 rounded-[2rem] opacity-70 blur-3xl"
+              style={{ background: 'radial-gradient(circle at 50% 40%, rgba(0,194,168,0.22), transparent 65%)' }}
+              aria-hidden
+            />
+            <div className="relative origin-center lg:rotate-[-1.5deg] lg:scale-[1.02]">
               <ProductShot
-                badge={shotBadge}
+                size="hero"
                 caption={t('public.crm_landing.hero.screenshot_caption')}
-                imageSrc={heroShotSrc}
+                imageSrc={heroShot}
               />
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* PAIN */}
-        <section className="cv-auto space-y-6">
-          {sectionTitle('pain')}
-          <h2 className="text-balance text-2xl font-semibold text-slate-900 sm:text-3xl">{t('public.crm_landing.pain.title')}</h2>
-          <div className="space-y-3 text-base leading-relaxed text-slate-600">
-            {t('public.crm_landing.pain.lead')
-              .split('\n')
-              .map((line) => (
-                <p key={line}>{line}</p>
+      {/* SCREEN 2 — Why vacancies don’t close */}
+      <section id="problem" className="scroll-mt-24 bg-white">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-12 lg:py-24">
+          <div className="space-y-8">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                {t('public.crm_landing.problem.badge')}
+              </p>
+              <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+                {t('public.crm_landing.problem.title')}
+              </h2>
+            </div>
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {problemItems.map((item) => (
+                <li
+                  key={item.title}
+                  className="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-[#F7F8FA] px-4 py-4"
+                >
+                  <span className="text-xl leading-none" aria-hidden>
+                    {item.icon}
+                  </span>
+                  <span className="text-sm font-medium leading-snug text-slate-800">{item.title}</span>
+                </li>
               ))}
+            </ul>
           </div>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {painItems.map((item) => (
+          <aside className="flex flex-col justify-between rounded-3xl border border-rose-200/70 bg-gradient-to-br from-rose-50 to-orange-50 p-7 sm:p-8">
+            <div className="space-y-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-rose-500">
+                {t('public.crm_landing.problem.cost_badge')}
+              </p>
+              <h3 className="text-2xl font-semibold tracking-tight text-slate-900">
+                {t('public.crm_landing.problem.cost_title')}
+              </h3>
+              <p className="text-4xl font-bold tracking-tight text-rose-600 sm:text-5xl">
+                {t('public.crm_landing.problem.cost_value')}
+              </p>
+              <p className="text-sm leading-relaxed text-slate-600">{t('public.crm_landing.problem.cost_note')}</p>
+            </div>
+            <p className="mt-8 text-sm font-semibold text-slate-800">{t('public.crm_landing.problem.cost_closing')}</p>
+          </aside>
+        </div>
+      </section>
+
+      {/* SCREEN 3 — Why we can do this (authority) */}
+      <section
+        id="authority"
+        className="scroll-mt-24"
+        style={{ background: `linear-gradient(180deg, ${NAVY} 0%, #10141C 100%)` }}
+      >
+        <div className="mx-auto max-w-3xl space-y-8 px-4 py-20 text-center sm:px-6 lg:py-28">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00C2A8]">
+            {t('public.crm_landing.authority.badge')}
+          </p>
+          <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-5xl sm:leading-[1.1]">
+            {t('public.crm_landing.authority.title')}
+          </h2>
+          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-slate-300">
+            {t('public.crm_landing.authority.body')}
+          </p>
+          <ul className="mx-auto grid max-w-2xl gap-3 text-left sm:grid-cols-1">
+            {authorityPoints.map((point) => (
               <li
-                key={item}
-                className="rounded-2xl border border-rose-100 bg-rose-50/50 px-4 py-3 text-sm font-medium text-slate-800"
+                key={point}
+                className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm leading-relaxed text-slate-200"
               >
-                — {item}
+                {point}
               </li>
             ))}
           </ul>
-          <p className="text-base font-semibold text-slate-900">{t('public.crm_landing.pain.closing')}</p>
-        </section>
+          <p className="mx-auto max-w-2xl text-base font-medium leading-relaxed text-[#B8FFF3]">
+            {t('public.crm_landing.authority.closing')}
+          </p>
+        </div>
+      </section>
 
-        {/* ROI */}
-        <section className="cv-auto overflow-hidden rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50/90 via-white to-orange-50/50 p-6 shadow-sm sm:p-8">
-          {sectionTitle('roi')}
-          <h2 className="mt-2 text-balance text-2xl font-semibold text-slate-900 sm:text-3xl">{t('public.crm_landing.roi.title')}</h2>
-          <div className="mt-4 space-y-4 text-base leading-relaxed text-slate-700">
-            <p>{t('public.crm_landing.roi.intro')}</p>
-            {t('public.crm_landing.roi.loss_setup').trim() ? (
-              <p className="text-lg font-semibold text-slate-900">{t('public.crm_landing.roi.loss_setup')}</p>
-            ) : null}
-            <p className="text-2xl font-bold tracking-tight text-amber-900 sm:text-3xl">{t('public.crm_landing.roi.loss_range')}</p>
-            <p className="text-sm text-slate-600">{t('public.crm_landing.roi.loss_note')}</p>
-            <div>
-              <p className="font-semibold text-slate-900">{t('public.crm_landing.roi.hidden_title')}</p>
-              <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
-                {roiHidden.map((line) => (
-                  <li key={line}>— {line}</li>
-                ))}
-              </ul>
-            </div>
-            <p className="rounded-xl border border-amber-200/80 bg-white/90 px-4 py-3 text-base font-semibold text-brand-800">
-              {t('public.crm_landing.roi.highlight')}
+      {/* SCREEN 4 — How it works */}
+      <section id="flow" className="scroll-mt-24 bg-[#F7F8FA]">
+        <div className="mx-auto max-w-6xl space-y-10 px-4 py-16 sm:px-6 lg:py-24">
+          <div className="mx-auto max-w-2xl space-y-3 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+              {t('public.crm_landing.flow.badge')}
             </p>
-            <div className="rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{t('public.crm_landing.roi.pilot_badge')}</p>
-              <p className="mt-2 text-sm text-slate-600">{t('public.crm_landing.roi.pilot_note')}</p>
-              <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div>
-                  <dt className="text-xs font-medium text-slate-500">{t('public.crm_landing.roi.pilot_m1_label')}</dt>
-                  <dd className="mt-1 text-lg font-semibold text-slate-900">{t('public.crm_landing.roi.pilot_m1_value')}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-medium text-slate-500">{t('public.crm_landing.roi.pilot_m2_label')}</dt>
-                  <dd className="mt-1 text-lg font-semibold text-slate-900">{t('public.crm_landing.roi.pilot_m2_value')}</dd>
-                </div>
-                <div className="sm:col-span-2">
-                  <dt className="text-xs font-medium text-slate-500">{t('public.crm_landing.roi.pilot_m3_label')}</dt>
-                  <dd className="mt-1 text-lg font-semibold text-slate-900">{t('public.crm_landing.roi.pilot_m3_value')}</dd>
-                </div>
-              </dl>
-            </div>
+            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+              {t('public.crm_landing.flow.title')}
+            </h2>
           </div>
-        </section>
-
-        {/* SOLUTION */}
-        <section className="card cv-auto space-y-5 p-6 sm:p-8">
-          {sectionTitle('solution')}
-          <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{t('public.crm_landing.solution.title')}</h2>
-          <p className="max-w-3xl text-base leading-relaxed text-slate-600">{t('public.crm_landing.solution.body')}</p>
-          <div>
-            <p className="font-semibold text-slate-900">{t('public.crm_landing.solution.see_title')}</p>
-            <ul className="mt-2 space-y-2 text-sm text-slate-700">
-              {solutionSee.map((line) => (
-                <li key={line}>— {line}</li>
-              ))}
-            </ul>
-            <p className="mt-3 text-sm font-medium text-slate-800">{t('public.crm_landing.solution.footer')}</p>
-          </div>
-        </section>
-
-        {/* HOW */}
-        <section id="how-it-works" className="cv-auto space-y-8 scroll-mt-8">
-          {sectionTitle('how')}
-          <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{t('public.crm_landing.how.title')}</h2>
-          <p className="max-w-2xl text-base text-slate-600">{t('public.crm_landing.how.lead')}</p>
-          <ol className="grid gap-6 md:grid-cols-2 xl:grid-cols-5 xl:gap-4">
-            {howSteps.map((step, idx) => (
-              <li key={step.title} className="relative space-y-3">
-                {idx < howSteps.length - 1 ? (
-                  <span
-                    className="pointer-events-none absolute -right-3 top-5 hidden text-brand-400 xl:block"
-                    aria-hidden
-                  >
-                    →
-                  </span>
+          <ol className="flex flex-col items-center gap-2 md:flex-row md:flex-wrap md:justify-center md:gap-x-2 md:gap-y-3">
+            {flowSteps.map((step, idx) => (
+              <li key={step} className="flex flex-col items-center gap-2 md:flex-row md:gap-2">
+                <div
+                  className={`min-w-[8.5rem] rounded-2xl border px-4 py-3 text-center text-sm font-semibold shadow-sm ${
+                    step === 'HostFlow'
+                      ? 'border-[#00C2A8]/40 bg-[#0B0E14] text-white'
+                      : 'border-slate-200 bg-white text-slate-900'
+                  }`}
+                >
+                  {step}
+                </div>
+                {idx < flowSteps.length - 1 ? (
+                  <>
+                    <span className="text-[#00C2A8] md:hidden" aria-hidden>
+                      ↓
+                    </span>
+                    <span className="hidden text-[#00C2A8] md:inline" aria-hidden>
+                      →
+                    </span>
+                  </>
                 ) : null}
-                <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
-                  {t('public.crm_landing.how.step_label', { values: { n: idx + 1 } })}
-                </p>
-                <h3 className="text-base font-semibold text-slate-900 xl:text-sm xl:leading-snug">{step.title}</h3>
-                <p className="text-sm text-slate-600">{step.caption}</p>
-                <ProductShot badge={shotBadge} caption={step.caption} imageSrc={step.imageSrc} />
               </li>
             ))}
           </ol>
-        </section>
+        </div>
+      </section>
 
-        {/* BENEFITS */}
-        <section className="cv-auto space-y-5">
-          {sectionTitle('benefits')}
-          <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{t('public.crm_landing.benefits.title')}</h2>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {benefitItems.map((item) => (
-              <li key={item} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm">
-                — {item}
-              </li>
-            ))}
-          </ul>
-          <p className="text-base font-semibold text-slate-900">{t('public.crm_landing.benefits.closing')}</p>
-        </section>
-
-        {/* BEFORE / AFTER */}
-        <section className="cv-auto grid gap-6 md:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-6">
-            {sectionTitle('before_after')}
-            <h2 className="mt-2 text-xl font-semibold text-slate-900 sm:text-2xl">{t('public.crm_landing.before_after.title')}</h2>
-            <p className="mt-4 text-sm font-bold uppercase tracking-wide text-slate-500">{t('public.crm_landing.before_after.before_title')}</p>
-            <ul className="mt-2 space-y-2 text-sm text-slate-700">
-              {beforeItems.map((item) => (
-                <li key={item}>— {item}</li>
-              ))}
-            </ul>
+      {/* SCREEN 5 — What the client gets */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-6xl space-y-10 px-4 py-16 sm:px-6 lg:py-24">
+          <div className="mx-auto max-w-2xl space-y-3 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+              {t('public.crm_landing.outcome.badge')}
+            </p>
+            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+              {t('public.crm_landing.outcome.title')}
+            </h2>
           </div>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-6">
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t('public.crm_landing.before_after.after_badge')}</p>
-            <p className="mt-2 text-sm font-bold uppercase tracking-wide text-emerald-800">{t('public.crm_landing.before_after.after_title')}</p>
-            <ul className="mt-2 space-y-2 text-sm text-slate-800">
-              {afterItems.map((item) => (
-                <li key={item}>— {item}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {/* SEGMENTS */}
-        <section className="cv-auto rounded-xl border border-brand-100 bg-brand-50/40 p-6 sm:p-8">
-          {sectionTitle('segments')}
-          <h2 className="mt-2 text-2xl font-semibold text-slate-900">{t('public.crm_landing.segments.title')}</h2>
-          <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-            {segmentItems.map((item) => (
-              <li key={item} className="text-sm font-medium text-slate-800">
-                — {item}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-4 text-sm text-slate-600">{t('public.crm_landing.segments.footnote')}</p>
-        </section>
-
-        {/* PRICING */}
-        <section id="pricing" className="cv-auto space-y-5 scroll-mt-8">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              {sectionTitle('pricing')}
-              <h2 className="mt-2 text-2xl font-semibold text-slate-900">{t('public.crm_landing.pricing.title')}</h2>
-            </div>
-            <p className="max-w-md text-sm text-slate-600">{t('public.crm_landing.pricing.note')}</p>
-          </div>
-          <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                {t('public.crm_landing.pricing.clarity.includes_title')}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200 bg-[#F7F8FA] p-6 sm:p-8">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+                {t('public.crm_landing.outcome.today_title')}
               </p>
-              <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
-                {pricingClarity.includes.map((line) => (
-                  <li key={line}>• {line}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                {t('public.crm_landing.pricing.clarity.excludes_title')}
-              </p>
-              <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
-                {pricingClarity.excludes.map((line) => (
-                  <li key={line}>• {line}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                {t('public.crm_landing.pricing.clarity.limits_title')}
-              </p>
-              <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
-                {pricingClarity.limits.map((line) => (
-                  <li key={line}>• {line}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                {t('public.crm_landing.pricing.clarity.after_trial_title')}
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">{pricingClarity.afterTrial}</p>
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {plans.map((plan) => {
-              const featured = plan.key === 'team'
-              return (
-                <article
-                  key={plan.key}
-                  className={`relative flex flex-col rounded-2xl border bg-white p-5 shadow-sm ${
-                    featured
-                      ? 'border-brand-400 ring-2 ring-brand-500/30 ring-offset-2 ring-offset-[#f6fbff] xl:scale-[1.02]'
-                      : 'border-slate-200'
-                  }`}
-                >
-                  {featured ? (
-                    <span className="absolute -top-3 left-4 rounded-full bg-brand-600 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                      {t('public.crm_landing.pricing.featured_badge')}
+              <ul className="mt-5 space-y-3">
+                {todayItems.map((item) => (
+                  <li key={item} className="flex gap-3 text-sm text-slate-600">
+                    <span className="text-rose-500" aria-hidden>
+                      ✕
                     </span>
-                  ) : null}
-                  <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                    {t(`public.crm_landing.pricing.${plan.key}.name`, { defaultValue: PLAN_NAME_DEFAULT[plan.key] })}
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-3xl border border-[#00C2A8]/30 bg-[#0B0E14] p-6 text-white sm:p-8">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#00C2A8]">
+                {t('public.crm_landing.outcome.month_title')}
+              </p>
+              <ul className="mt-5 space-y-3">
+                {monthItems.map((item) => (
+                  <li key={item} className="flex gap-3 text-sm text-slate-200">
+                    <span className="text-[#00C2A8]" aria-hidden>
+                      ✓
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SCREEN 6 — Product */}
+      <section id="product" className="scroll-mt-24 bg-[#F7F8FA]">
+        <div className="mx-auto max-w-6xl space-y-16 px-4 py-16 sm:px-6 lg:py-24">
+          <div className="mx-auto max-w-2xl space-y-3 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+              {t('public.crm_landing.product.badge')}
+            </p>
+            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+              {t('public.crm_landing.product.title')}
+            </h2>
+            <p className="text-base text-slate-500">{t('public.crm_landing.product.lead')}</p>
+          </div>
+          <div className="space-y-20">
+            {productBlocks.map((block, idx) => (
+              <article
+                key={block.title}
+                className={`grid items-center gap-8 lg:grid-cols-2 lg:gap-12 ${
+                  idx % 2 === 1 ? 'lg:[&>*:first-child]:order-2' : ''
+                }`}
+              >
+                <div className="space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#2E6F74]">
+                    {String(idx + 1).padStart(2, '0')}
                   </p>
-                  <p className="mt-3 text-2xl font-semibold leading-snug text-slate-900 lg:text-[1.65rem]">{plan.price}</p>
-                  <p className="mt-1 text-sm text-slate-600">{plan.seats}</p>
-                  <p className="mt-2 rounded-lg bg-slate-50 px-2 py-1 text-xs text-slate-700">{plan.bestFor}</p>
-                  <ul className="mt-4 flex-1 space-y-2 text-sm text-slate-700">
-                    {plan.features.map((feature) => (
-                      <li key={feature}>• {feature}</li>
-                    ))}
-                  </ul>
-                  {plan.ctaIsExternal ? (
-                    <a
-                      href={plan.ctaHref}
-                      onClick={() => trackCta(`pricing_select_${plan.key}`, plan.ctaHref)}
-                      className="mt-5 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-                    >
-                      {t('public.crm_landing.pricing.contact_sales_cta')}
-                    </a>
-                  ) : (
-                    <Link
-                      to={plan.ctaHref}
-                      onClick={() => trackCta(`pricing_select_${plan.key}`, plan.ctaHref)}
-                      className={`mt-5 inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition ${
-                        featured ? 'bg-brand-600 hover:bg-brand-700' : 'bg-slate-900 hover:bg-slate-800'
-                      }`}
-                    >
-                      {t('public.crm_landing.pricing.select_cta')}
-                    </Link>
-                  )}
+                  <h3 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{block.title}</h3>
+                  <p className="max-w-md text-base leading-relaxed text-slate-600">{block.body}</p>
+                </div>
+                <ProductShot caption={block.caption} imageSrc={block.imageSrc} />
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* SCREEN 7 — Case */}
+      <section
+        id="case"
+        className="scroll-mt-24"
+        style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #151A24 55%, #0E2A2A 100%)` }}
+      >
+        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
+          <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.03]">
+            <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
+              <div
+                className="relative min-h-[240px] bg-cover bg-center lg:min-h-full"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(90deg, rgba(11,14,20,0.15), rgba(11,14,20,0.75)), url(/landing/shots/step-vacancy.jpg)',
+                }}
+                role="img"
+                aria-label={t('public.crm_landing.case.image_alt')}
+              />
+              <div className="space-y-6 p-7 sm:p-10">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">
+                  {t('public.crm_landing.case.badge')}
+                </p>
+                <h2 className="text-3xl font-semibold tracking-tight text-white">{t('public.crm_landing.case.title')}</h2>
+                <p className="text-base leading-relaxed text-slate-300">{t('public.crm_landing.case.body')}</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                      {t('public.crm_landing.case.before_title')}
+                    </p>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-300">
+                      {caseBefore.map((item) => (
+                        <li key={item}>— {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-[#00C2A8]">
+                      {t('public.crm_landing.case.after_title')}
+                    </p>
+                    <ul className="mt-3 space-y-2 text-sm text-slate-200">
+                      {caseAfter.map((item) => (
+                        <li key={item}>— {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-[#B8FFF3]">{t('public.crm_landing.case.result')}</p>
+                <Link
+                  to="/use-cases/transport-companies"
+                  onClick={() => trackCta('case_read', '/use-cases/transport-companies')}
+                  className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-5 py-2.5 text-sm font-semibold text-[#04201C] transition hover:bg-[#1ad4bb]"
+                >
+                  {t('public.crm_landing.case.cta')}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SCREEN 8 — For whom */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 sm:px-6 lg:py-20">
+          <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+            {t('public.crm_landing.segments.title')}
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {segmentItems.map((item, idx) => (
+              <li
+                key={item}
+                className={`rounded-2xl border px-5 py-6 text-sm font-semibold ${
+                  idx === 0
+                    ? 'border-[#00C2A8]/35 bg-[#0B0E14] text-white'
+                    : 'border-slate-200 bg-[#F7F8FA] text-slate-800'
+                }`}
+              >
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* SCREEN 9 — Pricing */}
+      <section id="pricing" className="scroll-mt-24 bg-[#F7F8FA]">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 sm:px-6 lg:py-24">
+          <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-end">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                {t('public.crm_landing.pricing.badge')}
+              </p>
+              <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+                {t('public.crm_landing.pricing.title')}
+              </h2>
+            </div>
+            <div className="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 text-sm font-semibold shadow-sm">
+              <button
+                type="button"
+                onClick={() => setBilling('monthly')}
+                className={`rounded-full px-4 py-2 transition ${
+                  billing === 'monthly' ? 'bg-[#0B0E14] text-white' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {t('public.crm_landing.pricing.billing_monthly')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setBilling('yearly')}
+                className={`rounded-full px-4 py-2 transition ${
+                  billing === 'yearly' ? 'bg-[#0B0E14] text-white' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {t('public.crm_landing.pricing.billing_yearly')}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {plans.map((plan) => {
+                const price = billing === 'yearly' ? plan.priceYearly : plan.priceMonthly
+                return (
+                  <article
+                    key={plan.key}
+                    className={`flex flex-col rounded-3xl border bg-white p-5 ${
+                      plan.featured ? 'border-[#00C2A8] shadow-[0_0_0_1px_rgba(0,194,168,0.25)]' : 'border-slate-200'
+                    }`}
+                  >
+                    {plan.featured ? (
+                      <span className="mb-3 w-fit rounded-full bg-[#00C2A8]/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0F766E]">
+                        {t('public.crm_landing.pricing.featured_badge')}
+                      </span>
+                    ) : (
+                      <span className="mb-3 block h-[18px]" aria-hidden />
+                    )}
+                    <p className="text-sm font-semibold text-slate-500">{plan.name}</p>
+                    <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{price}</p>
+                    <p className="mt-3 text-sm font-medium text-slate-800">{plan.audience}</p>
+                    <p className="mt-1 text-xs text-slate-500">{plan.seats}</p>
+                    <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">{plan.line}</p>
+                    {'external' in plan && plan.external ? (
+                      <a
+                        href={plan.ctaHref}
+                        onClick={() => trackCta(`pricing_${plan.key}`, plan.ctaHref)}
+                        className="mt-6 inline-flex w-full items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
+                      >
+                        {t('public.crm_landing.pricing.contact_sales_cta')}
+                      </a>
+                    ) : (
+                      <Link
+                        to={plan.ctaHref}
+                        onClick={() => trackCta(`pricing_${plan.key}`, plan.ctaHref)}
+                        className={`mt-6 inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+                          plan.featured
+                            ? 'bg-[#00C2A8] text-[#04201C] hover:bg-[#1ad4bb]'
+                            : 'bg-[#0B0E14] text-white hover:bg-black'
+                        }`}
+                      >
+                        {t('public.crm_landing.pricing.select_cta')}
+                      </Link>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+            <aside className="rounded-3xl border border-slate-200 bg-white p-6 lg:w-64">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+                {t('public.crm_landing.pricing.included_title')}
+              </p>
+              <ul className="mt-4 space-y-3 text-sm text-slate-700">
+                {includedAll.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="text-[#00C2A8]" aria-hidden>
+                      ✓
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      {/* SCREEN 10 — FAQ */}
+      <section id="faq" className="scroll-mt-24 bg-white">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 sm:px-6 lg:py-24">
+          <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+            {t('public.crm_landing.faq.title')}
+          </h2>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {faq.map((item, idx) => {
+              const open = openFaq === idx
+              return (
+                <article key={item.q} className="rounded-2xl border border-slate-200 bg-[#F7F8FA]">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                    aria-expanded={open}
+                    onClick={() => setOpenFaq(open ? null : idx)}
+                  >
+                    <span className="text-sm font-semibold text-slate-900">{item.q}</span>
+                    <span className="text-slate-400" aria-hidden>
+                      {open ? '−' : '+'}
+                    </span>
+                  </button>
+                  {open ? <p className="border-t border-slate-200 px-5 py-4 text-sm leading-relaxed text-slate-600">{item.a}</p> : null}
                 </article>
               )
             })}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* COMPARISON TABLE */}
-        <section className="cv-auto space-y-4">
-          <h2 className="text-2xl font-semibold text-slate-900">{t('public.crm_landing.compare.title')}</h2>
-          <div className="space-y-3 md:hidden">
-            {comparisonRows.map((row) => (
-              <article key={row.key} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-slate-900">{row.label}</h3>
-                <dl className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-700">
-                  {(['starter', 'team', 'pro', 'enterprise'] as const).map((col) => (
-                    <div key={col} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
-                      <dt className="font-medium text-slate-600">
-                        {t(`public.crm_landing.pricing.${col}.name`, { defaultValue: PLAN_NAME_DEFAULT[col] })}
-                      </dt>
-                      <dd className="text-right">{row[col]}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </article>
-            ))}
-          </div>
-          <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white md:block">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-50 text-slate-700">
-                <tr>
-                  <th className="px-4 py-3 text-left">{t('public.crm_landing.compare.feature')}</th>
-                  {(['starter', 'team', 'pro', 'enterprise'] as const).map((col) => (
-                    <th key={col} className="px-4 py-3 text-left">
-                      {t(`public.crm_landing.pricing.${col}.name`, { defaultValue: PLAN_NAME_DEFAULT[col] })}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {comparisonRows.map((row) => (
-                  <tr key={row.key} className="border-t border-slate-100 text-slate-700">
-                    <td className="px-4 py-3 font-medium text-slate-900">{row.label}</td>
-                    <td className="px-4 py-3">{row.starter}</td>
-                    <td className="px-4 py-3">{row.team}</td>
-                    <td className="px-4 py-3">{row.pro}</td>
-                    <td className="px-4 py-3">{row.enterprise}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* CONVICTION */}
-        <section className="card cv-auto p-6 sm:p-8">
-          {sectionTitle('conviction')}
-          <h2 className="mt-2 text-2xl font-semibold text-slate-900">{t('public.crm_landing.conviction.title')}</h2>
-          <p className="mt-3 max-w-3xl text-base leading-relaxed text-slate-600">{t('public.crm_landing.conviction.body')}</p>
-          <p className="mt-4 text-sm font-semibold text-slate-900">{t('public.crm_landing.conviction.list_intro')}</p>
-          <ul className="mt-2 space-y-2 text-sm text-slate-700">
-            {convictionSteps.map((line) => (
-              <li key={line}>— {line}</li>
-            ))}
-          </ul>
-          <p className="mt-4 text-sm font-medium text-slate-800">{t('public.crm_landing.conviction.closing')}</p>
-        </section>
-
-        {/* FAQ */}
-        <section className="cv-auto rounded-xl border border-brand-200 bg-brand-50/60 p-6 sm:p-8">
-          <h2 className="text-xl font-semibold text-slate-900">{t('public.crm_landing.faq.title')}</h2>
-          <div className="mt-4 space-y-3">
-            {faq.map((item) => (
-              <article key={item.q} className="rounded-xl border border-brand-100 bg-white px-4 py-3">
-                <h3 className="text-sm font-semibold text-slate-900">{item.q}</h3>
-                <p className="mt-1 text-sm text-slate-700">{item.a}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* GUIDES */}
-        <section className="card cv-auto p-6">
-          <h2 className="text-xl font-semibold text-slate-900">{t('public.crm_landing.guides.title')}</h2>
-          <p className="mt-2 text-sm text-slate-600">{t('public.crm_landing.guides.subtitle')}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link to="/faq" className="btn-secondary btn-sm" onClick={() => trackCta('guide_faq', '/faq')}>
-              {t('public.marketing.common.related.faq', { defaultValue: 'FAQ' })}
-            </Link>
-            <Link to="/docs" className="btn-secondary btn-sm" onClick={() => trackCta('guide_docs', '/docs')}>
-              {t('public.marketing.common.related.docs', { defaultValue: 'Docs' })}
-            </Link>
-            <Link to="/academy" className="btn-secondary btn-sm" onClick={() => trackCta('guide_academy', '/academy')}>
-              {t('public.marketing.common.related.academy', { defaultValue: 'Academy' })}
-            </Link>
-            <Link to="/demo" className="btn-secondary btn-sm" onClick={() => trackCta('guide_demo', '/demo')}>
-              {t('public.marketing.common.related.demo', { defaultValue: 'Interactive demo' })}
-            </Link>
-            <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm" onClick={() => trackCta('guide_pipeline', '/features/candidate-pipeline')}>
-              {t('public.marketing.common.related.candidate_pipeline', { defaultValue: 'Candidate pipeline' })}
-            </Link>
-            <Link to="/features/document-control" className="btn-secondary btn-sm" onClick={() => trackCta('guide_document_control', '/features/document-control')}>
-              {t('public.marketing.common.related.document_control', { defaultValue: 'Document control' })}
-            </Link>
-            <Link to="/use-cases/trucking-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_trucking', '/use-cases/trucking-recruitment')}>
-              {t('public.marketing.common.related.trucking_recruitment_use_case', { defaultValue: 'Trucking recruitment use-case' })}
-            </Link>
-            <Link to="/use-cases/high-volume-onboarding" className="btn-secondary btn-sm" onClick={() => trackCta('guide_high_volume', '/use-cases/high-volume-onboarding')}>
-              {t('public.marketing.common.related.high_volume_onboarding', { defaultValue: 'High-volume onboarding' })}
-            </Link>
-            <Link to="/comparison/hostflow-vs-spreadsheets" className="btn-secondary btn-sm" onClick={() => trackCta('guide_vs_spreadsheets', '/comparison/hostflow-vs-spreadsheets')}>
-              {t('public.marketing.common.related.hostflow_vs_spreadsheets', { defaultValue: 'HostFlow vs spreadsheets' })}
-            </Link>
-            <Link to="/comparison/recruitment-crm-vs-ats" className="btn-secondary btn-sm" onClick={() => trackCta('guide_crm_vs_ats', '/comparison/recruitment-crm-vs-ats')}>
-              {t('public.marketing.common.related.crm_vs_ats', { defaultValue: 'Recruitment CRM vs ATS' })}
-            </Link>
-            <Link to="/use-cases/recruitment-agencies" className="btn-secondary btn-sm" onClick={() => trackCta('guide_recruitment_agencies', '/use-cases/recruitment-agencies')}>
-              {t('public.marketing.common.related.recruitment_agencies', { defaultValue: 'Recruitment agencies' })}
-            </Link>
-            <Link to="/use-cases/transport-companies" className="btn-secondary btn-sm" onClick={() => trackCta('guide_transport_companies', '/use-cases/transport-companies')}>
-              {t('public.marketing.common.related.transport_companies', { defaultValue: 'Transport companies' })}
-            </Link>
-            <Link to="/features/meta-ads-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_meta_ads', '/features/meta-ads-recruitment')}>
-              {t('public.marketing.common.related.meta_ads_recruitment', { defaultValue: 'Meta ads recruitment' })}
-            </Link>
-            <Link to="/features/whatsapp-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_whatsapp', '/features/whatsapp-recruitment')}>
-              {t('public.marketing.common.related.whatsapp_recruitment', { defaultValue: 'WhatsApp recruitment' })}
-            </Link>
-            <Link to="/use-cases/ats-for-drivers" className="btn-secondary btn-sm" onClick={() => trackCta('guide_ats_drivers', '/use-cases/ats-for-drivers')}>
-              {t('public.marketing.common.related.ats_for_drivers', { defaultValue: 'ATS for drivers' })}
-            </Link>
-          </div>
-        </section>
-
-        {/* FINAL CTA */}
-        <section className="card cv-auto p-8 text-center">
-          <h2 className="text-balance text-2xl font-semibold text-slate-900 sm:text-3xl">{t('public.crm_landing.final_cta.title')}</h2>
-          <p className="mt-3 text-sm text-slate-600 sm:text-base">{t('public.crm_landing.final_cta.subtitle')}</p>
-          <div className="mt-6 flex justify-center">
+      {/* SCREEN 11 — Final CTA */}
+      <section
+        className="px-4 py-20 sm:px-6"
+        style={{ background: `radial-gradient(ellipse 70% 80% at 50% 0%, rgba(0,194,168,0.16), transparent 55%), ${NAVY}` }}
+      >
+        <div className="mx-auto max-w-3xl space-y-6 text-center">
+          <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-5xl sm:leading-[1.1]">
+            {t('public.crm_landing.final_cta.title')}
+          </h2>
+          <p className="text-base text-slate-300 sm:text-lg">{t('public.crm_landing.final_cta.subtitle')}</p>
+          <div className="flex flex-col items-center justify-center gap-3 pt-2 sm:flex-row">
             <Link
-              to="/signup?plan=team"
-              onClick={() => trackCta('final_cta_signup_team', '/signup?plan=team')}
-              className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand-500/30 transition hover:bg-brand-700"
+              to="/demo"
+              onClick={() => trackCta('final_demo', '/demo')}
+              className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-8 py-3.5 text-base font-semibold text-[#04201C] transition hover:bg-[#1ad4bb]"
             >
               {t('public.crm_landing.final_cta.button')}
             </Link>
+            <Link
+              to="/signup?plan=team"
+              onClick={() => trackCta('final_signup', '/signup?plan=team')}
+              className="inline-flex items-center justify-center rounded-xl border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/5"
+            >
+              {t('public.crm_landing.final_cta.secondary')}
+            </Link>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <PublicLegalFooter />
+      <div className="bg-[#F7F8FA] px-4 pb-10 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <PublicLegalFooter />
+        </div>
       </div>
-    </PublicPageShell>
+      <PublicCookieBanner />
+    </div>
   )
 }

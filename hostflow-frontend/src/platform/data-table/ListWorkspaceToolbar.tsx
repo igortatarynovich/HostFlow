@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { IconSettings } from '@tabler/icons-react'
+import { useI18n } from '../../i18n'
 import { DataTableSearchBar } from './ColumnManagerPanel'
 
 export type ListWorkspaceToolbarProps = {
@@ -15,15 +16,29 @@ export type ListWorkspaceToolbarProps = {
 export function ListWorkspaceToolbar({
   searchValue,
   onSearchChange,
-  searchPlaceholder = 'Поиск по имени, email, телефону, компании…',
+  searchPlaceholder,
   onConfigureTable,
-  configureLabel = 'Настроить таблицу',
+  configureLabel,
   trailing,
 }: ListWorkspaceToolbarProps) {
+  const { t } = useI18n()
+  const resolvedSearchPlaceholder =
+    searchPlaceholder ??
+    t('app.list_workspace.search_placeholder', {
+      defaultValue: 'Search by name, email, phone, company…',
+    })
+  const resolvedConfigureLabel =
+    configureLabel ??
+    t('app.list_workspace.configure_table', { defaultValue: 'Configure table' })
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="min-w-[12rem] flex-1">
-        <DataTableSearchBar value={searchValue} onChange={onSearchChange} placeholder={searchPlaceholder} />
+        <DataTableSearchBar
+          value={searchValue}
+          onChange={onSearchChange}
+          placeholder={resolvedSearchPlaceholder}
+        />
       </div>
       {onConfigureTable ? (
         <button
@@ -32,7 +47,7 @@ export function ListWorkspaceToolbar({
           className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           <IconSettings size={16} />
-          {configureLabel}
+          {resolvedConfigureLabel}
         </button>
       ) : null}
       {trailing}

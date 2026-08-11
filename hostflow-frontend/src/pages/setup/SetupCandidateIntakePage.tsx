@@ -27,9 +27,9 @@ const INTAKE_CARDS: IntakeCard[] = [
     id: 'sample',
     emoji: '🟧',
     titleKey: 'app.onboarding.setup.intake.sample.title',
-    titleDefault: 'Учебные данные',
+    titleDefault: 'Example data',
     subtitleKey: 'app.onboarding.setup.intake.sample.subtitle',
-    subtitleDefault: 'Загрузить примеры заявок и сразу попробовать систему — потом удалить одним нажатием',
+    subtitleDefault: 'Load sample applications and try the product now — clear later in one click',
     enabled: true,
     testId: 'm1-setup-intake-sample',
   },
@@ -37,9 +37,9 @@ const INTAKE_CARDS: IntakeCard[] = [
     id: 'manual',
     emoji: '🟩',
     titleKey: 'app.onboarding.setup.intake.manual.title',
-    titleDefault: 'Вручную',
+    titleDefault: 'Manually',
     subtitleKey: 'app.onboarding.setup.intake.manual.subtitle',
-    subtitleDefault: 'Добавлять кандидатов самостоятельно',
+    subtitleDefault: 'Add candidates yourself',
     enabled: true,
     testId: 'm1-setup-intake-manual',
   },
@@ -47,9 +47,9 @@ const INTAKE_CARDS: IntakeCard[] = [
     id: 'meta',
     emoji: '🔗',
     titleKey: 'app.onboarding.setup.intake.meta.title',
-    titleDefault: 'Подключить источник заявок',
+    titleDefault: 'Connect an application source',
     subtitleKey: 'app.onboarding.setup.intake.meta.subtitle',
-    subtitleDefault: 'Meta, формы, мессенджеры и другие каналы — на странице интеграций',
+    subtitleDefault: 'Meta, forms, messengers and other channels — on the integrations page',
     enabled: true,
     testId: 'm1-setup-intake-meta',
   },
@@ -57,9 +57,9 @@ const INTAKE_CARDS: IntakeCard[] = [
     id: 'website',
     emoji: '🟨',
     titleKey: 'app.onboarding.setup.intake.website.title',
-    titleDefault: 'С сайта',
+    titleDefault: 'From your website',
     subtitleKey: 'app.onboarding.setup.intake.website.subtitle',
-    subtitleDefault: 'Форма на вашем сайте',
+    subtitleDefault: 'A form on your site',
     enabled: false,
     soon: true,
     testId: 'm1-setup-intake-website',
@@ -70,7 +70,7 @@ const INTAKE_CARDS: IntakeCard[] = [
     titleKey: 'app.onboarding.setup.intake.excel.title',
     titleDefault: 'Excel',
     subtitleKey: 'app.onboarding.setup.intake.excel.subtitle',
-    subtitleDefault: 'Импорт списка кандидатов',
+    subtitleDefault: 'Import a candidate list',
     enabled: false,
     soon: true,
     testId: 'm1-setup-intake-excel',
@@ -81,7 +81,7 @@ const INTAKE_CARDS: IntakeCard[] = [
     titleKey: 'app.onboarding.setup.intake.api.title',
     titleDefault: 'API',
     subtitleKey: 'app.onboarding.setup.intake.api.subtitle',
-    subtitleDefault: 'Интеграция',
+    subtitleDefault: 'Integration',
     enabled: false,
     soon: true,
     testId: 'm1-setup-intake-api',
@@ -130,7 +130,7 @@ export default function SetupCandidateIntakePage() {
         getFriendlyErrorInfo(
           err,
           t('app.onboarding.setup.intake.errors.generic', {
-            defaultValue: 'Не удалось сохранить способ получения кандидатов.',
+            defaultValue: 'Could not save how you receive candidates.',
           }),
           t,
         ),
@@ -162,13 +162,13 @@ export default function SetupCandidateIntakePage() {
   return (
     <SetupFlowChrome
       testId="m1-setup-intake-flow"
-      stepLabel={t('app.onboarding.setup.intake.badge', { defaultValue: 'Заявки' })}
+      stepLabel={t('app.onboarding.setup.intake.badge', { defaultValue: 'Applications' })}
       title={t('app.onboarding.setup.intake.title', {
-        defaultValue: 'Как получать первые заявки?',
+        defaultValue: 'How do you want to get first applications?',
       })}
       subtitle={t('app.onboarding.setup.intake.subtitle', {
         defaultValue:
-          'Выберите способ. Нет входящих сейчас — загрузите учебные данные или добавьте человека вручную. Источники заявок можно подключить позже.',
+          'Pick a way. No inbound yet — load example data or add a person manually. Application sources can be connected later.',
       })}
     >
       <div className="space-y-4">
@@ -200,7 +200,7 @@ export default function SetupCandidateIntakePage() {
                     </span>
                     {card.soon ? (
                       <span className="rounded bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-slate-600">
-                        {t('app.onboarding.setup.intake.soon', { defaultValue: 'Скоро' })}
+                        {t('app.onboarding.setup.intake.soon', { defaultValue: 'Soon' })}
                       </span>
                     ) : null}
                   </span>

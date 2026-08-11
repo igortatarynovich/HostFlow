@@ -454,8 +454,10 @@ export const DEFAULT_COMMUNICATIONS_SETTINGS: CommunicationsWorkspaceSettings = 
     businessHoursEnd: '18:00',
     timezone: 'Europe/Warsaw',
     channels: DEFAULT_CHANNELS,
-    candidateReplyTemplate: 'Здравствуйте! Получили ваше сообщение. Ответим в ближайшее время.',
-    clientReplyTemplate: 'Dzień dobry, wiadomość została przyjęta do obsługi. Wrócimy z odpowiedzią możliwie szybko.',
+    candidateReplyTemplate:
+      'Hello! We received your message and will get back to you shortly.',
+    clientReplyTemplate:
+      'Hello! Your message has been received. We will get back to you as soon as possible.',
     consentRequired: true,
   },
   email: {

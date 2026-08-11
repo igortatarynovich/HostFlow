@@ -115,26 +115,26 @@ export function ClientInvoicesBlock({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-slate-800">
-            {t('app.companies.invoices.title', { defaultValue: 'Счета' })}
+            {t('app.companies.invoices.title', { defaultValue: 'Invoices' })}
           </h3>
           <p className="text-xs text-slate-500">
             {t('app.companies.invoices.subtitle', {
-              defaultValue: 'Счета по клиенту',
+              defaultValue: 'Client invoices',
             })}
           </p>
         </div>
         <button type="button" className="btn-primary text-sm" onClick={openCreateInvoice}>
-          {t('app.companies.invoices.create', { defaultValue: 'Выставить счёт' })}
+          {t('app.companies.invoices.create', { defaultValue: 'Create invoice' })}
         </button>
       </div>
       {error && <div className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
       {loading ? (
         <div className="text-sm text-slate-500">
-          {t('common.loading', { defaultValue: 'Загрузка…' })}
+          {t('common.loading', { defaultValue: 'Loading…' })}
         </div>
       ) : invoices.length === 0 ? (
         <p className="text-sm text-slate-500">
-          {t('app.companies.invoices.empty', { defaultValue: 'Счетов нет' })}
+          {t('app.companies.invoices.empty', { defaultValue: 'No invoices' })}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-100">
@@ -142,19 +142,19 @@ export function ClientInvoicesBlock({
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/80">
                 <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                  {t('app.invoices.number', { defaultValue: 'Номер' })}
+                  {t('app.invoices.number', { defaultValue: 'Number' })}
                 </th>
                 <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                  {t('app.invoices.issue_date', { defaultValue: 'Дата' })}
+                  {t('app.invoices.issue_date', { defaultValue: 'Date' })}
                 </th>
                 <th className="px-3 py-2 text-right font-semibold text-slate-600">
-                  {t('app.invoices.total', { defaultValue: 'Сумма' })}
+                  {t('app.invoices.total', { defaultValue: 'Amount' })}
                 </th>
                 <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                  {t('app.invoices.status', { defaultValue: 'Статус' })}
+                  {t('app.invoices.status', { defaultValue: 'Status' })}
                 </th>
                 <th className="px-3 py-2 text-right font-semibold text-slate-600">
-                  {t('common.actions.title', { defaultValue: 'Действия' })}
+                  {t('common.actions.title', { defaultValue: 'Actions' })}
                 </th>
               </tr>
             </thead>
@@ -197,8 +197,8 @@ export function ClientInvoicesBlock({
                           disabled={Boolean(sendingId)}
                         >
                           {sendingId === invoice.id
-                            ? t('common.sending', { defaultValue: 'Отправка…' })
-                            : t('app.companies.invoices.send_email', { defaultValue: 'Отправить' })}
+                            ? t('common.sending', { defaultValue: 'Sending…' })
+                            : t('app.companies.invoices.send_email', { defaultValue: 'Send' })}
                         </button>
                       )}
                     </div>

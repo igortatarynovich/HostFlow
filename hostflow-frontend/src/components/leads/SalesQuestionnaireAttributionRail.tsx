@@ -117,17 +117,16 @@ export default function SalesQuestionnaireAttributionRail({ lead }: { lead: Lead
         data-testid="sales-questionnaire-details-toggle"
       >
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.sales_questionnaire.details_title', { defaultValue: 'Подробности' })}
+          {t('app.sales_questionnaire.details_title', { defaultValue: 'Details' })}
         </span>
         <span className="text-xs font-medium text-brand-700">
           {open
-            ? t('common.collapse', { defaultValue: 'Свернуть' })
-            : t('common.expand', { defaultValue: 'Развернуть' })}
+            ? t('common.collapse', { defaultValue: 'Collapse' })
+            : t('common.expand', { defaultValue: 'Expand' })}
         </span>
       </button>
       <p className="text-sm text-slate-600">
-        {t('app.sales_questionnaire.attribution_hint', {
-          defaultValue: 'Техническая атрибуция заполнения — форма, версия, источник.',
+        {t('app.sales_questionnaire.attribution_hint', { defaultValue: 'Where this response came from and how it was attached.',
         })}
       </p>
       {open ? (

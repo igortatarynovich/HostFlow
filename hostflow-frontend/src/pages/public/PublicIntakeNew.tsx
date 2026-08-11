@@ -479,7 +479,10 @@ export default function PublicIntakeNew() {
     const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
     for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
-        const errorMsg = `Файл "${file.name}" слишком большой (${(file.size / 1024 / 1024).toFixed(1)} МБ). Максимальный размер: 20 МБ.`
+        const errorMsg = t('public.intake.new.errors.file_too_large_named', {
+          defaultValue: 'File "{name}" is too large ({size} MB). Maximum size: 20 MB.',
+          values: { name: file.name, size: (file.size / 1024 / 1024).toFixed(1) },
+        })
         setDocUploadErrors(prev => ({ ...prev, [docType]: errorMsg }))
         setError(errorMsg)
         return
@@ -519,9 +522,15 @@ export default function PublicIntakeNew() {
         } catch (uploadErr: any) {
           // Обработка ошибки 413 (Content Too Large)
           if (uploadErr?.response?.status === 413) {
-            throw new Error(`Файл "${file.name}" слишком большой. Максимальный размер: 20 МБ.`)
+            throw new Error(t('public.intake.new.errors.file_too_large_named_short', {
+              defaultValue: 'File "{name}" is too large. Maximum size: 20 MB.',
+              values: { name: file.name },
+            }))
           }
-          throw new Error(uploadErr?.response?.data?.detail || uploadErr?.message || `Ошибка загрузки файла: ${uploadErr?.response?.status || 'unknown'}`)
+          throw new Error(uploadErr?.response?.data?.detail || uploadErr?.message || t('public.intake.new.errors.upload_status', {
+            defaultValue: 'File upload error: {status}',
+            values: { status: uploadErr?.response?.status || 'unknown' },
+          }))
         }
         
         // Сообщаем бэкенду о загрузке
@@ -547,7 +556,10 @@ export default function PublicIntakeNew() {
     } catch (err: any) {
       let errorMessage: string
       if (err?.response?.status === 413 || err?.message?.includes('413') || err?.message?.includes('too large') || err?.message?.includes('Content Too Large')) {
-        errorMessage = `Файл "${files[0]?.name || ''}" слишком большой. Максимальный размер: 20 МБ.`
+        errorMessage = t('public.intake.new.errors.file_too_large_named_short', {
+          defaultValue: 'File "{name}" is too large. Maximum size: 20 MB.',
+          values: { name: files[0]?.name || '' },
+        })
       } else {
         errorMessage = err?.response?.data?.detail || err?.message || t('public.intake.new.errors.upload_failed')
       }
@@ -941,7 +953,7 @@ export default function PublicIntakeNew() {
               onClick={() => handleLanguageSelect('ru')}
               className="rounded-xl border-2 border-slate-200 bg-white px-8 py-4 text-lg font-semibold text-brand-700 hover:border-slate-400 hover:bg-slate-50 transition"
             >
-              Русский
+              {t('public.intake.new.language.ru', { defaultValue: 'Russian' })}
             </button>
             <button
               onClick={() => handleLanguageSelect('en')}

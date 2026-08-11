@@ -12,7 +12,7 @@ import { SalesQuestionnaireAnswerSections } from './SalesQuestionnaireAnswerSect
 
 export default function SalesQuestionnaireSummaryRail({ lead }: { lead: Lead }) {
   const { locale, t } = useI18n()
-  const status = salesQuestionnaireStatusLabel(lead, { locale })
+  const status = salesQuestionnaireStatusLabel(lead, { t, locale })
   const [grouped, setGrouped] = useState<GroupedSubmissionAnswers | null>(null)
   const [historyIndex, setHistoryIndex] = useState(0)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -40,8 +40,7 @@ export default function SalesQuestionnaireSummaryRail({ lead }: { lead: Lead }) 
   const localeLabel = formLocaleLabel(grouped?.formLocale || null, t)
   const metaParts = [
     submittedLabel
-      ? t('app.sales_questionnaire.received_at', {
-          defaultValue: 'Получено {datetime}',
+      ? t('app.sales_questionnaire.received_at', { defaultValue: 'Received {datetime}',
           values: { datetime: submittedLabel },
         })
       : null,
@@ -52,7 +51,7 @@ export default function SalesQuestionnaireSummaryRail({ lead }: { lead: Lead }) 
     <section className="space-y-4" data-testid="sales-questionnaire-summary-rail">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.sales_questionnaire.client_info_title', { defaultValue: 'Информация от клиента' })}
+          {t('app.sales_questionnaire.client_info_title', { defaultValue: 'Information from the client' })}
         </p>
         {metaParts.length > 0 ? (
           <p className="mt-1 text-sm text-slate-600">{metaParts.join(' · ')}</p>
@@ -61,13 +60,12 @@ export default function SalesQuestionnaireSummaryRail({ lead }: { lead: Lead }) 
         )}
         {grouped?.isResubmission && historyIndex === 0 ? (
           <p className="mt-2 inline-flex rounded-md bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-800">
-            {t('app.sales_questionnaire.resubmission_badge', { defaultValue: 'Повторное заполнение' })}
+            {t('app.sales_questionnaire.resubmission_badge', { defaultValue: 'Resubmission' })}
           </p>
         ) : null}
         {historyIndex > 0 ? (
           <p className="mt-2 text-xs font-medium text-amber-800">
-            {t('app.sales_questionnaire.history_viewing', {
-              defaultValue: 'Просмотр предыдущего заполнения',
+            {t('app.sales_questionnaire.history_viewing', { defaultValue: 'Viewing a previous submission',
             })}
           </p>
         ) : null}
@@ -95,8 +93,8 @@ export default function SalesQuestionnaireSummaryRail({ lead }: { lead: Lead }) 
             data-testid="sales-questionnaire-history-toggle"
           >
             {historyOpen
-              ? t('app.sales_questionnaire.history_hide', { defaultValue: 'Скрыть историю ответов' })
-              : t('app.sales_questionnaire.history_show', { defaultValue: 'История ответов' })}
+              ? t('app.sales_questionnaire.history_hide', { defaultValue: 'Hide answer history' })
+              : t('app.sales_questionnaire.history_show', { defaultValue: 'Answer history' })}
           </button>
           {historyOpen ? (
             <ul className="mt-2 space-y-1.5" data-testid="sales-questionnaire-history-list">
@@ -113,8 +111,7 @@ export default function SalesQuestionnaireSummaryRail({ lead }: { lead: Lead }) 
                       onClick={() => setHistoryIndex(index)}
                     >
                       {index === 0
-                        ? t('app.sales_questionnaire.history_latest', {
-                            defaultValue: 'Последний ответ · {datetime}',
+                        ? t('app.sales_questionnaire.history_latest', { defaultValue: 'Latest answer · {datetime}',
                             values: { datetime: label },
                           })
                         : label}

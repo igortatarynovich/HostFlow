@@ -101,7 +101,7 @@ export default function SalesOrderDetailPage() {
       setLineLocation('')
       setLineRate('')
       setLineTrigger('headcount_completed')
-      setMessage(t('app.sales_orders.detail.line_added', { defaultValue: 'Линия добавлена' }))
+      setMessage(t('app.sales_orders.detail.line_added', { defaultValue: 'Line added' }))
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -146,7 +146,7 @@ export default function SalesOrderDetailPage() {
       const result = await composeSalesOrderInvoice(order.id, selectedIds)
       setMessage(
         t('app.sales_orders.detail.invoice_created', {
-          defaultValue: 'Счёт создан: {{number}}',
+          defaultValue: 'Invoice created: {number}',
           values: { number: result.invoice_number || result.invoice_id.slice(0, 8) },
         }),
       )
@@ -165,7 +165,7 @@ export default function SalesOrderDetailPage() {
   if (loading) {
     return (
       <div className="px-4 py-6 text-sm text-slate-500 sm:px-6">
-        {t('common.loading', { defaultValue: 'Загрузка…' })}
+        {t('common.loading', { defaultValue: 'Loading…' })}
       </div>
     )
   }
@@ -173,9 +173,9 @@ export default function SalesOrderDetailPage() {
   if (!order) {
     return (
       <div className="px-4 py-6 sm:px-6">
-        <p className="text-sm text-rose-700">{error || t('app.sales_orders.detail.not_found', { defaultValue: 'Заказ не найден' })}</p>
+        <p className="text-sm text-rose-700">{error || t('app.sales_orders.detail.not_found', { defaultValue: 'Order not found' })}</p>
         <Link to={SALES_ORDERS_PATH} className="mt-3 inline-block text-sm text-brand-700 hover:underline">
-          ← {t('app.sales_orders.create.back', { defaultValue: 'К списку заказов' })}
+          ← {t('app.sales_orders.create.back', { defaultValue: 'Back to orders' })}
         </Link>
       </div>
     )
@@ -185,7 +185,7 @@ export default function SalesOrderDetailPage() {
     <div className="mx-auto max-w-4xl space-y-6 overflow-y-auto px-4 py-4 sm:px-6" data-testid="sales-order-detail">
       <div>
         <Link to={SALES_ORDERS_PATH} className="text-sm text-slate-600 hover:text-brand-700">
-          ← {t('app.sales_orders.create.back', { defaultValue: 'К списку заказов' })}
+          ← {t('app.sales_orders.create.back', { defaultValue: 'Back to orders' })}
         </Link>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -197,7 +197,7 @@ export default function SalesOrderDetailPage() {
             </p>
           </div>
           <label className="text-sm text-slate-600">
-            {t('app.sales_orders.detail.status', { defaultValue: 'Статус' })}
+            {t('app.sales_orders.detail.status', { defaultValue: 'Status' })}
             <select
               className="input ml-2 w-auto"
               value={String(order.status)}
@@ -216,11 +216,11 @@ export default function SalesOrderDetailPage() {
 
       <section className="rounded-xl border border-slate-200 bg-white p-4">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.sales_orders.detail.snapshot', { defaultValue: 'Снимок сделки' })}
+          {t('app.sales_orders.detail.snapshot', { defaultValue: 'Deal snapshot' })}
         </h3>
         <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500">{t('app.sales_orders.create.payment_model', { defaultValue: 'Модель оплаты' })}</dt>
+            <dt className="text-slate-500">{t('app.sales_orders.create.payment_model', { defaultValue: 'Payment model' })}</dt>
             <dd className="font-medium text-slate-900">{order.payment_model || '—'}</dd>
           </div>
           <div>
@@ -228,16 +228,16 @@ export default function SalesOrderDetailPage() {
             <dd className="font-medium text-slate-900">{order.vat_rate ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">{t('app.sales_orders.create.guarantee', { defaultValue: 'Гарантия, дней' })}</dt>
+            <dt className="text-slate-500">{t('app.sales_orders.create.guarantee', { defaultValue: 'Guarantee, days' })}</dt>
             <dd className="font-medium text-slate-900">{order.guarantee_days ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">{t('app.sales_orders.detail.invoice_policy', { defaultValue: 'Право на счёт' })}</dt>
+            <dt className="text-slate-500">{t('app.sales_orders.detail.invoice_policy', { defaultValue: 'Invoice entitlement' })}</dt>
             <dd className="font-medium text-slate-900">{order.invoice_right_policy || '—'}</dd>
           </div>
           {order.billing_notes ? (
             <div className="sm:col-span-2">
-              <dt className="text-slate-500">{t('app.sales_orders.create.notes', { defaultValue: 'Коммерческие заметки' })}</dt>
+              <dt className="text-slate-500">{t('app.sales_orders.create.notes', { defaultValue: 'Commercial notes' })}</dt>
               <dd className="mt-1 whitespace-pre-wrap text-slate-800">{order.billing_notes}</dd>
             </div>
           ) : null}
@@ -253,18 +253,18 @@ export default function SalesOrderDetailPage() {
             to={CRM_APP_PATHS.vacancyNew}
             className="text-sm text-brand-700 hover:underline"
           >
-            {t('app.sales_orders.detail.create_vacancy', { defaultValue: 'Создать вакансию →' })}
+            {t('app.sales_orders.detail.create_vacancy', { defaultValue: 'Create vacancy →' })}
           </Link>
         </div>
         <p className="mt-1 text-sm text-slate-600">
           {t('app.sales_orders.detail.lines_hint', {
-            defaultValue: '1 линия = 1 вакансия. Свободная линия появляется в форме вакансии.',
+            defaultValue: '1 line = 1 vacancy. A free line appears in the vacancy form.',
           })}
         </p>
 
         {(order.lines || []).length === 0 ? (
           <p className="mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-600">
-            {t('app.sales_orders.detail.no_lines', { defaultValue: 'Линий пока нет — добавьте первую ниже.' })}
+            {t('app.sales_orders.detail.no_lines', { defaultValue: 'No lines yet — add the first one below.' })}
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -283,10 +283,10 @@ export default function SalesOrderDetailPage() {
                     <p className="mt-1 text-xs text-slate-400">
                       {line.vacancy_id
                         ? t('app.sales_orders.detail.linked_vacancy', {
-                            defaultValue: 'Вакансия привязана',
+                            defaultValue: 'Vacancy linked',
                           })
                         : t('app.sales_orders.detail.unlinked', {
-                            defaultValue: 'Свободна для вакансии',
+                            defaultValue: 'Available for vacancy',
                           })}
                     </p>
                   </div>
@@ -313,11 +313,11 @@ export default function SalesOrderDetailPage() {
           data-testid="sales-order-add-line"
         >
           <h4 className="text-sm font-semibold text-slate-800">
-            {t('app.sales_orders.detail.add_line', { defaultValue: 'Добавить Order Line' })}
+            {t('app.sales_orders.detail.add_line', { defaultValue: 'Add Order Line' })}
           </h4>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block sm:col-span-2">
-              <div className="label">{t('app.sales_orders.detail.line_title', { defaultValue: 'Название / роль' })} *</div>
+              <div className="label">{t('app.sales_orders.detail.line_title', { defaultValue: 'Title / role' })} *</div>
               <input
                 className="input"
                 value={lineTitle}
@@ -327,7 +327,7 @@ export default function SalesOrderDetailPage() {
               />
             </label>
             <label className="block">
-              <div className="label">{t('app.sales_orders.detail.qty', { defaultValue: 'Количество' })}</div>
+              <div className="label">{t('app.sales_orders.detail.qty', { defaultValue: 'Quantity' })}</div>
               <input
                 className="input"
                 type="number"
@@ -357,11 +357,11 @@ export default function SalesOrderDetailPage() {
               <input className="input" value={lineRole} onChange={(e) => setLineRole(e.target.value)} />
             </label>
             <label className="block">
-              <div className="label">{t('app.vacancies.detail.fields.location', { defaultValue: 'Локация' })}</div>
+              <div className="label">{t('app.vacancies.detail.fields.location', { defaultValue: 'Location' })}</div>
               <input className="input" value={lineLocation} onChange={(e) => setLineLocation(e.target.value)} />
             </label>
             <label className="block">
-              <div className="label">{t('app.sales_orders.detail.rate', { defaultValue: 'Ставка' })}</div>
+              <div className="label">{t('app.sales_orders.detail.rate', { defaultValue: 'Rate' })}</div>
               <input
                 className="input"
                 type="number"
@@ -373,8 +373,8 @@ export default function SalesOrderDetailPage() {
           </div>
           <button type="submit" className="btn-primary" disabled={savingLine} data-testid="sales-order-line-submit">
             {savingLine
-              ? t('common.saving', { defaultValue: 'Сохранение…' })
-              : t('app.sales_orders.detail.add_line_submit', { defaultValue: 'Добавить линию' })}
+              ? t('common.saving', { defaultValue: 'Saving…' })
+              : t('app.sales_orders.detail.add_line_submit', { defaultValue: 'Add line' })}
           </button>
         </form>
       </section>
@@ -392,23 +392,23 @@ export default function SalesOrderDetailPage() {
             data-testid="sales-order-compose-invoice"
           >
             {composing
-              ? t('common.saving', { defaultValue: 'Сохранение…' })
+              ? t('common.saving', { defaultValue: 'Saving…' })
               : t('app.sales_orders.detail.compose_invoice', {
-                  defaultValue: 'Создать счёт ({{n}})',
+                  defaultValue: 'Create invoice ({n})',
                   values: { n: selectedIds.length },
                 })}
           </button>
         </div>
         <p className="mt-1 text-sm text-slate-600">
           {t('app.sales_orders.detail.billables_hint', {
-            defaultValue: 'Выберите pending позиции → draft Invoice. Частичная выписка разрешена (ADR-032).',
+            defaultValue: 'Select pending items → draft Invoice. Partial billing is allowed (ADR-032).',
           })}
         </p>
 
         {billables.length === 0 ? (
           <p className="mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-600">
             {t('app.sales_orders.detail.no_billables', {
-              defaultValue: 'Пока нет billable items — появятся после hire/start/headcount по триггеру линии.',
+              defaultValue: 'No billable items yet — they appear after hire/start/headcount per line trigger.',
             })}
           </p>
         ) : (
@@ -444,7 +444,7 @@ export default function SalesOrderDetailPage() {
                             to={`${CRM_APP_PATHS.invoices}/${encodeURIComponent(b.invoice_id)}`}
                             className="text-brand-700 hover:underline"
                           >
-                            {t('app.sales_orders.detail.open_invoice', { defaultValue: 'Открыть счёт' })}
+                            {t('app.sales_orders.detail.open_invoice', { defaultValue: 'Open invoice' })}
                           </Link>
                         </>
                       ) : null}

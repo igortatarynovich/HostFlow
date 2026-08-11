@@ -76,7 +76,7 @@ export default function MarketingSourcesPage() {
         getFriendlyErrorInfo(
           err,
           t('app.marketing.sources.errors.load', {
-            defaultValue: 'Не удалось загрузить источники',
+            defaultValue: 'Failed to load sources',
           }),
           t,
         ),
@@ -106,7 +106,8 @@ export default function MarketingSourcesPage() {
         <PageHeader
           title={t('app.marketing.sources.title', { defaultValue: 'Sources' })}
           subtitle={t('app.marketing.sources.subtitle', {
-            defaultValue: 'Подключённые источники, статус, Mapping Health и последние события.',
+            defaultValue:
+              'Connected sources, status, Mapping Health, and last events.',
           })}
           actions={
             <Link
@@ -130,9 +131,11 @@ export default function MarketingSourcesPage() {
           <span>
             {t('app.marketing.sources.drift_summary', {
               defaultValue:
-                'Mapping drift: {{count}} заявк(и) за {{hours}} ч. Откройте Diagnostics.',
-              count: driftSummary.drift_count,
-              hours: driftSummary.window_hours,
+                'Mapping drift: {count} application(s) in {hours} h. Open Diagnostics.',
+              values: {
+                count: driftSummary.drift_count,
+                hours: driftSummary.window_hours,
+              },
             })}
           </span>
           <Link
@@ -155,7 +158,7 @@ export default function MarketingSourcesPage() {
 
       {loading ? (
         <p className="text-sm text-slate-500" data-testid="marketing-sources-loading">
-          {t('common.loading', { defaultValue: 'Загрузка…' })}
+          {t('common.loading', { defaultValue: 'Loading…' })}
         </p>
       ) : null}
 
@@ -166,13 +169,13 @@ export default function MarketingSourcesPage() {
         >
           <p className="text-base font-medium text-slate-900">
             {t('app.marketing.sources.empty_title', {
-              defaultValue: 'Пока нет источников',
+              defaultValue: 'No sources yet',
             })}
           </p>
           <p className="mt-2 text-sm text-slate-600">
             {t('app.marketing.sources.empty_body', {
               defaultValue:
-                'Подключите Meta в Integrations или привяжите intake source — они появятся здесь.',
+                'Connect Meta in Integrations or bind an intake source — they will appear here.',
             })}
           </p>
           <Link
@@ -180,7 +183,9 @@ export default function MarketingSourcesPage() {
             className="btn-primary btn-sm mt-4 inline-flex"
             data-testid="marketing-sources-empty-cta"
           >
-            {t('app.marketing.sources.actions.connect', { defaultValue: 'Открыть Integrations' })}
+            {t('app.marketing.sources.actions.connect', {
+              defaultValue: 'Open Integrations',
+            })}
           </Link>
         </div>
       ) : null}
@@ -311,7 +316,8 @@ export default function MarketingSourcesPage() {
                       <div data-testid={`marketing-source-routing-issue-${row.source_id}`}>
                         <div className="text-sm text-rose-800">
                           {t('app.marketing.sources.routing_issue.missing_campaign_flight', {
-                            defaultValue: 'Campaign/Flight для этого Ad ID не настроены.',
+                            defaultValue:
+                              'Campaign/Flight for this Ad ID are not configured.',
                           })}
                         </div>
                         {row.last_problematic_ad_id ? (
@@ -348,7 +354,7 @@ export default function MarketingSourcesPage() {
                           data-testid={`marketing-source-setup-campaign-flight-${row.source_id}`}
                         >
                           {t('app.marketing.sources.actions.setup_campaign_flight', {
-                            defaultValue: 'Настроить Campaign/Flight',
+                            defaultValue: 'Configure Campaign/Flight',
                           })}
                         </Link>
                       ) : null}

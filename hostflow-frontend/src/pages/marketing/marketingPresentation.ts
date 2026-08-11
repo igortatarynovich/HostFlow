@@ -1,66 +1,95 @@
 import type { AcquisitionActivityEvent } from '../../api/acquisitionActivity'
 import type { Campaign, CampaignFlight } from '../../api/platformCampaigns'
+import type { TranslateFn } from '../../i18n'
 
 export type MarketingFlowKind = 'candidates' | 'clients' | 'service'
 
 export type FlowPreset = {
   kind: MarketingFlowKind
-  label: string
-  description: string
+  labelKey: string
+  descriptionKey: string
   goal_type: string
   primary_kpi: string
   target_type: string
   route_intent: string
+  destinationKey: string
+  /** @deprecated use labelKey + t(); kept for setup page fallbacks */
+  label: string
+  description: string
   destinationLabel: string
 }
 
 export const FLOW_PRESETS: FlowPreset[] = [
   {
     kind: 'candidates',
-    label: 'Кандидаты',
-    description: 'Клиент → вакансия → заявки в Recruitment',
+    labelKey: 'app.marketing.flows.candidates.label',
+    descriptionKey: 'app.marketing.flows.candidates.description',
+    destinationKey: 'app.marketing.flows.candidates.destination',
+    label: 'Candidates',
+    description: 'Client → vacancy → applications in Recruitment',
     goal_type: 'hiring',
     primary_kpi: 'applications',
     target_type: 'vacancy',
     route_intent: 'candidate_application',
-    destinationLabel: 'Вакансия',
+    destinationLabel: 'Vacancy',
   },
   {
     kind: 'clients',
-    label: 'B2B / клиенты',
-    description: 'Клиент → услуга (таргетинг и др.) → Sales inquiry',
+    labelKey: 'app.marketing.flows.clients.label',
+    descriptionKey: 'app.marketing.flows.clients.description',
+    destinationKey: 'app.marketing.flows.clients.destination',
+    label: 'B2B / clients',
+    description: 'Client → service (targeting, etc.) → Sales inquiry',
     goal_type: 'sales',
     primary_kpi: 'qualified_leads',
     target_type: 'service',
     route_intent: 'sales_inquiry',
-    destinationLabel: 'Услуга',
+    destinationLabel: 'Service',
   },
   {
     kind: 'service',
-    label: 'Заявки на услугу',
-    description: 'Клиент → услуга каталога → Service flow',
+    labelKey: 'app.marketing.flows.service.label',
+    descriptionKey: 'app.marketing.flows.service.description',
+    destinationKey: 'app.marketing.flows.service.destination',
+    label: 'Service requests',
+    description: 'Client → catalog service → Service flow',
     goal_type: 'sales',
     primary_kpi: 'revenue',
     target_type: 'service',
     route_intent: 'service_request',
-    destinationLabel: 'Услуга',
+    destinationLabel: 'Service',
   },
 ]
 
 export type MarketingSourceKind = 'public_form' | 'meta'
 
-export function statusLabel(status: string): string {
+const STATUS_KEYS: Record<string, string> = {
+  draft: 'app.marketing.status.draft',
+  active: 'app.marketing.status.active',
+  paused: 'app.marketing.status.paused',
+  completed: 'app.marketing.status.completed',
+  archived: 'app.marketing.status.archived',
+  planned: 'app.marketing.status.planned',
+  failed: 'app.marketing.status.failed',
+}
+
+const STATUS_FALLBACK_EN: Record<string, string> = {
+  draft: 'Draft',
+  active: 'Active',
+  paused: 'Paused',
+  completed: 'Completed',
+  archived: 'Archived',
+  planned: 'Planned',
+  failed: 'Failed',
+}
+
+export function statusLabel(status: string, t?: TranslateFn): string {
   const s = String(status || '').toLowerCase()
-  const map: Record<string, string> = {
-    draft: 'Черновик',
-    active: 'Активна',
-    paused: 'На паузе',
-    completed: 'Завершена',
-    archived: 'Архив',
-    planned: 'Запланирован',
-    failed: 'Ошибка',
+  const key = STATUS_KEYS[s]
+  if (key && t) {
+    return t(key, { defaultValue: STATUS_FALLBACK_EN[s] || status || '—' })
   }
-  return map[s] || status || '—'
+  return STATUS_FALLBACK_EN[s] || status || '—'
 }
 
 export function statusTone(status: string): string {
@@ -161,23 +190,68 @@ export function canConnectAnySource(flight: CampaignFlight | null): boolean {
   return canConnectSourceKind(flight, 'public_form') || canConnectSourceKind(flight, 'meta')
 }
 
-export function destinationSummary(campaign: Campaign): string {
-  const t = campaign.targets?.[0]
-  if (!t) return 'Не задано'
-  const labels: Record<string, string> = {
-    vacancy: 'Вакансия',
-    service: 'Услуга',
-    search: 'Поиск',
-    client_account: 'Клиент',
+export function destinationSummary(campaign: Campaign, t?: TranslateFn): string {
+  const target = campaign.targets?.[0]
+  if (!target) {
+    return t
+      ? t('app.marketing.destination.unset', { defaultValue: 'Not set' })
+      : 'Not set'
   }
-  const intentLabels: Record<string, string> = {
-    candidate_application: 'кандидаты',
-    sales_inquiry: 'sales inquiry',
-    service_request: 'услуга',
-  }
-  const typeLabel = labels[t.target_type] || t.target_type
-  const intent = intentLabels[t.route_intent]
-  return intent ? `${typeLabel} · ${intent}` : typeLabel
+  const typeKey =
+    target.target_type === 'vacancy'
+      ? 'vacancy'
+      : target.target_type === 'service'
+        ? 'service'
+        : target.target_type === 'search'
+          ? 'search'
+          : target.target_type === 'client_account'
+            ? 'client_account'
+            : null
+  const typeLabel = typeKey
+    ? t
+      ? t(`app.marketing.destination.${typeKey}`, {
+          defaultValue:
+            typeKey === 'vacancy'
+              ? 'Vacancy'
+              : typeKey === 'service'
+                ? 'Service'
+                : typeKey === 'search'
+                  ? 'Search'
+                  : 'Client',
+        })
+      : typeKey === 'vacancy'
+        ? 'Vacancy'
+        : typeKey === 'service'
+          ? 'Service'
+          : typeKey === 'search'
+            ? 'Search'
+            : 'Client'
+    : target.target_type
+
+  const intentKey =
+    target.route_intent === 'candidate_application'
+      ? 'intent_candidates'
+      : target.route_intent === 'sales_inquiry'
+        ? 'intent_sales_inquiry'
+        : target.route_intent === 'service_request'
+          ? 'intent_service_request'
+          : null
+  if (!intentKey) return typeLabel
+  const intent = t
+    ? t(`app.marketing.destination.${intentKey}`, {
+        defaultValue:
+          intentKey === 'intent_candidates'
+            ? 'candidates'
+            : intentKey === 'intent_sales_inquiry'
+              ? 'sales inquiry'
+              : 'service',
+      })
+    : intentKey === 'intent_candidates'
+      ? 'candidates'
+      : intentKey === 'intent_sales_inquiry'
+        ? 'sales inquiry'
+        : 'service'
+  return `${typeLabel} · ${intent}`
 }
 
 export function launchedAt(flight: CampaignFlight | null): string | null {

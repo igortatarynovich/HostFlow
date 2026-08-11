@@ -21,33 +21,33 @@ export default function SalesWorkspaceLayout() {
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="shrink-0 border-b border-slate-200 bg-slate-50/80 px-4 py-4 sm:px-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-          {t('app.sales_workspace.eyebrow', { defaultValue: 'Продажи' })}
+          {t('app.sales_workspace.eyebrow', { defaultValue: 'Sales' })}
         </p>
         <h1 className="mt-0.5 text-xl font-bold text-slate-900 sm:text-2xl">
           {onOrders
-            ? t('app.sales_workspace.orders_title', { defaultValue: 'Заказы' })
+            ? t('app.sales_workspace.orders_title', { defaultValue: 'Orders' })
             : onInquiries
-              ? t('app.sales_workspace.inquiries_title', { defaultValue: 'Обращения' })
-              : t('app.sales_workspace.title', { defaultValue: 'Продажи' })}
+              ? t('app.sales_workspace.inquiries_title', { defaultValue: 'Inquiries' })
+              : t('app.sales_workspace.title', { defaultValue: 'Sales' })}
         </h1>
         <nav
           className="mt-3 inline-flex flex-wrap gap-1 rounded-xl bg-slate-100/80 p-1"
-          aria-label={t('app.sales_workspace.nav_aria', { defaultValue: 'Разделы продаж' })}
+          aria-label={t('app.sales_workspace.nav_aria', { defaultValue: 'Sales sections' })}
         >
           <NavLink to={SALES_HOME_PATH} end className={tabClass}>
-            {t('app.sales_workspace.nav.inquiries', { defaultValue: 'Обращения' })}
+            {t('app.sales_workspace.nav.inquiries', { defaultValue: 'Inquiries' })}
           </NavLink>
           <NavLink to={CRM_APP_PATHS.clientsDirectory} className={tabClass}>
-            {t('app.sales_workspace.nav.clients', { defaultValue: 'Клиенты' })}
+            {t('app.sales_workspace.nav.clients', { defaultValue: 'Clients' })}
           </NavLink>
           <NavLink to={CRM_APP_PATHS.services} className={tabClass}>
-            {t('app.sales_workspace.nav.services', { defaultValue: 'Услуги' })}
+            {t('app.sales_workspace.nav.services', { defaultValue: 'Services' })}
           </NavLink>
           <NavLink to={SALES_ORDERS_PATH} className={tabClass}>
-            {t('app.sales_workspace.nav.orders', { defaultValue: 'Заказы' })}
+            {t('app.sales_workspace.nav.orders', { defaultValue: 'Orders' })}
           </NavLink>
           <NavLink to={CRM_APP_PATHS.invoices} className={tabClass}>
-            {t('app.sales_workspace.nav.invoices', { defaultValue: 'Счета' })}
+            {t('app.sales_workspace.nav.invoices', { defaultValue: 'Invoices' })}
           </NavLink>
         </nav>
       </header>

@@ -694,7 +694,7 @@ export default function LeadDetailPage() {
         bumpNextActionTick()
         notify({
           title: t('app.leads.detail.call_result.saved', {
-            defaultValue: 'Результат звонка сохранён',
+            defaultValue: 'Call result saved',
           }),
           variant: 'success',
         })
@@ -704,7 +704,7 @@ export default function LeadDetailPage() {
           planLimitModal?.showPlanLimitIfNeeded(
             err,
             t('app.leads.detail.call_result.save_failed', {
-              defaultValue: 'Не удалось сохранить результат звонка',
+              defaultValue: 'Failed to save call result',
             }),
           )
         ) {
@@ -713,7 +713,7 @@ export default function LeadDetailPage() {
         const info = getFriendlyErrorInfo(
           err,
           t('app.leads.detail.call_result.save_failed', {
-            defaultValue: 'Не удалось сохранить результат звонка',
+            defaultValue: 'Failed to save call result',
           }),
           t,
         )
@@ -775,19 +775,19 @@ export default function LeadDetailPage() {
       setLead(updated)
       bumpNextActionTick()
       const clientId = String(updated.converted_client_id || app.outcome_entity_id || '').trim()
-      notify({ title: t('app.clients.created_from_lead', { defaultValue: 'Клиент создан из анкеты' }), variant: 'success' })
+      notify({ title: t('app.clients.created_from_lead', { defaultValue: 'Client created from questionnaire' }), variant: 'success' })
       void loadTimeline()
       if (clientId) {
         navigate(`${CRM_APP_PATHS.agencyClients}/${clientId}?ctab=overview`)
       }
     } catch (err: unknown) {
-      if (planLimitModal?.showPlanLimitIfNeeded(err, 'Не удалось создать клиента')) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.sales_inquiry.create_client_failed', { defaultValue: 'Failed to create client' }))) {
         return
       }
       const detail =
         (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
         (err as Error)?.message ??
-        'Не удалось создать клиента'
+        t('app.sales_inquiry.create_client_failed', { defaultValue: 'Failed to create client' })
       notify({ title: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'error' })
     } finally {
       setConvertingClientLead(false)
@@ -872,7 +872,7 @@ export default function LeadDetailPage() {
             disabled={convertingClientLead || patching}
             onClick={() => void handleConvertClientLead()}
           >
-            {convertingClientLead ? 'Создаём…' : 'Создать клиента'}
+            {convertingClientLead ? t('app.sales_inquiry.creating_client', { defaultValue: 'Creating…' }) : t('app.sales_inquiry.create_client', { defaultValue: 'Create client' })}
           </button>
         ) : null}
         {!leadRejected && !clientLeadConvertedId ? (
@@ -883,7 +883,7 @@ export default function LeadDetailPage() {
               disabled={patching || convertingClientLead}
               onClick={() => void handleDetailStageSelect('contacted')}
             >
-              Позвонил
+              {t('app.sales_inquiry.called', { defaultValue: 'Called' })}
             </button>
             <button
               type="button"
@@ -891,7 +891,7 @@ export default function LeadDetailPage() {
               disabled={patching || convertingClientLead}
               onClick={() => void handleDetailStageSelect('qualified')}
             >
-              Заинтересован
+              {t('app.sales_inquiry.interested', { defaultValue: 'Interested' })}
             </button>
             <button
               type="button"
@@ -899,7 +899,7 @@ export default function LeadDetailPage() {
               disabled={patching || convertingClientLead}
               onClick={() => void handleDetailStageSelect('lost')}
             >
-              Закрыть запрос
+              {t('app.sales_inquiry.close', { defaultValue: 'Close request' })}
             </button>
           </>
         ) : null}

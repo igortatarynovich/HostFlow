@@ -37,7 +37,7 @@ describe('resolveCandidateEntityPassport', () => {
     expect(passport.sections.state.phaseId).toBe('candidate.rejected')
     expect(passport.sections.state.recruiterWorkActive).toBe(false)
     expect(passport.sections.actions.workAllowed).toBe(false)
-    expect(passport.sections.outcome?.title).toContain('отклон')
+    expect(passport.sections.outcome?.title).toContain('rejected')
     expect(entityPassportHasTerminalOutcome(passport)).toBe(true)
     expect(entityPassportAllowsAction(passport, 'call')).toBe(false)
     expect(passport.sections.actions.capabilities).toHaveLength(0)

@@ -47,8 +47,8 @@ describe('EntityWorkspaceShell', () => {
         <EntityWorkspaceShell model={mock.model} passport={mock.passport} resourceTypeLabel={mock.resourceTypeLabel} />
       </div>,
     )
-    const nav = screen.getByLabelText('Разделы')
-    await user.click(within(nav).getByRole('button', { name: 'Контакты' }))
+    const nav = screen.getByLabelText('Sections')
+    await user.click(within(nav).getByRole('button', { name: 'Contacts' }))
     expect(screen.getByText('+48 600 000 000')).toBeTruthy()
   })
 

@@ -2,6 +2,7 @@
  * Localize country and language names using Intl.DisplayNames.
  * Replaces Russian-only backend catalog labels with locale-aware display names.
  */
+import { lookupScopedTranslation } from '../i18n'
 
 type LocaleCode = 'pl' | 'en' | 'ru'
 
@@ -67,8 +68,7 @@ export function getLanguageDisplayName(code: string, locale: LocaleCode): string
   if (!code || typeof code !== 'string') return code ?? ''
   const lower = code.trim().toLowerCase()
   if (lower === 'other') {
-    // "Other" - use i18n keys or fallback
-    return locale === 'pl' ? 'Inny' : locale === 'ru' ? 'Другое' : 'Other'
+    return lookupScopedTranslation(locale, 'app.catalog', 'other_language') || 'Other'
   }
   const display = getLanguageDisplayNames(locale)
   try {

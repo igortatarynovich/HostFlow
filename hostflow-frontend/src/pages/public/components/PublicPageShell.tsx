@@ -6,7 +6,7 @@ import { PublicLocaleSwitcher } from '../../../components/public/PublicLocaleSwi
 
 type PublicPageShellProps = {
   children: ReactNode
-  maxWidth?: 'lg' | 'xl' | 'md' | '3xl' | '5xl'
+  maxWidth?: 'lg' | 'xl' | 'md' | '3xl' | '5xl' | '6xl' | '7xl'
   className?: string
   headerExtra?: ReactNode
   showBrand?: boolean
@@ -21,6 +21,8 @@ const WIDTH_CLASS: Record<NonNullable<PublicPageShellProps['maxWidth']>, string>
   lg: 'max-w-4xl',
   xl: 'max-w-5xl',
   '5xl': 'max-w-5xl',
+  '6xl': 'max-w-6xl',
+  '7xl': 'max-w-7xl',
 }
 
 export function PublicPageShell({

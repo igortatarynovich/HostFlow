@@ -1,4 +1,5 @@
 import type { EntityPassport } from '../entity-model'
+import { useI18n } from '../../i18n'
 import type { EntityWorkspaceSectionId } from './types'
 
 type SectionContentProps = {
@@ -8,6 +9,7 @@ type SectionContentProps = {
 
 /** Generic section body from passport slices — no module-specific logic. */
 export function EntityWorkspaceDefaultSectionContent({ sectionId, passport }: SectionContentProps) {
+  const { t } = useI18n()
   const s = passport.sections
 
   switch (sectionId) {
@@ -15,28 +17,38 @@ export function EntityWorkspaceDefaultSectionContent({ sectionId, passport }: Se
       return (
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Объект</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.entity_workspace.default.object', { defaultValue: 'Entity' })}
+            </dt>
             <dd className="mt-1 font-medium text-slate-900">{s.identity.title}</dd>
           </div>
           {s.identity.shortId ? (
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">ID</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('common.labels.id', { defaultValue: 'ID' })}
+              </dt>
               <dd className="mt-1 text-slate-800">{s.identity.shortId}</dd>
             </div>
           ) : null}
           <div>
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Процесс</dt>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.entity_workspace.default.process', { defaultValue: 'Process' })}
+            </dt>
             <dd className="mt-1 text-slate-800">{s.state.processLabel}</dd>
           </div>
           {s.state.stageLabel ? (
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Этап</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.entity_workspace.default.stage', { defaultValue: 'Stage' })}
+              </dt>
               <dd className="mt-1 text-slate-800">{s.state.stageLabel}</dd>
             </div>
           ) : null}
           {s.ownership.managerLabel ? (
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ответственный</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.entity_workspace.default.owner', { defaultValue: 'Owner' })}
+              </dt>
               <dd className="mt-1 text-slate-800">{s.ownership.managerLabel}</dd>
             </div>
           ) : null}
@@ -47,7 +59,14 @@ export function EntityWorkspaceDefaultSectionContent({ sectionId, passport }: Se
       return (
         <div className="space-y-3 text-sm">
           {s.contacts.displayName ? <p className="font-medium text-slate-900">{s.contacts.displayName}</p> : null}
-          {s.contacts.citizenship ? <p className="text-slate-600">Гражданство: {s.contacts.citizenship}</p> : null}
+          {s.contacts.citizenship ? (
+            <p className="text-slate-600">
+              {t('app.entity_workspace.default.citizenship', {
+                defaultValue: 'Citizenship: {value}',
+                values: { value: s.contacts.citizenship },
+              })}
+            </p>
+          ) : null}
           <ul className="space-y-2">
             {s.contacts.channels.map((ch) => (
               <li key={`${ch.kind}-${ch.value}`}>
@@ -70,7 +89,9 @@ export function EntityWorkspaceDefaultSectionContent({ sectionId, passport }: Se
         <div className="space-y-3 text-sm">
           {s.documents.readinessLabel ? (
             <p>
-              <span className="text-slate-500">Готовность: </span>
+              <span className="text-slate-500">
+                {t('app.entity_workspace.default.readiness', { defaultValue: 'Readiness:' })}{' '}
+              </span>
               <span className="font-medium text-slate-900">{s.documents.readinessLabel}</span>
             </p>
           ) : null}
@@ -79,7 +100,9 @@ export function EntityWorkspaceDefaultSectionContent({ sectionId, passport }: Se
           ) : null}
           {s.documents.missing.length ? (
             <div>
-              <p className="text-xs font-semibold uppercase text-slate-500">Не хватает</p>
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                {t('app.entity_workspace.default.missing', { defaultValue: 'Missing' })}
+              </p>
               <ul className="mt-1 list-disc pl-4 text-slate-700">
                 {s.documents.missing.map((code) => (
                   <li key={code}>{code}</li>
@@ -94,7 +117,9 @@ export function EntityWorkspaceDefaultSectionContent({ sectionId, passport }: Se
       return (
         <ul className="space-y-3 text-sm">
           {s.timeline.items.length === 0 ? (
-            <li className="text-slate-500">Нет событий</li>
+            <li className="text-slate-500">
+              {t('app.entity_workspace.default.no_events', { defaultValue: 'No events' })}
+            </li>
           ) : (
             s.timeline.items.map((ev) => (
               <li key={ev.id} className="border-l-2 border-slate-200 pl-3">
@@ -111,7 +136,9 @@ export function EntityWorkspaceDefaultSectionContent({ sectionId, passport }: Se
       return (
         <ul className="space-y-2 text-sm">
           {s.relations.items.length === 0 ? (
-            <li className="text-slate-500">Нет связей</li>
+            <li className="text-slate-500">
+              {t('app.entity_workspace.default.no_relations', { defaultValue: 'No relations' })}
+            </li>
           ) : (
             s.relations.items.map((rel) => (
               <li key={rel.id}>
@@ -133,7 +160,9 @@ export function EntityWorkspaceDefaultSectionContent({ sectionId, passport }: Se
       return (
         <ul className="space-y-2 text-sm">
           {s.tasks.items.length === 0 ? (
-            <li className="text-slate-500">Нет задач</li>
+            <li className="text-slate-500">
+              {t('app.entity_workspace.default.no_tasks', { defaultValue: 'No tasks' })}
+            </li>
           ) : (
             s.tasks.items.map((task) => (
               <li key={task.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
@@ -151,14 +180,29 @@ export function EntityWorkspaceDefaultSectionContent({ sectionId, passport }: Se
           <p className="text-lg font-bold text-slate-900">{s.outcome.title}</p>
           {s.outcome.body ? <p className="text-slate-600">{s.outcome.body}</p> : null}
           {s.outcome.why ? <p className="border-l-2 border-slate-300 pl-3 text-slate-700">{s.outcome.why}</p> : null}
-          {s.outcome.ownerLabel ? <p className="text-slate-600">Владелец: {s.outcome.ownerLabel}</p> : null}
+          {s.outcome.ownerLabel ? (
+            <p className="text-slate-600">
+              {t('app.entity_workspace.default.outcome_owner', {
+                defaultValue: 'Owner: {value}',
+                values: { value: s.outcome.ownerLabel },
+              })}
+            </p>
+          ) : null}
           {s.outcome.whenLabel ? <p className="text-slate-500">{s.outcome.whenLabel}</p> : null}
         </div>
       ) : (
-        <p className="text-sm text-slate-500">Процесс активен</p>
+        <p className="text-sm text-slate-500">
+          {t('app.entity_workspace.default.process_active', { defaultValue: 'Process is active' })}
+        </p>
       )
 
     default:
-      return <p className="text-sm text-slate-500">Раздел не настроен</p>
+      return (
+        <p className="text-sm text-slate-500">
+          {t('app.entity_workspace.default.section_unconfigured', {
+            defaultValue: 'Section not configured',
+          })}
+        </p>
+      )
   }
 }

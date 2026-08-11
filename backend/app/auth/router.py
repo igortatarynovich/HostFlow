@@ -490,7 +490,7 @@ async def auth_session_sync(request: Request, response: Response) -> TokenOut:
     Needed when the SPA still has a shell-only localStorage token from before shared
     cookies, or host-only cookies — otherwise module hosts bounce back to /login.
     """
-    await enforce_rate_limit(request, rate_limits().login, scope="auth:session_sync")
+    await enforce_rate_limit(request, rate_limits().session_sync, scope="auth:session_sync")
     raw = resolve_access_token(request)
     if not raw:
         raise HTTPException(status_code=401, detail="Missing session")
@@ -591,7 +591,7 @@ async def auth_session_sync(request: Request, response: Response) -> TokenOut:
 )
 async def auth_refresh(request: Request, response: Response) -> TokenOut:
     """Rotate access (and refresh) cookies from the HttpOnly refresh cookie."""
-    await enforce_rate_limit(request, rate_limits().login, scope="auth:refresh")
+    await enforce_rate_limit(request, rate_limits().refresh, scope="auth:refresh")
     raw_refresh = read_refresh_token(request)
     if not raw_refresh:
         raise HTTPException(status_code=401, detail="Missing refresh session")

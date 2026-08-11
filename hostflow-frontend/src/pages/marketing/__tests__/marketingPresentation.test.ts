@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { AcquisitionActivityEvent } from '../../../api/acquisitionActivity'
 import { countFlightFunnel, destinationSummary, statusLabel } from '../marketingPresentation'
 import type { Campaign } from '../../../api/platformCampaigns'
+import type { TranslateFn } from '../../../i18n'
 
 function event(partial: Partial<AcquisitionActivityEvent>): AcquisitionActivityEvent {
   return {
@@ -18,6 +19,26 @@ function event(partial: Partial<AcquisitionActivityEvent>): AcquisitionActivityE
     payload: {},
     ...partial,
   }
+}
+
+const enT: TranslateFn = (key, options) => {
+  const map: Record<string, string> = {
+    'app.marketing.status.active': 'Active',
+    'app.marketing.status.paused': 'Paused',
+    'app.marketing.destination.vacancy': 'Vacancy',
+    'app.marketing.destination.intent_candidates': 'candidates',
+  }
+  return map[key] ?? options?.defaultValue ?? key
+}
+
+const ruT: TranslateFn = (key, options) => {
+  const map: Record<string, string> = {
+    'app.marketing.status.active': 'Активна',
+    'app.marketing.status.paused': 'На паузе',
+    'app.marketing.destination.vacancy': 'Вакансия',
+    'app.marketing.destination.intent_candidates': 'кандидаты',
+  }
+  return map[key] ?? options?.defaultValue ?? key
 }
 
 describe('marketingPresentation', () => {
@@ -41,13 +62,15 @@ describe('marketingPresentation', () => {
     const campaign = {
       targets: [{ target_type: 'vacancy', target_id: 'uuid-here', route_intent: 'candidate_application' }],
     } as Campaign
-    const summary = destinationSummary(campaign)
-    expect(summary).toContain('Вакансия')
+    const summary = destinationSummary(campaign, enT)
+    expect(summary).toContain('Vacancy')
     expect(summary).not.toContain('uuid-here')
   })
 
-  it('labels statuses in Russian', () => {
-    expect(statusLabel('active')).toBe('Активна')
-    expect(statusLabel('paused')).toBe('На паузе')
+  it('labels statuses via locale', () => {
+    expect(statusLabel('active')).toBe('Active')
+    expect(statusLabel('paused')).toBe('Paused')
+    expect(statusLabel('active', enT)).toBe('Active')
+    expect(statusLabel('paused', ruT)).toBe('На паузе')
   })
 })

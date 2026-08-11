@@ -199,35 +199,37 @@ const REASON_LABEL_ALIASES: Record<string, string> = {
   без_причины: 'no_reason',
 }
 
+/** English fallbacks when i18n keys are missing (also used as t() defaultValue). */
 const STAGE_FALLBACK_LABELS: Record<string, string> = {
-  new: 'Новый',
-  no_answer: 'Не отвечает',
-  contacted: 'Контакт установлен',
-  questionnaire_submitted: 'Анкета заполнена',
-  docs_wait: 'Ожидаем документы',
-  docs_got: 'Документы получены',
-  permit_ordered: 'Заказ разрешения на работу',
-  permit_received: 'Разрешение на работу получено',
-  visa: 'Виза',
-  red_paper: 'Красная бумага заказана',
-  red_paper_ordered: 'Красная бумага заказана',
-  trip_plan: 'Планируем приезд',
-  at_client: 'На базе клиента',
-  on_trip: 'Выехал в рейс',
-  interview: 'Контакт установлен',
-  hiring: 'Документы получены',
-  employed: 'Трудоустроен',
-  probation: 'Испытательный срок',
-  probation_ok: 'Испытательный срок',
-  rejected: 'Отказ',
-  declined: 'Отказался',
-  ready_for_handoff: 'Готов к передаче',
-  processing_by_client: 'Обработка заказчиком',
-  docs_submitted_permit: 'Документы поданы на разрешение',
-  handoff_returned: 'Возвращён',
-  open: 'Открыта',
-  paused: 'Пауза',
-  closed: 'Закрыта',
+  new: 'New',
+  no_answer: 'No answer',
+  contacted: 'Contact established',
+  questionnaire_submitted: 'Questionnaire submitted',
+  docs_wait: 'Waiting for documents',
+  docs_got: 'Documents received',
+  permit_ordered: 'Work permit ordered',
+  permit_received: 'Work permit received',
+  visa: 'Visa in progress',
+  red_paper: 'Red paper ordered',
+  red_paper_ordered: 'Red paper ordered',
+  trip_plan: 'Trip planned',
+  at_client: 'At client base',
+  on_trip: 'On trip',
+  interview: 'Interview',
+  hiring: 'Hiring',
+  employed: 'Employed',
+  employment_pending: 'Employment in progress',
+  probation: 'Probation',
+  probation_ok: 'Probation passed',
+  rejected: 'Rejected',
+  declined: 'Candidate declined',
+  ready_for_handoff: 'Ready for handoff',
+  processing_by_client: 'Processed by client',
+  docs_submitted_permit: 'Documents submitted for permit',
+  handoff_returned: 'Returned',
+  open: 'Open',
+  paused: 'Paused',
+  closed: 'Closed',
 }
 
 const buildNormalizedMap = (source: Record<string, string>) =>
@@ -283,17 +285,20 @@ export function translateStageLabel(
   const normalized = normalizeKey(code) || normalizeKey(fallback)
   const lookupKey = canonical ?? normalized
   if (lookupKey) {
-    const translated = t(`${STAGE_LABEL_I18N_PREFIX}.${lookupKey}`, { defaultValue: '' })
+    const englishDefault = STAGE_FALLBACK_LABELS[lookupKey] || ''
+    const translated = t(`${STAGE_LABEL_I18N_PREFIX}.${lookupKey}`, { defaultValue: englishDefault })
     if (translated) {
       return translated
     }
     // Deprecated duplicate tree — dashboard should not add new keys here.
-    const legacyDashboard = t(`app.dashboard.stage_labels.${lookupKey}`, { defaultValue: '' })
+    const legacyDashboard = t(`app.dashboard.stage_labels.${lookupKey}`, {
+      defaultValue: englishDefault,
+    })
     if (legacyDashboard) {
       return legacyDashboard
     }
-    if (STAGE_FALLBACK_LABELS[lookupKey]) {
-      return STAGE_FALLBACK_LABELS[lookupKey]
+    if (englishDefault) {
+      return englishDefault
     }
   }
   if (fallback && String(fallback).trim()) return String(fallback)
@@ -311,9 +316,11 @@ export function translateReasonLabel(
   const lookupKey = canonical ?? normalized
   if (lookupKey) {
     if (lookupKey === 'no_reason') {
-      return t('app.dashboard.labels.no_reason', { defaultValue: '' }) || ''
+      return t('app.dashboard.labels.no_reason', { defaultValue: 'No reason' }) || ''
     }
-    const translated = t(`app.dashboard.reason_codes.${lookupKey}`, { defaultValue: '' })
+    const translated = t(`app.dashboard.reason_codes.${lookupKey}`, {
+      defaultValue: lookupKey,
+    })
     if (translated) {
       return translated
     }

@@ -104,7 +104,9 @@ export function CandidatesDebugPanel({
           disabled={debugClientViewLoading}
           onClick={handleProbe}
         >
-          {debugClientViewLoading ? '…' : 'Проверить handoffs'}
+          {debugClientViewLoading
+            ? '…'
+            : t('app.candidates.debug.probe_handoffs', { defaultValue: 'Probe handoffs' })}
         </button>
         <button
           type="button"
@@ -112,7 +114,9 @@ export function CandidatesDebugPanel({
           disabled={debugClientViewLoading}
           onClick={handleForceTwo}
         >
-          Оставить 2 handoff и обновить список
+          {t('app.candidates.debug.force_two_handoffs', {
+            defaultValue: 'Keep 2 handoffs and refresh list',
+          })}
         </button>
       </div>
       {debugClientViewError && <div className="text-red-600 mb-1">{debugClientViewError}</div>}

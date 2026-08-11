@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getDocumentTypes, type DocType } from '../../api/documents'
+import { useI18n } from '../../i18n'
 
 export interface DocumentConfig {
   document_type_id: string
@@ -21,6 +22,7 @@ export default function ProfileDocumentConstructor({
   onChange,
   disabled = false,
 }: ProfileDocumentConstructorProps) {
+  const { t } = useI18n()
   const [documentTypes, setDocumentTypes] = useState<DocType[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -190,9 +192,11 @@ export default function ProfileDocumentConstructor({
                             }}
                             disabled={disabled}
                             className="w-16 rounded border-slate-300 px-2 py-1 text-xs"
-                            placeholder="дней"
+                            placeholder={t('app.profiles.documents.days', { defaultValue: 'days' })}
                           />
-                          <span className="text-xs text-slate-600">дней</span>
+                          <span className="text-xs text-slate-600">
+                            {t('app.profiles.documents.days', { defaultValue: 'days' })}
+                          </span>
                         </label>
                       </div>
                     </div>

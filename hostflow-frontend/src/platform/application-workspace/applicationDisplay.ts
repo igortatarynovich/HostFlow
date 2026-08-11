@@ -1,4 +1,5 @@
 import type { Application, ApplicationStatus, ApplicationTab } from '../../api/types/application'
+import type { TranslateFn } from '../../i18n'
 
 export const APPLICATION_STATUS_BADGE: Record<ApplicationStatus, string> = {
   new: 'bg-emerald-50 text-emerald-700',
@@ -9,13 +10,19 @@ export const APPLICATION_STATUS_BADGE: Record<ApplicationStatus, string> = {
   rejected: 'bg-rose-50 text-rose-700',
 }
 
-export const APPLICATION_STATUS_TEXT: Record<ApplicationStatus, string> = {
-  new: 'Новое',
-  in_progress: 'В работе',
-  waiting: 'Ожидаем ответ',
-  questionnaire_submitted: 'Ответ получен',
-  completed: 'Завершено',
-  rejected: 'Отклонено',
+const APPLICATION_STATUS_DEFAULTS: Record<ApplicationStatus, string> = {
+  new: 'New',
+  in_progress: 'In progress',
+  waiting: 'Awaiting reply',
+  questionnaire_submitted: 'Reply received',
+  completed: 'Completed',
+  rejected: 'Rejected',
+}
+
+export function applicationStatusLabel(status: ApplicationStatus, t: TranslateFn): string {
+  return t(`app.application_workspace.status.${status}`, {
+    defaultValue: APPLICATION_STATUS_DEFAULTS[status] ?? status,
+  })
 }
 
 export function applicationTabBucket(app: Application): ApplicationTab {
@@ -31,16 +38,26 @@ export function applicationNeedsFirstContact(app: Application): boolean {
   return app.status === 'new'
 }
 
-export function formatApplicationRelativeTime(iso: string | null | undefined): string {
+export function formatApplicationRelativeTime(iso: string | null | undefined, t: TranslateFn): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   const diffMs = Date.now() - d.getTime()
   const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return 'только что'
-  if (mins < 60) return `${mins} мин назад`
+  if (mins < 1) return t('app.application_workspace.relative_time.just_now', { defaultValue: 'just now' })
+  if (mins < 60) {
+    return t('app.application_workspace.relative_time.minutes_ago', {
+      defaultValue: '{n} min ago',
+      values: { n: mins },
+    })
+  }
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} ч назад`
+  if (hours < 24) {
+    return t('app.application_workspace.relative_time.hours_ago', {
+      defaultValue: '{n} h ago',
+      values: { n: hours },
+    })
+  }
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 

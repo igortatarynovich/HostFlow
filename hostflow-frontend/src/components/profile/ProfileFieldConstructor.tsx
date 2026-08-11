@@ -47,37 +47,37 @@ interface ProfileFieldConstructorProps {
 export const FIELD_CATEGORIES = {
   personal: {
     labelKey: 'app.settings.candidate_profiles.field_constructor.groups.personal',
-    defaultLabel: 'Личные данные',
+    defaultLabel: 'Personal data',
     icon: '👤',
     order: 1,
   },
   contact: {
     labelKey: 'app.settings.candidate_profiles.field_constructor.groups.contact',
-    defaultLabel: 'Контакты',
+    defaultLabel: 'Contacts',
     icon: '📞',
     order: 2,
   },
   experience: {
     labelKey: 'app.settings.candidate_profiles.field_constructor.groups.experience',
-    defaultLabel: 'Опыт работы',
+    defaultLabel: 'Work experience',
     icon: '💼',
     order: 3,
   },
   documents: {
     labelKey: 'app.settings.candidate_profiles.field_constructor.groups.documents',
-    defaultLabel: 'Документы',
+    defaultLabel: 'Documents',
     icon: '📄',
     order: 4,
   },
   status: {
     labelKey: 'app.settings.candidate_profiles.field_constructor.groups.status',
-    defaultLabel: 'Статус',
+    defaultLabel: 'Status',
     icon: '🛂',
     order: 5,
   },
   other: {
     labelKey: 'app.settings.candidate_profiles.field_constructor.groups.other',
-    defaultLabel: 'Прочее',
+    defaultLabel: 'Other',
     icon: '📝',
     order: 6,
   },
@@ -96,7 +96,7 @@ const SYSTEM_FIELDS: Array<{
     key: 'first_name',
     type: 'text',
     labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.first_name',
-    defaultLabel: 'Имя',
+    defaultLabel: 'First name',
     category: 'system',
     field_category: 'personal',
   },
@@ -104,7 +104,7 @@ const SYSTEM_FIELDS: Array<{
     key: 'last_name',
     type: 'text',
     labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.last_name',
-    defaultLabel: 'Фамилия',
+    defaultLabel: 'Last name',
     category: 'system',
     field_category: 'personal',
   },
@@ -112,7 +112,7 @@ const SYSTEM_FIELDS: Array<{
     key: 'birth_date',
     type: 'date',
     labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.birth_date',
-    defaultLabel: 'Дата рождения',
+    defaultLabel: 'Date of birth',
     category: 'simple',
     field_category: 'personal',
   },
@@ -120,7 +120,7 @@ const SYSTEM_FIELDS: Array<{
     key: 'citizenship',
     type: 'select',
     labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.citizenship',
-    defaultLabel: 'Гражданство',
+    defaultLabel: 'Citizenship',
     category: 'medium',
     field_category: 'personal',
   },
@@ -128,7 +128,7 @@ const SYSTEM_FIELDS: Array<{
     key: 'address',
     type: 'address',
     labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.address',
-    defaultLabel: 'Адрес',
+    defaultLabel: 'Address',
     category: 'medium',
     field_category: 'personal',
   },
@@ -144,7 +144,7 @@ const SYSTEM_FIELDS: Array<{
     key: 'phone',
     type: 'text',
     labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.phone',
-    defaultLabel: 'Телефон',
+    defaultLabel: 'Phone',
     category: 'system',
     field_category: 'contact',
   },
@@ -152,7 +152,7 @@ const SYSTEM_FIELDS: Array<{
     key: 'languages',
     type: 'multiselect',
     labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.languages',
-    defaultLabel: 'Языки',
+    defaultLabel: 'Languages',
     category: 'medium',
     field_category: 'contact',
   },
@@ -160,7 +160,7 @@ const SYSTEM_FIELDS: Array<{
     key: 'license_number',
     type: 'text',
     labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.license_number',
-    defaultLabel: 'Номер водительского удостоверения',
+    defaultLabel: 'Driver license number',
     category: 'simple',
     field_category: 'documents',
   },
@@ -168,7 +168,7 @@ const SYSTEM_FIELDS: Array<{
     key: 'license_categories',
     type: 'multiselect',
     labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.license_categories',
-    defaultLabel: 'Категории прав',
+    defaultLabel: 'License categories',
     category: 'medium',
     field_category: 'documents',
   },
@@ -176,7 +176,7 @@ const SYSTEM_FIELDS: Array<{
     key: 'employment_history',
     type: 'employment_history',
     labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.employment_history',
-    defaultLabel: 'История трудоустройства',
+    defaultLabel: 'Employment history',
     category: 'resource',
     field_category: 'experience',
   },
@@ -215,7 +215,7 @@ const FieldCategoryGroup = memo(function FieldCategoryGroup({
         <div className="flex items-center gap-2">
           <span className="text-lg">{categoryInfo.icon}</span>
           <span className="text-sm font-semibold text-slate-900">
-            {t(categoryInfo.labelKey)}
+            {t(categoryInfo.labelKey, { defaultValue: categoryInfo.defaultLabel })}
           </span>
           <span className="rounded-md bg-slate-200 px-2 py-0.5 text-xs text-slate-600">{fields.length}</span>
         </div>
@@ -451,7 +451,7 @@ export default function ProfileFieldConstructor({
         available.push({
           key: field.key,
           type: field.type,
-          label: t(field.labelKey),
+          label: t(field.labelKey, { defaultValue: field.defaultLabel }),
           category: field.category,
           field_category: field.field_category,
         })

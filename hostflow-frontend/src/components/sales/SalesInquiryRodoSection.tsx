@@ -119,7 +119,7 @@ export default function SalesInquiryRodoSection({ leadId, lead: leadProp, disabl
   if (loading) {
     return (
       <p className="text-sm text-slate-500" data-testid="sales-rodo-loading">
-        {t('common.loading', { defaultValue: 'Ładowanie…' })}
+        {t('common.loading', { defaultValue: 'Loading…' })}
       </p>
     )
   }
@@ -140,7 +140,7 @@ export default function SalesInquiryRodoSection({ leadId, lead: leadProp, disabl
     >
       <p className="text-[11px] font-bold uppercase tracking-wide text-slate-800">
         {t('app.leads.intake_workspace.decision_rail.rodo_required_title', {
-          defaultValue: 'Нужен RODO',
+          defaultValue: 'RODO required',
         })}
       </p>
       {!rodoOk ? (

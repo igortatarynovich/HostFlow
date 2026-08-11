@@ -493,8 +493,9 @@ export function useCandidatesTableData({
         console.error('[Candidates] Load error:', errorInfo)
         // If current load is the latest, show error and clear list.
         if (myLoadId === loadIdRef.current) {
-          const loadFailedTitle =
-            t('app.candidates.messages.load_failed') || 'Не удалось загрузить список кандидатов'
+          const loadFailedTitle = t('app.candidates.messages.load_failed', {
+            defaultValue: 'Failed to load candidates.',
+          })
           if (planLimitModal?.showPlanLimitIfNeeded(e, loadFailedTitle)) {
             setErrorText(null)
           } else {

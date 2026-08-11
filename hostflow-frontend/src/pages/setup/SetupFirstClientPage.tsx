@@ -20,7 +20,6 @@ type Step = 'audience' | 'details'
 export default function SetupFirstClientPage() {
   const { t, locale } = useI18n()
   const navigate = useNavigate()
-  const isRu = locale?.startsWith('ru')
 
   const [step, setStep] = useState<Step>('audience')
   const [hiringTarget, setHiringTarget] = useState<HiringTarget>('')
@@ -50,7 +49,7 @@ export default function SetupFirstClientPage() {
       setError(
         friendlyFormHintError(
           t('app.onboarding.setup.client.errors.target_required', {
-            defaultValue: 'Выберите, для кого вы нанимаете.',
+            defaultValue: 'Choose who you are hiring for.',
           }),
           t,
         ),
@@ -69,7 +68,7 @@ export default function SetupFirstClientPage() {
         setError(
           friendlyFormHintError(
             t('app.onboarding.setup.client.errors.own_company_missing', {
-              defaultValue: 'Сначала настройте свою компанию.',
+              defaultValue: 'Set up your own company first.',
             }),
             t,
           ),
@@ -82,7 +81,7 @@ export default function SetupFirstClientPage() {
         getFriendlyErrorInfo(
           err,
           t('app.onboarding.setup.client.errors.generic', {
-            defaultValue: 'Не удалось продолжить настройку.',
+            defaultValue: 'Could not continue setup.',
           }),
           t,
         ),
@@ -100,7 +99,7 @@ export default function SetupFirstClientPage() {
       setError(
         friendlyFormHintError(
           t('app.onboarding.setup.client.errors.name_required', {
-            defaultValue: 'Укажите название компании клиента.',
+            defaultValue: 'Enter the client company name.',
           }),
           t,
         ),
@@ -131,8 +130,8 @@ export default function SetupFirstClientPage() {
       setError(
         getFriendlyErrorInfo(
           err,
-          t('app.onboarding.setup.client.errors.generic', {
-            defaultValue: 'Не удалось создать клиента.',
+          t('app.onboarding.setup.client.errors.create_failed', {
+            defaultValue: 'Could not create the client.',
           }),
           t,
         ),
@@ -145,23 +144,24 @@ export default function SetupFirstClientPage() {
   return (
     <SetupFlowChrome
       testId="m1-setup-client-flow"
-      stepLabel={t('app.onboarding.setup.client.badge', { defaultValue: 'Настройка · Первый клиент' })}
+      stepLabel={t('app.onboarding.setup.client.badge', { defaultValue: 'Setup · First client' })}
       title={
         step === 'audience'
           ? t('app.onboarding.setup.client.audience_title', {
-              defaultValue: 'Кого вы хотите нанимать?',
+              defaultValue: 'Who do you want to hire for?',
             })
           : t('app.onboarding.setup.client.details_title', {
-              defaultValue: 'Расскажите немного о клиенте',
+              defaultValue: 'Tell us a bit about the client',
             })
       }
       subtitle={
         step === 'audience'
           ? t('app.onboarding.setup.client.audience_subtitle', {
-              defaultValue: 'Один ответ — и мы покажем только нужные поля. Без реестра клиентов и лишних настроек.',
+              defaultValue:
+                'One answer — and we show only the fields you need. No client registry or extra settings.',
             })
           : t('app.onboarding.setup.client.details_subtitle', {
-              defaultValue: 'Минимум данных, чтобы создать первую вакансию.',
+              defaultValue: 'Minimum data to create the first vacancy.',
             })
       }
     >
@@ -181,7 +181,7 @@ export default function SetupFirstClientPage() {
               }`}
             >
               {t('app.onboarding.setup.client.target_client', {
-                defaultValue: 'Для компании-клиента',
+                defaultValue: 'For a client company',
               })}
             </button>
             <button
@@ -197,7 +197,7 @@ export default function SetupFirstClientPage() {
               }`}
             >
               {t('app.onboarding.setup.client.target_own', {
-                defaultValue: 'Для своей компании',
+                defaultValue: 'For my own company',
               })}
             </button>
           </div>
@@ -209,14 +209,14 @@ export default function SetupFirstClientPage() {
             onClick={() => void onAudienceContinue()}
             className="btn-primary w-full rounded-lg py-3 font-medium disabled:opacity-50"
           >
-            {loading ? t('common.loading') : t('common.continue', { defaultValue: 'Продолжить' })}
+            {loading ? t('common.loading') : t('common.continue', { defaultValue: 'Continue' })}
           </button>
         </div>
       ) : (
         <form onSubmit={onClientSubmit} className="space-y-4">
           <div>
             <label htmlFor="setup-client-name" className="block text-sm font-medium text-slate-800">
-              {t('app.onboarding.setup.client.name_label', { defaultValue: 'Название компании' })}
+              {t('app.onboarding.setup.client.name_label', { defaultValue: 'Company name' })}
             </label>
             <input
               id="setup-client-name"
@@ -225,7 +225,7 @@ export default function SetupFirstClientPage() {
               onChange={(e) => setName(e.target.value)}
               className="mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               placeholder={t('app.onboarding.setup.client.name_placeholder', {
-                defaultValue: 'Например, North Logistics Sp. z o.o.',
+                defaultValue: 'e.g. North Logistics Sp. z o.o.',
               })}
               autoFocus
               required
@@ -233,7 +233,7 @@ export default function SetupFirstClientPage() {
           </div>
           <div>
             <label htmlFor="setup-client-country" className="block text-sm font-medium text-slate-800">
-              {t('app.onboarding.setup.client.country_label', { defaultValue: 'Страна' })}
+              {t('app.onboarding.setup.client.country_label', { defaultValue: 'Country' })}
             </label>
             <select
               id="setup-client-country"
@@ -251,7 +251,7 @@ export default function SetupFirstClientPage() {
           </div>
           <div>
             <label htmlFor="setup-client-city" className="block text-sm font-medium text-slate-800">
-              {t('app.onboarding.setup.client.city_label', { defaultValue: 'Город' })}
+              {t('app.onboarding.setup.client.city_label', { defaultValue: 'City' })}
             </label>
             {cityOptions.length > 0 ? (
               <select
@@ -262,7 +262,9 @@ export default function SetupFirstClientPage() {
                 className="mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               >
                 <option value="">
-                  {t('app.onboarding.setup.client.city_placeholder', { defaultValue: 'Выберите город…' })}
+                  {t('app.onboarding.setup.client.city_placeholder', {
+                    defaultValue: 'Select a city…',
+                  })}
                 </option>
                 {cityOptions.map((opt) => (
                   <option key={opt.value} value={opt.label}>
@@ -277,7 +279,9 @@ export default function SetupFirstClientPage() {
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 className="mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-                placeholder={t('app.onboarding.setup.client.city_placeholder', { defaultValue: 'Варшава' })}
+                placeholder={t('app.onboarding.setup.client.city_placeholder_free', {
+                  defaultValue: 'Warsaw',
+                })}
               />
             )}
           </div>
@@ -289,7 +293,7 @@ export default function SetupFirstClientPage() {
               onClick={() => setStep('audience')}
               disabled={loading}
             >
-              {t('common.back', { defaultValue: 'Назад' })}
+              {t('common.back', { defaultValue: 'Back' })}
             </button>
             <button
               type="submit"
@@ -299,7 +303,7 @@ export default function SetupFirstClientPage() {
             >
               {loading
                 ? t('common.saving')
-                : t('app.onboarding.setup.client.save_continue', { defaultValue: 'Продолжить' })}
+                : t('app.onboarding.setup.client.save_continue', { defaultValue: 'Continue' })}
             </button>
           </div>
         </form>

@@ -7,6 +7,7 @@ import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitch
 import { useSeoMeta } from '../../hooks/useSeoMeta'
 import { type LocaleCode, useI18n } from '../../i18n'
 import { fieldControlClass, focusFirstInvalid } from '../../utils/formFieldValidation'
+import { getLanguageDisplayName } from '../../utils/catalogLocale'
 import { PublicPageShell } from './components/PublicPageShell'
 
 type StepId =
@@ -89,11 +90,13 @@ const STEPS: StepId[] = [
   'review',
 ]
 
-const ALL_LANGUAGE_OPTIONS: Array<{ value: LocaleCode; label: string }> = [
-  { value: 'pl', label: 'Polski' },
-  { value: 'en', label: 'English' },
-  { value: 'ru', label: 'Русский' },
-]
+const ALL_LANGUAGE_OPTIONS: Array<{ value: LocaleCode; label: string }> = (
+  ['pl', 'en', 'ru'] as const
+).map((value) => {
+  const raw = getLanguageDisplayName(value, value)
+  const label = raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : value
+  return { value, label }
+})
 
 const INITIAL_FORM: CompanyForm = {
   language: 'pl',

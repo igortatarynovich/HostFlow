@@ -3,12 +3,20 @@
  * Aligns with backend `resolve_outgoing_signature` — profile-only, no tenant team stubs.
  */
 import type { UserOutgoingSignature } from '../api/types'
+import { lookupScopedTranslation, type LocaleCode } from '../i18n'
+
+function normalizeLocale(locale: string | null | undefined): LocaleCode {
+  const code = String(locale || 'pl').trim().toLowerCase().slice(0, 2)
+  if (code === 'en' || code === 'ru' || code === 'pl') return code
+  return 'pl'
+}
 
 export function closingForLocale(locale: string | null | undefined): string {
-  const code = String(locale || 'pl').trim().toLowerCase().slice(0, 2)
-  if (code === 'en') return 'Kind regards,'
-  if (code === 'ru') return 'С уважением,'
-  return 'Z poważaniem,'
+  const code = normalizeLocale(locale)
+  return (
+    lookupScopedTranslation(code, 'app.outgoing_signature', `closing_${code}`) ||
+    (code === 'en' ? 'Kind regards,' : code === 'ru' ? 'Kind regards,' : 'Z poważaniem,')
+  )
 }
 
 function normalizeWebsiteDisplay(raw: string): string {

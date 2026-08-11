@@ -360,13 +360,13 @@ export function useCandidatesBulkActions(ctx: CandidatesBulkActionsCtx): Candida
       if (
         ctx.planLimitModal?.showPlanLimitIfNeeded(
           e,
-          ctx.t('app.candidates.messages.bulk_stage_failed') || 'Не удалось изменить этап кандидатов',
+          ctx.t('app.candidates.messages.bulk_stage_failed', { defaultValue: 'Failed to change stage.' }),
         )
       ) {
         return
       }
       const errorMessage = formatErrorForDisplay(e, {
-        fallback: ctx.t('app.candidates.messages.bulk_stage_failed') || 'Не удалось изменить этап кандидатов',
+        fallback: ctx.t('app.candidates.messages.bulk_stage_failed', { defaultValue: 'Failed to change stage.' }),
         includeStatusCode: false,
       })
       console.error('[Candidates] Bulk stage update failed:', getErrorInfo(e))
@@ -427,13 +427,13 @@ export function useCandidatesBulkActions(ctx: CandidatesBulkActionsCtx): Candida
       if (
         ctx.planLimitModal?.showPlanLimitIfNeeded(
           e,
-          ctx.t('app.candidates.messages.bulk_manager_failed') || 'Не удалось назначить менеджера',
+          ctx.t('app.candidates.messages.bulk_manager_failed', { defaultValue: 'Failed to assign manager.' }),
         )
       ) {
         return
       }
       const errorMessage = formatErrorForDisplay(e, {
-        fallback: ctx.t('app.candidates.messages.bulk_manager_failed') || 'Не удалось назначить менеджера',
+        fallback: ctx.t('app.candidates.messages.bulk_manager_failed', { defaultValue: 'Failed to assign manager.' }),
         includeStatusCode: false,
       })
       console.error('[Candidates] Bulk manager assignment failed:', getErrorInfo(e))
@@ -476,8 +476,9 @@ export function useCandidatesBulkActions(ctx: CandidatesBulkActionsCtx): Candida
         alert(
           `${
             ctx.t('app.candidates.messages.bulk_vacancy_partial', {
+              defaultValue: 'Failed to update {count} of {total} candidates.',
               values: { count: failureCount, total: ids.length },
-            }) || `Не удалось обновить вакансию для ${failureCount} из ${ids.length} кандидатов`
+            })
           }\n${errorDetails}`,
         )
       }
@@ -496,13 +497,13 @@ export function useCandidatesBulkActions(ctx: CandidatesBulkActionsCtx): Candida
       if (
         ctx.planLimitModal?.showPlanLimitIfNeeded(
           e,
-          ctx.t('app.candidates.messages.bulk_vacancy_failed') || 'Не удалось назначить вакансию',
+          ctx.t('app.candidates.messages.bulk_vacancy_failed', { defaultValue: 'Failed to assign vacancy.' }),
         )
       ) {
         return
       }
       const errorMessage = formatErrorForDisplay(e, {
-        fallback: ctx.t('app.candidates.messages.bulk_vacancy_failed') || 'Не удалось назначить вакансию',
+        fallback: ctx.t('app.candidates.messages.bulk_vacancy_failed', { defaultValue: 'Failed to assign vacancy.' }),
         includeStatusCode: false,
       })
       console.error('[Candidates] Bulk vacancy assignment failed:', getErrorInfo(e))
@@ -611,8 +612,9 @@ export function useCandidatesBulkActions(ctx: CandidatesBulkActionsCtx): Candida
         alert(
           `${
             ctx.t('app.candidates.messages.bulk_tags_partial', {
+              defaultValue: 'Failed to update tags for {count} of {total} candidates.',
               values: { count: failureCount, total: ids.length },
-            }) || `Не удалось обновить теги для ${failureCount} из ${ids.length} кандидатов`
+            })
           }\n${errorDetails}`,
         )
       }
@@ -631,13 +633,13 @@ export function useCandidatesBulkActions(ctx: CandidatesBulkActionsCtx): Candida
       if (
         ctx.planLimitModal?.showPlanLimitIfNeeded(
           e,
-          ctx.t('app.candidates.messages.bulk_tags_failed') || 'Не удалось обновить теги',
+          ctx.t('app.candidates.messages.bulk_tags_failed', { defaultValue: 'Failed to update tags.' }),
         )
       ) {
         return
       }
       const errorMessage = formatErrorForDisplay(e, {
-        fallback: ctx.t('app.candidates.messages.bulk_tags_failed') || 'Не удалось обновить теги',
+        fallback: ctx.t('app.candidates.messages.bulk_tags_failed', { defaultValue: 'Failed to update tags.' }),
         includeStatusCode: false,
       })
       console.error('[Candidates] Bulk tags update failed:', getErrorInfo(e))
@@ -663,8 +665,9 @@ export function useCandidatesBulkActions(ctx: CandidatesBulkActionsCtx): Candida
         alert(
           `${
             ctx.t('app.candidates.messages.bulk_delete_partial', {
+              defaultValue: 'Failed to delete {count} of {total} candidates.',
               values: { count: failureCount, total: ids.length },
-            }) || `Не удалось удалить ${failureCount} из ${ids.length} кандидатов`
+            })
           }\n${errorDetails}`,
         )
       }
@@ -676,13 +679,13 @@ export function useCandidatesBulkActions(ctx: CandidatesBulkActionsCtx): Candida
       if (
         ctx.planLimitModal?.showPlanLimitIfNeeded(
           e,
-          ctx.t('app.candidates.messages.bulk_delete_failed') || 'Не удалось удалить кандидатов',
+          ctx.t('app.candidates.messages.bulk_delete_failed', { defaultValue: 'Failed to delete candidates.' }),
         )
       ) {
         return
       }
       const errorMessage = formatErrorForDisplay(e, {
-        fallback: ctx.t('app.candidates.messages.bulk_delete_failed') || 'Не удалось удалить кандидатов',
+        fallback: ctx.t('app.candidates.messages.bulk_delete_failed', { defaultValue: 'Failed to delete candidates.' }),
         includeStatusCode: false,
       })
       console.error('[Candidates] Bulk delete operation failed:', getErrorInfo(e))

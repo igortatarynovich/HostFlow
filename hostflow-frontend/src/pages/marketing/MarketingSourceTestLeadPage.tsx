@@ -83,7 +83,7 @@ export default function MarketingSourceTestLeadPage() {
         getFriendlyErrorInfo(
           err,
           t('app.marketing.test_lead.errors.load', {
-            defaultValue: 'Не удалось загрузить sample для источника',
+            defaultValue: 'Failed to load sample for source',
           }),
           t,
         ),
@@ -107,7 +107,7 @@ export default function MarketingSourceTestLeadPage() {
 
   const title = source?.display_name
     ? t('app.marketing.test_lead.title_named', {
-        defaultValue: 'Test lead — {{name}}',
+        defaultValue: 'Test lead — {name}',
         values: { name: source.display_name },
       })
     : t('app.marketing.test_lead.title', { defaultValue: 'Test lead & field discovery' })
@@ -123,7 +123,7 @@ export default function MarketingSourceTestLeadPage() {
         getFriendlyErrorInfo(
           err,
           t('app.marketing.test_lead.errors.action', {
-            defaultValue: 'Не удалось выполнить действие',
+            defaultValue: 'Failed to run action',
           }),
           t,
         ),
@@ -140,7 +140,7 @@ export default function MarketingSourceTestLeadPage() {
           title={title}
           subtitle={t('app.marketing.test_lead.subtitle', {
             defaultValue:
-              'Получите sample submission, просмотрите поля (с маскированием) и сделайте dry-run normalize — без создания Candidate / Application.',
+              'Get a sample submission, review fields (masked), and dry-run normalize — without creating a Candidate / Application.',
           })}
           actions={
             <Link
@@ -171,7 +171,7 @@ export default function MarketingSourceTestLeadPage() {
 
       {loading ? (
         <p className="text-sm text-slate-500" data-testid="marketing-test-lead-loading">
-          {t('common.loading', { defaultValue: 'Загрузка…' })}
+          {t('common.loading', { defaultValue: 'Loading…' })}
         </p>
       ) : (
         <div className="space-y-6">
@@ -226,7 +226,7 @@ export default function MarketingSourceTestLeadPage() {
                 data-testid="marketing-test-lead-capture-armed"
               >
                 {t('app.marketing.test_lead.capture.armed', {
-                  defaultValue: 'Capture next armed until {{until}}',
+                  defaultValue: 'Capture next armed until {until}',
                   values: { until: sample.capture_next_until },
                 })}
               </p>
@@ -250,7 +250,7 @@ export default function MarketingSourceTestLeadPage() {
                 <p className="mt-1 text-slate-600">
                   {t('app.marketing.test_lead.mode_a.body', {
                     defaultValue:
-                      'Отправьте test lead из Meta Lead Form для этого Source, затем обновите sample — HostFlow подхватит payload без создания Candidate.',
+                      'Send a test lead from the Meta Lead Form for this Source, then refresh sample — HostFlow picks up the payload without creating a Candidate.',
                   })}
                 </p>
                 <button
@@ -282,7 +282,7 @@ export default function MarketingSourceTestLeadPage() {
                 <p className="mt-1 text-slate-600">
                   {t('app.marketing.test_lead.mode_b.body', {
                     defaultValue:
-                      'Следующая подходящая submission обработается как обычно и станет mapping sample (значения в UI замаскированы).',
+                      'The next matching submission is processed as usual and becomes the mapping sample (values are masked in the UI).',
                   })}
                 </p>
                 <button
@@ -418,7 +418,8 @@ export default function MarketingSourceTestLeadPage() {
                 data-testid="marketing-test-lead-fields-empty"
               >
                 {t('app.marketing.test_lead.fields.empty', {
-                  defaultValue: 'Нет sample. Отправьте Meta test lead, включите capture next или вставьте payload.',
+                  defaultValue:
+                    'No sample. Send a Meta test lead, arm capture next, or paste a payload.',
                 })}
               </p>
             ) : (

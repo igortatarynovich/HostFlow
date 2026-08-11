@@ -106,7 +106,7 @@ export function BulkStageModal({
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                {t('common.loading') || 'Загрузка...'}
+                {t('common.loading', { defaultValue: 'Loading…' })}
               </>
             ) : (
               t('common.actions.apply')

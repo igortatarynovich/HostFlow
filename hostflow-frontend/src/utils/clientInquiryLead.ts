@@ -1,23 +1,33 @@
 import type { Lead } from '../api/types'
+import { detectStoredLocale, lookupScopedTranslation, type LocaleCode } from '../i18n'
 import type { SearchRole } from './launchSearchRoleDefaults'
 import { metaLeadServiceInquiryCode } from './metaLeadB2b'
 
 export type SalesInquiryTab = 'all' | 'new' | 'in_progress' | 'waiting' | 'completed'
 
-const SERVICE_LABELS: Record<string, string> = {
-  targeting_ads: 'Таргетинг',
-  recruitment: 'Подбор персонала',
-  outsourcing: 'Аутсорсинг',
-  legalization: 'Легализация',
+const SERVICE_CODES = ['targeting_ads', 'recruitment', 'outsourcing', 'legalization', 'fleet'] as const
+const SERVICE_FALLBACKS: Record<(typeof SERVICE_CODES)[number], string> = {
+  targeting_ads: 'Targeting ads',
+  recruitment: 'Staff recruitment',
+  outsourcing: 'Outsourcing',
+  legalization: 'Legalization',
   fleet: 'Fleet',
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  meta: 'Meta Ads',
-  google: 'Google Ads',
-  website: 'Сайт',
-  linkedin: 'LinkedIn',
-  referral: 'Рекомендация',
+function scoped(
+  basePath: string,
+  leaf: string,
+  fallback: string,
+  values?: Record<string, string | number>,
+  locale: LocaleCode = detectStoredLocale(),
+): string {
+  let template = lookupScopedTranslation(locale, basePath, leaf) || fallback
+  if (values) {
+    for (const [key, value] of Object.entries(values)) {
+      template = template.split(`{${key}}`).join(String(value))
+    }
+  }
+  return template
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -48,7 +58,7 @@ export function inquiryCompanyName(lead: Lead): string {
     text(normalized.company_name_hint) ||
     text(payloadCompany.name) ||
     text(lead.company_name) ||
-    'Компания'
+    scoped('app.client_inquiry', 'company_fallback', 'Company')
   )
 }
 
@@ -63,7 +73,7 @@ export function inquiryNeedSummary(lead: Lead): string {
     text(need.people_count) || text(payloadNeed.people_count),
     text(need.what_needed) || text(payloadNeed.what_needed),
   ].filter(Boolean)
-  return parts.join(' ') || 'Запрос на подбор'
+  return parts.join(' ') || scoped('app.client_inquiry', 'need_fallback', 'Recruitment request')
 }
 
 export function inquiryContactPhone(lead: Lead): string | null {
@@ -102,40 +112,95 @@ export function formatInquiryTime(iso: string | null | undefined): string {
   if (!iso) return '—'
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  const locale = detectStoredLocale()
+  return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
 }
 
-/** Relative time for inquiry lists ("10 минут назад", "1 час назад"). */
+/** Relative time for inquiry lists. */
 export function formatInquiryRelativeTime(iso: string | null | undefined): string {
   if (!iso) return '—'
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return '—'
+  const locale = detectStoredLocale()
   const diffMs = Date.now() - date.getTime()
   const mins = Math.floor(diffMs / 60_000)
-  if (mins < 1) return 'только что'
-  if (mins < 60) return `${mins} мин. назад`
+  if (mins < 1) {
+    return scoped('app.application_workspace.relative_time', 'just_now', 'just now', undefined, locale)
+  }
+  if (mins < 60) {
+    return scoped(
+      'app.application_workspace.relative_time',
+      'minutes_ago',
+      '{n} min ago',
+      { n: mins },
+      locale,
+    )
+  }
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} ч. назад`
+  if (hours < 24) {
+    return scoped(
+      'app.application_workspace.relative_time',
+      'hours_ago',
+      '{n} h ago',
+      { n: hours },
+      locale,
+    )
+  }
   const days = Math.floor(hours / 24)
-  if (days === 1) return 'вчера'
-  if (days < 7) return `${days} дн. назад`
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+  if (days === 1) {
+    return scoped('app.application_workspace.relative_time', 'yesterday', 'yesterday', undefined, locale)
+  }
+  if (days < 7) {
+    return scoped(
+      'app.application_workspace.relative_time',
+      'days_ago',
+      '{n} d ago',
+      { n: days },
+      locale,
+    )
+  }
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
 }
 
 export function inquirySourceLabel(lead: Lead): string {
   const src = (lead.source || '').trim().toLowerCase()
-  return SOURCE_LABELS[src] || (lead.source ? String(lead.source) : 'Неизвестно')
+  if (src === 'meta') return 'Meta Ads'
+  if (src === 'google') return 'Google Ads'
+  if (src === 'linkedin') return 'LinkedIn'
+  if (src === 'website') {
+    return scoped('app.client_inquiry.source', 'website', 'Website')
+  }
+  if (src === 'referral') {
+    return scoped('app.client_inquiry.source', 'referral', 'Referral')
+  }
+  return lead.source
+    ? String(lead.source)
+    : scoped('app.client_inquiry.source', 'unknown', 'Unknown')
 }
 
 export function inquiryServiceLabel(lead: Lead): string | null {
   const code = metaLeadServiceInquiryCode(lead)
-  if (code) return SERVICE_LABELS[code] || code
+  if (code && (SERVICE_CODES as readonly string[]).includes(code)) {
+    return scoped(
+      'app.client_inquiry.service',
+      code,
+      SERVICE_FALLBACKS[code as (typeof SERVICE_CODES)[number]],
+    )
+  }
+  if (code) return code
   const normalized = record(lead.normalized)
   const need = record(normalized.need)
   const raw = text(need.what_needed).toLowerCase()
-  if (raw.includes('таргет') || raw.includes('target')) return 'Таргетинг'
-  if (raw.includes('подбор') || raw.includes('водител') || raw.includes('driver')) return 'Подбор персонала'
-  if (raw.includes('аутсорс')) return 'Аутсорсинг'
+  // Content matchers for free-text need descriptions (not UI labels).
+  if (raw.includes('таргет') || raw.includes('target')) {
+    return scoped('app.client_inquiry.service', 'targeting_ads', 'Targeting ads')
+  }
+  if (raw.includes('подбор') || raw.includes('водител') || raw.includes('driver')) {
+    return scoped('app.client_inquiry.service', 'recruitment', 'Staff recruitment')
+  }
+  if (raw.includes('аутсорс')) {
+    return scoped('app.client_inquiry.service', 'outsourcing', 'Outsourcing')
+  }
   return null
 }
 
@@ -163,7 +228,7 @@ export function inquiryTabBucket(lead: Lead): SalesInquiryTab {
   return inquiryStatusKey(lead)
 }
 
-/** Workflow step index 1–5 for the sales stepper (Связаться → … → Заказ). */
+/** Workflow step index 1–5 for the sales stepper. */
 export function salesInquiryWorkflowStep(lead: Lead): number {
   if (lead.converted_client_id) return 4
   const stage = (lead.stage || '').trim().toLowerCase()
@@ -175,7 +240,11 @@ export function salesInquiryWorkflowStep(lead: Lead): number {
 
 export function inquiryRequestTitle(lead: Lead): string {
   const service = inquiryServiceLabel(lead)
-  if (service) return `Запрос на ${service.toLowerCase()}`
+  if (service) {
+    return scoped('app.client_inquiry', 'request_for', 'Request for {service}', {
+      service: service.toLowerCase(),
+    })
+  }
   return inquiryNeedSummary(lead)
 }
 
@@ -192,6 +261,7 @@ export function inferSearchRoleFromInquiry(lead: Lead): SearchRole {
   const payload = record(lead.payload)
   const payloadNeed = record(payload.need)
   const raw = `${text(need.what_needed)} ${text(payloadNeed.what_needed)}`.toLowerCase()
+  // Content matchers for free-text need descriptions (not UI labels).
   if (raw.includes('склад') || raw.includes('warehouse')) return 'warehouse'
   if (raw.includes('офис') || raw.includes('office')) return 'office'
   if (raw.includes('водител') || raw.includes('driver') || raw.includes(' ce')) return 'driver'

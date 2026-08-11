@@ -28,7 +28,7 @@ export default function MarketingServicesPage() {
   })
 
   return (
-    <PublicPageShell maxWidth="5xl">
+    <PublicPageShell maxWidth="6xl">
       <div className="space-y-8">
         <CompanySiteNav />
 
@@ -51,21 +51,24 @@ export default function MarketingServicesPage() {
 
         <div className="grid gap-6 lg:grid-cols-3">
           <ProductShot
-            src="/landing/shot-meta-leads.svg"
+            size="feature"
+            src="/landing/shots/shot-meta.jpg"
             badge={t('public.company.shots.meta.badge', { defaultValue: 'Meta' })}
             caption={t('public.company.shots.meta.caption', {
               defaultValue: 'Meta Lead Ads sync into the client company CRM — Tech Provider model.',
             })}
           />
           <ProductShot
-            src="/landing/shot-pipeline.svg"
+            size="feature"
+            src="/landing/shots/hero-pipeline.jpg"
             badge={t('public.company.shots.pipeline.badge', { defaultValue: 'Pipeline' })}
             caption={t('public.company.shots.pipeline.caption', {
               defaultValue: 'Hiring pipeline with stages and owners inside the company tenant.',
             })}
           />
           <ProductShot
-            src="/landing/shot-documents.svg"
+            size="feature"
+            src="/landing/shots/shot-documents.jpg"
             badge={t('public.company.shots.documents.badge', { defaultValue: 'Documents' })}
             caption={t('public.company.shots.documents.caption', {
               defaultValue: 'Document checklist and verification for the recruiting company.',

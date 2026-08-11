@@ -54,28 +54,39 @@ export function isReminderOverdue(reminder: ReminderRecord, nowTs = Date.now()):
 export function stageHintTitle(t: (key: string, options?: any) => string, kind: StageOperationalHintKind): string {
   switch (kind) {
     case 'call_candidate':
-      return t('app.candidate_card.next_action.stage_hint.call', { defaultValue: 'Связаться с кандидатом' })
+      return t('app.candidate_card.next_action.stage_hint.call', { defaultValue: 'Contact the candidate' })
     case 'assign_vacancy':
-      return t('app.candidate_card.next_action.stage_hint.assign', { defaultValue: 'Квалификация и вакансия' })
+      return t('app.candidate_card.next_action.stage_hint.assign', { defaultValue: 'Qualification and vacancy' })
     case 'request_documents':
-      return t('app.candidate_card.next_action.stage_hint.request_docs', { defaultValue: 'Собрать документы' })
+      return t('app.candidate_card.next_action.stage_hint.request_docs', { defaultValue: 'Collect documents' })
     case 'verify_documents':
-      return t('app.candidate_card.next_action.stage_hint.verify_docs', { defaultValue: 'Проверить документы' })
+      return t('app.candidate_card.next_action.stage_hint.verify_docs', { defaultValue: 'Verify documents' })
     case 'handoff_prep':
-      return t('app.candidate_card.next_action.stage_hint.handoff', { defaultValue: 'Подготовка к передаче' })
+      return t('app.candidate_card.next_action.stage_hint.handoff', { defaultValue: 'Prepare for handoff' })
     case 'advance_pipeline':
-      return t('app.candidate_card.next_action.stage_hint.advance', { defaultValue: 'Двинуть кейс дальше' })
+      return t('app.candidate_card.next_action.stage_hint.advance', { defaultValue: 'Move the case forward' })
     default:
       return ''
   }
 }
 
+export function candidatesPipelineStepLabels(t: (key: string, options?: any) => string): readonly string[] {
+  return [
+    t('app.candidates.pipeline_steps.contact', { defaultValue: 'Contact' }),
+    t('app.candidates.pipeline_steps.qualify', { defaultValue: 'Qualification' }),
+    t('app.candidates.pipeline_steps.documents', { defaultValue: 'Documents' }),
+    t('app.candidates.pipeline_steps.handoff', { defaultValue: 'Handoff' }),
+    t('app.candidates.pipeline_steps.done', { defaultValue: 'Done' }),
+  ]
+}
+
+/** @deprecated Prefer `candidatesPipelineStepLabels(t)` — English placeholders only. */
 export const CANDIDATES_PIPELINE_STEP_LABELS = [
-  'Связаться',
-  'Квалификация',
-  'Документы',
+  'Contact',
+  'Qualification',
+  'Documents',
   'Handoff',
-  'Готово',
+  'Done',
 ] as const
 
 export function pipelineStepIndex(stageCode: string | null | undefined): number {
@@ -115,18 +126,18 @@ export function buildBlockerSummary(
 ): string | null {
   const parts: string[] = []
   for (const code of blockers.missing.slice(0, maxItems)) {
-    parts.push(t('app.candidates.detail.blocker_missing', { defaultValue: 'Нет: {code}', values: { code } }))
+    parts.push(t('app.candidates.detail.blocker_missing', { defaultValue: 'Missing: {code}', values: { code } }))
   }
   for (const code of blockers.problematic.slice(0, Math.max(0, maxItems - parts.length))) {
-    parts.push(t('app.candidates.detail.blocker_problem', { defaultValue: 'Проблема: {code}', values: { code } }))
+    parts.push(t('app.candidates.detail.blocker_problem', { defaultValue: 'Problem: {code}', values: { code } }))
   }
   for (const code of blockers.inProgress.slice(0, Math.max(0, maxItems - parts.length))) {
-    parts.push(t('app.candidates.detail.blocker_progress', { defaultValue: 'В работе: {code}', values: { code } }))
+    parts.push(t('app.candidates.detail.blocker_progress', { defaultValue: 'In progress: {code}', values: { code } }))
   }
   if (!parts.length) return null
   const extra =
     blockers.missing.length + blockers.problematic.length + blockers.inProgress.length > parts.length
-      ? t('app.candidates.detail.blocker_more', { defaultValue: '…и ещё' })
+      ? t('app.candidates.detail.blocker_more', { defaultValue: '…and more' })
       : null
   return extra ? `${parts.join(' · ')} ${extra}` : parts.join(' · ')
 }
@@ -137,15 +148,15 @@ export function buildHandoffReadinessLabel(
 ): string | null {
   if (!status) return null
   if (status.client_owns) {
-    return t('app.candidates.detail.handoff_client_owns', { defaultValue: 'Кандидат у клиента' })
+    return t('app.candidates.detail.handoff_client_owns', { defaultValue: 'Candidate with client' })
   }
   if (status.pending) {
-    return t('app.candidates.detail.handoff_pending', { defaultValue: 'Handoff ожидает решения клиента' })
+    return t('app.candidates.detail.handoff_pending', { defaultValue: 'Handoff awaiting client decision' })
   }
   if (status.accepted) {
-    return t('app.candidates.detail.handoff_accepted', { defaultValue: 'Handoff принят клиентом' })
+    return t('app.candidates.detail.handoff_accepted', { defaultValue: 'Handoff accepted by client' })
   }
-  return t('app.candidates.detail.handoff_not_started', { defaultValue: 'Handoff не создан' })
+  return t('app.candidates.detail.handoff_not_started', { defaultValue: 'Handoff not created' })
 }
 
 export function buildDocumentRailItems(args: {
@@ -164,14 +175,12 @@ export function buildDocumentRailItems(args: {
     const pct = Math.round(snapshot.percent_ready ?? 0)
     items.push({
       id: 'docs-summary',
-      name: t('app.candidates.detail.docs_readiness', {
-        defaultValue: 'Готовность документов: {pct}%',
+      name: t('app.candidates.detail.docs_readiness', { defaultValue: 'Document readiness: {pct}%',
         values: { pct },
       }),
       meta:
         blockers.missing.length || blockers.problematic.length
-          ? t('app.candidates.detail.docs_gaps', {
-              defaultValue: 'Не хватает: {count}',
+          ? t('app.candidates.detail.docs_gaps', { defaultValue: 'Missing: {count}',
               values: { count: blockers.missing.length + blockers.problematic.length },
             })
           : undefined,
@@ -182,7 +191,7 @@ export function buildDocumentRailItems(args: {
       items.push({
         id: `missing-${type}`,
         name: type,
-        meta: t('app.candidates.detail.doc_missing', { defaultValue: 'Отсутствует' }),
+        meta: t('app.candidates.detail.doc_missing', { defaultValue: 'Missing' }),
         onOpen: onOpenDocType ? () => onOpenDocType(candidateId, type) : () => onOpenDocuments(candidateId),
       })
     }
@@ -190,7 +199,7 @@ export function buildDocumentRailItems(args: {
       items.push({
         id: `problem-${type}`,
         name: type,
-        meta: t('app.candidates.detail.doc_problem', { defaultValue: 'Требует проверки' }),
+        meta: t('app.candidates.detail.doc_problem', { defaultValue: 'Needs review' }),
         onOpen: onOpenDocType ? () => onOpenDocType(candidateId, type) : () => onOpenDocuments(candidateId),
       })
     }
@@ -199,8 +208,7 @@ export function buildDocumentRailItems(args: {
       items.push({
         id: `exp-${exp.type}`,
         name: exp.type,
-        meta: t('app.candidates.detail.doc_expiring', {
-          defaultValue: 'Истекает {date}',
+        meta: t('app.candidates.detail.doc_expiring', { defaultValue: 'Expires {date}',
           values: { date: formatDateSafe(exp.expires_at, locale) || exp.expires_at },
         }),
         onOpen: onOpenDocType ? () => onOpenDocType(candidateId, exp.type) : () => onOpenDocuments(candidateId),
@@ -219,7 +227,7 @@ export function buildDocumentRailItems(args: {
   if (!items.length) {
     items.push({
       id: 'docs-open',
-      name: t('app.candidates.actions.documents', { defaultValue: 'Документы' }),
+      name: t('app.candidates.actions.documents', { defaultValue: 'Documents' }),
       onOpen: () => onOpenDocuments(candidateId),
     })
   }
@@ -367,6 +375,7 @@ export function resolveCandidateRequiredContext(mode: CandidateRailMode): import
 }
 
 export function resolveCandidatesObjectDecision(args: {
+  t: (key: string, options?: any) => string
   railMode: CandidateRailMode
   processOutcome: ResolvedProcessOutcome | null
   nextAction: ResolvedNextAction | null
@@ -375,8 +384,16 @@ export function resolveCandidatesObjectDecision(args: {
   secondaryActions: Array<{ id: string; label: string; onClick?: () => void }>
   primaryOnClick: () => void
 }): import('../../platform/decision-model/types').ObjectDecision {
-  const { railMode, processOutcome, nextAction, hasRecruiterAction, contactActions, secondaryActions, primaryOnClick } =
-    args
+  const {
+    t,
+    railMode,
+    processOutcome,
+    nextAction,
+    hasRecruiterAction,
+    contactActions,
+    secondaryActions,
+    primaryOnClick,
+  } = args
   const requiredContext = resolveCandidateRequiredContext(railMode)
 
   if (processOutcome) {
@@ -399,7 +416,7 @@ export function resolveCandidatesObjectDecision(args: {
   if (!hasRecruiterAction || !nextAction) {
     return {
       stateId: `candidate.${railMode}.idle`,
-      currentState: nextAction?.title ?? 'Нет действий',
+      currentState: nextAction?.title ?? t('app.candidates.detail.no_actions', { defaultValue: 'No actions' }),
       why: nextAction?.whyBody,
       primaryAction: null,
       contactActions: contactActions.length ? contactActions : undefined,
@@ -478,21 +495,18 @@ export function resolveRecruitmentProcessOutcome(args: {
     const whenRaw = accepted?.reviewed_at || accepted?.requested_at || pending?.requested_at || updatedAtLabel
     const whenLabel = whenRaw ? formatDateSafe(String(whenRaw), locale) || String(whenRaw) : undefined
 
-    let title = t('app.candidates.detail.rail_recruitment_complete_title', { defaultValue: 'Рекрутинг завершён' })
-    let body = t('app.candidates.detail.rail_recruitment_complete_body', {
-      defaultValue: 'Кандидат передан в HR. Дальнейшая обработка — в модуле HR.',
+    let title = t('app.candidates.detail.rail_recruitment_complete_title', { defaultValue: 'Recruitment complete' })
+    let body = t('app.candidates.detail.rail_recruitment_complete_body', { defaultValue: 'Candidate handed off to HR. Further processing continues in the HR module.',
     })
     if (handoffStatus?.client_owns) {
-      title = t('app.candidates.detail.rail_transferred_hr_title', { defaultValue: 'Передан в HR' })
+      title = t('app.candidates.detail.rail_transferred_hr_title', { defaultValue: 'Transferred to HR' })
     } else if (accepted) {
-      title = t('app.candidates.detail.rail_accepted_hr_title', { defaultValue: 'Принят HR' })
-      body = t('app.candidates.detail.rail_accepted_hr_body', {
-        defaultValue: 'Рекрутер завершил работу. Кандидат на стороне HR.',
+      title = t('app.candidates.detail.rail_accepted_hr_title', { defaultValue: 'Accepted by HR' })
+      body = t('app.candidates.detail.rail_accepted_hr_body', { defaultValue: 'Recruiter work is done. The candidate is now with HR.',
       })
     } else if (pending) {
-      title = t('app.candidates.detail.rail_pending_hr_title', { defaultValue: 'Ожидает проверки HR' })
-      body = t('app.candidates.detail.rail_pending_hr_body', {
-        defaultValue: 'Передача создана. HR обрабатывает кандидата.',
+      title = t('app.candidates.detail.rail_pending_hr_title', { defaultValue: 'Awaiting HR review' })
+      body = t('app.candidates.detail.rail_pending_hr_body', { defaultValue: 'Handoff created. HR is processing the candidate.',
       })
     }
 
@@ -507,11 +521,10 @@ export function resolveRecruitmentProcessOutcome(args: {
 
   if (railMode === 'rejected') {
     return {
-      title: t('app.candidates.detail.rail_rejected_title', { defaultValue: 'Кандидат отклонён' }),
-      body: t('app.candidates.detail.rail_rejected_body', {
-        defaultValue: 'Рекрутинг завершён без продолжения.',
+      title: t('app.candidates.detail.rail_rejected_title', { defaultValue: 'Candidate rejected' }),
+      body: t('app.candidates.detail.rail_rejected_body', { defaultValue: 'Recruitment closed without continuing.',
       }),
-      whyLabel: reasonText ?? t('app.candidates.detail.rail_rejected_no_reason', { defaultValue: 'Причина не указана' }),
+      whyLabel: reasonText ?? t('app.candidates.detail.rail_rejected_no_reason', { defaultValue: 'No reason provided' }),
       ownerLabel: managerLabel ?? undefined,
       whenLabel: updatedAtLabel ?? undefined,
       variant: 'terminal',
@@ -520,9 +533,8 @@ export function resolveRecruitmentProcessOutcome(args: {
 
   if (railMode === 'declined') {
     return {
-      title: t('app.candidates.detail.rail_declined_title', { defaultValue: 'Кандидат отказался' }),
-      body: t('app.candidates.detail.rail_declined_body', {
-        defaultValue: 'Рекрутинг остановлен по инициативе кандидата.',
+      title: t('app.candidates.detail.rail_declined_title', { defaultValue: 'Candidate declined' }),
+      body: t('app.candidates.detail.rail_declined_body', { defaultValue: 'Recruitment stopped at the candidate’s request.',
       }),
       whyLabel: reasonText ?? undefined,
       ownerLabel: managerLabel ?? undefined,
@@ -533,9 +545,8 @@ export function resolveRecruitmentProcessOutcome(args: {
 
   if (railMode === 'archived') {
     return {
-      title: t('app.candidates.detail.rail_archived_title', { defaultValue: 'Кандидат в архиве' }),
-      body: t('app.candidates.detail.rail_archived_body', {
-        defaultValue: 'Восстановите из карточки, если нужно вернуть в работу.',
+      title: t('app.candidates.detail.rail_archived_title', { defaultValue: 'Candidate archived' }),
+      body: t('app.candidates.detail.rail_archived_body', { defaultValue: 'Restore from the card if you need to return them to the pipeline.',
       }),
       variant: 'terminal',
     }
@@ -543,9 +554,8 @@ export function resolveRecruitmentProcessOutcome(args: {
 
   if (railMode === 'completed') {
     return {
-      title: t('app.candidate_card.next_action.pipeline_completed_title', { defaultValue: 'Процесс завершён' }),
-      body: t('app.candidate_card.next_action.pipeline_completed_body', {
-        defaultValue: 'Дальнейшие шаги воронки не требуются.',
+      title: t('app.candidate_card.next_action.pipeline_completed_title', { defaultValue: 'Process completed' }),
+      body: t('app.candidate_card.next_action.pipeline_completed_body', { defaultValue: 'This candidate is in a final recruitment stage (ready for HR, rejected, declined, or returned) — no further pipeline steps apply.',
       }),
       variant: 'success',
     }
@@ -564,15 +574,15 @@ export function resolveHeaderProcessLabel(args: {
   const { t, railMode, stageLabel, rowStatusLabel, handoffStatus } = args
   if (railMode === 'recruitment_complete') {
     if (handoffStatus?.client_owns) {
-      return t('app.candidates.detail.rail_transferred_hr_title', { defaultValue: 'Передан в HR' })
+      return t('app.candidates.detail.rail_transferred_hr_title', { defaultValue: 'Transferred to HR' })
     }
     if (handoffStatus?.accepted) {
-      return t('app.candidates.detail.rail_accepted_hr_title', { defaultValue: 'Принят HR' })
+      return t('app.candidates.detail.rail_accepted_hr_title', { defaultValue: 'Accepted by HR' })
     }
     if (handoffStatus?.pending) {
-      return t('app.candidates.detail.rail_pending_hr_title', { defaultValue: 'Ожидает проверки HR' })
+      return t('app.candidates.detail.rail_pending_hr_title', { defaultValue: 'Awaiting HR review' })
     }
-    return rowStatusLabel || t('app.candidates.detail.rail_recruitment_complete_title', { defaultValue: 'Рекрутинг завершён' })
+    return rowStatusLabel || t('app.candidates.detail.rail_recruitment_complete_title', { defaultValue: 'Recruitment complete' })
   }
   if (railMode === 'rejected' || railMode === 'declined' || railMode === 'archived') {
     return rowStatusLabel || stageLabel
@@ -611,35 +621,35 @@ export function resolveOutcomeAfterAction(args: {
   if (primaryActionKind === 'call') {
     return {
       outcomeBody: t('app.candidates.detail.rail_outcome_after_call', {
-        defaultValue: 'После контакта кандидат перейдёт на этап «Связались».',
+        defaultValue: 'After contact, the candidate moves to the Contacted stage.',
       }),
     }
   }
   if (primaryActionKind === 'request_documents' || primaryActionKind === 'documents') {
     return {
       outcomeBody: t('app.candidates.detail.rail_outcome_after_docs', {
-        defaultValue: 'После запроса документов ожидайте загрузку и проверку.',
+        defaultValue: 'After requesting documents, wait for upload and review.',
       }),
     }
   }
   if (primaryActionKind === 'handoff') {
     return {
       outcomeBody: t('app.candidates.detail.rail_outcome_after_handoff', {
-        defaultValue: 'После передачи кейс уйдёт клиенту на решение.',
+        defaultValue: 'After handoff, the case goes to the client for a decision.',
       }),
     }
   }
   if (primaryActionKind === 'complete_reminder') {
     return {
       outcomeBody: t('app.candidates.detail.rail_outcome_after_task', {
-        defaultValue: 'После выполнения задачи откроется следующий шаг воронки.',
+        defaultValue: 'After completing the task, the next funnel step opens.',
       }),
     }
   }
   if (canonicalStage === 'new') {
     return {
       outcomeBody: t('app.candidates.detail.rail_outcome_first_contact', {
-        defaultValue: 'Первый контакт запускает квалификацию кандидата.',
+        defaultValue: 'First contact starts candidate qualification.',
       }),
     }
   }
@@ -678,7 +688,7 @@ export function buildDecisionHistoryItems(args: {
     items.push({
       id: 'next-contact',
       at: formatDateSafe(String(nextReminder.due_at), locale) || String(nextReminder.due_at),
-      title: t('app.candidates.detail.rail_next_contact', { defaultValue: 'Следующий контакт' }),
+      title: t('app.candidates.detail.rail_next_contact', { defaultValue: 'Next contact' }),
       description: nextReminder.title ?? undefined,
     })
   }
@@ -687,7 +697,7 @@ export function buildDecisionHistoryItems(args: {
     items.push({
       id: `comms-${index}`,
       at: formatDateSafe(item.at, locale) || item.at,
-      title: item.title || t('app.candidates.detail.contact', { defaultValue: 'Контакт' }),
+      title: item.title || t('app.candidates.detail.contact', { defaultValue: 'Contact' }),
       description: item.description ?? undefined,
     })
   }
@@ -698,7 +708,7 @@ export function buildDecisionHistoryItems(args: {
         id: 'attempts',
         at: '—',
         title: t('app.candidates.detail.contact_attempts', {
-          defaultValue: 'Попыток контакта: {count}',
+          defaultValue: 'Contact attempts: {count}',
           values: { count: contactAttemptCount },
         }),
       })
@@ -706,7 +716,7 @@ export function buildDecisionHistoryItems(args: {
       items.push({
         id: 'no-contact',
         at: '—',
-        title: t('app.candidates.detail.rail_no_contact_yet', { defaultValue: 'Связи с кандидатом ещё не было' }),
+        title: t('app.candidates.detail.rail_no_contact_yet', { defaultValue: 'No contact with the candidate yet' }),
       })
     }
   }
@@ -747,7 +757,7 @@ export function resolveCandidatesNextAction(args: {
     return null
   }
 
-  const stepLabels = CANDIDATES_PIPELINE_STEP_LABELS
+  const stepLabels = candidatesPipelineStepLabels(t)
   const activeStepIndex = pipelineStepIndex(stageCode)
   const canonical = stageCode ? canonicalStageKey(stageCode, null) || stageCode.toLowerCase() : null
   const actionableReminders = filterRecruiterActionReminders(reminders, railMode)
@@ -776,14 +786,14 @@ export function resolveCandidatesNextAction(args: {
     return appendOutcome({
       title: nextReminder.title,
       body: dueLabel
-        ? `${t('app.candidate_card.next_action.due', { defaultValue: 'Срок' })}: ${dueLabel}${overdue ? ` · ${t('app.candidate_card.next_action.overdue', { defaultValue: 'Просрочено' })}` : ''}`
+        ? `${t('app.candidate_card.next_action.due', { defaultValue: 'Due' })}: ${dueLabel}${overdue ? ` · ${t('app.candidate_card.next_action.overdue', { defaultValue: 'Overdue' })}` : ''}`
         : undefined,
       whyBody: overdue
-        ? t('app.candidates.detail.rail_overdue_task', { defaultValue: 'Задача просрочена — блокирует следующий шаг.' })
+        ? t('app.candidates.detail.rail_overdue_task', { defaultValue: 'Task is overdue — it blocks the next step.' })
         : undefined,
       stepLabels,
       activeStepIndex,
-      primaryActionLabel: t('app.candidates.actions.complete_task', { defaultValue: 'Выполнить' }),
+      primaryActionLabel: t('app.candidates.actions.complete_task', { defaultValue: 'Complete' }),
       primaryActionKind: 'complete_reminder',
       isBlocker: overdue,
       variant: overdue ? 'blocker' : 'default',
@@ -813,12 +823,12 @@ export function resolveCandidatesNextAction(args: {
         stageHint?.kind === 'verify_documents'
           ? stageHintTitle(t, 'verify_documents')
           : stageHintTitle(t, 'request_documents'),
-      whyBody: blockerText ?? t('app.candidates.detail.rail_docs_blocker', { defaultValue: 'Без этих документов нельзя перейти дальше.' }),
+      whyBody: blockerText ?? t('app.candidates.detail.rail_docs_blocker', { defaultValue: 'These documents are required before moving forward.' }),
       stepLabels,
       activeStepIndex,
       primaryActionLabel: requestDocs
-        ? t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Запросить документы' })
-        : t('app.candidates.actions.open_documents', { defaultValue: 'Открыть документы' }),
+        ? t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' })
+        : t('app.candidates.actions.open_documents', { defaultValue: 'Open documents' }),
       primaryActionKind: requestDocs ? 'request_documents' : 'documents',
       isBlocker: true,
       variant: 'blocker',
@@ -829,16 +839,16 @@ export function resolveCandidatesNextAction(args: {
   if (stageHint) {
     const whyBody =
       stageHint.kind === 'call_candidate' && canonical === 'no_answer'
-        ? t('app.candidates.detail.rail_no_answer', { defaultValue: 'Кандидат не отвечает — нужен повторный контакт.' })
+        ? t('app.candidates.detail.rail_no_answer', { defaultValue: 'Candidate is not answering — another contact attempt is needed.' })
         : stageHint.kind === 'assign_vacancy' && vacancyBlocking
-          ? t('app.candidates.detail.rail_no_vacancy', { defaultValue: 'Без вакансии нельзя двигать кейс дальше.' })
+          ? t('app.candidates.detail.rail_no_vacancy', { defaultValue: 'A vacancy is required before moving the case forward.' })
           : undefined
     return appendOutcome({
       title: stageHintTitle(t, stageHint.kind),
       body:
         docsIssues && !docsPipelineBlocking
           ? t('app.candidate_card.next_action.docs_soft_nudge', {
-              defaultValue: 'Есть пробелы в документах — проверьте чеклист.',
+              defaultValue: 'There are document gaps — check the checklist.',
             })
           : undefined,
       whyBody,
@@ -847,11 +857,11 @@ export function resolveCandidatesNextAction(args: {
       hideStepper: railMode === 'contact' || railMode === 'handoff_prep',
       primaryActionLabel:
         stageHint.kind === 'call_candidate'
-          ? t('app.candidates.actions.call', { defaultValue: 'Позвонить' })
+          ? t('app.candidates.actions.call', { defaultValue: 'Call' })
           : stageHint.kind === 'handoff_prep'
-            ? t('app.candidates.detail.handoff_action', { defaultValue: 'Подготовить handoff' })
+            ? t('app.candidates.detail.handoff_action', { defaultValue: 'Prepare handoff' })
             : stageHint.kind === 'request_documents'
-              ? t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Запросить документы' })
+              ? t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' })
               : undefined,
       primaryActionKind:
         stageHint.kind === 'call_candidate'
@@ -868,32 +878,31 @@ export function resolveCandidatesNextAction(args: {
 
   if (railMode === 'handoff_prep') {
     return appendOutcome({
-      title: t('app.candidates.detail.handoff_action', { defaultValue: 'Подготовить handoff' }),
+      title: t('app.candidates.detail.handoff_action', { defaultValue: 'Prepare handoff' }),
       body: t('app.candidates.detail.rail_handoff_body', {
-        defaultValue: 'Передайте готового кандидата клиенту.',
+        defaultValue: 'Hand the ready candidate over to the client.',
       }),
       stepLabels,
       activeStepIndex,
       hideStepper: true,
-      primaryActionLabel: t('app.candidates.detail.handoff_action', { defaultValue: 'Подготовить handoff' }),
+      primaryActionLabel: t('app.candidates.detail.handoff_action', { defaultValue: 'Prepare handoff' }),
       primaryActionKind: 'handoff',
       isBlocker: false,
     })
   }
 
   return appendOutcome({
-    title: t('app.candidates.detail.contact_next', { defaultValue: 'Связаться с кандидатом' }),
-    body: t('app.candidates.detail.contact_next_body', {
-      defaultValue: 'Первый контакт или уточнение статуса.',
+    title: t('app.candidates.detail.contact_next', { defaultValue: 'Contact the candidate' }),
+    body: t('app.candidates.detail.contact_next_body', { defaultValue: 'First contact or status follow-up.',
     }),
     whyBody:
       (contactAttemptCount ?? 0) < 1
-        ? t('app.candidates.detail.rail_first_contact_needed', { defaultValue: 'Первый контакт ещё не зафиксирован.' })
+        ? t('app.candidates.detail.rail_first_contact_needed', { defaultValue: 'First contact has not been logged yet.' })
         : undefined,
     stepLabels,
     activeStepIndex,
     hideStepper: railMode === 'contact',
-    primaryActionLabel: t('app.candidates.actions.call', { defaultValue: 'Позвонить' }),
+    primaryActionLabel: t('app.candidates.actions.call', { defaultValue: 'Call' }),
     primaryActionKind: 'call',
     isBlocker: false,
   })

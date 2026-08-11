@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import type { TenantRecord, WhoAmI } from '../api/types'
 import { invalidateBillingSubscriptionCache } from '../api/billingSubscriptionCache'
 import { invalidateBillingQuotaHeadroomCache } from '../api/billingQuotaHeadroomCache'
@@ -18,13 +18,12 @@ import WorkContextTabs from '../components/nav/WorkContextTabs'
 import { SettingsChrome } from '../components/nav/SettingsChrome'
 import { LicenseExpiredBanner } from '../components/LicenseExpiredBanner'
 import { ImpersonationBanner } from '../components/ImpersonationBanner'
-import { TrialStatusBanner } from '../components/TrialStatusBanner'
 import { WizardSetupRail } from '../components/onboarding/WizardSetupRail'
 import { isOnboardingWizardEnabled } from '../utils/featureFlags'
 import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
 import { useLicenseStatus } from '../hooks/useLicenseStatus'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
-import { ACTIVATION_PATHS, getActivationSetupTarget } from './activationRoutes'
+import { ACTIVATION_PATHS } from './activationRoutes'
 import { usePermissions } from '../hooks/usePermissions'
 import { maybeMigrateDefaultAppHomeToTasks } from '../utils/defaultAppHome'
 import { CRM_APP_PATHS } from './crmAppPaths'
@@ -40,7 +39,6 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const { can } = usePermissions()
   useRobotsMeta({ index: false, follow: false })
   const location = useLocation()
-  const navigate = useNavigate()
   const path = location.pathname
   // Company setup lives at /app/platform/setup (onboarding/company only redirects there).
   // Must be treated as onboarding or AppShell Navigate→onboarding/company→setup loops forever.
@@ -109,7 +107,6 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   // Settings pages scroll on `main` (content height grows). Do not put them in the
   // full-bleed overflow-hidden chain — it clips long funnels/forms mid-block.
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
-  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false)
 
   const pendingHandoffsCount = usePendingHandoffsCount()
   const { expired: licenseExpired, validUntil } = useLicenseStatus()
@@ -219,46 +216,12 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
 
   const currentTenantId = tenant?.id ? String(tenant.id) : (me?.tenant_id ? String(me.tenant_id) : null)
 
-  const role = String(me?.role || '').toLowerCase()
   const isSuperAdmin = isPlatformSuperadminRole(me?.role)
-  const canOpenBilling =
-    role === 'administrator' ||
-    role === 'superadmin' ||
-    role === 'super_admin' ||
-    role === 'owner' ||
-    role === 'admin'
-  const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
-  const guidedTrialWorkspace = Boolean(!isSuperAdmin && role === 'administrator' && isTrialTenant)
-  const setupTarget = getActivationSetupTarget(onboardingStatus)
-  const shellNavItems = useMemo(() => {
-    if (!guidedTrialWorkspace) return navItems
-    return navItems.filter((item) => {
-      if (!item.path) return false
-      if (
-        item.path === CRM_APP_PATHS.settings ||
-        item.path.startsWith(`${CRM_APP_PATHS.settings}/`)
-      )
-        return false
-      return item.group !== 'admin'
-    })
-  }, [guidedTrialWorkspace, navItems])
-
-  useEffect(() => {
-    setTrialBannerDismissed(false)
-  }, [currentTenantId])
+  // Trial = full product for the evaluation window (settings included). Do not strip admin nav.
+  const shellNavItems = navItems
 
   if (!isOnboardingPage && !isSuperAdmin && onboardingStatus?.onboarding_required === true) {
     return <Navigate to={CRM_APP_PATHS.platformSetup} replace />
-  }
-  /** Guided trial: lock down settings except launch/billing/integrations surfaces. */
-  const isTrialAllowedSettingsPath =
-    path === ACTIVATION_PATHS.billing ||
-    path === CRM_APP_PATHS.settingsTeam ||
-    path === CRM_APP_PATHS.settingsUsers ||
-    path === CRM_APP_PATHS.settingsIntegrations ||
-    path.startsWith(`${CRM_APP_PATHS.settingsIntegrations}/`)
-  if (guidedTrialWorkspace && path.startsWith(CRM_APP_PATHS.settings) && !isTrialAllowedSettingsPath) {
-    return <Navigate to={ACTIVATION_PATHS.overview} replace />
   }
 
   return (
@@ -279,22 +242,6 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
           <div className="flex flex-1 flex-col overflow-hidden">
             <ImpersonationBanner visible={me?.session_kind === 'impersonation'} />
             <LicenseExpiredBanner visible={licenseExpired && !isSuperAdmin} validUntil={validUntil} />
-            <TrialStatusBanner
-              visible={
-                !isSuperAdmin &&
-                isTrialTenant &&
-                !licenseExpired &&
-                !isOnboardingPage &&
-                !trialBannerDismissed &&
-                !guidedTrialWorkspace
-              }
-              validUntil={validUntil}
-              canOpenBilling={canOpenBilling}
-              onSetupClick={() => {
-                setTrialBannerDismissed(true)
-                if (path !== setupTarget) navigate(setupTarget)
-              }}
-            />
             <Topbar
               me={me}
               tenant={tenant}
@@ -332,11 +279,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                   <WorkContextTabs businessType={onboardingStatus?.business_type ?? 'agency'} />
                 )}
                 {isSettingsArea && location.pathname !== CRM_APP_PATHS.settings && (
-                  <SettingsChrome
-                    pathname={location.pathname}
-                    search={location.search}
-                    compactMode={guidedTrialWorkspace}
-                  />
+                  <SettingsChrome pathname={location.pathname} search={location.search} />
                 )}
                 <div
                   className={clsx(

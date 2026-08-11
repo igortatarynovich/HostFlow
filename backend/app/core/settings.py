@@ -192,6 +192,10 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     rate_limit_storage_url: Optional[str] = None  # falls back to REDIS_URL then memory://
     rate_limit_login: str = "10/minute"
+    # Cookie mint / refresh are called repeatedly by the SPA (shell↔module handoff).
+    # Keep them separate from login so a sync storm cannot lock out sign-in.
+    rate_limit_session_sync: str = "60/minute"
+    rate_limit_refresh: str = "60/minute"
     rate_limit_signup: str = "5/hour"
     rate_limit_password_reset: str = "5/hour"
     rate_limit_public_intake: str = "20/hour"

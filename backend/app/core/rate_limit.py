@@ -66,8 +66,11 @@ def _client_key(request: Request) -> str:
     Return a stable client key for rate-limiting.
 
     Prefers `X-Forwarded-For` (last `TRUSTED_PROXY_HOPS` entries from the right
-    are treated as trusted infrastructure), falling back to `request.client.host`.
-    Never returns empty — falls back to "anonymous" to keep the backend happy.
+    are treated as trusted infrastructure), then `X-Real-IP`, then
+    `request.client.host`. Never returns empty — falls back to "anonymous".
+
+    Behind Caddy/nginx, `TRUSTED_PROXY_HOPS` MUST be >= 1; otherwise every
+    browser shares the proxy container IP and auth endpoints 429 globally.
     """
     if TRUSTED_PROXY_HOPS > 0:
         xff = request.headers.get("x-forwarded-for")
@@ -77,6 +80,9 @@ def _client_key(request: Request) -> str:
             idx = max(0, len(parts) - 1 - TRUSTED_PROXY_HOPS)
             if 0 <= idx < len(parts):
                 return parts[idx]
+        real_ip = (request.headers.get("x-real-ip") or "").strip()
+        if real_ip:
+            return real_ip.split(",")[0].strip() or real_ip
     return (request.client.host if request.client else "") or "anonymous"
 
 
@@ -158,6 +164,8 @@ class _Limits:
             return self._cached
         defaults = {
             "login": "10/minute",
+            "session_sync": "60/minute",
+            "refresh": "60/minute",
             "signup": "5/hour",
             "password_reset": "5/hour",
             "public_intake": "20/hour",
@@ -170,6 +178,8 @@ class _Limits:
             defaults.update(
                 {
                     "login": settings.rate_limit_login,
+                    "session_sync": settings.rate_limit_session_sync,
+                    "refresh": settings.rate_limit_refresh,
                     "signup": settings.rate_limit_signup,
                     "password_reset": settings.rate_limit_password_reset,
                     "public_intake": settings.rate_limit_public_intake,
@@ -185,6 +195,14 @@ class _Limits:
     @property
     def login(self) -> str:
         return self._load()["login"]
+
+    @property
+    def session_sync(self) -> str:
+        return self._load()["session_sync"]
+
+    @property
+    def refresh(self) -> str:
+        return self._load()["refresh"]
 
     @property
     def signup(self) -> str:

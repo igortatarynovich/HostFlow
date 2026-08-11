@@ -94,7 +94,7 @@ export function ClientLeadServiceOrderPanel({
 
   const handleSubmit = async () => {
     if (selected.size === 0) {
-      setError(t('app.client_inquiry.service_order.pick_one', { defaultValue: 'Выберите хотя бы одну услугу' }))
+      setError(t('app.client_inquiry.service_order.pick_one', { defaultValue: 'Select at least one service' }))
       return
     }
     setError(null)
@@ -109,14 +109,14 @@ export function ClientLeadServiceOrderPanel({
       setCreatedOrderId(oid)
       await onOrderCreated?.(oid)
       notify({
-        title: t('app.client_inquiry.service_order.created', { defaultValue: 'Заказ услуги создан' }),
+        title: t('app.client_inquiry.service_order.created', { defaultValue: 'Service order created' }),
         variant: 'success',
       })
     } catch (e: unknown) {
       const detail =
         (e as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
         (e as Error)?.message ??
-        t('app.client_inquiry.service_order.create_failed', { defaultValue: 'Не удалось создать заказ' })
+        t('app.client_inquiry.service_order.create_failed', { defaultValue: 'Could not create order' })
       setError(typeof detail === 'string' ? detail : JSON.stringify(detail))
     } finally {
       setSubmitting(false)
@@ -127,12 +127,10 @@ export function ClientLeadServiceOrderPanel({
     return (
       <section className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm">
         <p className="text-sm font-semibold text-emerald-900">
-          {t('app.client_inquiry.service_order.linked_title', { defaultValue: 'Заказ услуги создан' })}
+          {t('app.client_inquiry.service_order.linked_title', { defaultValue: 'Service order created' })}
         </p>
         <p className="mt-1 text-sm text-emerald-800">
-          {t('app.client_inquiry.service_order.linked_hint', {
-            defaultValue:
-              'Services ведёт выполнение и счёт. Для handoff-строк на карточке заказа появится «Создать подбор».',
+          {t('app.client_inquiry.service_order.linked_hint', { defaultValue: 'Services owns fulfillment and billing. For handoff lines, “Create recruitment” appears on the order card.',
           })}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -140,13 +138,13 @@ export function ClientLeadServiceOrderPanel({
             to={serviceOrderWorkspacePath(activeOrderId, clientId)}
             className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
           >
-            {t('app.client_inquiry.service_order.open_order', { defaultValue: 'Открыть заказ' })}
+            {t('app.client_inquiry.service_order.open_order', { defaultValue: 'Open order' })}
           </Link>
           <Link
             to={clientDetailPath(clientId)}
             className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
           >
-            {t('app.client_inquiry.service_order.open_client', { defaultValue: 'Карточка клиента' })}
+            {t('app.client_inquiry.service_order.open_client', { defaultValue: 'Client card' })}
           </Link>
         </div>
         <p className="mt-2 text-xs text-slate-600">
@@ -160,18 +158,15 @@ export function ClientLeadServiceOrderPanel({
     <section className="rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-          {t('app.client_inquiry.service_order.title', { defaultValue: 'Что покупает клиент' })}
+          {t('app.client_inquiry.service_order.title', { defaultValue: 'What the client is buying' })}
         </p>
         <p className="mt-1 text-sm text-slate-700">
-          {t('app.client_inquiry.service_order.subtitle', {
-            defaultValue:
-              'Выберите услуги из каталога — создадим один заказ с несколькими строками. Inline → выполнение и счёт; handoff → запуск исполнителя с карточки заказа.',
+          {t('app.client_inquiry.service_order.subtitle', { defaultValue: 'Pick services from the catalog — we create one order with multiple lines. Inline → fulfillment and invoice; handoff → start the executor from the order card.',
           })}
         </p>
         {preselectCode ? (
           <p className="mt-2 inline-flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-1 text-xs font-medium text-brand-800">
-            {t('app.client_inquiry.service_order.from_inquiry', {
-              defaultValue: 'Услуга из заявки Meta: {code}',
+            {t('app.client_inquiry.service_order.from_inquiry', { defaultValue: 'Service from Meta inquiry: {code}',
               values: { code: preselectCode },
             })}
           </p>
@@ -179,11 +174,10 @@ export function ClientLeadServiceOrderPanel({
       </div>
 
       {loadingCatalog ? (
-        <p className="mt-4 text-sm text-slate-500">{t('app.common.loading', { defaultValue: 'Загрузка…' })}</p>
+        <p className="mt-4 text-sm text-slate-500">{t('app.common.loading', { defaultValue: 'Loading…' })}</p>
       ) : catalog.length === 0 ? (
         <p className="mt-4 text-sm text-amber-800">
-          {t('app.client_inquiry.service_order.empty_catalog', {
-            defaultValue: 'В каталоге нет активных услуг. Добавьте услуги в Services → Каталог.',
+          {t('app.client_inquiry.service_order.empty_catalog', { defaultValue: 'No active services in the catalog. Add services in Services → Catalog.',
           })}
         </p>
       ) : (
@@ -232,8 +226,7 @@ export function ClientLeadServiceOrderPanel({
 
       {selectedServices.length > 0 ? (
         <p className="mt-3 text-xs font-medium text-slate-600">
-          {t('app.client_inquiry.service_order.selected_count', {
-            defaultValue: 'Выбрано: {{count}}',
+          {t('app.client_inquiry.service_order.selected_count', { defaultValue: 'Selected: {count}',
             values: { count: selectedServices.length },
           })}
         </p>
@@ -249,8 +242,8 @@ export function ClientLeadServiceOrderPanel({
           onClick={() => void handleSubmit()}
         >
           {submitting
-            ? t('app.client_inquiry.service_order.creating', { defaultValue: 'Создаём заказ…' })
-            : t('app.client_inquiry.service_order.create', { defaultValue: 'Создать заказ услуги' })}
+            ? t('app.client_inquiry.service_order.creating', { defaultValue: 'Creating order…' })
+            : t('app.client_inquiry.service_order.create', { defaultValue: 'Create service order' })}
         </button>
       </div>
     </section>

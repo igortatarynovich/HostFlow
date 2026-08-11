@@ -14,16 +14,16 @@ TERMINAL_RECRUITMENT_STATUSES = frozenset(
 SOURCE_LABELS: Dict[str, str] = {
     "meta": "Meta Ads",
     "google": "Google Ads",
-    "website": "Сайт",
+    "website": "Website",
     "linkedin": "LinkedIn",
-    "referral": "Рекомендация",
+    "referral": "Referral",
 }
 
 SERVICE_LABELS: Dict[str, str] = {
-    "targeting_ads": "Таргетинг",
-    "recruitment": "Подбор персонала",
-    "outsourcing": "Аутсорсинг",
-    "legalization": "Легализация",
+    "targeting_ads": "Targeting ads",
+    "recruitment": "Recruitment",
+    "outsourcing": "Outsourcing",
+    "legalization": "Legalization",
     "fleet": "Fleet",
 }
 
@@ -50,11 +50,11 @@ def _sales_service_label(lead: Lead) -> Optional[str]:
     need = _record(normalized.get("need"))
     raw = _text(need.get("what_needed")).lower()
     if "таргет" in raw or "target" in raw:
-        return "Таргетинг"
-    if "подбор" in raw or "водител" in raw or "driver" in raw:
-        return "Подбор персонала"
-    if "аутсорс" in raw:
-        return "Аутсорсинг"
+        return SERVICE_LABELS["targeting_ads"]
+    if "подбор" in raw or "водител" in raw or "driver" in raw or "recruit" in raw:
+        return SERVICE_LABELS["recruitment"]
+    if "аутсорс" in raw or "outsourc" in raw:
+        return SERVICE_LABELS["outsourcing"]
     return None
 
 
@@ -66,7 +66,7 @@ def _sales_contact(lead: Lead) -> ApplicationContactOut:
         or " ".join(filter(None, [_text(contact.get("first_name")), _text(contact.get("last_name"))])).strip()
         or _text(normalized.get("full_name"))
         or _text(getattr(lead, "full_name", None))
-        or "Контакт"
+        or "Contact"
     )
     phone = _text(contact.get("phone")) or _text(normalized.get("phone")) or _text(getattr(lead, "phone", None)) or None
     email = _text(contact.get("email")) or _text(normalized.get("email")) or _text(getattr(lead, "email", None)) or None
@@ -140,7 +140,11 @@ def lead_to_sales_inquiry(lead: Lead) -> ApplicationOut:
         lead_company_name=_text(getattr(lead, "company_name", None)) or None,
     )
     service = _sales_service_label(lead)
-    subtitle = f"Запрос на {service.lower()}" if service else _text(_record(normalized.get("need")).get("summary")) or "B2B заявка"
+    subtitle = (
+        f"Request: {service.lower()}"
+        if service
+        else _text(_record(normalized.get("need")).get("summary")) or "B2B inquiry"
+    )
     status = _sales_status(lead)
     converted_company = _text(getattr(lead, "converted_client_id", None)) or None
     client_account_id = _text(getattr(lead, "client_account_id", None)) or None

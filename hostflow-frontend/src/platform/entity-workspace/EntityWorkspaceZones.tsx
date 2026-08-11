@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { Link } from 'react-router-dom'
 import { IconArrowLeft, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
+import { useI18n } from '../../i18n'
 import { SemanticBadge } from '../data-table/SemanticBadge'
 import type {
   EntityWorkspaceHeaderExtension,
@@ -29,6 +30,7 @@ export function EntityWorkspaceHeaderZone({
   extension,
   navigationPeers,
 }: EntityWorkspaceHeaderZoneProps) {
+  const { t } = useI18n()
   const initials =
     extension?.avatarFallback ??
     header.title
@@ -46,7 +48,7 @@ export function EntityWorkspaceHeaderZone({
           className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-brand-700"
         >
           <IconArrowLeft size={16} />
-          {extension.backLabel ?? 'Назад'}
+          {extension.backLabel ?? t('common.actions.back', { defaultValue: 'Back' })}
         </Link>
       ) : null}
 
@@ -74,7 +76,14 @@ export function EntityWorkspaceHeaderZone({
               {header.stageLabel && header.stageLabel !== header.statusLabel ? (
                 <SemanticBadge label={header.stageLabel} semanticRole={header.stageSemantic ?? 'process_stage'} size="sm" shape="pill" />
               ) : null}
-              {extension?.sourceLabel ? <span>Источник: {extension.sourceLabel}</span> : null}
+              {extension?.sourceLabel ? (
+                <span>
+                  {t('app.entity_workspace.source_prefix', {
+                    defaultValue: 'Source: {value}',
+                    values: { value: extension.sourceLabel },
+                  })}
+                </span>
+              ) : null}
             </div>
             {extension?.chips?.length ? (
               <div className="mt-2 flex flex-wrap gap-2">

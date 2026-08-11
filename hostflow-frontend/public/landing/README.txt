@@ -1,16 +1,22 @@
-Landing page visuals (CrmLandingPage + company About/Services pages).
+Landing / company page product screenshots (real EuroDrive demo UI).
 
-Product UI mock screenshots (SVG):
-  /landing/shot-workspace.svg
-  /landing/shot-meta-leads.svg
-  /landing/shot-pipeline.svg
-  /landing/shot-documents.svg
+Canonical JPGs live in /landing/shots/:
+  hero-pipeline.jpg          Kanban pipeline (hero)
+  shot-workspace.jpg         Insights summary
+  shot-meta.jpg              Meta campaign / Lead Ads flight
+  shot-documents.jpg         Candidate documents checklist
+  step-applications.jpg      Recruitment Applications inbox
+  step-candidates.jpg        Candidates table
+  step-vacancy.jpg           Vacancy CE Drivers EU workspace
+  step-vacancies-list.jpg    Vacancies list
+  sales-inquiries.jpg        Sales inquiries list
+  sales-inquiry-detail.jpg   Sales inquiry detail rail
+  sales-clients.jpg          Clients directory
+  sales-orders.jpg           Service orders
+  finance-invoices.jpg       Invoices
+  comms-inbox.jpg            Inbox / WhatsApp threads
+  settings-integrations.jpg  Integrations hub (Meta connected)
 
-Step stubs (may be replaced with real PNG/WebP exports):
-  /landing/hero.svg
-  /landing/step-*.svg
-
-When replacing with real product screenshots, update paths in:
-  hostflow-frontend/src/i18n/en.json, ru.json, pl.json
-under public.crm_landing.*.screenshot_src and public.company.shots
-(e.g. /landing/hero.webp). Use absolute paths from site root (public/).
+Root /landing/*.jpg aliases keep older paths working.
+i18n: public.crm_landing.*.screenshot_src
+About/Services: ProductShot src under /landing/shots/

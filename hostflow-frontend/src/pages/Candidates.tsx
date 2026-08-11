@@ -952,7 +952,7 @@ export default function Candidates(){
           e.stopPropagation()
           handleResizeStart(columnKey, e.clientX)
         }}
-        title={t('app.candidates.table.resize_column') || 'Изменить ширину колонки'}
+        title={t('app.candidates.table.resize_column', { defaultValue: 'Resize column' })}
       />
     )
   }
@@ -1800,7 +1800,9 @@ export default function Candidates(){
               tabIndex={0}
               draggable
               className="inline-flex h-8 w-7 shrink-0 cursor-grab select-none items-center justify-center rounded-lg border border-slate-200 bg-slate-100/95 text-slate-600 shadow-sm hover:border-brand-300 hover:bg-brand-50 hover:text-brand-800 active:cursor-grabbing"
-              title={t('app.candidates.table.reorder_column') || 'Перетащите, чтобы поменять порядок колонок'}
+              title={t('app.candidates.table.reorder_column', {
+                defaultValue: 'Drag to reorder columns',
+              })}
               onDragStart={(e) => {
                 setDraggingColumn(columnKey)
                 setDragOverColumn(null)
@@ -2707,7 +2709,7 @@ export default function Candidates(){
               <ErrorRecoveryBanner
                 info={errorText}
                 onRetry={() => void load({ force: true })}
-                retryLabel={t('app.candidates.errors.retry') || 'Повторить попытку'}
+                retryLabel={t('app.candidates.errors.retry', { defaultValue: 'Retry' })}
                 {...friendlyErrorBannerSecondary(
                   errorText,
                   CRM_APP_PATHS.candidates,
@@ -2730,7 +2732,9 @@ export default function Candidates(){
           <div className="absolute top-2 right-2 z-30 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2 shadow-md">
             <div className="flex items-center gap-2 text-xs text-slate-600">
               <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-brand-600"></div>
-              <span className="font-medium">{t('app.candidates.table.updating') || 'Обновление...'}</span>
+              <span className="font-medium">
+                {t('app.candidates.table.updating', { defaultValue: 'Updating…' })}
+              </span>
             </div>
           </div>
         )}
@@ -2819,7 +2823,9 @@ export default function Candidates(){
           <div className="px-4 py-12 text-center">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 mb-3"></div>
             <div className="text-sm text-slate-600 font-medium">{t('common.loading')}</div>
-            <div className="text-xs text-slate-400 mt-1">{t('app.candidates.table.loading_hint') || 'Загрузка кандидатов...'}</div>
+            <div className="text-xs text-slate-400 mt-1">
+              {t('app.candidates.table.loading_hint', { defaultValue: 'Loading candidates…' })}
+            </div>
           </div>
         )}
         {!loading && displayedItems.length === 0 && !errorText && (
@@ -2830,7 +2836,7 @@ export default function Candidates(){
                 <div className="text-sm font-medium text-slate-700 mb-1">
                   {t('app.candidates.table.empty_partial', {
                     values: { count: total },
-                    defaultValue: `Список не загрузился полностью (всего: ${total}). Повторить?`,
+                    defaultValue: 'The list did not fully load (total: {count}). Retry?',
                   })}
                 </div>
                 <button
@@ -2838,7 +2844,7 @@ export default function Candidates(){
                   className="mt-2 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm hover:bg-brand-700"
                   onClick={() => void load({ force: true, allowCache: false })}
                 >
-                  {t('common.retry', { defaultValue: 'Повторить' })}
+                  {t('common.retry', { defaultValue: 'Retry' })}
                 </button>
               </>
             ) : (
@@ -2901,7 +2907,7 @@ export default function Candidates(){
             {showsFilteredCount
               ? t('app.candidates.table.total_filtered', {
                   values: { shown: visibleCandidatesCount, total },
-                  defaultValue: `Показано: ${visibleCandidatesCount} из ${total}`,
+                  defaultValue: 'Showing: {shown} of {total}',
                 })
               : t('app.candidates.table.total', { values: { count: visibleCandidatesCount } })}
           </div>

@@ -23,15 +23,27 @@ export function Sidebar() {
       />
 
       <nav className="flex-1 mt-6 flex flex-col gap-3">
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/">Дашборд</Link>
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/companies">Компании</Link>
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/vacancies">Вакансии</Link>
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to={CRM_APP_PATHS.candidates}>Кандидаты</Link>
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/pipeline">Канбан</Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/">
+          {t('app.layout.nav.dashboard', { defaultValue: 'Dashboard' })}
+        </Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/companies">
+          {t('app.layout.nav.companies', { defaultValue: 'Companies' })}
+        </Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/vacancies">
+          {t('app.layout.nav.vacancies', { defaultValue: 'Vacancies' })}
+        </Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to={CRM_APP_PATHS.candidates}>
+          {t('app.layout.nav.candidates', { defaultValue: 'Candidates' })}
+        </Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/pipeline">
+          {t('app.layout.nav.pipeline', { defaultValue: 'Pipeline' })}
+        </Link>
       </nav>
 
       <div className="mt-auto pt-6 border-t border-white/10 text-xs opacity-80">
-        <div className="font-semibold mb-1">Настройки</div>
+        <div className="font-semibold mb-1">
+          {t('app.sidebar.settings.title', { defaultValue: 'Settings' })}
+        </div>
 
         <div className="space-y-3">
           <div>
@@ -49,7 +61,12 @@ export function Sidebar() {
                 }
                 const normalized = apiBaseSettings.set(next);
                 if (!normalized) {
-                  alert("Не удалось распознать адрес API. Укажите полный URL, например http://localhost:8000/api/v1");
+                  alert(
+                    t('app.sidebar.settings.api_invalid_url', {
+                      defaultValue:
+                        'Could not parse API URL. Enter a full URL, e.g. http://localhost:8000/api/v1',
+                    }),
+                  );
                   e.currentTarget.value = resolveApiBase();
                   return;
                 }
@@ -59,7 +76,9 @@ export function Sidebar() {
               }}
             />
             <p className="mt-1 text-[11px] leading-tight text-white/70">
-              Измени базовый URL API (оставь пустым для значения по умолчанию).
+              {t('app.sidebar.settings.api_base_hint', {
+                defaultValue: 'Change the API base URL (leave empty for the default).',
+              })}
             </p>
           </div>
 

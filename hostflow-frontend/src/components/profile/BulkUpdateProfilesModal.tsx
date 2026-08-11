@@ -5,13 +5,15 @@ import {
   listCandidateProfiles,
   type CandidateProfile,
 } from '../../api/candidate_profiles'
+import { useI18n } from '../../i18n'
 
 interface BulkUpdateProfilesModalProps {
   onClose: () => void
   onSuccess?: () => void
 }
 
-function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModalProps) {
+function BulkUpdateProfilesModal({ onClose, onSuccess: _onSuccess }: BulkUpdateProfilesModalProps) {
+  const { t } = useI18n()
   const [profiles, setProfiles] = useState<CandidateProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
@@ -19,7 +21,6 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [searchQuery, setSearchQuery] = useState('')
   const [filterActive, setFilterActive] = useState<boolean | null>(null)
-
 
   useEffect(() => {
     loadProfiles()
@@ -30,9 +31,12 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
       setLoading(true)
       setError(null)
       const data = await listCandidateProfiles({ is_active: undefined })
-      setProfiles(data.filter((p) => !p.is_system)) // Exclude system profiles
+      setProfiles(data.filter((p) => !p.is_system))
     } catch (err: any) {
-      setError(err?.message || 'Не удалось загрузить профили')
+      setError(
+        err?.message ||
+          t('app.profiles.bulk_update.load_failed', { defaultValue: 'Failed to load profiles' }),
+      )
     } finally {
       setLoading(false)
     }
@@ -40,14 +44,12 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
 
   const filteredProfiles = useMemo(() => {
     return profiles.filter((profile) => {
-      // Фильтр по поисковому запросу
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
         const matchesName = profile.name.toLowerCase().includes(query)
         const matchesCode = profile.code.toLowerCase().includes(query)
         if (!matchesName && !matchesCode) return false
       }
-      // Фильтр по активности
       if (filterActive !== null) {
         if (filterActive && !profile.is_active) return false
         if (!filterActive && profile.is_active) return false
@@ -76,33 +78,59 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
 
   const handleBulkUpdate = async () => {
     if (selectedIds.size === 0) {
-      setError('Выберите хотя бы один профиль')
+      setError(
+        t('app.profiles.bulk_update.select_at_least_one', {
+          defaultValue: 'Select at least one profile',
+        }),
+      )
       return
     }
 
-    // TODO: Реализовать массовое изменение конфигурации профилей
-    // Пока что функционал находится в разработке
-    setError('Функционал массового изменения конфигурации находится в разработке. Используйте редактирование каждого профиля отдельно.')
+    setError(
+      t('app.profiles.bulk_update.wip_error', {
+        defaultValue:
+          'Bulk configuration update is under development. Edit each profile separately.',
+      }),
+    )
     return
   }
 
   return (
-    <Modal open={true} onClose={onClose} title="Массовое изменение профилей">
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={t('app.profiles.bulk_update.title', { defaultValue: 'Bulk update profiles' })}
+    >
       <div className="space-y-4">
         <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-          <div className="font-semibold mb-1">Информация:</div>
+          <div className="font-semibold mb-1">
+            {t('app.profiles.bulk_update.info_title', { defaultValue: 'Information:' })}
+          </div>
           <ul className="list-disc list-inside space-y-1 text-xs">
-            <li>Выберите профили для изменения</li>
-            <li>Укажите изменения: добавление/удаление полей или этапов</li>
-            <li>Изменения будут применены ко всем выбранным профилям</li>
+            <li>
+              {t('app.profiles.bulk_update.info_1', {
+                defaultValue: 'Select profiles to update',
+              })}
+            </li>
+            <li>
+              {t('app.profiles.bulk_update.info_2', {
+                defaultValue: 'Specify changes: add/remove fields or stages',
+              })}
+            </li>
+            <li>
+              {t('app.profiles.bulk_update.info_3', {
+                defaultValue: 'Changes will be applied to all selected profiles',
+              })}
+            </li>
           </ul>
         </div>
 
-        {/* Поиск и фильтры */}
         <div className="space-y-2">
           <input
             type="text"
-            placeholder="Поиск по названию или коду..."
+            placeholder={t('app.profiles.bulk_update.search_placeholder', {
+              defaultValue: 'Search by name or code...',
+            })}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input w-full"
@@ -115,20 +143,28 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
             }}
             className="input"
           >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
+            <option value="all">
+              {t('app.profiles.bulk_update.filter_all', { defaultValue: 'All' })}
+            </option>
+            <option value="active">
+              {t('app.profiles.bulk_update.filter_active', { defaultValue: 'Active' })}
+            </option>
+            <option value="inactive">
+              {t('app.profiles.bulk_update.filter_inactive', { defaultValue: 'Inactive' })}
+            </option>
           </select>
         </div>
 
-        {/* Список профилей */}
         {loading ? (
-          <div className="text-sm text-slate-500">Загрузка профилей...</div>
+          <div className="text-sm text-slate-500">
+            {t('app.profiles.bulk_update.loading', { defaultValue: 'Loading profiles...' })}
+          </div>
         ) : filteredProfiles.length === 0 ? (
-          <div className="text-sm text-slate-500">Профили не найдены</div>
+          <div className="text-sm text-slate-500">
+            {t('app.profiles.bulk_update.empty', { defaultValue: 'No profiles found' })}
+          </div>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto border border-slate-200 rounded p-3">
-            {/* Select All */}
             <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
               <input
                 type="checkbox"
@@ -138,11 +174,13 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
                 disabled={updating}
               />
               <span className="text-sm font-semibold text-slate-700">
-                Выбрать все ({selectedIds.size} из {filteredProfiles.length})
+                {t('app.profiles.bulk_update.select_all', {
+                  defaultValue: 'Select all ({selected} of {total})',
+                  values: { selected: selectedIds.size, total: filteredProfiles.length },
+                })}
               </span>
             </div>
 
-            {/* Profiles List */}
             {filteredProfiles.map((profile) => {
               const isSelected = selectedIds.has(profile.id)
               return (
@@ -171,51 +209,68 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
           </div>
         )}
 
-        {/* Configuration changes - упрощенная версия */}
         {selectedIds.size > 0 && (
           <div className="space-y-3 border-t border-slate-200 pt-4">
-            <h3 className="text-sm font-semibold text-slate-900">Изменения конфигурации</h3>
+            <h3 className="text-sm font-semibold text-slate-900">
+              {t('app.profiles.bulk_update.config_changes', {
+                defaultValue: 'Configuration changes',
+              })}
+            </h3>
             <div className="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-              ⚠️ Функционал массового изменения конфигурации находится в разработке.
-              Текущая версия позволяет применять профиль к вакансиям. Для изменения конфигурации профилей используйте редактирование каждого профиля отдельно.
+              ⚠️{' '}
+              {t('app.profiles.bulk_update.wip_notice', {
+                defaultValue:
+                  'Bulk configuration update is under development. The current version lets you apply a profile to vacancies. To change profile configuration, edit each profile separately.',
+              })}
             </div>
             <div className="text-sm text-slate-600">
-              Выбрано профилей для изменения: <span className="font-semibold">{selectedIds.size}</span>
+              {t('app.profiles.bulk_update.selected_for_update', {
+                defaultValue: 'Profiles selected for update: {count}',
+                values: { count: selectedIds.size },
+              })}
             </div>
           </div>
         )}
 
         {error && (
           <ErrorRecoveryBanner
-            info={{ title: error, hint: 'Повторите действие или обновите страницу.' }}
+            info={{
+              title: error,
+              hint: t('app.profiles.bulk_update.retry_hint', {
+                defaultValue: 'Retry the action or refresh the page.',
+              }),
+            }}
             onRetry={() => void loadProfiles()}
-            retryLabel="Обновить"
+            retryLabel={t('app.profiles.bulk_update.retry', { defaultValue: 'Refresh' })}
             compact
           />
         )}
 
-        {/* Actions */}
         <div className="flex items-center justify-between border-t border-slate-200 pt-4">
           <div className="text-sm text-slate-600">
-            Выбрано: <span className="font-semibold">{selectedIds.size}</span> профилей
+            {t('app.profiles.bulk_update.selected', {
+              defaultValue: 'Selected: {count} profiles',
+              values: { count: selectedIds.size },
+            })}
           </div>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={updating}
-              className="btn-secondary"
-            >
-              Отмена
+            <button type="button" onClick={onClose} disabled={updating} className="btn-secondary">
+              {t('app.profiles.bulk_update.cancel', { defaultValue: 'Cancel' })}
             </button>
             <button
               type="button"
               onClick={handleBulkUpdate}
               disabled={selectedIds.size === 0 || updating}
               className="btn-primary opacity-50 cursor-not-allowed"
-              title="Функционал в разработке"
+              title={t('app.profiles.bulk_update.wip_title', {
+                defaultValue: 'Feature in development',
+              })}
             >
-              {updating ? 'Обновление...' : `Применить изменения (в разработке)`}
+              {updating
+                ? t('app.profiles.bulk_update.updating', { defaultValue: 'Updating...' })
+                : t('app.profiles.bulk_update.apply_wip', {
+                    defaultValue: 'Apply changes (in development)',
+                  })}
             </button>
           </div>
         </div>

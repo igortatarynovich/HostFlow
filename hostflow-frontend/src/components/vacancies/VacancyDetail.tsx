@@ -50,9 +50,9 @@ const EMPLOYMENT_ENUM = [...EMPLOYMENT_TYPES] as [EmploymentType, ...EmploymentT
 const stringArray = z.array(z.string()).default([])
 
 const vacancyFormSchema = z.object({
-  title: z.string().min(1, 'Название обязательно'),
+  title: z.string().min(1, 'Title is required'),
   status: z.enum([...STATUS_OPTIONS] as [VacancyStatus, ...VacancyStatus[]]).default('open'),
-  company_id: z.string().min(1, 'Компания обязательна'),
+  company_id: z.string().min(1, 'Company is required'),
   description: z.string().optional().or(z.literal('')),
   location: z.string().optional().or(z.literal('')),
   salary_from: z.union([z.string(), z.number()]).optional().transform((v) => (v === '' ? undefined : v)),
@@ -638,7 +638,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               : r
                 ? JSON.stringify(r)
                 : err?.message || 'Unknown error'
-        alert(`Сохранение не удалось: ${detail}`)
+        alert(t('app.vacancies.detail.save_failed_alert', { defaultValue: 'Save failed: {detail}', values: { detail } }))
         throw err
       } finally {
         setSaving(false)
@@ -753,7 +753,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
   const handleRemove = onRemove
     ? async () => {
-        if (!confirm('Удалить вакансию? Это действие нельзя отменить.')) return
+        if (!confirm(t('app.vacancies.detail.delete_confirm', { defaultValue: 'Delete this vacancy? This cannot be undone.' }))) return
         await onRemove()
       }
     : undefined

@@ -72,29 +72,6 @@ export default function Pipeline(){
     usePipelineStagePath(columnStages, stageSequence, columnOrder)
   const [savingIds, setSavingIds] = useState<Record<string, boolean>>({})
 
-  const kanbanStageLabels = useMemo(() => {
-    if (!profileStages) return null
-    const loc = normalizeUiLocale(locale)
-    const codes =
-      profileStages.stage_codes ||
-      Object.keys(profileStages.stage_labels || {}) ||
-      Object.keys(profileStages.stage_columns || {})
-    const out: Record<string, Record<string, string>> = {}
-    for (const code of codes) {
-      const label = resolveFunnelStageLabel(
-        {
-          code,
-          label: profileStages.stage_labels?.[code]?.[code] || null,
-          labels_i18n: profileStages.stage_labels_i18n?.[code] || null,
-        },
-        loc,
-        t,
-      )
-      out[code] = { [code]: label }
-    }
-    return Object.keys(out).length ? out : null
-  }, [profileStages, locale, t])
-
   // selection & managers (for bulk actions)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [managers, setManagers] = useState<ManagerItem[]>([])
@@ -120,6 +97,30 @@ export default function Pipeline(){
   const canViewTasks = can('notifications.view')
   const canViewSettings = can('settings.view')
   const { allowsTeamFeatures, planLoading: planTierLoading } = useTeamTierFeatures()
+
+  // Must sit after useI18n() — deps touch `locale`/`t` (TDZ crash → AppErrorBoundary).
+  const kanbanStageLabels = useMemo(() => {
+    if (!profileStages) return null
+    const loc = normalizeUiLocale(locale)
+    const codes =
+      profileStages.stage_codes ||
+      Object.keys(profileStages.stage_labels || {}) ||
+      Object.keys(profileStages.stage_columns || {})
+    const out: Record<string, Record<string, string>> = {}
+    for (const code of codes) {
+      const label = resolveFunnelStageLabel(
+        {
+          code,
+          label: profileStages.stage_labels?.[code]?.[code] || null,
+          labels_i18n: profileStages.stage_labels_i18n?.[code] || null,
+        },
+        loc,
+        t,
+      )
+      out[code] = { [code]: label }
+    }
+    return Object.keys(out).length ? out : null
+  }, [profileStages, locale, t])
 
   const formatMissingDocTypes = useCallback(
     (codes: string[]) =>

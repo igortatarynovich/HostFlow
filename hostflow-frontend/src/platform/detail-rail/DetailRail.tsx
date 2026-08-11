@@ -2,6 +2,7 @@ import clsx from 'clsx'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { IconBrandWhatsapp, IconChevronDown, IconChevronUp, IconMail, IconPhone, IconPin, IconPinFilled, IconX } from '@tabler/icons-react'
+import { useI18n } from '../../i18n'
 import type { DetailRailBlockId, DetailRailContactAction, DetailRailProps } from './detailRailTypes'
 import {
   DETAIL_RAIL_BLOCK_ORDER,
@@ -75,10 +76,19 @@ export function DetailRail({
   navigation,
   pin,
   blockOverrides,
-  emptyTitle = 'Выберите строку',
-  emptyDescription = 'Клик по строке открывает панель для быстрых решений.',
+  emptyTitle,
+  emptyDescription,
 }: DetailRailProps) {
+  const { t } = useI18n()
   if (!open) return null
+
+  const resolvedEmptyTitle =
+    emptyTitle ?? t('app.detail_rail.empty_title', { defaultValue: 'Select a row' })
+  const resolvedEmptyDescription =
+    emptyDescription ??
+    t('app.detail_rail.empty_description', {
+      defaultValue: 'Click a row to open the panel for quick decisions.',
+    })
 
   const blocks: Partial<Record<DetailRailBlockId, React.ReactNode>> = {}
 
@@ -95,8 +105,14 @@ export function DetailRail({
                   disabled={!navigation.hasPrevious}
                   onClick={navigation.onPrevious}
                   className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
-                  aria-label={navigation.previousLabel ?? 'Предыдущий'}
-                  title={navigation.previousLabel ?? 'Предыдущий'}
+                  aria-label={
+                    navigation.previousLabel ??
+                    t('app.detail_rail.previous', { defaultValue: 'Previous' })
+                  }
+                  title={
+                    navigation.previousLabel ??
+                    t('app.detail_rail.previous', { defaultValue: 'Previous' })
+                  }
                 >
                   <IconChevronUp size={18} />
                 </button>
@@ -105,8 +121,12 @@ export function DetailRail({
                   disabled={!navigation.hasNext}
                   onClick={navigation.onNext}
                   className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
-                  aria-label={navigation.nextLabel ?? 'Следующий'}
-                  title={navigation.nextLabel ?? 'Следующий'}
+                  aria-label={
+                    navigation.nextLabel ?? t('app.detail_rail.next', { defaultValue: 'Next' })
+                  }
+                  title={
+                    navigation.nextLabel ?? t('app.detail_rail.next', { defaultValue: 'Next' })
+                  }
                 >
                   <IconChevronDown size={18} />
                 </button>
@@ -121,7 +141,11 @@ export function DetailRail({
                   pin.pinned ? 'bg-amber-100 text-amber-800' : 'text-slate-500 hover:bg-slate-100',
                 )}
                 aria-pressed={pin.pinned}
-                title={pin.pinned ? pin.unpinLabel ?? 'Открепить' : pin.pinLabel ?? 'Закрепить'}
+                title={
+                  pin.pinned
+                    ? pin.unpinLabel ?? t('app.detail_rail.unpin', { defaultValue: 'Unpin' })
+                    : pin.pinLabel ?? t('app.detail_rail.pin', { defaultValue: 'Pin' })
+                }
               >
                 {pin.pinned ? <IconPinFilled size={18} /> : <IconPin size={18} />}
               </button>
@@ -131,7 +155,7 @@ export function DetailRail({
             type="button"
             onClick={onClose}
             className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Закрыть"
+            aria-label={t('app.detail_rail.close', { defaultValue: 'Close' })}
           >
             <IconX size={18} stroke={2} />
           </button>
@@ -156,7 +180,8 @@ export function DetailRail({
               className="mt-2 inline-flex text-sm font-medium text-brand-700 hover:underline"
               data-entity-link="primary"
             >
-              {h.entityWorkspaceLabel ?? 'Открыть полную карточку'}
+              {h.entityWorkspaceLabel ??
+                t('app.detail_rail.open_full_card', { defaultValue: 'Open full card' })}
             </Link>
           ) : null}
           <div className="mt-2 flex flex-wrap gap-2">
@@ -230,7 +255,7 @@ export function DetailRail({
         )}
       >
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-          Следующее действие
+          {t('app.detail_rail.next_action', { defaultValue: 'Next action' })}
         </p>
         {!n.hideStepper && n.stepLabels?.length ? (
           <div className="mt-2 flex flex-wrap gap-1">
@@ -252,7 +277,7 @@ export function DetailRail({
         {n.whyBody ? (
           <div className="mt-3 border-l-2 border-slate-300 pl-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              {n.whyTitle ?? 'Почему'}
+              {n.whyTitle ?? t('app.detail_rail.why', { defaultValue: 'Why' })}
             </p>
             <p className="mt-0.5 text-sm text-slate-700">{n.whyBody}</p>
           </div>
@@ -269,7 +294,7 @@ export function DetailRail({
         {n.outcomeBody ? (
           <div className="mt-3 rounded-lg bg-white/70 px-3 py-2 ring-1 ring-slate-200/80">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              {n.outcomeTitle ?? 'Что будет дальше'}
+              {n.outcomeTitle ?? t('app.detail_rail.what_next', { defaultValue: 'What happens next' })}
             </p>
             <p className="mt-0.5 text-xs text-slate-600">{n.outcomeBody}</p>
           </div>
@@ -290,25 +315,29 @@ export function DetailRail({
           variant === 'default' && 'border-brand-200 bg-brand-50/50',
         )}
       >
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Итог процесса</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          {t('app.detail_rail.process_outcome', { defaultValue: 'Process outcome' })}
+        </p>
         <p className="mt-3 text-base font-bold leading-tight text-slate-900">{o.title}</p>
         {o.body ? <p className="mt-2 text-sm text-slate-600">{o.body}</p> : null}
         {o.whyLabel ? (
           <div className="mt-3 border-l-2 border-slate-300 pl-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Почему</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              {t('app.detail_rail.why', { defaultValue: 'Why' })}
+            </p>
             <p className="mt-0.5 text-sm text-slate-700">{o.whyLabel}</p>
           </div>
         ) : null}
         <dl className="mt-3 space-y-1.5 text-sm">
           {o.ownerLabel ? (
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Владелец</dt>
+              <dt className="text-slate-500">{t('app.detail_rail.owner', { defaultValue: 'Owner' })}</dt>
               <dd className="text-right font-medium text-slate-900">{o.ownerLabel}</dd>
             </div>
           ) : null}
           {o.whenLabel ? (
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Когда</dt>
+              <dt className="text-slate-500">{t('app.detail_rail.when', { defaultValue: 'When' })}</dt>
               <dd className="text-right font-medium text-slate-900">{o.whenLabel}</dd>
             </div>
           ) : null}
@@ -338,7 +367,10 @@ export function DetailRail({
         {more.length ? (
           <details className="group">
             <summary className="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900">
-              Ещё действия ({more.length})
+              {t('app.detail_rail.more_actions', {
+                defaultValue: 'More actions ({count})',
+                values: { count: more.length },
+              })}
             </summary>
             <ul className="mt-2 space-y-1 border-t border-slate-100 pt-2">
               {more.map((a) => (
@@ -364,7 +396,7 @@ export function DetailRail({
         ))}
         {model.onSummaryExpand ? (
           <button type="button" onClick={model.onSummaryExpand} className="mt-1 text-xs font-medium text-brand-700 hover:underline">
-            {model.summaryExpandLabel ?? 'Показать все'}
+            {model.summaryExpandLabel ?? t('app.detail_rail.show_all', { defaultValue: 'Show all' })}
           </button>
         ) : null}
       </dl>
@@ -439,14 +471,14 @@ export function DetailRail({
   }
 
   const blockTitles: Partial<Record<DetailRailBlockId, string>> = {
-    contacts: 'Контакты',
+    contacts: t('app.detail_rail.blocks.contacts', { defaultValue: 'Contacts' }),
     next_action: undefined,
-    actions: 'Действия',
-    summary: 'Основная информация',
-    history: 'История',
-    documents: 'Документы',
-    relations: 'Связанные объекты',
-    footer_actions: 'Другие действия',
+    actions: t('app.detail_rail.blocks.actions', { defaultValue: 'Actions' }),
+    summary: t('app.detail_rail.blocks.summary', { defaultValue: 'Overview' }),
+    history: t('app.detail_rail.blocks.history', { defaultValue: 'History' }),
+    documents: t('app.detail_rail.blocks.documents', { defaultValue: 'Documents' }),
+    relations: t('app.detail_rail.blocks.relations', { defaultValue: 'Related objects' }),
+    footer_actions: t('app.detail_rail.blocks.footer_actions', { defaultValue: 'Other actions' }),
   }
 
   const merged = { ...blocks, ...blockOverrides }
@@ -501,11 +533,13 @@ export function DetailRail({
       data-resource-id={model?.resourceId}
     >
       {loading ? (
-        <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">Загрузка…</div>
+        <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">
+          {t('app.detail_rail.loading', { defaultValue: 'Loading…' })}
+        </div>
       ) : !model ? (
         <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
-          <p className="text-sm font-medium text-slate-700">{emptyTitle}</p>
-          <p className="mt-1 text-xs text-slate-500">{emptyDescription}</p>
+          <p className="text-sm font-medium text-slate-700">{resolvedEmptyTitle}</p>
+          <p className="mt-1 text-xs text-slate-500">{resolvedEmptyDescription}</p>
         </div>
       ) : (
         <>

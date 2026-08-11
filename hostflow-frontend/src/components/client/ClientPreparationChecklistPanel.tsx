@@ -69,7 +69,7 @@ function ChecklistRow({ item }: { item: ClientPreparationCheckItem }) {
           <span className="truncate">{title}</span>
           {item.soft ? (
             <span className="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-              {t('app.client_preparation.soft_badge', { defaultValue: 'мягкий чек' })}
+              {t('app.client_preparation.soft_badge', { defaultValue: 'soft check' })}
             </span>
           ) : null}
         </div>
@@ -108,7 +108,7 @@ export function ClientPreparationChecklistPanel({
   if (loading && !data) {
     return (
       <p className="text-sm text-slate-500" aria-busy="true">
-        {t('app.client_preparation.loading', { defaultValue: 'Проверяем готовность…' })}
+        {t('app.client_preparation.loading', { defaultValue: 'Checking readiness…' })}
       </p>
     )
   }
@@ -116,7 +116,7 @@ export function ClientPreparationChecklistPanel({
   if (error && !data) {
     return (
       <p className="text-sm text-rose-600">
-        {t('app.client_preparation.error', { defaultValue: 'Не удалось загрузить чек-лист подготовки.' })}
+        {t('app.client_preparation.error', { defaultValue: 'Could not load the preparation checklist.' })}
       </p>
     )
   }
@@ -134,7 +134,7 @@ export function ClientPreparationChecklistPanel({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t('app.client_preparation.title', { defaultValue: 'Подготовка клиента' })}
+          {t('app.client_preparation.title', { defaultValue: 'Client preparation' })}
         </p>
         <span
           className={clsx(
@@ -145,16 +145,16 @@ export function ClientPreparationChecklistPanel({
           )}
         >
           {data.is_prepared
-            ? t('app.client_preparation.prepared', { defaultValue: 'Готов к работе' })
+            ? t('app.client_preparation.prepared', { defaultValue: 'Ready to work' })
             : t('app.client_preparation.progress', {
-                defaultValue: '{done}/{total} обязательных',
+                defaultValue: '{done}/{total} required',
                 values: { done: String(hardDone), total: String(hardItems.length) },
               })}
         </span>
       </div>
       <p className="mt-1 text-xs text-slate-500">
         {t('app.client_preparation.subtitle', {
-          defaultValue: 'Что уже готово, что мешает и что желательно, но не блокирует.',
+          defaultValue: 'What is ready, what blocks, and what is nice to have but not blocking.',
         })}
       </p>
       <ul className="mt-3 space-y-1">
@@ -165,7 +165,7 @@ export function ClientPreparationChecklistPanel({
       {doneCount === visibleItems.length ? (
         <p className="mt-2 text-xs text-emerald-700">
           {t('app.client_preparation.all_done_hint', {
-            defaultValue: 'Все пункты закрыты — можно сосредоточиться на заказах и счетах.',
+            defaultValue: 'All items closed — you can focus on orders and invoices.',
           })}
         </p>
       ) : null}

@@ -3,6 +3,8 @@ import type { EntityModel, EntityPassport } from '../entity-model'
 import type { EntityContextRailModel, EntityWorkspaceHeaderModel, EntityWorkspaceSectionId, EntityWorkspaceSummaryModel, EntityContextRailContactAction } from './types'
 import { ENTITY_WORKSPACE_SECTION_ORDER } from './types'
 
+type TranslateFn = (key: string, opts?: { defaultValue?: string }) => string
+
 const NAV_ENTITY_SECTIONS: Record<EntityWorkspaceSectionId, readonly EntitySectionId[]> = {
   overview: ['identity', 'state', 'ownership'],
   contacts: ['contacts'],
@@ -47,13 +49,19 @@ export function projectEntityWorkspaceHeader(args: {
   }
 }
 
-export function projectEntityWorkspaceSummary(passport: EntityPassport): EntityWorkspaceSummaryModel {
+export function projectEntityWorkspaceSummary(
+  passport: EntityPassport,
+  t?: TranslateFn,
+): EntityWorkspaceSummaryModel {
+  const label = (key: string, fallback: string) =>
+    t ? t(`app.entity_workspace.summary.${key}`, { defaultValue: fallback }) : fallback
+
   const { state, ownership, documents, actions, relations } = passport.sections
   const cards: EntityWorkspaceSummaryModel['cards'] = []
 
   cards.push({
     id: 'stage',
-    label: 'Текущий этап',
+    label: label('current_stage', 'Current stage'),
     value: state.stageLabel || state.processLabel,
     subValue: state.stageLabel && state.processLabel !== state.stageLabel ? state.processLabel : undefined,
     tone: state.processPhase === 'terminal' ? 'muted' : 'default',
@@ -62,14 +70,14 @@ export function projectEntityWorkspaceSummary(passport: EntityPassport): EntityW
   if (actions.decisionTitle && actions.workAllowed) {
     cards.push({
       id: 'next',
-      label: 'Следующее действие',
+      label: label('next_action', 'Next action'),
       value: actions.decisionTitle,
       tone: 'brand',
     })
   } else if (passport.sections.outcome?.title) {
     cards.push({
       id: 'outcome',
-      label: 'Итог',
+      label: label('outcome', 'Outcome'),
       value: passport.sections.outcome.title,
       subValue: passport.sections.outcome.body,
       tone: 'success',
@@ -80,7 +88,7 @@ export function projectEntityWorkspaceSummary(passport: EntityPassport): EntityW
   if (why) {
     cards.push({
       id: 'why',
-      label: 'Почему сейчас',
+      label: label('why_now', 'Why now'),
       value: why,
       tone: 'warning',
     })
@@ -90,7 +98,10 @@ export function projectEntityWorkspaceSummary(passport: EntityPassport): EntityW
   if (primaryRelation) {
     cards.push({
       id: 'relation',
-      label: primaryRelation.kind === 'vacancy' ? 'Подбор / Вакансия' : 'Связь',
+      label:
+        primaryRelation.kind === 'vacancy'
+          ? label('relation_vacancy', 'Recruitment / Vacancy')
+          : label('relation', 'Relation'),
       value: primaryRelation.label,
       href: primaryRelation.href,
     })
@@ -99,7 +110,7 @@ export function projectEntityWorkspaceSummary(passport: EntityPassport): EntityW
   if (ownership.managerLabel) {
     cards.push({
       id: 'owner',
-      label: 'Ответственный',
+      label: label('owner', 'Owner'),
       value: ownership.managerLabel,
       tone: 'muted',
     })

@@ -92,7 +92,7 @@ export default function ClientInquiryWorkPage() {
           ...extra,
         })) as Lead
         setLead(updated)
-        notify({ title: t('app.leads.inbox.stage_updated', { defaultValue: 'Статус обновлён' }), variant: 'success' })
+        notify({ title: t('app.leads.inbox.stage_updated', { defaultValue: 'Status updated' }), variant: 'success' })
       } catch (err: unknown) {
         if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.stage_update_failed'))) return
         const info = getFriendlyErrorInfo(err, t('app.leads.detail.stage_update_failed'), t)
@@ -129,7 +129,7 @@ export default function ClientInquiryWorkPage() {
       const updated = await getLead(lead.id)
       setLead(updated)
       notify({
-        title: t('app.client_inquiry.client_created', { defaultValue: 'Компания сохранена в клиенты' }),
+        title: t('app.client_inquiry.client_created', { defaultValue: 'Company saved as client' }),
         variant: 'success',
       })
       const session = getSalesWorkSession()
@@ -140,11 +140,11 @@ export default function ClientInquiryWorkPage() {
         }
       }
     } catch (err: unknown) {
-      if (planLimitModal?.showPlanLimitIfNeeded(err, 'Не удалось создать клиента')) return
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.sales_inquiry.create_client_failed', { defaultValue: 'Failed to create client' }))) return
       const detail =
         (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
         (err as Error)?.message ??
-        'Не удалось создать клиента'
+        t('app.sales_inquiry.create_client_failed', { defaultValue: 'Failed to create client' })
       notify({ title: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'error' })
     } finally {
       setConverting(false)
@@ -165,16 +165,16 @@ export default function ClientInquiryWorkPage() {
         className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-brand-700"
       >
         <IconArrowLeft size={14} stroke={1.9} />
-        {t('app.sales_inquiry.back_channel', { defaultValue: 'К привлечению клиентов' })}
+        {t('app.sales_inquiry.back_channel', { defaultValue: 'Back to client acquisition' })}
       </Link>
 
       {loading ? <p className="text-sm text-slate-500">{t('common.loading')}</p> : null}
 
       {!loading && notFound ? (
         <section className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-          <p>{t('app.sales_inquiry.not_found', { defaultValue: 'Запрос компании не найден в этом канале.' })}</p>
+          <p>{t('app.sales_inquiry.not_found', { defaultValue: 'Company inquiry not found in this channel.' })}</p>
           <Link to={clientAcquisitionChannelPath(channelId)} className="mt-3 inline-block text-brand-700 hover:underline">
-            {t('app.sales_inquiry.back_channel', { defaultValue: 'К привлечению клиентов' })}
+            {t('app.sales_inquiry.back_channel', { defaultValue: 'Back to client acquisition' })}
           </Link>
         </section>
       ) : null}

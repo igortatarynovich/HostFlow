@@ -3,6 +3,7 @@ import type { CandidateProfile } from '../../api/candidate_profiles'
 import type { FieldConfig } from './ProfileFieldConstructor'
 import { getFunnel, type FunnelStage } from '../../api/funnels'
 import { Modal } from '../Modal'
+import { useI18n } from '../../i18n'
 
 interface ProfilePreviewModalProps {
   profile: CandidateProfile
@@ -12,6 +13,7 @@ interface ProfilePreviewModalProps {
 }
 
 function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: ProfilePreviewModalProps) {
+  const { t } = useI18n()
   const fieldConfigs = useMemo<FieldConfig[]>(() => {
     if (!profile.config?.field_configs) return []
     return profile.config.field_configs as FieldConfig[]
@@ -71,30 +73,46 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
   }, [documentConfigs])
 
   return (
-    <Modal open={true} onClose={onClose} title={`Предпросмотр профиля: ${profile.name}`}>
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={t('app.profiles.preview.title', {
+        defaultValue: 'Profile preview: {name}',
+        values: { name: profile.name },
+      })}
+    >
       <div className="space-y-4">
-        {/* Общая информация */}
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900">Общая информация</h3>
+          <h3 className="mb-3 text-sm font-semibold text-slate-900">
+            {t('app.profiles.preview.general', { defaultValue: 'General information' })}
+          </h3>
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-700">Код:</span>
+              <span className="font-medium text-slate-700">
+                {t('app.profiles.preview.code', { defaultValue: 'Code:' })}
+              </span>
               <span className="font-mono text-slate-600">{profile.code}</span>
             </div>
             {profile.description && (
               <div>
-                <span className="font-medium text-slate-700">Описание:</span>
+                <span className="font-medium text-slate-700">
+                  {t('app.profiles.preview.description', { defaultValue: 'Description:' })}
+                </span>
                 <p className="mt-1 text-slate-600">{profile.description}</p>
               </div>
             )}
             {profile.notes && (
               <div>
-                <span className="font-medium text-slate-700">Заметки:</span>
+                <span className="font-medium text-slate-700">
+                  {t('app.profiles.preview.notes', { defaultValue: 'Notes:' })}
+                </span>
                 <p className="mt-1 text-xs text-slate-500">{profile.notes}</p>
               </div>
             )}
             <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-700">Статус:</span>
+              <span className="font-medium text-slate-700">
+                {t('app.profiles.preview.status', { defaultValue: 'Status:' })}
+              </span>
               <span
                 className={`rounded-md px-2 py-0.5 text-xs font-medium ${
                   profile.is_active
@@ -102,29 +120,38 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
                     : 'bg-slate-100 text-slate-600'
                 }`}
               >
-                {profile.is_active ? 'Активен' : 'Неактивен'}
+                {profile.is_active
+                  ? t('app.profiles.preview.active', { defaultValue: 'Active' })
+                  : t('app.profiles.preview.inactive', { defaultValue: 'Inactive' })}
               </span>
               {profile.is_system && (
                 <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                  Системный
+                  {t('app.profiles.preview.system', { defaultValue: 'System' })}
                 </span>
               )}
               {profile.usage_count != null && profile.usage_count > 0 && (
                 <span className="rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
-                  Используется в {profile.usage_count} вакансиях
+                  {t('app.profiles.preview.used_in', {
+                    defaultValue: 'Used in {count} vacancies',
+                    values: { count: profile.usage_count },
+                  })}
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Статистика */}
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-center">
             <div className="text-2xl font-bold text-blue-900">{visibleFields.length}</div>
-            <div className="text-xs text-blue-700">Полей</div>
+            <div className="text-xs text-blue-700">
+              {t('app.profiles.preview.fields_stat', { defaultValue: 'Fields' })}
+            </div>
             <div className="mt-1 text-xs text-blue-600">
-              {requiredFields.length} обязательных
+              {t('app.profiles.preview.required_count', {
+                defaultValue: '{count} required',
+                values: { count: requiredFields.length },
+              })}
             </div>
           </div>
           <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-center">
@@ -132,20 +159,26 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
               {profile.funnel_id ? funnelStages.length || activeStages.length : activeStages.length}
             </div>
             <div className="text-xs text-green-700">
-              Этапов{profile.funnel_id ? ' (воронка)' : ''}
+              {profile.funnel_id
+                ? t('app.profiles.preview.stages_funnel', { defaultValue: 'Stages (funnel)' })
+                : t('app.profiles.preview.stages_stat', { defaultValue: 'Stages' })}
             </div>
           </div>
           <div className="rounded-lg border border-purple-200 bg-purple-50 p-3 text-center">
             <div className="text-2xl font-bold text-purple-900">{enabledDocuments.length}</div>
-            <div className="text-xs text-purple-700">Документов</div>
+            <div className="text-xs text-purple-700">
+              {t('app.profiles.preview.documents_stat', { defaultValue: 'Documents' })}
+            </div>
           </div>
         </div>
 
-        {/* Поля */}
         {visibleFields.length > 0 && (
           <div>
             <h3 className="mb-2 text-sm font-semibold text-slate-900">
-              Поля ({visibleFields.length})
+              {t('app.profiles.preview.fields_heading', {
+                defaultValue: 'Fields ({count})',
+                values: { count: visibleFields.length },
+              })}
             </h3>
             <div className="max-h-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-3">
               {visibleFields.map((field, index) => (
@@ -160,7 +193,7 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
                     <span className="text-xs text-slate-500">({field.field_type})</span>
                     {field.required && (
                       <span className="rounded-md bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800">
-                        Обязательное
+                        {t('app.profiles.preview.required_field', { defaultValue: 'Required' })}
                       </span>
                     )}
                   </div>
@@ -171,11 +204,13 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
           </div>
         )}
 
-        {/* Этапы */}
         {(activeStages.length > 0 || funnelStages.length > 0) && (
           <div>
             <h3 className="mb-2 text-sm font-semibold text-slate-900">
-              Этапы воронки ({funnelStages.length || activeStages.length})
+              {t('app.profiles.preview.stages_heading', {
+                defaultValue: 'Funnel stages ({count})',
+                values: { count: funnelStages.length || activeStages.length },
+              })}
             </h3>
             <div className="max-h-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-3">
               {(funnelStages.length > 0 ? funnelStages : activeStages)
@@ -202,11 +237,13 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
           </div>
         )}
 
-        {/* Документы */}
         {enabledDocuments.length > 0 && (
           <div>
             <h3 className="mb-2 text-sm font-semibold text-slate-900">
-              Документы ({enabledDocuments.length})
+              {t('app.profiles.preview.documents_heading', {
+                defaultValue: 'Documents ({count})',
+                values: { count: enabledDocuments.length },
+              })}
             </h3>
             <div className="max-h-60 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-3">
               {enabledDocuments
@@ -222,12 +259,15 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
                       </span>
                       {doc.required && (
                         <span className="rounded-md bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800">
-                          Обязательный
+                          {t('app.profiles.preview.required_doc', { defaultValue: 'Required' })}
                         </span>
                       )}
                       {doc.alert_days_before_expiry && (
                         <span className="text-xs text-slate-500">
-                          Напоминание за {doc.alert_days_before_expiry} дн.
+                          {t('app.profiles.preview.alert_days', {
+                            defaultValue: 'Reminder {days} days before',
+                            values: { days: doc.alert_days_before_expiry },
+                          })}
                         </span>
                       )}
                     </div>
@@ -238,20 +278,19 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
           </div>
         )}
 
-        {/* Кнопки действий */}
         <div className="flex gap-2 justify-end border-t border-slate-200 pt-4">
           {onExport && !profile.is_system && (
             <button type="button" onClick={onExport} className="btn-secondary">
-              Экспорт
+              {t('app.profiles.preview.export', { defaultValue: 'Export' })}
             </button>
           )}
           {onDuplicate && (
             <button type="button" onClick={onDuplicate} className="btn-secondary">
-              Копировать
+              {t('app.profiles.preview.duplicate', { defaultValue: 'Duplicate' })}
             </button>
           )}
           <button type="button" onClick={onClose} className="btn-primary">
-            Закрыть
+            {t('common.close', { defaultValue: 'Close' })}
           </button>
         </div>
       </div>

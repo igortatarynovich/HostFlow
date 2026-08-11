@@ -6,6 +6,7 @@ import type { CustomFieldDefinition } from '../../api/custom_fields'
 import { listCustomFieldDefinitions } from '../../api/custom_fields'
 import type { EffectiveCardLayout } from '../../api/fieldRegistry'
 import type { EntityPassport } from '../../platform/entity-model'
+import { useI18n } from '../../i18n'
 import { getFieldConfigs, getFieldLabel, isFieldVisible } from '../../utils/profileUtils'
 import { getLanguageDisplayName, getRegionDisplayName } from '../../utils/catalogLocale'
 import { formatDateSafe } from './candidateUtils'
@@ -68,16 +69,26 @@ function MockupWorkspaceSection({
   )
 }
 
-function formatBool(value: boolean | null | undefined, locale = 'ru'): string | undefined {
+function formatBool(
+  value: boolean | null | undefined,
+  t: (key: string, options?: { defaultValue?: string }) => string,
+): string | undefined {
   if (value == null) return undefined
-  return value ? (locale === 'pl' ? 'Tak' : locale === 'en' ? 'Yes' : 'Да') : locale === 'pl' ? 'Nie' : locale === 'en' ? 'No' : 'Нет'
+  return value
+    ? t('common.yes', { defaultValue: 'Yes' })
+    : t('common.no', { defaultValue: 'No' })
 }
 
-function formatCustomFieldValue(definition: CustomFieldDefinition, raw: unknown, locale: string): ReactNode {
+function formatCustomFieldValue(
+  definition: CustomFieldDefinition,
+  raw: unknown,
+  locale: string,
+  t: (key: string, options?: { defaultValue?: string }) => string,
+): ReactNode {
   if (raw == null || raw === '') return '—'
   switch (definition.field_type) {
     case 'CHECKBOX':
-      return formatBool(Boolean(raw), locale)
+      return formatBool(Boolean(raw), t)
     case 'MULTISELECT':
       return Array.isArray(raw) && raw.length ? raw.join(', ') : '—'
     case 'DATE':
@@ -98,6 +109,7 @@ function CandidateCustomFieldsReadOnlyBlock({
   effectiveLayout?: EffectiveCardLayout | null
   locale: string
 }) {
+  const { t } = useI18n()
   const extra = candidate.__extra as Record<string, unknown>
   const rawExtra = (candidate as { extra?: Record<string, unknown> }).extra ?? {}
 
@@ -155,12 +167,16 @@ function CandidateCustomFieldsReadOnlyBlock({
   return (
     <MockupWorkspaceSection
       index={3}
-      title="Кастомные поля"
-      subtitle="Настроенные поля профиля кандидата"
+      title={t('app.candidates.workspace.custom_fields_title', { defaultValue: 'Custom fields' })}
+      subtitle={t('app.candidates.workspace.custom_fields_subtitle', {
+        defaultValue: 'Configured candidate profile fields',
+      })}
       defaultOpen
     >
       {loading ? (
-        <div className="md:col-span-2 text-sm text-slate-500">Загрузка…</div>
+        <div className="md:col-span-2 text-sm text-slate-500">
+          {t('app.candidates.workspace.loading', { defaultValue: 'Loading…' })}
+        </div>
       ) : (
         visibleFields.map((fieldConfig) => {
           const definition = definitionMap.get(fieldConfig.field_key)
@@ -173,7 +189,7 @@ function CandidateCustomFieldsReadOnlyBlock({
             <ReadOnlyField
               key={fieldConfig.field_key}
               label={label}
-              value={formatCustomFieldValue(definition, value, locale)}
+              value={formatCustomFieldValue(definition, value, locale, t)}
             />
           )
         })
@@ -197,6 +213,7 @@ export function CandidateOverviewContent({
   candidateProfile,
   effectiveLayout,
 }: CandidateOverviewContentProps) {
+  const { t } = useI18n()
   const extra = candidate.__extra
   const rawExtra = (candidate as { extra?: Record<string, unknown> }).extra ?? {}
   const birthDate = (rawExtra.birth_date as string | undefined) ?? undefined
@@ -213,65 +230,103 @@ export function CandidateOverviewContent({
   const licenseCategories = Array.isArray(rawExtra.license_categories)
     ? (rawExtra.license_categories as string[]).join(', ')
     : undefined
+  const maskedLabel = t('app.candidates.workspace.masked', { defaultValue: 'Hidden' })
+  const yearsLabel = (count: number | string) =>
+    t('app.candidates.workspace.experience_years', {
+      defaultValue: '{count} years',
+      values: { count },
+    })
 
   return (
     <div className="space-y-3">
-      <MockupWorkspaceSection index={1} title="Основная информация" subtitle="Имя, контакты, базовые данные" defaultOpen>
-        <ReadOnlyField label="ФИО" value={passport.sections.identity.title} />
+      <MockupWorkspaceSection
+        index={1}
+        title={t('app.candidates.workspace.basic_title', { defaultValue: 'Basic information' })}
+        subtitle={t('app.candidates.workspace.basic_subtitle', {
+          defaultValue: 'Name, contacts, basic data',
+        })}
+        defaultOpen
+      >
         <ReadOnlyField
-          label="Дата рождения"
+          label={t('app.candidates.workspace.fields.full_name', { defaultValue: 'Full name' })}
+          value={passport.sections.identity.title}
+        />
+        <ReadOnlyField
+          label={t('app.candidates.workspace.fields.birth_date', { defaultValue: 'Date of birth' })}
           value={birthDate ? formatDateSafe(birthDate, locale) : undefined}
         />
-        <ReadOnlyField label="Гражданство" value={citizenship} />
-        <ReadOnlyField label="Языки" value={languages} />
         <ReadOnlyField
-          label="Телефон"
-          value={candidate.masked ? 'Скрыто' : candidate.phone ?? undefined}
+          label={t('app.candidates.workspace.fields.citizenship', { defaultValue: 'Citizenship' })}
+          value={citizenship}
         />
         <ReadOnlyField
-          label="Email"
-          value={candidate.masked ? 'Скрыто' : candidate.email ?? undefined}
+          label={t('app.candidates.workspace.fields.languages', { defaultValue: 'Languages' })}
+          value={languages}
         />
-        <ReadOnlyField label="Город" value={candidate.city ? String(candidate.city) : undefined} />
         <ReadOnlyField
-          label="Этап"
+          label={t('app.candidates.workspace.fields.phone', { defaultValue: 'Phone' })}
+          value={candidate.masked ? maskedLabel : candidate.phone ?? undefined}
+        />
+        <ReadOnlyField
+          label={t('app.candidates.workspace.fields.email', { defaultValue: 'Email' })}
+          value={candidate.masked ? maskedLabel : candidate.email ?? undefined}
+        />
+        <ReadOnlyField
+          label={t('app.candidates.workspace.fields.city', { defaultValue: 'City' })}
+          value={candidate.city ? String(candidate.city) : undefined}
+        />
+        <ReadOnlyField
+          label={t('app.candidates.workspace.fields.stage', { defaultValue: 'Stage' })}
           value={passport.sections.state.stageLabel || passport.sections.state.processLabel}
         />
       </MockupWorkspaceSection>
 
       <MockupWorkspaceSection
         index={2}
-        title="Дополнительная информация"
-        subtitle="Опыт, права, предпочтения"
+        title={t('app.candidates.workspace.extra_title', { defaultValue: 'Additional information' })}
+        subtitle={t('app.candidates.workspace.extra_subtitle', {
+          defaultValue: 'Experience, licenses, preferences',
+        })}
         defaultOpen
       >
         <ReadOnlyField
-          label="Опыт работы"
-          value={experienceYears != null ? `${experienceYears} лет` : undefined}
+          label={t('app.candidates.workspace.fields.experience', { defaultValue: 'Work experience' })}
+          value={experienceYears != null ? yearsLabel(experienceYears) : undefined}
         />
         <ReadOnlyField
-          label="Опыт в EU"
+          label={t('app.candidates.workspace.fields.experience_eu', { defaultValue: 'EU experience' })}
           value={
             rawExtra.experience_eu_years != null
-              ? `${rawExtra.experience_eu_years} лет`
+              ? yearsLabel(String(rawExtra.experience_eu_years))
               : undefined
           }
         />
-        <ReadOnlyField label="Права" value={licenseCategories} />
-        <ReadOnlyField label="ADR" value={formatBool(rawExtra.has_adr as boolean | null, locale)} />
         <ReadOnlyField
-          label="В Польше"
-          value={formatBool(rawExtra.in_poland as boolean | null, locale)}
+          label={t('app.candidates.workspace.fields.license', { defaultValue: 'License' })}
+          value={licenseCategories}
         />
         <ReadOnlyField
-          label="Основание пребывания"
+          label={t('app.candidates.workspace.fields.adr', { defaultValue: 'ADR' })}
+          value={formatBool(rawExtra.has_adr as boolean | null, t)}
+        />
+        <ReadOnlyField
+          label={t('app.candidates.workspace.fields.in_poland', { defaultValue: 'In Poland' })}
+          value={formatBool(rawExtra.in_poland as boolean | null, t)}
+        />
+        <ReadOnlyField
+          label={t('app.candidates.workspace.fields.poland_basis', { defaultValue: 'Basis for stay' })}
           value={rawExtra.poland_stay_basis ? String(rawExtra.poland_stay_basis) : undefined}
         />
         <ReadOnlyField
-          label="Предпочитаемый канал"
+          label={t('app.candidates.workspace.fields.preferred_channel', {
+            defaultValue: 'Preferred channel',
+          })}
           value={extra.preferredContact ?? undefined}
         />
-        <ReadOnlyField label="Источник" value={candidate.source ? String(candidate.source) : undefined} />
+        <ReadOnlyField
+          label={t('app.candidates.workspace.fields.source', { defaultValue: 'Source' })}
+          value={candidate.source ? String(candidate.source) : undefined}
+        />
       </MockupWorkspaceSection>
 
       <CandidateCustomFieldsReadOnlyBlock
@@ -283,7 +338,9 @@ export function CandidateOverviewContent({
 
       {passport.sections.identity.masked ? (
         <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          Персональные данные скрыты политикой доступа.
+          {t('app.candidates.workspace.masked_notice', {
+            defaultValue: 'Personal data is hidden by access policy.',
+          })}
         </p>
       ) : null}
     </div>
@@ -291,18 +348,28 @@ export function CandidateOverviewContent({
 }
 
 export function CandidateContactsContent({ passport, candidate }: { passport: EntityPassport; candidate: AugmentedCandidate }) {
+  const { t } = useI18n()
   const channels = passport.sections.contacts.channels
+  const maskedLabel = t('app.candidates.workspace.masked', { defaultValue: 'Hidden' })
 
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-900">{passport.sections.contacts.displayName}</h3>
         {passport.sections.contacts.citizenship ? (
-          <p className="mt-1 text-sm text-slate-600">Гражданство: {passport.sections.contacts.citizenship}</p>
+          <p className="mt-1 text-sm text-slate-600">
+            {t('app.candidates.workspace.contacts.citizenship', {
+              defaultValue: 'Citizenship: {value}',
+              values: { value: passport.sections.contacts.citizenship },
+            })}
+          </p>
         ) : null}
         {passport.sections.contacts.preferredChannel ? (
           <p className="mt-1 text-sm text-slate-600">
-            Предпочитаемый канал: {passport.sections.contacts.preferredChannel}
+            {t('app.candidates.workspace.contacts.preferred_channel', {
+              defaultValue: 'Preferred channel: {value}',
+              values: { value: passport.sections.contacts.preferredChannel },
+            })}
           </p>
         ) : null}
       </div>
@@ -316,22 +383,33 @@ export function CandidateContactsContent({ passport, candidate }: { passport: En
                 {ch.display || ch.value}
               </a>
             ) : (
-              <p className="mt-2 text-base font-semibold text-slate-900">{candidate.masked ? 'Скрыто' : ch.display || ch.value}</p>
+              <p className="mt-2 text-base font-semibold text-slate-900">
+                {candidate.masked ? maskedLabel : ch.display || ch.value}
+              </p>
             )}
           </div>
         ))}
       </div>
 
-      {!channels.length ? <p className="text-sm text-slate-500">Контакты не указаны</p> : null}
+      {!channels.length ? (
+        <p className="text-sm text-slate-500">
+          {t('app.candidates.workspace.contacts.empty', { defaultValue: 'No contacts provided' })}
+        </p>
+      ) : null}
     </div>
   )
 }
 
 export function CandidateTimelineContent({ passport }: { passport: EntityPassport }) {
+  const { t } = useI18n()
   const items = passport.sections.timeline.items
 
   if (!items.length) {
-    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет событий</p>
+    return (
+      <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        {t('app.candidates.workspace.timeline_empty', { defaultValue: 'No events' })}
+      </p>
+    )
   }
 
   return (
@@ -348,10 +426,15 @@ export function CandidateTimelineContent({ passport }: { passport: EntityPasspor
 }
 
 export function CandidateRelationsContent({ passport }: { passport: EntityPassport }) {
+  const { t } = useI18n()
   const items = passport.sections.relations.items
 
   if (!items.length) {
-    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет связей</p>
+    return (
+      <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        {t('app.candidates.workspace.relations_empty', { defaultValue: 'No relations' })}
+      </p>
+    )
   }
 
   return (
@@ -360,7 +443,11 @@ export function CandidateRelationsContent({ passport }: { passport: EntityPasspo
         <li key={rel.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              {rel.kind === 'vacancy' ? 'Вакансия' : rel.kind === 'hr' ? 'Handoff' : 'Связь'}
+              {rel.kind === 'vacancy'
+                ? t('app.candidates.workspace.relation_vacancy', { defaultValue: 'Vacancy' })
+                : rel.kind === 'hr'
+                  ? t('app.candidates.workspace.relation_handoff', { defaultValue: 'Handoff' })
+                  : t('app.candidates.workspace.relation_link', { defaultValue: 'Relation' })}
             </p>
             {rel.href ? (
               <a href={rel.href} className="mt-1 block text-sm font-semibold text-brand-700 hover:underline">
@@ -377,10 +464,15 @@ export function CandidateRelationsContent({ passport }: { passport: EntityPasspo
 }
 
 export function CandidateTasksContent({ passport }: { passport: EntityPassport }) {
+  const { t } = useI18n()
   const items = passport.sections.tasks.items
 
   if (!items.length) {
-    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет задач</p>
+    return (
+      <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        {t('app.candidates.workspace.tasks_empty', { defaultValue: 'No tasks' })}
+      </p>
+    )
   }
 
   return (

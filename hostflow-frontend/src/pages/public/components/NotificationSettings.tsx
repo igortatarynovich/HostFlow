@@ -79,7 +79,7 @@ export function NotificationSettings({
     if (!email && !phone) {
       notify({
         title: t('public.notifications.errors.email_or_phone_required', {
-          defaultValue: 'Email или телефон обязательны',
+          defaultValue: 'Email or phone required',
         }),
         variant: 'error',
       })
@@ -100,7 +100,7 @@ export function NotificationSettings({
       setSubscribed(true)
       notify({
         title: t('public.notifications.success.subscribed', {
-          defaultValue: 'Подписка оформлена',
+          defaultValue: 'Subscribed',
         }),
         description: response.message,
         variant: 'success',
@@ -108,9 +108,9 @@ export function NotificationSettings({
     } catch (err: any) {
       notify({
         title: t('public.notifications.errors.subscribe_failed', {
-          defaultValue: 'Ошибка подписки',
+          defaultValue: 'Subscribe failed',
         }),
-        description: err?.response?.data?.detail || err?.message || 'Не удалось оформить подписку',
+        description: err?.response?.data?.detail || err?.message || t('public.notifications.errors.subscribe_failed_desc', { defaultValue: 'Could not subscribe' }),
         variant: 'error',
       })
     } finally {
@@ -143,16 +143,16 @@ export function NotificationSettings({
 
       notify({
         title: t('public.notifications.success.unsubscribed', {
-          defaultValue: 'Подписка отменена',
+          defaultValue: 'Unsubscribed',
         }),
         variant: 'success',
       })
     } catch (err: any) {
       notify({
         title: t('public.notifications.errors.unsubscribe_failed', {
-          defaultValue: 'Ошибка отписки',
+          defaultValue: 'Unsubscribe failed',
         }),
-        description: err?.response?.data?.detail || err?.message || 'Не удалось отменить подписку',
+        description: err?.response?.data?.detail || err?.message || t('public.notifications.errors.unsubscribe_failed_desc', { defaultValue: 'Could not unsubscribe' }),
         variant: 'error',
       })
     } finally {
@@ -164,7 +164,7 @@ export function NotificationSettings({
     if (!swRegistration) {
       notify({
         title: t('public.notifications.errors.push_not_supported', {
-          defaultValue: 'Push-уведомления не поддерживаются',
+          defaultValue: 'Push notifications are not supported',
         }),
         variant: 'error',
       })
@@ -181,7 +181,7 @@ export function NotificationSettings({
         if (permission !== 'granted') {
           notify({
             title: t('public.notifications.errors.permission_denied', {
-              defaultValue: 'Разрешение не предоставлено',
+              defaultValue: 'Permission denied',
             }),
             variant: 'error',
           })
@@ -197,10 +197,10 @@ export function NotificationSettings({
       if (!vapidPublicKey) {
         notify({
           title: t('public.notifications.errors.push_not_configured', {
-            defaultValue: 'Push-уведомления не настроены',
+            defaultValue: 'Push notifications are not configured',
           }),
           description: t('public.notifications.errors.push_not_configured_desc', {
-            defaultValue: 'VAPID ключ не настроен на сервере',
+            defaultValue: 'VAPID key is not configured on the server',
           }),
           variant: 'error',
         })
@@ -221,16 +221,16 @@ export function NotificationSettings({
       setPushSubscribed(true)
       notify({
         title: t('public.notifications.success.push_subscribed', {
-          defaultValue: 'Push-уведомления включены',
+          defaultValue: 'Push notifications enabled',
         }),
         variant: 'success',
       })
     } catch (err: any) {
       notify({
         title: t('public.notifications.errors.push_subscribe_failed', {
-          defaultValue: 'Ошибка подписки на push',
+          defaultValue: 'Push subscribe failed',
         }),
-        description: err?.response?.data?.detail || err?.message || 'Не удалось подписаться на push-уведомления',
+        description: err?.response?.data?.detail || err?.message || t('public.notifications.errors.push_subscribe_failed_desc', { defaultValue: 'Could not subscribe to push notifications' }),
         variant: 'error',
       })
     } finally {
@@ -241,11 +241,11 @@ export function NotificationSettings({
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <h3 className="text-lg font-semibold text-slate-900">
-        {t('public.notifications.title', { defaultValue: 'Уведомления' })}
+        {t('public.notifications.title', { defaultValue: 'Notifications' })}
       </h3>
       <p className="mt-2 text-sm text-slate-600">
         {t('public.notifications.description', {
-          defaultValue: 'Получайте уведомления об изменении статуса ваших документов и заявки',
+          defaultValue: 'Get notifications about document and application status changes',
         })}
       </p>
 
@@ -265,7 +265,7 @@ export function NotificationSettings({
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">
-              {t('public.notifications.phone', { defaultValue: 'Телефон' })}
+              {t('public.notifications.phone', { defaultValue: 'Phone' })}
             </label>
             <input
               type="tel"
@@ -278,7 +278,7 @@ export function NotificationSettings({
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">
-              {t('public.notifications.subscribe_to', { defaultValue: 'Подписаться на' })}
+              {t('public.notifications.subscribe_to', { defaultValue: 'Subscribe to' })}
             </label>
             <label className="flex items-center gap-2">
               <input
@@ -288,7 +288,7 @@ export function NotificationSettings({
                 className="rounded border-slate-300"
               />
               <span className="text-sm text-slate-700">
-                {t('public.notifications.document_status', { defaultValue: 'Изменения статуса документов' })}
+                {t('public.notifications.document_status', { defaultValue: 'Document status changes' })}
               </span>
             </label>
             <label className="flex items-center gap-2">
@@ -299,7 +299,7 @@ export function NotificationSettings({
                 className="rounded border-slate-300"
               />
               <span className="text-sm text-slate-700">
-                {t('public.notifications.stage_changes', { defaultValue: 'Изменения этапа заявки' })}
+                {t('public.notifications.stage_changes', { defaultValue: 'Application stage changes' })}
               </span>
             </label>
             <label className="flex items-center gap-2">
@@ -310,7 +310,7 @@ export function NotificationSettings({
                 className="rounded border-slate-300"
               />
               <span className="text-sm text-slate-700">
-                {t('public.notifications.reminders', { defaultValue: 'Напоминания' })}
+                {t('public.notifications.reminders', { defaultValue: 'Reminders' })}
               </span>
             </label>
           </div>
@@ -321,15 +321,15 @@ export function NotificationSettings({
             className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
           >
             {loading
-              ? t('common.loading', { defaultValue: 'Загрузка...' })
-              : t('public.notifications.subscribe', { defaultValue: 'Подписаться' })}
+              ? t('common.loading', { defaultValue: 'Loading…' })
+              : t('public.notifications.subscribe', { defaultValue: 'Subscribe' })}
           </button>
         </div>
       ) : (
         <div className="mt-4 space-y-3">
           <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
             {t('public.notifications.subscribed', {
-              defaultValue: 'Вы подписаны на уведомления',
+              defaultValue: 'You are subscribed to notifications',
             })}
           </div>
           {email && (
@@ -339,7 +339,7 @@ export function NotificationSettings({
           )}
           {phone && (
             <div className="text-sm text-slate-600">
-              <span className="font-medium">Телефон:</span> {phone}
+              <span className="font-medium">{t('public.notifications.labels.phone_colon', { defaultValue: 'Phone:' })}</span> {phone}
             </div>
           )}
 
@@ -349,21 +349,21 @@ export function NotificationSettings({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-900">
-                    {t('public.notifications.push.title', { defaultValue: 'Push-уведомления' })}
+                    {t('public.notifications.push.title', { defaultValue: 'Push notifications' })}
                   </p>
                   <p className="text-xs text-slate-500">
                     {t('public.notifications.push.description', {
-                      defaultValue: 'Получайте уведомления даже когда браузер закрыт',
+                      defaultValue: 'Get notifications even when the browser is closed',
                     })}
                   </p>
                 </div>
                 {pushSubscribed ? (
                   <span className="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
-                    {t('public.notifications.push.active', { defaultValue: 'Активно' })}
+                    {t('public.notifications.push.active', { defaultValue: 'Active' })}
                   </span>
                 ) : (
                   <span className="rounded-full bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-600">
-                    {t('public.notifications.push.inactive', { defaultValue: 'Неактивно' })}
+                    {t('public.notifications.push.inactive', { defaultValue: 'Inactive' })}
                   </span>
                 )}
               </div>
@@ -374,8 +374,8 @@ export function NotificationSettings({
                   className="w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
                 >
                   {loading
-                    ? t('common.loading', { defaultValue: 'Загрузка...' })
-                    : t('public.notifications.push.enable', { defaultValue: 'Включить push' })}
+                    ? t('common.loading', { defaultValue: 'Loading…' })
+                    : t('public.notifications.push.enable', { defaultValue: 'Enable push' })}
                 </button>
               ) : (
                 <button
@@ -384,14 +384,14 @@ export function NotificationSettings({
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                 >
                   {loading
-                    ? t('common.loading', { defaultValue: 'Загрузка...' })
-                    : t('public.notifications.push.disable', { defaultValue: 'Отключить push' })}
+                    ? t('common.loading', { defaultValue: 'Loading…' })
+                    : t('public.notifications.push.disable', { defaultValue: 'Disable push' })}
                 </button>
               )}
               {pushPermission === 'denied' && (
                 <p className="text-xs text-red-600">
                   {t('public.notifications.push.permission_denied', {
-                    defaultValue: 'Разрешение на уведомления отклонено. Разрешите в настройках браузера.',
+                    defaultValue: 'Notification permission denied. Allow it in browser settings.',
                   })}
                 </p>
               )}
@@ -404,8 +404,8 @@ export function NotificationSettings({
             className="mt-4 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
           >
             {loading
-              ? t('common.loading', { defaultValue: 'Загрузка...' })
-              : t('public.notifications.unsubscribe', { defaultValue: 'Отписаться от всех' })}
+              ? t('common.loading', { defaultValue: 'Loading…' })
+              : t('public.notifications.unsubscribe', { defaultValue: 'Unsubscribe from all' })}
           </button>
         </div>
       )}

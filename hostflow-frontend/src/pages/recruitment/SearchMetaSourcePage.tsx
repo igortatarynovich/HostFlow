@@ -83,27 +83,27 @@ export default function SearchMetaSourcePage() {
     return [
       {
         key: 'connect',
-        title: t('app.search_meta.steps.connect_title', { defaultValue: 'Подключить Meta' }),
+        title: t('app.search_meta.steps.connect_title', { defaultValue: 'Connect Meta' }),
         body: t('app.search_meta.steps.connect_body_v2', {
-          defaultValue: 'Войдите через Facebook — HostFlow получит доступ к вашей рекламе и лидам.',
+          defaultValue: 'Log in with Facebook — HostFlow gets access to your ads and leads.',
         }),
         done: metaConnected,
       },
       {
         key: 'campaigns',
         title: t('app.search_meta.steps.campaigns_title', {
-          defaultValue: 'Выберите рекламу для этого подбора',
+          defaultValue: 'Choose ads for this search',
         }),
         body: t('app.search_meta.steps.campaigns_body', {
-          defaultValue: 'Отметьте кампании — HostFlow сам свяжет объявления, формы и маршрут лидов.',
+          defaultValue: 'Select campaigns — HostFlow will link ads, forms and the lead route.',
         }),
         done: hasCampaigns,
       },
       {
         key: 'done',
-        title: t('app.search_meta.steps.done_title', { defaultValue: 'Готово' }),
+        title: t('app.search_meta.steps.done_title', { defaultValue: 'Done' }),
         body: t('app.search_meta.steps.done_body', {
-          defaultValue: 'Новые отклики с выбранной рекламы будут попадать в этот подбор.',
+          defaultValue: 'New applications from the selected ads will land in this search.',
         }),
         done: setupDone,
       },
@@ -118,7 +118,7 @@ export default function SearchMetaSourcePage() {
       window.location.assign(authorize_url)
     } catch {
       notify({
-        title: t('app.search_meta.connect_error', { defaultValue: 'Не удалось начать подключение Meta' }),
+        title: t('app.search_meta.connect_error', { defaultValue: 'Could not start Meta connection' }),
         variant: 'error',
       })
       setOauthBusy(false)
@@ -142,7 +142,7 @@ export default function SearchMetaSourcePage() {
       )
       notify({
         title: t('app.search_meta.bind_success', {
-          defaultValue: 'Реклама связана с подбором',
+          defaultValue: 'Ads linked to search',
           values: { ads: result.bound_ads },
         }),
         variant: 'success',
@@ -150,14 +150,14 @@ export default function SearchMetaSourcePage() {
       if (result.skipped.length > 0) {
         notify({
           title: t('app.search_meta.bind_partial', {
-            defaultValue: 'Часть кампаний пропущена — проверьте права Meta',
+            defaultValue: 'Some campaigns were skipped — check Meta permissions',
           }),
           variant: 'warning',
         })
       }
     } catch {
       notify({
-        title: t('app.search_meta.bind_error', { defaultValue: 'Не удалось связать рекламу с подбором' }),
+        title: t('app.search_meta.bind_error', { defaultValue: 'Could not link ads to search' }),
         variant: 'error',
       })
     } finally {
@@ -178,7 +178,7 @@ export default function SearchMetaSourcePage() {
             </h2>
             <p className="mt-1 text-sm text-slate-600">
               {t('app.search_meta.subtitle_v2', {
-                defaultValue: 'Свяжите рекламу Meta с подбором «{name}» — HostFlow сам настроит маршрут лидов.',
+                defaultValue: 'Link Meta ads to search “{name}” — HostFlow will set up the lead route.',
                 values: { name: searchName },
               })}
             </p>
@@ -187,12 +187,12 @@ export default function SearchMetaSourcePage() {
       </section>
 
       {loading ? (
-        <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p>
+        <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</p>
       ) : (
         <>
           <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.search_meta.checklist_title', { defaultValue: 'Что сделать' })}
+              {t('app.search_meta.checklist_title', { defaultValue: 'What to do' })}
             </h3>
             <ol className="mt-4 space-y-4">
               {steps.map((step, index) => (
@@ -216,7 +216,7 @@ export default function SearchMetaSourcePage() {
               <div className="mt-6 rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center">
                 <p className="text-sm text-slate-600">
                   {t('app.search_meta.connect_prompt', {
-                    defaultValue: 'Начните с подключения Meta — дальше выберете рекламу для этого подбора.',
+                    defaultValue: 'Start by connecting Meta — then pick ads for this search.',
                   })}
                 </p>
                 {isAdmin && oauthEnabled ? (
@@ -228,17 +228,17 @@ export default function SearchMetaSourcePage() {
                     data-testid="m1-search-meta-connect"
                   >
                     {oauthBusy
-                      ? t('common.loading', { defaultValue: 'Загрузка…' })
-                      : t('app.search_meta.connect_cta', { defaultValue: 'Войти через Facebook' })}
+                      ? t('common.loading', { defaultValue: 'Loading…' })
+                      : t('app.search_meta.connect_cta', { defaultValue: 'Log in with Facebook' })}
                   </button>
                 ) : (
                   <p className="mt-3 text-sm text-amber-900">
                     {!isAdmin
                       ? t('app.search_meta.admin_only', {
-                          defaultValue: 'Подключение Meta доступно администратору workspace.',
+                          defaultValue: 'Meta connection is available to the workspace administrator.',
                         })
                       : t('app.search_meta.oauth_unavailable', {
-                          defaultValue: 'Быстрое подключение Meta недоступно на текущем плане или сервере.',
+                          defaultValue: 'Quick Meta connection is unavailable on the current plan or server.',
                         })}
                   </p>
                 )}
@@ -251,12 +251,12 @@ export default function SearchMetaSourcePage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                    {t('app.search_meta.campaign_picker_title', { defaultValue: 'Реклама для этого подбора' })}
+                    {t('app.search_meta.campaign_picker_title', { defaultValue: 'Ads for this search' })}
                   </h3>
                   {inventory?.ad_account_name ? (
                     <p className="mt-1 text-sm text-slate-600">
                       {t('app.search_meta.ad_account_label_named', {
-                        defaultValue: 'Рекламный кабинет: {name}',
+                        defaultValue: 'Ad account: {name}',
                         values: { name: inventory.ad_account_name },
                       })}
                     </p>
@@ -265,7 +265,7 @@ export default function SearchMetaSourcePage() {
                 {setupDone ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
                     <IconCheck size={14} />
-                    {t('app.search_meta.ready_badge', { defaultValue: 'Настроено' })}
+                    {t('app.search_meta.ready_badge', { defaultValue: 'Configured' })}
                   </span>
                 ) : null}
               </div>
@@ -281,21 +281,21 @@ export default function SearchMetaSourcePage() {
                       className="mt-4 inline-flex rounded-lg bg-[#0081FB] px-4 py-2 text-sm font-semibold text-white hover:bg-[#006FE0] disabled:opacity-50"
                     >
                       {oauthBusy
-                        ? t('common.loading', { defaultValue: 'Загрузка…' })
-                        : t('app.search_meta.reconnect_cta', { defaultValue: 'Обновить доступ Meta' })}
+                        ? t('common.loading', { defaultValue: 'Loading…' })
+                        : t('app.search_meta.reconnect_cta', { defaultValue: 'Refresh Meta access' })}
                     </button>
                   ) : null}
                   {!inventory.needs_marketing_reconnect ? (
                     <p className="mt-2 text-xs text-slate-500">
                       {t('app.search_meta.empty_hint', {
-                        defaultValue: 'Создайте Lead Ad в Meta Ads Manager или вернитесь сюда позже.',
+                        defaultValue: 'Create a Lead Ad in Meta Ads Manager or come back later.',
                       })}
                     </p>
                   ) : (
                     <p className="mt-2 text-xs text-slate-500">
                       {t('app.search_meta.reconnect_page_hint', {
                         defaultValue:
-                          'При входе выберите Facebook-страницу, с которой идёт реклама на этот подбор (не любую страницу из списка).',
+                          'When signing in, choose the Facebook Page that runs ads for this search (not any page from the list).',
                       })}
                     </p>
                   )}
@@ -321,7 +321,7 @@ export default function SearchMetaSourcePage() {
                               {campaign.status || '—'}
                               {campaign.ads_count != null
                                 ? ` · ${t('app.search_meta.ads_count', {
-                                    defaultValue: '{count} объявлений',
+                                    defaultValue: '{count} ads',
                                     values: { count: campaign.ads_count },
                                   })}`
                                 : ''}
@@ -348,15 +348,15 @@ export default function SearchMetaSourcePage() {
                     className="inline-flex rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
                   >
                     {bindBusy
-                      ? t('common.loading', { defaultValue: 'Загрузка…' })
-                      : t('app.search_meta.bind_cta', { defaultValue: 'Связать с подбором' })}
+                      ? t('common.loading', { defaultValue: 'Loading…' })
+                      : t('app.search_meta.bind_cta', { defaultValue: 'Link to search' })}
                   </button>
                   {setupDone ? (
                     <Link
                       to={recruitmentSearchAcquisitionPath(searchId)}
                       className="inline-flex rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                     >
-                      {t('app.search_meta.back_to_acquisition', { defaultValue: 'К привлечению' })}
+                      {t('app.search_meta.back_to_acquisition', { defaultValue: 'Back to acquisition' })}
                     </Link>
                   ) : null}
                 </div>

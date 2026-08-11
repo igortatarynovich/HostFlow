@@ -91,12 +91,11 @@ def is_handler_blocked_for_guided_trial(
     tenant_status: str | None,
     policy: SetupActivationReachabilityPolicy | None = None,
 ) -> bool:
-    """Trial workspace blocks most settings routes (AppShell guidedTrialWorkspace)."""
-    pol = policy or load_setup_activation_reachability_policy()
-    status = str(tenant_status or "").strip().lower()
-    if status != pol.trial_tenant_status:
-        return False
-    path = str(handler_ref or "").strip()
-    if not path.startswith(pol.settings_allowed_prefix):
-        return False
-    return path not in pol.trial_allowed_settings_exact
+    """Trial must expose full product (including settings) for the evaluation window.
+
+    Historically this mirrored an AppShell lockdown; that contradicted the 30-day
+    full-access trial policy (see plan_feature_gates). Kept as a no-op for call-site
+    compatibility — soft abuse caps remain elsewhere.
+    """
+    _ = (handler_ref, tenant_status, policy)
+    return False

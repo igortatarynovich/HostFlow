@@ -22,7 +22,9 @@
     "settings_allowed_prefix": "/app/settings"
   },
   "guided_trial_workspace": {
+    "comment": "Trial = full product for ~30 days. Settings are not blocked; allowed_settings_exact is legacy unused.",
     "tenant_status": "trial",
+    "block_settings": false,
     "allowed_settings_exact": [
       "/app/settings/billing",
       "/app/settings/team"

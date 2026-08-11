@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
+import { useI18n } from '../../i18n'
 
 type Option = { value: string; label: string }
 
@@ -7,7 +8,7 @@ export default function SelectAsync({
   fetcher,                 // (q) => Promise<Option[]>
   value,
   onChange,
-  placeholder = '— выбрать —',
+  placeholder,
   className,
   initialLabel = '',
 }:{
@@ -18,13 +19,15 @@ export default function SelectAsync({
   className?: string
   initialLabel?: string
 }){
+  const { t } = useI18n()
+  const resolvedPlaceholder =
+    placeholder ?? t('app.controls.select_dash', { defaultValue: '— select —' })
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const [opts, setOpts] = useState<Option[]>([])
   const [loading, setLoading] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
-  // клик вне
   useEffect(() => {
     function onDoc(e: MouseEvent){
       if (!rootRef.current) return
@@ -34,7 +37,6 @@ export default function SelectAsync({
     return () => document.removeEventListener('mousedown', onDoc)
   }, [])
 
-  // загрузка при открытии и поиске
   useEffect(() => {
     let cancelled = false
     async function run(){
@@ -45,8 +47,8 @@ export default function SelectAsync({
       } finally { if (!cancelled) setLoading(false) }
     }
     if (open) {
-      const t = setTimeout(run, 200)
-      return () => { cancelled = true; clearTimeout(t) }
+      const timer = setTimeout(run, 200)
+      return () => { cancelled = true; clearTimeout(timer) }
     }
   }, [open, q, fetcher])
 
@@ -60,7 +62,7 @@ export default function SelectAsync({
   return (
     <div ref={rootRef} className={clsx('relative', className)}>
       <button type="button" className="input w-full text-left" onClick={()=>setOpen(o=>!o)}>
-        {current?.label || placeholder}
+        {current?.label || resolvedPlaceholder}
       </button>
 
       {open && (
@@ -69,14 +71,22 @@ export default function SelectAsync({
             <input
               autoFocus
               className="w-full px-3 py-2 rounded bg-slate-50 outline-none"
-              placeholder="Поиск…"
+              placeholder={t('app.controls.search_placeholder', { defaultValue: 'Search…' })}
               value={q}
               onChange={e=>setQ(e.target.value)}
             />
           </div>
           <div className="max-h-64 overflow-auto">
-            {loading && <div className="px-3 py-2 text-sm text-slate-500">Загрузка…</div>}
-            {!loading && opts.length === 0 && <div className="px-3 py-2 text-sm text-slate-500">нет совпадений</div>}
+            {loading && (
+              <div className="px-3 py-2 text-sm text-slate-500">
+                {t('common.loading', { defaultValue: 'Loading…' })}
+              </div>
+            )}
+            {!loading && opts.length === 0 && (
+              <div className="px-3 py-2 text-sm text-slate-500">
+                {t('app.controls.no_results', { defaultValue: 'No matches' })}
+              </div>
+            )}
             {opts.map(o => (
               <div
                 key={o.value}

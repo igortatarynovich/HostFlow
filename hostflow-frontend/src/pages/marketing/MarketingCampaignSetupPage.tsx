@@ -88,7 +88,7 @@ export default function MarketingCampaignSetupPage() {
         getFriendlyErrorInfo(
           err,
           t('app.marketing.setup.errors.load_options', {
-            defaultValue: 'Не удалось загрузить справочники',
+            defaultValue: 'Failed to load directories',
           }),
           t,
         ),
@@ -103,11 +103,16 @@ export default function MarketingCampaignSetupPage() {
   }, [loadOptions])
 
   const stepTitle = useMemo(() => {
-    if (step === 1) return 'Название кампании'
-    if (step === 2) return 'Тип потока'
-    if (step === 3) return 'Клиент и предмет кампании'
-    return 'Проверка'
-  }, [step])
+    if (step === 1)
+      return t('app.marketing.setup.steps.name', { defaultValue: 'Campaign name' })
+    if (step === 2)
+      return t('app.marketing.setup.steps.flow', { defaultValue: 'Flow type' })
+    if (step === 3)
+      return t('app.marketing.setup.steps.client_subject', {
+        defaultValue: 'Client and campaign subject',
+      })
+    return t('app.marketing.setup.steps.review', { defaultValue: 'Review' })
+  }, [step, t])
 
   const selectedClient = clients.find((c) => c.id === contextClientId)
 
@@ -170,7 +175,7 @@ export default function MarketingCampaignSetupPage() {
         getFriendlyErrorInfo(
           err,
           t('app.marketing.setup.errors.create', {
-            defaultValue: 'Не удалось создать кампанию',
+            defaultValue: 'Failed to create campaign',
           }),
           t,
         ),
@@ -188,12 +193,12 @@ export default function MarketingCampaignSetupPage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.marketing.setup.title', { defaultValue: 'Новая кампания' })}
+          title={t('app.marketing.setup.title', { defaultValue: 'New campaign' })}
           subtitle={`${step} / ${TOTAL_STEPS} · ${stepTitle}`}
           kind="browse"
           secondaryActions={
             <Link to={CRM_APP_PATHS.marketing} className="btn-secondary btn-sm">
-              К списку
+              {t('app.marketing.setup.back_to_list', { defaultValue: 'Back to list' })}
             </Link>
           }
         />
@@ -205,42 +210,60 @@ export default function MarketingCampaignSetupPage() {
 
         {prefilledFromSearch ? (
           <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-            Вакансия подставлена из Подбора. Дальше задайте цель кампании — источник подключите на
-            странице кампании.
+            {t('app.marketing.setup.prefilled_vacancy', {
+              defaultValue:
+                'Vacancy was prefilled from Recruitment. Set the campaign goal next — connect a source on the campaign page.',
+            })}
           </p>
         ) : null}
 
         {step === 1 ? (
           <div className="space-y-3">
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-slate-800">Название</span>
+              <span className="mb-1 block font-medium text-slate-800">
+                {t('app.marketing.setup.fields.name', { defaultValue: 'Name' })}
+              </span>
               <input
                 className="input w-full"
                 value={name}
                 onChange={(e) => setName(e.target.value.slice(0, 160))}
-                placeholder="Например: Kierowca CE — Poltrakt"
+                placeholder={t('app.marketing.setup.placeholders.name', {
+                  defaultValue: 'e.g. Kierowca CE — Poltrakt',
+                })}
                 data-testid="marketing-setup-name"
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-slate-800">Описание (необязательно)</span>
+              <span className="mb-1 block font-medium text-slate-800">
+                {t('app.marketing.setup.fields.description_optional', {
+                  defaultValue: 'Description (optional)',
+                })}
+              </span>
               <textarea
                 className="input w-full min-h-[80px]"
                 value={description}
                 onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
-                placeholder="Бизнес-цель кампании"
+                placeholder={t('app.marketing.setup.placeholders.description', {
+                  defaultValue: 'Campaign business goal',
+                })}
                 data-testid="marketing-setup-description"
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-slate-800">Компания (владелец)</span>
+              <span className="mb-1 block font-medium text-slate-800">
+                {t('app.marketing.setup.fields.company_owner', {
+                  defaultValue: 'Company (owner)',
+                })}
+              </span>
               <select
                 className="input w-full"
                 value={ownCompanyId}
                 onChange={(e) => setOwnCompanyId(e.target.value)}
                 data-testid="marketing-setup-own-company"
               >
-                <option value="">Выберите компанию</option>
+                <option value="">
+                  {t('app.marketing.setup.select_company', { defaultValue: 'Select a company' })}
+                </option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name || c.id}
@@ -248,15 +271,21 @@ export default function MarketingCampaignSetupPage() {
                 ))}
               </select>
               <span className="mt-1 block text-xs text-slate-500">
-                Campaign принадлежит tenant и этой компании. Клиент/заказ — только контекст, не
-                владелец.
+                {t('app.marketing.setup.company_owner_hint', {
+                  defaultValue:
+                    'The campaign belongs to the tenant and this company. Client/order is context only, not the owner.',
+                })}
               </span>
             </label>
           </div>
         ) : null}
 
         {step === 2 ? (
-          <div className="grid gap-3" role="radiogroup" aria-label="Тип потока">
+          <div
+            className="grid gap-3"
+            role="radiogroup"
+            aria-label={t('app.marketing.setup.aria.flow_type', { defaultValue: 'Flow type' })}
+          >
             {FLOW_PRESETS.map((p) => (
               <MarketingOptionCard
                 key={p.kind}
@@ -271,8 +300,12 @@ export default function MarketingCampaignSetupPage() {
                 }}
                 testId={`marketing-setup-flow-${p.kind}`}
               >
-                <span className="font-medium text-slate-900">{p.label}</span>
-                <span className="mt-1 block text-slate-600">{p.description}</span>
+                <span className="font-medium text-slate-900">
+                  {t(p.labelKey, { defaultValue: p.label })}
+                </span>
+                <span className="mt-1 block text-slate-600">
+                  {t(p.descriptionKey, { defaultValue: p.description })}
+                </span>
               </MarketingOptionCard>
             ))}
           </div>
@@ -281,13 +314,19 @@ export default function MarketingCampaignSetupPage() {
         {step === 3 && preset ? (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Кампания обслуживает <span className="font-medium text-slate-800">клиента</span>. Primary
-              Target — вакансия или услуга/заказ этого клиента; routing и KPI идут через него.
+              {t('app.marketing.setup.client_intro', {
+                defaultValue:
+                  'The campaign serves a client. Primary Target is a vacancy or service/order for that client; routing and KPI go through it.',
+              })}
             </p>
 
             <div>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-800">Клиент (обязательно)</span>
+                <span className="mb-1 block font-medium text-slate-800">
+                  {t('app.marketing.setup.fields.client_required', {
+                    defaultValue: 'Client (required)',
+                  })}
+                </span>
                 <select
                   className="input w-full"
                   value={contextClientId}
@@ -297,7 +336,9 @@ export default function MarketingCampaignSetupPage() {
                   }}
                   data-testid="marketing-setup-context-client"
                 >
-                  <option value="">Выберите клиента</option>
+                  <option value="">
+                    {t('app.marketing.setup.select_client', { defaultValue: 'Select a client' })}
+                  </option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.display_name}
@@ -307,18 +348,22 @@ export default function MarketingCampaignSetupPage() {
               </label>
               {!clients.length ? (
                 <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  Нет Client Account.{' '}
+                  {t('app.marketing.setup.no_clients', { defaultValue: 'No Client Account.' })}{' '}
                   <Link to={CRM_APP_PATHS.clientNew} className="underline">
-                    Создать клиента
+                    {t('app.marketing.setup.create_client', { defaultValue: 'Create client' })}
                   </Link>{' '}
-                  в Sales, затем вернитесь сюда.
+                  {t('app.marketing.setup.in_sales_return', {
+                    defaultValue: 'in Sales, then return here.',
+                  })}
                 </p>
               ) : (
                 <p className="mt-1 text-xs text-slate-500">
-                  Сохраняется как CampaignTarget(role=context, client_account). Статистика по клиенту —
-                  отсюда.{' '}
+                  {t('app.marketing.setup.client_context_hint', {
+                    defaultValue:
+                      'Saved as CampaignTarget(role=context, client_account). Client stats come from here.',
+                  })}{' '}
                   <Link to={CRM_APP_PATHS.clientNew} className="underline">
-                    Новый клиент
+                    {t('app.marketing.setup.new_client', { defaultValue: 'New client' })}
                   </Link>
                 </p>
               )}
@@ -327,23 +372,44 @@ export default function MarketingCampaignSetupPage() {
             {contextClientId ? (
               <div className="border-t border-slate-200 pt-4 space-y-3">
                 <p className="text-sm font-medium text-slate-800">
-                  Предмет кампании · {preset.destinationLabel}
+                  {t('app.marketing.setup.subject', {
+                    defaultValue: 'Campaign subject · {destination}',
+                    values: {
+                      destination: t(preset.destinationKey, {
+                        defaultValue: preset.destinationLabel,
+                      }),
+                    },
+                  })}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Primary Target задаёт <code className="text-xs">route_intent</code> для всех
-                  источников кампании.
+                  {t('app.marketing.setup.primary_target_hint', {
+                    defaultValue:
+                      'Primary Target sets route_intent for all campaign sources.',
+                  })}
                 </p>
                 {preset.target_type === 'vacancy' ? (
                   !vacanciesForClient.length ? (
                     <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                      Нет вакансий для этого клиента.{' '}
+                      {t('app.marketing.setup.no_vacancies', {
+                        defaultValue: 'No vacancies for this client.',
+                      })}{' '}
                       <Link to={CRM_APP_PATHS.vacancyNew} className="underline">
-                        Создать вакансию
+                        {t('app.marketing.setup.create_vacancy', {
+                          defaultValue: 'Create vacancy',
+                        })}
                       </Link>{' '}
-                      в Recruitment (Вакансии).
+                      {t('app.marketing.setup.in_recruitment', {
+                        defaultValue: 'in Recruitment (Vacancies).',
+                      })}
                     </p>
                   ) : (
-                    <div className="grid gap-2" role="radiogroup" aria-label="Вакансия">
+                    <div
+                      className="grid gap-2"
+                      role="radiogroup"
+                      aria-label={t('app.marketing.setup.aria.vacancy', {
+                        defaultValue: 'Vacancy',
+                      })}
+                    >
                       {vacanciesForClient.map((v) => (
                         <MarketingOptionCard
                           key={v.id}
@@ -361,13 +427,19 @@ export default function MarketingCampaignSetupPage() {
                   )
                 ) : !services.length ? (
                   <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    Нет услуг.{' '}
+                    {t('app.marketing.setup.no_services', { defaultValue: 'No services.' })}{' '}
                     <Link to={CRM_APP_PATHS.services} className="underline">
-                      Открыть услуги
+                      {t('app.marketing.setup.open_services', { defaultValue: 'Open services' })}
                     </Link>
                   </p>
                 ) : (
-                  <div className="grid gap-2" role="radiogroup" aria-label="Услуга">
+                  <div
+                    className="grid gap-2"
+                    role="radiogroup"
+                    aria-label={t('app.marketing.setup.aria.service', {
+                      defaultValue: 'Service',
+                    })}
+                  >
                     {services.map((s) => (
                       <MarketingOptionCard
                         key={s.id}
@@ -383,7 +455,10 @@ export default function MarketingCampaignSetupPage() {
               </div>
             ) : (
               <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                Сначала выберите клиента — затем вакансию (hiring) или услугу (B2B).
+                {t('app.marketing.setup.select_client_first', {
+                  defaultValue:
+                    'Select a client first — then a vacancy (hiring) or service (B2B).',
+                })}
               </p>
             )}
           </div>
@@ -392,31 +467,49 @@ export default function MarketingCampaignSetupPage() {
         {step === 4 && preset ? (
           <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 text-sm">
             <div>
-              <div className="text-xs text-slate-500">Кампания</div>
+              <div className="text-xs text-slate-500">
+                {t('app.marketing.setup.review.campaign', { defaultValue: 'Campaign' })}
+              </div>
               <div className="font-medium text-slate-900">{name.trim()}</div>
               {description.trim() ? (
                 <div className="mt-1 text-slate-600">{description.trim()}</div>
               ) : null}
             </div>
             <div>
-              <div className="text-xs text-slate-500">Компания-владелец</div>
+              <div className="text-xs text-slate-500">
+                {t('app.marketing.setup.review.owner_company', {
+                  defaultValue: 'Owner company',
+                })}
+              </div>
               <div className="font-medium text-slate-900">
                 {selectedCompany?.name || ownCompanyId}
               </div>
             </div>
             <div>
-              <div className="text-xs text-slate-500">Поток</div>
-              <div className="font-medium text-slate-900">{preset.label}</div>
+              <div className="text-xs text-slate-500">
+                {t('app.marketing.setup.review.flow', { defaultValue: 'Flow' })}
+              </div>
+              <div className="font-medium text-slate-900">
+                {t(preset.labelKey, { defaultValue: preset.label })}
+              </div>
             </div>
             <div>
-              <div className="text-xs text-slate-500">Клиент (обслуживаем)</div>
+              <div className="text-xs text-slate-500">
+                {t('app.marketing.setup.review.client_served', {
+                  defaultValue: 'Client (served)',
+                })}
+              </div>
               <div className="font-medium text-slate-900">
                 {selectedClient?.display_name || contextClientId}
               </div>
               <div className="text-xs text-slate-500">CampaignTarget · role=context</div>
             </div>
             <div>
-              <div className="text-xs text-slate-500">Primary Target · route_intent</div>
+              <div className="text-xs text-slate-500">
+                {t('app.marketing.setup.review.primary_target', {
+                  defaultValue: 'Primary Target · route_intent',
+                })}
+              </div>
               <div className="font-medium text-slate-900">
                 {preset.target_type === 'vacancy'
                   ? selectedVacancy?.title || targetId
@@ -425,8 +518,10 @@ export default function MarketingCampaignSetupPage() {
               <div className="text-xs text-slate-500">{preset.route_intent}</div>
             </div>
             <p className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-              Источник заявок (Meta Lead Form / публичная анкета) подключается на странице кампании —
-              отдельно от создания цели.
+              {t('app.marketing.setup.source_connects_later', {
+                defaultValue:
+                  'Application source (Meta Lead Form / public form) is connected on the campaign page — separately from creating the goal.',
+              })}
             </p>
           </div>
         ) : null}
@@ -438,7 +533,7 @@ export default function MarketingCampaignSetupPage() {
             disabled={step === 1 || submitting}
             onClick={() => setStep((s) => Math.max(1, s - 1))}
           >
-            Назад
+            {t('app.marketing.setup.back', { defaultValue: 'Back' })}
           </button>
           {step < TOTAL_STEPS ? (
             <button
@@ -448,7 +543,7 @@ export default function MarketingCampaignSetupPage() {
               onClick={() => setStep((s) => Math.min(TOTAL_STEPS, s + 1))}
               data-testid="marketing-setup-next"
             >
-              Далее
+              {t('app.marketing.setup.next', { defaultValue: 'Next' })}
             </button>
           ) : (
             <button
@@ -458,7 +553,9 @@ export default function MarketingCampaignSetupPage() {
               onClick={() => void handleCreate()}
               data-testid="marketing-setup-create"
             >
-              {submitting ? 'Создание…' : 'Создать кампанию'}
+              {submitting
+                ? t('app.marketing.setup.creating', { defaultValue: 'Creating…' })
+                : t('app.marketing.setup.create', { defaultValue: 'Create campaign' })}
             </button>
           )}
         </div>

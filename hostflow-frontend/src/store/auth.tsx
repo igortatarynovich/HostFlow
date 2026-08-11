@@ -144,11 +144,31 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setLoading(false)
       return
     }
-    // Explicit logout / wipe bounce must not be rehydrated from leftover cookies.
-    if (!opts?.force && (logoutInFlightRef.current || isSessionRevoked())) {
+    // Explicit logout in this tab must not be rehydrated from leftover cookies.
+    // A sticky revoke left on module hosts after the cross-origin wipe bounce is healed
+    // when Domain cookies prove a live session (login happened on shell).
+    if (!opts?.force && logoutInFlightRef.current) {
       setLoading(false)
       setMe(null)
       return
+    }
+    if (!opts?.force && isSessionRevoked()) {
+      try {
+        const { data: cookieWho } = await api.get('/auth/whoami-verify', {
+          __hfSkipBearer: true,
+        } as any)
+        if (cookieWho?.sub || cookieWho?.email) {
+          clearSessionRevoked()
+        } else {
+          setLoading(false)
+          setMe(null)
+          return
+        }
+      } catch {
+        setLoading(false)
+        setMe(null)
+        return
+      }
     }
     // Soft refresh: keep the app mounted when we already have a session.
     // Full-tree `loading` gate remounts routes and re-fires setup/catalog effects.
@@ -375,10 +395,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setLoading(false)
       return
     }
-    if (logoutInFlightRef.current || isSessionRevoked()) {
+    if (logoutInFlightRef.current) {
       setLoading(false)
       return
     }
+    // Sticky revoke on module hosts is healed inside refresh() when cookies prove a session.
     if (!me) {
       void refresh()
     }

@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { Link } from 'react-router-dom'
 import { IconBrandWhatsapp, IconMail, IconPhone } from '@tabler/icons-react'
+import { useI18n } from '../../i18n'
 import type { ObjectDecision } from '../decision-model/types'
 import type { DetailRailContactAction } from '../detail-rail/detailRailTypes'
 
@@ -53,6 +54,7 @@ function DecisionActionButton({
  * Not a stack of unrelated blocks.
  */
 export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision }) {
+  const { t } = useI18n()
   const variant = decision.variant ?? (decision.terminal ? 'terminal' : 'default')
 
   if (decision.terminal && decision.outcome) {
@@ -67,12 +69,16 @@ export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision
         )}
         data-decision-state={decision.stateId}
       >
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Итог</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          {t('app.context_rail.outcome', { defaultValue: 'Outcome' })}
+        </p>
         <p className="mt-2 text-base font-bold leading-tight text-slate-900">{o.title}</p>
         {o.body ? <p className="mt-2 text-sm text-slate-600">{o.body}</p> : null}
         {o.why ? (
           <div className="mt-3 border-l-2 border-slate-300 pl-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Почему</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              {t('app.context_rail.why', { defaultValue: 'Why' })}
+            </p>
             <p className="mt-0.5 text-sm text-slate-700">{o.why}</p>
           </div>
         ) : null}
@@ -91,11 +97,15 @@ export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision
       )}
       data-decision-state={decision.stateId}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Следующее действие</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        {t('app.context_rail.next_action', { defaultValue: 'Next action' })}
+      </p>
       <p className="mt-2 text-base font-bold leading-tight text-slate-900">{decision.currentState}</p>
       {decision.why ? (
         <div className="mt-3 border-l-2 border-slate-300 pl-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Почему</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            {t('app.context_rail.why', { defaultValue: 'Why' })}
+          </p>
           <p className="mt-0.5 text-sm text-slate-700">{decision.why}</p>
         </div>
       ) : null}

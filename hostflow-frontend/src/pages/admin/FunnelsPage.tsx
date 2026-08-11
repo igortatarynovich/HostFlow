@@ -319,14 +319,18 @@ function StageCreateEditModal({
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {(
               [
-                ['en', labelEn, setLabelEn, 'English'],
-                ['ru', labelRu, setLabelRu, 'Русский'],
-                ['pl', labelPl, setLabelPl, 'Polski'],
+                ['en', labelEn, setLabelEn],
+                ['ru', labelRu, setLabelRu],
+                ['pl', labelPl, setLabelPl],
               ] as const
-            ).map(([loc, value, setter, title]) => (
+            ).map(([loc, value, setter]) => {
+              const title = t(`admin.funnels.label_${loc}`, {
+                defaultValue: loc === 'ru' ? 'Russian' : loc === 'pl' ? 'Polish' : 'English',
+              })
+              return (
               <label key={loc} className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600">
-                  {t(`admin.funnels.label_${loc}`, { defaultValue: title })}
+                  {title}
                 </span>
                 <input
                   type="text"
@@ -337,7 +341,8 @@ function StageCreateEditModal({
                   disabled={disabled}
                 />
               </label>
-            ))}
+              )
+            })}
           </div>
         </div>
         <div>

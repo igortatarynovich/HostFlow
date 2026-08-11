@@ -8,6 +8,7 @@ import { clientAcquisitionChannelPath, clientAcquisitionInquiryPath } from '../.
 import { useToast } from '../../components/Toast'
 import { useI18n } from '../../i18n'
 import {
+  formatInquiryTime,
   inquiryCompanyName,
   inquiryNeedSummary,
   isOpenClientInquiry,
@@ -58,8 +59,10 @@ export default function ClientChannelHomePage() {
   const audienceHint = useMemo(() => {
     const audience = channelConfig?.audience
     if (!audience) return channelConfig?.landing?.headline ?? null
-    return audienceLabel(audience)
-  }, [channelConfig])
+    return t(`app.client_acquisition.audience.${audience}.title`, {
+      defaultValue: audienceLabel(audience),
+    })
+  }, [channelConfig, t])
 
   const hasInquiries = inquiries.length > 0
   const recentInquiries = inquiries.slice(0, 10)
@@ -69,12 +72,12 @@ export default function ClientChannelHomePage() {
     try {
       await navigator.clipboard.writeText(publicUrl)
       notify({
-        title: t('app.client_channel_home.link_copied', { defaultValue: 'Ссылка скопирована' }),
+        title: t('app.client_channel_home.link_copied', { defaultValue: 'Link copied' }),
         variant: 'success',
       })
     } catch {
       notify({
-        title: t('app.client_channel_home.link_copy_failed', { defaultValue: 'Не удалось скопировать' }),
+        title: t('app.client_channel_home.link_copy_failed', { defaultValue: 'Could not copy' }),
         variant: 'error',
       })
     }
@@ -85,12 +88,12 @@ export default function ClientChannelHomePage() {
     try {
       await downloadQrPng(publicUrl, `hostflow-client-channel-${channelId.slice(0, 8)}.png`)
       notify({
-        title: t('app.client_channel_home.qr_downloaded', { defaultValue: 'QR скачан' }),
+        title: t('app.client_channel_home.qr_downloaded', { defaultValue: 'QR downloaded' }),
         variant: 'success',
       })
     } catch {
       notify({
-        title: t('app.client_channel_home.qr_download_failed', { defaultValue: 'Не удалось скачать QR' }),
+        title: t('app.client_channel_home.qr_download_failed', { defaultValue: 'Could not download QR' }),
         variant: 'error',
       })
     }
@@ -104,7 +107,7 @@ export default function ClientChannelHomePage() {
         {pulse?.status?.today_inquiries ? (
           <p className="mt-2 text-sm font-medium text-slate-800">
             {t('app.client_channel_home.today_count', {
-              defaultValue: 'Сегодня: {count} новых запросов',
+              defaultValue: 'Today: {count} new inquiries',
               values: { count: pulse.status.today_inquiries },
             })}
           </p>
@@ -113,7 +116,7 @@ export default function ClientChannelHomePage() {
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-slate-200 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.client_channel_home.sources_link', { defaultValue: 'Ссылка для компаний' })}
+              {t('app.client_channel_home.sources_link', { defaultValue: 'Link for companies' })}
             </p>
             <p className="mt-2 break-all text-xs text-slate-600">{publicUrl || '—'}</p>
             <button
@@ -124,15 +127,15 @@ export default function ClientChannelHomePage() {
               data-testid="m1-client-channel-home-copy"
             >
               <IconCopy size={14} />
-              {t('app.client_channel_home.copy', { defaultValue: 'Копировать' })}
+              {t('app.client_channel_home.copy', { defaultValue: 'Copy' })}
             </button>
           </div>
           <div className="rounded-xl border border-slate-200 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.client_channel_home.sources_qr', { defaultValue: 'QR-код' })}
+              {t('app.client_channel_home.sources_qr', { defaultValue: 'QR code' })}
             </p>
             <p className="mt-2 text-sm text-slate-600">
-              {t('app.client_channel_home.qr_hint', { defaultValue: 'Для печати и офлайн-рекламы' })}
+              {t('app.client_channel_home.qr_hint', { defaultValue: 'For print and offline ads' })}
             </p>
             <button
               type="button"
@@ -141,7 +144,7 @@ export default function ClientChannelHomePage() {
               className="mt-3 inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
             >
               <IconDownload size={14} />
-              {t('app.client_channel_home.download_qr', { defaultValue: 'Скачать' })}
+              {t('app.client_channel_home.download_qr', { defaultValue: 'Download' })}
             </button>
           </div>
         </div>
@@ -149,13 +152,13 @@ export default function ClientChannelHomePage() {
         <div className="mt-6">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.client_channel_home.inquiries_title', { defaultValue: 'Последние запросы' })}
+              {t('app.client_channel_home.inquiries_title', { defaultValue: 'Recent inquiries' })}
             </p>
             <span className="text-xs text-slate-500">
               {loading
                 ? t('common.loading')
                 : t('app.client_channel_home.inquiries_count', {
-                    defaultValue: '{count} запросов',
+                    defaultValue: '{count} inquiries',
                     values: { count: inquiries.length },
                   })}
             </span>
@@ -182,7 +185,7 @@ export default function ClientChannelHomePage() {
                     to={clientAcquisitionInquiryPath(channelId, row.id)}
                     className="text-brand-700 hover:underline"
                   >
-                    {t('app.client_channel_home.open_inquiry', { defaultValue: 'Открыть' })}
+                    {t('app.client_channel_home.open_inquiry', { defaultValue: 'Open' })}
                   </Link>
                 </li>
               ))}
@@ -190,7 +193,7 @@ export default function ClientChannelHomePage() {
           ) : (
             <p className="mt-3 text-sm text-slate-600">
               {t('app.client_channel_home.inquiries_empty', {
-                defaultValue: 'Пока пусто. Как только компания оставит заявку — она появится здесь.',
+                defaultValue: 'Nothing yet. When a company submits an inquiry, it will show up here.',
               })}
             </p>
           )}
@@ -200,12 +203,12 @@ export default function ClientChannelHomePage() {
       {!hasInquiries && publicUrl ? (
         <section className="rounded-xl border border-brand-100 bg-brand-50/40 p-4 text-sm text-slate-700">
           <p className="font-medium text-slate-900">
-            {t('app.sales_channel.share_hint_title', { defaultValue: 'Куда вставить ссылку' })}
+            {t('app.sales_channel.share_hint_title', { defaultValue: 'Where to place the link' })}
           </p>
           <p className="mt-1">
             {t('app.sales_channel.share_hint_body', {
               defaultValue:
-                'Реклама Meta или Google, сайт компании, email-подпись, QR на визитке. Компания откроет форму и оставит заявку — она появится здесь.',
+                'Meta or Google ads, company website, email signature, QR on a business card. The company opens the form and submits an inquiry — it appears here.',
             })}
           </p>
         </section>
@@ -214,13 +217,13 @@ export default function ClientChannelHomePage() {
       <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-600">
         <p className="font-medium text-slate-800">
           {t('app.client_channel_home.not_candidate_title', {
-            defaultValue: 'Это не анкета для кандидатов',
+            defaultValue: 'This is not a candidate form',
           })}
         </p>
         <p className="mt-1">
           {t('app.client_channel_home.not_candidate_body', {
             defaultValue:
-              'Эта ссылка ведёт компании на заявку о подборе персонала. Анкета для кандидатов — отдельный поток в Launchpad.',
+              'This link sends companies to a staffing inquiry. The candidate questionnaire is a separate Launchpad flow.',
           })}
         </p>
         <p className="mt-2 text-xs text-slate-500">{channelName}</p>

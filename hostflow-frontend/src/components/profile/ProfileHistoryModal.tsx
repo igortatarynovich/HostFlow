@@ -3,18 +3,11 @@ import { Modal } from '../Modal'
 import { getProfileHistory, type ProfileHistoryEntry } from '../../api/candidate_profiles'
 import type { CandidateProfile } from '../../api/candidate_profiles'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
+import { useI18n, type LocaleCode } from '../../i18n'
 
 interface ProfileHistoryModalProps {
   profile: CandidateProfile
   onClose: () => void
-}
-
-const ACTION_LABELS: Record<string, string> = {
-  created: 'Создан',
-  updated: 'Обновлен',
-  deleted: 'Удален',
-  activated: 'Активирован',
-  deactivated: 'Деактивирован',
 }
 
 const ACTION_COLORS: Record<string, string> = {
@@ -25,11 +18,11 @@ const ACTION_COLORS: Record<string, string> = {
   deactivated: 'bg-slate-100 text-slate-800',
 }
 
-function formatDate(dateString: string | null): string {
+function formatDate(dateString: string | null, locale: LocaleCode): string {
   if (!dateString) return '—'
   try {
     const date = new Date(dateString)
-    return new Intl.DateTimeFormat('ru-RU', {
+    return new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -42,6 +35,7 @@ function formatDate(dateString: string | null): string {
 }
 
 function ProfileHistoryModal({ profile, onClose }: ProfileHistoryModalProps) {
+  const { t, locale } = useI18n()
   const [history, setHistory] = useState<ProfileHistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -57,15 +51,25 @@ function ProfileHistoryModal({ profile, onClose }: ProfileHistoryModalProps) {
       const data = await getProfileHistory(profile.id, 100)
       setHistory(data)
     } catch (err: any) {
-      setError(err?.message || 'Не удалось загрузить историю изменений')
+      setError(
+        err?.message ||
+          t('app.profiles.history.load_failed', { defaultValue: 'Failed to load change history' }),
+      )
     } finally {
       setLoading(false)
     }
   }
 
+  const actionLabel = (action: string) =>
+    t(`app.profiles.history.actions.${action}`, { defaultValue: action })
+
   const renderChanges = (changes: Record<string, any> | null) => {
     if (!changes || Object.keys(changes).length === 0) {
-      return <span className="text-xs text-slate-500">Нет изменений</span>
+      return (
+        <span className="text-xs text-slate-500">
+          {t('app.profiles.history.no_changes', { defaultValue: 'No changes' })}
+        </span>
+      )
     }
 
     return (
@@ -74,43 +78,37 @@ function ProfileHistoryModal({ profile, onClose }: ProfileHistoryModalProps) {
           const oldVal = value?.old
           const newVal = value?.new
 
-          // Skip if values are the same
           if (oldVal === newVal) return null
 
-          // Format values for display
           const formatValue = (val: any): string => {
             if (val === null || val === undefined) return '—'
-            if (typeof val === 'boolean') return val ? 'Да' : 'Нет'
+            if (typeof val === 'boolean') {
+              return val
+                ? t('common.yes', { defaultValue: 'Yes' })
+                : t('common.no', { defaultValue: 'No' })
+            }
             if (typeof val === 'object') return JSON.stringify(val, null, 2)
             return String(val)
           }
 
-          const fieldLabels: Record<string, string> = {
-            code: 'Код',
-            name: 'Название',
-            description: 'Описание',
-            client_id: 'ID клиента',
-            config: 'Конфигурация',
-            is_active: 'Активность',
-            is_system: 'Системный',
-            owner_user_id: 'Владелец',
-            notes: 'Заметки',
-          }
+          const fieldLabel = t(`app.profiles.history.fields.${key}`, { defaultValue: key })
 
           return (
             <div key={key} className="rounded border border-slate-200 bg-slate-50 p-2 text-xs">
-              <div className="font-medium text-slate-700 mb-1">
-                {fieldLabels[key] || key}
-              </div>
+              <div className="font-medium text-slate-700 mb-1">{fieldLabel}</div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <div className="text-slate-500 mb-1">Было:</div>
+                  <div className="text-slate-500 mb-1">
+                    {t('app.profiles.history.was', { defaultValue: 'Was:' })}
+                  </div>
                   <div className="rounded bg-white p-1 font-mono text-slate-800 break-words">
                     {formatValue(oldVal)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-slate-500 mb-1">Стало:</div>
+                  <div className="text-slate-500 mb-1">
+                    {t('app.profiles.history.became', { defaultValue: 'Became:' })}
+                  </div>
                   <div className="rounded bg-blue-50 p-1 font-mono text-blue-900 break-words">
                     {formatValue(newVal)}
                   </div>
@@ -124,9 +122,15 @@ function ProfileHistoryModal({ profile, onClose }: ProfileHistoryModalProps) {
   }
 
   return (
-    <Modal open={true} onClose={onClose} title={`История изменений профиля: ${profile.name}`}>
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={t('app.profiles.history.title', {
+        defaultValue: 'Profile change history: {name}',
+        values: { name: profile.name },
+      })}
+    >
       <div className="space-y-4">
-        {/* Profile Info */}
         <div className="rounded border border-slate-200 bg-slate-50 p-3">
           <div className="flex items-center gap-2 mb-2">
             <span className="font-semibold text-slate-900">{profile.name}</span>
@@ -136,29 +140,32 @@ function ProfileHistoryModal({ profile, onClose }: ProfileHistoryModalProps) {
           </div>
         </div>
 
-        {/* History List */}
         {error && (
           <ErrorRecoveryBanner
-            info={{ title: error, hint: 'Повторите действие или обновите страницу.' }}
+            info={{
+              title: error,
+              hint: t('app.profiles.history.retry_hint', {
+                defaultValue: 'Retry the action or refresh the page.',
+              }),
+            }}
             onRetry={() => void loadHistory()}
-            retryLabel="Обновить"
+            retryLabel={t('app.profiles.history.retry', { defaultValue: 'Refresh' })}
             compact
           />
         )}
 
         {loading ? (
-          <div className="text-sm text-slate-500 text-center py-4">Загрузка истории...</div>
+          <div className="text-sm text-slate-500 text-center py-4">
+            {t('app.profiles.history.loading', { defaultValue: 'Loading history...' })}
+          </div>
         ) : history.length === 0 ? (
           <div className="text-sm text-slate-500 text-center py-4">
-            История изменений пуста
+            {t('app.profiles.history.empty', { defaultValue: 'Change history is empty' })}
           </div>
         ) : (
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {history.map((entry) => (
-              <div
-                key={entry.id}
-                className="rounded-lg border border-slate-200 bg-white p-4"
-              >
+              <div key={entry.id} className="rounded-lg border border-slate-200 bg-white p-4">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div className="flex items-center gap-2">
                     <span
@@ -166,29 +173,21 @@ function ProfileHistoryModal({ profile, onClose }: ProfileHistoryModalProps) {
                         ACTION_COLORS[entry.action] || 'bg-slate-100 text-slate-800'
                       }`}
                     >
-                      {ACTION_LABELS[entry.action] || entry.action}
+                      {actionLabel(entry.action)}
                     </span>
-                    <span className="text-xs text-slate-500">
-                      {formatDate(entry.created_at)}
-                    </span>
+                    <span className="text-xs text-slate-500">{formatDate(entry.created_at, locale)}</span>
                   </div>
-                  {entry.actor_name && (
-                    <span className="text-xs text-slate-500">
-                      {entry.actor_name}
-                    </span>
-                  )}
+                  {entry.actor_name && <span className="text-xs text-slate-500">{entry.actor_name}</span>}
                 </div>
 
                 {entry.comment && (
-                  <div className="mb-3 rounded bg-blue-50 p-2 text-xs text-blue-800">
-                    {entry.comment}
-                  </div>
+                  <div className="mb-3 rounded bg-blue-50 p-2 text-xs text-blue-800">{entry.comment}</div>
                 )}
 
                 {entry.action === 'updated' && entry.changes && (
                   <div className="border-t border-slate-200 pt-3">
                     <div className="text-xs font-medium text-slate-700 mb-2">
-                      Изменения:
+                      {t('app.profiles.history.changes', { defaultValue: 'Changes:' })}
                     </div>
                     {renderChanges(entry.changes)}
                   </div>
@@ -197,7 +196,7 @@ function ProfileHistoryModal({ profile, onClose }: ProfileHistoryModalProps) {
                 {entry.action === 'created' && entry.new_data && (
                   <div className="border-t border-slate-200 pt-3">
                     <div className="text-xs font-medium text-slate-700 mb-2">
-                      Исходные данные:
+                      {t('app.profiles.history.initial_data', { defaultValue: 'Initial data:' })}
                     </div>
                     <div className="rounded bg-slate-50 p-2 font-mono text-xs text-slate-700 whitespace-pre-wrap break-words">
                       {JSON.stringify(entry.new_data, null, 2)}
@@ -209,14 +208,9 @@ function ProfileHistoryModal({ profile, onClose }: ProfileHistoryModalProps) {
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex justify-end border-t border-slate-200 pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn-secondary"
-          >
-            Закрыть
+          <button type="button" onClick={onClose} className="btn-secondary">
+            {t('app.profiles.history.close', { defaultValue: 'Close' })}
           </button>
         </div>
       </div>

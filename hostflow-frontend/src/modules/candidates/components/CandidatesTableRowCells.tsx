@@ -104,7 +104,7 @@ export function CandidatesTableRowCells({ index, c, ctx }: CandidatesTableRowCel
 
   return (
     <>
-      {/* Без sticky на body-cells: любой sticky у tbody + sticky thead в Virtuoso давал битый hit-testing (клики/mouseup уходили в шапку). */}
+      {/* No sticky on body-cells: sticky tbody + sticky thead in Virtuoso broke hit-testing (clicks/mouseup went to the header). */}
       <CandidatesTableCheckboxCell
         c={c}
         isFocused={isFocused}
@@ -122,10 +122,16 @@ export function CandidatesTableRowCells({ index, c, ctx }: CandidatesTableRowCel
         if (columnKey === 'name') {
           const candidateLabel =
             (c as AugmentedCandidate).masked === true
-              ? (c.short_id
-                  ? t('app.candidates.table.masked_label_short_id', { defaultValue: 'Кандидат {short_id}', values: { short_id: c.short_id } })
-                  : t('app.candidates.table.masked_label', { defaultValue: 'Кандидат #{id}', values: { id: (c.id ?? '').slice(0, 8) } }))
-              : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || t('common.labels.not_available')
+                  ? (c.short_id
+                      ? t('app.candidates.table.masked_label_short_id', {
+                          defaultValue: 'Candidate {short_id}',
+                          values: { short_id: c.short_id },
+                        })
+                      : t('app.candidates.table.masked_label', {
+                          defaultValue: 'Candidate #{id}',
+                          values: { id: (c.id ?? '').slice(0, 8) },
+                        }))
+                  : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || t('common.labels.not_available')
           const isMasked = (c as AugmentedCandidate).masked === true
           const cardHref = `${CRM_APP_PATHS.candidates}/${c.id}`
           const emailForActions = !isMasked ? String(c.email || '').trim() : ''
@@ -146,10 +152,16 @@ export function CandidatesTableRowCells({ index, c, ctx }: CandidatesTableRowCel
                       navigate(cardHref)
                     }}
                     title={
-                      t('app.candidates.table.open_card') ||
-                      ((c as AugmentedCandidate).masked === true
-                        ? t('app.candidates.table.open_card_masked', { defaultValue: 'Открыть карточку кандидата' })
-                        : `Открыть карточку кандидата ${c.first_name} ${c.last_name}`)
+                      (c as AugmentedCandidate).masked === true
+                        ? t('app.candidates.table.open_card_masked', {
+                            defaultValue: 'Open candidate card',
+                          })
+                        : t('app.candidates.table.open_card_named', {
+                            defaultValue: 'Open candidate card {name}',
+                            values: {
+                              name: `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim(),
+                            },
+                          })
                     }
                   >
                     {candidateLabel}
@@ -227,7 +239,14 @@ export function CandidatesTableRowCells({ index, c, ctx }: CandidatesTableRowCel
           const phoneDisplay = (c as AugmentedCandidate).masked === true ? '—' : (c.phone || '—')
           const href = phoneDisplay && phoneDisplay !== '—' ? asTelHref(phoneDisplay) : undefined
           cellContent = href ? (
-            <a href={href} className="text-brand-600 hover:text-brand-700 hover:underline" title={t('app.candidates.table.call') || `Позвонить ${phoneDisplay}`}>
+            <a
+              href={href}
+              className="text-brand-600 hover:text-brand-700 hover:underline"
+              title={t('app.candidates.table.call_named', {
+                defaultValue: 'Call {phone}',
+                values: { phone: phoneDisplay },
+              })}
+            >
               {phoneDisplay}
             </a>
           ) : (
@@ -271,13 +290,13 @@ export function CandidatesTableRowCells({ index, c, ctx }: CandidatesTableRowCel
 
           const bandLabel =
             band === 'critical'
-              ? 'Критический'
+              ? t('app.candidates.table.risk_band.critical', { defaultValue: 'Critical' })
               : band === 'high'
-                ? 'Высокий'
+                ? t('app.candidates.table.risk_band.high', { defaultValue: 'High' })
                 : band === 'medium'
-                  ? 'Средний'
+                  ? t('app.candidates.table.risk_band.medium', { defaultValue: 'Medium' })
                   : band === 'low'
-                    ? 'Низкий'
+                    ? t('app.candidates.table.risk_band.low', { defaultValue: 'Low' })
                     : '—'
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

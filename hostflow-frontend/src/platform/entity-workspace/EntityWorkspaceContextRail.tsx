@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
 import { IconBrandWhatsapp, IconMail, IconPhone } from '@tabler/icons-react'
+import { useI18n } from '../../i18n'
 import type {
   EntityContextRailBlockId,
   EntityContextRailContactAction,
@@ -26,12 +27,14 @@ export function EntityWorkspaceContextRail({
   labels = DEFAULT_ENTITY_WORKSPACE_SHELL_LABELS.contextRail,
   widthPx = DEFAULT_ENTITY_CONTEXT_RAIL_WIDTH_PX,
 }: EntityWorkspaceContextRailProps) {
+  const { t } = useI18n()
   const blocks: Partial<Record<EntityContextRailBlockId, ReactNode>> = {}
 
   const nextActionBlock = model.decisionTitle || model.actions?.primary ? (
     <div className="rounded-xl border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 shadow-sm">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-700/80">
-        {labels?.next_actions ?? 'Следующее действие'}
+        {labels?.next_actions ??
+          t('app.entity_workspace.context_rail.next_actions', { defaultValue: 'Next action' })}
       </p>
       {model.decisionTitle ? <p className="mt-2 text-base font-bold text-slate-900">{model.decisionTitle}</p> : null}
       {model.decisionWhy ? <p className="mt-1 text-sm leading-relaxed text-slate-600">{model.decisionWhy}</p> : null}
@@ -59,7 +62,8 @@ export function EntityWorkspaceContextRail({
           onClick={model.onCreateTask}
           className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
-          {model.createTaskLabel ?? 'Создать задачу'}
+          {model.createTaskLabel ??
+            t('app.entity_workspace.context_rail.create_task', { defaultValue: 'Create task' })}
         </button>
       ) : null}
       {model.actions?.secondary?.length ? (
@@ -92,7 +96,9 @@ export function EntityWorkspaceContextRail({
 
   const quickContactsBlock = model.quickContacts?.length ? (
     <div className={nextActionBlock ? 'mt-4' : undefined}>
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Быстрые контакты</p>
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        {t('app.entity_workspace.context_rail.quick_contacts', { defaultValue: 'Quick contacts' })}
+      </p>
       <div className="grid grid-cols-3 gap-2">
         {model.quickContacts.map((contact) =>
           contact.href ? (
@@ -102,7 +108,13 @@ export function EntityWorkspaceContextRail({
               className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 bg-white px-2 py-3 text-center text-[11px] font-medium text-slate-700 hover:bg-slate-50"
             >
               <ContactIcon icon={contact.icon} />
-              <span className="truncate">{contact.icon === 'phone' ? 'Звонок' : contact.icon === 'whatsapp' ? 'WA' : 'Email'}</span>
+              <span className="truncate">
+                {contact.icon === 'phone'
+                  ? t('app.entity_workspace.context_rail.call', { defaultValue: 'Call' })
+                  : contact.icon === 'whatsapp'
+                    ? 'WA'
+                    : 'Email'}
+              </span>
             </a>
           ) : (
             <button
@@ -202,7 +214,9 @@ export function EntityWorkspaceContextRail({
             onClick={model.onShowAllEvents}
             className="mt-2 text-xs font-medium text-brand-700 hover:underline"
           >
-            Показать всю историю
+            {t('app.entity_workspace.context_rail.show_all_history', {
+              defaultValue: 'Show full history',
+            })}
           </button>
         ) : null}
       </>
@@ -226,7 +240,7 @@ export function EntityWorkspaceContextRail({
         style={{ width: widthPx, minWidth: widthPx, maxWidth: widthPx }}
         data-entity-workspace-zone="context-rail"
       >
-        Нет контекста
+        {t('app.entity_workspace.context_rail.empty', { defaultValue: 'No context' })}
       </aside>
     )
   }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listFunnels, type Funnel } from '../../api/funnels'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { useI18n } from '../../i18n'
 
 interface FunnelSelectorProps {
   /** Optional legacy filter; omit for tenant-wide catalog (Vacancy assignment SoT). */
@@ -23,6 +24,7 @@ export default function FunnelSelector({
   funnelType = 'candidate',
   hint,
 }: FunnelSelectorProps) {
+  const { t } = useI18n()
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -74,9 +76,12 @@ export default function FunnelSelector({
           ))}
         </select>
         <p className="mt-1 text-xs text-slate-500">
-          {hint ?? 'Назначение pipeline — на вакансии.'}{' '}
+          {hint ??
+            t('app.profiles.funnel_selector.hint', {
+              defaultValue: 'Pipeline is assigned on the vacancy.',
+            })}{' '}
           <Link to={CRM_APP_PATHS.settingsFunnels} className="text-brand-600 hover:underline">
-            Редактировать воронки
+            {t('app.profiles.funnel_selector.edit_funnels', { defaultValue: 'Edit funnels' })}
           </Link>
         </p>
       </div>

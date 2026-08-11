@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { IconCircleCheck } from '@tabler/icons-react'
 import { resolvePlatformCompletion, type PlatformCompletionResolution } from '../../api/platformCompletion'
 import { clientAcquisitionChannelPath } from '../../app/clientAcquisitionPaths'
+import { useI18n } from '../../i18n'
 import { SALES_CLIENT_ACTIVE_EVENT, clientDetailPath, executePlatformHandoff } from '../../services/platformHandoff'
 import type { SearchRole } from '../../utils/launchSearchRoleDefaults'
 import { useToast } from '../Toast'
@@ -16,6 +17,7 @@ type PlatformCompletionPanelProps = {
 export function PlatformCompletionPanel({ event, context, onHandoffComplete }: PlatformCompletionPanelProps) {
   const navigate = useNavigate()
   const { notify } = useToast()
+  const { t } = useI18n()
   const [resolution, setResolution] = useState<PlatformCompletionResolution | null>(null)
   const [loading, setLoading] = useState(true)
   const [handoffRunning, setHandoffRunning] = useState(false)
@@ -54,7 +56,7 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
   if (loading) {
     return (
       <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm">
-        <p className="text-sm text-emerald-900">Загрузка…</p>
+        <p className="text-sm text-emerald-900">{t('common.loading', { defaultValue: 'Loading…' })}</p>
       </section>
     )
   }
@@ -65,8 +67,10 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
         <div className="flex items-start gap-3">
           <IconCircleCheck size={24} className="shrink-0 text-emerald-600" aria-hidden />
           <div>
-            <p className="text-sm font-semibold text-emerald-900">Готово</p>
-            <p className="mt-1 text-sm text-emerald-800">Работа завершена.</p>
+            <p className="text-sm font-semibold text-emerald-900">{t('common.done', { defaultValue: 'Done' })}</p>
+            <p className="mt-1 text-sm text-emerald-800">
+              {t('app.platform_completion.done_message', { defaultValue: 'Work completed.' })}
+            </p>
           </div>
         </div>
       </section>
@@ -75,6 +79,7 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
 
   const clientId = String(context.client_id || resolution.done?.client_id || '').trim()
   const channelId = String(context.channel_id || '').trim()
+  const openClientLabel = t('app.platform_completion.open_client', { defaultValue: 'Open client' })
 
   return (
     <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-6 shadow-sm" data-testid="platform-completion">
@@ -86,7 +91,9 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
 
           {resolution.handoffs && resolution.handoffs.length > 1 ? (
             <div className="mt-4 space-y-3">
-              <p className="text-sm font-medium text-slate-800">Следующие действия по договору</p>
+              <p className="text-sm font-medium text-slate-800">
+                {t('app.platform_completion.contract_next_actions', { defaultValue: 'Next contract actions' })}
+              </p>
               {resolution.handoffs.map((ho) => (
                 <button
                   key={ho.action}
@@ -123,14 +130,16 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
                   disabled={handoffRunning}
                   onClick={() => void handleHandoff()}
                 >
-                  {handoffRunning ? 'Создаём…' : resolution.handoff.label}
+                  {handoffRunning
+                    ? t('common.creating', { defaultValue: 'Creating…' })
+                    : resolution.handoff.label}
                 </button>
                 {clientId ? (
                   <Link
                     to={clientDetailPath(clientId)}
                     className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                   >
-                    Открыть клиента
+                    {openClientLabel}
                   </Link>
                 ) : null}
               </div>
@@ -146,7 +155,7 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
                     to={clientDetailPath(clientId)}
                     className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                   >
-                    {resolution.done.action_label || 'Открыть клиента'}
+                    {resolution.done.action_label || openClientLabel}
                   </Link>
                 ) : null}
                 {channelId ? (
@@ -154,7 +163,9 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
                     to={clientAcquisitionChannelPath(channelId)}
                     className="inline-flex flex-1 items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 py-3 text-sm font-semibold text-emerald-900 hover:bg-emerald-50/80"
                   >
-                    К привлечению клиентов
+                    {t('app.platform_completion.to_client_acquisition', {
+                      defaultValue: 'To client acquisition',
+                    })}
                   </Link>
                 ) : null}
               </div>
@@ -166,7 +177,9 @@ export function PlatformCompletionPanel({ event, context, onHandoffComplete }: P
               to={clientAcquisitionChannelPath(channelId)}
               className="mt-4 inline-flex text-sm font-medium text-emerald-800 hover:underline"
             >
-              Вернуться к привлечению клиентов
+              {t('app.platform_completion.back_to_client_acquisition', {
+                defaultValue: 'Back to client acquisition',
+              })}
             </Link>
           ) : null}
         </div>

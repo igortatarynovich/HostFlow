@@ -108,15 +108,28 @@ function renderSortButton(label: string, key: SortKey, ctx: CandidatesTableColum
       onClick={() => handleSortChange(key)}
       title={
         sortKey === key
-          ? t('app.candidates.table.sort_by', { values: { column: label, dir: sortDir === 'asc' ? t('common.sort.asc') : t('common.sort.desc') } }) || `Сортировка по ${label} (${sortDir === 'asc' ? '↑' : '↓'})`
-          : t('app.candidates.table.click_to_sort', { values: { column: label } }) || `Кликните для сортировки по ${label}`
+          ? t('app.candidates.table.sort_by', {
+              defaultValue: 'Sort by {column} ({dir})',
+              values: {
+                column: label,
+                dir: sortDir === 'asc' ? t('common.sort.asc', { defaultValue: 'Ascending' }) : t('common.sort.desc', { defaultValue: 'Descending' }),
+              },
+            })
+          : t('app.candidates.table.click_to_sort', {
+              defaultValue: 'Click to sort by {column}',
+              values: { column: label },
+            })
       }
     >
       <span className="truncate">{label}</span>
       {sortKey === key && (
         <span
           className="inline-flex h-4 w-4 items-center justify-center text-[11px] text-brand-600/90 font-semibold"
-          title={sortDir === 'asc' ? t('common.sort.asc') || 'По возрастанию' : t('common.sort.desc') || 'По убыванию'}
+          title={
+            sortDir === 'asc'
+              ? t('common.sort.asc', { defaultValue: 'Ascending' })
+              : t('common.sort.desc', { defaultValue: 'Descending' })
+          }
         >
           {sortDir === 'asc' ? '▲' : '▼'}
         </span>
@@ -267,8 +280,16 @@ export function CandidatesTableColumnHeaderContent({ columnKey, ctx }: Candidate
               })
             }}
             className="cursor-pointer w-4 h-4"
-            title={allVisibleSelected ? (t('app.candidates.table.deselect_all') || 'Снять выделение со всех') : (t('app.candidates.table.select_all') || 'Выделить все видимые')}
-            aria-label={allVisibleSelected ? (t('app.candidates.table.deselect_all') || 'Снять выделение со всех') : (t('app.candidates.table.select_all') || 'Выделить все видимые')}
+            title={
+              allVisibleSelected
+                ? t('app.candidates.table.deselect_all', { defaultValue: 'Deselect all' })
+                : t('app.candidates.table.select_all', { defaultValue: 'Select all' })
+            }
+            aria-label={
+              allVisibleSelected
+                ? t('app.candidates.table.deselect_all', { defaultValue: 'Deselect all' })
+                : t('app.candidates.table.select_all', { defaultValue: 'Select all' })
+            }
           />
         </div>
       )

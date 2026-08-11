@@ -112,7 +112,7 @@ export default function SetupFirstVacancyPage() {
       setError(
         friendlyFormHintError(
           t('app.onboarding.setup.vacancy.errors.title_required', {
-            defaultValue: 'Укажите название вакансии.',
+            defaultValue: 'Enter a vacancy title.',
           }),
           t,
         ),
@@ -123,7 +123,7 @@ export default function SetupFirstVacancyPage() {
       setError(
         friendlyFormHintError(
           t('app.onboarding.setup.vacancy.errors.company_required', {
-            defaultValue: 'Выберите компанию.',
+            defaultValue: 'Select a company.',
           }),
           t,
         ),
@@ -157,7 +157,7 @@ export default function SetupFirstVacancyPage() {
         getFriendlyErrorInfo(
           err,
           t('app.onboarding.setup.vacancy.errors.generic', {
-            defaultValue: 'Не удалось создать вакансию.',
+            defaultValue: 'Could not create the vacancy.',
           }),
           t,
         ),
@@ -170,13 +170,13 @@ export default function SetupFirstVacancyPage() {
   return (
     <SetupFlowChrome
       testId="m1-setup-vacancy-flow"
-      stepLabel={t('app.onboarding.setup.vacancy.badge', { defaultValue: 'Настройка · Первая вакансия' })}
+      stepLabel={t('app.onboarding.setup.vacancy.badge', { defaultValue: 'Setup · First vacancy' })}
       title={t('app.onboarding.setup.vacancy.title', {
-        defaultValue: 'Создадим первую вакансию',
+        defaultValue: 'Let’s create the first vacancy',
       })}
       subtitle={t('app.onboarding.setup.vacancy.subtitle', {
         defaultValue:
-          'Только несколько полей. Остальное HostFlow настроит по шаблону — воронку и требования можно изменить позже.',
+          'Just a few fields. HostFlow fills the rest from a template — you can change the funnel and requirements later.',
       })}
     >
       {loadingCompanies ? (
@@ -185,7 +185,7 @@ export default function SetupFirstVacancyPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label htmlFor="setup-vacancy-title" className="block text-sm font-medium text-slate-800">
-              {t('app.onboarding.setup.vacancy.title_label', { defaultValue: 'Название вакансии' })}
+              {t('app.onboarding.setup.vacancy.title_label', { defaultValue: 'Vacancy title' })}
             </label>
             <input
               id="setup-vacancy-title"
@@ -194,7 +194,7 @@ export default function SetupFirstVacancyPage() {
               onChange={(e) => setTitle(e.target.value)}
               className="mt-2 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               placeholder={t('app.onboarding.setup.vacancy.title_placeholder', {
-                defaultValue: 'Например, Водитель CE — международные',
+                defaultValue: 'e.g. CE driver — international',
               })}
               autoFocus
               required
@@ -203,7 +203,7 @@ export default function SetupFirstVacancyPage() {
 
           <div>
             <label htmlFor="setup-vacancy-client" className="block text-sm font-medium text-slate-800">
-              {t('app.onboarding.setup.vacancy.client_label', { defaultValue: 'Клиент' })}
+              {t('app.onboarding.setup.vacancy.client_label', { defaultValue: 'Client' })}
             </label>
             {companyOptions.length <= 1 && selectedCompanyLabel ? (
               <p
@@ -224,7 +224,7 @@ export default function SetupFirstVacancyPage() {
                   <option key={`${opt.group}-${opt.id}`} value={opt.id}>
                     {opt.group === 'own'
                       ? t('app.onboarding.setup.vacancy.own_company_prefix', {
-                          defaultValue: 'Своя компания: {name}',
+                          defaultValue: 'Own company: {name}',
                           values: { name: opt.name },
                         })
                       : opt.name}
@@ -236,7 +236,7 @@ export default function SetupFirstVacancyPage() {
 
           <div>
             <label htmlFor="setup-vacancy-country" className="block text-sm font-medium text-slate-800">
-              {t('app.onboarding.setup.vacancy.country_label', { defaultValue: 'Страна работы' })}
+              {t('app.onboarding.setup.vacancy.country_label', { defaultValue: 'Work country' })}
             </label>
             <select
               id="setup-vacancy-country"
@@ -255,7 +255,7 @@ export default function SetupFirstVacancyPage() {
 
           <div>
             <label htmlFor="setup-vacancy-employment" className="block text-sm font-medium text-slate-800">
-              {t('app.onboarding.setup.vacancy.employment_label', { defaultValue: 'Тип занятости' })}
+              {t('app.onboarding.setup.vacancy.employment_label', { defaultValue: 'Employment type' })}
             </label>
             <select
               id="setup-vacancy-employment"
@@ -267,7 +267,8 @@ export default function SetupFirstVacancyPage() {
               {EMPLOYMENT_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {t(`app.onboarding.setup.vacancy.employment.${type}`, {
-                    defaultValue: type === 'full_time' ? 'Полная занятость' : type === 'part_time' ? 'Частичная' : 'B2B',
+                    defaultValue:
+                      type === 'full_time' ? 'Full-time' : type === 'part_time' ? 'Part-time' : 'B2B',
                   })}
                 </option>
               ))}
@@ -276,7 +277,7 @@ export default function SetupFirstVacancyPage() {
 
           <div>
             <label htmlFor="setup-vacancy-salary" className="block text-sm font-medium text-slate-800">
-              {t('app.onboarding.setup.vacancy.salary_label', { defaultValue: 'Зарплата (необязательно)' })}
+              {t('app.onboarding.setup.vacancy.salary_label', { defaultValue: 'Salary (optional)' })}
             </label>
             <input
               id="setup-vacancy-salary"
@@ -299,7 +300,7 @@ export default function SetupFirstVacancyPage() {
           >
             {loading
               ? t('common.saving')
-              : t('app.onboarding.setup.vacancy.submit', { defaultValue: 'Создать вакансию' })}
+              : t('app.onboarding.setup.vacancy.submit', { defaultValue: 'Create vacancy' })}
           </button>
         </form>
       )}

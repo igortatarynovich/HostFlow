@@ -130,8 +130,8 @@ export function beneficiaryKindLabel(
   kind: ServiceBeneficiaryKind | null | undefined,
   t: (key: string, options?: { defaultValue?: string }) => string,
 ): string {
-  if (!kind) return t('app.services.beneficiary.unknown', { defaultValue: 'Не указан' })
+  if (!kind) return t('app.services.beneficiary.unknown', { defaultValue: 'Not specified' })
   return t(`app.services.beneficiary.${kind}`, {
-    defaultValue: kind === 'client' ? 'Клиент' : kind === 'candidate' ? 'Кандидат' : 'Сотрудник',
+    defaultValue: kind === 'client' ? 'Client' : kind === 'candidate' ? 'Candidate' : 'Employee',
   })
 }

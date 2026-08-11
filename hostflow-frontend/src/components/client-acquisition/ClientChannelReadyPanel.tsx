@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useToast } from '../Toast'
 import { clientAcquisitionChannelPath } from '../../app/clientAcquisitionPaths'
+import { useI18n } from '../../i18n'
 import { downloadQrPng } from '../../utils/clientInquiryUrl'
 
 type ClientChannelReadyPanelProps = {
@@ -13,36 +14,58 @@ export { clientAcquisitionChannelPath }
 
 export function ClientChannelReadyPanel({ channelId, channelName, publicUrl }: ClientChannelReadyPanelProps) {
   const { notify } = useToast()
+  const { t } = useI18n()
 
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(publicUrl)
-      notify({ title: 'Ссылка скопирована', variant: 'success' })
+      notify({
+        title: t('app.client_channel_home.link_copied', { defaultValue: 'Link copied' }),
+        variant: 'success',
+      })
     } catch {
-      notify({ title: 'Не удалось скопировать', variant: 'error' })
+      notify({
+        title: t('app.client_channel_home.link_copy_failed', { defaultValue: 'Could not copy' }),
+        variant: 'error',
+      })
     }
   }
 
   async function downloadQr() {
     try {
       await downloadQrPng(publicUrl, `hostflow-client-channel-${channelId.slice(0, 8)}.png`)
-      notify({ title: 'QR скачан', variant: 'success' })
+      notify({
+        title: t('app.client_channel_home.qr_downloaded', { defaultValue: 'QR downloaded' }),
+        variant: 'success',
+      })
     } catch {
-      notify({ title: 'Не удалось скачать QR', variant: 'error' })
+      notify({
+        title: t('app.client_channel_home.qr_download_failed', {
+          defaultValue: 'Could not download QR',
+        }),
+        variant: 'error',
+      })
     }
   }
 
   return (
     <div className="space-y-6" data-testid="m1-client-channel-ready">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900">Канал готов</h2>
+        <h2 className="text-xl font-semibold text-slate-900">
+          {t('app.client_acquisition.ready.title', { defaultValue: 'Channel ready' })}
+        </h2>
         <p className="mt-2 text-sm text-slate-600">
-          Скопируйте ссылку или QR и разместите там, где компании увидят предложение: реклама, сайт, email, визитка.
+          {t('app.client_acquisition.ready.body', {
+            defaultValue:
+              'Copy the link or QR and place it where companies will see the offer: ads, website, email, business card.',
+          })}
         </p>
       </div>
 
       <div className="space-y-4 rounded-xl border border-brand-100 bg-brand-50/40 p-4">
-        <p className="text-sm font-medium text-slate-900">Ссылка для компаний</p>
+        <p className="text-sm font-medium text-slate-900">
+          {t('app.client_acquisition.ready.link_label', { defaultValue: 'Link for companies' })}
+        </p>
         <p className="break-all text-xs text-slate-600">{publicUrl}</p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -51,7 +74,7 @@ export function ClientChannelReadyPanel({ channelId, channelName, publicUrl }: C
             onClick={() => void copyLink()}
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
-            Копировать ссылку
+            {t('app.client_acquisition.ready.copy_link', { defaultValue: 'Copy link' })}
           </button>
           <button
             type="button"
@@ -59,13 +82,16 @@ export function ClientChannelReadyPanel({ channelId, channelName, publicUrl }: C
             onClick={() => void downloadQr()}
             className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
-            Скачать QR
+            {t('app.client_acquisition.ready.download_qr', { defaultValue: 'Download QR' })}
           </button>
         </div>
       </div>
 
       <p className="text-sm text-slate-600">
-        Когда компания оставит заявку, на рабочем столе появится «Следующее действие» — обычно «Позвонить».
+        {t('app.client_acquisition.ready.next_hint', {
+          defaultValue:
+            'When a company submits an inquiry, “Next action” appears on the workspace — usually “Call”.',
+        })}
       </p>
 
       <Link
@@ -73,7 +99,7 @@ export function ClientChannelReadyPanel({ channelId, channelName, publicUrl }: C
         data-testid="m1-client-channel-open"
         className="inline-flex w-full items-center justify-center rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
       >
-        Открыть рабочий стол
+        {t('app.client_acquisition.ready.open_workspace', { defaultValue: 'Open workspace' })}
       </Link>
 
       <p className="text-center text-xs text-slate-400">{channelName}</p>

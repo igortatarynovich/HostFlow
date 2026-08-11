@@ -365,7 +365,17 @@ export function decodeJwtPayload(token: string): JwtIdentityClaims | null {
  * Drop every per-origin auth pointer (tokens, tenant header keys, impersonation backup).
  * Shared Domain cookies must be cleared separately via POST /auth/logout.
  */
+let sharedSessionSyncInFlight: Promise<boolean> | null = null;
+let sharedSessionSyncOkUntil = 0;
+const SHARED_SESSION_SYNC_TTL_MS = 30_000;
+
+function invalidateSharedSessionSyncCache(): void {
+  sharedSessionSyncInFlight = null;
+  sharedSessionSyncOkUntil = 0;
+}
+
 export function clearLocalAuthState(): void {
+  invalidateSharedSessionSyncCache();
   for (const key of TOKEN_STORAGE_KEYS) {
     safeStorageRemove(key);
   }
@@ -430,8 +440,18 @@ async function refreshAccessTokenViaCookie(): Promise<string | null> {
  * Bearer alone would fail here while normal API calls still work via refresh.
  * Retry once after cookie refresh, then prove the Domain cookie works without Bearer
  * (module hosts start with empty localStorage).
+ *
+ * Concurrent callers coalesce onto one in-flight request; a short success TTL
+ * avoids burning the auth:session_sync rate limit on every remount/nav.
  */
 export async function ensureSharedSessionCookies(): Promise<boolean> {
+  if (Date.now() < sharedSessionSyncOkUntil) {
+    return true;
+  }
+  if (sharedSessionSyncInFlight) {
+    return sharedSessionSyncInFlight;
+  }
+
   const syncOnce = async (): Promise<boolean> => {
     const { data } = await apiInstance.post("/auth/session/sync", {});
     const token = typeof data?.access_token === "string" ? data.access_token : null;
@@ -445,17 +465,29 @@ export async function ensureSharedSessionCookies(): Promise<boolean> {
     return Boolean(who && (who.sub || who.email));
   };
 
-  try {
-    return await syncOnce();
-  } catch {
-    const refreshed = await refreshAccessTokenViaCookie();
-    if (!refreshed) return false;
+  sharedSessionSyncInFlight = (async () => {
     try {
-      return await syncOnce();
-    } catch {
-      return false;
+      try {
+        const ok = await syncOnce();
+        if (ok) sharedSessionSyncOkUntil = Date.now() + SHARED_SESSION_SYNC_TTL_MS;
+        return ok;
+      } catch {
+        const refreshed = await refreshAccessTokenViaCookie();
+        if (!refreshed) return false;
+        try {
+          const ok = await syncOnce();
+          if (ok) sharedSessionSyncOkUntil = Date.now() + SHARED_SESSION_SYNC_TTL_MS;
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+    } finally {
+      sharedSessionSyncInFlight = null;
     }
-  }
+  })();
+
+  return sharedSessionSyncInFlight;
 }
 
 /** Same-origin module emulation when Domain cookies cannot be proven. */

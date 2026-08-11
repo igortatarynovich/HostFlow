@@ -96,14 +96,15 @@ const SECTION_BY_SUFFIX: Record<string, string> = {
   additional_notes: 'notes',
 }
 
-const SECTION_TITLE_DEFAULTS: Record<string, { en: string; pl: string; ru: string }> = {
-  company: { en: 'Company', pl: 'Firma', ru: 'Компания' },
-  promote: { en: 'What to promote', pl: 'Co promować', ru: 'Что нужно продвигать' },
-  goal: { en: 'Goal and campaign setup', pl: 'Cel i organizacja reklam', ru: 'Цель и организация рекламы' },
-  materials: { en: 'Materials', pl: 'Materiały', ru: 'Материалы' },
-  contact: { en: 'Contact', pl: 'Kontakt', ru: 'Контакт' },
-  notes: { en: 'Additional information', pl: 'Dodatkowe informacje', ru: 'Дополнительная информация' },
-  other: { en: 'Other', pl: 'Inne', ru: 'Прочее' },
+/** English fallbacks when scoped submission-locale keys are missing. */
+const SECTION_TITLE_DEFAULTS_EN: Record<string, string> = {
+  company: 'Company',
+  promote: 'What to promote',
+  goal: 'Goal and campaign setup',
+  materials: 'Materials',
+  contact: 'Contact',
+  notes: 'Additional information',
+  other: 'Other',
 }
 
 type PresentationLoadResult = {
@@ -130,8 +131,7 @@ export function sectionKeyForField(qualifiedCode: string): string {
 
 export function sectionTitleForKey(key: string, locale: string, _t?: TranslateFn): string {
   const code = asLocaleCode(locale)
-  const defaults = SECTION_TITLE_DEFAULTS[key] || SECTION_TITLE_DEFAULTS.other
-  const fallback = code === 'pl' ? defaults.pl : code === 'ru' ? defaults.ru : defaults.en
+  const fallback = SECTION_TITLE_DEFAULTS_EN[key] || SECTION_TITLE_DEFAULTS_EN.other
   // Use submission locale dictionary, not CRM UI language.
   return lookupScopedTranslation(code, 'app.sales_questionnaire.section', key) || fallback
 }
@@ -155,11 +155,9 @@ function humanizeOptionValue(raw: string): string {
 
 function formatBoolean(value: unknown, t: TranslateFn, locale: LocaleCode): string {
   const yes =
-    lookupScopedTranslation(locale, 'common', 'yes') ||
-    (locale === 'pl' ? 'Tak' : locale === 'ru' ? 'Да' : t('common.yes', { defaultValue: 'Yes' }))
+    lookupScopedTranslation(locale, 'common', 'yes') || t('common.yes', { defaultValue: 'Yes' })
   const no =
-    lookupScopedTranslation(locale, 'common', 'no') ||
-    (locale === 'pl' ? 'Nie' : locale === 'ru' ? 'Нет' : t('common.no', { defaultValue: 'No' }))
+    lookupScopedTranslation(locale, 'common', 'no') || t('common.no', { defaultValue: 'No' })
   if (value === true) return yes
   if (value === false) return no
   const normalized = text(value).toLowerCase()
@@ -605,9 +603,9 @@ export function resolveFormLocale(
 
 export function formLocaleLabel(locale: string | null, t: TranslateFn): string {
   const code = String(locale || '').toLowerCase()
-  if (code === 'pl') return t('app.sales_questionnaire.locale_pl', { defaultValue: 'Анкета на польском' })
+  if (code === 'pl') return t('app.sales_questionnaire.locale_pl', { defaultValue: 'Questionnaire in Polish' })
   if (code === 'en') return t('app.sales_questionnaire.locale_en', { defaultValue: 'Questionnaire in English' })
-  if (code === 'ru') return t('app.sales_questionnaire.locale_ru', { defaultValue: 'Анкета на русском' })
+  if (code === 'ru') return t('app.sales_questionnaire.locale_ru', { defaultValue: 'Questionnaire in Russian' })
   return ''
 }
 

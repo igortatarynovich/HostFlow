@@ -37,7 +37,7 @@ export function MetaFormAnswersSection({ answers, additionalAnswers }: MetaFormA
   return (
     <section className="space-y-2" data-testid="sales-meta-form-answers">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {t('app.sales_inquiry.meta_form_answers', { defaultValue: 'Ответы из формы Meta' })}
+        {t('app.sales_inquiry.meta_form_answers', { defaultValue: 'Answers from Meta form' })}
       </h3>
       <dl className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3">
         {rows.map((row, idx) => {
@@ -49,7 +49,7 @@ export function MetaFormAnswersSection({ answers, additionalAnswers }: MetaFormA
                 <span>{name}</span>
                 {isAdditional ? (
                   <span className="rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-                    {t('app.sales_inquiry.additional_answer', { defaultValue: 'доп.' })}
+                    {t('app.sales_inquiry.additional_answer', { defaultValue: 'extra' })}
                   </span>
                 ) : null}
               </dt>

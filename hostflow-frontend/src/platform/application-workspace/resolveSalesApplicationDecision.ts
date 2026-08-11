@@ -1,4 +1,5 @@
 import type { Application } from '../../api/types/application'
+import type { TranslateFn } from '../../i18n'
 import type { ObjectDecision } from '../decision-model/types'
 import { clientDetailPath } from '../../services/platformHandoff'
 
@@ -8,7 +9,7 @@ type ResolveSalesDecisionArgs = {
   patching: boolean
   onStage: (stage: 'contacted' | 'qualified' | 'lost') => void | Promise<void>
   onConvert: () => void | Promise<void>
-  t: (key: string, options?: Record<string, unknown>) => string
+  t: TranslateFn
 }
 
 export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs): ObjectDecision {
@@ -27,7 +28,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
             ? [
                 {
                   id: 'call',
-                  label: 'Позвонить',
+                  label: t('app.sales_inquiry.call', { defaultValue: 'Call' }),
                   href: `tel:${contactPhone.replace(/\s/g, '')}`,
                   variant: 'primary' as const,
                   icon: 'phone' as const,
@@ -40,13 +41,13 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
   if (convertedId && clientHref) {
     return {
       stateId: 'sales.client_created',
-      currentState: t('app.sales_inquiry.step.service_title', { defaultValue: 'Добавить услугу' }),
+      currentState: t('app.sales_inquiry.step.service_title', { defaultValue: 'Add a service' }),
       why: t('app.sales_inquiry.step.service_body', {
-        defaultValue: 'Клиент создан. Откройте карточку и добавьте первую услугу.',
+        defaultValue: 'Client created. Open the card and add the first service.',
       }),
       primaryAction: {
         id: 'open_client',
-        label: t('app.client_inquiry.service_order.open_client', { defaultValue: 'Открыть карточку клиента' }),
+        label: t('app.client_inquiry.service_order.open_client', { defaultValue: 'Open client card' }),
         href: clientHref,
       },
       requiredContext: ['workflow', 'contacts', 'summary', 'history'],
@@ -60,8 +61,8 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
       stateId: 'sales.terminal',
       currentState:
         application.status === 'rejected'
-          ? t('app.sales_inquiry.closed', { defaultValue: 'Запрос закрыт' })
-          : t('app.sales_inquiry.completed', { defaultValue: 'Обращение завершено' }),
+          ? t('app.sales_inquiry.closed', { defaultValue: 'Request closed' })
+          : t('app.sales_inquiry.completed', { defaultValue: 'Inquiry completed' }),
       why: undefined,
       primaryAction: null,
       requiredContext: ['workflow', 'contacts', 'summary', 'history'],
@@ -69,8 +70,8 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
       outcome: {
         title:
           application.status === 'rejected'
-            ? t('app.sales_inquiry.closed', { defaultValue: 'Запрос закрыт' })
-            : t('app.sales_inquiry.completed', { defaultValue: 'Обращение завершено' }),
+            ? t('app.sales_inquiry.closed', { defaultValue: 'Request closed' })
+            : t('app.sales_inquiry.completed', { defaultValue: 'Inquiry completed' }),
         variant: 'terminal',
       },
     }
@@ -79,26 +80,28 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
   if (activeStep >= 3) {
     return {
       stateId: 'sales.create_client',
-      currentState: t('app.sales_inquiry.step.client_title', { defaultValue: 'Создать клиента' }),
+      currentState: t('app.sales_inquiry.step.client_title', { defaultValue: 'Create client' }),
       why: t('app.sales_inquiry.step.client_body', {
-        defaultValue: 'Компания заинтересована. Сохраните её в клиенты.',
+        defaultValue: 'The company is interested. Save it as a client.',
       }),
       primaryAction: {
         id: 'convert',
-        label: converting ? 'Создаём…' : 'Создать клиента',
+        label: converting
+          ? t('app.sales_inquiry.creating_client', { defaultValue: 'Creating…' })
+          : t('app.sales_inquiry.create_client', { defaultValue: 'Create client' }),
         onClick: () => void onConvert(),
         disabled,
       },
       secondaryActions: [
         {
           id: 'interested_later',
-          label: t('app.sales_inquiry.interested_later', { defaultValue: 'Заинтересован, но позже' }),
+          label: t('app.sales_inquiry.interested_later', { defaultValue: 'Interested, but later' }),
           onClick: () => void onStage('qualified'),
           disabled,
         },
         {
           id: 'close',
-          label: t('app.sales_inquiry.close', { defaultValue: 'Закрыть запрос' }),
+          label: t('app.sales_inquiry.close', { defaultValue: 'Close request' }),
           onClick: () => void onStage('lost'),
           variant: 'danger',
           disabled,
@@ -113,26 +116,26 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
   if (activeStep >= 2) {
     return {
       stateId: 'sales.qualify_need',
-      currentState: t('app.sales_inquiry.step.need_title', { defaultValue: 'Выяснить потребность' }),
+      currentState: t('app.sales_inquiry.step.need_title', { defaultValue: 'Clarify the need' }),
       why: t('app.sales_inquiry.step.need_body', {
-        defaultValue: 'Уточните, какую услугу компания хочет купить.',
+        defaultValue: 'Confirm which service the company wants to buy.',
       }),
       primaryAction: {
         id: 'qualified',
-        label: 'Заинтересован',
+        label: t('app.sales_inquiry.interested', { defaultValue: 'Interested' }),
         onClick: () => void onStage('qualified'),
         disabled,
       },
       secondaryActions: [
         {
           id: 'interested_later',
-          label: t('app.sales_inquiry.interested_later', { defaultValue: 'Заинтересован, но позже' }),
+          label: t('app.sales_inquiry.interested_later', { defaultValue: 'Interested, but later' }),
           onClick: () => void onStage('qualified'),
           disabled,
         },
         {
           id: 'close',
-          label: t('app.sales_inquiry.close', { defaultValue: 'Закрыть запрос' }),
+          label: t('app.sales_inquiry.close', { defaultValue: 'Close request' }),
           onClick: () => void onStage('lost'),
           variant: 'danger',
           disabled,
@@ -145,14 +148,14 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
 
   return {
     stateId: 'sales.first_contact',
-    currentState: t('app.sales_inquiry.step.contact_title', { defaultValue: 'Связаться с клиентом' }),
+    currentState: t('app.sales_inquiry.step.contact_title', { defaultValue: 'Contact the client' }),
     why: t('app.sales_inquiry.step.contact_body', {
-      defaultValue: 'Первый контакт ещё не выполнен.',
+      defaultValue: 'First contact has not been made yet.',
     }),
     primaryAction: contactPhone
       ? {
           id: 'contacted',
-          label: 'Позвонил',
+          label: t('app.sales_inquiry.called', { defaultValue: 'Called' }),
           onClick: () => void onStage('contacted'),
           disabled,
         }
@@ -160,7 +163,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
     secondaryActions: [
       {
         id: 'close',
-        label: t('app.sales_inquiry.close', { defaultValue: 'Закрыть запрос' }),
+        label: t('app.sales_inquiry.close', { defaultValue: 'Close request' }),
         onClick: () => void onStage('lost'),
         variant: 'danger',
         disabled,
@@ -169,7 +172,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
     contactActions,
     requiredContext: ['workflow', 'contacts', 'summary', 'history'],
     afterActionHint: contactPhone
-      ? t('app.sales_inquiry.after_call_hint', { defaultValue: 'После звонка отметьте «Позвонил».' })
+      ? t('app.sales_inquiry.after_call_hint', { defaultValue: 'After the call, mark “Called”.' })
       : undefined,
   }
 }

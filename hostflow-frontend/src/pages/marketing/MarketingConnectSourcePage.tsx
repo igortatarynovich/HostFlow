@@ -82,7 +82,7 @@ export default function MarketingConnectSourcePage() {
         getFriendlyErrorInfo(
           err,
           t('app.marketing.connect.errors.load', {
-            defaultValue: 'Не удалось загрузить кампанию',
+            defaultValue: 'Failed to load campaign',
           }),
           t,
         ),
@@ -118,7 +118,7 @@ export default function MarketingConnectSourcePage() {
         getFriendlyErrorInfo(
           new Error('slug'),
           t('app.marketing.connect.errors.create_slug', {
-            defaultValue: 'Укажите название анкеты (нужен публичный slug)',
+            defaultValue: 'Enter a form name (public slug required)',
           }),
           t,
         ),
@@ -160,7 +160,7 @@ export default function MarketingConnectSourcePage() {
         getFriendlyErrorInfo(
           err,
           t('app.marketing.connect.errors.create_form', {
-            defaultValue: 'Не удалось создать анкету',
+            defaultValue: 'Failed to create form',
           }),
           t,
         ),
@@ -195,7 +195,7 @@ export default function MarketingConnectSourcePage() {
         getFriendlyErrorInfo(
           err,
           t('app.marketing.connect.errors.save', {
-            defaultValue: 'Не удалось подключить источник',
+            defaultValue: 'Failed to connect source',
           }),
           t,
         ),
@@ -215,12 +215,14 @@ export default function MarketingConnectSourcePage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.marketing.connect.title', { defaultValue: 'Подключить источник' })}
+          title={t('app.marketing.connect.title', { defaultValue: 'Connect source' })}
           subtitle={campaign?.name || campaignId}
           kind="browse"
           secondaryActions={
             <Link to={marketingCampaignPath(campaignId)} className="btn-secondary btn-sm">
-              К кампании
+              {t('app.marketing.connect.back_to_campaign', {
+                defaultValue: 'Back to campaign',
+              })}
             </Link>
           }
         />
@@ -236,17 +238,22 @@ export default function MarketingConnectSourcePage() {
             data-testid="marketing-connect-limit"
             role="status"
           >
-            <p className="font-medium">Лимит primary-источников для этого Flight</p>
+            <p className="font-medium">
+              {t('app.marketing.connect.limit.title', {
+                defaultValue: 'Primary source limit for this Flight',
+              })}
+            </p>
             <p className="mt-1">
-              Сейчас можно иметь не больше одной активной primary анкеты HostFlow и одного primary
-              Meta-источника. Несколько равноправных источников одного типа появятся позже — UI не
-              предлагает заведомо недоступное подключение.
+              {t('app.marketing.connect.limit.body', {
+                defaultValue:
+                  'You can have at most one active primary HostFlow form and one primary Meta source. Multiple equal sources of the same type will come later — the UI does not offer a connection that would fail.',
+              })}
             </p>
             <Link
               to={marketingCampaignPath(campaignId)}
               className="mt-3 inline-flex btn-secondary btn-sm"
             >
-              Вернуться к кампании
+              {t('app.marketing.connect.limit.back', { defaultValue: 'Return to campaign' })}
             </Link>
           </div>
         ) : null}
@@ -254,13 +261,24 @@ export default function MarketingConnectSourcePage() {
         {!loading && campaign && flight && (canMeta || canPublic) ? (
           <>
             <p className="text-sm text-slate-600">
-              Источник заявок для кампании «{campaign.name}». Routing наследует Primary Target
-              кампании ({campaign.targets?.find((x) => x.role === 'primary')?.route_intent || '—'}
-              ). Список Meta = Lead Form (не отдельное объявление). Формы, уже приходившие в лидах,
-              тоже здесь — даже если профиль ещё не создан. Точечный Ad ID — на карточке кампании.
+              {t('app.marketing.connect.intro', {
+                defaultValue:
+                  'Application source for campaign “{name}”. Routing inherits the campaign Primary Target ({intent}). The Meta list is Lead Form (not a single ad). Forms already seen in leads are here too — even if a profile is not created yet. Per-ad Ad ID is on the campaign card.',
+                values: {
+                  name: campaign.name,
+                  intent:
+                    campaign.targets?.find((x) => x.role === 'primary')?.route_intent || '—',
+                },
+              })}
             </p>
 
-            <div className="grid gap-3" role="radiogroup" aria-label="Тип источника">
+            <div
+              className="grid gap-3"
+              role="radiogroup"
+              aria-label={t('app.marketing.connect.aria.source_type', {
+                defaultValue: 'Source type',
+              })}
+            >
               <MarketingOptionCard
                 selected={sourceKind === 'public_form'}
                 disabled={!canPublic}
@@ -270,11 +288,21 @@ export default function MarketingConnectSourcePage() {
                 }}
                 testId="marketing-connect-kind-public"
               >
-                <span className="font-medium text-slate-900">Публичная анкета HostFlow</span>
+                <span className="font-medium text-slate-900">
+                  {t('app.marketing.connect.kind.public_form.label', {
+                    defaultValue: 'HostFlow public form',
+                  })}
+                </span>
                 <span className="mt-1 block text-slate-600">
                   {canPublic
-                    ? 'Заявки приходят через публичную ссылку анкеты кандидата.'
-                    : 'Primary анкета уже подключена к этому Flight.'}
+                    ? t('app.marketing.connect.kind.public_form.desc_available', {
+                        defaultValue:
+                          'Applications arrive via the candidate form public link.',
+                      })
+                    : t('app.marketing.connect.kind.public_form.desc_taken', {
+                        defaultValue:
+                          'A primary form is already connected to this Flight.',
+                      })}
                 </span>
               </MarketingOptionCard>
               <MarketingOptionCard
@@ -289,10 +317,19 @@ export default function MarketingConnectSourcePage() {
                 <span className="font-medium text-slate-900">Meta Lead Ads</span>
                 <span className="mt-1 block text-slate-600">
                   {!canMeta
-                    ? 'Primary Meta-источник уже подключён к этому Flight.'
+                    ? t('app.marketing.connect.kind.meta.desc_taken', {
+                        defaultValue:
+                          'A primary Meta source is already connected to this Flight.',
+                      })
                     : metaSources.length
-                      ? 'Привязать Lead Form (Meta) как источник — все объявления формы пойдут в этот Flight.'
-                      : 'Нет Meta-форм в каталоге и в лидах — настройте Meta или дождитесь первого лида.'}
+                      ? t('app.marketing.connect.kind.meta.desc_available', {
+                          defaultValue:
+                            'Bind a Lead Form (Meta) as source — all ads for the form go to this Flight.',
+                        })
+                      : t('app.marketing.connect.kind.meta.desc_empty', {
+                          defaultValue:
+                            'No Meta forms in the catalog or leads — configure Meta or wait for the first lead.',
+                        })}
                 </span>
               </MarketingOptionCard>
             </div>
@@ -300,7 +337,13 @@ export default function MarketingConnectSourcePage() {
             {sourceKind === 'public_form' && canPublic ? (
               <div className="space-y-3" data-testid="marketing-connect-public-form">
                 {forms.length ? (
-                  <div className="grid gap-2" role="radiogroup" aria-label="Анкета HostFlow">
+                  <div
+                    className="grid gap-2"
+                    role="radiogroup"
+                    aria-label={t('app.marketing.connect.aria.hostflow_form', {
+                      defaultValue: 'HostFlow form',
+                    })}
+                  >
                     {forms.map((f) => (
                       <MarketingOptionCard
                         key={f.id}
@@ -317,9 +360,9 @@ export default function MarketingConnectSourcePage() {
                   </div>
                 ) : (
                   <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    Нет активных анкет.{' '}
+                    {t('app.marketing.connect.no_forms', { defaultValue: 'No active forms.' })}{' '}
                     <Link to={CRM_APP_PATHS.marketingForms} className="underline">
-                      Открыть анкеты
+                      {t('app.marketing.connect.open_forms', { defaultValue: 'Open forms' })}
                     </Link>
                   </p>
                 )}
@@ -333,7 +376,7 @@ export default function MarketingConnectSourcePage() {
                       <label className="block text-sm">
                         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                           {t('app.marketing.connect.create.title', {
-                            defaultValue: 'Название новой анкеты',
+                            defaultValue: 'New form name',
                           })}
                         </span>
                         <input
@@ -353,7 +396,7 @@ export default function MarketingConnectSourcePage() {
                           onClick={() => void handleCreateHostflowForm()}
                         >
                           {t('app.marketing.connect.create.submit', {
-                            defaultValue: 'Создать и выбрать',
+                            defaultValue: 'Create and select',
                           })}
                         </button>
                         <button
@@ -372,7 +415,7 @@ export default function MarketingConnectSourcePage() {
                       <p className="text-xs text-slate-500">
                         {t('app.marketing.connect.create.hint', {
                           defaultValue:
-                            'Создаёт активную HostFlow-анкету (candidate fields) через createIntakeForm и сразу выбирает её.',
+                            'Creates an active HostFlow form (candidate fields) via createIntakeForm and selects it immediately.',
                         })}
                       </p>
                     </div>
@@ -384,7 +427,7 @@ export default function MarketingConnectSourcePage() {
                       onClick={() => setShowCreateForm(true)}
                     >
                       {t('app.marketing.connect.create.open', {
-                        defaultValue: 'Создать новую анкету',
+                        defaultValue: 'Create new form',
                       })}
                     </button>
                   )
@@ -424,7 +467,9 @@ export default function MarketingConnectSourcePage() {
                             className="ml-2 inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-inset ring-amber-200"
                             data-testid={`marketing-connect-meta-discovered-${s.id}`}
                           >
-                            из лидов
+                            {t('app.marketing.connect.meta.from_leads', {
+                              defaultValue: 'from leads',
+                            })}
                           </span>
                         ) : null}
                       </span>
@@ -483,7 +528,7 @@ export default function MarketingConnectSourcePage() {
 
             <div className="flex justify-end gap-2 pt-2">
               <Link to={marketingCampaignPath(campaignId)} className="btn-secondary btn-sm">
-                Отмена
+                {t('app.marketing.connect.cancel', { defaultValue: 'Cancel' })}
               </Link>
               <button
                 type="button"
@@ -492,14 +537,20 @@ export default function MarketingConnectSourcePage() {
                 onClick={() => void handleConnect()}
                 data-testid="marketing-connect-submit"
               >
-                {submitting ? 'Подключение…' : 'Подключить'}
+                {submitting
+                  ? t('app.marketing.connect.connecting', { defaultValue: 'Connecting…' })
+                  : t('app.marketing.connect.connect', { defaultValue: 'Connect' })}
               </button>
             </div>
           </>
         ) : null}
 
         {!loading && campaign && !flight ? (
-          <p className="text-sm text-amber-800">У кампании нет Flight — обратитесь к поддержке.</p>
+          <p className="text-sm text-amber-800">
+            {t('app.marketing.connect.no_flight', {
+              defaultValue: 'This campaign has no Flight — contact support.',
+            })}
+          </p>
         ) : null}
       </div>
     </PageShell>

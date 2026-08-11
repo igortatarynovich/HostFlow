@@ -78,8 +78,7 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
     if (!choice || !formId) return
     if (!ownCompanyId) {
       notify({
-        title: t('app.leads.needs_routing.errors.no_own_company', {
-          defaultValue: 'Не удалось определить компанию (own company). Настройте маршрут в интеграции Meta.',
+        title: t('app.leads.needs_routing.errors.no_own_company', { defaultValue: 'Could not resolve own company. Configure the route in Meta integration.',
         }),
         variant: 'error',
       })
@@ -87,7 +86,7 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
     }
     if (choice === 'service_order_lead' && !serviceCode) {
       notify({
-        title: t('app.leads.needs_routing.errors.no_service', { defaultValue: 'Выберите услугу из каталога' }),
+        title: t('app.leads.needs_routing.errors.no_service', { defaultValue: 'Select a service from the catalog' }),
         variant: 'error',
       })
       return
@@ -121,8 +120,7 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
 
       const result = await retryLeads({ lead_ids: Array.from(leadIds), refresh_graph: true })
       notify({
-        title: t('app.leads.needs_routing.applied', {
-          defaultValue: 'Маршрут сохранён · переобработано: {count}',
+        title: t('app.leads.needs_routing.applied', { defaultValue: 'Route saved · reprocessed: {count}',
           values: { count: String(result.processed ?? 0) },
         }),
         variant: 'success',
@@ -135,7 +133,7 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
         (err as Error)?.message ??
         'Failed'
       notify({
-        title: t('app.leads.needs_routing.errors.apply', { defaultValue: 'Не удалось применить маршрут' }),
+        title: t('app.leads.needs_routing.errors.apply', { defaultValue: 'Could not apply route' }),
         description: String(detail),
         variant: 'error',
       })
@@ -168,12 +166,10 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50/80 p-4">
       <p className="text-sm font-semibold text-blue-950">
-        {t('app.leads.needs_routing.title', { defaultValue: 'Куда направить эту заявку?' })}
+        {t('app.leads.needs_routing.title', { defaultValue: 'Where should this inquiry go?' })}
       </p>
       <p className="mt-1 text-sm text-blue-900">
-        {t('app.leads.needs_routing.body', {
-          defaultValue:
-            'Форма Meta пришла без маршрута. Выберите поток один раз — решение можно применить ко всей форме, чтобы такие заявки больше не попадали в подбор без вакансии.',
+        {t('app.leads.needs_routing.body', { defaultValue: 'This Meta form arrived without a route. Choose a stream once — you can apply it to the whole form so similar inquiries no longer land in recruitment without a vacancy.',
         })}
       </p>
 
@@ -192,21 +188,21 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
         ) : null}
         {formName ? (
           <div>
-            <dt className="text-blue-700/70">{t('app.leads.needs_routing.form_name', { defaultValue: 'Форма' })}</dt>
+            <dt className="text-blue-700/70">{t('app.leads.needs_routing.form_name', { defaultValue: 'Form' })}</dt>
             <dd className="font-medium">{formName}</dd>
           </div>
         ) : null}
       </dl>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {routeBtn('candidate', t('app.leads.needs_routing.route.candidates', { defaultValue: 'Это кандидаты' }))}
-        {routeBtn('client_lead', t('app.leads.needs_routing.route.companies', { defaultValue: 'Это компании' }))}
-        {routeBtn('service_order_lead', t('app.leads.needs_routing.route.service', { defaultValue: 'Это услуга' }))}
+        {routeBtn('candidate', t('app.leads.needs_routing.route.candidates', { defaultValue: 'These are candidates' }))}
+        {routeBtn('client_lead', t('app.leads.needs_routing.route.companies', { defaultValue: 'These are companies' }))}
+        {routeBtn('service_order_lead', t('app.leads.needs_routing.route.service', { defaultValue: 'This is a service' }))}
       </div>
 
       {choice === 'service_order_lead' ? (
         <label className="mt-3 block max-w-md text-xs font-medium text-blue-900">
-          <div className="mb-1">{t('app.leads.needs_routing.pick_service', { defaultValue: 'Услуга из каталога' })}</div>
+          <div className="mb-1">{t('app.leads.needs_routing.pick_service', { defaultValue: 'Service from catalog' })}</div>
           <select
             className="input h-9 w-full rounded-lg border-blue-300 bg-white px-3 text-sm"
             value={serviceCode}
@@ -214,7 +210,7 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
             disabled={servicesLoading || busy}
           >
             <option value="">
-              {servicesLoading ? t('common.loading') : t('app.leads.needs_routing.pick_service_placeholder', { defaultValue: 'Выберите услугу…' })}
+              {servicesLoading ? t('common.loading') : t('app.leads.needs_routing.pick_service_placeholder', { defaultValue: 'Select a service…' })}
             </option>
             {services.map((s) => (
               <option key={s.id} value={s.code}>
@@ -233,7 +229,7 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
           onChange={(e) => setApplyToForm(e.target.checked)}
           disabled={busy}
         />
-        {t('app.leads.needs_routing.apply_to_form', { defaultValue: 'Применить ко всем заявкам этой формы' })}
+        {t('app.leads.needs_routing.apply_to_form', { defaultValue: 'Apply to all inquiries from this form' })}
       </label>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -245,17 +241,16 @@ export default function LeadMetaB2bRoutingPanel({ lead, retrying = false, onRetr
         >
           {saving
             ? t('common.loading')
-            : t('app.leads.needs_routing.apply', { defaultValue: 'Применить маршрут и переобработать' })}
+            : t('app.leads.needs_routing.apply', { defaultValue: 'Apply route and reprocess' })}
         </button>
         <Link to={settingsHref} className="text-xs text-blue-700 hover:text-blue-900 hover:underline">
-          {t('app.leads.needs_routing.open_settings', { defaultValue: 'Открыть настройки маршрута' })}
+          {t('app.leads.needs_routing.open_settings', { defaultValue: 'Open route settings' })}
         </Link>
       </div>
 
       {!ownCompanyId ? (
         <p className="mt-2 text-xs text-rose-700">
-          {t('app.leads.needs_routing.no_own_company_hint', {
-            defaultValue: 'Компания (own company) не определена — настройте маршрут формы в интеграции Meta.',
+          {t('app.leads.needs_routing.no_own_company_hint', { defaultValue: 'Own company is not resolved — configure the form route in Meta integration.',
           })}
         </p>
       ) : null}

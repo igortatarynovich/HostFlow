@@ -1,30 +1,67 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchVacancyCategoryOptions, type CatalogOptionDto } from '../api/catalogs'
+import { detectStoredLocale, lookupScopedTranslation, type LocaleCode } from '../i18n'
 import type { SearchRole } from '../services/createLaunchSearch'
 import { catalogOptionDescription, catalogOptionLabel } from '../utils/catalogOptions'
 
-const FALLBACK_ROLES: CatalogOptionDto[] = [
-  {
-    value: 'driver',
-    label: 'Водитель',
-    meta: { emoji: '🚛', subtitle_ru: 'CE, кат. C, международные рейсы', launch_search_supported: true },
-  },
-  {
-    value: 'warehouse',
-    label: 'Склад',
-    meta: { emoji: '📦', subtitle_ru: 'Комплектовщик, погрузчик, логистика', launch_search_supported: true },
-  },
-  {
-    value: 'office',
-    label: 'Офис',
-    meta: { emoji: '🏢', subtitle_ru: 'Диспетчер, бухгалтер, менеджер', launch_search_supported: true },
-  },
-  {
-    value: 'other',
-    label: 'Другое',
-    meta: { emoji: '✏️', subtitle_ru: 'Своя формулировка', launch_search_supported: true },
-  },
-]
+const FALLBACK_ROLE_IDS: SearchRole[] = ['driver', 'warehouse', 'office', 'other']
+
+const FALLBACK_EMOJI: Record<SearchRole, string> = {
+  driver: '🚛',
+  warehouse: '📦',
+  office: '🏢',
+  other: '✏️',
+}
+
+const FALLBACK_TITLE: Record<SearchRole, string> = {
+  driver: 'Driver',
+  warehouse: 'Warehouse',
+  office: 'Office',
+  other: 'Other',
+}
+
+const FALLBACK_SUBTITLE: Record<SearchRole, string> = {
+  driver: 'CE, cat. C, international routes',
+  warehouse: 'Picker, forklift, logistics',
+  office: 'Dispatcher, accountant, manager',
+  other: 'Custom role',
+}
+
+function buildFallbackRoles(locale?: string): CatalogOptionDto[] {
+  const code = (locale?.startsWith('ru')
+    ? 'ru'
+    : locale?.startsWith('pl')
+      ? 'pl'
+      : locale?.startsWith('en')
+        ? 'en'
+        : detectStoredLocale()) as LocaleCode
+  return FALLBACK_ROLE_IDS.map((id) => {
+    const title =
+      lookupScopedTranslation(code, `app.vacancy_categories.${id}`, 'title') || FALLBACK_TITLE[id]
+    const subtitle =
+      lookupScopedTranslation(code, `app.vacancy_categories.${id}`, 'subtitle') ||
+      FALLBACK_SUBTITLE[id]
+    return {
+      value: id,
+      label: title,
+      meta: {
+        emoji: FALLBACK_EMOJI[id],
+        label_en: FALLBACK_TITLE[id],
+        label_ru:
+          lookupScopedTranslation('ru', `app.vacancy_categories.${id}`, 'title') || FALLBACK_TITLE[id],
+        subtitle_en: FALLBACK_SUBTITLE[id],
+        subtitle_ru:
+          lookupScopedTranslation('ru', `app.vacancy_categories.${id}`, 'subtitle') ||
+          FALLBACK_SUBTITLE[id],
+        launch_search_supported: true,
+        description_en: FALLBACK_SUBTITLE[id],
+        description_ru:
+          lookupScopedTranslation('ru', `app.vacancy_categories.${id}`, 'subtitle') ||
+          FALLBACK_SUBTITLE[id],
+      },
+    }
+  })
+}
 
 export type VacancyCategoryOption = {
   id: SearchRole
@@ -44,9 +81,10 @@ function mapRoleOption(row: CatalogOptionDto, locale?: string): VacancyCategoryO
 }
 
 export function useVacancyCategoryOptions(locale?: string, launchSearchOnly = true) {
+  const fallbackRows = useMemo(() => buildFallbackRoles(locale), [locale])
   const fallback = useMemo(
-    () => FALLBACK_ROLES.map((row) => mapRoleOption(row, locale)),
-    [locale],
+    () => fallbackRows.map((row) => mapRoleOption(row, locale)),
+    [fallbackRows, locale],
   )
   const [options, setOptions] = useState<VacancyCategoryOption[]>(fallback)
   const [loading, setLoading] = useState(true)
@@ -57,7 +95,7 @@ export function useVacancyCategoryOptions(locale?: string, launchSearchOnly = tr
     void fetchVacancyCategoryOptions(launchSearchOnly)
       .then((rows) => {
         if (cancelled) return
-        const mapped = (rows.length ? rows : FALLBACK_ROLES).map((row) => mapRoleOption(row, locale))
+        const mapped = (rows.length ? rows : fallbackRows).map((row) => mapRoleOption(row, locale))
         setOptions(mapped)
       })
       .catch(() => {
@@ -69,7 +107,7 @@ export function useVacancyCategoryOptions(locale?: string, launchSearchOnly = tr
     return () => {
       cancelled = true
     }
-  }, [fallback, launchSearchOnly, locale])
+  }, [fallback, fallbackRows, launchSearchOnly, locale])
 
   return { options, loading }
 }

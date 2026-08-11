@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CreateClientChannelFlowChrome } from '../../components/client-acquisition/CreateClientChannelFlowChrome'
 import { ClientChannelReadyPanel } from '../../components/client-acquisition/ClientChannelReadyPanel'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { useI18n } from '../../i18n'
 import {
   createClientAcquisitionChannel,
   type ClientAcquisitionChannelResult,
@@ -71,6 +72,7 @@ function ServiceCheckbox({
 }
 
 export default function CreateClientChannelWizardPage() {
+  const { t } = useI18n()
   const [step, setStep] = useState(1)
   const [audience, setAudience] = useState<ClientAudience | ''>('')
   const [services, setServices] = useState<ClientService[]>([])
@@ -100,7 +102,13 @@ export default function CreateClientChannelWizardPage() {
       setStep(3)
     } catch (err) {
       setError(
-        getFriendlyErrorInfo(err, 'Не удалось создать канал. Попробуйте ещё раз.', undefined),
+        getFriendlyErrorInfo(
+          err,
+          t('app.client_acquisition.wizard.create_failed', {
+            defaultValue: 'Could not create the channel. Please try again.',
+          }),
+          t,
+        ),
       )
     } finally {
       setLoading(false)
@@ -109,7 +117,11 @@ export default function CreateClientChannelWizardPage() {
 
   if (step === 3 && result) {
     return (
-      <CreateClientChannelFlowChrome step={3} totalSteps={TOTAL_STEPS} title="Привлечение готово">
+      <CreateClientChannelFlowChrome
+        step={3}
+        totalSteps={TOTAL_STEPS}
+        title={t('app.client_acquisition.wizard.done_title', { defaultValue: 'Acquisition ready' })}
+      >
         <ClientChannelReadyPanel
           channelId={result.channelId}
           channelName={result.name}
@@ -123,16 +135,34 @@ export default function CreateClientChannelWizardPage() {
     <CreateClientChannelFlowChrome
       step={step}
       totalSteps={TOTAL_STEPS}
-      title={step === 1 ? 'Кого вы хотите привлекать?' : 'Какие услуги предлагаете?'}
+      title={
+        step === 1
+          ? t('app.client_acquisition.wizard.audience_title', {
+              defaultValue: 'Who do you want to attract?',
+            })
+          : t('app.client_acquisition.wizard.services_title', {
+              defaultValue: 'Which services do you offer?',
+            })
+      }
       subtitle={
         step === 1
-          ? 'Выберите тип компаний, которые должны оставлять заявки на подбор персонала.'
-          : 'Компания должна понимать, что именно вы ей предлагаете.'
+          ? t('app.client_acquisition.wizard.audience_subtitle', {
+              defaultValue: 'Choose the type of companies that should submit staffing inquiries.',
+            })
+          : t('app.client_acquisition.wizard.services_subtitle', {
+              defaultValue: 'The company should understand what you are offering.',
+            })
       }
     >
       {step === 1 ? (
         <div className="space-y-4">
-          <div className="grid gap-3" role="radiogroup" aria-label="Кого привлекаем">
+          <div
+            className="grid gap-3"
+            role="radiogroup"
+            aria-label={t('app.client_acquisition.wizard.audience_aria', {
+              defaultValue: 'Who we attract',
+            })}
+          >
             {CLIENT_AUDIENCE_OPTIONS.map((opt) => (
               <OptionCard
                 key={opt.id}
@@ -141,9 +171,16 @@ export default function CreateClientChannelWizardPage() {
                 testId={`m1-create-client-channel-audience-${opt.id}`}
               >
                 <span className="font-medium text-slate-900">
-                  {opt.emoji} {opt.title}
+                  {opt.emoji}{' '}
+                  {t(`app.client_acquisition.audience.${opt.id}.title`, {
+                    defaultValue: opt.title,
+                  })}
                 </span>
-                <span className="mt-1 block text-slate-600">{opt.subtitle}</span>
+                <span className="mt-1 block text-slate-600">
+                  {t(`app.client_acquisition.audience.${opt.id}.subtitle`, {
+                    defaultValue: opt.subtitle,
+                  })}
+                </span>
               </OptionCard>
             ))}
           </div>
@@ -155,7 +192,7 @@ export default function CreateClientChannelWizardPage() {
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
               data-testid="m1-create-client-channel-continue"
             >
-              Продолжить
+              {t('common.continue', { defaultValue: 'Continue' })}
             </button>
           </div>
         </div>
@@ -169,7 +206,9 @@ export default function CreateClientChannelWizardPage() {
                 key={opt.id}
                 checked={services.includes(opt.id)}
                 onChange={() => toggleService(opt.id)}
-                label={opt.title}
+                label={t(`app.client_acquisition.services.${opt.id}`, {
+                  defaultValue: opt.title,
+                })}
                 testId={`m1-create-client-channel-service-${opt.id}`}
               />
             ))}
@@ -179,7 +218,9 @@ export default function CreateClientChannelWizardPage() {
               type="text"
               value={serviceOther}
               onChange={(e) => setServiceOther(e.target.value)}
-              placeholder="Опишите услугу"
+              placeholder={t('app.client_acquisition.wizard.service_other_placeholder', {
+                defaultValue: 'Describe the service',
+              })}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               data-testid="m1-create-client-channel-service-other-input"
             />
@@ -193,7 +234,7 @@ export default function CreateClientChannelWizardPage() {
               onClick={() => setStep(1)}
               className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Назад
+              {t('common.back', { defaultValue: 'Back' })}
             </button>
             <button
               type="button"
@@ -206,7 +247,11 @@ export default function CreateClientChannelWizardPage() {
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
               data-testid="m1-create-client-channel-submit"
             >
-              {loading ? 'Готовим ссылку…' : 'Получить ссылку'}
+              {loading
+                ? t('app.client_acquisition.wizard.preparing_link', {
+                    defaultValue: 'Preparing link…',
+                  })
+                : t('app.client_acquisition.wizard.get_link', { defaultValue: 'Get link' })}
             </button>
           </div>
         </div>
