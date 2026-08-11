@@ -51,8 +51,7 @@ export function SuccessPathReadinessPanel({
   const companyDone = Boolean(items.find((i) => i.id === 'company')?.done)
   const demoSeeded = Boolean(status?.demo_seeded)
   const showDemoActions = companyDone && !pathComplete
-  const needsLeadEscape =
-    nextAction?.id === 'lead' || nextAction?.id === 'meta' || nextAction?.id === 'contact'
+  const needsLeadEscape = nextAction?.id === 'lead' || nextAction?.id === 'meta'
 
   const handleSeedDemo = async () => {
     setDemoBusy(true)
@@ -234,7 +233,7 @@ export function SuccessPathReadinessPanel({
             <p className="mt-3 text-xs text-slate-600">
               {t('app.onboarding.success_path.lead_escape_hint', {
                 defaultValue:
-                  'Нет рекламы? Загрузите учебные данные, выберите способ получения заявок или пропустите Meta.',
+                  'Нет входящих? Загрузите учебные данные, выберите способ получения заявок или подключите источник позже.',
               })}
             </p>
           ) : null}
@@ -399,11 +398,12 @@ export function SuccessPathReadinessPanel({
                     ) : null}
                   </span>
                 </span>
-                {!item.done && !isNext ? (
+                {!item.done ? (
                   <Link
                     to={item.href}
                     className="shrink-0 text-xs font-medium text-brand-700 hover:underline"
                     onClick={() => void refresh()}
+                    data-testid={isNext ? `success-path-item-${item.id}-open-next` : undefined}
                   >
                     {t('app.onboarding.success_path.open', { defaultValue: 'Open' })}
                   </Link>

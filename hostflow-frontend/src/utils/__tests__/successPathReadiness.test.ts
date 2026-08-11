@@ -11,11 +11,10 @@ const emptySteps = {
   first_client_created: false,
   first_vacancy_created: false,
   first_lead_created: false,
-  next_action_created: false,
 }
 
 describe('successPathReadiness', () => {
-  it('employer path: company → vacancy before meta/lead', () => {
+  it('employer path: company → vacancy before lead', () => {
     const items = buildSuccessPathItems({
       businessType: 'employer',
       steps: { ...emptySteps, company_created: true },
@@ -24,6 +23,7 @@ describe('successPathReadiness', () => {
       teammatesInvited: false,
     })
     expect(items.some((i) => i.id === 'client')).toBe(false)
+    expect(items.some((i) => i.id === 'contact' as never)).toBe(false)
     expect(pickSuccessPathNext(items, 'employer')?.id).toBe('vacancy')
   })
 
@@ -48,7 +48,7 @@ describe('successPathReadiness', () => {
     })
     expect(items.some((i) => i.id === 'vacancy')).toBe(false)
     expect(items.find((i) => i.id === 'client')?.done).toBe(true)
-    expect(pickSuccessPathNext(items, 'services')?.id).toBe('contact')
+    expect(pickSuccessPathNext(items, 'services')?.id).toBe('invite')
   })
 
   it('lead step links to intake when there is no lead yet', () => {
@@ -68,6 +68,19 @@ describe('successPathReadiness', () => {
     expect(pickSuccessPathNext(items, 'employer')?.id).toBe('lead')
   })
 
+  it('optional source step is not next while core path remains', () => {
+    const items = buildSuccessPathItems({
+      businessType: 'agency',
+      steps: { ...emptySteps, company_created: true, first_client_created: true },
+      metaConnectedOrDeferred: false,
+      metaDeferredOnly: false,
+      teammatesInvited: false,
+    })
+    expect(pickSuccessPathNext(items, 'agency')?.id).toBe('vacancy')
+    expect(items.find((i) => i.id === 'meta')?.href).toContain('/settings/integrations')
+    expect(items.find((i) => i.id === 'meta')?.href).not.toContain('/meta')
+  })
+
   it('meta and invite stay optional for completion', () => {
     const items = buildSuccessPathItems({
       businessType: 'employer',
@@ -75,7 +88,6 @@ describe('successPathReadiness', () => {
         company_created: true,
         first_vacancy_created: true,
         first_lead_created: true,
-        next_action_created: true,
         first_client_created: false,
       },
       metaConnectedOrDeferred: false,

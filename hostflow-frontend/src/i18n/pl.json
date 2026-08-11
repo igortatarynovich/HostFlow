@@ -9012,7 +9012,7 @@
         "defer_meta": "Pomiń na razie",
         "complete": "Podstawy gotowe — pracuj dalej z menu.",
         "page_title": "Zacznij pracę",
-        "page_subtitle": "Wykonaj kolejny krok na ekranie — do zgłoszenia i kontaktu.",
+        "page_subtitle": "Wykonaj kolejny krok na ekranie — do pierwszego zgłoszenia.",
         "hub_badge": "Start",
         "hub_footer": "Zrób krok powyżej — na razie wystarczy.",
         "items": {
@@ -9027,9 +9027,9 @@
             "cta": "Zaproś zespół"
           },
           "meta": {
-            "label": "Podłącz reklamy Facebook / Meta",
-            "hint": "Żeby zgłoszenia z reklam wpadały tutaj same. Możesz pominąć i wczytać dane przykładowe.",
-            "cta": "Podłącz reklamy"
+            "label": "Podłącz źródło zgłoszeń",
+            "hint": "Na stronie integracji wybierz kanał: reklamy, formularze, komunikatory i inne. Opcjonalne.",
+            "cta": "Otwórz integracje"
           },
           "vacancy": {
             "label": "Utwórz pierwszy wakat",
@@ -9038,12 +9038,12 @@
           },
           "lead": {
             "label": "Odbierz pierwsze zgłoszenie",
-            "hint": "Wybierz: reklamy Meta, dane przykładowe albo wpis ręczny.",
+            "hint": "Dane przykładowe, wpis ręczny albo podłączone źródło — bez jednego obowiązkowego kanału.",
             "cta": "Jak zbierać zgłoszenia"
           },
           "contact": {
-            "label": "Skontaktuj się z osobą",
-            "hint": "Otwórz zgłoszenie i wykonaj kolejny krok, żeby nic nie wisiało.",
+            "label": "Wykonaj pierwszy kontakt ze zgłoszeniem",
+            "hint": "Otwórz zgłoszenie i zrób kolejny krok (telefon, wiadomość, zadanie), żeby osoba nie czekała bez odpowiedzi.",
             "cta": "Otwórz zgłoszenia"
           },
           "client": {
@@ -9062,14 +9062,14 @@
         "title_agency": "Pierwsze kroki dla agencji",
         "title_employer": "Pierwsze kroki dla pracodawcy",
         "title_services": "Pierwsze kroki dla firmy usługowej",
-        "subtitle_agency": "Kolejno: klient → wakat → zgłoszenie → kontakt.",
-        "subtitle_employer": "Kolejno: wakat → zgłoszenie → kontakt.",
-        "subtitle_services": "Kolejno: klient lub zgłoszenie → kontakt.",
+        "subtitle_agency": "Kolejno: klient → wakat → zgłoszenie.",
+        "subtitle_employer": "Kolejno: wakat → zgłoszenie.",
+        "subtitle_services": "Kolejno: klient lub zgłoszenie.",
         "open_faq": "Utknąłeś? Otwórz FAQ",
         "open_faq_short": "FAQ",
         "open_docs": "Przewodnik startowy",
         "open_demo": "Jak działają dane przykładowe",
-        "lead_escape_hint": "Brak reklam? Wczytaj dane przykładowe, wybierz sposób zgłoszeń albo pomiń Meta.",
+        "lead_escape_hint": "Brak zgłoszeń? Wczytaj dane przykładowe, wybierz sposób zbierania albo podłącz źródło później.",
         "recovery_title": "Potrzebujesz wyjścia?",
         "recovery_body": "Otwórz „Zacznij pracę”, wczytaj dane przykładowe lub FAQ uruchomienia. Zawsze jest kolejny krok.",
         "recovery_setup": "Otwórz checklistę startu",

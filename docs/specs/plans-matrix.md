@@ -12,7 +12,7 @@
 
 - **Внутренний код плана** (`plan_code`): `starter`, `team`, `pro`, `enterprise` (TODO 2.1.C). Используется в `TenantLicense.plan`, в Stripe metadata, в проверках кода.
 - **Маркетинговое имя:** `Solo`, `Team`, `Business`, `Enterprise`. Только в UI и лендинге.
-- **Trial:** мета-статус `subscription.status='trial'`. Сейчас мапится в `starter`-каплы — должен иметь собственные SSOT-капы (TODO 2.1.D).
+- **Trial:** мета-статус `subscription.status='trial'` (продуктово **30 дней**). Feature-gates = Team+/Business depth (`plan_bucket_for_limits('trial') → pro`); soft abuse-caps — `trial_usage_caps` (leads / conv-actions / portal / automation runs).
 
 ---
 
@@ -60,25 +60,25 @@
 
 ## 4. Фичи (вкл./выкл. по тарифам)
 
-(Источник: `plan_feature_gates.py` + `useTeamTierFeatures.ts`. «Team-tier features» = всё, что закрыто для `_TEAM_TIER_BLOCKED_PLANS = {starter, trial, free, solo}`.)
+(Источник: `plan_feature_gates.py` + `useTeamTierFeatures.ts`. «Team-tier features» = всё, что закрыто для `_TEAM_TIER_BLOCKED_PLANS = {starter, free, solo}`. **Trial (30 дней) намеренно разблокирован** — полный продуктовый контур для оценки; soft abuse-caps остаются в `trial_usage_caps`.)
 
-| Фича | Solo | Team | Business | Enterprise | Where enforced |
-|------|------|------|----------|------------|----------------|
-| **Лиды — Meta intake** | ✓ (1 credential, 25 mapping rules) | ✓ unlim | ✓ unlim | ✓ | `ensure_meta_lead_*` |
-| **Лиды — Meta OAuth quick-connect** | ✗ | ✓ | ✓ | ✓ | `ensure_meta_leads_oauth_allowed` |
-| **Лиды — Generic JSON inbound webhook** | ✗ | ✓ | ✓ | ✓ | `ensure_leads_generic_inbound_webhook_allowed` |
-| **Лиды — Custom field definitions (active, non-system)** | 10 | unlim | unlim | unlim | `ensure_lead_custom_field_definition_create_allowed` (+ pack `pack_custom_fields_25/100`) |
-| **Лиды — Lead forms (active)** | 0 | base + pack | base + pack | base + pack | `lead_forms_quota` (+ `pack_lead_forms_5`) |
-| **Лиды — Per-plan source limit (1 / 3 / 10)** | 1 | 3 | 10 | 10 | DONE: `ensure_lead_source_limit` + create-time enforcement в meta credentials / generic webhook / active lead forms. |
-| **Funnel definitions (custom pipelines)** | 1 | 3 | 20 | 20 | `ensure_custom_funnel_create_allowed` |
-| **Communication channels (suммарно)** | 1 | 3 | 10 | 10 | `ensure_communication_channel_account_create_allowed` |
-| **Automation rules (enabled)** | ✗ (no rules at all) | 10 | 50 | 50 | `ensure_automation_rules_*` (+ `pack_automation_rules_10/25`) |
-| **NBA (Next Best Action) / lead distribution рекомендации** | базовые | базовые | расширенные (`plan_is_pro_tier`) | расширенные | `_nba.py` / lead_distribution upsells |
-| **Branded portal per workspace** | ✗ | ✗ | ✓ (доп. SKU) | ✓ | (Stripe SKU `branded_portal_per_workspace`) |
-| **Client portal per account** | ✗ | ✓ (3) | ✓ (25) | unlim | `max_public_portal_links` + `pack_client_portal_5` |
-| **Финансы — Invoices** | базовые | базовые | расширенные (TODO: явный гейт) | расширенные | TBD — **сейчас гейт через 402 в API, без явной плашки.** |
-| **SSO / SAML / SCIM** | ✗ | ✗ | ✗ | ✓ | TBD (Enterprise-only) |
-| **Audit log retention > 90 дней** | 30 d | 90 d | 365 d | unlim | TBD |
+| Фича | Solo | Trial (30d) | Team | Business | Enterprise | Where enforced |
+|------|------|-------------|------|----------|------------|----------------|
+| **Лиды — Meta intake** | ✓ (1 credential, 25 mapping rules) | ✓ unlim | ✓ unlim | ✓ unlim | ✓ | `ensure_meta_lead_*` |
+| **Лиды — Meta OAuth quick-connect** | ✗ | ✓ | ✓ | ✓ | ✓ | `ensure_meta_leads_oauth_allowed` |
+| **Лиды — Generic JSON inbound webhook** | ✗ | ✓ | ✓ | ✓ | ✓ | `ensure_leads_generic_inbound_webhook_allowed` |
+| **Лиды — Custom field definitions (active, non-system)** | 10 | unlim | unlim | unlim | unlim | `ensure_lead_custom_field_definition_create_allowed` (+ pack `pack_custom_fields_25/100`) |
+| **Лиды — Lead forms (active)** | 0 | base + pack | base + pack | base + pack | base + pack | `lead_forms_quota` (+ `pack_lead_forms_5`) |
+| **Лиды — Per-plan source limit (1 / 3 / 10)** | 1 | 10 | 3 | 10 | 10 | DONE: `ensure_lead_source_limit` + create-time enforcement в meta credentials / generic webhook / active lead forms. |
+| **Funnel definitions (custom pipelines)** | 1 | 20 | 3 | 20 | 20 | `ensure_custom_funnel_create_allowed` |
+| **Communication channels (suммарно)** | 1 | 10 | 3 | 10 | 10 | `ensure_communication_channel_account_create_allowed` |
+| **Automation rules (enabled)** | ✗ (no rules at all) | 50 | 10 | 50 | 50 | `ensure_automation_rules_*` (+ `pack_automation_rules_10/25`) |
+| **NBA (Next Best Action) / lead distribution рекомендации** | базовые | расширенные (`plan_is_pro_tier` bucket) | базовые | расширенные (`plan_is_pro_tier`) | расширенные | `_nba.py` / lead_distribution upsells |
+| **Branded portal per workspace** | ✗ | ✗ | ✗ | ✓ (доп. SKU) | ✓ | (Stripe SKU `branded_portal_per_workspace`) |
+| **Client portal per account** | ✗ | ✓ (как Team+) | ✓ (3) | ✓ (25) | unlim | `max_public_portal_links` + `pack_client_portal_5` |
+| **Финансы — Invoices** | базовые | базовые | базовые | расширенные (TODO: явный гейт) | расширенные | TBD — **сейчас гейт через 402 в API, без явной плашки.** |
+| **SSO / SAML / SCIM** | ✗ | ✗ | ✗ | ✗ | ✓ | TBD (Enterprise-only) |
+| **Audit log retention > 90 дней** | 30 d | 90 d | 90 d | 365 d | unlim | TBD |
 
 ---
 
@@ -103,7 +103,7 @@
 
 | Состояние | Что можно | Что нельзя | Where enforced |
 |-----------|-----------|------------|----------------|
-| **Trial** (`subscription.status='trial'`, до 14 дней) | Всё, что и Solo, но с trial-капами по SSOT (TODO 2.1.D) | — | `lead_quota` (через мапинг `trial → starter`), `billing_restrictions` |
+| **Trial** (`subscription.status='trial'`, до 30 дней) | Team+/Business feature depth (Meta OAuth, webhooks, automation, …) + soft `trial_usage_caps` | После истечения — billing restrictions | `plan_feature_gates` (trial не в `_TEAM_TIER_BLOCKED_PLANS`), `trial_usage_caps`, `billing_restrictions` |
 | **Active** | По текущему `plan_code` | — | — |
 | **Past_due** (Stripe) | Чтение, экспорт, оплата; завершение текущих задач; закрытие существующих кандидатов (2.1.G v1) | Прочие side-effect write (создание лидов, исходящие comms, automation, non-terminal candidate edits) | `billing_restrictions.ensure_billing_*_allowed` + action-level allowlist |
 | **Canceled / Expired** | Только просмотр истории + оплата | Любые мутации, любые исходящие | `billing_restrictions` + `useLicenseStatus` баннер |

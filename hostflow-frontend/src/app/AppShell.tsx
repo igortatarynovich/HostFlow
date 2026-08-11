@@ -250,9 +250,13 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   if (!isOnboardingPage && !isSuperAdmin && onboardingStatus?.onboarding_required === true) {
     return <Navigate to={CRM_APP_PATHS.platformSetup} replace />
   }
-  /** Guided trial: lock down settings except billing checkout and team/modules (seat toggles). */
+  /** Guided trial: lock down settings except launch/billing/integrations surfaces. */
   const isTrialAllowedSettingsPath =
-    path === ACTIVATION_PATHS.billing || path === CRM_APP_PATHS.settingsTeam
+    path === ACTIVATION_PATHS.billing ||
+    path === CRM_APP_PATHS.settingsTeam ||
+    path === CRM_APP_PATHS.settingsUsers ||
+    path === CRM_APP_PATHS.settingsIntegrations ||
+    path.startsWith(`${CRM_APP_PATHS.settingsIntegrations}/`)
   if (guidedTrialWorkspace && path.startsWith(CRM_APP_PATHS.settings) && !isTrialAllowedSettingsPath) {
     return <Navigate to={ACTIVATION_PATHS.overview} replace />
   }

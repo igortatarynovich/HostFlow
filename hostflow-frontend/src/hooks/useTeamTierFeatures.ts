@@ -5,8 +5,9 @@ import {
   getBillingSubscriptionCached,
 } from '../api/billingSubscriptionCache'
 
-/** Mirrors backend `plan_allows_team_tier_features` / NBA paywall (solo, trial, starter, …). */
-const TEAM_TIER_BLOCKED_PLANS = new Set(['starter', 'trial', 'free', 'solo'])
+/** Mirrors backend `plan_allows_team_tier_features` / NBA paywall (solo, starter, free).
+ * Trial is unlocked so the 30-day evaluation can try Team+ product surfaces. */
+const TEAM_TIER_BLOCKED_PLANS = new Set(['starter', 'free', 'solo'])
 
 export type TeamTierFeaturesState = {
   planCode: string | null

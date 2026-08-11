@@ -10,6 +10,7 @@ from backend.app.services.plan_feature_gates import (
     communication_channel_accounts_cap_for_bucket,
     custom_funnel_definitions_cap_for_bucket,
     lead_sources_cap_for_bucket,
+    plan_allows_meta_leads_oauth,
     plan_allows_team_tier_features,
     plan_bucket_for_limits,
     trial_usage_caps,
@@ -21,7 +22,7 @@ from backend.app.services.tenant_quota import sum_file_entries_bytes
     "plan,expected",
     [
         ("starter", None),
-        ("trial", None),
+        ("trial", 50),
         ("free", None),
         ("solo", None),
         ("team", 10),
@@ -33,6 +34,13 @@ def test_automation_rules_enabled_cap(plan: str, expected: int | None) -> None:
     assert automation_rules_enabled_cap(plan) == expected
 
 
+def test_trial_unlocks_team_tier_and_meta_oauth() -> None:
+    assert plan_allows_team_tier_features("trial") is True
+    assert plan_allows_meta_leads_oauth("trial") is True
+    assert plan_allows_team_tier_features("starter") is False
+    assert plan_allows_meta_leads_oauth("starter") is False
+
+
 def test_focus_personnel_unlocks_tier_gates() -> None:
     assert plan_allows_team_tier_features("starter", tenant_id=FOCUS_PERSONNEL_TENANT_ID) is True
     assert automation_rules_enabled_cap("starter", tenant_id=FOCUS_PERSONNEL_TENANT_ID) == 10_000
@@ -42,7 +50,7 @@ def test_focus_personnel_unlocks_tier_gates() -> None:
     ("plan", "bucket"),
     [
         ("starter", "starter"),
-        ("trial", "starter"),
+        ("trial", "pro"),
         ("agency_basic", "team"),
         ("team", "team"),
         ("business", "pro"),

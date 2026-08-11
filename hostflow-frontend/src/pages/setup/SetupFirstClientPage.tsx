@@ -28,6 +28,7 @@ export default function SetupFirstClientPage() {
   const [countryCode, setCountryCode] = useState('PL')
   const [city, setCity] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const { catalogs } = useCompanySetupCatalogs(locale)
   const { labels: cityOptions } = useCityOptions(countryCode, locale)
 

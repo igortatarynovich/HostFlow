@@ -8,7 +8,6 @@ export type SuccessPathItemId =
   | 'client'
   | 'vacancy'
   | 'lead'
-  | 'contact'
 
 export type SuccessPathItem = {
   id: SuccessPathItemId
@@ -28,13 +27,13 @@ export type SuccessPathStepsLike = {
   first_lead_created?: boolean
   first_vacancy_created?: boolean
   first_client_created?: boolean
-  next_action_created?: boolean
 }
 
 const NEXT_ORDER_BY_TYPE: Record<ActivationBusinessType, SuccessPathItemId[]> = {
-  employer: ['company', 'vacancy', 'meta', 'lead', 'contact', 'invite'],
-  agency: ['company', 'client', 'vacancy', 'meta', 'lead', 'contact', 'invite'],
-  services: ['company', 'client', 'meta', 'lead', 'contact', 'invite'],
+  // Optional source/integrations step comes after core path (not before first lead).
+  employer: ['company', 'vacancy', 'lead', 'meta', 'invite'],
+  agency: ['company', 'client', 'vacancy', 'lead', 'meta', 'invite'],
+  services: ['company', 'client', 'lead', 'meta', 'invite'],
 }
 
 export function normalizeSuccessPathBusinessType(
@@ -77,7 +76,8 @@ export function buildSuccessPathItems(params: {
       done: metaConnectedOrDeferred,
       optional: true,
       deferred: metaDeferredOnly,
-      href: CRM_APP_PATHS.settingsIntegrationsMeta,
+      // Hub of intake sources (Meta is one of many) — not a Meta-only deep link.
+      href: CRM_APP_PATHS.settingsIntegrations,
     },
   ]
 
@@ -96,13 +96,6 @@ export function buildSuccessPathItems(params: {
         optional: false,
         deferred: false,
         href: firstLead ? ACTIVATION_PATHS.leads : CRM_APP_PATHS.setupIntake,
-      },
-      {
-        id: 'contact',
-        done: Boolean(steps?.next_action_created),
-        optional: false,
-        deferred: false,
-        href: ACTIVATION_PATHS.leads,
       },
     )
     return items
@@ -124,13 +117,6 @@ export function buildSuccessPathItems(params: {
         optional: false,
         deferred: false,
         href: firstLead ? ACTIVATION_PATHS.leads : CRM_APP_PATHS.setupIntake,
-      },
-      {
-        id: 'contact',
-        done: Boolean(steps?.next_action_created),
-        optional: false,
-        deferred: false,
-        href: ACTIVATION_PATHS.leads,
       },
     )
     return items
@@ -159,13 +145,6 @@ export function buildSuccessPathItems(params: {
       deferred: false,
       href: firstLead ? ACTIVATION_PATHS.leads : CRM_APP_PATHS.setupIntake,
     },
-    {
-      id: 'contact',
-      done: Boolean(steps?.next_action_created),
-      optional: false,
-      deferred: false,
-      href: ACTIVATION_PATHS.leads,
-    },
   )
   return items
 }
@@ -179,8 +158,9 @@ export function pickSuccessPathNext(
   for (const id of order) {
     const item = byId.get(id)
     if (!item || item.done) continue
-    if (item.id === 'invite') {
-      const blockers = items.filter((i) => !i.optional && !i.done && i.id !== 'invite')
+    if (item.optional) {
+      // Optional steps (sources, invite) never block the primary path.
+      const blockers = items.filter((i) => !i.optional && !i.done)
       if (blockers.length > 0) continue
     }
     return { id: item.id, href: item.href }

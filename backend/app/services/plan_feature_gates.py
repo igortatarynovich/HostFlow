@@ -1,4 +1,8 @@
-"""Plan-based feature gates (§2.2 paywall, §2.16): Team-tier features vs starter/trial/free."""
+"""Plan-based feature gates (§2.2 paywall, §2.16): Team-tier features vs starter/free/solo.
+
+Trial (30-day evaluation) is intentionally **not** blocked: it must expose Team+ product
+capabilities so buyers can try the full system. Soft abuse caps remain in ``trial_usage_caps``.
+"""
 
 from __future__ import annotations
 
@@ -16,8 +20,8 @@ from backend.app.services.billing_pack_addons import (
     pack_addon_int,
 )
 
-# Plans that do not get Team-tier automation (aligned with lead auto-distribution).
-_TEAM_TIER_BLOCKED_PLANS: frozenset[str] = frozenset({"starter", "trial", "free", "solo"})
+# Paid low tiers without Team features. Trial is excluded — full product for evaluation window.
+_TEAM_TIER_BLOCKED_PLANS: frozenset[str] = frozenset({"starter", "free", "solo"})
 
 # §2.11 paywall: SOLO/starter-style plans cap tenant-defined lead custom fields (active, non-system).
 _STARTER_TIER_MAX_LEAD_CUSTOM_FIELD_DEFINITIONS = 10
@@ -53,10 +57,10 @@ def plan_allows_smart_operations_bundle(plan: str, *, tenant_id: str | None = No
 
 
 def plan_is_pro_tier(plan: str, *, tenant_id: str | None = None) -> bool:
-    """Business+ tier for NBA / distribution upsells (§2.16)."""
+    """Business+ tier for NBA / distribution upsells (§2.16). Trial evaluates at this depth."""
     if is_focus_personnel_tenant(tenant_id):
         return True
-    return (plan or "").strip().lower() in {"pro", "enterprise"}
+    return (plan or "").strip().lower() in {"pro", "enterprise", "business", "trial"}
 
 
 def lead_custom_field_definitions_cap(plan: str, *, tenant_id: str | None = None) -> int | None:
@@ -263,6 +267,9 @@ def plan_bucket_for_limits(plan: str) -> str:
     p = (plan or "").strip().lower() or "starter"
     if p in ("pro", "enterprise", "agency_premium", "business"):
         return "pro"
+    # 30-day trial: evaluate at the highest commercial bucket (sources/channels/funnels).
+    if p == "trial":
+        return "pro"
     if p in ("team", "agency_basic", "employer_basic", "services_basic"):
         return "team"
     return "starter"
@@ -445,7 +452,10 @@ def automation_rules_enabled_cap(plan: str, *, tenant_id: str | None = None) -> 
     p = (plan or "").strip().lower() or "starter"
     if not plan_allows_team_tier_features(p, tenant_id=tenant_id):
         return None
-    return 10 if p == "team" else 50
+    # Trial evaluates at Business/Pro automation depth; Team paid stays at 10.
+    if p == "team":
+        return 10
+    return 50
 
 
 async def count_enabled_automation_rules(db: AsyncSession, tenant_id: str) -> int:

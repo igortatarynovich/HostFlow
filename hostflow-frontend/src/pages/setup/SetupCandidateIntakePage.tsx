@@ -45,11 +45,11 @@ const INTAKE_CARDS: IntakeCard[] = [
   },
   {
     id: 'meta',
-    emoji: '🟦',
+    emoji: '🔗',
     titleKey: 'app.onboarding.setup.intake.meta.title',
-    titleDefault: 'Facebook / Instagram Ads',
+    titleDefault: 'Подключить источник заявок',
     subtitleKey: 'app.onboarding.setup.intake.meta.subtitle',
-    subtitleDefault: 'Подключить Meta',
+    subtitleDefault: 'Meta, формы, мессенджеры и другие каналы — на странице интеграций',
     enabled: true,
     testId: 'm1-setup-intake-meta',
   },
@@ -141,7 +141,7 @@ export default function SetupCandidateIntakePage() {
   }
 
   function onSelectMeta() {
-    navigate(CRM_APP_PATHS.settingsIntegrationsMeta)
+    navigate(CRM_APP_PATHS.settingsIntegrations)
   }
 
   function onSelectCard(card: IntakeCard) {
@@ -168,7 +168,7 @@ export default function SetupCandidateIntakePage() {
       })}
       subtitle={t('app.onboarding.setup.intake.subtitle', {
         defaultValue:
-          'Выберите способ. Нет рекламы сейчас — загрузите учебные данные или добавьте человека вручную. Рекламу Meta можно подключить позже.',
+          'Выберите способ. Нет входящих сейчас — загрузите учебные данные или добавьте человека вручную. Источники заявок можно подключить позже.',
       })}
     >
       <div className="space-y-4">
