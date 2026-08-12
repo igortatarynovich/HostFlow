@@ -175,10 +175,14 @@ function formatThreadUnreadBadge(n: number): string {
 // + [Open Notification Center] + [Clear all]. Filtering / sorting / SLA-focus / severity /
 // bulk actions live on the Notification Center page, not in this transient overlay.
 
+function isHttpForbidden(err: unknown): boolean {
+  return Boolean((err as { response?: { status?: number } } | null)?.response?.status === 403)
+}
+
 export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false }: TopbarProps) {
   const navigate = useNavigate()
   const { can, isClientTenant } = usePermissions()
-  const { canUseCommunicationsFeature } = useCommunicationsAccess()
+  const { canUseCommunicationsFeature, loading: commAccessLoading } = useCommunicationsAccess()
   const { locale, t } = useI18n()
   const { canReturnToPlatform, restorePlatformSession } = useAuth()
   const { notify } = useToast()
@@ -201,6 +205,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const shownNotificationIdsRef = useRef<Set<string>>(new Set())
   const lastUnreadNotificationsRef = useRef<NotificationItem[]>([])
   const menuRef = useRef<HTMLDivElement | null>(null)
+  /** After server 403, stop hammering threads/reconcile for this session (role/tenant ACL). */
+  const commsApiDeniedRef = useRef(false)
   const pendingHandoffsCount = usePendingHandoffsCount()
   const pendingHandoffsRef = useRef(pendingHandoffsCount)
   pendingHandoffsRef.current = pendingHandoffsCount
@@ -399,27 +405,50 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
 
   useEffect(() => {
     if (!can('notifications.view')) return
+    // Wait until communications access is resolved so we do not poll with stale defaults.
+    if (commAccessLoading) return
     let cancelled = false
     let timeout: number
 
+    const canPollComms =
+      canInboxDeepLink && !commsApiDeniedRef.current
+
     const fetchCount = async () => {
       try {
-        try {
-          await reconcileCommunicationThreadUnread({ limit: 5000 })
-        } catch {
-          // keep polling even when reconcile is temporarily unavailable
+        let commData: { items?: CommunicationThread[]; total?: number } = { items: [], total: 0 }
+        if (canPollComms && !commsApiDeniedRef.current) {
+          try {
+            await reconcileCommunicationThreadUnread({ limit: 5000 })
+          } catch (err) {
+            if (isHttpForbidden(err)) {
+              commsApiDeniedRef.current = true
+            }
+            // keep polling notifications even when reconcile is temporarily unavailable
+          }
         }
-        const [notifData, commData] = await Promise.all([
-          listNotifications({ includeRead: false, limit: 100, scope: 'direct' }) as Promise<NotificationListResponse>,
-          listCommunicationThreads({ limit: 500 }).catch(() => ({ items: [], total: 0 })),
-        ])
+        const notifPromise = listNotifications({
+          includeRead: false,
+          limit: 100,
+          scope: 'direct',
+        }) as Promise<NotificationListResponse>
+        const commPromise =
+          canPollComms && !commsApiDeniedRef.current
+            ? listCommunicationThreads({ limit: 500 }).catch((err) => {
+                if (isHttpForbidden(err)) {
+                  commsApiDeniedRef.current = true
+                }
+                return { items: [] as CommunicationThread[], total: 0 }
+              })
+            : Promise.resolve({ items: [] as CommunicationThread[], total: 0 })
+        const [notifData, commRes] = await Promise.all([notifPromise, commPromise])
+        commData = commRes
         const data = notifData
         if (!cancelled) {
           const items = Array.isArray(data?.items) ? data.items : []
           lastUnreadNotificationsRef.current = items
           setBellAttentionCount(computeBellAttentionCount(items, pendingHandoffsRef.current))
-          const threadItemsRaw = Array.isArray((commData as any)?.items)
-            ? ((commData as any).items as CommunicationThread[]).filter(
+          const threadItemsRaw = Array.isArray(commData?.items)
+            ? commData.items.filter(
                 (th) => !th?.is_archived && String(th?.status || '').toLowerCase() !== 'deleted',
               )
             : []
@@ -468,7 +497,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [can, canUseCommunicationsFeature, commPollKey, notify, t])
+  }, [can, canInboxDeepLink, canUseCommunicationsFeature, commAccessLoading, commPollKey, notify, t])
 
   useEffect(() => {
     setBellAttentionCount(
@@ -548,9 +577,18 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       } catch {
         // ignore reconcile errors; regular loading still works
       }
+      const shouldFetchThreads =
+        !commAccessLoading && canInboxDeepLink && !commsApiDeniedRef.current
       const [notifData, threadsRes] = await Promise.all([
         listNotifications({ includeRead: false, limit: 100, scope: 'direct' }) as Promise<NotificationListResponse>,
-        listCommunicationThreads({ limit: 200 }).catch(() => ({ items: [] as CommunicationThread[] })),
+        shouldFetchThreads
+          ? listCommunicationThreads({ limit: 200 }).catch((err) => {
+              if (isHttpForbidden(err)) {
+                commsApiDeniedRef.current = true
+              }
+              return { items: [] as CommunicationThread[] }
+            })
+          : Promise.resolve({ items: [] as CommunicationThread[] }),
       ])
       const rawItems = Array.isArray(notifData?.items) ? notifData.items : []
       const threads = Array.isArray(threadsRes.items) ? threadsRes.items : []
@@ -569,7 +607,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     } finally {
       setNotifLoading(false)
     }
-  }, [can, canUseCommunicationsFeature, t])
+  }, [can, canInboxDeepLink, canUseCommunicationsFeature, commAccessLoading, t])
 
   const navigateToResult = (result: GlobalSearchResult) => {
     setSearchOpen(false)

@@ -1,6 +1,7 @@
 /**
  * Backend `GET /settings/communications` enforces `assert_comm_feature_access(..., communicationsAdmin)`.
- * Default allowed roles (unless overridden in tenant settings): administrator, supervisor (+ employee team_lead).
+ * Default allowed roles (unless overridden in tenant settings): administrator, supervisor.
+ * Plain `employee` is not communicationsAdmin — team-lead employees pass via `canUseTeamOverviewLane`.
  * Platform superadmin bypass exists only on the server.
  */
 import { actorSatisfiesRoleAllowlist, canUseTeamOverviewLane } from '../auth/trustRoles'
@@ -8,7 +9,6 @@ import { actorSatisfiesRoleAllowlist, canUseTeamOverviewLane } from '../auth/tru
 export const ROLES_CAN_LOAD_FULL_COMMUNICATIONS_SETTINGS = new Set([
   'administrator',
   'supervisor',
-  'employee',
 ])
 
 export function roleMayLoadFullCommunicationsSettings(

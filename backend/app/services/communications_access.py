@@ -51,14 +51,37 @@ _FEATURE_TO_ROLE_KEY: Dict[CommFeature, str] = {
     "communicationsAdmin": "communicationsAdmin",
 }
 
+# Keep aligned with frontend DEFAULT_COMMUNICATIONS_SETTINGS.access.roles.
+# Canonical operational staff role is ``employee`` (legacy ``recruiter`` kept for aliases).
 _DEFAULT_ROLE_ACCESS: Dict[str, list[str]] = {
-    "messages": ["administrator", "supervisor", "recruiter", "client_manager", "client_processor"],
-    "email": ["administrator", "supervisor", "recruiter", "client_manager"],
-    "calendar": ["administrator", "supervisor", "recruiter", "client_manager"],
-    "planner": ["administrator", "supervisor", "recruiter", "client_manager"],
+    "messages": [
+        "administrator",
+        "employee",
+        "supervisor",
+        "recruiter",
+        "client_manager",
+        "client_processor",
+    ],
+    "email": ["administrator", "employee", "supervisor", "recruiter", "client_manager"],
+    "calendar": ["administrator", "employee", "supervisor", "recruiter", "client_manager"],
+    "planner": ["administrator", "employee", "supervisor", "recruiter", "client_manager"],
     "teamAvailability": ["administrator", "supervisor"],
-    "myAvailability": ["administrator", "supervisor", "recruiter", "client_manager", "client_processor"],
-    "timeOffRequests": ["administrator", "supervisor", "recruiter", "client_manager", "client_processor"],
+    "myAvailability": [
+        "administrator",
+        "employee",
+        "supervisor",
+        "recruiter",
+        "client_manager",
+        "client_processor",
+    ],
+    "timeOffRequests": [
+        "administrator",
+        "employee",
+        "supervisor",
+        "recruiter",
+        "client_manager",
+        "client_processor",
+    ],
     "communicationsAdmin": ["administrator", "supervisor"],
 }
 
