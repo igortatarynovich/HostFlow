@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""One-off: seed screenshot-ready demo for igor.tatarynovich@gmail.com tenant.
+"""One-off: seed screenshot-ready shared demo for EuroDrive Recruiting.
 
-Renames jokey workspace names and fills companies, vacancy, Meta leads,
-pipeline candidates, recruiters, and documents.
+Shared login: demo@hostflow.dev (see promote_eurodrive_shared_demo.py).
+Fills companies, vacancy, Meta leads, pipeline candidates, recruiters, documents.
 """
 
 from __future__ import annotations
@@ -126,7 +126,8 @@ async def main() -> None:
         db.add(own)
 
         igor = (await db.execute(select(User).where(User.id == IGOR_ID).limit(1))).scalar_one()
-        igor.full_name = "Igor Tatarynovich"
+        igor.full_name = "Adam Nowak"
+        igor.email = "demo@hostflow.dev"
         db.add(igor)
 
         # Teammate recruiters (for ownership column on screenshots)
@@ -223,7 +224,7 @@ async def main() -> None:
             country="Poland",
             city="Poznań",
             address="ul. Głogowska 41, 60-736 Poznań",
-            contacts={"primary": {"name": "Igor Tatarynovich", "email": "igor.tatarynovich@gmail.com"}},
+            contacts={"primary": {"name": "Adam Nowak", "email": "demo@hostflow.dev"}},
             party_entity_type="company",
             party_business_roles=None,
             extra={
@@ -331,14 +332,14 @@ async def main() -> None:
         specs = [
             ("Andrei", "Kovalenko", "new", "meta", anna_id, "Anna", False),
             ("Ivan", "Romanov", "new", "meta", anna_id, "Anna", False),
-            ("Piotr", "Wójcik", "contacted", "meta", IGOR_ID, "Igor", False),
+            ("Piotr", "Wójcik", "contacted", "meta", IGOR_ID, "Adam", False),
             ("Olena", "Tkachuk", "contacted", "whatsapp", maria_id, "Maria", False),
             ("Sergey", "Morozov", "docs_wait", "whatsapp", maria_id, "Maria", True),
             ("Maria", "Lewandowska", "docs_wait", "meta", anna_id, "Anna", False),
-            ("Dmytro", "Shevchenko", "hired", "meta", IGOR_ID, "Igor", False),
+            ("Dmytro", "Shevchenko", "hired", "meta", IGOR_ID, "Adam", False),
             ("Viktor", "Petrenko", "docs_got", "meta", anna_id, "Anna", False),
             ("Natalia", "Horban", "ready_for_handoff", "form", maria_id, "Maria", False),
-            ("Alex", "Bondar", "contacted", "meta", IGOR_ID, "Igor", False),
+            ("Alex", "Bondar", "contacted", "meta", IGOR_ID, "Adam", False),
             ("Taras", "Melnyk", "new", "meta", anna_id, "Anna", False),
             ("Yulia", "Savchuk", "processing_by_client", "meta", maria_id, "Maria", False),
         ]
@@ -590,8 +591,9 @@ async def main() -> None:
                     "vacancy": VACANCY_TITLE,
                     "candidates": len(specs),
                     "meta_leads": len(meta_leads),
-                    "recruiters": ["Igor Tatarynovich", "Anna Kowalska", "Maria Nowak"],
-                    "login": "igor.tatarynovich@gmail.com",
+                    "recruiters": ["Adam Nowak", "Anna Kowalska", "Maria Nowak"],
+                    "login": "demo@hostflow.dev",
+                    "password": "Demo@HostFlow1",
                     "funnel_id": funnel_id,
                 },
                 ensure_ascii=False,

@@ -33,7 +33,7 @@ import { NextActionBadge } from '../candidate/NextActionBadge'
 import { useVacancyNextAction } from '../vacancy/useVacancyNextAction'
 import { StatusBadge } from '../ui/StatusBadge'
 import { criteriaDefaultsFromSource, applyCriteriaToPayload } from './detail/criteriaForm'
-import { computePipelineMetrics } from './detail/pipelineMetrics'
+import { computePipelineMetrics, stageCountsFromPipelineColumns } from './detail/pipelineMetrics'
 import { StageMetricCards } from './detail/StageMetricCards'
 import { WorkspaceTab } from './detail/tabs/WorkspaceTab'
 import { JobDetailsTab } from './detail/tabs/JobDetailsTab'
@@ -510,15 +510,12 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       }
       const cols = (response.data?.columns || response.data?.columns_by_status || {}) as Record<
         string,
-        any
+        unknown
       >
-      const res: Record<string, number> = {}
-      Object.keys(cols || {}).forEach((k) => {
-        const val: any = cols[k]
-        const arr = Array.isArray(val) ? val : Array.isArray(val?.items) ? val.items : []
-        res[k] = arr.length
-      })
-      setPipeCounts(res)
+      // Count by candidate.stage (not kanban column key) so Vacancy Progress
+      // treats employed/hired/probation_ok as success even when they land in
+      // aggregated columns like client_process / internal_hr.
+      setPipeCounts(stageCountsFromPipelineColumns(cols))
     } catch {
       setPipeCounts({})
     } finally {

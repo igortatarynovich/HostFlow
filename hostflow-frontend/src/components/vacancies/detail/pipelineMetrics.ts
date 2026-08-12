@@ -41,6 +41,36 @@ export type PipelineMetrics = {
   stages: StageCount[]
 }
 
+/**
+ * Count by **candidate stage code**, not kanban column key.
+ *
+ * `/vacancies/:id/pipeline` buckets cards into aggregated columns
+ * (`client_process`, `internal_hr`, …). Vacancy Progress must use each
+ * item's `stage` (e.g. `employed` / `hired`) — otherwise success rows
+ * collapse into column keys that never match SUCCESS_TOKENS → 0%.
+ */
+export function stageCountsFromPipelineColumns(
+  columns: Record<string, unknown> | null | undefined,
+): Record<string, number> {
+  const res: Record<string, number> = {}
+  for (const [columnKey, val] of Object.entries(columns || {})) {
+    const arr = Array.isArray(val)
+      ? val
+      : Array.isArray((val as { items?: unknown })?.items)
+        ? ((val as { items: unknown[] }).items)
+        : []
+    for (const item of arr) {
+      const stage =
+        item && typeof item === 'object'
+          ? String((item as { stage?: unknown }).stage ?? '').trim()
+          : ''
+      const code = stage || columnKey
+      res[code] = (res[code] || 0) + 1
+    }
+  }
+  return res
+}
+
 export function computePipelineMetrics(
   pipeCounts: Record<string, number>,
   headcountTarget?: number | null,

@@ -513,7 +513,7 @@ async def main() -> None:
                 tenant_id=TENANT_ID,
                 user_id=IGOR_ID,
                 provider="google",
-                account_ref="igor.tatarynovich@gmail.com",
+                account_ref="demo@hostflow.dev",
                 status="active",
                 scopes_json=["calendar.events", "calendar.readonly"],
                 token_meta_json={
@@ -829,7 +829,8 @@ async def main() -> None:
                         "telegram",
                     ],
                     "meta_credential": True,
-                    "login": "igor.tatarynovich@gmail.com",
+                    "login": "demo@hostflow.dev",
+                    "password": "Demo@HostFlow1",
                 },
                 ensure_ascii=False,
                 indent=2,
