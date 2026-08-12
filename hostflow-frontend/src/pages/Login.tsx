@@ -101,7 +101,7 @@ export default function Login(){
   }, [t])
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f6fbff] px-4 py-10">
+    <div className="relative min-h-screen overflow-hidden bg-[#F7F8FA] px-4 py-10">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(94,186,205,0.35),transparent_55%),radial-gradient(circle_at_85%_0%,rgba(25,78,122,0.2),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.92)_0%,#f6fbff_50%,#f8fbff_100%)]" />
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-12">
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">

@@ -21,7 +21,7 @@ export default function SeoCatalogPage({ pageId }: SeoCatalogPageProps) {
 
   if (!page) {
     return (
-      <PublicPageShell>
+      <PublicPageShell variant="marketing">
         <p className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800">
           {t('public.seo.missing_page', { defaultValue: 'This page is not in the SEO catalog.' })}
         </p>
@@ -63,7 +63,7 @@ function SeoCatalogPageView({
   })
 
   return (
-    <PublicPageShell maxWidth="5xl">
+    <PublicPageShell maxWidth="5xl" variant="marketing">
       <div className="space-y-8">
         <section className="card p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{page.badge[locale]}</p>

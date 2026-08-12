@@ -42,7 +42,7 @@ export default function ComparisonRecruitmentCrmVsAtsPage() {
   })
 
   return (
-    <PublicPageShell maxWidth="5xl">
+    <PublicPageShell maxWidth="5xl" variant="marketing">
       <div className="space-y-8">
         <section className="card p-8">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.marketing.comparison_recruitment_crm_vs_ats.hero.badge', { defaultValue: 'Comparison' })}</p>

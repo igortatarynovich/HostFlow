@@ -49,7 +49,7 @@ export default function ContactPage() {
   ]
 
   return (
-    <PublicPageShell maxWidth="5xl">
+    <PublicPageShell maxWidth="5xl" variant="marketing">
       <div className="space-y-8">
         <CompanySiteNav />
 

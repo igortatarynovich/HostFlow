@@ -64,7 +64,7 @@ export default function ResetPasswordPage() {
 
   if (noToken) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-[#f6fbff] px-4 py-10 flex items-center justify-center">
+      <div className="relative min-h-screen overflow-hidden bg-[#F7F8FA] px-4 py-10 flex items-center justify-center">
         <div className="card p-8 max-w-md">
           <PublicBrandingLogo showWordmark />
           <h1 className="mt-6 text-xl font-semibold text-slate-900">
@@ -85,7 +85,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f6fbff] px-4 py-10 flex items-center justify-center">
+    <div className="relative min-h-screen overflow-hidden bg-[#F7F8FA] px-4 py-10 flex items-center justify-center">
       <div className="relative w-full max-w-md">
         <div className="card p-8">
           <PublicBrandingLogo showWordmark />

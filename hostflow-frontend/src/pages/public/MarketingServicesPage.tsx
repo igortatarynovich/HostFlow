@@ -28,7 +28,7 @@ export default function MarketingServicesPage() {
   })
 
   return (
-    <PublicPageShell maxWidth="6xl">
+    <PublicPageShell maxWidth="6xl" variant="marketing">
       <div className="space-y-8">
         <CompanySiteNav />
 

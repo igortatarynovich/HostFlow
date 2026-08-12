@@ -17,29 +17,26 @@ const PLAN_NAME_DEFAULT: Record<PlanKey, string> = {
   enterprise: 'Enterprise',
 }
 
-const TEAL = '#00C2A8'
 const NAVY = '#0B0E14'
 const NAVY_SOFT = '#12151C'
 
 function ProductShot({
   caption,
   imageSrc,
-  size = 'feature',
+  size = 'support',
+  focus = 'center',
 }: {
   caption: string
   imageSrc: string
-  size?: 'hero' | 'feature'
+  /** hero = landing hero only; others are supporting UI inside story blocks */
+  size?: 'hero' | 'support' | 'compact' | 'wide' | 'fragment'
+  focus?: 'center' | 'top' | 'left' | 'right'
 }) {
   const src = (imageSrc || '').trim()
-  const frame =
-    size === 'hero'
-      ? 'min-h-[300px] sm:min-h-[440px] lg:min-h-[520px]'
-      : 'min-h-[260px] sm:min-h-[340px] lg:min-h-[400px]'
-
   if (!(src.startsWith('http://') || src.startsWith('https://') || src.startsWith('/') || src.startsWith('.'))) {
     return (
       <div
-        className={`flex ${frame} items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-slate-800 to-[#0B0E14] p-6 text-center text-sm text-slate-300`}
+        className="flex min-h-[200px] items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-slate-800 to-[#0B0E14] p-6 text-center text-sm text-slate-300"
         role="img"
         aria-label={caption}
       >
@@ -48,20 +45,63 @@ function ProductShot({
     )
   }
 
+  const isHero = size === 'hero'
+  const isFragment = size === 'fragment'
+  const imgH = isHero ? 958 : 709
+  const imgW = isHero ? 1920 : 1568
+
+  const maxW =
+    size === 'hero'
+      ? 'max-w-[896px]'
+      : size === 'wide'
+        ? 'max-w-[1080px]'
+        : size === 'compact'
+          ? 'max-w-[420px]'
+          : size === 'fragment'
+            ? 'max-w-[520px]'
+            : 'max-w-[560px]'
+
+  const frameH =
+    size === 'fragment'
+      ? 'h-[240px] sm:h-[280px]'
+      : size === 'compact'
+        ? 'h-auto'
+        : size === 'wide'
+          ? 'h-auto'
+          : 'h-auto'
+
+  const objectPos =
+    focus === 'top' ? 'object-top' : focus === 'left' ? 'object-left' : focus === 'right' ? 'object-right' : 'object-center'
+
   return (
-    <figure className="overflow-hidden rounded-2xl border border-white/10 bg-[#0F131A] shadow-[0_40px_100px_-40px_rgba(0,0,0,0.85)] ring-1 ring-white/5">
-      <div className={`relative bg-slate-100 ${frame}`}>
+    <figure
+      className={`w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0F131A] ring-1 ring-white/5 ${maxW} ${
+        isHero
+          ? 'mx-auto shadow-[0_48px_120px_-36px_rgba(0,0,0,0.9)]'
+          : 'shadow-[0_24px_60px_-36px_rgba(0,0,0,0.55)]'
+      }`}
+    >
+      <div className={`relative overflow-hidden bg-slate-200 ${frameH}`}>
         <img
           src={src}
           alt={caption}
-          className="absolute inset-0 h-full w-full object-contain object-top p-1.5 sm:p-2"
-          loading={size === 'hero' ? 'eager' : 'lazy'}
+          width={imgW}
+          height={imgH}
+          className={
+            isFragment
+              ? `absolute inset-0 h-[145%] w-[145%] max-w-none ${objectPos} object-cover`
+              : 'block h-auto w-full'
+          }
+          style={isFragment ? { left: focus === 'right' ? 'auto' : focus === 'left' ? '-8%' : '-18%', top: '-8%' } : undefined}
+          loading={isHero ? 'eager' : 'lazy'}
           decoding="async"
         />
+        {caption ? (
+          <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-3 pb-2.5 pt-8 text-xs text-slate-200 sm:px-4 sm:text-sm">
+            {caption}
+          </figcaption>
+        ) : null}
       </div>
-      {caption ? (
-        <figcaption className="border-t border-white/10 px-4 py-2.5 text-sm text-slate-400">{caption}</figcaption>
-      ) : null}
     </figure>
   )
 }
@@ -79,35 +119,38 @@ export default function CrmLandingPage() {
   const isPricingRoute = location.pathname === '/pricing'
   const canonicalPath = isPricingRoute ? '/pricing' : '/'
   const seoTitle = isPricingRoute
-    ? t('app.seo.pricing.title', { defaultValue: 'Pricing — HostFlow' })
-    : t('app.seo.landing.title', {
-        defaultValue: 'Close vacancies faster — HostFlow',
-      })
+    ? t('app.seo.pricing.title')
+    : t('app.seo.landing.title')
   const seoDescription = isPricingRoute
-    ? t('app.seo.pricing.description', {
-        defaultValue: 'Simple plans for teams that need to close vacancies faster.',
-      })
-    : t('app.seo.landing.description', {
-        defaultValue:
-          'Built by recruiters with 10+ years in international hiring. Close vacancies faster with one process from Meta and WhatsApp to hire.',
-      })
+    ? t('app.seo.pricing.description')
+    : t('app.seo.landing.description')
 
-  const proofChips = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.hero.proof.${i}`)), [t])
-  const problemItems = useMemo(
+  const heroProof = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.hero.proof.${i}`)), [t])
+  const trustPoints = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.trust.points.${i}`)), [t])
+  const team = useMemo(
     () =>
-      [0, 1, 2, 3, 4].map((i) => ({
-        icon: t(`public.crm_landing.problem.items.${i}.icon`),
-        title: t(`public.crm_landing.problem.items.${i}.title`),
+      [0, 1, 2].map((i) => ({
+        initials: t(`public.crm_landing.team.members.${i}.initials`),
+        name: t(`public.crm_landing.team.members.${i}.name`),
+        role: t(`public.crm_landing.team.members.${i}.role`),
+        line: t(`public.crm_landing.team.members.${i}.line`),
       })),
     [t],
   )
-  const authorityPoints = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.authority.points.${i}`)), [t])
-  const flowSteps = useMemo(() => [0, 1, 2, 3, 4, 5, 6, 7].map((i) => t(`public.crm_landing.flow.steps.${i}`)), [t])
-  const todayItems = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.outcome.today.${i}`)), [t])
-  const monthItems = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.outcome.month.${i}`)), [t])
+  const problemItems = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.problem.items.${i}`)), [t])
+  const moatItems = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.moat.items.${i}`)), [t])
+  const storySteps = useMemo(
+    () =>
+      [0, 1, 2, 3, 4].map((i) => ({
+        value: t(`public.crm_landing.story.steps.${i}.value`),
+        label: t(`public.crm_landing.story.steps.${i}.label`),
+      })),
+    [t],
+  )
   const productBlocks = useMemo(
     () =>
-      [0, 1, 2, 3].map((i) => ({
+      [0, 1, 2, 3, 4].map((i) => ({
+        why: t(`public.crm_landing.product.blocks.${i}.why`),
         title: t(`public.crm_landing.product.blocks.${i}.title`),
         body: t(`public.crm_landing.product.blocks.${i}.body`),
         caption: t(`public.crm_landing.product.blocks.${i}.caption`),
@@ -115,8 +158,14 @@ export default function CrmLandingPage() {
       })),
     [t],
   )
-  const caseBefore = useMemo(() => [0, 1, 2].map((i) => t(`public.crm_landing.case.before.${i}`)), [t])
-  const caseAfter = useMemo(() => [0, 1, 2].map((i) => t(`public.crm_landing.case.after.${i}`)), [t])
+  const caseSteps = useMemo(
+    () =>
+      [0, 1, 2, 3].map((i) => ({
+        label: t(`public.crm_landing.case.steps.${i}.label`),
+        body: t(`public.crm_landing.case.steps.${i}.body`),
+      })),
+    [t],
+  )
   const segmentItems = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.segments.items.${i}`)), [t])
   const includedAll = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.pricing.included.${i}`)), [t])
 
@@ -133,21 +182,9 @@ export default function CrmLandingPage() {
     () =>
       (
         [
-          {
-            key: 'starter' as const,
-            featured: false,
-            ctaHref: '/signup?plan=starter',
-          },
-          {
-            key: 'team' as const,
-            featured: true,
-            ctaHref: '/signup?plan=team',
-          },
-          {
-            key: 'pro' as const,
-            featured: false,
-            ctaHref: '/signup?plan=pro',
-          },
+          { key: 'starter' as const, featured: false, ctaHref: '/signup?plan=starter' },
+          { key: 'team' as const, featured: true, ctaHref: '/signup?plan=team' },
+          { key: 'pro' as const, featured: false, ctaHref: '/signup?plan=pro' },
           {
             key: 'enterprise' as const,
             featured: false,
@@ -167,8 +204,11 @@ export default function CrmLandingPage() {
     [t],
   )
 
-  const structuredData = useMemo(
-    () => [
+  useSeoMeta({
+    title: seoTitle,
+    description: seoDescription,
+    canonicalPath,
+    structuredData: [
       {
         '@context': 'https://schema.org',
         '@type': 'Organization',
@@ -195,45 +235,69 @@ export default function CrmLandingPage() {
         })),
       },
     ],
-    [canonicalPath, faq, seoDescription],
-  )
-
-  useSeoMeta({
-    title: seoTitle,
-    description: seoDescription,
-    canonicalPath,
-    structuredData,
   })
 
+  const caseShot = t('public.crm_landing.case.screenshot_src', {
+    defaultValue: '/landing/shots/hero-pipeline.jpg',
+  })
   const heroShot = t('public.crm_landing.hero.screenshot_src', {
     defaultValue: '/landing/shots/hero-pipeline.jpg',
   })
 
   const navLinks = [
-    { href: '#problem', label: t('public.crm_landing.nav.problem') },
-    { href: '#authority', label: t('public.crm_landing.nav.authority') },
-    { href: '#product', label: t('public.crm_landing.nav.product') },
-    { href: '#pricing', label: t('public.crm_landing.nav.pricing') },
-    { href: '#faq', label: t('public.crm_landing.nav.faq') },
+    { href: '/#trust', id: 'trust', label: t('public.crm_landing.nav.trust') },
+    { href: '/#problem', id: 'problem', label: t('public.crm_landing.nav.problem') },
+    { href: '/#story', id: 'story', label: t('public.crm_landing.nav.story') },
+    { href: '/#case', id: 'case', label: t('public.crm_landing.nav.case') },
+    { href: '/#pricing', id: 'pricing', label: t('public.crm_landing.nav.pricing') },
+    { href: '/#faq', id: 'faq', label: t('public.crm_landing.nav.faq') },
   ]
 
+  const scrollToId = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#F7F8FA] text-slate-900 antialiased">
-      {/* NAV */}
-      <header className="sticky top-0 z-40 border-b border-white/8 bg-[#0B0E14]/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <a href="/" className="shrink-0" aria-label="HostFlow">
+    <div className="min-h-screen bg-[#F7F8FA] text-slate-900 antialiased">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#0B0E14]/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
+          <a
+            href="/#top"
+            className="shrink-0"
+            aria-label="HostFlow"
+            onClick={(e) => {
+              if (location.pathname === '/' || location.pathname === '/pricing') {
+                e.preventDefault()
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }
+            }}
+          >
             <PublicLogo showWordmark white size={34} />
           </a>
-          <nav className="hidden items-center gap-7 text-[13px] font-medium text-slate-400 lg:flex" aria-label="Primary">
+          <nav
+            className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-[12px] font-medium text-slate-400 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:text-[13px]"
+            aria-label="Primary"
+          >
             {navLinks.map((link) => (
-              <a key={link.href} href={link.href} className="transition hover:text-white">
+              <a
+                key={link.id}
+                href={link.href}
+                className="shrink-0 rounded-md px-2 py-1.5 transition hover:bg-white/5 hover:text-white"
+                onClick={(e) => {
+                  if (location.pathname === '/' || location.pathname === '/pricing') {
+                    e.preventDefault()
+                    scrollToId(link.id)
+                    trackCta(`nav_anchor_${link.id}`, link.href)
+                    window.history.replaceState?.(null, '', `#${link.id}`)
+                  }
+                }}
+              >
                 {link.label}
               </a>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:block">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="hidden md:block">
               <PublicLocaleSwitcher className="text-slate-400" />
             </div>
             <Link
@@ -246,7 +310,7 @@ export default function CrmLandingPage() {
             <Link
               to="/demo"
               onClick={() => trackCta('nav_demo', '/demo')}
-              className="inline-flex items-center justify-center rounded-lg bg-[#00C2A8] px-3.5 py-2 text-[13px] font-semibold text-[#04201C] transition hover:bg-[#1ad4bb]"
+              className="inline-flex items-center justify-center rounded-lg bg-[#00C2A8] px-3 py-2 text-[12px] font-semibold text-[#04201C] transition hover:bg-[#1ad4bb] sm:px-3.5 sm:text-[13px]"
             >
               {t('public.crm_landing.nav.demo')}
             </Link>
@@ -254,15 +318,21 @@ export default function CrmLandingPage() {
         </div>
       </header>
 
-      {/* SCREEN 1 — We solve the problem */}
+      {/* 1. HERO — copy left, shot shifted right */}
       <section
-        className="relative overflow-hidden"
-        style={{ background: `radial-gradient(ellipse 80% 60% at 70% 20%, rgba(0,194,168,0.12), transparent 55%), linear-gradient(180deg, ${NAVY} 0%, ${NAVY_SOFT} 100%)` }}
+        id="top"
+        className="relative overflow-x-clip pt-14 sm:pt-16"
+        style={{
+          background: `radial-gradient(ellipse 80% 60% at 70% 20%, rgba(0,194,168,0.12), transparent 55%), linear-gradient(180deg, ${NAVY} 0%, ${NAVY_SOFT} 100%)`,
+        }}
       >
-        <div className="mx-auto grid max-w-6xl gap-12 px-4 pb-10 pt-14 sm:px-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-center lg:gap-10 lg:pb-12 lg:pt-20">
+        <div className="mx-auto grid max-w-[1600px] items-center gap-10 px-4 pb-12 pt-10 sm:px-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10 lg:pb-16 lg:pt-14 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] xl:gap-12">
           <div className="space-y-6">
-            <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.4rem]">
-              {t('public.crm_landing.hero.title')}
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#00C2A8]">
+              {t('public.crm_landing.hero.badge')}
+            </p>
+            <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.15rem]">
+              {t('public.crm_landing.hero.title_line1')}
               <span className="mt-2 block text-[#00C2A8]">{t('public.crm_landing.hero.title_accent')}</span>
             </h1>
             <div className="max-w-xl space-y-3 text-base leading-relaxed text-slate-300 sm:text-[17px]">
@@ -278,18 +348,25 @@ export default function CrmLandingPage() {
                 {t('public.crm_landing.hero.primary_cta')}
               </Link>
               <a
-                href="#flow"
-                onClick={() => trackCta('hero_flow', '#flow')}
+                href="/#trust"
+                onClick={(e) => {
+                  e.preventDefault()
+                  scrollToId('trust')
+                  trackCta('hero_trust', '#trust')
+                }}
                 className="inline-flex items-center justify-center gap-2 px-2 py-3 text-sm font-semibold text-slate-300 transition hover:text-white"
               >
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-[10px]" aria-hidden>
+                <span
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-[10px]"
+                  aria-hidden
+                >
                   ▶
                 </span>
                 {t('public.crm_landing.hero.secondary_cta')}
               </a>
             </div>
             <ul className="flex flex-wrap gap-x-4 gap-y-2 pt-2 text-sm text-slate-300">
-              {proofChips.map((chip) => (
+              {heroProof.map((chip) => (
                 <li key={chip} className="inline-flex items-center gap-1.5">
                   <span className="text-[#00C2A8]" aria-hidden>
                     ✓
@@ -299,7 +376,8 @@ export default function CrmLandingPage() {
               ))}
             </ul>
           </div>
-          <div className="relative lg:-mr-4">
+
+          <div className="relative min-w-0 lg:-mr-2 xl:-mr-6">
             <div
               className="pointer-events-none absolute -inset-6 rounded-[2rem] opacity-70 blur-3xl"
               style={{ background: 'radial-gradient(circle at 50% 40%, rgba(0,194,168,0.22), transparent 65%)' }}
@@ -316,28 +394,74 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* SCREEN 2 — Why vacancies don’t close */}
-      <section id="problem" className="scroll-mt-24 bg-white">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-12 lg:py-24">
-          <div className="space-y-8">
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                {t('public.crm_landing.problem.badge')}
+      {/* 2. TRUST FIRST — why you can trust us */}
+      <section id="trust" className="scroll-mt-20 bg-white sm:scroll-mt-24">
+        <div className="mx-auto max-w-6xl space-y-12 px-4 py-16 sm:px-6 lg:py-24">
+          <div className="mx-auto max-w-3xl space-y-5 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
+              {t('public.crm_landing.trust.badge')}
+            </p>
+            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-5xl sm:leading-[1.1]">
+              {t('public.crm_landing.trust.title')}
+            </h2>
+            <p className="text-lg leading-relaxed text-slate-600">{t('public.crm_landing.trust.lead')}</p>
+          </div>
+
+          <ul className="mx-auto grid max-w-4xl gap-3">
+            {trustPoints.map((point) => (
+              <li
+                key={point}
+                className="rounded-2xl border border-slate-200 bg-[#F7F8FA] px-5 py-4 text-left text-sm font-medium leading-relaxed text-slate-800 sm:text-base"
+              >
+                {point}
+              </li>
+            ))}
+          </ul>
+
+          <p className="mx-auto max-w-3xl text-center text-base font-semibold leading-relaxed text-slate-900 sm:text-lg">
+            {t('public.crm_landing.trust.closing')}
+          </p>
+
+          {/* People — CRM is sold by people */}
+          <div className="space-y-6 rounded-[1.75rem] border border-slate-200 bg-[#0B0E14] p-6 text-white sm:p-10">
+            <div className="max-w-2xl space-y-3">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">
+                {t('public.crm_landing.team.badge')}
               </p>
-              <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-                {t('public.crm_landing.problem.title')}
-              </h2>
+              <h3 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('public.crm_landing.team.title')}</h3>
+              <p className="text-sm leading-relaxed text-slate-300 sm:text-base">{t('public.crm_landing.team.body')}</p>
             </div>
+            <ul className="grid gap-4 md:grid-cols-3">
+              {team.map((member) => (
+                <li key={member.name} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#00C2A8]/15 text-sm font-bold text-[#00C2A8]">
+                    {member.initials}
+                  </div>
+                  <p className="mt-4 text-base font-semibold">{member.name}</p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[#00C2A8]">{member.role}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-300">{member.line}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. PROBLEM — after trust */}
+      <section id="problem" className="scroll-mt-20 bg-[#F7F8FA] sm:scroll-mt-24">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-12 lg:py-24">
+          <div className="space-y-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+              {t('public.crm_landing.problem.badge')}
+            </p>
+            <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+              {t('public.crm_landing.problem.title')}
+            </h2>
+            <p className="max-w-xl text-base leading-relaxed text-slate-600">{t('public.crm_landing.problem.lead')}</p>
             <ul className="grid gap-3 sm:grid-cols-2">
               {problemItems.map((item) => (
-                <li
-                  key={item.title}
-                  className="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-[#F7F8FA] px-4 py-4"
-                >
-                  <span className="text-xl leading-none" aria-hidden>
-                    {item.icon}
-                  </span>
-                  <span className="text-sm font-medium leading-snug text-slate-800">{item.title}</span>
+                <li key={item} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-medium text-slate-800">
+                  {item}
                 </li>
               ))}
             </ul>
@@ -360,223 +484,215 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* SCREEN 3 — Why we can do this (authority) */}
+      {/* 4. MOAT — why not any other ATS */}
       <section
-        id="authority"
-        className="scroll-mt-24"
+        id="moat"
+        className="scroll-mt-20"
         style={{ background: `linear-gradient(180deg, ${NAVY} 0%, #10141C 100%)` }}
       >
         <div className="mx-auto max-w-3xl space-y-8 px-4 py-20 text-center sm:px-6 lg:py-28">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00C2A8]">
-            {t('public.crm_landing.authority.badge')}
+            {t('public.crm_landing.moat.badge')}
           </p>
           <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-5xl sm:leading-[1.1]">
-            {t('public.crm_landing.authority.title')}
+            {t('public.crm_landing.moat.title')}
           </h2>
-          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-slate-300">
-            {t('public.crm_landing.authority.body')}
-          </p>
-          <ul className="mx-auto grid max-w-2xl gap-3 text-left sm:grid-cols-1">
-            {authorityPoints.map((point) => (
+          <ul className="space-y-3 text-left">
+            {moatItems.map((item) => (
               <li
-                key={point}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm leading-relaxed text-slate-200"
+                key={item}
+                className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-base font-medium text-slate-200"
               >
-                {point}
+                {item}
               </li>
             ))}
           </ul>
-          <p className="mx-auto max-w-2xl text-base font-medium leading-relaxed text-[#B8FFF3]">
-            {t('public.crm_landing.authority.closing')}
+          <p className="text-lg font-semibold text-[#B8FFF3]">{t('public.crm_landing.moat.closing')}</p>
+        </div>
+      </section>
+
+      {/* 5. STORY PROCESS — not a schema */}
+      <section id="story" className="scroll-mt-20 bg-white sm:scroll-mt-24">
+        <div className="mx-auto max-w-6xl space-y-10 px-4 py-16 sm:px-6 lg:py-24">
+          <div className="mx-auto max-w-2xl space-y-3 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
+              {t('public.crm_landing.story.badge')}
+            </p>
+            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+              {t('public.crm_landing.story.title')}
+            </h2>
+            <p className="text-base text-slate-600">{t('public.crm_landing.story.lead')}</p>
+          </div>
+          <ol className="grid gap-3 md:grid-cols-5">
+            {storySteps.map((step, idx) => (
+              <li key={step.label} className="relative rounded-3xl border border-slate-200 bg-[#F7F8FA] p-5 text-center">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">0{idx + 1}</p>
+                <p className="mt-3 text-3xl font-bold tracking-tight text-[#0B0E14]">{step.value}</p>
+                <p className="mt-2 text-sm font-medium leading-snug text-slate-600">{step.label}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="mx-auto max-w-2xl text-center text-sm font-medium text-slate-500">
+            {t('public.crm_landing.story.footnote')}
           </p>
         </div>
       </section>
 
-      {/* SCREEN 4 — How it works */}
-      <section id="flow" className="scroll-mt-24 bg-[#F7F8FA]">
-        <div className="mx-auto max-w-6xl space-y-10 px-4 py-16 sm:px-6 lg:py-24">
-          <div className="mx-auto max-w-2xl space-y-3 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-              {t('public.crm_landing.flow.badge')}
-            </p>
-            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-              {t('public.crm_landing.flow.title')}
-            </h2>
-          </div>
-          <ol className="flex flex-col items-center gap-2 md:flex-row md:flex-wrap md:justify-center md:gap-x-2 md:gap-y-3">
-            {flowSteps.map((step, idx) => (
-              <li key={step} className="flex flex-col items-center gap-2 md:flex-row md:gap-2">
-                <div
-                  className={`min-w-[8.5rem] rounded-2xl border px-4 py-3 text-center text-sm font-semibold shadow-sm ${
-                    step === 'HostFlow'
-                      ? 'border-[#00C2A8]/40 bg-[#0B0E14] text-white'
-                      : 'border-slate-200 bg-white text-slate-900'
-                  }`}
-                >
-                  {step}
-                </div>
-                {idx < flowSteps.length - 1 ? (
-                  <>
-                    <span className="text-[#00C2A8] md:hidden" aria-hidden>
-                      ↓
-                    </span>
-                    <span className="hidden text-[#00C2A8] md:inline" aria-hidden>
-                      →
-                    </span>
-                  </>
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* SCREEN 5 — What the client gets */}
-      <section className="bg-white">
-        <div className="mx-auto max-w-6xl space-y-10 px-4 py-16 sm:px-6 lg:py-24">
-          <div className="mx-auto max-w-2xl space-y-3 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-              {t('public.crm_landing.outcome.badge')}
-            </p>
-            <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-              {t('public.crm_landing.outcome.title')}
-            </h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-[#F7F8FA] p-6 sm:p-8">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
-                {t('public.crm_landing.outcome.today_title')}
-              </p>
-              <ul className="mt-5 space-y-3">
-                {todayItems.map((item) => (
-                  <li key={item} className="flex gap-3 text-sm text-slate-600">
-                    <span className="text-rose-500" aria-hidden>
-                      ✕
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-3xl border border-[#00C2A8]/30 bg-[#0B0E14] p-6 text-white sm:p-8">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#00C2A8]">
-                {t('public.crm_landing.outcome.month_title')}
-              </p>
-              <ul className="mt-5 space-y-3">
-                {monthItems.map((item) => (
-                  <li key={item} className="flex gap-3 text-sm text-slate-200">
-                    <span className="text-[#00C2A8]" aria-hidden>
-                      ✓
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* SCREEN 6 — Product */}
-      <section id="product" className="scroll-mt-24 bg-[#F7F8FA]">
-        <div className="mx-auto max-w-6xl space-y-16 px-4 py-16 sm:px-6 lg:py-24">
-          <div className="mx-auto max-w-2xl space-y-3 text-center">
+      {/* 6. HOW IT WORKS — varied compositions; UI lives inside each step */}
+      <section id="product" className="scroll-mt-20 bg-[#F7F8FA] sm:scroll-mt-24">
+        <div className="mx-auto max-w-6xl space-y-10 px-4 py-12 sm:px-6 lg:space-y-14 lg:py-16">
+          <div className="mx-auto max-w-2xl space-y-2 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
               {t('public.crm_landing.product.badge')}
             </p>
             <h2 className="text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
               {t('public.crm_landing.product.title')}
             </h2>
-            <p className="text-base text-slate-500">{t('public.crm_landing.product.lead')}</p>
+            <p className="text-base text-slate-600">{t('public.crm_landing.product.lead')}</p>
           </div>
-          <div className="space-y-20">
-            {productBlocks.map((block, idx) => (
-              <article
-                key={block.title}
-                className={`grid items-center gap-8 lg:grid-cols-2 lg:gap-12 ${
-                  idx % 2 === 1 ? 'lg:[&>*:first-child]:order-2' : ''
-                }`}
-              >
-                <div className="space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#2E6F74]">
-                    {String(idx + 1).padStart(2, '0')}
-                  </p>
-                  <h3 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{block.title}</h3>
-                  <p className="max-w-md text-base leading-relaxed text-slate-600">{block.body}</p>
+
+          <div className="space-y-12 lg:space-y-14">
+            {productBlocks[0] ? (
+              <article className="grid items-center gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-8">
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{productBlocks[0].why}</p>
+                  <h3 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{productBlocks[0].title}</h3>
+                  <p className="max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">{productBlocks[0].body}</p>
                 </div>
-                <ProductShot caption={block.caption} imageSrc={block.imageSrc} />
+                <div className="flex justify-start lg:justify-end">
+                  <ProductShot
+                    size="compact"
+                    caption={productBlocks[0].caption}
+                    imageSrc={productBlocks[0].imageSrc}
+                  />
+                </div>
               </article>
-            ))}
+            ) : null}
+
+            {productBlocks[1] ? (
+              <article className="grid items-center gap-5 rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-8 lg:p-8">
+                <div className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{productBlocks[1].why}</p>
+                  <h3 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{productBlocks[1].title}</h3>
+                  <p className="max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">{productBlocks[1].body}</p>
+                </div>
+                <div className="min-w-0">
+                  <ProductShot
+                    size="support"
+                    caption={productBlocks[1].caption}
+                    imageSrc={productBlocks[1].imageSrc}
+                  />
+                </div>
+              </article>
+            ) : null}
+
+            {productBlocks[2] ? (
+              <article className="space-y-4">
+                <div className="mx-auto max-w-2xl space-y-2 text-center sm:text-left">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{productBlocks[2].why}</p>
+                  <h3 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{productBlocks[2].title}</h3>
+                  <p className="text-sm leading-relaxed text-slate-600 sm:text-base">{productBlocks[2].body}</p>
+                </div>
+                <div className="flex justify-center">
+                  <ProductShot
+                    size="wide"
+                    caption={productBlocks[2].caption}
+                    imageSrc={productBlocks[2].imageSrc}
+                  />
+                </div>
+              </article>
+            ) : null}
+
+            {productBlocks[3] ? (
+              <article className="grid items-center gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-8">
+                <div className="order-2 flex justify-start lg:order-1">
+                  <ProductShot
+                    size="fragment"
+                    focus="left"
+                    caption={productBlocks[3].caption}
+                    imageSrc={productBlocks[3].imageSrc}
+                  />
+                </div>
+                <div className="order-1 space-y-2 lg:order-2">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{productBlocks[3].why}</p>
+                  <h3 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{productBlocks[3].title}</h3>
+                  <p className="max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">{productBlocks[3].body}</p>
+                </div>
+              </article>
+            ) : null}
+
+            {productBlocks[4] ? (
+              <article className="grid items-end gap-5 overflow-hidden rounded-3xl border border-slate-200/80 bg-[#0B0E14] p-5 text-white sm:p-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-8 lg:p-8">
+                <div className="space-y-2 pb-1">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{productBlocks[4].why}</p>
+                  <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">{productBlocks[4].title}</h3>
+                  <p className="max-w-md text-sm leading-relaxed text-slate-300 sm:text-base">{productBlocks[4].body}</p>
+                </div>
+                <div className="min-w-0 lg:-mb-2 lg:-mr-2">
+                  <ProductShot
+                    size="wide"
+                    caption={productBlocks[4].caption}
+                    imageSrc={productBlocks[4].imageSrc}
+                  />
+                </div>
+              </article>
+            ) : null}
           </div>
         </div>
       </section>
 
-      {/* SCREEN 7 — Case */}
-      <section
-        id="case"
-        className="scroll-mt-24"
-        style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #151A24 55%, #0E2A2A 100%)` }}
-      >
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
-          <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.03]">
-            <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
-              <div
-                className="relative min-h-[240px] bg-cover bg-center lg:min-h-full"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(90deg, rgba(11,14,20,0.15), rgba(11,14,20,0.75)), url(/landing/shots/step-vacancy.jpg)',
-                }}
-                role="img"
-                aria-label={t('public.crm_landing.case.image_alt')}
+      {/* 7. CASE — UI embedded with story, not a separate chapter */}
+      <section id="case" className="scroll-mt-20 bg-[#0B0E14] text-white sm:scroll-mt-24">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 py-12 sm:px-6 lg:py-16">
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-8">
+            <div className="space-y-3">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">
+                {t('public.crm_landing.case.badge')}
+              </p>
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl sm:leading-[1.1]">
+                {t('public.crm_landing.case.title')}
+              </h2>
+              <p className="text-base leading-relaxed text-slate-300">{t('public.crm_landing.case.lead')}</p>
+              <ol className="mt-4 grid gap-3 sm:grid-cols-2">
+                {caseSteps.map((step, idx) => (
+                  <li key={step.label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#00C2A8]">
+                      0{idx + 1} · {step.label}
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-200">{step.body}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div className="min-w-0 space-y-4">
+              <ProductShot
+                size="support"
+                caption={t('public.crm_landing.case.screenshot_caption')}
+                imageSrc={caseShot}
               />
-              <div className="space-y-6 p-7 sm:p-10">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">
-                  {t('public.crm_landing.case.badge')}
+              <blockquote className="rounded-2xl border border-[#00C2A8]/30 bg-[#00C2A8]/10 p-5">
+                <p className="text-base font-medium leading-relaxed text-white sm:text-lg">
+                  “{t('public.crm_landing.case.quote')}”
                 </p>
-                <h2 className="text-3xl font-semibold tracking-tight text-white">{t('public.crm_landing.case.title')}</h2>
-                <p className="text-base leading-relaxed text-slate-300">{t('public.crm_landing.case.body')}</p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                      {t('public.crm_landing.case.before_title')}
-                    </p>
-                    <ul className="mt-3 space-y-2 text-sm text-slate-300">
-                      {caseBefore.map((item) => (
-                        <li key={item}>— {item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-[#00C2A8]">
-                      {t('public.crm_landing.case.after_title')}
-                    </p>
-                    <ul className="mt-3 space-y-2 text-sm text-slate-200">
-                      {caseAfter.map((item) => (
-                        <li key={item}>— {item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-                <p className="text-sm font-medium text-[#B8FFF3]">{t('public.crm_landing.case.result')}</p>
-                <Link
-                  to="/use-cases/transport-companies"
-                  onClick={() => trackCta('case_read', '/use-cases/transport-companies')}
-                  className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-5 py-2.5 text-sm font-semibold text-[#04201C] transition hover:bg-[#1ad4bb]"
-                >
-                  {t('public.crm_landing.case.cta')}
-                </Link>
-              </div>
+                <footer className="mt-4 text-sm text-[#B8FFF3]">
+                  <p className="font-semibold">{t('public.crm_landing.case.quote_name')}</p>
+                  <p className="mt-1 text-slate-300">{t('public.crm_landing.case.quote_role')}</p>
+                </footer>
+              </blockquote>
             </div>
           </div>
         </div>
       </section>
 
-      {/* SCREEN 8 — For whom */}
+      {/* 8. FOR WHOM */}
       <section className="bg-white">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 sm:px-6 lg:py-20">
-          <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-            {t('public.crm_landing.segments.title')}
-          </h2>
+          <div className="max-w-2xl space-y-3">
+            <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+              {t('public.crm_landing.segments.title')}
+            </h2>
+            <p className="text-base text-slate-600">{t('public.crm_landing.segments.lead')}</p>
+          </div>
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {segmentItems.map((item, idx) => (
               <li
@@ -594,8 +710,8 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* SCREEN 9 — Pricing */}
-      <section id="pricing" className="scroll-mt-24 bg-[#F7F8FA]">
+      {/* 9. PRICING */}
+      <section id="pricing" className="scroll-mt-20 bg-[#F7F8FA] sm:scroll-mt-24">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 sm:px-6 lg:py-24">
           <div className="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-end">
             <div className="space-y-2">
@@ -605,6 +721,7 @@ export default function CrmLandingPage() {
               <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
                 {t('public.crm_landing.pricing.title')}
               </h2>
+              <p className="max-w-xl text-sm text-slate-600">{t('public.crm_landing.pricing.note')}</p>
             </div>
             <div className="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 text-sm font-semibold shadow-sm">
               <button
@@ -695,8 +812,8 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* SCREEN 10 — FAQ */}
-      <section id="faq" className="scroll-mt-24 bg-white">
+      {/* 10. FAQ */}
+      <section id="faq" className="scroll-mt-20 bg-white sm:scroll-mt-24">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-16 sm:px-6 lg:py-24">
           <h2 className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
             {t('public.crm_landing.faq.title')}
@@ -717,7 +834,9 @@ export default function CrmLandingPage() {
                       {open ? '−' : '+'}
                     </span>
                   </button>
-                  {open ? <p className="border-t border-slate-200 px-5 py-4 text-sm leading-relaxed text-slate-600">{item.a}</p> : null}
+                  {open ? (
+                    <p className="border-t border-slate-200 px-5 py-4 text-sm leading-relaxed text-slate-600">{item.a}</p>
+                  ) : null}
                 </article>
               )
             })}
@@ -725,16 +844,20 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* SCREEN 11 — Final CTA */}
+      {/* 11. FINAL CTA — positioning statement */}
       <section
         className="px-4 py-20 sm:px-6"
-        style={{ background: `radial-gradient(ellipse 70% 80% at 50% 0%, rgba(0,194,168,0.16), transparent 55%), ${NAVY}` }}
+        style={{
+          background: `radial-gradient(ellipse 70% 80% at 50% 0%, rgba(0,194,168,0.16), transparent 55%), ${NAVY}`,
+        }}
       >
         <div className="mx-auto max-w-3xl space-y-6 text-center">
-          <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-5xl sm:leading-[1.1]">
+          <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl sm:leading-[1.15]">
             {t('public.crm_landing.final_cta.title')}
           </h2>
-          <p className="text-base text-slate-300 sm:text-lg">{t('public.crm_landing.final_cta.subtitle')}</p>
+          <p className="text-base leading-relaxed text-slate-300 sm:text-lg">
+            {t('public.crm_landing.final_cta.subtitle')}
+          </p>
           <div className="flex flex-col items-center justify-center gap-3 pt-2 sm:flex-row">
             <Link
               to="/demo"

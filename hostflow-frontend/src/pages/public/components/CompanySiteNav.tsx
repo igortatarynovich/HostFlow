@@ -26,7 +26,7 @@ export function CompanySiteNav() {
         const className = (active: boolean) =>
           `rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
             active
-              ? 'border-brand-400 bg-brand-50 text-brand-800'
+              ? 'border-[#00C2A8]/40 bg-[#00C2A8]/10 text-[#0F766E]'
               : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
           }`
 

@@ -6,22 +6,15 @@ type ProductShotProps = {
   size?: 'default' | 'hero' | 'feature'
 }
 
-/** Product screenshot with caption — for company / landing marketing pages. */
+/** Product screenshot with caption — frame matches the image (no empty white void). */
 export function ProductShot({ src, caption, badge, size = 'default' }: ProductShotProps) {
-  const frame =
-    size === 'hero'
-      ? 'min-h-[280px] sm:min-h-[360px] lg:min-h-[480px]'
-      : size === 'feature'
-        ? 'min-h-[220px] sm:min-h-[280px] lg:min-h-[340px]'
-        : 'aspect-[16/10]'
-
   return (
     <figure className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_20px_50px_-28px_rgba(15,23,42,0.35)]">
-      <div className={`relative bg-slate-100 ${frame}`}>
+      <div className="relative bg-slate-100">
         <img
           src={src}
           alt={caption}
-          className="absolute inset-0 h-full w-full object-contain object-top p-1 sm:p-2"
+          className="block h-auto w-full"
           loading={size === 'hero' ? 'eager' : 'lazy'}
           decoding="async"
         />

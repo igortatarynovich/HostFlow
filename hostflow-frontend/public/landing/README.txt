@@ -1,7 +1,8 @@
 Landing / company page product screenshots (real EuroDrive demo UI).
 
 Canonical JPGs live in /landing/shots/:
-  hero-pipeline.jpg          Kanban pipeline (hero)
+  hero-pipeline.jpg          Kanban pipeline
+  hero-recruitment-analytics.png  Insights → Recruitment charts (hero)
   shot-workspace.jpg         Insights summary
   shot-meta.jpg              Meta campaign / Lead Ads flight
   shot-documents.jpg         Candidate documents checklist
