@@ -14,7 +14,7 @@ import { HiringPipelineGatesProvider } from '../contexts/HiringPipelineGatesCont
 import type { NavItem } from './routes'
 import { Sidebar } from '../components/nav/Sidebar'
 import { Topbar } from '../components/nav/Topbar'
-import WorkContextTabs from '../components/nav/WorkContextTabs'
+import WorkspaceBackBar from '../components/nav/WorkspaceBackBar'
 import { SettingsChrome } from '../components/nav/SettingsChrome'
 import { LicenseExpiredBanner } from '../components/LicenseExpiredBanner'
 import { ImpersonationBanner } from '../components/ImpersonationBanner'
@@ -275,9 +275,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                       : 'w-full px-6 py-6 lg:px-10'
                 }
               >
-                {isCrmWorkspace && !isSettingsArea && !isOnboardingPage && (
-                  <WorkContextTabs businessType={onboardingStatus?.business_type ?? 'agency'} />
-                )}
+                {isCrmWorkspace && !isSettingsArea && !isOnboardingPage && <WorkspaceBackBar />}
                 {isSettingsArea && location.pathname !== CRM_APP_PATHS.settings && (
                   <SettingsChrome pathname={location.pathname} search={location.search} />
                 )}

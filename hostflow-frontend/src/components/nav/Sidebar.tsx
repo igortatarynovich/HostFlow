@@ -94,6 +94,7 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   'recruitment-inbox': IconInbox,
   'hr-workspace': IconUsersGroup,
   sales: IconBuildingStore,
+  'sales-orders': IconClipboardList,
   candidates: IconUsers,
   'candidates-no-next-action': IconUserQuestion,
   clients: IconBuilding,
@@ -228,6 +229,7 @@ export function Sidebar({
       marketing: 'vacancies',
       'acquisition-activity': 'vacancies',
       sales: 'companies',
+      'sales-orders': 'companies',
       clients: 'companies',
       vacancies: 'vacancies',
       documents: 'documents',
@@ -445,6 +447,15 @@ export function Sidebar({
 
   const navItemActive = (item: NavItem, isActive: boolean): boolean => {
     if (item.key === 'clients') return clientsNavActive
+    if (item.key === 'sales') {
+      const path = location.pathname
+      if (path === p.salesOrders || path.startsWith(`${p.salesOrders}/`)) return false
+      return path === p.sales || path.startsWith(`${p.sales}/`)
+    }
+    if (item.key === 'sales-orders') {
+      const path = location.pathname
+      return path === p.salesOrders || path.startsWith(`${p.salesOrders}/`)
+    }
     if (item.key === 'marketing') return marketingRailActive
     if (item.key === 'acquisition-activity') return acquisitionActivityRailActive
     if (item.key === 'recruitment-searches') {

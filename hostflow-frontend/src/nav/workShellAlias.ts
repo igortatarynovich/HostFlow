@@ -14,7 +14,7 @@ function canonicalWorkShellFirstSegment(canonicalPath: string): string {
 
 /**
  * Optional URLs under **`/app/work/...`** that redirect to canonical **`/app/...`** (SSOT §2.13).
- * Derived from **`CRM_APP_PATHS`** so Work shell aliases stay aligned with **`WorkContextTabs`**.
+ * Derived from **`CRM_APP_PATHS`** so Work shell aliases stay aligned with operational CRM paths.
  */
 export const WORK_SHELL_ALIAS_FIRST_SEGMENTS = [
   canonicalWorkShellFirstSegment(CRM_APP_PATHS.candidates),

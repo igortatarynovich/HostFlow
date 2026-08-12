@@ -46,8 +46,8 @@ export const SIDEBAR_AGENCY_MARKETING_ORDER = [
   'acquisition-activity',
 ] as const
 
-/** Sales owns Inquiry + ClientAccount — not Invoice/Payment model; not Growth/Campaigns. */
-export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'clients'] as const
+/** Sales owns Inquiry + ClientAccount + Sales Service Orders — not Invoice/Payment; not Growth/Campaigns. */
+export const SIDEBAR_AGENCY_SALES_ORDER = ['sales', 'sales-orders', 'clients'] as const
 
 /** Services owns catalog + service order lifecycle. */
 export const SIDEBAR_AGENCY_SERVICES_ORDER = ['service-orders', 'services'] as const

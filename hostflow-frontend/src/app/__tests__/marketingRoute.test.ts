@@ -46,7 +46,7 @@ describe('marketing workspace route registration', () => {
       'marketing-diagnostics',
       'acquisition-activity',
     ])
-    expect([...SIDEBAR_AGENCY_SALES_ORDER]).toEqual(['sales', 'clients'])
+    expect([...SIDEBAR_AGENCY_SALES_ORDER]).toEqual(['sales', 'sales-orders', 'clients'])
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).not.toContain('marketing')
     expect([...SIDEBAR_AGENCY_SALES_ORDER]).not.toContain('acquisition-activity')
     expect([...SIDEBAR_AGENCY_AUTOMATIONS_ORDER]).not.toContain('acquisition-activity')

@@ -218,6 +218,13 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'companies.view',
   },
   {
+    key: 'sales-orders',
+    labelKey: 'app.nav.items.orders',
+    path: CRM.salesOrders,
+    group: 'people',
+    permission: 'companies.view',
+  },
+  {
     key: 'marketing',
     labelKey: 'app.nav.items.marketing',
     path: CRM.marketing,

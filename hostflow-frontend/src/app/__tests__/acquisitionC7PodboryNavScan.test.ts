@@ -27,10 +27,17 @@ describe('C-7 Подборы nav retire', () => {
     expect(text).not.toMatch(/createLaunchSearch/)
   })
 
-  it('WorkContextTabs does not expose Подборы tab', () => {
-    const text = read('components/nav/WorkContextTabs.tsx')
-    expect(text).not.toMatch(/key:\s*'recruitment-searches'/)
+  it('AppShell does not mount WorkContextTabs; sidebar owns primary nav', () => {
+    const text = read('app/AppShell.tsx')
+    expect(text).not.toMatch(/WorkContextTabs/)
+    expect(text).toMatch(/WorkspaceBackBar/)
+  })
+
+  it('WorkspaceBackBar is history back only (no section tabs)', () => {
+    const text = read('components/nav/WorkspaceBackBar.tsx')
+    expect(text).not.toMatch(/recruitment-searches/)
     expect(text).not.toMatch(/defaultValue:\s*'Подборы'/)
+    expect(text).toMatch(/navigate\(-1\)/)
   })
 
   it('sidebar hides recruitment-searches and drops it from recruitment rail', () => {
