@@ -133,7 +133,7 @@ Ladder (locked):
 | **C5** | Form Execution | After C4 |
 | **C6** | Optimization | After C5 |
 
-C1 seals *which* contracts exist. C2 makes a form **unable to exist outside** that identity (Manifest / Public Contract / Adapter / Identity gates). C3 is an editor — do not open it until the edited format is protected.
+C1 seals *which* contracts exist. C2 freezes **Contract Identity on publication versions** (lifecycle separate; Manifest / Public Contract / Adapter / Identity gates). C3 is an editor of definitions — do not open it until the publication format is protected.
 
 **Not** Communication Epic C2 / C2.4. Historical Forms “C4 HTTP resolve” ≠ Phase C C4 Form Runtime.
 
@@ -234,5 +234,6 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 - 2026-08-13: Stage 3 slice 4 ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238); Product Track → **Phase C Forms Platform C1** ([brief](../tasks/forms-platform-c1-contract-seal.md)). Stage 5 settings and R6 stay out of this slice.  
 - 2026-08-13: Phase C ladder locked C1→C6; **C2 Runtime Contract** sealed as next ([brief](../tasks/forms-platform-c2-runtime-contract.md)). Builder / C3 after C2 feat only.  
+- 2026-08-13: C2 identity model — publication version freeze; lifecycle not identity.  
 - 2026-08-03: Epic C Complete Gate **PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
 - 2026-07-20: Locked Phase A→G after Communication platform work; Stage 3 deferred until Epic C + Governance Review.  

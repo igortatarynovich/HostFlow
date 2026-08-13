@@ -123,7 +123,7 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 ### Forms Platform C2 — Runtime Contract ← **next (sealed)**
 
-[forms-platform-c2-runtime-contract.md](forms-platform-c2-runtime-contract.md). Identity on every form + Manifest / Public Contract / Adapter / Identity gates. Builder (C3) unlocks only after C2 feat PASSes. Not Communication C2.4.
+[forms-platform-c2-runtime-contract.md](forms-platform-c2-runtime-contract.md). Contract Identity on **publication versions** (lifecycle separate) + Manifest / Public Contract / Adapter / Identity gates. Builder (C3) unlocks only after C2 feat PASSes. Not Communication C2.4.
 
 ---
 
@@ -214,6 +214,7 @@ Next branch only after:
 - 2026-08-13: Stage 3 slice 3 **✅ #224**; Product Track → **Stage 3 slice 4** hard module separation — [brief](stage-3-slice-4-hard-module-separation.md).  
 - 2026-08-13: Stage 3 slice 4 ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238); Product Track → **Forms Platform C1** — [brief](forms-platform-c1-contract-seal.md). Stage 5 settings and R6 stay out of this slice.  
 - 2026-08-13: Sealed **Forms Platform C2** as next after C1 — [brief](forms-platform-c2-runtime-contract.md). Builder locked until C2 feat. Communication C2.4 remains frozen.  
+- 2026-08-13: C2 brief correction — Contract Identity on publication versions only; `lifecycle_status` is Publication State; canonical schema hash; declared compatibility.  
 - 2026-08-03: Stage 6 **PR-4 ✅ #216**; Product Track → **Stage 6 PR-5 month buckets**.  
 - 2026-08-03: Stage 6 **PR-3 ✅ #215**; Product Track → **Stage 6 PR-4 portfolio**.  
 - 2026-08-03: Stage 6 **PR-2 ✅ #214**; Product Track → **Stage 6 PR-3 week buckets**.  
