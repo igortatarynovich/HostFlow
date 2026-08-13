@@ -106,4 +106,5 @@ Do **not** mix slice 4 into slice 3.
 - [x] Boundary vs slice 4 / R6 explicit  
 - [x] Code feat PR — list/get/patch SI identity + `transport_lead_id`; FE Lead sections use transport id  
 - [x] Spine / duplicates resolve by SI id (compat Lead id)  
+- [x] Sales list pages `sales_inquiries` ⨝ Lead (ensure missing SI for Meta orphans)  
 - [ ] Contract tests green (local slice 3 suite)  

@@ -15,7 +15,10 @@ from backend.app.modules.applications.mappers import (
     lead_to_sales_inquiry,
     sales_inquiry_to_application,
 )
-from backend.app.modules.applications.sales_resolve import resolve_sales_inquiry_and_lead
+from backend.app.modules.applications.sales_resolve import (
+    list_sales_inquiry_pairs,
+    resolve_sales_inquiry_and_lead,
+)
 from backend.app.modules.leads import crud as leads_crud
 from backend.app.modules.sales.services.capability_spine_read import (
     get_capability_spine_for_application,
@@ -166,3 +169,47 @@ async def test_recruitment_lead_is_not_a_sales_inquiry(db, tenant_id: str) -> No
     app = await mutations._reload_recruitment(db, tenant_id, str(lead.id))
     assert app.id == str(lead.id)
     assert app.module != "sales"
+
+
+@pytest.mark.asyncio
+async def test_sales_list_uses_inquiry_id_and_excludes_recruitment(db, tenant_id: str) -> None:
+    lead, inquiry, own_company_id = await _seed_sales_pair(db, tenant_id=tenant_id)
+    orphan = await leads_crud.create_lead(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        company_id=None,
+        vacancy_id=None,
+        payload={},
+        normalized={"company_name": "Orphan Meta Co"},
+        source="meta",
+        lead_type="client",
+        lead_target_type="client_lead",
+    )
+    candidate = await leads_crud.create_lead(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        company_id=None,
+        vacancy_id=None,
+        payload={},
+        normalized={"full_name": "Candidate Two"},
+        source="meta",
+        lead_type="candidate",
+        lead_target_type="candidate",
+    )
+    await db.flush()
+
+    pairs, total = await list_sales_inquiry_pairs(
+        db, tenant_id=tenant_id, own_company_id=own_company_id, limit=200, offset=0
+    )
+    assert total >= 2
+    product_ids = {str(si.id) for si, _lead in pairs}
+    transport_ids = {str(row.id) for _si, row in pairs}
+    assert str(inquiry.id) in product_ids
+    assert str(lead.id) in transport_ids
+    assert str(lead.id) not in product_ids
+    assert str(orphan.id) in transport_ids
+    assert str(candidate.id) not in transport_ids
+    assert all(str(si.id) != str(row.id) for si, row in pairs)
+    assert all(str(row.lead_type) == "client" for _si, row in pairs)

@@ -21,7 +21,10 @@ from backend.app.modules.applications.listing import (
     normalize_recruitment_inbox_tab,
     recruitment_inbox_tab_counts,
 )
-from backend.app.modules.applications.sales_resolve import resolve_sales_inquiry_and_lead
+from backend.app.modules.applications.sales_resolve import (
+    list_sales_inquiry_pairs,
+    resolve_sales_inquiry_and_lead,
+)
 from backend.app.models import Lead
 from backend.app.models.sales_inquiry import SalesInquiry
 from backend.app.modules.applications.schemas import (
@@ -37,7 +40,6 @@ from backend.app.modules.applications.schemas import (
     SalesInquiryDuplicateHintOut,
     SalesInquiryDuplicateListResponse,
 )
-from backend.app.modules.leads import service
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
 
 sales_router = APIRouter(prefix="/sales/inquiries", tags=["sales-inquiries"])
@@ -80,25 +82,15 @@ async def list_sales_inquiries(
     _role: str = Depends(require_trust_read()),
 ) -> ApplicationListResponse:
     db, tenant_id = db_tenant
-    result = await service.list_leads(
+    pairs, total = await list_sales_inquiry_pairs(
         db,
         tenant_id=str(tenant_id),
         own_company_id=own_company_id,
-        lead_type="client",
-        lead_target_type="client_lead",
         limit=limit,
         offset=offset,
     )
-    items = []
-    for row in result.items:
-        inquiry, lead = await resolve_sales_inquiry_and_lead(
-            db,
-            tenant_id=str(tenant_id),
-            application_id=str(row.id),
-            ensure_if_lead=True,
-        )
-        items.append(sales_inquiry_to_application(inquiry, lead))
-    return ApplicationListResponse(items=items, total=result.total)
+    items = [sales_inquiry_to_application(inquiry, lead) for inquiry, lead in pairs]
+    return ApplicationListResponse(items=items, total=total)
 
 
 @sales_router.get("/{application_id}", response_model=ApplicationOut)
