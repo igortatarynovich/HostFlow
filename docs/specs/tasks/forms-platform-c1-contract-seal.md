@@ -114,4 +114,4 @@ Invariants INV-01…17 unchanged. Does **not** amend L0.
 - [x] Brief sealed with in/out + acceptance  
 - [x] Queue + roadmap + AGENTS point at this brief  
 - [x] Boundary vs Stage 5 settings / R6 / P3–P5 / FormTemplate / ADR-022 explicit  
-- [ ] Feat PR — docs drift closed + contract-id gates  
+- [x] Feat PR — docs drift closed + contract-id gates  

@@ -1,11 +1,11 @@
 # Forms Public Contract v1 — Sprint 1 + Sprint 2 hardening
 
-**Status:** canonical · **ACTIVE**  
+**Status:** canonical · **ACTIVE** · Product Track = [Phase C C1](../tasks/forms-platform-c1-contract-seal.md)  
 **Capability id:** `forms`  
 **Contract id:** `forms.public_contract.v1`  
 **Adapter id:** `forms.endpoint_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#forms)  
-**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · Product Layer [`forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md)  
+**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · P1 Catalog ✅ · P2 Builder MVP ✅ · P3–P5 **LOCKED** · C1 [`forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md)  
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -82,7 +82,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 4. First entry uses Universal Routing once; continuation inherits attribution (ADR-024).  
 5. Forms **never** owns Campaign / Flight / Outcome / KPI tables.  
 6. Consumers call **Adapter** ops only.  
-7. Product Layer Builder remains **LOCKED** until Field Catalog (P1); when unlocked, Builder still **must not invent field types**.
+7. P1 Field Catalog is closed; P2 Builder MVP is complete; **P3–P5 remain LOCKED** until Phase C contracts are sealed. Builder **must not invent field types**.
 
 ---
 
@@ -149,7 +149,8 @@ HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/
 - P1.2: `test_forms_p1_2_descriptors_contract.py` · `test_forms_p1_2_descriptors_gates.py`  
 - P1.3: `test_forms_p1_3_stdlib_contract.py` · `test_forms_p1_3_stdlib_gates.py`  
 - P1.4: `test_forms_p1_4_extension_contract.py` · `test_forms_p1_4_extension_gates.py`  
-- C4: `test_forms_platform_c4.py`
+- C4: `test_forms_platform_c4.py`  
+- C1: `test_forms_c1_contract_seal.py`
 
 ---
 
@@ -193,3 +194,4 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-19: P1.4 Extension API — `forms.field_catalog.extension.v1`; Catalog v1 FROZEN; P2 Builder READY.  
 - 2026-07-19: P1.4 COMPLETE (`97aac4e3`); P2 Builder READY FOR IMPLEMENTATION.
 - 2026-07-18: P1.2 Descriptor Contract implementation — `forms.field_catalog.descriptors.v1`.
+- 2026-08-13: Phase C C1 — Product Track seals Passport / Manifest / Public Contract / Adapter ids; P3–P5 remain locked.
