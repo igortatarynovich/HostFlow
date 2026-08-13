@@ -514,9 +514,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       items.push({ key: 'orders', labelKey: 'app.nav.items.orders', path: CRM_APP_PATHS.orders })
       items.push({ key: 'invoices', labelKey: 'app.nav.items.invoices', path: CRM_APP_PATHS.invoices })
     }
-    if (can('leads.view')) {
-      items.push({ key: 'leads', labelKey: 'app.nav.items.leads', path: CRM_APP_PATHS.leads })
-    }
     if (can('documents.manage')) {
       items.push({ key: 'documents', labelKey: 'app.nav.items.documents', path: CRM_APP_PATHS.documents })
     }

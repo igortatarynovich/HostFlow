@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import type { Permission } from '../hooks/usePermissions'
 import CommunicationsFeatureGate from '../components/communications/CommunicationsFeatureGate'
+import { LeadWorkspaceRedirect, LeadsIndexRedirect } from '../pages/LeadProductRedirectPages'
 import {
   AuditLogPage,
   AutomationsHubPage,
@@ -63,8 +64,6 @@ import {
   InvoiceCreatePage,
   InvoiceDetailPage,
   InvoicesPage,
-  LeadDetailPage,
-  LeadsPage,
   LeadsDistributionPage,
   LeadsDistributionRulesPage,
   LegalDocumentsPage,
@@ -810,8 +809,8 @@ export const APP_ROUTES: AppRouteConfig[] = [
     Component: LeadsDistributionPage,
     permission: 'leads.view',
   },
-  { key: 'lead-detail', path: `${seg(CRM.leads)}/:leadId`, Component: LeadDetailPage, permission: 'leads.view' },
-  { key: 'leads', path: seg(CRM.leads), Component: LeadsPage, permission: 'leads.view' },
+  { key: 'lead-detail', path: `${seg(CRM.leads)}/:leadId`, Component: LeadWorkspaceRedirect, permission: 'leads.view' },
+  { key: 'leads', path: seg(CRM.leads), Component: LeadsIndexRedirect, permission: 'leads.view' },
   { key: 'automations', path: seg(CRM.automations), Component: AutomationsHubPage, permission: 'notifications.view' },
   { key: 'automation-log', path: seg(CRM.automationLog), Component: AutomationLogPage, permission: 'notifications.view' },
   {

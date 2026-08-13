@@ -239,8 +239,8 @@ Admin/integration diagnostics: separate Monitoring surfaces (not primary CRM nav
 
 | Surface | Status | Replacement |
 |---------|--------|-------------|
-| `/app/leads` (LeadsPage) | **REMOVE** from product | Application Workspace + Integrations admin |
-| `/app/leads/:id` (LeadDetailPage) | **REMOVE** from primary flow | Application Workspace split-view |
+| `/app/leads` (LeadsPage) | **REDIRECT** (slice 4) | Application Workspace + Integrations admin |
+| `/app/leads/:id` (LeadDetailPage) | **REDIRECT** (slice 4) | Application Workspace split-view |
 | Recruitment Inbox → `/app/leads/:id` | **DONE** (2026-07-09) | `/app/recruitment/inbox/:applicationId` |
 | Search Home as competing inbox | **DONE** (2026-07-09) | Process Workspace; pending apps → Отклики CTA |
 | Three list implementations | **IN PROGRESS** | `ApplicationWorkspace` engine |
