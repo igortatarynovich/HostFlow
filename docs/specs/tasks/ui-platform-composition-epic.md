@@ -78,7 +78,7 @@ Four layers: metrics semantics → visualization grammar → analytics compositi
 
 Fragments: `hostflow-frontend/src/platform/entity-workspace`. Promote a public API: header, section tabs, summary strip, action bar, context rail / drawer, content slots (Timeline is a **slot**).
 
-**K3** — public Shell API. **Not** roadmap Phase D (full platform composition on one entity). **Not** ADR-045 page templates (`EntityListPage`, `SettingsPage`, …).
+- [x] **K3** — public Shell API (`components/ui/EntityWorkspace`). Passport `EntityWorkspaceShell` adapts onto the kit. **Not** roadmap Phase D (full platform composition on one entity). **Not** ADR-045 page templates (`EntityListPage`, `SettingsPage`, …). Candidate/HR Workspace stays module-owned.
 
 New entity chrome after this stream must use the kit. Existing candidate/HR cards migrate-on-touch.
 

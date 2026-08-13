@@ -26,7 +26,7 @@ This file does **not** lock pixel values or Figma. Chart palettes and analytics 
 | `<PlatformIcon id="…">` | new `@tabler/icons-react` imports outside the registry |
 | `<StatusBadge semantic="danger">` | ad-hoc `bg-rose-100` pills for status meaning |
 | `<SemanticSurface tone="warning">` | page-local gradients / `rounded-2xl` heroes |
-| `DataTable` from `components/ui` (K1) · `ListWorkspace` (K2) | new hand-written operational `<table>`; importing `DataTableEngine` as a product table; a copied Candidates toolbar |
+| `DataTable` from `components/ui` (K1) · `ListWorkspace` (K2) · `EntityWorkspace` (K3) | new hand-written operational `<table>`; importing `DataTableEngine` as a product table; a copied Candidates toolbar; a new entity header/rail clone |
 
 CSS classes `.btn-*`, `.input`, `.table` remain **implementation** inside `hostflow-frontend/src/styles/components.css` and kit wrappers.
 
@@ -112,7 +112,7 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 |--------------|--------|---------------|-------|
 | `PageHeader` | exists | ~64 pages | Best-adopted layout |
 | `ListWorkspace` | exists | `components/ui/ListWorkspace.tsx` | **First workspace pattern** — ADR-044 K2. Vacancies is the first cutover. Candidates page not wrapped. |
-| `EntityWorkspace` | wrap | `platform/entity-workspace` + candidate card | **Minimal chrome** this extraction sprint — not Phase D; page templates remain ADR-045 |
+| `EntityWorkspace` | exists | `components/ui/EntityWorkspace.tsx` | **K3** public chrome (header / tabs / summary / action bar / rail / content slots). Passport adapter stays `platform/entity-workspace`. Candidate/HR Workspace not extracted. Not Phase D; page templates remain ADR-045 |
 | `SettingsLayout` | wrap | `.settings-*` CSS | ADR-045 |
 | `SplitPane` | gap | rails / inspectors | ADR-045 |
 
@@ -163,10 +163,11 @@ Do not open a new `*_V1` as a sibling canon. Extend this catalog.
 
 ## 6. History
 
+- 2026-08-13: **K3** public `EntityWorkspace` chrome. `EntityWorkspaceShell` is a passport adapter. Candidate Workspace not extracted.
 - 2026-08-13: **K2** public `ListWorkspace`; Vacancies first cutover. Candidates page not wrapped.
 - 2026-08-13: **K1** public `DataTable` + `SortControl` in `components/ui`. `DataTableEngine` is an adapter. Candidates page not cut over.
 - 2026-08-13: **Platform Extraction** — Core Platform Kit is the active stage; Vocabulary Canon closed.
 - 2026-08-13: **ADR-044** `ListWorkspace` + one `DataTable` (rule). Runtime extract remains epic P1–P2. `ListLayout` renamed to `ListWorkspace`.
 - 2026-08-13: **ADR-046** analytics families + presentation/share (`AnalyticsStoryHero`, `AnalyticsReportHeader`); Recruitment efficiency is the reference.
 - 2026-08-13: Initial catalog under ADR-043. Runtime wrappers, DataTable extraction, layouts, visualization, and CI ratchet deferred to the epic / ADR-044…046.
-- 2026-08-13: P0 control-layer React APIs + radius tokens + lower-only CI ratchet (`npm run ui:kit:check`). K1 DataTable landed; ListWorkspace / EntityWorkspace Shell remain K2–K3.
+- 2026-08-13: P0 control-layer React APIs + radius tokens + lower-only CI ratchet (`npm run ui:kit:check`). K1–K3 kit APIs landed.

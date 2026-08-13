@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { EntityWorkspace } from '../../components/ui/EntityWorkspace'
 import { useI18n } from '../../i18n'
 import type { EntityWorkspaceShellProps, EntityWorkspaceShellLabels } from './types'
 import { DEFAULT_ENTITY_WORKSPACE_SHELL_LABELS } from './types'
@@ -68,11 +69,8 @@ function buildShellLabels(
 }
 
 /**
- * Universal Entity Workspace Shell — five fixed zones, resource-agnostic.
- *
- * STATUS: SCAFFOLD (geometry only) — not Reference.
- * Shell executes Universal Entity Schema; it does not decide widgets, sections, or actions.
- * See docs/specs/architecture/hostflow-entity-workspace-v1.md §2 (Entity Schema).
+ * Passport adapter over the public kit `EntityWorkspace`.
+ * Not a second chrome — new entity pages must import from `components/ui`.
  */
 export function EntityWorkspaceShell({
   model,
@@ -129,36 +127,29 @@ export function EntityWorkspaceShell({
   })()
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-100" data-entity-workspace-shell="v2">
-      <EntityWorkspaceHeaderZone
-        header={header}
-        resourceTypeLabel={resourceTypeLabel}
-        extension={headerExtension}
-        navigationPeers={navigationPeers}
-      />
-
-      <EntityWorkspaceSummaryStrip summary={summary} />
-
-      <div className="flex min-h-0 flex-1">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <EntityWorkspaceNavTabs
-            sections={enabledSections}
-            activeSectionId={activeSectionId}
-            onSectionChange={setSection}
-            sectionLabel={sectionLabel}
-            ariaLabel={labels.navigationHeading ?? 'Sections'}
-          />
-
-          <main
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-100 p-4"
-            data-entity-workspace-zone="content"
-          >
-            <div className="mx-auto max-w-5xl">{activeContent}</div>
-          </main>
-        </div>
-
-        <EntityWorkspaceContextRail model={contextRailModel} labels={labels.contextRail} />
-      </div>
-    </div>
+    <EntityWorkspace
+      data-entity-workspace-shell="v2"
+      header={
+        <EntityWorkspaceHeaderZone
+          header={header}
+          resourceTypeLabel={resourceTypeLabel}
+          extension={headerExtension}
+          navigationPeers={navigationPeers}
+        />
+      }
+      summary={<EntityWorkspaceSummaryStrip summary={summary} />}
+      navigation={
+        <EntityWorkspaceNavTabs
+          sections={enabledSections}
+          activeSectionId={activeSectionId}
+          onSectionChange={setSection}
+          sectionLabel={sectionLabel}
+          ariaLabel={labels.navigationHeading ?? 'Sections'}
+        />
+      }
+      rail={<EntityWorkspaceContextRail model={contextRailModel} labels={labels.contextRail} />}
+    >
+      {activeContent}
+    </EntityWorkspace>
   )
 }

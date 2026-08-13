@@ -56,3 +56,15 @@ export {
   type SavedViewChipItem,
   type SavedViewChipsProps,
 } from './ListWorkspace'
+export {
+  EntityWorkspace,
+  EntityWorkspaceHeader,
+  EntityWorkspaceRail,
+  EntityWorkspaceSummary,
+  type EntityWorkspaceHeaderProps,
+  type EntityWorkspaceProps,
+  type EntityWorkspaceRailProps,
+  type EntityWorkspaceSummaryCard,
+  type EntityWorkspaceSummaryProps,
+  type EntityWorkspaceTab,
+} from './EntityWorkspace'

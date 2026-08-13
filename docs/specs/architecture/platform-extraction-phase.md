@@ -231,5 +231,6 @@ Then Rule 5 applies to every later product PR.
 
 ## History
 
+- 2026-08-13: **K3** public `EntityWorkspace` (`components/ui`). Passport Shell is an adapter. Candidate Workspace not extracted. Kit Gate remains before Phase B.
 - 2026-08-13: Hard rules 1–5 (Kit Gate, two-consumer extract, closed completion bar, no second Vocabulary Canon, no local UI when the kit has it).
 - 2026-08-13: Phase opened; Vocabulary Canon closed; Core Platform Kit before Phase B.
