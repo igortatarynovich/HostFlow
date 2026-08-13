@@ -107,4 +107,4 @@ Do **not** mix slice 4 into slice 3.
 - [x] Code feat PR — list/get/patch SI identity + `transport_lead_id`; FE Lead sections use transport id  
 - [x] Spine / duplicates resolve by SI id (compat Lead id)  
 - [x] Sales list pages `sales_inquiries` ⨝ Lead (ensure missing SI for Meta orphans)  
-- [ ] Contract tests green (local slice 3 suite)  
+- [x] Contract tests: identity + HTTP list/get/spine/patch (`test_stage3_slice3_product_identity.py`); dedicated CI step in `backend-ci.yml`  

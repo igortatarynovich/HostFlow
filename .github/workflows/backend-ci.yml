@@ -93,6 +93,15 @@ jobs:
           else
             echo "skip: no client_accounts tests"
           fi
+      - name: Stage 3 slice 3 SalesInquiry identity
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+        run: |
+          pytest -q \
+            tests/modules/sales/test_stage3_slice3_product_identity.py \
+            tests/unit/test_sales_inquiry_duplicates.py
       - name: Lint
         continue-on-error: true
         working-directory: backend
