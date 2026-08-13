@@ -121,6 +121,6 @@ Spec: `INPUT_V1.md` | Implementation: **`styles/components.css`** — no `Input.
 
 Layer 2 families remain locked as **children** of [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md). Do not open a sibling `*_V1` program.
 
-Runtime: wrap primitives as the React public API ([`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) P0). TABLE_V1 / FilterBar / layouts fold into ADR-044 / ADR-045.
+Runtime: wrap primitives as the React public API ([`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) P0). TABLE_V1 is the visual child of [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md). Layouts: ADR-045. Analytics families: [`ADR-046`](../architecture/ADR-046-analytics-visualization-canon.md).
 
 Do not reopen Input wrapper for pixel reasons; ADR-043 allows a thin React `Input` **only** as kit public API over existing `.input` CSS.

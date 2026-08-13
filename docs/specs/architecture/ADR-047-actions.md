@@ -6,7 +6,7 @@
 **Trusted base:** `integration/release-product-a-b`  
 **Related:** [`ADR-038`](ADR-038-platform-standardization-model.md) · [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) · [`ADR-036`](ADR-036-four-trust-roles-rbac.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-012`](ADR-012-activity-notification-operating-layer.md) · [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-040`](ADR-040-naming-identifiers.md) · [`ADR-042`](ADR-042-relationships.md) · L2 [`../platform/actions.md`](../platform/actions.md)
 
-**Note on numbering:** ADR-043 = UI composition; ADR-044/045 reserved for UI DataTable / layouts; ADR-046 = analytics visualization. This Actions vocabulary ADR is **047**.
+**Note on numbering:** ADR-043 = UI composition; ADR-044 = ListWorkspace / DataTable (rule); ADR-045 reserved for layouts; ADR-046 = analytics, visualization & reporting. This Actions vocabulary ADR is **047**.
 
 **L0 checklist:** No new L0 P-rule; does not rewrite Passport/Manifest; fills ADR-038 area `actions` with an **Action contract + confirmed-slice inventory**, not the ADR-019 3A-3 runtime Action Registry implementation.
 

@@ -4,7 +4,7 @@
 **Decision record:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md)  
 **Parent model:** [`ADR-038`](../architecture/ADR-038-platform-standardization-model.md) · [`platform-standardization-model.md`](platform-standardization-model.md) (area `design_interaction`)  
 **Visual / a11y / tokens:** [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md) (amended by ADR-043: CSS is implementation)  
-**List shell (target):** [`ADR-010`](../architecture/ADR-010-unified-resource-list-shell.md) — bound as Data layer in **ADR-044**  
+**List shell (target):** [`ADR-010`](../architecture/ADR-010-unified-resource-list-shell.md) + [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) · [`ui-list-workspace-canon.md`](ui-list-workspace-canon.md)  
 **Owner:** Frontend platform  
 **Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md)
 
@@ -14,7 +14,7 @@
 
 Index of canonical HostFlow UI families. Product modules **compose** these IDs. Local recreation of an existing ID is an architecture violation.
 
-This file does **not** lock pixel values or Figma. Chart palettes and analytics families live in [`ui-analytics-canon.md`](ui-analytics-canon.md) (**ADR-046**). It does **not** extract DataTable (ADR-044) or page templates (ADR-045).
+This file does **not** lock pixel values or Figma. Chart palettes and analytics families live in [`ui-analytics-canon.md`](ui-analytics-canon.md) (**ADR-046**). Operational lists: [`ui-list-workspace-canon.md`](ui-list-workspace-canon.md) (**ADR-044**, rule done; runtime extract = epic P1–P2). Page templates remain **ADR-045**.
 
 ---
 
@@ -26,7 +26,7 @@ This file does **not** lock pixel values or Figma. Chart palettes and analytics 
 | `<PlatformIcon id="…">` | new `@tabler/icons-react` imports outside the registry |
 | `<StatusBadge semantic="danger">` | ad-hoc `bg-rose-100` pills for status meaning |
 | `<SemanticSurface tone="warning">` | page-local gradients / `rounded-2xl` heroes |
-| `<DataTable>` (after ADR-044) | new hand-written operational `<table>` |
+| `<DataTable>` / `<ListWorkspace>` (ADR-044; runtime extract P1–P2) | new hand-written operational `<table>` |
 
 CSS classes `.btn-*`, `.input`, `.table` remain **implementation** inside `hostflow-frontend/src/styles/components.css` and kit wrappers.
 
@@ -84,13 +84,13 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
-| `SearchField` | exists | `SearchField.tsx` | List contract (filters/sort) still ADR-044 |
-| `FilterBar` | gap | Candidates / dashboard / pipeline one-offs | Was FILTER_BAR_V1 — now this ID |
+| `SearchField` | exists | `SearchField.tsx` | ListWorkspace search zone (ADR-044) |
+| `FilterBar` | gap | Candidates / dashboard / pipeline one-offs | ListWorkspace toolbar; was FILTER_BAR_V1 |
 | `FormField` | exists | `FormField.tsx`; `controls/Field.tsx` is a legacy alias | Label + hint + error uses `text-rose-700` |
 | `Tabs` | exists | `Tabs.tsx` wraps `.tabs` / `.tab` | — |
 | `Modal` | exists | `components/Modal.tsx` close = `IconButton` | Re-exported from kit barrel |
 | `Dropdown` | wrap | `.dropdown` CSS | — |
-| `Pagination` | exists | `Pagination.tsx`; `EntityListPagination` wraps it | ADR-044 still owns list policy |
+| `Pagination` | exists | `Pagination.tsx`; `EntityListPagination` wraps it | ListWorkspace mode `paged` \| `infinite` |
 | `EmptyState` | exists | `EmptyState.tsx`; `EmptyStatePanel` is a legacy alias | No Tabler in the kit |
 | `Toast` | wrap | `Toast.tsx` | — |
 | `DateField` | wrap | native `input type=date` | INPUT_V1 native until DateField ships |
@@ -100,18 +100,18 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
-| `DataTable` | wrap | four parallel implementations | **One** product API — ADR-044; Candidates = canonical implementation |
-| `TableHeader` | wrap | candidates header | ADR-044 |
-| `SortControl` | wrap | candidates / companies | ADR-044 |
-| `FacetFilter` | wrap | `FacetFilterMenu` | ADR-044 |
-| `BulkActionBar` | wrap | `EntityListBulkBar` | ADR-044 |
+| `DataTable` | wrap | four parallel implementations | **One** product API — ADR-044; runtime extract epic P1–P2; Candidates = capability bar |
+| `TableHeader` | wrap | candidates header | ListWorkspace |
+| `SortControl` | wrap | candidates / companies | ListWorkspace |
+| `FacetFilter` | wrap | `FacetFilterMenu` | ListWorkspace filters |
+| `BulkActionBar` | wrap | `EntityListBulkBar` | ListWorkspace; visible only with selection |
 
 ### Layout
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
 | `PageHeader` | exists | ~64 pages | Best-adopted layout |
-| `ListLayout` | wrap | ADR-010 zones; EntityListShell barely used | ADR-045 |
+| `ListWorkspace` | wrap | `EntityListShell` + parallel tables | **First workspace pattern** — ADR-044; former id `ListLayout` |
 | `EntityWorkspace` | wrap | `platform/entity-workspace` + candidate card | Was ENTITY_LAYOUT_V1 — ADR-045 |
 | `SettingsLayout` | wrap | `.settings-*` CSS | ADR-045 |
 | `SplitPane` | gap | rails / inspectors | ADR-045 |
@@ -120,7 +120,7 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
-| `EntityListPage` | gap | each list composes itself | ADR-045; new modules pick a template |
+| `EntityListPage` | gap | each list composes itself | ADR-045 template **hosts** `ListWorkspace` |
 | `EntityDetailPage` | gap | candidate card is benchmark only | ADR-045 |
 | `SettingsPage` | wrap | settings shells | ADR-045 |
 | `OperationalQueuePage` | gap | inbox / HR queue / leads | ADR-045 |
@@ -138,8 +138,11 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 | `InsightCard` | exists | kit | Insight → Action |
 | `AnalyticsFilterBar` | exists | kit | date + dimensions |
 | `AnalyticsEmptyState` | exists | kit | three empty kinds |
+| `AnalyticsSection` | exists | kit | `density=story \| operational` |
+| `AnalyticsStoryHero` | exists | kit | One headline number |
+| `AnalyticsReportHeader` | exists | kit | Screenshot chrome + copy link + present |
 
-Full families, palettes, and dashboard inventory: [`ui-analytics-canon.md`](ui-analytics-canon.md).
+Full families, palettes, Analytics View, and dashboard inventory: [`ui-analytics-canon.md`](ui-analytics-canon.md).
 
 ---
 
@@ -149,7 +152,7 @@ Full families, palettes, and dashboard inventory: [`ui-analytics-canon.md`](ui-a
 |----------------|---------|
 | `FOUNDATION_V1` | Foundation layer of this catalog |
 | `PRIMITIVES_V1` / `BUTTON_V1` / `INPUT_V1` / `SELECT_V1` / `CHIP_V1` / `STATUS_BADGE_V1` | Primitive IDs |
-| `TABLE_V1` | Data layer → ADR-044 |
+| `TABLE_V1` | Data layer / visual child of ADR-044 `ListWorkspace` |
 | `FILTER_BAR_V1` (unstarted) | `FilterBar` |
 | `ENTITY_LAYOUT_V1` (draft) | `EntityWorkspace` → ADR-045 |
 | REF-UI-000 roadmap | Execution notes under this tree |
@@ -160,6 +163,7 @@ Do not open a new `*_V1` as a sibling canon. Extend this catalog.
 
 ## 6. History
 
-- 2026-08-13: **ADR-046** analytics families indexed; Recruitment efficiency is the reference implementation. DataTable / layouts still deferred.
+- 2026-08-13: **ADR-044** `ListWorkspace` + one `DataTable` (rule). Runtime extract remains epic P1–P2. `ListLayout` renamed to `ListWorkspace`.
+- 2026-08-13: **ADR-046** analytics families + presentation/share (`AnalyticsStoryHero`, `AnalyticsReportHeader`); Recruitment efficiency is the reference.
 - 2026-08-13: Initial catalog under ADR-043. Runtime wrappers, DataTable extraction, layouts, visualization, and CI ratchet deferred to the epic / ADR-044…046.
 - 2026-08-13: P0 control-layer React APIs + radius tokens + lower-only CI ratchet (`npm run ui:kit:check`). DataTable / layouts still deferred.

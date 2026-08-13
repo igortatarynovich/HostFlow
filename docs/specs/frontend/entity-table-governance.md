@@ -1,15 +1,15 @@
 # Entity table governance (Phase 2 — PR14)
 
-**Status:** canonical (frontend L2) — aligns with [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md) visual sign-off  
-**ADR:** [`ADR-010`](../architecture/ADR-010-unified-resource-list-shell.md) (List Shell zones), [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md) (UI platform standard)  
+**Status:** canonical (frontend L2) — aligns with [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md) visual sign-off; product API is [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md)  
+**ADR:** [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) (`ListWorkspace` + `DataTable`), [`ADR-010`](../architecture/ADR-010-unified-resource-list-shell.md) (zones / field kinds), [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md) (UI platform standard)  
 **Task:** [`../tasks/ui-consistency-foundation.md`](../tasks/ui-consistency-foundation.md) Phase 2  
 **Code target:** `hostflow-frontend/src/components/surfaces/` — **`EntityListShell`** (2A), demo **`/app/dev/entity-list-shell`**; no production list migration until 2B.
 
 ## Principle: governance layer, not giant abstraction
 
-`EntityDataTable` / `ResourceListShell` — это **слой управления UX списков**, а не одна «универсальная таблица на всё».
+`ListWorkspace` / `DataTable` — **один** платформенный механизм на все operational lists ([`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md)). Это не «у каждого модуля своя таблица» и не мега-компонент, который знает колонки кандидата.
 
-Типичная ошибка design-system веток: один мега-компонент с колонками, actions, filters и cell renderers внутри — ломает домены и превращает PR в rewrite branch.
+Типичная ошибка design-system веток: один компонент с **бизнес-ячейками, API и actions внутри** — ломает домены. Правильно: один API, `ListDefinition` + domain cell slots снаружи.
 
 ### Shared (platform canon)
 
@@ -167,6 +167,7 @@ Phase 1 закрыл **document row / blocker** presentation. Phase 2 не см�
 
 ## References
 
+- [`ADR-044-list-workspace-data-presentation-canon.md`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) (`ListWorkspace` + `DataTable`)
 - [`ADR-010-unified-resource-list-shell.md`](../architecture/ADR-010-unified-resource-list-shell.md)  
 - [`../tasks/ui-consistency-foundation.md`](../tasks/ui-consistency-foundation.md) §2  
 - [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md)

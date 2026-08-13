@@ -111,7 +111,7 @@ This ADR does **not** migrate schemas, rename `relation_type` values, or add enf
 
 - Positive: Relationships area becomes `exists` as a contract; Document Link and Comms opaque results have vocabulary homes; modules know when to register a kind.
 - Negative: many runtime joins remain `fragment` until confirmed; Activity soft refs stay dual-nature until adoption guidance expands.
-- Follow-on: ~~Actions~~ (ADR-047); Events; UI Data Presentation (ADR-044) / Layouts (ADR-045) / Visualization (ADR-046).
+- Follow-on: ~~Actions~~ (ADR-047); Events; ~~List Workspace~~ ([`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md)); Layouts (ADR-045); analytics language is [`ADR-046`](ADR-046-analytics-visualization-canon.md).
 
 ---
 

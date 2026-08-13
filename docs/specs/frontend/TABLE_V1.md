@@ -1,5 +1,7 @@
 # TABLE_V1
 
+**Parent composition / list pattern:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) (`ListWorkspace` + `DataTable`). TABLE_V1 remains the **visual/behavior child** (Candidates frame). Runtime extract is epic P1–P2.
+
 Status: **Locked**  
 Draft date: 2026-05-29  
 Locked date: 2026-05-31  

@@ -3,7 +3,7 @@
 **Статус:** Accepted (целевая модель).  
 **Область:** SPA (React), все «рабочие» списки сущностей в модулях и на платформе.  
 **Phase 2 governance (не giant abstraction):** [`../frontend/entity-table-governance.md`](../frontend/entity-table-governance.md).  
-**Родительский стандарт UI:** [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) (токены, a11y) · [`ADR-043`](ADR-043-ui-component-composition-canon.md) (React kit composition). Product-facing table API is **one** DataTable (ADR-044); this ADR remains the list-zone contract.  
+**Родительский стандарт UI:** [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) (токены, a11y) · [`ADR-043`](ADR-043-ui-component-composition-canon.md) (React kit composition). Product-facing pattern is **`ListWorkspace` + one `DataTable`** ([`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md)); this ADR remains the list-zone / field-kind contract.  
 **Связано с:** [`platform-architecture-principles.md`](platform-architecture-principles.md) (модули), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md), [`pipedesign.md`](../../pipedesign.md) (визуальное направление лендинга).
 
 ## Context
@@ -132,5 +132,6 @@
 
 ## История
 
+- **2026-08-13:** Product API bound as `ListWorkspace` + `DataTable` in [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md); this ADR stays zones / kinds / anti-giant-abstraction.
 - **2026-05-20:** §8 пересортирован (shell → pilot → candidates last); §9 anti-patterns; ссылка на `entity-table-governance.md`.
 - **2026-05:** первичная фиксация единого List Shell, field kinds, rail/modal, дорожная карта миграции.

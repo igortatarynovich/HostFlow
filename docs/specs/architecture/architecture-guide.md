@@ -58,16 +58,20 @@ UI **не** определяет архитектуру.
 | **Naming & Identifiers** | Identifier kinds + namespaces + alias policy ([`ADR-040`](ADR-040-naming-identifiers.md) · [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md)) — не runtime alignment DocumentType |
 | **Data Types** | Semantic value types; Field **uses** DataType ([`ADR-041`](ADR-041-data-types.md) · [`../platform/data-types.md`](../platform/data-types.md)) — не миграция `field_type` |
 | **Relationships** | RelationshipKind contract + confirmed slice ([`ADR-042`](ADR-042-relationships.md) · [`../platform/relationships.md`](../platform/relationships.md)) — не полный CRM-граф |
+| **UI Component Canon** | Composition rule: React kit public API; pages assemble catalogued controls ([`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md)) — не restyle |
+| **List Workspace Canon** | One `ListWorkspace` + one `DataTable`; modules pass `ListDefinition` ([`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md) · [`../platform/ui-list-workspace-canon.md`](../platform/ui-list-workspace-canon.md)) — runtime extract = epic P1–P2 |
+| **Analytics, Visualization & Reporting Canon** | Operational analytics language: meaning→family, story composition, screenshot-ready Analytics View ([`ADR-046`](ADR-046-analytics-visualization-canon.md) · [`../platform/ui-analytics-canon.md`](../platform/ui-analytics-canon.md)); Recruitment efficiency = reference |
 | **Actions** | Operation semantics; Action ≠ Permission ≠ Capability ([`ADR-047`](ADR-047-actions.md) · [`../platform/actions.md`](../platform/actions.md)) — не runtime 3A-3 registry |
-| **UI Component Canon** | Composition rule: React kit public API; pages assemble catalogued controls ([`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md)) — не restyle; DataTable/layouts/viz = ADR-044…046 |
 | Invariants | INV-01…15 |
 | Checklist | Обязателен перед ADR/PR |
 | Epic P (3D) | Закрытие Acquisition V1 vertical |
 
 ## История
 
+- 2026-08-13: **ADR-044** List Workspace & Data Presentation Canon Accepted — one `ListWorkspace` + `DataTable`; L2 [`../platform/ui-list-workspace-canon.md`](../platform/ui-list-workspace-canon.md); runtime extract = epic P1–P2.
+- 2026-08-13: **ADR-046** Analytics, Visualization & Reporting Canon Accepted — four layers (semantics, grammar, composition, presentation/sharing); Recruitment efficiency reference; L2 [`../platform/ui-analytics-canon.md`](../platform/ui-analytics-canon.md).
+- 2026-08-13: **ADR-043** UI Component & Composition Canon Accepted — React kit public API; CSS implementation; L2 [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md).
 - 2026-08-13: **ADR-047** Actions Accepted — Action contract + confirmed Documents/Activity/PE slice; L2 [`../platform/actions.md`](../platform/actions.md); 3A-3 runtime deferred.
-- 2026-08-13: **ADR-043** UI Component & Composition Canon Accepted — React kit public API; CSS implementation; L2 [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md); DataTable/layouts/viz deferred to ADR-044…046.
 - 2026-08-13: **ADR-042** Relationships Accepted — RelationshipKind contract + confirmed Documents/handoff/Activity/Comms slice; L2 [`../platform/relationships.md`](../platform/relationships.md); CRM graph deferred.
 - 2026-08-13: **ADR-041** Data Types Accepted — Field ≠ DataType; L2 [`../platform/data-types.md`](../platform/data-types.md); runtime Field/Forms adoption deferred.
 - 2026-08-13: **ADR-040** Naming & Identifiers Accepted — kinds / namespaces / alias policy; L2 [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md); DocumentType runtime alignment deferred.

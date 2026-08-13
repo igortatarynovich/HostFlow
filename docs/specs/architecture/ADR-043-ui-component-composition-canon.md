@@ -4,7 +4,7 @@
 **Date:** 2026-08-13  
 **Layer of change:** Experience (Design & Interaction) | Composition rule + component catalog  
 **Trusted base:** `integration/release-product-a-b`  
-**Related:** [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) · [`ADR-010`](ADR-010-unified-resource-list-shell.md) · [`ADR-038`](ADR-038-platform-standardization-model.md) · L2 [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md) · epic [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md)
+**Related:** [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) · [`ADR-010`](ADR-010-unified-resource-list-shell.md) · [`ADR-038`](ADR-038-platform-standardization-model.md) · [`ADR-046`](ADR-046-analytics-visualization-canon.md) · L2 [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md) · epic [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md)
 
 **Amends (does not supersede):** ADR-011 — visual tokens, a11y, dates, i18n, and PR drift policy remain in force. This ADR changes the **consumption contract**: product modules compose React kit APIs; CSS/Tailwind is implementation inside the kit.
 
@@ -86,7 +86,7 @@ HR (and any module) may highlight ready / attention / blocked. They **must not**
 
 Catalog family: `SemanticSurface` with platform tones (`success` | `warning` | `danger` | `info` | `neutral` | `brand`). Color, border, icon, and background belong to the platform.
 
-Dashboard **categorical** colors are **not** Foundation semantic colors. They belong to **[ADR-046](ADR-046-analytics-visualization-canon.md)** (Analytics & Visualization Canon): three color spaces, meaning→family mapping, Insight → Action. Map stage/status → semantic type first (`rejected` → `danger`), never a page-owned `#f97316`.
+Dashboard **categorical** colors are **not** Foundation semantic colors. They belong to **[ADR-046](ADR-046-analytics-visualization-canon.md)** (Analytics, Visualization & Reporting Canon): three color spaces, meaning→family, story composition, Analytics View / presentation mode. Map stage/status → semantic type first (`rejected` → `danger`), never a page-owned `#f97316`.
 
 ### 6. Closed catalog (IDs)
 
@@ -98,20 +98,20 @@ Stable `component_id` families live in L2 [`../platform/ui-component-canon.md`](
 | **Primitive** | Button, IconButton, Input, Textarea, Select, Checkbox, Radio, Switch, Badge, Chip, Icon |
 | **Composite** | SearchField, FilterBar, FormField, Tabs, Modal, Dropdown, Pagination, EmptyState, Toast, DateField, SemanticSurface |
 | **Data** | DataTable, TableHeader, SortControl, FacetFilter, BulkActionBar |
-| **Layout** | PageHeader, ListLayout, EntityWorkspace, SettingsLayout, SplitPane |
+| **Layout** | PageHeader, ListWorkspace, EntityWorkspace, SettingsLayout, SplitPane |
 | **Template** | EntityListPage, EntityDetailPage, SettingsPage, OperationalQueuePage |
 
 Extending the closed set requires a dedicated platform PR (Platform-first). REF-UI `*_V1` artifacts become **children of this tree**, not independent canons.
 
 Existing primitives (`Button`, `StatusBadge`, `Chip`, `Combobox`, `PageHeader`, `Modal`, `PlatformIcon`) are **adopted into** these IDs; they are not a second kit.
 
-### 7. One product-facing DataTable (contract now, extraction in ADR-044)
+### 7. One product-facing DataTable (bound in ADR-044)
 
 Four parallel tables (`.table` CSS, `layout/DataTable`, `DataTableEngine`, hand-written `<table>`) are architectural debt.
 
-**Decision:** there will be **one** product-facing DataTable API. Engine/helpers/schema may exist underneath. Pages must not choose among engines.
+**Decision:** there will be **one** product-facing DataTable API, hosted by **`ListWorkspace`**. Engine/helpers/schema may exist underneath. Pages must not choose among engines.
 
-**Candidates** is the first **canonical implementation**, not merely a visual reference. Migration order (runtime, ADR-044): Candidates → Vacancies → Leads → Employees → Companies → Admin lists.
+Canon: [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md). **Candidates / TABLE_V1** is the capability bar. Page cutover is epic P1–P2.
 
 ### 8. Work order (runtime epic — not more specs)
 
@@ -120,15 +120,15 @@ Do **not** start with marketing. The dangerous split is inside CRM.
 | Priority | Scope |
 |----------|--------|
 | **P0** | Control layer: Button, IconButton, Checkbox, Radio, Switch, SearchField, Tabs, StatusBadge, Chip, PlatformIcon, Modal, EmptyState, Pagination, FormField — wrap current CSS where it exists |
-| **P1** | One DataTable contract + list migrations |
-| **P2** | Search + Filters + Sort + Pagination + Bulk + persisted view state as one list contract |
+| **P1** | One `ListWorkspace` + `DataTable` public API (ADR-044) |
+| **P2** | Search + Filters + Sort + Pagination + Bulk + persisted view state — same pattern |
 | **P3** | Layouts / templates: EntityListPage, EntityWorkspace, OperationalQueuePage, SettingsPage |
 
-Follow-on ADRs (separate PRs, same tree):
+Follow-on ADRs (same tree):
 
-- **ADR-044** — Data Presentation Canon (tables, search, sort, filters, pagination, bulk)
+- ~~**ADR-044** — List Workspace & Data Presentation~~ **Done** — [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md)
 - **ADR-045** — Layout & Page Template Canon
-- ~~**ADR-046** — Visualization Canon~~ **Done** — [`ADR-046`](ADR-046-analytics-visualization-canon.md) (analytics UI language; Recruitment efficiency = reference)
+- ~~**ADR-046** — Visualization Canon~~ **Done** — [`ADR-046`](ADR-046-analytics-visualization-canon.md) (analytics + reporting language; Recruitment efficiency = reference)
 
 ### 9. Enforcement — ratchet, not rewrite
 
@@ -154,7 +154,7 @@ The ADR PR did **not** migrate product pages or extract DataTable. P0 follow-on 
 
 - Visual restyle of `.btn-*` / brand palette
 - Marketing pixel-parity with CRM
-- Shipping ADR-044 / 045 in this PR
+- Shipping ADR-045 in this PR
 - Big-bang Tabler / hex / table cleanup
 - New L0 P-rule or UI capability Passport
 - Actions / Events vocabulary (ADR-038 areas 9–10)
@@ -163,8 +163,9 @@ The ADR PR did **not** migrate product pages or extract DataTable. P0 follow-on 
 
 ## Explicit next
 
-1. **ADR-044** Data Presentation Canon (one DataTable + list contract) — P0 kit is in the composition epic.
-2. ADR-038 Vocabulary **Actions / Events** may proceed **in parallel** (different group).
+1. Epic P1–P2 — `ListWorkspace` runtime extract ([`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md)).
+2. **ADR-045** Layout & Page Template Canon.
+3. Events vocabulary may proceed **in parallel**.
 
 ---
 
@@ -183,7 +184,7 @@ The ADR PR did **not** migrate product pages or extract DataTable. P0 follow-on 
 
 - Positive: UI follows the same Platform-first rule as entities, types, relationships, and vocabulary; modules stop growing private UI languages; a year-later visual change has one kit surface.
 - Negative: until P1–P3 ship, legacy className and parallel tables remain legal under migrate-on-touch.
-- Follow-on: ADR-044 → layouts (045). Analytics language: [`ADR-046`](ADR-046-analytics-visualization-canon.md). P0 kit + ratchet are in the composition epic.
+- Follow-on: ListWorkspace runtime (ADR-044 epic P1–P2) → layouts (045). Analytics + reporting language: [`ADR-046`](ADR-046-analytics-visualization-canon.md).
 
 ---
 
@@ -200,7 +201,9 @@ The ADR PR did **not** migrate product pages or extract DataTable. P0 follow-on 
 ## Cross-references (updated in same change set)
 
 - [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md) — L2 catalog
-- [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) — P0–P3 epic
+- [`ADR-044-list-workspace-data-presentation-canon.md`](ADR-044-list-workspace-data-presentation-canon.md) — ListWorkspace + DataTable
+- [`ADR-046-analytics-visualization-canon.md`](ADR-046-analytics-visualization-canon.md) — analytics + presentation/sharing language
+- [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) — P0–P4 epic
 - [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) — amended consumption
 - [`ADR-038-platform-standardization-model.md`](ADR-038-platform-standardization-model.md) · [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md)
 - [`architecture-guide.md`](architecture-guide.md) · [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) · [`platform-architecture-principles.md`](platform-architecture-principles.md)

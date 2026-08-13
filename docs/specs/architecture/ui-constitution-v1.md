@@ -4,7 +4,7 @@
 **Status:** canonical (L1 — **domain** product surface).  
 **Owner:** Product + Platform UX + Architecture.
 
-**Platform canon (how UI is built):** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) (tokens / a11y) + [`ADR-043-ui-component-composition-canon.md`](ADR-043-ui-component-composition-canon.md) (React kit composition).  
+**Platform canon (how UI is built):** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) (tokens / a11y) + [`ADR-043-ui-component-composition-canon.md`](ADR-043-ui-component-composition-canon.md) (React kit composition) + [`ADR-044-list-workspace-data-presentation-canon.md`](ADR-044-list-workspace-data-presentation-canon.md) (ListWorkspace) + [`ADR-046-analytics-visualization-canon.md`](ADR-046-analytics-visualization-canon.md) (analytics + reporting language).  
 **Interaction Rules:** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md)  
 **Layer spec:** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md)  
 **Entity deep work:** [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md)
@@ -331,6 +331,8 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
+| 2026-08-13 | List workspace: [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md) — one `ListWorkspace` + `DataTable` |
+| 2026-08-13 | Analytics canon: [`ADR-046`](ADR-046-analytics-visualization-canon.md) — four layers (semantics, grammar, composition, presentation/sharing); Recruitment efficiency reference |
 | 2026-08-13 | Composition canon: [`ADR-043`](ADR-043-ui-component-composition-canon.md) — pages assemble the React kit |
 | 2026-07-09 | Platform Canon + Interaction Rules layer; §10 roadmap |
 | 2026-07-09 | Renamed scope → Product Surface Contract; UI Platform split to hostflow-ui-platform-v1 |

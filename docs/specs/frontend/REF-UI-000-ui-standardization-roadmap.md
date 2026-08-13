@@ -5,9 +5,9 @@ Date: 2026-05-29
 Updated: 2026-08-13  
 Owner: Frontend Architecture + Product Design
 
-**Parent:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · catalog [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md) · epic [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md).
+**Parent:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · catalog [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md) · list [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) · analytics [`ADR-046`](../architecture/ADR-046-analytics-visualization-canon.md) · epic [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md).
 
-Do **not** open a new sibling `*_V1` program. Locked Foundation / Primitives / TABLE_V1 remain valid as **children** of the ADR-043 tree. Next runtime work is the composition epic (P0 wrappers), then ADR-044 (Data Presentation), not another audit chain.
+Do **not** open a new sibling `*_V1` program. Locked Foundation / Primitives / TABLE_V1 remain valid as **children** of the ADR-043 tree. Next runtime work is epic P1–P2 (`ListWorkspace` extract). Analytics + reporting language is [`ADR-046`](../architecture/ADR-046-analytics-visualization-canon.md) (not a color appendix).
 
 ## Scope Separation (Locked)
 
