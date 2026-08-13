@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation, useSearchParams } from 'react-router-dom'
 import type { TenantRecord, WhoAmI } from '../api/types'
 import { invalidateBillingSubscriptionCache } from '../api/billingSubscriptionCache'
 import { invalidateBillingQuotaHeadroomCache } from '../api/billingQuotaHeadroomCache'
@@ -28,6 +28,7 @@ import { usePermissions } from '../hooks/usePermissions'
 import { maybeMigrateDefaultAppHomeToTasks } from '../utils/defaultAppHome'
 import { CRM_APP_PATHS } from './crmAppPaths'
 import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
+import { isAnalyticsPresentation } from '../components/analytics/analyticsView'
 
 type AppShellProps = {
   me: WhoAmI | null
@@ -39,7 +40,11 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const { can } = usePermissions()
   useRobotsMeta({ index: false, follow: false })
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const path = location.pathname
+  const analyticsPresent =
+    isAnalyticsPresentation(searchParams) &&
+    (path === CRM_APP_PATHS.overview || path.startsWith(`${CRM_APP_PATHS.overview}/`))
   // Company setup lives at /app/platform/setup (onboarding/company only redirects there).
   // Must be treated as onboarding or AppShell Navigate→onboarding/company→setup loops forever.
   const isOnboardingPage =
@@ -230,6 +235,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
         <TeamOverviewNavProvider tenantId={currentTenantId}>
         <HiringPipelineGatesProvider tenantId={currentTenantId}>
         <div className="flex h-screen bg-slate-50 text-slate-900">
+          {analyticsPresent ? null : (
           <Sidebar
             tenant={tenant}
             businessType={onboardingStatus?.business_type ?? 'agency'}
@@ -238,8 +244,11 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
             onClose={() => setSidebarOpen(false)}
             pendingHandoffsCount={pendingHandoffsCount}
           />
+          )}
 
           <div className="flex flex-1 flex-col overflow-hidden">
+            {analyticsPresent ? null : (
+              <>
             <ImpersonationBanner visible={me?.session_kind === 'impersonation'} />
             <LicenseExpiredBanner visible={licenseExpired && !isSuperAdmin} validUntil={validUntil} />
             <Topbar
@@ -250,6 +259,8 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
               compact={isCrmWorkspace}
             />
             <WizardSetupRail hidden={!onboardingWizardEnabled || isOnboardingPage || !me?.tenant_id} />
+              </>
+            )}
 
             <main
               className={
@@ -275,7 +286,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                       : 'w-full px-6 py-6 lg:px-10'
                 }
               >
-                {isCrmWorkspace && !isSettingsArea && !isOnboardingPage && <WorkspaceBackBar />}
+                {isCrmWorkspace && !isSettingsArea && !isOnboardingPage && !analyticsPresent && <WorkspaceBackBar />}
                 {isSettingsArea && location.pathname !== CRM_APP_PATHS.settings && (
                   <SettingsChrome pathname={location.pathname} search={location.search} />
                 )}

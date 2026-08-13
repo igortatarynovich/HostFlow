@@ -4676,7 +4676,13 @@
         "title": "Efektywność pracy",
         "subtitle": "Etapy pipeline, powody odrzuceń i status dokumentów. Filtry: klient, okres, wakat.",
         "empty": "Brak danych dla wybranego wycinka.",
+        "insight_title": "Wysoki udział zamknięć",
         "insight": "{closedPct} kandydatów jest już zamkniętych (odrzucony / zrezygnował). We wczesnych etapach — {early}, w dokumentach — {docs}.",
+        "actions": {
+          "view_rejected": "Pokaż odrzuconych kandydatów",
+          "view_declined": "Pokaż kandydatów, którzy zrezygnowali",
+          "view_docs_wait": "Pokaż oczekujących na dokumenty"
+        },
         "filters": {
           "client": "Klient",
           "all_clients": "Wszyscy klienci"
@@ -4758,6 +4764,17 @@
             "not_interested": "Niezainteresowany"
           }
         }
+      },
+      "share": {
+        "brand": "HostFlow",
+        "copy_link": "Kopiuj link",
+        "copied": "Link skopiowany",
+        "copy_failed": "Nie udało się skopiować",
+        "present": "Prezentacja",
+        "working": "Widok roboczy",
+        "period_all": "Cały okres",
+        "unit_candidates": "kandydaci",
+        "exit": "Wyjdź z prezentacji"
       },
       "tabs": {
         "aria": "Moduły analityki",

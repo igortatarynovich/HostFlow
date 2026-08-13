@@ -7,6 +7,7 @@ import {
   parseOverviewModuleTab,
   type OverviewModuleTab,
 } from '../modules/dashboard/components/OverviewModuleTabs'
+import { isAnalyticsPresentation } from '../components/analytics/analyticsView'
 import AnalyticsSummaryDashboard from './AnalyticsSummaryDashboard'
 import RecruitmentEfficiencyDashboard from './RecruitmentEfficiencyDashboard'
 import MarketingEfficiencyDashboard from './MarketingEfficiencyDashboard'
@@ -67,7 +68,9 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <OverviewModuleTabs active={activeTab} onChange={onTabChange} onTabsReady={onTabsReady} />
+      {!isAnalyticsPresentation(searchParams) ? (
+        <OverviewModuleTabs active={activeTab} onChange={onTabChange} onTabsReady={onTabsReady} />
+      ) : null}
       {activeTab === 'recruitment' ? (
         <RecruitmentEfficiencyDashboard />
       ) : activeTab === 'marketing' ? (

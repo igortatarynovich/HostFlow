@@ -5270,7 +5270,13 @@
         "title": "Work efficiency",
         "subtitle": "Pipeline stages, rejection reasons, and document status. Filters: client, period, vacancy.",
         "empty": "No data for the selected slice.",
+        "insight_title": "Close rate is high",
         "insight": "{closedPct} of candidates are already closed (rejected / declined). Early stages — {early}, documents — {docs}.",
+        "actions": {
+          "view_rejected": "View rejected candidates",
+          "view_declined": "View declined candidates",
+          "view_docs_wait": "View waiting documents"
+        },
         "filters": {
           "client": "Client",
           "all_clients": "All clients"
@@ -5352,6 +5358,17 @@
             "not_interested": "Not interested"
           }
         }
+      },
+      "share": {
+        "brand": "HostFlow",
+        "copy_link": "Copy link",
+        "copied": "Link copied",
+        "copy_failed": "Could not copy",
+        "present": "Presentation",
+        "working": "Working view",
+        "period_all": "All time",
+        "unit_candidates": "candidates",
+        "exit": "Exit presentation"
       },
       "tabs": {
         "aria": "Analytics modules",

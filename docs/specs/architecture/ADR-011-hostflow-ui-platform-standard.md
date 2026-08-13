@@ -3,7 +3,7 @@
 **Статус:** Accepted (целевая модель + фиксация текущей имплементации).  
 **Amended by:** [`ADR-043`](ADR-043-ui-component-composition-canon.md) — product modules consume the **React kit** as public API; CSS/Tailwind is implementation. `.app-ui { border-radius: 0 !important }` is prohibited going forward (surface radius tokens). This ADR is **not** superseded: tokens, a11y, dates, i18n, and §12 drift policy remain here.  
 **Область:** HostFlow SPA (`hostflow-frontend`), публичные формы/порталы на том же стеке; маркетинговые страницы — в рамках той же **палитры и типографики**, но с отдельными layout-правилами (`surface.crm` vs `surface.public` — ADR-043).  
-**Связано с:** [`ADR-010`](ADR-010-unified-resource-list-shell.md) (профиль списков), [`ADR-043`](ADR-043-ui-component-composition-canon.md) (composition canon), [`pipedesign.md`](../../pipedesign.md) (визуальное направление лендинга), [`pipe.md`](../../pipe.md) (продуктовый blueprint).
+**Связано с:** [`ADR-010`](ADR-010-unified-resource-list-shell.md) (профиль списков), [`ADR-043`](ADR-043-ui-component-composition-canon.md) (composition canon), [`ADR-046`](ADR-046-analytics-visualization-canon.md) (analytics + reporting language), [`pipedesign.md`](../../pipedesign.md) (визуальное направление лендинга), [`pipe.md`](../../pipe.md) (продуктовый blueprint).
 
 ## 1. Иерархия источников правды
 
@@ -143,6 +143,7 @@
 
 ## История
 
+- **2026-08-13:** [`ADR-046`](ADR-046-analytics-visualization-canon.md) — analytics + reporting language (meaning→family, Analytics View, presentation mode); not Foundation category colors.
 - **2026-08-13:** [`ADR-043`](ADR-043-ui-component-composition-canon.md) — composition canon; CSS = implementation; `.app-ui` radius `!important` prohibited going forward.
 - **2026-05:** первичная фиксация платформенного UI-стандарта (токены, две поверхности, формы, таблицы, i18n, даты, чеклист).  
 - **2026-05:** §12 — политика против дрейфа для ревью и отдельный пункт чеклиста.  

@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
+import { AnalyticsFilterBar } from '../../../components/analytics'
 import type { TranslateFn } from '../../../i18n'
 import type { QuickRange } from '../types'
 
@@ -54,99 +55,46 @@ export function RecruitmentEfficiencyFiltersBar({
   formatNumber,
 }: RecruitmentEfficiencyFiltersBarProps) {
   return (
-    <div className="card space-y-3 p-4">
-      <div className="flex flex-wrap items-end gap-3 gap-y-2">
-        <label className="flex flex-col gap-0.5 text-xs">
-          <span className="text-slate-500">{t('app.dashboard.efficiency.filters.client')}</span>
-          <select
-            className="input input-sm min-w-[180px]"
-            value={companyFilter}
-            onChange={(e) => onCompanyChange(e.target.value)}
-          >
-            <option value="">{t('app.dashboard.efficiency.filters.all_clients')}</option>
-            {companyOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-0.5 text-xs">
-          <span className="text-slate-500">{t('app.dashboard.filters.period')}</span>
-          <div className="flex flex-wrap gap-1">
-            {quickRangeOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={`rounded px-2 py-1 text-xs ${
-                  activeRange === option.value
-                    ? 'bg-brand-600 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-                onClick={() => applyQuickRange(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </label>
-
-        <label className="flex flex-col gap-0.5 text-xs">
-          <span className="text-slate-500">{t('app.dashboard.filters.from')}</span>
-          <input
-            type="date"
-            className="input input-sm w-36"
-            autoComplete="off"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value)
-              setActiveRange('custom')
-            }}
-          />
-        </label>
-        <label className="flex flex-col gap-0.5 text-xs">
-          <span className="text-slate-500">{t('app.dashboard.filters.to')}</span>
-          <input
-            type="date"
-            className="input input-sm w-36"
-            autoComplete="off"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value)
-              setActiveRange('custom')
-            }}
-          />
-        </label>
-
-        <label className="flex flex-col gap-0.5 text-xs">
-          <span className="text-slate-500">{t('app.dashboard.filters.vacancy')}</span>
-          <select
-            className="input input-sm min-w-[200px]"
-            value={vacancyFilter}
-            onChange={(e) => onVacancyChange(e.target.value)}
-          >
-            <option value="">{t('app.dashboard.filters.all_vacancies')}</option>
-            {vacancyOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs text-slate-500">
-        <span>
-          {t('app.dashboard.filters.sample', { values: { count: formatNumber(periodTotal) } })}
-          {dateFrom && dateTo ? (
-            <span className="ml-2">
-              • {dateFrom} — {dateTo}
-            </span>
-          ) : null}
-        </span>
-        {loading ? <span>{t('common.loading')}</span> : null}
-      </div>
-    </div>
+    <AnalyticsFilterBar
+      periodLabel={t('app.dashboard.filters.period')}
+      quickRanges={quickRangeOptions}
+      activeRange={activeRange}
+      onQuickRange={applyQuickRange}
+      fromLabel={t('app.dashboard.filters.from')}
+      toLabel={t('app.dashboard.filters.to')}
+      dateFrom={dateFrom}
+      dateTo={dateTo}
+      onDateFrom={(value) => {
+        setDateFrom(value)
+        setActiveRange('custom')
+      }}
+      onDateTo={(value) => {
+        setDateTo(value)
+        setActiveRange('custom')
+      }}
+      dimensions={[
+        {
+          id: 'client',
+          label: t('app.dashboard.efficiency.filters.client'),
+          value: companyFilter,
+          options: companyOptions,
+          allLabel: t('app.dashboard.efficiency.filters.all_clients'),
+          onChange: onCompanyChange,
+        },
+        {
+          id: 'vacancy',
+          label: t('app.dashboard.filters.vacancy'),
+          value: vacancyFilter,
+          options: vacancyOptions,
+          allLabel: t('app.dashboard.filters.all_vacancies'),
+          onChange: onVacancyChange,
+        },
+      ]}
+      sampleText={`${t('app.dashboard.filters.sample', { values: { count: formatNumber(periodTotal) } })}${
+        dateFrom && dateTo ? ` • ${dateFrom} — ${dateTo}` : ''
+      }`}
+      loading={loading}
+      loadingLabel={t('common.loading')}
+    />
   )
 }
