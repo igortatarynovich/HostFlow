@@ -25,7 +25,8 @@ def normalize_recruitment_inbox_scope(scope: str | None) -> str:
 
 
 def _not_client_lead_clause() -> Any:
-    return ~and_(Lead.lead_type == "client", Lead.lead_target_type == "client_lead")
+    """Recruitment inbox must not include Sales/client transport Leads (slice 4)."""
+    return func.lower(func.coalesce(Lead.lead_type, "")) != "client"
 
 
 def _status_lower() -> Any:

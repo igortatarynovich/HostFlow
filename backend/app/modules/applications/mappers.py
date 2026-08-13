@@ -318,7 +318,7 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
 def is_open_recruitment_application(lead: Lead) -> bool:
     if getattr(lead, "candidate_id", None):
         return False
-    if _text(getattr(lead, "lead_type", None)) == "client" and _text(getattr(lead, "lead_target_type", None)) == "client_lead":
+    if _text(getattr(lead, "lead_type", None)) == "client":
         return False
     status = _text(getattr(lead, "status", None)).lower()
     return status not in TERMINAL_RECRUITMENT_STATUSES
@@ -326,7 +326,7 @@ def is_open_recruitment_application(lead: Lead) -> bool:
 
 def is_recruitment_inbox_application(lead: Lead, *, scope: str = "all") -> bool:
     """Recruitment inbox row filter. ``open`` = pending only; ``all`` includes completed/rejected."""
-    if _text(getattr(lead, "lead_type", None)) == "client" and _text(getattr(lead, "lead_target_type", None)) == "client_lead":
+    if _text(getattr(lead, "lead_type", None)) == "client":
         return False
     if scope == "open":
         return is_open_recruitment_application(lead)

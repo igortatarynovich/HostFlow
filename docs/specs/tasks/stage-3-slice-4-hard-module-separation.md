@@ -99,5 +99,5 @@ Do **not** mix Stage 5 settings or R6 table-cutover into this PR.
 - [x] Brief sealed with in/out + acceptance
 - [x] Queue + roadmap + AGENTS point at this brief
 - [x] Boundary vs Stage 5 / R6 / production cutover explicit
-- [ ] Code feat PR — Lead routes redirect to owning workspace; mixed inbox gone
-- [ ] Contract tests: Recruitment ⊄ SalesInquiry; deep link / route redirect
+- [x] Code feat PR — Lead routes redirect to owning workspace; mixed inbox gone
+- [x] Contract tests: Recruitment ⊄ SalesInquiry; deep link / route redirect
