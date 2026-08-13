@@ -35,7 +35,8 @@ import { createInvoiceFromServiceOrder, createPayment, listInvoices, listInvoice
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageHeader } from '../components/nav/PageHeader'
-import { PageShell, PageShellHeader, Toolbar, DataTable, DataTableFrame, type DataTableColumn } from '../components/layout'
+import { PageShell, PageShellHeader, Toolbar, DataTableFrame } from '../components/layout'
+import { DataTable, type DataTableColumn } from '../components/ui'
 import {
   OPEN_SERVICE_ORDER_STATUSES,
   ORDER_STATUSES,

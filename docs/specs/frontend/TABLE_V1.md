@@ -1,6 +1,6 @@
 # TABLE_V1
 
-**Parent composition / list pattern:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) (`ListWorkspace` + `DataTable`). TABLE_V1 remains the **visual/behavior child** (Candidates frame). Runtime extract is epic P1–P2.
+**Parent composition / list pattern:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) (`ListWorkspace` + `DataTable`). TABLE_V1 remains the **visual/behavior child** (Candidates frame). Public `DataTable` runtime is K1 (`components/ui/DataTable`); ListWorkspace is K2.
 
 Status: **Locked**  
 Draft date: 2026-05-29  
@@ -14,7 +14,7 @@ Decision mode: **Adapt** (candidates-based frame + targeted fixes — not direct
 
 > Какой единый стандарт operational entity-list tables в HostFlow?
 
-Reference implementation: `table_candidates_main_v7` (`/app/candidates`). Enforced via PR review and migrate-on-touch. Code extraction to shared components is **not required at lock** — spec-first.
+Reference implementation: `table_candidates_main_v7` (`/app/candidates`). Enforced via PR review and migrate-on-touch. Public runtime: `hostflow-frontend/src/components/ui/DataTable` (Platform Extraction K1). Candidates page is the capability bar and is not cut over in K1.
 
 ---
 

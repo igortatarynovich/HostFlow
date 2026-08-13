@@ -8,8 +8,10 @@ export {
   DATA_TABLE_FOOTER_CLASS,
 } from './DataTableFrame'
 export type {
+  DataTableAlign,
   DataTableColumn,
+  DataTableColumnLayout,
   DataTableProps,
   DataTableSelection,
-  DataTableAlign,
+  DataTableSortState,
 } from './DataTable'

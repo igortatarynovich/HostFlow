@@ -28,3 +28,16 @@ export { SectionCard } from './SectionCard'
 export { PlatformIcon } from '../../platform/icons/PlatformIcon'
 export type { PlatformIconProps } from '../../platform/icons/PlatformIcon'
 export { Modal } from '../Modal'
+export {
+  DataTable,
+  DATA_TABLE_FOOTER_CLASS,
+  DATA_TABLE_SCROLL_CLASS,
+  DATA_TABLE_SURFACE_CLASS,
+  type DataTableAlign,
+  type DataTableColumn,
+  type DataTableColumnLayout,
+  type DataTableProps,
+  type DataTableSelection,
+  type DataTableSortState,
+} from './DataTable'
+export { SortControl, type SortControlDirection, type SortControlProps } from './SortControl'

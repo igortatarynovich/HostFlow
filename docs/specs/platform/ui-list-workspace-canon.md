@@ -28,7 +28,7 @@ Analytics totals tables are [`ui-analytics-canon.md`](ui-analytics-canon.md) `An
 
 Forbidden in new list pages: a second operational `<table>`, a copied Candidates toolbar, a module-local pagination/bulk/search.
 
-Runtime today: zones live in `EntityListShell`; table stacks are still parallel. Epic P1–P2 collapses them to this API.
+Runtime today: public `DataTable` is `hostflow-frontend/src/components/ui/DataTable` (K1). ListWorkspace (K2) still composes `EntityListShell`. Candidates page is the capability bar and is **not** cut over in K1.
 
 ---
 
@@ -82,3 +82,4 @@ Invalid: “HR table v2”, a dashboard pretending to be an entity list, a new l
 ## 6. History
 
 - 2026-08-13: Initial contract under ADR-044. Runtime extract = [Platform Extraction](../architecture/platform-extraction-phase.md).
+- 2026-08-13: K1 public `DataTable` in `components/ui`. ListWorkspace remains K2.

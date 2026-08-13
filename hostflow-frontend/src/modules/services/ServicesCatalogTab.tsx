@@ -2,7 +2,8 @@ import type { FormEvent } from 'react'
 
 import type { AdditionalService } from '../../api/types'
 import { useI18n } from '../../i18n'
-import { DataTable, Toolbar, type DataTableColumn } from '../../components/layout'
+import { Toolbar } from '../../components/layout'
+import { DataTable, type DataTableColumn } from '../../components/ui'
 import { catalogExecutionMode } from './serviceOrderBeneficiary'
 import type { NewServiceFormState } from './types'
 

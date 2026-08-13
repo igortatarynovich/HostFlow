@@ -26,7 +26,7 @@ This file does **not** lock pixel values or Figma. Chart palettes and analytics 
 | `<PlatformIcon id="…">` | new `@tabler/icons-react` imports outside the registry |
 | `<StatusBadge semantic="danger">` | ad-hoc `bg-rose-100` pills for status meaning |
 | `<SemanticSurface tone="warning">` | page-local gradients / `rounded-2xl` heroes |
-| `DataTable` / `<ListWorkspace>` (ADR-044; runtime = Platform Extraction) | new hand-written operational `<table>` |
+| `DataTable` from `components/ui` (K1) | new hand-written operational `<table>`; importing `DataTableEngine` as a product table |
 
 CSS classes `.btn-*`, `.input`, `.table` remain **implementation** inside `hostflow-frontend/src/styles/components.css` and kit wrappers.
 
@@ -100,9 +100,9 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
-| `DataTable` | wrap | four parallel implementations | **One** product API — ADR-044; runtime = Platform Extraction; Candidates = capability bar |
-| `TableHeader` | wrap | candidates header | ListWorkspace |
-| `SortControl` | wrap | candidates / companies | ListWorkspace |
+| `DataTable` | exists | `components/ui/DataTable.tsx` | Public kit API (K1). `layout/DataTable` re-exports; `DataTableEngine` is an adapter, not a second table. Candidates page not cut over. |
+| `TableHeader` | wrap | kit `DataTable` header | ListWorkspace |
+| `SortControl` | exists | `components/ui/SortControl.tsx` | TABLE_V1 / Candidates header pixels |
 | `FacetFilter` | wrap | `FacetFilterMenu` | ListWorkspace filters |
 | `BulkActionBar` | wrap | `EntityListBulkBar` | ListWorkspace; visible only with selection |
 
@@ -163,8 +163,9 @@ Do not open a new `*_V1` as a sibling canon. Extend this catalog.
 
 ## 6. History
 
+- 2026-08-13: **K1** public `DataTable` + `SortControl` in `components/ui`. `DataTableEngine` is an adapter. Candidates page not cut over.
 - 2026-08-13: **Platform Extraction** — Core Platform Kit is the active stage; Vocabulary Canon closed.
 - 2026-08-13: **ADR-044** `ListWorkspace` + one `DataTable` (rule). Runtime extract remains epic P1–P2. `ListLayout` renamed to `ListWorkspace`.
 - 2026-08-13: **ADR-046** analytics families + presentation/share (`AnalyticsStoryHero`, `AnalyticsReportHeader`); Recruitment efficiency is the reference.
 - 2026-08-13: Initial catalog under ADR-043. Runtime wrappers, DataTable extraction, layouts, visualization, and CI ratchet deferred to the epic / ADR-044…046.
-- 2026-08-13: P0 control-layer React APIs + radius tokens + lower-only CI ratchet (`npm run ui:kit:check`). DataTable / layouts still deferred.
+- 2026-08-13: P0 control-layer React APIs + radius tokens + lower-only CI ratchet (`npm run ui:kit:check`). K1 DataTable landed; ListWorkspace / EntityWorkspace Shell remain K2–K3.

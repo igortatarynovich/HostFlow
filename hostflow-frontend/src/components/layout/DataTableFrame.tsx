@@ -1,15 +1,13 @@
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
 
-/** Shared surface classes — same card shell as `DataTable`. */
-export const DATA_TABLE_SURFACE_CLASS =
-  'card relative m-0 flex min-h-0 flex-1 flex-col rounded-lg border border-slate-200 bg-white shadow-sm'
+import {
+  DATA_TABLE_FOOTER_CLASS,
+  DATA_TABLE_SCROLL_CLASS,
+  DATA_TABLE_SURFACE_CLASS,
+} from '../ui/DataTable'
 
-export const DATA_TABLE_SCROLL_CLASS =
-  'min-h-0 flex-1 overflow-auto overscroll-contain rounded-b-lg'
-
-export const DATA_TABLE_FOOTER_CLASS =
-  'shrink-0 border-t border-slate-200/80 px-4 pb-4 pt-3 text-sm leading-relaxed text-slate-600'
+export { DATA_TABLE_FOOTER_CLASS, DATA_TABLE_SCROLL_CLASS, DATA_TABLE_SURFACE_CLASS }
 
 /**
  * Card + scroll + optional header/footer shell for bespoke tables (Candidates,

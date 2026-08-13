@@ -45,7 +45,8 @@ import type {
 import { ORDER_TYPE_OPTIONS } from '../modules/companies/types'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageHeader } from '../components/nav/PageHeader'
-import { PageShell, PageShellHeader, Toolbar, DataTable, type DataTableColumn } from '../components/layout'
+import { PageShell, PageShellHeader, Toolbar } from '../components/layout'
+import { DataTable, type DataTableColumn } from '../components/ui'
 import { IconChevronDown, IconLink } from '@tabler/icons-react'
 import { servicesWorkspacePath } from '../modules/services/utils'
 import {
