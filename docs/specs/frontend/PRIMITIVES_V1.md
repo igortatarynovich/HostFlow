@@ -119,12 +119,8 @@ Spec: `INPUT_V1.md` | Implementation: **`styles/components.css`** — no `Input.
 
 ## 9) Next Steps (Layer 3+)
 
-Layer 2 is **closed**. Further UI standardization follows `REF-UI-000-ui-standardization-roadmap.md`:
+Layer 2 families remain locked as **children** of [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md). Do not open a sibling `*_V1` program.
 
-- Layer 3 composites (`FILTER_BAR_V1`, `MODAL_V1`, …)
-- Layer 4 layouts
-- Layer 5 page templates
-- Optional: primitive CI grep (Phase 2)
-- Optional: Checkbox/Toggle family if product requires
+Runtime: wrap primitives as the React public API ([`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) P0). TABLE_V1 / FilterBar / layouts fold into ADR-044 / ADR-045.
 
-Do not reopen Input wrapper without governance trigger documented in `INPUT_V1.md`.
+Do not reopen Input wrapper for pixel reasons; ADR-043 allows a thin React `Input` **only** as kit public API over existing `.input` CSS.

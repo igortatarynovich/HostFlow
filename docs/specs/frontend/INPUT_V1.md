@@ -11,7 +11,7 @@ Supersedes: `INPUT_V1_DRAFT.md`
 
 > Что разрешено для text fields, нужен ли React wrapper, и что запрещено?
 
-This is the canonical allow-list for HostFlow inputs. **CSS-first — no React wrapper at lock.** Enforced via PR review and migrate-on-touch. Foundation CI (`npm run foundation:check`) blocks deprecated tokens in diffs.
+This is the canonical allow-list for HostFlow inputs. **Visual source remains CSS** (`.input` / `.textarea`). After ADR-043 the **public API** may be a thin React wrapper. Enforced via PR review and migrate-on-touch. Foundation CI (`npm run foundation:check`) blocks deprecated tokens in diffs.
 
 ---
 
@@ -21,24 +21,28 @@ This is the canonical allow-list for HostFlow inputs. **CSS-first — no React w
 |---|---|---|
 | Spec | `INPUT_V1_DRAFT` + Wrapper Justification | ✅ |
 | CSS canon | `.input`, `.textarea`, `.label` in `components.css` | ✅ |
-| Wrapper decision | Justified trigger required for `Input.tsx` | ✅ **No wrapper** |
+| Wrapper decision | Justified trigger required for `Input.tsx` | ✅ **No wrapper at lock**; ADR-043 allows thin kit API |
 | New code | Native elements + approved classes only | ✅ See §1 |
 | Foundation | Single standard uses `brand-*`, `slate-*` | ✅ |
 | Component | `Input.tsx` not required | ✅ By design |
 
 ---
 
+**Amended by:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) — a thin React `Input` / `Textarea` is now **allowed as kit public API** wrapping existing `.input` / `.textarea` CSS. This is a composition-contract trigger, not a visual redesign. Masking / validation / async remain out of scope until a dedicated PR.
+
 ## Wrapper Justification Decision (Locked)
 
-**No `Input.tsx` / `Textarea.tsx` at lock.**
+**At INPUT_V1 lock:** no wrapper (CSS-only).
 
-| Primitive | V1 shape |
-|---|---|
-| `BUTTON_V1` | Component + CSS |
-| `SELECT_V1` | Component (non-native behavior) |
-| **`INPUT_V1`** | **CSS canon only** |
+**After ADR-043:** kit public API may wrap the same CSS. Product pages target `<Input>` / `<Textarea>`; they do not restyle the field.
 
-Introduce `components/ui/Input.tsx` **only** after governance approval for: masking, formatting, validation integration, or async behavior — not “to have a component”.
+| Primitive | V1 visual source | Public API after ADR-043 |
+|---|---|---|
+| `BUTTON_V1` | CSS `.btn-*` | `<Button>` |
+| `SELECT_V1` | Combobox components | `<Combobox>` / `<MultiCombobox>` |
+| **`INPUT_V1`** | CSS `.input` / `.textarea` | thin `<Input>` / `<Textarea>` wrapping the same CSS |
+
+Do **not** invent a second visual language for inputs. Masking / formatting / async still need a dedicated PR.
 
 ---
 
@@ -46,13 +50,13 @@ Introduce `components/ui/Input.tsx` **only** after governance approval for: mask
 
 | Rule | Detail |
 |---|---|
-| Authority | `REF-UI-*` only |
-| New code | Native `<input>` / `<textarea>` + `.input` / `.textarea` |
+| Authority | `REF-UI-*` + ADR-043 composition canon |
+| New code | After Input kit exists: `<Input>` / `<Textarea>`. Until then: native + `.input` / `.textarea` (migrate-on-touch) |
 | Visual source | `styles/components.css` |
-| No Form System | Label/hint/error layout out of scope |
+| No Form System | Label/hint/error layout → `FormField` (ADR-043 catalog), not a second input visual |
 | No validation framework | Out of scope |
-| Wrapper | None — deferred per trigger table in draft |
-| Changes | Explicit governance decision in `REF-UI-*` |
+| Wrapper | Thin kit API allowed (ADR-043). No second visual language |
+| Changes | Explicit governance decision in `REF-UI-*` or ADR-043 tree |
 
 ---
 

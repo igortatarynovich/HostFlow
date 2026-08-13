@@ -173,7 +173,7 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 | 8 | **Activity & Notification Operating Layer** | Единый слой операционных действий и сигналов: задачи, напоминания, follow-up, planner, calendar, in-app bell и Notification Center. **Две сущности БД** (`Activity` + `Notification`), всё остальное — представления. **Не** два отдельных модуля «Notifications» и «Activity / Tasks»; см. [`ADR-012`](ADR-012-activity-notification-operating-layer.md) и canon [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md). |
 | 9 | **Trust & Reputation Layer** | Проверенная операционная история и сигналы доверия (не «публичные blacklist» и не сырые эмоциональные отзывы); см. §6.1. |
 | 10 | **Resource List Shell (SPA)** | Единая оболочка всех рабочих списков: таблица, поиск, фильтры, сортировка, колонки, rail/modal ([`ADR-010`](ADR-010-unified-resource-list-shell.md)). |
-| 11 | **UI Platform Standard** | Единые токены и компоненты для всего SPA: сетка, типографика, кнопки, формы, таблицы, модалки, даты, i18n ([`ADR-011`](ADR-011-hostflow-ui-platform-standard.md)); **ревью:** чеклист и политика против дрейфа — ADR-011 §12; визуальное направление — [`pipedesign.md`](../../pipedesign.md). |
+| 11 | **UI Platform Standard** | Токены и a11y ([`ADR-011`](ADR-011-hostflow-ui-platform-standard.md)); **composition** — страницы собирают каталог React-контролов ([`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md)); CSS — implementation; **ревью:** ADR-011 §12 + ADR-043 ratchet (после P0); визуальное направление — [`pipedesign.md`](../../pipedesign.md). |
 
 **Forms** создают/обновляют через handlers: Lead, Candidate, Employee, Client, Service Order, Fleet report, Document, Billing Profile и др. (см. ADR-007). Forms **не создают семантику полей** — только presentation/intake subset над Entity Profile ([`entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md)).
 
@@ -273,6 +273,7 @@ Integration Hub развивается в **HostFlow Marketplace** ([`ADR-006`](
 
 ## История
 
+- 2026-08-13: [`ADR-043`](ADR-043-ui-component-composition-canon.md) — UI composition canon; React kit public API; capability #11 composition pointer.
 - 2026-05: первичная консолидация принципов modular multi-company SaaS, границ Tenant/Company/Module, shared capabilities, RBAC, cross-company, Billing Events, ссылки на ADR-002–009.
 - 2026-05: позиционирование workforce OS / trusted ecosystem; shared capability **Trust & Reputation Layer**; Driver App и employer portals; уточнение modular monolith + bounded contexts.
 - 2026-05: [`ADR-010`](ADR-010-unified-resource-list-shell.md) — единая оболочка списков (SPA), field kinds, rail/modal; capability #10 в §6 (после консолидации Activity/Notification — было #11).

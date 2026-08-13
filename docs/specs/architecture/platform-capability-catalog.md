@@ -567,6 +567,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 ## History
 
+- **2026-08-13** — **ADR-043** UI Component & Composition Canon; area `design_interaction` composition rule (React kit; runtime wrappers deferred).
 - **2026-08-13** — **ADR-042** Relationships; area `relationships` → exists (confirmed slice; CRM graph deferred).
 - **2026-08-13** — **ADR-041** Data Types; area `data_types` → exists (Field/Forms runtime adoption deferred).
 - **2026-08-13** — **ADR-040** Naming & Identifiers; area `naming_identifiers` → exists (DocumentType runtime alignment deferred).

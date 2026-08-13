@@ -19,7 +19,7 @@
 | **Workflow canon** | `docs/specs/workflows/*.md` + `workflows/index.md` | Workflow index maintainer (engineering lead) | Любой новый workflow регистрируется в `index.md` и линкуется из ADR / module spec / кода |
 | **Operational SSOT** | `docs/SSOT.md`, `HOSTFLOW_AUDIT_AND_PLAN.md`, `operations-loop.md`, `manager-assignment.md`, `vacancy-statuses.md`, `plans-matrix.md`, `personas.md`, `operational-metrics.md`, `lead-types.md`, `tenant-types.md`, `own-company-model.md` | Operational lead | Source of truth для backlog, KPI, плановой матрицы, ролей-операций |
 | **DB canon** | `docs/specs/db/migrations_policy.md`, `doc_types_catalog.md`, schema_*.sql | DB / backend owner | Согласует миграции, держит migrations_policy актуальным |
-| **Frontend canon** | `docs/specs/frontend/*.md`, ADR-010, ADR-011 | Frontend owner | UI standard, list shell, forms, tokens (`docs/pipedesign.md`) |
+| **Frontend canon** | `docs/specs/frontend/*.md`, ADR-010, ADR-011, ADR-043, [`../specs/platform/ui-component-canon.md`](../specs/platform/ui-component-canon.md) | Frontend owner | UI standard, composition kit, list shell, tokens (`docs/pipedesign.md`) |
 | **Platform canon** | `docs/specs/platform/observability.md`, `prometheus_integration.md`, `webhooks.md` | Platform owner | Observability, metrics, webhooks |
 | **Integrations canon** | `docs/specs/integrations/*.md`, ADR-006, marketplace-integrations-data-model.md | Integrations owner | Marketplace, intake channels |
 | **Journeys canon** | `docs/specs/journeys/*.md` | UX / product owner | UAT прогоны, persona journeys |

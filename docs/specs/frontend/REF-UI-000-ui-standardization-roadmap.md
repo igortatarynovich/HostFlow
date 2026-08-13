@@ -1,8 +1,13 @@
 # REF-UI-000 — UI Standardization Roadmap
 
-Status: Active  
+Status: Active — **child of ADR-043** (not an independent canon)  
 Date: 2026-05-29  
+Updated: 2026-08-13  
 Owner: Frontend Architecture + Product Design
+
+**Parent:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · catalog [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md) · epic [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md).
+
+Do **not** open a new sibling `*_V1` program. Locked Foundation / Primitives / TABLE_V1 remain valid as **children** of the ADR-043 tree. Next runtime work is the composition epic (P0 wrappers), then ADR-044 (Data Presentation), not another audit chain.
 
 ## Scope Separation (Locked)
 

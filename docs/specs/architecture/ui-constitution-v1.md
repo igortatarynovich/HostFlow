@@ -4,7 +4,7 @@
 **Status:** canonical (L1 — **domain** product surface).  
 **Owner:** Product + Platform UX + Architecture.
 
-**Platform canon (how UI is built):** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) — **HostFlow UI Platform Standard** — supreme entry point.  
+**Platform canon (how UI is built):** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md) (tokens / a11y) + [`ADR-043-ui-component-composition-canon.md`](ADR-043-ui-component-composition-canon.md) (React kit composition).  
 **Interaction Rules:** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md)  
 **Layer spec:** [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md)  
 **Entity deep work:** [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md)
@@ -331,6 +331,7 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
+| 2026-08-13 | Composition canon: [`ADR-043`](ADR-043-ui-component-composition-canon.md) — pages assemble the React kit |
 | 2026-07-09 | Platform Canon + Interaction Rules layer; §10 roadmap |
 | 2026-07-09 | Renamed scope → Product Surface Contract; UI Platform split to hostflow-ui-platform-v1 |
 | 2026-07-09 | §10 **primitives-first** build order; design-system-constitution-v1 |

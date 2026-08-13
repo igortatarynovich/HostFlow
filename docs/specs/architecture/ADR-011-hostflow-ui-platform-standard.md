@@ -1,8 +1,9 @@
 # ADR-011: Платформенный стандарт UI HostFlow (всё, что можно стандартизировать)
 
 **Статус:** Accepted (целевая модель + фиксация текущей имплементации).  
-**Область:** HostFlow SPA (`hostflow-frontend`), публичные формы/порталы на том же стеке; маркетинговые страницы — в рамках той же **палитры и типографики**, но с отдельными layout-правилами.  
-**Связано с:** [`ADR-010`](ADR-010-unified-resource-list-shell.md) (профиль списков), [`pipedesign.md`](../../pipedesign.md) (визуальное направление лендинга), [`pipe.md`](../../pipe.md) (продуктовый blueprint).
+**Amended by:** [`ADR-043`](ADR-043-ui-component-composition-canon.md) — product modules consume the **React kit** as public API; CSS/Tailwind is implementation. `.app-ui { border-radius: 0 !important }` is prohibited going forward (surface radius tokens). This ADR is **not** superseded: tokens, a11y, dates, i18n, and §12 drift policy remain here.  
+**Область:** HostFlow SPA (`hostflow-frontend`), публичные формы/порталы на том же стеке; маркетинговые страницы — в рамках той же **палитры и типографики**, но с отдельными layout-правилами (`surface.crm` vs `surface.public` — ADR-043).  
+**Связано с:** [`ADR-010`](ADR-010-unified-resource-list-shell.md) (профиль списков), [`ADR-043`](ADR-043-ui-component-composition-canon.md) (composition canon), [`pipedesign.md`](../../pipedesign.md) (визуальное направление лендинга), [`pipe.md`](../../pipe.md) (продуктовый blueprint).
 
 ## 1. Иерархия источников правды
 
@@ -11,7 +12,7 @@
 | **Гovernance** | Этот ADR | Что обязано быть едино, запреты, исключения, эволюция. |
 | **Визуальное направление** | [`pipedesign.md`](../../pipedesign.md) | B2B-тон, сетка 8px, базовые цвета, типографические уровни, карточки лендинга. |
 | **Токены в коде** | `hostflow-frontend/tailwind.config.cjs` | `brand.*`, `fontFamily.sans`, расширения `borderRadius` / `boxShadow`. |
-| **Компонентный слой** | `hostflow-frontend/src/styles/components.css` | `.btn*`, `.input`, `.table`, `.card`, `.app-ui`, `.settings-*`, `.crm-*`, модалки. |
+| **Компонентный слой (implementation)** | `hostflow-frontend/src/styles/components.css` | `.btn*`, `.input`, `.table`, `.card`, `.app-ui`, `.settings-*`, `.crm-*`, модалки. **Public API** for product modules: React kit ([`ADR-043`](ADR-043-ui-component-composition-canon.md)). |
 | **Списки** | ADR-010 | Единая оболочка списков поверх этого ADR. |
 
 **Правило:** новые экраны **не вводят** параллельные системы отступов, шрифтов, скруглений и кнопок без обновления таблицы в §7 и без правок в `components.css` / `tailwind.config.cjs`.
@@ -142,6 +143,7 @@
 
 ## История
 
+- **2026-08-13:** [`ADR-043`](ADR-043-ui-component-composition-canon.md) — composition canon; CSS = implementation; `.app-ui` radius `!important` prohibited going forward.
 - **2026-05:** первичная фиксация платформенного UI-стандарта (токены, две поверхности, формы, таблицы, i18n, даты, чеклист).  
 - **2026-05:** §12 — политика против дрейфа для ревью и отдельный пункт чеклиста.  
 - **2026-05:** CI — `ui:adr011:check --fail`; база layout arbitrary `px` вычищена, токены `hf-*`.  

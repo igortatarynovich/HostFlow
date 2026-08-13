@@ -4,7 +4,7 @@
 **Date:** 2026-08-13  
 **Layer of change:** Constitution (meta) | Platform standardization map  
 **Trusted base:** `integration/release-product-a-b`  
-**Related:** [`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) · [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-036`](ADR-036-four-trust-roles-rbac.md) · [`platform-capability-catalog.md`](platform-capability-catalog.md) · L2 index [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md)
+**Related:** [`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) · [`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-036`](ADR-036-four-trust-roles-rbac.md) · [`platform-capability-catalog.md`](platform-capability-catalog.md) · L2 index [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md)
 
 **L0 checklist:** No new L0 P-rule; does not rewrite Passport/Manifest shape; references Catalog / P-01…P-05; ADR-037 remains the ObjectKind / RuleKind / LibraryKind vocabulary and is **not** expanded by this ADR.
 
@@ -106,7 +106,7 @@ Under ADR-011, three prohibitions are platform law for modules:
 2. No local clones of existing **primitives / patterns**.
 3. No module-specific **interaction patterns** without registering a new platform pattern.
 
-**Semantic Visual Language** (State/Meaning → semantic token → visual treatment → icon/sign → tooltip/a11y) is the intended Design System extension. Token tables and color migration are **out of scope** for this PR; noted as a sub-gap under area 13.
+**Semantic Visual Language** (State/Meaning → semantic token → visual treatment → icon/sign → tooltip/a11y) remains the Design extension for *meaning classes*. Composition of controls is **ADR-043**. Chart/category colors are **ADR-046**, not Foundation.
 
 ### 8. Architecture Enforcement is a mechanism
 
@@ -122,7 +122,9 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 **Relationships:** **done** — [`ADR-042`](ADR-042-relationships.md) · [`../platform/relationships.md`](../platform/relationships.md). Confirmed Documents/handoff/Activity/Comms slice only; full CRM graph **deferred**.
 
-**Next in ADR-038 sequence:** Actions / Events (areas 9–10, `gap`, ADR-019 3A-*) — unless product prioritizes Design Semantic Visual Language, DocumentType alignment, or Field/Forms DataType adoption.
+**Design & Interaction composition:** **done as rule** — [`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md). React kit is the public API; CSS is implementation. DataTable / layouts / visualization remain follow-on (**ADR-044 / 045 / 046**). Runtime wrappers = epic, not this ADR.
+
+**Next in ADR-038 Vocabulary sequence:** Actions / Events (areas 9–10, `gap`, ADR-019 3A-*) — **parallel** to the UI composition epic. DocumentType alignment and Field/Forms DataType adoption may also run in parallel.
 
 ---
 
@@ -140,7 +142,7 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 - Positive: single coordinate system for all follow-on canons; clear exists/next/gap map; Platform-first turns documentation into architecture; Action / Permission / Capability and Field / DataType stay separable.
 - Negative: gap areas must be filled by dedicated PRs; until then modules must not invent local replacements.
-- Follow-on sequence (separate PRs): ~~State/Lifecycle inventory~~ (ADR-039) → ~~Naming & Identifiers~~ (ADR-040) → ~~Data Types~~ (ADR-041) → ~~Relationships~~ (ADR-042) → Actions / Events (ADR-019 3A-*) → Design Semantic Visual Language on ADR-011. DocumentType alignment and Field/Forms `data_type` adoption may run in parallel.
+- Follow-on sequence (separate PRs): ~~State/Lifecycle inventory~~ (ADR-039) → ~~Naming & Identifiers~~ (ADR-040) → ~~Data Types~~ (ADR-041) → ~~Relationships~~ (ADR-042) → ~~UI composition rule~~ (ADR-043). **Parallel:** Actions / Events (ADR-019 3A-*); UI Data Presentation (ADR-044) / Layouts (ADR-045) / Visualization (ADR-046). DocumentType alignment and Field/Forms `data_type` adoption may run in parallel.
 
 ---
 
@@ -157,5 +159,6 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 - [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md) — L2 area index + status map
 - [`ADR-037-platform-object-kind-catalog.md`](ADR-037-platform-object-kind-catalog.md) — Object Kind / Rules / Libraries under this model
+- [`ADR-043-ui-component-composition-canon.md`](ADR-043-ui-component-composition-canon.md) — Experience composition rule (area 13)
 - [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md) — parent pointer
 - [`platform-capability-catalog.md`](platform-capability-catalog.md) · [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) · [`architecture-guide.md`](architecture-guide.md)

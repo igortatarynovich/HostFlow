@@ -102,7 +102,7 @@ L2 inventory maps today’s `phone_e164`, `textarea`, `code_alpha2`, `number`, `
 
 ## Explicit next
 
-1. Relationships: **done** ([`ADR-042`](ADR-042-relationships.md)). ADR-038 sequence continues with **Actions** / **Events**.
+1. Relationships: **done** ([`ADR-042`](ADR-042-relationships.md)). UI composition rule: **done** ([`ADR-043`](ADR-043-ui-component-composition-canon.md)). ADR-038 *vocabulary* sequence continues with **Actions** / **Events**.
 2. Optional later: Field Registry / Forms adoption PR that stores `data_type` and binds validators/UI primarily to DataType.
 
 ---
@@ -121,7 +121,7 @@ L2 inventory maps today’s `phone_e164`, `textarea`, `code_alpha2`, `number`, `
 
 - Positive: Data Types area becomes `exists`; Field Registry and Forms have a shared semantic target; UI/validation binding has a clear primary key (DataType).
 - Negative: runtime still uses fragments until an adoption PR; `money` lacks currency SoT.
-- Follow-on: ~~Relationships~~ (ADR-042); Actions / Events (ADR-038); optional Field/Forms `data_type` adoption.
+- Follow-on: ~~Relationships~~ (ADR-042); ~~UI composition~~ (ADR-043); Actions / Events (ADR-038 vocabulary); optional Field/Forms `data_type` adoption.
 
 ---
 

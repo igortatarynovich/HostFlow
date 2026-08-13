@@ -3,7 +3,7 @@
 **Статус:** Accepted (целевая модель).  
 **Область:** SPA (React), все «рабочие» списки сущностей в модулях и на платформе.  
 **Phase 2 governance (не giant abstraction):** [`../frontend/entity-table-governance.md`](../frontend/entity-table-governance.md).  
-**Родительский стандарт UI:** [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) (кнопки, сетка, типографика, формы, таблицы, i18n, даты — едино для всего приложения).  
+**Родительский стандарт UI:** [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) (токены, a11y) · [`ADR-043`](ADR-043-ui-component-composition-canon.md) (React kit composition). Product-facing table API is **one** DataTable (ADR-044); this ADR remains the list-zone contract.  
 **Связано с:** [`platform-architecture-principles.md`](platform-architecture-principles.md) (модули), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md), [`pipedesign.md`](../../pipedesign.md) (визуальное направление лендинга).
 
 ## Context
