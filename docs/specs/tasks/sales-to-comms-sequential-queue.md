@@ -5,7 +5,8 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Platform Extraction](../architecture/platform-extraction-phase.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-13 Kit Gate:** [Platform Extraction Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS**. Closes **Platform Baseline v1**. Catalog: [Platform Inventory](../platform/platform-inventory.md). Active slice = **Product Track** — Meta Intake Completeness ([#222](https://github.com/igortatarynovich/HostFlow/pull/222)) → Stage 3 slice 3. Phase B **consumes** the kit; it does not develop it.  
+> **2026-08-13 Kit Gate:** [Platform Extraction Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS**. Closes **Platform Baseline v1**. Catalog: [Platform Inventory](../platform/platform-inventory.md). Phase B **consumes** the kit.  
+> **Product Track (live):** Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ✅ · Stage 3 slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) ✅ · **active** = Stage 3 slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238).  
 > **2026-08-13 strategy:** Vocabulary Canon (ADR-037…047) **closed**. Platform Extraction runtime = K1–K3 ([phase](../architecture/platform-extraction-phase.md) · [epic](ui-platform-composition-epic.md)).  
 > **2026-08-03:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta Intake Completeness on tip of Product stack. Stage 3 slice 3 brief sealed.  
 > C2.4 **frozen** (gate residual R1).  
@@ -32,7 +33,7 @@
 |-------|-------------|------|
 | **Platform Extraction** | Core Platform Kit — K1–K3 · **Platform Baseline v1** | ✅ [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** |
 | **Close-out** | [Platform Inventory](../platform/platform-inventory.md) | ✅ living kit catalog |
-| **Product** (active) | Meta Intake Completeness ([#222](https://github.com/igortatarynovich/HostFlow/pull/222)) → Stage 3 slice 3 brief sealed → **feat** SI product flow | Consume Baseline v1; new lists/chrome/analytics **must** use the kit |
+| **Product** (active) | Stage 3 slice 4 hard module separation ([#238](https://github.com/igortatarynovich/HostFlow/pull/238)) | Consume Baseline v1 on touch; Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ✅ · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) ✅ |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block kit or Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -51,9 +52,9 @@
 - **Vocabulary Canon** ← ✅ closed 2026-08-13 (ADR-037…047)  
 - **Platform Extraction / Core Platform Kit** ← ✅ [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-13) — **Platform Baseline v1** — [phase](../architecture/platform-extraction-phase.md) · [epic](ui-platform-composition-epic.md)  
 - **Platform Inventory** ← ✅ [platform-inventory.md](../platform/platform-inventory.md)  
-- **Meta intake completeness** ← **active** [#222](https://github.com/igortatarynovich/HostFlow/pull/222) — [meta-intake-completeness.md](meta-intake-completeness.md)  
-- **Stage 3 slice 3 — SalesInquiry product flow** ← brief sealed — [stage-3-sales-inquiry-product-flow.md](stage-3-sales-inquiry-product-flow.md); code after Meta merge  
-- Stage 3 slice 4 — hard module separation — after slice 3; see also 3E deferred D1–D2
+- **Meta intake completeness** ← ✅ [#222](https://github.com/igortatarynovich/HostFlow/pull/222) merged 2026-08-03 — [meta-intake-completeness.md](meta-intake-completeness.md)  
+- **Stage 3 slice 3 — SalesInquiry product flow** ← ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [stage-3-sales-inquiry-product-flow.md](stage-3-sales-inquiry-product-flow.md)  
+- **Stage 3 slice 4 — hard module separation** ← **active** [#238](https://github.com/igortatarynovich/HostFlow/pull/238) (brief on that PR)
 
 ---
 
@@ -85,15 +86,15 @@
 | **9b** | **Vocabulary Canon** | ADR-037…047 | ✅ closed 2026-08-13 — stop docs-only area ADRs |
 | **9c** | **Platform Extraction** | Core Platform Kit | ✅ [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** · Baseline v1 |
 | **9d** | **Platform Inventory** | living kit catalog | ✅ [platform-inventory.md](../platform/platform-inventory.md) |
-| **10** | **Meta Intake Completeness** | `feat/meta-intake-completeness` | [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ← **active** |
-| **11** | **Stage 3 slice 3** SalesInquiry product flow | `docs/…` → `feat/…` | Brief sealed — [brief](stage-3-sales-inquiry-product-flow.md) |
-| **12** | Stage 3 slice 4 hard separation | after slice 3 | ADR-023 / R6 boundary |
+| **10** | **Meta Intake Completeness** | `feat/meta-intake-completeness` | ✅ [#222](https://github.com/igortatarynovich/HostFlow/pull/222) merged 2026-08-03 |
+| **11** | **Stage 3 slice 3** SalesInquiry product flow | `feat/stage-3-slice-3-sales-inquiry-product-flow` | ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224) |
+| **12** | Stage 3 slice 4 hard separation | `feat/stage-3-slice-4-hard-module-separation` | ← **active** [#238](https://github.com/igortatarynovich/HostFlow/pull/238) |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** **Vocabulary Canon — closed.**  
 **Kit Gate:** [PASS_WITH_CONSTRAINTS](../gates/platform-extraction-kit-gate.md) — **Platform Baseline v1**.  
 **Inventory:** [platform-inventory.md](../platform/platform-inventory.md).  
-**Active slice:** Meta Intake Completeness ([#222](https://github.com/igortatarynovich/HostFlow/pull/222)).  
-**Product next:** Stage 3 slice 3 feat after Meta merge.  
+**Active slice:** Stage 3 slice 4 ([#238](https://github.com/igortatarynovich/HostFlow/pull/238)).  
+**Product done this Phase B stack:** Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222); slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224).  
 **Engineering:** legacy full-repo pytest does **not** stop the active slice unless the PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -116,15 +117,13 @@
 **Slice 1 ✅** — [stage-3-sales-pipeline-product-wiring.md](stage-3-sales-pipeline-product-wiring.md) (PR #98)  
 **Slice 2 ✅** — [stage-3-sales-pipeline-convert-entrypoints.md](stage-3-sales-pipeline-convert-entrypoints.md) (PR #99)
 
-### Slice 3 — SalesInquiry product flow
+### Slice 3 — SalesInquiry product flow ← **DONE** (#224)
 
-**Brief sealed** — [stage-3-sales-inquiry-product-flow.md](stage-3-sales-inquiry-product-flow.md).  
-**Code:** `feat/stage-3-slice-3-sales-inquiry-product-flow` after Meta Intake Completeness merge.  
-Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 4. New lists/chrome/analytics **must** use the kit (ADR-044 / ADR-046).
+[stage-3-sales-inquiry-product-flow.md](stage-3-sales-inquiry-product-flow.md). SalesInquiry product identity on Sales inbox/workspace.
 
-### Slice 4 — hard module separation
+### Slice 4 — hard module separation ← **active** (#238)
 
-After slice 3. ADR-023 operational independence — do not mix into slice 3.
+ADR-023 operational UI: `/app/leads` is not a mixed inbox; `/app/leads/:id` redirects to SalesInquiry or Recruitment Application workspace. Do not mix Stage 5 settings or R6 table-cutover.
 
 ---
 
@@ -179,17 +178,17 @@ Catalog Notifications↔Communication deferred to Architecture RFC (A2-F1). **A2
 
 ---
 
-## 6. Meta Intake Completeness (Phase B) ← **active**
+## 6. Meta Intake Completeness (Phase B) ← **DONE** (#222)
 
 **Task:** [meta-intake-completeness.md](meta-intake-completeness.md)
 
-Separate from Communication. Chain: Meta payload → Submission raw → normalized → SalesInquiry → UI. No answer may disappear before normalization (show as additional answers). Runs **after** A2 (now closed) **and** the [Platform Extraction Kit Gate](../gates/platform-extraction-kit-gate.md) (now **PASS_WITH_CONSTRAINTS**).
+Merged 2026-08-03. Raw Meta payload + `field_answers` / `additional_answers` + B2B naming + Sales inquiry card. Then slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224). **Live feat:** slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238).
 
 ---
 
 ## 7. Development rule
 
-Exactly **one active slice**. That slice is currently **Meta Intake Completeness**. Product PRs **consume** [Platform Baseline v1](../gates/platform-extraction-kit-gate.md) / [Inventory](../platform/platform-inventory.md).
+Exactly **one active slice**. That slice is currently **Stage 3 slice 4** ([#238](https://github.com/igortatarynovich/HostFlow/pull/238)). Product PRs **consume** [Platform Baseline v1](../gates/platform-extraction-kit-gate.md) / [Inventory](../platform/platform-inventory.md).
 
 Next branch only after:
 
@@ -205,12 +204,13 @@ Next branch only after:
 **Do not** spend capacity on the 657 base-known pytest failures.  
 **Do not** write docs-only ADRs when Vocabulary Canon already has the rule; new ADR only if the architectural contract changes.  
 **Do not** reopen Platform Extraction as an open-ended kit program.  
-**Do** amend this queue when switching the active slice (this revision: Inventory landed → Meta Intake Completeness).
+**Do** amend this queue when switching the active slice (this revision: Meta/slice 3 already merged; live feat = slice 4).
 
 ---
 
 ## 8. History
 
+- 2026-08-13: Queue aligned with GitHub: Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ✅ · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) ✅ · **active** slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238).  
 - 2026-08-13: **Platform Inventory** ([platform-inventory.md](../platform/platform-inventory.md)); Product Track → **Meta Intake Completeness**.  
 - 2026-08-13: **Kit Gate PASS_WITH_CONSTRAINTS** ([gate](../gates/platform-extraction-kit-gate.md)); closes **Platform Baseline v1**. Immediate next = Platform Inventory; then Meta as consumer.  
 - 2026-08-13: **Platform Extraction** becomes the active slice ([phase](../architecture/platform-extraction-phase.md)); Vocabulary Canon closed; Phase B (Meta / Stage 3) queued until kit gate. Hard rules: Kit Gate, two-consumer extract, finite completion bar.  

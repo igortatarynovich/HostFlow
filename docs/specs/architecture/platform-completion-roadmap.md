@@ -125,9 +125,9 @@ Return to Acquisition only after **Epic C — complete** + **A2 Governance** (bo
 
 Close:
 
-- Meta Intake Completeness (payload retention / visibility — Acquisition-adjacent) — [#222](https://github.com/igortatarynovich/HostFlow/pull/222)
-- Stage 3 slice 3 — SalesInquiry product flow — [brief](../tasks/stage-3-sales-inquiry-product-flow.md) sealed; code after Meta
-- Stage 3 slice 4 — hard module separation
+- Meta Intake Completeness (payload retention / visibility — Acquisition-adjacent) — ✅ [#222](https://github.com/igortatarynovich/HostFlow/pull/222)
+- Stage 3 slice 3 — SalesInquiry product flow — ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224)
+- Stage 3 slice 4 — hard module separation — **active** [#238](https://github.com/igortatarynovich/HostFlow/pull/238)
 
 **End-to-end chain (must be complete):**
 
@@ -240,7 +240,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active slice = Meta Intake Completeness) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active slice = Stage 3 slice 4 / [#238](https://github.com/igortatarynovich/HostFlow/pull/238)) |
 | [platform-extraction-phase.md](platform-extraction-phase.md) | **Stage model** — Vocabulary Canon closed; extraction before Phase B |
 | This roadmap | **Horizon** order of platform phases A–G (PX inserted before B) |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |

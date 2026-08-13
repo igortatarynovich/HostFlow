@@ -104,7 +104,7 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 Platform maturity (Foundation / Workspace / Automation / Complete):  
 [`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
 
-Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **Platform Baseline v1** ([Kit Gate](docs/specs/gates/platform-extraction-kit-gate.md) · [Inventory](docs/specs/platform/platform-inventory.md)). **Active slice** = Meta Intake Completeness ([#222](https://github.com/igortatarynovich/HostFlow/pull/222)) → [Stage 3 slice 3 brief](docs/specs/tasks/stage-3-sales-inquiry-product-flow.md).
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **Platform Baseline v1** ([Kit Gate](docs/specs/gates/platform-extraction-kit-gate.md) · [Inventory](docs/specs/platform/platform-inventory.md)). **Active slice** = Stage 3 slice 4 ([#238](https://github.com/igortatarynovich/HostFlow/pull/238)). Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ✅ · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) ✅.
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
 [`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
@@ -113,7 +113,7 @@ Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/s
 
 **A2 Platform Governance Review** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/platform-governance-review-a2.md`](docs/specs/gates/platform-governance-review-a2.md).
 
-**Active close-out:** Phase B — [Meta Intake Completeness](docs/specs/tasks/meta-intake-completeness.md) → Stage 3 slice 3–4 → Forms → Entity Workspace → Documents → Billing → AI.
+**Active close-out:** Phase B — Meta Intake Completeness ✅ → Stage 3 slice 3 ✅ → [slice 4](https://github.com/igortatarynovich/HostFlow/pull/238) → Forms → Entity Workspace → Documents → Billing → AI.
 
 **Locked:** Platform Extraction (kit gate ✅ · **Platform Baseline v1** · [Inventory](docs/specs/platform/platform-inventory.md)) → Acquisition/Stage 3 (Phase B) → Forms Platform → Entity Workspace → Documents → Billing → AI.  
 **Kit Gate:** [`PASS_WITH_CONSTRAINTS`](docs/specs/gates/platform-extraction-kit-gate.md) (2026-08-13). Closes **Platform Baseline v1**. What to import: [`platform-inventory.md`](docs/specs/platform/platform-inventory.md). No new product screen if its list / workspace chrome / analytics / action bar / filters are missing from the kit ([`platform-extraction-phase.md`](docs/specs/architecture/platform-extraction-phase.md)). Extract only two-consumer platform shells — never Recruitment/HR/Vacancy/Candidate Workspace. New UI ADR only when the architectural contract changes.  

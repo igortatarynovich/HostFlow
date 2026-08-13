@@ -1,8 +1,8 @@
 # Stage 3 slice 3 — SalesInquiry product flow
 
-**Status:** **BRIEF SEALED** (docs) · code not started  
+**Status:** **DONE** ([#224](https://github.com/igortatarynovich/HostFlow/pull/224) merged 2026-08-03)  
 **Branch (docs):** `docs/stage-3-slice-3-sales-inquiry-product-flow`  
-**Branch (code, later):** `feat/stage-3-slice-3-sales-inquiry-product-flow`  
+**Branch (code):** `feat/stage-3-slice-3-sales-inquiry-product-flow`  
 **Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase B](../architecture/platform-completion-roadmap.md) · [Pipeline v1 seal](../architecture/sales-domain-pipeline-v1.md) · Stage 3 [slice 1](stage-3-sales-pipeline-product-wiring.md) · [slice 2](stage-3-sales-pipeline-convert-entrypoints.md) · [Meta Intake Completeness](meta-intake-completeness.md) · [ADR-022 Flow Spec](../workflows/adr022-phase2-sales-only-capability-flow.md) · [Intake Runtime Split](intake-runtime-split-v1.md)
 
 > Product identity for Sales inbox/workspace = **SalesInquiry**.  
@@ -104,4 +104,4 @@ Do **not** mix slice 4 into slice 3.
 - [x] Brief sealed with in/out + acceptance  
 - [x] Queue + roadmap point at this brief; Product Track notes Meta → slice 3 feat  
 - [x] Boundary vs slice 4 / R6 explicit  
-- [ ] Code feat PR (separate)  
+- [x] Code feat PR ([#224](https://github.com/igortatarynovich/HostFlow/pull/224))  

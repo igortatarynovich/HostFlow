@@ -22,7 +22,7 @@
 | **Result** | Core Platform Kit public APIs exist. This gate closes **Platform Baseline v1**. Phase B may start **only as a consumer** of the kit |
 | **Platform Baseline** | **v1** — `DataTable` · `ListWorkspace` · `EntityWorkspace` · Analytics families (`components/analytics`) |
 | **Inventory** | [platform-inventory.md](../platform/platform-inventory.md) — living kit catalog |
-| **Next Product Track** | **Meta Intake Completeness** ([#222](https://github.com/igortatarynovich/HostFlow/pull/222)); product PRs consume Baseline v1 |
+| **Next Product Track** | Stage 3 slice 4 ([#238](https://github.com/igortatarynovich/HostFlow/pull/238)); consume Baseline v1 on touch. Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ✅ · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) ✅ |
 | **Not outcome** | Clean `PASS` (remaining lists/dashboards migrate-on-touch; enforcement is PR checklist, not an AST scanner) · `STOP` (completion bar holds in runtime) |
 
 **Rationale:** K1 `DataTable`, K2 `ListWorkspace` (Vacancies cutover), K3 `EntityWorkspace` Shell, and ADR-046 families in `components/analytics` are **Platform Baseline v1** — the legal imports for **new** screens. Existing Candidates list, other operational tables, and non-reference dashboards stay migrate-on-touch (Optimization). Candidate/HR/Vacancy/Recruitment Workspace were **not** extracted (two-consumer rule).

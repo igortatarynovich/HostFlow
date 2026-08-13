@@ -1,6 +1,6 @@
 # Meta Intake Completeness
 
-**Status:** **IN PROGRESS** (Phase B — Product Track)  
+**Status:** **DONE** ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) merged 2026-08-03)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [A2 Governance](../gates/platform-governance-review-a2.md) · Acquisition / Flights / SalesInquiry  
 **Branch:** `feat/meta-intake-completeness`
 
@@ -57,4 +57,4 @@ Operator can open a Sales inquiry and see every answer from the Meta form; compa
 
 ## Next
 
-After this slice merges: **Stage 3 slice 3** SalesInquiry product flow ([brief](stage-3-sales-inquiry-product-flow.md)).
+Slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) merged after this. Live Product Track: Stage 3 slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238).
