@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx
 from backend.app.models import Lead
-from backend.app.modules.applications.mappers import lead_to_recruitment_application, lead_to_sales_inquiry
+from backend.app.modules.applications.mappers import (
+    lead_to_recruitment_application,
+    sales_inquiry_to_application,
+)
+from backend.app.modules.applications.sales_resolve import resolve_sales_inquiry_and_lead
 from backend.app.modules.applications.schemas import (
     ApplicationAssignIn,
     ApplicationFollowUpIn,
@@ -118,10 +122,16 @@ async def _prepare_recruitment_application_for_process(
 
 
 async def _reload_sales(db: AsyncSession, tenant_id: str, own_company_id: str, application_id: str) -> ApplicationOut:
-    lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
-    if not lead or lead.lead_type != "client" or lead.lead_target_type != "client_lead":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    return lead_to_sales_inquiry(lead)
+    try:
+        inquiry, lead = await resolve_sales_inquiry_and_lead(
+            db,
+            tenant_id=tenant_id,
+            application_id=application_id,
+            ensure_if_lead=True,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found") from exc
+    return sales_inquiry_to_application(inquiry, lead)
 
 
 async def _reload_recruitment(db: AsyncSession, tenant_id: str, application_id: str) -> ApplicationOut:
@@ -142,19 +152,30 @@ async def patch_sales_stage(
 ) -> ApplicationOut:
     from backend.app.modules.leads.router import update_lead_stage_endpoint
 
+    try:
+        inquiry, lead = await resolve_sales_inquiry_and_lead(
+            db,
+            tenant_id=tenant_id,
+            application_id=application_id,
+            ensure_if_lead=True,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found") from exc
+
     stage_payload = LeadStageUpdate(
         stage=payload.stage,
         lost_reason_code=payload.lost_reason_code,
         lost_reason_note=payload.lost_reason_note,
     )
+    # Lead stage remains the operational projection until SI owns status fully.
     await update_lead_stage_endpoint(
-        application_id,
+        str(lead.id),
         stage_payload,
         db_tenant=(db, UUID(tenant_id)),
         current_user=current_user,
         _role="recruiter",
     )
-    return await _reload_sales(db, tenant_id, own_company_id, application_id)
+    return await _reload_sales(db, tenant_id, own_company_id, str(inquiry.id))
 
 
 async def run_product_convert_via_mapping(

@@ -42,6 +42,9 @@ class ApplicationOut(BaseModel):
     extensions: Dict[str, Any] = Field(default_factory=dict)
     outcome_entity_id: Optional[str] = None
     outcome_entity_type: Optional[str] = None
+    # Stage 3 slice 3 — SalesInquiry product identity (Lead = transport)
+    sales_inquiry_id: Optional[str] = None
+    transport_lead_id: Optional[str] = None
 
 
 class ApplicationListResponse(BaseModel):

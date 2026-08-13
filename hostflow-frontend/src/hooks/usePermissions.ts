@@ -45,6 +45,8 @@ export type Permission =
   | 'sales.view'
 
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
+  // Static checker reads this map directly; runtime maps superadmin → administrator.
+  superadmin: ['*'],
   administrator: ['*'],
   employee: [
     'companies.view',

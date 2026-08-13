@@ -4,7 +4,7 @@ import pytest
 import sqlalchemy as sa
 
 from backend.app.db.session import async_session_maker
-from backend.app.models.user import Role as UserRole, User
+from backend.app.models.user import User
 
 
 @pytest.mark.anyio
@@ -15,7 +15,7 @@ async def test_candidate_assignment_uses_vacancy_pool(
 ):
     async with async_session_maker() as session:
         recruiter_id = await session.scalar(
-            sa.select(User.id).where(User.role == UserRole.recruiter).limit(1)
+            sa.select(User.id).where(sa.func.lower(User.email) == "recruiter@work-host.com").limit(1)
         )
         assert recruiter_id is not None
         company_id = await session.scalar(sa.text("SELECT id FROM companies LIMIT 1"))
@@ -72,7 +72,7 @@ async def test_candidate_assignment_falls_back_to_vacancy_owner(
 ):
     async with async_session_maker() as session:
         supervisor_id = await session.scalar(
-            sa.select(User.id).where(User.role == UserRole.supervisor).limit(1)
+            sa.select(User.id).where(sa.func.lower(User.email) == "supervisor@work-host.com").limit(1)
         )
         assert supervisor_id is not None
         company_id = await session.scalar(sa.text("SELECT id FROM companies LIMIT 1"))
@@ -113,7 +113,7 @@ async def test_recruiter_assign_endpoint_returns_context(
 ):
     async with async_session_maker() as session:
         recruiter_id = await session.scalar(
-            sa.select(User.id).where(User.role == UserRole.recruiter).limit(1)
+            sa.select(User.id).where(sa.func.lower(User.email) == "recruiter@work-host.com").limit(1)
         )
         company_id = await session.scalar(sa.text("SELECT id FROM companies LIMIT 1"))
         vacancy_id = str(uuid.uuid4())

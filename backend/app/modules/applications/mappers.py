@@ -127,13 +127,14 @@ def _tab_bucket(status: ApplicationStatus) -> ApplicationTabBucket:
     return status  # type: ignore[return-value]
 
 
-def lead_to_sales_inquiry(lead: Lead) -> ApplicationOut:
-    """LEGACY PROJECTION (Runtime Split R4 — deprecate for R6).
-
-    Maps Lead → ApplicationOut for current Sales inbox API.
-    SoT after R4 is ``SalesInquiry`` (``sales_inquiries`` table), not Lead.
-    Do not use this as destination identity or communication context.
-    """
+def _sales_application_from_lead(
+    lead: Lead,
+    *,
+    product_id: str,
+    sales_inquiry_id: Optional[str] = None,
+    transport_lead_id: Optional[str] = None,
+) -> ApplicationOut:
+    """Build Sales ApplicationOut from transport Lead display fields."""
     normalized = _record(getattr(lead, "normalized", None))
     company_name = resolve_b2b_inquiry_company_name(
         normalized,
@@ -152,8 +153,9 @@ def lead_to_sales_inquiry(lead: Lead) -> ApplicationOut:
     additional_answers = (
         normalized.get("additional_answers") if isinstance(normalized.get("additional_answers"), list) else []
     )
+    lead_id = _text(getattr(lead, "id", None)) or None
     return ApplicationOut(
-        id=str(lead.id),
+        id=str(product_id),
         module="sales",
         contact=_sales_contact(lead),
         title=company_name,
@@ -179,9 +181,32 @@ def lead_to_sales_inquiry(lead: Lead) -> ApplicationOut:
             "meta_form_answers": field_answers,
             "additional_answers": additional_answers,
             "raw_payload_stored": bool(getattr(lead, "payload", None)),
+            "sales_inquiry_id": sales_inquiry_id,
+            "transport_lead_id": transport_lead_id or lead_id,
         },
         outcome_entity_id=outcome_id,
         outcome_entity_type=outcome_type,
+        sales_inquiry_id=sales_inquiry_id,
+        transport_lead_id=transport_lead_id or lead_id,
+    )
+
+
+def lead_to_sales_inquiry(lead: Lead) -> ApplicationOut:
+    """LEGACY PROJECTION — Lead-keyed id. Prefer ``sales_inquiry_to_application`` for product API."""
+    lid = str(lead.id)
+    return _sales_application_from_lead(lead, product_id=lid, transport_lead_id=lid)
+
+
+def sales_inquiry_to_application(inquiry: Any, lead: Lead) -> ApplicationOut:
+    """Stage 3 slice 3 product projection: ApplicationOut.id = SalesInquiry id."""
+    sid = str(getattr(inquiry, "id", "") or "").strip()
+    if not sid:
+        raise ValueError("sales_inquiry.id is required")
+    return _sales_application_from_lead(
+        lead,
+        product_id=sid,
+        sales_inquiry_id=sid,
+        transport_lead_id=str(lead.id),
     )
 
 

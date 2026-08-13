@@ -13,7 +13,8 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.lead import Lead
-from backend.app.modules.applications.mappers import lead_to_sales_inquiry
+from backend.app.modules.applications.mappers import lead_to_sales_inquiry, sales_inquiry_to_application
+from backend.app.modules.applications.sales_resolve import resolve_sales_inquiry_and_lead
 from backend.app.modules.applications.schemas import ApplicationOut
 from backend.app.services.contact_identifiers import normalize_email, normalize_phone_digits
 
@@ -129,7 +130,17 @@ async def find_possible_duplicate_sales_inquiries(
         reason = _match_reason(phone_hit=phone_hit, email_hit=email_hit)
         if not reason:
             continue
-        hits.append((lead_to_sales_inquiry(row), reason, getattr(row, "created_at", None)))
+        try:
+            inquiry, lead_row = await resolve_sales_inquiry_and_lead(
+                db,
+                tenant_id=tenant_id,
+                application_id=str(row.id),
+                ensure_if_lead=True,
+            )
+            app_out = sales_inquiry_to_application(inquiry, lead_row)
+        except LookupError:
+            app_out = lead_to_sales_inquiry(row)
+        hits.append((app_out, reason, getattr(row, "created_at", None)))
         if len(hits) >= max(1, min(int(limit), 20)):
             break
 

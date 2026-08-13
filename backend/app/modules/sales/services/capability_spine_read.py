@@ -1,7 +1,7 @@
 """Sales Capability UI — read-only projection of Pipeline v1 spine.
 
 Display-only. Does not decide Capability, resolve review, convert, or write meta.
-Resolves SalesInquiry from transport Lead id (current Sales HTTP facade key).
+Resolves SalesInquiry from SalesInquiry id or transport Lead id (compat).
 """
 
 from __future__ import annotations

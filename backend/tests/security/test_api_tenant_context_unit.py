@@ -68,7 +68,7 @@ def test_recruiter_mismatch_stays_tenant_bound_classification() -> None:
     Enforcement is fail-closed in ``get_db_with_tenant`` via ``ensure_user_can_access_tenant``
     (membership or JWT match) — classification alone must not authorize the bind.
     """
-    u = _FakeUser("u1", "a@b.c", Role.recruiter.value, "11111111-1111-1111-1111-111111111111", {})
+    u = _FakeUser("u1", "a@b.c", "recruiter", "11111111-1111-1111-1111-111111111111", {})
     k, scope = classify_api_tenant_access(
         u,
         header_tenant_id="22222222-2222-2222-2222-222222222222",

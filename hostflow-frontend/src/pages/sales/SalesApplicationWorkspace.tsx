@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   convertSalesInquiryToClient,
+  getSalesInquiry,
+  listSalesInquiries,
   updateSalesInquiryStage,
 } from '../../api/applications'
 import LostReasonForLostStageModal from '../../components/leads/LostReasonForLostStageModal'
@@ -10,7 +12,6 @@ import { useI18n } from '../../i18n'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 import { SALES_HOME_PATH, salesInquiryPath } from '../../app/salesPaths'
-import { listSalesInquiries, getSalesInquiry } from '../../api/applications'
 import { ApplicationWorkspace, advanceSalesWorkSession, getSalesWorkSession } from '../../platform/application-workspace/ApplicationWorkspace'
 import { ApplicationSalesDetailPanel } from '../../platform/application-workspace/ApplicationSalesDetailPanel'
 import type { ApplicationWorkspaceConfig } from '../../platform/application-workspace/types'
@@ -136,7 +137,7 @@ export function SalesApplicationWorkspace() {
 
   return (
     <>
-      <ApplicationWorkspace config={config} routeParam="leadId" />
+      <ApplicationWorkspace config={config} routeParam="inquiryId" />
       {lostStagePrompt && lostTargetId ? (
         <LostReasonForLostStageModal
           open={lostStagePrompt}
