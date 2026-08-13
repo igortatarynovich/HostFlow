@@ -116,13 +116,9 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 **States & Transitions** inventory: **done** — [`ADR-039`](ADR-039-state-lifecycle-inventory.md) · [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md). Shared platform status enum remains **deferred**.
 
-**Next in ADR-038 sequence:** Naming & Identifiers (area 14, `gap`) — unblocks DocumentType `integrity=split` — unless product prioritizes Design Semantic Visual Language.
+**Naming & Identifiers:** **done** — [`ADR-040`](ADR-040-naming-identifiers.md) · [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md). DocumentType runtime alignment (`integrity=split` → `aligned`) remains a **separate** PR.
 
-```text
-ObjectKind → Object → State dimensions → State owner → Transition owner
-```
-
-(Inventory chain above is normative for extending the Object Kind slice.)
+**Next in ADR-038 sequence:** Data Types + Fields linkage (area 4, `gap`) — unless product prioritizes Design Semantic Visual Language or DocumentType alignment.
 
 ---
 
@@ -140,7 +136,7 @@ ObjectKind → Object → State dimensions → State owner → Transition owner
 
 - Positive: single coordinate system for all follow-on canons; clear exists/next/gap map; Platform-first turns documentation into architecture; Action / Permission / Capability and Field / DataType stay separable.
 - Negative: gap areas must be filled by dedicated PRs; until then modules must not invent local replacements.
-- Follow-on sequence (separate PRs): ~~State/Lifecycle inventory~~ (ADR-039) → Naming & Identifiers → Data Types + Fields linkage → Relationships contract → Actions / Events (ADR-019 3A-*) → Design Semantic Visual Language on ADR-011.
+- Follow-on sequence (separate PRs): ~~State/Lifecycle inventory~~ (ADR-039) → ~~Naming & Identifiers~~ (ADR-040) → Data Types + Fields linkage → Relationships contract → Actions / Events (ADR-019 3A-*) → Design Semantic Visual Language on ADR-011. DocumentType code alignment may run in parallel after ADR-040.
 
 ---
 

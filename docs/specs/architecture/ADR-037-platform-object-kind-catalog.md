@@ -143,7 +143,7 @@ Different vocabularies: publication lifecycle (DocumentType), instance lifecycle
 
 - Positive: shared classes before state canon; dual-classification of RequirementDefinition vs RequirementPolicy forbidden; DocumentPack vs applicability rules separated; status vs integrity separable for docs-lint / future guards.
 - Negative: inventory must be maintained when new platform objects appear in this slice; dual-classified rows are an architecture bug.
-- Follow-on (separate PRs): DocumentType code alignment (`integrity=split` → `aligned`); retire ruleset / `document_configs` as runtime inputs; ADR-019 3A-2…3A-4; state-dimension catalog.
+- Follow-on (separate PRs): DocumentType code alignment (`integrity=split` → `aligned`) under ADR-040 rules; retire ruleset / `document_configs` as runtime inputs; ADR-019 3A-2…3A-4.
 
 ---
 
@@ -160,9 +160,11 @@ Different vocabularies: publication lifecycle (DocumentType), instance lifecycle
 
 - [`ADR-038-platform-standardization-model.md`](ADR-038-platform-standardization-model.md) — parent Platform Standardization Model; this ADR supplies Object Kind / Rules / Libraries under Vocabulary + Policy & Reuse
 - [`ADR-039-state-lifecycle-inventory.md`](ADR-039-state-lifecycle-inventory.md) — state dimensions for this slice
+- [`ADR-040-naming-identifiers.md`](ADR-040-naming-identifiers.md) — naming rules; DocumentType split remediation contract
 - [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md) — area status map (`object_kind` / `rules` / `libraries` = exists)
 - [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md) — L2 inventory + Ownership & Consumption Matrix
 - [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md) — L2 state dimensions
+- [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md) — L2 naming inventory
 - [`platform-capability-catalog.md`](platform-capability-catalog.md) — Documents / Automations / Forms linkage
 - [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) — §0.1 index
 - [`architecture-guide.md`](architecture-guide.md) — navigation entry

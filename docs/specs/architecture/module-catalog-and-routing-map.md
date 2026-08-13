@@ -60,6 +60,7 @@
 | **Object Kind Catalog (meta)** | Platform architecture | [`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md) | Documents, Requirements, Automations, Forms (index) | Meta-index — **not** a data SoT |
 | **Platform Standardization Model** | Platform architecture | [`ADR-038`](ADR-038-platform-standardization-model.md) · [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md) | All modules / capabilities | Area map + Platform-first — **not** a data SoT |
 | **State / Lifecycle Inventory** | Platform architecture | [`ADR-039`](ADR-039-state-lifecycle-inventory.md) · [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md) | Object Kind slice consumers | Dimension inventory — **not** shared status enum |
+| **Naming & Identifiers** | Platform architecture | [`ADR-040`](ADR-040-naming-identifiers.md) · [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md) | Registries / bridges / modules | Naming rules + conflict inventory — **not** DocumentType seed alignment |
 | **Resource List Shell / UI Standard** | Frontend platform | ADR-010 / ADR-011 | SPA | UI contracts |
 
 **Уточнение Submission vs Forms:** Forms владеет **form surface + consent version pin** для HostFlow Form. Универсальный **Submission** как intake object и routing envelope — Shared Intake (ADR-024 spine). Не два Form Builder; не два Document Hub.
@@ -259,6 +260,7 @@
 
 ## История
 
+- 2026-08-13: **ADR-040** (Accepted) — Naming & Identifiers (kinds / namespaces / alias policy); L2 [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md); DocumentType runtime alignment deferred.
 - 2026-08-13: **ADR-039** (Accepted) — State / Lifecycle Inventory for Object Kind slice (`ObjectKind → Object → dimension → owners`); L2 [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md); shared status enum deferred.
 - 2026-08-13: **ADR-038** (Accepted) — Platform Standardization Model (5 groups · 14 areas · Platform-first / Reuse-first; Enforcement as mechanism); L2 [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md).
 - 2026-08-13: **ADR-037** (Accepted) — Platform Object Kind Catalog meta-canon (`ObjectKind` / `RuleKind` / `LibraryKind`); L2 index [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md); Documents / Requirements / Automation / Templates slice.

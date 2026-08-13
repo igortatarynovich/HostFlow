@@ -87,7 +87,7 @@ Only `object_code` values already listed in [`../platform/object-kind-catalog.md
 
 ### 8. Explicit next (after inventory settles)
 
-Optional later ADR: **shared meaning classes** (not value enums) that Design can map — still not `green = approved`. Next platform standardization follow-on from ADR-038 sequence remains **Naming & Identifiers** unless product prioritizes Design SVL.
+Optional later ADR: **shared meaning classes** (not value enums) that Design can map — still not `green = approved`. Naming & Identifiers: **done** ([`ADR-040`](ADR-040-naming-identifiers.md)). Next ADR-038 sequence item: **Data Types** unless product prioritizes Design SVL or DocumentType alignment.
 
 ---
 
@@ -105,7 +105,7 @@ Optional later ADR: **shared meaning classes** (not value enums) that Design can
 
 - Positive: States & Transitions area becomes `exists` as inventory; orthogonal dimensions prevent collapsing Document / Evaluation / Automation into one status list; owners of state vs transition are explicit.
 - Negative: inventory must be updated when new object-kind-catalog rows appear in this slice.
-- Follow-on: Naming & Identifiers (ADR-038 sequence); optional meaning-class ADR; Design SVL after meaning classes exist.
+- Follow-on: ~~Naming & Identifiers~~ (ADR-040); Data Types (ADR-038 sequence); optional meaning-class ADR; Design SVL after meaning classes exist.
 
 ---
 

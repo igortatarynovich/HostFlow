@@ -56,7 +56,7 @@ Row contract: `area_code` · `group` · `owner` · `status` · `canonical_refs` 
 | 11 | `capabilities` | Policy & Reuse | Platform architecture | **exists** | [`platform-capability-catalog.md`](../architecture/platform-capability-catalog.md), [`ADR-026`](../architecture/ADR-026-capability-ownership.md) | Passport / Owns / Exposes / Consumes | architecture-review-checklist; Catalog gate |
 | 12 | `runtime_api_contracts` | Runtime Contracts | Platform + capability owners | **exists** | [`capability-contract.md`](../architecture/capability-contract.md), Forms public contract, [`reference_delivery_contract_standard.md`](../reference_delivery_contract_standard.md) | **Sub-gaps:** unified Error, Pagination, Filtering contracts not closed — do not invent a second status enum | capability contract tests; Forms sprint gates |
 | 13 | `design_interaction` | Experience | Frontend platform | **exists** | [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md), ADR-010 List Shell | Prohibitions: no local semantic colors; no primitive clones; no unregistered interaction patterns. **Sub-gap:** Semantic Visual Language (meaning → token → treatment) | ADR-011 §12; eslint / `qa:static` tasks |
-| 14 | `naming_identifiers` | Vocabulary | Architecture / platform core (target) | **gap** | Conflict evidence: `id_card` vs `national_identity_card` vs OCR codes | Rules for canonical codes, entity ids, field codes, actions, events, permissions, namespaces — naming standard for all other catalogs | future naming lint / registry CI |
+| 14 | `naming_identifiers` | Vocabulary | Architecture canon | **exists** | [`ADR-040`](../architecture/ADR-040-naming-identifiers.md), [`naming-identifiers.md`](naming-identifiers.md) | Identifier kinds + namespaces + alias policy; DocumentType split inventoried. **Runtime code alignment still deferred** (`integrity=split` until dedicated PR) | docs-lint inbound; future naming lint / registry CI |
 
 ---
 
@@ -92,7 +92,7 @@ Sub-gaps under an `exists` area are recorded in **notes** only (e.g. Error/Pagin
 ## 7. Explicit follow-on sequence
 
 1. ~~**States & Transitions** (`next`) — inventory on Object Kind Catalog rows.~~ **Done (ADR-039 inventory).** Shared value vocabulary still deferred.  
-2. **Naming & Identifiers** — unblocks DocumentType `integrity=split`.  
+2. ~~**Naming & Identifiers**~~ **Done (ADR-040).** DocumentType runtime alignment (`integrity=split` → `aligned`) remains a separate PR.  
 3. **Data Types** + Fields linkage.  
 4. **Relationships** contract.  
 5. **Actions** / **Events** (ADR-019 3A-*).  
@@ -102,5 +102,6 @@ Sub-gaps under an `exists` area are recorded in **notes** only (e.g. Error/Pagin
 
 ## 8. History
 
+- 2026-08-13: Area `naming_identifiers` → `exists` via ADR-040 (runtime DocumentType alignment deferred).
 - 2026-08-13: Area `states_transitions` → `exists` via ADR-039 inventory (shared enums deferred).
 - 2026-08-13: Initial area index under ADR-038; ADR-037 retained as Object Kind / Rules / Libraries vocabulary.

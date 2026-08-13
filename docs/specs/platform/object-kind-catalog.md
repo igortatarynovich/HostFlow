@@ -5,6 +5,7 @@
 **Decision record:** [`ADR-037`](../architecture/ADR-037-platform-object-kind-catalog.md)  
 **Parent model:** [`ADR-038`](../architecture/ADR-038-platform-standardization-model.md) · [`platform-standardization-model.md`](platform-standardization-model.md) (areas `object_kind` / `rules` / `libraries`)  
 **State inventory:** [`ADR-039`](../architecture/ADR-039-state-lifecycle-inventory.md) · [`state-lifecycle-inventory.md`](state-lifecycle-inventory.md)  
+**Naming:** [`ADR-040`](../architecture/ADR-040-naming-identifiers.md) · [`naming-identifiers.md`](naming-identifiers.md)  
 **Owner:** Architecture canon + platform core team  
 **Slice:** Documents · Requirements · Automation · Templates (first inventory)
 
@@ -90,7 +91,7 @@ It does **not** redefine document types, requirements, or automation behavior. Z
 
 **Notes**
 
-- DocumentType `integrity=split`: evaluation registry uses codes such as `national_identity_card`; `document_reference_sync` / `ref_*` seed uses `id_card`; recruitment UI `definitions.py` aliases; OCR `scanner/document_types.py` has a separate keyword list (not evaluation SoT).
+- DocumentType `integrity=split`: evaluation registry uses codes such as `national_identity_card`; `document_reference_sync` / `ref_*` seed uses `id_card`; recruitment UI `definitions.py` aliases; OCR `scanner/document_types.py` has a separate keyword list (not evaluation SoT). Remediation is gated by [`ADR-040`](../architecture/ADR-040-naming-identifiers.md) / [`naming-identifiers.md`](naming-identifiers.md); **this catalog stays `split` until a dedicated alignment PR**.
 - `RequirementPolicy` is **not** listed here — see §5 RuleObject.
 
 ---
@@ -217,14 +218,14 @@ Verbs: `owns` · `writes` · `consumes` · `reacts` · `forbidden`.
 
 - Full Candidate / Lead / Employee / Vacancy / Vehicle entity cards (consumers only).
 - JSON-registry, ORM, API for ObjectKind.
-- Aligning DocumentType codes (`integrity=split` → `aligned`).
+- Aligning DocumentType codes (`integrity=split` → `aligned`) — rules in ADR-040; execution is a separate PR.
 - Removing ruleset / `document_configs` fallbacks.
-- State-dimension catalog (next: `ObjectKind → Object → State dimensions → State owner → Transition owner`).
 
 ---
 
 ## 11. History
 
+- 2026-08-13: Link to ADR-040 naming / identifiers; DocumentType split remediation gated (still `integrity=split`).
 - 2026-08-13: Link to ADR-039 state/lifecycle inventory for this slice.
 - 2026-08-13: Parent pointer to ADR-038 Platform Standardization Model.
 - 2026-08-13: Initial L2 catalog for Documents / Requirements / Automation / Templates slice; ADR-037 Accepted.
