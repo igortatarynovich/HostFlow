@@ -1819,7 +1819,8 @@ export default function MetaLeadsAdminPage() {
         </div>
       ) : null}
 
-      {oauthPick && !metaConnected ? (
+      {/* Show after OAuth even when already connected (Reconnect Facebook). */}
+      {oauthPick ? (
         <section
           className="rounded-xl border border-brand-200 bg-white p-6 shadow-sm sm:p-8"
           aria-labelledby="meta-oauth-pick-title"

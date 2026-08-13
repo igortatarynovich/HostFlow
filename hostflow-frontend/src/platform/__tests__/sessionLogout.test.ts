@@ -122,6 +122,17 @@ describe('sessionLogout wipe chain', () => {
     expect(isSessionRevoked()).toBe(false)
   })
 
+  it('sticky revoke on shell blocks cookie rehydrate until login clears it', () => {
+    // Regression: Logout on shell → landing must not rehydrate from Domain cookies.
+    // Module hosts may heal when cookies prove a fresh shell login (originating module
+    // is excluded from the wipe chain and can retain a leftover revoke flag).
+    markSessionRevoked()
+    expect(isSessionRevoked()).toBe(true)
+    expect(sessionStorage.getItem(SESSION_REVOKED_KEY)).toBe('1')
+    clearSessionRevoked()
+    expect(isSessionRevoked()).toBe(false)
+  })
+
   it('remainingLogoutWipeHosts excludes the current host', () => {
     const remaining = remainingLogoutWipeHosts('recruitment')
     expect(remaining).not.toContain('recruitment')

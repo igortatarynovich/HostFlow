@@ -49,10 +49,16 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f6fbff] px-4 py-10 flex items-center justify-center">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(94,186,205,0.35),transparent_55%),radial-gradient(circle_at_85%_0%,rgba(25,78,122,0.2),transparent_65%)]" />
+    <div className="relative min-h-screen overflow-hidden bg-[#F7F8FA] px-4 py-10 flex items-center justify-center text-slate-900 antialiased">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 70% 50% at 15% 10%, rgba(0,194,168,0.12), transparent 55%), linear-gradient(180deg, #F7F8FA 0%, #EEF1F4 100%)',
+        }}
+      />
       <div className="relative w-full max-w-md">
-        <div className="card p-8">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-[0_20px_50px_-36px_rgba(15,23,42,0.35)]">
           <PublicBrandingLogo showWordmark />
           <h1 className="mt-6 text-2xl font-semibold text-slate-900">
             {t('app.forgot_password.title', { defaultValue: 'Zapomniałeś hasła?' })}
@@ -97,7 +103,7 @@ export default function ForgotPasswordPage() {
               )}
               <button
                 type="submit"
-                className="btn-primary w-full py-3"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-[#00C2A8] px-4 py-3 text-base font-semibold text-[#04201C] transition hover:bg-[#1ad4bb] disabled:opacity-60"
                 disabled={loading || (captchaRequired && !captchaToken)}
               >
                 {loading ? t('common.loading') : t('app.forgot_password.submit', { defaultValue: 'Wyślij link' })}
@@ -105,7 +111,10 @@ export default function ForgotPasswordPage() {
             </form>
           )}
 
-          <Link to="/login" className="mt-6 block text-center text-sm text-brand-600 hover:underline">
+          <Link
+            to="/login"
+            className="mt-6 block text-center text-sm font-medium text-[#0F766E] hover:text-[#0B0E14] hover:underline"
+          >
             {t('app.forgot_password.back', { defaultValue: 'Wróć do logowania' })}
           </Link>
         </div>

@@ -76,7 +76,10 @@ export default function ResetPasswordPage() {
           <Link to="/forgot-password" className="btn-primary mt-6 inline-block w-full text-center">
             {t('app.forgot_password.submit', { defaultValue: 'Wyślij link' })}
           </Link>
-          <Link to="/login" className="mt-4 block text-center text-sm text-brand-600 hover:underline">
+          <Link
+            to="/login"
+            className="mt-4 block text-center text-sm font-medium text-[#0F766E] hover:text-[#0B0E14] hover:underline"
+          >
             {t('app.forgot_password.back', { defaultValue: 'Wróć do logowania' })}
           </Link>
         </div>
@@ -140,7 +143,10 @@ export default function ResetPasswordPage() {
             </form>
           )}
 
-          <Link to="/login" className="mt-6 block text-center text-sm text-brand-600 hover:underline">
+          <Link
+            to="/login"
+            className="mt-6 block text-center text-sm font-medium text-[#0F766E] hover:text-[#0B0E14] hover:underline"
+          >
             {t('app.forgot_password.back', { defaultValue: 'Wróć do logowania' })}
           </Link>
         </div>

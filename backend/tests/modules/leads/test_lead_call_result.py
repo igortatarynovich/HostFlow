@@ -119,3 +119,63 @@ async def test_post_call_result_on_client_lead(client, manager_headers, tenant_i
         row = (await db.execute(select(Lead).where(Lead.id == lead_id))).scalar_one()
         stored = row.normalized or {}
         assert stored.get("call_result_v1", {}).get("note") == note
+
+
+@pytest.mark.anyio
+async def test_post_call_result_on_terminal_client_lead_keeps_stage(
+    client, manager_headers, tenant_id, monkeypatch
+):
+    """Rejected/lost client leads may still receive call comments (no stage revive)."""
+    async with async_session_maker() as db:
+        await db.execute(
+            text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
+            {"tenant_id": str(tenant_id)},
+        )
+        own_company_id = await db.scalar(
+            select(OwnCompany.id)
+            .where(OwnCompany.tenant_id == str(tenant_id), OwnCompany.is_archived.is_(False))
+            .order_by(OwnCompany.created_at.asc())
+            .limit(1)
+        )
+        assert own_company_id is not None
+        lead = await leads_crud.create_lead(
+            db,
+            tenant_id=str(tenant_id),
+            own_company_id=str(own_company_id),
+            company_id=None,
+            vacancy_id=None,
+            payload={"company": {"name": "Closed B2B Co"}},
+            normalized={
+                "company_profile": {"name": "Closed B2B Co"},
+                "contact_person": {"full_name": "Ola", "phone": "+48222222222"},
+                "rodo": {"sent": True},
+            },
+            source="company_intake_form",
+            lead_type="client",
+            lead_target_type="client_lead",
+        )
+        lead.status = "rejected"
+        lead.stage = "lost"
+        lead_id = str(lead.id)
+        await db.commit()
+
+    async def _rodo_ok(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "backend.app.services.lead_rodo.ensure_lead_rodo_allows_action",
+        _rodo_ok,
+    )
+
+    note = "Повторный звонок — всё ещё не интересно"
+    r = await client.post(
+        f"/api/v1/leads/{lead_id}/call-result",
+        headers=manager_headers,
+        json={"result": "not_interested", "note": note},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["stage"] == "lost"
+    norm = body.get("normalized") or {}
+    assert norm.get("call_result_v1", {}).get("result") == "not_interested"
+    assert norm.get("call_result_v1", {}).get("note") == note

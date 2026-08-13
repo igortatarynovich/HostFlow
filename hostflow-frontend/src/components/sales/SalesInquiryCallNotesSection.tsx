@@ -10,7 +10,7 @@ import { useToast } from '../Toast'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { useI18n } from '../../i18n'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
-import { leadRodoSatisfied } from '../../utils/intakeResolution'
+import { leadIntakeResolutionRejected, leadRodoSatisfied } from '../../utils/intakeResolution'
 import {
   LEAD_CALL_RESULT_CODES,
   leadCallResultHistory,
@@ -66,7 +66,9 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
   }, [load])
 
   const history = leadCallResultHistory(lead)
+  const terminal = leadIntakeResolutionRejected(lead)
   const rodoOk = leadRodoSatisfied(lead)
+  const canSaveCall = terminal || rodoOk
   const noteRecommended =
     callResult === 'callback_requested' || callResult === 'answered' || callResult === 'interested'
 
@@ -74,7 +76,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
     t(`app.leads.detail.call_result.results.${code}`, { defaultValue: code })
 
   const handleSave = async () => {
-    if (!leadId || saving || disabled || !rodoOk) return
+    if (!leadId || saving || disabled || !canSaveCall) return
     setSaving(true)
     try {
       const updated = await logLeadCallResult(leadId, {
@@ -129,21 +131,27 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
 
   return (
     <section className="space-y-3" data-testid="sales-call-notes">
-      <SalesInquiryRodoSection
-        leadId={leadId}
-        lead={lead}
-        disabled={disabled || saving}
-        onUpdated={(next) => setLead(next)}
-      />
-
+      {!terminal ? (
+        <SalesInquiryRodoSection
+          leadId={leadId}
+          lead={lead}
+          disabled={disabled || saving}
+          onUpdated={(next) => setLead(next)}
+        />
+      ) : null}
       <div>
         <h3 className="text-sm font-semibold text-slate-900">
           {t('app.leads.detail.call_result.title', { defaultValue: 'Call result' })}
         </h3>
         <p className="mt-0.5 text-xs text-slate-500">
-          {t('app.leads.detail.call_result.subtitle', {
-            defaultValue: 'Callback or what they want / think — note it after the call.',
-          })}
+          {terminal
+            ? t('app.leads.detail.call_result.subtitle_terminal', {
+                defaultValue:
+                  'Inquiry is closed — you can still log call outcomes and comments for history.',
+              })
+            : t('app.leads.detail.call_result.subtitle', {
+                defaultValue: 'Callback or what they want / think — note it after the call.',
+              })}
         </p>
       </div>
 
@@ -154,7 +162,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
         <select
           className="input w-full"
           value={callResult}
-          disabled={saving || disabled || !rodoOk}
+          disabled={saving || disabled || !canSaveCall}
           onChange={(e) => setCallResult(e.target.value as LeadCallResultCode)}
         >
           {LEAD_CALL_RESULT_CODES.map((code) => (
@@ -184,7 +192,7 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
           className="textarea mt-0 w-full"
           rows={3}
           maxLength={2000}
-          disabled={saving || disabled || !rodoOk}
+          disabled={saving || disabled || !canSaveCall}
           value={callNote}
           onChange={(e) => setCallNote(e.target.value)}
           placeholder={t('app.leads.detail.call_result.fields.note_placeholder', {
@@ -197,10 +205,10 @@ export default function SalesInquiryCallNotesSection({ leadId, disabled, onSaved
         <button
           type="button"
           className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60"
-          disabled={saving || disabled || !rodoOk}
+          disabled={saving || disabled || !canSaveCall}
           onClick={() => void handleSave()}
           title={
-            !rodoOk
+            !canSaveCall
               ? t('app.leads.messages.process_blocked.LEAD_RODO_REQUIRED', {
                   defaultValue: 'Send RODO or mark covered at source before saving a call result.',
                 })

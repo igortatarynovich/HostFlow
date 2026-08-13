@@ -104,7 +104,7 @@ export default function FaqPage() {
               className="btn-secondary"
               onClick={() => trackCta('faq_demo', '/demo')}
             >
-              {t('public.faq.cta_demo', { defaultValue: 'Interactive demo' })}
+              {t('public.crm_landing.nav.demo', { defaultValue: 'Try it free' })}
             </Link>
           </div>
           <label className="mt-6 block">

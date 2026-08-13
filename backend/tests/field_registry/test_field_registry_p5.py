@@ -41,6 +41,16 @@ def test_p5_enrich_mapping_rule_fills_legacy_target_from_qualified() -> None:
     assert enriched["qualified_field_code"] == "recruitment.candidate.contacts.phone"
 
 
+def test_p5_enrich_mapping_rule_accepts_legacy_from_to_aliases() -> None:
+    """Older Meta admin rows stored {from, to}; GET settings must not 500."""
+    enriched = enrich_mapping_rule_for_storage({"from": "phone_number", "to": "phone"})
+    assert enriched["source"] == "phone_number"
+    assert enriched["target"] == "phone"
+    rule = MetaLeadFieldMappingRule.model_validate({"from": "full_name", "to": "full_name"})
+    assert rule.source == "full_name"
+    assert rule.target == "full_name"
+
+
 def test_p5_enrich_mapping_rule_infers_qualified_from_legacy_target() -> None:
     enriched = enrich_mapping_rule_for_storage({"source": "email", "target": "email"})
     assert enriched["qualified_field_code"] == "recruitment.candidate.contacts.email"

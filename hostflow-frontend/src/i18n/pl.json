@@ -4887,6 +4887,59 @@
           "assignments_today": "Przydziały dziś (UTC)",
           "assignments_month": "Przydziały w miesiącu (UTC)"
         }
+      },
+      "marketing": {
+        "title": "Efektywność marketingu",
+        "subtitle": "KPI kampanii Acquisition: wydatki, leady, CPL. Multi-select kampanii lub preset (np. kierowcy Poltrakt).",
+        "empty": "Brak kampanii w wybranym przekroju.",
+        "empty_campaigns": "Brak kampanii dla tej firmy.",
+        "filters": {
+          "currency": "Waluta wyświetlania",
+          "presets": "Presety",
+          "campaigns": "Kampanie",
+          "select_all": "Zaznacz wszystkie",
+          "clear": "Wyczyść",
+          "selected": "Wybrano {count} / {total}"
+        },
+        "fx": {
+          "loading": "Ładowanie kursów NBP…",
+          "as_of": "Kurs średni NBP · {date} ({provider})",
+          "unavailable": "Brak kursów — pokazywana waluta źródłowa",
+          "error": "Nie udało się pobrać kursów NBP. Kwoty pozostają w USD do czasu dostępności kursów."
+        },
+        "presets": {
+          "drivers_poltrakt": "Kierowcy Poltrakt",
+          "warehouse": "Magazyn",
+          "dispatcher": "Dyspozytor",
+          "ru": "Leady RU",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Wydatki",
+          "leads": "Leady",
+          "cpl": "CPL",
+          "impressions": "Wyświetlenia",
+          "reach": "Zasięg"
+        },
+        "charts": {
+          "trend_title": "Dynamika",
+          "trend_subtitle": "Dzienne wydatki i leady dla wybranych kampanii i okresu.",
+          "spend_title": "Wydatki wg kampanii",
+          "spend_subtitle": "Wydatki reklamowe w wybranej grupie.",
+          "leads_title": "Leady wg kampanii",
+          "leads_subtitle": "Przypisane leady (Acquisition).",
+          "cpl_title": "Koszt leada (CPL)",
+          "cpl_subtitle": "Niżej = lepiej; najlepszy CPL wyróżniony.",
+          "mix_title": "Mix leadów",
+          "mix_subtitle": "Udział leadów wśród wybranych kampanii."
+        },
+        "table": {
+          "title": "Szczegóły kampanii",
+          "subtitle": "Wybrane kampanie z wyświetleniami/zasięgiem ze snapshotu Meta, jeśli dostępne.",
+          "campaign": "Kampania",
+          "best_cpl": "Najlepszy CPL"
+        }
       }
     },
     "candidate_card": {
@@ -12304,20 +12357,20 @@
     "crm_landing": {
       "nav": {
         "trust": "Dlaczego my",
-        "problem": "Problem",
+        "problem": "Porównanie",
         "story": "Jak zamykamy",
         "case": "Case",
         "pricing": "Cennik",
         "faq": "FAQ",
         "login": "Zaloguj",
-        "demo": "Uzyskaj demo",
+        "demo": "Wypróbuj za darmo",
         "product": "Jak działa"
       },
       "hero": {
         "badge": "System od praktykujących rekruterów",
         "title": "Zamykaj wakaty szybciej dzięki systemowi stworzonemu przez rekruterów z ponad 10-letnim doświadczeniem w międzynarodowej rekrutacji.",
         "subtitle": "Pomagaliśmy firmom zatrudniać kierowców, magazyn, produkcję i biuro. HostFlow wyrósł z realnej praktyki — nie z pomysłu na kolejny CRM.",
-        "primary_cta": "Uzyskaj demo",
+        "primary_cta": "Wypróbuj za darmo",
         "secondary_cta": "Dlaczego można nam ufać",
         "proof": {
           "0": "10+ lat międzynarodowej rekrutacji",
@@ -12326,7 +12379,7 @@
           "3": "Zbudowane dla siebie — otwarte dla firm"
         },
         "title_line1": "Zamykaj wakaty szybciej.",
-        "title_accent": "Więcej kandydatów. Mniej strat.",
+        "title_accent": "Więcej kandydatów.\nMniej strat.",
         "lead": "Od ponad 10 lat zajmujemy się międzynarodową rekrutacją, ustawiamy reklamę i budujemy procesy zatrudnienia.",
         "system_line": "HostFlow to system stworzony przez rekruterów na podstawie własnego doświadczenia.",
         "screenshot_caption": "Analityka rekrutacji — kontakty, wyniki i rozkład po etapach.",
@@ -12427,43 +12480,32 @@
         "footnote": "Liczby ilustrują falę operacyjną z praktyki międzynarodowej rekrutacji. Chodzi o drogę do startu — nie o ładny lejek."
       },
       "product": {
-        "badge": "Jak to działa",
-        "title": "Od leada do zamkniętego wakatu — bez tych samych slajdów",
-        "lead": "Pięć kroków, pięć układów: interfejs jest częścią historii, nie osobnym obrazkiem.",
+        "badge": "Co liczy się w pracy",
+        "title": "Pokazujemy tylko to, co pomaga zamykać wakaty",
+        "lead": "Nie cały ekran CRM — konkretny wycinek procesu, który rozwiązuje zadanie.",
         "blocks": {
           "0": {
-            "why": "Krok 1 · Wejście leada",
-            "title": "Reklama i formularze trafiają do jednej kolejki",
-            "body": "Meta, strona i ręczne zgłoszenia nie żyją w czatach — lead od razu ma źródło i ownera.",
-            "caption": "Aplikacje i następne działania w jednym biurku.",
-            "screenshot_src": "/landing/shots/step-applications.jpg"
-          },
-          "1": {
-            "why": "Krok 2 · Ownership etapu",
-            "title": "Lejek, w którym każdy kandydat ma właściciela",
-            "body": "Nowy → kontakt → dokumenty → wyjście. Bez „czyje to?” i bez strat między zmianami.",
-            "caption": "Kanban z ownershipem na karcie.",
+            "why": "Ownership",
+            "title": "Jeden owner na każdym etapie",
+            "body": "Kandydat nie ginie między zmianami: widać, kto odpowiada i co ma się wydarzyć dalej.",
+            "quote": "Wreszcie przestaliśmy pytać „czyje to?” na grupie.",
+            "caption": "Karta z ownerem i etapem",
             "screenshot_src": "/landing/shots/hero-pipeline.jpg"
           },
+          "1": {
+            "why": "Tempo",
+            "title": "Następne działanie od razu na biurku",
+            "body": "Lead, zadanie i kontakt w jednym miejscu — bez skoków między WhatsApp a arkuszem.",
+            "quote": "Rekruter widzi dzień, nie chaos inboxa.",
+            "caption": "Kolejka aplikacji i next step",
+            "screenshot_src": "/landing/shots/step-applications.jpg"
+          },
           "2": {
-            "why": "Krok 3 · Biurko rekrutera",
-            "title": "Workspace wokół kandydata",
-            "body": "Historia, dokumenty i następny krok zostają przy osobie — nie w messengerach.",
-            "caption": "Kandydaci, etapy i dokumenty w jednej tabeli.",
-            "screenshot_src": "/landing/shots/step-candidates.jpg"
-          },
-          "3": {
-            "why": "Krok 4 · Dokumenty w procesie",
-            "title": "Dokumenty żyją w etapie, nie w folderze",
-            "body": "Co zebrane, czego brakuje i kto ma follow-up — bez osobnego Excela.",
-            "caption": "Checklist dokumentów na kandydacie.",
-            "screenshot_src": "/landing/shots/shot-documents.jpg"
-          },
-          "4": {
-            "why": "Krok 5 · Kontrola wzrostu",
-            "title": "Manager widzi, gdzie rekrutacja zwalnia",
-            "body": "Kontakty, wyniki i mix etapów — żeby wzmacniać to, co już działa.",
-            "caption": "Analityka rekrutacji z wykresami.",
+            "why": "Kontrola",
+            "title": "Wąskie gardła bez tygodniowego Excela",
+            "body": "Kontakty, wyniki i mix etapów — żeby wzmacniać to, co już konwertuje.",
+            "quote": "Manager widzi, gdzie rekrutacja naprawdę zwalnia.",
+            "caption": "Fragment analityki rekrutacji",
             "screenshot_src": "/landing/shots/hero-recruitment-analytics.png"
           }
         }
@@ -12577,8 +12619,28 @@
       "final_cta": {
         "title": "Od ponad 10 lat zajmujemy się międzynarodową rekrutacją.",
         "subtitle": "HostFlow to system, który stworzyliśmy dla siebie, bo istniejące narzędzia nie pomagały efektywnie zamykać wakatów. Teraz tym doświadczeniem mogą korzystać inne firmy.",
-        "button": "Uzyskaj demo",
+        "button": "Wypróbuj za darmo",
         "secondary": "Utwórz konto"
+      },
+      "compare": {
+        "title": "Jak HostFlow wygrywa z arkuszami, czatami i uniwersalnymi CRM",
+        "them_title": "Arkusze, czaty i „uniwersalne” CRM",
+        "us_title": "HostFlow",
+        "them": {
+          "0": "Kandydaci rozjeżdżają się po Meta, WhatsApp i Excelu",
+          "1": "Nie wiadomo, kto ma zadzwonić teraz",
+          "2": "Dokumenty żyją w folderach i wątkach",
+          "3": "Manager widzi raport raz w tygodniu — jeśli ma szczęście",
+          "4": "Płacisz za funkcje, które i tak nie zamykają wakatów"
+        },
+        "us": {
+          "0": "Wszystkie leady i kandydaci w jednej kolejce z ownerem",
+          "1": "Na każdym etapie jasne, kto odpowiada i co dalej",
+          "2": "Dokumenty wewnątrz etapu rekrutacji, nie obok",
+          "3": "Żywy obraz lejka i wąskich gardeł każdego dnia",
+          "4": "System pod operacyjną rekrutację — z praktyki rekruterów"
+        },
+        "cta": "Wypróbuj za darmo"
       }
     },
     "documents_upload": {

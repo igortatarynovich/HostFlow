@@ -36,6 +36,18 @@ async def _ensure_own_company(
     return oc.id
 
 
+def test_normalize_lead_target_type_accepts_route_intent_aliases() -> None:
+    from backend.app.modules.intake_routing.meta_bridge import normalize_lead_target_type
+
+    assert normalize_lead_target_type("candidate_application") == "candidate"
+    assert normalize_lead_target_type("sales_inquiry") == "client_lead"
+    assert normalize_lead_target_type("service_request") == "service_order_lead"
+    assert normalize_lead_target_type("partner_inquiry") == "partner_lead"
+    assert normalize_lead_target_type("candidate") == "candidate"
+    assert normalize_lead_target_type("client_lead") == "client_lead"
+    assert normalize_lead_target_type("garbage") == "candidate"
+
+
 async def _create_profile_with_binding(
     db,
     *,

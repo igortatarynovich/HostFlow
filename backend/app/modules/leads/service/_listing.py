@@ -50,6 +50,7 @@ from backend.app.modules.leads.lead_candidate_doc_loader import (
 )
 from backend.app.modules.leads.lead_criteria_eval import evaluate_vacancy_for_lead
 from backend.app.modules.leads.lead_stage_contract import batch_lead_stage_contracts
+from backend.app.modules.intake_routing.meta_bridge import normalize_lead_target_type
 from backend.app.modules.leads.schemas import LeadListResponse, LeadOut, lead_vacancy_routing_aux
 from backend.app.intake_platform.operational_scope import OPERATIONAL_EXCLUDED_LEAD_STAGES
 
@@ -669,7 +670,9 @@ async def list_leads(
                 tenant_id=_uuid_or_none(lead.tenant_id) or UUID(lead.tenant_id),
                 business_type=business_type,
                 lead_type=(getattr(lead, "lead_type", None) or "candidate"),  # type: ignore[arg-type]
-                lead_target_type=(getattr(lead, "lead_target_type", None) or "candidate"),  # type: ignore[arg-type]
+                lead_target_type=normalize_lead_target_type(  # type: ignore[arg-type]
+                    getattr(lead, "lead_target_type", None) or "candidate"
+                ),
                 company_id=_uuid_or_none(lead.company_id),
                 company_name=company_name_out,
                 vacancy_id=_uuid_or_none(lead.vacancy_id),

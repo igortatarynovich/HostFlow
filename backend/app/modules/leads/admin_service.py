@@ -77,6 +77,7 @@ META_LEADS_GRAPH_PERMISSIONS = [
     "pages_manage_metadata",
     "pages_show_list",
     "leads_retrieval",
+    "business_management",
 ]
 
 
@@ -233,16 +234,8 @@ async def _ensure_settings(db: AsyncSession, tenant_id: str) -> crud.MetaLeadSet
 
 
 def _settings_to_schema(entry: crud.MetaLeadSettings) -> MetaLeadSettingsOut:
-    raw_mapping = getattr(entry, "field_mapping", None) or []
-    if isinstance(raw_mapping, dict):
-        if isinstance(raw_mapping.get("rules"), list):
-            normalized_mapping = raw_mapping.get("rules") or []
-        else:
-            normalized_mapping = []
-    elif isinstance(raw_mapping, list):
-        normalized_mapping = raw_mapping
-    else:
-        normalized_mapping = []
+    # Coerce legacy {from,to} rows and drop unparseable rules so GET never 500s.
+    normalized_mapping = _coerce_mapping_rules_for_api(getattr(entry, "field_mapping", None))
 
     gsec = getattr(entry, "generic_inbound_webhook_secret", None)
     generic_wh_on = bool(str(gsec).strip()) if gsec is not None else False

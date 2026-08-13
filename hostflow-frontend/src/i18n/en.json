@@ -5481,6 +5481,59 @@
           "assignments_today": "Assignments today (UTC)",
           "assignments_month": "Assignments this month (UTC)"
         }
+      },
+      "marketing": {
+        "title": "Marketing efficiency",
+        "subtitle": "Acquisition campaign KPIs: spend, leads, CPL. Multi-select campaigns or use presets (e.g. Poltrakt drivers).",
+        "empty": "No campaigns in the selected slice.",
+        "empty_campaigns": "No campaigns available for this company.",
+        "filters": {
+          "currency": "Display currency",
+          "presets": "Presets",
+          "campaigns": "Campaigns",
+          "select_all": "Select all",
+          "clear": "Clear",
+          "selected": "Selected {count} / {total}"
+        },
+        "fx": {
+          "loading": "Loading NBP rates…",
+          "as_of": "NBP mid · {date} ({provider})",
+          "unavailable": "FX rates unavailable — showing source currency",
+          "error": "Could not load NBP rates. Amounts stay in USD until rates are available."
+        },
+        "presets": {
+          "drivers_poltrakt": "Poltrakt drivers",
+          "warehouse": "Warehouse",
+          "dispatcher": "Dispatcher",
+          "ru": "RU leads",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Spend",
+          "leads": "Leads",
+          "cpl": "Cost per lead",
+          "impressions": "Impressions",
+          "reach": "Reach"
+        },
+        "charts": {
+          "trend_title": "Trend",
+          "trend_subtitle": "Daily spend and leads for the selected campaigns and period.",
+          "spend_title": "Spend by campaign",
+          "spend_subtitle": "Ad spend in the selected group.",
+          "leads_title": "Leads by campaign",
+          "leads_subtitle": "Attributed leads (Acquisition results).",
+          "cpl_title": "Cost per lead",
+          "cpl_subtitle": "Lower is better — best CPL highlighted.",
+          "mix_title": "Lead mix",
+          "mix_subtitle": "Share of leads across selected campaigns."
+        },
+        "table": {
+          "title": "Campaign detail",
+          "subtitle": "Selected campaigns with Meta snapshot reach/impressions when available.",
+          "campaign": "Campaign",
+          "best_cpl": "Best CPL"
+        }
       }
     },
     "candidate_card": {
@@ -12304,20 +12357,20 @@
     "crm_landing": {
       "nav": {
         "trust": "Why us",
-        "problem": "Problem",
+        "problem": "Compare",
         "story": "How we close",
         "case": "Case",
         "pricing": "Pricing",
         "faq": "FAQ",
         "login": "Log in",
-        "demo": "Get a demo",
+        "demo": "Try it free",
         "product": "How it works"
       },
       "hero": {
         "badge": "Built by working recruiters",
         "title": "Close vacancies faster with a system built by recruiters with 10+ years of international hiring experience.",
         "subtitle": "We helped companies hire drivers, warehouse, production, and office staff. HostFlow grew from real hiring practice — not from the idea of building yet another CRM.",
-        "primary_cta": "Get a demo",
+        "primary_cta": "Try it free",
         "secondary_cta": "Why you can trust us",
         "proof": {
           "0": "10+ years of international recruiting",
@@ -12326,7 +12379,7 @@
           "3": "Built for ourselves — open to companies"
         },
         "title_line1": "Close vacancies faster.",
-        "title_accent": "More candidates. Fewer losses.",
+        "title_accent": "More candidates.\nFewer losses.",
         "lead": "For more than 10 years we have worked in international recruiting, set up advertising, and built hiring processes.",
         "system_line": "HostFlow is the system recruiters built from their own operating experience.",
         "screenshot_caption": "Recruitment analytics — contacts, outcomes, and stage distribution.",
@@ -12427,43 +12480,32 @@
         "footnote": "Numbers illustrate an operating wave from international hiring practice. The point is the path to start — not a pretty funnel."
       },
       "product": {
-        "badge": "How it works",
-        "title": "From lead to closed vacancy — without identical slides",
-        "lead": "Five steps, five layouts: the UI lives inside the story, not as a separate picture.",
+        "badge": "What matters in the work",
+        "title": "We show only what helps close vacancies",
+        "lead": "Not the whole CRM screen — a focused slice of the process that solves the job.",
         "blocks": {
           "0": {
-            "why": "Step 1 · Lead intake",
-            "title": "Ads and forms land in one queue",
-            "body": "Meta, site, and manual intake stop living in chats — every lead enters with source and ownership.",
-            "caption": "Applications and next actions in one desk.",
-            "screenshot_src": "/landing/shots/step-applications.jpg"
-          },
-          "1": {
-            "why": "Step 2 · Stage ownership",
-            "title": "A funnel where every candidate has an owner",
-            "body": "New → contact → documents → exit. No “whose is this?” and no loss between shifts.",
-            "caption": "Kanban with ownership on the card.",
+            "why": "Ownership",
+            "title": "One owner on every stage",
+            "body": "Candidates don’t disappear between shifts: you see who owns them and what must happen next.",
+            "quote": "We finally stopped asking “whose is this?” in the group chat.",
+            "caption": "Card with owner and stage",
             "screenshot_src": "/landing/shots/hero-pipeline.jpg"
           },
+          "1": {
+            "why": "Speed",
+            "title": "The next action sits on the desk",
+            "body": "Lead, task, and contact in one place — no jumping between WhatsApp and a spreadsheet.",
+            "quote": "Recruiters see the day, not inbound chaos.",
+            "caption": "Applications queue and next step",
+            "screenshot_src": "/landing/shots/step-applications.jpg"
+          },
           "2": {
-            "why": "Step 3 · Recruiter desk",
-            "title": "A workspace built around the candidate",
-            "body": "History, documents, and the next step stay on the person — not scattered across messengers.",
-            "caption": "Candidates, stages, and documents in one table.",
-            "screenshot_src": "/landing/shots/step-candidates.jpg"
-          },
-          "3": {
-            "why": "Step 4 · Documents in-flow",
-            "title": "Documents live in the stage, not a folder",
-            "body": "What is collected, what is missing, and who must follow up — without a side spreadsheet.",
-            "caption": "Document checklist on the candidate.",
-            "screenshot_src": "/landing/shots/shot-documents.jpg"
-          },
-          "4": {
-            "why": "Step 5 · Growth control",
-            "title": "Leaders see where hiring slows down",
+            "why": "Control",
+            "title": "Bottlenecks without a weekly Excel",
             "body": "Contacts, outcomes, and stage mix — so you reinforce what already converts.",
-            "caption": "Recruitment analytics with charts.",
+            "quote": "Leadership sees where hiring actually slows down.",
+            "caption": "Recruitment analytics fragment",
             "screenshot_src": "/landing/shots/hero-recruitment-analytics.png"
           }
         }
@@ -12577,8 +12619,28 @@
       "final_cta": {
         "title": "We have done international recruiting for more than 10 years.",
         "subtitle": "HostFlow is the system we built for ourselves because existing tools did not help close vacancies efficiently. Now other companies can use that experience.",
-        "button": "Get a demo",
+        "button": "Try it free",
         "secondary": "Create account"
+      },
+      "compare": {
+        "title": "How HostFlow beats spreadsheets, chats, and generic CRMs",
+        "them_title": "Spreadsheets, chats, and “universal” CRMs",
+        "us_title": "HostFlow",
+        "them": {
+          "0": "Candidates are scattered across Meta, WhatsApp, and Excel",
+          "1": "Nobody knows who should call right now",
+          "2": "Documents live in folders and message threads",
+          "3": "Leadership sees a report once a week — if you’re lucky",
+          "4": "You pay for features that still don’t close vacancies"
+        },
+        "us": {
+          "0": "Every lead and candidate in one owned queue",
+          "1": "Every stage has a clear owner and next step",
+          "2": "Documents live inside the hiring stage, not beside it",
+          "3": "A live view of the funnel and bottlenecks every day",
+          "4": "Built for operational hiring — from recruiter practice"
+        },
+        "cta": "Try it free"
       }
     },
     "documents_upload": {

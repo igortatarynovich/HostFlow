@@ -28,6 +28,7 @@ from backend.app.modules.leads import (
     pipeline_hooks,
     service,
 )
+from backend.app.modules.intake_routing.meta_bridge import normalize_lead_target_type
 from backend.app.modules.leads.lead_stage_contract import batch_lead_stage_contracts
 from backend.app.modules.leads.schemas import (
     BulkAutoProcessQueueItemOut,
@@ -505,11 +506,9 @@ async def log_lead_call_result_endpoint(
     if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
-    if is_client_lead(lead) and client_lead_is_terminal(lead):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "INTAKE_REJECTED"},
-        )
+    # Terminal/rejected client leads stay closed for intake conversion, but operators
+    # must still be able to log call outcomes + comments (history only — no stage bump).
+    terminal_client = is_client_lead(lead) and client_lead_is_terminal(lead)
 
     if await ensure_lead_rodo_allows_action(
         db,
@@ -535,7 +534,7 @@ async def log_lead_call_result_endpoint(
         result=payload.result,
         note=payload.note,
         actor_id=str(current_user.sub or "").strip() or None,
-        bump_stage=bool(payload.bump_stage),
+        bump_stage=False if terminal_client else bool(payload.bump_stage),
     )
     await db.commit()
 
@@ -925,7 +924,9 @@ async def update_lead_stage_endpoint(
         tenant_id=PyUUID(lead.tenant_id),
         business_type=business_type,
         lead_type=(getattr(lead, "lead_type", None) or "candidate"),  # type: ignore[arg-type]
-        lead_target_type=(getattr(lead, "lead_target_type", None) or "candidate"),  # type: ignore[arg-type]
+        lead_target_type=normalize_lead_target_type(  # type: ignore[arg-type]
+            getattr(lead, "lead_target_type", None) or "candidate"
+        ),
         company_id=PyUUID(lead.company_id) if lead.company_id else None,
         company_name=None,
         vacancy_id=PyUUID(lead.vacancy_id) if lead.vacancy_id else None,

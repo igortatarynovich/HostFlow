@@ -257,21 +257,30 @@ export default function ClientLeadDetailView({
         </div>
       </header>
 
-      {!terminal && onCallResult ? (
+      {!onCallResult ? null : (
         <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <SalesInquiryRodoSection
-            leadId={String(leadState.id)}
-            lead={leadState}
-            disabled={busy}
-            onUpdated={setLeadState}
-          />
+          {!terminal ? (
+            <SalesInquiryRodoSection
+              leadId={String(leadState.id)}
+              lead={leadState}
+              disabled={busy}
+              onUpdated={setLeadState}
+            />
+          ) : null}
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
               {t('app.leads.detail.call_result.title', { defaultValue: 'Call result' })}
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              {t('app.leads.detail.call_result.subtitle', { defaultValue: 'Callback or what else they want / think — capture it after the call.',
-              })}
+              {terminal
+                ? t('app.leads.detail.call_result.subtitle_terminal', {
+                    defaultValue:
+                      'Lead is closed — you can still log call outcomes and comments for history.',
+                  })
+                : t('app.leads.detail.call_result.subtitle', {
+                    defaultValue:
+                      'Callback or what else they want / think — capture it after the call.',
+                  })}
             </p>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -282,7 +291,7 @@ export default function ClientLeadDetailView({
               <select
                 className="input w-full"
                 value={callResult}
-                disabled={busy || !rodoOk}
+                disabled={busy || (!terminal && !rodoOk)}
                 onChange={(e) => setCallResult(e.target.value as LeadCallResultCode)}
               >
                 {LEAD_CALL_RESULT_CODES.map((code) => (
@@ -310,7 +319,7 @@ export default function ClientLeadDetailView({
                   className="textarea mt-0 w-full"
                   rows={3}
                   maxLength={2000}
-                  disabled={busy || !rodoOk}
+                  disabled={busy || (!terminal && !rodoOk)}
                   value={callNote}
                   onChange={(e) => setCallNote(e.target.value)}
                   placeholder={t('app.leads.detail.call_result.fields.note_placeholder', { defaultValue: 'e.g. call back tomorrow 15:00, asks about rate, thinking it over…',
@@ -327,9 +336,9 @@ export default function ClientLeadDetailView({
             <button
               type="button"
               className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60"
-              disabled={busy || !rodoOk}
+              disabled={busy || (!terminal && !rodoOk)}
               title={
-                !rodoOk
+                !terminal && !rodoOk
                   ? t('app.leads.messages.process_blocked.LEAD_RODO_REQUIRED', {
                       defaultValue: 'Send RODO or mark covered at source before saving a call result.',
                     })
@@ -366,7 +375,7 @@ export default function ClientLeadDetailView({
             </div>
           ) : null}
         </section>
-      ) : null}
+      )}
 
       <Section title={t('app.leads.detail.client.sections.company', { defaultValue: 'Company' })}>
         <Field

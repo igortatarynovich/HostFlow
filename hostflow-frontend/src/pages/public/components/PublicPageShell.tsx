@@ -52,7 +52,7 @@ function MarketingChrome({
     { to: '/#story', label: t('public.crm_landing.nav.story', { defaultValue: 'How we close' }) },
     { to: '/#case', label: t('public.crm_landing.nav.case', { defaultValue: 'Case' }) },
     { to: '/#pricing', label: t('public.crm_landing.nav.pricing', { defaultValue: 'Pricing' }) },
-    { to: '/demo', label: t('public.crm_landing.nav.demo', { defaultValue: 'Get a demo' }) },
+    { to: '/demo', label: t('public.crm_landing.nav.demo', { defaultValue: 'Try it free' }) },
     { to: '/faq', label: t('public.crm_landing.nav.faq', { defaultValue: 'FAQ' }) },
   ]
 
@@ -91,7 +91,7 @@ function MarketingChrome({
               to="/demo"
               className="inline-flex items-center justify-center rounded-lg bg-[#00C2A8] px-3 py-2 text-[12px] font-semibold text-[#04201C] transition hover:bg-[#1ad4bb] sm:px-3.5 sm:text-[13px]"
             >
-              {t('public.crm_landing.nav.demo', { defaultValue: 'Request demo' })}
+              {t('public.crm_landing.nav.demo', { defaultValue: 'Try it free' })}
             </Link>
           </div>
         </div>

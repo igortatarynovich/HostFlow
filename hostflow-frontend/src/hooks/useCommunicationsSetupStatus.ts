@@ -37,7 +37,7 @@ function emptyState(): SetupState {
 
 export function useCommunicationsSetupStatus() {
   const { me } = useAuth()
-  const { role } = usePermissions()
+  const { role, rawRole, accessContext, presetId } = usePermissions()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [settings, setSettings] = useState<any | null>(null)
@@ -48,7 +48,9 @@ export function useCommunicationsSetupStatus() {
     setLoading(true)
     setError(null)
     try {
-      const canLoadSettings = Boolean(me?.tenant_id) && roleMayLoadFullCommunicationsSettings(role)
+      const canLoadSettings =
+        Boolean(me?.tenant_id) &&
+        roleMayLoadFullCommunicationsSettings(rawRole || role, { accessContext, presetId })
       const [cfg, acc, th] = await Promise.all([
         canLoadSettings
           ? getCommunicationsSettings()
@@ -64,7 +66,7 @@ export function useCommunicationsSetupStatus() {
     } finally {
       setLoading(false)
     }
-  }, [me?.tenant_id, role])
+  }, [accessContext, me?.tenant_id, presetId, rawRole, role])
 
   useEffect(() => {
     void reload()

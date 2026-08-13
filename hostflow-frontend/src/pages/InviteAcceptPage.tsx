@@ -182,7 +182,10 @@ export default function InviteAcceptPage() {
             </form>
           )}
 
-          <Link to="/login" className="mt-6 block text-center text-sm text-brand-600 hover:underline">
+          <Link
+            to="/login"
+            className="mt-6 block text-center text-sm font-medium text-[#0F766E] hover:text-[#0B0E14] hover:underline"
+          >
             {t('app.forgot_password.back', { defaultValue: 'Wróć do logowania' })}
           </Link>
         </div>

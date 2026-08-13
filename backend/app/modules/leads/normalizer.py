@@ -282,10 +282,15 @@ def _has_nested_value(target: Dict[str, Any], path: str) -> bool:
 def _coerce_mapping_rules(field_mapping: Any) -> List[Dict[str, Any]]:
     if not field_mapping:
         return []
+    from backend.app.field_registry.intake_mapping import enrich_mapping_rule_for_storage
+
+    def _normalize_rule(item: Dict[str, Any]) -> Dict[str, Any]:
+        return enrich_mapping_rule_for_storage(item)
+
     if isinstance(field_mapping, dict):
         rules = field_mapping.get("rules")
         if isinstance(rules, list):
-            return [item for item in rules if isinstance(item, dict)]
+            return [_normalize_rule(item) for item in rules if isinstance(item, dict)]
         normalized_rules: List[Dict[str, Any]] = []
         for target, source in field_mapping.items():
             if not isinstance(target, str):
@@ -293,12 +298,12 @@ def _coerce_mapping_rules(field_mapping: Any) -> List[Dict[str, Any]]:
             if isinstance(source, dict):
                 rule = dict(source)
                 rule.setdefault("target", target)
-                normalized_rules.append(rule)
+                normalized_rules.append(_normalize_rule(rule))
                 continue
-            normalized_rules.append({"target": target, "source": source})
+            normalized_rules.append(_normalize_rule({"target": target, "source": source}))
         return normalized_rules
     if isinstance(field_mapping, list):
-        return [item for item in field_mapping if isinstance(item, dict)]
+        return [_normalize_rule(item) for item in field_mapping if isinstance(item, dict)]
     return []
 
 

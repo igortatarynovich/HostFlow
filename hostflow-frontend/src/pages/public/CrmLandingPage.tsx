@@ -52,36 +52,40 @@ function ProductShot({
 
   const maxW =
     size === 'hero'
-      ? 'max-w-[896px]'
+      ? 'max-w-full'
       : size === 'wide'
         ? 'max-w-[1080px]'
         : size === 'compact'
           ? 'max-w-[420px]'
           : size === 'fragment'
-            ? 'max-w-[520px]'
+            ? 'max-w-[480px]'
             : 'max-w-[560px]'
 
-  const frameH =
-    size === 'fragment'
-      ? 'h-[240px] sm:h-[280px]'
-      : size === 'compact'
-        ? 'h-auto'
-        : size === 'wide'
-          ? 'h-auto'
-          : 'h-auto'
+  const frameH = size === 'fragment' ? 'h-[220px] sm:h-[260px]' : 'h-auto'
 
   const objectPos =
     focus === 'top' ? 'object-top' : focus === 'left' ? 'object-left' : focus === 'right' ? 'object-right' : 'object-center'
 
   return (
     <figure
-      className={`w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0F131A] ring-1 ring-white/5 ${maxW} ${
+      className={`w-full overflow-hidden ${maxW} ${
         isHero
-          ? 'mx-auto shadow-[0_48px_120px_-36px_rgba(0,0,0,0.9)]'
-          : 'shadow-[0_24px_60px_-36px_rgba(0,0,0,0.55)]'
+          ? 'rounded-t-2xl rounded-b-none border border-b-0 border-slate-300/50 bg-[#0F131A]'
+          : isFragment
+            ? 'rounded-2xl border border-slate-200/90 bg-white shadow-[0_18px_50px_-28px_rgba(15,23,42,0.35)]'
+            : 'rounded-2xl border border-white/10 bg-[#0F131A] shadow-[0_24px_60px_-36px_rgba(0,0,0,0.55)] ring-1 ring-white/5'
       }`}
+      style={
+        isHero
+          ? {
+              // Soft feathered rim — outside overflow so it doesn't harden into a strip
+              boxShadow:
+                '-2px -3px 8px rgba(15,23,42,0.16), 2px -3px 8px rgba(15,23,42,0.16), 0 -4px 14px rgba(15,23,42,0.12)',
+            }
+          : undefined
+      }
     >
-      <div className={`relative overflow-hidden bg-slate-200 ${frameH}`}>
+      <div className={`relative overflow-hidden ${isFragment ? 'bg-slate-100' : 'bg-slate-200'} ${frameH}`}>
         <img
           src={src}
           alt={caption}
@@ -89,19 +93,28 @@ function ProductShot({
           height={imgH}
           className={
             isFragment
-              ? `absolute inset-0 h-[145%] w-[145%] max-w-none ${objectPos} object-cover`
+              ? `absolute inset-0 h-[150%] w-[150%] max-w-none ${objectPos} object-cover`
               : 'block h-auto w-full'
           }
-          style={isFragment ? { left: focus === 'right' ? 'auto' : focus === 'left' ? '-8%' : '-18%', top: '-8%' } : undefined}
+          style={
+            isFragment
+              ? {
+                  left: focus === 'right' ? 'auto' : focus === 'left' ? '-6%' : '-16%',
+                  right: focus === 'right' ? '-6%' : 'auto',
+                  top: focus === 'top' ? '0%' : '-10%',
+                }
+              : undefined
+          }
           loading={isHero ? 'eager' : 'lazy'}
           decoding="async"
         />
-        {caption ? (
+        {caption && !isHero && !isFragment ? (
           <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-3 pb-2.5 pt-8 text-xs text-slate-200 sm:px-4 sm:text-sm">
             {caption}
           </figcaption>
         ) : null}
       </div>
+      {caption && (isHero || isFragment) ? <figcaption className="sr-only">{caption}</figcaption> : null}
     </figure>
   )
 }
@@ -137,7 +150,6 @@ export default function CrmLandingPage() {
       })),
     [t],
   )
-  const problemItems = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.problem.items.${i}`)), [t])
   const moatItems = useMemo(() => [0, 1, 2, 3].map((i) => t(`public.crm_landing.moat.items.${i}`)), [t])
   const storySteps = useMemo(
     () =>
@@ -149,15 +161,19 @@ export default function CrmLandingPage() {
   )
   const productBlocks = useMemo(
     () =>
-      [0, 1, 2, 3, 4].map((i) => ({
+      [0, 1, 2].map((i) => ({
         why: t(`public.crm_landing.product.blocks.${i}.why`),
         title: t(`public.crm_landing.product.blocks.${i}.title`),
         body: t(`public.crm_landing.product.blocks.${i}.body`),
+        quote: t(`public.crm_landing.product.blocks.${i}.quote`),
         caption: t(`public.crm_landing.product.blocks.${i}.caption`),
         imageSrc: t(`public.crm_landing.product.blocks.${i}.screenshot_src`, { defaultValue: '' }),
       })),
     [t],
   )
+  const compareThem = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.compare.them.${i}`)), [t])
+  const compareUs = useMemo(() => [0, 1, 2, 3, 4].map((i) => t(`public.crm_landing.compare.us.${i}`)), [t])
+
   const caseSteps = useMemo(
     () =>
       [0, 1, 2, 3].map((i) => ({
@@ -318,77 +334,72 @@ export default function CrmLandingPage() {
         </div>
       </header>
 
-      {/* 1. HERO — copy left, shot shifted right */}
-      <section
-        id="top"
-        className="relative overflow-x-clip pt-14 sm:pt-16"
-        style={{
-          background: `radial-gradient(ellipse 80% 60% at 70% 20%, rgba(0,194,168,0.12), transparent 55%), linear-gradient(180deg, ${NAVY} 0%, ${NAVY_SOFT} 100%)`,
-        }}
-      >
-        <div className="mx-auto grid max-w-[1600px] items-center gap-10 px-4 pb-12 pt-10 sm:px-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10 lg:pb-16 lg:pt-14 xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] xl:gap-12">
-          <div className="space-y-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#00C2A8]">
+      {/* 1. HERO — dark zone (headline+CTA); curve lowered; tight light zone around shot */}
+      <section id="top" className="relative overflow-hidden pt-14 sm:pt-16">
+        {/* Dark header — extra space under CTA so the curve sits lower */}
+        <div className="bg-[#0B0E14] text-white">
+          <div className="mx-auto flex max-w-3xl flex-col items-center space-y-5 px-4 pb-16 pt-10 text-center sm:px-6 sm:pb-20 sm:pt-14 lg:pb-24 lg:pt-16">
+            <p className="inline-flex rounded-full border border-[#00C2A8]/35 bg-white/[0.04] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#00C2A8]">
               {t('public.crm_landing.hero.badge')}
             </p>
-            <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.15rem]">
-              {t('public.crm_landing.hero.title_line1')}
-              <span className="mt-2 block text-[#00C2A8]">{t('public.crm_landing.hero.title_accent')}</span>
+            <h1 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.05rem]">
+              {t('public.crm_landing.hero.title_line1')}{' '}
+              <span className="whitespace-pre-line text-[#00C2A8]">{t('public.crm_landing.hero.title_accent')}</span>
             </h1>
-            <div className="max-w-xl space-y-3 text-base leading-relaxed text-slate-300 sm:text-[17px]">
-              <p>{t('public.crm_landing.hero.lead')}</p>
-              <p className="font-medium text-white/90">{t('public.crm_landing.hero.system_line')}</p>
-            </div>
-            <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center">
+            <p className="max-w-2xl text-base leading-relaxed text-slate-300 sm:text-[17px]">
+              {t('public.crm_landing.hero.lead')}
+            </p>
+            <div className="pt-1">
               <Link
                 to="/demo"
                 onClick={() => trackCta('hero_demo', '/demo')}
-                className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-7 py-3.5 text-base font-semibold text-[#04201C] shadow-[0_12px_40px_-12px_rgba(0,194,168,0.7)] transition hover:bg-[#1ad4bb]"
+                className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-7 py-3.5 text-base font-semibold text-[#04201C] shadow-[0_12px_40px_-12px_rgba(0,194,168,0.45)] transition hover:bg-[#1ad4bb]"
               >
                 {t('public.crm_landing.hero.primary_cta')}
               </Link>
-              <a
-                href="/#trust"
-                onClick={(e) => {
-                  e.preventDefault()
-                  scrollToId('trust')
-                  trackCta('hero_trust', '#trust')
-                }}
-                className="inline-flex items-center justify-center gap-2 px-2 py-3 text-sm font-semibold text-slate-300 transition hover:text-white"
-              >
-                <span
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-[10px]"
-                  aria-hidden
-                >
-                  ▶
-                </span>
-                {t('public.crm_landing.hero.secondary_cta')}
-              </a>
             </div>
-            <ul className="flex flex-wrap gap-x-4 gap-y-2 pt-2 text-sm text-slate-300">
-              {heroProof.map((chip) => (
-                <li key={chip} className="inline-flex items-center gap-1.5">
-                  <span className="text-[#00C2A8]" aria-hidden>
-                    ✓
-                  </span>
-                  {chip}
-                </li>
-              ))}
-            </ul>
           </div>
 
-          <div className="relative min-w-0 lg:-mr-2 xl:-mr-6">
-            <div
-              className="pointer-events-none absolute -inset-6 rounded-[2rem] opacity-70 blur-3xl"
-              style={{ background: 'radial-gradient(circle at 50% 40%, rgba(0,194,168,0.22), transparent 65%)' }}
-              aria-hidden
+          {/* Symmetrical curve — sits lower after CTA padding */}
+          <svg
+            className="block h-[64px] w-full text-[#F7F8FA] sm:h-[88px] lg:h-[112px]"
+            viewBox="0 0 1440 180"
+            preserveAspectRatio="none"
+            aria-hidden
+          >
+            <path
+              fill="currentColor"
+              d="M0 180V150C200 150 320 20 720 20C1120 20 1240 150 1440 150V180H0Z"
             />
-            <div className="relative origin-center lg:rotate-[-1.5deg] lg:scale-[1.02]">
-              <ProductShot
-                size="hero"
-                caption={t('public.crm_landing.hero.screenshot_caption')}
-                imageSrc={heroShot}
-              />
+          </svg>
+        </div>
+
+        {/* Light zone — pull up into curve valley; height ≈ screenshot */}
+        <div className="relative z-10 -mt-1 bg-[#F7F8FA]">
+          <div className="mx-auto grid max-w-6xl items-center gap-6 px-4 sm:gap-8 sm:px-6 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] lg:gap-10">
+            <div className="relative z-10 space-y-4">
+              <p className="max-w-md text-base font-medium leading-relaxed text-slate-800 sm:text-[17px]">
+                {t('public.crm_landing.hero.system_line')}
+              </p>
+              <ul className="space-y-3 text-sm text-slate-600 sm:text-[15px]">
+                {heroProof.map((chip) => (
+                  <li key={chip} className="flex items-start gap-2.5">
+                    <span className="mt-0.5 text-[#00C2A8]" aria-hidden>
+                      ✓
+                    </span>
+                    <span>{chip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="relative z-10 flex w-full justify-center leading-none lg:justify-end">
+              <div className="w-full max-w-[1000px] leading-none lg:max-w-none lg:w-[156%] lg:origin-bottom-right">
+                <ProductShot
+                  size="hero"
+                  caption={t('public.crm_landing.hero.screenshot_caption')}
+                  imageSrc={heroShot}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -447,54 +458,67 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* 3. PROBLEM — after trust */}
-      <section id="problem" className="scroll-mt-20 bg-[#F7F8FA] sm:scroll-mt-24">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-12 lg:py-24">
-          <div className="space-y-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-              {t('public.crm_landing.problem.badge')}
-            </p>
-            <h2 className="max-w-xl text-balance text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-              {t('public.crm_landing.problem.title')}
-            </h2>
-            <p className="max-w-xl text-base leading-relaxed text-slate-600">{t('public.crm_landing.problem.lead')}</p>
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {problemItems.map((item) => (
-                <li key={item} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-medium text-slate-800">
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <aside className="flex flex-col justify-between rounded-3xl border border-rose-200/70 bg-gradient-to-br from-rose-50 to-orange-50 p-7 sm:p-8">
-            <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-rose-500">
-                {t('public.crm_landing.problem.cost_badge')}
-              </p>
-              <h3 className="text-2xl font-semibold tracking-tight text-slate-900">
-                {t('public.crm_landing.problem.cost_title')}
+      {/* 3. COMPARE — show only the argument, no screenshots */}
+      <section id="problem" className="scroll-mt-20 bg-white sm:scroll-mt-24">
+        <div className="mx-auto max-w-6xl space-y-10 px-4 py-16 sm:px-6 lg:py-20">
+          <h2 className="mx-auto max-w-3xl text-balance text-center text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+            {t('public.crm_landing.compare.title')}
+          </h2>
+          <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+            <article className="rounded-3xl border border-slate-200 bg-[#F7F8FA] p-6 sm:p-8">
+              <h3 className="text-center text-lg font-semibold text-slate-900 sm:text-xl">
+                {t('public.crm_landing.compare.them_title')}
               </h3>
-              <p className="text-4xl font-bold tracking-tight text-rose-600 sm:text-5xl">
-                {t('public.crm_landing.problem.cost_value')}
-              </p>
-              <p className="text-sm leading-relaxed text-slate-600">{t('public.crm_landing.problem.cost_note')}</p>
-            </div>
-            <p className="mt-8 text-sm font-semibold text-slate-800">{t('public.crm_landing.problem.cost_closing')}</p>
-          </aside>
+              <ul className="mt-6 space-y-4">
+                {compareThem.map((item) => (
+                  <li key={item} className="flex gap-3 text-sm leading-relaxed text-slate-600 sm:text-base">
+                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-100 text-xs font-bold text-rose-600">
+                      ×
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+            <article className="rounded-3xl bg-[#0B0E14] p-6 text-white sm:p-8">
+              <h3 className="text-center text-lg font-semibold sm:text-xl">
+                {t('public.crm_landing.compare.us_title')}
+              </h3>
+              <ul className="mt-6 space-y-4">
+                {compareUs.map((item) => (
+                  <li key={item} className="flex gap-3 text-sm leading-relaxed text-slate-200 sm:text-base">
+                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#00C2A8] text-[11px] font-bold text-[#04201C]">
+                      ✓
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          </div>
+          <div className="flex justify-center">
+            <Link
+              to="/demo"
+              onClick={() => trackCta('compare_demo', '/demo')}
+              className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-7 py-3.5 text-base font-semibold text-[#04201C] transition hover:bg-[#1ad4bb]"
+            >
+              {t('public.crm_landing.compare.cta')}
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* 4. MOAT — why not any other ATS */}
+      {/* 4. MOAT — short authority after compare */}
       <section
         id="moat"
         className="scroll-mt-20"
         style={{ background: `linear-gradient(180deg, ${NAVY} 0%, #10141C 100%)` }}
       >
-        <div className="mx-auto max-w-3xl space-y-8 px-4 py-20 text-center sm:px-6 lg:py-28">
+        <div className="mx-auto max-w-3xl space-y-8 px-4 py-16 text-center sm:px-6 lg:py-20">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#00C2A8]">
             {t('public.crm_landing.moat.badge')}
           </p>
-          <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-5xl sm:leading-[1.1]">
+          <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl sm:leading-[1.1]">
             {t('public.crm_landing.moat.title')}
           </h2>
           <ul className="space-y-3 text-left">
@@ -538,10 +562,10 @@ export default function CrmLandingPage() {
         </div>
       </section>
 
-      {/* 6. HOW IT WORKS — varied compositions; UI lives inside each step */}
-      <section id="product" className="scroll-mt-20 bg-[#F7F8FA] sm:scroll-mt-24">
-        <div className="mx-auto max-w-6xl space-y-10 px-4 py-12 sm:px-6 lg:space-y-14 lg:py-16">
-          <div className="mx-auto max-w-2xl space-y-2 text-center">
+      {/* 6. HOW IT WORKS — cropped UI fragments only (Pipedrive-style Z rows) */}
+      <section id="product" className="scroll-mt-20 bg-white sm:scroll-mt-24">
+        <div className="mx-auto max-w-6xl space-y-14 px-4 py-16 sm:px-6 lg:space-y-20 lg:py-24">
+          <div className="mx-auto max-w-2xl space-y-3 text-center">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
               {t('public.crm_landing.product.badge')}
             </p>
@@ -551,100 +575,43 @@ export default function CrmLandingPage() {
             <p className="text-base text-slate-600">{t('public.crm_landing.product.lead')}</p>
           </div>
 
-          <div className="space-y-12 lg:space-y-14">
-            {productBlocks[0] ? (
-              <article className="grid items-center gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-8">
-                <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{productBlocks[0].why}</p>
-                  <h3 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{productBlocks[0].title}</h3>
-                  <p className="max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">{productBlocks[0].body}</p>
+          <div className="space-y-16 lg:space-y-24">
+            {productBlocks.map((block, idx) => {
+              const visualLeft = idx % 2 === 0
+              const focus = idx === 0 ? 'left' : idx === 1 ? 'top' : 'center'
+              const copy = (
+                <div className="space-y-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{block.why}</p>
+                  <h3 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">{block.title}</h3>
+                  <p className="max-w-md text-base leading-relaxed text-slate-600">{block.body}</p>
+                  <blockquote className="max-w-md border-l-2 border-[#00C2A8] pl-4">
+                    <p className="text-sm italic leading-relaxed text-slate-500">“{block.quote}”</p>
+                  </blockquote>
                 </div>
-                <div className="flex justify-start lg:justify-end">
-                  <ProductShot
-                    size="compact"
-                    caption={productBlocks[0].caption}
-                    imageSrc={productBlocks[0].imageSrc}
-                  />
+              )
+              const visual = (
+                <div className={`flex ${visualLeft ? 'justify-start lg:justify-center' : 'justify-start lg:justify-end'}`}>
+                  <ProductShot size="fragment" focus={focus} caption={block.caption} imageSrc={block.imageSrc} />
                 </div>
-              </article>
-            ) : null}
-
-            {productBlocks[1] ? (
-              <article className="grid items-center gap-5 rounded-3xl border border-slate-200/80 bg-white p-5 sm:p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-8 lg:p-8">
-                <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{productBlocks[1].why}</p>
-                  <h3 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{productBlocks[1].title}</h3>
-                  <p className="max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">{productBlocks[1].body}</p>
-                </div>
-                <div className="min-w-0">
-                  <ProductShot
-                    size="support"
-                    caption={productBlocks[1].caption}
-                    imageSrc={productBlocks[1].imageSrc}
-                  />
-                </div>
-              </article>
-            ) : null}
-
-            {productBlocks[2] ? (
-              <article className="space-y-4">
-                <div className="mx-auto max-w-2xl space-y-2 text-center sm:text-left">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{productBlocks[2].why}</p>
-                  <h3 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{productBlocks[2].title}</h3>
-                  <p className="text-sm leading-relaxed text-slate-600 sm:text-base">{productBlocks[2].body}</p>
-                </div>
-                <div className="flex justify-center">
-                  <ProductShot
-                    size="wide"
-                    caption={productBlocks[2].caption}
-                    imageSrc={productBlocks[2].imageSrc}
-                  />
-                </div>
-              </article>
-            ) : null}
-
-            {productBlocks[3] ? (
-              <article className="grid items-center gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-8">
-                <div className="order-2 flex justify-start lg:order-1">
-                  <ProductShot
-                    size="fragment"
-                    focus="left"
-                    caption={productBlocks[3].caption}
-                    imageSrc={productBlocks[3].imageSrc}
-                  />
-                </div>
-                <div className="order-1 space-y-2 lg:order-2">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{productBlocks[3].why}</p>
-                  <h3 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{productBlocks[3].title}</h3>
-                  <p className="max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">{productBlocks[3].body}</p>
-                </div>
-              </article>
-            ) : null}
-
-            {productBlocks[4] ? (
-              <article className="grid items-end gap-5 overflow-hidden rounded-3xl border border-slate-200/80 bg-[#0B0E14] p-5 text-white sm:p-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-8 lg:p-8">
-                <div className="space-y-2 pb-1">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">{productBlocks[4].why}</p>
-                  <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">{productBlocks[4].title}</h3>
-                  <p className="max-w-md text-sm leading-relaxed text-slate-300 sm:text-base">{productBlocks[4].body}</p>
-                </div>
-                <div className="min-w-0 lg:-mb-2 lg:-mr-2">
-                  <ProductShot
-                    size="wide"
-                    caption={productBlocks[4].caption}
-                    imageSrc={productBlocks[4].imageSrc}
-                  />
-                </div>
-              </article>
-            ) : null}
+              )
+              return (
+                <article
+                  key={block.title}
+                  className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14"
+                >
+                  <div className={visualLeft ? 'order-2 lg:order-1' : 'order-2 lg:order-2'}>{visual}</div>
+                  <div className={visualLeft ? 'order-1 lg:order-2' : 'order-1 lg:order-1'}>{copy}</div>
+                </article>
+              )
+            })}
           </div>
         </div>
       </section>
 
-      {/* 7. CASE — UI embedded with story, not a separate chapter */}
+      {/* 7. CASE — fragment shot beside story */}
       <section id="case" className="scroll-mt-20 bg-[#0B0E14] text-white sm:scroll-mt-24">
         <div className="mx-auto max-w-6xl space-y-8 px-4 py-12 sm:px-6 lg:py-16">
-          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-8">
+          <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-12">
             <div className="space-y-3">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00C2A8]">
                 {t('public.crm_landing.case.badge')}
@@ -663,22 +630,23 @@ export default function CrmLandingPage() {
                   </li>
                 ))}
               </ol>
+              <blockquote className="mt-2 border-l-2 border-[#00C2A8] pl-4">
+                <p className="text-base font-medium leading-relaxed text-slate-100 sm:text-lg">
+                  “{t('public.crm_landing.case.quote')}”
+                </p>
+                <footer className="mt-3 text-sm text-[#B8FFF3]">
+                  <p className="font-semibold">{t('public.crm_landing.case.quote_name')}</p>
+                  <p className="mt-1 text-slate-400">{t('public.crm_landing.case.quote_role')}</p>
+                </footer>
+              </blockquote>
             </div>
-            <div className="min-w-0 space-y-4">
+            <div className="flex justify-center lg:justify-end">
               <ProductShot
-                size="support"
+                size="fragment"
+                focus="left"
                 caption={t('public.crm_landing.case.screenshot_caption')}
                 imageSrc={caseShot}
               />
-              <blockquote className="rounded-2xl border border-[#00C2A8]/30 bg-[#00C2A8]/10 p-5">
-                <p className="text-base font-medium leading-relaxed text-white sm:text-lg">
-                  “{t('public.crm_landing.case.quote')}”
-                </p>
-                <footer className="mt-4 text-sm text-[#B8FFF3]">
-                  <p className="font-semibold">{t('public.crm_landing.case.quote_name')}</p>
-                  <p className="mt-1 text-slate-300">{t('public.crm_landing.case.quote_role')}</p>
-                </footer>
-              </blockquote>
             </div>
           </div>
         </div>

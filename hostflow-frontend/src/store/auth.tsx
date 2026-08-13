@@ -16,6 +16,7 @@ import { getUserMe } from '../api/users'
 import type { UserPreferences, UserSecuritySummary, WhoAmI } from '../api/types'
 import { bindUserContext } from '../lib/observability'
 import { useI18n, type LocaleCode } from '../i18n'
+import { isShellDeployHost, resolveDeployHost } from '../platform/deployHosts'
 import {
   clearSessionRevoked,
   isSessionRevoked,
@@ -145,14 +146,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return
     }
     // Explicit logout in this tab must not be rehydrated from leftover cookies.
-    // A sticky revoke left on module hosts after the cross-origin wipe bounce is healed
-    // when Domain cookies prove a live session (login happened on shell).
+    // Shell: sticky revoke stays until login() — never heal from cookies (Logout → landing
+    // used to silently re-auth). Module hosts: originating host is excluded from the wipe
+    // chain, so a leftover revoke must heal when Domain cookies prove a fresh shell login.
     if (!opts?.force && logoutInFlightRef.current) {
       setLoading(false)
       setMe(null)
       return
     }
     if (!opts?.force && isSessionRevoked()) {
+      const onShell = isShellDeployHost(resolveDeployHost())
+      if (onShell) {
+        setLoading(false)
+        setMe(null)
+        return
+      }
       try {
         const { data: cookieWho } = await api.get('/auth/whoami-verify', {
           __hfSkipBearer: true,
@@ -344,6 +352,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
     clearLocalAuthState()
     if (typeof window !== 'undefined') {
+      // Originating module is skipped by the wipe chain; leaving sticky revoke there
+      // blocks the next shell→module handoff after a real login.
+      if (!isShellDeployHost(resolveDeployHost())) {
+        clearSessionRevoked()
+      }
       window.location.replace(startCrossOriginLogoutBounce())
     }
   }, [applyTheme])
@@ -399,7 +412,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setLoading(false)
       return
     }
-    // Sticky revoke on module hosts is healed inside refresh() when cookies prove a session.
+    // Shell sticky revoke blocks refresh until login(); module hosts may heal via cookies.
     if (!me) {
       void refresh()
     }

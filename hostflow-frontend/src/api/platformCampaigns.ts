@@ -512,6 +512,25 @@ export type PortfolioCampaignRow = {
   outcome_value?: string | null
   roi?: string | null
   is_best_cpl: boolean
+  impressions?: number | null
+  reach?: number | null
+}
+
+export type PortfolioDayPoint = {
+  day: string
+  spend: string
+  leads: number
+  impressions: number
+  reach: number
+}
+
+export type PortfolioCampaignDayPoint = {
+  day: string
+  campaign_id: string
+  spend: string
+  leads: number
+  impressions: number
+  reach: number
 }
 
 export type CampaignPortfolio = {
@@ -529,6 +548,12 @@ export type CampaignPortfolio = {
   roi?: string | null
   campaigns: PortfolioCampaignRow[]
   scan_capped: boolean
+  date_from?: string | null
+  date_to?: string | null
+  series?: PortfolioDayPoint[]
+  series_by_campaign?: PortfolioCampaignDayPoint[]
+  impressions?: number | null
+  reach?: number | null
 }
 
 export type OutcomeCommercialValue = {
@@ -563,10 +588,19 @@ export async function getOutcomeCommercialValue(
 }
 
 /** Stage 6 PR-4 — company-scoped Campaign KPI portfolio. */
-export async function getCampaignPortfolio(limit = 50): Promise<CampaignPortfolio> {
+export async function getCampaignPortfolio(
+  limit = 50,
+  params?: { date_from?: string; date_to?: string },
+): Promise<CampaignPortfolio> {
   const { data } = await api.get<CampaignPortfolio>(
     '/platform/campaigns/analytics/portfolio',
-    { params: { limit } },
+    {
+      params: {
+        limit,
+        ...(params?.date_from ? { date_from: params.date_from } : {}),
+        ...(params?.date_to ? { date_to: params.date_to } : {}),
+      },
+    },
   )
   return data
 }

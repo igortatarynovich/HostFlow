@@ -84,6 +84,8 @@ def build_facebook_authorize_url(*, state: str) -> str:
         "pages_manage_metadata",
         "pages_show_list",
         "leads_retrieval",
+        # Required for Business Suite / New Pages Experience so /me/accounts is not empty.
+        "business_management",
     ]
     q = urlencode(
         {

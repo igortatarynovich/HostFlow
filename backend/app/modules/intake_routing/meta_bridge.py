@@ -29,13 +29,6 @@ LEAD_TARGET_TYPES = frozenset(
 )
 
 
-def normalize_lead_target_type(raw: Any) -> str:
-    value = str(raw or "").strip().lower()
-    if value in LEAD_TARGET_TYPES:
-        return value
-    return LEAD_TARGET_CANDIDATE
-
-
 ROUTE_INTENT_TO_LEAD_TARGET: dict[str, str] = {
     RouteIntent.candidate_application.value: "candidate",
     RouteIntent.sales_inquiry.value: "client_lead",
@@ -43,6 +36,21 @@ ROUTE_INTENT_TO_LEAD_TARGET: dict[str, str] = {
     RouteIntent.partner_inquiry.value: "partner_lead",
     RouteIntent.unknown.value: "candidate",
 }
+
+
+def normalize_lead_target_type(raw: Any) -> str:
+    """Canonical lead_target_type for API/storage.
+
+    Accepts both LeadTargetType values and RouteIntent values that were
+    mistakenly persisted as lead_target_type (e.g. candidate_application).
+    """
+    value = str(raw or "").strip().lower()
+    if value in LEAD_TARGET_TYPES:
+        return value
+    mapped = ROUTE_INTENT_TO_LEAD_TARGET.get(value)
+    if mapped:
+        return mapped
+    return LEAD_TARGET_CANDIDATE
 
 SALES_ROUTE_INTENTS = frozenset(
     {
