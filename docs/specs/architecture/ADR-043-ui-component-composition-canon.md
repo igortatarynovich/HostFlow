@@ -163,9 +163,9 @@ The ADR PR did **not** migrate product pages or extract DataTable. P0 follow-on 
 
 ## Explicit next
 
-1. Epic P1–P2 — `ListWorkspace` runtime extract ([`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md)).
-2. **ADR-045** Layout & Page Template Canon.
-3. Events vocabulary may proceed **in parallel**.
+1. [Platform Extraction](platform-extraction-phase.md) / Core Platform Kit — `ListWorkspace` + `DataTable` runtime ([`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md)), Analytics public composition, min `EntityWorkspace`.
+2. **ADR-045** Layout & Page Template Canon — only when a second real template consumer exists.
+3. Events **runtime** (ADR-019 3A-1) when a consumer exists — not an inventory ADR.
 
 ---
 
@@ -184,7 +184,7 @@ The ADR PR did **not** migrate product pages or extract DataTable. P0 follow-on 
 
 - Positive: UI follows the same Platform-first rule as entities, types, relationships, and vocabulary; modules stop growing private UI languages; a year-later visual change has one kit surface.
 - Negative: until P1–P3 ship, legacy className and parallel tables remain legal under migrate-on-touch.
-- Follow-on: ListWorkspace runtime (ADR-044 epic P1–P2) → layouts (045). Analytics + reporting language: [`ADR-046`](ADR-046-analytics-visualization-canon.md).
+- Follow-on: [Platform Extraction](platform-extraction-phase.md) Core Platform Kit (`ListWorkspace` runtime, Analytics composition, min EntityWorkspace). ADR-045 deferred until a second template consumer.
 
 ---
 

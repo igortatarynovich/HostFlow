@@ -88,15 +88,15 @@ Docs-only. No new `platform/actions/` package, migrations, or automation_rules J
 - ADR-019 3A-3 runtime Action Registry
 - Full CRM action set as `confirmed`
 - Promoting C2.2 Intents to Actions
-- Events Canon (next ADR-038 vocabulary item)
+- Events Canon (ADR-038 area `events`) — **deferred**; runtime = ADR-019 3A-1 when a consumer exists, not an inventory ADR now
 - Design SVL / DocumentType alignment
 
 ---
 
 ## Explicit next
 
-1. **Events Canon** (ADR-038 area `events`) — facts vs commands.
-2. ADR-019 **3A-3** implementation adopts `action_code` rows from L2 (+ CRM public actions).
+1. [Platform Extraction](platform-extraction-phase.md) (UI kit) — different group; does not block on Actions runtime.
+2. ADR-019 **3A-1** Event Contract when a real consumer exists; **3A-3** then adopts `action_code` rows from L2 (+ CRM public actions).
 
 ---
 
@@ -114,7 +114,7 @@ Docs-only. No new `platform/actions/` package, migrations, or automation_rules J
 
 - Positive: Actions area becomes `exists` as vocabulary/contract; Document Hub and PE ops have stable codes; Intent/Event/Permission stay separable.
 - Negative: CRM public actions remain fragment until 3A-3; legacy automation JSON still runs.
-- Follow-on: Events Canon; 3A-3 registry runtime.
+- Follow-on: Platform Extraction (UI); Events runtime via 3A-1 when needed; 3A-3 registry runtime.
 
 ---
 

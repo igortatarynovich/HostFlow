@@ -195,9 +195,10 @@ Follow-on (epic P4): remaining dashboards; persisted Analytics View; PDF/export/
 
 ## Explicit next
 
-1. Migrate remaining efficiency dashboards onto the kit (epic P4), including report chrome + URL view.
-2. Persist Analytics View (named save) reusing user saved-view storage or a dedicated table — **not** a new BI app.
-3. **ADR-045** layouts (parallel). ListWorkspace rule is [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md).
+1. [Platform Extraction](platform-extraction-phase.md): kit is the only legal import for **new** analytics; story/dashboard grid as composition (not a Widget Registry).
+2. Remaining efficiency dashboards migrate-on-touch after the kit gate (not a restyle queue).
+3. Persist Analytics View (named save) later — **not** a new BI app.
+4. **ADR-045** only when a second template consumer exists. ListWorkspace runtime is the same extraction sprint ([`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md)).
 
 ---
 
@@ -216,7 +217,7 @@ Follow-on (epic P4): remaining dashboards; persisted Analytics View; PDF/export/
 
 - Positive: HostFlow standardizes how the business is *read* and *shown*; analytics becomes part of the product and of the sale; share/export can grow on one view model.
 - Negative: Recruitment layout changes (hero story, pies gone, presentation mode); other dashboards remain mixed until migrate-on-touch; named save / PDF still follow.
-- Follow-on: P4 migrations; persisted Analytics View; optional CI ratchet; ADR-045.
+- Follow-on: Platform Extraction kit gate; remaining dashboards migrate-on-touch; persisted Analytics View later. ADR-045 deferred.
 
 ---
 

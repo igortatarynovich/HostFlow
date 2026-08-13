@@ -4,7 +4,7 @@
 **Date:** 2026-08-13  
 **Layer of change:** Constitution (meta) | Platform standardization map  
 **Trusted base:** `integration/release-product-a-b`  
-**Related:** [`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) · [`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`ADR-046`](ADR-046-analytics-visualization-canon.md) · [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-036`](ADR-036-four-trust-roles-rbac.md) · [`platform-capability-catalog.md`](platform-capability-catalog.md) · L2 index [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md)
+**Related:** [`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) · [`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`ADR-046`](ADR-046-analytics-visualization-canon.md) · [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) · [`ADR-026`](ADR-026-capability-ownership.md) · [`ADR-036`](ADR-036-four-trust-roles-rbac.md) · [`platform-capability-catalog.md`](platform-capability-catalog.md) · L2 index [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md) · [Platform Extraction](platform-extraction-phase.md)
 
 **L0 checklist:** No new L0 P-rule; does not rewrite Passport/Manifest shape; references Catalog / P-01…P-05; ADR-037 remains the ObjectKind / RuleKind / LibraryKind vocabulary and is **not** expanded by this ADR.
 
@@ -122,11 +122,13 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 **Relationships:** **done** — [`ADR-042`](ADR-042-relationships.md) · [`../platform/relationships.md`](../platform/relationships.md). Confirmed Documents/handoff/Activity/Comms slice only; full CRM graph **deferred**.
 
-**Design & Interaction composition:** **done as rule** — [`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md). React kit is the public API; CSS is implementation. **ListWorkspace / DataTable:** **done as rule** — [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md); runtime extract = epic P1–P2. Layouts / page templates remain **ADR-045**. **Analytics language:** **done as rule + Recruitment reference (story + Analytics View)** — [`ADR-046`](ADR-046-analytics-visualization-canon.md). Runtime wrappers for remaining dashboards = epic P4.
+**Design & Interaction composition:** **done as rule** — [`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md). React kit is the public API; CSS is implementation. **ListWorkspace / DataTable:** **done as rule** — [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md); runtime = [Platform Extraction](platform-extraction-phase.md). Layouts / page templates remain **ADR-045** (deferred). **Analytics language:** **done as rule + Recruitment reference** — [`ADR-046`](ADR-046-analytics-visualization-canon.md). Remaining dashboards = migrate-on-touch after kit gate.
 
 **Actions:** **done** — [`ADR-047`](ADR-047-actions.md) · [`../platform/actions.md`](../platform/actions.md). Confirmed Documents/Activity/PE slice; **3A-3 runtime** and CRM public actions **deferred**.
 
-**Next in ADR-038 Vocabulary sequence:** Events (area 10, `gap`, ADR-019 3A-1+) — **parallel** to UI layouts (ADR-045) and ListWorkspace runtime extract. DocumentType alignment and Field/Forms DataType adoption may also run in parallel.
+**Next after Vocabulary Canon:** [Platform Extraction](platform-extraction-phase.md) — Core Platform Kit runtime (`ListWorkspace`, Analytics composition, min `EntityWorkspace`). **Not** Events inventory, **not** ADR-045.
+
+DocumentType alignment and Field/Forms DataType adoption remain separate PRs (Forms C / Documents E). Events runtime = ADR-019 **3A-1** when a real consumer exists.
 
 ---
 
@@ -144,7 +146,7 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 - Positive: single coordinate system for all follow-on canons; clear exists/next/gap map; Platform-first turns documentation into architecture; Action / Permission / Capability and Field / DataType stay separable.
 - Negative: gap areas must be filled by dedicated PRs; until then modules must not invent local replacements.
-- Follow-on sequence (separate PRs): ~~State/Lifecycle inventory~~ (ADR-039) → ~~Naming & Identifiers~~ (ADR-040) → ~~Data Types~~ (ADR-041) → ~~Relationships~~ (ADR-042) → ~~UI composition rule~~ (ADR-043) → ~~Analytics, Visualization & Reporting~~ (ADR-046) → ~~Actions~~ (ADR-047) → ~~List Workspace / DataTable~~ (ADR-044). **Parallel next:** Events; UI Layouts (ADR-045); ListWorkspace runtime extract. ADR-019 3A-3 implements Action Registry runtime. DocumentType alignment and Field/Forms `data_type` adoption may run in parallel.
+- Follow-on: Vocabulary sequence **closed** (ADR-039…047). Next stage is [Platform Extraction](platform-extraction-phase.md), not more area ADRs. Events runtime = ADR-019 3A-1 when a consumer exists. DocumentType alignment and Field/Forms `data_type` adoption stay deferred.
 
 ---
 
@@ -160,6 +162,7 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 ## Cross-references (updated in same change set)
 
 - [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md) — L2 area index + status map
+- [`platform-extraction-phase.md`](platform-extraction-phase.md) — Vocabulary Canon closed; next = Core Platform Kit runtime
 - [`ADR-037-platform-object-kind-catalog.md`](ADR-037-platform-object-kind-catalog.md) — Object Kind / Rules / Libraries under this model
 - [`ADR-043-ui-component-composition-canon.md`](ADR-043-ui-component-composition-canon.md) — Experience composition rule (area 13)
 - [`ADR-044-list-workspace-data-presentation-canon.md`](ADR-044-list-workspace-data-presentation-canon.md) — ListWorkspace + DataTable (area 13)

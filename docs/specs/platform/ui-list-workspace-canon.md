@@ -6,7 +6,7 @@
 **Parent composition:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · [`ui-component-canon.md`](ui-component-canon.md)  
 **Visual child:** [`../frontend/TABLE_V1.md`](../frontend/TABLE_V1.md) (Candidates frame)  
 **Owner:** Frontend platform  
-**Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) P1–P2
+**Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) (Core Platform Kit / ListWorkspace stream) · [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md)
 
 ---
 
@@ -81,4 +81,4 @@ Invalid: “HR table v2”, a dashboard pretending to be an entity list, a new l
 
 ## 6. History
 
-- 2026-08-13: Initial contract under ADR-044. Runtime extract deferred to epic P1–P2.
+- 2026-08-13: Initial contract under ADR-044. Runtime extract = [Platform Extraction](../architecture/platform-extraction-phase.md).

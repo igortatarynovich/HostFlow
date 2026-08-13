@@ -5,7 +5,7 @@
 **Decision record:** [`ADR-038`](../architecture/ADR-038-platform-standardization-model.md)  
 **Owner:** Architecture canon + platform core team
 
-**Related:** [`ADR-037`](../architecture/ADR-037-platform-object-kind-catalog.md) · [`object-kind-catalog.md`](object-kind-catalog.md) · [`../architecture/platform-capability-catalog.md`](../architecture/platform-capability-catalog.md) · [`../architecture/ADR-011-hostflow-ui-platform-standard.md`](../architecture/ADR-011-hostflow-ui-platform-standard.md) · [`../architecture/ADR-043-ui-component-composition-canon.md`](../architecture/ADR-043-ui-component-composition-canon.md) · [`../architecture/ADR-046-analytics-visualization-canon.md`](../architecture/ADR-046-analytics-visualization-canon.md) · [`../architecture/ADR-036-four-trust-roles-rbac.md`](../architecture/ADR-036-four-trust-roles-rbac.md) · [`../architecture/architecture-review-checklist.md`](../architecture/architecture-review-checklist.md)
+**Related:** [`ADR-037`](../architecture/ADR-037-platform-object-kind-catalog.md) · [`object-kind-catalog.md`](object-kind-catalog.md) · [`../architecture/platform-capability-catalog.md`](../architecture/platform-capability-catalog.md) · [`../architecture/ADR-011-hostflow-ui-platform-standard.md`](../architecture/ADR-011-hostflow-ui-platform-standard.md) · [`../architecture/ADR-043-ui-component-composition-canon.md`](../architecture/ADR-043-ui-component-composition-canon.md) · [`../architecture/ADR-046-analytics-visualization-canon.md`](../architecture/ADR-046-analytics-visualization-canon.md) · [`../architecture/ADR-036-four-trust-roles-rbac.md`](../architecture/ADR-036-four-trust-roles-rbac.md) · [`../architecture/architecture-review-checklist.md`](../architecture/architecture-review-checklist.md) · [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md)
 
 ---
 
@@ -55,7 +55,7 @@ Row contract: `area_code` · `group` · `owner` · `status` · `canonical_refs` 
 | 10 | `events` | Vocabulary | Platform events / Communications / modules | **gap** | Outbox 3A-1 (`domain_event_outbox`), scattered activity/security event lists | Need Event Canon registry contract: producer, schema owner, payload version, subject, actor, correlation/causation, consumers, classification (domain fact / audit / integration) | outbox tests (partial) |
 | 11 | `capabilities` | Policy & Reuse | Platform architecture | **exists** | [`platform-capability-catalog.md`](../architecture/platform-capability-catalog.md), [`ADR-026`](../architecture/ADR-026-capability-ownership.md) | Passport / Owns / Exposes / Consumes | architecture-review-checklist; Catalog gate |
 | 12 | `runtime_api_contracts` | Runtime Contracts | Platform + capability owners | **exists** | [`capability-contract.md`](../architecture/capability-contract.md), Forms public contract, [`reference_delivery_contract_standard.md`](../reference_delivery_contract_standard.md) | **Sub-gaps:** unified Error, Pagination, Filtering contracts not closed — do not invent a second status enum | capability contract tests; Forms sprint gates |
-| 13 | `design_interaction` | Experience | Frontend platform | **exists** | [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md), [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md), [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md), [`ADR-046`](../architecture/ADR-046-analytics-visualization-canon.md), [`ui-component-canon.md`](ui-component-canon.md), [`ui-list-workspace-canon.md`](ui-list-workspace-canon.md), [`ui-analytics-canon.md`](ui-analytics-canon.md), ADR-010 List Shell | Composition: React kit public API; CSS implementation. Lists: one `ListWorkspace` + `DataTable` (rule; runtime extract P1–P2). Analytics: four layers (semantics, grammar, composition, presentation/sharing); Recruitment reference. Prohibitions: no local semantic colors; no primitive clones; no unregistered patterns; no module-chosen chart for a canonical meaning; no per-module operational table. **Sub-gaps:** layouts/templates (ADR-045); remaining dashboard migrations; ListWorkspace runtime extract; persisted Analytics View | ADR-011 §12; ADR-043 migrate-on-touch; kit CI ratchet |
+| 13 | `design_interaction` | Experience | Frontend platform | **exists** | [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md), [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md), [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md), [`ADR-046`](../architecture/ADR-046-analytics-visualization-canon.md), [`ui-component-canon.md`](ui-component-canon.md), [`ui-list-workspace-canon.md`](ui-list-workspace-canon.md), [`ui-analytics-canon.md`](ui-analytics-canon.md), ADR-010 List Shell | Composition: React kit public API; CSS implementation. Lists: one `ListWorkspace` + `DataTable` (rule; runtime = [Platform Extraction](../architecture/platform-extraction-phase.md)). Analytics: four layers; Recruitment reference. **Sub-gaps:** layouts/templates (ADR-045, deferred); remaining dashboard migrations; ListWorkspace/EntityWorkspace runtime extract; persisted Analytics View | ADR-011 §12; ADR-043 migrate-on-touch; kit CI ratchet |
 | 14 | `naming_identifiers` | Vocabulary | Architecture canon | **exists** | [`ADR-040`](../architecture/ADR-040-naming-identifiers.md), [`naming-identifiers.md`](naming-identifiers.md) | Identifier kinds + namespaces + alias policy; DocumentType split inventoried. **Runtime code alignment still deferred** (`integrity=split` until dedicated PR) | docs-lint inbound; future naming lint / registry CI |
 
 ---
@@ -91,20 +91,22 @@ Sub-gaps under an `exists` area are recorded in **notes** only (e.g. Error/Pagin
 
 ## 7. Explicit follow-on sequence
 
-1. ~~**States & Transitions** (`next`) — inventory on Object Kind Catalog rows.~~ **Done (ADR-039 inventory).** Shared value vocabulary still deferred.  
-2. ~~**Naming & Identifiers**~~ **Done (ADR-040).** DocumentType runtime alignment (`integrity=split` → `aligned`) remains a separate PR.  
-3. ~~**Data Types** + Fields linkage.~~ **Done (ADR-041 inventory).** Runtime Field/Forms `data_type` adoption deferred.  
-4. ~~**Relationships** contract.~~ **Done (ADR-042).** Confirmed slice only; full CRM graph deferred.  
-5. ~~**Design composition rule.**~~ **Done (ADR-043).** React kit public API. ListWorkspace = ADR-044; layouts = ADR-045.  
-6. ~~**Analytics, Visualization & Reporting.**~~ **Done (ADR-046)** as canon + Recruitment reference (story + Analytics View). Remaining dashboards migrate-on-touch. Named save / PDF consume the same view later.  
-7. ~~**Actions**~~ **Done (ADR-047 inventory).** Runtime Action Registry = ADR-019 3A-3.  
-8. ~~**List Workspace / DataTable.**~~ **Done as rule (ADR-044).** Runtime extract = epic P1–P2. Layouts remain ADR-045.  
-9. **Events** (ADR-019 3A-1+ / area 10) — vocabulary line, **parallel** to the UI epic.
+Vocabulary Canon **closed** (ADR-037…047). Do not write further docs-only ADRs to fill map cells.
+
+1. ~~**States & Transitions**~~ **Done (ADR-039 inventory).** Shared value vocabulary still deferred.  
+2. ~~**Naming & Identifiers**~~ **Done (ADR-040).** DocumentType runtime alignment remains a separate PR (Documents E).  
+3. ~~**Data Types**~~ **Done (ADR-041 inventory).** Runtime Field/Forms `data_type` adoption deferred (Forms C).  
+4. ~~**Relationships**~~ **Done (ADR-042).** Full CRM graph deferred.  
+5. ~~**Design composition / ListWorkspace rule / Analytics / Actions**~~ **Done as rules** (ADR-043 / 044 / 046 / 047).  
+6. **Platform Extraction** (active) — [phase](../architecture/platform-extraction-phase.md) · [Core Platform Kit](../tasks/ui-platform-composition-epic.md): `DataTable` + `ListWorkspace` runtime; Analytics public composition; minimal `EntityWorkspace` chrome.  
+7. **Events runtime** — ADR-019 3A-1 when a real consumer exists; **not** an inventory ADR now.  
+8. **ADR-045** page templates — only when a second real template consumer exists.
 
 ---
 
 ## 8. History
 
+- 2026-08-13: Vocabulary Canon closed; follow-on = [Platform Extraction](../architecture/platform-extraction-phase.md) (not Events/ADR-045 docs).  
 - 2026-08-13: Area `design_interaction` ListWorkspace / DataTable via ADR-044 (rule; runtime extract P1–P2).
 - 2026-08-13: Area `design_interaction` analytics + reporting language via ADR-046 (Recruitment efficiency = reference; other dashboards migrate-on-touch).
 - 2026-08-13: Area `design_interaction` composition rule via ADR-043 (React kit public API).

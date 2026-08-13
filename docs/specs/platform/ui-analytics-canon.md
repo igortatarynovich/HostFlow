@@ -5,7 +5,7 @@
 **Parent composition:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · [`ui-component-canon.md`](ui-component-canon.md)  
 **Visual / a11y / UI tokens:** [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md)  
 **Owner:** Frontend platform  
-**Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) P4  
+**Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) (Core Platform Kit / Analytics stream) · [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md)  
 **Runtime:** `hostflow-frontend/src/components/analytics/`  
 **Canonical implementation:** Recruitment efficiency dashboard
 

@@ -2,7 +2,7 @@
 
 ## Phase 0 complete · L0 FROZEN
 
-[`L0-platform-architecture.md`](L0-platform-architecture.md) · [`architecture-invariants.md`](architecture-invariants.md) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) · product sequencing: [`platform-completion-roadmap.md`](platform-completion-roadmap.md)
+[`L0-platform-architecture.md`](L0-platform-architecture.md) · [`architecture-invariants.md`](architecture-invariants.md) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) · product sequencing: [`platform-completion-roadmap.md`](platform-completion-roadmap.md) · active stage: [`platform-extraction-phase.md`](platform-extraction-phase.md)
 
 ```text
 Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) → Phase 3 Implementation (L3)
@@ -59,15 +59,17 @@ UI **не** определяет архитектуру.
 | **Data Types** | Semantic value types; Field **uses** DataType ([`ADR-041`](ADR-041-data-types.md) · [`../platform/data-types.md`](../platform/data-types.md)) — не миграция `field_type` |
 | **Relationships** | RelationshipKind contract + confirmed slice ([`ADR-042`](ADR-042-relationships.md) · [`../platform/relationships.md`](../platform/relationships.md)) — не полный CRM-граф |
 | **UI Component Canon** | Composition rule: React kit public API; pages assemble catalogued controls ([`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md)) — не restyle |
-| **List Workspace Canon** | One `ListWorkspace` + one `DataTable`; modules pass `ListDefinition` ([`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md) · [`../platform/ui-list-workspace-canon.md`](../platform/ui-list-workspace-canon.md)) — runtime extract = epic P1–P2 |
+| **List Workspace Canon** | One `ListWorkspace` + one `DataTable`; modules pass `ListDefinition` ([`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md) · [`../platform/ui-list-workspace-canon.md`](../platform/ui-list-workspace-canon.md)) — runtime = [Platform Extraction](platform-extraction-phase.md) |
 | **Analytics, Visualization & Reporting Canon** | Operational analytics language: meaning→family, story composition, screenshot-ready Analytics View ([`ADR-046`](ADR-046-analytics-visualization-canon.md) · [`../platform/ui-analytics-canon.md`](../platform/ui-analytics-canon.md)); Recruitment efficiency = reference |
 | **Actions** | Operation semantics; Action ≠ Permission ≠ Capability ([`ADR-047`](ADR-047-actions.md) · [`../platform/actions.md`](../platform/actions.md)) — не runtime 3A-3 registry |
+| **Platform Extraction** | Vocabulary Canon closed; Core Platform Kit before Phase B ([`platform-extraction-phase.md`](platform-extraction-phase.md) · [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md)) |
 | Invariants | INV-01…15 |
 | Checklist | Обязателен перед ADR/PR |
 | Epic P (3D) | Закрытие Acquisition V1 vertical |
 
 ## История
 
+- 2026-08-13: **Platform Extraction** — Vocabulary Canon closed; next stage is Core Platform Kit before Phase B ([`platform-extraction-phase.md`](platform-extraction-phase.md)).
 - 2026-08-13: **ADR-044** List Workspace & Data Presentation Canon Accepted — one `ListWorkspace` + `DataTable`; L2 [`../platform/ui-list-workspace-canon.md`](../platform/ui-list-workspace-canon.md); runtime extract = epic P1–P2.
 - 2026-08-13: **ADR-046** Analytics, Visualization & Reporting Canon Accepted — four layers (semantics, grammar, composition, presentation/sharing); Recruitment efficiency reference; L2 [`../platform/ui-analytics-canon.md`](../platform/ui-analytics-canon.md).
 - 2026-08-13: **ADR-043** UI Component & Composition Canon Accepted — React kit public API; CSS implementation; L2 [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md).

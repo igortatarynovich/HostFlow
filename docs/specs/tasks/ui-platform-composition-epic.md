@@ -1,14 +1,17 @@
-# UI Platform composition epic
+# Core Platform Kit (Platform Extraction)
 
-**Status:** Active (runtime follow-on to ADR-043)  
-**Canon:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · L2 [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md) · list [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) · analytics [`ADR-046`](../architecture/ADR-046-analytics-visualization-canon.md)  
+**Status:** Active — **Platform Extraction** execution (not Product Development)  
+**Phase:** [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md)  
+**Canon:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) · [`ADR-046`](../architecture/ADR-046-analytics-visualization-canon.md) · L2 [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md)  
 **Does not amend L0.** Visual tokens remain [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md).
 
-This is an **implementation epic**, not a new design-spec program. Do not start with marketing. Do not restyle `.btn-*` as a prerequisite.
+This epic **extracts** repeating UI into one public kit. It is not a restyle, not Forms Builder, not Phase D Universal Entity Workspace, and not a new vocabulary ADR.
+
+Former name: “UI Platform composition epic.” Same file; the work is now the **Core Platform Kit** gate before Phase B.
 
 ---
 
-## P0 — Control layer (CRM first)
+## P0 — Control layer (CRM first) ✅
 
 Wrap current CSS where it exists. Product pages gain a React API; pixels stay.
 
@@ -26,54 +29,73 @@ Wrap current CSS where it exists. Product pages gain a React API; pixels stay.
 - [x] EmptyState  
 - [x] Pagination  
 - [x] FormField  
-- [x] SemanticSurface (`success` / `warning` / `danger` / `info` / `neutral` / `brand`)
+- [x] SemanticSurface (`success` / `warning` / `danger` / `info` / `neutral` / `brand`)  
+- [x] Input / Textarea (wrappers)
 
 - [x] Baseline CI ratchets (hex, Tabler, intrinsic button, gradients, rounded) — **lower-only** (`npm run ui:kit:check`).  
 - [x] Remove `.app-ui` descendant `border-radius: 0 !important` in favor of `--hf-radius-control` / `--hf-radius-surface`.
 
 Public import: `hostflow-frontend/src/components/ui`. CSS className in product modules remains legal until migrate-on-touch.
 
+Avatar, Dropdown, Toast, DateField remain wrap/gap — **not** kit-gate blockers.
+
 ---
 
-## P1 — One DataTable (inside ListWorkspace)
+## Kit gate — four streams (this phase)
 
-Canon: [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) · L2 [`../platform/ui-list-workspace-canon.md`](../platform/ui-list-workspace-canon.md). **Rule: done.** Runtime extract: next.
+Ship as **one platform sprint**. Do not wait for ADR-045. Do not start Meta / Stage 3 code until the gate in the [phase doc](../architecture/platform-extraction-phase.md) passes.
 
-Product-facing API: one `ListWorkspace` hosting one `DataTable`. Modules pass `ListDefinition` (columns, cell kinds, filters, sort, actions, bulk, data source, saved views, permissions, empty). They do not fork a table.
+### 1. DataTable + ListWorkspace (blocker)
+
+Canon: [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) · L2 [`../platform/ui-list-workspace-canon.md`](../platform/ui-list-workspace-canon.md). **Rule: done.** Runtime: **this stream.**
+
+Product-facing API: one `ListWorkspace` hosting one `DataTable`. Modules pass `ListDefinition` (columns, cell kinds, filters, sort, actions, bulk, data source, saved views, permissions, empty, view switcher). They do not fork a table.
+
+Zones of the same pattern (not a second ADR): Search + Filters + Sort + Pagination / infinite + Bulk + persisted views.
 
 **Capability bar:** Candidates / TABLE_V1 (the API must express that list). **Page cutover:** Vacancies → Leads → Employees → Companies → Admin / remaining → Candidates in-place wrap last.
 
----
+Collapse: `EntityListShell` + Candidates table behavior + `layout/DataTable` + `platform/data-table`. New operational `<table>` in `pages/` / `modules/` is forbidden once the public API exists.
 
-## P2 — List contract (same pattern, not a second ADR)
-
-Search + Filters + Sort + Pagination / infinite + Bulk + persisted views — zones of `ListWorkspace`. Not a second table.
-
----
-
-## P3 — Layouts / templates
-
-Blocked on **ADR-045**. New modules pick `EntityListPage` / `EntityWorkspace` / `OperationalQueuePage` / `SettingsPage`. They do not design a page type.
-
----
-
-## P4 — Analytics kit (parallel to P0)
+### 2. Analytics Kit (public composition)
 
 Canon: [`ADR-046`](../architecture/ADR-046-analytics-visualization-canon.md) · L2 [`../platform/ui-analytics-canon.md`](../platform/ui-analytics-canon.md).
 
-Not a recolor. Four layers: metrics semantics → visualization grammar → analytics composition → presentation & sharing.
+Four layers: metrics semantics → visualization grammar → analytics composition → presentation & sharing.
 
-Dashboards assemble `AnalyticsReportHeader` / `AnalyticsStoryHero` / `KpiCard` / `TrendChart` / `FunnelChart` / `BreakdownChart` / `TargetProgress` / `AnalyticsTable` / `InsightCard` / `AnalyticsFilterBar`. URL Analytics View + `present=1`. No second reporting product.
+**Reference (done):** Recruitment efficiency — story composition, URL Analytics View, copy-link, `present=1`.
 
-**Reference (done):** Recruitment efficiency (story composition, copy-link, presentation mode). **Migrate-on-touch:** Sales, HR, Finance, Fleet, Marketing, Overview widgets, lead conversion funnel. Named save / PDF / schedule = same Analytics View later.
+**This stream:** kit is the only legal import for **new** analytics UI. Add missing composition: `ChartFrame`, story / dashboard grid (`AnalyticsSection` density). Closed `component_id` catalog = registry.
 
-## Parallel (not this epic’s first slice)
+**Forbidden:** free Widget Registry / BI constructor; pie-as-default; module-local KPI tiles; a second reporting product.
 
-- Marketing `surface.public` tokenisation of `#0B0E14` / pipedesign radii — after CRM P0.  
-- ADR-038 Actions / Events — different standardization group; may proceed in parallel.
+**After gate:** Sales, HR, Finance, Fleet, Marketing, Overview — migrate-on-touch. Named save / PDF / schedule = same Analytics View later.
+
+### 3. EntityWorkspace — minimal runtime
+
+Fragments: `hostflow-frontend/src/platform/entity-workspace`. Promote a public API: header, section tabs, summary strip, action bar, context rail / drawer, content slots (Timeline is a **slot**).
+
+**Not** roadmap Phase D (full platform composition on one entity). **Not** ADR-045 page templates (`EntityListPage`, `SettingsPage`, …).
+
+New entity chrome after this stream must use the kit. Existing candidate/HR cards migrate-on-touch.
+
+### 4. Events runtime — queued, not this epic
+
+ADR-019 **3A-1** Event Contract when a real consumer (Stage 3 / automation) needs the bus. Not an inventory ADR. Not a kit-gate blocker.
+
+---
+
+## Explicitly deferred
+
+- **ADR-045** layouts / page templates — wait for a second real template consumer.  
+- Marketing `surface.public` tokenisation of `#0B0E14` / pipedesign radii — after CRM kit gate.  
+- Remaining dashboard migrations as a dedicated restyle queue.  
+- DocumentType alignment, Field/Forms `data_type` adoption.
 
 ---
 
 ## Success bar
 
-A second module that needs a control **adds a catalog ID or reuses one**. It does not copy Tailwind from Candidates or HR.
+A second module that needs a list, entity chrome, or chart **configures the kit**. It does not copy Tailwind from Candidates or Recruitment efficiency.
+
+Kit gate → sequential queue returns Product Track to Meta Intake Completeness → Stage 3 slice 3–4.

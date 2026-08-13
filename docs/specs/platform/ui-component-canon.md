@@ -6,7 +6,7 @@
 **Visual / a11y / tokens:** [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md) (amended by ADR-043: CSS is implementation)  
 **List shell (target):** [`ADR-010`](../architecture/ADR-010-unified-resource-list-shell.md) + [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) · [`ui-list-workspace-canon.md`](ui-list-workspace-canon.md)  
 **Owner:** Frontend platform  
-**Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md)
+**Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) (Core Platform Kit) · phase [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md)
 
 ---
 
@@ -14,7 +14,7 @@
 
 Index of canonical HostFlow UI families. Product modules **compose** these IDs. Local recreation of an existing ID is an architecture violation.
 
-This file does **not** lock pixel values or Figma. Chart palettes and analytics families live in [`ui-analytics-canon.md`](ui-analytics-canon.md) (**ADR-046**). Operational lists: [`ui-list-workspace-canon.md`](ui-list-workspace-canon.md) (**ADR-044**, rule done; runtime extract = epic P1–P2). Page templates remain **ADR-045**.
+This file does **not** lock pixel values or Figma. Chart palettes and analytics families live in [`ui-analytics-canon.md`](ui-analytics-canon.md) (**ADR-046**). Operational lists: [`ui-list-workspace-canon.md`](ui-list-workspace-canon.md) (**ADR-044**, rule done; runtime = Platform Extraction). Page templates remain **ADR-045** (deferred until a second template consumer).
 
 ---
 
@@ -26,7 +26,7 @@ This file does **not** lock pixel values or Figma. Chart palettes and analytics 
 | `<PlatformIcon id="…">` | new `@tabler/icons-react` imports outside the registry |
 | `<StatusBadge semantic="danger">` | ad-hoc `bg-rose-100` pills for status meaning |
 | `<SemanticSurface tone="warning">` | page-local gradients / `rounded-2xl` heroes |
-| `<DataTable>` / `<ListWorkspace>` (ADR-044; runtime extract P1–P2) | new hand-written operational `<table>` |
+| `DataTable` / `<ListWorkspace>` (ADR-044; runtime = Platform Extraction) | new hand-written operational `<table>` |
 
 CSS classes `.btn-*`, `.input`, `.table` remain **implementation** inside `hostflow-frontend/src/styles/components.css` and kit wrappers.
 
@@ -100,7 +100,7 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
-| `DataTable` | wrap | four parallel implementations | **One** product API — ADR-044; runtime extract epic P1–P2; Candidates = capability bar |
+| `DataTable` | wrap | four parallel implementations | **One** product API — ADR-044; runtime = Platform Extraction; Candidates = capability bar |
 | `TableHeader` | wrap | candidates header | ListWorkspace |
 | `SortControl` | wrap | candidates / companies | ListWorkspace |
 | `FacetFilter` | wrap | `FacetFilterMenu` | ListWorkspace filters |
@@ -111,8 +111,8 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
 | `PageHeader` | exists | ~64 pages | Best-adopted layout |
-| `ListWorkspace` | wrap | `EntityListShell` + parallel tables | **First workspace pattern** — ADR-044; former id `ListLayout` |
-| `EntityWorkspace` | wrap | `platform/entity-workspace` + candidate card | Was ENTITY_LAYOUT_V1 — ADR-045 |
+| `ListWorkspace` | wrap | `EntityListShell` + parallel tables | **First workspace pattern** — ADR-044; Platform Extraction runtime |
+| `EntityWorkspace` | wrap | `platform/entity-workspace` + candidate card | **Minimal chrome** this extraction sprint — not Phase D; page templates remain ADR-045 |
 | `SettingsLayout` | wrap | `.settings-*` CSS | ADR-045 |
 | `SplitPane` | gap | rails / inspectors | ADR-045 |
 
@@ -154,7 +154,7 @@ Full families, palettes, Analytics View, and dashboard inventory: [`ui-analytics
 | `PRIMITIVES_V1` / `BUTTON_V1` / `INPUT_V1` / `SELECT_V1` / `CHIP_V1` / `STATUS_BADGE_V1` | Primitive IDs |
 | `TABLE_V1` | Data layer / visual child of ADR-044 `ListWorkspace` |
 | `FILTER_BAR_V1` (unstarted) | `FilterBar` |
-| `ENTITY_LAYOUT_V1` (draft) | `EntityWorkspace` → ADR-045 |
+| `ENTITY_LAYOUT_V1` (draft) | `EntityWorkspace` min runtime (Platform Extraction); page templates → ADR-045 |
 | REF-UI-000 roadmap | Execution notes under this tree |
 
 Do not open a new `*_V1` as a sibling canon. Extend this catalog.
@@ -163,6 +163,7 @@ Do not open a new `*_V1` as a sibling canon. Extend this catalog.
 
 ## 6. History
 
+- 2026-08-13: **Platform Extraction** — Core Platform Kit is the active stage; Vocabulary Canon closed.
 - 2026-08-13: **ADR-044** `ListWorkspace` + one `DataTable` (rule). Runtime extract remains epic P1–P2. `ListLayout` renamed to `ListWorkspace`.
 - 2026-08-13: **ADR-046** analytics families + presentation/share (`AnalyticsStoryHero`, `AnalyticsReportHeader`); Recruitment efficiency is the reference.
 - 2026-08-13: Initial catalog under ADR-043. Runtime wrappers, DataTable extraction, layouts, visualization, and CI ratchet deferred to the epic / ADR-044…046.

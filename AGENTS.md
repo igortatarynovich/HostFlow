@@ -104,7 +104,7 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 Platform maturity (Foundation / Workspace / Automation / Complete):  
 [`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
 
-Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — Product Track = Meta Intake Completeness → [Stage 3 slice 3 brief](docs/specs/tasks/stage-3-sales-inquiry-product-flow.md).
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **active slice** = Platform Extraction (Core Platform Kit) → then Meta Intake Completeness → [Stage 3 slice 3 brief](docs/specs/tasks/stage-3-sales-inquiry-product-flow.md).
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
 [`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
@@ -113,9 +113,9 @@ Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/s
 
 **A2 Platform Governance Review** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/platform-governance-review-a2.md`](docs/specs/gates/platform-governance-review-a2.md).
 
-**Active close-out:** Phase B — [Meta Intake Completeness](docs/specs/tasks/meta-intake-completeness.md) → Stage 3 slice 3–4 → Forms → Entity Workspace → Documents → Billing → AI.
+**Active close-out:** [Platform Extraction](docs/specs/architecture/platform-extraction-phase.md) (Core Platform Kit) → then Phase B — [Meta Intake Completeness](docs/specs/tasks/meta-intake-completeness.md) → Stage 3 slice 3–4 → Forms → Entity Workspace → Documents → Billing → AI.
 
-**Locked:** Acquisition/Stage 3 (Phase B) → Forms Platform → Entity Workspace → Documents → Billing → AI.  
+**Locked:** Platform Extraction (kit gate) → Acquisition/Stage 3 (Phase B) → Forms Platform → Entity Workspace → Documents → Billing → AI.  
 Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) — do not rewrite L0 Catalog without RFC.
 
 ## Documentation governance

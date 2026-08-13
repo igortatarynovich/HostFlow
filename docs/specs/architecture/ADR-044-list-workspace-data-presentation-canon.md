@@ -73,9 +73,7 @@ Field kinds remain ADR-010 §3 (`text`, `number`, `date`, `datetime`, `boolean`,
 
 ADR-043 is the **control** kit. This ADR is the first **workspace pattern**: a screen-scale assembly that every operational list must use.
 
-The same rule applies later (ADR-045, not this PR): one `EntityHeader`, `DetailsGrid`, `ActivityTimeline`, `FilterBar`, `ActionBar`, `Drawer`, `Modal`, `StatusBadge`, `KpiCard` / metrics card, `EmptyState`, `SearchField`, `Pagination`, form renderer. Modules supply data and configuration, not a private UI mechanism.
-
-`EntityListPage` (ADR-045) is a **page template** that *hosts* `ListWorkspace`. It does not replace it.
+The same rule applies later (ADR-045, **deferred**): one `EntityListPage` template that *hosts* `ListWorkspace`. Minimal `EntityWorkspace` **chrome** (header, action bar, rail) is Platform Extraction, not ADR-045.
 
 ### 4. Analytics tables are a different family
 
@@ -110,9 +108,10 @@ After the public `ListWorkspace` / `DataTable` API exists: no new operational `<
 
 ## Explicit next
 
-1. Epic P1–P2 runtime: one `ListWorkspace` + `DataTable` public API; Vacancies first page cutover; Candidates = capability bar.
-2. **ADR-045** Layout & Page Template Canon (`EntityWorkspace`, `EntityHeader`, `EntityListPage`, …).
-3. Events vocabulary (ADR-038 area 10) may proceed in parallel.
+1. [Platform Extraction](platform-extraction-phase.md) / Core Platform Kit: one `ListWorkspace` + `DataTable` public API; Vacancies first page cutover; Candidates = capability bar.
+2. Minimal `EntityWorkspace` chrome in the same kit sprint (not Phase D; **not** ADR-045).
+3. **ADR-045** only when a second real page-template consumer exists.
+4. Events runtime (ADR-019 3A-1) when a consumer exists.
 
 ---
 
