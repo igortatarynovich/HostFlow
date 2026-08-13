@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← **active** ([C1 brief](../tasks/forms-platform-c1-contract-seal.md)).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← **active** ([C1](../tasks/forms-platform-c1-contract-seal.md); **next** [C2](../tasks/forms-platform-c2-runtime-contract.md)).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms → …
@@ -36,7 +36,7 @@ Order **after A2**:
 
 1. **A2 — Platform Governance Review** — ✅ PASS_WITH_CONSTRAINTS ([gate](../gates/platform-governance-review-a2.md))  
 2. **Phase B — Acquisition / Stage 3 + Meta** ← ✅  
-3. **Phase C — Forms Platform** ← **active** ([C1 brief](../tasks/forms-platform-c1-contract-seal.md)) → Entity Workspace → Documents → Billing → AI  
+3. **Phase C — Forms Platform** ← **active** ([C1](../tasks/forms-platform-c1-contract-seal.md) → [C2](../tasks/forms-platform-c2-runtime-contract.md) → C3 Builder Runtime → C4 Form Runtime → C5 Form Execution → C6 Optimization) → Entity Workspace → Documents → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
 
@@ -118,24 +118,30 @@ Campaign → Flight → Submission → Result → Outcome → Sales → Client �
 
 ---
 
-## Phase C — Forms Platform (infrastructure, not Builder) ← **active**
+## Phase C — Forms Platform (Core Platform Kit class) ← **active**
 
-Build Forms as a platform capability:
+Forms is **not** a product module. It sits with EntityWorkspace, ListWorkspace, Analytics Kit, RBAC, and Automations: one platform consumed by Recruitment / HR / Fleet / Finance / Services. Compatibility bar is **stricter** than for product modules.
 
-- Passport  
-- Manifest  
-- Public Contract  
-- Adapter  
-- Runtime  
-- Versioning  
+Ladder (locked):
 
-**Active slice:** [C1 — Foundation contract seal](../tasks/forms-platform-c1-contract-seal.md).
+| Slice | Focus | Status |
+|-------|--------|--------|
+| **C1** | Contract seal (ids / drift docs) | ← **active** ([brief](../tasks/forms-platform-c1-contract-seal.md)) |
+| **C2** | Runtime contract + gates | **next** ([brief](../tasks/forms-platform-c2-runtime-contract.md)) |
+| **C3** | Builder Runtime (editor) | Locked until C2 feat PASS |
+| **C4** | Form Runtime | After C3 |
+| **C5** | Form Execution | After C4 |
+| **C6** | Optimization | After C5 |
 
-**Out of this slice / until platform done:** Forms Builder / authoring UX (P3–P5 locked) · Stage 5 settings/enable-disable · R6 table-cutover · Entity Workspace (Phase D).
+C1 seals *which* contracts exist. C2 makes a form **unable to exist outside** that identity (Manifest / Public Contract / Adapter / Identity gates). C3 is an editor — do not open it until the edited format is protected.
+
+**Not** Communication Epic C2 / C2.4. Historical Forms “C4 HTTP resolve” ≠ Phase C C4 Form Runtime.
+
+**Out of Phase C C1/C2:** Forms Builder product (P3–P5) · Stage 5 settings/enable-disable · R6 table-cutover · Entity Workspace (Phase D).
 
 **Result:** every questionnaire, form, and survey shares one runtime contract.
 
-**Ref:** [forms-product-layer-epic.md](../tasks/forms-product-layer-epic.md) (scope must stay infrastructure-first until this phase).
+**Ref:** [forms-product-layer-epic.md](../tasks/forms-product-layer-epic.md) (infrastructure-first until C2 PASSes).
 
 ---
 
@@ -191,7 +197,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 1 | **A1** Epic C Communication | ✅ Unified comms platform (`PASS_WITH_CONSTRAINTS`) |
 | 2 | **A2** Platform Governance Review | ✅ Stable SoT / contracts gate (`PASS_WITH_CONSTRAINTS`) |
 | 3 | **B** Acquisition / Stage 3 + Meta | ✅ Meta / slice 3–4 (#222 / #224 / #238) |
-| 4 | **C** Forms Platform | ← **active** Shared form runtime contracts ([C1](../tasks/forms-platform-c1-contract-seal.md)) |
+| 4 | **C** Forms Platform | ← **active** Shared form runtime ([C1](../tasks/forms-platform-c1-contract-seal.md) → [C2](../tasks/forms-platform-c2-runtime-contract.md) → C3–C6) |
 | 5 | **D** Universal Entity Workspace | One workspace composition |
 | 6 | **E** Documents Platform | Full document lifecycle |
 | 7 | **F** Billing Platform | SaaS commercial layer |
@@ -202,10 +208,10 @@ Not standalone AI features. A **service layer over existing platforms**:
 ## Anti-patterns (forbidden without amending this roadmap)
 
 1. Starting Stage 3 slice 3+ **before** Governance Review (A2) closes — A2 is now **PASS_WITH_CONSTRAINTS**; Phase B may proceed.  
-2. Forms Builder before Forms Platform infrastructure (Phase C).  
+2. Forms Builder / C3 before **Forms Platform C2** runtime gates PASS.  
 3. Entity Workspace redesign as a temporary shell before Phases A–C foundations.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). Phase C (Forms C1) **is** the active slice; do not reopen Phase B, Stage 5 settings, or R6.  
+5. Parallel product branches that compete across phases (one active product slice). Phase C (Forms C1, then C2) **is** the active phase; do not reopen Phase B, Stage 5 settings, or R6.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.
 
@@ -215,7 +221,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active slice = Forms Platform C1) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Forms C1; next = [C2](../tasks/forms-platform-c2-runtime-contract.md)) |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |
@@ -227,5 +233,6 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 ## History
 
 - 2026-08-13: Stage 3 slice 4 ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238); Product Track → **Phase C Forms Platform C1** ([brief](../tasks/forms-platform-c1-contract-seal.md)). Stage 5 settings and R6 stay out of this slice.  
+- 2026-08-13: Phase C ladder locked C1→C6; **C2 Runtime Contract** sealed as next ([brief](../tasks/forms-platform-c2-runtime-contract.md)). Builder / C3 after C2 feat only.  
 - 2026-08-03: Epic C Complete Gate **PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
 - 2026-07-20: Locked Phase A→G after Communication platform work; Stage 3 deferred until Epic C + Governance Review.  

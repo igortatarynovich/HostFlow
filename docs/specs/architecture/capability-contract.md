@@ -73,6 +73,7 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 | Forms Sprint 6 | ✅ **COMPLETE** (PR #41 · `7e259f22`) |
 | Forms Product Layer | P1 ✅ CLOSED · P2 MVP ✅ · P3–P5 **LOCKED** |
 | Forms Platform C1 | **ACTIVE** ([brief](../tasks/forms-platform-c1-contract-seal.md)); Builder must not invent field types |
+| Forms Platform C2 | **NEXT** ([brief](../tasks/forms-platform-c2-runtime-contract.md)); Builder / C3 locked until C2 feat PASS |
 
 Contract tests:
 

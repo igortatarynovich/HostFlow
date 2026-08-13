@@ -248,7 +248,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md)  
 **Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) (`forms.public_contract.v1`)  
 **Task:** [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md)  
-**Sprint 1–6:** ✅ COMPLETE (backend contour) · **P1 Field Catalog:** ✅ CLOSED · **P2 Builder MVP:** ✅ COMPLETE · **P3–P5:** **LOCKED** · **Product Track:** [C1 contract seal](../tasks/forms-platform-c1-contract-seal.md) · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
+**Sprint 1–6:** ✅ COMPLETE (backend contour) · **P1 Field Catalog:** ✅ CLOSED · **P2 Builder MVP:** ✅ COMPLETE · **P3–P5:** **LOCKED until C2** · **Product Track:** [C1](../tasks/forms-platform-c1-contract-seal.md) ← active · **next** [C2 Runtime Contract](../tasks/forms-platform-c2-runtime-contract.md) · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
 
 **Purpose.** Платформенный input layer: единственный SoT HostFlow Form.
 
@@ -264,9 +264,9 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **License class** | Platform (Basic); Licensed addons = Advanced Forms |
 | **Lifecycle defaults** | Install+Enable+Configure (default Manifest) on tenant create |
 | **Events** | Publishes: `form.published` (Experimental bridge), `form.submission_received` (Experimental); future: `form.version_created`, consent accepted |
-| **Forbidden** | Candidate / Client / Campaign SoT; Notification delivery / SMTP; Document registry SoT; AI SoT; universal Campaign routing SoT; Forms-owned Outcome/KPI/attribution engines; P3–P5 unlock without Phase C contract seal |
+| **Forbidden** | Candidate / Client / Campaign SoT; Notification delivery / SMTP; Document registry SoT; AI SoT; universal Campaign routing SoT; Forms-owned Outcome/KPI/attribution engines; P3–P5 / C3 unlock without C2 runtime gates |
 | **Data Ownership** | Form surface / publication identity (bridge: `TenantLeadForm`); ConsentDefinition + pin (intent); form-surface payload. **Not yet:** FormTemplate / FormTheme / FormLogic SoT (post–Sprint 1) |
-| **Contract tests** | `backend/tests/forms_platform/test_forms_sprint1_contract.py` · gates `test_forms_sprint1_gates.py` · C4 `test_forms_platform_c4.py` · C1 `test_forms_c1_contract_seal.py` |
+| **Contract tests** | `backend/tests/forms_platform/test_forms_sprint1_contract.py` · gates `test_forms_sprint1_gates.py` · C4 HTTP `test_forms_platform_c4.py` · C1 `test_forms_c1_contract_seal.py` · C2 gates (after feat) |
 
 ---
 
