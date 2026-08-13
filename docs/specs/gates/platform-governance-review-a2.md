@@ -89,9 +89,9 @@ A2 does **not** re-run C0–C2 checklists. Communication residuals R1–R5 remai
 
 ### Product Track (next)
 
-1. [Meta Intake Completeness](../tasks/meta-intake-completeness.md)  
-2. Stage 3 slice 3 — SalesInquiry product flow  
-3. Stage 3 slice 4 — hard module separation  
+1. [Meta Intake Completeness](../tasks/meta-intake-completeness.md) ✅ [#222](https://github.com/igortatarynovich/HostFlow/pull/222)  
+2. Stage 3 slice 3 — SalesInquiry product flow ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224)  
+3. Stage 3 slice 4 — [hard module separation](../tasks/stage-3-slice-4-hard-module-separation.md)  
 4. Then: Forms Platform → Entity Workspace → Documents → Billing → AI  
 
 ### Engineering / Architecture (non-blocking for Meta start)

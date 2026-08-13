@@ -1,8 +1,8 @@
 # Stage 3 slice 3 — SalesInquiry product flow
 
-**Status:** **IN PROGRESS** (code — `feat/stage-3-slice-3-sales-inquiry-product-flow`)  
+**Status:** **MERGED** [#224](https://github.com/igortatarynovich/HostFlow/pull/224)  
 **Branch (docs):** `docs/stage-3-slice-3-sales-inquiry-product-flow` ✅ merged #223  
-**Branch (code):** `feat/stage-3-slice-3-sales-inquiry-product-flow`  
+**Branch (code):** `feat/stage-3-slice-3-sales-inquiry-product-flow` ✅ merged #224  
 **Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase B](../architecture/platform-completion-roadmap.md) · [Pipeline v1 seal](../architecture/sales-domain-pipeline-v1.md) · Stage 3 [slice 1](stage-3-sales-pipeline-product-wiring.md) · [slice 2](stage-3-sales-pipeline-convert-entrypoints.md) · [Meta Intake Completeness](meta-intake-completeness.md) · [ADR-022 Flow Spec](../workflows/adr022-phase2-sales-only-capability-flow.md) · [Intake Runtime Split](intake-runtime-split-v1.md)
 
 > Product identity for Sales inbox/workspace = **SalesInquiry**.  
@@ -82,7 +82,7 @@ Join Lead for display until a dedicated field-migration slice.
 | Slice | One-line |
 |-------|----------|
 | **3** | SalesInquiry product identity / Lead demotion on Sales path (transitional join OK) |
-| **4** | Hard module separation — no dual Lead product entity; ADR-023 operational independence |
+| **4** | Hard module separation — no dual Lead product entity; ADR-023 operational independence — [brief](stage-3-slice-4-hard-module-separation.md) |
 
 Do **not** mix slice 4 into slice 3.
 

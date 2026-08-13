@@ -249,7 +249,7 @@ Admin/integration diagnostics: separate Monitoring surfaces (not primary CRM nav
 | Mutations via `/leads` in module pages | **DONE** (2026-07-09) | `/sales/inquiries`, `/recruitment/applications` facades |
 | Dual reference (Search Home + Sales) | **RESOLVED** | Sales Application Workspace only |
 
-Track progress in [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md).
+Track progress in [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md). Remaining mixed `/app/leads` product surface → Stage 3 slice 4 ([brief](../tasks/stage-3-slice-4-hard-module-separation.md)).
 
 ---
 
