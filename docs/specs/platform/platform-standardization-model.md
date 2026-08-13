@@ -48,7 +48,7 @@ Row contract: `area_code` · `group` · `owner` · `status` · `canonical_refs` 
 | 3 | `fields` | Vocabulary | Platform Field Registry | **exists** | [`field-registry-card-configuration.md`](field-registry-card-configuration.md), Field Registry manifests | Canonical field codes + layouts; profile JSON remains fallback | Field Registry seed / closure tests |
 | 4 | `data_types` | Vocabulary | Platform Reference (target) | **gap** | Field `field_type` fragments only | Need semantic DataType canon (`phone`, `money`, `country`, `date`) separate from Fields; Field **uses** DataType | — |
 | 5 | `relationships` | Vocabulary | Platform architecture (target) | **gap** | `document_entity_links`, Activity `related_entity_type` (runtime fragments) | Need Relationship Canon **contract**: source/target kind, cardinality, ownership, requiredness, lifecycle dependency, deletion policy, visibility, writers | — |
-| 6 | `states_transitions` | Vocabulary | Architecture (next owner ADR) | **next** | ADR-037 rows as input | Explicit follow-on: inventory then dimensions / owners / transition owners — **not** a shared status bag yet | — |
+| 6 | `states_transitions` | Vocabulary | Architecture canon | **exists** | [`ADR-039`](../architecture/ADR-039-state-lifecycle-inventory.md), [`state-lifecycle-inventory.md`](state-lifecycle-inventory.md) | Inventory of dimensions + owners for Object Kind slice. **Shared value vocabulary still deferred** (no platform-wide status enum) | docs-lint inbound; checklist via ADR-039 |
 | 7 | `rules` | Policy & Reuse | Architecture + domain policy owners | **exists** | ADR-037 RuleKind; [`object-kind-catalog.md`](object-kind-catalog.md) §5 | DomainPolicy / ProcessRule / AutomationReaction / PresentationRule | checklist dual-classification bans |
 | 8 | `libraries` | Policy & Reuse | Forms / Field Registry / Communications / Documents | **exists** | ADR-037 LibraryKind; object-kind-catalog §6 | FormComponent, FieldDefinition, templates; checklist ≠ gate | Forms catalog tests; ADR-011 drift policy for UI libs |
 | 9 | `actions` | Vocabulary | Platform Automations (ADR-019) | **gap** | ADR-019 Action Registry planned (3A-3) | Action semantics ≠ Permission ≠ Capability | future Action Registry + contract tests |
@@ -91,7 +91,7 @@ Sub-gaps under an `exists` area are recorded in **notes** only (e.g. Error/Pagin
 
 ## 7. Explicit follow-on sequence
 
-1. **States & Transitions** (`next`) — inventory on Object Kind Catalog rows.  
+1. ~~**States & Transitions** (`next`) — inventory on Object Kind Catalog rows.~~ **Done (ADR-039 inventory).** Shared value vocabulary still deferred.  
 2. **Naming & Identifiers** — unblocks DocumentType `integrity=split`.  
 3. **Data Types** + Fields linkage.  
 4. **Relationships** contract.  
@@ -102,4 +102,5 @@ Sub-gaps under an `exists` area are recorded in **notes** only (e.g. Error/Pagin
 
 ## 8. History
 
+- 2026-08-13: Area `states_transitions` → `exists` via ADR-039 inventory (shared enums deferred).
 - 2026-08-13: Initial area index under ADR-038; ADR-037 retained as Object Kind / Rules / Libraries vocabulary.

@@ -114,13 +114,15 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 ### 9. Explicit next PR
 
-**States & Transitions** (area 6, status `next`): inventory on Object Kind Catalog rows —
+**States & Transitions** inventory: **done** — [`ADR-039`](ADR-039-state-lifecycle-inventory.md) · [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md). Shared platform status enum remains **deferred**.
+
+**Next in ADR-038 sequence:** Naming & Identifiers (area 14, `gap`) — unblocks DocumentType `integrity=split` — unless product prioritizes Design Semantic Visual Language.
 
 ```text
 ObjectKind → Object → State dimensions → State owner → Transition owner
 ```
 
-No shared bag of `approved` / `active` / `blocked` / `running` / `published` until that inventory exists.
+(Inventory chain above is normative for extending the Object Kind slice.)
 
 ---
 
@@ -138,7 +140,7 @@ No shared bag of `approved` / `active` / `blocked` / `running` / `published` unt
 
 - Positive: single coordinate system for all follow-on canons; clear exists/next/gap map; Platform-first turns documentation into architecture; Action / Permission / Capability and Field / DataType stay separable.
 - Negative: gap areas must be filled by dedicated PRs; until then modules must not invent local replacements.
-- Follow-on sequence (separate PRs): State/Lifecycle inventory → Naming & Identifiers → Data Types + Fields linkage → Relationships contract → Actions / Events (ADR-019 3A-*) → Design Semantic Visual Language on ADR-011.
+- Follow-on sequence (separate PRs): ~~State/Lifecycle inventory~~ (ADR-039) → Naming & Identifiers → Data Types + Fields linkage → Relationships contract → Actions / Events (ADR-019 3A-*) → Design Semantic Visual Language on ADR-011.
 
 ---
 

@@ -4,6 +4,7 @@
 **Hierarchy:** L2 — indexes existing SoT; **not** itself a data SoT  
 **Decision record:** [`ADR-037`](../architecture/ADR-037-platform-object-kind-catalog.md)  
 **Parent model:** [`ADR-038`](../architecture/ADR-038-platform-standardization-model.md) · [`platform-standardization-model.md`](platform-standardization-model.md) (areas `object_kind` / `rules` / `libraries`)  
+**State inventory:** [`ADR-039`](../architecture/ADR-039-state-lifecycle-inventory.md) · [`state-lifecycle-inventory.md`](state-lifecycle-inventory.md)  
 **Owner:** Architecture canon + platform core team  
 **Slice:** Documents · Requirements · Automation · Templates (first inventory)
 
@@ -224,5 +225,6 @@ Verbs: `owns` · `writes` · `consumes` · `reacts` · `forbidden`.
 
 ## 11. History
 
+- 2026-08-13: Link to ADR-039 state/lifecycle inventory for this slice.
 - 2026-08-13: Parent pointer to ADR-038 Platform Standardization Model.
 - 2026-08-13: Initial L2 catalog for Documents / Requirements / Automation / Templates slice; ADR-037 Accepted.

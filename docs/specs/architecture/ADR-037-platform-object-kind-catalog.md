@@ -159,8 +159,10 @@ Different vocabularies: publication lifecycle (DocumentType), instance lifecycle
 ## Cross-references (updated in same change set)
 
 - [`ADR-038-platform-standardization-model.md`](ADR-038-platform-standardization-model.md) — parent Platform Standardization Model; this ADR supplies Object Kind / Rules / Libraries under Vocabulary + Policy & Reuse
+- [`ADR-039-state-lifecycle-inventory.md`](ADR-039-state-lifecycle-inventory.md) — state dimensions for this slice
 - [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md) — area status map (`object_kind` / `rules` / `libraries` = exists)
 - [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md) — L2 inventory + Ownership & Consumption Matrix
+- [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md) — L2 state dimensions
 - [`platform-capability-catalog.md`](platform-capability-catalog.md) — Documents / Automations / Forms linkage
 - [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) — §0.1 index
 - [`architecture-guide.md`](architecture-guide.md) — navigation entry
