@@ -57,6 +57,8 @@
 | **Integrations / Marketplace** | Integrations | [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) | All modules | Integration Adapters |
 | **Process Engine** | Process Engine | [`process-engine.md`](../platform/process-engine.md) | Business modules | Process contracts |
 | **Field Registry / Entity Profile** | Platform Reference | platform specs | Forms, Intake, modules | Reference / profile contracts |
+| **Object Kind Catalog (meta)** | Platform architecture | [`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md) | Documents, Requirements, Automations, Forms (index) | Meta-index — **not** a data SoT |
+| **Platform Standardization Model** | Platform architecture | [`ADR-038`](ADR-038-platform-standardization-model.md) · [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md) | All modules / capabilities | Area map + Platform-first — **not** a data SoT |
 | **Resource List Shell / UI Standard** | Frontend platform | ADR-010 / ADR-011 | SPA | UI contracts |
 
 **Уточнение Submission vs Forms:** Forms владеет **form surface + consent version pin** для HostFlow Form. Универсальный **Submission** как intake object и routing envelope — Shared Intake (ADR-024 spine). Не два Form Builder; не два Document Hub.
@@ -256,6 +258,8 @@
 
 ## История
 
+- 2026-08-13: **ADR-038** (Accepted) — Platform Standardization Model (5 groups · 14 areas · Platform-first / Reuse-first; Enforcement as mechanism); L2 [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md).
+- 2026-08-13: **ADR-037** (Accepted) — Platform Object Kind Catalog meta-canon (`ObjectKind` / `RuleKind` / `LibraryKind`); L2 index [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md); Documents / Requirements / Automation / Templates slice.
 - 2026-08-07: **ADR-036** (Accepted) — four trust roles invariant; ceilings; presets ≠ roles; `access_context` tenant\|portal; inventory gate [`rbac-role-usage-inventory.md`](rbac-role-usage-inventory.md); [`ADR-036-four-trust-roles-rbac.md`](ADR-036-four-trust-roles-rbac.md).
 - 2026-08-07: **ADR-035** (Accepted, frozen) — Module → Objects → Pipelines → Settings; operational stages vs platform system transitions; four-object rule; [`ADR-035-module-object-pipeline-settings.md`](ADR-035-module-object-pipeline-settings.md).
 - 2026-07-30: **ADR-034** (Accepted) — three canonical public funnels (Growth / Auth / Candidate); Success Path via guided readiness UI [`self-service-success-path.md`](../journeys/self-service-success-path.md); no parallel product landings.

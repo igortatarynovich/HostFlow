@@ -52,12 +52,16 @@ UI **не** определяет архитектуру.
 | Catalog | **Рабочий справочник** |
 | Settings Manifest | P-05 ops schema |
 | **Capability Contract** | Публичный boundary surface до Adapter |
+| **Platform Standardization Model** | Карта 14 областей стандартизации + Platform-first ([`ADR-038`](ADR-038-platform-standardization-model.md) · [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md)) |
+| **Object Kind Catalog** | Meta-canon классов объектов ([`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md)) — индекс SoT, не SoT данных; область ADR-038 Vocabulary / Policy & Reuse |
 | Invariants | INV-01…15 |
 | Checklist | Обязателен перед ADR/PR |
 | Epic P (3D) | Закрытие Acquisition V1 vertical |
 
 ## История
 
+- 2026-08-13: **ADR-038** Platform Standardization Model Accepted — 5 groups · 14 areas · Platform-first; L2 [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md); State inventory = next.
+- 2026-08-13: **ADR-037** Object Kind Catalog Accepted — meta-index for Documents / Requirements / Automation / Templates; prerequisite for state-dimension canon.
 - 2026-07-18: L0 FROZEN; Phase 0 complete; switch to Phase 1.  
 - 2026-07-18: Phase 1 lock — Epic P first; Capability Contract sequence; Forms Sprint 1 after V1.  
 - 2026-07-18: Epic P COMPLETE — Forms Sprint 1 unlocked; Builder locked.

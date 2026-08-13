@@ -247,6 +247,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md)  
 **Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) (`forms.public_contract.v1`)  
+**Object Kind index:** [`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md) (LibraryKind `FormComponent` / PresentationRule — meta-index)  
 **Task:** [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md)  
 **Sprint 1–6:** ✅ COMPLETE (backend contour) · **Product Layer:** ACTIVE ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md) · `29f4057f`) · **P1:** component registry ([`../tasks/forms-product-p1-field-catalog.md`](../tasks/forms-product-p1-field-catalog.md)) · **Builder:** **LOCKED** until P1 · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
 
@@ -272,7 +273,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 ### Documents
 
-**Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md)
+**Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md)  
+**Object Kind index:** [`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md) (DocumentType / Document / packs / checklist templates — meta-index, not a second SoT)
 
 **Purpose.** Document Hub: документ как платформенный объект со links.
 
@@ -295,7 +297,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 ### Automations
 
-**Normative:** [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md)
+**Normative:** [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md)  
+**Object Kind index:** [`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md) (AutomationReaction / Execution — meta-index; Reaction Orchestrator = `target`)
 
 **Purpose.** Правила, триггеры, сценарии — единый automation control plane.
 
@@ -557,12 +560,15 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 3. Новый knob → **P-04** owner + запись в **Settings Manifest** (**P-05**) — не в чужой Passport list.  
 4. Admin UI → capability space из Manifest; не техническая свалка.  
 5. Межмодульный вызов → **Exposes**. Business → только **Consumes** Infrastructure/Platform.  
-6. Нет Index entry → ADR + kind + Passport + Manifest **до** кода.
+6. Нет Index entry → ADR + kind + Passport + Manifest **до** кода.  
+7. Новый vocabulary / pattern / catalog element → [`ADR-038`](ADR-038-platform-standardization-model.md) Platform-first: проверить область в [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md) до локального дубля.
 
 ---
 
 ## History
 
+- **2026-08-13** — **ADR-038** Platform Standardization Model (14 areas + Platform-first); L2 [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md).
+- **2026-08-13** — **ADR-037** Object Kind Catalog (meta-canon) linked from Documents / Automations / Forms; L2 [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md).
 - **2026-07-18** — каталог + Capability Boundary.  
 - **2026-07-18** — v2: Owns / Configures / Exposes / Consumes; kinds; **P-04**.  
 - **2026-07-18** — v3: Passport vs **Settings Manifest**; **P-05** Settings Contract; capability-scoped admin IA.
