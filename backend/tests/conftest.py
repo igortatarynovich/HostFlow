@@ -416,20 +416,24 @@ async def _init_data() -> Dict[str, str]:
                     id=str(uuid.uuid4()),
                     email=supervisor_email,
                     password_hash=hash_password(supervisor_password),
-                    role=UserRole.supervisor,
+                    role=UserRole.employee,
                     short_id="SUPV001",
                     full_name="HostFlow Supervisor",
                     tenant_id=DEFAULT_TENANT_ID,
                     is_active=True,
+                    preferences={"preset_id": "team_lead"},
                 )
                 session.add(supervisor)
             else:
                 supervisor.password_hash = hash_password(supervisor_password)
-                supervisor.role = UserRole.supervisor
+                supervisor.role = UserRole.employee
                 supervisor.short_id = supervisor.short_id or "SUPV001"
                 supervisor.full_name = supervisor.full_name or "HostFlow Supervisor"
                 supervisor.tenant_id = supervisor.tenant_id or DEFAULT_TENANT_ID
                 supervisor.is_active = True
+                prefs = dict(supervisor.preferences or {})
+                prefs["preset_id"] = "team_lead"
+                supervisor.preferences = prefs
 
             recruiter = await session.scalar(
                 select(User).where(func.lower(User.email) == recruiter_email.lower())
@@ -439,22 +443,26 @@ async def _init_data() -> Dict[str, str]:
                     id=str(uuid.uuid4()),
                     email=recruiter_email,
                     password_hash=hash_password(recruiter_password),
-                    role=UserRole.recruiter,
+                    role=UserRole.employee,
                     short_id="REC001",
                     full_name="HostFlow Recruiter",
                     tenant_id=DEFAULT_TENANT_ID,
                     supervisor_id=supervisor.id,
                     is_active=True,
+                    preferences={"preset_id": "recruiter"},
                 )
                 session.add(recruiter)
             else:
                 recruiter.password_hash = hash_password(recruiter_password)
-                recruiter.role = UserRole.recruiter
+                recruiter.role = UserRole.employee
                 recruiter.short_id = recruiter.short_id or "REC001"
                 recruiter.full_name = recruiter.full_name or "HostFlow Recruiter"
                 recruiter.tenant_id = recruiter.tenant_id or DEFAULT_TENANT_ID
                 recruiter.is_active = True
                 recruiter.supervisor_id = supervisor.id
+                prefs = dict(recruiter.preferences or {})
+                prefs["preset_id"] = "recruiter"
+                recruiter.preferences = prefs
 
             hr_officer = await session.scalar(
                 select(User).where(func.lower(User.email) == hr_officer_email.lower())
@@ -464,20 +472,24 @@ async def _init_data() -> Dict[str, str]:
                     id=str(uuid.uuid4()),
                     email=hr_officer_email,
                     password_hash=hash_password(hr_officer_password),
-                    role=UserRole.hr_officer,
+                    role=UserRole.employee,
                     short_id="HROFF001",
                     full_name="HostFlow HR Officer",
                     tenant_id=DEFAULT_TENANT_ID,
                     is_active=True,
+                    preferences={"preset_id": "hr"},
                 )
                 session.add(hr_officer)
             else:
                 hr_officer.password_hash = hash_password(hr_officer_password)
-                hr_officer.role = UserRole.hr_officer
+                hr_officer.role = UserRole.employee
                 hr_officer.short_id = hr_officer.short_id or "HROFF001"
                 hr_officer.full_name = hr_officer.full_name or "HostFlow HR Officer"
                 hr_officer.tenant_id = hr_officer.tenant_id or DEFAULT_TENANT_ID
                 hr_officer.is_active = True
+                prefs = dict(hr_officer.preferences or {})
+                prefs["preset_id"] = "hr"
+                hr_officer.preferences = prefs
 
             await session.flush()
 
@@ -501,9 +513,9 @@ async def _init_data() -> Dict[str, str]:
 
             await ensure_membership(admin.id, "administrator")
             await ensure_membership(viewer.id, "viewer")
-            await ensure_membership(supervisor.id, "supervisor")
-            await ensure_membership(recruiter.id, "recruiter")
-            await ensure_membership(hr_officer.id, "hr_officer")
+            await ensure_membership(supervisor.id, "employee")
+            await ensure_membership(recruiter.id, "employee")
+            await ensure_membership(hr_officer.id, "employee")
 
             own_company_row = await session.execute(
                 sa.text("SELECT id FROM own_companies WHERE tenant_id = :tenant LIMIT 1"),
