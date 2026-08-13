@@ -22,12 +22,13 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 ---
 
-## Immediate rule (through Platform Extraction)
+## Immediate rule (after Kit Gate)
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
 **Vocabulary Canon** — ✅ closed 2026-08-13 (ADR-037…047).  
-**Platform Extraction** ← **active** ([phase](platform-extraction-phase.md)).
+**Platform Extraction Kit Gate** — **PASS_WITH_CONSTRAINTS** (2026-08-13) ([gate](../gates/platform-extraction-kit-gate.md)).  
+**Phase B** ← **active**.
 
 Locked handoff:
 
@@ -39,8 +40,8 @@ Order **after A2**:
 
 1. **A2 — Platform Governance Review** — ✅ PASS_WITH_CONSTRAINTS ([gate](../gates/platform-governance-review-a2.md))  
 2. **Vocabulary Canon** — ✅ closed (ADR-037…047); no further docs-only area ADRs  
-3. **Platform Extraction** — Core Platform Kit ← **next** ([phase](platform-extraction-phase.md) · [epic](../tasks/ui-platform-composition-epic.md))  
-4. **Phase B — Acquisition / Stage 3 + Meta** — queued until kit gate  
+3. **Platform Extraction** — Core Platform Kit ✅ ([phase](platform-extraction-phase.md) · [epic](../tasks/ui-platform-composition-epic.md) · [Kit Gate](../gates/platform-extraction-kit-gate.md))  
+4. **Phase B — Acquisition / Stage 3 + Meta** ← **next**  
 5. Forms → Entity Workspace → Documents → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
@@ -94,7 +95,7 @@ not a re-validation of Communication wiring (that is the Epic C Complete Gate).
 
 **Result:** platforms treated as stable enough for Acquisition completion and Forms infrastructure.  
 **A2 next (2026-08-03):** Phase B — Meta Intake Completeness → Stage 3 slice 3–4.  
-**Queue amendment (2026-08-13):** Vocabulary Canon closed; **Platform Extraction** (Core Platform Kit) runs **before** Phase B code so ADR-044 / ADR-046 are consumable.  
+**Queue amendment (2026-08-13):** Vocabulary Canon closed; **Platform Extraction** (Core Platform Kit) ran **before** Phase B so ADR-044 / ADR-046 are consumable. [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS**.  
 **Constraint:** Catalog Notifications↔Communication → Architecture RFC (A2-F1); Catalog not rewritten in A2.
 
 **Branch:** `docs/platform-governance-review-post-epic-c`  
@@ -102,7 +103,7 @@ not a re-validation of Communication wiring (that is the Epic C Complete Gate).
 
 ---
 
-## Phase PX — Platform Extraction (Core Platform Kit) ← **active**
+## Phase PX — Platform Extraction (Core Platform Kit) ← **PASS_WITH_CONSTRAINTS**
 
 **Not** a product feature and **not** a new vocabulary ADR.  
 [Phase](platform-extraction-phase.md) · [epic](../tasks/ui-platform-composition-epic.md).
@@ -113,14 +114,14 @@ Turn accepted canons into a public kit **before** Phase B screens:
 - Analytics Kit public composition (ADR-046; Recruitment already the reference)  
 - Minimal `EntityWorkspace` runtime (chrome only — **not** Phase D)
 
-**Gate:** new operational lists / entity chrome / analytics import the kit. Then Phase B may start.  
+**Gate:** [platform-extraction-kit-gate.md](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-13). New operational lists / entity chrome / analytics import the kit. Phase B may start.  
 **Deferred here:** Events runtime (3A-1 when a consumer exists); ADR-045 until a second template consumer.
 
 ---
 
 ## Phase B — Acquisition Completion (Epic P / Stage 3)
 
-Return to Acquisition only after **Epic C — complete** + **A2 Governance** (both PASS_WITH_CONSTRAINTS, 2026-08-03) **and** the **Platform Extraction kit gate**. Phase B product code is **queued**.
+Return to Acquisition only after **Epic C — complete** + **A2 Governance** (both PASS_WITH_CONSTRAINTS, 2026-08-03) **and** the **Platform Extraction kit gate** ([PASS_WITH_CONSTRAINTS](../gates/platform-extraction-kit-gate.md), 2026-08-13). Phase B product code is **active**.
 
 Close:
 
@@ -211,8 +212,8 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 1 | **A1** Epic C Communication | ✅ Unified comms platform (`PASS_WITH_CONSTRAINTS`) |
 | 2 | **A2** Platform Governance Review | ✅ Stable SoT / contracts gate (`PASS_WITH_CONSTRAINTS`) |
 | 2b | **Vocabulary Canon** | ✅ ADR-037…047 closed; no more area ADRs for the map |
-| 3 | **PX** Platform Extraction | ← **next** Core Platform Kit (`ListWorkspace`, Analytics, min EntityWorkspace) |
-| 4 | **B** Acquisition / Stage 3 + Meta | Full Campaign→Service Order chain (after kit gate) |
+| 3 | **PX** Platform Extraction | ✅ Kit Gate `PASS_WITH_CONSTRAINTS` (K1–K3) |
+| 4 | **B** Acquisition / Stage 3 + Meta | ← **next** Full Campaign→Service Order chain |
 | 5 | **C** Forms Platform | Shared form runtime contracts |
 | 6 | **D** Universal Entity Workspace | One workspace composition (platforms on one entity) |
 | 7 | **E** Documents Platform | Full document lifecycle |
@@ -223,11 +224,11 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 ## Anti-patterns (forbidden without amending this roadmap)
 
-1. Starting Stage 3 slice 3+ **before** Governance Review (A2) closes — A2 is **PASS_WITH_CONSTRAINTS**. Starting Phase B **code** before the **Platform Extraction kit gate** is also forbidden (ADR-044 / ADR-046 otherwise force a private table or a stop).  
+1. Starting Stage 3 slice 3+ **before** Governance Review (A2) closes — A2 is **PASS_WITH_CONSTRAINTS**. Starting Phase B **code** before the **Platform Extraction kit gate** is also forbidden — the gate is now **PASS_WITH_CONSTRAINTS**; Phase B must still **consume** the kit (ADR-044 / ADR-046).  
 2. Forms Builder before Forms Platform infrastructure (Phase C).  
 3. Treating minimal EntityWorkspace **chrome** (PX) as Phase D Universal Entity Workspace — or inventing a fifth card shell in Stage 3 instead of the kit.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active slice). Platform Extraction **is** the active slice until the kit gate.  
+5. Parallel product branches that compete across phases (one active slice). Phase B (Meta / Stage 3) **is** the active slice; do not reopen Platform Extraction as a competing program.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Docs-only ADRs to close ADR-038 map cells (Events inventory, ADR-045) without a second runtime consumer.  
@@ -239,7 +240,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active slice = Platform Extraction until kit gate) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active slice = Meta Intake Completeness) |
 | [platform-extraction-phase.md](platform-extraction-phase.md) | **Stage model** — Vocabulary Canon closed; extraction before Phase B |
 | This roadmap | **Horizon** order of platform phases A–G (PX inserted before B) |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
@@ -251,6 +252,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-13: **Kit Gate PASS_WITH_CONSTRAINTS** ([gate](../gates/platform-extraction-kit-gate.md)); Product Track → Phase B Meta / Stage 3.  
 - 2026-08-13: **Platform Extraction** inserted before Phase B. Vocabulary Canon (ADR-037…047) closed. Active slice = Core Platform Kit. Kit Gate + two-consumer extract + finite completion bar. Phase B code queued until kit gate.  
 - 2026-08-03: A2 Platform Governance Review **PASS_WITH_CONSTRAINTS**; Product Track → **Phase B Meta / Stage 3**; Catalog Notifications↔Communication deferred to Architecture RFC.  
 - 2026-08-03: Epic C Complete Gate **PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  

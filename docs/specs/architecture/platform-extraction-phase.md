@@ -8,7 +8,8 @@
 **Does not amend L0.** Does **not** add a fifteenth standardization area.
 
 > Vocabulary Canon (ADR-037…047) is **closed**.  
-> The next locked stage is **Platform Extraction**, not Product Development.
+> Kit Gate: [`platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-13).  
+> Product Development (Phase B) may start as a **consumer** of the kit.
 
 ---
 
@@ -34,8 +35,8 @@ Without extraction, Phase B (Meta / Stage 3) has two bad options: write another 
 |-------|---------|--------|
 | **Architecture** | L0 constitution, Catalog, capability contracts, gates | ✅ (A2 `PASS_WITH_CONSTRAINTS`) |
 | **Vocabulary Canon** | Closed map of platform language (ADR-037…047) | ✅ closed 2026-08-13 |
-| **Platform Extraction** | Extract repeating UI/runtime into one kit | ← **active** |
-| **Product Development** | Phase B Meta → Stage 3 slice 3–4, then C–G | queued until kit gate |
+| **Platform Extraction** | Extract repeating UI/runtime into one kit | ✅ Kit Gate [`PASS_WITH_CONSTRAINTS`](../gates/platform-extraction-kit-gate.md) 2026-08-13 |
+| **Product Development** | Phase B Meta → Stage 3 slice 3–4, then C–G | ← **active** |
 | **Optimization** | migrate-on-touch, ratchets, remaining dashboards | after kit is the only legal import |
 
 This does **not** rewrite Phases A–G on the horizon roadmap. It inserts a **mandatory extraction gate** between Vocabulary Canon and Phase B **code**.
@@ -44,7 +45,7 @@ This does **not** rewrite Phases A–G on the horizon roadmap. It inserts a **ma
 Architecture → Vocabulary Canon → Platform Extraction → Phase B → Phase C → Phase D → …
 ```
 
-A2 (2026-08-03) opened Phase B. Vocabulary Canon then ran as an architecture track. This document **amends the queue**: Phase B product code waits on the Core Platform Kit gate.
+A2 (2026-08-03) opened Phase B. Vocabulary Canon then ran as an architecture track. This document inserted extraction before Phase B code. The [Kit Gate](../gates/platform-extraction-kit-gate.md) is **PASS_WITH_CONSTRAINTS** and closes **Platform Baseline v1** (`DataTable` · `ListWorkspace` · `EntityWorkspace` · Analytics families). Phase B **consumes** that baseline. Immediate next (not a second Extraction phase): Platform Inventory, then Meta.
 
 ```text
 Architecture     → principles and ownership
@@ -196,14 +197,16 @@ Ship Events runtime when Stage 3 / 3A is an actual consumer. Do **not** pre-buil
 
 ## Kit Gate (before Phase B code)
 
-Phase B (Meta Intake Completeness → Stage 3 slice 3–4) may start **after** Hard rules 1 and 3 hold in runtime:
+**Decision:** [`platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-13).
+
+Phase B (Meta Intake Completeness → Stage 3 slice 3–4) started after Hard rules 1 and 3 held in runtime:
 
 1. `ListWorkspace` + `DataTable` are the public API for **new** operational lists.
 2. Analytics families import from `components/analytics` (no new private KPI/chart in product pages).
 3. Minimal `EntityWorkspace` Shell is the public API for **new** entity chrome (header / actions / rail).
 4. Sequential queue Product Track is amended back to Meta / Stage 3.
 
-Then Rule 5 applies to every later product PR.
+Then Rule 5 applies to every later product PR. Constraints (migrate-on-touch lists/dashboards; checklist enforcement) live on the gate record.
 
 ---
 
@@ -221,6 +224,7 @@ Then Rule 5 applies to every later product PR.
 
 ## Cross-references
 
+- Kit Gate: [platform-extraction-kit-gate.md](../gates/platform-extraction-kit-gate.md)
 - Horizon: [platform-completion-roadmap.md](platform-completion-roadmap.md)
 - Near-term queue: [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md)
 - Kit epic: [ui-platform-composition-epic.md](../tasks/ui-platform-composition-epic.md)
@@ -231,6 +235,7 @@ Then Rule 5 applies to every later product PR.
 
 ## History
 
-- 2026-08-13: **K3** public `EntityWorkspace` (`components/ui`). Passport Shell is an adapter. Candidate Workspace not extracted. Kit Gate remains before Phase B.
+- 2026-08-13: **Kit Gate PASS_WITH_CONSTRAINTS** — [gate](../gates/platform-extraction-kit-gate.md). Closes **Platform Baseline v1**. Immediate next = Platform Inventory; then Meta as consumer.
+- 2026-08-13: **K3** public `EntityWorkspace` (`components/ui`). Passport Shell is an adapter. Candidate Workspace not extracted.
 - 2026-08-13: Hard rules 1–5 (Kit Gate, two-consumer extract, closed completion bar, no second Vocabulary Canon, no local UI when the kit has it).
 - 2026-08-13: Phase opened; Vocabulary Canon closed; Core Platform Kit before Phase B.

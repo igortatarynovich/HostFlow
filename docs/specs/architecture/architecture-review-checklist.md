@@ -60,7 +60,7 @@
 
 ## L2 operating — UI Kit Gate (not an L0 P-rule)
 
-SoT: [`platform-extraction-phase.md`](platform-extraction-phase.md). Does **not** amend L0.
+SoT: [`platform-extraction-phase.md`](platform-extraction-phase.md) · gate [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md) (`PASS_WITH_CONSTRAINTS`). Does **not** amend L0.
 
 For PRs that add or change **product UI** after the Core Platform Kit public APIs exist:
 
@@ -80,4 +80,4 @@ Reject: sixth operational table, fourth workspace shell, module-only KPI card.
 - 2026-07-18: Capability Contract sequence added (Phase 1).  
 - 2026-07-19: INV-16 Decision Priority Rule + reject signals (Intake/Flights L0 correction).  
 - 2026-07-19: INV-17 Communication Pipeline sole outbound entry (C5).  
-- 2026-08-13: L2 UI Kit Gate checkboxes (Platform Extraction; not an L0 P-rule).
+- 2026-08-13: L2 UI Kit Gate checkboxes (Platform Extraction; not an L0 P-rule). Gate record: [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS**.

@@ -53,7 +53,7 @@
 - [ ] **Primitives (Button):** new buttons use `Button` or `.btn-*` canon; `variant="icon"` requires `aria-label` when no visible text. See `docs/specs/frontend/BUTTON_V1.md`.
 - [ ] **Primitives (Input):** new text fields use native `<input className="input">` / `<textarea className="textarea">`; no custom field chrome, no pass-through `Input.tsx`. See `docs/specs/frontend/INPUT_V1.md`.
 - [ ] **TABLE_V1 / ListWorkspace:** new operational entity lists use the Core Platform Kit (`ListWorkspace` + `DataTable`) once that public API exists; no new hand-written operational `<table>`. Visual child remains `docs/specs/frontend/TABLE_V1.md`.
-- [ ] **Kit Gate** ([`docs/specs/architecture/platform-extraction-phase.md`](docs/specs/architecture/platform-extraction-phase.md)): a new product screen does not ship if its list / workspace chrome / analytics / action bar / filters are missing from the kit. No local stand-in. No module-only KPI card or fourth workspace shell.
+- [ ] **Kit Gate** ([`docs/specs/gates/platform-extraction-kit-gate.md`](docs/specs/gates/platform-extraction-kit-gate.md) `PASS_WITH_CONSTRAINTS`): a new product screen does not ship if its list / workspace chrome / analytics / action bar / filters are missing from the kit. No local stand-in. No module-only KPI card or fourth workspace shell.
 
 ## Labels (рекомендуется)
 

@@ -163,6 +163,7 @@ Do not open a new `*_V1` as a sibling canon. Extend this catalog.
 
 ## 6. History
 
+- 2026-08-13: **Kit Gate PASS_WITH_CONSTRAINTS** — [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md). Product Track → Meta / Stage 3.
 - 2026-08-13: **K3** public `EntityWorkspace` chrome. `EntityWorkspaceShell` is a passport adapter. Candidate Workspace not extracted.
 - 2026-08-13: **K2** public `ListWorkspace`; Vacancies first cutover. Candidates page not wrapped.
 - 2026-08-13: **K1** public `DataTable` + `SortControl` in `components/ui`. `DataTableEngine` is an adapter. Candidates page not cut over.

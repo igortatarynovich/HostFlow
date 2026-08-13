@@ -126,7 +126,7 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 **Actions:** **done** — [`ADR-047`](ADR-047-actions.md) · [`../platform/actions.md`](../platform/actions.md). Confirmed Documents/Activity/PE slice; **3A-3 runtime** and CRM public actions **deferred**.
 
-**Next after Vocabulary Canon:** [Platform Extraction](platform-extraction-phase.md) — Core Platform Kit runtime (`ListWorkspace`, Analytics composition, min `EntityWorkspace`). **Not** Events inventory, **not** ADR-045.
+**Next after Vocabulary Canon:** [Platform Extraction](platform-extraction-phase.md) — Core Platform Kit runtime **done**; [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS**. Next = Phase B Meta / Stage 3. **Not** Events inventory, **not** ADR-045.
 
 DocumentType alignment and Field/Forms DataType adoption remain separate PRs (Forms C / Documents E). Events runtime = ADR-019 **3A-1** when a real consumer exists.
 
@@ -146,7 +146,7 @@ DocumentType alignment and Field/Forms DataType adoption remain separate PRs (Fo
 
 - Positive: single coordinate system for all follow-on canons; clear exists/next/gap map; Platform-first turns documentation into architecture; Action / Permission / Capability and Field / DataType stay separable.
 - Negative: gap areas must be filled by dedicated PRs; until then modules must not invent local replacements.
-- Follow-on: Vocabulary sequence **closed** (ADR-039…047). Next stage is [Platform Extraction](platform-extraction-phase.md), not more area ADRs. Events runtime = ADR-019 3A-1 when a consumer exists. DocumentType alignment and Field/Forms `data_type` adoption stay deferred.
+- Follow-on: Vocabulary sequence **closed** (ADR-039…047). [Platform Extraction](platform-extraction-phase.md) kit runtime **done** — [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS**. Next = Phase B, not more area ADRs. Events runtime = ADR-019 3A-1 when a consumer exists. DocumentType alignment and Field/Forms `data_type` adoption stay deferred.
 
 ---
 

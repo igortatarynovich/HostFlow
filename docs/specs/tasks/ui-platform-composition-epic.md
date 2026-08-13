@@ -1,6 +1,6 @@
 # Core Platform Kit (Platform Extraction)
 
-**Status:** Active — **Platform Extraction** execution (not Product Development)  
+**Status:** Kit Gate **PASS_WITH_CONSTRAINTS** (2026-08-13) — [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md)  
 **Phase:** [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md)  
 **Canon:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) · [`ADR-046`](../architecture/ADR-046-analytics-visualization-canon.md) · L2 [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md)  
 **Does not amend L0.** Visual tokens remain [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md).
@@ -68,7 +68,7 @@ Four layers: metrics semantics → visualization grammar → analytics compositi
 
 **Reference (done):** Recruitment efficiency — story composition, URL Analytics View, copy-link, `present=1`.
 
-**This stream:** kit is the only legal import for **new** analytics UI. Add missing composition: `ChartFrame`, story / dashboard grid (`AnalyticsSection` density). Closed `component_id` catalog = registry.
+- [x] **Public composition** — legal import for **new** analytics UI is `components/analytics`. Story / dashboard grid = `AnalyticsSection` (`density=story \| operational`). `ChartFrame` stays implementation inside family charts (KG-C4). Closed `component_id` catalog = registry.
 
 **Forbidden:** free Widget Registry / BI constructor; pie-as-default; module-local KPI tiles; a second reporting product.
 
@@ -106,3 +106,5 @@ Hard rules: [`../architecture/platform-extraction-phase.md`](../architecture/pla
 **Do not extract** Recruitment / HR / Vacancy / Candidate Workspace. Those stay module compositions.
 
 After this bar: Product Track (Meta → Stage 3). Further kit families only via the two-module rule, as small PRs — not a second Extraction phase.
+
+**Gate:** [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-13).

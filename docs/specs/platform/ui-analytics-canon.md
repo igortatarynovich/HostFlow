@@ -220,5 +220,6 @@ Do not restyle. Map to families, then replace.
 
 ## 12. History
 
+- 2026-08-13: Kit Gate **PASS_WITH_CONSTRAINTS**; `ChartFrame` remains implementation inside family charts (KG-C4). Other dashboards still migrate-on-touch.
 - 2026-08-13: Presentation & sharing layer (Analytics View URL, report header, presentation mode, story hero).
 - 2026-08-13: Initial catalog under ADR-046. Recruitment efficiency is the canonical implementation. Other dashboards migrate-on-touch.

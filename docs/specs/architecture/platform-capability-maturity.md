@@ -40,8 +40,8 @@ Notes:
 - Communication Automation = C2.1–C2.3 ✅ (Intent-only; capability isolation); **C2.4 Scheduling frozen** (gate residual R1).
 - Communication Complete = [Epic C Complete Gate](../gates/epic-c-complete-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-03) → **Epic C — complete**.  
 - **A2 Platform Governance Review** = [PASS_WITH_CONSTRAINTS](../gates/platform-governance-review-a2.md) (2026-08-03). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
-- Acquisition Automation in progress = Phase B Meta / Stage 3 remaining work (roadmap) — **queued** until [Platform Extraction](platform-extraction-phase.md) kit gate.  
-- **Platform Extraction (2026-08-13):** Vocabulary Canon closed; active work is Core Platform Kit (`ListWorkspace`, Analytics composition, min EntityWorkspace) — not a new platform SoT row.  
+- Acquisition Automation in progress = Phase B Meta / Stage 3 remaining work (roadmap) — **active** after [Kit Gate](../gates/platform-extraction-kit-gate.md) `PASS_WITH_CONSTRAINTS`.  
+- **Platform Extraction (2026-08-13):** Vocabulary Canon closed; Core Platform Kit K1–K3 shipped; [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** — not a new platform SoT row.  
 - Forms: Sprint 1–6 / Builder MVP exists ([module-scope](../../forms/module-scope.md)); **Phase C Forms Platform** (Passport / Manifest / Runtime contracts) still open — Foundation not marked ✅.  
 - Documents Foundation in progress = platform lifecycle contracts still consolidating (roadmap Phase E).
 - Entity Workspace appears when Phase D starts (not a platform SoT yet).
@@ -62,6 +62,6 @@ Entity Workspace and AI are sequenced later on the roadmap; they appear in the m
 ## Refs
 
 - Sequencing: [platform-completion-roadmap.md](platform-completion-roadmap.md)  
-- Platform Extraction (active stage): [platform-extraction-phase.md](platform-extraction-phase.md)  
+- Platform Extraction: [platform-extraction-phase.md](platform-extraction-phase.md) · [Kit Gate](../gates/platform-extraction-kit-gate.md) `PASS_WITH_CONSTRAINTS`  
 - Near-term slices: [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md)  
 - Communication Foundation: [communication-platform-foundation.md](communication-platform-foundation.md)  
