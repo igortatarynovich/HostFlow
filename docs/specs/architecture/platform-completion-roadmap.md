@@ -28,12 +28,12 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
 **Vocabulary Canon** — ✅ closed 2026-08-13 (ADR-037…047).  
 **Platform Extraction Kit Gate** — **PASS_WITH_CONSTRAINTS** (2026-08-13) ([gate](../gates/platform-extraction-kit-gate.md)).  
-**Phase B** ← **active**.
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← **active**.
 
 Locked handoff:
 
 ```text
-Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Vocabulary Canon → Platform Extraction → Phase B Meta / Stage 3 → …
+Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Vocabulary Canon → Platform Extraction → Phase B Meta / Stage 3 → Phase C Forms → …
 ```
 
 Order **after A2**:
@@ -41,8 +41,8 @@ Order **after A2**:
 1. **A2 — Platform Governance Review** — ✅ PASS_WITH_CONSTRAINTS ([gate](../gates/platform-governance-review-a2.md))  
 2. **Vocabulary Canon** — ✅ closed (ADR-037…047); no further docs-only area ADRs  
 3. **Platform Extraction** — Core Platform Kit ✅ ([phase](platform-extraction-phase.md) · [epic](../tasks/ui-platform-composition-epic.md) · [Kit Gate](../gates/platform-extraction-kit-gate.md))  
-4. **Phase B — Acquisition / Stage 3 + Meta** ← **next**  
-5. Forms → Entity Workspace → Documents → Billing → AI  
+4. **Phase B — Acquisition / Stage 3 + Meta** ← ✅  
+5. **Phase C — Forms Platform** ← **active** → Entity Workspace → Documents → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
 
@@ -121,13 +121,15 @@ Turn accepted canons into a public kit **before** Phase B screens:
 
 ## Phase B — Acquisition Completion (Epic P / Stage 3)
 
-Return to Acquisition only after **Epic C — complete** + **A2 Governance** (both PASS_WITH_CONSTRAINTS, 2026-08-03) **and** the **Platform Extraction kit gate** ([PASS_WITH_CONSTRAINTS](../gates/platform-extraction-kit-gate.md), 2026-08-13). Phase B product code is **active**.
+Return to Acquisition only after **Epic C — complete** + **A2 Governance** (both PASS_WITH_CONSTRAINTS, 2026-08-03) **and** the **Platform Extraction kit gate** ([PASS_WITH_CONSTRAINTS](../gates/platform-extraction-kit-gate.md), 2026-08-13). Phase B listed slices are **closed**.
 
 Close:
 
 - Meta Intake Completeness (payload retention / visibility — Acquisition-adjacent) — ✅ [#222](https://github.com/igortatarynovich/HostFlow/pull/222)
 - Stage 3 slice 3 — SalesInquiry product flow — ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224)
-- Stage 3 slice 4 — hard module separation — **active** [#238](https://github.com/igortatarynovich/HostFlow/pull/238)
+- Stage 3 slice 4 — hard module separation — ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238) (`/app/leads` is not a mixed inbox; `/app/leads/:id` redirects to SalesInquiry or Recruitment Application)
+
+**Not in Phase B close-out / not in Phase C:** Stage 5 settings/enable-disable · R6 table-cutover.
 
 **End-to-end chain (must be complete):**
 
@@ -139,7 +141,7 @@ Campaign → Flight → Submission → Result → Outcome → Sales → Client �
 
 ---
 
-## Phase C — Forms Platform (infrastructure, not Builder)
+## Phase C — Forms Platform (infrastructure, not Builder) ← **active**
 
 Build Forms as a platform capability:
 
@@ -150,7 +152,7 @@ Build Forms as a platform capability:
 - Runtime  
 - Versioning  
 
-**Out until platform done:** Forms Builder / authoring UX product.
+**Out of this slice / until platform done:** Forms Builder / authoring UX product (P3–P5 locked) · Stage 5 settings/enable-disable · R6 table-cutover · Entity Workspace (Phase D).
 
 **Result:** every questionnaire, form, and survey shares one runtime contract.
 
@@ -213,8 +215,8 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 2 | **A2** Platform Governance Review | ✅ Stable SoT / contracts gate (`PASS_WITH_CONSTRAINTS`) |
 | 2b | **Vocabulary Canon** | ✅ ADR-037…047 closed; no more area ADRs for the map |
 | 3 | **PX** Platform Extraction | ✅ Kit Gate `PASS_WITH_CONSTRAINTS` (K1–K3) |
-| 4 | **B** Acquisition / Stage 3 + Meta | ← **next** Full Campaign→Service Order chain |
-| 5 | **C** Forms Platform | Shared form runtime contracts |
+| 4 | **B** Acquisition / Stage 3 + Meta | ✅ Meta / slice 3–4 (#222 / #224 / #238) |
+| 5 | **C** Forms Platform | ← **active** Shared form runtime contracts |
 | 6 | **D** Universal Entity Workspace | One workspace composition (platforms on one entity) |
 | 7 | **E** Documents Platform | Full document lifecycle |
 | 8 | **F** Billing Platform | SaaS commercial layer |
@@ -228,7 +230,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. Forms Builder before Forms Platform infrastructure (Phase C).  
 3. Treating minimal EntityWorkspace **chrome** (PX) as Phase D Universal Entity Workspace — or inventing a fifth card shell in Stage 3 instead of the kit.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active slice). Phase B (Meta / Stage 3) **is** the active slice; do not reopen Platform Extraction as a competing program.  
+5. Parallel product branches that compete across phases (one active slice). Phase C (Forms Platform) **is** the active slice; do not reopen Phase B, Stage 5 settings, R6, or Platform Extraction as a competing program.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Docs-only ADRs to close ADR-038 map cells (Events inventory, ADR-045) without a second runtime consumer.  
@@ -240,7 +242,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active slice = Stage 3 slice 4 / [#238](https://github.com/igortatarynovich/HostFlow/pull/238)) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active slice = Forms Platform / Phase C) |
 | [platform-extraction-phase.md](platform-extraction-phase.md) | **Stage model** — Vocabulary Canon closed; extraction before Phase B |
 | This roadmap | **Horizon** order of platform phases A–G (PX inserted before B) |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
@@ -252,6 +254,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-13: Stage 3 slice 4 ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238); Product Track → **Phase C Forms Platform**. Stage 5 settings and R6 stay out of this slice.  
 - 2026-08-13: **Kit Gate PASS_WITH_CONSTRAINTS** ([gate](../gates/platform-extraction-kit-gate.md)); Product Track → Phase B Meta / Stage 3.  
 - 2026-08-13: **Platform Extraction** inserted before Phase B. Vocabulary Canon (ADR-037…047) closed. Active slice = Core Platform Kit. Kit Gate + two-consumer extract + finite completion bar. Phase B code queued until kit gate.  
 - 2026-08-03: A2 Platform Governance Review **PASS_WITH_CONSTRAINTS**; Product Track → **Phase B Meta / Stage 3**; Catalog Notifications↔Communication deferred to Architecture RFC.  

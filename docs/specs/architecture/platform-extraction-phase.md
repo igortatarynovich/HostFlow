@@ -9,7 +9,7 @@
 
 > Vocabulary Canon (ADR-037…047) is **closed**.  
 > Kit Gate: [`platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-13).  
-> Product Development (Phase B) may start as a **consumer** of the kit.
+> Product Development is **Phase C Forms Platform** (Phase B Meta / Stage 3 is closed). New screens consume the kit.
 
 ---
 
@@ -36,7 +36,7 @@ Without extraction, Phase B (Meta / Stage 3) has two bad options: write another 
 | **Architecture** | L0 constitution, Catalog, capability contracts, gates | ✅ (A2 `PASS_WITH_CONSTRAINTS`) |
 | **Vocabulary Canon** | Closed map of platform language (ADR-037…047) | ✅ closed 2026-08-13 |
 | **Platform Extraction** | Extract repeating UI/runtime into one kit | ✅ Kit Gate [`PASS_WITH_CONSTRAINTS`](../gates/platform-extraction-kit-gate.md) 2026-08-13 |
-| **Product Development** | Phase B Meta → Stage 3 slice 3–4, then C–G | ← **active** |
+| **Product Development** | Phase C Forms Platform (Phase B Meta / slice 3–4 ✅) | ← **active** |
 | **Optimization** | migrate-on-touch, ratchets, remaining dashboards | after kit is the only legal import |
 
 This does **not** rewrite Phases A–G on the horizon roadmap. It inserts a **mandatory extraction gate** between Vocabulary Canon and Phase B **code**.
@@ -206,7 +206,7 @@ Phase B (Meta Intake Completeness → Stage 3 slice 3–4) started after Hard ru
 3. Minimal `EntityWorkspace` Shell is the public API for **new** entity chrome (header / actions / rail).
 4. Sequential queue Product Track is amended back to Meta / Stage 3.
 
-Then Rule 5 applies to every later product PR. Constraints (migrate-on-touch lists/dashboards; checklist enforcement) live on the gate record.
+Then Rule 5 applies to every later product PR. Constraints (migrate-on-touch lists/dashboards; checklist enforcement) live on the gate record. Phase B Meta / slice 3–4 closed 2026-08-13; Product Track = Forms Platform. Stage 5 settings and R6 stay out of that slice.
 
 ---
 
@@ -236,6 +236,7 @@ Then Rule 5 applies to every later product PR. Constraints (migrate-on-touch lis
 
 ## History
 
+- 2026-08-13: Phase B Meta / slice 3–4 closed; Product Development → **Forms Platform**. Stage 5 settings and R6 stay out of that slice.  
 - 2026-08-13: **Platform Inventory** — [platform-inventory.md](../platform/platform-inventory.md).
 - 2026-08-13: **Kit Gate PASS_WITH_CONSTRAINTS** — [gate](../gates/platform-extraction-kit-gate.md). Closes **Platform Baseline v1**. Immediate next = Platform Inventory; then Meta as consumer.
 - 2026-08-13: **K3** public `EntityWorkspace` (`components/ui`). Passport Shell is an adapter. Candidate Workspace not extracted.

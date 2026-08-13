@@ -22,7 +22,7 @@
 | **Result** | Core Platform Kit public APIs exist. This gate closes **Platform Baseline v1**. Phase B may start **only as a consumer** of the kit |
 | **Platform Baseline** | **v1** — `DataTable` · `ListWorkspace` · `EntityWorkspace` · Analytics families (`components/analytics`) |
 | **Inventory** | [platform-inventory.md](../platform/platform-inventory.md) — living kit catalog |
-| **Next Product Track** | Stage 3 slice 4 ([#238](https://github.com/igortatarynovich/HostFlow/pull/238)); consume Baseline v1 on touch. Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ✅ · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) ✅ |
+| **Next Product Track** | Forms Platform (Phase C); consume Baseline v1 on touch. Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ✅ · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) ✅ · slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) ✅ |
 | **Not outcome** | Clean `PASS` (remaining lists/dashboards migrate-on-touch; enforcement is PR checklist, not an AST scanner) · `STOP` (completion bar holds in runtime) |
 
 **Rationale:** K1 `DataTable`, K2 `ListWorkspace` (Vacancies cutover), K3 `EntityWorkspace` Shell, and ADR-046 families in `components/analytics` are **Platform Baseline v1** — the legal imports for **new** screens. Existing Candidates list, other operational tables, and non-reference dashboards stay migrate-on-touch (Optimization). Candidate/HR/Vacancy/Recruitment Workspace were **not** extracted (two-consumer rule).
@@ -78,8 +78,11 @@ New Stage 3 / Meta **product** screens compose **Platform Baseline v1**. Legal i
 
 Existing Candidate card / list remain migrate-on-touch.
 
+**After Phase B close-out (2026-08-13):** the same rule applies to **Phase C Forms Platform**. Stage 5 settings and R6 are not that slice.
+
 ---
 
 ## History
 
+- 2026-08-13: Next Product Track → **Forms Platform** after Stage 3 slice 4 ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238).  
 - 2026-08-13: **PASS_WITH_CONSTRAINTS**. Names **Platform Baseline v1**. Inventory: [platform-inventory.md](../platform/platform-inventory.md). Product Track → Meta as consumer.

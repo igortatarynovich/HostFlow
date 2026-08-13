@@ -57,4 +57,4 @@ Operator can open a Sales inquiry and see every answer from the Meta form; compa
 
 ## Next
 
-Slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) merged after this. Live Product Track: Stage 3 slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238).
+Slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) and slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged after this. Live Product Track: Forms Platform (Phase C). Stage 5 settings and R6 stay out of that slice.

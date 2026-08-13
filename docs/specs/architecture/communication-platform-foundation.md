@@ -67,7 +67,7 @@ Do **not** promote to Epic C complete after C1 or C2 alone (gate required).
 2. **C2 — Capability epic** — ✅ C2.1–C2.3 closed ([epic](../tasks/epic-c2-communication-campaigns.md)); **C2.4 Scheduling frozen** (gate residual R1)  
 3. **Epic C Complete Gate** — ✅ **PASS_WITH_CONSTRAINTS** ([gate](../gates/epic-c-complete-gate.md))  
 4. **A2 Platform Governance Review** — ✅ **PASS_WITH_CONSTRAINTS** ([gate](../gates/platform-governance-review-a2.md))  
-5. **Phase B** — Meta Intake Completeness → Stage 3 → Forms → Entity Workspace → Documents → Billing → AI  
+5. **Phase B** — Meta / Stage 3 slice 3–4 ✅ → **Phase C Forms Platform** ← **active** → Entity Workspace → Documents → Billing → AI  
 
 ---
 

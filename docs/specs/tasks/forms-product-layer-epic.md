@@ -1,11 +1,11 @@
 # Forms Product Layer — Epic
 
-**Status:** **OPEN** · **ACTIVE** (canon after merge `29f4057f` / [PR #43](https://github.com/igortatarynovich/HostFlow/pull/43))  
+**Status:** **OPEN** · Product Track = **Phase C Forms Platform** (infrastructure) per [sequential queue](sales-to-comms-sequential-queue.md)  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
 **P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Builder MVP **COMPLETE** (P2.1–P2.5) · P3 LOCKED  
-**Next epic:** [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · **ACTIVE** (R3) · Communication Context [`READY`](intake-domain-separation-communication-context-v1.md) · matrix [`ACCEPTED / FROZEN`](../architecture/intake-canonical-input-matrix.md)
+**Out of this Product Track slice:** Stage 5 settings/enable-disable · R6 table-cutover · Builder P3–P5
 
 ---
 

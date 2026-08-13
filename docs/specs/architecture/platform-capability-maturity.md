@@ -28,8 +28,8 @@ Legend: ✅ done · 🔄 in progress · ⏳ not started
 | Platform | Foundation | Workspace | Automation | Complete |
 |----------|------------|-----------|------------|----------|
 | **Communication** | ✅ | ✅ (C1) | ✅ (C2.1–C2.3; C2.4 frozen) | ✅ `PASS_WITH_CONSTRAINTS` |
-| **Acquisition** | ✅ | ✅ | 🔄 Phase B | ⏳ |
-| **Forms** | 🔄 product MVP | ⏳ | ⏳ | ⏳ |
+| **Acquisition** | ✅ | ✅ | 🔄 residual | ⏳ |
+| **Forms** | 🔄 Phase C | ⏳ | ⏳ | ⏳ |
 | **Documents** | 🔄 | ⏳ | ⏳ | ⏳ |
 | **Billing** | ⏳ | ⏳ | ⏳ | ⏳ |
 
@@ -40,9 +40,9 @@ Notes:
 - Communication Automation = C2.1–C2.3 ✅ (Intent-only; capability isolation); **C2.4 Scheduling frozen** (gate residual R1).
 - Communication Complete = [Epic C Complete Gate](../gates/epic-c-complete-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-03) → **Epic C — complete**.  
 - **A2 Platform Governance Review** = [PASS_WITH_CONSTRAINTS](../gates/platform-governance-review-a2.md) (2026-08-03). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
-- Acquisition Automation in progress = Phase B Meta / Stage 3 remaining work (roadmap) — **active** after [Kit Gate](../gates/platform-extraction-kit-gate.md) `PASS_WITH_CONSTRAINTS`.  
+- Acquisition Automation residual = Stage 5 settings / R6 deferred — **not** the active slice. Phase B Meta / slice 3–4 ✅ ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) · [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · [#238](https://github.com/igortatarynovich/HostFlow/pull/238)).  
 - **Platform Extraction (2026-08-13):** Vocabulary Canon closed; Core Platform Kit K1–K3 shipped; [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** — not a new platform SoT row.  
-- Forms: Sprint 1–6 / Builder MVP exists ([module-scope](../../forms/module-scope.md)); **Phase C Forms Platform** (Passport / Manifest / Runtime contracts) still open — Foundation not marked ✅.  
+- Forms: Sprint 1–6 / Builder MVP exists ([module-scope](../../forms/module-scope.md)); **Phase C Forms Platform** (Passport / Manifest / Runtime contracts) ← **active** — Foundation not marked ✅.  
 - Documents Foundation in progress = platform lifecycle contracts still consolidating (roadmap Phase E).
 - Entity Workspace appears when Phase D starts (not a platform SoT yet).
 
