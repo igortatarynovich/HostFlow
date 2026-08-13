@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
+from backend.app.models.company import Company
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.sales_inquiry import SalesInquiry
 from backend.app.modules.applications import mutations
@@ -83,6 +84,16 @@ async def _own_company_id(db, tenant_id: str) -> str:
     return str(own_company_id)
 
 
+async def _client_company_id(db, tenant_id: str) -> str:
+    row = await db.execute(select(Company.id).where(Company.tenant_id == tenant_id).limit(1))
+    company_id = row.scalar_one_or_none()
+    if company_id is None:
+        company_id = str(uuid4())
+        db.add(Company(id=company_id, tenant_id=tenant_id, name=f"Co {uuid4().hex[:6]}"))
+        await db.flush()
+    return str(company_id)
+
+
 async def _seed_sales_pair(db, *, tenant_id: str):
     own_company_id = await _own_company_id(db, tenant_id)
     lead = await leads_crud.create_lead(
@@ -149,11 +160,12 @@ async def test_capability_spine_resolves_by_sales_inquiry_id(db, tenant_id: str)
 @pytest.mark.asyncio
 async def test_recruitment_lead_is_not_a_sales_inquiry(db, tenant_id: str) -> None:
     own_company_id = await _own_company_id(db, tenant_id)
+    company_id = await _client_company_id(db, tenant_id)
     lead = await leads_crud.create_lead(
         db,
         tenant_id=tenant_id,
         own_company_id=own_company_id,
-        company_id=None,
+        company_id=company_id,
         vacancy_id=None,
         payload={},
         normalized={"full_name": "Candidate One"},
@@ -190,7 +202,7 @@ async def test_sales_list_uses_inquiry_id_and_excludes_recruitment(db, tenant_id
         db,
         tenant_id=tenant_id,
         own_company_id=own_company_id,
-        company_id=None,
+        company_id=await _client_company_id(db, tenant_id),
         vacancy_id=None,
         payload={},
         normalized={"full_name": "Candidate Two"},

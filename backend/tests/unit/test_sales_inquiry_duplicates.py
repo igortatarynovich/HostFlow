@@ -73,7 +73,9 @@ async def test_find_duplicates_by_phone(db, tenant_id: str) -> None:
     )
     assert len(hits) == 1
     app, reason = hits[0]
-    assert app.id == str(lead_b.id)
+    assert app.transport_lead_id == str(lead_b.id)
+    assert app.sales_inquiry_id == app.id
+    assert app.id != str(lead_b.id)
     assert reason == "phone"
 
 
@@ -110,3 +112,5 @@ async def test_find_duplicates_by_email(db, tenant_id: str) -> None:
     )
     assert len(hits) == 1
     assert hits[0][1] == "email"
+    assert hits[0][0].transport_lead_id == str(lead_b.id)
+    assert hits[0][0].id != str(lead_b.id)
