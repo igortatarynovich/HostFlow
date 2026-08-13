@@ -107,4 +107,4 @@ Hard rules: [`../architecture/platform-extraction-phase.md`](../architecture/pla
 
 After this bar: Product Track (Meta → Stage 3). Further kit families only via the two-module rule, as small PRs — not a second Extraction phase.
 
-**Gate:** [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-13).
+**Gate:** [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-13) — **Platform Baseline v1**. Catalog: [`../platform/platform-inventory.md`](../platform/platform-inventory.md).

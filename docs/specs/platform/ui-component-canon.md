@@ -6,7 +6,8 @@
 **Visual / a11y / tokens:** [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md) (amended by ADR-043: CSS is implementation)  
 **List shell (target):** [`ADR-010`](../architecture/ADR-010-unified-resource-list-shell.md) + [`ADR-044`](../architecture/ADR-044-list-workspace-data-presentation-canon.md) · [`ui-list-workspace-canon.md`](ui-list-workspace-canon.md)  
 **Owner:** Frontend platform  
-**Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) (Core Platform Kit) · phase [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md)
+**Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) (Core Platform Kit) · phase [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md)  
+**What to import:** [`platform-inventory.md`](platform-inventory.md)
 
 ---
 
@@ -14,7 +15,7 @@
 
 Index of canonical HostFlow UI families. Product modules **compose** these IDs. Local recreation of an existing ID is an architecture violation.
 
-This file does **not** lock pixel values or Figma. Chart palettes and analytics families live in [`ui-analytics-canon.md`](ui-analytics-canon.md) (**ADR-046**). Operational lists: [`ui-list-workspace-canon.md`](ui-list-workspace-canon.md) (**ADR-044**, rule done; runtime = Platform Extraction). Page templates remain **ADR-045** (deferred until a second template consumer).
+This file does **not** lock pixel values or Figma. **Developer entry (what to import):** [`platform-inventory.md`](platform-inventory.md). Chart palettes and analytics families live in [`ui-analytics-canon.md`](ui-analytics-canon.md) (**ADR-046**). Operational lists: [`ui-list-workspace-canon.md`](ui-list-workspace-canon.md) (**ADR-044**, rule done; runtime = Platform Extraction). Page templates remain **ADR-045** (deferred until a second template consumer).
 
 ---
 
@@ -163,6 +164,7 @@ Do not open a new `*_V1` as a sibling canon. Extend this catalog.
 
 ## 6. History
 
+- 2026-08-13: **Platform Inventory** — [`platform-inventory.md`](platform-inventory.md) (living catalog; not a sibling canon).
 - 2026-08-13: **Kit Gate PASS_WITH_CONSTRAINTS** — [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md). Product Track → Meta / Stage 3.
 - 2026-08-13: **K3** public `EntityWorkspace` chrome. `EntityWorkspaceShell` is a passport adapter. Candidate Workspace not extracted.
 - 2026-08-13: **K2** public `ListWorkspace`; Vacancies first cutover. Candidates page not wrapped.

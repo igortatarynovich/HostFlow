@@ -106,6 +106,7 @@ Vocabulary Canon **closed** (ADR-037…047). Do not write further docs-only ADRs
 
 ## 8. History
 
+- 2026-08-13: **Platform Inventory** — [platform-inventory.md](platform-inventory.md).
 - 2026-08-13: [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS**; Product Track → Meta / Stage 3.
 - 2026-08-13: K1–K3 kit APIs (`DataTable`, `ListWorkspace`, `EntityWorkspace`); Kit Gate remains before Phase B.
 - 2026-08-13: Vocabulary Canon closed; follow-on = [Platform Extraction](../architecture/platform-extraction-phase.md) (not Events/ADR-045 docs).  

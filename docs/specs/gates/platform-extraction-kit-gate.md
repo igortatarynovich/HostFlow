@@ -3,7 +3,7 @@
 **Status:** **PASS_WITH_CONSTRAINTS** (2026-08-13)  
 **Decision ID:** `PLATFORM_EXTRACTION_KIT_GATE_PASS_WITH_CONSTRAINTS`  
 **Type:** L2 operating gate (not an L0 P-rule; does not amend L0)  
-**Parents:** [Platform Extraction](../architecture/platform-extraction-phase.md) · [Core Platform Kit](../tasks/ui-platform-composition-epic.md) · [Sequential queue](../tasks/sales-to-comms-sequential-queue.md)  
+**Parents:** [Platform Extraction](../architecture/platform-extraction-phase.md) · [Core Platform Kit](../tasks/ui-platform-composition-epic.md) · [Platform Inventory](../platform/platform-inventory.md) · [Sequential queue](../tasks/sales-to-comms-sequential-queue.md)  
 **Runtime branch:** `feat/adr-035-module-pipeline-canon` (K1 `dd1ff6b4` · K2 `a1f391be` · K3 `6df2f2ff`)
 
 > Check that a **new module can assemble a screen from the Core Platform Kit**  
@@ -21,8 +21,8 @@
 | **Date** | 2026-08-13 |
 | **Result** | Core Platform Kit public APIs exist. This gate closes **Platform Baseline v1**. Phase B may start **only as a consumer** of the kit |
 | **Platform Baseline** | **v1** — `DataTable` · `ListWorkspace` · `EntityWorkspace` · Analytics families (`components/analytics`) |
-| **Immediate next** | Platform Inventory (living kit catalog — not an ADR, not a canon). Then Meta Intake Completeness ([#222](https://github.com/igortatarynovich/HostFlow/pull/222)) |
-| **Next Product Track** | **Meta Intake Completeness** — after Inventory; product PRs consume Baseline v1 |
+| **Inventory** | [platform-inventory.md](../platform/platform-inventory.md) — living kit catalog |
+| **Next Product Track** | **Meta Intake Completeness** ([#222](https://github.com/igortatarynovich/HostFlow/pull/222)); product PRs consume Baseline v1 |
 | **Not outcome** | Clean `PASS` (remaining lists/dashboards migrate-on-touch; enforcement is PR checklist, not an AST scanner) · `STOP` (completion bar holds in runtime) |
 
 **Rationale:** K1 `DataTable`, K2 `ListWorkspace` (Vacancies cutover), K3 `EntityWorkspace` Shell, and ADR-046 families in `components/analytics` are **Platform Baseline v1** — the legal imports for **new** screens. Existing Candidates list, other operational tables, and non-reference dashboards stay migrate-on-touch (Optimization). Candidate/HR/Vacancy/Recruitment Workspace were **not** extracted (two-consumer rule).
@@ -74,9 +74,7 @@ Review: [architecture-review-checklist.md](../architecture/architecture-review-c
 
 ## What Phase B must do
 
-New Stage 3 / Meta **product** screens compose **Platform Baseline v1**: `ListWorkspace` + `DataTable`, `EntityWorkspace` (or the passport Shell adapter), and `components/analytics`. They do not invent a fifth card shell, a sixth operational table, or a module-only KPI tile.
-
-Do **not** open Meta code in the same change-set as this gate. Next: Platform Inventory (one living catalog of the kit). Then Meta.
+New Stage 3 / Meta **product** screens compose **Platform Baseline v1**. Legal imports: [Platform Inventory](../platform/platform-inventory.md). They do not invent a fifth card shell, a sixth operational table, or a module-only KPI tile.
 
 Existing Candidate card / list remain migrate-on-touch.
 
@@ -84,4 +82,4 @@ Existing Candidate card / list remain migrate-on-touch.
 
 ## History
 
-- 2026-08-13: **PASS_WITH_CONSTRAINTS**. Names **Platform Baseline v1**. Immediate next = Platform Inventory; then Meta Intake as consumer.
+- 2026-08-13: **PASS_WITH_CONSTRAINTS**. Names **Platform Baseline v1**. Inventory: [platform-inventory.md](../platform/platform-inventory.md). Product Track → Meta as consumer.

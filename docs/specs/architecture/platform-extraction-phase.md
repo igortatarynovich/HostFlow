@@ -45,7 +45,7 @@ This does **not** rewrite Phases A–G on the horizon roadmap. It inserts a **ma
 Architecture → Vocabulary Canon → Platform Extraction → Phase B → Phase C → Phase D → …
 ```
 
-A2 (2026-08-03) opened Phase B. Vocabulary Canon then ran as an architecture track. This document inserted extraction before Phase B code. The [Kit Gate](../gates/platform-extraction-kit-gate.md) is **PASS_WITH_CONSTRAINTS** and closes **Platform Baseline v1** (`DataTable` · `ListWorkspace` · `EntityWorkspace` · Analytics families). Phase B **consumes** that baseline. Immediate next (not a second Extraction phase): Platform Inventory, then Meta.
+A2 (2026-08-03) opened Phase B. Vocabulary Canon then ran as an architecture track. This document inserted extraction before Phase B code. The [Kit Gate](../gates/platform-extraction-kit-gate.md) is **PASS_WITH_CONSTRAINTS** and closes **Platform Baseline v1** (`DataTable` · `ListWorkspace` · `EntityWorkspace` · Analytics families). Index: [platform-inventory.md](../platform/platform-inventory.md). Phase B **consumes** that baseline.
 
 ```text
 Architecture     → principles and ownership
@@ -225,6 +225,7 @@ Then Rule 5 applies to every later product PR. Constraints (migrate-on-touch lis
 ## Cross-references
 
 - Kit Gate: [platform-extraction-kit-gate.md](../gates/platform-extraction-kit-gate.md)
+- Inventory: [platform-inventory.md](../platform/platform-inventory.md)
 - Horizon: [platform-completion-roadmap.md](platform-completion-roadmap.md)
 - Near-term queue: [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md)
 - Kit epic: [ui-platform-composition-epic.md](../tasks/ui-platform-composition-epic.md)
@@ -235,6 +236,7 @@ Then Rule 5 applies to every later product PR. Constraints (migrate-on-touch lis
 
 ## History
 
+- 2026-08-13: **Platform Inventory** — [platform-inventory.md](../platform/platform-inventory.md).
 - 2026-08-13: **Kit Gate PASS_WITH_CONSTRAINTS** — [gate](../gates/platform-extraction-kit-gate.md). Closes **Platform Baseline v1**. Immediate next = Platform Inventory; then Meta as consumer.
 - 2026-08-13: **K3** public `EntityWorkspace` (`components/ui`). Passport Shell is an adapter. Candidate Workspace not extracted.
 - 2026-08-13: Hard rules 1–5 (Kit Gate, two-consumer extract, closed completion bar, no second Vocabulary Canon, no local UI when the kit has it).

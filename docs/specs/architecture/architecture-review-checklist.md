@@ -60,7 +60,7 @@
 
 ## L2 operating — UI Kit Gate (not an L0 P-rule)
 
-SoT: [`platform-extraction-phase.md`](platform-extraction-phase.md) · gate [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md) (`PASS_WITH_CONSTRAINTS`). Does **not** amend L0.
+SoT: [`platform-extraction-phase.md`](platform-extraction-phase.md) · gate [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md) (`PASS_WITH_CONSTRAINTS`) · inventory [`../platform/platform-inventory.md`](../platform/platform-inventory.md). Does **not** amend L0.
 
 For PRs that add or change **product UI** after the Core Platform Kit public APIs exist:
 

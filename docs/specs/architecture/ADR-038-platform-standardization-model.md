@@ -126,7 +126,7 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 **Actions:** **done** — [`ADR-047`](ADR-047-actions.md) · [`../platform/actions.md`](../platform/actions.md). Confirmed Documents/Activity/PE slice; **3A-3 runtime** and CRM public actions **deferred**.
 
-**Next after Vocabulary Canon:** [Platform Extraction](platform-extraction-phase.md) — Core Platform Kit runtime **done**; [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS**. Next = Phase B Meta / Stage 3. **Not** Events inventory, **not** ADR-045.
+**Next after Vocabulary Canon:** [Platform Extraction](platform-extraction-phase.md) — Core Platform Kit runtime **done**; [Kit Gate](../gates/platform-extraction-kit-gate.md) **PASS_WITH_CONSTRAINTS** (**Platform Baseline v1**). Catalog: [`../platform/platform-inventory.md`](../platform/platform-inventory.md). Next = Phase B Meta / Stage 3. **Not** Events inventory, **not** ADR-045.
 
 DocumentType alignment and Field/Forms DataType adoption remain separate PRs (Forms C / Documents E). Events runtime = ADR-019 **3A-1** when a real consumer exists.
 

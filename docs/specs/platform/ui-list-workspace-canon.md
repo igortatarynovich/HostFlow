@@ -6,7 +6,8 @@
 **Parent composition:** [`ADR-043`](../architecture/ADR-043-ui-component-composition-canon.md) · [`ui-component-canon.md`](ui-component-canon.md)  
 **Visual child:** [`../frontend/TABLE_V1.md`](../frontend/TABLE_V1.md) (Candidates frame)  
 **Owner:** Frontend platform  
-**Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) (Core Platform Kit / ListWorkspace stream) · [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md)
+**Epic:** [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) (Core Platform Kit / ListWorkspace stream) · [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md)  
+**What to import:** [`platform-inventory.md`](platform-inventory.md)
 
 ---
 
