@@ -36,15 +36,12 @@ def resolve_dashboard_assignee_id(
     assignee_scope: str,
     viewer_id: str,
     viewer_role: str,
+    preset_id: str | None = None,
 ) -> str | None:
+    from backend.app.auth.trust_roles import can_use_team_assignee_scope
+
     scope = (assignee_scope or "team").strip().lower()
-    role = (viewer_role or "").strip().lower()
-    if scope == "team" and role in (
-        "administrator",
-        "supervisor",
-        "hr_officer",
-        "superadmin",
-    ):
+    if scope == "team" and can_use_team_assignee_scope(viewer_role, preset_id):
         return None
     return str(viewer_id).strip()
 
@@ -134,6 +131,7 @@ async def list_operational_risk_items(
     horizon_days: int = 30,
     handoff_id: str | None = None,
     candidate_id: str | None = None,
+    preset_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return all v1 risk rows for the tenant scope (read-only)."""
     tid = str(tenant_id).strip()
@@ -142,7 +140,10 @@ async def list_operational_risk_items(
     today = now.date()
     items: list[dict[str, Any]] = []
     aid = resolve_dashboard_assignee_id(
-        assignee_scope=scope, viewer_id=viewer_id, viewer_role=viewer_role
+        assignee_scope=scope,
+        viewer_id=viewer_id,
+        viewer_role=viewer_role,
+        preset_id=preset_id,
     )
 
     # --- Pending handoffs past SLA (handoff + snapshot via inbox) ---
@@ -192,6 +193,7 @@ async def list_operational_risk_items(
         candidate_id=candidate_id,
         limit=500,
         offset=0,
+        preset_id=preset_id,
     )
     for row in miss_rows:
         if str(row.get("risk") or "") != "high":
@@ -226,6 +228,7 @@ async def list_operational_risk_items(
         candidate_id=candidate_id,
         limit=500,
         offset=0,
+        preset_id=preset_id,
     )
     for row in expired_rows:
         items.append(
@@ -258,6 +261,7 @@ async def list_operational_risk_items(
         candidate_id=candidate_id,
         limit=500,
         offset=0,
+        preset_id=preset_id,
     )
     for row in soon_rows:
         exp = row.get("expires_at")
@@ -446,6 +450,7 @@ async def build_risk_summary(
     assignee_scope: str,
     preview_cap: int = 8,
     horizon_days: int = 30,
+    preset_id: str | None = None,
 ) -> dict[str, Any]:
     """Compact risk block for ``GET /hr/dashboard/summary``."""
     all_items = await list_operational_risk_items(
@@ -457,6 +462,7 @@ async def build_risk_summary(
         horizon_days=horizon_days,
         handoff_id=None,
         candidate_id=None,
+        preset_id=preset_id,
     )
     by_code: dict[str, int] = {}
     by_severity: dict[str, int] = {"info": 0, "low": 0, "medium": 0, "high": 0, "critical": 0}
@@ -488,6 +494,7 @@ async def list_scored_risks_page(
     candidate_id: str | None,
     limit: int,
     offset: int,
+    preset_id: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     """Paginated operational risks for ``GET /hr/dashboard/high-risk``."""
     rows = await list_operational_risk_items(
@@ -499,6 +506,7 @@ async def list_scored_risks_page(
         horizon_days=horizon_days,
         handoff_id=handoff_id,
         candidate_id=candidate_id,
+        preset_id=preset_id,
     )
     total = len(rows)
     page = rows[max(0, offset) : max(0, offset) + max(1, min(limit, 200))]

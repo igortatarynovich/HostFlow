@@ -163,13 +163,70 @@ class CommunicationsPlanSnapshotOut(BaseModel):
 
 
 class CommunicationsRoleAccessSettings(BaseModel):
-    messages: List[str] = Field(default_factory=lambda: ["administrator", "supervisor", "recruiter", "client_manager", "client_processor"])
-    email: List[str] = Field(default_factory=lambda: ["administrator", "supervisor", "recruiter", "client_manager"])
-    calendar: List[str] = Field(default_factory=lambda: ["administrator", "supervisor", "recruiter", "client_manager"])
-    planner: List[str] = Field(default_factory=lambda: ["administrator", "supervisor", "recruiter", "client_manager"])
+    messages: List[str] = Field(
+        default_factory=lambda: [
+            "administrator",
+            "employee",
+            "viewer",
+            "supervisor",
+            "recruiter",
+            "client_manager",
+            "client_processor",
+        ]
+    )
+    email: List[str] = Field(
+        default_factory=lambda: [
+            "administrator",
+            "employee",
+            "viewer",
+            "supervisor",
+            "recruiter",
+            "client_manager",
+        ]
+    )
+    calendar: List[str] = Field(
+        default_factory=lambda: [
+            "administrator",
+            "employee",
+            "viewer",
+            "supervisor",
+            "recruiter",
+            "client_manager",
+        ]
+    )
+    planner: List[str] = Field(
+        default_factory=lambda: [
+            "administrator",
+            "employee",
+            "viewer",
+            "supervisor",
+            "recruiter",
+            "client_manager",
+        ]
+    )
     teamAvailability: List[str] = Field(default_factory=lambda: ["administrator", "supervisor"])
-    myAvailability: List[str] = Field(default_factory=lambda: ["administrator", "supervisor", "recruiter", "client_manager", "client_processor"])
-    timeOffRequests: List[str] = Field(default_factory=lambda: ["administrator", "supervisor", "recruiter", "client_manager", "client_processor"])
+    myAvailability: List[str] = Field(
+        default_factory=lambda: [
+            "administrator",
+            "employee",
+            "viewer",
+            "supervisor",
+            "recruiter",
+            "client_manager",
+            "client_processor",
+        ]
+    )
+    timeOffRequests: List[str] = Field(
+        default_factory=lambda: [
+            "administrator",
+            "employee",
+            "viewer",
+            "supervisor",
+            "recruiter",
+            "client_manager",
+            "client_processor",
+        ]
+    )
     communicationsAdmin: List[str] = Field(default_factory=lambda: ["administrator", "supervisor"])
 
 

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from backend.app.auth.deps import UserCtx, get_current_user
+from backend.app.auth.trust_roles import TrustRole, is_team_lead_org_actor, normalize_trust_role
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.db.candidate_operational_sql import sql_candidate_active_operational_pipeline
 from backend.app.models import Candidate, Reminder, Tenant
@@ -180,7 +181,10 @@ async def put_goals(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     ctx: UserCtx = Depends(get_current_user),
 ):
-    if str(ctx.role or "").lower() not in {"administrator", "superadmin", "admin", "supervisor", "owner"}:
+    trust = normalize_trust_role(ctx.role)
+    if trust not in {TrustRole.administrator.value, TrustRole.superadmin.value} and not is_team_lead_org_actor(
+        ctx.role, getattr(ctx, "preset_id", None)
+    ):
         raise HTTPException(status_code=403, detail="forbidden")
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)

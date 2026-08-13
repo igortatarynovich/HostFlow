@@ -8,7 +8,7 @@ import { actorSatisfiesRoleAllowlist, canUseTeamOverviewLane } from '../auth/tru
 
 export const ROLES_CAN_LOAD_FULL_COMMUNICATIONS_SETTINGS = new Set([
   'administrator',
-  'supervisor',
+  'supervisor', // legacy; team_lead employees match via canUseTeamOverviewLane
 ])
 
 export function roleMayLoadFullCommunicationsSettings(

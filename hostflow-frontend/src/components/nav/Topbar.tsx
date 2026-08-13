@@ -181,7 +181,7 @@ function isHttpForbidden(err: unknown): boolean {
 
 export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false }: TopbarProps) {
   const navigate = useNavigate()
-  const { can, isClientTenant } = usePermissions()
+  const { can, isClientTenant, rawRole, presetId } = usePermissions()
   const { canUseCommunicationsFeature, loading: commAccessLoading } = useCommunicationsAccess()
   const { locale, t } = useI18n()
   const { canReturnToPlatform, restorePlatformSession } = useAuth()
@@ -211,8 +211,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const pendingHandoffsRef = useRef(pendingHandoffsCount)
   pendingHandoffsRef.current = pendingHandoffsCount
   const canSearchTeamReminders = useMemo(() => {
-    return canUseTeamAssigneeScope({ role: me?.role })
-  }, [me?.role])
+    return canUseTeamAssigneeScope({ role: rawRole || me?.role, presetId })
+  }, [me?.role, presetId, rawRole])
   const canInboxDeepLink = useMemo(
     () => canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email'),
     [canUseCommunicationsFeature],

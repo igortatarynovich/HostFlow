@@ -164,6 +164,7 @@ async def list_activities(
         assignee_scope=assignee_scope,
         viewer_id=str(current_user.sub),
         viewer_role=str(current_user.role),
+        preset_id=getattr(current_user, "preset_id", None),
     )
     reminders = await reminder_tasks.list_reminders(
         db,

@@ -46,34 +46,73 @@ async def _resolve_manual_escalation_recipient_user_ids(
     target: Dict[str, Any],
 ) -> List[str]:
     """Resolve inbox manual-escalation recipients for Tasks + bell notifications."""
+    from backend.app.auth.trust_roles import (
+        TrustRole,
+        is_team_lead_org_actor,
+        normalize_trust_role,
+    )
+
     user_target = str(target.get("user_id") or "").strip()
     if user_target:
         return [user_target]
     queue_target = str(target.get("queue") or "").strip()
     role_target = str(target.get("role") or "").strip()
-    roles_to_query: List[str] = []
-    if queue_target:
-        roles_to_query = ["supervisor", "administrator"]
-    elif role_target:
-        canon = _canonical_membership_role_for_escalation(role_target)
-        if canon:
-            roles_to_query = [canon]
-    if not roles_to_query:
+    if not queue_target and not role_target:
         return []
+
     stmt = (
-        sa.select(User.id)
+        sa.select(User)
         .distinct()
         .join(user_memberships, user_memberships.c.user_id == User.id)
         .where(
             user_memberships.c.tenant_id == tenant_id,
-            user_memberships.c.role.in_(roles_to_query),
             User.is_active.is_(True),
             User.deleted_at.is_(None),
         )
-        .limit(25)
+        .limit(100)
     )
-    rows = (await db.execute(stmt)).scalars().all()
-    return [str(r) for r in rows if r]
+    users = (await db.execute(stmt)).scalars().all()
+    out: List[str] = []
+
+    def _match(user: User) -> bool:
+        role = str(getattr(user.role, "value", user.role) or "")
+        prefs = user.preferences if isinstance(user.preferences, dict) else {}
+        trust = normalize_trust_role(role)
+        if queue_target:
+            return trust in {
+                TrustRole.administrator.value,
+                TrustRole.superadmin.value,
+            } or is_team_lead_org_actor(role, preferences=prefs)
+        canon = _canonical_membership_role_for_escalation(role_target)
+        if not canon:
+            return False
+        if canon in {"administrator", "admin", "owner"}:
+            return trust in {
+                TrustRole.administrator.value,
+                TrustRole.superadmin.value,
+            }
+        if canon in {"supervisor", "manager", "team_lead", "lead"}:
+            return is_team_lead_org_actor(role, preferences=prefs) or trust in {
+                TrustRole.administrator.value,
+                TrustRole.superadmin.value,
+            }
+        if canon in {"employee", "recruiter", "hr", "hr_officer"}:
+            return trust in {
+                TrustRole.employee.value,
+                TrustRole.administrator.value,
+                TrustRole.superadmin.value,
+            }
+        # Exact membership role string match (legacy rows / explicit trust keys).
+        mem_role = str(getattr(user, "role", "") or "").strip().lower()
+        # Prefer membership table role when present on joined row — fall back to user.role.
+        return mem_role == canon or trust == canon
+
+    for user in users:
+        if _match(user):
+            out.append(str(user.id))
+        if len(out) >= 25:
+            break
+    return out
 
 
 async def _emit_manual_thread_escalation_bridge(

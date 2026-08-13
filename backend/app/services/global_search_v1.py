@@ -780,6 +780,7 @@ async def _search_tasks_slice(
             assignee_scope=assignee_scope,
             viewer_id=str(getattr(current_user, "sub", "") or "").strip(),
             viewer_role=str(getattr(current_user, "role", "") or ""),
+            preset_id=getattr(current_user, "preset_id", None),
         )
         rows = await reminder_tasks.list_reminders(
             db,

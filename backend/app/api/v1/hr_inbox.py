@@ -12,6 +12,12 @@ from backend.app.api.v1.reminders_v2 import ReminderListResponse, ReminderOut
 from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
 from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.auth.hr_workforce_access import require_hr_workforce_module_access
+from backend.app.auth.trust_roles import (
+    TrustRole,
+    is_hr_workspace_actor,
+    is_team_lead_org_actor,
+    normalize_trust_role,
+)
 from backend.app.constants.hr_task_types import HR_TASK_TYPES
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import reminder_tasks
@@ -127,14 +133,14 @@ def _hr_assignee_scope_resolve(
     assignee_scope: str,
     viewer_id: str,
     viewer_role: str,
+    preset_id: str | None = None,
 ) -> str | None:
     scope = (assignee_scope or "mine").strip().lower()
-    role = (viewer_role or "").strip().lower()
-    if scope == "team" and role in (
-        "administrator",
-        "supervisor",
-        "hr_officer",
-        "superadmin",
+    trust = normalize_trust_role(viewer_role)
+    if scope == "team" and (
+        trust in {TrustRole.administrator.value, TrustRole.superadmin.value}
+        or is_team_lead_org_actor(viewer_role, preset_id)
+        or is_hr_workspace_actor(viewer_role, preset_id)
     ):
         return None
     return str(viewer_id).strip()
@@ -223,6 +229,7 @@ async def hr_tasks(
         assignee_scope=assignee_scope,
         viewer_id=str(current_user.sub),
         viewer_role=str(current_user.role),
+        preset_id=getattr(current_user, "preset_id", None),
     )
     reminders = await reminder_tasks.list_reminders(
         db,
@@ -277,6 +284,7 @@ async def hr_documents_hub(
         horizon_days=hz,
         limit=limit,
         offset=offset,
+        preset_id=getattr(current_user, "preset_id", None),
     )
     return HrDocumentHubListOut(
         total=total,
@@ -311,6 +319,7 @@ async def hr_documents_missing(
         candidate_id=candidate_id,
         limit=limit,
         offset=offset,
+        preset_id=getattr(current_user, "preset_id", None),
     )
     return HrDocumentQueueListOut(
         total=total,
@@ -350,6 +359,7 @@ async def hr_documents_expiring(
         candidate_id=candidate_id,
         limit=limit,
         offset=offset,
+        preset_id=getattr(current_user, "preset_id", None),
     )
     return HrDocumentQueueListOut(
         total=total,

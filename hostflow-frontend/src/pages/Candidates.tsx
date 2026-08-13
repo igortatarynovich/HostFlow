@@ -204,13 +204,17 @@ export default function Candidates(){
   // items/total/loading/errorText/listInsights are managed by SSOT hook.
 
   const { me: meForWorkPanel } = useAuth()
+  const { rawRole: workPanelRawRole, presetId: workPanelPresetId } = usePermissions()
   const tenantIdForWorkPanel = useCurrentTenantId()
   const tenantScopeKeyForWorkPanel = (tenantIdForWorkPanel ?? meForWorkPanel?.tenant_id)
     ? String(tenantIdForWorkPanel ?? meForWorkPanel?.tenant_id)
     : 'default'
   const canUseTeamWorkPanelAssigneeScope = useMemo(() => {
-    return canUseTeamAssigneeScope({ role: meForWorkPanel?.role })
-  }, [meForWorkPanel?.role])
+    return canUseTeamAssigneeScope({
+      role: workPanelRawRole || meForWorkPanel?.role,
+      presetId: workPanelPresetId,
+    })
+  }, [meForWorkPanel?.role, workPanelPresetId, workPanelRawRole])
   const [workPanelAssigneeScope, setWorkPanelAssigneeScopeState] = useState<'mine' | 'team'>('mine')
   useEffect(() => {
     try {

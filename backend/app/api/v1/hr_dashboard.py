@@ -118,6 +118,7 @@ async def hr_dashboard_summary(
         viewer_id=str(current_user.sub),
         viewer_role=str(current_user.role),
         assignee_scope=assignee_scope,
+        preset_id=getattr(current_user, "preset_id", None),
     )
     rs = raw["risk_summary"]
     return HrDashboardSummaryOut(
@@ -158,6 +159,7 @@ async def hr_dashboard_high_risk(
         candidate_id=candidate_id,
         limit=limit,
         offset=offset,
+        preset_id=getattr(current_user, "preset_id", None),
     )
     return HrDashboardHighRiskOut(
         schema_version=2,
@@ -183,6 +185,7 @@ async def hr_dashboard_workload(
         viewer_role=str(current_user.role),
         assignee_scope=assignee_scope,
         limit_per_group=tasks_per_assignee,
+        preset_id=getattr(current_user, "preset_id", None),
     )
     return HrDashboardWorkloadOut(
         schema_version=1,
@@ -207,6 +210,7 @@ async def hr_dashboard_compliance(
         viewer_role=str(current_user.role),
         assignee_scope=assignee_scope,
         preview_cap=preview_cap,
+        preset_id=getattr(current_user, "preset_id", None),
     )
     return HrDashboardComplianceOut(
         schema_version=1,

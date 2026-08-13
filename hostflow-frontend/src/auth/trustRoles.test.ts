@@ -66,9 +66,9 @@ describe('trustRoles ADR-036', () => {
 
   it('resolves permission personas from trust + preset', () => {
     expect(resolvePermissionPersona({ role: 'employee', presetId: 'team_lead' })).toBe(
-      'supervisor',
+      'team_lead',
     )
-    expect(resolvePermissionPersona({ role: 'employee', presetId: 'hr' })).toBe('hr_officer')
+    expect(resolvePermissionPersona({ role: 'employee', presetId: 'hr' })).toBe('hr')
     expect(resolvePermissionPersona({ role: 'viewer', accessContext: 'portal' })).toBe(
       'client_processor',
     )

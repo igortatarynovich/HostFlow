@@ -324,7 +324,7 @@ export default function RiskIntelSettingsPage() {
                 value={digestRolesRaw}
                 onChange={(e) => setDigestRolesRaw(e.target.value)}
                 disabled={!isAdmin}
-                placeholder="administrator, supervisor"
+                placeholder="administrator, employee"
               />
             </label>
           </div>

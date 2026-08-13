@@ -23,7 +23,14 @@ import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyFormHintError, getFriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 
-const DEFAULT_ESCALATION_ROLE_OPTIONS = ['administrator', 'employee', 'supervisor', 'admin', 'manager'] as const
+const DEFAULT_ESCALATION_ROLE_OPTIONS = [
+  'administrator',
+  'employee',
+  'team_lead',
+  'supervisor',
+  'admin',
+  'manager',
+] as const
 const DEFAULT_ESCALATION_QUEUE_OPTIONS = ['priority', 'manual_review', 'supervisor_desk'] as const
 
 type Props = {
@@ -50,7 +57,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh, run
   const [escalationModalOpen, setEscalationModalOpen] = useState(false)
   const [escalationReasonDraft, setEscalationReasonDraft] = useState('')
   const [escalationTargetTypeDraft, setEscalationTargetTypeDraft] = useState<'role' | 'queue' | 'user'>('role')
-  const [escalationTargetValueDraft, setEscalationTargetValueDraft] = useState('supervisor')
+  const [escalationTargetValueDraft, setEscalationTargetValueDraft] = useState('team_lead')
   const [escalationRoleOptions, setEscalationRoleOptions] = useState<string[]>([...DEFAULT_ESCALATION_ROLE_OPTIONS])
   const [escalationQueueOptions, setEscalationQueueOptions] = useState<string[]>([...DEFAULT_ESCALATION_QUEUE_OPTIONS])
   const [managerOptions, setManagerOptions] = useState<ManagerOption[]>([])
@@ -115,7 +122,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh, run
 
   useEffect(() => {
     if (escalationTargetTypeDraft === 'role') {
-      const fallback = escalationRoleOptions[0] || 'supervisor'
+      const fallback = escalationRoleOptions[0] || 'team_lead'
       if (!escalationRoleOptions.includes(escalationTargetValueDraft)) {
         setEscalationTargetValueDraft(fallback)
       }
@@ -504,7 +511,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh, run
             onClick={() => {
               setEscalationReasonDraft('')
               setEscalationTargetTypeDraft('role')
-              setEscalationTargetValueDraft(String(escalationRoleOptions[0] || 'supervisor'))
+              setEscalationTargetValueDraft(String(escalationRoleOptions[0] || 'team_lead'))
               setEscalationModalOpen(true)
             }}
           >

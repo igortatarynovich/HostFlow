@@ -774,9 +774,13 @@ async def _check_document_edit_permission(
         return None
     role_l = str(getattr(current_user, "role", "") or "").strip().lower() if current_user else ""
     or_s = str(override_reason or "").strip()
-    if can_override_recruitment_handoff_lock(role_l) and or_s:
+    if can_override_recruitment_handoff_lock(
+        role_l, getattr(current_user, "preset_id", None) if current_user else None
+    ) and or_s:
         return {"lock_reason": lock_reason or "handoff", "override_reason": or_s}
-    if is_hr_workspace_actor(role_l) and await agency_candidate_has_internal_hr_handoff_lane(
+    if is_hr_workspace_actor(
+        role_l, getattr(current_user, "preset_id", None) if current_user else None
+    ) and await agency_candidate_has_internal_hr_handoff_lane(
         db, agency_tenant_id=tenant_id_str, candidate_id=candidate_id_str
     ):
         return {"lock_reason": lock_reason or "handoff", "override_reason": "internal_hr_handoff_lane"}

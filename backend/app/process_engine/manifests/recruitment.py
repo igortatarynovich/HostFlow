@@ -195,7 +195,7 @@ def recruitment_module_manifest() -> dict[str, Any]:
             "scope": "both",
             "config": {
                 "relaxable": ["document_type_code"],
-                "approval_roles": ["supervisor", "administrator"],
+                "approval_roles": ["administrator", "team_lead"],
                 "legacy_storage": "candidate_pipeline_overrides",
             },
         },

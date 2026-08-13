@@ -93,7 +93,9 @@ async def _ensure_candidate_write(
         agency_tenant_id=tenant_id,
         candidate_id=candidate_id,
     )
-    if locked and not can_override_recruitment_handoff_lock(role):
+    if locked and not can_override_recruitment_handoff_lock(
+        role, getattr(user, "preset_id", None)
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Recruitment locked ({lock_reason or 'handoff'}): requirement evidence cannot be changed",

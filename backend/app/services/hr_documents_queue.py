@@ -173,17 +173,15 @@ async def _snapshots_by_handoff(
     return {str(s.handoff_id): s for s in rows.scalars().all()}
 
 
-def _assignee_team_scope(assignee_scope: str, viewer_role: str) -> bool:
+def _assignee_team_scope(
+    assignee_scope: str,
+    viewer_role: str,
+    preset_id: str | None = None,
+) -> bool:
+    from backend.app.auth.trust_roles import can_use_team_assignee_scope
+
     scope = (assignee_scope or "mine").strip().lower()
-    role = (viewer_role or "").strip().lower()
-    if scope == "team" and role in (
-        "administrator",
-        "supervisor",
-        "hr_officer",
-        "superadmin",
-    ):
-        return True
-    return False
+    return scope == "team" and can_use_team_assignee_scope(viewer_role, preset_id)
 
 
 async def list_hr_documents_missing(
@@ -199,6 +197,7 @@ async def list_hr_documents_missing(
     candidate_id: str | None,
     limit: int,
     offset: int,
+    preset_id: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     from backend.app.services.hr_inbox import _workforce_employee_id_by_handoff
 
@@ -213,7 +212,7 @@ async def list_hr_documents_missing(
     snaps = await _snapshots_by_handoff(db, [h.id for h in handoffs])
     wf = await _workforce_employee_id_by_handoff(db, tenant_id=tenant_id, handoffs=handoffs)
 
-    team = _assignee_team_scope(assignee_scope, viewer_role)
+    team = _assignee_team_scope(assignee_scope, viewer_role, preset_id)
     viewer = str(viewer_id).strip()
 
     rows_out: list[dict[str, Any]] = []
@@ -335,6 +334,7 @@ async def list_hr_documents_expiring(
     candidate_id: str | None,
     limit: int,
     offset: int,
+    preset_id: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     from backend.app.services.hr_inbox import _workforce_employee_id_by_handoff
 
@@ -348,7 +348,7 @@ async def list_hr_documents_expiring(
         return [], 0
     snaps = await _snapshots_by_handoff(db, [h.id for h in handoffs])
     wf = await _workforce_employee_id_by_handoff(db, tenant_id=tenant_id, handoffs=handoffs)
-    team = _assignee_team_scope(assignee_scope, viewer_role)
+    team = _assignee_team_scope(assignee_scope, viewer_role, preset_id)
     viewer = str(viewer_id).strip()
     today = datetime.now(timezone.utc).date()
     horizon = max(1, min(int(horizon_days or 30), 365))

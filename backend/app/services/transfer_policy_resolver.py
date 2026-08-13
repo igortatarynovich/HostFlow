@@ -625,11 +625,11 @@ async def resolve_tenant_transfer_policy_summary(
             "candidate_overrides": {
                 "storage": "candidate_pipeline_overrides",
                 "scope_for_handoff": "both",
-                "approval_roles": ["supervisor", "administrator"],
+                "approval_roles": ["administrator", "team_lead"],
             },
             "recruiter_confirmations": {
                 "storage": f"candidate.extra.{RECRUITMENT_CONFIRMED_BLOCKS_EXTRA_KEY}",
-                "confirmed_by_role": "recruiter",
+                "confirmed_by_role": "employee",
             },
             "legacy_ruleset": {
                 "storage": "document_ruleset_versions",
@@ -645,11 +645,11 @@ async def resolve_tenant_transfer_policy_summary(
         "governance": {
             "enable_document_pack": ["tenant_administrator"],
             "document_type_override": ["tenant_administrator", "compliance_admin"],
-            "candidate_override_request": ["recruiter"],
-            "candidate_override_approve": ["supervisor", "administrator"],
+            "candidate_override_request": ["employee"],
+            "candidate_override_approve": ["administrator", "team_lead"],
             "handoff_route_config": ["agency_administrator"],
-            "recruiter_block_confirm": ["recruiter"],
-            "hr_final_accept": ["hr_officer"],
+            "recruiter_block_confirm": ["employee"],
+            "hr_final_accept": ["hr"],
             "platform_pack_change": ["platform_administrator"],
         },
     }

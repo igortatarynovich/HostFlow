@@ -213,8 +213,8 @@ export function resolvePermissionPersona(args: {
     return 'client_processor'
   }
   if (trust === 'viewer') return 'viewer'
-  if (preset === 'team_lead') return 'supervisor'
-  if (preset === 'hr') return 'hr_officer'
+  if (preset === 'team_lead') return 'team_lead'
+  if (preset === 'hr') return 'hr'
   if (preset === 'compliance') return 'compliance_officer'
   if (preset === 'recruiter') {
     if (args.isClientTenant) return 'client_processor'

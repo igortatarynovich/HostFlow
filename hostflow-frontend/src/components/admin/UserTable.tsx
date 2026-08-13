@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { AdminUser, UserRole } from '../../api/types'
+import { normalizeTrustRole } from '../../auth/trustRoles'
+import { trustRoleLabelKey } from '../../modules/users/constants'
 import { useI18n } from '../../i18n'
 
 type ActionKey = 'role' | 'activate' | 'deactivate' | 'revoke' | 'audit'
@@ -65,13 +67,13 @@ export function UserTable({
   const sortedUsers = useMemo(() => {
     const roleOrder: Record<string, number> = {
       administrator: 0,
-      supervisor: 1,
-      recruiter: 2,
-      viewer: 3,
+      employee: 1,
+      viewer: 2,
+      superadmin: 0,
     }
     return [...users].sort((a, b) => {
-      const aOrder = roleOrder[a.role] ?? 9
-      const bOrder = roleOrder[b.role] ?? 9
+      const aOrder = roleOrder[normalizeTrustRole(a.role)] ?? 9
+      const bOrder = roleOrder[normalizeTrustRole(b.role)] ?? 9
       if (aOrder !== bOrder) return aOrder - bOrder
       return (a.email || '').localeCompare(b.email || '')
     })
@@ -111,7 +113,7 @@ export function UserTable({
             const key = user.user_id || user.invite_id || user.email
             const pending = pendingMap[key]
             const isInviteOnly = !user.user_id
-            const roleValue = (user.role ?? 'viewer') as UserRole
+            const roleValue = normalizeTrustRole(user.role ?? 'viewer') as UserRole
             const statusKey = STATUS_LABELS[user.status ?? ''] ?? STATUS_LABELS.active
             const statusLabel = t(statusKey, { defaultValue: user.status ?? 'active' })
             const isSelected = Boolean(selectedUserId && user.user_id && selectedUserId === user.user_id)
@@ -143,12 +145,14 @@ export function UserTable({
                 <td className="px-4 py-3">
                   {isInviteOnly ? (
                     <span className="inline-flex items-center rounded bg-indigo-50 px-2 py-1 text-xs text-indigo-600">
-                      {t(ROLE_LABELS[roleValue] ?? roleValue)}
+                      {t(trustRoleLabelKey(user.role), {
+                        defaultValue: t(ROLE_LABELS[roleValue] ?? roleValue),
+                      })}
                     </span>
                   ) : (
                     <select
                       className="input text-sm"
-                      value={roleValue}
+                      value={roleValue === 'superadmin' ? 'administrator' : roleValue}
                       disabled={!!pending}
                       onClick={(event) => event.stopPropagation()}
                       onChange={(ev) =>
