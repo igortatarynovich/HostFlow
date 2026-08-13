@@ -230,7 +230,7 @@ async def test_client_processor_can_read_own_company_handoff_snapshot(
                 id=proc_id,
                 email=proc_email,
                 password_hash=hash_password("Test123!"),
-                role=UserRole.client_processor,
+                role=UserRole.employee,
                 short_id=f"P{uuid.uuid4().hex[:6]}",
                 full_name="Snapshot Client Processor",
                 tenant_id=tenant_id,

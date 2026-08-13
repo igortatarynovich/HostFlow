@@ -25,8 +25,8 @@ from backend.app.models.recruitment_application import RecruitmentApplication
 _LOCK_HANDOFF_DESTINATIONS = ("internal_hr", "client_portal", "client_account")
 _LOCK_HANDOFF_STATUSES = ("pending_review", "accepted", "completed")
 
-# API bypass: administrator / superadmin / team_lead (legacy supervisor via helper).
-RECRUITMENT_LOCK_OVERRIDE_ROLES = frozenset({"administrator", "supervisor", "superadmin"})
+# API bypass: administrator / superadmin (team_lead via can_override_recruitment_handoff_lock).
+RECRUITMENT_LOCK_OVERRIDE_ROLES = frozenset({"administrator", "superadmin"})
 
 
 def can_override_recruitment_handoff_lock(

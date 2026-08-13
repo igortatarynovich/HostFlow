@@ -428,7 +428,7 @@ class TransferPolicyResolver:
                         message=f"Recruiter must confirm reviewed block: {key}",
                         source_layer="recruiter_confirmation",
                         block_key=key,
-                        confirmed_by_role="recruiter",
+                        confirmed_by_role="employee",
                     )
                 )
 

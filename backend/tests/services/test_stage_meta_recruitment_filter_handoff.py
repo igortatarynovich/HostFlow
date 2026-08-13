@@ -23,7 +23,7 @@ async def test_recruitment_blocked_on_hidden_stage_when_enforcement_on(monkeypat
         AsyncMock(return_value=gates),
     )
 
-    user = SimpleNamespace(tenant_id="t1", role="recruiter")
+    user = SimpleNamespace(tenant_id="t1", role="employee")
     with pytest.raises(HTTPException) as ei:
         await mod.enforce_agency_handoff_stage_change_allowed(
             MagicMock(),
@@ -45,7 +45,7 @@ async def test_recruitment_allowed_when_stage_on_vacancy_funnel(monkeypatch: pyt
     )
 
     assert "permit_ordered" in RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES
-    user = SimpleNamespace(tenant_id="t1", role="recruiter")
+    user = SimpleNamespace(tenant_id="t1", role="employee")
     await mod.enforce_agency_handoff_stage_change_allowed(
         MagicMock(),
         tenant_id="t1",
@@ -66,7 +66,7 @@ async def test_recruitment_allowed_when_kill_switch_off(monkeypatch: pytest.Monk
     # Would fail if links were consulted; kill-switch returns before.
     monkeypatch.setattr(mod, "list_links_for_agency", AsyncMock(side_effect=AssertionError("should not list links")))
 
-    user = SimpleNamespace(tenant_id="t1", role="recruiter")
+    user = SimpleNamespace(tenant_id="t1", role="employee")
     await mod.enforce_agency_handoff_stage_change_allowed(
         MagicMock(),
         tenant_id="t1",

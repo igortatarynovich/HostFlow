@@ -38,10 +38,7 @@ _SALES_REVIEW_ROLES = frozenset(
         "admin",
         "administrator",
         "superadmin",
-        "manager",
-        "supervisor",
-        "team_lead",
-        "lead",
+        "team_lead",  # preset / escalation label (not a persisted User.role)
     }
 )
 

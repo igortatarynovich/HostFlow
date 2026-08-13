@@ -201,7 +201,7 @@ async def put_vacancy_recruiters(
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=(
-                    "Pool members must be active users with role=recruiter in this tenant. "
+                    "Pool members must be active users with role=employee in this tenant. "
                     f"Invalid: {', '.join(missing)}"
                 ),
             )

@@ -14,7 +14,7 @@ const blockedReport: TransferReadinessReportData = {
   missing_documents: ['work_permit'],
   pending_verification_documents: ['driver_license'],
   missing_data_fields: [{ field_code: 'phone', label: 'Phone' }],
-  required_confirmations: [{ block_key: 'Passport / ID', confirmed_by_role: 'recruiter' }],
+  required_confirmations: [{ block_key: 'Passport / ID', confirmed_by_role: 'employee' }],
   approved_overrides: ['visa'],
   source_layers: ['document_packs', 'recruitment_package', 'recruiter_confirmation'],
   blocking_reasons: [

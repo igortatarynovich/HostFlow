@@ -22,7 +22,7 @@ const SAMPLE_USERS: AdminUser[] = [
     user_id: 'u-2',
     invite_id: null,
     email: 'recruiter@example.com',
-    role: 'recruiter',
+    role: 'employee',
     status: 'active',
     is_active: true,
     full_name: 'Рекрутер',

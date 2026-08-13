@@ -65,7 +65,7 @@ async def _seed_user(db: AsyncSession, *, tenant_id: str) -> str:
             id=uid,
             email=f"fk-setnull-{uid[:8]}@hostflow.test",
             password_hash="x",
-            role=UserRole.recruiter,
+            role=UserRole.employee,
             tenant_id=tenant_id,
             is_active=True,
             full_name=f"FK SetNull {uid[:8]}",

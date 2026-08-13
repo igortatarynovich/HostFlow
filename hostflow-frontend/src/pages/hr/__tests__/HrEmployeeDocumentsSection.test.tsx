@@ -24,7 +24,7 @@ vi.mock('../../../utils/hrDocumentOpen', () => ({
 }))
 
 vi.mock('../../../store/useAuth', () => ({
-  useAuth: () => ({ me: { role: 'recruiter' } }),
+  useAuth: () => ({ me: { role: 'employee', preset_id: 'recruiter' } }),
 }))
 
 vi.mock('../../../components/Toast', () => ({

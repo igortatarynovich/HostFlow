@@ -178,7 +178,7 @@ def seeded_users():
                 "id": uid,
                 "email": emails[i],
                 "password_hash": f"dev-seed-{uid.replace('-', '')[:8]}",  # заглушка
-                "role": "recruiter",
+                "role": "employee",
                 "created_at": dt_ago(RND.randint(10, 60)),
                 "updated_at": dt_ago(RND.randint(1, 10)),
                 "short_id": uid.replace("-", "")[:8],
@@ -199,6 +199,7 @@ def seeded_users():
                         "language": "pl",
                         "notifications": {"email": True, "sms": False},
                         "ui": {"theme": "system", "density": "comfortable"},
+                        "preset_id": "recruiter",
                     }
                 ),
                 "supervisor_id": None,
@@ -445,7 +446,7 @@ def seed_memberships(conn, users, extra_memberships=None):
         text("DELETE FROM user_memberships WHERE tenant_id = :t"), {"t": TENANT_ID}
     )
     memberships = [
-        {"user_id": u["id"], "role": "recruiter"}
+        {"user_id": u["id"], "role": "employee"}
         for u in users
         if u.get("id")
     ]
@@ -463,7 +464,7 @@ def seed_memberships(conn, users, extra_memberships=None):
                 "id": m.get("id") or gen_uuid(),
                 "user_id": m["user_id"],
                 "tenant_id": TENANT_ID,
-                "role": m.get("role", "recruiter"),
+                "role": m.get("role", "employee"),
             },
         )
 
@@ -1371,7 +1372,7 @@ def main():
         # MEMBERSHIPS
         extra_memberships = []
         if admin_user:
-            extra_memberships.append({"user_id": admin_user["id"], "role": "owner"})
+            extra_memberships.append({"user_id": admin_user["id"], "role": "administrator"})
         seed_memberships(conn, users, extra_memberships=extra_memberships)
 
         services_catalog: list[dict[str, object]] = []

@@ -22,7 +22,7 @@ async def test_vacancy_recruiters_get_put_roundtrip(
             await session.execute(
                 sa.select(User.id)
                 .where(
-                    User.role == UserRole.recruiter,
+                    User.email == "recruiter@work-host.com",
                     User.is_active.is_(True),
                     User.deleted_at.is_(None),
                     sa.or_(User.tenant_id.is_(None), User.tenant_id == str(tenant_id)),

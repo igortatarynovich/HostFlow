@@ -85,6 +85,7 @@ async def _run(args: argparse.Namespace) -> int:
                 password=args.password,
                 supervisor_id=(args.supervisor_id or "").strip() or None,
                 company_ids=[args.company_id],
+                preset_id=(args.preset_id or "").strip() or None,
             )
             uid = entry["user_id"]
             if args.set_home_tenant:
@@ -137,10 +138,15 @@ def main() -> None:
     parser.add_argument("--full-name", default=None, help="Отображаемое имя")
     parser.add_argument(
         "--role",
-        default="supervisor",
-        help="Роль в тенанте: supervisor|administrator|recruiter|viewer|... (recruiter требует --supervisor-id)",
+        default="employee",
+        help="Trust role or legacy alias (default employee). Prefer --preset-id for job title.",
     )
-    parser.add_argument("--supervisor-id", default=None, help="UUID супервайзера (обязателен для role=recruiter)")
+    parser.add_argument(
+        "--preset-id",
+        default="team_lead",
+        help="ADR-036 preset (recruiter|team_lead|hr|compliance|portal_guest)",
+    )
+    parser.add_argument("--supervisor-id", default=None, help="UUID супервайзера (для preset=recruiter)")
     parser.add_argument("--tenant-id", default=DEFAULT_FOCUS_TENANT_ID, help="Focus Personnel tenant UUID")
     parser.add_argument(
         "--company-id",

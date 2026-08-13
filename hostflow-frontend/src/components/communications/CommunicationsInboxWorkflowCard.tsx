@@ -27,9 +27,6 @@ const DEFAULT_ESCALATION_ROLE_OPTIONS = [
   'administrator',
   'employee',
   'team_lead',
-  'supervisor',
-  'admin',
-  'manager',
 ] as const
 const DEFAULT_ESCALATION_QUEUE_OPTIONS = ['priority', 'manual_review', 'supervisor_desk'] as const
 

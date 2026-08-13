@@ -84,7 +84,8 @@ async def test_hr_operational_alerts_dry_run_counts_slots(
             session,
             tenant_id=tenant_id,
             viewer_id=bootstrap["hr_officer_id"],
-            viewer_role="hr_officer",
+            viewer_role="employee",
+            preset_id="hr",
             dry_run=True,
             actor_id=bootstrap["hr_officer_id"],
         )
@@ -139,7 +140,8 @@ async def test_hr_operational_alerts_dispatch_idempotent_window(
             s1,
             tenant_id=tenant_id,
             viewer_id=bootstrap["hr_officer_id"],
-            viewer_role="hr_officer",
+            viewer_role="employee",
+            preset_id="hr",
             dry_run=False,
             actor_id=bootstrap["hr_officer_id"],
         )
@@ -154,7 +156,8 @@ async def test_hr_operational_alerts_dispatch_idempotent_window(
             s2,
             tenant_id=tenant_id,
             viewer_id=bootstrap["hr_officer_id"],
-            viewer_role="hr_officer",
+            viewer_role="employee",
+            preset_id="hr",
             dry_run=False,
             actor_id=bootstrap["hr_officer_id"],
         )

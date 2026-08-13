@@ -512,16 +512,16 @@ export const DEFAULT_COMMUNICATIONS_SETTINGS: CommunicationsWorkspaceSettings = 
   },
   access: {
     roles: {
-      // Canonical trust roles; legacy strings kept for stored tenant overrides.
-      messages: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
-      email: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager'],
-      calendar: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager'],
-      planner: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager'],
-      // Lead-scoped: plain employee is not enough — see canUseTeamOverviewLane in useCommunicationsAccess.
-      teamAvailability: ['administrator', 'supervisor'],
-      myAvailability: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
-      timeOffRequests: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
-      communicationsAdmin: ['administrator', 'supervisor'],
+      // ADR-036 trust roles only (legacy strings in stored overrides still normalize).
+      messages: ['administrator', 'employee', 'viewer'],
+      email: ['administrator', 'employee', 'viewer'],
+      calendar: ['administrator', 'employee', 'viewer'],
+      planner: ['administrator', 'employee', 'viewer'],
+      // Lead-scoped: plain employee is not enough — see canUseTeamOverviewLane.
+      teamAvailability: ['administrator'],
+      myAvailability: ['administrator', 'employee', 'viewer'],
+      timeOffRequests: ['administrator', 'employee', 'viewer'],
+      communicationsAdmin: ['administrator'],
     },
     usersOverrides: {},
   },

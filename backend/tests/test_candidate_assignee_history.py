@@ -60,7 +60,7 @@ async def _seed_user(
     db: AsyncSession,
     *,
     tenant_id: str,
-    role: UserRole = UserRole.recruiter,
+    role: UserRole = UserRole.employee,
 ) -> str:
     uid = str(uuid.uuid4())
     db.add(

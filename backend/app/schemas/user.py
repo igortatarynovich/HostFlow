@@ -4,27 +4,38 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Literal, Optional, Sequence
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserRole(str, Enum):
-    """API request roles. Persist trust only; legacy labels coerce via normalize_assignable_role."""
+    """Persisted/API response trust roles (ADR-036). Job titles are presets, not roles."""
 
     administrator = "administrator"
     employee = "employee"
     viewer = "viewer"
-    # Legacy request aliases (not persisted as distinct system roles after ADR-036 Phase 3)
-    supervisor = "supervisor"
-    recruiter = "recruiter"
-    client_manager = "client_manager"
-    client_processor = "client_processor"
-    compliance_officer = "compliance_officer"
-    hr_officer = "hr_officer"
+
+
+def _coerce_response_trust_role(value: Any) -> str:
+    """Map legacy labels in responses to trust buckets (never emit job-title roles)."""
+    from backend.app.auth.trust_roles import normalize_trust_role
+
+    if isinstance(value, UserRole):
+        return value.value
+    trust = normalize_trust_role(str(value or ""))
+    if trust == "superadmin":
+        return UserRole.administrator.value
+    return trust
 
 
 class UserCreateInvite(BaseModel):
     email: EmailStr
-    role: UserRole
+    # Accept trust roles or legacy aliases; service coerces + infers preset_id.
+    role: str = Field(
+        ...,
+        description="Trust role or legacy alias (recruiter/supervisor/…); coerced on persist.",
+        min_length=1,
+        max_length=64,
+    )
     preset_id: str | None = Field(
         default=None,
         description="ADR-036 permission preset (recruiter/team_lead/hr/compliance/portal_guest).",
@@ -40,7 +51,12 @@ class UserCreateInvite(BaseModel):
 
 
 class UserUpdateRole(BaseModel):
-    role: UserRole
+    role: str = Field(
+        ...,
+        description="Trust role or legacy alias; coerced on persist.",
+        min_length=1,
+        max_length=64,
+    )
     preset_id: str | None = Field(default=None)
 
 
@@ -62,6 +78,11 @@ class UserOut(BaseModel):
     updated_at: datetime | None = None
     temporary_password: str | None = None
     company_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def _role_trust_only(cls, value: Any) -> str:
+        return _coerce_response_trust_role(value)
 
 
 class UserDetailOut(UserOut):
@@ -98,6 +119,11 @@ class UserInviteOut(BaseModel):
     supervisor_id: str | None = None
     company_ids: list[str] = Field(default_factory=list)
 
+    @field_validator("role", mode="before")
+    @classmethod
+    def _role_trust_only(cls, value: Any) -> str:
+        return _coerce_response_trust_role(value)
+
 
 class UserInviteAccept(BaseModel):
     token: str = Field(..., min_length=8, max_length=512)
@@ -122,7 +148,12 @@ class RefreshRevokeOut(BaseModel):
 
 class UserCreate(BaseModel):
     email: EmailStr
-    role: UserRole
+    role: str = Field(
+        ...,
+        description="Trust role or legacy alias; coerced on persist.",
+        min_length=1,
+        max_length=64,
+    )
     preset_id: str | None = Field(
         default=None,
         description="ADR-036 permission preset applied as user module overrides.",

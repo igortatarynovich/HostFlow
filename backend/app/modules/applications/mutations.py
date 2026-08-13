@@ -152,7 +152,7 @@ async def patch_sales_stage(
         stage_payload,
         db_tenant=(db, UUID(tenant_id)),
         current_user=current_user,
-        _role="recruiter",
+        _role="employee",
     )
     return await _reload_sales(db, tenant_id, own_company_id, application_id)
 
@@ -271,7 +271,7 @@ async def patch_recruitment_stage(
         stage_payload,
         db_tenant=(db, UUID(tenant_id)),
         current_user=current_user,
-        _role="recruiter",
+        _role="employee",
     )
     return await _reload_recruitment(db, tenant_id, application_id)
 

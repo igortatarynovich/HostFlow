@@ -85,7 +85,7 @@ def _sample_row(**overrides) -> RequirementEvaluationRow:
         ownership=RequirementOwnership(
             source_responsibility="candidate",
             operational_owner="candidate",
-            verification_role="recruiter",
+            verification_role="employee",
             acquisition_mode="upload",
         ),
         next_action=NextActionCode.upload_document,

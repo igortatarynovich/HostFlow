@@ -48,7 +48,7 @@ async def _seed_recruiter(
     *,
     tenant_id: str,
     is_active: bool = True,
-    role: UserRole = UserRole.recruiter,
+    role: UserRole = UserRole.employee,
 ) -> str:
     uid = str(uuid.uuid4())
     db.add(

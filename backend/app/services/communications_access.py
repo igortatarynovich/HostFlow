@@ -61,61 +61,17 @@ _FEATURE_TO_ROLE_KEY: Dict[CommFeature, str] = {
 _LEAD_SCOPED_FEATURES: frozenset[str] = frozenset({"teamAvailability", "communicationsAdmin"})
 
 # Keep aligned with frontend DEFAULT_COMMUNICATIONS_SETTINGS.access.roles.
-# Canonical trust roles + legacy aliases for stored tenant overrides.
+# Trust roles only (ADR-036). Legacy labels in stored tenant overrides still
+# normalize via _norm_role / actor_satisfies_role_allowlist bridges.
 _DEFAULT_ROLE_ACCESS: Dict[str, list[str]] = {
-    "messages": [
-        "administrator",
-        "employee",
-        "viewer",
-        "supervisor",
-        "recruiter",
-        "client_manager",
-        "client_processor",
-    ],
-    "email": [
-        "administrator",
-        "employee",
-        "viewer",
-        "supervisor",
-        "recruiter",
-        "client_manager",
-    ],
-    "calendar": [
-        "administrator",
-        "employee",
-        "viewer",
-        "supervisor",
-        "recruiter",
-        "client_manager",
-    ],
-    "planner": [
-        "administrator",
-        "employee",
-        "viewer",
-        "supervisor",
-        "recruiter",
-        "client_manager",
-    ],
-    "teamAvailability": ["administrator", "supervisor"],
-    "myAvailability": [
-        "administrator",
-        "employee",
-        "viewer",
-        "supervisor",
-        "recruiter",
-        "client_manager",
-        "client_processor",
-    ],
-    "timeOffRequests": [
-        "administrator",
-        "employee",
-        "viewer",
-        "supervisor",
-        "recruiter",
-        "client_manager",
-        "client_processor",
-    ],
-    "communicationsAdmin": ["administrator", "supervisor"],
+    "messages": ["administrator", "employee", "viewer"],
+    "email": ["administrator", "employee", "viewer"],
+    "calendar": ["administrator", "employee", "viewer"],
+    "planner": ["administrator", "employee", "viewer"],
+    "teamAvailability": ["administrator"],
+    "myAvailability": ["administrator", "employee", "viewer"],
+    "timeOffRequests": ["administrator", "employee", "viewer"],
+    "communicationsAdmin": ["administrator"],
 }
 
 

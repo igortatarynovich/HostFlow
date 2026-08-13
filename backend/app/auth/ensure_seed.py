@@ -454,7 +454,7 @@ async def ensure_auth_seed() -> None:
                         "id": str(uuid.uuid4()),
                         "user_id": user_id,
                         "tenant_id": DEFAULT_TENANT_ID,
-                        "role": "owner",
+                        "role": "administrator",
                         "created_at": now,
                         "updated_at": now,
                     },

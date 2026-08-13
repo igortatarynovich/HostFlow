@@ -164,70 +164,25 @@ class CommunicationsPlanSnapshotOut(BaseModel):
 
 class CommunicationsRoleAccessSettings(BaseModel):
     messages: List[str] = Field(
-        default_factory=lambda: [
-            "administrator",
-            "employee",
-            "viewer",
-            "supervisor",
-            "recruiter",
-            "client_manager",
-            "client_processor",
-        ]
+        default_factory=lambda: ["administrator", "employee", "viewer"]
     )
     email: List[str] = Field(
-        default_factory=lambda: [
-            "administrator",
-            "employee",
-            "viewer",
-            "supervisor",
-            "recruiter",
-            "client_manager",
-        ]
+        default_factory=lambda: ["administrator", "employee", "viewer"]
     )
     calendar: List[str] = Field(
-        default_factory=lambda: [
-            "administrator",
-            "employee",
-            "viewer",
-            "supervisor",
-            "recruiter",
-            "client_manager",
-        ]
+        default_factory=lambda: ["administrator", "employee", "viewer"]
     )
     planner: List[str] = Field(
-        default_factory=lambda: [
-            "administrator",
-            "employee",
-            "viewer",
-            "supervisor",
-            "recruiter",
-            "client_manager",
-        ]
+        default_factory=lambda: ["administrator", "employee", "viewer"]
     )
-    teamAvailability: List[str] = Field(default_factory=lambda: ["administrator", "supervisor"])
+    teamAvailability: List[str] = Field(default_factory=lambda: ["administrator"])
     myAvailability: List[str] = Field(
-        default_factory=lambda: [
-            "administrator",
-            "employee",
-            "viewer",
-            "supervisor",
-            "recruiter",
-            "client_manager",
-            "client_processor",
-        ]
+        default_factory=lambda: ["administrator", "employee", "viewer"]
     )
     timeOffRequests: List[str] = Field(
-        default_factory=lambda: [
-            "administrator",
-            "employee",
-            "viewer",
-            "supervisor",
-            "recruiter",
-            "client_manager",
-            "client_processor",
-        ]
+        default_factory=lambda: ["administrator", "employee", "viewer"]
     )
-    communicationsAdmin: List[str] = Field(default_factory=lambda: ["administrator", "supervisor"])
+    communicationsAdmin: List[str] = Field(default_factory=lambda: ["administrator"])
 
 
 class CommunicationsAccessSettings(BaseModel):

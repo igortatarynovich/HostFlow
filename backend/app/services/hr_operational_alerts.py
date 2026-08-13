@@ -230,6 +230,7 @@ async def dispatch_hr_operational_alerts(
     horizon_days: int = 90,
     dry_run: bool = False,
     actor_id: str | None = None,
+    preset_id: str | None = None,
 ) -> dict[str, Any]:
     """Evaluate HR operational risks and optionally emit throttled notifications + audit trail."""
     tid = str(tenant_id).strip()
@@ -242,6 +243,7 @@ async def dispatch_hr_operational_alerts(
         horizon_days=horizon_days,
         handoff_id=None,
         candidate_id=None,
+        preset_id=preset_id,
     )
 
     examined = len(risks)

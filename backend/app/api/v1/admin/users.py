@@ -138,7 +138,7 @@ async def create_user(
             tenant_id=tenant_id,
             actor_id=ctx.sub,
             email=payload.email,
-            role=payload.role.value,
+            role=str(payload.role),
             full_name=payload.full_name,
             short_id=payload.short_id,
             password=payload.password,
@@ -185,7 +185,7 @@ async def create_invite(
             tenant_id=tenant_id,
             actor_id=ctx.sub,
             email=payload.email,
-            role=payload.role.value,
+            role=str(payload.role),
             supervisor_id=payload.supervisor_id,
             company_ids=payload.company_ids,
             expires_in_hours=payload.expires_in_hours,
@@ -288,7 +288,7 @@ async def update_role(
             tenant_id=tenant_id,
             actor_id=ctx.sub,
             user_id=user_id,
-            role=payload.role.value,
+            role=str(payload.role),
             preset_id=payload.preset_id,
         )
         await db.commit()
