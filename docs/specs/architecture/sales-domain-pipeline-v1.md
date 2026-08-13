@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` @ `23656b54`+  
 **Kind:** L2 architecture seal (revision evidence — not a bug hunt)  
 **Parents:** [Phase 2 Flow Spec](../workflows/adr022-phase2-sales-only-capability-flow.md) · [Convert mapping](../tasks/sales-questionnaire-convert-mapping.md) · [Ambiguous match review](../tasks/sales-ambiguous-match-review.md) · [Traceability](../tasks/sales-inquiry-traceability.md) · [ADR-020](ADR-020-sales-to-engagement-commercial-model.md) · [ADR-023](ADR-023-recruitment-sales-module-separation.md)  
-**Next (locked queue):** Capability UI (`feat/sales-capability-ui`) → Manual ClientAccount create → Pipeline product wiring → Communication Stages 4–7 — see [`../tasks/sales-to-comms-sequential-queue.md`](../tasks/sales-to-comms-sequential-queue.md)
+**Next (locked queue):** Stage 3 slice 4 — [hard module separation](../tasks/stage-3-slice-4-hard-module-separation.md) — see [`../tasks/sales-to-comms-sequential-queue.md`](../tasks/sales-to-comms-sequential-queue.md)
 
 > This document records the Phase 2 revision. It seals what the four domain slices **own** as a coherent Sales Domain Pipeline v1, and lists **open product gaps** that must not be papered over before Marketing → Intake → CRM Client is claimed end-to-end.
 
@@ -56,7 +56,7 @@ These are **architecture follow-ups**, not silent exceptions:
 
 1. **Wire product convert** to `convert_sales_inquiry_mapping` (retire Sales spine use of Lead `convert-client` without review).  
 2. **Convert must consume Review SoT** (`match_existing` / `create_new`) — gate alone is insufficient.  
-3. **Demote Lead in Sales UI/API** to transport facade; SalesInquiry is product SoT — **Stage 3 slice 3** ([brief](../tasks/stage-3-sales-inquiry-product-flow.md)).  
+3. **Demote Lead in Sales UI/API** to transport facade; SalesInquiry is product SoT — **Stage 3 slice 3** ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224) ([brief](../tasks/stage-3-sales-inquiry-product-flow.md)). Mixed `/app/leads` leftover → **slice 4** ([brief](../tasks/stage-3-slice-4-hard-module-separation.md)).  
 4. **ClientAccount Creation Origins v1** — ✅ docs sealed (PR #94); runtime `create_client_account_manually` is Stage 2 of the locked queue.  
 5. **Capability UI** — display-only (Stage 1 of locked queue); UI must not invent domain decisions.
 

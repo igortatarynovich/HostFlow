@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-03 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta Intake Completeness on tip of Product stack ([#222](https://github.com/igortatarynovich/HostFlow/pull/222)). **Next after Meta:** Stage 3 slice 3 — [SalesInquiry product flow brief](stage-3-sales-inquiry-product-flow.md) (docs sealed; code feat after Meta merge). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
+> **2026-08-13 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta Intake Completeness [#222](https://github.com/igortatarynovich/HostFlow/pull/222) and Stage 3 slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) merged. **Product Track:** Stage 3 slice 4 — [hard module separation brief](stage-3-slice-4-hard-module-separation.md). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
 > C2.4 **frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Stage 3 slice 3** SalesInquiry product flow (`feat/stage-3-slice-3-sales-inquiry-product-flow`) — Meta #222 / brief #223 merged | Almost all capacity |
+| **Product** | **Stage 3 slice 4** hard module separation — [brief](stage-3-slice-4-hard-module-separation.md); slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) merged | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -45,8 +45,8 @@
 - **Epic C Complete Gate** ← **PASS_WITH_CONSTRAINTS** (2026-08-03) — [gate](../gates/epic-c-complete-gate.md)  
 - **A2 Platform Governance Review** ← **PASS_WITH_CONSTRAINTS** (2026-08-03) — [gate](../gates/platform-governance-review-a2.md)  
 - **Meta intake completeness** ← **MERGED** [#222](https://github.com/igortatarynovich/HostFlow/pull/222) — [meta-intake-completeness.md](meta-intake-completeness.md)  
-- **Stage 3 slice 3 — SalesInquiry product flow** ← **active** [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [brief](stage-3-sales-inquiry-product-flow.md)  
-- Stage 3 slice 4 — hard module separation — after slice 3; see also 3E deferred D1–D2
+- **Stage 3 slice 3 — SalesInquiry product flow** ← **MERGED** [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [brief](stage-3-sales-inquiry-product-flow.md)  
+- **Stage 3 slice 4 — hard module separation** ← **active** — [brief](stage-3-slice-4-hard-module-separation.md)
 
 ---
 
@@ -76,11 +76,11 @@
 | **8b** | **Compliance outbound (ADR-031)** | [compliance-outbound-pipeline-early-result](compliance-outbound-pipeline-early-result.md) | Early opaque result + RODO/ops binders; **Engineering track**; no SMTP bypass |
 | **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | ✅ **PASS_WITH_CONSTRAINTS** — [gate](../gates/platform-governance-review-a2.md) |
 | **10** | **Meta Intake Completeness** | `feat/meta-intake-completeness` | [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ✅ merged — answers + B2B naming |
-| **11** | **Stage 3 slice 3** SalesInquiry product flow | `feat/stage-3-slice-3-sales-inquiry-product-flow` | **active** [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [brief](stage-3-sales-inquiry-product-flow.md) |
-| **12** | Stage 3 slice 4 hard separation | after slice 3 | ADR-023 / R6 boundary |
+| **11** | **Stage 3 slice 3** SalesInquiry product flow | `feat/stage-3-slice-3-sales-inquiry-product-flow` | ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [brief](stage-3-sales-inquiry-product-flow.md) |
+| **12** | **Stage 3 slice 4** hard module separation | `docs/stage-3-slice-4-hard-module-separation` then `feat/…` | **active** — [brief](stage-3-slice-4-hard-module-separation.md); ADR-023 operational UI; not full R6 |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.**  
-**Active (Product):** Stage 3 slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224). Meta #222 merged.  
+**Active (Product):** Stage 3 slice 4 — [hard module separation](stage-3-slice-4-hard-module-separation.md). Slice 3 #224 merged.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -103,15 +103,15 @@
 **Slice 1 ✅** — [stage-3-sales-pipeline-product-wiring.md](stage-3-sales-pipeline-product-wiring.md) (PR #98)  
 **Slice 2 ✅** — [stage-3-sales-pipeline-convert-entrypoints.md](stage-3-sales-pipeline-convert-entrypoints.md) (PR #99)
 
-### Slice 3 — SalesInquiry product flow
+### Slice 3 — SalesInquiry product flow ✅
 
-**Brief sealed** — [stage-3-sales-inquiry-product-flow.md](stage-3-sales-inquiry-product-flow.md).  
-**Code:** `feat/stage-3-slice-3-sales-inquiry-product-flow` after Meta Intake Completeness merges.  
+**Merged** [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [brief](stage-3-sales-inquiry-product-flow.md).  
 Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 4.
 
 ### Slice 4 — hard module separation
 
-After slice 3. ADR-023 operational independence — do not mix into slice 3.
+**Active** — [stage-3-slice-4-hard-module-separation.md](stage-3-slice-4-hard-module-separation.md).  
+No dual Lead product entity; `/app/leads` is not a mixed inbox. Not Stage 5 settings. Not R6 table-cutover.
 
 ---
 
@@ -197,6 +197,7 @@ Next branch only after:
 - 2026-08-13: Product Track → **Stage 3 slice 3** [#224](https://github.com/igortatarynovich/HostFlow/pull/224); Meta #222 merged.  
 - 2026-08-03: **A2 PASS_WITH_CONSTRAINTS**; Product Track → **Meta Intake Completeness** (Phase B).  
 - 2026-08-03: **Epic C Complete Gate PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
+- 2026-08-13: Stage 3 slice 3 **✅ #224**; Product Track → **Stage 3 slice 4** hard module separation — [brief](stage-3-slice-4-hard-module-separation.md).  
 - 2026-08-03: Stage 6 **PR-4 ✅ #216**; Product Track → **Stage 6 PR-5 month buckets**.  
 - 2026-08-03: Stage 6 **PR-3 ✅ #215**; Product Track → **Stage 6 PR-4 portfolio**.  
 - 2026-08-03: Stage 6 **PR-2 ✅ #214**; Product Track → **Stage 6 PR-3 week buckets**.  
