@@ -14,7 +14,7 @@
 
 Index of canonical HostFlow UI families. Product modules **compose** these IDs. Local recreation of an existing ID is an architecture violation.
 
-This file does **not** lock pixel values, Figma, or chart palettes (ADR-046). It does **not** extract DataTable (ADR-044) or page templates (ADR-045).
+This file does **not** lock pixel values or Figma. Chart palettes and analytics families live in [`ui-analytics-canon.md`](ui-analytics-canon.md) (**ADR-046**). It does **not** extract DataTable (ADR-044) or page templates (ADR-045).
 
 ---
 
@@ -51,14 +51,16 @@ Row contract: `component_id` · `layer` · `status` · `runtime_today` · `notes
 
 `status`: `exists` (kit component usable) · `wrap` (CSS/legacy exists; React API is the P0 job) · `gap` (no canonical control yet).
 
+P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementation. Product pages still on className until migrate-on-touch.
+
 ### Foundation
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
-| `Color` | exists | `FOUNDATION_V1` + `brand.*` | Semantic UI colors only. Chart categories → ADR-046 |
+| `Color` | exists | `FOUNDATION_V1` + `brand.*` | Semantic UI colors only. Chart categories → [`ui-analytics-canon.md`](ui-analytics-canon.md) |
 | `Type` | exists | `FOUNDATION_V1` + `.app-ui` h1–h3 | Two type scales (CRM vs pipedesign) collapse into surface profiles, not a second Foundation |
 | `Spacing` | exists | `FOUNDATION_V1` 0–8 | — |
-| `Radius` | wrap | Tailwind + illegal `.app-ui !important` | Replace override with tokens (epic) |
+| `Radius` | exists | `--hf-radius-control` / `--hf-radius-surface`; CRM profile sets 0 | `.app-ui` descendant `!important` removed |
 | `Shadow` | exists | `FOUNDATION_V1` | — |
 | `Motion` | gap | ad-hoc transitions | No motion canon in this PR |
 
@@ -66,33 +68,33 @@ Row contract: `component_id` · `layer` · `status` · `runtime_today` · `notes
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
-| `Button` | wrap | `Button.tsx` + `.btn-*`; product pages use CSS | Public API = React; CSS inside |
-| `IconButton` | wrap | `variant="icon"` on Button + `.btn-icon` | Require accessible name |
-| `Input` | wrap | CSS `.input` only (INPUT_V1) | React wrapper allowed now that composition canon requires a kit API — does not reopen INPUT_V1 pixel debate |
-| `Textarea` | wrap | `.textarea` | Same as Input |
+| `Button` | exists | `Button.tsx` wraps `.btn-*` | Public API = React; CSS inside. Legacy `className="btn-primary"` until ratchet covers the file |
+| `IconButton` | exists | `IconButton.tsx` → `variant="icon"` | Accessible name required |
+| `Input` | exists | `Input.tsx` wraps `.input` | React wrapper allowed — does not reopen INPUT_V1 pixel debate |
+| `Textarea` | exists | `Textarea.tsx` wraps `.textarea` | Same as Input |
 | `Select` | wrap | `Combobox` / `MultiCombobox` + native `<select className="input">` | SELECT_V1 scenario tree still applies |
-| `Checkbox` | gap | native + `accent-color` | P0 |
-| `Radio` | gap | native | P0 |
-| `Switch` | gap | none | P0 |
+| `Checkbox` | exists | `Checkbox.tsx` (indeterminate supported) | — |
+| `Radio` | exists | `Radio.tsx` | — |
+| `Switch` | exists | `Switch.tsx` | Track/knob stay `rounded-full` |
 | `Badge` | wrap | `StatusBadge` + `.badge` + inline pills | Status meaning → StatusBadge only |
 | `Chip` | exists | `Chip.tsx` (3 consumers) | Promote usage; no fifth behavior without PR |
-| `Icon` | wrap | `PlatformIcon` unused; Tabler direct | Registry is the only new-import path |
+| `Icon` | wrap | `PlatformIcon` re-exported from kit barrel | Registry is the only new-import path |
 
 ### Composite
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
-| `SearchField` | gap | per-list inputs | P0 control; list contract in ADR-044 |
+| `SearchField` | exists | `SearchField.tsx` | List contract (filters/sort) still ADR-044 |
 | `FilterBar` | gap | Candidates / dashboard / pipeline one-offs | Was FILTER_BAR_V1 — now this ID |
-| `FormField` | wrap | dead `controls/Field.tsx` | Label + hint + error; replace `text-red-600` |
-| `Tabs` | wrap | `.tabs` / `.tab` CSS | P0 React |
-| `Modal` | wrap | `components/Modal.tsx` | Close control must be IconButton; MODAL_V1 not a separate canon |
+| `FormField` | exists | `FormField.tsx`; `controls/Field.tsx` is a legacy alias | Label + hint + error uses `text-rose-700` |
+| `Tabs` | exists | `Tabs.tsx` wraps `.tabs` / `.tab` | — |
+| `Modal` | exists | `components/Modal.tsx` close = `IconButton` | Re-exported from kit barrel |
 | `Dropdown` | wrap | `.dropdown` CSS | — |
-| `Pagination` | gap | mixed | P0 + ADR-044 policy |
-| `EmptyState` | wrap | `EmptyStatePanel` local classes | P0 |
+| `Pagination` | exists | `Pagination.tsx`; `EntityListPagination` wraps it | ADR-044 still owns list policy |
+| `EmptyState` | exists | `EmptyState.tsx`; `EmptyStatePanel` is a legacy alias | No Tabler in the kit |
 | `Toast` | wrap | `Toast.tsx` | — |
 | `DateField` | wrap | native `input type=date` | INPUT_V1 native until DateField ships |
-| `SemanticSurface` | gap | HR gradients / heroes | P0 expressiveness for ready/attention/blocked |
+| `SemanticSurface` | exists | `SemanticSurface.tsx` tones from StatusBadge palette | HR emphasis via tone, not gradients |
 
 ### Data
 
@@ -123,6 +125,22 @@ Row contract: `component_id` · `layer` · `status` · `runtime_today` · `notes
 | `SettingsPage` | wrap | settings shells | ADR-045 |
 | `OperationalQueuePage` | gap | inbox / HR queue / leads | ADR-045 |
 
+### Analytics (ADR-046)
+
+| component_id | status | runtime_today | notes |
+|--------------|--------|---------------|-------|
+| `KpiCard` | exists | `components/analytics` | Recruitment efficiency = canonical consumer |
+| `TrendChart` | exists | kit | line / area |
+| `FunnelChart` | exists | kit | conversion |
+| `BreakdownChart` | exists | kit | composition / distribution / breakdown |
+| `TargetProgress` | exists | kit | plan / capacity |
+| `AnalyticsTable` | exists | kit | not ADR-044 DataTable |
+| `InsightCard` | exists | kit | Insight → Action |
+| `AnalyticsFilterBar` | exists | kit | date + dimensions |
+| `AnalyticsEmptyState` | exists | kit | three empty kinds |
+
+Full families, palettes, and dashboard inventory: [`ui-analytics-canon.md`](ui-analytics-canon.md).
+
 ---
 
 ## 5. Child artifacts (no longer independent canons)
@@ -142,4 +160,6 @@ Do not open a new `*_V1` as a sibling canon. Extend this catalog.
 
 ## 6. History
 
+- 2026-08-13: **ADR-046** analytics families indexed; Recruitment efficiency is the reference implementation. DataTable / layouts still deferred.
 - 2026-08-13: Initial catalog under ADR-043. Runtime wrappers, DataTable extraction, layouts, visualization, and CI ratchet deferred to the epic / ADR-044…046.
+- 2026-08-13: P0 control-layer React APIs + radius tokens + lower-only CI ratchet (`npm run ui:kit:check`). DataTable / layouts still deferred.

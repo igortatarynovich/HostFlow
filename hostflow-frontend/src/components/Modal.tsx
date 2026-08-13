@@ -1,6 +1,7 @@
 import { useEffect, type PropsWithChildren } from 'react'
-import { IconX } from '@tabler/icons-react'
 import { useI18n } from '../i18n'
+import { IconButton } from './ui/IconButton'
+import { CloseGlyph } from './ui/kitGlyphs'
 
 const SIZE_CLASS: Record<'md' | 'lg' | 'xl' | '2xl', string> = {
   md: 'max-w-lg',
@@ -44,14 +45,13 @@ export function Modal({
             (surfaceClassName ? ` ${surfaceClassName}` : '')
           }
         >
-          <button
-            type="button"
-            className="absolute right-2 top-2 z-10 rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
+          <IconButton
+            className="absolute right-2 top-2 z-10 text-slate-500 hover:text-slate-900"
             onClick={onClose}
             aria-label={closeLabel}
           >
-            <IconX size={22} stroke={1.5} aria-hidden />
-          </button>
+            <CloseGlyph />
+          </IconButton>
           {title ? <h3 className="mb-4 pr-10 text-lg font-semibold leading-snug">{title}</h3> : null}
           {children}
         </div>

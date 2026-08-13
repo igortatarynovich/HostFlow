@@ -26,6 +26,8 @@
     "bundle:check": "node scripts/check-bundle-size.mjs",
     "foundation:check": "bash scripts/check-foundation-tokens.sh",
     "foundation:scan": "bash scripts/check-foundation-tokens.sh --scan",
+    "ui:kit:check": "python3 scripts/check_ui_kit_ratchet.py",
+    "ui:kit:report": "python3 scripts/check_ui_kit_ratchet.py --report",
     "qa:static": "python3 ../scripts/codegen/generate_crm_app_paths.py --check && npm run routes:check && npm run activation:check && npm run comm:gates:check && npm run module:permissions:check && npm run permissions:check && npm run i18n:check && npm run build",
     "generate:sitemap": "node scripts/generate-sitemap.mjs"
   },

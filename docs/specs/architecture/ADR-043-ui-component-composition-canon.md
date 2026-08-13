@@ -78,7 +78,7 @@ Do **not** make CRM and Marketing visually identical.
 
 `.app-ui *:not([class*='rounded-full']) { border-radius: 0 !important; }` is **prohibited going forward**. It breaks the component contract (Button claims `rounded-xl`, the shell secretly forbids it).
 
-If CRM must stay square, that is `--radius-control` / `--radius-surface` (or a surface variant) owned by the kit — not a descendant override. Runtime removal is an epic task, not this PR.
+If CRM must stay square, that is `--hf-radius-control` / `--hf-radius-surface` (or a surface variant) owned by the kit — not a descendant override. P0 runtime removed the `!important` rule and introduced the tokens.
 
 ### 5. Semantic expression is allowed — local invention is not
 
@@ -86,7 +86,7 @@ HR (and any module) may highlight ready / attention / blocked. They **must not**
 
 Catalog family: `SemanticSurface` with platform tones (`success` | `warning` | `danger` | `info` | `neutral` | `brand`). Color, border, icon, and background belong to the platform.
 
-Dashboard **categorical** colors are **not** Foundation semantic colors. They wait for **ADR-046** (Visualization Canon). Until then: map stage/status → semantic type first (`rejected` → `danger`), never a page-owned `#f97316`.
+Dashboard **categorical** colors are **not** Foundation semantic colors. They belong to **[ADR-046](ADR-046-analytics-visualization-canon.md)** (Analytics & Visualization Canon): three color spaces, meaning→family mapping, Insight → Action. Map stage/status → semantic type first (`rejected` → `danger`), never a page-owned `#f97316`.
 
 ### 6. Closed catalog (IDs)
 
@@ -128,7 +128,7 @@ Follow-on ADRs (separate PRs, same tree):
 
 - **ADR-044** — Data Presentation Canon (tables, search, sort, filters, pagination, bulk)
 - **ADR-045** — Layout & Page Template Canon
-- **ADR-046** — Visualization Canon (semantic UI colors ≠ chart category colors)
+- ~~**ADR-046** — Visualization Canon~~ **Done** — [`ADR-046`](ADR-046-analytics-visualization-canon.md) (analytics UI language; Recruitment efficiency = reference)
 
 ### 9. Enforcement — ratchet, not rewrite
 
@@ -142,11 +142,11 @@ Documentation without CI will drift again. After P0 components exist, CI ratchet
 - no new `rounded-*` outside kit implementation;
 - no new local control when a catalog equivalent exists.
 
-**Do not** rewrite all legacy first. Freeze today’s counts; each PR may only lower them. Runtime hooks are **out of scope** for this PR (docs-only, same pattern as ADR-037…042).
+**Do not** rewrite all legacy first. Freeze today’s counts; each PR may only lower them. The ADR itself was docs-only; P0 runtime (`npm run ui:kit:check`) lives in the composition epic.
 
-### 10. Runtime of this PR
+### 10. Runtime of this ADR document
 
-This ADR does **not** migrate pages, remove `.app-ui !important`, extract DataTable, or add CI ratchets.
+The ADR PR did **not** migrate product pages or extract DataTable. P0 follow-on (same epic): kit wrappers, radius tokens, removal of `.app-ui` descendant `!important`, and the lower-only CI ratchet.
 
 ---
 
@@ -154,7 +154,7 @@ This ADR does **not** migrate pages, remove `.app-ui !important`, extract DataTa
 
 - Visual restyle of `.btn-*` / brand palette
 - Marketing pixel-parity with CRM
-- Shipping ADR-044 / 045 / 046 in this PR
+- Shipping ADR-044 / 045 in this PR
 - Big-bang Tabler / hex / table cleanup
 - New L0 P-rule or UI capability Passport
 - Actions / Events vocabulary (ADR-038 areas 9–10)
@@ -163,9 +163,8 @@ This ADR does **not** migrate pages, remove `.app-ui !important`, extract DataTa
 
 ## Explicit next
 
-1. Epic P0 control wrappers — [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md).
-2. **ADR-044** Data Presentation Canon (one DataTable + list contract).
-3. ADR-038 Vocabulary **Actions / Events** may proceed **in parallel** (different group).
+1. **ADR-044** Data Presentation Canon (one DataTable + list contract) — P0 kit is in the composition epic.
+2. ADR-038 Vocabulary **Actions / Events** may proceed **in parallel** (different group).
 
 ---
 
@@ -176,15 +175,15 @@ This ADR does **not** migrate pages, remove `.app-ui !important`, extract DataTa
 - [x] INV-07 / two-module rule — second consumer promotes the pattern to platform
 - [x] ADR-011 not superseded; consumption contract amended
 - [x] L0 freeze untouched
-- [x] Area 13 Design & Interaction filled with a composition canon (SVL / viz colors deferred to ADR-046)
+- [x] Area 13 Design & Interaction filled with a composition canon (analytics language: ADR-046)
 
 ---
 
 ## Consequences
 
 - Positive: UI follows the same Platform-first rule as entities, types, relationships, and vocabulary; modules stop growing private UI languages; a year-later visual change has one kit surface.
-- Negative: until P0–P3 ship, legacy className and parallel tables remain legal under migrate-on-touch; CRM `!important` still exists in code.
-- Follow-on: P0 wrappers → ADR-044 → ratchet CI → layouts (045) → visualization (046).
+- Negative: until P1–P3 ship, legacy className and parallel tables remain legal under migrate-on-touch.
+- Follow-on: ADR-044 → layouts (045). Analytics language: [`ADR-046`](ADR-046-analytics-visualization-canon.md). P0 kit + ratchet are in the composition epic.
 
 ---
 

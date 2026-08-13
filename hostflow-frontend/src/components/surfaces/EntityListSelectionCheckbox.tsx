@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { Checkbox } from '../ui/Checkbox'
 
 export type EntityListSelectionCheckboxProps = {
   checked: boolean
@@ -16,18 +16,11 @@ export default function EntityListSelectionCheckbox({
   ariaLabel,
   className,
 }: EntityListSelectionCheckboxProps) {
-  const ref = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (ref.current) ref.current.indeterminate = indeterminate
-  }, [indeterminate])
-
   return (
-    <input
-      ref={ref}
-      type="checkbox"
-      className={className ?? 'h-4 w-4 rounded border-slate-300'}
+    <Checkbox
       checked={checked}
+      indeterminate={indeterminate}
+      className={className ?? 'h-4 w-4 border-slate-300'}
       aria-label={ariaLabel}
       onChange={(e) => onChange(e.target.checked)}
       onClick={(e) => e.stopPropagation()}

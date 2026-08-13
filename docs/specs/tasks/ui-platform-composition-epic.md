@@ -12,25 +12,26 @@ This is an **implementation epic**, not a new design-spec program. Do not start 
 
 Wrap current CSS where it exists. Product pages gain a React API; pixels stay.
 
-1. Button  
-2. IconButton  
-3. Checkbox  
-4. Radio  
-5. Switch  
-6. SearchField  
-7. Tabs  
-8. StatusBadge  
-9. Chip  
-10. PlatformIcon (only legal new icon import path)  
-11. Modal  
-12. EmptyState  
-13. Pagination  
-14. FormField  
-15. SemanticSurface (`success` / `warning` / `danger` / `info` / `neutral` / `brand`)
+- [x] Button  
+- [x] IconButton  
+- [x] Checkbox  
+- [x] Radio  
+- [x] Switch  
+- [x] SearchField  
+- [x] Tabs  
+- [x] StatusBadge  
+- [x] Chip  
+- [x] PlatformIcon (only legal new icon import path — re-exported from the kit barrel)  
+- [x] Modal  
+- [x] EmptyState  
+- [x] Pagination  
+- [x] FormField  
+- [x] SemanticSurface (`success` / `warning` / `danger` / `info` / `neutral` / `brand`)
 
-Then: baseline CI ratchets (hex, Tabler, intrinsic button, gradients, rounded) — **lower-only**.
+- [x] Baseline CI ratchets (hex, Tabler, intrinsic button, gradients, rounded) — **lower-only** (`npm run ui:kit:check`).  
+- [x] Remove `.app-ui` descendant `border-radius: 0 !important` in favor of `--hf-radius-control` / `--hf-radius-surface`.
 
-Remove `.app-ui` descendant `border-radius: 0 !important` in favor of radius tokens / surface variant (same P0 slice or immediately after wrappers).
+Public import: `hostflow-frontend/src/components/ui`. CSS className in product modules remains legal until migrate-on-touch.
 
 ---
 
@@ -52,9 +53,16 @@ Blocked on **ADR-045**. New modules pick `EntityListPage` / `EntityWorkspace` / 
 
 ---
 
+## P4 — Analytics kit (parallel to P0)
+
+Canon: [`ADR-046`](../architecture/ADR-046-analytics-visualization-canon.md) · L2 [`../platform/ui-analytics-canon.md`](../platform/ui-analytics-canon.md).
+
+Not a recolor. Dashboards assemble `KpiCard` / `TrendChart` / `FunnelChart` / `BreakdownChart` / `TargetProgress` / `AnalyticsTable` / `InsightCard` / `AnalyticsFilterBar`.
+
+**Reference (done):** Recruitment efficiency dashboard. **Migrate-on-touch:** Sales, HR, Finance, Fleet, Marketing, Overview widgets, lead conversion funnel.
+
 ## Parallel (not this epic’s first slice)
 
-- **ADR-046** Visualization Canon — dashboard category colors vs semantic UI colors.  
 - Marketing `surface.public` tokenisation of `#0B0E14` / pipedesign radii — after CRM P0.  
 - ADR-038 Actions / Events — different standardization group; may proceed in parallel.
 

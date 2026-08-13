@@ -12,6 +12,8 @@ on:
       - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
       - "hostflow-frontend/scripts/check_ts_import_integrity.py"
+      - "hostflow-frontend/scripts/check_ui_kit_ratchet.py"
+      - "hostflow-frontend/scripts/ui-kit-ratchet-baseline.json"
       - "scripts/repo_health_gate.py"
       - ".github/workflows/frontend-static-qa.yml"
       - ".github/workflows/security-gates.yml"
@@ -27,6 +29,8 @@ on:
       - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
       - "hostflow-frontend/scripts/check_ts_import_integrity.py"
+      - "hostflow-frontend/scripts/check_ui_kit_ratchet.py"
+      - "hostflow-frontend/scripts/ui-kit-ratchet-baseline.json"
       - "scripts/repo_health_gate.py"
       - ".github/workflows/frontend-static-qa.yml"
       - ".github/workflows/security-gates.yml"
@@ -65,6 +69,8 @@ jobs:
         env:
           # PR: compare vs target branch. Push: vs main. Override: FOUNDATION_DIFF_BASE.
           FOUNDATION_DIFF_BASE: origin/${{ github.event.pull_request.base.ref || 'main' }}
+      - name: UI kit ratchet (ADR-043 P0)
+        run: npm run ui:kit:check
       - name: Unit tests with coverage
         run: npm run test:coverage
       - name: Coverage gate (Phase 0 #7 — ratchet)
