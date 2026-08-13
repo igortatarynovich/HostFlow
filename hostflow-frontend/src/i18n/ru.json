@@ -7332,7 +7332,10 @@
           "questionnaire_received": "Анкета получена",
           "lead_received": "Обращение получено",
           "questionnaire_email": "Анкета отправлена",
-          "questionnaire_submitted": "Анкета получена"
+          "questionnaire_submitted": "Анкета получена",
+          "gdpr_notice": "Уведомление GDPR отправлено",
+          "gdpr_notice_failed": "Ошибка уведомления GDPR",
+          "system_event": "Системное событие"
         },
         "client": {
           "status_rejected": "Отклонён",

@@ -137,9 +137,12 @@ def _template_for_purpose(purpose: CompliancePurpose) -> CommunicationTemplateMe
 
 
 def purpose_for_ops_event(event_type: str) -> CompliancePurpose | None:
+    """Map recruitment-named ops hooks that Sales still owns (reject / moving forward).
+
+    ``application_received`` is recruitment-only. Sales must not send that ack or
+    inherit the ``lead.communication.application_received_sent`` audit event.
+    """
     ev = str(event_type or "").strip().lower()
-    if ev == "application_received":
-        return PURPOSE_SUBMISSION_ACK
     if ev == "lead_rejected":
         return PURPOSE_INTAKE_REJECTION
     if ev == "moving_forward":

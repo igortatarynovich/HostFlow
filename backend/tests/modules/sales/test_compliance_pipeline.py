@@ -9,7 +9,6 @@ import pytest
 
 from backend.app.modules.sales.communication.compliance_pipeline import (
     PURPOSE_GDPR_NOTICE,
-    PURPOSE_SUBMISSION_ACK,
     SalesCompliancePipelineError,
     ensure_sales_compliance_pipeline_binding,
     lead_is_sales_destination,
@@ -19,7 +18,7 @@ from backend.app.modules.sales.communication.compliance_pipeline import (
 
 
 def test_purpose_for_ops_event_mapping() -> None:
-    assert purpose_for_ops_event("application_received") == PURPOSE_SUBMISSION_ACK
+    assert purpose_for_ops_event("application_received") is None
     assert purpose_for_ops_event("lead_rejected") == "intake_rejection_notice"
     assert purpose_for_ops_event("moving_forward") == "moving_forward_notice"
     assert purpose_for_ops_event("unknown") is None

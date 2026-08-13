@@ -2,14 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { getLeadTimeline } from '../../api/client'
 import { useI18n } from '../../i18n'
-
-type TimelineItem = {
-  at: string
-  kind: string
-  source: string
-  title?: string | null
-  description?: string | null
-}
+import {
+  isSalesInquiryTimelineItemVisible,
+  salesInquiryTimelineDescription,
+  salesInquiryTimelineKindTitle,
+  type SalesInquiryTimelineItem,
+} from './salesInquiryTimeline'
 
 type Props = {
   leadId: string
@@ -33,41 +31,9 @@ function formatAt(iso: string | null | undefined, locale: string): string {
 /** Operator timeline: contact, questionnaire, calls, stage changes. */
 export default function SalesInquiryTimelineSection({ leadId, refreshToken = 0 }: Props) {
   const { t, locale } = useI18n()
-  const [items, setItems] = useState<TimelineItem[]>([])
+  const [items, setItems] = useState<SalesInquiryTimelineItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  const kindTitle = (kind: string, title: string | null | undefined) => {
-    const key = String(kind || '').trim()
-    if (key === 'lead_received') {
-      return t('app.leads.detail.timeline_kinds.lead_received', {
-        defaultValue: 'Inquiry received',
-      })
-    }
-    if (key === 'call_result') {
-      return t('app.leads.detail.timeline_kinds.call_result', { defaultValue: 'Call result' })
-    }
-    if (key === 'stage_changed') {
-      return t('app.leads.detail.timeline_kinds.stage_changed', { defaultValue: 'Stage changed' })
-    }
-    if (key === 'questionnaire_email') {
-      return t('app.leads.detail.timeline_kinds.questionnaire_email', {
-        defaultValue: 'Questionnaire sent',
-      })
-    }
-    if (key === 'questionnaire_submitted') {
-      return t('app.leads.detail.timeline_kinds.questionnaire_submitted', {
-        defaultValue: 'Questionnaire received',
-      })
-    }
-    const raw = String(title || '').trim()
-    if (raw === 'lead.received' || raw === 'lead.created') {
-      return t('app.leads.detail.timeline_kinds.lead_received', {
-        defaultValue: 'Inquiry received',
-      })
-    }
-    return title || kind || '—'
-  }
 
   const load = useCallback(async () => {
     if (!leadId) return
@@ -77,13 +43,15 @@ export default function SalesInquiryTimelineSection({ leadId, refreshToken = 0 }
       const res = await getLeadTimeline(leadId)
       const raw = Array.isArray(res?.items) ? res.items : []
       setItems(
-        raw.map((item: Record<string, unknown>) => ({
-          at: String(item.at ?? ''),
-          kind: String(item.kind || ''),
-          source: String(item.source || ''),
-          title: item.title != null ? String(item.title) : null,
-          description: item.description != null ? String(item.description) : null,
-        })),
+        raw
+          .map((item: Record<string, unknown>) => ({
+            at: String(item.at ?? ''),
+            kind: String(item.kind || ''),
+            source: String(item.source || ''),
+            title: item.title != null ? String(item.title) : null,
+            description: item.description != null ? String(item.description) : null,
+          }))
+          .filter(isSalesInquiryTimelineItemVisible),
       )
     } catch (err: unknown) {
       const detail =
@@ -127,17 +95,22 @@ export default function SalesInquiryTimelineSection({ leadId, refreshToken = 0 }
 
   return (
     <ul className="space-y-3 border-l-2 border-slate-200 pl-4" data-testid="sales-inquiry-timeline">
-      {items.map((item, idx) => (
-        <li key={`${item.at}-${item.kind}-${idx}`} className="relative">
-          <span
-            className="absolute -left-[calc(0.5rem+2px)] top-2 h-2 w-2 rounded-full bg-brand-500"
-            aria-hidden
-          />
-          <div className="text-xs text-slate-500">{formatAt(item.at, locale)}</div>
-          <div className="text-sm font-medium text-slate-900">{kindTitle(item.kind, item.title)}</div>
-          {item.description ? <div className="text-sm text-slate-600">{item.description}</div> : null}
-        </li>
-      ))}
+      {items.map((item, idx) => {
+        const description = salesInquiryTimelineDescription(t, item)
+        return (
+          <li key={`${item.at}-${item.kind}-${idx}`} className="relative">
+            <span
+              className="absolute -left-[calc(0.5rem+2px)] top-2 h-2 w-2 rounded-full bg-brand-500"
+              aria-hidden
+            />
+            <div className="text-xs text-slate-500">{formatAt(item.at, locale)}</div>
+            <div className="text-sm font-medium text-slate-900">
+              {salesInquiryTimelineKindTitle(t, item.kind, item.title)}
+            </div>
+            {description ? <div className="text-sm text-slate-600">{description}</div> : null}
+          </li>
+        )
+      })}
     </ul>
   )
 }

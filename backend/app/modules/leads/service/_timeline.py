@@ -7,7 +7,7 @@ god-module split, step 5/N). Re-exported via ``service/__init__.py``.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -15,6 +15,51 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models import ActivityLog, Lead, Reminder
 from backend.app.modules.leads.schemas import LeadTimelineEventOut, LeadTimelineResponse
+
+# Recruitment-module audit actions. Sales chronology must not mix candidate process.
+_SALES_HIDDEN_ACTIVITY_ACTIONS = frozenset(
+    {
+        "lead.communication.application_received_sent",
+        "lead.communication.rejection_sent",
+        "lead.communication.moving_forward_sent",
+        "lead.communication.failed",
+    }
+)
+_SALES_HIDDEN_ACTIVITY_PREFIXES = (
+    "lead.communication.",
+    "analytics.next_action.",
+    "analytics.perf.",
+)
+_SALES_HIDDEN_REMINDER_TYPES = frozenset(
+    {
+        "leads_no_next_action",
+        "leads_stuck_stage",
+    }
+)
+
+
+def _is_sales_operator_lead(lead: Lead) -> bool:
+    from backend.app.modules.leads.intake_route import is_sales_intake_target
+    from backend.app.modules.leads.service.intake_decision import is_client_lead
+
+    if is_client_lead(lead):
+        return True
+    if str(getattr(lead, "lead_type", "") or "").strip().lower() == "client":
+        return True
+    return is_sales_intake_target(str(getattr(lead, "lead_target_type", "") or ""))
+
+
+def _hide_activity_on_sales_timeline(action: str) -> bool:
+    raw = str(action or "").strip()
+    if raw in _SALES_HIDDEN_ACTIVITY_ACTIONS:
+        return True
+    return any(raw.startswith(prefix) for prefix in _SALES_HIDDEN_ACTIVITY_PREFIXES)
+
+
+def _hide_reminder_on_sales_timeline(reminder_type: str, title: Optional[str]) -> bool:
+    if str(reminder_type or "").strip() in _SALES_HIDDEN_REMINDER_TYPES:
+        return True
+    return str(title or "").strip().lower().startswith("lead: create next action")
 
 
 async def get_lead_timeline(
@@ -29,6 +74,8 @@ async def get_lead_timeline(
     lead = lead_row.scalar_one_or_none()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
+
+    sales_timeline = _is_sales_operator_lead(lead)
 
     # ActivityLog events for this lead.
     log_rows = (
@@ -70,6 +117,8 @@ async def get_lead_timeline(
     events: list[LeadTimelineEventOut] = []
 
     for action, created_at, payload in log_rows:
+        if sales_timeline and _hide_activity_on_sales_timeline(str(action or "")):
+            continue
         kind = "activity"
         source = "activity_log"
         title = str(action or "").strip() or "event"
@@ -114,6 +163,9 @@ async def get_lead_timeline(
             kind = "next_action_warning"
         elif str(action or "").startswith("analytics.perf."):
             kind = "analytics"
+        elif sales_timeline and action in {"rodo_sent", "rodo_sent_failed"}:
+            kind = "gdpr_notice" if action == "rodo_sent" else "gdpr_notice_failed"
+            title = kind
         events.append(
             LeadTimelineEventOut(
                 at=created_at,
@@ -135,6 +187,8 @@ async def get_lead_timeline(
         due_at,
         completed_at,
     ) in rem_rows:
+        if sales_timeline and _hide_reminder_on_sales_timeline(str(r_type or ""), title):
+            continue
         base_payload: Dict[str, Any] = {
             "reminder_id": rem_id,
             "type": r_type,

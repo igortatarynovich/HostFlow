@@ -9,7 +9,7 @@ import pytest
 
 from backend.app.modules.sales.communication.compliance_pipeline import (
     PURPOSE_GDPR_NOTICE,
-    PURPOSE_SUBMISSION_ACK,
+    PURPOSE_MOVING_FORWARD,
     SalesCompliancePipelineBinding,
 )
 from backend.app.communications.template_metadata import build_template_metadata
@@ -124,7 +124,7 @@ async def test_sales_ops_auto_bind_then_pipeline_send() -> None:
 
     cfg = SimpleNamespace(
         enabled=True,
-        send_application_received=True,
+        send_application_received=False,
         send_rejection_notice=True,
         send_moving_forward_notice=True,
         application_received_subject=None,
@@ -140,6 +140,18 @@ async def test_sales_ops_auto_bind_then_pipeline_send() -> None:
 
     with (
         patch(
+            "backend.app.services.lead_lifecycle_email_policy.resolve_lifecycle_email_policy_for_lead",
+            new_callable=AsyncMock,
+            return_value=SimpleNamespace(
+                block_code=None,
+                enabled=True,
+                send=True,
+                template_ref="tpl-moving-forward",
+                reason=None,
+                to_dict=lambda: {},
+            ),
+        ),
+        patch(
             "backend.app.services.lead_communications.get_lead_communication_settings",
             new_callable=AsyncMock,
             return_value=cfg,
@@ -154,7 +166,7 @@ async def test_sales_ops_auto_bind_then_pipeline_send() -> None:
             "backend.app.modules.sales.communication.compliance_pipeline"
             ".ensure_sales_compliance_pipeline_binding",
             new_callable=AsyncMock,
-            return_value=_binding(purpose=PURPOSE_SUBMISSION_ACK),
+            return_value=_binding(purpose=PURPOSE_MOVING_FORWARD),
         ) as ensure,
         patch(
             "backend.app.communications.send_pipeline.authorize_outbound_communication",
@@ -164,7 +176,7 @@ async def test_sales_ops_auto_bind_then_pipeline_send() -> None:
         patch(
             "backend.app.services.lead_communications.resolve_lead_email_message",
             new_callable=AsyncMock,
-            return_value=SimpleNamespace(subject="Got it", body="Thanks"),
+            return_value=SimpleNamespace(subject="Got it", body="Thanks", template_id="tpl-moving-forward"),
         ),
         patch(
             "backend.app.communications.prepare_send.prepare_and_send_communication",
@@ -182,7 +194,7 @@ async def test_sales_ops_auto_bind_then_pipeline_send() -> None:
             db,
             tenant_id="t1",
             lead=lead,
-            event_type="application_received",
+            event_type="moving_forward",
         )
 
     assert sent is True

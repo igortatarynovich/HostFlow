@@ -15,7 +15,7 @@
 | In scope | Out of scope |
 |----------|--------------|
 | RODO / art.14 (`gdpr_notice`) | Questionnaire invite |
-| Application received (`submission_acknowledgement`) — **recruitment / candidate leads only** | B2B client inquiries (`lead_type=client` + `client_lead`) — never `application_received` |
+| Application received (`submission_acknowledgement`) — **recruitment / candidate leads only** | Sales / B2B inquiries (`lead_type=client`, `client_lead`, or SalesInquiry destination) — never recruitment `application_received` |
 | Intake rejection (`intake_rejection_notice`) | Document expiry reminders |
 | Moving forward (`moving_forward_notice`) | Inbox composer / manual follow-up |
 | | Per-Meta-ad or per-form copy |

@@ -405,7 +405,7 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 | Flag | Behaviour |
 |------|-----------|
 | `lead_communication_enabled` | Master switch; when off, no operational sends. |
-| `send_application_received` | After **new** **recruitment** lead ingest (post contact check) when email exists. **Not** for B2B / `client` + `client_lead` inquiries. |
+| `send_application_received` | After **new** **recruitment** lead ingest (post contact check) when email exists. **Not** for Sales / B2B inquiries (`client` lead, SalesInquiry destination). |
 | `send_rejection_notice` | After intake decision **reject**. |
 | `send_moving_forward_notice` | After successful Lead → Candidate conversion (production path: `create_candidate_full` in `process_normalized_lead`). |
 

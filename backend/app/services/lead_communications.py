@@ -173,6 +173,27 @@ def _template_id_for_event(cfg: LeadCommunicationSettings, event_type: str) -> O
     return None
 
 
+def _is_sales_bound_lead(lead: Lead) -> bool:
+    """True when this transport Lead is a Sales inquiry, not a recruitment application.
+
+    Recruitment ``application_received`` must never run on Sales. Detection is broader
+    than ``is_client_lead`` (client + client_lead): route stamp, result link, or
+    ``lead_type=client`` also bind the row to Sales.
+    """
+    from backend.app.modules.leads.intake_route import is_sales_intake_target
+    from backend.app.modules.leads.service.intake_decision import is_client_lead
+    from backend.app.modules.sales.communication.compliance_pipeline import lead_is_sales_destination
+
+    if is_client_lead(lead):
+        return True
+    if str(getattr(lead, "lead_type", "") or "").strip().lower() == "client":
+        return True
+    ltt = str(getattr(lead, "lead_target_type", "") or "").strip().lower()
+    if ltt and is_sales_intake_target(ltt):
+        return True
+    return lead_is_sales_destination(lead)
+
+
 def _audit_type_for_event(event_type: str, *, failed: bool) -> AuditEventType:
     # C0.3: delivery/skip failures use communication.delivery.failed (not lead.communication.failed).
     if failed:
@@ -289,12 +310,9 @@ async def maybe_send_lead_communication(
     if ev not in _COMMUNICATION_EVENTS:
         return False
 
-    # ``application_received`` is recruitment application ack — not for B2B client inquiries.
-    if ev == EVENT_APPLICATION_RECEIVED:
-        from backend.app.modules.leads.service.intake_decision import is_client_lead
-
-        if is_client_lead(lead):
-            return False
+    # Recruitment application ack — never for Sales / B2B inquiries (separate module).
+    if ev == EVENT_APPLICATION_RECEIVED and _is_sales_bound_lead(lead):
+        return False
 
     from backend.app.services.lead_lifecycle_email_policy import (
         OPS_EVENT_TO_PURPOSE,
@@ -929,10 +947,8 @@ async def maybe_send_application_received_on_ingest(
 ) -> None:
     if getattr(lead, "candidate_id", None):
         return
-    # Recruitment-only: never send "application received" to B2B / client inquiries.
-    from backend.app.modules.leads.service.intake_decision import is_client_lead
-
-    if is_client_lead(lead):
+    # Recruitment-only: never send "application received" to Sales / B2B inquiries.
+    if _is_sales_bound_lead(lead):
         return
     # Compatibility guard: in some replay/import paths a lead may already exist
     # but still miss the initial communication stamp. We allow one backfill run

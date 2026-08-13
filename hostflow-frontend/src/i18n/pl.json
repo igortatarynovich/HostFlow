@@ -7332,7 +7332,10 @@
           "questionnaire_received": "Otrzymano ankietę",
           "lead_received": "Otrzymano zapytanie",
           "questionnaire_email": "Wysłano ankietę",
-          "questionnaire_submitted": "Otrzymano ankietę"
+          "questionnaire_submitted": "Otrzymano ankietę",
+          "gdpr_notice": "Wysłano zawiadomienie GDPR",
+          "gdpr_notice_failed": "Błąd zawiadomienia GDPR",
+          "system_event": "Zdarzenie systemowe"
         },
         "client": {
           "status_rejected": "Odrzucony",

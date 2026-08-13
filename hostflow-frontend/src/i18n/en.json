@@ -7405,7 +7405,10 @@
           "questionnaire_received": "Questionnaire received",
           "lead_received": "Inquiry received",
           "questionnaire_email": "Questionnaire sent",
-          "questionnaire_submitted": "Questionnaire received"
+          "questionnaire_submitted": "Questionnaire received",
+          "gdpr_notice": "GDPR notice sent",
+          "gdpr_notice_failed": "GDPR notice failed",
+          "system_event": "System event"
         },
         "client": {
           "status_rejected": "Rejected",
