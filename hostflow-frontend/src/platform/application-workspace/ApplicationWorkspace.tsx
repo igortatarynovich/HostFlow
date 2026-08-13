@@ -29,7 +29,7 @@ type ApplicationWorkspaceProps = {
 
 export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: ApplicationWorkspaceProps) {
   const params = useParams<Record<string, string | undefined>>()
-  const selectedId = params[routeParam] || params.leadId || null
+  const selectedId = params[routeParam] || params.inquiryId || params.leadId || null
   const { t } = useI18n()
   const navigate = useNavigate()
   const { notify } = useToast()

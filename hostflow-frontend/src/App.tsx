@@ -279,7 +279,7 @@ export default function App(){
             </Route>
             <Route path="sales" element={<SalesWorkspaceLayout />}>
               <Route index element={<SalesInquiriesEntryPage />} />
-              <Route path="inquiries/:leadId" element={<SalesInquiriesEntryPage />} />
+              <Route path="inquiries/:inquiryId" element={<SalesInquiriesEntryPage />} />
               <Route path="orders" element={<SalesOrdersListPage />} />
               <Route path="orders/new" element={<SalesOrderCreatePage />} />
               <Route path="orders/:orderId" element={<SalesOrderDetailPage />} />
