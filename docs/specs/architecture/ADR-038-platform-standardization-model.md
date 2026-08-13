@@ -118,7 +118,9 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 **Naming & Identifiers:** **done** — [`ADR-040`](ADR-040-naming-identifiers.md) · [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md). DocumentType runtime alignment (`integrity=split` → `aligned`) remains a **separate** PR.
 
-**Next in ADR-038 sequence:** Data Types + Fields linkage (area 4, `gap`) — unless product prioritizes Design Semantic Visual Language or DocumentType alignment.
+**Data Types:** **done** — [`ADR-041`](ADR-041-data-types.md) · [`../platform/data-types.md`](../platform/data-types.md). Runtime Field/Forms `data_type` adoption remains a **separate** PR.
+
+**Next in ADR-038 sequence:** Relationships contract (area 5, `gap`) — unless product prioritizes Design Semantic Visual Language, DocumentType alignment, or Field/Forms DataType adoption.
 
 ---
 
@@ -136,7 +138,7 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 - Positive: single coordinate system for all follow-on canons; clear exists/next/gap map; Platform-first turns documentation into architecture; Action / Permission / Capability and Field / DataType stay separable.
 - Negative: gap areas must be filled by dedicated PRs; until then modules must not invent local replacements.
-- Follow-on sequence (separate PRs): ~~State/Lifecycle inventory~~ (ADR-039) → ~~Naming & Identifiers~~ (ADR-040) → Data Types + Fields linkage → Relationships contract → Actions / Events (ADR-019 3A-*) → Design Semantic Visual Language on ADR-011. DocumentType code alignment may run in parallel after ADR-040.
+- Follow-on sequence (separate PRs): ~~State/Lifecycle inventory~~ (ADR-039) → ~~Naming & Identifiers~~ (ADR-040) → ~~Data Types~~ (ADR-041) → Relationships contract → Actions / Events (ADR-019 3A-*) → Design Semantic Visual Language on ADR-011. DocumentType alignment and Field/Forms `data_type` adoption may run in parallel.
 
 ---
 

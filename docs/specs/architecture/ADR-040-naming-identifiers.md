@@ -87,7 +87,7 @@ Naming lint / registry CI is **planned** (`platform-standardization-model` area 
 ## Explicit next
 
 1. **DocumentType code alignment PR** — converge ref/UI/OCR consumers toward evaluation `stable_code` (or a single approved bridge), then set Object Kind `integrity=aligned`.
-2. ADR-038 sequence continues with **Data Types** + Fields linkage.
+2. Data Types: **done** ([`ADR-041`](ADR-041-data-types.md)). ADR-038 sequence continues with **Relationships**.
 
 ---
 
@@ -105,7 +105,7 @@ Naming lint / registry CI is **planned** (`platform-standardization-model` area 
 
 - Positive: Naming area becomes `exists`; DocumentType split has an explicit remediation contract; Field / profile / permission dotted codes are recognized as compliant examples.
 - Negative: runtime remains split until the alignment PR; dual bridges stay documented as debt.
-- Follow-on: DocumentType alignment; then Data Types (ADR-038 sequence).
+- Follow-on: DocumentType alignment; ~~Data Types~~ (ADR-041); Relationships (ADR-038 sequence).
 
 ---
 

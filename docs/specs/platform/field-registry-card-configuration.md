@@ -239,6 +239,8 @@ Modules **register** fields in their namespace. They **reference** `platform.ide
 
 ## 4. Field types
 
+> **Semantic target:** Platform Data Types ([`ADR-041`](../architecture/ADR-041-data-types.md) · [`data-types.md`](data-types.md)). The table below remains the **operating fragment list** (`field_type` strings in manifests) until a Field Registry adoption PR stores explicit `data_type`. Do not treat this section as a second DataType SoT.
+
 Canonical types (extensible; validators live in Core):
 
 | Type | Validation / normalization | Typical UI control |
@@ -594,6 +596,7 @@ Mirror Process Engine closure (`backend/tests/field_registry/test_field_registry
 - [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) — Forms Platform (intake questions → canonical fields)
 - [`ADR-009`](../architecture/ADR-009-document-hub-platform-layer.md) — Document Hub (not card field storage)
 - [`ADR-010`](../architecture/ADR-010-unified-resource-list-shell.md), [`ADR-011`](../architecture/ADR-011-hostflow-ui-platform-standard.md) — UI shells
+- [`ADR-041`](../architecture/ADR-041-data-types.md) · [`data-types.md`](data-types.md) — semantic DataType canon (Field **uses** DataType; §4 fragments map there)
 
 **Code anchors (legacy / partial):**
 

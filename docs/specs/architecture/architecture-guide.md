@@ -56,12 +56,14 @@ UI **не** определяет архитектуру.
 | **Object Kind Catalog** | Meta-canon классов объектов ([`ADR-037`](ADR-037-platform-object-kind-catalog.md) · [`../platform/object-kind-catalog.md`](../platform/object-kind-catalog.md)) — индекс SoT, не SoT данных; область ADR-038 Vocabulary / Policy & Reuse |
 | **State / Lifecycle Inventory** | Dimensions + owners for Object Kind slice ([`ADR-039`](ADR-039-state-lifecycle-inventory.md) · [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md)) — не общий enum статусов |
 | **Naming & Identifiers** | Identifier kinds + namespaces + alias policy ([`ADR-040`](ADR-040-naming-identifiers.md) · [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md)) — не runtime alignment DocumentType |
+| **Data Types** | Semantic value types; Field **uses** DataType ([`ADR-041`](ADR-041-data-types.md) · [`../platform/data-types.md`](../platform/data-types.md)) — не миграция `field_type` |
 | Invariants | INV-01…15 |
 | Checklist | Обязателен перед ADR/PR |
 | Epic P (3D) | Закрытие Acquisition V1 vertical |
 
 ## История
 
+- 2026-08-13: **ADR-041** Data Types Accepted — Field ≠ DataType; L2 [`../platform/data-types.md`](../platform/data-types.md); runtime Field/Forms adoption deferred.
 - 2026-08-13: **ADR-040** Naming & Identifiers Accepted — kinds / namespaces / alias policy; L2 [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md); DocumentType runtime alignment deferred.
 - 2026-08-13: **ADR-039** State / Lifecycle Inventory Accepted — dimensions + owners for Object Kind slice; L2 [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md); shared status enum deferred.
 - 2026-08-13: **ADR-038** Platform Standardization Model Accepted — 5 groups · 14 areas · Platform-first; L2 [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md); State inventory = next.

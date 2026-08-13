@@ -567,6 +567,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 ## History
 
+- **2026-08-13** — **ADR-041** Data Types; area `data_types` → exists (Field/Forms runtime adoption deferred).
 - **2026-08-13** — **ADR-040** Naming & Identifiers; area `naming_identifiers` → exists (DocumentType runtime alignment deferred).
 - **2026-08-13** — **ADR-039** State / Lifecycle Inventory; area `states_transitions` → exists (shared enums deferred).
 - **2026-08-13** — **ADR-038** Platform Standardization Model (14 areas + Platform-first); L2 [`../platform/platform-standardization-model.md`](../platform/platform-standardization-model.md).
