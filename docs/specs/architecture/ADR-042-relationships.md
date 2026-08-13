@@ -92,7 +92,7 @@ This ADR does **not** migrate schemas, rename `relation_type` values, or add enf
 
 ## Explicit next
 
-1. Experience: **done as rule** — [`ADR-043`](ADR-043-ui-component-composition-canon.md) (UI composition). Vocabulary **Actions** / **Events** (ADR-019 3A-*) remain next in the ADR-038 *vocabulary* line and may run in parallel.
+1. Actions: **done** ([`ADR-047`](ADR-047-actions.md)). ADR-038 vocabulary sequence continues with **Events**.
 2. Optional: expand L2 with more confirmed kinds; Document Hub writers adopt registered `relationship_kind` codes.
 
 ---
@@ -111,7 +111,7 @@ This ADR does **not** migrate schemas, rename `relation_type` values, or add enf
 
 - Positive: Relationships area becomes `exists` as a contract; Document Link and Comms opaque results have vocabulary homes; modules know when to register a kind.
 - Negative: many runtime joins remain `fragment` until confirmed; Activity soft refs stay dual-nature until adoption guidance expands.
-- Follow-on: Actions / Events (vocabulary, parallel); UI Data Presentation (ADR-044).
+- Follow-on: ~~Actions~~ (ADR-047); Events; UI Data Presentation (ADR-044) / Layouts (ADR-045) / Visualization (ADR-046).
 
 ---
 

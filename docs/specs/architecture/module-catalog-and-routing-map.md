@@ -63,6 +63,7 @@
 | **Naming & Identifiers** | Platform architecture | [`ADR-040`](ADR-040-naming-identifiers.md) · [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md) | Registries / bridges / modules | Naming rules + conflict inventory — **not** DocumentType seed alignment |
 | **Data Types** | Platform Reference (target) | [`ADR-041`](ADR-041-data-types.md) · [`../platform/data-types.md`](../platform/data-types.md) | Field Registry, Forms, UI binders | Semantic types — Field **uses** DataType; runtime adoption deferred |
 | **Relationships** | Platform architecture | [`ADR-042`](ADR-042-relationships.md) · [`../platform/relationships.md`](../platform/relationships.md) | Document Hub, handoff, Activity, Comms | RelationshipKind contract — confirmed slice only; **not** full CRM graph |
+| **Actions** | Platform Automations (target) | [`ADR-047`](ADR-047-actions.md) · [`../platform/actions.md`](../platform/actions.md) | Document Hub, PE, Activity, Notifications | Action contract — confirmed slice; **not** 3A-3 runtime registry |
 | **UI Component Canon** | Frontend platform | [`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md) | SPA product modules | React kit composition — **not** a restyle; DataTable/layouts/viz deferred |
 | **Resource List Shell / UI Standard** | Frontend platform | ADR-010 / ADR-011 / ADR-043 | SPA | UI contracts |
 
@@ -263,6 +264,7 @@
 
 ## История
 
+- 2026-08-13: **ADR-047** (Accepted) — Actions (Action ≠ Permission ≠ Capability; confirmed Documents/Activity/PE slice); L2 [`../platform/actions.md`](../platform/actions.md); 3A-3 runtime deferred.
 - 2026-08-13: **ADR-043** (Accepted) — UI Component & Composition Canon (React kit public API; CSS implementation); L2 [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md); epic [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md).
 - 2026-08-13: **ADR-042** (Accepted) — Relationships (RelationshipKind contract + confirmed slice; opaque result ≠ domain entity); L2 [`../platform/relationships.md`](../platform/relationships.md); CRM graph deferred.
 - 2026-08-13: **ADR-041** (Accepted) — Data Types (Field ≠ DataType; v1 semantic set + fragment map); L2 [`../platform/data-types.md`](../platform/data-types.md); runtime adoption deferred.

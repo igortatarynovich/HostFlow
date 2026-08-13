@@ -51,7 +51,7 @@ Row contract: `area_code` · `group` · `owner` · `status` · `canonical_refs` 
 | 6 | `states_transitions` | Vocabulary | Architecture canon | **exists** | [`ADR-039`](../architecture/ADR-039-state-lifecycle-inventory.md), [`state-lifecycle-inventory.md`](state-lifecycle-inventory.md) | Inventory of dimensions + owners for Object Kind slice. **Shared value vocabulary still deferred** (no platform-wide status enum) | docs-lint inbound; checklist via ADR-039 |
 | 7 | `rules` | Policy & Reuse | Architecture + domain policy owners | **exists** | ADR-037 RuleKind; [`object-kind-catalog.md`](object-kind-catalog.md) §5 | DomainPolicy / ProcessRule / AutomationReaction / PresentationRule | checklist dual-classification bans |
 | 8 | `libraries` | Policy & Reuse | Forms / Field Registry / Communications / Documents | **exists** | ADR-037 LibraryKind; object-kind-catalog §6 | FormComponent, FieldDefinition, templates; checklist ≠ gate | Forms catalog tests; ADR-011 drift policy for UI libs |
-| 9 | `actions` | Vocabulary | Platform Automations (ADR-019) | **gap** | ADR-019 Action Registry planned (3A-3) | Action semantics ≠ Permission ≠ Capability | future Action Registry + contract tests |
+| 9 | `actions` | Vocabulary | Platform Automations (ADR-019) + Architecture | **exists** | [`ADR-047`](../architecture/ADR-047-actions.md), [`actions.md`](actions.md) | Action contract + confirmed Documents/Activity/PE slice. **3A-3 runtime registry deferred**; CRM public actions remain fragment | docs-lint inbound; ADR-019 3A-3 for runtime |
 | 10 | `events` | Vocabulary | Platform events / Communications / modules | **gap** | Outbox 3A-1 (`domain_event_outbox`), scattered activity/security event lists | Need Event Canon registry contract: producer, schema owner, payload version, subject, actor, correlation/causation, consumers, classification (domain fact / audit / integration) | outbox tests (partial) |
 | 11 | `capabilities` | Policy & Reuse | Platform architecture | **exists** | [`platform-capability-catalog.md`](../architecture/platform-capability-catalog.md), [`ADR-026`](../architecture/ADR-026-capability-ownership.md) | Passport / Owns / Exposes / Consumes | architecture-review-checklist; Catalog gate |
 | 12 | `runtime_api_contracts` | Runtime Contracts | Platform + capability owners | **exists** | [`capability-contract.md`](../architecture/capability-contract.md), Forms public contract, [`reference_delivery_contract_standard.md`](../reference_delivery_contract_standard.md) | **Sub-gaps:** unified Error, Pagination, Filtering contracts not closed — do not invent a second status enum | capability contract tests; Forms sprint gates |
@@ -96,12 +96,14 @@ Sub-gaps under an `exists` area are recorded in **notes** only (e.g. Error/Pagin
 3. ~~**Data Types** + Fields linkage.~~ **Done (ADR-041 inventory).** Runtime Field/Forms `data_type` adoption deferred.  
 4. ~~**Relationships** contract.~~ **Done (ADR-042).** Confirmed slice only; full CRM graph deferred.  
 5. ~~**Design composition rule.**~~ **Done (ADR-043).** React kit public API; DataTable / layouts / viz = ADR-044…046.  
-6. **Actions** / **Events** (ADR-019 3A-*) — vocabulary line, **parallel** to the UI epic.
+6. ~~**Actions**~~ **Done (ADR-047 inventory).** Runtime Action Registry = ADR-019 3A-3.  
+7. **Events** (ADR-019 3A-1+ / area 10) — vocabulary line, **parallel** to the UI epic.
 
 ---
 
 ## 8. History
 
+- 2026-08-13: Area `actions` → `exists` via ADR-047 (confirmed slice; 3A-3 runtime deferred). ADR-044…046 remain UI DataTable/layouts/viz.
 - 2026-08-13: Area `design_interaction` composition rule via ADR-043 (React kit public API; DataTable/layouts/viz still sub-gaps).
 - 2026-08-13: Area `relationships` → `exists` via ADR-042 (confirmed slice; CRM graph deferred).
 - 2026-08-13: Area `data_types` → `exists` via ADR-041 (runtime Field/Forms adoption deferred).

@@ -124,7 +124,9 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 **Design & Interaction composition:** **done as rule** — [`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md). React kit is the public API; CSS is implementation. DataTable / layouts / visualization remain follow-on (**ADR-044 / 045 / 046**). Runtime wrappers = epic, not this ADR.
 
-**Next in ADR-038 Vocabulary sequence:** Actions / Events (areas 9–10, `gap`, ADR-019 3A-*) — **parallel** to the UI composition epic. DocumentType alignment and Field/Forms DataType adoption may also run in parallel.
+**Actions:** **done** — [`ADR-047`](ADR-047-actions.md) · [`../platform/actions.md`](../platform/actions.md). Confirmed Documents/Activity/PE slice; **3A-3 runtime** and CRM public actions **deferred**.
+
+**Next in ADR-038 Vocabulary sequence:** Events (area 10, `gap`, ADR-019 3A-1+) — **parallel** to the UI composition epic (ADR-044…046). DocumentType alignment and Field/Forms DataType adoption may also run in parallel.
 
 ---
 
@@ -142,7 +144,7 @@ Enforcement (architecture-review-checklist, `docs-lint`, REF-4 / boundary gates,
 
 - Positive: single coordinate system for all follow-on canons; clear exists/next/gap map; Platform-first turns documentation into architecture; Action / Permission / Capability and Field / DataType stay separable.
 - Negative: gap areas must be filled by dedicated PRs; until then modules must not invent local replacements.
-- Follow-on sequence (separate PRs): ~~State/Lifecycle inventory~~ (ADR-039) → ~~Naming & Identifiers~~ (ADR-040) → ~~Data Types~~ (ADR-041) → ~~Relationships~~ (ADR-042) → ~~UI composition rule~~ (ADR-043). **Parallel:** Actions / Events (ADR-019 3A-*); UI Data Presentation (ADR-044) / Layouts (ADR-045) / Visualization (ADR-046). DocumentType alignment and Field/Forms `data_type` adoption may run in parallel.
+- Follow-on sequence (separate PRs): ~~State/Lifecycle inventory~~ (ADR-039) → ~~Naming & Identifiers~~ (ADR-040) → ~~Data Types~~ (ADR-041) → ~~Relationships~~ (ADR-042) → ~~UI composition rule~~ (ADR-043) → ~~Actions~~ (ADR-047). **Parallel next:** Events; UI Data Presentation (ADR-044) / Layouts (ADR-045) / Visualization (ADR-046). ADR-019 3A-3 implements Action Registry runtime. DocumentType alignment and Field/Forms `data_type` adoption may run in parallel.
 
 ---
 
