@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import select
 
 from backend.app.models.company import Company
+from backend.app.models.funnel import Funnel
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.sales_inquiry import SalesInquiry
 from backend.app.modules.applications import mutations
@@ -94,6 +95,53 @@ async def _client_company_id(db, tenant_id: str) -> str:
     return str(company_id)
 
 
+async def _ensure_recruitment_lead_funnel(db, *, tenant_id: str, company_id: str) -> None:
+    """create_lead assigns a company-scoped lead funnel; seed one for candidate fixtures."""
+    existing = await db.scalar(
+        select(Funnel.id)
+        .where(
+            Funnel.tenant_id == tenant_id,
+            Funnel.company_id == company_id,
+            Funnel.module_key == "recruitment",
+            Funnel.type == "lead",
+        )
+        .limit(1)
+    )
+    if existing is not None:
+        return
+    db.add(
+        Funnel(
+            id=str(uuid4()),
+            tenant_id=tenant_id,
+            company_id=company_id,
+            module_key="recruitment",
+            type="lead",
+            name="Lead pipeline",
+            is_default=True,
+        )
+    )
+    await db.flush()
+
+
+async def _seed_recruitment_lead(
+    db, *, tenant_id: str, own_company_id: str, full_name: str
+):
+    company_id = await _client_company_id(db, tenant_id)
+    await _ensure_recruitment_lead_funnel(db, tenant_id=tenant_id, company_id=company_id)
+    return await leads_crud.create_lead(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        company_id=company_id,
+        vacancy_id=None,
+        payload={},
+        normalized={"full_name": full_name},
+        source="meta",
+        lead_type="candidate",
+        lead_target_type="candidate",
+    )
+
+
 async def _seed_sales_pair(db, *, tenant_id: str):
     own_company_id = await _own_company_id(db, tenant_id)
     lead = await leads_crud.create_lead(
@@ -160,18 +208,11 @@ async def test_capability_spine_resolves_by_sales_inquiry_id(db, tenant_id: str)
 @pytest.mark.asyncio
 async def test_recruitment_lead_is_not_a_sales_inquiry(db, tenant_id: str) -> None:
     own_company_id = await _own_company_id(db, tenant_id)
-    company_id = await _client_company_id(db, tenant_id)
-    lead = await leads_crud.create_lead(
+    lead = await _seed_recruitment_lead(
         db,
         tenant_id=tenant_id,
         own_company_id=own_company_id,
-        company_id=company_id,
-        vacancy_id=None,
-        payload={},
-        normalized={"full_name": "Candidate One"},
-        source="meta",
-        lead_type="candidate",
-        lead_target_type="candidate",
+        full_name="Candidate One",
     )
     await db.flush()
     with pytest.raises(LookupError):
@@ -198,17 +239,11 @@ async def test_sales_list_uses_inquiry_id_and_excludes_recruitment(db, tenant_id
         lead_type="client",
         lead_target_type="client_lead",
     )
-    candidate = await leads_crud.create_lead(
+    candidate = await _seed_recruitment_lead(
         db,
         tenant_id=tenant_id,
         own_company_id=own_company_id,
-        company_id=await _client_company_id(db, tenant_id),
-        vacancy_id=None,
-        payload={},
-        normalized={"full_name": "Candidate Two"},
-        source="meta",
-        lead_type="candidate",
-        lead_target_type="candidate",
+        full_name="Candidate Two",
     )
     await db.flush()
 
@@ -235,17 +270,11 @@ async def test_http_sales_list_get_keyed_by_sales_inquiry(
     tenant_id: str,
 ) -> None:
     lead, inquiry, own_company_id = await _seed_sales_pair(db, tenant_id=tenant_id)
-    candidate = await leads_crud.create_lead(
+    candidate = await _seed_recruitment_lead(
         db,
         tenant_id=tenant_id,
         own_company_id=own_company_id,
-        company_id=await _client_company_id(db, tenant_id),
-        vacancy_id=None,
-        payload={},
-        normalized={"full_name": "Not A Sales Row"},
-        source="meta",
-        lead_type="candidate",
-        lead_target_type="candidate",
+        full_name="Not A Sales Row",
     )
     await db.commit()
 
