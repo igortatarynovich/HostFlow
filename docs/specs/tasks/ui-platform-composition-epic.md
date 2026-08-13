@@ -56,7 +56,7 @@ Zones of the same pattern (not a second ADR): Search + Filters + Sort + Paginati
 **Capability bar:** Candidates / TABLE_V1 (the API must express that list). **Page cutover:** Vacancies → Leads → Employees → Companies → Admin / remaining → Candidates in-place wrap last.
 
 - [x] **K1** — public `DataTable` (`components/ui/DataTable` + `SortControl`). `layout/DataTable` re-exports; `DataTableEngine` adapts onto the kit. Existing list pages are not rewritten; Vacancies cutover is K2.
-- [ ] **K2** — `ListWorkspace` around it (search, filters, sort, pagination, bulk/action bar, saved views, view switcher). First cutover: Vacancies.
+- [x] **K2** — `ListWorkspace` around it (search, filters, sort, pagination, bulk/action bar, saved views, view switcher). First cutover: Vacancies.
 
 Collapse: `EntityListShell` + Candidates table behavior + `layout/DataTable` + `platform/data-table`. New operational `<table>` in `pages/` / `modules/` is forbidden once the public API exists.
 

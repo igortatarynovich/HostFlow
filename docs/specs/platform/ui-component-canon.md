@@ -26,7 +26,7 @@ This file does **not** lock pixel values or Figma. Chart palettes and analytics 
 | `<PlatformIcon id="…">` | new `@tabler/icons-react` imports outside the registry |
 | `<StatusBadge semantic="danger">` | ad-hoc `bg-rose-100` pills for status meaning |
 | `<SemanticSurface tone="warning">` | page-local gradients / `rounded-2xl` heroes |
-| `DataTable` from `components/ui` (K1) | new hand-written operational `<table>`; importing `DataTableEngine` as a product table |
+| `DataTable` from `components/ui` (K1) · `ListWorkspace` (K2) | new hand-written operational `<table>`; importing `DataTableEngine` as a product table; a copied Candidates toolbar |
 
 CSS classes `.btn-*`, `.input`, `.table` remain **implementation** inside `hostflow-frontend/src/styles/components.css` and kit wrappers.
 
@@ -104,14 +104,14 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 | `TableHeader` | wrap | kit `DataTable` header | ListWorkspace |
 | `SortControl` | exists | `components/ui/SortControl.tsx` | TABLE_V1 / Candidates header pixels |
 | `FacetFilter` | wrap | `FacetFilterMenu` | ListWorkspace filters |
-| `BulkActionBar` | wrap | `EntityListBulkBar` | ListWorkspace; visible only with selection |
+| `BulkActionBar` | exists | `components/ui/BulkActionBar.tsx` | ListWorkspace; visible only with selection |
 
 ### Layout
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
 | `PageHeader` | exists | ~64 pages | Best-adopted layout |
-| `ListWorkspace` | wrap | `EntityListShell` + parallel tables | **First workspace pattern** — ADR-044; Platform Extraction runtime |
+| `ListWorkspace` | exists | `components/ui/ListWorkspace.tsx` | **First workspace pattern** — ADR-044 K2. Vacancies is the first cutover. Candidates page not wrapped. |
 | `EntityWorkspace` | wrap | `platform/entity-workspace` + candidate card | **Minimal chrome** this extraction sprint — not Phase D; page templates remain ADR-045 |
 | `SettingsLayout` | wrap | `.settings-*` CSS | ADR-045 |
 | `SplitPane` | gap | rails / inspectors | ADR-045 |
@@ -163,6 +163,7 @@ Do not open a new `*_V1` as a sibling canon. Extend this catalog.
 
 ## 6. History
 
+- 2026-08-13: **K2** public `ListWorkspace`; Vacancies first cutover. Candidates page not wrapped.
 - 2026-08-13: **K1** public `DataTable` + `SortControl` in `components/ui`. `DataTableEngine` is an adapter. Candidates page not cut over.
 - 2026-08-13: **Platform Extraction** — Core Platform Kit is the active stage; Vocabulary Canon closed.
 - 2026-08-13: **ADR-044** `ListWorkspace` + one `DataTable` (rule). Runtime extract remains epic P1–P2. `ListLayout` renamed to `ListWorkspace`.
