@@ -6,6 +6,7 @@
 **Parent model:** [`ADR-038`](../architecture/ADR-038-platform-standardization-model.md) · [`platform-standardization-model.md`](platform-standardization-model.md) (areas `object_kind` / `rules` / `libraries`)  
 **State inventory:** [`ADR-039`](../architecture/ADR-039-state-lifecycle-inventory.md) · [`state-lifecycle-inventory.md`](state-lifecycle-inventory.md)  
 **Naming:** [`ADR-040`](../architecture/ADR-040-naming-identifiers.md) · [`naming-identifiers.md`](naming-identifiers.md)  
+**Relationships:** [`ADR-042`](../architecture/ADR-042-relationships.md) · [`relationships.md`](relationships.md)  
 **Owner:** Architecture canon + platform core team  
 **Slice:** Documents · Requirements · Automation · Templates (first inventory)
 
@@ -225,6 +226,7 @@ Verbs: `owns` · `writes` · `consumes` · `reacts` · `forbidden`.
 
 ## 11. History
 
+- 2026-08-13: Link to ADR-042 relationships (Document Link kinds; confirmed slice only).
 - 2026-08-13: Link to ADR-040 naming / identifiers; DocumentType split remediation gated (still `integrity=split`).
 - 2026-08-13: Link to ADR-039 state/lifecycle inventory for this slice.
 - 2026-08-13: Parent pointer to ADR-038 Platform Standardization Model.

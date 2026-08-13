@@ -62,6 +62,7 @@
 | **State / Lifecycle Inventory** | Platform architecture | [`ADR-039`](ADR-039-state-lifecycle-inventory.md) · [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md) | Object Kind slice consumers | Dimension inventory — **not** shared status enum |
 | **Naming & Identifiers** | Platform architecture | [`ADR-040`](ADR-040-naming-identifiers.md) · [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md) | Registries / bridges / modules | Naming rules + conflict inventory — **not** DocumentType seed alignment |
 | **Data Types** | Platform Reference (target) | [`ADR-041`](ADR-041-data-types.md) · [`../platform/data-types.md`](../platform/data-types.md) | Field Registry, Forms, UI binders | Semantic types — Field **uses** DataType; runtime adoption deferred |
+| **Relationships** | Platform architecture | [`ADR-042`](ADR-042-relationships.md) · [`../platform/relationships.md`](../platform/relationships.md) | Document Hub, handoff, Activity, Comms | RelationshipKind contract — confirmed slice only; **not** full CRM graph |
 | **Resource List Shell / UI Standard** | Frontend platform | ADR-010 / ADR-011 | SPA | UI contracts |
 
 **Уточнение Submission vs Forms:** Forms владеет **form surface + consent version pin** для HostFlow Form. Универсальный **Submission** как intake object и routing envelope — Shared Intake (ADR-024 spine). Не два Form Builder; не два Document Hub.
@@ -261,6 +262,7 @@
 
 ## История
 
+- 2026-08-13: **ADR-042** (Accepted) — Relationships (RelationshipKind contract + confirmed slice; opaque result ≠ domain entity); L2 [`../platform/relationships.md`](../platform/relationships.md); CRM graph deferred.
 - 2026-08-13: **ADR-041** (Accepted) — Data Types (Field ≠ DataType; v1 semantic set + fragment map); L2 [`../platform/data-types.md`](../platform/data-types.md); runtime adoption deferred.
 - 2026-08-13: **ADR-040** (Accepted) — Naming & Identifiers (kinds / namespaces / alias policy); L2 [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md); DocumentType runtime alignment deferred.
 - 2026-08-13: **ADR-039** (Accepted) — State / Lifecycle Inventory for Object Kind slice (`ObjectKind → Object → dimension → owners`); L2 [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md); shared status enum deferred.

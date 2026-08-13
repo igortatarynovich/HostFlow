@@ -47,7 +47,7 @@ Row contract: `area_code` · `group` · `owner` · `status` · `canonical_refs` 
 | 2 | `roles_permissions` | Vocabulary | Users / Roles / Permissions (Catalog) | **exists** | [`ADR-036`](../architecture/ADR-036-four-trust-roles-rbac.md), [`rbac_matrix.md`](../architecture/rbac_matrix.md) | Four trust roles; presets ≠ roles; `access_context` | `make rbac-role-lint` / security-gates |
 | 3 | `fields` | Vocabulary | Platform Field Registry | **exists** | [`field-registry-card-configuration.md`](field-registry-card-configuration.md), Field Registry manifests | Canonical field codes + layouts; profile JSON remains fallback | Field Registry seed / closure tests |
 | 4 | `data_types` | Vocabulary | Platform Reference (target) + Architecture | **exists** | [`ADR-041`](../architecture/ADR-041-data-types.md), [`data-types.md`](data-types.md) | Semantic DataType canon; Field **uses** DataType. **Runtime `field_type` adoption still deferred** | docs-lint inbound; future Field/Forms adoption PR |
-| 5 | `relationships` | Vocabulary | Platform architecture (target) | **gap** | `document_entity_links`, Activity `related_entity_type` (runtime fragments) | Need Relationship Canon **contract**: source/target kind, cardinality, ownership, requiredness, lifecycle dependency, deletion policy, visibility, writers | — |
+| 5 | `relationships` | Vocabulary | Platform architecture | **exists** | [`ADR-042`](../architecture/ADR-042-relationships.md), [`relationships.md`](relationships.md) | RelationshipKind **contract** + confirmed Documents/handoff/Activity/Comms slice. **Full CRM graph deferred**; fragments listed only | docs-lint inbound |
 | 6 | `states_transitions` | Vocabulary | Architecture canon | **exists** | [`ADR-039`](../architecture/ADR-039-state-lifecycle-inventory.md), [`state-lifecycle-inventory.md`](state-lifecycle-inventory.md) | Inventory of dimensions + owners for Object Kind slice. **Shared value vocabulary still deferred** (no platform-wide status enum) | docs-lint inbound; checklist via ADR-039 |
 | 7 | `rules` | Policy & Reuse | Architecture + domain policy owners | **exists** | ADR-037 RuleKind; [`object-kind-catalog.md`](object-kind-catalog.md) §5 | DomainPolicy / ProcessRule / AutomationReaction / PresentationRule | checklist dual-classification bans |
 | 8 | `libraries` | Policy & Reuse | Forms / Field Registry / Communications / Documents | **exists** | ADR-037 LibraryKind; object-kind-catalog §6 | FormComponent, FieldDefinition, templates; checklist ≠ gate | Forms catalog tests; ADR-011 drift policy for UI libs |
@@ -94,7 +94,7 @@ Sub-gaps under an `exists` area are recorded in **notes** only (e.g. Error/Pagin
 1. ~~**States & Transitions** (`next`) — inventory on Object Kind Catalog rows.~~ **Done (ADR-039 inventory).** Shared value vocabulary still deferred.  
 2. ~~**Naming & Identifiers**~~ **Done (ADR-040).** DocumentType runtime alignment (`integrity=split` → `aligned`) remains a separate PR.  
 3. ~~**Data Types** + Fields linkage.~~ **Done (ADR-041 inventory).** Runtime Field/Forms `data_type` adoption deferred.  
-4. **Relationships** contract.  
+4. ~~**Relationships** contract.~~ **Done (ADR-042).** Confirmed slice only; full CRM graph deferred.  
 5. **Actions** / **Events** (ADR-019 3A-*).  
 6. **Design** Semantic Visual Language on ADR-011.
 
@@ -102,6 +102,7 @@ Sub-gaps under an `exists` area are recorded in **notes** only (e.g. Error/Pagin
 
 ## 8. History
 
+- 2026-08-13: Area `relationships` → `exists` via ADR-042 (confirmed slice; CRM graph deferred).
 - 2026-08-13: Area `data_types` → `exists` via ADR-041 (runtime Field/Forms adoption deferred).
 - 2026-08-13: Area `naming_identifiers` → `exists` via ADR-040 (runtime DocumentType alignment deferred).
 - 2026-08-13: Area `states_transitions` → `exists` via ADR-039 inventory (shared enums deferred).

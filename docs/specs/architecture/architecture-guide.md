@@ -57,12 +57,14 @@ UI **не** определяет архитектуру.
 | **State / Lifecycle Inventory** | Dimensions + owners for Object Kind slice ([`ADR-039`](ADR-039-state-lifecycle-inventory.md) · [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md)) — не общий enum статусов |
 | **Naming & Identifiers** | Identifier kinds + namespaces + alias policy ([`ADR-040`](ADR-040-naming-identifiers.md) · [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md)) — не runtime alignment DocumentType |
 | **Data Types** | Semantic value types; Field **uses** DataType ([`ADR-041`](ADR-041-data-types.md) · [`../platform/data-types.md`](../platform/data-types.md)) — не миграция `field_type` |
+| **Relationships** | RelationshipKind contract + confirmed slice ([`ADR-042`](ADR-042-relationships.md) · [`../platform/relationships.md`](../platform/relationships.md)) — не полный CRM-граф |
 | Invariants | INV-01…15 |
 | Checklist | Обязателен перед ADR/PR |
 | Epic P (3D) | Закрытие Acquisition V1 vertical |
 
 ## История
 
+- 2026-08-13: **ADR-042** Relationships Accepted — RelationshipKind contract + confirmed Documents/handoff/Activity/Comms slice; L2 [`../platform/relationships.md`](../platform/relationships.md); CRM graph deferred.
 - 2026-08-13: **ADR-041** Data Types Accepted — Field ≠ DataType; L2 [`../platform/data-types.md`](../platform/data-types.md); runtime Field/Forms adoption deferred.
 - 2026-08-13: **ADR-040** Naming & Identifiers Accepted — kinds / namespaces / alias policy; L2 [`../platform/naming-identifiers.md`](../platform/naming-identifiers.md); DocumentType runtime alignment deferred.
 - 2026-08-13: **ADR-039** State / Lifecycle Inventory Accepted — dimensions + owners for Object Kind slice; L2 [`../platform/state-lifecycle-inventory.md`](../platform/state-lifecycle-inventory.md); shared status enum deferred.
