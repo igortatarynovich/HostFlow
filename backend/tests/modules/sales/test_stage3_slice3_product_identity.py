@@ -282,6 +282,19 @@ async def test_http_sales_list_get_keyed_by_sales_inquiry(
     assert spine.json()["sales_inquiry_id"] == str(inquiry.id)
     assert spine.json()["missing_sales_inquiry"] is False
 
+    patched = await client.patch(
+        f"/api/v1/sales/inquiries/{inquiry.id}",
+        headers=headers,
+        json={"stage": "contacted"},
+    )
+    # Identity: SI key must resolve (404 would be a product-key miss).
+    # 422 is Lead-projection policy (RODO / next-action), not slice 3.
+    assert patched.status_code in (200, 422), patched.text
+    if patched.status_code == 200:
+        body = patched.json()
+        assert body["id"] == str(inquiry.id)
+        assert body["transport_lead_id"] == str(lead.id)
+
     rec_list = await client.get("/api/v1/recruitment/applications", headers=headers)
     assert rec_list.status_code == 200, rec_list.text
     rec_ids = {str(item.get("id") or "") for item in (rec_list.json().get("items") or [])}
