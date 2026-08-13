@@ -39,7 +39,8 @@ from backend.app.communications.manual_thread_reply import manual_thread_reply_b
 from backend.app.api.v1.utils.own_company import (
     resolve_active_own_company_id_optional,
 )
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.communication import (
     CommunicationMessage,
@@ -639,7 +640,7 @@ async def patch_message_delivery_status(
 @router.get(
     "/scheduler/status",
     response_model=CommunicationSchedulerStatusOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_communications_scheduler_status(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -660,7 +661,7 @@ async def get_communications_scheduler_status(
 @router.post(
     "/scheduler/run-now",
     response_model=CommunicationSchedulerRunNowResponse,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def run_communications_scheduler_now(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),

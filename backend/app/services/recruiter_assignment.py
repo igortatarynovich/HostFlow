@@ -195,7 +195,7 @@ async def _prepare_vacancy_pool(
             and_(
                 recruiter_alias.id == VacancyRecruiter.user_id,
                 recruiter_alias.is_active.is_(True),
-                recruiter_alias.role == UserRole.recruiter,
+                recruiter_alias.role == UserRole.employee,
                 or_(
                     recruiter_alias.tenant_id.is_(None),
                     recruiter_alias.tenant_id == tenant_id,
@@ -245,7 +245,7 @@ async def _prepare_company_supervisors(
         )
         .where(
             user_alias.is_active.is_(True),
-            user_alias.role.in_([UserRole.supervisor, UserRole.administrator]),
+            user_alias.role.in_([UserRole.employee, UserRole.administrator]),
             or_(
                 user_alias.tenant_id.is_(None),
                 user_alias.tenant_id == tenant_id,

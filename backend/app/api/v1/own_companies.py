@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import OwnCompany, User
 from backend.app.models.tenant import Tenant, TenantLicense
@@ -179,7 +180,7 @@ async def create_own_company(
     payload: OwnCompanyCreate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor, Role.administrator)),
+    _role: str = Depends(require_trust_write()),
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
@@ -299,7 +300,7 @@ async def patch_own_company(
     payload: OwnCompanyPatch,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor, Role.administrator)),
+    _role: str = Depends(require_trust_write()),
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)

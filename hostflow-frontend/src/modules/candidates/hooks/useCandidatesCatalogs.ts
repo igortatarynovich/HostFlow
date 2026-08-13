@@ -18,6 +18,7 @@ import { useEffect } from 'react'
 
 import api from '../../../api/client'
 import { getAvailableClients, type AvailableClientOut } from '../../../api/handoffs'
+import { RECRUITMENT_ASSIGNEE_CATALOG_ROLES } from '../../../auth/trustRoles'
 import type { Vacancy } from '../../../api/types'
 import type { ManagerItem } from '../types'
 
@@ -40,7 +41,9 @@ export function useCandidatesManagersCatalog(
     let cancelled = false
     ;(async () => {
       try {
-        const { data } = await api.get('/catalogs/managers', { params: { roles: 'recruiter' } })
+        const { data } = await api.get('/catalogs/managers', {
+          params: { roles: RECRUITMENT_ASSIGNEE_CATALOG_ROLES },
+        })
         const list: unknown[] = Array.isArray(data) ? data : ((data as { items?: unknown[] })?.items || [])
         const mapped: ManagerItem[] = list
           .map((it: unknown) => {

@@ -12,7 +12,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.utils.own_company import resolve_own_company_id_for_session
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.client_account import ClientAccount
 from backend.app.models.company import Company
@@ -21,8 +22,8 @@ from backend.app.models.vacancy import Vacancy
 
 router = APIRouter(tags=["sales-orders"], redirect_slashes=False)
 
-_READ = Depends(require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter, Role.viewer))
-_WRITE = Depends(require_roles(Role.admin, Role.manager, Role.supervisor))
+_READ = Depends(require_trust_read())
+_WRITE = Depends(require_trust_write())
 
 
 class SalesOrderCreate(BaseModel):

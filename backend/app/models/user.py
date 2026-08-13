@@ -25,20 +25,20 @@ JSONType = JSON().with_variant(JSONB, "postgresql")
 
 
 class Role(str, Enum):
-    """Tenant RBAC roles."""
+    """Tenant RBAC roles — ADR-036 trust only (job titles are presets, not roles).
+
+    Legacy job/portal strings are normalized on write and remapped by migration
+    ``202608100001_adr036_remap_legacy_trust_roles``. Do not re-add job-title
+    members without Architecture RFC.
+    """
 
     superadmin = "superadmin"
     administrator = "administrator"
-    supervisor = "supervisor"
-    recruiter = "recruiter"
-    client_manager = "client_manager"
-    client_processor = "client_processor"
-    compliance_officer = "compliance_officer"
-    hr_officer = "hr_officer"
+    employee = "employee"
     viewer = "viewer"
+    # Input aliases (same value as trust role) — not persisted as distinct labels
     admin = administrator
     owner = administrator
-    manager = supervisor
 
 
 class User(Base, TimestampMixin):

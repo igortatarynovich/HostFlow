@@ -55,7 +55,8 @@ from backend.app.api.v1.platform.acquisition_activity import (
     ActivityEventOut,
 )
 from backend.app.api.v1.utils.own_company import resolve_own_company_id_for_session
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.constants.campaign_registries import load_campaign_registries
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.acquisition_activity_event import (
@@ -97,7 +98,7 @@ router = APIRouter(
     redirect_slashes=False,
 )
 
-_WRITE = [Depends(require_roles(Role.administrator, Role.supervisor, Role.recruiter, Role.client_manager, Role.superadmin))]
+_WRITE = [Depends(require_trust_read())]
 
 def _activity_actor(ctx: UserCtx) -> tuple[str, str | None]:
     actor_id = str(ctx.sub).strip() if ctx and getattr(ctx, "sub", None) else None
@@ -107,15 +108,7 @@ def _activity_actor(ctx: UserCtx) -> tuple[str, str | None]:
 
 _READ = [
     Depends(
-        require_roles(
-            Role.administrator,
-            Role.supervisor,
-            Role.recruiter,
-            Role.client_manager,
-            Role.viewer,
-            Role.hr_officer,
-            Role.superadmin,
-        )
+        require_trust_read()
     )
 ]
 

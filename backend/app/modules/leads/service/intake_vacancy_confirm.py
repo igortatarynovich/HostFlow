@@ -130,7 +130,7 @@ async def confirm_lead_vacancy(
         tenant_id=tenant_id,
         lead=lead,
         event_type=event_type,
-        roles=[Role.administrator, Role.supervisor],
+        roles=[Role.administrator, Role.employee],
         business_type=business_type,
         outcome_entity_type=outcome_entity_type,
         outcome_entity_id=outcome_entity_id,

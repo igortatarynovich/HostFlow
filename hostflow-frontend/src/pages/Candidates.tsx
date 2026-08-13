@@ -173,6 +173,7 @@ import {
   getWithFallbacks,
   parseRiskShadowMinBand,
   TEAM_WORK_PANEL_ASSIGNEE_ROLES,
+  canUseTeamAssigneeScope,
   WP_ASSIGNEE_STORAGE_KEY,
 } from '../modules/candidates/internal'
 import {
@@ -208,8 +209,7 @@ export default function Candidates(){
     ? String(tenantIdForWorkPanel ?? meForWorkPanel?.tenant_id)
     : 'default'
   const canUseTeamWorkPanelAssigneeScope = useMemo(() => {
-    const r = String(meForWorkPanel?.role || '').trim().toLowerCase()
-    return TEAM_WORK_PANEL_ASSIGNEE_ROLES.has(r)
+    return canUseTeamAssigneeScope({ role: meForWorkPanel?.role })
   }, [meForWorkPanel?.role])
   const [workPanelAssigneeScope, setWorkPanelAssigneeScopeState] = useState<'mine' | 'team'>('mine')
   useEffect(() => {

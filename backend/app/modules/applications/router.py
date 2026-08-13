@@ -6,7 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.applications import mutations
 from backend.app.modules.applications.mappers import (
@@ -55,7 +56,7 @@ async def list_sales_inquiries(
     offset: int = Query(0, ge=0),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> ApplicationListResponse:
     db, tenant_id = db_tenant
     result = await service.list_leads(
@@ -84,7 +85,7 @@ async def get_sales_inquiry(
     application_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations._reload_sales(db, str(tenant_id), own_company_id, application_id)
@@ -98,7 +99,7 @@ async def get_sales_inquiry_capability_spine(
     application_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> SalesCapabilitySpineOut:
     """Display-only Pipeline v1 spine: Capability / Review / Convert / Traceability.
 
@@ -131,7 +132,7 @@ async def list_sales_inquiry_possible_duplicates(
     limit: int = Query(10, ge=1, le=20),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> SalesInquiryDuplicateListResponse:
     """Sibling client inquiries sharing phone and/or email (operator duplicate hint)."""
     from backend.app.modules.applications.sales_inquiry_duplicates import (
@@ -165,7 +166,7 @@ async def patch_sales_inquiry(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations.patch_sales_stage(
@@ -184,7 +185,7 @@ async def convert_sales_inquiry(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations.convert_sales_inquiry(
@@ -210,7 +211,7 @@ async def list_recruitment_applications(
     offset: int = Query(0, ge=0),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> ApplicationListResponse:
     db, tenant_id = db_tenant
     inbox_scope = normalize_recruitment_inbox_scope(scope)
@@ -251,7 +252,7 @@ async def list_recruitment_applications(
 async def get_recruitment_application(
     application_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations._reload_recruitment(db, str(tenant_id), application_id)
@@ -263,7 +264,7 @@ async def patch_recruitment_application(
     payload: ApplicationStagePatch,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations.patch_recruitment_stage(
@@ -282,7 +283,7 @@ async def recruitment_application_intake_decision(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations.recruitment_intake_decision(
@@ -301,7 +302,7 @@ async def recruitment_application_confirm_vacancy(
     payload: ApplicationVacancyConfirmIn,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations.recruitment_confirm_vacancy(
@@ -319,7 +320,7 @@ async def recruitment_application_process(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> ApplicationProcessResult:
     db, tenant_id = db_tenant
     return await mutations.recruitment_process_application(
@@ -337,7 +338,7 @@ async def recruitment_application_follow_up(
     payload: ApplicationFollowUpIn,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations.recruitment_follow_up(
@@ -355,7 +356,7 @@ async def recruitment_application_assign(
     payload: ApplicationAssignIn,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations.recruitment_assign(

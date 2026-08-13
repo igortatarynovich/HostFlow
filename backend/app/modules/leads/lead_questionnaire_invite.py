@@ -736,7 +736,7 @@ async def _notify_questionnaire_submitted(
     audience = (
         EventAudience(user_ids=[assignee])
         if assignee
-        else EventAudience(roles=(Role.supervisor, Role.administrator))
+        else EventAudience(roles=(Role.employee, Role.administrator))
     )
     try:
         await emit_event(

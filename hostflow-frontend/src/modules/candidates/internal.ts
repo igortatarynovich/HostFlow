@@ -87,12 +87,17 @@ export function parseRiskShadowMinBand(raw: string | null | undefined): string |
 }
 
 /** Align with Reminders inbox: managers can load team-scoped candidate reminders in the work panel. */
+export { canUseTeamAssigneeScope } from '../../auth/trustRoles'
+
+/** @deprecated Prefer canUseTeamAssigneeScope — kept for Candidates.tsx Set.has checks during migration. */
 export const TEAM_WORK_PANEL_ASSIGNEE_ROLES = new Set([
   'administrator',
+  'employee',
   'supervisor',
   'superadmin',
   'admin',
   'manager',
+  'team_lead',
 ])
 
 /** localStorage key for the work-panel "mine vs team" scope toggle. */

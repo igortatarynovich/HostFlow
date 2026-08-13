@@ -2295,18 +2295,21 @@
           "title": "Использование слотов",
           "limit": "Использовано {used} из {limit}",
           "unlimited": "Использовано {used}",
-          "recruiters": "Рекрутеры",
-          "supervisors": "Супервайзеры",
-          "client_managers": "Менеджеры клиента",
+          "administrators": "Администраторы",
+          "employees": "Сотрудники",
+          "portal_guests": "Гости портала (не биллятся)",
+          "recruiters": "Сотрудники",
+          "supervisors": "Администраторы",
+          "client_managers": "Гости портала (не биллятся)",
           "viewers": "Наблюдатели"
         },
         "license": {
           "title": "Лицензия и лимиты",
           "plan": "Тариф",
           "expires_at": "Истекает",
-          "max_recruiters": "Макс. рекрутеров",
-          "max_supervisors": "Макс. супервайзеров",
-          "max_client_managers": "Макс. менеджеров клиента",
+          "max_recruiters": "Макс. сотрудников",
+          "max_supervisors": "Макс. администраторов",
+          "max_client_managers": "Макс. гостей портала (не используется)",
           "max_viewers": "Макс. наблюдателей",
           "max_storage_gb": "Макс. хранилище (ГБ)",
           "max_companies": "Макс. компаний",
@@ -2426,7 +2429,8 @@
             "documents": "Документы",
             "leads": "Лиды",
             "services": "Сервисы",
-            "client_portal": "Клиентский портал"
+            "client_portal": "Клиентский портал",
+            "hr": "HR"
           },
           "empty": "Настройки модулей недоступны для этого тенанта.",
           "errors": {
@@ -2513,9 +2517,12 @@
         "subtitle": "Следите за использованием слотов, включайте/выключайте модули и отправляйте запросы на расширение.",
         "usage": {
           "title": "Использование слотов",
-          "recruiters": "Рекрутеры",
-          "supervisors": "Супервайзеры",
-          "client_managers": "Менеджеры клиента",
+          "administrators": "Администраторы",
+          "employees": "Сотрудники",
+          "portal_guests": "Гости портала (не биллятся)",
+          "recruiters": "Сотрудники",
+          "supervisors": "Администраторы",
+          "client_managers": "Гости портала (не биллятся)",
           "viewers": "Наблюдатели"
         },
         "modules": {
@@ -2540,6 +2547,7 @@
           "submit": "Отправить запрос",
           "roles": {
             "administrator": "Администраторы",
+            "employee": "Сотрудники",
             "supervisor": "Супервайзеры",
             "recruiter": "Рекрутеры",
             "client_manager": "Менеджеры клиента",
@@ -2750,9 +2758,12 @@
           "title": "Юридические документы"
         },
         "usage": {
-          "recruiters": "Рекрутеры: {used} / {limit}",
-          "supervisors": "Супервайзеры: {used} / {limit}",
-          "client_managers": "Менеджеры клиента: {used} / {limit}",
+          "administrators": "Администраторы: {used} / {limit}",
+          "employees": "Сотрудники: {used} / {limit}",
+          "portal_guests": "Гости портала (не биллятся): {used}",
+          "recruiters": "Сотрудники: {used} / {limit}",
+          "supervisors": "Администраторы: {used} / {limit}",
+          "client_managers": "Гости портала (не биллятся): {used} / {limit}",
           "viewers": "Наблюдатели: {used} / {limit}",
           "leads_month": "Лиды за месяц (UTC): {used} / {limit}",
           "candidates": "Активные кандидаты: {used} / {limit}",
@@ -3027,7 +3038,8 @@
           "recruiter": "Рекрутер",
           "client_manager": "Менеджер клиента",
           "client_processor": "Процессор кандидатов",
-          "viewer": "Наблюдатель"
+          "viewer": "Наблюдатель",
+          "employee": "Сотрудник"
         },
         "form": {
           "email_label": "Email",
@@ -3044,7 +3056,10 @@
           "password_label": "Пароль (опционально)",
           "password_placeholder": "Оставьте пустым — сгенерируем",
           "submit": "Создать пользователя",
-          "submitting": "Создаём…"
+          "submitting": "Создаём…",
+          "preset_label": "Пресет прав",
+          "preset_none": "Нет (дефолт роли)",
+          "preset_help": "Заполняет права модулей пользователя — не создаёт системную роль."
         },
         "errors": {
           "list_missing_endpoint": "Endpoint /api/v1/admin/users не найден. Перезапустите backend после обновлений.",
@@ -3239,6 +3254,13 @@
             "token": "Токен",
             "valid_until": "Действительно до"
           }
+        },
+        "presets": {
+          "recruiter": "Рекрутер",
+          "team_lead": "Тимлид",
+          "hr": "HR",
+          "compliance": "Compliance",
+          "portal_guest": "Гость портала"
         }
       },
       "ruleset": {
@@ -4542,7 +4564,8 @@
         "blacklist": "Чёрный список",
         "wrong_phone": "Неверно указан номер",
         "double_crew": "Двойной экипаж",
-        "no_response": "Не отвечает"
+        "no_response": "Не отвечает",
+        "recruitment_completed": "Набор завершён"
       },
       "labels": {
         "no_reason": "Без причины",
@@ -11840,6 +11863,10 @@
         "profile": {
           "description": "Личный профиль, язык, безопасность и локальные настройки.",
           "label": "Мой профиль"
+        },
+        "roles_access": {
+          "label": "Роли и доступы",
+          "description": "Trust-роли, матрица модулей и пресеты прав для Employee и Viewer."
         }
       },
       "audit": {
@@ -11906,6 +11933,18 @@
           "description": "Профиль компании, идентичность воркспейса и общий контур доступа.",
           "label": "Рабочее пространство"
         }
+      },
+      "roles_access": {
+        "title": "Роли и доступы",
+        "description": "Trust-роли и видимость модулей. Должности — пресеты, не отдельные security-роли (ADR-036).",
+        "matrix_heading": "Матрица роль × модуль",
+        "matrix_help": "V = видно, E = редактирование. Колонка Administrator заблокирована (trust ceiling).",
+        "show_legacy": "Показать legacy-колонки ролей",
+        "ceiling_locked": "(заблокировано)",
+        "presets_title": "Пресеты (не роли)",
+        "presets_body": "Recruiter, Team lead, HR, Compliance — стартовые пакеты для Employee. Гости портала — Viewer + portal context, не client_manager.",
+        "load_failed": "Не удалось загрузить матрицу",
+        "save_failed": "Не удалось сохранить"
       }
     },
     "communications_settings": {

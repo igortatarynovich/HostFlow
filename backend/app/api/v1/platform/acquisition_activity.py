@@ -15,7 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.activity import ACTIVITY_LIST_ORDER, list_activity_events
 from backend.app.acquisition.activity.catalog import ACTIVITY_EVENT_TYPES
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.acquisition_activity_event import AcquisitionActivityEvent
 
@@ -27,15 +28,7 @@ router = APIRouter(
 
 _READ = [
     Depends(
-        require_roles(
-            Role.administrator,
-            Role.supervisor,
-            Role.recruiter,
-            Role.client_manager,
-            Role.viewer,
-            Role.hr_officer,
-            Role.superadmin,
-        )
+        require_trust_read()
     )
 ]
 

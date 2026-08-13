@@ -12,6 +12,13 @@
  * spinners.
  */
 
+import {
+  isPortalActor,
+  resolvePermissionPersona,
+  type AccessContext,
+  type PermissionPresetId,
+} from '../../auth/trustRoles'
+
 export type WorkHubRoleKey =
   | 'admin_solo'
   | 'admin_team'
@@ -215,22 +222,32 @@ export function resolveWorkHubProfile(args: {
   role: string
   isClientTenant: boolean
   isSoloAdmin?: boolean
+  accessContext?: AccessContext | string | null
+  presetId?: PermissionPresetId | string | null
 }): WorkHubProfile {
-  const { role, isClientTenant, isSoloAdmin } = args
-  const r = String(role || '').toLowerCase()
+  const { role, isClientTenant, isSoloAdmin, accessContext, presetId } = args
+  const persona = resolvePermissionPersona({
+    role,
+    accessContext,
+    presetId: presetId as PermissionPresetId | null,
+    isClientTenant,
+  })
 
-  if (r === 'administrator') {
+  if (persona === 'administrator') {
     return PROFILES[isSoloAdmin ? 'admin_solo' : 'admin_team']
   }
-  if (r === 'supervisor') return PROFILES.supervisor
-  if (r === 'recruiter') {
-    // Defensive: recruiters on a client tenant should never reach this branch
-    // (usePermissions already remaps them to client_processor) — keep the
-    // fallback explicit so a future refactor doesn't silently regress.
-    return isClientTenant ? PROFILES.client_processor : PROFILES.recruiter
+  if (persona === 'supervisor') return PROFILES.supervisor
+  if (persona === 'recruiter' || persona === 'employee' || persona === 'compliance_officer') {
+    return isClientTenant || isPortalActor(role, accessContext)
+      ? PROFILES.client_processor
+      : PROFILES.recruiter
   }
-  if (r === 'client_manager') return PROFILES.client_manager
-  if (r === 'client_processor') return PROFILES.client_processor
+  if (persona === 'hr_officer') {
+    // HR lane still uses personal-focus hub (same as recruiter layout).
+    return PROFILES.recruiter
+  }
+  if (persona === 'client_manager') return PROFILES.client_manager
+  if (persona === 'client_processor') return PROFILES.client_processor
 
   return PROFILES.viewer
 }

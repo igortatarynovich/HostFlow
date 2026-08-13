@@ -64,6 +64,7 @@ import { useEffectiveCandidateLayout } from '../hooks/useEffectiveCandidateLayou
 import { buildInboxHubPath } from '../utils/inboxDeepLinks'
 import { isCandidateRecruiterIdCanonEnabled, isDossierLegacyEnabled, isRequirementsWorkspaceEnabled } from '../utils/featureFlags'
 import { usePermissions } from '../hooks/usePermissions'
+import { RECRUITMENT_ASSIGNEE_CATALOG_ROLES, canUseTeamOverviewLane } from '../auth/trustRoles'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
 import { servicesWorkspacePath } from '../modules/services/utils'
 import { useI18n, type TranslateFn } from '../i18n'
@@ -742,7 +743,7 @@ export default function CandidateCard(){
   const location = useLocation()
   const isNew = id === 'new'
   const nav = useNavigate()
-  const { can, role: permissionsRole, isClientTenant, tenantId } = usePermissions()
+  const { can, role: permissionsRole, rawRole, presetId, isClientTenant, tenantId } = usePermissions()
   const { gates: hiringGatesApi } = useHiringPipelineGates()
   const hiringGatesRuntime = useMemo(() => hiringPipelineGatesFromApi(hiringGatesApi), [hiringGatesApi])
   const canRequestDelete = can('candidates.requestDelete')
@@ -1389,7 +1390,7 @@ export default function CandidateCard(){
           api.get('/catalogs/countries'),
           api.get('/catalogs/languages'),
           api.get('/catalogs/dial-codes'),
-          api.get('/catalogs/managers', { params: { roles: 'recruiter' } }).catch(()=>({ data: [] })),
+          api.get('/catalogs/managers', { params: { roles: RECRUITMENT_ASSIGNEE_CATALOG_ROLES } }).catch(()=>({ data: [] })),
           api.get('/vacancies/').catch(()=>({ data: [] })),
         ])
 
@@ -3321,8 +3322,11 @@ export default function CandidateCard(){
   const canApprovePipelineOverride = useMemo(() => {
     if (!model?.id || isMasked) return false
     if (isClientTenant) return false
-    return permissionsRole === 'supervisor' || permissionsRole === 'administrator'
-  }, [model?.id, isMasked, isClientTenant, permissionsRole])
+    return (
+      canUseTeamOverviewLane({ role: rawRole || permissionsRole, presetId }) ||
+      can('manager.tools')
+    )
+  }, [model?.id, isMasked, isClientTenant, rawRole, permissionsRole, presetId, can])
 
   const bumpPipelineAndDocsRefresh = useCallback(() => {
     setDocsSummaryRefreshTrigger((x) => x + 1)

@@ -24,6 +24,7 @@ import { useAuth } from '../store/useAuth'
 import { useI18n, type LocaleCode } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { usePermissions } from '../hooks/usePermissions'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { PageHeader } from '../components/nav/PageHeader'
 import { PageShell, PageShellHeader } from '../components/layout'
@@ -103,10 +104,14 @@ export default function ProfilePage() {
     updateSecurity,
   } = useAuth()
   const { t, setLocale } = useI18n()
-  const { can, role } = usePermissions()
+  const { can, role, rawRole, presetId } = usePermissions()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const canOpenTasksHome = can('notifications.view')
-  const canLoadTeamOverview = role === 'administrator' || role === 'supervisor'
+  const canLoadTeamOverview = canUseTeamOverviewLane({
+    role: rawRole || role,
+    presetId,
+    canAdminUsers: can('admin.users'),
+  })
 
   const [companies, setCompanies] = useState<Company[]>([])
   const [teamOverview, setTeamOverview] = useState<TeamOverviewResponse | null>(null)
@@ -651,9 +656,8 @@ export default function ProfilePage() {
     const usage = teamOverview?.usage
     if (!usage) return false
     const total =
-      Number(usage.recruiter_count || 0) +
-      Number(usage.supervisor_count || 0) +
-      Number(usage.client_manager_count || 0) +
+      Number(usage.administrator_count ?? usage.supervisor_count ?? 0) +
+      Number(usage.employee_count ?? usage.recruiter_count ?? 0) +
       Number(usage.viewer_count || 0)
     return total <= 1
   }, [teamOverview])

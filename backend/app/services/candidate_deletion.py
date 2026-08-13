@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_delete_request import CandidateDeleteRequest
 from backend.app.models.user import Role, User
+from backend.app.auth.trust_roles import is_recruiter_preset_actor, is_team_lead_org_actor
 from backend.app.services.audit import log_activity
 
 
@@ -50,7 +51,9 @@ async def create_delete_request(
     requester = await _load_user(db, requested_by)
     if requester is None or requester.tenant_id != tenant_id:
         raise CandidateDeleteError("Requester not found", 404)
-    if requester.role != Role.recruiter:
+    req_role = str(getattr(requester.role, "value", requester.role) or "")
+    prefs = requester.preferences if isinstance(requester.preferences, dict) else None
+    if not is_recruiter_preset_actor(req_role, preferences=prefs):
         raise CandidateDeleteError("Only recruiters can request deletion", 403)
     if not requester.supervisor_id:
         raise CandidateDeleteError("Recruiter must have supervisor", 409)
@@ -214,10 +217,17 @@ async def resolve_request(
         raise CandidateDeleteError("Actor not found", 404)
     # Проверяем роль: actor.role - это объект Role из модели User
     # Сравниваем напрямую с Enum значениями
-    if actor.role not in (Role.administrator, Role.supervisor):
+    actor_role = str(getattr(actor.role, "value", actor.role) or "")
+    actor_prefs = actor.preferences if isinstance(actor.preferences, dict) else None
+    is_admin = actor.role in (Role.administrator, Role.superadmin) or actor_role in (
+        Role.administrator.value,
+        Role.superadmin.value,
+    )
+    is_lead = is_team_lead_org_actor(actor_role, preferences=actor_prefs)
+    if not is_admin and not is_lead:
         raise CandidateDeleteError("Forbidden", 403)
-    # Супервизор может одобрять только запросы, где он назначен супервизором рекрутера
-    if actor.role == Role.supervisor and actor.id != request.supervisor_id:
+    # Team lead may approve only requests where they are the assigned supervisor
+    if is_lead and not is_admin and actor.id != request.supervisor_id:
         raise CandidateDeleteError("Supervisor can only resolve own requests", 403)
 
     request.status = "approved" if approve else "rejected"

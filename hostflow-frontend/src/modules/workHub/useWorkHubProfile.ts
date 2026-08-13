@@ -16,11 +16,17 @@ import {
  * to `admin_team` (broader counters) — the backend now always sends the flag.
  */
 export function useWorkHubProfile(): WorkHubProfile {
-  const { role, isClientTenant } = usePermissions()
+  const { role, rawRole, isClientTenant, accessContext, presetId } = usePermissions()
   const { me } = useAuth()
 
   return useMemo(() => {
     const isSoloAdmin = Boolean(me?.is_solo_admin)
-    return resolveWorkHubProfile({ role, isClientTenant, isSoloAdmin })
-  }, [role, isClientTenant, me])
+    return resolveWorkHubProfile({
+      role: rawRole || role,
+      isClientTenant,
+      isSoloAdmin,
+      accessContext,
+      presetId,
+    })
+  }, [accessContext, isClientTenant, me, presetId, rawRole, role])
 }

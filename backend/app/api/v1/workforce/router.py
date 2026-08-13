@@ -19,7 +19,7 @@ from backend.app.modules.documents.document_open_service import (
 )
 from backend.app.api.v1.candidates.service import get_candidate
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.documents import crud as documents_crud
 from backend.app.models.workforce_leave_request import WorkforceLeaveRequest
@@ -90,19 +90,18 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/workforce", tags=["workforce"])
 
-# HR workspace: list/detail/create/update (not visible to pure recruitment roles)
-HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)
-# HR-only document review lane (recruitment/supervisor must not mutate HR checks)
-HR_DOCUMENT_REVIEW_ROLES = (Role.hr_officer, Role.administrator)
-# Recruitment / managers with candidate access (HR officers use list/create in workspace, not this)
-HANDOFF_ROLES = (
-    Role.recruiter,
-    Role.compliance_officer,
-    Role.administrator,
-    Role.supervisor,
-    Role.client_manager,
-    Role.client_processor,
+# ADR-036: trust ceilings; HR permission via require_hr_workforce_module_access
+from backend.app.auth.trust_role_deps import (
+    TRUST_READ_ROLES,
+    TRUST_WRITE_ROLES,
+    require_trust_read,
+    require_trust_write,
 )
+from backend.app.auth.module_gate import require_hr_workforce_module_access
+
+HR_WORKSPACE_ROLES = TRUST_WRITE_ROLES
+HR_DOCUMENT_REVIEW_ROLES = TRUST_WRITE_ROLES
+HANDOFF_ROLES = TRUST_READ_ROLES
 
 
 class EmployeeOut(BaseModel):
@@ -821,7 +820,7 @@ def _hr_bundle_out(bundle: dict[str, Any]) -> HrBundleOut:
 @router.get(
     "/employees",
     response_model=List[EmployeeOut],
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def list_employees(
     status: Optional[str] = None,
@@ -838,7 +837,7 @@ async def list_employees(
 @router.get(
     "/employees/directory",
     response_model=EmployeeDirectoryPageOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def list_employees_directory_endpoint(
     status: Optional[str] = Query(None),
@@ -875,7 +874,7 @@ async def list_employees_directory_endpoint(
 @router.get(
     "/employees/by-candidate/{candidate_id}",
     response_model=EmployeeOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def get_employee_by_candidate(
     candidate_id: str,
@@ -898,7 +897,7 @@ async def get_employee_by_candidate(
 @router.get(
     "/employees/{employee_id}",
     response_model=EmployeeOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def get_employee(
     employee_id: str,
@@ -914,7 +913,7 @@ async def get_employee(
 @router.get(
     "/employees/{employee_id}/hr-bundle",
     response_model=HrBundleOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def get_employee_hr_bundle(
     employee_id: str,
@@ -932,7 +931,7 @@ async def get_employee_hr_bundle(
 @router.get(
     "/employees/{employee_id}/operational-profile",
     response_model=EmployeeOperationalProfileOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def get_employee_operational_profile(
     employee_id: str,
@@ -1000,7 +999,7 @@ async def get_employee_operational_profile(
 @router.get(
     "/employees/{employee_id}/lifecycle-ledger",
     response_model=List[WorkforceLifecycleEventOut],
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def list_employee_lifecycle_ledger(
     employee_id: str,
@@ -1036,7 +1035,7 @@ async def list_employee_lifecycle_ledger(
 @router.post(
     "/employees/{employee_id}/lifecycle-ledger",
     response_model=WorkforceLifecycleEventOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def create_employee_lifecycle_event(
     employee_id: str,
@@ -1078,7 +1077,7 @@ async def create_employee_lifecycle_event(
 @router.patch(
     "/employees/{employee_id}/lifecycle-ledger/{event_id}",
     response_model=WorkforceLifecycleEventOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_employee_lifecycle_event(
     employee_id: str,
@@ -1106,7 +1105,7 @@ async def patch_employee_lifecycle_event(
 @router.patch(
     "/employees/{employee_id}/document-control-tasks/{document_code}",
     response_model=WorkforceDocumentControlTaskOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_document_control_task(
     employee_id: str,
@@ -1140,7 +1139,7 @@ async def patch_document_control_task(
 @router.get(
     "/employees/{employee_id}/documents",
     response_model=List[CandDoc],
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def list_employee_documents_via_candidate_link(
     employee_id: str,
@@ -1201,7 +1200,7 @@ class EmployeeDocumentHrReviewOut(BaseModel):
 @router.get(
     "/employees/{employee_id}/hr-operational-context",
     response_model=HrOperationalContextOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def get_employee_hr_operational_context(
     employee_id: str,
@@ -1220,7 +1219,7 @@ async def get_employee_hr_operational_context(
 @router.post(
     "/employees/{employee_id}/documents/{document_id}/hr-review",
     response_model=EmployeeDocumentHrReviewOut,
-    dependencies=[Depends(require_roles(*HR_DOCUMENT_REVIEW_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_document_hr_review(
     employee_id: str,
@@ -1261,7 +1260,7 @@ async def post_employee_document_hr_review(
 
 @router.get(
     "/employees/{employee_id}/documents/{document_id}/file",
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def get_employee_document_file(
     employee_id: str,
@@ -1285,7 +1284,7 @@ async def get_employee_document_file(
     "/employees",
     response_model=EmployeeOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def create_employee_endpoint(
     payload: EmployeeCreate,
@@ -1343,7 +1342,7 @@ async def create_employee_endpoint(
 @router.patch(
     "/employees/{employee_id}",
     response_model=EmployeeOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_employee(
     employee_id: str,
@@ -1427,7 +1426,7 @@ async def patch_employee(
 @router.post(
     "/employees/from-candidate/{candidate_id}",
     response_model=EmployeeOut,
-    dependencies=[Depends(require_roles(*HANDOFF_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def handoff_employee_from_candidate(
     candidate_id: str,
@@ -1478,7 +1477,7 @@ async def handoff_employee_from_candidate(
 @router.patch(
     "/employees/{employee_id}/payroll-profile",
     response_model=PayrollProfileOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_payroll_profile_endpoint(
     employee_id: str,
@@ -1520,7 +1519,7 @@ async def patch_payroll_profile_endpoint(
 @router.patch(
     "/employees/{employee_id}/zus-profile",
     response_model=ZusProfileOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_zus_profile_endpoint(
     employee_id: str,
@@ -1551,7 +1550,7 @@ async def patch_zus_profile_endpoint(
 @router.patch(
     "/employees/{employee_id}/tax-profile",
     response_model=WorkforceTaxProfileOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_tax_profile_endpoint(
     employee_id: str,
@@ -1582,7 +1581,7 @@ async def patch_tax_profile_endpoint(
 @router.patch(
     "/employees/{employee_id}/insurance-profile",
     response_model=WorkforceInsuranceProfileOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_insurance_profile_endpoint(
     employee_id: str,
@@ -1634,7 +1633,7 @@ async def patch_insurance_profile_endpoint(
 @router.patch(
     "/employees/{employee_id}/work-eligibility",
     response_model=WorkforceWorkEligibilityProfileOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_work_eligibility_profile_endpoint(
     employee_id: str,
@@ -1715,7 +1714,7 @@ async def patch_work_eligibility_profile_endpoint(
 @router.get(
     "/employees/{employee_id}/work-eligibility/journey",
     response_model=WorkEligibilityJourneyOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def get_work_eligibility_journey_endpoint(
     employee_id: str,
@@ -1733,7 +1732,7 @@ async def get_work_eligibility_journey_endpoint(
 @router.patch(
     "/employees/{employee_id}/work-eligibility/payment-requirements/{requirement_id}",
     response_model=WorkforceWorkEligibilityPaymentRequirementOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_work_eligibility_payment_requirement_endpoint(
     employee_id: str,
@@ -1768,7 +1767,7 @@ async def patch_work_eligibility_payment_requirement_endpoint(
 @router.patch(
     "/employees/{employee_id}/compliance-state",
     response_model=WorkforceComplianceStateOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_compliance_state_endpoint(
     employee_id: str,
@@ -1800,7 +1799,7 @@ async def patch_compliance_state_endpoint(
     "/employees/{employee_id}/employments",
     response_model=EmploymentOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def create_employment_endpoint(
     employee_id: str,
@@ -1856,7 +1855,7 @@ async def create_employment_endpoint(
 @router.patch(
     "/employments/{employment_id}",
     response_model=EmploymentOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_employment_endpoint(
     employment_id: str,
@@ -1995,7 +1994,7 @@ async def patch_employment_endpoint(
 @router.patch(
     "/onboarding-tasks/{task_id}",
     response_model=OnboardingTaskOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_onboarding_task_endpoint(
     task_id: str,
@@ -2027,7 +2026,7 @@ async def patch_onboarding_task_endpoint(
     "/employees/{employee_id}/absences",
     response_model=AbsenceOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def create_absence_endpoint(
     employee_id: str,
@@ -2057,7 +2056,7 @@ async def create_absence_endpoint(
 @router.patch(
     "/absences/{absence_id}",
     response_model=AbsenceOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_absence_endpoint(
     absence_id: str,
@@ -2089,7 +2088,7 @@ async def patch_absence_endpoint(
     "/employees/{employee_id}/leave-requests",
     response_model=LeaveRequestOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def create_leave_request_endpoint(
     employee_id: str,
@@ -2119,7 +2118,7 @@ async def create_leave_request_endpoint(
 @router.patch(
     "/leave-requests/{leave_id}",
     response_model=LeaveRequestOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_leave_request_endpoint(
     leave_id: str,
@@ -2230,7 +2229,7 @@ async def _employee_hr_review_for_verification(
 @router.get(
     "/employees/{employee_id}/hr-review/document-verifications",
     response_model=list[HrReviewDocumentRowOut],
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def list_employee_document_verifications(
     employee_id: str,
@@ -2248,7 +2247,7 @@ async def list_employee_document_verifications(
 @router.post(
     "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/opened",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_document_opened(
     employee_id: str,
@@ -2276,7 +2275,7 @@ async def post_employee_document_opened(
 @router.post(
     "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/reviewed",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_document_reviewed(
     employee_id: str,
@@ -2310,7 +2309,7 @@ async def post_employee_document_reviewed(
 @router.post(
     "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/verify",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_document_verify(
     employee_id: str,
@@ -2344,7 +2343,7 @@ async def post_employee_document_verify(
 @router.post(
     "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/reject",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_document_reject(
     employee_id: str,
@@ -2378,7 +2377,7 @@ async def post_employee_document_reject(
 @router.post(
     "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/request-correction",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_document_request_correction(
     employee_id: str,
@@ -2412,7 +2411,7 @@ async def post_employee_document_request_correction(
 @router.post(
     "/employees/{employee_id}/hr-review/document-verifications/{document_key:path}/waive-requirement",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_document_waive_requirement(
     employee_id: str,
@@ -2446,7 +2445,7 @@ async def post_employee_document_waive_requirement(
 @router.post(
     "/employees/{employee_id}/hr-review/additional-document-request",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_hr_additional_document_request(
     employee_id: str,
@@ -2480,7 +2479,7 @@ async def post_employee_hr_additional_document_request(
 @router.get(
     "/employees/{employee_id}/trusted-identity/prep-status",
     response_model=TrustedIdentityPrepStatusOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def get_employee_trusted_identity_prep_status(
     employee_id: str,
@@ -2539,7 +2538,7 @@ def _contract_generation_http_error(exc: Exception) -> HTTPException:
 @router.post(
     "/employees/{employee_id}/contract-generation/preview",
     response_model=ContractDraftPreviewOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_contract_draft_preview(
     employee_id: str,
@@ -2614,7 +2613,7 @@ async def post_contract_draft_preview(
 @router.get(
     "/employees/{employee_id}/hr-review/verified-fields",
     response_model=list[HrVerifiedFieldOut],
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def list_employee_verified_fields(
     employee_id: str,
@@ -2632,7 +2631,7 @@ async def list_employee_verified_fields(
 @router.post(
     "/employees/{employee_id}/hr-review/verified-fields/{field_code}/override",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_verified_field_override(
     employee_id: str,
@@ -2667,7 +2666,7 @@ async def post_employee_verified_field_override(
 @router.get(
     "/employees/{employee_id}/hr-review",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def get_employee_hr_review(
     employee_id: str,
@@ -2688,7 +2687,7 @@ async def get_employee_hr_review(
 @router.patch(
     "/employees/{employee_id}/hr-review/checklist/{item_code}",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_employee_hr_review_checklist(
     employee_id: str,
@@ -2730,7 +2729,7 @@ async def patch_employee_hr_review_checklist(
 @router.post(
     "/employees/{employee_id}/hr-review/approve",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_hr_review_approve(
     employee_id: str,
@@ -2778,7 +2777,7 @@ async def post_employee_hr_review_approve(
 @router.post(
     "/employees/{employee_id}/hr-review/return-to-recruitment",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_hr_review_return(
     employee_id: str,
@@ -2818,7 +2817,7 @@ async def post_employee_hr_review_return(
 @router.post(
     "/employees/{employee_id}/hr-review/request-corrections",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_hr_review_corrections(
     employee_id: str,
@@ -2858,7 +2857,7 @@ async def post_employee_hr_review_corrections(
 @router.post(
     "/employees/{employee_id}/hr-review/reject",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def post_employee_hr_review_reject(
     employee_id: str,

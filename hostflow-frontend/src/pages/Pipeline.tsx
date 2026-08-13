@@ -37,6 +37,7 @@ import {
   computePipelineColumnInsights,
 } from '../modules/pipeline/filterPipelineColumns'
 import {
+import { RECRUITMENT_ASSIGNEE_CATALOG_ROLES } from '../auth/trustRoles'
   normalizeVacancyPipelinePayload,
   rebuildPipelineColumnsFromCandidates,
 } from '../modules/pipeline/normalizeVacancyPipelinePayload'
@@ -220,7 +221,7 @@ export default function Pipeline(){
 
   // --- load managers for bulk-assign (accept array or {items})
   useEffect(() => {
-    api.get('/catalogs/managers', { params: { roles: 'recruiter' } })
+    api.get('/catalogs/managers', { params: { roles: RECRUITMENT_ASSIGNEE_CATALOG_ROLES } })
       .then(({ data }) => {
         const list: any[] = Array.isArray(data) ? data : (data?.items || [])
         const mapped: ManagerItem[] = list.map((it:any) => ({ id: it?.id || it?.user_id || it?.uid, name: it?.name || it?.email || '—' }))

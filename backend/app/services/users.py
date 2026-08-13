@@ -38,33 +38,52 @@ user_memberships = sa.table(
 )
 
 TENANT_ROLE_VALUES = {role.value for role in Role}
+# Accepted on create/invite/role-change (coerced to trust + preset).
+ASSIGNABLE_INPUT_ROLES = TENANT_ROLE_VALUES | {
+    "admin",
+    "owner",
+    "user",
+    "manager",
+    "supervisor",
+    "recruiter",
+    "hr",
+    "hr_officer",
+    "people_ops",
+    "lead",
+    "compliance_officer",
+    "compliance",
+    "docs_officer",
+    "client",
+    "client_manager",
+    "client_processor",
+    "processor",
+}
 SUPERVISOR_ROLES = {
     Role.superadmin.value,
     Role.administrator.value,
-    Role.supervisor.value,
+    Role.employee.value,  # team_lead preset / org supervisors
 }
 
+# Input aliases → trust role strings (job titles never persisted after ADR-036 Phase 3).
+# Job/portal labels are NOT listed here so _normalize_assignable_role can infer presets.
 ROLE_ALIAS = {
     "owner": Role.administrator.value,
     "admin": Role.administrator.value,
     "administrator": Role.administrator.value,
-    "manager": Role.supervisor.value,
-    "supervisor": Role.supervisor.value,
-    "recruiter": Role.recruiter.value,
-    "hr": Role.recruiter.value,
+    "employee": Role.employee.value,
     "viewer": Role.viewer.value,
     "user": Role.viewer.value,
-    "client": Role.client_manager.value,
-    "client_manager": Role.client_manager.value,
-    "client_processor": Role.client_processor.value,
-    "processor": Role.client_processor.value,
-    "compliance_officer": Role.compliance_officer.value,
-    "compliance": Role.compliance_officer.value,
-    "docs_officer": Role.compliance_officer.value,
-    "hr_officer": Role.hr_officer.value,
-    "people_ops": Role.hr_officer.value,
     "superadmin": Role.superadmin.value,
 }
+
+# ADR-036: only these trust roles are written on create/invite/role-change.
+ASSIGNABLE_TRUST_ROLES = frozenset(
+    {
+        Role.administrator.value,
+        Role.employee.value,
+        Role.viewer.value,
+    }
+)
 
 DEFAULT_NOTIFICATION_EVENTS = {
     "candidate.new_assignment": {"enabled": True, "mode": "immediate"},
@@ -101,10 +120,77 @@ def _now() -> datetime:
 
 
 def _normalize_role(role: str) -> str:
+    """Resolve role aliases (legacy strings included). Does not coerce to trust."""
     value = ROLE_ALIAS.get(str(role or "").strip().lower())
     if not value:
         raise UserServiceError("Unsupported role", 422)
     return value
+
+
+def _normalize_assignable_role(
+    role: str,
+    *,
+    preset_id: str | None = None,
+) -> tuple[str, str | None]:
+    """Return (trust_role, effective_preset_id) for create/invite/role-change.
+
+    Legacy job/portal role strings coerce to employee/viewer + inferred preset.
+    Explicit preset_id wins over inferred preset; portal_guest forces viewer.
+    """
+    from backend.app.auth.trust_roles import (
+        JOB_PROXY_ROLES,
+        PORTAL_LEGACY_ROLES,
+        infer_preset_id,
+        normalize_trust_role,
+        trust_role_for_preset,
+    )
+
+    raw = str(role or "").strip().lower()
+    explicit_preset = str(preset_id or "").strip().lower() or None
+    if explicit_preset:
+        try:
+            trust = trust_role_for_preset(explicit_preset)
+        except ValueError as exc:
+            raise UserServiceError(str(exc), 422) from exc
+        # If caller also sent a trust role, it must match preset ceiling
+        if raw in ASSIGNABLE_TRUST_ROLES or raw in {"admin", "owner", "user"}:
+            requested = normalize_trust_role(raw)
+            if requested == Role.administrator.value and trust != Role.administrator.value:
+                raise UserServiceError("preset_not_allowed_for_administrator", 422)
+            if requested in ASSIGNABLE_TRUST_ROLES and requested != trust and requested != Role.administrator.value:
+                # Allow employee+portal_guest → viewer (preset wins)
+                pass
+        return trust, explicit_preset
+
+    mapped = ROLE_ALIAS.get(raw)
+    if not mapped and raw not in ASSIGNABLE_INPUT_ROLES:
+        raise UserServiceError("Unsupported role", 422)
+    source = mapped or raw
+
+    if source in ASSIGNABLE_TRUST_ROLES or source == Role.superadmin.value:
+        return source if source != Role.superadmin.value else Role.administrator.value, None
+
+    if source in JOB_PROXY_ROLES or source in {
+        "supervisor",
+        "recruiter",
+        "hr_officer",
+        "compliance_officer",
+        "manager",
+        "lead",
+    }:
+        return Role.employee.value, infer_preset_id(raw) or infer_preset_id(source)
+
+    if source in PORTAL_LEGACY_ROLES or source in {
+        "client_manager",
+        "client_processor",
+    }:
+        return Role.viewer.value, infer_preset_id(raw) or "portal_guest"
+
+    # Fall back to trust normalize
+    trust = normalize_trust_role(source)
+    if trust not in ASSIGNABLE_TRUST_ROLES and trust != Role.superadmin.value:
+        raise UserServiceError("Unsupported role", 422)
+    return (Role.administrator.value if trust == Role.superadmin.value else trust), infer_preset_id(raw)
 
 
 async def _tenant_row_has_license(db: AsyncSession, tenant_id: str) -> bool:
@@ -112,17 +198,31 @@ async def _tenant_row_has_license(db: AsyncSession, tenant_id: str) -> bool:
     return (await db.execute(stmt)).scalar_one_or_none() is not None
 
 
-def _quota_attr_for_tenant_role(role: str) -> Optional[str]:
-    mapping = {
-        Role.recruiter.value: "max_recruiters",
-        Role.compliance_officer.value: "max_recruiters",
-        Role.hr_officer.value: "max_recruiters",
-        Role.supervisor.value: "max_supervisors",
-        Role.client_manager.value: "max_client_managers",
-        Role.client_processor.value: "max_client_managers",
-        Role.viewer.value: "max_viewers",
-    }
-    return mapping.get(role)
+def _quota_attr_for_tenant_role(
+    role: str,
+    *,
+    preset_id: str | None = None,
+    access_context: str | None = None,
+) -> Optional[str]:
+    """Map role → TenantLicense seat column (ADR-036 trust seats; portal → None)."""
+    from backend.app.auth.trust_roles import seat_quota_attr_for_role
+
+    return seat_quota_attr_for_role(
+        role, access_context=access_context, preset_id=preset_id
+    )
+
+
+def _apply_preset_access_context(user: User, preset_id: str | None) -> None:
+    """Persist preset_id + access_context=portal for portal_guest (JWT / seats)."""
+    prefs = dict(user.preferences or {})
+    pid = str(preset_id or "").strip().lower() or None
+    if pid:
+        prefs["preset_id"] = pid
+    if pid == "portal_guest":
+        prefs["access_context"] = "portal"
+    elif pid is not None and prefs.get("access_context") == "portal":
+        prefs["access_context"] = "tenant"
+    user.preferences = prefs
 
 
 async def _get_membership_role_for_tenant(
@@ -137,39 +237,71 @@ async def _get_membership_role_for_tenant(
     return (await db.execute(stmt)).scalar_one_or_none()
 
 
-async def _count_active_users_in_tenant_role(
+async def _count_active_users_in_seat_bucket(
     db: AsyncSession,
     tenant_id: str,
-    role: str,
+    bucket: str,
     *,
     exclude_user_id: Optional[str] = None,
 ) -> int:
+    """Count active memberships that consume a billable trust seat bucket."""
+    from backend.app.auth.trust_roles import (
+        PORTAL_LEGACY_ROLES,
+        membership_roles_for_seat_bucket,
+    )
+
+    roles = membership_roles_for_seat_bucket(bucket)
+    if not roles:
+        return 0
+    role_lower = func.lower(user_memberships.c.role)
+    access_ctx = func.lower(
+        func.coalesce(User.preferences.op("->>")("access_context"), "")
+    )
+    preset_pref = func.lower(
+        func.coalesce(User.preferences.op("->>")("preset_id"), "")
+    )
+    is_portal = sa.or_(
+        role_lower.in_(tuple(PORTAL_LEGACY_ROLES)),
+        access_ctx == "portal",
+        preset_pref == "portal_guest",
+    )
     stmt = (
         select(func.count())
         .select_from(user_memberships)
         .join(User, User.id == user_memberships.c.user_id)
         .where(user_memberships.c.tenant_id == tenant_id)
-        .where(user_memberships.c.role == role)
+        .where(role_lower.in_(tuple(roles)))
         .where(User.is_active.is_(True))
         .where(User.deleted_at.is_(None))
+        .where(sa.not_(is_portal))
     )
     if exclude_user_id:
         stmt = stmt.where(User.id != exclude_user_id)
     return int((await db.execute(stmt)).scalar_one() or 0)
 
 
-async def _count_pending_invites_for_role(
+async def _count_pending_invites_for_seat_bucket(
     db: AsyncSession,
     tenant_id: str,
-    role: str,
+    bucket: str,
     *,
     exclude_invite_email: Optional[str] = None,
 ) -> int:
+    from backend.app.auth.trust_roles import membership_roles_for_seat_bucket
+
+    roles = membership_roles_for_seat_bucket(bucket)
+    if not roles:
+        return 0
+    role_lower = func.lower(UserInvite.role)
+    preset_meta = func.lower(
+        func.coalesce(UserInvite.metadata_json.op("->>")("preset_id"), "")
+    )
     stmt = (
         select(func.count())
         .select_from(UserInvite)
         .where(UserInvite.tenant_id == tenant_id)
-        .where(UserInvite.role == role)
+        .where(role_lower.in_(tuple(roles)))
+        .where(preset_meta != "portal_guest")
         .where(UserInvite.revoked_at.is_(None))
         .where(UserInvite.accepted_at.is_(None))
     )
@@ -185,11 +317,17 @@ async def _ensure_role_seat_available_for_invite_or_user_add(
     role: str,
     *,
     exclude_invite_email: Optional[str] = None,
+    preset_id: str | None = None,
 ) -> None:
-    """Hard seat gate when TenantLicense exists (§2.2 / §2.16)."""
+    """Hard seat gate when TenantLicense exists (§2.2 / §2.16). Portal guests skip."""
+    from backend.app.auth.trust_roles import billable_seat_bucket
+
     if not await _tenant_row_has_license(db, tenant_id):
         return
-    attr = _quota_attr_for_tenant_role(role)
+    bucket = billable_seat_bucket(role, preset_id=preset_id)
+    if not bucket:
+        return
+    attr = _quota_attr_for_tenant_role(role, preset_id=preset_id)
     if not attr:
         return
     limits = await get_tenant_limits(db, tenant_id)
@@ -198,22 +336,22 @@ async def _ensure_role_seat_available_for_invite_or_user_add(
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": role,
+                "role": bucket,
                 "limit": limit,
                 "current": 0,
             },
             403,
         )
-    active = await _count_active_users_in_tenant_role(db, tenant_id, role)
-    pending = await _count_pending_invites_for_role(
-        db, tenant_id, role, exclude_invite_email=exclude_invite_email
+    active = await _count_active_users_in_seat_bucket(db, tenant_id, bucket)
+    pending = await _count_pending_invites_for_seat_bucket(
+        db, tenant_id, bucket, exclude_invite_email=exclude_invite_email
     )
     total = active + pending
     if total >= limit:
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": role,
+                "role": bucket,
                 "limit": limit,
                 "current": total,
             },
@@ -228,12 +366,19 @@ async def _ensure_role_change_respects_seat_cap(
     user_id: str,
     old_role: Optional[str],
     new_role: str,
+    new_preset_id: str | None = None,
 ) -> None:
-    if old_role == new_role:
+    from backend.app.auth.trust_roles import billable_seat_bucket
+
+    old_bucket = billable_seat_bucket(old_role) if old_role else None
+    new_bucket = billable_seat_bucket(new_role, preset_id=new_preset_id)
+    if old_bucket == new_bucket:
+        return
+    if not new_bucket:
         return
     if not await _tenant_row_has_license(db, tenant_id):
         return
-    attr = _quota_attr_for_tenant_role(new_role)
+    attr = _quota_attr_for_tenant_role(new_role, preset_id=new_preset_id)
     if not attr:
         return
     limits = await get_tenant_limits(db, tenant_id)
@@ -242,21 +387,21 @@ async def _ensure_role_change_respects_seat_cap(
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": new_role,
+                "role": new_bucket,
                 "limit": limit,
                 "current": 0,
             },
             403,
         )
-    active = await _count_active_users_in_tenant_role(
-        db, tenant_id, new_role, exclude_user_id=user_id
+    active = await _count_active_users_in_seat_bucket(
+        db, tenant_id, new_bucket, exclude_user_id=user_id
     )
-    pending = await _count_pending_invites_for_role(db, tenant_id, new_role)
+    pending = await _count_pending_invites_for_seat_bucket(db, tenant_id, new_bucket)
     if active + pending >= limit:
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": new_role,
+                "role": new_bucket,
                 "limit": limit,
                 "current": active + pending,
             },
@@ -265,12 +410,21 @@ async def _ensure_role_change_respects_seat_cap(
 
 
 async def _ensure_invite_accept_seat_still_valid(
-    db: AsyncSession, tenant_id: str, role: str
+    db: AsyncSession,
+    tenant_id: str,
+    role: str,
+    *,
+    preset_id: str | None = None,
 ) -> None:
     """Blocks accept if license was tightened below current commitments."""
+    from backend.app.auth.trust_roles import billable_seat_bucket
+
     if not await _tenant_row_has_license(db, tenant_id):
         return
-    attr = _quota_attr_for_tenant_role(role)
+    bucket = billable_seat_bucket(role, preset_id=preset_id)
+    if not bucket:
+        return
+    attr = _quota_attr_for_tenant_role(role, preset_id=preset_id)
     if not attr:
         return
     limits = await get_tenant_limits(db, tenant_id)
@@ -279,19 +433,19 @@ async def _ensure_invite_accept_seat_still_valid(
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": role,
+                "role": bucket,
                 "limit": limit,
                 "current": 0,
             },
             403,
         )
-    active = await _count_active_users_in_tenant_role(db, tenant_id, role)
-    pending = await _count_pending_invites_for_role(db, tenant_id, role)
+    active = await _count_active_users_in_seat_bucket(db, tenant_id, bucket)
+    pending = await _count_pending_invites_for_seat_bucket(db, tenant_id, bucket)
     if active + pending > limit:
         raise UserServiceError(
             {
                 "code": "seat_limit_reached",
-                "role": role,
+                "role": bucket,
                 "limit": limit,
                 "current": active + pending,
             },
@@ -302,16 +456,14 @@ async def _ensure_invite_accept_seat_still_valid(
 def _apply_global_role(user: User, tenant_role: str) -> None:
     mapping = {
         Role.viewer.value: Role.viewer,
-        Role.recruiter.value: Role.recruiter,
-        Role.supervisor.value: Role.supervisor,
+        Role.employee.value: Role.employee,
         Role.administrator.value: Role.administrator,
-        Role.client_manager.value: Role.client_manager,
-        Role.client_processor.value: Role.client_processor,
-        Role.compliance_officer.value: Role.compliance_officer,
-        Role.hr_officer.value: Role.hr_officer,
         Role.superadmin.value: Role.superadmin,
     }
-    user.role = mapping.get(tenant_role, Role.viewer)
+    from backend.app.auth.trust_roles import normalize_trust_role
+
+    trust = normalize_trust_role(tenant_role)
+    user.role = mapping.get(trust, Role.viewer)
 
 
 async def record_user_audit(
@@ -648,12 +800,18 @@ async def create_invite(
     supervisor_id: str | None = None,
     company_ids: Sequence[str] | None = None,
     expires_in_hours: int = 72,
+    preset_id: str | None = None,
 ) -> tuple[UserInvite, str]:
-    normalized_role = _normalize_role(role)
+    normalized_role, effective_preset = _normalize_assignable_role(role, preset_id=preset_id)
     normalized_email = email.strip().lower()
     company_ids = company_ids or []
 
-    await _ensure_role_seat_available_for_invite_or_user_add(db, tenant_id, normalized_role)
+    await _ensure_role_seat_available_for_invite_or_user_add(
+        db,
+        tenant_id,
+        normalized_role,
+        preset_id=effective_preset,
+    )
 
     existing_invite_stmt = (
         select(UserInvite)
@@ -673,9 +831,9 @@ async def create_invite(
     invited_user_id: Optional[str] = None
     supervisor_ref: Optional[User] = None
 
-    if normalized_role == Role.recruiter.value:
+    if effective_preset == "recruiter":
         if not supervisor_id:
-            raise UserServiceError("Recruiter requires supervisor", 422)
+            raise UserServiceError("Recruiter preset requires supervisor", 422)
         supervisor_ref = await _ensure_supervisor(
             db, tenant_id=tenant_id, supervisor_id=supervisor_id
         )
@@ -726,6 +884,7 @@ async def create_invite(
         invited_user_id=invited_user_id,
         expires_at=expires_at,
         created_by=actor_id,
+        metadata_json={"preset_id": effective_preset} if effective_preset else {},
     )
     db.add(invite)
     await db.flush()
@@ -811,8 +970,9 @@ async def create_user(
     password: str | None,
     supervisor_id: str | None = None,
     company_ids: Sequence[str] | None = None,
+    preset_id: str | None = None,
 ) -> tuple[Dict[str, Any], str | None]:
-    normalized_role = _normalize_role(role)
+    normalized_role, effective_preset = _normalize_assignable_role(role, preset_id=preset_id)
     normalized_email = email.strip().lower()
     company_ids = company_ids or []
 
@@ -834,14 +994,15 @@ async def create_user(
             tenant_id,
             normalized_role,
             exclude_invite_email=normalized_email,
+            preset_id=effective_preset,
         )
 
     generated_password: Optional[str] = None
     supervisor_ref: Optional[User] = None
 
-    if normalized_role == Role.recruiter.value:
+    if effective_preset == "recruiter":
         if not supervisor_id:
-            raise UserServiceError("Recruiter requires supervisor", 422)
+            raise UserServiceError("Recruiter preset requires supervisor", 422)
         supervisor_ref = await _ensure_supervisor(
             db, tenant_id=tenant_id, supervisor_id=supervisor_id
         )
@@ -883,6 +1044,7 @@ async def create_user(
 
     if not cross_tenant:
         _apply_global_role(user, normalized_role)
+    _apply_preset_access_context(user, effective_preset)
     await db.flush()
 
     await _replace_company_access(
@@ -920,6 +1082,7 @@ async def create_user(
 
     entry = await _get_user_entry(db, tenant_id, user.id)
     entry["company_ids"] = list(company_ids)
+    entry["preset_id"] = effective_preset
 
     return entry, (generated_password if password is None else None)
 
@@ -931,8 +1094,9 @@ async def change_user_role(
     actor_id: str | None,
     user_id: str,
     role: str,
+    preset_id: str | None = None,
 ) -> Dict[str, Any]:
-    normalized_role = _normalize_role(role)
+    normalized_role, effective_preset = _normalize_assignable_role(role, preset_id=preset_id)
     user = await _load_user(db, tenant_id=tenant_id, user_id=user_id)
     prev_membership = await _get_membership_role_for_tenant(db, tenant_id, user_id)
     await _ensure_role_change_respects_seat_cap(
@@ -941,9 +1105,11 @@ async def change_user_role(
         user_id=user_id,
         old_role=prev_membership,
         new_role=normalized_role,
+        new_preset_id=effective_preset,
     )
 
     _apply_global_role(user, normalized_role)
+    _apply_preset_access_context(user, effective_preset)
     user.updated_at = _now()
     await db.flush()
 
@@ -957,7 +1123,7 @@ async def change_user_role(
         actor_id=actor_id,
         target_user_id=user.id,
         action="user.role_changed",
-        payload={"role": normalized_role},
+        payload={"role": normalized_role, "preset_id": effective_preset},
     )
     await log_activity(
         db,
@@ -966,10 +1132,12 @@ async def change_user_role(
         action="user.role_changed",
         target_type="user",
         target_id=user.id,
-        payload={"role": normalized_role},
+        payload={"role": normalized_role, "preset_id": effective_preset},
     )
     await db.flush()
-    return await _get_user_entry(db, tenant_id, user.id)
+    entry = await _get_user_entry(db, tenant_id, user.id)
+    entry["preset_id"] = effective_preset
+    return entry
 
 
 async def update_user_supervisor(
@@ -1571,7 +1739,13 @@ async def get_user_detail(
     ]
     entry["recruiters"] = []
 
-    if user.role == Role.supervisor:
+    from backend.app.auth.trust_roles import is_team_lead_org_actor
+
+    prefs = user.preferences if isinstance(user.preferences, dict) else {}
+    if is_team_lead_org_actor(
+        str(getattr(user.role, "value", user.role) or ""),
+        preferences=prefs,
+    ):
         recruiter_map = await _load_recruiter_map(
             db, tenant_id=tenant_id, supervisor_ids=[user.id]
         )
@@ -1632,7 +1806,14 @@ async def accept_invite(
             raise UserServiceError("Invite expired", 410)
 
     tenant_id = invite.tenant_id
-    await _ensure_invite_accept_seat_still_valid(db, tenant_id, invite.role)
+    meta = invite.metadata_json if isinstance(invite.metadata_json, dict) else {}
+    invite_preset = meta.get("preset_id") if isinstance(meta, dict) else None
+    assignable_role, effective_preset = _normalize_assignable_role(
+        invite.role, preset_id=str(invite_preset) if invite_preset else None
+    )
+    await _ensure_invite_accept_seat_still_valid(
+        db, tenant_id, assignable_role, preset_id=effective_preset
+    )
     supervisor_candidate_id = invite.supervisor_id
 
     user: User | None = None
@@ -1666,7 +1847,7 @@ async def accept_invite(
             tenant_id=tenant_id,
             supervisor_id=supervisor_candidate_id,
         )
-    elif invite.role == Role.recruiter.value:
+    elif effective_preset == "recruiter" or str(invite.role or "").strip().lower() == "recruiter":
         raise UserServiceError("Recruiter invite requires supervisor", 422)
 
     # Update user profile
@@ -1682,7 +1863,8 @@ async def accept_invite(
         short_value = short_id.strip()
         user.short_id = short_value or None
     user.supervisor_id = supervisor_ref.id if supervisor_ref else None
-    _apply_global_role(user, invite.role)
+    _apply_global_role(user, assignable_role)
+    _apply_preset_access_context(user, effective_preset)
     user.updated_at = now
     await db.flush()
 
@@ -1690,7 +1872,7 @@ async def accept_invite(
         db,
         tenant_id=tenant_id,
         user_id=user.id,
-        role=invite.role,
+        role=assignable_role,
     )
 
     company_ids = [str(cid) for cid in (invite.companies or []) if cid]
@@ -1735,15 +1917,14 @@ async def accept_invite(
     detail["invite_id"] = invite.id
     detail["status"] = _status_for_user(user)
     detail["company_ids"] = [c["company_id"] for c in detail.get("companies", [])]
+    detail["preset_id"] = effective_preset
     return detail
 
 
-# Роли membership в БД для «операционных» менеджеров (owner хранится отдельно от administrator).
+# Membership roles for operational assignees (ADR-036: employee is canonical).
 _MEMBERSHIP_ROLES_MANAGER_CATALOG = (
-    Role.supervisor.value,
+    Role.employee.value,
     Role.administrator.value,
-    Role.recruiter.value,
-    "owner",
 )
 
 

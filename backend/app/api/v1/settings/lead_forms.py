@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.mixins import now_utc
 from backend.app.models.tenant_lead_form import TenantLeadForm
@@ -63,7 +64,7 @@ def _out(row: TenantLeadForm) -> TenantLeadFormOut:
 @router.get(
     "",
     response_model=list[TenantLeadFormOut],
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_lead_forms(
     ctx: UserCtx = Depends(get_current_user),
@@ -85,7 +86,7 @@ async def list_lead_forms(
 @router.post(
     "",
     response_model=TenantLeadFormOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_lead_form(
     payload: TenantLeadFormCreateIn,
@@ -118,7 +119,7 @@ async def create_lead_form(
 @router.patch(
     "/{form_id}",
     response_model=TenantLeadFormOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def patch_lead_form(
     form_id: str,

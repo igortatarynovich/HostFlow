@@ -7,7 +7,8 @@ from typing import Any, List, Literal, Optional
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.auth.hr_workforce_access import require_hr_workforce_module_access
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services.hr_dashboard import (
@@ -108,7 +109,7 @@ async def hr_dashboard_summary(
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     raw = await build_summary(
@@ -143,7 +144,7 @@ async def hr_dashboard_high_risk(
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     rows, total = await list_high_risk_expiring(
@@ -172,7 +173,7 @@ async def hr_dashboard_workload(
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     raw = await build_workload(
@@ -196,7 +197,7 @@ async def hr_dashboard_compliance(
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     _: UserCtx = Depends(require_hr_workforce_module_access),
-    __: str = Depends(require_roles(Role.hr_officer, Role.administrator, Role.supervisor)),
+    __: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     raw = await build_compliance(

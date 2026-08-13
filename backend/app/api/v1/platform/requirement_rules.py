@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+
 from typing import Any, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from backend.app.auth.deps import get_current_user, require_roles
+from backend.app.auth.deps import get_current_user
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_PROFILE_READ_ROLES
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.requirement_rules.constants import VALID_CONTEXTS
@@ -19,7 +21,6 @@ router = APIRouter(
     tags=["requirement-rules"],
     redirect_slashes=False,
 )
-
 
 class RequirementRuleOut(BaseModel):
     rule_type: str
@@ -33,7 +34,6 @@ class RequirementRuleOut(BaseModel):
     document_type_code: Optional[str] = None
     pack_code: Optional[str] = None
     verification: Optional[str] = None
-
 
 class RequirementRuleSetOut(BaseModel):
     contract_version: str
@@ -49,7 +49,6 @@ class RequirementRuleSetOut(BaseModel):
     p1_sources_only: bool = True
     excluded_sources: List[str] = Field(default_factory=list)
 
-
 class RequirementEvaluateIn(BaseModel):
     entity_profile_code: str = Field(..., min_length=1, max_length=191)
     context: Literal["intake", "card_save", "transition", "handoff", "readiness"] = "readiness"
@@ -60,14 +59,12 @@ class RequirementEvaluateIn(BaseModel):
     normalized_payload: dict[str, Any] = Field(default_factory=dict)
     documents: List[dict[str, Any]] = Field(default_factory=list)
 
-
 class RequirementFieldGapOut(BaseModel):
     qualified_code: str
     level: str
     reason_code: str
     source: Optional[str] = None
     source_ref: Optional[str] = None
-
 
 class RequirementDocumentGapOut(BaseModel):
     document_type_code: str
@@ -78,7 +75,6 @@ class RequirementDocumentGapOut(BaseModel):
     source: Optional[str] = None
     source_ref: Optional[str] = None
 
-
 class RequirementBlockerOut(BaseModel):
     code: str
     message: str
@@ -86,7 +82,6 @@ class RequirementBlockerOut(BaseModel):
     layer: str = "requirement_rules"
     qualified_code: Optional[str] = None
     document_type_code: Optional[str] = None
-
 
 class RequirementEvaluationOut(BaseModel):
     evaluation_version: str
@@ -106,18 +101,16 @@ class RequirementEvaluationOut(BaseModel):
     evaluated_at: str
     p1_sources_only: bool = True
 
-
 def _validate_context(context: str) -> str:
     ctx = str(context or "readiness").strip().lower()
     if ctx not in VALID_CONTEXTS:
         raise HTTPException(status_code=422, detail=f"Invalid context: {context}")
     return ctx
 
-
 @router.get(
     "/{entity_profile_code}",
     response_model=RequirementRuleSetOut,
-    dependencies=[Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_requirement_rules(
     entity_profile_code: str,
@@ -142,11 +135,10 @@ async def get_requirement_rules(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return RequirementRuleSetOut.model_validate(payload)
 
-
 @router.post(
     "/evaluate",
     response_model=RequirementEvaluationOut,
-    dependencies=[Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def post_requirement_rules_evaluate(
     body: RequirementEvaluateIn,

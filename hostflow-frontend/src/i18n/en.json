@@ -2368,18 +2368,21 @@
           "title": "Seat usage",
           "limit": "{used}/{limit} seats used",
           "unlimited": "{used} seats used",
-          "recruiters": "Recruiters",
-          "supervisors": "Supervisors",
-          "client_managers": "Client managers",
+          "administrators": "Administrators",
+          "employees": "Employees",
+          "portal_guests": "Portal guests (not billed)",
+          "recruiters": "Employees",
+          "supervisors": "Administrators",
+          "client_managers": "Portal guests (not billed)",
           "viewers": "Viewers"
         },
         "license": {
           "title": "License & limits",
           "plan": "Plan",
           "expires_at": "Expires at",
-          "max_recruiters": "Max recruiters",
-          "max_supervisors": "Max supervisors",
-          "max_client_managers": "Max client managers",
+          "max_recruiters": "Max employees",
+          "max_supervisors": "Max administrators",
+          "max_client_managers": "Max portal guests (unused)",
           "max_viewers": "Max viewers",
           "max_storage_gb": "Max storage (GB)",
           "max_companies": "Max companies",
@@ -2421,7 +2424,8 @@
             "documents": "Documents",
             "leads": "Leads",
             "services": "Services",
-            "client_portal": "Client portal"
+            "client_portal": "Client portal",
+            "hr": "HR"
           },
           "empty": "Module settings are unavailable for this tenant.",
           "errors": {
@@ -2586,9 +2590,12 @@
         "subtitle": "Track how many seats are used, toggle modules, and request additional capacity.",
         "usage": {
           "title": "Seat usage",
-          "recruiters": "Recruiters",
-          "supervisors": "Supervisors",
-          "client_managers": "Client managers",
+          "administrators": "Administrators",
+          "employees": "Employees",
+          "portal_guests": "Portal guests (not billed)",
+          "recruiters": "Employees",
+          "supervisors": "Administrators",
+          "client_managers": "Portal guests (not billed)",
           "viewers": "Viewers"
         },
         "modules": {
@@ -2613,6 +2620,7 @@
           "submit": "Send request",
           "roles": {
             "administrator": "Administrators",
+            "employee": "Employees",
             "supervisor": "Supervisors",
             "recruiter": "Recruiters",
             "client_manager": "Client managers",
@@ -2823,9 +2831,12 @@
           "title": "Legal"
         },
         "usage": {
-          "recruiters": "Recruiters: {used} / {limit}",
-          "supervisors": "Supervisors: {used} / {limit}",
-          "client_managers": "Client managers: {used} / {limit}",
+          "administrators": "Administrators: {used} / {limit}",
+          "employees": "Employees: {used} / {limit}",
+          "portal_guests": "Portal guests (not billed): {used}",
+          "recruiters": "Employees: {used} / {limit}",
+          "supervisors": "Administrators: {used} / {limit}",
+          "client_managers": "Portal guests (not billed): {used} / {limit}",
           "viewers": "Viewers: {used} / {limit}",
           "leads_month": "Leads this month (UTC): {used} / {limit}",
           "candidates": "Active candidates: {used} / {limit}",
@@ -3100,7 +3111,8 @@
           "recruiter": "Recruiter",
           "client_manager": "Client manager",
           "client_processor": "Candidate processor",
-          "viewer": "Viewer"
+          "viewer": "Viewer",
+          "employee": "Employee"
         },
         "form": {
           "email_label": "Email",
@@ -3117,7 +3129,10 @@
           "password_label": "Password (optional)",
           "password_placeholder": "Leave blank — we will generate it",
           "submit": "Create user",
-          "submitting": "Creating…"
+          "submitting": "Creating…",
+          "preset_label": "Permission preset",
+          "preset_none": "None (role defaults)",
+          "preset_help": "Fills module permissions for this user — does not create a system role."
         },
         "errors": {
           "list_missing_endpoint": "Endpoint /api/v1/admin/users not found. Restart backend after updates.",
@@ -3312,6 +3327,13 @@
             "token": "Token",
             "valid_until": "Valid until"
           }
+        },
+        "presets": {
+          "recruiter": "Recruiter",
+          "team_lead": "Team lead",
+          "hr": "HR",
+          "compliance": "Compliance",
+          "portal_guest": "Portal guest"
         }
       },
       "ruleset": {
@@ -4615,7 +4637,8 @@
         "blacklist": "Blacklisted",
         "wrong_phone": "Incorrect phone number",
         "double_crew": "Double crew",
-        "no_response": "No response"
+        "no_response": "No response",
+        "recruitment_completed": "Recruitment completed"
       },
       "labels": {
         "no_reason": "No reason",
@@ -11840,6 +11863,10 @@
         "profile": {
           "description": "Personal profile, language, security and local preferences.",
           "label": "My profile"
+        },
+        "roles_access": {
+          "label": "Roles & access",
+          "description": "Trust roles, module matrix, and permission presets for Employee and Viewer."
         }
       },
       "audit": {
@@ -11906,6 +11933,18 @@
           "description": "Company profile, workspace identity and high-level access scope.",
           "label": "Workspace"
         }
+      },
+      "roles_access": {
+        "title": "Roles & access",
+        "description": "Trust roles and module visibility. Job titles are presets — not separate security roles (ADR-036).",
+        "matrix_heading": "Role × module matrix",
+        "matrix_help": "V = visible, E = editable. Administrator column is locked (trust ceiling).",
+        "show_legacy": "Show legacy role columns",
+        "ceiling_locked": "(locked)",
+        "presets_title": "Presets (not roles)",
+        "presets_body": "Recruiter, Team lead, HR, Compliance are starter packs applied to Employee. Portal guests use Viewer + portal context — not client_manager.",
+        "load_failed": "Failed to load roles matrix",
+        "save_failed": "Failed to save"
       }
     },
     "communications_settings": {

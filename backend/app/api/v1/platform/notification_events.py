@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from backend.app.auth.deps import require_roles
+from backend.app.auth.trust_role_deps import TRUST_ADMIN_ROLES, require_trust_admin
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.document_expiry_notifications.constants import (
     EVENT_STATUS_IGNORED,
@@ -26,14 +26,13 @@ from backend.app.document_expiry_notifications.event_registry import (
 from backend.app.document_expiry_notifications.sync_job import sync_document_expiry_notification_events
 from backend.app.models.notification_event import NotificationEvent
 
-ADMIN_ROLES = ("administrator", "superadmin", "supervisor")
+ADMIN_ROLES = TRUST_ADMIN_ROLES
 
 router = APIRouter(
     prefix="/platform/notification-events",
     tags=["notification-events"],
     redirect_slashes=False,
 )
-
 
 class NotificationEventOut(BaseModel):
     id: str
@@ -54,16 +53,13 @@ class NotificationEventOut(BaseModel):
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
-
 class NotificationEventStatusIn(BaseModel):
     status: Literal["open", "resolved", "ignored"]
-
 
 class NotificationEventSyncIn(BaseModel):
     candidate_ids: list[str] | None = None
     candidate_limit: int = Field(default=5000, ge=1, le=50000)
     expiring_soon_days: int = Field(default=30, ge=0, le=365)
-
 
 class NotificationEventSyncOut(BaseModel):
     tenant_id: str
@@ -75,16 +71,14 @@ class NotificationEventSyncOut(BaseModel):
     skipped: int
     event_codes: dict[str, int] = Field(default_factory=dict)
 
-
 def _row_to_out(row: NotificationEvent) -> NotificationEventOut:
     payload = notification_event_to_dict(row)
     return NotificationEventOut(**payload)
 
-
 @router.get(
     "",
     response_model=list[NotificationEventOut],
-    dependencies=[Depends(require_roles(*ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def list_open_notification_events(
     db_tenant: tuple = Depends(get_db_with_tenant),
@@ -109,11 +103,10 @@ async def list_open_notification_events(
     )
     return [_row_to_out(row) for row in rows]
 
-
 @router.post(
     "/sync",
     response_model=NotificationEventSyncOut,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def run_document_expiry_notification_sync(
     body: NotificationEventSyncIn | None = None,
@@ -132,11 +125,10 @@ async def run_document_expiry_notification_sync(
     await db.commit()
     return NotificationEventSyncOut(**summary)
 
-
 @router.get(
     "/{event_id}",
     response_model=NotificationEventOut,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def get_notification_event_detail(
     event_id: str,
@@ -148,11 +140,10 @@ async def get_notification_event_detail(
         raise HTTPException(status_code=404, detail="Notification event not found")
     return _row_to_out(row)
 
-
 @router.patch(
     "/{event_id}/status",
     response_model=NotificationEventOut,
-    dependencies=[Depends(require_roles(*ADMIN_ROLES))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def patch_notification_event_status(
     event_id: str,

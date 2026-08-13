@@ -30,6 +30,7 @@ import {
 } from '../../api/communications'
 import { useToast } from '../Toast'
 import { useCommunicationsAccess } from '../../hooks/useCommunicationsAccess'
+import { canUseTeamAssigneeScope } from '../../auth/trustRoles'
 import { usePermissions } from '../../hooks/usePermissions'
 import { searchGlobal, type GlobalSearchResult } from '../../api/search'
 import { useI18n } from '../../i18n'
@@ -203,8 +204,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const pendingHandoffsRef = useRef(pendingHandoffsCount)
   pendingHandoffsRef.current = pendingHandoffsCount
   const canSearchTeamReminders = useMemo(() => {
-    const r = String(me?.role || '').trim().toLowerCase()
-    return ['administrator', 'supervisor', 'superadmin', 'admin', 'manager'].includes(r)
+    return canUseTeamAssigneeScope({ role: me?.role })
   }, [me?.role])
   const canInboxDeepLink = useMemo(
     () => canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email'),

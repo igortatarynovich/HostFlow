@@ -1,7 +1,8 @@
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from backend.app.auth.deps import require_roles, Role, get_current_user, UserCtx
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, get_current_user, UserCtx
 from backend.app.api.v1.utils.access import resolve_restricted_acl
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.companies import schemas, crud
@@ -67,7 +68,7 @@ def _require_company_access(company_id: UUID, acl) -> None:
     include_in_schema=False,
 )
 async def list_companies(
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
     q: str = Query(None, description="Search query"),
     include_archived: bool = Query(False, description="Include archived companies"),
     party_business_roles: Optional[str] = Query(
@@ -176,7 +177,7 @@ async def list_companies(
 )
 async def create_company(
     company_in: schemas.CompanyCreate,
-    _role: str = Depends(require_roles(Role.manager, Role.admin)),
+    _role: str = Depends(require_trust_write()),
     current_user: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
 ):
@@ -202,7 +203,7 @@ async def get_company(
         False,
         description="Include active vacancies and candidate counts (same scope as list)",
     ),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ):
@@ -251,7 +252,7 @@ async def get_company(
 async def update_company(
     company_id: UUID,
     company_in: schemas.CompanyUpdate,
-    _role: str = Depends(require_roles(Role.manager, Role.admin)),
+    _role: str = Depends(require_trust_write()),
     current_user: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
 ):
@@ -271,7 +272,7 @@ async def update_company(
 async def patch_company(
     company_id: UUID,
     company_in: schemas.CompanyUpdate,
-    _role: str = Depends(require_roles(Role.manager, Role.admin)),
+    _role: str = Depends(require_trust_write()),
     current_user: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
 ):
@@ -290,7 +291,7 @@ async def patch_company(
 )
 async def archive_company(
     company_id: UUID,
-    _role: str = Depends(require_roles(Role.admin)),
+    _role: str = Depends(require_trust_admin()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -303,7 +304,7 @@ async def archive_company(
 )
 async def company_counters(
     company_id: UUID,
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ):
@@ -320,7 +321,7 @@ async def company_counters(
 async def update_company_legal(
     company_id: UUID = Path(..., description="Company identifier"),
     payload: schemas.LegalProfile = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -335,7 +336,7 @@ async def update_company_legal(
 async def replace_company_billing(
     company_id: UUID,
     payload: schemas.BillingProfile = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -350,7 +351,7 @@ async def replace_company_billing(
 async def add_bank_account(
     company_id: UUID,
     payload: schemas.BankAccount = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -366,7 +367,7 @@ async def update_bank_account(
     company_id: UUID,
     account_id: UUID,
     payload: schemas.BankAccount = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -386,7 +387,7 @@ async def update_bank_account(
 async def delete_bank_account(
     company_id: UUID,
     account_id: UUID,
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -400,7 +401,7 @@ async def delete_bank_account(
 async def add_contact(
     company_id: UUID,
     payload: schemas.Contact = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -416,7 +417,7 @@ async def update_contact(
     company_id: UUID,
     contact_id: UUID,
     payload: schemas.Contact = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -436,7 +437,7 @@ async def update_contact(
 async def delete_contact(
     company_id: UUID,
     contact_id: UUID,
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -450,7 +451,7 @@ async def delete_contact(
 async def replace_operations(
     company_id: UUID,
     payload: schemas.OperationsProfile = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -465,7 +466,7 @@ async def replace_operations(
 async def update_compliance(
     company_id: UUID,
     payload: schemas.ComplianceProfile = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -480,7 +481,7 @@ async def update_compliance(
 async def update_portal(
     company_id: UUID,
     payload: schemas.PortalProfile = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -500,7 +501,7 @@ class EnablePortalRequest(BaseModel):
 async def enable_portal(
     company_id: UUID,
     payload: EnablePortalRequest = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -520,7 +521,7 @@ async def enable_portal(
 async def update_integrations(
     company_id: UUID,
     payload: schemas.IntegrationsProfile = Body(...),
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant
@@ -534,7 +535,7 @@ async def update_integrations(
 )
 async def company_readiness(
     company_id: UUID,
-    _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
     db_tenant=Depends(get_db_with_tenant),
 ):
     db, _tenant_id = db_tenant

@@ -8,7 +8,8 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile, s
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
 from backend.app.api.v1.platform import schemas as platform_schemas
 from backend.app.api.v1.tenants import service as tenant_service
@@ -89,7 +90,7 @@ class RiskModelV1SettingsOut(BaseModel):
 @router.get(
     "",
     response_model=TeamOverviewResponse,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_team_overview(
     ctx: UserCtx = Depends(get_current_user),
@@ -128,7 +129,7 @@ async def get_team_overview(
 @router.patch(
     "/branding",
     response_model=TeamTenantSummary,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_branding(
     payload: TenantBrandingPatch,
@@ -160,7 +161,7 @@ async def update_branding(
 @router.post(
     "/branding/logo",
     response_model=TeamTenantSummary,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def upload_branding_logo(
     file: UploadFile = File(...),
@@ -194,16 +195,7 @@ async def upload_branding_logo(
     response_model=TenantModuleSettings,
     dependencies=[
         Depends(
-            require_roles(
-                Role.administrator,
-                Role.supervisor,
-                Role.recruiter,
-                Role.client_manager,
-                Role.client_processor,
-                Role.compliance_officer,
-                Role.hr_officer,
-                Role.viewer,
-            )
+            require_trust_read()
         )
     ],
 )
@@ -224,7 +216,7 @@ async def get_module_settings(
 @router.get(
     "/vacancy-requirements-presets",
     response_model=VacancyRequirementsPresetListOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_vacancy_requirements_presets(
     ctx: UserCtx = Depends(get_current_user),
@@ -243,7 +235,7 @@ async def list_vacancy_requirements_presets(
 @router.put(
     "/vacancy-requirements-presets/{preset_id}",
     response_model=VacancyRequirementsPresetListOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def upsert_vacancy_requirements_preset(
     preset_id: str,
@@ -274,7 +266,7 @@ async def upsert_vacancy_requirements_preset(
 @router.delete(
     "/vacancy-requirements-presets/{preset_id}",
     response_model=VacancyRequirementsPresetListOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def delete_vacancy_requirements_preset(
     preset_id: str,
@@ -301,7 +293,7 @@ async def delete_vacancy_requirements_preset(
 @router.get(
     "/module-matrix",
     response_model=TenantRoleModuleMatrix,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def get_module_matrix(
     ctx: UserCtx = Depends(get_current_user),
@@ -317,21 +309,156 @@ async def get_module_matrix(
     return TenantRoleModuleMatrix.model_validate(matrix)
 
 
+@router.patch(
+    "/module-matrix",
+    response_model=TenantRoleModuleMatrix,
+    dependencies=[Depends(require_trust_admin())],
+)
+async def patch_module_matrix(
+    payload: platform_schemas.TenantRoleModuleMatrixPatch,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> TenantRoleModuleMatrix:
+    """Tenant admin edits operational role×module matrix within ADR-036 trust ceilings."""
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        matrix = tenant_service.get_role_module_matrix_snapshot(tenant)
+    else:
+        try:
+            matrix = await tenant_service.update_role_module_matrix(
+                db,
+                tenant,
+                updates,  # type: ignore[arg-type]
+                actor_id=ctx.sub,
+                actor_is_superadmin=False,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return TenantRoleModuleMatrix.model_validate(matrix)
+
+
+class PermissionPresetOut(BaseModel):
+    id: str
+    trust_role: str
+    modules: Dict[str, Dict[str, bool]]
+
+
+class PermissionPresetListOut(BaseModel):
+    items: List[PermissionPresetOut]
+
+
+class PermissionPresetApplyUserIn(BaseModel):
+    user_id: str = Field(..., min_length=1)
+
+
+class PermissionPresetApplyMatrixIn(BaseModel):
+    target: str = Field(default="employee", description="Trust matrix column to fill (employee only).")
+
+
+@router.get(
+    "/permission-presets",
+    response_model=PermissionPresetListOut,
+    dependencies=[Depends(require_trust_admin())],
+)
+async def list_permission_presets(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> PermissionPresetListOut:
+    from backend.app.auth.trust_roles import (
+        get_permission_preset,
+        list_permission_preset_ids,
+        trust_role_for_preset,
+    )
+
+    db, tenant_uuid = db_tenant
+    await ensure_user_can_access_tenant(db, ctx, str(tenant_uuid))
+    items = [
+        PermissionPresetOut(
+            id=pid,
+            trust_role=trust_role_for_preset(pid),
+            modules=get_permission_preset(pid),
+        )
+        for pid in list_permission_preset_ids()
+    ]
+    return PermissionPresetListOut(items=items)
+
+
+@router.post(
+    "/permission-presets/{preset_id}/apply-user",
+    response_model=platform_schemas.TenantUserModuleOverrides,
+    dependencies=[Depends(require_trust_admin())],
+)
+async def apply_permission_preset_to_user(
+    preset_id: str,
+    payload: PermissionPresetApplyUserIn,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> platform_schemas.TenantUserModuleOverrides:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    try:
+        overrides = await tenant_service.apply_permission_preset_to_user(
+            db,
+            tenant,
+            user_id=payload.user_id,
+            preset_id=preset_id,
+            actor_id=ctx.sub,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return platform_schemas.TenantUserModuleOverrides.model_validate({"users": overrides})
+
+
+@router.post(
+    "/permission-presets/{preset_id}/apply-matrix",
+    response_model=TenantRoleModuleMatrix,
+    dependencies=[Depends(require_trust_admin())],
+)
+async def apply_permission_preset_to_matrix(
+    preset_id: str,
+    payload: PermissionPresetApplyMatrixIn | None = None,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> TenantRoleModuleMatrix:
+    """Apply a starter-pack preset onto the Employee matrix column (not a new system role)."""
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    target = (payload.target if payload else "employee") or "employee"
+    if target != "employee":
+        raise HTTPException(status_code=422, detail="preset_matrix_target_must_be_employee")
+    try:
+        matrix = await tenant_service.apply_permission_preset_to_employee_matrix(
+            db,
+            tenant,
+            preset_id=preset_id,
+            actor_id=ctx.sub,
+            actor_is_superadmin=False,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return TenantRoleModuleMatrix.model_validate(matrix)
+
+
 @router.get(
     "/module-matrix/effective",
     response_model=EffectiveRoleModules,
     dependencies=[
         Depends(
-            require_roles(
-                Role.administrator,
-                Role.supervisor,
-                Role.recruiter,
-                Role.client_manager,
-                Role.client_processor,
-                Role.compliance_officer,
-                Role.hr_officer,
-                Role.viewer,
-            )
+            require_trust_read()
         )
     ],
 )
@@ -345,17 +472,20 @@ async def get_effective_module_permissions(
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    # Match frontend usePermissions: on client (company) workspaces, JWT role "recruiter"
-    # is treated as client-side hiring staff; permissions use client_processor matrix there.
-    # Using recruiter cells here made documents.manage false when only client_processor had
-    # documents editable in the role matrix.
+    # Match frontend usePermissions: on client (company) workspaces, hiring staff
+    # use client_processor matrix cells (historical recruiter→processor mapping).
     role_for_matrix = str(ctx.role or "").strip().lower()
-    if getattr(tenant, "type", None) == TenantType.company and role_for_matrix == UserRole.recruiter.value:
-        role_for_matrix = UserRole.client_processor.value
+    if getattr(tenant, "type", None) == TenantType.company and role_for_matrix in {
+        "employee",
+        "recruiter",
+    }:
+        role_for_matrix = "client_processor"
     modules = tenant_service.get_effective_role_module_permissions(
         tenant,
         role=role_for_matrix,
         user_id=ctx.sub,
+        preset_id=getattr(ctx, "preset_id", None),
+        access_context=getattr(ctx, "access_context", None),
     )
     return EffectiveRoleModules(role=ctx.role, modules=modules)
 
@@ -363,7 +493,7 @@ async def get_effective_module_permissions(
 @router.patch(
     "/modules",
     response_model=TenantModuleSettings,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_module_settings(
     payload: TenantModuleSettingsPatch,
@@ -392,7 +522,7 @@ async def update_module_settings(
 @router.get(
     "/seat-requests",
     response_model=List[SeatRequestOut],
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def list_seat_requests(
     ctx: UserCtx = Depends(get_current_user),
@@ -410,7 +540,7 @@ async def list_seat_requests(
     "/seat-requests",
     response_model=SeatRequestOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_seat_request(
     payload: SeatRequestCreate,
@@ -439,7 +569,7 @@ async def create_seat_request(
 @router.get(
     "/hiring-pipeline-gates",
     response_model=HiringPipelineGatesPublicOut,
-    dependencies=[Depends(require_roles(*HIRING_GATES_READ_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_hiring_pipeline_gates(
     ctx: UserCtx = Depends(get_current_user),
@@ -451,7 +581,7 @@ async def get_hiring_pipeline_gates(
 @router.patch(
     "/hiring-pipeline-gates",
     response_model=HiringPipelineGatesPublicOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def patch_hiring_pipeline_gates(
     payload: HiringPipelineGatesPatch,
@@ -463,7 +593,7 @@ async def patch_hiring_pipeline_gates(
 
 @router.get(
     "/transfer-policy",
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_transfer_policy_settings(
     ctx: UserCtx = Depends(get_current_user),
@@ -480,7 +610,7 @@ async def get_transfer_policy_settings(
 @router.get(
     "/risk-model-v1",
     response_model=RiskModelV1SettingsOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.client_manager))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_risk_model_v1_settings(
     ctx: UserCtx = Depends(get_current_user),
@@ -499,7 +629,7 @@ async def get_risk_model_v1_settings(
 @router.patch(
     "/risk-model-v1",
     response_model=RiskModelV1SettingsOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def patch_risk_model_v1_settings(
     payload: Annotated[Dict[str, Any], Body()],

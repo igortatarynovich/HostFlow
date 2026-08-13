@@ -12,7 +12,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.forms_platform.builder.composition import (
     FormDraftComposition,
@@ -132,7 +133,7 @@ async def builder_palette(
     category: Optional[str] = Query(default=None),
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: tuple = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.administrator, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ) -> PaletteOut:
     _db, tenant_uuid = db_tenant
     _ensure_tenant(ctx, str(tenant_uuid))
@@ -160,7 +161,7 @@ async def builder_component_view(
     version: str = Query(..., description="Pinned component_version"),
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: tuple = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.administrator, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ) -> ComponentViewOut:
     _db, tenant_uuid = db_tenant
     _ensure_tenant(ctx, str(tenant_uuid))
@@ -186,7 +187,7 @@ async def get_form_builder_draft(
     form_id: str,
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: tuple = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.administrator, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ) -> DraftOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
@@ -227,7 +228,7 @@ async def save_form_builder_draft(
     body: DraftSaveIn,
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: tuple = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.administrator)),
+    _role: str = Depends(require_trust_admin()),
 ) -> DraftOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
@@ -296,7 +297,7 @@ async def archive_form_builder_draft(
     expected_revision: int = Query(...),
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: tuple = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.administrator)),
+    _role: str = Depends(require_trust_admin()),
 ) -> DraftOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)

@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import Company, Lead, OwnCompany, Reminder, ServiceOrder, Tenant, Vacancy
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
@@ -222,7 +223,7 @@ async def get_onboarding_status(
 @router.post(
     "/clear-demo-data",
     response_model=OnboardingClearDemoOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def post_clear_demo_data(
     _user: UserCtx = Depends(get_current_user),
@@ -256,7 +257,7 @@ class OnboardingDemoSeedOut(BaseModel):
 @router.post(
     "/demo/seed",
     response_model=OnboardingDemoSeedOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def post_seed_onboarding_demo(
     current_user: UserCtx = Depends(get_current_user),
@@ -682,7 +683,7 @@ async def get_setup_readiness(
 
 @router.post("/setup/candidate-intake/manual", response_model=CandidateIntakeManualOut)
 async def declare_manual_candidate_intake(
-    _user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    _user: UserCtx = Depends(require_trust_write()),
     db_tenant=Depends(get_db_with_tenant),
     own_company_id: str | None = Depends(resolve_active_own_company_id_optional),
 ):
