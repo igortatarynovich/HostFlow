@@ -225,3 +225,64 @@ async def test_sales_list_uses_inquiry_id_and_excludes_recruitment(db, tenant_id
     assert str(candidate.id) not in transport_ids
     assert all(str(si.id) != str(row.id) for si, row in pairs)
     assert all(str(row.lead_type) == "client" for _si, row in pairs)
+
+
+@pytest.mark.asyncio
+async def test_http_sales_list_get_keyed_by_sales_inquiry(
+    client,
+    manager_headers,
+    db,
+    tenant_id: str,
+) -> None:
+    lead, inquiry, own_company_id = await _seed_sales_pair(db, tenant_id=tenant_id)
+    candidate = await leads_crud.create_lead(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        company_id=await _client_company_id(db, tenant_id),
+        vacancy_id=None,
+        payload={},
+        normalized={"full_name": "Not A Sales Row"},
+        source="meta",
+        lead_type="candidate",
+        lead_target_type="candidate",
+    )
+    await db.commit()
+
+    headers = {**manager_headers, "X-Own-Company-Id": own_company_id}
+    listed = await client.get("/api/v1/sales/inquiries", headers=headers)
+    assert listed.status_code == 200, listed.text
+    items = listed.json().get("items") or []
+    product_ids = {str(item.get("id") or "") for item in items}
+    transport_ids = {str(item.get("transport_lead_id") or "") for item in items}
+    assert str(inquiry.id) in product_ids
+    assert str(lead.id) not in product_ids
+    assert str(lead.id) in transport_ids
+    assert str(candidate.id) not in product_ids
+    assert str(candidate.id) not in transport_ids
+    row = next(item for item in items if item["id"] == str(inquiry.id))
+    assert row["sales_inquiry_id"] == str(inquiry.id)
+    assert row["module"] == "sales"
+
+    by_si = await client.get(f"/api/v1/sales/inquiries/{inquiry.id}", headers=headers)
+    assert by_si.status_code == 200, by_si.text
+    got = by_si.json()
+    assert got["id"] == str(inquiry.id)
+    assert got["transport_lead_id"] == str(lead.id)
+
+    by_lead = await client.get(f"/api/v1/sales/inquiries/{lead.id}", headers=headers)
+    assert by_lead.status_code == 200, by_lead.text
+    assert by_lead.json()["id"] == str(inquiry.id)
+
+    spine = await client.get(
+        f"/api/v1/sales/inquiries/{inquiry.id}/capability-spine",
+        headers=headers,
+    )
+    assert spine.status_code == 200, spine.text
+    assert spine.json()["sales_inquiry_id"] == str(inquiry.id)
+    assert spine.json()["missing_sales_inquiry"] is False
+
+    rec_list = await client.get("/api/v1/recruitment/applications", headers=headers)
+    assert rec_list.status_code == 200, rec_list.text
+    rec_ids = {str(item.get("id") or "") for item in (rec_list.json().get("items") or [])}
+    assert str(inquiry.id) not in rec_ids
