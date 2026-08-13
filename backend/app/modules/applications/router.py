@@ -6,8 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
-from backend.app.auth.deps import Role, UserCtx, get_current_user
+from backend.app.auth.trust_role_deps import require_trust_read, require_trust_write
+from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.applications import mutations
 from backend.app.modules.applications.mappers import (
@@ -22,6 +22,8 @@ from backend.app.modules.applications.listing import (
     recruitment_inbox_tab_counts,
 )
 from backend.app.modules.applications.sales_resolve import resolve_sales_inquiry_and_lead
+from backend.app.models import Lead
+from backend.app.models.sales_inquiry import SalesInquiry
 from backend.app.modules.applications.schemas import (
     ApplicationAssignIn,
     ApplicationFollowUpIn,
@@ -35,18 +37,37 @@ from backend.app.modules.applications.schemas import (
     SalesInquiryDuplicateHintOut,
     SalesInquiryDuplicateListResponse,
 )
-from backend.app.modules.leads import crud, service
+from backend.app.modules.leads import service
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
 
 sales_router = APIRouter(prefix="/sales/inquiries", tags=["sales-inquiries"])
 recruitment_router = APIRouter(prefix="/recruitment/applications", tags=["recruitment-applications"])
 
 
-async def _get_lead_or_404(db: AsyncSession, tenant_id: str, application_id: str):
-    lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
-    if not lead:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    return lead
+async def _resolve_sales_or_404(
+    db: AsyncSession,
+    tenant_id: str,
+    application_id: str,
+    own_company_id: str,
+) -> tuple[SalesInquiry, Lead]:
+    """Resolve SalesInquiry + transport Lead by SI id or Lead id."""
+    try:
+        inquiry, lead = await resolve_sales_inquiry_and_lead(
+            db,
+            tenant_id=tenant_id,
+            application_id=application_id,
+            ensure_if_lead=True,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found") from exc
+    lead_oc = str(getattr(lead, "own_company_id", "") or "")
+    inquiry_oc = str(getattr(inquiry, "own_company_id", "") or "")
+    if own_company_id:
+        if lead_oc and lead_oc != str(own_company_id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+        if inquiry_oc and inquiry_oc != str(own_company_id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    return inquiry, lead
 
 
 @sales_router.get("", response_model=ApplicationListResponse)
@@ -110,15 +131,13 @@ async def get_sales_inquiry_capability_spine(
     )
 
     db, tenant_id = db_tenant
-    lead = await _get_lead_or_404(db, str(tenant_id), application_id)
-    if str(getattr(lead, "lead_type", "") or "").lower() != "client":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    if own_company_id and str(getattr(lead, "own_company_id", "") or "") not in ("", str(own_company_id)):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    inquiry, _lead = await _resolve_sales_or_404(
+        db, str(tenant_id), application_id, own_company_id
+    )
     payload = await get_capability_spine_for_application(
         db,
         tenant_id=str(tenant_id),
-        application_id=application_id,
+        application_id=str(inquiry.id),
     )
     return SalesCapabilitySpineOut.model_validate(payload)
 
@@ -140,11 +159,9 @@ async def list_sales_inquiry_possible_duplicates(
     )
 
     db, tenant_id = db_tenant
-    lead = await _get_lead_or_404(db, str(tenant_id), application_id)
-    if str(getattr(lead, "lead_type", "") or "").lower() != "client":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-    if own_company_id and str(getattr(lead, "own_company_id", "") or "") not in ("", str(own_company_id)):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    _inquiry, lead = await _resolve_sales_or_404(
+        db, str(tenant_id), application_id, own_company_id
+    )
     hits = await find_possible_duplicate_sales_inquiries(
         db,
         tenant_id=str(tenant_id),

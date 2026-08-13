@@ -104,5 +104,6 @@ Do **not** mix slice 4 into slice 3.
 - [x] Brief sealed with in/out + acceptance  
 - [x] Queue + roadmap point at this brief  
 - [x] Boundary vs slice 4 / R6 explicit  
-- [ ] Code feat PR — list/get/patch SI identity + `transport_lead_id`; FE Lead sections use transport id  
-- [ ] Contract tests green  
+- [x] Code feat PR — list/get/patch SI identity + `transport_lead_id`; FE Lead sections use transport id  
+- [x] Spine / duplicates resolve by SI id (compat Lead id)  
+- [ ] Contract tests green (local slice 3 suite)  
