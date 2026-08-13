@@ -194,16 +194,18 @@ Next branch only after:
 5. One dedicated worktree  
 
 **Do not** start Phase B code (Meta / Stage 3) until the [kit gate](../architecture/platform-extraction-phase.md) passes.  
+**Do not** ship a new product screen whose list / workspace chrome / analytics / action bar / filters are missing from the kit (Kit Gate is law). Phase B **consumes** the kit; it does not develop it.  
+**Do not** extract Recruitment / HR / Vacancy / Candidate Workspace into the kit (two-consumer rule only).  
 **Do not** start C2.4 while Extraction or Phase B is active.  
 **Do not** spend capacity on the 657 base-known pytest failures.  
-**Do not** write docs-only ADRs to close ADR-038 map cells (Events inventory, ADR-045) without a second runtime consumer.  
+**Do not** write docs-only ADRs when Vocabulary Canon already has the rule; new ADR only if the architectural contract changes.  
 **Do** amend this queue when switching the active slice (this revision: → Platform Extraction).
 
 ---
 
 ## 8. History
 
-- 2026-08-13: **Platform Extraction** becomes the active slice ([phase](../architecture/platform-extraction-phase.md)); Vocabulary Canon closed; Phase B (Meta / Stage 3) queued until kit gate.  
+- 2026-08-13: **Platform Extraction** becomes the active slice ([phase](../architecture/platform-extraction-phase.md)); Vocabulary Canon closed; Phase B (Meta / Stage 3) queued until kit gate. Hard rules: Kit Gate, two-consumer extract, finite completion bar.  
 - 2026-08-03: Stage 3 slice 3 **brief sealed** ([stage-3-sales-inquiry-product-flow.md](stage-3-sales-inquiry-product-flow.md)); code after Meta #222.  
 - 2026-08-03: **A2 PASS_WITH_CONSTRAINTS**; Product Track → **Meta Intake Completeness** (Phase B).  
 - 2026-08-03: **Epic C Complete Gate PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  

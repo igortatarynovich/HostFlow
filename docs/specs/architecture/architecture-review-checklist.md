@@ -58,10 +58,26 @@
 
 ---
 
+## L2 operating — UI Kit Gate (not an L0 P-rule)
+
+SoT: [`platform-extraction-phase.md`](platform-extraction-phase.md). Does **not** amend L0.
+
+For PRs that add or change **product UI** after the Core Platform Kit public APIs exist:
+
+- [ ] New screen’s list / workspace chrome / analytics / action bar / filters **compose the kit** — no local stand-in for a missing block (Kit Gate)
+- [ ] No new local table / KPI tile / entity header / filter bar / action bar when an equivalent exists in the kit
+- [ ] No promotion of a module workspace (Recruitment / HR / Vacancy / Candidate) into the platform kit
+- [ ] No new UI ADR unless the **architectural contract** changes; existing Vocabulary Canon → extract or reuse runtime
+
+Reject: sixth operational table, fourth workspace shell, module-only KPI card.
+
+---
+
 ## История
 
 - 2026-07-18: L0 closure checklist.  
 - 2026-07-18: Final seal — Non-Goals, stability, invariants.  
 - 2026-07-18: Capability Contract sequence added (Phase 1).  
 - 2026-07-19: INV-16 Decision Priority Rule + reject signals (Intake/Flights L0 correction).  
-- 2026-07-19: INV-17 Communication Pipeline sole outbound entry (C5).
+- 2026-07-19: INV-17 Communication Pipeline sole outbound entry (C5).  
+- 2026-08-13: L2 UI Kit Gate checkboxes (Platform Extraction; not an L0 P-rule).

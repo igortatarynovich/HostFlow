@@ -230,7 +230,8 @@ Not standalone AI features. A **service layer over existing platforms**:
 5. Parallel product branches that compete across phases (one active slice). Platform Extraction **is** the active slice until the kit gate.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
-8. Docs-only ADRs to close ADR-038 map cells (Events inventory, ADR-045) without a second runtime consumer.
+8. Docs-only ADRs to close ADR-038 map cells (Events inventory, ADR-045) without a second runtime consumer.  
+9. Reopening Platform Extraction as an open-ended kit program after the [completion bar](platform-extraction-phase.md#3-the-kit-sprint-has-a-closed-completion-bar); extracting Recruitment/HR/Vacancy/Candidate Workspace; shipping a product screen with a local stand-in for a missing kit block (Kit Gate).
 
 ---
 
@@ -250,7 +251,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
-- 2026-08-13: **Platform Extraction** inserted before Phase B. Vocabulary Canon (ADR-037…047) closed. Active slice = Core Platform Kit. Phase B code queued until kit gate.  
+- 2026-08-13: **Platform Extraction** inserted before Phase B. Vocabulary Canon (ADR-037…047) closed. Active slice = Core Platform Kit. Kit Gate + two-consumer extract + finite completion bar. Phase B code queued until kit gate.  
 - 2026-08-03: A2 Platform Governance Review **PASS_WITH_CONSTRAINTS**; Product Track → **Phase B Meta / Stage 3**; Catalog Notifications↔Communication deferred to Architecture RFC.  
 - 2026-08-03: Epic C Complete Gate **PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
 - 2026-07-20: Locked Phase A→G after Communication platform work; Stage 3 deferred until Epic C + Governance Review.  

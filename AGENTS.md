@@ -116,6 +116,7 @@ Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/s
 **Active close-out:** [Platform Extraction](docs/specs/architecture/platform-extraction-phase.md) (Core Platform Kit) → then Phase B — [Meta Intake Completeness](docs/specs/tasks/meta-intake-completeness.md) → Stage 3 slice 3–4 → Forms → Entity Workspace → Documents → Billing → AI.
 
 **Locked:** Platform Extraction (kit gate) → Acquisition/Stage 3 (Phase B) → Forms Platform → Entity Workspace → Documents → Billing → AI.  
+**Kit Gate:** no new product screen if its list / workspace chrome / analytics / action bar / filters are missing from the Core Platform Kit ([`platform-extraction-phase.md`](docs/specs/architecture/platform-extraction-phase.md)). Extract only two-consumer platform shells — never Recruitment/HR/Vacancy/Candidate Workspace. New UI ADR only when the architectural contract changes.  
 Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) — do not rewrite L0 Catalog without RFC.
 
 ## Documentation governance

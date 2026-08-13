@@ -94,8 +94,12 @@ ADR-019 **3A-1** Event Contract when a real consumer (Stage 3 / automation) need
 
 ---
 
-## Success bar
+## Completion bar (kit sprint is finite)
 
-A second module that needs a list, entity chrome, or chart **configures the kit**. It does not copy Tailwind from Candidates or Recruitment efficiency.
+The sprint is **done** when a new module can assemble a screen **without** writing its own list, workspace chrome, analytics, layout shell, action bar, or filters — only kit APIs + module `ListDefinition` / domain cells / metrics.
 
-Kit gate → sequential queue returns Product Track to Meta Intake Completeness → Stage 3 slice 3–4.
+Hard rules: [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md) (Kit Gate, two-consumer extract, no second Vocabulary Canon, no local UI when the kit has it).
+
+**Do not extract** Recruitment / HR / Vacancy / Candidate Workspace. Those stay module compositions.
+
+After this bar: Product Track (Meta → Stage 3). Further kit families only via the two-module rule, as small PRs — not a second Extraction phase.
