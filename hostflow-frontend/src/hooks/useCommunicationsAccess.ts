@@ -5,7 +5,7 @@ import {
   type CommunicationsWorkspaceSettings,
 } from '../api/communications'
 import { roleMayLoadFullCommunicationsSettings } from '../constants/communicationsSettingsAccess'
-import { actorSatisfiesRoleAllowlist } from '../auth/trustRoles'
+import { actorSatisfiesRoleAllowlist, canUseTeamOverviewLane } from '../auth/trustRoles'
 import { useAuth } from '../store/useAuth'
 import { usePermissions } from './usePermissions'
 
@@ -18,6 +18,11 @@ export type CommunicationsFeatureKey =
   | 'myAvailability'
   | 'timeOffRequests'
   | 'communicationsAdmin'
+
+const LEAD_SCOPED_FEATURES = new Set<CommunicationsFeatureKey>([
+  'teamAvailability',
+  'communicationsAdmin',
+])
 
 type AccessState = {
   loading: boolean
@@ -133,6 +138,9 @@ export function useCommunicationsAccess() {
       }
 
       const allowedRoles = settings.access?.roles?.[accessKey] || []
+      if (LEAD_SCOPED_FEATURES.has(feature)) {
+        return canUseTeamOverviewLane({ role: rawRole || role, presetId })
+      }
       if (!allowedRoles.length) return true
       const personaHit = allowedRoles
         .map((r) => String(r).toLowerCase())
@@ -144,7 +152,7 @@ export function useCommunicationsAccess() {
         accessContext,
       })
     }
-  }, [accessContext, rawRole, role, state.settings, userIdSet])
+  }, [accessContext, presetId, rawRole, role, state.settings, userIdSet])
 
   return {
     loading: state.loading,

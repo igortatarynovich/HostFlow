@@ -120,6 +120,7 @@ async def load_candidate_work_panel(
         assignee_scope=assignee_scope,
         viewer_id=str(current_user.sub),
         viewer_role=str(current_user.role),
+        preset_id=getattr(current_user, "preset_id", None),
     )
 
     async def reminders_task():

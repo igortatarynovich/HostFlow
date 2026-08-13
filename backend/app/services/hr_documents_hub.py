@@ -79,17 +79,15 @@ def _verification_status_display(*, ctx: WorkforceHrDocumentContext) -> str | No
     return None
 
 
-def _assignee_team_scope(assignee_scope: str, viewer_role: str) -> bool:
+def _assignee_team_scope(
+    assignee_scope: str,
+    viewer_role: str,
+    preset_id: str | None = None,
+) -> bool:
+    from backend.app.auth.trust_roles import can_use_team_assignee_scope
+
     scope = (assignee_scope or "mine").strip().lower()
-    role = (viewer_role or "").strip().lower()
-    if scope == "team" and role in (
-        "administrator",
-        "supervisor",
-        "hr_officer",
-        "superadmin",
-    ):
-        return True
-    return False
+    return scope == "team" and can_use_team_assignee_scope(viewer_role, preset_id)
 
 
 def _hub_recommended_action(
@@ -121,6 +119,7 @@ async def list_hr_documents_hub(
     horizon_days: int,
     limit: int,
     offset: int,
+    preset_id: str | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     tid = str(tenant_id).strip()
     hz = max(7, min(int(horizon_days or 30), 90))
@@ -203,7 +202,7 @@ async def list_hr_documents_hub(
                 continue
             pay_by_doc.setdefault(rid, []).append(str(p.id))
 
-    team = _assignee_team_scope(assignee_scope, viewer_role)
+    team = _assignee_team_scope(assignee_scope, viewer_role, preset_id)
     viewer = str(viewer_id).strip()
 
     rows_out: list[dict[str, Any]] = []

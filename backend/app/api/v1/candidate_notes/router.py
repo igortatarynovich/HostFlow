@@ -163,7 +163,9 @@ async def add_candidate_note(
                 if locked:
                     role_l = str(getattr(user, "role", "") or "").strip().lower()
                     or_ok = str(payload.override_reason or "").strip()
-                    if not can_override_recruitment_handoff_lock(role_l) or not or_ok:
+                    if not can_override_recruitment_handoff_lock(
+                        role_l, getattr(user, "preset_id", None)
+                    ) or not or_ok:
                         raise HTTPException(
                             status_code=status.HTTP_403_FORBIDDEN,
                             detail=(

@@ -251,7 +251,7 @@ async def _pick_lead_assignee_id(
         .where(
             User.is_active.is_(True),
             or_(User.tenant_id == tenant_id, User.tenant_id.is_(None)),
-            User.role.in_(["administrator", "supervisor", "manager", "admin", "owner"]),
+            User.role.in_(["administrator", "employee", "superadmin", "admin", "owner"]),
         )
         .order_by(User.created_at.asc())
         .limit(1)

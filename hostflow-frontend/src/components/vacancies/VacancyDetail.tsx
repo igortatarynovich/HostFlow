@@ -23,6 +23,7 @@ import {
 import type { EmploymentType, VacancyRecruiterPoolItem, VacancyStatus } from '../../api/vacancies'
 import { listSalesOrderLines, type SalesOrderLine } from '../../api/salesOrders'
 import { listCandidateProfiles, type CandidateProfile } from '../../api/candidate_profiles'
+import { RECRUITMENT_ASSIGNEE_CATALOG_ROLES } from '../../auth/trustRoles'
 import { listTenantManagers } from '../../api/users'
 import type { ManagerOption } from '../../api/types'
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
@@ -396,7 +397,9 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       try {
         const [managers, recruiters] = await Promise.all([
           listTenantManagers(),
-          listTenantManagers({ roles: ['recruiter'] }),
+          listTenantManagers({
+            roles: RECRUITMENT_ASSIGNEE_CATALOG_ROLES.split(',').map((r) => r.trim()).filter(Boolean),
+          }),
         ])
         if (!cancelled) {
           setManagerOptions(managers)

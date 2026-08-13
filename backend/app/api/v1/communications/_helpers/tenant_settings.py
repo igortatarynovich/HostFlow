@@ -79,9 +79,15 @@ def _canonical_membership_role_for_escalation(role_key: str) -> str:
     aliases = {
         "admin": "administrator",
         "owner": "administrator",
-        "manager": "supervisor",
-        "hr": "recruiter",
-        "client": "client_manager",
-        "processor": "client_processor",
+        "manager": "team_lead",
+        "supervisor": "team_lead",
+        "lead": "team_lead",
+        "hr": "hr",
+        "hr_officer": "hr",
+        "recruiter": "employee",
+        "client": "viewer",
+        "processor": "viewer",
+        "client_manager": "viewer",
+        "client_processor": "viewer",
     }
     return aliases.get(k, k)

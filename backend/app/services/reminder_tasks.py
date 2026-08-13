@@ -128,7 +128,12 @@ async def build_reminder_payload_enrichments_for_api(
 def _is_admin(role: Optional[str]) -> bool:
     if not role:
         return False
-    return role in {"administrator", "superadmin", "supervisor", "admin", "manager"}
+    from backend.app.auth.trust_roles import TrustRole, is_team_lead_org_actor, normalize_trust_role
+
+    trust = normalize_trust_role(role)
+    if trust in {TrustRole.administrator.value, TrustRole.superadmin.value}:
+        return True
+    return is_team_lead_org_actor(role)
 
 
 def _assert_acl(reminder: Reminder, actor_id: str, role: Optional[str]) -> None:
@@ -283,20 +288,15 @@ def resolve_assignee_for_reminder_list(
     assignee_scope: str,
     viewer_id: str,
     viewer_role: Optional[str],
+    preset_id: Optional[str] = None,
 ) -> Optional[str]:
-    """Filter reminders by assignee, or None = whole team (supervisor/admin/manager only)."""
+    """Filter reminders by assignee, or None = whole team (admin / team_lead / HR)."""
+    from backend.app.auth.trust_roles import can_use_team_assignee_scope
+
     if explicit_assignee_id and str(explicit_assignee_id).strip():
         return str(explicit_assignee_id).strip()
     scope = str(assignee_scope or "mine").strip().lower()
-    role = str(viewer_role or "").strip().lower()
-    if scope == "team" and role in (
-        "administrator",
-        "supervisor",
-        "superadmin",
-        "admin",
-        "manager",
-        "hr_officer",
-    ):
+    if scope == "team" and can_use_team_assignee_scope(viewer_role, preset_id):
         return None
     return str(viewer_id).strip()
 

@@ -16,6 +16,7 @@ import {
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
+import { usePermissions } from '../hooks/usePermissions'
 import { useCommunicationsSetupStatus } from '../hooks/useCommunicationsSetupStatus'
 import { useEmailInboundSync } from '../hooks/useEmailInboundSync'
 import InboxUnifiedThreadList, {
@@ -46,8 +47,11 @@ function isActiveThread(th: CommunicationThread): boolean {
   return !th.is_archived && String(th.status || '').toLowerCase() !== 'deleted'
 }
 
-function canPatchCommunicationsSettings(role: string | undefined): boolean {
-  return canUseTeamOverviewLane({ role })
+function canPatchCommunicationsSettings(
+  role: string | undefined,
+  presetId?: string | null,
+): boolean {
+  return canUseTeamOverviewLane({ role, presetId })
 }
 
 function bulkActionPreviewLabel(type: string, value?: string | null): string {
@@ -158,6 +162,7 @@ export default function CommunicationsInboxHubPage() {
   const { notify } = useToast()
   const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
+  const { rawRole, presetId } = usePermissions()
   const [searchParams, setSearchParams] = useSearchParams()
   const listQuery = useMemo(() => readInboxListQuery(searchParams), [searchParams])
   const { canUseCommunicationsFeature, loading: accessLoading } = useCommunicationsAccess()
@@ -853,7 +858,7 @@ export default function CommunicationsInboxHubPage() {
               {t('app.communications.email.incoming_disabled_body_inbox')}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {canPatchCommunicationsSettings(me?.role) && (
+              {canPatchCommunicationsSettings(rawRole || me?.role, presetId) && (
                 <button type="button" className="btn-primary btn-xs disabled:opacity-50" disabled={enablingIncoming} onClick={() => void enableServerIncoming()}>
                   {enablingIncoming
                     ? t('common.loading')

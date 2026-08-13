@@ -18,6 +18,7 @@ from uuid import UUID
 from backend.app.core.cache import cache_get, cache_set
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.auth.deps import UserCtx, get_current_user
+from backend.app.auth.trust_roles import is_team_lead_org_actor, normalize_trust_role
 from backend.app.models.audit import ActivityLog
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_handoff import CandidateHandoff
@@ -75,7 +76,8 @@ from backend.app.services.risk_intel_v1 import (
 
 router = APIRouter(tags=["analytics"], dependencies=[Depends(get_current_user)])
 
-RISK_OPS_ROLES = frozenset({"superadmin", "administrator", "supervisor"})
+# Risk ops: trust admins + team_lead org actors (legacy ``supervisor`` via helper).
+RISK_OPS_TRUST = frozenset({"superadmin", "administrator"})
 
 # Canonical codes counted as «hired» in recruiter/manager aggregates (not employment_pending).
 _CANONICAL_HIRED_STAGE_CODES = frozenset({"employed", "probation_ok"})
@@ -141,12 +143,13 @@ async def _manager_digest_last_ack_bucket(db: AsyncSession, tenant_id: str, user
 
 
 def _require_risk_ops_lead(ctx: UserCtx) -> None:
-    role = (ctx.role or "").lower().strip()
-    if role not in RISK_OPS_ROLES:
-        raise HTTPException(
-            status_code=403,
-            detail="Risk intelligence requires supervisor, administrator, or superadmin role.",
-        )
+    trust = normalize_trust_role(ctx.role)
+    if trust in RISK_OPS_TRUST or is_team_lead_org_actor(ctx.role, getattr(ctx, "preset_id", None)):
+        return
+    raise HTTPException(
+        status_code=403,
+        detail="Risk intelligence requires team lead, administrator, or superadmin.",
+    )
 
 # Perf budgets: p95 thresholds (ms) by metric key.
 # Keep small and actionable; these values are meant to be tuned after baseline stabilizes.

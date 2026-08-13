@@ -13,7 +13,10 @@
  */
 
 import {
+  isHrWorkspaceActor,
   isPortalActor,
+  isTeamLeadOrgActor,
+  normalizeTrustRole,
   resolvePermissionPersona,
   type AccessContext,
   type PermissionPresetId,
@@ -226,24 +229,36 @@ export function resolveWorkHubProfile(args: {
   presetId?: PermissionPresetId | string | null
 }): WorkHubProfile {
   const { role, isClientTenant, isSoloAdmin, accessContext, presetId } = args
+  const trust = normalizeTrustRole(role)
+  const portal = isPortalActor(role, accessContext)
+
+  if (trust === 'administrator' || trust === 'superadmin') {
+    return PROFILES[isSoloAdmin ? 'admin_solo' : 'admin_team']
+  }
+  if (portal || (isClientTenant && trust === 'viewer')) {
+    const persona = resolvePermissionPersona({
+      role,
+      accessContext,
+      presetId: presetId as PermissionPresetId | null,
+      isClientTenant,
+    })
+    if (persona === 'client_manager') return PROFILES.client_manager
+    return PROFILES.client_processor
+  }
+  if (isTeamLeadOrgActor(role, presetId)) return PROFILES.supervisor
+  if (isHrWorkspaceActor(role, presetId)) return PROFILES.recruiter
+  if (trust === 'employee') return PROFILES.recruiter
+  if (trust === 'viewer') return PROFILES.viewer
+
+  // Legacy persona bridge for unread job-title JWT strings.
   const persona = resolvePermissionPersona({
     role,
     accessContext,
     presetId: presetId as PermissionPresetId | null,
     isClientTenant,
   })
-
-  if (persona === 'administrator') {
-    return PROFILES[isSoloAdmin ? 'admin_solo' : 'admin_team']
-  }
-  if (persona === 'supervisor') return PROFILES.supervisor
-  if (persona === 'recruiter' || persona === 'employee' || persona === 'compliance_officer') {
-    return isClientTenant || isPortalActor(role, accessContext)
-      ? PROFILES.client_processor
-      : PROFILES.recruiter
-  }
-  if (persona === 'hr_officer') {
-    // HR lane still uses personal-focus hub (same as recruiter layout).
+  if (persona === 'team_lead' || persona === 'supervisor') return PROFILES.supervisor
+  if (persona === 'recruiter' || persona === 'employee' || persona === 'compliance_officer' || persona === 'hr' || persona === 'hr_officer') {
     return PROFILES.recruiter
   }
   if (persona === 'client_manager') return PROFILES.client_manager

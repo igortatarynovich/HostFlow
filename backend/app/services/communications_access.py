@@ -5,6 +5,12 @@ from typing import Any, Dict, Iterable, Literal, Set
 from fastapi import HTTPException, status
 
 from backend.app.auth.deps import Role, UserCtx
+from backend.app.auth.trust_roles import (
+    TrustRole,
+    actor_satisfies_role_allowlist,
+    is_team_lead_org_actor,
+    normalize_trust_role,
+)
 from backend.app.models.tenant import Tenant
 
 CommFeature = Literal[
@@ -51,24 +57,50 @@ _FEATURE_TO_ROLE_KEY: Dict[CommFeature, str] = {
     "communicationsAdmin": "communicationsAdmin",
 }
 
+# Privileged: trust admin / team_lead only (do not treat every employee as allowed).
+_LEAD_SCOPED_FEATURES: frozenset[str] = frozenset({"teamAvailability", "communicationsAdmin"})
+
 # Keep aligned with frontend DEFAULT_COMMUNICATIONS_SETTINGS.access.roles.
-# Canonical operational staff role is ``employee`` (legacy ``recruiter`` kept for aliases).
+# Canonical trust roles + legacy aliases for stored tenant overrides.
 _DEFAULT_ROLE_ACCESS: Dict[str, list[str]] = {
     "messages": [
         "administrator",
         "employee",
+        "viewer",
         "supervisor",
         "recruiter",
         "client_manager",
         "client_processor",
     ],
-    "email": ["administrator", "employee", "supervisor", "recruiter", "client_manager"],
-    "calendar": ["administrator", "employee", "supervisor", "recruiter", "client_manager"],
-    "planner": ["administrator", "employee", "supervisor", "recruiter", "client_manager"],
+    "email": [
+        "administrator",
+        "employee",
+        "viewer",
+        "supervisor",
+        "recruiter",
+        "client_manager",
+    ],
+    "calendar": [
+        "administrator",
+        "employee",
+        "viewer",
+        "supervisor",
+        "recruiter",
+        "client_manager",
+    ],
+    "planner": [
+        "administrator",
+        "employee",
+        "viewer",
+        "supervisor",
+        "recruiter",
+        "client_manager",
+    ],
     "teamAvailability": ["administrator", "supervisor"],
     "myAvailability": [
         "administrator",
         "employee",
+        "viewer",
         "supervisor",
         "recruiter",
         "client_manager",
@@ -77,6 +109,7 @@ _DEFAULT_ROLE_ACCESS: Dict[str, list[str]] = {
     "timeOffRequests": [
         "administrator",
         "employee",
+        "viewer",
         "supervisor",
         "recruiter",
         "client_manager",
@@ -123,6 +156,29 @@ def _extract_comm_settings(tenant: Tenant | None) -> Dict[str, Any]:
     return comm if isinstance(comm, dict) else {}
 
 
+def _feature_role_allowed(
+    *,
+    current_user: UserCtx,
+    feature: CommFeature,
+    allowed: list[str],
+) -> bool:
+    role = getattr(current_user, "role", None)
+    trust = normalize_trust_role(role)
+    if trust in {TrustRole.superadmin.value, TrustRole.administrator.value}:
+        return True
+    preset_id = getattr(current_user, "preset_id", None)
+    access_context = getattr(current_user, "access_context", None)
+    if feature in _LEAD_SCOPED_FEATURES:
+        return is_team_lead_org_actor(role, preset_id)
+    if not allowed:
+        return True
+    return actor_satisfies_role_allowlist(
+        role=role,
+        allowed=set(allowed),
+        access_context=access_context,
+    )
+
+
 def assert_comm_feature_access(
     *,
     tenant: Tenant | None,
@@ -132,7 +188,7 @@ def assert_comm_feature_access(
 ) -> None:
     role = _norm_role(getattr(current_user, "role", None))
     # Platform superadmin bypass.
-    if role == Role.superadmin.value:
+    if role == Role.superadmin.value or normalize_trust_role(role) == TrustRole.superadmin.value:
         return
 
     # Enforce tenant context consistency for non-superadmin users.
@@ -149,7 +205,10 @@ def assert_comm_feature_access(
     module_cfg = modules.get(module_key) if isinstance(modules, dict) else None
     if isinstance(module_cfg, dict):
         if module_cfg.get("enabled") is False:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Communications feature disabled: {module_key}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Communications feature disabled: {module_key}",
+            )
 
     # User override has priority over role access.
     access = comm.get("access") if isinstance(comm.get("access"), dict) else {}
@@ -159,11 +218,17 @@ def assert_comm_feature_access(
         if isinstance(row, dict) and role_key in row:
             if bool(row.get(role_key)):
                 return
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Access denied by user override: {role_key}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied by user override: {role_key}",
+            )
 
     roles = access.get("roles") if isinstance(access.get("roles"), dict) else {}
     allowed = list(_iter_allowed_roles(roles.get(role_key))) if isinstance(roles, dict) else []
     if not allowed:
         allowed = list(_iter_allowed_roles(_DEFAULT_ROLE_ACCESS.get(role_key, [])))
-    if allowed and role not in set(allowed):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Access denied for role: {role_key}")
+    if not _feature_role_allowed(current_user=current_user, feature=feature, allowed=allowed):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Access denied for role: {role_key}",
+        )

@@ -23,6 +23,7 @@ import {
 import { getTeamOverview } from '../api/tenants'
 import type { AdminUser, TenantModuleSettings, TeamOverviewResponse } from '../api/types'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { PageShell, PageShellHeader } from '../components/layout'
 import { PageHeader } from '../components/nav/PageHeader'
@@ -106,10 +107,13 @@ function Donut({ used, total }: { used: number; total: number }) {
 export default function OrganizationHubPage() {
   const { t, locale } = useI18n()
   const { me } = useAuth()
-  const { can, role } = usePermissions()
+  const { can, role, rawRole, presetId } = usePermissions()
   const navigate = useNavigate()
   const planLimitModal = usePlanLimitModal()
-  const canLoadTeam = role === 'administrator' || role === 'supervisor' || can('admin.users') || can('users.view')
+  const canLoadTeam =
+    canUseTeamOverviewLane({ role: rawRole || role, presetId }) ||
+    can('admin.users') ||
+    can('users.view')
   const canLoadBilling = can('admin.users')
   const dateLocale = locale === 'pl' ? 'pl-PL' : locale === 'ru' ? 'ru-RU' : 'en-GB'
 

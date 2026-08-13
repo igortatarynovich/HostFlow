@@ -2763,9 +2763,13 @@ async def patch_candidate(
         if operational_locked:
             role_l = str(getattr(current_user, "role", "") or "").strip().lower()
             or_raw = (payload or {}).get("override_reason")
-            if can_override_recruitment_handoff_lock(role_l) and str(or_raw or "").strip():
+            if can_override_recruitment_handoff_lock(
+                role_l, getattr(current_user, "preset_id", None)
+            ) and str(or_raw or "").strip():
                 recruitment_lock_override_used = True
-            elif is_hr_workspace_actor(role_l) and await agency_candidate_has_internal_hr_handoff_lane(
+            elif is_hr_workspace_actor(
+                role_l, getattr(current_user, "preset_id", None)
+            ) and await agency_candidate_has_internal_hr_handoff_lane(
                 db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
             ):
                 recruitment_lock_override_used = True
@@ -2952,7 +2956,9 @@ async def patch_candidate(
         requires_override_reason = (
             recruitment_locked
             or workforce_locked
-            or can_override_recruitment_handoff_lock(role_l_owned)
+            or can_override_recruitment_handoff_lock(
+                role_l_owned, getattr(current_user, "preset_id", None)
+            )
         )
         if requires_override_reason:
             raise HTTPException(

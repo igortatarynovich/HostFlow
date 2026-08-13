@@ -28,6 +28,7 @@ import { getNotificationAttentionTier } from '../utils/notificationUos'
 import { resolveNotificationOpenPath } from '../utils/resolveNotificationOpenPath'
 import { useAuth } from '../store/useAuth'
 import { canUseTeamAssigneeScope as teamAssigneeScopeAllowed } from '../auth/trustRoles'
+import { usePermissions } from '../hooks/usePermissions'
 import { useI18n } from '../i18n'
 import { activateClickOnSpaceEnter, runActionOnSpaceEnter } from '../utils/a11yClick'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
@@ -628,9 +629,10 @@ export default function RemindersPage() {
   const focusTaskIdFromUrl = (searchParams.get('t_id') || '').trim() || null
   const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null)
   const { me } = useAuth()
+  const { rawRole, presetId } = usePermissions()
   const canUseTeamAssigneeScope = useMemo(() => {
-    return teamAssigneeScopeAllowed({ role: me?.role })
-  }, [me?.role])
+    return teamAssigneeScopeAllowed({ role: rawRole || me?.role, presetId })
+  }, [me?.role, presetId, rawRole])
   const dateLocale = DATE_LOCALES[locale as keyof typeof DATE_LOCALES] || enUS
   const tenantId = (me as any)?.tenant_id || 'default'
   const storageKey = `${STORAGE_KEY}:${tenantId}`

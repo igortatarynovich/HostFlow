@@ -467,6 +467,7 @@ async def list_reminders(
         assignee_scope=assignee_scope,
         viewer_id=str(current_user.sub),
         viewer_role=str(current_user.role),
+        preset_id=getattr(current_user, "preset_id", None),
     )
     q_norm = (q or "").strip()
     eff_limit = limit

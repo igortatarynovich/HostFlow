@@ -27,7 +27,7 @@ from backend.app.services.tenant_links import list_links_for_agency
 
 # Роли «рекрутинг» — воронка до передачи (+ исключения из констант скрытия).
 RECRUITMENT_PIPELINE_STAGE_FILTER_ROLES: frozenset[str] = frozenset(
-    {"employee", "recruiter", "supervisor", "viewer"}  # trust + legacy
+    {"employee", "viewer"}  # trust; legacy job titles normalize via helpers below
 )
 
 def _is_recruitment_pipeline_actor(role: str, access_context: str | None = None) -> bool:

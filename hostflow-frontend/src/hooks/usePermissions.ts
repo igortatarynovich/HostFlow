@@ -44,93 +44,97 @@ export type Permission =
   /** Alias used by some settings cards / sales surfaces. */
   | 'sales.view'
 
+/** Operational CRM lane (employee + recruiter/compliance presets). */
+const PERMS_RECRUITMENT: Permission[] = [
+  'companies.view',
+  'sales.view',
+  'leads.view',
+  'notifications.view',
+  'vacancies.view',
+  'candidates.view',
+  'candidates.manage',
+  'candidates.requestDelete',
+  'candidates.pipeline',
+  'documents.manage',
+  'services.view',
+  'services.orders.manage',
+]
+
+/** Team-lead / org-proxy lane (employee + preset team_lead). */
+const PERMS_TEAM_LEAD: Permission[] = [
+  'manager.tools',
+  'settings.view',
+  'users.view',
+  'companies.view',
+  'companies.manage',
+  'leads.view',
+  'vacancies.view',
+  'notifications.view',
+  'candidates.view',
+  'candidates.manage',
+  'candidates.requestDelete',
+  'candidates.deleteQueue',
+  'candidates.pipeline',
+  'documents.manage',
+  'admin.companyAcl',
+  'admin.deletionQueue',
+  'admin.metaLeads',
+  'services.view',
+  'services.orders.manage',
+  'workforce.view',
+  'workforce.manage',
+]
+
+const PERMS_HR: Permission[] = ['notifications.view', 'workforce.view', 'workforce.manage']
+
+const PERMS_VIEWER: Permission[] = [
+  'companies.view',
+  'leads.view',
+  'vacancies.view',
+  'candidates.view',
+  'services.view',
+]
+
+const PERMS_PORTAL_PROCESSOR: Permission[] = [
+  'companies.view',
+  'candidates.view',
+  'candidates.manage',
+  'candidates.pipeline',
+  'vacancies.view',
+  'documents.manage',
+]
+
+const PERMS_PORTAL_MANAGER: Permission[] = [
+  'manager.tools',
+  'companies.view',
+  'candidates.view',
+  'candidates.manage',
+  'candidates.pipeline',
+  'vacancies.view',
+  'documents.manage',
+  'users.view',
+  'users.manage',
+  'notifications.view',
+  'settings.view',
+]
+
+/**
+ * Permission sets keyed by resolvePermissionPersona() output.
+ * Canonical keys: trust roles + presets (team_lead/hr/…).
+ * Legacy persona keys remain as aliases for unread JWT / transition.
+ */
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   administrator: ['*'],
-  employee: [
-    'companies.view',
-    'sales.view',
-    'leads.view',
-    'notifications.view',
-    'vacancies.view',
-    'candidates.view',
-    'candidates.manage',
-    'candidates.requestDelete',
-    'candidates.pipeline',
-    'documents.manage',
-    'services.view',
-    'services.orders.manage',
-  ],
-  supervisor: [
-    'manager.tools',
-    'settings.view',
-    'users.view',
-    'companies.view',
-    'companies.manage',
-    'leads.view',
-    'vacancies.view',
-    'notifications.view',
-    'candidates.view',
-    'candidates.manage',
-    'candidates.requestDelete',
-    'candidates.deleteQueue',
-    'candidates.pipeline',
-    'documents.manage',
-    'admin.companyAcl',
-    'admin.deletionQueue',
-    'admin.metaLeads',
-    'services.view',
-    'services.orders.manage',
-    'workforce.view',
-    'workforce.manage',
-  ],
-  recruiter: [
-    'companies.view',
-    'leads.view',
-    'notifications.view',
-    'vacancies.view',
-    'candidates.view',
-    'candidates.manage',
-    'candidates.requestDelete',
-    'candidates.pipeline',
-    'documents.manage',
-    'services.view',
-    'services.orders.manage',
-  ],
-  viewer: ['companies.view', 'leads.view', 'vacancies.view', 'candidates.view', 'services.view'],
-  client_processor: [
-    'companies.view',
-    'candidates.view',
-    'candidates.manage',
-    'candidates.pipeline',
-    'vacancies.view',
-    'documents.manage',
-  ],
-  client_manager: [
-    'manager.tools',
-    'companies.view',
-    'candidates.view',
-    'candidates.manage',
-    'candidates.pipeline',
-    'vacancies.view',
-    'documents.manage',
-    'users.view',
-    'users.manage',
-    'notifications.view',
-    'settings.view',
-  ],
-  compliance_officer: [
-    'companies.view',
-    'leads.view',
-    'notifications.view',
-    'vacancies.view',
-    'candidates.view',
-    'candidates.manage',
-    'candidates.pipeline',
-    'documents.manage',
-    'services.view',
-    'services.orders.manage',
-  ],
-  hr_officer: ['notifications.view', 'workforce.view', 'workforce.manage'],
+  employee: PERMS_RECRUITMENT,
+  recruiter: PERMS_RECRUITMENT,
+  compliance_officer: PERMS_RECRUITMENT,
+  team_lead: PERMS_TEAM_LEAD,
+  supervisor: PERMS_TEAM_LEAD,
+  hr: PERMS_HR,
+  hr_officer: PERMS_HR,
+  viewer: PERMS_VIEWER,
+  client_processor: PERMS_PORTAL_PROCESSOR,
+  client_manager: PERMS_PORTAL_MANAGER,
 }
 
 const MODULE_DEFAULTS: TenantModuleSettings = {

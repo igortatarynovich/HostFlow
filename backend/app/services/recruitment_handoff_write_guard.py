@@ -25,12 +25,16 @@ from backend.app.models.recruitment_application import RecruitmentApplication
 _LOCK_HANDOFF_DESTINATIONS = ("internal_hr", "client_portal", "client_account")
 _LOCK_HANDOFF_STATUSES = ("pending_review", "accepted", "completed")
 
-# API bypass: same contract as candidate PATCH (privileged edit while handoff lock holds).
-# Legacy supervisor remains; team_lead org actors also qualify via helper below.
+# API bypass: administrator / superadmin / team_lead (legacy supervisor via helper).
 RECRUITMENT_LOCK_OVERRIDE_ROLES = frozenset({"administrator", "supervisor", "superadmin"})
 
 
-def can_override_recruitment_handoff_lock(role: str | None) -> bool:
+def can_override_recruitment_handoff_lock(
+    role: str | None,
+    preset_id: str | None = None,
+    *,
+    preferences: dict | None = None,
+) -> bool:
     from backend.app.auth.trust_roles import (
         TrustRole,
         is_team_lead_org_actor,
@@ -43,7 +47,7 @@ def can_override_recruitment_handoff_lock(role: str | None) -> bool:
     trust = normalize_trust_role(raw)
     if trust in {TrustRole.superadmin.value, TrustRole.administrator.value}:
         return True
-    return is_team_lead_org_actor(raw)
+    return is_team_lead_org_actor(raw, preset_id, preferences=preferences)
 
 RECRUITMENT_TERMINAL_CLOSE_OVERRIDE = "recruitment_terminal_close"
 

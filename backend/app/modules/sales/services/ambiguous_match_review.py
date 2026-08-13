@@ -37,8 +37,11 @@ _SALES_REVIEW_ROLES = frozenset(
     {
         "admin",
         "administrator",
+        "superadmin",
         "manager",
         "supervisor",
+        "team_lead",
+        "lead",
     }
 )
 
@@ -153,7 +156,18 @@ def _write_review(inquiry: SalesInquiry, review: dict[str, Any]) -> None:
     flag_modified(inquiry, "meta")
 
 
-def _assert_sales_actor(*, actor_id: Optional[str], actor_role: Optional[str]) -> str:
+def _assert_sales_actor(
+    *,
+    actor_id: Optional[str],
+    actor_role: Optional[str],
+    preset_id: Optional[str] = None,
+) -> str:
+    from backend.app.auth.trust_roles import (
+        TrustRole,
+        is_team_lead_org_actor,
+        normalize_trust_role,
+    )
+
     aid = _trim(actor_id)
     if not aid:
         raise AmbiguousMatchReviewError(
@@ -162,13 +176,16 @@ def _assert_sales_actor(*, actor_id: Optional[str], actor_role: Optional[str]) -
             details={},
         )
     role = str(actor_role or "").strip().lower()
-    if role not in _SALES_REVIEW_ROLES:
-        raise AmbiguousMatchReviewError(
-            "actor lacks Sales review permission",
-            reason="actor_permission_denied",
-            details={"actor_id": aid, "actor_role": role},
-        )
-    return aid
+    trust = normalize_trust_role(role)
+    if trust in {TrustRole.administrator.value, TrustRole.superadmin.value}:
+        return aid
+    if is_team_lead_org_actor(role, preset_id) or role in _SALES_REVIEW_ROLES:
+        return aid
+    raise AmbiguousMatchReviewError(
+        "actor lacks Sales review permission",
+        reason="actor_permission_denied",
+        details={"actor_id": aid, "actor_role": role},
+    )
 
 
 def _normalize_candidates(

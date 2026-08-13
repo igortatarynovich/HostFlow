@@ -709,7 +709,7 @@ async def _notify_questionnaire_submitted(
             .where(
                 User.tenant_id == tenant_id,
                 User.is_active.is_(True),
-                User.role.in_(["administrator", "supervisor", "manager"]),
+                User.role.in_(["administrator", "employee", "superadmin"]),
             )
             .order_by(User.created_at.asc())
             .limit(1)
@@ -761,7 +761,7 @@ async def _notify_questionnaire_submitted(
                 select(User.id).where(
                     User.tenant_id == tenant_id,
                     User.is_active.is_(True),
-                    User.role.in_(["administrator", "supervisor"]),
+                    User.role.in_(["administrator", "employee", "superadmin"]),
                 )
             )
             recipient_ids = [str(uid) for uid in rows.scalars().all() if uid]

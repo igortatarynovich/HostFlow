@@ -192,7 +192,7 @@ export default function SettingsLandingPage() {
           defaultValue: 'Workspace subscription, modules, users and operating companies.',
         }),
         target: CRM_APP_PATHS.organization,
-        roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'compliance_officer', 'hr_officer', 'viewer'],
+        roles: ['administrator', 'employee', 'viewer'],
         section: 'workspace',
         requiresOrganizationAccess: true,
       },

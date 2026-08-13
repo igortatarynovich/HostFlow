@@ -23,7 +23,9 @@ from backend.app.services.recruitment_handoff_write_guard import (
 )
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_MUTATE_ROLES
 
-_RECRUITMENT_OPERATIONAL_RECRUITER_ROLES = frozenset({"recruiter", "supervisor", "viewer"})
+_RECRUITMENT_OPERATIONAL_RECRUITER_ROLES = frozenset(
+    {"employee", "recruiter", "supervisor", "viewer"}
+)
 _RECRUITMENT_MUTATE_ROLE_VALUES = frozenset(
     str(getattr(role, "value", role) or "").strip().lower() for role in HIRING_CANDIDATE_MUTATE_ROLES
 ) | {"superadmin"}

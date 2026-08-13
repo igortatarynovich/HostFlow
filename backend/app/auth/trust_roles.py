@@ -234,6 +234,21 @@ def is_recruiter_preset_actor(
     return raw in {"recruiter", "hr"} and normalize_trust_role(raw) == TrustRole.employee.value
 
 
+def can_use_team_assignee_scope(
+    role: str | None,
+    preset_id: str | None = None,
+    *,
+    preferences: dict | None = None,
+) -> bool:
+    """Team-wide assignee/list scope: trust admins, team_lead, or HR lane."""
+    trust = normalize_trust_role(role)
+    if trust in {TrustRole.administrator.value, TrustRole.superadmin.value}:
+        return True
+    return is_team_lead_org_actor(
+        role, preset_id, preferences=preferences
+    ) or is_hr_workspace_actor(role, preset_id, preferences=preferences)
+
+
 # Persisted DB / JWT role values after ADR-036 Phase 3 remap (no job-title strings).
 PERSISTED_TRUST_ROLE_VALUES: Final[frozenset[str]] = frozenset(
     {

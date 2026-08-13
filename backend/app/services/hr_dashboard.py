@@ -72,6 +72,7 @@ async def build_summary(
     viewer_id: str,
     viewer_role: str,
     assignee_scope: str,
+    preset_id: str | None = None,
 ) -> dict[str, Any]:
     tid = str(tenant_id).strip()
     scope = (assignee_scope or "team").strip().lower()
@@ -84,7 +85,10 @@ async def build_summary(
     )
 
     aid = resolve_dashboard_assignee_id(
-        assignee_scope=scope, viewer_id=viewer_id, viewer_role=viewer_role
+        assignee_scope=scope,
+        viewer_id=viewer_id,
+        viewer_role=viewer_role,
+        preset_id=preset_id,
     )
     hr_tasks_open = await count_open_hr_tasks(db, tenant_id=tid, assignee_id=aid)
 
@@ -100,6 +104,7 @@ async def build_summary(
         candidate_id=None,
         limit=1,
         offset=0,
+        preset_id=preset_id,
     )
     _, high_risk_expiring_total = await list_hr_documents_expiring(
         db,
@@ -115,6 +120,7 @@ async def build_summary(
         candidate_id=None,
         limit=1,
         offset=0,
+        preset_id=preset_id,
     )
 
     pending_rows, _ = await list_internal_hr_handoffs_for_hr_inbox(
@@ -134,6 +140,7 @@ async def build_summary(
         candidate_id=None,
         limit=PREVIEW_CAP,
         offset=0,
+        preset_id=preset_id,
     )
     miss_preview, _ = await list_hr_documents_missing(
         db,
@@ -147,6 +154,7 @@ async def build_summary(
         candidate_id=None,
         limit=PREVIEW_CAP,
         offset=0,
+        preset_id=preset_id,
     )
 
     reminders = await reminder_tasks.list_reminders(
@@ -182,6 +190,7 @@ async def build_summary(
         assignee_scope=scope,
         preview_cap=PREVIEW_CAP,
         horizon_days=90,
+        preset_id=preset_id,
     )
 
     return {
@@ -217,6 +226,7 @@ async def list_high_risk_expiring(
     viewer_id: str,
     viewer_role: str,
     assignee_scope: str,
+    preset_id: str | None = None,
     horizon_days: int,
     handoff_id: str | None,
     candidate_id: str | None,
@@ -234,6 +244,7 @@ async def list_high_risk_expiring(
         candidate_id=candidate_id,
         limit=limit,
         offset=offset,
+        preset_id=preset_id,
     )
 
 
@@ -257,11 +268,15 @@ async def build_workload(
     viewer_role: str,
     assignee_scope: str,
     limit_per_group: int,
+    preset_id: str | None = None,
 ) -> dict[str, Any]:
     tid = str(tenant_id).strip()
     scope = (assignee_scope or "team").strip().lower()
     aid = resolve_dashboard_assignee_id(
-        assignee_scope=scope, viewer_id=viewer_id, viewer_role=viewer_role
+        assignee_scope=scope,
+        viewer_id=viewer_id,
+        viewer_role=viewer_role,
+        preset_id=preset_id,
     )
     reminders = await reminder_tasks.list_reminders(
         db,
@@ -302,6 +317,7 @@ async def build_compliance(
     viewer_id: str,
     viewer_role: str,
     assignee_scope: str,
+    preset_id: str | None = None,
     preview_cap: int,
 ) -> dict[str, Any]:
     tid = str(tenant_id).strip()
@@ -318,6 +334,7 @@ async def build_compliance(
         candidate_id=None,
         limit=500,
         offset=0,
+        preset_id=preset_id,
     )
 
     by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
