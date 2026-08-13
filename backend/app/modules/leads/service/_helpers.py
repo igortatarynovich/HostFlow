@@ -232,7 +232,7 @@ async def _pick_lead_assignee_id(
     Order:
     1) Automatic lead distribution (Tenant.settings.lead_distribution_v1, team/pro plan) when mode=automatic.
     2) preferred_user_id (vacancy recruiter, supervisor, meta fallback recruiter).
-    3) Legacy: first active administrator/supervisor/manager on tenant.
+    3) Legacy: first active administrator/employee on tenant.
     """
     from backend.app.services.lead_distribution import pick_assignee_user_id_for_ingest
 
@@ -251,7 +251,7 @@ async def _pick_lead_assignee_id(
         .where(
             User.is_active.is_(True),
             or_(User.tenant_id == tenant_id, User.tenant_id.is_(None)),
-            User.role.in_(["administrator", "supervisor", "manager", "admin", "owner"]),
+            User.role.in_([Role.administrator, Role.employee]),
         )
         .order_by(User.created_at.asc())
         .limit(1)

@@ -12,6 +12,7 @@ import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { getFriendlyErrorInfo } from '../utils/friendlyError'
 import { isCandidateRecruiterIdCanonEnabled } from '../utils/featureFlags'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { RECRUITMENT_ASSIGNEE_CATALOG_ROLES } from '../auth/trustRoles'
 
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 
@@ -37,7 +38,6 @@ import {
   computePipelineColumnInsights,
 } from '../modules/pipeline/filterPipelineColumns'
 import {
-import { RECRUITMENT_ASSIGNEE_CATALOG_ROLES } from '../auth/trustRoles'
   normalizeVacancyPipelinePayload,
   rebuildPipelineColumnsFromCandidates,
 } from '../modules/pipeline/normalizeVacancyPipelinePayload'

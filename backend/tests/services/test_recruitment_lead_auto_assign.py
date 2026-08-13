@@ -74,10 +74,11 @@ async def test_assign_recruiter_unassigned_when_pool_lacks_company_scope(
             id=str(uuid.uuid4()),
             email=f"scoped-out-{uuid.uuid4().hex[:8]}@hostflow.test",
             password_hash="x",
-            role=UserRole.recruiter,
+            role=UserRole.employee,
             tenant_id=tenant_id,
             is_active=True,
             full_name="No Company Access",
+            preferences={"preset_id": "recruiter"},
         )
         session.add(lone)
         await session.flush()
@@ -134,7 +135,7 @@ async def test_assign_recruiter_unassigned_when_outside_working_hours(
         await _set_tenant(session, tenant_id)
         recruiter_id = await session.scalar(
             select(User.id).where(
-                User.role == UserRole.recruiter,
+                sa.func.lower(User.email) == "recruiter@work-host.com",
                 User.tenant_id == tenant_id,
                 User.is_active.is_(True),
             ).limit(1)
@@ -198,7 +199,7 @@ async def test_assign_recruiter_unassigned_when_canonical_paused(
         await _set_tenant(session, tenant_id)
         recruiter_id = await session.scalar(
             select(User.id).where(
-                User.role == UserRole.recruiter,
+                sa.func.lower(User.email) == "recruiter@work-host.com",
                 User.tenant_id == tenant_id,
                 User.is_active.is_(True),
             ).limit(1)
@@ -279,10 +280,11 @@ async def test_fallback_eligible_rejects_user_without_company_access(
             id=str(uuid.uuid4()),
             email=f"fb-{uuid.uuid4().hex[:8]}@hostflow.test",
             password_hash="x",
-            role=UserRole.recruiter,
+            role=UserRole.employee,
             tenant_id=tenant_id,
             is_active=True,
             full_name="Fallback no scope",
+            preferences={"preset_id": "recruiter"},
         )
         session.add(lone)
         company_id = await session.scalar(sa.text("SELECT id FROM companies LIMIT 1"))
@@ -312,10 +314,11 @@ async def test_candidate_create_unassigned_audit_payload(
             id=str(uuid.uuid4()),
             email=f"audit-unassigned-{uuid.uuid4().hex[:8]}@hostflow.test",
             password_hash="x",
-            role=UserRole.recruiter,
+            role=UserRole.employee,
             tenant_id=tenant_id,
             is_active=True,
             full_name="Audit unassigned pool",
+            preferences={"preset_id": "recruiter"},
         )
         session.add(lone)
         await session.flush()

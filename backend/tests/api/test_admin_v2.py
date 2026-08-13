@@ -115,9 +115,10 @@ async def test_supervisor_company_access_scope(client: AsyncClient) -> None:
             id=str(uuid.uuid4()),
             email=f"sup+{uuid.uuid4().hex[:5]}@hostflow.dev",
             password_hash=hash_password("Sup12345!"),
-            role=UserRole.supervisor,
+            role=UserRole.employee,
             tenant_id=data["tenant_id"],
             is_active=True,
+            preferences={"preset_id": "team_lead"},
         )
         session.add(other_supervisor)
 
@@ -125,10 +126,11 @@ async def test_supervisor_company_access_scope(client: AsyncClient) -> None:
             id=str(uuid.uuid4()),
             email=f"rec+{uuid.uuid4().hex[:5]}@hostflow.dev",
             password_hash=hash_password("Rec12345!"),
-            role=UserRole.recruiter,
+            role=UserRole.employee,
             supervisor_id=other_supervisor.id,
             tenant_id=data["tenant_id"],
             is_active=True,
+            preferences={"preset_id": "recruiter"},
         )
         session.add(other_recruiter)
         await session.flush()
@@ -144,7 +146,7 @@ async def test_supervisor_company_access_scope(client: AsyncClient) -> None:
                 "id": str(uuid.uuid4()),
                 "user_id": other_supervisor.id,
                 "tenant_id": data["tenant_id"],
-                "role": "supervisor",
+                "role": "employee",
             },
         )
         await session.execute(
@@ -159,7 +161,7 @@ async def test_supervisor_company_access_scope(client: AsyncClient) -> None:
                 "id": str(uuid.uuid4()),
                 "user_id": other_recruiter.id,
                 "tenant_id": data["tenant_id"],
-                "role": "recruiter",
+                "role": "employee",
             },
         )
         other_recruiter_id = other_recruiter.id

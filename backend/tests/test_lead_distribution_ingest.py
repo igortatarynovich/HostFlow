@@ -14,21 +14,21 @@ from backend.app.services.lead_distribution import (
 
 def test_roles_for_pipeline_owner_role_maps_synonyms() -> None:
     r = roles_for_pipeline_owner_role("recruiter")
-    assert r == {Role.recruiter}
+    assert r == {Role.employee}
     r2 = roles_for_pipeline_owner_role("Manager, Admin")
-    assert r2 == {Role.supervisor, Role.administrator}
+    assert r2 == {Role.employee, Role.administrator}
     assert roles_for_pipeline_owner_role("") is None
     assert roles_for_pipeline_owner_role("unknown_role_xyz") is None
 
 
 def test_filter_team_by_pipeline_owner_roles_falls_back_when_empty() -> None:
     team = [
-        {"user_id": "a", "role": Role.recruiter.value},
-        {"user_id": "b", "role": Role.supervisor.value},
+        {"user_id": "a", "role": Role.employee.value},
+        {"user_id": "b", "role": Role.administrator.value},
     ]
-    out = filter_team_by_pipeline_owner_roles(team, {Role.administrator})
+    out = filter_team_by_pipeline_owner_roles(team, {Role.viewer})
     assert out == team
-    out2 = filter_team_by_pipeline_owner_roles(team, {Role.recruiter})
+    out2 = filter_team_by_pipeline_owner_roles(team, {Role.employee})
     assert len(out2) == 1 and out2[0]["user_id"] == "a"
 
 

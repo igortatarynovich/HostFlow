@@ -48,7 +48,7 @@ async def _seed_recruiter(
     *,
     tenant_id: str,
     is_active: bool = True,
-    role: UserRole = UserRole.recruiter,
+    role: UserRole = UserRole.employee,
 ) -> str:
     uid = str(uuid.uuid4())
     db.add(
@@ -60,6 +60,7 @@ async def _seed_recruiter(
             tenant_id=tenant_id,
             is_active=is_active,
             full_name=f"Recruiter {uid[:8]}",
+            preferences={"preset_id": "recruiter"} if role == UserRole.employee else {},
         )
     )
     await db.flush()
