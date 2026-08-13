@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-13 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta Intake Completeness [#222](https://github.com/igortatarynovich/HostFlow/pull/222) and Stage 3 slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) merged. **Product Track:** Stage 3 slice 4 — [hard module separation brief](stage-3-slice-4-hard-module-separation.md). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
+> **2026-08-13 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged. **Product Track:** Forms Platform C1 — [contract seal brief](forms-platform-c1-contract-seal.md). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
 > C2.4 **frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Stage 3 slice 4** hard module separation — [brief](stage-3-slice-4-hard-module-separation.md); slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) merged | Almost all capacity |
+| **Product** | **Forms Platform C1** contract seal — [brief](forms-platform-c1-contract-seal.md); slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -46,7 +46,9 @@
 - **A2 Platform Governance Review** ← **PASS_WITH_CONSTRAINTS** (2026-08-03) — [gate](../gates/platform-governance-review-a2.md)  
 - **Meta intake completeness** ← **MERGED** [#222](https://github.com/igortatarynovich/HostFlow/pull/222) — [meta-intake-completeness.md](meta-intake-completeness.md)  
 - **Stage 3 slice 3 — SalesInquiry product flow** ← **MERGED** [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [brief](stage-3-sales-inquiry-product-flow.md)  
-- **Stage 3 slice 4 — hard module separation** ← **active** — [brief](stage-3-slice-4-hard-module-separation.md)
+- **Stage 3 slice 4 — hard module separation** ← ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238) — [brief](stage-3-slice-4-hard-module-separation.md)  
+- **Forms Platform C1 — contract seal** ← **active** — [brief](forms-platform-c1-contract-seal.md)  
+- Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
 
@@ -77,10 +79,11 @@
 | **9** | **A2** Platform Governance Review | `docs/platform-governance-review-post-epic-c` | ✅ **PASS_WITH_CONSTRAINTS** — [gate](../gates/platform-governance-review-a2.md) |
 | **10** | **Meta Intake Completeness** | `feat/meta-intake-completeness` | [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ✅ merged — answers + B2B naming |
 | **11** | **Stage 3 slice 3** SalesInquiry product flow | `feat/stage-3-slice-3-sales-inquiry-product-flow` | ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [brief](stage-3-sales-inquiry-product-flow.md) |
-| **12** | **Stage 3 slice 4** hard module separation | `docs/stage-3-slice-4-hard-module-separation` then `feat/…` | **active** — [brief](stage-3-slice-4-hard-module-separation.md); ADR-023 operational UI; not full R6 |
+| **12** | **Stage 3 slice 4** hard module separation | `feat/stage-3-slice-4-hard-module-separation` | ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238) |
+| **13** | **Forms Platform C1** contract seal | `docs/forms-platform-c1-contract-seal` then `feat/…` | **active** — [brief](forms-platform-c1-contract-seal.md); not P3–P5 / Stage 5 / R6 |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.**  
-**Active (Product):** Stage 3 slice 4 — [hard module separation](stage-3-slice-4-hard-module-separation.md). Slice 3 #224 merged.  
+**Active (Product):** Forms Platform C1 — [contract seal](forms-platform-c1-contract-seal.md). Slice 4 #238 merged.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -108,10 +111,13 @@
 **Merged** [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [brief](stage-3-sales-inquiry-product-flow.md).  
 Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 4.
 
-### Slice 4 — hard module separation
+### Slice 4 — hard module separation ← **DONE** (#238)
 
-**Active** — [stage-3-slice-4-hard-module-separation.md](stage-3-slice-4-hard-module-separation.md).  
-No dual Lead product entity; `/app/leads` is not a mixed inbox. Not Stage 5 settings. Not R6 table-cutover.
+[stage-3-slice-4-hard-module-separation.md](stage-3-slice-4-hard-module-separation.md). `/app/leads` is not a mixed inbox; `/app/leads/:id` redirects to SalesInquiry or Recruitment Application. Stage 5 settings and R6 stayed out.
+
+### Forms Platform C1 — contract seal ← **active**
+
+[forms-platform-c1-contract-seal.md](forms-platform-c1-contract-seal.md). Seal Passport / Manifest / Public Contract / Adapter / Runtime / Versioning. **Out:** Stage 5 settings · R6 · Builder P3–P5.
 
 ---
 
@@ -186,9 +192,11 @@ Next branch only after:
 4. Stale worktrees pruned  
 5. One dedicated worktree  
 
-**Do not** start C2.4 while Product Track is on Phase B.  
+**Do not** start C2.4 (frozen; gate residual R1).  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
-**Do** amend this queue when switching Product Active (this revision: → Meta Intake Completeness).
+**Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Forms.  
+**Do not** start Forms Builder / P3–P5 before Phase C contracts are sealed.  
+**Do** amend this queue when switching Product Active (this revision: slice 4 merged; live = Forms Platform C1).
 
 ---
 
@@ -198,6 +206,7 @@ Next branch only after:
 - 2026-08-03: **A2 PASS_WITH_CONSTRAINTS**; Product Track → **Meta Intake Completeness** (Phase B).  
 - 2026-08-03: **Epic C Complete Gate PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
 - 2026-08-13: Stage 3 slice 3 **✅ #224**; Product Track → **Stage 3 slice 4** hard module separation — [brief](stage-3-slice-4-hard-module-separation.md).  
+- 2026-08-13: Stage 3 slice 4 ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238); Product Track → **Forms Platform C1** — [brief](forms-platform-c1-contract-seal.md). Stage 5 settings and R6 stay out of this slice.  
 - 2026-08-03: Stage 6 **PR-4 ✅ #216**; Product Track → **Stage 6 PR-5 month buckets**.  
 - 2026-08-03: Stage 6 **PR-3 ✅ #215**; Product Track → **Stage 6 PR-4 portfolio**.  
 - 2026-08-03: Stage 6 **PR-2 ✅ #214**; Product Track → **Stage 6 PR-3 week buckets**.  

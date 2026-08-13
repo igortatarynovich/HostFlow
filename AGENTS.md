@@ -104,7 +104,7 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 Platform maturity (Foundation / Workspace / Automation / Complete):  
 [`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
 
-Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — Product Track = [Stage 3 slice 4 hard module separation](docs/specs/tasks/stage-3-slice-4-hard-module-separation.md) (slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) merged).
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **Active slice** = [Forms Platform C1 contract seal](docs/specs/tasks/forms-platform-c1-contract-seal.md). Slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) ✅. Stage 5 settings and R6 are **not** this slice.
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
 [`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
@@ -113,9 +113,9 @@ Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/s
 
 **A2 Platform Governance Review** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/platform-governance-review-a2.md`](docs/specs/gates/platform-governance-review-a2.md).
 
-**Active close-out:** Phase B — [Meta Intake Completeness](docs/specs/tasks/meta-intake-completeness.md) → Stage 3 slice 3–4 → Forms → Entity Workspace → Documents → Billing → AI.
+**Active close-out:** [Forms Platform C1](docs/specs/tasks/forms-platform-c1-contract-seal.md) → Entity Workspace → Documents → Billing → AI. Phase B Meta/slice 3–4 ✅ ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) · [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · [#238](https://github.com/igortatarynovich/HostFlow/pull/238)).
 
-**Locked:** Acquisition/Stage 3 (Phase B) → Forms Platform → Entity Workspace → Documents → Billing → AI.  
+**Locked:** Acquisition/Stage 3 (Phase B) ✅ → Forms Platform ← **active** → Entity Workspace → Documents → Billing → AI.  
 Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) — do not rewrite L0 Catalog without RFC.
 
 ## Documentation governance

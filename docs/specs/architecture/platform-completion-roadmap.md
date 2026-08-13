@@ -26,17 +26,17 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-Locked handoff:
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← **active** ([C1 brief](../tasks/forms-platform-c1-contract-seal.md)).
 
 ```text
-Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → …
+Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms → …
 ```
 
 Order **after A2**:
 
 1. **A2 — Platform Governance Review** — ✅ PASS_WITH_CONSTRAINTS ([gate](../gates/platform-governance-review-a2.md))  
-2. **Phase B — Acquisition / Stage 3 + Meta** ← **next**  
-3. Forms → Entity Workspace → Documents → Billing → AI  
+2. **Phase B — Acquisition / Stage 3 + Meta** ← ✅  
+3. **Phase C — Forms Platform** ← **active** ([C1 brief](../tasks/forms-platform-c1-contract-seal.md)) → Entity Workspace → Documents → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
 
@@ -98,13 +98,15 @@ not a re-validation of Communication wiring (that is the Epic C Complete Gate).
 
 ## Phase B — Acquisition Completion (Epic P / Stage 3)
 
-Return to Acquisition only after **Epic C — complete** + **A2 Governance** (both PASS_WITH_CONSTRAINTS, 2026-08-03). **Phase B is now open.**
+Return to Acquisition only after **Epic C — complete** + **A2 Governance** (both PASS_WITH_CONSTRAINTS, 2026-08-03). Phase B listed slices are **closed**.
 
 Close:
 
-- Meta Intake Completeness (payload retention / visibility — Acquisition-adjacent) — [#222](https://github.com/igortatarynovich/HostFlow/pull/222)
-- Stage 3 slice 3 — SalesInquiry product flow — [brief](../tasks/stage-3-sales-inquiry-product-flow.md) ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224)
-- Stage 3 slice 4 — hard module separation — [brief](../tasks/stage-3-slice-4-hard-module-separation.md)
+- Meta Intake Completeness (payload retention / visibility — Acquisition-adjacent) — ✅ [#222](https://github.com/igortatarynovich/HostFlow/pull/222)
+- Stage 3 slice 3 — SalesInquiry product flow — ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224)
+- Stage 3 slice 4 — hard module separation — ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238)
+
+**Not in Phase B close-out / not in Phase C C1:** Stage 5 settings/enable-disable · R6 table-cutover.
 
 **End-to-end chain (must be complete):**
 
@@ -116,7 +118,7 @@ Campaign → Flight → Submission → Result → Outcome → Sales → Client �
 
 ---
 
-## Phase C — Forms Platform (infrastructure, not Builder)
+## Phase C — Forms Platform (infrastructure, not Builder) ← **active**
 
 Build Forms as a platform capability:
 
@@ -127,7 +129,9 @@ Build Forms as a platform capability:
 - Runtime  
 - Versioning  
 
-**Out until platform done:** Forms Builder / authoring UX product.
+**Active slice:** [C1 — Foundation contract seal](../tasks/forms-platform-c1-contract-seal.md).
+
+**Out of this slice / until platform done:** Forms Builder / authoring UX (P3–P5 locked) · Stage 5 settings/enable-disable · R6 table-cutover · Entity Workspace (Phase D).
 
 **Result:** every questionnaire, form, and survey shares one runtime contract.
 
@@ -186,8 +190,8 @@ Not standalone AI features. A **service layer over existing platforms**:
 |------:|-------|------------------|
 | 1 | **A1** Epic C Communication | ✅ Unified comms platform (`PASS_WITH_CONSTRAINTS`) |
 | 2 | **A2** Platform Governance Review | ✅ Stable SoT / contracts gate (`PASS_WITH_CONSTRAINTS`) |
-| 3 | **B** Acquisition / Stage 3 + Meta | ← **next** Full Campaign→Service Order chain |
-| 4 | **C** Forms Platform | Shared form runtime contracts |
+| 3 | **B** Acquisition / Stage 3 + Meta | ✅ Meta / slice 3–4 (#222 / #224 / #238) |
+| 4 | **C** Forms Platform | ← **active** Shared form runtime contracts ([C1](../tasks/forms-platform-c1-contract-seal.md)) |
 | 5 | **D** Universal Entity Workspace | One workspace composition |
 | 6 | **E** Documents Platform | Full document lifecycle |
 | 7 | **F** Billing Platform | SaaS commercial layer |
@@ -201,7 +205,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. Forms Builder before Forms Platform infrastructure (Phase C).  
 3. Entity Workspace redesign as a temporary shell before Phases A–C foundations.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice).  
+5. Parallel product branches that compete across phases (one active product slice). Phase C (Forms C1) **is** the active slice; do not reopen Phase B, Stage 5 settings, or R6.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.
 
@@ -211,7 +215,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order inside Phase A (and handoff into B) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active slice = Forms Platform C1) |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |
@@ -222,6 +226,6 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
-- 2026-08-03: A2 Platform Governance Review **PASS_WITH_CONSTRAINTS**; Product Track → **Phase B Meta / Stage 3**; Catalog Notifications↔Communication deferred to Architecture RFC.  
+- 2026-08-13: Stage 3 slice 4 ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238); Product Track → **Phase C Forms Platform C1** ([brief](../tasks/forms-platform-c1-contract-seal.md)). Stage 5 settings and R6 stay out of this slice.  
 - 2026-08-03: Epic C Complete Gate **PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  
 - 2026-07-20: Locked Phase A→G after Communication platform work; Stage 3 deferred until Epic C + Governance Review.  

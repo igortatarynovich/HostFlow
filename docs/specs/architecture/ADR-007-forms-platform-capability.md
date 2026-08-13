@@ -109,4 +109,5 @@ Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Autom
 - 2026-07-18: Epic P COMPLETE — Forms Sprint 1 **UNLOCKED**; Builder **LOCKED**.  
 - 2026-07-18: Sprint 1 infra — Public Contract v1 + Adapter + contract tests (no Builder).  
 - 2026-07-18: Sprint 1 COMPLETE (PR #36); Sprint 2 — immutable snapshot + activate/deactivate + version pin.  
-- 2026-07-18: Sprint 1–6 COMPLETE; Product Layer epic OPEN; Field Catalog SoT / Builder-no-invent-types rule.
+- 2026-07-18: Sprint 1–6 COMPLETE; Product Layer epic OPEN; Field Catalog SoT / Builder-no-invent-types rule.  
+- 2026-08-13: Product Track → Phase C C1 contract seal ([`../tasks/forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md)); P3–P5 remain locked.
