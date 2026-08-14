@@ -1,7 +1,7 @@
 # Forms Platform C1 — Foundation contract seal
 
 **Status:** **COMPLETE** ([#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240))  
-**Next:** [C2](forms-platform-c2-runtime-contract.md) ✅ · [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ · [C4 Form Runtime](forms-platform-c4-form-runtime.md) ← active  
+**Next:** [C2](forms-platform-c2-runtime-contract.md) ✅ · [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ · [C4 Form Runtime](forms-platform-c4-form-runtime.md) ✅ · [C5 Form Execution](forms-platform-c5-form-execution.md) ← active  
 **Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md) · [Product Layer epic](forms-product-layer-epic.md) · [A2 gate](../gates/platform-governance-review-a2.md) (A2-F6)
 
 > Sprint 1–6 + Field Catalog + Builder MVP already exist.  

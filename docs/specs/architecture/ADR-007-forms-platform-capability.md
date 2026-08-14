@@ -77,14 +77,14 @@ Lead, Candidate, Employee, Client, Service Order, Fleet records, Document, Billi
 - **Forms Sprint 1–6:** ✅ **COMPLETE** — L0 backend platform contour ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md)).  
 - **Forms Product Layer:** **ACTIVE** ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md) · `29f4057f`) — P1 Field Catalog as **component registry** ([`../tasks/forms-product-p1-field-catalog.md`](../tasks/forms-product-p1-field-catalog.md)).  
 - **Architectural rule:** **Field Catalog is SoT** for components (id/version/config/validation/normalization/storage/render). **Builder must not invent field types** — only compose Catalog blocks.  
-- **Forms Builder P3 Publish UI / P4 / P5:** **LOCKED**. **C3 Builder Runtime** ✅ ([brief](../tasks/forms-platform-c3-builder-runtime.md)). **C4 Form Runtime** is **Runtime, not an Engine**: frozen publication → **Runtime Model** ([brief](../tasks/forms-platform-c4-form-runtime.md)). C1–C3 ✅. Builder must not invent field types.  
+- **Forms Builder P3 Publish UI / P4 / P5:** **LOCKED**. **C3 Builder Runtime** ✅ ([brief](../tasks/forms-platform-c3-builder-runtime.md)). **C4 Form Runtime** ✅ — **Runtime, not an Engine**: frozen publication → **Runtime Model** ([brief](../tasks/forms-platform-c4-form-runtime.md)). **C5 Form Execution** binds submit to Runtime Model ([brief](../tasks/forms-platform-c5-form-execution.md)). C1–C4 ✅. Builder must not invent field types.  
 - Forms compose Acquisition Endpoint/Submission/Result — не копируют Outcome/KPI.
 
 ## Platform epic (roadmap)
 
 **Done (Sprint 1–6):** Endpoint Engine (HostFlow Form publish); Version ledger; Schema/validation/normalization; Immutable submission envelope; Shared Intake handoff; Audit.
 
-**Open — Phase C:** [C4 Form Runtime](../tasks/forms-platform-c4-form-runtime.md) ← active (feat; Runtime Model). C1–C3 ✅. P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is Core Platform Kit class (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
+**Open — Phase C:** [C5 Form Execution](../tasks/forms-platform-c5-form-execution.md) ← active (brief; feat locked). C1–C4 ✅. P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is Core Platform Kit class (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
 
 Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Automations / Documents / Universal Entity integration.
 
@@ -110,6 +110,7 @@ Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Autom
 - 2026-07-18: Sprint 1 infra — Public Contract v1 + Adapter + contract tests (no Builder).  
 - 2026-07-18: Sprint 1 COMPLETE (PR #36); Sprint 2 — immutable snapshot + activate/deactivate + version pin.  
 - 2026-07-18: Sprint 1–6 COMPLETE; Product Layer epic OPEN; Field Catalog SoT / Builder-no-invent-types rule.  
+- 2026-08-14: C4 ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) (`4427b110`); Product Track → C5 Form Execution ([`../tasks/forms-platform-c5-form-execution.md`](../tasks/forms-platform-c5-form-execution.md)); P3 Publish UI / P4 / P5 remain locked.
 - 2026-08-14: C4 brief [#245](https://github.com/igortatarynovich/HostFlow/pull/245); feat = Runtime Model (Publication → Runtime Model; Builder ↛ Runtime).
 - 2026-08-14: C3 ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244); Product Track → C4 Form Runtime ([`../tasks/forms-platform-c4-form-runtime.md`](../tasks/forms-platform-c4-form-runtime.md)); P3 Publish UI / P4 / P5 remain locked.
 - 2026-08-14: C1+C2 merged; Product Track → C3 Builder Runtime ([`../tasks/forms-platform-c3-builder-runtime.md`](../tasks/forms-platform-c3-builder-runtime.md)); P3 Publish UI / P4 / P5 remain locked.
