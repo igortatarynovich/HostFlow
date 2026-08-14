@@ -4,7 +4,8 @@ Public contract: forms.public_contract.v1
 Ops: resolve · publish · activate · deactivate · endpoint · submission · result
 
 Sprint 2: immutable published snapshot, activation, typed errors, version pin.
-Does not own routing, Outcome, or KPI. P3–P5 remain locked (Phase C).
+C2: Contract Identity on publication versions; publish appends; resolve/submit pin a version.
+Does not own routing, Outcome, or KPI. P3–P5 remain locked until C2 gates PASS.
 """
 
 from __future__ import annotations
@@ -22,12 +23,18 @@ from backend.app.forms_platform.constants import (
     LIFECYCLE_ARCHIVED,
     PUBLIC_CONTRACT_ID,
 )
+from backend.app.forms_platform.contract_identity import (
+    attach_identity_to_snapshot,
+    freeze_contract_identity,
+    identity_from_snapshot,
+)
 from backend.app.forms_platform.errors import (
     FormsArchivedError,
     FormsInactiveError,
     FormsMissingKeyError,
     FormsNotFoundError,
     FormsStaleVersionError,
+    FormsVersionNotFoundError,
 )
 from backend.app.forms_platform.manifest import (
     FORMS_MANIFEST_KEYS,
@@ -92,8 +99,9 @@ async def resolve_publication(
     public_slug: str | None = None,
     form_id: str | None = None,
     require_active: bool = False,
+    version: int | None = None,
 ) -> dict[str, Any]:
-    """Idempotent read of publication view (Sprint 2 resolve)."""
+    """Idempotent read of a publication version (identity + lifecycle)."""
     _require_keys(form_id=form_id, public_slug=public_slug)
     publication = await resolve_forms_platform_publication(
         db,
@@ -109,6 +117,13 @@ async def resolve_publication(
         )
     if require_active and publication.get("lifecycle_status") == LIFECYCLE_ARCHIVED:
         raise FormsArchivedError(details={"publication_id": publication.get("publication_id")})
+    publication = await _bind_publication_version(
+        db,
+        publication=publication,
+        tenant_id=str(tenant_id),
+        version=version,
+        require_frozen=version is not None or require_active,
+    )
     return publication
 
 
@@ -136,8 +151,9 @@ def _build_snapshot(
     *,
     published_version: int,
     consent_pin: dict[str, Any],
-    field_schema: dict[str, Any] | None = None,
+    field_schema: dict[str, Any],
 ) -> dict[str, Any]:
+    identity = freeze_contract_identity(field_schema)
     snap: dict[str, Any] = {
         "published_version": published_version,
         "title": str(lead_form.title or ""),
@@ -149,10 +165,44 @@ def _build_snapshot(
         "consent_pin": consent_pin,
         "frozen_at": datetime.now(timezone.utc).isoformat(),
         "immutable": True,
+        "field_schema": field_schema,
     }
-    if field_schema and field_schema.get("schema_contract") == FIELD_SCHEMA_CONTRACT:
-        snap["field_schema"] = field_schema
-    return snap
+    return attach_identity_to_snapshot(snap, identity)
+
+
+async def _bind_publication_version(
+    db: AsyncSession,
+    *,
+    publication: dict[str, Any],
+    tenant_id: str,
+    version: int | None,
+    require_frozen: bool,
+) -> dict[str, Any]:
+    """Attach frozen Contract Identity from a ledger row when the version exists."""
+    form_id = str(publication.get("publication_id") or "")
+    target = int(version) if version is not None else int(publication.get("published_version") or 0)
+    if target <= 0:
+        if require_frozen:
+            raise FormsVersionNotFoundError(details={"form_id": form_id, "version": target})
+        return publication
+    try:
+        row = await get_publication_version(
+            db, tenant_id=tenant_id, form_id=form_id, version=target
+        )
+    except FormsVersionNotFoundError:
+        if version is not None or require_frozen:
+            raise
+        return publication
+    identity = identity_from_snapshot(dict(row.snapshot or {}))
+    schema = (row.snapshot or {}).get("field_schema")
+    out = dict(publication)
+    out["published_version"] = int(row.version)
+    out["contract_identity"] = identity.to_dict()
+    out["has_immutable_snapshot"] = True
+    if isinstance(schema, dict):
+        out["field_schema"] = schema
+        out["has_field_schema"] = True
+    return out
 
 
 async def commit_publish(
@@ -216,6 +266,11 @@ async def commit_publish(
     if frozen_schema is None and fields is not None:
         frozen_schema = build_field_schema_v1(
             fields=fields,
+            entity_profile_code=lead_form.target_entity_profile_code,
+        )
+    if frozen_schema is None or frozen_schema.get("schema_contract") != FIELD_SCHEMA_CONTRACT:
+        frozen_schema = build_field_schema_v1(
+            fields=[],
             entity_profile_code=lead_form.target_entity_profile_code,
         )
 
@@ -352,6 +407,7 @@ def submission_entry(publication: dict[str, Any]) -> dict[str, Any]:
             details={"publication_id": publication.get("publication_id")}
         )
     version = int(publication.get("published_version") or 1)
+    identity = publication.get("contract_identity")
     return {
         "forms_role": "submission_surface",
         "public_intake_path": publication.get("public_intake_path") or "/api/v1/public/intake",
@@ -363,6 +419,7 @@ def submission_entry(publication: dict[str, Any]) -> dict[str, Any]:
             "form_id": publication.get("publication_id"),
             "version": version,
         },
+        "contract_identity": dict(identity) if isinstance(identity, dict) else identity,
         "consent_pin": publication.get("consent_pin"),
         "answer_contract": "forms.normalized_answers.v1",
         "field_schema_contract": (

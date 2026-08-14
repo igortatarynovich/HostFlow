@@ -9,20 +9,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.forms_platform.errors import (
     FormsNotFoundError,
+    FormsPublicationVersionImmutableError,
     FormsVersionNotFoundError,
     FormsVersionPinnedError,
+)
+from backend.app.forms_platform.contract_identity import (
+    backfill_snapshot_identity,
+    identity_from_snapshot,
 )
 from backend.app.models.form_publication_version import FormPublicationVersion
 from backend.app.models.tenant_lead_form import TenantLeadForm
 
 
 def version_row_to_dict(row: FormPublicationVersion) -> dict[str, Any]:
-    return {
+    snap = dict(row.snapshot or {})
+    out: dict[str, Any] = {
         "id": str(row.id),
         "tenant_id": str(row.tenant_id),
         "form_id": str(row.form_id),
         "version": int(row.version),
-        "snapshot": dict(row.snapshot or {}),
+        "snapshot": snap,
         "consent_pin": dict(row.consent_pin or {}),
         "submission_pin_count": int(row.submission_pin_count or 0),
         "idempotency_key": row.idempotency_key,
@@ -31,6 +37,9 @@ def version_row_to_dict(row: FormPublicationVersion) -> dict[str, Any]:
         "immutable": True,
         "audit_read_only": True,
     }
+    if snap.get("contract_identity") is not None or snap.get("field_schema") is not None:
+        out["contract_identity"] = identity_from_snapshot(snap).to_dict()
+    return out
 
 
 async def get_publication_version(
@@ -119,6 +128,43 @@ async def append_publication_version(
     db.add(row)
     await db.flush()
     return row
+
+
+async def replace_publication_snapshot(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+    version: int,
+    snapshot: dict[str, Any],
+) -> None:
+    """Forbidden: freeze is append-only. Schema/identity cannot be rewritten."""
+    await get_publication_version(
+        db, tenant_id=tenant_id, form_id=form_id, version=version
+    )
+    raise FormsPublicationVersionImmutableError(
+        details={"form_id": form_id, "version": version, "attempted_keys": sorted((snapshot or {}).keys())}
+    )
+
+
+async def backfill_publication_version_identity(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+    version: int,
+) -> dict[str, Any]:
+    """Last-step C2 backfill: reconstruct identity or fail-close. Never invent legacy."""
+    row = await get_publication_version(
+        db, tenant_id=tenant_id, form_id=form_id, version=version
+    )
+    new_snap, wrote = backfill_snapshot_identity(dict(row.snapshot or {}))
+    if wrote:
+        row.snapshot = new_snap
+        await db.flush()
+    out = version_row_to_dict(row)
+    out["backfilled"] = wrote
+    return out
 
 
 async def register_submission_pin(
