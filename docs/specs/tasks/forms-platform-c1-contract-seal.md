@@ -36,6 +36,8 @@ Seal Forms as a **platform capability** (Passport → Manifest → Public Contra
 
 This slice does **not** replace `TenantLeadForm`, accept ADR-022, or unlock Publish UI.
 
+**Next after this slice:** [Forms Platform C2 — Runtime Contract](forms-platform-c2-runtime-contract.md). Builder (C3 / P3–P5) stays locked until C2 feat PASSes.
+
 ---
 
 ## In scope (this docs PR)
@@ -59,7 +61,7 @@ This slice does **not** replace `TenantLeadForm`, accept ADR-022, or unlock Publ
 |----------|--------|
 | Stage 5 settings / enable-disable | ADR-005 / ADR-035 — **not Forms** |
 | R6 RecruitmentApplication table-cutover / physically separate queues | [intake-runtime-split-v1.md](intake-runtime-split-v1.md) R6 |
-| Forms Builder / Publish UI / Themes / Analytics (P3–P5) | Locked until platform contracts |
+| Forms Builder / Publish UI / Themes / Analytics (P3–P5) | Locked until **C2** feat PASS ([forms-platform-c2-runtime-contract.md](forms-platform-c2-runtime-contract.md)) |
 | FormTemplate SoT (replace `TenantLeadForm` bridge) | Later Phase C slice |
 | Accept ADR-022 (Purpose + Submission Policy) | Later Phase C slice |
 | Meta → `FormSubmissionEnvelope` | Later Phase C slice ([meta-intake-completeness.md](meta-intake-completeness.md) deferred) |
@@ -92,6 +94,7 @@ Invariants INV-01…17 unchanged. Does **not** amend L0.
 ## Acceptance
 
 - Product Track = this brief; Stage 3 slice 4 is closed (#238).  
+- **Next** Product Track after C1 merge = [C2 Runtime Contract](forms-platform-c2-runtime-contract.md).  
 - Operators / agents cannot treat P3 Builder or R6 as the active slice.  
 - Feat PR closes Passport / ADR-007 / capability-contract drift without unlocking P3–P5.  
 - Contract/adapter/manifest ids still match the sealed inventory.

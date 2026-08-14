@@ -1,11 +1,11 @@
 # Forms Product Layer — Epic
 
-**Status:** **OPEN** · Product Track = [Forms Platform C1](forms-platform-c1-contract-seal.md) (infrastructure seal; P3–P5 **LOCKED**)  
+**Status:** **OPEN** · Product Track = [Forms Platform C1](forms-platform-c1-contract-seal.md) (**active**) · **next** [C2 Runtime Contract](forms-platform-c2-runtime-contract.md) · P3–P5 **LOCKED until C2**  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
 **P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Builder MVP **COMPLETE** (P2.1–P2.5) · P3 LOCKED  
-**Out of this Product Track slice:** Stage 5 settings/enable-disable · R6 table-cutover · Builder P3–P5
+**Out of this Product Track slice:** Stage 5 settings/enable-disable · R6 table-cutover · Builder P3–P5 (locked until C2 feat PASS)
 
 ---
 
@@ -111,15 +111,15 @@ Deferred detailed DoD until prior phase COMPLETE. Same non-goals as Sprint 1–6
 
 ## Platform posture
 
-Three HostFlow platform layers:
+Forms is a **platform capability**, same class as EntityWorkspace, ListWorkspace, Analytics Kit, RBAC, and Automations — not a product module (Recruitment / HR / Fleet / Finance / Services). Those modules consume one Forms Platform; they do not own parallel form stacks. Compatibility bar is **stricter** than for product modules.
 
 | Layer | Role |
 |-------|------|
-| **Platform** | Tenants, entities, communications, shared infra |
+| **Platform** | Tenants, entities, communications, shared infra, **Forms**, RBAC, Automations, workspace kits |
 | **Acquisition** | Intake + routing spine |
-| **Forms** | Universal data-collection platform |
+| **Product modules** | Recruitment / HR / Fleet / Finance / Services — consume Forms Adapter |
 
-Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they do not own parallel questionnaire / validation / answer-storage engines.
+Phase C ladder: C1 seal → C2 runtime gates → C3 Builder Runtime → C4 Form Runtime → C5 Form Execution → C6 Optimization. C3 (editor) opens only after C2.
 
 ---
 
@@ -142,7 +142,7 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 | Field Catalog contracts v1 | **FROZEN** |
 | P2.1–P2.5 Builder | ✅ **COMPLETE** (MVP) |
 | Builder Catalog Consumption | ✅ **ACTIVE** |
-| P3 Publish UI / P4 Themes / P5 Analytics | **LOCKED** |
+| P3 Publish UI / P4 Themes / P5 Analytics | **LOCKED until C2** ([forms-platform-c2-runtime-contract.md](forms-platform-c2-runtime-contract.md)) |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 | Executable logic inside descriptors | **FORBIDDEN** |
 | Catalog-core special cases for stdlib ids | **FORBIDDEN** |
@@ -172,4 +172,5 @@ Downstream modules (Recruitment, HR, Services, Sales) **compose** Forms — they
 - 2026-07-19: P2.4 Draft Persistence COMPLETE; P2.5 UI gate OPEN.  
 - 2026-07-19: P2.5 Minimal Builder UI COMPLETE — Builder MVP closed; next focus Flights / Intake Routing.  
 - 2026-07-19: Intake Canonical Input Matrix epic ACTIVE; matrix READY (no route implementation yet).  
-- 2026-07-19: Matrix ACCEPTED / FROZEN; Intake Runtime Split V1 READY; Forms P3–P5 remain LOCKED.
+- 2026-07-19: Matrix ACCEPTED / FROZEN; Intake Runtime Split V1 READY; Forms P3–P5 remain LOCKED.  
+- 2026-08-13: Product Track C1; next = C2 Runtime Contract; P3–P5 locked until C2 feat.

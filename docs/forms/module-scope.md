@@ -30,9 +30,9 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — **ACTIVE**.
 
-**Next:** [Forms Platform C1 — contract seal](../specs/tasks/forms-platform-c1-contract-seal.md) ← **active** (Product Track). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**.
+**Next:** [Forms Platform C1 — contract seal](../specs/tasks/forms-platform-c1-contract-seal.md) ← **active** (Product Track). **Then** [C2 Runtime Contract](../specs/tasks/forms-platform-c2-runtime-contract.md). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED until C2**. Forms is a **platform capability** (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
 
-**Rule:** P1 Foundation **CLOSED**; Catalog v1 **FROZEN**. **Builder MVP COMPLETE** (P2.1–P2.5). P3 Publish UI / P4 Themes / P5 Analytics **LOCKED**.  
+**Rule:** P1 Foundation **CLOSED**; Catalog v1 **FROZEN**. **Builder MVP COMPLETE** (P2.1–P2.5). P3 Publish UI / P4 Themes / P5 Analytics **LOCKED until C2**.  
 **Matrix:** [`Intake Canonical Input Matrix`](../specs/architecture/intake-canonical-input-matrix.md) **ACCEPTED / FROZEN** · epic [`COMPLETE`](../specs/tasks/intake-canonical-input-matrix.md).  
 **Runtime:** [`Intake Runtime Split V1`](../specs/tasks/intake-runtime-split-v1.md) (**ACTIVE** · R1+R2 ✅ · R3) — Flights / Intake Routing runtime **UNLOCKED**.  
 **Communications:** [`Intake Domain Separation & Communication Context V1`](../specs/tasks/intake-domain-separation-communication-context-v1.md) (**READY**) · Stage 1 audit [`ACTIVE`](../specs/architecture/intake-communication-context-audit-v1.md).  
@@ -57,6 +57,7 @@ Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs
 - 2026-07-19: P2.4 Persistence COMPLETE; P2.5 UI READY.  
 - 2026-07-19: P2.5 Builder UI COMPLETE — MVP closed; next Flights / Intake Routing.  
 - 2026-08-13: Product Track → [Forms Platform C1](../specs/tasks/forms-platform-c1-contract-seal.md); P3–P5 remain LOCKED.  
+- 2026-08-13: Next after C1 = [C2 Runtime Contract](../specs/tasks/forms-platform-c2-runtime-contract.md); Builder locked until C2 feat.  
 - 2026-07-19: Intake Canonical Input Matrix epic ACTIVE; matrix READY (docs-only gate).  
 - 2026-07-19: Matrix ACCEPTED / FROZEN; Runtime Split V1 READY; Flights / Intake Routing runtime UNLOCKED.  
 - 2026-07-19: Runtime Split R1+R2 merged; R3 handlers + Communication Context epic / Stage 1 audit opened.

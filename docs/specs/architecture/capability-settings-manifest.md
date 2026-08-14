@@ -79,7 +79,7 @@ sections:
 
 **Sprint 1 status:** concrete keys below (code mirror: `backend/app/forms_platform/manifest.py`).  
 **Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) · Adapter `forms.endpoint_adapter_v1`.  
-**Builder:** `forms.feature_flags.builder_enabled` default **`true`** (P2 MVP). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**.
+**Builder:** `forms.feature_flags.builder_enabled` default **`true`** (P2 MVP). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED until C2** ([forms-platform-c2-runtime-contract.md](../tasks/forms-platform-c2-runtime-contract.md)).
 
 | Section | Key | Type | Default | Scope |
 |---------|-----|------|---------|-------|
