@@ -141,7 +141,9 @@ Compatibility tuple means:
 
 It does **not** mean “all four numbers must be identical” and it does **not** mean “every historical publication must jump to the latest API.”
 
-The feat PR owns a sealed compatibility table (or equivalent) that Identity Gate and Adapter Gate read. Undeclared combinations fail CI / runtime. Adapter may serve **multiple** frozen lineages.
+The feat PR owns a **Forms-owned closed set of allowed tuples**. Fail-closed: undeclared combinations fail CI / runtime. Adapter may serve **multiple** frozen lineages.
+
+This is **not** a new global registry framework. C2 does not extract a platform Compatibility Kit. If a second platform capability later needs the same model, that is the two-consumer test for extraction — not this slice.
 
 **Forbidden:** mixed *undeclared* identity (Manifest v1 + Public Contract v2 + Adapter v3 + Builder v1 with no row in the table).
 
@@ -193,14 +195,30 @@ C1 froze the key **set**. C2 adds compatibility across versions (additive keys o
 2. Queue / roadmap / AGENTS / C1 / Product Layer epic name C2 as **next** after C1; lock Phase C ladder C1→C6.  
 3. Builder remains **locked until C2 feat PASSes** — not until “platform feels ready”.
 
+## Feat implementation order (mandatory)
+
+Do **not** start with CI gates or backfill. Runtime contract first, gates last.
+
+1. `FormPublicationVersion` as frozen runtime-record: snapshot `field_schema` + immutable Contract Identity.  
+2. Canonical serialization RFC 8785 JCS + SHA-256; forbid schema/identity mutation after freeze.  
+3. Compatibility matrix `manifest_version` × `public_contract_version` × `adapter_version` — Forms-owned closed set, fail-closed. **Not** a global registry.  
+4. Bind `resolve` to a specific publication version; check identity **and** lifecycle (lifecycle gates the operation, not the identity).  
+5. Bind `publish` to freeze a **new** version — never mutate an existing ledger row.  
+6. Bind `submission` to an immutable reference of that publication version.  
+7. **Then** four named CI gates on the real runtime contract.  
+8. **Last:** backfill legacy snapshots. Reconstruct identity **provably**, or fail-close. No `unknown` / `legacy but accepted`.
+
+After C2 PASS:
+
+- **C3** edits mutable `FormDefinition`.  
+- **C4** serves frozen `FormPublicationVersion`.  
+- **C5** executes and accepts data only against that pinned version.
+
 ## In scope (feat PR — after C1 merge + this brief)
 
-1. Persist Contract Identity on publication ledger / resolve DTO / submission pin (additive Public Contract; bump API version if required fields are new).  
-2. Canonical JCS + SHA-256 encoder; Identity Gate uses it.  
-3. Declared compatibility table; Adapter + Identity gates read it.  
-4. Four named CI gates above.  
-5. Backfill or fail-closed policy for pre-C2 snapshots (documented in the feat PR).  
-6. Architecture Review Checklist in the feat PR description.
+1. Follow the order above.  
+2. Additive Public Contract: identity on publication/submission DTOs; bump API version if required fields are new.  
+3. Architecture Review Checklist in the feat PR description.
 
 `TenantLeadForm` may remain the storage bridge; identity is **projected onto** the publication version, not a second form engine. Conceptual `FormDefinition` / `FormPublicationVersion` / `FormSubmission` do **not** require a FormTemplate cutover in C2.
 
@@ -265,7 +283,7 @@ Does **not** amend L0 P-rules. Passport status only.
 - `lifecycle_status` is not part of that identity; changing it does not mint a new identity.  
 - Draft / FormDefinition is not required to carry a frozen identity tuple.  
 - `schema_hash` is RFC 8785 JCS + SHA-256 of frozen `field_schema`.  
-- Compatibility is a declared table; a new Public Contract version does not invalidate historical publications the adapter still supports.  
+- Compatibility is a **Forms-owned closed set of tuples** (not a platform registry); a new Public Contract version does not invalidate historical publications the adapter still supports.  
 - Existing publication versions are immutable (schema + identity); schema change = new version.  
 - Four gates are named CI.  
 - Builder stays locked until C2 feat PASSes.  
@@ -279,7 +297,7 @@ Does **not** amend L0 P-rules. Passport status only.
 |------|--------|
 | Identity + freeze | `forms_platform/publication_versions.py`, `adapter.py`, envelope |
 | Canonical hash | shared encoder (JCS + SHA-256); used by publish / resolve / submit / CI |
-| Compatibility table | sealed module next to Public Contract |
+| Compatibility | Forms-owned closed tuple set (`forms_platform/compatibility.py`) — not a platform registry |
 | Gates | `backend/tests/forms_platform/test_forms_c2_*_gate.py` |
 | CI | `.github/workflows/backend-ci.yml` named steps |
 | Contract | `forms-public-contract.md` identity + hash + compatibility (additive) |
@@ -299,3 +317,4 @@ Does **not** amend L0 P-rules. Passport status only.
 
 - 2026-08-13: Sealed C2 as next after C1 (identity + four gates + C1–C6).  
 - 2026-08-13: Correction — `lifecycle_status` out of identity; identity on publication version only; JCS+SHA-256; declared compatibility; publication version immutable.  
+- 2026-08-14: Feat order locked (runtime → gates → fail-closed backfill). Compatibility matrix stays Forms-owned; C3/C4/C5 boundary after PASS.  
