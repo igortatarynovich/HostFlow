@@ -1,6 +1,6 @@
 # Forms Platform C3 — Builder Runtime
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **IN PROGRESS** (feat — implementation complete, merge pending)  
 **Branch (docs):** `docs/forms-platform-c3-builder-runtime` ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)  
 **Branch (code):** `feat/forms-platform-c3-builder-runtime`  
 **Parents:** [C2 runtime contract](forms-platform-c2-runtime-contract.md) · [C1 contract seal](forms-platform-c1-contract-seal.md) · [P2 Builder](forms-product-p2-builder.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md)
@@ -248,7 +248,7 @@ Does **not** amend L0 P-rules.
 
 - [x] Brief #243 merged  
 - [x] Boundary sealed: FormDefinition-only; no Adapter; Publish outside Builder  
-- [ ] Feat: FormDefinition + state machine + named gate  
+- [x] Feat: FormDefinition + state machine + named gate (merge pending; C4 stays locked)  
 
 ---
 
@@ -258,4 +258,5 @@ Does **not** amend L0 P-rules.
 - 2026-08-14: Boundary correction — Builder = FormDefinition ↔ Draft only; no Adapter import; Publish remains C2; draft state machine (`new`/`dirty`/`saving`/`saved`/`validation_error`/`conflict`/`closed`).
 - 2026-08-14: Feat — failed save attaches `validation_error`/`conflict` session; named gate covers unknown Catalog and revision conflict.
 - 2026-08-14: HTTP draft save/load goes through FormDefinition session (`save_session_async`); still not Publish UI.  
-- 2026-08-14: Threat model [`forms-platform.md`](../../security/threat-models/forms-platform.md) covers C3 (FP-11…FP-13); named C3 gate remains the CI criterion.
+- 2026-08-14: Threat model [`forms-platform.md`](../../security/threat-models/forms-platform.md) covers C3 (FP-11…FP-13); named C3 gate remains the CI criterion.  
+- 2026-08-14: Existing P2.5 canvas reads `builder_state` from Draft API; no autosave, no Publish UI.

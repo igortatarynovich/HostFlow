@@ -61,6 +61,7 @@ export default function FormsBuilderPage() {
   const [savedSnapshot, setSavedSnapshot] = useState<string>('')
   const [revision, setRevision] = useState(0)
   const [exists, setExists] = useState(false)
+  const [builderState, setBuilderState] = useState<string | undefined>()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [descriptor, setDescriptor] = useState<BuilderComponentView | null>(null)
   const [loading, setLoading] = useState(true)
@@ -95,6 +96,7 @@ export default function FormsBuilderPage() {
       setSavedSnapshot(JSON.stringify(comp))
       setRevision(draft.revision)
       setExists(draft.exists)
+      setBuilderState(draft.builder_state)
       setSelectedId(comp.instances[0]?.instance_id ?? null)
       await loadPalette('')
     } catch (err: unknown) {
@@ -201,6 +203,7 @@ export default function FormsBuilderPage() {
       setSavedSnapshot(JSON.stringify(saved.composition))
       setRevision(saved.revision)
       setExists(true)
+      setBuilderState(saved.builder_state)
       notify({
         variant: 'success',
         title: t('admin.forms_builder.saved', { defaultValue: 'Draft saved' }),
@@ -208,6 +211,7 @@ export default function FormsBuilderPage() {
     } catch (err: unknown) {
       if (isDraftRevisionConflict(err)) {
         setConflict(true)
+        setBuilderState('conflict')
         notify({
           variant: 'error',
           title: t('admin.forms_builder.conflict', {
@@ -257,6 +261,7 @@ export default function FormsBuilderPage() {
           </span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
             rev {revision}
+            {builderState ? ` · ${builderState}` : ''}
           </span>
           <button
             type="button"

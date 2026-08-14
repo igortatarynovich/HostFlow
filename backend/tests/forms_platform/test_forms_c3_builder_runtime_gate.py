@@ -55,6 +55,8 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _BUILDER_PKG = "backend.app.forms_platform.builder"
 _BUILDER_DIR = _REPO_ROOT / "backend" / "app" / "forms_platform" / "builder"
 _HTTP_API = _REPO_ROOT / "backend" / "app" / "api" / "v1" / "platform" / "forms_builder.py"
+_BUILDER_UI = _REPO_ROOT / "hostflow-frontend" / "src" / "pages" / "admin" / "FormsBuilderPage.tsx"
+_BUILDER_CLIENT = _REPO_ROOT / "hostflow-frontend" / "src" / "api" / "formsBuilder.ts"
 
 _FORBIDDEN_MODULES = (
     "backend.app.forms_platform.adapter",
@@ -291,3 +293,15 @@ def test_c3_builder_http_save_is_form_definition_not_publish() -> None:
     assert "resolve_publication" not in text
     used = _used_names(tree)
     assert not (used & {"commit_publish", "resolve_publication", "freeze_contract_identity"})
+
+
+def test_c3_builder_ui_saves_draft_not_publish() -> None:
+    ui = _BUILDER_UI.read_text(encoding="utf-8")
+    client = _BUILDER_CLIENT.read_text(encoding="utf-8")
+    assert "builder_state" in ui
+    assert "builder_state" in client
+    assert "commit_publish" not in ui
+    assert "commit_publish" not in client
+    assert "resolve_publication" not in ui
+    assert "publish wizard" not in ui.lower()
+    assert "save draft" in ui.lower() or "Save draft" in ui
