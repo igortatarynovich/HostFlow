@@ -37,7 +37,7 @@ Publish appends a new ledger row. Schema/identity mutation of an existing row is
 
 ### Builder Draft API (C3 — not Adapter)
 
-Builder mutates **`FormDefinition` ↔ Draft** only. Dirty Draft and Saved Draft are both mutable. Builder **does not** implement Adapter ops (`publish` / `resolve` / `submission`). Contract Identity and `schema_hash` are C2 publication fields — they must not appear on a draft. Publish remains `forms.endpoint_adapter_v1` **outside** `forms_platform/builder/`.
+Builder mutates **`FormDefinition` ↔ Draft** only. Dirty Draft and Saved Draft are both mutable. Builder **does not** implement Adapter ops (`publish` / `resolve` / `submission`). Contract Identity and `schema_hash` are C2 publication fields — they must not appear on a draft. Publish remains `forms.endpoint_adapter_v1` **outside** `forms_platform/builder/`. HTTP `/platform/forms/builder` save goes through the Builder session (`save_session_async`); it is still not Adapter `publish`.
 
 ---
 

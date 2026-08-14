@@ -257,3 +257,4 @@ Does **not** amend L0 P-rules.
 - 2026-08-14: C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) + C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) merged. C3 opened as Builder Runtime (not Publish UI) — [#243](https://github.com/igortatarynovich/HostFlow/pull/243).  
 - 2026-08-14: Boundary correction — Builder = FormDefinition ↔ Draft only; no Adapter import; Publish remains C2; draft state machine (`new`/`dirty`/`saving`/`saved`/`validation_error`/`conflict`/`closed`).
 - 2026-08-14: Feat — failed save attaches `validation_error`/`conflict` session; named gate covers unknown Catalog and revision conflict.
+- 2026-08-14: HTTP draft save/load goes through FormDefinition session (`save_session_async`); still not Publish UI.

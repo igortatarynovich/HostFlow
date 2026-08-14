@@ -23,6 +23,7 @@ from backend.app.forms_platform.builder.session import (
     new_session,
     save_session,
     session_from_error,
+    session_from_record,
 )
 from backend.app.forms_platform.builder.state import (
     BUILDER_STATES,
@@ -53,6 +54,7 @@ from backend.app.forms_platform.field_catalog import FieldCatalogRegistry, regis
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _BUILDER_PKG = "backend.app.forms_platform.builder"
 _BUILDER_DIR = _REPO_ROOT / "backend" / "app" / "forms_platform" / "builder"
+_HTTP_API = _REPO_ROOT / "backend" / "app" / "api" / "v1" / "platform" / "forms_builder.py"
 
 _FORBIDDEN_MODULES = (
     "backend.app.forms_platform.adapter",
@@ -251,3 +253,41 @@ def test_c3_revision_conflict_stays_draft_not_publication() -> None:
     assert "contract_identity" not in tip.to_dict()
     recovered = edit_session(failed, composition)
     assert recovered.state == STATE_DIRTY
+
+
+def test_c3_session_from_saved_record_stays_mutable_draft() -> None:
+    registry = FieldCatalogRegistry()
+    register_standard_library(registry)
+    composition = build_composition(draft_id="d-load", instances=[], registry=registry)
+    store = InMemoryDraftStore()
+    saved = save_session(new_session(tenant_id="t1", composition=composition), store, registry=registry)
+    record = store.get(tenant_id="t1", draft_id="d-load")
+    loaded = session_from_record(tenant_id="t1", record=record)
+    assert loaded.state == STATE_SAVED
+    assert loaded.definition.definition_id == "d-load"
+    dirty = edit_session(loaded, composition)
+    assert dirty.state == STATE_DIRTY
+    closed = close_session(loaded)
+    assert closed.state == STATE_CLOSED
+    with pytest.raises(FormsBuilderStateError):
+        edit_session(closed, composition)
+
+
+def test_c3_builder_http_save_is_form_definition_not_publish() -> None:
+    tree = ast.parse(_HTTP_API.read_text(encoding="utf-8"), filename=str(_HTTP_API))
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                imported.add(alias.name)
+    for forbidden in _FORBIDDEN_MODULES:
+        assert forbidden not in imported, f"HTTP imports {forbidden}"
+    text = _HTTP_API.read_text(encoding="utf-8")
+    assert "FormDefinition" in text
+    assert "save_session_async" in text
+    assert "commit_publish" not in text
+    assert "resolve_publication" not in text
+    used = _used_names(tree)
+    assert not (used & {"commit_publish", "resolve_publication", "freeze_contract_identity"})

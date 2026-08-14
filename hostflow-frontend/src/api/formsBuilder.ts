@@ -54,6 +54,8 @@ export type BuilderDraft = {
   composition_contract: string
   composition: FormComposition
   exists: boolean
+  definition_id?: string
+  builder_state?: string
 }
 
 export async function fetchBuilderPalette(params?: {

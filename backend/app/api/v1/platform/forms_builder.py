@@ -1,10 +1,11 @@
-"""Forms P2.5 — Builder HTTP adapter (thin Catalog + draft client).
+"""Forms P2.5 HTTP + C3 FormDefinition session (thin Catalog + draft client).
 
-No publish, themes, analytics, or intake mapping.
+No publish, themes, analytics, or intake mapping. Save is Draft only.
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -19,16 +20,26 @@ from backend.app.forms_platform.builder.composition import (
     FormDraftComposition,
     parse_composition,
 )
+from backend.app.forms_platform.builder.definition import FormDefinition
 from backend.app.forms_platform.builder.draft_persistence import (
     BUILDER_DRAFT_PERSISTENCE_CONTRACT,
+    DraftRecord,
+    SqlAlchemyDraftTipStore,
     archive_draft,
-    create_draft,
     get_draft,
-    update_draft,
 )
 from backend.app.forms_platform.builder.read_model import BuilderReadModel
+from backend.app.forms_platform.builder.session import (
+    close_session,
+    edit_session,
+    new_session,
+    save_session_async,
+    session_from_record,
+)
+from backend.app.forms_platform.builder.state import STATE_CLOSED, STATE_NEW
 from backend.app.forms_platform.errors import (
     FormsAdapterError,
+    FormsBuilderDraftArchivedError,
     FormsBuilderDraftConflictError,
     FormsBuilderDraftNotFoundError,
 )
@@ -120,11 +131,53 @@ class DraftOut(BaseModel):
     composition_contract: str
     composition: dict[str, Any]
     exists: bool = True
+    definition_id: str
+    builder_state: str
 
 
 class DraftSaveIn(BaseModel):
     composition: dict[str, Any]
     expected_revision: Optional[int] = None
+
+
+def _draft_out(
+    *,
+    tenant_id: str,
+    draft_id: str,
+    form_id: str,
+    revision: int,
+    status: str,
+    composition_contract: str,
+    composition: dict[str, Any],
+    exists: bool,
+    builder_state: str,
+) -> DraftOut:
+    return DraftOut(
+        tenant_id=tenant_id,
+        draft_id=draft_id,
+        form_id=form_id,
+        revision=revision,
+        status=status,
+        composition_contract=composition_contract,
+        composition=composition,
+        exists=exists,
+        definition_id=draft_id,
+        builder_state=builder_state,
+    )
+
+
+def _draft_out_from_record(record: DraftRecord, *, form_id: str, builder_state: str, exists: bool = True) -> DraftOut:
+    return _draft_out(
+        tenant_id=record.tenant_id,
+        draft_id=record.draft_id,
+        form_id=record.form_id or form_id,
+        revision=record.revision,
+        status=record.status,
+        composition_contract=record.composition_contract,
+        composition=record.composition,
+        exists=exists,
+        builder_state=builder_state,
+    )
 
 
 @router.get("/palette", response_model=PaletteOut)
@@ -198,28 +251,22 @@ async def get_form_builder_draft(
         record = await get_draft(db, tenant_id=tenant_id, draft_id=did)
     except FormsBuilderDraftNotFoundError:
         empty = FormDraftComposition(draft_id=did, instances=())
-        return DraftOut(
+        definition = FormDefinition(definition_id=did, composition=empty)
+        return _draft_out(
             tenant_id=tenant_id,
-            draft_id=did,
+            draft_id=definition.definition_id,
             form_id=form_id,
             revision=0,
             status="active",
             composition_contract=empty.contract,
             composition=empty.to_dict(),
             exists=False,
+            builder_state=STATE_NEW,
         )
     except FormsAdapterError as exc:
         raise _http_from_forms_error(exc) from exc
-    return DraftOut(
-        tenant_id=record.tenant_id,
-        draft_id=record.draft_id,
-        form_id=record.form_id or form_id,
-        revision=record.revision,
-        status=record.status,
-        composition_contract=record.composition_contract,
-        composition=record.composition,
-        exists=True,
-    )
+    sess = session_from_record(tenant_id=tenant_id, record=record)
+    return _draft_out_from_record(record, form_id=form_id, builder_state=sess.state)
 
 
 @router.put("/forms/{form_id}/draft", response_model=DraftOut)
@@ -247,15 +294,12 @@ async def save_form_builder_draft(
             existing = await get_draft(db, tenant_id=tenant_id, draft_id=did)
         except FormsBuilderDraftNotFoundError:
             existing = None
-        if existing is None:
-            record = await create_draft(
-                db,
-                tenant_id=tenant_id,
-                composition=composition,
-                form_id=form_id,
-                registry=registry,
-                require_valid=True,
+        if existing is not None and existing.status == "archived":
+            raise FormsBuilderDraftArchivedError(
+                details={"draft_id": did, "revision": existing.revision},
             )
+        if existing is None:
+            sess = new_session(tenant_id=tenant_id, composition=composition, form_id=form_id)
         else:
             expected = body.expected_revision
             if expected is None:
@@ -263,15 +307,11 @@ async def save_form_builder_draft(
                     status_code=422,
                     detail="expected_revision is required when updating an existing draft",
                 )
-            record = await update_draft(
-                db,
-                tenant_id=tenant_id,
-                draft_id=did,
-                composition=composition,
-                expected_revision=int(expected),
-                registry=registry,
-                require_valid=True,
-            )
+            sess = session_from_record(tenant_id=tenant_id, record=existing)
+            sess = replace(sess, revision=int(expected))
+            sess = edit_session(sess, composition)
+        saved = await save_session_async(sess, SqlAlchemyDraftTipStore(db), registry=registry)
+        record = await get_draft(db, tenant_id=tenant_id, draft_id=did)
         await db.commit()
     except FormsBuilderDraftConflictError as exc:
         await db.rollback()
@@ -279,16 +319,7 @@ async def save_form_builder_draft(
     except FormsAdapterError as exc:
         await db.rollback()
         raise _http_from_forms_error(exc) from exc
-    return DraftOut(
-        tenant_id=record.tenant_id,
-        draft_id=record.draft_id,
-        form_id=record.form_id or form_id,
-        revision=record.revision,
-        status=record.status,
-        composition_contract=record.composition_contract,
-        composition=record.composition,
-        exists=True,
-    )
+    return _draft_out_from_record(record, form_id=form_id, builder_state=saved.state)
 
 
 @router.post("/forms/{form_id}/draft/archive", response_model=DraftOut)
@@ -305,23 +336,18 @@ async def archive_form_builder_draft(
     await _require_form(db, tenant_id=tenant_id, form_id=form_id)
     did = draft_id_for_form(form_id)
     try:
+        existing = await get_draft(db, tenant_id=tenant_id, draft_id=did)
+        sess = session_from_record(tenant_id=tenant_id, record=existing)
         record = await archive_draft(
             db,
             tenant_id=tenant_id,
             draft_id=did,
             expected_revision=expected_revision,
         )
+        if sess.state != STATE_CLOSED:
+            sess = close_session(sess)
         await db.commit()
     except FormsAdapterError as exc:
         await db.rollback()
         raise _http_from_forms_error(exc) from exc
-    return DraftOut(
-        tenant_id=record.tenant_id,
-        draft_id=record.draft_id,
-        form_id=record.form_id or form_id,
-        revision=record.revision,
-        status=record.status,
-        composition_contract=record.composition_contract,
-        composition=record.composition,
-        exists=True,
-    )
+    return _draft_out_from_record(record, form_id=form_id, builder_state=sess.state)
