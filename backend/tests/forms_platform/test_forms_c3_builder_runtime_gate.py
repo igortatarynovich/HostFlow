@@ -1,6 +1,6 @@
 """Forms Platform C3 — Builder Runtime Gate.
 
-Builder mutates FormDefinition ↔ Draft only. No Adapter, publish, identity, resolve.
+Builder mutates FormDefinition ↔ Draft only. No Adapter, publish, identity, resolve, Runtime.
 """
 
 from __future__ import annotations
@@ -66,6 +66,7 @@ _FORBIDDEN_MODULES = (
     "backend.app.forms_platform.submission_envelope",
     "backend.app.forms_platform.canonical",
     "backend.app.forms_platform.compatibility",
+    "backend.app.forms_platform.runtime",
 )
 _FORBIDDEN_ATTRS = frozenset(
     {
@@ -76,6 +77,7 @@ _FORBIDDEN_ATTRS = frozenset(
         "schema_hash_sha256",
         "freeze_contract_identity",
         "resolve_endpoint",
+        "RuntimeModel",
     }
 )
 

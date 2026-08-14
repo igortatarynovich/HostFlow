@@ -1,6 +1,6 @@
 # HostFlow — Security Scorecard
 
-**Generated:** 2026-08-14T06:47:55Z (UTC)  
+**Generated:** 2026-08-14T09:20:46Z (UTC)  
 **Generator:** `scripts/security/generate_security_scorecard.py`  
 **Canon:** [`runtime-roadmap.md`](./runtime-roadmap.md) Phase 8 · [`security-ssot.md`](./security-ssot.md)
 

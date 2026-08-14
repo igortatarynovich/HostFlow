@@ -129,15 +129,15 @@ Ladder (locked):
 | **C1** | Contract seal (ids / drift docs) | ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) |
 | **C2** | Runtime contract + gates | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
 | **C3** | Builder Runtime (editor of FormDefinition) | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244) |
-| **C4** | Form Runtime | ← **active** ([brief](../tasks/forms-platform-c4-form-runtime.md); feat locked) |
+| **C4** | Form Runtime | ← **active** ([brief](../tasks/forms-platform-c4-form-runtime.md); feat — Runtime Model) |
 | **C5** | Form Execution | After C4 |
 | **C6** | Optimization | After C5 |
 
-C3 edits mutable definitions. Draft save is not publish. C4 serves frozen publication versions — [brief](../tasks/forms-platform-c4-form-runtime.md). Do not open C4 feat until this brief merges. Do not open C5 / P3 / P4 until C4 feat PASSes.
+C3 edits mutable definitions. Draft save is not publish. C4 is **Runtime, not an Engine**: Adapter resolve → **Runtime Model** — [brief](../tasks/forms-platform-c4-form-runtime.md). Do not open C5 / P3 / P4 until C4 feat PASSes.
 
 **Not** Communication Epic C2 / C2.4 / Communication C3. Historical Forms “C4 HTTP resolve” ≠ Phase C C4 Form Runtime.
 
-**Out of Phase C C4 brief:** C4 feat · P3 Publish UI / P4 Themes / P5 Analytics · C5 Execution · Stage 5 settings/enable-disable · R6 table-cutover · Entity Workspace (Phase D).
+**Out of Phase C C4 feat:** P3 Publish UI / P4 Themes / P5 Analytics · C5 Execution · Stage 5 settings/enable-disable · R6 table-cutover · Entity Workspace (Phase D).
 
 **Result:** every questionnaire, form, and survey shares one runtime contract.
 
@@ -232,6 +232,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-14: C4 brief [#245](https://github.com/igortatarynovich/HostFlow/pull/245); Product Track → **C4 Form Runtime feat** ([brief](../tasks/forms-platform-c4-form-runtime.md); Runtime Model).
 - 2026-08-14: C3 ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244); Product Track → **C4 Form Runtime** ([brief](../tasks/forms-platform-c4-form-runtime.md); feat locked).
 - 2026-08-14: C1 ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240); C2 ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242); Product Track → **C3 Builder Runtime** ([brief](../tasks/forms-platform-c3-builder-runtime.md)).  
 - 2026-08-13: Stage 3 slice 4 ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238); Product Track → **Phase C Forms Platform C1** ([brief](../tasks/forms-platform-c1-contract-seal.md)). Stage 5 settings and R6 stay out of this slice.  

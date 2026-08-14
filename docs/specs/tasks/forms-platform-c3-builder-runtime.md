@@ -45,6 +45,7 @@ Builder **must not**:
 - accept submissions
 - resolve a publication
 - import Adapter (`forms.endpoint_adapter_v1` / `forms_platform.adapter`)
+- import Form Runtime (`forms_platform.runtime`)
 
 Publish stays a **separate operation** on the C2 Adapter. It is not a Builder command.
 
@@ -143,7 +144,7 @@ Named step. Full-repo pytest red does not waive it.
 
 Builder package (`backend/app/forms_platform/builder/`):
 
-- does **not** import Adapter / `publication_versions` / `contract_identity` / `submission_envelope` / `canonical` (schema hash)
+- does **not** import Adapter / `publication_versions` / `contract_identity` / `submission_envelope` / `canonical` (schema hash) / **Form Runtime**
 - does **not** call `publish` / `commit_publish` / `resolve_publication`
 - does **not** write Contract Identity or publication ledger rows
 - save draft never creates a `FormPublicationVersion`
@@ -261,4 +262,5 @@ Does **not** amend L0 P-rules.
 - 2026-08-14: HTTP draft save/load goes through FormDefinition session (`save_session_async`); still not Publish UI.  
 - 2026-08-14: Threat model [`forms-platform.md`](../../security/threat-models/forms-platform.md) covers C3 (FP-11…FP-13); named C3 gate remains the CI criterion.  
 - 2026-08-14: Existing P2.5 canvas reads `builder_state` from Draft API; no autosave, no Publish UI.
+- 2026-08-14: C4 dual boundary — Builder must not import `forms_platform.runtime`.
 - 2026-08-14: C3 feat merged [#244](https://github.com/igortatarynovich/HostFlow/pull/244) (`638955d5`; PASS-ready `2e5f9720`). Named C3 gate / docs-gates / security-gates / frontend-static-qa SUCCESS. Next = [C4 Form Runtime](forms-platform-c4-form-runtime.md).

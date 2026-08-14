@@ -72,7 +72,7 @@
 - [ ] Marketing Sources (C-3/C-4): см. [`threat-models/acquisition-marketing-sources.md`](threat-models/acquisition-marketing-sources.md) (C-3 inventory GET; C-4 sample/preview tenant isolation, masked PII, preview no production entity create).
 - [ ] Source Diagnostics (PR1–PR9): см. [`threat-models/acquisition-source-diagnostics.md`](threat-models/acquisition-source-diagnostics.md) (read-only Lead + Activity compose; filters; duplicate; Mapping Health; drift alerts/summary; export; Replay via Leads process; SPA-only drift notify; tenant scope; no Diagnostics write on GET).
 - [ ] Communication Campaign Orchestrator (C2.3): см. [`threat-models/communication-campaign-orchestrator.md`](threat-models/communication-campaign-orchestrator.md) (Intent-only, tenant scope, no provider/Thread, distinct from Acquisition campaigns).
-- [ ] Forms Platform (C2 identity + C3 Builder Runtime): см. [`threat-models/forms-platform.md`](threat-models/forms-platform.md) (frozen publication identity; FormDefinition ↔ Draft only; no Builder publish; tenant resolve; submit pin; fail-closed backfill).
+- [ ] Forms Platform (C2 identity + C3 Builder + C4 Runtime): см. [`threat-models/forms-platform.md`](threat-models/forms-platform.md) (frozen publication identity; FormDefinition ↔ Draft only; Runtime Model read-only; no Builder↔Runtime import; tenant resolve; submit pin; fail-closed backfill).
 
 ---
 
