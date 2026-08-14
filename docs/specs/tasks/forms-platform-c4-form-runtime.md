@@ -1,8 +1,9 @@
 # Forms Platform C4 — Form Runtime
 
-**Status:** **IN PROGRESS** (feat — Runtime Model contract + named gate)  
+**Status:** **COMPLETE** ([#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) · `4427b110`)  
+**Next:** [C5 Form Execution](forms-platform-c5-form-execution.md)  
 **Branch (docs):** `docs/forms-platform-c4-form-runtime` ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)  
-**Branch (code):** `feat/forms-platform-c4-form-runtime`  
+**Branch (code):** `feat/forms-platform-c4-form-runtime` ✅ [#246](https://github.com/igortatarynovich/HostFlow/pull/246)  
 **Parents:** [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ · [C2 runtime contract](forms-platform-c2-runtime-contract.md) · [C1 contract seal](forms-platform-c1-contract-seal.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md)
 
 > C4 is **Runtime, not an Engine**.  
@@ -278,8 +279,8 @@ Do **not** mix Themes, Publish UI, Builder, submit, Stage 5, or R6 into C4.
 | **C1** | Contract seal | ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239) / [#240](https://github.com/igortatarynovich/HostFlow/pull/240) |
 | **C2** | Runtime contract + gates | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241) / [#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
 | **C3** | Builder Runtime | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243) / [#244](https://github.com/igortatarynovich/HostFlow/pull/244) · `638955d5` |
-| **C4** | Form Runtime (this) | **IN PROGRESS** (feat) |
-| **C5** | Form Execution | After C4 feat PASS |
+| **C4** | Form Runtime (this) | ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245) / [#246](https://github.com/igortatarynovich/HostFlow/pull/246) · `4427b110` |
+| **C5** | Form Execution | [brief](forms-platform-c5-form-execution.md) ← next |
 | **C6** | Optimization | After C5 |
 
 ---
@@ -307,11 +308,11 @@ Does **not** amend L0 P-rules.
 
 - [x] Brief merged (docs PR [#245](https://github.com/igortatarynovich/HostFlow/pull/245))  
 - [x] C3 marked **COMPLETE** in canon (#244 / `638955d5`)  
-- [ ] Named Form Runtime Gate green  
-- [ ] Runtime does not import Builder; Builder does not import Runtime  
-- [ ] `serve(publication)` only; read-only Runtime Model  
-- [ ] P3 Publish UI / P4 Themes / P5 Analytics / C5 remain locked  
-- [ ] Historical Sprint C4 HTTP tests not renamed as this gate  
+- [x] Named Form Runtime Gate green  
+- [x] Runtime does not import Builder; Builder does not import Runtime  
+- [x] `serve(publication)` only; read-only Runtime Model  
+- [x] P3 Publish UI / P4 Themes / P5 Analytics / C5 remain locked until C5 brief  
+- [x] Historical Sprint C4 HTTP tests not renamed as this gate  
 
 **CI criterion:** named **Forms Platform C4 Form Runtime Gate**. Full-repo `Tests with coverage` is Engineering Track debt and does not block C4.
 
@@ -319,10 +320,10 @@ Does **not** amend L0 P-rules.
 
 ## DoD (this feat PR)
 
-- [ ] Runtime Model sealed in this brief  
-- [ ] Package `forms_platform/runtime/` + named gate  
-- [ ] Dual import boundary  
-- [ ] Publish UI, Themes, C5 Execution **not** started  
+- [x] Runtime Model sealed  
+- [x] Package `forms_platform/runtime/` + named gate  
+- [x] Dual import boundary  
+- [x] Publish UI, Themes, C5 Execution **not** started in this PR  
 
 Package: `backend/app/forms_platform/runtime/` (`model.py`, `serve.py`). Gate: `backend/tests/forms_platform/test_forms_c4_form_runtime_gate.py`.
 
@@ -332,3 +333,4 @@ Package: `backend/app/forms_platform/runtime/` (`model.py`, `serve.py`). Gate: `
 
 - 2026-08-14: C3 Builder Runtime merged [#244](https://github.com/igortatarynovich/HostFlow/pull/244) (`638955d5`, PASS-ready `2e5f9720`). C4 Form Runtime brief opened (docs). Feat locked until this brief merges. Not P3 Publish UI / P4 Themes / C5 Execution / Sprint HTTP C4.
 - 2026-08-14: Brief merged [#245](https://github.com/igortatarynovich/HostFlow/pull/245) (`16e0dfb6`). Feat locks **Runtime Model**: Runtime is not an Engine; Adapter resolve is the sole source; read-only `serve(publication)`; dual Builder boundary; C5 starts after Runtime Model.
+- 2026-08-14: C4 feat merged [#246](https://github.com/igortatarynovich/HostFlow/pull/246) (`4427b110`; PASS-ready `626e5a9d`). Named C4 gate SUCCESS. Next = [C5 Form Execution](forms-platform-c5-form-execution.md).

@@ -1,7 +1,7 @@
 # Forms Platform C3 — Builder Runtime
 
 **Status:** **COMPLETE** ([#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244) · `638955d5`)  
-**Next:** [C4 Form Runtime](forms-platform-c4-form-runtime.md)  
+**Next:** [C4 Form Runtime](forms-platform-c4-form-runtime.md) ✅ · [C5 Form Execution](forms-platform-c5-form-execution.md) ← active  
 **Branch (docs):** `docs/forms-platform-c3-builder-runtime` ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)  
 **Branch (code):** `feat/forms-platform-c3-builder-runtime` ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244)  
 **Parents:** [C2 runtime contract](forms-platform-c2-runtime-contract.md) · [C1 contract seal](forms-platform-c1-contract-seal.md) · [P2 Builder](forms-product-p2-builder.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md)
@@ -10,7 +10,7 @@
 > Builder responsibility is `FormDefinition ↔ Draft`.  
 > Builder must not know publications, submissions, Adapter, resolve, or identity.
 
-**Naming (do not collapse):** this **Forms Platform C3** is not Communication Context C3 (policy ports). It is not historical **P3 Publish UI**. P2 Builder MVP already exists; C3 binds that editor to `FormDefinition` and a draft state machine. Phase C **C4 Form Runtime** is next — [brief](forms-platform-c4-form-runtime.md).
+**Naming (do not collapse):** this **Forms Platform C3** is not Communication Context C3 (policy ports). It is not historical **P3 Publish UI**. P2 Builder MVP already exists; C3 binds that editor to `FormDefinition` and a draft state machine. Phase C **C4 Form Runtime** ✅ · **C5 Form Execution** ← [brief](forms-platform-c5-form-execution.md).
 
 ---
 
@@ -181,7 +181,7 @@ Builder package (`backend/app/forms_platform/builder/`):
 | Deferred | Owner |
 |----------|--------|
 | Publish UI / calling Adapter `publish` | Later — not Builder |
-| C4 Form Runtime / C5 Execution / C6 | [C4 brief](forms-platform-c4-form-runtime.md) — after this COMPLETE |
+| C4 Form Runtime / C5 Execution / C6 | [C4](forms-platform-c4-form-runtime.md) ✅ · [C5 brief](forms-platform-c5-form-execution.md) |
 | P3 Publish UI · P4 Themes · P5 Analytics | Locked |
 | Autosave / collab UX | Consume the state machine later |
 | Stage 5 settings / R6 / FormTemplate / ADR-022 | Unchanged |

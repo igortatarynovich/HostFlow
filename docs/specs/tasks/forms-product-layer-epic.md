@@ -1,11 +1,11 @@
 # Forms Product Layer — Epic
 
-**Status:** **OPEN** · Product Track = [Forms Platform C4 Form Runtime](forms-platform-c4-form-runtime.md) (**active** feat; Runtime Model) · C1–C3 ✅ · P3 Publish UI / P4 / P5 **LOCKED**  
+**Status:** **OPEN** · Product Track = [Forms Platform C5 Form Execution](forms-platform-c5-form-execution.md) (**active** brief; feat locked) · C1–C4 ✅ · P3 Publish UI / P4 / P5 **LOCKED**  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
 **P2 task:** [`forms-product-p2-builder.md`](forms-product-p2-builder.md) · Builder MVP **COMPLETE** (P2.1–P2.5) · P3 LOCKED  
-**Out of this Product Track slice:** Stage 5 settings/enable-disable · R6 table-cutover · P3 Publish UI / P4 Themes / P5 Analytics (locked) · C5 Form Execution
+**Out of this Product Track slice:** Stage 5 settings/enable-disable · R6 table-cutover · P3 Publish UI / P4 Themes / P5 Analytics (locked) · C5 **feat** (locked until [C5 brief](forms-platform-c5-form-execution.md) merges)
 
 ---
 
@@ -119,7 +119,7 @@ Forms is a **platform capability**, same class as EntityWorkspace, ListWorkspace
 | **Acquisition** | Intake + routing spine |
 | **Product modules** | Recruitment / HR / Fleet / Finance / Services — consume Forms Adapter |
 
-Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ → [C4 Form Runtime](forms-platform-c4-form-runtime.md) ← active (feat; Runtime Model) → C5 Form Execution → C6 Optimization.
+Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ → [C4 Form Runtime](forms-platform-c4-form-runtime.md) ✅ → [C5 Form Execution](forms-platform-c5-form-execution.md) ← active (brief) → C6 Optimization. C5 feat opens only after this brief.
 
 ---
 
@@ -142,7 +142,7 @@ Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](fo
 | Field Catalog contracts v1 | **FROZEN** |
 | P2.1–P2.5 Builder | ✅ **COMPLETE** (MVP) |
 | Builder Catalog Consumption | ✅ **ACTIVE** |
-| P3 Publish UI / P4 Themes / P5 Analytics | **LOCKED** (C4 is Form Runtime, not Publish UI — [forms-platform-c4-form-runtime.md](forms-platform-c4-form-runtime.md)) |
+| P3 Publish UI / P4 Themes / P5 Analytics | **LOCKED** (C5 is Form Execution, not Publish UI — [forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md)) |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 | Executable logic inside descriptors | **FORBIDDEN** |
 | Catalog-core special cases for stdlib ids | **FORBIDDEN** |
@@ -173,6 +173,7 @@ Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](fo
 - 2026-07-19: P2.5 Minimal Builder UI COMPLETE — Builder MVP closed; next focus Flights / Intake Routing.  
 - 2026-07-19: Intake Canonical Input Matrix epic ACTIVE; matrix READY (no route implementation yet).  
 - 2026-07-19: Matrix ACCEPTED / FROZEN; Intake Runtime Split V1 READY; Forms P3–P5 remain LOCKED.  
+- 2026-08-14: C4 ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246); Product Track → C5 Form Execution brief; P3 Publish UI / P4 / P5 stay locked.
 - 2026-08-14: C4 brief [#245](https://github.com/igortatarynovich/HostFlow/pull/245); feat locks Runtime Model (read-only; not an Engine).
 - 2026-08-14: C3 ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244); Product Track → C4 Form Runtime brief; P3 Publish UI / P4 / P5 stay locked.
 - 2026-08-14: C1+C2 merged; Product Track → C3 Builder Runtime; P3 Publish UI / P4 / P5 stay locked.
