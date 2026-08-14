@@ -1,59 +1,154 @@
 # Forms Platform C3 — Builder Runtime
 
-**Status:** **IN PROGRESS** (docs — this brief)  
-**Branch (docs):** `docs/forms-platform-c3-builder-runtime`  
-**Branch (code):** `feat/forms-platform-c3-builder-runtime` (after this brief merges)  
+**Status:** **IN PROGRESS** (feat)  
+**Branch (docs):** `docs/forms-platform-c3-builder-runtime` ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)  
+**Branch (code):** `feat/forms-platform-c3-builder-runtime`  
 **Parents:** [C2 runtime contract](forms-platform-c2-runtime-contract.md) · [C1 contract seal](forms-platform-c1-contract-seal.md) · [P2 Builder](forms-product-p2-builder.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md)
 
-> C3 is the **editor of FormDefinition**.  
-> Draft save is not publish. Keystroke must not freeze Contract Identity.  
-> C2 already protects the publication format; C3 must not bypass it.
+> C3 edits **only** `FormDefinition`.  
+> Builder responsibility is `FormDefinition ↔ Draft`.  
+> Builder must not know publications, submissions, Adapter, resolve, or identity.
 
-**Naming (do not collapse):** this **Forms Platform C3** is not Communication Context C3 (policy ports). It is not historical **P3 Publish UI** (wizard / version-management chrome). P2 Builder MVP already exists; C3 binds that editor to the C2 model. Phase C **C4 Form Runtime** stays locked.
+**Naming (do not collapse):** this **Forms Platform C3** is not Communication Context C3 (policy ports). It is not historical **P3 Publish UI**. P2 Builder MVP already exists; C3 binds that editor to `FormDefinition` and a draft state machine. Phase C **C4 Form Runtime** stays locked.
 
 ---
 
 ## Why this slice
 
-C1 sealed ids. C2 made every **publication version** carry an immutable Contract Identity (JCS+SHA-256, declared compatibility, fail-closed backfill). [#239](https://github.com/igortatarynovich/HostFlow/pull/239)–[#242](https://github.com/igortatarynovich/HostFlow/pull/242) are merged.
+C1 sealed ids. C2 made every **publication version** carry an immutable Contract Identity. [#239](https://github.com/igortatarynovich/HostFlow/pull/239)–[#243](https://github.com/igortatarynovich/HostFlow/pull/243) are merged.
 
-P2 shipped composition commands, draft persistence, and a minimal canvas. That editor still has no **runtime contract** against FormDefinition vs FormPublicationVersion: a save could be mistaken for freeze, and a freeze on every edit would mint identities that C2 forbade.
+P2 shipped composition commands, draft persistence, and a minimal canvas. That editor still has no **FormDefinition** term and no draft state machine. If Builder ever called Adapter `publish` on save, editor and runtime would fuse — the hole C2 exists to prevent.
 
-C3 closes that gap. After C3, C4 can serve a frozen version without caring how the definition was authored.
+C3 closes that gap **without** teaching Builder about freeze.
 
-**Platform posture:** Forms remains a **platform capability**, not a product module. Recruitment / HR / Fleet / Finance / Services still have zero private builders.
+**Platform posture:** Forms remains a **platform capability**, not a product module.
 
 ---
 
-## Target model (normative — unchanged from C2)
+## Locked principle
+
+Builder works only with the **mutable** model:
 
 ```text
-FormDefinition          → mutable schema (C3 edits this)
-        │
-        │ publish (freeze) — explicit command only
-        ▼
-FormPublicationVersion  → immutable schema snapshot + Contract Identity
-        │
-        │ submit
-        ▼
-FormSubmission          → pin to that publication version
+FormDefinition  ↔  Draft
 ```
 
-| Layer | C3 may | C3 must not |
-|-------|--------|-------------|
-| FormDefinition / Builder draft | Add / reorder / remove Catalog instances; save draft; dirty + revision | Freeze identity; write `form_publication_versions`; invent field types |
-| Publication version | Call existing Adapter `publish` as **one explicit command** | Patch frozen schema / identity; auto-publish on save |
-| Submission / public serve | — | Open C4 Form Runtime or C5 execution |
+`FormDefinition` is the **only** model Builder may change. Every other Forms model is readonly from Builder’s point of view (and in practice: unreachable — Builder must not import those modules).
 
-Storage may remain `TenantLeadForm` + builder draft tables. C3 names the **editor contract**, not a FormTemplate cutover.
+Builder **must not**:
+
+- change `FormPublicationVersion`
+- recompute `schema_hash`
+- write or read Contract Identity
+- publish
+- accept submissions
+- resolve a publication
+- import Adapter (`forms.endpoint_adapter_v1` / `forms_platform.adapter`)
+
+Publish stays a **separate operation** on the C2 Adapter. It is not a Builder command.
 
 ---
 
-## Goal
+## Forbidden flow
 
-A Builder session can change a definition without creating a publication version.  
-The only freeze point is an explicit **publish** that goes through C2 (`commit_publish` / Adapter).  
-Field types come only from the frozen Field Catalog.
+```text
+Builder → Save → Publish     ← forbidden (binds editor to runtime)
+```
+
+## Required flow
+
+```text
+Builder
+  → Save Draft
+  → Draft exists (still mutable)
+Publish (C2 Adapter)          ← outside Builder
+  → new FormPublicationVersion
+  → Freeze
+  → Contract Identity
+  → Resolve
+  → Submission
+```
+
+Builder **ends exactly before Publish**.
+
+After C3 the layers are:
+
+```text
+Builder Layer
+  FormDefinition · Draft · Validation · Autosave (later)
+        │
+        │  (Builder stops here)
+        ▼
+Publish Layer (C2 Adapter)
+        ▼
+FormPublicationVersion → Contract Identity → Resolve → Submission
+```
+
+---
+
+## FormDefinition (Definition Contract)
+
+`FormDefinition` is the sole mutable document the editor owns (composition of Catalog instances + definition id). Storage may still be `TenantLeadForm` pointer + `form_builder_drafts`; C3 names the **model**, not a FormTemplate cutover.
+
+| Model | Builder |
+|-------|---------|
+| `FormDefinition` | **read/write** |
+| Draft (session + persistence of that definition) | **read/write** |
+| `FormPublicationVersion` | forbidden |
+| Contract Identity / `schema_hash` | forbidden |
+| Submission | forbidden |
+| Adapter resolve / publish | forbidden |
+
+---
+
+## Draft states (Dirty vs Saved)
+
+Two persistence-facing kinds, both **mutable**:
+
+| Kind | Meaning |
+|------|---------|
+| **Dirty Draft** | Being edited. Everything on the definition may change. Not yet the saved tip. |
+| **Saved Draft** | Persisted. Still mutable. Not a publication. |
+
+Only **Publish** (C2, outside Builder) creates:
+
+| Kind | Meaning |
+|------|---------|
+| **Publication Version** | Immutable snapshot + Contract Identity |
+
+---
+
+## Builder State Machine (contract, not UI)
+
+Not a canvas. Not autosave UX. A closed set of session states:
+
+| State | Meaning |
+|-------|---------|
+| `new` | Definition created, not persisted |
+| `dirty` | Dirty Draft — local edits vs last saved tip |
+| `saving` | Persist in flight |
+| `saved` | Saved Draft — tip matches last successful persist |
+| `validation_error` | Catalog / composition validation failed on save or edit |
+| `conflict` | Optimistic revision mismatch (future collab) |
+| `closed` | Archived / session closed |
+
+Illegal transitions fail closed. Autosave, joint editing, and Publish UI consume this machine later — they do not expand it in C3.
+
+---
+
+## Builder Runtime Gate (CI — mandatory)
+
+Named step. Full-repo pytest red does not waive it.
+
+Builder package (`backend/app/forms_platform/builder/`):
+
+- does **not** import Adapter / `publication_versions` / `contract_identity` / `submission_envelope` / `canonical` (schema hash)
+- does **not** call `publish` / `commit_publish` / `resolve_publication`
+- does **not** write Contract Identity or publication ledger rows
+- save draft never creates a `FormPublicationVersion`
+- unknown Catalog component still fails (P2 `require_catalog=True`)
+- state machine: `new`/`dirty`/`saving`/`saved`/`validation_error`/`conflict`/`closed`; Dirty and Saved remain mutable
+- `FormDefinition` is the only domain document Builder mutates
 
 ---
 
@@ -64,51 +159,18 @@ Field types come only from the frozen Field Catalog.
 | P2.1–P2.5 Builder MVP | ✅ COMPLETE | Canvas / commands / draft persistence |
 | `forms.builder.composition_commands.v1` | Shipped | Editor command surface |
 | Field Catalog v1 | FROZEN | Only legal component ids |
-| Adapter `publish` / C2 identity | ✅ [#242](https://github.com/igortatarynovich/HostFlow/pull/242) | Explicit freeze |
-
-C3 is **runtime contract + gates** over that stack, not a second builder.
+| Adapter `publish` / C2 identity | ✅ [#242](https://github.com/igortatarynovich/HostFlow/pull/242) | **Outside Builder** — do not call from C3 |
 
 ---
-
-## Builder Runtime rules
-
-1. **Draft save ≠ publish.** Persistence of composition / draft revision must not insert a ledger row or mint Contract Identity.  
-2. **No identity on live draft.** Resolve of an unpublished definition stays identity-less (C2 already: draft `contract_identity is None`).  
-3. **Catalog only.** `add_instance` / config must fail on unknown `component_id` (P2 `require_catalog=True` — C3 gates it). Builder must not invent field types.  
-4. **Explicit publish.** One Adapter `publish` call freezes current definition → new `FormPublicationVersion` + identity. Repeat publish after schema change → **new** version (C2 immutability).  
-5. **Builder surface version** (when declared): pin `forms.builder.composition_commands.v1` (or successor) on the Forms-owned compatibility tuple **at freeze**. Do not mint a new tuple on every keystroke.  
-6. **No module-owned builders.** Product modules consume this editor/Adapter; they do not fork a form canvas.
-
----
-
-## Contract gates (CI — feat PR)
-
-Named step. Full-repo pytest red does not waive it.
-
-### Builder Runtime Gate
-
-- Draft save does not write `form_publication_versions` / Contract Identity.  
-- Unpublished resolve has `contract_identity is None`.  
-- Unknown Catalog component → fail.  
-- Explicit publish creates a new frozen version with complete C2 identity; second schema edit + publish → different `schema_hash` / new version.  
-- Auto-publish-on-save is forbidden.
-
----
-
-## In scope (this docs PR)
-
-1. This brief (editor vs freeze; C3 ≠ P3 Publish UI; C3 ≠ Communication C3).  
-2. Queue / roadmap / AGENTS / C2 / Product Layer epic: C1+C2 ✅; **active = C3**; C4 locked.  
-3. Old P3 Publish UI / P4 Themes / P5 Analytics stay **out** (not unlocked by C3).
 
 ## Feat implementation order (mandatory)
 
-1. FormDefinition as the mutable record the Builder writes (bridge storage OK).  
-2. Draft save / composition commands isolated from the publication ledger.  
-3. Catalog-only enforcement as a runtime gate (not only a P2 unit test).  
-4. Explicit publish command → existing C2 freeze.  
-5. **Then** named Builder Runtime Gate.  
-6. Do **not** start C4 (serve frozen version to public runtime) in this slice.
+1. `FormDefinition` as the mutable record.  
+2. Draft state machine (`new` → `dirty` → `saving` → `saved` / `validation_error` / `conflict` / `closed`).  
+3. Draft save isolated from the publication ledger (P2.4 persist; no Adapter).  
+4. Catalog-only enforcement remains a runtime rule.  
+5. **Then** named Builder Runtime Gate (import + save + state).  
+6. Do **not** add Publish, resolve, Themes, or C4.
 
 ---
 
@@ -116,17 +178,14 @@ Named step. Full-repo pytest red does not waive it.
 
 | Deferred | Owner |
 |----------|--------|
-| C4 Form Runtime (serve frozen publication) | After C3 feat PASS |
-| C5 Form Execution / C6 Optimization | After C4 |
-| P3 Publish UI (wizard / version chrome / preview) | Later Phase C — not this editor contract |
-| P4 Themes / P5 Analytics | Locked |
-| Stage 5 settings / enable-disable | ADR-005 / ADR-035 |
-| R6 table-cutover | [intake-runtime-split-v1.md](intake-runtime-split-v1.md) |
-| FormTemplate SoT | Later Phase C |
-| Accept ADR-022 · Meta → envelope | Later Phase C |
+| Publish UI / calling Adapter `publish` | Later — not Builder |
+| C4 Form Runtime / C5 Execution / C6 | After C3 feat PASS |
+| P3 Publish UI · P4 Themes · P5 Analytics | Locked |
+| Autosave / collab UX | Consume the state machine later |
+| Stage 5 settings / R6 / FormTemplate / ADR-022 | Unchanged |
 | Entity Workspace Phase D | Unchanged |
 
-Do **not** mix Themes, public Form Runtime, Stage 5, or R6 into C3.
+Do **not** mix Themes, Publish UI, public Form Runtime, Stage 5, or R6 into C3.
 
 ---
 
@@ -143,20 +202,20 @@ Do **not** mix Themes, public Form Runtime, Stage 5, or R6 into C3.
 
 ---
 
-## Architecture Review (L0 — this brief)
+## Architecture Review (L0 — this feat)
 
 | # | Answer |
 |---|--------|
 | 1 Owner | Forms **platform** (ADR-007) |
-| 2 Exists? | Yes — P2 MVP + C2 freeze; C3 binds editor to definition |
-| 3 Adapter | `forms.endpoint_adapter_v1`; publish remains Adapter-only |
-| 4 Boundary | No C4 public runtime, no Themes/Analytics, no module builders, no Outcome/KPI |
-| 5 Settings | No new Manifest keys this slice (Builder flag already UNLOCKED) |
+| 2 Exists? | Yes — P2 MVP; C3 adds FormDefinition + draft state machine |
+| 3 Adapter | Builder **does not import** Adapter. Publish remains C2 Adapter-only, outside this package |
+| 4 Boundary | No publish/resolve/identity; no C4; no Themes; no module builders |
+| 5 Settings | No new Manifest keys |
 | 6 SoT | FormDefinition (mutable, Builder); publication identity stays C2 ledger |
 | 7 Events | Unchanged Experimental |
-| 8 Requires | Endpoint, Submission; Catalog v1 frozen |
+| 8 Requires | Catalog v1 frozen. Endpoint/Submission exist but Builder does not call them |
 | 9 License | None new |
-| 10 Public contract | Additive at most (builder surface version on freeze tuple). No breaking DTO change required to open the editor contract. |
+| 10 Public contract | Additive: Builder Draft API ≠ Adapter. No Adapter DTO bump |
 
 Does **not** amend L0 P-rules.
 
@@ -164,13 +223,12 @@ Does **not** amend L0 P-rules.
 
 ## Acceptance
 
-- Product Track active = this brief.  
-- Draft save never freezes a publication version.  
-- Explicit publish uses C2 identity; schema change → new version.  
-- Catalog-only field types.  
-- Named Builder Runtime Gate in the feat PR.  
+- Builder mutates only `FormDefinition` / Draft.  
+- Builder does not import Adapter and cannot publish, resolve, or write identity.  
+- Dirty Draft and Saved Draft are both mutable; Publication Version appears only after C2 Publish.  
+- Named Builder Runtime Gate in CI.  
 - P3 Publish UI / P4 / P5 / C4 remain locked.  
-- Zero private builders in product modules.
+- Queue unchanged (still C3).
 
 ---
 
@@ -178,21 +236,23 @@ Does **not** amend L0 P-rules.
 
 | Area | Paths |
 |------|--------|
-| Editor | `forms_platform/builder/*` |
-| Freeze | Adapter `commit_publish` (C2 — call, do not reimplement) |
+| Definition + state | `forms_platform/builder/definition.py`, `state.py` |
+| Persist | `forms_platform/builder/draft_persistence.py` (no Adapter) |
 | Gate | `backend/tests/forms_platform/test_forms_c3_builder_runtime_gate.py` |
 | CI | `.github/workflows/backend-ci.yml` named step |
+| Brief | this file (boundary seal vs #243) |
 
 ---
 
 ## DoD
 
-- [x] Brief sealed: editor vs freeze; C3 ≠ P3; C3 ≠ Communication C3  
-- [x] Queue + roadmap point at C3; C4 locked  
-- [ ] Feat PR after this brief merges  
+- [x] Brief #243 merged  
+- [x] Boundary sealed: FormDefinition-only; no Adapter; Publish outside Builder  
+- [ ] Feat: FormDefinition + state machine + named gate  
 
 ---
 
 ## History
 
-- 2026-08-14: C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) + C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) merged. C3 opened as Builder Runtime (not Publish UI).
+- 2026-08-14: C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) + C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) merged. C3 opened as Builder Runtime (not Publish UI) — [#243](https://github.com/igortatarynovich/HostFlow/pull/243).  
+- 2026-08-14: Boundary correction — Builder = FormDefinition ↔ Draft only; no Adapter import; Publish remains C2; draft state machine (`new`/`dirty`/`saving`/`saved`/`validation_error`/`conflict`/`closed`).
