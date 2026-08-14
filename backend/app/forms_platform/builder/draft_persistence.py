@@ -67,7 +67,7 @@ class DraftRecord:
         return parse_composition(self.composition)
 
 
-def _freeze_composition(
+def _serialize_composition(
     composition: FormDraftComposition,
     *,
     registry: FieldCatalogRegistry | None = None,
@@ -124,7 +124,7 @@ class InMemoryDraftStore:
             raise FormsBuilderDraftConflictError(
                 details={"reason": "draft_already_exists", "draft_id": composition.draft_id},
             )
-        payload = _freeze_composition(
+        payload = _serialize_composition(
             composition, registry=registry, require_valid=require_valid
         )
         record = DraftRecord(
@@ -188,7 +188,7 @@ class InMemoryDraftStore:
                     "current_revision": current.revision,
                 },
             )
-        payload = _freeze_composition(
+        payload = _serialize_composition(
             composition, registry=registry, require_valid=require_valid
         )
         new_rev = current.revision + 1
@@ -281,7 +281,7 @@ class InMemoryDraftStore:
         return copy.deepcopy(payload)
 
 
-# --- SQLAlchemy adapter (durable) ---
+# --- SQLAlchemy persistence (durable Draft tip; not Forms Adapter) ---
 
 
 async def create_draft(
@@ -306,7 +306,7 @@ async def create_draft(
         raise FormsBuilderDraftConflictError(
             details={"reason": "draft_already_exists", "draft_id": composition.draft_id},
         )
-    payload = _freeze_composition(
+    payload = _serialize_composition(
         composition, registry=registry, require_valid=require_valid
     )
     now = now_utc()
@@ -395,7 +395,7 @@ async def update_draft(
                 "current_revision": int(row.revision),
             },
         )
-    payload = _freeze_composition(
+    payload = _serialize_composition(
         composition, registry=registry, require_valid=require_valid
     )
     new_rev = int(row.revision) + 1

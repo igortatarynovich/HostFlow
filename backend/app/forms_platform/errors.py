@@ -209,6 +209,14 @@ class FormsBuilderDraftArchivedError(FormsAdapterError):
     default_message = "Builder draft is archived"
 
 
+class FormsBuilderStateError(FormsAdapterError):
+    """Illegal Builder state-machine transition (C3). Not an Adapter error surface."""
+
+    code = "forms_builder_state_invalid"
+    http_status = 409
+    default_message = "Builder draft state transition is not allowed"
+
+
 # --- Intake Runtime Split R1 ---
 
 

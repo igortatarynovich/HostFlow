@@ -1,7 +1,7 @@
-"""Forms Builder product surface — thin Catalog client (P2+).
+"""Forms Builder product surface — FormDefinition ↔ Draft (C3).
 
 P2.1 read model · P2.2 composition · P2.3 commands · P2.4 draft persistence.
-UI belongs to P2.5 (after UI gate).
+C3: FormDefinition, draft state machine. No Adapter / publish / resolve.
 """
 
 from __future__ import annotations
@@ -37,6 +37,33 @@ from backend.app.forms_platform.builder.draft_persistence import (
     list_drafts,
     update_draft,
 )
+from backend.app.forms_platform.builder.definition import (
+    BUILDER_DEFINITION_CONTRACT,
+    FormDefinition,
+)
+from backend.app.forms_platform.builder.session import (
+    BuilderSession,
+    begin_save,
+    close_session,
+    complete_save,
+    edit_session,
+    fail_save_conflict,
+    fail_save_validation,
+    new_session,
+    save_session,
+)
+from backend.app.forms_platform.builder.state import (
+    BUILDER_STATES,
+    MUTABLE_DRAFT_STATES,
+    STATE_CLOSED,
+    STATE_CONFLICT,
+    STATE_DIRTY,
+    STATE_NEW,
+    STATE_SAVED,
+    STATE_SAVING,
+    STATE_VALIDATION_ERROR,
+    transition,
+)
 from backend.app.forms_platform.builder.read_model import (
     BUILDER_READ_MODEL_CONTRACT,
     BuilderCategoryGroup,
@@ -50,34 +77,55 @@ from backend.app.forms_platform.builder.read_model import (
 __all__ = [
     "BUILDER_COMPOSITION_COMMANDS_CONTRACT",
     "BUILDER_COMPOSITION_CONTRACT",
+    "BUILDER_DEFINITION_CONTRACT",
     "BUILDER_DRAFT_PERSISTENCE_CONTRACT",
     "BUILDER_READ_MODEL_CONTRACT",
+    "BUILDER_STATES",
     "BuilderCategoryGroup",
     "BuilderComponentView",
     "BuilderConfigFieldView",
     "BuilderPaletteItem",
     "BuilderReadModel",
+    "BuilderSession",
     "CompositionInstance",
     "CompositionIssue",
     "DraftRecord",
+    "FormDefinition",
     "FormDraftComposition",
     "InMemoryDraftStore",
+    "MUTABLE_DRAFT_STATES",
+    "STATE_CLOSED",
+    "STATE_CONFLICT",
+    "STATE_DIRTY",
+    "STATE_NEW",
+    "STATE_SAVED",
+    "STATE_SAVING",
+    "STATE_VALIDATION_ERROR",
     "add_instance",
     "archive_draft",
+    "begin_save",
     "build_composition",
     "build_instance",
     "builder_read_model",
+    "close_session",
+    "complete_save",
     "create_draft",
     "duplicate_instance",
+    "edit_session",
+    "fail_save_conflict",
+    "fail_save_validation",
     "get_draft",
     "get_draft_revision",
     "list_drafts",
     "new_draft_id",
     "new_instance_id",
+    "new_session",
     "parse_composition",
     "remove_instance",
     "reorder_instance",
     "replace_component_version",
+    "save_session",
+    "transition",
     "update_config",
     "update_draft",
 ]
