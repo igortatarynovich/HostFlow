@@ -29,7 +29,7 @@ Legend: ✅ done · 🔄 in progress · ⏳ not started
 |----------|------------|-----------|------------|----------|
 | **Communication** | ✅ | ✅ (C1) | ✅ (C2.1–C2.3; C2.4 frozen) | ✅ `PASS_WITH_CONSTRAINTS` |
 | **Acquisition** | ✅ | ✅ | 🔄 residual | ⏳ |
-| **Forms** | 🔄 Phase C | ⏳ | ⏳ | ⏳ |
+| **Forms** | ✅ Phase C C1–C6 | ⏳ | ⏳ | ⏳ |
 | **Documents** | 🔄 | ⏳ | ⏳ | ⏳ |
 | **Billing** | ⏳ | ⏳ | ⏳ | ⏳ |
 
@@ -41,7 +41,7 @@ Notes:
 - Communication Complete = [Epic C Complete Gate](../gates/epic-c-complete-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-03) → **Epic C — complete**.  
 - **A2 Platform Governance Review** = [PASS_WITH_CONSTRAINTS](../gates/platform-governance-review-a2.md) (2026-08-03). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
 - Acquisition Automation residual = Stage 5 settings / R6 deferred — **not** the active slice. Phase B Meta / slice 3–4 ✅ ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) · [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · [#238](https://github.com/igortatarynovich/HostFlow/pull/238)).  
-- Forms: Sprint 1–6 / Builder MVP exists ([module-scope](../../forms/module-scope.md)); **Phase C C6 Optimization** ([brief](../tasks/forms-platform-c6-optimization.md)) ← **active** (brief; feat locked) · C1–C5 ✅ — Foundation not marked ✅ until C6 feat closes.  
+- Forms: Sprint 1–6 / Builder MVP exists ([module-scope](../../forms/module-scope.md)); **Phase C C6 Optimization** ([brief](../tasks/forms-platform-c6-optimization.md)) ← **active** (feat) · C1–C5 ✅ — **Foundation ✅** when this feat merges (production serve→execute bound).  
 - Documents Foundation in progress = platform lifecycle contracts still consolidating (roadmap Phase E).
 - Entity Workspace appears when Phase D starts (not a platform SoT yet).
 

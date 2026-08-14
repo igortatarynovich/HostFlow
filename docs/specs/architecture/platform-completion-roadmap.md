@@ -131,13 +131,13 @@ Ladder (locked):
 | **C3** | Builder Runtime (editor of FormDefinition) | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244) |
 | **C4** | Form Runtime | ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) |
 | **C5** | Form Execution | ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248) |
-| **C6** | Optimization | ← **active** ([brief](../tasks/forms-platform-c6-optimization.md); feat locked) |
+| **C6** | Optimization | ← **active** ([brief](../tasks/forms-platform-c6-optimization.md); feat) |
 
-C3 edits mutable definitions. Draft save is not publish. C4 is **Runtime, not an Engine**: Adapter resolve → **Runtime Model** — [brief](../tasks/forms-platform-c4-form-runtime.md). C5 binds Validation → Submission → Persistence to Runtime Model — [brief](../tasks/forms-platform-c5-form-execution.md) ✅. C6 wires production Shared Intake through serve→execute and closes Forms Foundation — [brief](../tasks/forms-platform-c6-optimization.md). Do not open C6 feat until this brief merges. Do not open P3 / P4 / P5 until unlocked by queue.
+C3 edits mutable definitions. Draft save is not publish. C4 is **Runtime, not an Engine**: Adapter resolve → **Runtime Model** — [brief](../tasks/forms-platform-c4-form-runtime.md). C5 binds Validation → Submission → Persistence to Runtime Model — [brief](../tasks/forms-platform-c5-form-execution.md) ✅. C6 wires production Shared Intake through serve→execute and closes Forms Foundation — [brief](../tasks/forms-platform-c6-optimization.md). Do not open P3 / P4 / P5 until unlocked by queue.
 
 **Not** Communication Epic C2 / C2.4 / Communication C3. Historical Forms “C4 HTTP resolve” ≠ Phase C C4 Form Runtime. Acquisition UI C-5 ≠ Phase C C5 Form Execution.
 
-**Out of Phase C C6 brief:** C6 feat · P3 Publish UI / P4 Themes / P5 Analytics · FormTemplate SoT · ADR-022 · Stage 5 settings/enable-disable · R6 · Entity Workspace (Phase D).
+**Out of Phase C C6:** P3 Publish UI / P4 Themes / P5 Analytics · FormTemplate SoT · ADR-022 · Stage 5 settings/enable-disable · R6 · Entity Workspace (Phase D).
 
 **Result:** every questionnaire, form, and survey shares one runtime contract.
 

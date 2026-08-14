@@ -4392,6 +4392,38 @@ async def submit_public_intake(
                         "missing": missing,
                     },
                 )
+        # C6 Optimization: HostFlow Form → resolve → serve → execute (Shared Intake path).
+        from backend.app.forms_platform.errors import FormsAdapterError
+        from backend.app.forms_platform.public_submit_bridge import (
+            maybe_execute_hostflow_form_public_submit,
+        )
+
+        try:
+            execution_out = await maybe_execute_hostflow_form_public_submit(
+                db,
+                tenant_id=str(tenant_id),
+                intake_state=state,
+                idempotency_key=str(token),
+            )
+        except FormsAdapterError as exc:
+            raise HTTPException(
+                status_code=getattr(exc, "http_status", 422) or 422,
+                detail={
+                    "code": getattr(exc, "code", "forms_adapter_error"),
+                    "message": str(getattr(exc, "message", None) or exc),
+                    "details": dict(getattr(exc, "details", None) or {}),
+                },
+            ) from exc
+        if execution_out is not None:
+            envelope = execution_out.get("envelope") if isinstance(execution_out.get("envelope"), dict) else {}
+            state["forms_execution_v1"] = {
+                "form_id": execution_out.get("form_id"),
+                "published_version": execution_out.get("published_version"),
+                "envelope_id": envelope.get("id"),
+                "ok": execution_out.get("ok"),
+                "public_intake_path": execution_out.get("public_intake_path"),
+            }
+            write_session_intake_state(public_session, state)
         mark_session_submitted(public_session)
         lf_block = state.get("lead_form") if isinstance(state.get("lead_form"), dict) else {}
         application_kind = _resolve_intake_application_kind(

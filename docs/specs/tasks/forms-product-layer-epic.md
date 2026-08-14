@@ -1,6 +1,6 @@
 # Forms Product Layer — Epic
 
-**Status:** **OPEN** · Product Track = [Forms Platform C6 Optimization](forms-platform-c6-optimization.md) (**active** brief; feat locked) · C1–C5 ✅ · P3 Publish UI / P4 / P5 **LOCKED**  
+**Status:** **OPEN** · Product Track = [Forms Platform C6 Optimization](forms-platform-c6-optimization.md) (**active** feat) · C1–C5 ✅ · P3 Publish UI / P4 / P5 **LOCKED**  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
@@ -119,7 +119,7 @@ Forms is a **platform capability**, same class as EntityWorkspace, ListWorkspace
 | **Acquisition** | Intake + routing spine |
 | **Product modules** | Recruitment / HR / Fleet / Finance / Services — consume Forms Adapter |
 
-Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ → [C4 Form Runtime](forms-platform-c4-form-runtime.md) ✅ → [C5 Form Execution](forms-platform-c5-form-execution.md) ✅ → [C6 Optimization](forms-platform-c6-optimization.md) ← active (brief).
+Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ → [C4 Form Runtime](forms-platform-c4-form-runtime.md) ✅ → [C5 Form Execution](forms-platform-c5-form-execution.md) ✅ → [C6 Optimization](forms-platform-c6-optimization.md) ← active (feat).
 
 ---
 

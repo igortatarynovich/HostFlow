@@ -77,7 +77,7 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 | Forms Platform C3 | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244); draft save ≠ publish |
 | Forms Platform C4 | ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246); Runtime Model; not P3 / P4 / C5 |
 | Forms Platform C5 | ✅ ([brief](../tasks/forms-platform-c5-form-execution.md)) |
-| Forms Platform C6 | **ACTIVE** ([brief](../tasks/forms-platform-c6-optimization.md)); feat locked; production serve→execute; Foundation close; not P3 / P4 / P5 |
+| Forms Platform C6 | **ACTIVE** ([brief](../tasks/forms-platform-c6-optimization.md)); feat; production serve→execute; Foundation close; not P3 / P4 / P5 |
 
 Contract tests:
 
