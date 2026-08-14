@@ -51,6 +51,7 @@ from backend.app.forms_platform.builder.session import (
     fail_save_validation,
     new_session,
     save_session,
+    session_from_error,
 )
 from backend.app.forms_platform.builder.state import (
     BUILDER_STATES,
@@ -125,6 +126,7 @@ __all__ = [
     "reorder_instance",
     "replace_component_version",
     "save_session",
+    "session_from_error",
     "transition",
     "update_config",
     "update_draft",

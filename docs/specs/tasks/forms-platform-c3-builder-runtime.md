@@ -146,7 +146,7 @@ Builder package (`backend/app/forms_platform/builder/`):
 - does **not** call `publish` / `commit_publish` / `resolve_publication`
 - does **not** write Contract Identity or publication ledger rows
 - save draft never creates a `FormPublicationVersion`
-- unknown Catalog component still fails (P2 `require_catalog=True`)
+- unknown Catalog component still fails (P2 `require_catalog=True`); failed save lands in `validation_error` / `conflict` with the session attached to the typed error
 - state machine: `new`/`dirty`/`saving`/`saved`/`validation_error`/`conflict`/`closed`; Dirty and Saved remain mutable
 - `FormDefinition` is the only domain document Builder mutates
 
@@ -256,3 +256,4 @@ Does **not** amend L0 P-rules.
 
 - 2026-08-14: C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) + C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) merged. C3 opened as Builder Runtime (not Publish UI) — [#243](https://github.com/igortatarynovich/HostFlow/pull/243).  
 - 2026-08-14: Boundary correction — Builder = FormDefinition ↔ Draft only; no Adapter import; Publish remains C2; draft state machine (`new`/`dirty`/`saving`/`saved`/`validation_error`/`conflict`/`closed`).
+- 2026-08-14: Feat — failed save attaches `validation_error`/`conflict` session; named gate covers unknown Catalog and revision conflict.

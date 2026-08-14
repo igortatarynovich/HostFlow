@@ -21,6 +21,7 @@ from backend.app.forms_platform.builder.state import (
     transition,
 )
 from backend.app.forms_platform.errors import (
+    FormsAdapterError,
     FormsBuilderCompositionInvalidError,
     FormsBuilderDraftConflictError,
 )
@@ -88,6 +89,19 @@ def close_session(session: BuilderSession) -> BuilderSession:
     return replace(session, state=transition(session.state, EVENT_CLOSE))
 
 
+def session_from_error(exc: BaseException) -> BuilderSession | None:
+    """Failed save attaches the post-transition session; callers must not ignore it."""
+    attached = getattr(exc, "builder_session", None)
+    return attached if isinstance(attached, BuilderSession) else None
+
+
+def _attach_failed_session(exc: FormsAdapterError, session: BuilderSession) -> None:
+    exc.builder_session = session
+    details = dict(exc.details or {})
+    details["builder_state"] = session.state
+    exc.details = details
+
+
 def save_session(
     session: BuilderSession,
     store: InMemoryDraftStore,
@@ -116,10 +130,10 @@ def save_session(
                 registry=registry,
                 require_valid=require_valid,
             )
-    except FormsBuilderCompositionInvalidError:
-        fail_save_validation(working)
+    except FormsBuilderCompositionInvalidError as exc:
+        _attach_failed_session(exc, fail_save_validation(working))
         raise
-    except FormsBuilderDraftConflictError:
-        fail_save_conflict(working)
+    except FormsBuilderDraftConflictError as exc:
+        _attach_failed_session(exc, fail_save_conflict(working))
         raise
     return complete_save(working, record)
