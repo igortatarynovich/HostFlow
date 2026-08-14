@@ -1,11 +1,11 @@
 # Forms Public Contract v1 — Sprint 1 + Sprint 2 hardening
 
-**Status:** canonical · **ACTIVE** · Product Track = [Phase C C1](../tasks/forms-platform-c1-contract-seal.md) · next [C2](../tasks/forms-platform-c2-runtime-contract.md)  
+**Status:** canonical · **ACTIVE** · Product Track = [Phase C C3](../tasks/forms-platform-c3-builder-runtime.md) · C1–C2 ✅  
 **Capability id:** `forms`  
 **Contract id:** `forms.public_contract.v1`  
 **Adapter id:** `forms.endpoint_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#forms)  
-**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · P1 Catalog ✅ · P2 Builder MVP ✅ · P3–P5 **LOCKED until C2** · C1 [`forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md) · C2 [`forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md)  
+**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · P1 Catalog ✅ · P2 Builder MVP ✅ · P3 Publish UI / P4 / P5 **LOCKED** · C1 [`forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md) ✅ · C2 [`forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md) ✅ · C3 [`forms-platform-c3-builder-runtime.md`](../tasks/forms-platform-c3-builder-runtime.md)  
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -104,7 +104,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 4. First entry uses Universal Routing once; continuation inherits attribution (ADR-024).  
 5. Forms **never** owns Campaign / Flight / Outcome / KPI tables.  
 6. Consumers call **Adapter** ops only.  
-7. P1 Field Catalog is closed; P2 Builder MVP is complete; **P3–P5 remain LOCKED** until [C2 Runtime Contract](../tasks/forms-platform-c2-runtime-contract.md) feat PASSes. Builder **must not invent field types**.
+7. P1 Field Catalog is closed; P2 Builder MVP is complete; **C3 Builder Runtime** is the editor of FormDefinition ([brief](../tasks/forms-platform-c3-builder-runtime.md)). Draft save is not publish. **P3 Publish UI / P4 Themes / P5 Analytics remain LOCKED.** Builder **must not invent field types**.
 
 ---
 
@@ -220,3 +220,4 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-08-13: Phase C C1 — Product Track seals Passport / Manifest / Public Contract / Adapter ids; P3–P5 remain locked.  
 - 2026-08-13: Phase C C2 sealed as next — identity + gates; Builder locked until C2 feat ([`../tasks/forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md)).
 - 2026-08-14: C2 runtime — Contract Identity on publication versions; JCS+SHA-256; Forms-owned compatibility tuples; fail-closed backfill.
+- 2026-08-14: C1+C2 merged; Product Track → [C3 Builder Runtime](../tasks/forms-platform-c3-builder-runtime.md); P3 Publish UI / P4 / P5 stay locked.

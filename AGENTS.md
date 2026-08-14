@@ -104,7 +104,7 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 Platform maturity (Foundation / Workspace / Automation / Complete):  
 [`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
 
-Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **Active slice** = [Forms Platform C1](docs/specs/tasks/forms-platform-c1-contract-seal.md). **Next** = [Forms Platform C2 Runtime Contract](docs/specs/tasks/forms-platform-c2-runtime-contract.md). Slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) ✅. Stage 5 settings and R6 are **not** this slice. Forms C2 ≠ Communication C2.4 (frozen).
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **Active slice** = [Forms Platform C3 Builder Runtime](docs/specs/tasks/forms-platform-c3-builder-runtime.md). C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) + C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) ✅. Stage 5 settings and R6 are **not** this slice. Forms C3 ≠ Communication C3.
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
 [`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
@@ -113,9 +113,9 @@ Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/s
 
 **A2 Platform Governance Review** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/platform-governance-review-a2.md`](docs/specs/gates/platform-governance-review-a2.md).
 
-**Active close-out:** [Forms Platform C1](docs/specs/tasks/forms-platform-c1-contract-seal.md) → [C2 Runtime Contract](docs/specs/tasks/forms-platform-c2-runtime-contract.md) → C3 Builder Runtime → C4 Form Runtime → C5 Form Execution → C6 Optimization → Entity Workspace → Documents → Billing → AI. Phase B Meta/slice 3–4 ✅ ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) · [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · [#238](https://github.com/igortatarynovich/HostFlow/pull/238)). Builder / C3 only after C2 feat PASSes.
+**Active close-out:** [Forms Platform C3 Builder Runtime](docs/specs/tasks/forms-platform-c3-builder-runtime.md) → C4 Form Runtime → C5 Form Execution → C6 Optimization → Entity Workspace → Documents → Billing → AI. C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) + C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) ✅. Phase B Meta/slice 3–4 ✅. C4 locked until C3 feat PASSes.
 
-**Locked:** Acquisition/Stage 3 (Phase B) ✅ → Forms Platform ← **active** (C1 then C2–C6) → Entity Workspace → Documents → Billing → AI.  
+**Locked:** Acquisition/Stage 3 (Phase B) ✅ → Forms Platform ← **active** (C3; C1–C2 ✅) → Entity Workspace → Documents → Billing → AI.  
 Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) — do not rewrite L0 Catalog without RFC.
 
 ## Documentation governance

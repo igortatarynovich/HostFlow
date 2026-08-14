@@ -41,7 +41,7 @@ Notes:
 - Communication Complete = [Epic C Complete Gate](../gates/epic-c-complete-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-03) → **Epic C — complete**.  
 - **A2 Platform Governance Review** = [PASS_WITH_CONSTRAINTS](../gates/platform-governance-review-a2.md) (2026-08-03). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
 - Acquisition Automation residual = Stage 5 settings / R6 deferred — **not** the active slice. Phase B Meta / slice 3–4 ✅ ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) · [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · [#238](https://github.com/igortatarynovich/HostFlow/pull/238)).  
-- Forms: Sprint 1–6 / Builder MVP exists ([module-scope](../../forms/module-scope.md)); **Phase C Forms Platform C1** ([brief](../tasks/forms-platform-c1-contract-seal.md)) ← **active** · **next** [C2 Runtime Contract](../tasks/forms-platform-c2-runtime-contract.md) — Foundation not marked ✅ until C2 gates hold.  
+- Forms: Sprint 1–6 / Builder MVP exists ([module-scope](../../forms/module-scope.md)); **Phase C C3 Builder Runtime** ([brief](../tasks/forms-platform-c3-builder-runtime.md)) ← **active** · C1–C2 ✅ — Foundation not marked ✅ until C3–C6 close.  
 - Documents Foundation in progress = platform lifecycle contracts still consolidating (roadmap Phase E).
 - Entity Workspace appears when Phase D starts (not a platform SoT yet).
 

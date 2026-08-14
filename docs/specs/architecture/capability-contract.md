@@ -71,9 +71,10 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 | Forms Sprint 4 | ✅ **COMPLETE** (PR #39 · `779cffd3`) |
 | Forms Sprint 5 | ✅ **COMPLETE** (PR #40 · `a6df02f0`) |
 | Forms Sprint 6 | ✅ **COMPLETE** (PR #41 · `7e259f22`) |
-| Forms Product Layer | P1 ✅ CLOSED · P2 MVP ✅ · P3–P5 **LOCKED** |
-| Forms Platform C1 | **ACTIVE** ([brief](../tasks/forms-platform-c1-contract-seal.md)); Builder must not invent field types |
-| Forms Platform C2 | **NEXT** ([brief](../tasks/forms-platform-c2-runtime-contract.md)); Builder / C3 locked until C2 feat PASS |
+| Forms Product Layer | P1 ✅ CLOSED · P2 MVP ✅ · C3 Builder Runtime **ACTIVE** · P3 Publish UI / P4 / P5 **LOCKED** |
+| Forms Platform C1 | ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) |
+| Forms Platform C2 | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
+| Forms Platform C3 | **ACTIVE** ([brief](../tasks/forms-platform-c3-builder-runtime.md)); draft save ≠ publish; Builder must not invent field types |
 
 Contract tests:
 
