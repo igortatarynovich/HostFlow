@@ -66,6 +66,8 @@ HTTP-запросы часто безопасны, а **фоновые джоб�
 
 Interactive Growth demo (per-tenant sample pack, no shared guest tenant in Wave-1): [`threat-models/interactive-demo.md`](threat-models/interactive-demo.md).
 
+Forms Platform C2 (frozen publication Contract Identity, authenticated resolve, submit pin): [`threat-models/forms-platform.md`](threat-models/forms-platform.md). Public intake tokens remain [`threat-models/public-links.md`](threat-models/public-links.md).
+
 ---
 
 ## 2. Классификация данных (Data Classification)
