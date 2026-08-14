@@ -30,9 +30,9 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — **ACTIVE**.
 
-**Next:** [Forms Platform C5 — Form Execution](../specs/tasks/forms-platform-c5-form-execution.md) ← **COMPLETE** ([#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248)). Next = [C6 Optimization](../specs/tasks/forms-platform-c6-optimization.md) ← **active** (feat; Foundation close). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is a **platform capability** (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
+**Next:** [Forms Platform C6 — Optimization](../specs/tasks/forms-platform-c6-optimization.md) ← **COMPLETE** ([#249](https://github.com/igortatarynovich/HostFlow/pull/249)/[#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Forms **Foundation ✅**. Product Track → [Entity Workspace D1](../specs/tasks/entity-workspace-d1-contract-seal.md). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is a **platform capability** (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
 
-**Rule:** P1 Foundation **CLOSED**; Catalog v1 **FROZEN**. **Builder MVP COMPLETE** (P2.1–P2.5). C3 ✅ = editor of FormDefinition (draft save ≠ publish). C4 ✅ = **Runtime Model** from frozen publication (not an Engine). C5 ✅ = Execution against Runtime Model. C6 = Foundation Optimization (production serve→execute). P3 Publish UI / P4 Themes / P5 Analytics **LOCKED**.  
+**Rule:** P1 Foundation **CLOSED**; Catalog v1 **FROZEN**. **Builder MVP COMPLETE** (P2.1–P2.5). C3 ✅ = editor of FormDefinition (draft save ≠ publish). C4 ✅ = **Runtime Model** from frozen publication (not an Engine). C5 ✅ = Execution against Runtime Model. C6 ✅ = Foundation Optimization (production serve→execute). P3 Publish UI / P4 Themes / P5 Analytics **LOCKED**.  
 **Matrix:** [`Intake Canonical Input Matrix`](../specs/architecture/intake-canonical-input-matrix.md) **ACCEPTED / FROZEN** · epic [`COMPLETE`](../specs/tasks/intake-canonical-input-matrix.md).  
 **Runtime:** [`Intake Runtime Split V1`](../specs/tasks/intake-runtime-split-v1.md) (**ACTIVE** · R1+R2 ✅ · R3) — Flights / Intake Routing runtime **UNLOCKED**.  
 **Communications:** [`Intake Domain Separation & Communication Context V1`](../specs/tasks/intake-domain-separation-communication-context-v1.md) (**READY**) · Stage 1 audit [`ACTIVE`](../specs/architecture/intake-communication-context-audit-v1.md).  
@@ -56,6 +56,7 @@ Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs
 - 2026-07-19: P2.3 Commands COMPLETE; P2.4 Persistence READY.  
 - 2026-07-19: P2.4 Persistence COMPLETE; P2.5 UI READY.  
 - 2026-07-19: P2.5 Builder UI COMPLETE — MVP closed; next Flights / Intake Routing.  
+- 2026-08-14: C6 ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249)/[#250](https://github.com/igortatarynovich/HostFlow/pull/250); Forms Foundation ✅; Product Track → [Entity Workspace D1](../specs/tasks/entity-workspace-d1-contract-seal.md).
 - 2026-08-14: C4 ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246); C5 ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248); Product Track → [C6 Optimization](../specs/tasks/forms-platform-c6-optimization.md) (brief; feat locked).
 - 2026-08-14: C4 brief [#245](https://github.com/igortatarynovich/HostFlow/pull/245); feat = Runtime Model.
 - 2026-08-14: C3 ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244); Product Track → [C4 Form Runtime](../specs/tasks/forms-platform-c4-form-runtime.md) (brief; feat locked).

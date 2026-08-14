@@ -1,8 +1,8 @@
 # Forms Platform C6 — Optimization
 
-**Status:** **IN PROGRESS** (feat — production resolve → serve → execute + named gate; Forms Foundation close)  
+**Status:** **COMPLETE** ([#250](https://github.com/igortatarynovich/HostFlow/pull/250) · `e81e2a08` · merge `9933a835`)  
 **Branch (docs):** `docs/forms-platform-c6-optimization` ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249)  
-**Branch (code):** `feat/forms-platform-c6-optimization`  
+**Branch (code):** `feat/forms-platform-c6-optimization` ✅ [#250](https://github.com/igortatarynovich/HostFlow/pull/250)  
 **Parents:** [C5 Form Execution](forms-platform-c5-form-execution.md) ✅ · [C4 Form Runtime](forms-platform-c4-form-runtime.md) ✅ · [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) · [C2 runtime contract](forms-platform-c2-runtime-contract.md) · [C1 contract seal](forms-platform-c1-contract-seal.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md) · [Platform Capability Maturity](../architecture/platform-capability-maturity.md)
 
 > C6 **closes Forms Foundation**.  
@@ -136,7 +136,7 @@ Named step: **Forms Platform C6 Optimization Gate**
 | Analytics | P5 — locked |
 | FormTemplate SoT / `TenantLeadForm` bridge removal | Later |
 | Accept ADR-022 | Later |
-| Entity Workspace Phase D | After Phase C |
+| Entity Workspace Phase D | [D1 contract seal](entity-workspace-d1-contract-seal.md) ← Product Track |
 | Stage 5 settings / R6 | Unchanged |
 
 Do **not** mix Themes, Publish UI, Builder product, Analytics, Stage 5, or R6 into C6.
@@ -152,7 +152,7 @@ Do **not** mix Themes, Publish UI, Builder product, Analytics, Stage 5, or R6 in
 | **C3** | Builder Runtime | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243) / [#244](https://github.com/igortatarynovich/HostFlow/pull/244) |
 | **C4** | Form Runtime | ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245) / [#246](https://github.com/igortatarynovich/HostFlow/pull/246) · `4427b110` |
 | **C5** | Form Execution | ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247) / [#248](https://github.com/igortatarynovich/HostFlow/pull/248) · `f6bbe03f` · PASS-ready `c24bdc18` |
-| **C6** | Optimization (this) | **active** (feat) |
+| **C6** | Optimization (this) | ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249)/[#250](https://github.com/igortatarynovich/HostFlow/pull/250) · `e81e2a08` |
 
 ---
 
@@ -204,3 +204,4 @@ Feat DoD: named Forms Platform C6 Optimization Gate green; production HostFlow F
 
 - 2026-08-14: C5 Form Execution merged [#248](https://github.com/igortatarynovich/HostFlow/pull/248) (`f6bbe03f`, PASS-ready `c24bdc18`). C6 Optimization brief opened (docs). Feat locked until this brief merges. Not P3 Publish UI / P4 Themes / P5 Analytics / second Forms submit engine / Acquisition Stage 5.
 - 2026-08-14: C6 brief merged [#249](https://github.com/igortatarynovich/HostFlow/pull/249) (`28714fd7`). Feat opens: production Shared Intake → resolve→serve→execute; named C6 gate; Forms Foundation ✅. P3 / P4 / P5 stay locked.
+- 2026-08-14: C6 feat merged [#250](https://github.com/igortatarynovich/HostFlow/pull/250) (`e81e2a08` / merge `9933a835`). Forms Foundation ✅. Product Track → [Entity Workspace D1](entity-workspace-d1-contract-seal.md).

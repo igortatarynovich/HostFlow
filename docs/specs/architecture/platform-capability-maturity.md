@@ -30,6 +30,7 @@ Legend: ✅ done · 🔄 in progress · ⏳ not started
 | **Communication** | ✅ | ✅ (C1) | ✅ (C2.1–C2.3; C2.4 frozen) | ✅ `PASS_WITH_CONSTRAINTS` |
 | **Acquisition** | ✅ | ✅ | 🔄 residual | ⏳ |
 | **Forms** | ✅ Phase C C1–C6 | ⏳ | ⏳ | ⏳ |
+| **Entity Workspace** | 🔄 Phase D D1 | ⏳ | ⏳ | ⏳ |
 | **Documents** | 🔄 | ⏳ | ⏳ | ⏳ |
 | **Billing** | ⏳ | ⏳ | ⏳ | ⏳ |
 
@@ -41,11 +42,11 @@ Notes:
 - Communication Complete = [Epic C Complete Gate](../gates/epic-c-complete-gate.md) **PASS_WITH_CONSTRAINTS** (2026-08-03) → **Epic C — complete**.  
 - **A2 Platform Governance Review** = [PASS_WITH_CONSTRAINTS](../gates/platform-governance-review-a2.md) (2026-08-03). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
 - Acquisition Automation residual = Stage 5 settings / R6 deferred — **not** the active slice. Phase B Meta / slice 3–4 ✅ ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) · [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · [#238](https://github.com/igortatarynovich/HostFlow/pull/238)).  
-- Forms: Sprint 1–6 / Builder MVP exists ([module-scope](../../forms/module-scope.md)); **Phase C C6 Optimization** ([brief](../tasks/forms-platform-c6-optimization.md)) ← **active** (feat) · C1–C5 ✅ — **Foundation ✅** when this feat merges (production serve→execute bound).  
+- Forms: Sprint 1–6 / Builder MVP + Phase C C1–C6 ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) — **Foundation ✅** (production serve→execute bound). P3–P5 stay locked.  
+- **Entity Workspace:** Phase D **active** ([D1 contract seal](../tasks/entity-workspace-d1-contract-seal.md)). PX / kit chrome exists (`components/ui/EntityWorkspace`); Universal composition SoT not sealed yet ([A2-F7](../gates/platform-governance-review-a2.md)). Foundation 🔄 until D ladder closes composition contracts.  
 - Documents Foundation in progress = platform lifecycle contracts still consolidating (roadmap Phase E).
-- Entity Workspace appears when Phase D starts (not a platform SoT yet).
 
-Entity Workspace and AI are sequenced later on the roadmap; they appear in the matrix when they become platform SoTs under active delivery.
+AI remains sequenced later; it appears in the matrix when it becomes a platform SoT under active delivery.
 
 ---
 
