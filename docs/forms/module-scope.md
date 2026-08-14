@@ -30,7 +30,7 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — **ACTIVE**.
 
-**Next:** [Forms Platform C5 — Form Execution](../specs/tasks/forms-platform-c5-form-execution.md) ← **active** (Product Track; brief; feat locked). C1–C4 ✅ ([#246](https://github.com/igortatarynovich/HostFlow/pull/246)). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is a **platform capability** (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
+**Next:** [Forms Platform C5 — Form Execution](../specs/tasks/forms-platform-c5-form-execution.md) ← **active** (Product Track; feat). C1–C4 ✅ ([#246](https://github.com/igortatarynovich/HostFlow/pull/246)). Brief [#247](https://github.com/igortatarynovich/HostFlow/pull/247). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is a **platform capability** (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
 
 **Rule:** P1 Foundation **CLOSED**; Catalog v1 **FROZEN**. **Builder MVP COMPLETE** (P2.1–P2.5). C3 ✅ = editor of FormDefinition (draft save ≠ publish). C4 ✅ = **Runtime Model** from frozen publication (not an Engine). C5 = Runtime Model → Validation → Submission → Persistence. P3 Publish UI / P4 Themes / P5 Analytics **LOCKED**.  
 **Matrix:** [`Intake Canonical Input Matrix`](../specs/architecture/intake-canonical-input-matrix.md) **ACCEPTED / FROZEN** · epic [`COMPLETE`](../specs/tasks/intake-canonical-input-matrix.md).  
@@ -56,7 +56,7 @@ Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs
 - 2026-07-19: P2.3 Commands COMPLETE; P2.4 Persistence READY.  
 - 2026-07-19: P2.4 Persistence COMPLETE; P2.5 UI READY.  
 - 2026-07-19: P2.5 Builder UI COMPLETE — MVP closed; next Flights / Intake Routing.  
-- 2026-08-14: C4 ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246); Product Track → [C5 Form Execution](../specs/tasks/forms-platform-c5-form-execution.md) (brief; feat locked).
+- 2026-08-14: C4 ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246); Product Track → [C5 Form Execution](../specs/tasks/forms-platform-c5-form-execution.md) (feat; brief [#247](https://github.com/igortatarynovich/HostFlow/pull/247)).
 - 2026-08-14: C4 brief [#245](https://github.com/igortatarynovich/HostFlow/pull/245); feat = Runtime Model.
 - 2026-08-14: C3 ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244); Product Track → [C4 Form Runtime](../specs/tasks/forms-platform-c4-form-runtime.md) (brief; feat locked).
 - 2026-08-14: C1+C2 merged; Product Track → [C3 Builder Runtime](../specs/tasks/forms-platform-c3-builder-runtime.md).  
