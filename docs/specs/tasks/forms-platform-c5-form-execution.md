@@ -1,8 +1,9 @@
 # Forms Platform C5 — Form Execution
 
-**Status:** **IN PROGRESS** (feat — Runtime Model → Validation → Submission → Persistence + named gate)  
+**Status:** **COMPLETE** ([#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248) · `f6bbe03f` · PASS-ready `c24bdc18`)  
+**Next:** [C6 Optimization](forms-platform-c6-optimization.md)  
 **Branch (docs):** `docs/forms-platform-c5-form-execution` ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)  
-**Branch (code):** `feat/forms-platform-c5-form-execution`  
+**Branch (code):** `feat/forms-platform-c5-form-execution` ✅ [#248](https://github.com/igortatarynovich/HostFlow/pull/248)  
 **Parents:** [C4 Form Runtime](forms-platform-c4-form-runtime.md) ✅ · [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) · [C2 runtime contract](forms-platform-c2-runtime-contract.md) · [C1 contract seal](forms-platform-c1-contract-seal.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md)
 
 > C5 **executes against** frozen **Runtime Model** only.  
@@ -196,8 +197,8 @@ Do **not** mix Themes, Publish UI, Builder, Analytics, Stage 5, or R6 into C5.
 | **C2** | Runtime contract + gates | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241) / [#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
 | **C3** | Builder Runtime | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243) / [#244](https://github.com/igortatarynovich/HostFlow/pull/244) · `638955d5` |
 | **C4** | Form Runtime | ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245) / [#246](https://github.com/igortatarynovich/HostFlow/pull/246) · `4427b110` |
-| **C5** | Form Execution (this) | **active** (feat) |
-| **C6** | Optimization | After C5 |
+| **C5** | Form Execution (this) | ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248) · `f6bbe03f` |
+| **C6** | Optimization | [brief](forms-platform-c6-optimization.md) ← next |
 
 ---
 
@@ -247,3 +248,4 @@ Feat DoD: named Form Execution Gate green; Execution does not import Builder; va
 
 - 2026-08-14: C4 Form Runtime merged [#246](https://github.com/igortatarynovich/HostFlow/pull/246) (`4427b110`, PASS-ready `626e5a9d`). C5 Form Execution brief opened (docs). Feat locked until this brief merges. Not P3 Publish UI / P4 Themes / P5 Analytics / second Forms submit engine.
 - 2026-08-14: C5 brief merged [#247](https://github.com/igortatarynovich/HostFlow/pull/247) (`0b39baa1`). Feat opens: Execution package + named Form Execution Gate; Shared Intake write path unchanged; P3 / P4 / P5 stay locked.
+- 2026-08-14: C5 feat merged [#248](https://github.com/igortatarynovich/HostFlow/pull/248) (`f6bbe03f`; PASS-ready `c24bdc18`). Named C5 gate SUCCESS. Next = [C6 Optimization](forms-platform-c6-optimization.md).

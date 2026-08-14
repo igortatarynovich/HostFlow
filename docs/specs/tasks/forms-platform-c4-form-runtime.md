@@ -1,7 +1,7 @@
 # Forms Platform C4 — Form Runtime
 
 **Status:** **COMPLETE** ([#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) · `4427b110`)  
-**Next:** [C5 Form Execution](forms-platform-c5-form-execution.md)  
+**Next:** [C5 Form Execution](forms-platform-c5-form-execution.md) ✅ · [C6 Optimization](forms-platform-c6-optimization.md) ← active  
 **Branch (docs):** `docs/forms-platform-c4-form-runtime` ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)  
 **Branch (code):** `feat/forms-platform-c4-form-runtime` ✅ [#246](https://github.com/igortatarynovich/HostFlow/pull/246)  
 **Parents:** [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ · [C2 runtime contract](forms-platform-c2-runtime-contract.md) · [C1 contract seal](forms-platform-c1-contract-seal.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md)
