@@ -22,6 +22,6 @@
 | [acquisition-marketing-sources.md](./acquisition-marketing-sources.md) | C-3 Marketing Sources: read-only inventory GET, tenant isolation, no write/reprocess side effects |
 | [acquisition-source-diagnostics.md](./acquisition-source-diagnostics.md) | Source Diagnostics PR1–PR9: read-only Lead + Activity casework, filters, duplicate, Mapping Health, drift alerts/summary, export, Replay via Leads process; SPA-only drift notify |
 | [rbac-trust-roles.md](./rbac-trust-roles.md) | ADR-036 four trust roles: ceilings, matrix PATCH, `access_context`, legacy job-title/portal aliases, inventory lint |
-| [forms-platform.md](./forms-platform.md) | Forms Platform C2: frozen publication identity, tenant resolve, submit pin, no draft-as-publication, fail-closed backfill |
+| [forms-platform.md](./forms-platform.md) | Forms Platform C2+C3: frozen publication identity; Builder FormDefinition ↔ Draft only; no draft-as-publication; no Builder publish |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).
