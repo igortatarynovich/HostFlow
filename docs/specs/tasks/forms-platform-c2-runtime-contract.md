@@ -1,12 +1,12 @@
 # Forms Platform C2 — Runtime Contract & Gates
 
 **Status:** **COMPLETE** (C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) · C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242))  
-**Next:** [C3 Builder Runtime](forms-platform-c3-builder-runtime.md)  
+**Next:** [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ · [C4 Form Runtime](forms-platform-c4-form-runtime.md)  
 **Parents:** [C1 contract seal](forms-platform-c1-contract-seal.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md) · [Manifest](../architecture/capability-settings-manifest.md#forms)
 
 > A **publication version** must not exist outside its contract.  
 > C2 is runtime contract verification — not Builder, not authoring UX.  
-> Builder (C3) opened after these gates held — [C3 brief](forms-platform-c3-builder-runtime.md).
+> Builder (C3) ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244). Form Runtime (C4) — [brief](forms-platform-c4-form-runtime.md).
 
 **Naming (do not collapse):** this **Forms Platform C2** is not Communication Epic C2 / C2.4 Scheduling (frozen). Historical Forms “C4 HTTP resolve” (`test_forms_platform_c4.py`) is Sprint-era Stable HTTP — not Phase C **C4 Form Runtime**.
 
@@ -227,8 +227,8 @@ After C2 PASS:
 
 | Deferred | Owner |
 |----------|--------|
-| C3 Builder Runtime (editor of FormDefinition) | After C2 feat PASS |
-| C4 Form Runtime / C5 Form Execution / C6 Optimization | After C3 |
+| C3 Builder Runtime (editor of FormDefinition) | ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244) |
+| C4 Form Runtime / C5 Form Execution / C6 Optimization | [C4 brief](forms-platform-c4-form-runtime.md) |
 | Stage 5 settings / enable-disable | ADR-005 / ADR-035 — not Forms |
 | R6 table-cutover | [intake-runtime-split-v1.md](intake-runtime-split-v1.md) |
 | FormTemplate SoT (replace `TenantLeadForm`) | Later Phase C (not C2) |
