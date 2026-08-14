@@ -30,7 +30,7 @@ Legend: ✅ done · 🔄 in progress · ⏳ not started
 | **Communication** | ✅ | ✅ (C1) | ✅ (C2.1–C2.3; C2.4 frozen) | ✅ `PASS_WITH_CONSTRAINTS` |
 | **Acquisition** | ✅ | ✅ | 🔄 residual | ⏳ |
 | **Forms** | ✅ Phase C C1–C6 | ⏳ | ⏳ | ⏳ |
-| **Entity Workspace** | 🔄 Phase D D1 | ⏳ | ⏳ | ⏳ |
+| **Entity Workspace** | 🔄 Phase D D2 | ⏳ | ⏳ | ⏳ |
 | **Documents** | 🔄 | ⏳ | ⏳ | ⏳ |
 | **Billing** | ⏳ | ⏳ | ⏳ | ⏳ |
 
@@ -43,7 +43,7 @@ Notes:
 - **A2 Platform Governance Review** = [PASS_WITH_CONSTRAINTS](../gates/platform-governance-review-a2.md) (2026-08-03). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
 - Acquisition Automation residual = Stage 5 settings / R6 deferred — **not** the active slice. Phase B Meta / slice 3–4 ✅ ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) · [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · [#238](https://github.com/igortatarynovich/HostFlow/pull/238)).  
 - Forms: Sprint 1–6 / Builder MVP + Phase C C1–C6 ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) — **Foundation ✅** (production serve→execute bound). P3–P5 stay locked.  
-- **Entity Workspace:** Phase D D1 ✅ ([contract seal](../tasks/entity-workspace-d1-contract-seal.md)). Shell adapter on tip; public chrome SoT path = `components/ui/EntityWorkspace`; Universal composition SoT not sealed yet ([A2-F7](../gates/platform-governance-review-a2.md)). Foundation 🔄 until D ladder closes composition contracts.  
+- **Entity Workspace:** Phase D D2 **active** ([composition contract](../tasks/entity-workspace-d2-composition-contract.md)); D1 ✅ ([#252](https://github.com/igortatarynovich/HostFlow/pull/252)). Shell adapter on tip; chrome SoT path reserved; slot catalog sealed in D2 brief; Universal runtime not yet. Foundation 🔄 ([A2-F7](../gates/platform-governance-review-a2.md)).  
 - Documents Foundation in progress = platform lifecycle contracts still consolidating (roadmap Phase E).
 
 AI remains sequenced later; it appears in the matrix when it becomes a platform SoT under active delivery.

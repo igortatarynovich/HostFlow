@@ -1,8 +1,9 @@
 # Entity Workspace D1 — Contract Seal (Phase D)
 
-**Status:** **COMPLETE** ([#251](https://github.com/igortatarynovich/HostFlow/pull/251) · feat `feat/entity-workspace-d1-contract-seal`)  
+**Status:** **COMPLETE** ([#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) · `3375adf1` · merge `f0572257`)  
+**Next:** [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ← active (docs; feat locked)  
 **Branch (docs):** `docs/entity-workspace-phase-d-contract-seal` ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)  
-**Branch (code):** `feat/entity-workspace-d1-contract-seal`  
+**Branch (code):** `feat/entity-workspace-d1-contract-seal` ✅ [#252](https://github.com/igortatarynovich/HostFlow/pull/252)  
 **Parents:** [Forms Platform C6 Optimization](forms-platform-c6-optimization.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010 Unified Resource List Shell](../architecture/ADR-010-unified-resource-list-shell.md) · [A2 gate A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md)
 
 > Phase C Forms **Foundation** closed via C6 ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)).  
@@ -72,8 +73,8 @@ D1 **must not**:
 
 | Slice | Focus | Status |
 |-------|--------|--------|
-| **D1** | Contract seal (ownership / boundary / PX ≠ Phase D) | ✅ COMPLETE |
-| **D2** | Composition contract (platform slots on one entity) | locked until D2 brief |
+| **D1** | Contract seal (ownership / boundary / PX ≠ Phase D) | ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) |
+| **D2** | Composition contract (platform slots on one entity) | ← active ([brief](entity-workspace-d2-composition-contract.md)) |
 | **D3+** | Consumer cutover / enforcement gates | locked |
 
 ---
@@ -150,3 +151,4 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 - 2026-08-14: Forms C6 Optimization merged [#250](https://github.com/igortatarynovich/HostFlow/pull/250) (`e81e2a08` / merge `9933a835`). Forms Foundation ✅. Product Track → Entity Workspace D1 contract seal (brief). Feat locked.
 - 2026-08-14: D1 brief merged [#251](https://github.com/igortatarynovich/HostFlow/pull/251) (`658c63b0`). Feat: named Contract Seal Gate; ownership / Shell-adapter / SoT-path / no Passport.
+- 2026-08-14: D1 feat merged [#252](https://github.com/igortatarynovich/HostFlow/pull/252) (`3375adf1` / merge `f0572257`). Product Track → [D2 Composition Contract](entity-workspace-d2-composition-contract.md).

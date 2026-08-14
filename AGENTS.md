@@ -104,7 +104,7 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 Platform maturity (Foundation / Workspace / Automation / Complete):  
 [`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
 
-Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **Active slice** = [Entity Workspace D1 — Contract Seal](docs/specs/tasks/entity-workspace-d1-contract-seal.md) ✅ (feat). Next = D2 composition brief (locked). Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Stage 5 settings, R6, Forms P3–P5, and Documents Phase E are **not** this slice.
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **Active slice** = [Entity Workspace D2 — Composition Contract](docs/specs/tasks/entity-workspace-d2-composition-contract.md) (docs; feat locked). D1 ✅ ([#252](https://github.com/igortatarynovich/HostFlow/pull/252)). Forms Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Stage 5 settings, R6, Forms P3–P5, and Documents Phase E are **not** this slice.
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
 [`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
@@ -113,10 +113,10 @@ Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/s
 
 **A2 Platform Governance Review** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/platform-governance-review-a2.md`](docs/specs/gates/platform-governance-review-a2.md).
 
-**Active close-out:** [Entity Workspace D1 — Contract Seal](docs/specs/tasks/entity-workspace-d1-contract-seal.md) ✅ → open D2 composition brief → Documents → Billing → AI. Forms Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Phase B Meta/slice 3–4 ✅. Forms P3 Publish UI / P4 Themes / P5 Analytics stay locked. Shell adapter / chrome SoT path ≠ Phase D Universal complete.
+**Active close-out:** [Entity Workspace D2 — Composition Contract](docs/specs/tasks/entity-workspace-d2-composition-contract.md) (docs; feat locked) → D3+ cutover → Documents → Billing → AI. D1 ✅ ([#252](https://github.com/igortatarynovich/HostFlow/pull/252)). Forms Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Forms P3–P5 stay locked. Shell/chrome ≠ Universal; Documents slot reserved empty until Phase E.
 
-**Locked:** Acquisition/Stage 3 (Phase B) ✅ → Forms Platform ✅ (C1–C6 / Foundation) → Entity Workspace ← **active** (D1 ✅; D2 brief locked) → Documents → Billing → AI.  
-Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) — do not rewrite L0 Catalog without RFC. D1 does not mint Entity Catalog Passport.
+**Locked:** Acquisition/Stage 3 (Phase B) ✅ → Forms Platform ✅ → Entity Workspace ← **active** (D2; D1 ✅) → Documents → Billing → AI.  
+Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) — do not rewrite L0 Catalog without RFC. D2 does not mint Entity Catalog Passport.
 
 ## Documentation governance
 
