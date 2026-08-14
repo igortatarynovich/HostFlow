@@ -1,6 +1,6 @@
 # Stage 3 slice 4 — hard module separation
 
-**Status:** **IN PROGRESS** (docs — this brief)  
+**Status:** **DONE** ([#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged 2026-08-13)  
 **Branch (docs):** `docs/stage-3-slice-4-hard-module-separation`  
 **Branch (code):** `feat/stage-3-slice-4-hard-module-separation` (after this brief merges)  
 **Parents:** [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase B](../architecture/platform-completion-roadmap.md) · [ADR-023](../architecture/ADR-023-recruitment-sales-module-separation.md) · [UI Constitution](../architecture/ui-constitution-v1.md) · [Intake Runtime Split](intake-runtime-split-v1.md) · Stage 3 [slice 3](stage-3-sales-inquiry-product-flow.md) ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224)

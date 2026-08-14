@@ -30,7 +30,7 @@ Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints;
 
 Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — **ACTIVE**.
 
-**Next:** [`Forms Product Layer`](../specs/tasks/forms-product-layer-epic.md) (**ACTIVE**) — P1 [`Field Catalog`](../specs/tasks/forms-product-p1-field-catalog.md) as **P1.1 Registry → P1.2 Descriptors → P1.3 Standard library → P1.4 Extension API** → P2 Builder (Catalog client) → P3 Publish UI → P4 Themes → P5 Analytics.
+**Next:** [Forms Platform C1 — contract seal](../specs/tasks/forms-platform-c1-contract-seal.md) ← **active** (Product Track). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**.
 
 **Rule:** P1 Foundation **CLOSED**; Catalog v1 **FROZEN**. **Builder MVP COMPLETE** (P2.1–P2.5). P3 Publish UI / P4 Themes / P5 Analytics **LOCKED**.  
 **Matrix:** [`Intake Canonical Input Matrix`](../specs/architecture/intake-canonical-input-matrix.md) **ACCEPTED / FROZEN** · epic [`COMPLETE`](../specs/tasks/intake-canonical-input-matrix.md).  
@@ -56,6 +56,7 @@ Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs
 - 2026-07-19: P2.3 Commands COMPLETE; P2.4 Persistence READY.  
 - 2026-07-19: P2.4 Persistence COMPLETE; P2.5 UI READY.  
 - 2026-07-19: P2.5 Builder UI COMPLETE — MVP closed; next Flights / Intake Routing.  
+- 2026-08-13: Product Track → [Forms Platform C1](../specs/tasks/forms-platform-c1-contract-seal.md); P3–P5 remain LOCKED.  
 - 2026-07-19: Intake Canonical Input Matrix epic ACTIVE; matrix READY (docs-only gate).  
 - 2026-07-19: Matrix ACCEPTED / FROZEN; Runtime Split V1 READY; Flights / Intake Routing runtime UNLOCKED.  
 - 2026-07-19: Runtime Split R1+R2 merged; R3 handlers + Communication Context epic / Stage 1 audit opened.
