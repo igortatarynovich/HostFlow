@@ -4,7 +4,7 @@ Public contract: forms.public_contract.v1
 Ops: resolve · publish · activate · deactivate · endpoint · submission · result
 
 Sprint 2: immutable published snapshot, activation, typed errors, version pin.
-Does not own routing, Outcome, or KPI. Builder remains locked.
+Does not own routing, Outcome, or KPI. P3–P5 remain locked (Phase C).
 """
 
 from __future__ import annotations

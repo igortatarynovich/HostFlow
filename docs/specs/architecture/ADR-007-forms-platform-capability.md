@@ -77,14 +77,14 @@ Lead, Candidate, Employee, Client, Service Order, Fleet records, Document, Billi
 - **Forms Sprint 1–6:** ✅ **COMPLETE** — L0 backend platform contour ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md)).  
 - **Forms Product Layer:** **ACTIVE** ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md) · `29f4057f`) — P1 Field Catalog as **component registry** ([`../tasks/forms-product-p1-field-catalog.md`](../tasks/forms-product-p1-field-catalog.md)).  
 - **Architectural rule:** **Field Catalog is SoT** for components (id/version/config/validation/normalization/storage/render). **Builder must not invent field types** — only compose Catalog blocks.  
-- **Forms Builder:** **LOCKED** until Product Layer P1 DoD.  
+- **Forms Builder P3–P5:** **LOCKED** until Phase C contracts sealed ([C1](../tasks/forms-platform-c1-contract-seal.md)). P1 Catalog ✅; P2 MVP ✅. Builder must not invent field types.  
 - Forms compose Acquisition Endpoint/Submission/Result — не копируют Outcome/KPI.
 
 ## Platform epic (roadmap)
 
 **Done (Sprint 1–6):** Endpoint Engine (HostFlow Form publish); Version ledger; Schema/validation/normalization; Immutable submission envelope; Shared Intake handoff; Audit.
 
-**Open — Product Layer:** Field Catalog → Builder → Publish UI → Themes → Analytics ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md)).
+**Open — Phase C:** [C1 contract seal](../tasks/forms-platform-c1-contract-seal.md). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**.
 
 Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Automations / Documents / Universal Entity integration.
 
