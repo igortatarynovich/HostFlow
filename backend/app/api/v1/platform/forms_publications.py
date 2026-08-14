@@ -11,8 +11,9 @@ from pydantic import BaseModel, Field
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_PROFILE_READ_ROLES
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.forms_platform.adapter import resolve_publication
+from backend.app.forms_platform.errors import FormsAdapterError, FormsNotFoundError
 from backend.app.forms_platform.handlers import list_registered_handlers
-from backend.app.forms_platform.publication_bridge import resolve_forms_platform_publication
 
 router = APIRouter(
     prefix="/platform/forms",
@@ -55,6 +56,10 @@ class FormPublicationOut(BaseModel):
     submission_handler: SubmissionHandlerOut
     capabilities: dict[str, bool] = Field(default_factory=dict)
     canon: Optional[str] = None
+    contract_identity: Optional[dict[str, Any]] = None
+    routing_status: Optional[str] = None
+    routing_reason: Optional[str] = None
+    route_intent: Optional[str] = None
 
 
 class FormHandlersOut(BaseModel):
@@ -83,6 +88,7 @@ async def list_forms_platform_handlers(
 async def resolve_form_publication(
     public_slug: Optional[str] = Query(default=None, min_length=2, max_length=64),
     form_id: Optional[str] = Query(default=None, min_length=1, max_length=36),
+    version: Optional[int] = Query(default=None, ge=1),
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: tuple = Depends(get_db_with_tenant),
 ) -> FormPublicationOut:
@@ -92,12 +98,16 @@ async def resolve_form_publication(
     if not public_slug and not form_id:
         raise HTTPException(status_code=422, detail="public_slug or form_id is required")
 
-    publication: dict[str, Any] | None = await resolve_forms_platform_publication(
-        db,
-        tenant_id=tenant_id,
-        public_slug=public_slug,
-        form_id=form_id,
-    )
-    if publication is None:
-        raise HTTPException(status_code=404, detail="Form publication not found")
+    try:
+        publication = await resolve_publication(
+            db,
+            tenant_id=tenant_id,
+            public_slug=public_slug,
+            form_id=form_id,
+            version=version,
+        )
+    except FormsNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.to_dict()) from exc
+    except FormsAdapterError as exc:
+        raise HTTPException(status_code=exc.http_status, detail=exc.to_dict()) from exc
     return FormPublicationOut.model_validate(publication)

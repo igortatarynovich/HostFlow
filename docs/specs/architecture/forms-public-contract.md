@@ -155,7 +155,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 | Catalog v1 freeze | [`forms-field-catalog-v1-freeze.md`](forms-field-catalog-v1-freeze.md) |
 | Compose Acquisition | binding · routing · attribution (unchanged ownership) |
 
-HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/v1/platform/forms/handlers`.
+HTTP read surface: `GET /api/v1/platform/forms/publications/resolve` (`form_id` XOR `public_slug`, optional `version`) · `GET /api/v1/platform/forms/handlers`. Resolve goes through Adapter (`resolve_publication`) so frozen publication versions include `contract_identity`.
 
 ---
 

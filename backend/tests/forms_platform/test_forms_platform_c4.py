@@ -103,6 +103,15 @@ async def test_c4_publication_resolve_api(client: AsyncClient, tenant_id: str) -
     assert body["public_slug"] == slug
     assert body["entity_profile_code"] == WAREHOUSE_WORKER_PROFILE_CODE
     assert body["submission_handler"]["handler_id"] == DISPATCHER_CANDIDATE_APPLICATION
+    # Draft / unfrozen pointer has no Contract Identity (C2: identity is on publication versions).
+    assert body.get("contract_identity") is None
+
+    missing_version = await client.get(
+        "/api/v1/platform/forms/publications/resolve",
+        headers=headers,
+        params={"form_id": form_id, "version": 99},
+    )
+    assert missing_version.status_code == 404
 
     by_slug = await client.get(
         "/api/v1/platform/forms/publications/resolve",
