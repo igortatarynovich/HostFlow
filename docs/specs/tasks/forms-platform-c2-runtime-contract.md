@@ -1,7 +1,7 @@
 # Forms Platform C2 — Runtime Contract & Gates
 
 **Status:** **COMPLETE** (C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) · C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242))  
-**Next:** [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ · [C4 Form Runtime](forms-platform-c4-form-runtime.md)  
+**Next:** [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) ✅ · [C4 Form Runtime](forms-platform-c4-form-runtime.md) ← active (feat)  
 **Parents:** [C1 contract seal](forms-platform-c1-contract-seal.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md) · [Manifest](../architecture/capability-settings-manifest.md#forms)
 
 > A **publication version** must not exist outside its contract.  

@@ -78,10 +78,13 @@ Runtime serves **frozen `FormPublicationVersion`** only. It consumes Adapter `re
 | `forms_schema_hash_mismatch` | 409 | `schema_hash` ≠ canonical SHA-256 of frozen `field_schema` |
 | `forms_publication_version_immutable` | 409 | Attempt to rewrite schema/identity on an existing ledger row |
 | `forms_contract_identity_unreconstructable` | 422 | Legacy snapshot cannot prove identity (fail-closed; no `legacy` accept) |
+| `forms_runtime_not_publication` | 422 | Form Runtime given a draft / authoring payload instead of a frozen publication |
 
 ### Inputs / outputs (summary)
 
 **`resolve`** — In: `tenant_id` + `form_id` XOR `public_slug`; optional `require_active`; optional `version` (specific ledger row). Out: publication DTO including `published_version`, `lifecycle_status`, `consent_pin`, `has_immutable_snapshot`, and `contract_identity` when a frozen publication version exists. Draft without a ledger row has no frozen identity.
+
+**Form Runtime (`serve`)** — In: Adapter `resolve` DTO only. Out: **Runtime Model** (`forms.runtime.model.v1`). Read-only. Does not look up publications, import Builder, publish, or submit. Not a new Adapter op.
 
 **`publish` (`commit_publish`)** — In: `tenant_id`, `form_id`, optional consent versions, optional `field_schema` / `fields` / `presentation_runtime`. Out: publication DTO at **new** version with frozen `field_schema` + Contract Identity. Does **not** edit prior snapshot in place. Missing schema freezes an empty `forms.field_schema.v1` so identity is always complete.
 
@@ -112,7 +115,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 4. First entry uses Universal Routing once; continuation inherits attribution (ADR-024).  
 5. Forms **never** owns Campaign / Flight / Outcome / KPI tables.  
 6. Consumers call **Adapter** ops only.  
-7. P1 Field Catalog is closed; P2 Builder MVP is complete; **C3 Builder Runtime** is the editor of FormDefinition ([brief](../tasks/forms-platform-c3-builder-runtime.md)). Draft save is not publish. **C4 Form Runtime** serves frozen publication versions ([brief](../tasks/forms-platform-c4-form-runtime.md)). **P3 Publish UI / P4 Themes / P5 Analytics remain LOCKED.** Builder **must not invent field types**.
+7. P1 Field Catalog is closed; P2 Builder MVP is complete; **C3 Builder Runtime** is the editor of FormDefinition ([brief](../tasks/forms-platform-c3-builder-runtime.md)). Draft save is not publish. **C4 Form Runtime** projects frozen publication versions into **Runtime Model** ([brief](../tasks/forms-platform-c4-form-runtime.md)). Runtime does not import Builder. **P3 Publish UI / P4 Themes / P5 Analytics remain LOCKED.** Builder **must not invent field types**.
 
 ---
 
@@ -160,10 +163,11 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 | Field Catalog descriptors (P1.2) | `field_catalog/descriptors.py` · `forms.field_catalog.descriptors.v1` |
 | Field Catalog stdlib (P1.3) | `field_catalog/stdlib.py` · `forms.field_catalog.stdlib.v1` |
 | Field Catalog extension (P1.4) | `field_catalog/extensions.py` · `forms.field_catalog.extension.v1` |
+| Form Runtime / Runtime Model (C4) | `forms_platform/runtime/` · `forms.runtime.model.v1` · `serve(publication)` |
 | Catalog v1 freeze | [`forms-field-catalog-v1-freeze.md`](forms-field-catalog-v1-freeze.md) |
 | Compose Acquisition | binding · routing · attribution (unchanged ownership) |
 
-HTTP read surface: `GET /api/v1/platform/forms/publications/resolve` (`form_id` XOR `public_slug`, optional `version`) · `GET /api/v1/platform/forms/handlers`. Resolve goes through Adapter (`resolve_publication`) so frozen publication versions include `contract_identity`.
+HTTP read surface: `GET /api/v1/platform/forms/publications/resolve` (`form_id` XOR `public_slug`, optional `version`) · `GET /api/v1/platform/forms/handlers`. Resolve goes through Adapter (`resolve_publication`) so frozen publication versions include `contract_identity`. C4 Form Runtime (`serve`) consumes that DTO in-process — it does **not** add a second public HTTP form.
 
 ---
 
@@ -228,6 +232,7 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-08-13: Phase C C1 — Product Track seals Passport / Manifest / Public Contract / Adapter ids; P3–P5 remain locked.  
 - 2026-08-13: Phase C C2 sealed as next — identity + gates; Builder locked until C2 feat ([`../tasks/forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md)).
 - 2026-08-14: C2 runtime — Contract Identity on publication versions; JCS+SHA-256; Forms-owned compatibility tuples; fail-closed backfill.
+- 2026-08-14: C4 feat — Runtime Model (`forms.runtime.model.v1`); Adapter resolve is the sole source; read-only `serve`; dual Builder boundary.
 - 2026-08-14: C3 ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244); Product Track → [C4 Form Runtime](../tasks/forms-platform-c4-form-runtime.md); P3 Publish UI / P4 / P5 stay locked.
 - 2026-08-14: C1+C2 merged; Product Track → [C3 Builder Runtime](../tasks/forms-platform-c3-builder-runtime.md); P3 Publish UI / P4 / P5 stay locked.
 - 2026-08-14: C3 — Builder Draft API is FormDefinition-only; Adapter publish/resolve stay outside Builder.

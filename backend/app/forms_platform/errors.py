@@ -259,3 +259,12 @@ class FormsIdentityUnreconstructableError(FormsAdapterError):
     code = "forms_contract_identity_unreconstructable"
     http_status = 422
     default_message = "Legacy publication snapshot cannot reconstruct Contract Identity"
+
+
+# --- Forms Platform C4 — Form Runtime ---
+
+
+class FormsRuntimeNotPublicationError(FormsAdapterError):
+    code = "forms_runtime_not_publication"
+    http_status = 422
+    default_message = "Form Runtime serves a frozen FormPublicationVersion only"
