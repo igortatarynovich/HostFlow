@@ -1,7 +1,8 @@
 # Forms Platform C6 — Optimization
 
-**Status:** **IN PROGRESS** (docs — brief seal; feat locked until this brief merges)  
-**Branch (docs):** `docs/forms-platform-c6-optimization`  
+**Status:** **IN PROGRESS** (feat — production resolve → serve → execute + named gate; Forms Foundation close)  
+**Branch (docs):** `docs/forms-platform-c6-optimization` ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249)  
+**Branch (code):** `feat/forms-platform-c6-optimization`  
 **Parents:** [C5 Form Execution](forms-platform-c5-form-execution.md) ✅ · [C4 Form Runtime](forms-platform-c4-form-runtime.md) ✅ · [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) · [C2 runtime contract](forms-platform-c2-runtime-contract.md) · [C1 contract seal](forms-platform-c1-contract-seal.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md) · [Platform Capability Maturity](../architecture/platform-capability-maturity.md)
 
 > C6 **closes Forms Foundation**.  
@@ -91,17 +92,16 @@ Public Shared Intake (existing HTTP)
 
 ---
 
-## Form Optimization Gate (CI — mandatory on the later feat)
+## Form Optimization Gate (CI — mandatory)
 
-Named step: **Forms Platform C6 Optimization Gate**. Full-repo pytest red does not waive it.
+Named step: **Forms Platform C6 Optimization Gate**  
+(`tests/forms_platform/test_forms_c6_optimization_gate.py`). Full-repo pytest red does not waive it.
 
-- HostFlow Form public submit path composes `serve` → Execution (or equivalent fail-closed)
+- HostFlow Form `lead_draft` apply-submit composes `resolve_publication` → `serve` → `persist_execution` via `public_submit_bridge`
 - no Builder import on that path
 - no `freeze_contract_identity` on submit
-- no second Forms submit engine / public HTTP
-- Forms Foundation maturity ready to mark ✅ when gate is green
-
-This docs PR does **not** add that gate. The feat PR does.
+- no second Forms submit engine / public HTTP — write surface stays `/api/v1/public/apply/{token}/submit`
+- Forms Foundation maturity ✅ when this feat merges
 
 ---
 
@@ -117,13 +117,13 @@ This docs PR does **not** add that gate. The feat PR does.
 
 ---
 
-## Feat implementation order (mandatory — after this brief merges)
+## Feat implementation order (this PR)
 
-1. Wire HostFlow Form Shared Intake submit through `resolve → serve → execute`.  
-2. Fail-closed when a published HostFlow Form would skip Runtime Model / Execution.  
-3. **Then** named Forms Platform C6 Optimization Gate.  
-4. Mark Forms **Foundation** ✅ in the maturity matrix.  
-5. Do **not** open Publish UI, Themes, Analytics, FormTemplate SoT, or ADR-022.
+1. ✅ Wire HostFlow Form Shared Intake submit through `resolve → serve → execute` (`public_submit_bridge` + apply-submit).  
+2. ✅ Fail-closed when a bound HostFlow Form would skip Runtime Model / Execution.  
+3. ✅ Named Forms Platform C6 Optimization Gate.  
+4. ✅ Mark Forms **Foundation** ✅ in the maturity matrix.  
+5. ✅ No Publish UI, Themes, Analytics, FormTemplate SoT, or ADR-022.
 
 ---
 
@@ -131,7 +131,6 @@ This docs PR does **not** add that gate. The feat PR does.
 
 | Deferred | Owner |
 |----------|--------|
-| C6 **feat** (wiring + named gate + Foundation ✅) | After this brief merges |
 | Publish UI | P3 — locked |
 | Themes | P4 — locked |
 | Analytics | P5 — locked |
@@ -153,7 +152,7 @@ Do **not** mix Themes, Publish UI, Builder product, Analytics, Stage 5, or R6 in
 | **C3** | Builder Runtime | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243) / [#244](https://github.com/igortatarynovich/HostFlow/pull/244) |
 | **C4** | Form Runtime | ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245) / [#246](https://github.com/igortatarynovich/HostFlow/pull/246) · `4427b110` |
 | **C5** | Form Execution | ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247) / [#248](https://github.com/igortatarynovich/HostFlow/pull/248) · `f6bbe03f` · PASS-ready `c24bdc18` |
-| **C6** | Optimization (this) | **active** (brief; feat locked) |
+| **C6** | Optimization (this) | **active** (feat) |
 
 ---
 
@@ -178,27 +177,30 @@ Does **not** amend L0 P-rules.
 
 ## Acceptance
 
-- [ ] This brief merged (docs PR)  
-- [ ] C5 marked **COMPLETE** in canon (#248 / `f6bbe03f` · PASS-ready `c24bdc18`)  
-- [ ] Product Track points here; C6 feat not opened in this PR  
-- [ ] P3 Publish UI / P4 Themes / P5 Analytics remain locked  
-- [ ] No second Forms submit engine named as this slice  
-- [ ] Forms Foundation ✅ deferred until C6 feat (not this docs PR)
+- [x] Brief merged ([#249](https://github.com/igortatarynovich/HostFlow/pull/249))  
+- [x] C5 marked **COMPLETE** in canon (#248 / `f6bbe03f` · PASS-ready `c24bdc18`)  
+- [x] Product Track points here; C6 feat open on `feat/forms-platform-c6-optimization`  
+- [x] P3 Publish UI / P4 Themes / P5 Analytics remain locked  
+- [x] No second Forms submit engine — Shared Intake apply-submit only  
+- [x] Forms Foundation ✅ (maturity matrix)
 
-Feat DoD (later PR, not this one): named Forms Platform C6 Optimization Gate green; production HostFlow Form submit uses serve→execute; Foundation maturity ✅.
+Feat DoD: named Forms Platform C6 Optimization Gate green; production HostFlow Form submit uses resolve→serve→execute; Foundation maturity ✅.
 
-**CI criterion for the later feat:** named **Forms Platform C6 Optimization Gate**. Full-repo `Tests with coverage` is Engineering Track debt and does not block C6.
+**CI criterion:** named **Forms Platform C6 Optimization Gate**. Full-repo `Tests with coverage` is Engineering Track debt and does not block C6.
 
 ---
 
-## DoD (this docs PR)
+## DoD (this feat PR)
 
-- [ ] Brief sealed; inbound refs from queue / roadmap / AGENTS / ADR-007 / Public Contract / maturity  
-- [ ] C5 closed COMPLETE  
-- [ ] C6 feat, Publish UI, Themes, Analytics **not** started  
+- [x] Brief sealed ([#249](https://github.com/igortatarynovich/HostFlow/pull/249)); inbound refs present  
+- [x] `public_submit_bridge` + apply-submit wiring  
+- [x] Named C6 Optimization Gate in `backend-ci.yml`  
+- [x] Forms Foundation ✅  
+- [x] P3 Publish UI / Themes / Analytics **not** opened  
 
 ---
 
 ## History
 
 - 2026-08-14: C5 Form Execution merged [#248](https://github.com/igortatarynovich/HostFlow/pull/248) (`f6bbe03f`, PASS-ready `c24bdc18`). C6 Optimization brief opened (docs). Feat locked until this brief merges. Not P3 Publish UI / P4 Themes / P5 Analytics / second Forms submit engine / Acquisition Stage 5.
+- 2026-08-14: C6 brief merged [#249](https://github.com/igortatarynovich/HostFlow/pull/249) (`28714fd7`). Feat opens: production Shared Intake → resolve→serve→execute; named C6 gate; Forms Foundation ✅. P3 / P4 / P5 stay locked.

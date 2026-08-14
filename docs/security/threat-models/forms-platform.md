@@ -50,6 +50,7 @@ Public anonymous intake tokens remain in [`public-links.md`](./public-links.md).
 | FP-18 | Execution fused to Builder / draft | Execution validates against Draft / FormDefinition / ledger row without Runtime Model |
 | FP-19 | Second Forms submit engine | New public Forms submit HTTP beside Shared Intake |
 | FP-20 | Identity re-mint on execute | `freeze_contract_identity` during Execution |
+| FP-21 | Production bypass of Runtime Model | Public HostFlow Form submit skips resolve→serve→execute |
 
 ## Митигации
 
@@ -64,7 +65,8 @@ Public anonymous intake tokens remain in [`public-links.md`](./public-links.md).
 - Runtime package does not import Builder / Adapter / ledger / Manifest / submission / Execution. `serve(publication)` is read-only; missing identity or authoring payload → fail-closed (`forms_contract_identity_incomplete` / `forms_runtime_not_publication`).  
 - Execution package does not import Builder / Adapter publish / Manifest. Validate + persist require `RuntimeModel`; `freeze_contract_identity` forbidden on execute; public path stays `/api/v1/public/intake`.  
 - Unknown Catalog component fails closed (`validation_error`); no draft row is written.  
-- Named CI: Manifest / Public Contract / Adapter / Contract Identity / **C3 Builder Runtime** / **C4 Form Runtime** / **C5 Form Execution** gates. Full-repo pytest red does not waive them.
+- Named CI: Manifest / Public Contract / Adapter / Contract Identity / **C3 Builder Runtime** / **C4 Form Runtime** / **C5 Form Execution** / **C6 Optimization** gates. Full-repo pytest red does not waive them.
+- HostFlow Form public apply-submit composes `public_submit_bridge` (resolve → serve → persist_execution) before destination dispatch.
 
 ## Тесты
 
@@ -75,6 +77,7 @@ Public anonymous intake tokens remain in [`public-links.md`](./public-links.md).
 - `backend/tests/forms_platform/test_forms_c3_builder_runtime_gate.py`  
 - `backend/tests/forms_platform/test_forms_c4_form_runtime_gate.py`  
 - `backend/tests/forms_platform/test_forms_c5_form_execution_gate.py`  
+- `backend/tests/forms_platform/test_forms_c6_optimization_gate.py`  
 - `backend/tests/forms_platform/test_forms_platform_c4.py` (HTTP resolve: identity on frozen version; draft `contract_identity is None`; unknown `version` → 404) — historical Sprint HTTP; **not** the C4 Form Runtime Gate
 
 ## Связанные спеки
@@ -83,6 +86,7 @@ Public anonymous intake tokens remain in [`public-links.md`](./public-links.md).
 - [`docs/specs/tasks/forms-platform-c3-builder-runtime.md`](../../specs/tasks/forms-platform-c3-builder-runtime.md)  
 - [`docs/specs/tasks/forms-platform-c4-form-runtime.md`](../../specs/tasks/forms-platform-c4-form-runtime.md)  
 - [`docs/specs/tasks/forms-platform-c5-form-execution.md`](../../specs/tasks/forms-platform-c5-form-execution.md)  
+- [`docs/specs/tasks/forms-platform-c6-optimization.md`](../../specs/tasks/forms-platform-c6-optimization.md)  
 - [`docs/specs/architecture/forms-public-contract.md`](../../specs/architecture/forms-public-contract.md)  
 - [`docs/specs/architecture/ADR-007-forms-platform-capability.md`](../../specs/architecture/ADR-007-forms-platform-capability.md)  
 - [`docs/security/threat-models/public-links.md`](./public-links.md)
