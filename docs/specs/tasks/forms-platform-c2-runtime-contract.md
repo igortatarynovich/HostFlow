@@ -1,13 +1,12 @@
 # Forms Platform C2 — Runtime Contract & Gates
 
-**Status:** **IN PROGRESS** (docs — this brief)  
-**Branch (docs):** `docs/forms-platform-c2-runtime-contract`  
-**Branch (code):** `feat/forms-platform-c2-runtime-contract` (after this brief **and** C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239) / [#240](https://github.com/igortatarynovich/HostFlow/pull/240) merge)  
+**Status:** **COMPLETE** (C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) · C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242))  
+**Next:** [C3 Builder Runtime](forms-platform-c3-builder-runtime.md)  
 **Parents:** [C1 contract seal](forms-platform-c1-contract-seal.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md) · [Manifest](../architecture/capability-settings-manifest.md#forms)
 
 > A **publication version** must not exist outside its contract.  
 > C2 is runtime contract verification — not Builder, not authoring UX.  
-> Builder (C3) opens only after these gates hold.
+> Builder (C3) opened after these gates held — [C3 brief](forms-platform-c3-builder-runtime.md).
 
 **Naming (do not collapse):** this **Forms Platform C2** is not Communication Epic C2 / C2.4 Scheduling (frozen). Historical Forms “C4 HTTP resolve” (`test_forms_platform_c4.py`) is Sprint-era Stable HTTP — not Phase C **C4 Form Runtime**.
 
@@ -309,7 +308,7 @@ Does **not** amend L0 P-rules. Passport status only.
 - [x] Brief sealed with identity vs lifecycle, publication vs draft, canonical hash, declared compatibility, version immutability  
 - [x] Queue + roadmap point at C2 as next after C1; Builder locked until C2  
 - [x] Platform (not product module) posture explicit  
-- [ ] Feat PR after C1 merge  
+- [x] Feat PR after C1 merge ([#242](https://github.com/igortatarynovich/HostFlow/pull/242))  
 
 ---
 

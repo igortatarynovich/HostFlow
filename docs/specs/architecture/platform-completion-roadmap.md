@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← **active** ([C1](../tasks/forms-platform-c1-contract-seal.md); **next** [C2](../tasks/forms-platform-c2-runtime-contract.md)).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← **active** ([C3](../tasks/forms-platform-c3-builder-runtime.md); C1–C2 ✅).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms → …
@@ -36,7 +36,7 @@ Order **after A2**:
 
 1. **A2 — Platform Governance Review** — ✅ PASS_WITH_CONSTRAINTS ([gate](../gates/platform-governance-review-a2.md))  
 2. **Phase B — Acquisition / Stage 3 + Meta** ← ✅  
-3. **Phase C — Forms Platform** ← **active** ([C1](../tasks/forms-platform-c1-contract-seal.md) → [C2](../tasks/forms-platform-c2-runtime-contract.md) → C3 Builder Runtime → C4 Form Runtime → C5 Form Execution → C6 Optimization) → Entity Workspace → Documents → Billing → AI  
+3. **Phase C — Forms Platform** ← **active** ([C1](../tasks/forms-platform-c1-contract-seal.md) ✅ → [C2](../tasks/forms-platform-c2-runtime-contract.md) ✅ → [C3 Builder Runtime](../tasks/forms-platform-c3-builder-runtime.md) → C4 Form Runtime → C5 Form Execution → C6 Optimization) → Entity Workspace → Documents → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
 
@@ -126,22 +126,22 @@ Ladder (locked):
 
 | Slice | Focus | Status |
 |-------|--------|--------|
-| **C1** | Contract seal (ids / drift docs) | ← **active** ([brief](../tasks/forms-platform-c1-contract-seal.md)) |
-| **C2** | Runtime contract + gates | **next** ([brief](../tasks/forms-platform-c2-runtime-contract.md)) |
-| **C3** | Builder Runtime (editor) | Locked until C2 feat PASS |
-| **C4** | Form Runtime | After C3 |
+| **C1** | Contract seal (ids / drift docs) | ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) |
+| **C2** | Runtime contract + gates | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
+| **C3** | Builder Runtime (editor of FormDefinition) | ← **active** ([brief](../tasks/forms-platform-c3-builder-runtime.md)) |
+| **C4** | Form Runtime | Locked until C3 feat PASS |
 | **C5** | Form Execution | After C4 |
 | **C6** | Optimization | After C5 |
 
-C1 seals *which* contracts exist. C2 freezes **Contract Identity on publication versions** (lifecycle separate; Manifest / Public Contract / Adapter / Identity gates). C3 is an editor of definitions — do not open it until the publication format is protected.
+C3 edits mutable definitions. Draft save is not publish. C4 serves frozen publication versions — do not open it until the editor cannot mint identity on every keystroke.
 
-**Not** Communication Epic C2 / C2.4. Historical Forms “C4 HTTP resolve” ≠ Phase C C4 Form Runtime.
+**Not** Communication Epic C2 / C2.4 / Communication C3. Historical Forms “C4 HTTP resolve” ≠ Phase C C4 Form Runtime.
 
-**Out of Phase C C1/C2:** Forms Builder product (P3–P5) · Stage 5 settings/enable-disable · R6 table-cutover · Entity Workspace (Phase D).
+**Out of Phase C C3:** P3 Publish UI / P4 Themes / P5 Analytics · Stage 5 settings/enable-disable · R6 table-cutover · Entity Workspace (Phase D).
 
 **Result:** every questionnaire, form, and survey shares one runtime contract.
 
-**Ref:** [forms-product-layer-epic.md](../tasks/forms-product-layer-epic.md) (infrastructure-first until C2 PASSes).
+**Ref:** [forms-product-layer-epic.md](../tasks/forms-product-layer-epic.md) · [C3 brief](../tasks/forms-platform-c3-builder-runtime.md).
 
 ---
 
@@ -197,7 +197,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 1 | **A1** Epic C Communication | ✅ Unified comms platform (`PASS_WITH_CONSTRAINTS`) |
 | 2 | **A2** Platform Governance Review | ✅ Stable SoT / contracts gate (`PASS_WITH_CONSTRAINTS`) |
 | 3 | **B** Acquisition / Stage 3 + Meta | ✅ Meta / slice 3–4 (#222 / #224 / #238) |
-| 4 | **C** Forms Platform | ← **active** Shared form runtime ([C1](../tasks/forms-platform-c1-contract-seal.md) → [C2](../tasks/forms-platform-c2-runtime-contract.md) → C3–C6) |
+| 4 | **C** Forms Platform | ← **active** Shared form runtime ([C3](../tasks/forms-platform-c3-builder-runtime.md); C1–C2 ✅) |
 | 5 | **D** Universal Entity Workspace | One workspace composition |
 | 6 | **E** Documents Platform | Full document lifecycle |
 | 7 | **F** Billing Platform | SaaS commercial layer |
@@ -208,10 +208,10 @@ Not standalone AI features. A **service layer over existing platforms**:
 ## Anti-patterns (forbidden without amending this roadmap)
 
 1. Starting Stage 3 slice 3+ **before** Governance Review (A2) closes — A2 is now **PASS_WITH_CONSTRAINTS**; Phase B may proceed.  
-2. Forms Builder / C3 before **Forms Platform C2** runtime gates PASS.  
+2. C4 Form Runtime / P3 Publish UI / P4 Themes / P5 Analytics before **Forms Platform C3** feat PASSes.  
 3. Entity Workspace redesign as a temporary shell before Phases A–C foundations.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). Phase C (Forms C1, then C2) **is** the active phase; do not reopen Phase B, Stage 5 settings, or R6.  
+5. Parallel product branches that compete across phases (one active product slice). Phase C (Forms C3) **is** the active phase; do not reopen Phase B, Stage 5 settings, or R6.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.
 
@@ -232,6 +232,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-14: C1 ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240); C2 ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242); Product Track → **C3 Builder Runtime** ([brief](../tasks/forms-platform-c3-builder-runtime.md)).  
 - 2026-08-13: Stage 3 slice 4 ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238); Product Track → **Phase C Forms Platform C1** ([brief](../tasks/forms-platform-c1-contract-seal.md)). Stage 5 settings and R6 stay out of this slice.  
 - 2026-08-13: Phase C ladder locked C1→C6; **C2 Runtime Contract** sealed as next ([brief](../tasks/forms-platform-c2-runtime-contract.md)). Builder / C3 after C2 feat only.  
 - 2026-08-13: C2 identity model — publication version freeze; lifecycle not identity.  

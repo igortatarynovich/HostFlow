@@ -5,8 +5,8 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-13 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged. **Product Track:** Forms Platform C1 — [contract seal](forms-platform-c1-contract-seal.md) (**active** until #239/#240 merge). **Next (sealed):** [Forms Platform C2 — Runtime Contract](forms-platform-c2-runtime-contract.md). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
-> Communication **C2.4 frozen** (gate residual R1) — not Forms C2.  
+> **2026-08-14 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged. Forms C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) + C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) merged. **Product Track:** [Forms Platform C3 — Builder Runtime](forms-platform-c3-builder-runtime.md). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
+> Communication **C2.4 frozen** (gate residual R1) — not Forms C2 / C3.  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
 ---
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Forms Platform C1** contract seal — [brief](forms-platform-c1-contract-seal.md) (**active**); **next** = [C2 Runtime Contract](forms-platform-c2-runtime-contract.md); slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged | Almost all capacity |
+| **Product** | **Forms Platform C3** Builder Runtime — [brief](forms-platform-c3-builder-runtime.md); C1 [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) + C2 [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) merged | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -47,8 +47,9 @@
 - **Meta intake completeness** ← **MERGED** [#222](https://github.com/igortatarynovich/HostFlow/pull/222) — [meta-intake-completeness.md](meta-intake-completeness.md)  
 - **Stage 3 slice 3 — SalesInquiry product flow** ← **MERGED** [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [brief](stage-3-sales-inquiry-product-flow.md)  
 - **Stage 3 slice 4 — hard module separation** ← ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238) — [brief](stage-3-slice-4-hard-module-separation.md)  
-- **Forms Platform C1 — contract seal** ← **active** — [brief](forms-platform-c1-contract-seal.md)  
-- **Forms Platform C2 — Runtime Contract** ← **next (sealed)** — [brief](forms-platform-c2-runtime-contract.md); Builder locked until C2 feat PASS  
+- **Forms Platform C1 — contract seal** ← ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) — [brief](forms-platform-c1-contract-seal.md)  
+- **Forms Platform C2 — Runtime Contract** ← ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) — [brief](forms-platform-c2-runtime-contract.md)  
+- **Forms Platform C3 — Builder Runtime** ← **active** — [brief](forms-platform-c3-builder-runtime.md); not P3 Publish UI / C4 / Themes  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -81,11 +82,12 @@
 | **10** | **Meta Intake Completeness** | `feat/meta-intake-completeness` | [#222](https://github.com/igortatarynovich/HostFlow/pull/222) ✅ merged — answers + B2B naming |
 | **11** | **Stage 3 slice 3** SalesInquiry product flow | `feat/stage-3-slice-3-sales-inquiry-product-flow` | ✅ [#224](https://github.com/igortatarynovich/HostFlow/pull/224) — [brief](stage-3-sales-inquiry-product-flow.md) |
 | **12** | **Stage 3 slice 4** hard module separation | `feat/stage-3-slice-4-hard-module-separation` | ✅ [#238](https://github.com/igortatarynovich/HostFlow/pull/238) |
-| **13** | **Forms Platform C1** contract seal | `docs/forms-platform-c1-contract-seal` then `feat/…` | **active** — [brief](forms-platform-c1-contract-seal.md); not P3–P5 / Stage 5 / R6 |
-| **14** | **Forms Platform C2** Runtime Contract & Gates | `docs/forms-platform-c2-runtime-contract` then `feat/…` | **next (sealed)** — [brief](forms-platform-c2-runtime-contract.md); not Builder / Stage 5 / R6 |
+| **13** | **Forms Platform C1** contract seal | `docs/forms-platform-c1-contract-seal` then `feat/…` | ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) |
+| **14** | **Forms Platform C2** Runtime Contract & Gates | `docs/forms-platform-c2-runtime-contract` then `feat/…` | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
+| **15** | **Forms Platform C3** Builder Runtime | `docs/forms-platform-c3-builder-runtime` then `feat/…` | **active** — [brief](forms-platform-c3-builder-runtime.md); not P3 Publish UI / C4 / Stage 5 / R6 |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.**  
-**Active (Product):** Forms Platform C1 — [contract seal](forms-platform-c1-contract-seal.md). **Next:** [C2 Runtime Contract](forms-platform-c2-runtime-contract.md). Slice 4 #238 merged.  
+**Active (Product):** Forms Platform C3 — [Builder Runtime](forms-platform-c3-builder-runtime.md). C1+C2 merged.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -117,13 +119,17 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [stage-3-slice-4-hard-module-separation.md](stage-3-slice-4-hard-module-separation.md). `/app/leads` is not a mixed inbox; `/app/leads/:id` redirects to SalesInquiry or Recruitment Application. Stage 5 settings and R6 stayed out.
 
-### Forms Platform C1 — contract seal ← **active**
+### Forms Platform C1 — contract seal ← **DONE** (#239 / #240)
 
-[forms-platform-c1-contract-seal.md](forms-platform-c1-contract-seal.md). Seal Passport / Manifest / Public Contract / Adapter / Runtime / Versioning. **Out:** Stage 5 settings · R6 · Builder P3–P5. **Next:** [C2](forms-platform-c2-runtime-contract.md).
+[forms-platform-c1-contract-seal.md](forms-platform-c1-contract-seal.md). Passport / Manifest / Public Contract / Adapter ids sealed.
 
-### Forms Platform C2 — Runtime Contract ← **next (sealed)**
+### Forms Platform C2 — Runtime Contract ← **DONE** (#241 / #242)
 
-[forms-platform-c2-runtime-contract.md](forms-platform-c2-runtime-contract.md). Contract Identity on **publication versions** (lifecycle separate) + Manifest / Public Contract / Adapter / Identity gates. Builder (C3) unlocks only after C2 feat PASSes. Not Communication C2.4.
+[forms-platform-c2-runtime-contract.md](forms-platform-c2-runtime-contract.md). Contract Identity on publication versions; four named gates. Not Communication C2.4.
+
+### Forms Platform C3 — Builder Runtime ← **active**
+
+[forms-platform-c3-builder-runtime.md](forms-platform-c3-builder-runtime.md). Editor of FormDefinition; draft save ≠ publish. Not P3 Publish UI / C4 Form Runtime / Themes.
 
 ---
 
@@ -201,13 +207,14 @@ Next branch only after:
 **Do not** start C2.4 (frozen; gate residual R1).  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
 **Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Forms.  
-**Do not** start Forms Builder / P3–P5 before **Forms Platform C2** feat PASSes ([brief](forms-platform-c2-runtime-contract.md)).  
-**Do** amend this queue when switching Product Active (this revision: live = Forms C1; next sealed = Forms C2).
+**Do not** start C4 Form Runtime, P3 Publish UI, P4 Themes, or P5 Analytics in C3.  
+**Do** amend this queue when switching Product Active (this revision: live = Forms C3).
 
 ---
 
 ## 8. History
 
+- 2026-08-14: C1 ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240); C2 ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242); Product Track → **Forms Platform C3** — [brief](forms-platform-c3-builder-runtime.md).  
 - 2026-08-13: Product Track → **Stage 3 slice 3** [#224](https://github.com/igortatarynovich/HostFlow/pull/224); Meta #222 merged.  
 - 2026-08-03: **A2 PASS_WITH_CONSTRAINTS**; Product Track → **Meta Intake Completeness** (Phase B).  
 - 2026-08-03: **Epic C Complete Gate PASS_WITH_CONSTRAINTS**; Product Track → **A2 Platform Governance Review**; C2.4 remains frozen.  

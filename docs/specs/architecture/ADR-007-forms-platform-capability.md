@@ -77,14 +77,14 @@ Lead, Candidate, Employee, Client, Service Order, Fleet records, Document, Billi
 - **Forms Sprint 1–6:** ✅ **COMPLETE** — L0 backend platform contour ([`../tasks/forms-sprint-6.md`](../tasks/forms-sprint-6.md)).  
 - **Forms Product Layer:** **ACTIVE** ([`../tasks/forms-product-layer-epic.md`](../tasks/forms-product-layer-epic.md) · `29f4057f`) — P1 Field Catalog as **component registry** ([`../tasks/forms-product-p1-field-catalog.md`](../tasks/forms-product-p1-field-catalog.md)).  
 - **Architectural rule:** **Field Catalog is SoT** for components (id/version/config/validation/normalization/storage/render). **Builder must not invent field types** — only compose Catalog blocks.  
-- **Forms Builder P3–P5:** **LOCKED** until [C2 Runtime Contract](../tasks/forms-platform-c2-runtime-contract.md) feat PASSes. C1 seals ids ([brief](../tasks/forms-platform-c1-contract-seal.md)). P1 Catalog ✅; P2 MVP ✅. Builder must not invent field types.  
+- **Forms Builder P3 Publish UI / P4 / P5:** **LOCKED**. **C3 Builder Runtime** is the editor of FormDefinition ([brief](../tasks/forms-platform-c3-builder-runtime.md)). C1–C2 ✅. Builder must not invent field types.  
 - Forms compose Acquisition Endpoint/Submission/Result — не копируют Outcome/KPI.
 
 ## Platform epic (roadmap)
 
 **Done (Sprint 1–6):** Endpoint Engine (HostFlow Form publish); Version ledger; Schema/validation/normalization; Immutable submission envelope; Shared Intake handoff; Audit.
 
-**Open — Phase C:** [C1 contract seal](../tasks/forms-platform-c1-contract-seal.md) ← active · [C2 Runtime Contract](../tasks/forms-platform-c2-runtime-contract.md) ← next. P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED** until C2. Forms is Core Platform Kit class (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
+**Open — Phase C:** [C3 Builder Runtime](../tasks/forms-platform-c3-builder-runtime.md) ← active. C1–C2 ✅. P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is Core Platform Kit class (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
 
 Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Automations / Documents / Universal Entity integration.
 
@@ -110,5 +110,6 @@ Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Autom
 - 2026-07-18: Sprint 1 infra — Public Contract v1 + Adapter + contract tests (no Builder).  
 - 2026-07-18: Sprint 1 COMPLETE (PR #36); Sprint 2 — immutable snapshot + activate/deactivate + version pin.  
 - 2026-07-18: Sprint 1–6 COMPLETE; Product Layer epic OPEN; Field Catalog SoT / Builder-no-invent-types rule.  
+- 2026-08-14: C1+C2 merged; Product Track → C3 Builder Runtime ([`../tasks/forms-platform-c3-builder-runtime.md`](../tasks/forms-platform-c3-builder-runtime.md)); P3 Publish UI / P4 / P5 remain locked.
 - 2026-08-13: Product Track → Phase C C1 contract seal ([`../tasks/forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md)); P3–P5 remain locked.  
 - 2026-08-13: Next after C1 = C2 Runtime Contract ([`../tasks/forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md)); Builder locked until C2 feat.
