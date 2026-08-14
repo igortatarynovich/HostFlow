@@ -218,3 +218,36 @@ class FormsRoutingUnresolvedError(FormsAdapterError):
     code = "forms_routing_unresolved"
     http_status = 422
     default_message = "Submission route_intent is unresolved (fail-closed)"
+
+
+# --- Forms Platform C2 — runtime contract ---
+
+
+class FormsIdentityIncompleteError(FormsAdapterError):
+    code = "forms_contract_identity_incomplete"
+    http_status = 422
+    default_message = "Publication version is missing Contract Identity"
+
+
+class FormsIdentityIncompatibleError(FormsAdapterError):
+    code = "forms_contract_identity_incompatible"
+    http_status = 409
+    default_message = "Contract Identity combination is not declared compatible"
+
+
+class FormsSchemaHashMismatchError(FormsAdapterError):
+    code = "forms_schema_hash_mismatch"
+    http_status = 409
+    default_message = "schema_hash does not match canonical frozen field_schema"
+
+
+class FormsPublicationVersionImmutableError(FormsAdapterError):
+    code = "forms_publication_version_immutable"
+    http_status = 409
+    default_message = "Publication version schema and Contract Identity cannot be mutated"
+
+
+class FormsIdentityUnreconstructableError(FormsAdapterError):
+    code = "forms_contract_identity_unreconstructable"
+    http_status = 422
+    default_message = "Legacy publication snapshot cannot reconstruct Contract Identity"

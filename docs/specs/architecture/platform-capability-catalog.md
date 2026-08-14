@@ -266,7 +266,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Events** | Publishes: `form.published` (Experimental bridge), `form.submission_received` (Experimental); future: `form.version_created`, consent accepted |
 | **Forbidden** | Candidate / Client / Campaign SoT; Notification delivery / SMTP; Document registry SoT; AI SoT; universal Campaign routing SoT; Forms-owned Outcome/KPI/attribution engines; P3–P5 / C3 unlock without C2 runtime gates |
 | **Data Ownership** | Form surface / publication identity (bridge: `TenantLeadForm`); ConsentDefinition + pin (intent); form-surface payload. **Not yet:** FormTemplate / FormTheme / FormLogic SoT (post–Sprint 1) |
-| **Contract tests** | `backend/tests/forms_platform/test_forms_sprint1_contract.py` · gates `test_forms_sprint1_gates.py` · C4 HTTP `test_forms_platform_c4.py` · C1 `test_forms_c1_contract_seal.py` · C2 gates (after feat) |
+| **Contract tests** | `backend/tests/forms_platform/test_forms_sprint1_contract.py` · gates `test_forms_sprint1_gates.py` · C4 HTTP `test_forms_platform_c4.py` · C1 `test_forms_c1_contract_seal.py` · C2 `test_forms_c2_*_gate.py` |
 
 ---
 

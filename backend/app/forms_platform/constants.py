@@ -31,4 +31,7 @@ LIFECYCLE_ACTIVE = "active"
 LIFECYCLE_ARCHIVED = "archived"
 
 PUBLIC_CONTRACT_ID = "forms.public_contract.v1"
+PUBLIC_CONTRACT_VERSION = "v1"
 ADAPTER_ID = "forms.endpoint_adapter_v1"
+OBJECT_KIND_PUBLICATION_VERSION = "forms.publication_version"
+SCHEMA_HASH_ALGORITHM = "sha256"

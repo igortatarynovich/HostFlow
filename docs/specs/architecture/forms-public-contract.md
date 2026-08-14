@@ -17,6 +17,24 @@ Forms владеет **HostFlow Form surface** (immutable publish + consent pin 
 
 Storage bridge: `TenantLeadForm` current pointer (`published_snapshot_v1`) + append-only ledger `form_publication_versions` (Sprint 3).
 
+### Contract Identity (C2 — publication version)
+
+Frozen on **`FormPublicationVersion`**, not on a live Builder draft. Not `lifecycle_status`.
+
+| Field | Mutable? |
+|-------|----------|
+| `contract_id` | No |
+| `manifest_version` | No |
+| `public_contract_version` | No (`v1` lineage of `forms.public_contract.v1`) |
+| `object_kind` | No (`forms.publication_version` — Public Contract kind, not a module enum) |
+| `schema_hash` | No — SHA-256 of RFC 8785 JCS bytes of frozen `field_schema` |
+| `adapter_version` | No (`forms.endpoint_adapter_v1` at freeze) |
+| `lifecycle_status` | **Yes** — Publication State; gates whether resolve/submit is currently allowed |
+
+Compatibility is a **Forms-owned closed set** of `(manifest_version × public_contract_version × adapter_version)` tuples (`forms_platform/compatibility.py`). Undeclared combinations fail. A new Public Contract API version does **not** rewrite historical publication identities. This is not a platform registry.
+
+Publish appends a new ledger row. Schema/identity mutation of an existing row is forbidden (`forms_publication_version_immutable`). Submission pins `form_id` + `published_version` (+ identity copy on the envelope DTO).
+
 ---
 
 ## Public operations
@@ -47,13 +65,17 @@ Storage bridge: `TenantLeadForm` current pointer (`published_snapshot_v1`) + app
 | `forms_submission_validation_failed` | 422 | Field schema validation failed (unknown/required/type) |
 | `forms_unknown_field` | 422 | Field not in frozen schema |
 | `forms_required_field_missing` | 422 | Required field empty |
-| `forms_field_type_invalid` | 422 | Value failed type check |
+| `forms_contract_identity_incomplete` | 422 | Publication version missing Contract Identity |
+| `forms_contract_identity_incompatible` | 409 | Identity tuple not in Forms-owned compatibility set |
+| `forms_schema_hash_mismatch` | 409 | `schema_hash` ≠ canonical SHA-256 of frozen `field_schema` |
+| `forms_publication_version_immutable` | 409 | Attempt to rewrite schema/identity on an existing ledger row |
+| `forms_contract_identity_unreconstructable` | 422 | Legacy snapshot cannot prove identity (fail-closed; no `legacy` accept) |
 
 ### Inputs / outputs (summary)
 
-**`resolve`** — In: `tenant_id` + `form_id` XOR `public_slug`; optional `require_active`. Out: publication DTO including `published_version`, `lifecycle_status`, `consent_pin`, `has_immutable_snapshot`.
+**`resolve`** — In: `tenant_id` + `form_id` XOR `public_slug`; optional `require_active`; optional `version` (specific ledger row). Out: publication DTO including `published_version`, `lifecycle_status`, `consent_pin`, `has_immutable_snapshot`, and `contract_identity` when a frozen publication version exists. Draft without a ledger row has no frozen identity.
 
-**`publish` (`commit_publish`)** — In: `tenant_id`, `form_id`, optional consent versions, optional `field_schema` / `fields` / `presentation_runtime`. Out: publication DTO at new version with frozen `field_schema` when provided. Does **not** edit prior snapshot in place.
+**`publish` (`commit_publish`)** — In: `tenant_id`, `form_id`, optional consent versions, optional `field_schema` / `fields` / `presentation_runtime`. Out: publication DTO at **new** version with frozen `field_schema` + Contract Identity. Does **not** edit prior snapshot in place. Missing schema freezes an empty `forms.field_schema.v1` so identity is always complete.
 
 **`validate_submission`** — In: frozen schema + payload. Out: `forms.normalized_answers.v1` with `raw_values`, `normalized_values`, `errors[{field_id,code,message_key,message}]`, `published_version`, `form_id`, `intake_handoff` for Shared Intake. Pre-schema snapshots skip unknown rejection.
 
@@ -133,7 +155,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 | Catalog v1 freeze | [`forms-field-catalog-v1-freeze.md`](forms-field-catalog-v1-freeze.md) |
 | Compose Acquisition | binding · routing · attribution (unchanged ownership) |
 
-HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/v1/platform/forms/handlers`.
+HTTP read surface: `GET /api/v1/platform/forms/publications/resolve` (`form_id` XOR `public_slug`, optional `version`) · `GET /api/v1/platform/forms/handlers`. Resolve goes through Adapter (`resolve_publication`) so frozen publication versions include `contract_identity`.
 
 ---
 
@@ -150,7 +172,8 @@ HTTP read surface: `GET /api/v1/platform/forms/publications/resolve`, `GET /api/
 - P1.3: `test_forms_p1_3_stdlib_contract.py` · `test_forms_p1_3_stdlib_gates.py`  
 - P1.4: `test_forms_p1_4_extension_contract.py` · `test_forms_p1_4_extension_gates.py`  
 - C4: `test_forms_platform_c4.py`  
-- C1: `test_forms_c1_contract_seal.py`
+- C1: `test_forms_c1_contract_seal.py`  
+- C2: `test_forms_c2_manifest_gate.py` · `test_forms_c2_public_contract_gate.py` · `test_forms_c2_adapter_gate.py` · `test_forms_c2_identity_gate.py`
 
 ---
 
@@ -196,3 +219,4 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-07-18: P1.2 Descriptor Contract implementation — `forms.field_catalog.descriptors.v1`.
 - 2026-08-13: Phase C C1 — Product Track seals Passport / Manifest / Public Contract / Adapter ids; P3–P5 remain locked.  
 - 2026-08-13: Phase C C2 sealed as next — identity + gates; Builder locked until C2 feat ([`../tasks/forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md)).
+- 2026-08-14: C2 runtime — Contract Identity on publication versions; JCS+SHA-256; Forms-owned compatibility tuples; fail-closed backfill.
