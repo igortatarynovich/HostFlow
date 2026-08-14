@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-14 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged. Forms C1–C5 ✅ ([#248](https://github.com/igortatarynovich/HostFlow/pull/248)). **Product Track:** [Forms Platform C6 — Optimization](forms-platform-c6-optimization.md) (feat). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
+> **2026-08-14 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Product Track:** [Entity Workspace D1 — Contract Seal](entity-workspace-d1-contract-seal.md) (docs; feat locked). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
 > Communication **C2.4 frozen** (gate residual R1) — not Forms C2 / C3 / C4 / C5.  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Forms Platform C6** Optimization — [brief](forms-platform-c6-optimization.md); C1–C5 ✅ [#248](https://github.com/igortatarynovich/HostFlow/pull/248); feat open | Almost all capacity |
+| **Product** | **Entity Workspace D1** Contract Seal — [brief](entity-workspace-d1-contract-seal.md); Forms C1–C6 ✅ [#250](https://github.com/igortatarynovich/HostFlow/pull/250); feat locked | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -52,7 +52,8 @@
 - **Forms Platform C3 — Builder Runtime** ← ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244) — [brief](forms-platform-c3-builder-runtime.md)
 - **Forms Platform C4 — Form Runtime** ← ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) — [brief](forms-platform-c4-form-runtime.md); Runtime Model; not P3 Publish UI / P4 Themes / Sprint HTTP C4  
 - **Forms Platform C5 — Form Execution** ← ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248) — [brief](forms-platform-c5-form-execution.md)
-- **Forms Platform C6 — Optimization** ← **active** (feat) — [brief](forms-platform-c6-optimization.md); not P3 Publish UI / P4 Themes / P5 Analytics / Acquisition Stage 5  
+- **Forms Platform C6 — Optimization** ← ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249)/[#250](https://github.com/igortatarynovich/HostFlow/pull/250) — [brief](forms-platform-c6-optimization.md); Forms Foundation ✅  
+- **Entity Workspace D1 — Contract Seal** ← **active** (docs; feat locked) — [brief](entity-workspace-d1-contract-seal.md); not PX chrome-as-done / not Documents Phase E / not Forms P3–P5  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -90,10 +91,11 @@
 | **15** | **Forms Platform C3** Builder Runtime | `docs/forms-platform-c3-builder-runtime` then `feat/…` | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244) |
 | **16** | **Forms Platform C4** Form Runtime | `docs/forms-platform-c4-form-runtime` then `feat/…` | ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) |
 | **17** | **Forms Platform C5** Form Execution | `docs/…` ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247) · `feat/…` ✅ [#248](https://github.com/igortatarynovich/HostFlow/pull/248) | ✅ PASS-ready `c24bdc18` · merge `f6bbe03f` |
-| **18** | **Forms Platform C6** Optimization | `docs/forms-platform-c6-optimization` ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249) · `feat/forms-platform-c6-optimization` | **active** (feat) — [brief](forms-platform-c6-optimization.md); not P3 / P4 / P5 / Stage 5 / R6 |
+| **18** | **Forms Platform C6** Optimization | `docs/…` ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249) · `feat/…` ✅ [#250](https://github.com/igortatarynovich/HostFlow/pull/250) | ✅ Foundation close `e81e2a08` · merge `9933a835` |
+| **19** | **Entity Workspace D1** Contract Seal | `docs/entity-workspace-phase-d-contract-seal` | **active** (docs; feat locked) — [brief](entity-workspace-d1-contract-seal.md); not PX-as-done / not Phase E / not Forms P3–P5 |
 
-**C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.**  
-**Active (Product):** Forms Platform C6 — [Optimization](forms-platform-c6-optimization.md) (feat). C1–C5 merged.  
+**C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅.  
+**Active (Product):** Entity Workspace D1 — [Contract Seal](entity-workspace-d1-contract-seal.md) (docs; feat locked). Forms C1–C6 merged.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -145,9 +147,13 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md). Runtime Model → Validation → Submission → Persistence. Named C5 gate SUCCESS at `c24bdc18`; merge `f6bbe03f`.
 
-### Forms Platform C6 — Optimization ← **active** (feat)
+### Forms Platform C6 — Optimization ← **DONE** (#249 / #250)
 
-[forms-platform-c6-optimization.md](forms-platform-c6-optimization.md). Production Shared Intake binds resolve → serve → execute; Forms Foundation close. Not P3 Publish UI / P4 Themes / P5 Analytics / Acquisition Stage 5.
+[forms-platform-c6-optimization.md](forms-platform-c6-optimization.md). Production Shared Intake binds resolve → serve → execute; Forms Foundation ✅. Named C6 gate; merge `9933a835` / `e81e2a08`.
+
+### Entity Workspace D1 — Contract Seal ← **active** (docs; feat locked)
+
+[entity-workspace-d1-contract-seal.md](entity-workspace-d1-contract-seal.md). Ownership + boundary (PX chrome ≠ Phase D). Not Documents Phase E / not Forms P3–P5 / no Catalog Passport in D1.
 
 ---
 
@@ -224,14 +230,15 @@ Next branch only after:
 
 **Do not** start C2.4 (frozen; gate residual R1).  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
-**Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Forms.  
-**Do not** start C5 **feat**, P3 Publish UI, P4 Themes, or P5 Analytics in this brief PR.  
-**Do** amend this queue when switching Product Active (this revision: live = Forms C5 brief).
+**Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Entity Workspace D1.  
+**Do not** treat PX EntityWorkspace chrome as Phase D done; **do not** open Documents Phase E or Forms P3–P5 in this brief PR.  
+**Do** amend this queue when switching Product Active (this revision: live = Entity Workspace D1 brief).
 
 ---
 
 ## 8. History
 
+- 2026-08-14: C6 ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249)/[#250](https://github.com/igortatarynovich/HostFlow/pull/250) (`e81e2a08` / merge `9933a835`); Forms Foundation ✅; Product Track → **Entity Workspace D1** — [brief](entity-workspace-d1-contract-seal.md) (feat locked).
 - 2026-08-14: C6 brief ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249) (`28714fd7`); Product Track → **Forms Platform C6** feat — production resolve→serve→execute / Foundation close.
 - 2026-08-14: C5 ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248) (`f6bbe03f`); Product Track → **Forms Platform C6** — [brief](forms-platform-c6-optimization.md) (feat locked).
 - 2026-08-14: C5 brief ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247) (`0b39baa1`); Product Track → **Forms Platform C5** feat — [brief](forms-platform-c5-form-execution.md).
