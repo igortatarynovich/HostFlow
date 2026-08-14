@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-14 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged. Forms C1–C4 ✅ ([#246](https://github.com/igortatarynovich/HostFlow/pull/246)). Brief [#247](https://github.com/igortatarynovich/HostFlow/pull/247). **Product Track:** [Forms Platform C5 — Form Execution](forms-platform-c5-form-execution.md) (feat; Runtime Model → Validation → Submission → Persistence). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
+> **2026-08-14 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Meta [#222](https://github.com/igortatarynovich/HostFlow/pull/222) · slice 3 [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · slice 4 [#238](https://github.com/igortatarynovich/HostFlow/pull/238) merged. Forms C1–C5 ✅ ([#248](https://github.com/igortatarynovich/HostFlow/pull/248)). **Product Track:** [Forms Platform C6 — Optimization](forms-platform-c6-optimization.md) (brief; feat locked). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC.  
 > Communication **C2.4 frozen** (gate residual R1) — not Forms C2 / C3 / C4 / C5.  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Forms Platform C5** Form Execution — [brief](forms-platform-c5-form-execution.md); C1–C4 ✅ [#246](https://github.com/igortatarynovich/HostFlow/pull/246); brief [#247](https://github.com/igortatarynovich/HostFlow/pull/247); feat open | Almost all capacity |
+| **Product** | **Forms Platform C6** Optimization — [brief](forms-platform-c6-optimization.md); C1–C5 ✅ [#248](https://github.com/igortatarynovich/HostFlow/pull/248); feat locked until this brief merges | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -51,7 +51,8 @@
 - **Forms Platform C2 — Runtime Contract** ← ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) — [brief](forms-platform-c2-runtime-contract.md)  
 - **Forms Platform C3 — Builder Runtime** ← ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244) — [brief](forms-platform-c3-builder-runtime.md)
 - **Forms Platform C4 — Form Runtime** ← ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) — [brief](forms-platform-c4-form-runtime.md); Runtime Model; not P3 Publish UI / P4 Themes / Sprint HTTP C4  
-- **Forms Platform C5 — Form Execution** ← **active** (feat) — [brief](forms-platform-c5-form-execution.md); not P3 Publish UI / P4 Themes / P5 Analytics / second Forms submit engine  
+- **Forms Platform C5 — Form Execution** ← ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248) — [brief](forms-platform-c5-form-execution.md)
+- **Forms Platform C6 — Optimization** ← **active** (brief; feat locked) — [brief](forms-platform-c6-optimization.md); not P3 Publish UI / P4 Themes / P5 Analytics / Acquisition Stage 5  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -88,10 +89,11 @@
 | **14** | **Forms Platform C2** Runtime Contract & Gates | `docs/forms-platform-c2-runtime-contract` then `feat/…` | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
 | **15** | **Forms Platform C3** Builder Runtime | `docs/forms-platform-c3-builder-runtime` then `feat/…` | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244) |
 | **16** | **Forms Platform C4** Form Runtime | `docs/forms-platform-c4-form-runtime` then `feat/…` | ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) |
-| **17** | **Forms Platform C5** Form Execution | `docs/forms-platform-c5-form-execution` ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247) · `feat/forms-platform-c5-form-execution` | **active** (feat) — [brief](forms-platform-c5-form-execution.md); not P3 Publish UI / P4 Themes / P5 / Stage 5 / R6 |
+| **17** | **Forms Platform C5** Form Execution | `docs/…` ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247) · `feat/…` ✅ [#248](https://github.com/igortatarynovich/HostFlow/pull/248) | ✅ PASS-ready `c24bdc18` · merge `f6bbe03f` |
+| **18** | **Forms Platform C6** Optimization | `docs/forms-platform-c6-optimization` then `feat/…` | **active** (brief; feat locked) — [brief](forms-platform-c6-optimization.md); not P3 / P4 / P5 / Stage 5 / R6 |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.**  
-**Active (Product):** Forms Platform C5 — [Form Execution](forms-platform-c5-form-execution.md) (feat). C1–C4 merged. Brief [#247](https://github.com/igortatarynovich/HostFlow/pull/247).  
+**Active (Product):** Forms Platform C6 — [Optimization](forms-platform-c6-optimization.md) (brief; feat locked). C1–C5 merged.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -139,9 +141,13 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [forms-platform-c4-form-runtime.md](forms-platform-c4-form-runtime.md). Runtime, not an Engine. Adapter resolve → Runtime Model. Read-only. Dual Builder boundary. Named C4 gate SUCCESS at `626e5a9d`; merge `4427b110`.
 
-### Forms Platform C5 — Form Execution ← **active** (feat)
+### Forms Platform C5 — Form Execution ← **DONE** (#247 / #248)
 
-[forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md). Runtime Model → Validation → Submission → Persistence. Brief [#247](https://github.com/igortatarynovich/HostFlow/pull/247). Named C5 Form Execution Gate. Not P3 Publish UI / P4 Themes / P5 Analytics / second Forms submit engine.
+[forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md). Runtime Model → Validation → Submission → Persistence. Named C5 gate SUCCESS at `c24bdc18`; merge `f6bbe03f`.
+
+### Forms Platform C6 — Optimization ← **active** (brief; feat locked)
+
+[forms-platform-c6-optimization.md](forms-platform-c6-optimization.md). Production Shared Intake binds resolve → serve → execute; Forms Foundation close. Not P3 Publish UI / P4 Themes / P5 Analytics / Acquisition Stage 5.
 
 ---
 
@@ -226,6 +232,7 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-08-14: C5 ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248) (`f6bbe03f`); Product Track → **Forms Platform C6** — [brief](forms-platform-c6-optimization.md) (feat locked).
 - 2026-08-14: C5 brief ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247) (`0b39baa1`); Product Track → **Forms Platform C5** feat — [brief](forms-platform-c5-form-execution.md).
 - 2026-08-14: C4 ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) (`4427b110`); Product Track → **Forms Platform C5** — [brief](forms-platform-c5-form-execution.md) (feat locked).
 - 2026-08-14: C4 brief [#245](https://github.com/igortatarynovich/HostFlow/pull/245); Product Track → **Forms Platform C4 feat** — Runtime Model (read-only; not an Engine).

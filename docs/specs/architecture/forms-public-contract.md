@@ -1,11 +1,11 @@
 # Forms Public Contract v1 — Sprint 1 + Sprint 2 hardening
 
-**Status:** canonical · **ACTIVE** · Product Track = [Phase C C5](../tasks/forms-platform-c5-form-execution.md) (feat) · C1–C4 ✅ · brief [#247](https://github.com/igortatarynovich/HostFlow/pull/247)  
+**Status:** canonical · **ACTIVE** · Product Track = [Phase C C6](../tasks/forms-platform-c6-optimization.md) · C1–C5 ✅  
 **Capability id:** `forms`  
 **Contract id:** `forms.public_contract.v1`  
 **Adapter id:** `forms.endpoint_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#forms)  
-**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · P1 Catalog ✅ · P2 Builder MVP ✅ · P3 Publish UI / P4 / P5 **LOCKED** · C1 [`forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md) ✅ · C2 [`forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md) ✅ · C3 [`forms-platform-c3-builder-runtime.md`](../tasks/forms-platform-c3-builder-runtime.md) ✅ · C4 [`forms-platform-c4-form-runtime.md`](../tasks/forms-platform-c4-form-runtime.md) ✅ · C5 [`forms-platform-c5-form-execution.md`](../tasks/forms-platform-c5-form-execution.md)  
+**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · P1 Catalog ✅ · P2 Builder MVP ✅ · P3 Publish UI / P4 / P5 **LOCKED** · C1 [`forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md) ✅ · C2 [`forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md) ✅ · C3 [`forms-platform-c3-builder-runtime.md`](../tasks/forms-platform-c3-builder-runtime.md) ✅ · C4 [`forms-platform-c4-form-runtime.md`](../tasks/forms-platform-c4-form-runtime.md) ✅ · C5 [`forms-platform-c5-form-execution.md`](../tasks/forms-platform-c5-form-execution.md) ✅ · C6 [`forms-platform-c6-optimization.md`](../tasks/forms-platform-c6-optimization.md)  
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -119,7 +119,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 4. First entry uses Universal Routing once; continuation inherits attribution (ADR-024).  
 5. Forms **never** owns Campaign / Flight / Outcome / KPI tables.  
 6. Consumers call **Adapter** ops only.  
-7. P1 Field Catalog is closed; P2 Builder MVP is complete; **C3 Builder Runtime** is the editor of FormDefinition ([brief](../tasks/forms-platform-c3-builder-runtime.md)). Draft save is not publish. **C4 Form Runtime** projects frozen publication versions into **Runtime Model** ([brief](../tasks/forms-platform-c4-form-runtime.md)). Runtime does not import Builder. **C5 Form Execution** binds validate/submit/persist to Runtime Model ([brief](../tasks/forms-platform-c5-form-execution.md)). **P3 Publish UI / P4 Themes / P5 Analytics remain LOCKED.** Builder **must not invent field types**.
+7. P1 Field Catalog is closed; P2 Builder MVP is complete; **C3 Builder Runtime** is the editor of FormDefinition ([brief](../tasks/forms-platform-c3-builder-runtime.md)). Draft save is not publish. **C4 Form Runtime** projects frozen publication versions into **Runtime Model** ([brief](../tasks/forms-platform-c4-form-runtime.md)). Runtime does not import Builder. **C5 Form Execution** binds validate/submit/persist to Runtime Model ([brief](../tasks/forms-platform-c5-form-execution.md)). **C6 Optimization** wires production Shared Intake through serve→execute and closes Forms Foundation ([brief](../tasks/forms-platform-c6-optimization.md)). **P3 Publish UI / P4 Themes / P5 Analytics remain LOCKED.** Builder **must not invent field types**.
 
 ---
 
@@ -236,6 +236,7 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-08-13: Phase C C1 — Product Track seals Passport / Manifest / Public Contract / Adapter ids; P3–P5 remain locked.  
 - 2026-08-13: Phase C C2 sealed as next — identity + gates; Builder locked until C2 feat ([`../tasks/forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md)).
 - 2026-08-14: C2 runtime — Contract Identity on publication versions; JCS+SHA-256; Forms-owned compatibility tuples; fail-closed backfill.
+- 2026-08-14: C5 ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248); Product Track → [C6 Optimization](../tasks/forms-platform-c6-optimization.md); P3 Publish UI / P4 / P5 stay locked.
 - 2026-08-14: C4 ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246); Product Track → [C5 Form Execution](../tasks/forms-platform-c5-form-execution.md); P3 Publish UI / P4 / P5 stay locked.
 - 2026-08-14: C4 feat — Runtime Model (`forms.runtime.model.v1`); Adapter resolve is the sole source; read-only `serve`; dual Builder boundary.
 - 2026-08-14: C3 ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244); Product Track → [C4 Form Runtime](../tasks/forms-platform-c4-form-runtime.md); P3 Publish UI / P4 / P5 stay locked.

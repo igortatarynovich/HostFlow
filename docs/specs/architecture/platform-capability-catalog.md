@@ -248,7 +248,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`../../forms/module-scope.md`](../../forms/module-scope.md)  
 **Public Contract:** [`forms-public-contract.md`](forms-public-contract.md) (`forms.public_contract.v1`)  
 **Task:** [`../tasks/forms-sprint-1.md`](../tasks/forms-sprint-1.md)  
-**Sprint 1–6:** ✅ COMPLETE (backend contour) · **P1 Field Catalog:** ✅ CLOSED · **P2 Builder MVP:** ✅ COMPLETE · **P3 Publish UI / P4 / P5:** **LOCKED** · **Product Track:** [C5 Form Execution](../tasks/forms-platform-c5-form-execution.md) ← active (feat) · C1–C4 ✅ · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
+**Sprint 1–6:** ✅ COMPLETE (backend contour) · **P1 Field Catalog:** ✅ CLOSED · **P2 Builder MVP:** ✅ COMPLETE · **P3 Publish UI / P4 / P5:** **LOCKED** · **Product Track:** [C6 Optimization](../tasks/forms-platform-c6-optimization.md) ← active (brief; feat locked) · C1–C5 ✅ · **Rule:** Builder must not invent field types · **Forms Outcome/KPI:** forbidden (compose Acquisition)
 
 **Purpose.** Платформенный input layer: единственный SoT HostFlow Form.
 
