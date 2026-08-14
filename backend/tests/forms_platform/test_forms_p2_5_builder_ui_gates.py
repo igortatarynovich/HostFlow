@@ -31,8 +31,10 @@ def test_forms_p2_5_no_xfail() -> None:
 def test_forms_p2_5_api_is_thin_catalog_client() -> None:
     text = _API.read_text(encoding="utf-8")
     assert "BuilderReadModel" in text
-    assert "create_draft" in text or "update_draft" in text
+    assert "FormDefinition" in text
+    assert "save_session_async" in text
     assert "commit_publish" not in text
+    assert "from backend.app.forms_platform.adapter" not in text
     assert "field_catalog.stdlib" not in text
     assert "forms.field.email" not in text
 

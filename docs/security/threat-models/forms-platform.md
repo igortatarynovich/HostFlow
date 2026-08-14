@@ -1,19 +1,21 @@
-# Threat Model — Forms Platform (C2 Contract Identity)
+# Threat Model — Forms Platform (C2 identity + C3 Builder Runtime)
 
 ## Assets
 
 - Frozen `FormPublicationVersion` ledger rows (`form_publication_versions`): `field_schema` + Contract Identity  
-- Mutable Form definition / draft (`TenantLeadForm` bridge — not a publication)  
+- Mutable `FormDefinition` / Draft (`form_builder_drafts` + `TenantLeadForm` pointer — not a publication)  
+- Authenticated Builder HTTP (`/api/v1/platform/forms/builder/...` draft GET/PUT/archive)  
 - Authenticated resolve DTO (`GET /api/v1/platform/forms/publications/resolve`)  
 - Submission pin to a publication version (`FormSubmission` / envelope)  
 - Contract Identity tuple: `contract_id`, `manifest_version`, `public_contract_version`, `object_kind`, `schema_hash`, `adapter_version`
 
-Public anonymous intake tokens remain in [`public-links.md`](./public-links.md). This model covers the **platform capability** surface after C2: identity on a frozen publication version, not Builder UX.
+Public anonymous intake tokens remain in [`public-links.md`](./public-links.md). This model covers the **platform capability** surface: identity on a frozen publication version (C2) and FormDefinition ↔ Draft only in Builder (C3). Not Builder canvas UX, not Publish UI.
 
 ## Trust boundaries
 
 - Authenticated tenant operator → platform Forms APIs (JWT + `X-Tenant-Id` + RLS via `get_db_with_tenant`)  
-- Adapter (`forms.endpoint_adapter_v1`) is the only consumer contract; modules must not read ledger internals  
+- Adapter (`forms.endpoint_adapter_v1`) is the only consumer contract for publish / resolve / submission; modules must not read ledger internals  
+- Builder (`forms_platform/builder/` and Builder HTTP) mutates **only** `FormDefinition` ↔ Draft  
 - Draft / FormDefinition is **not** a publication and must not be treated as one  
 - `lifecycle_status` is Publication State (mutable); it is **not** Contract Identity  
 - Public intake path is a separate trust boundary (anonymous); resolve HTTP here is authenticated
@@ -32,6 +34,9 @@ Public anonymous intake tokens remain in [`public-links.md`](./public-links.md).
 | FP-8 | Extra-contract answers | Adapter accepts keys absent from that version’s frozen schema |
 | FP-9 | Undeclared compatibility mix | Manifest vN + Public Contract vM + Adapter vK with no closed-set row |
 | FP-10 | Confusion with public intake | Treating authenticated resolve identity as a public-link token / vice versa |
+| FP-11 | Editor fused to runtime | Builder save calls Adapter `publish` / `commit_publish` / `resolve_publication` |
+| FP-12 | Identity leak onto Draft | Draft payload or Builder session writes `contract_identity` / `schema_hash` |
+| FP-13 | Unknown Catalog accepted | Builder persists a component id/version not in frozen Catalog v1 |
 
 ## Митигации
 
@@ -41,8 +46,10 @@ Public anonymous intake tokens remain in [`public-links.md`](./public-links.md).
 - Submit requires a ledger version + complete identity; archived refuses new submissions.  
 - Backfill reconstructs identity **provably** from frozen schema + sealed C1 lineage, or fail-close (`forms_contract_identity_unreconstructable`). No unknown/legacy-accepted.  
 - Compatibility is a Forms-owned closed tuple set (`forms_platform/compatibility.py`); undeclared mixes fail.  
-- Tenant: `_ensure_tenant` + `get_db_with_tenant`; publication lookup is tenant-scoped.  
-- Named CI: Manifest / Public Contract / Adapter / Contract Identity gates. Full-repo pytest red does not waive them.
+- Tenant: `_ensure_tenant` + `get_db_with_tenant`; publication and draft lookup are tenant-scoped.  
+- Builder package does not import Adapter / publication ledger / Contract Identity. HTTP draft save goes through `save_session_async` (Draft only). Dirty and Saved remain mutable.  
+- Unknown Catalog component fails closed (`validation_error`); no draft row is written.  
+- Named CI: Manifest / Public Contract / Adapter / Contract Identity / **C3 Builder Runtime** gates. Full-repo pytest red does not waive them.
 
 ## Тесты
 
@@ -50,11 +57,13 @@ Public anonymous intake tokens remain in [`public-links.md`](./public-links.md).
 - `backend/tests/forms_platform/test_forms_c2_public_contract_gate.py`  
 - `backend/tests/forms_platform/test_forms_c2_adapter_gate.py`  
 - `backend/tests/forms_platform/test_forms_c2_identity_gate.py`  
+- `backend/tests/forms_platform/test_forms_c3_builder_runtime_gate.py`  
 - `backend/tests/forms_platform/test_forms_platform_c4.py` (HTTP resolve: identity on frozen version; draft `contract_identity is None`; unknown `version` → 404)
 
 ## Связанные спеки
 
 - [`docs/specs/tasks/forms-platform-c2-runtime-contract.md`](../../specs/tasks/forms-platform-c2-runtime-contract.md)  
+- [`docs/specs/tasks/forms-platform-c3-builder-runtime.md`](../../specs/tasks/forms-platform-c3-builder-runtime.md)  
 - [`docs/specs/architecture/forms-public-contract.md`](../../specs/architecture/forms-public-contract.md)  
 - [`docs/specs/architecture/ADR-007-forms-platform-capability.md`](../../specs/architecture/ADR-007-forms-platform-capability.md)  
 - [`docs/security/threat-models/public-links.md`](./public-links.md)

@@ -67,7 +67,7 @@ class DraftRecord:
         return parse_composition(self.composition)
 
 
-def _freeze_composition(
+def _serialize_composition(
     composition: FormDraftComposition,
     *,
     registry: FieldCatalogRegistry | None = None,
@@ -124,7 +124,7 @@ class InMemoryDraftStore:
             raise FormsBuilderDraftConflictError(
                 details={"reason": "draft_already_exists", "draft_id": composition.draft_id},
             )
-        payload = _freeze_composition(
+        payload = _serialize_composition(
             composition, registry=registry, require_valid=require_valid
         )
         record = DraftRecord(
@@ -188,7 +188,7 @@ class InMemoryDraftStore:
                     "current_revision": current.revision,
                 },
             )
-        payload = _freeze_composition(
+        payload = _serialize_composition(
             composition, registry=registry, require_valid=require_valid
         )
         new_rev = current.revision + 1
@@ -281,7 +281,7 @@ class InMemoryDraftStore:
         return copy.deepcopy(payload)
 
 
-# --- SQLAlchemy adapter (durable) ---
+# --- SQLAlchemy persistence (durable Draft tip; not Forms Adapter) ---
 
 
 async def create_draft(
@@ -306,7 +306,7 @@ async def create_draft(
         raise FormsBuilderDraftConflictError(
             details={"reason": "draft_already_exists", "draft_id": composition.draft_id},
         )
-    payload = _freeze_composition(
+    payload = _serialize_composition(
         composition, registry=registry, require_valid=require_valid
     )
     now = now_utc()
@@ -395,7 +395,7 @@ async def update_draft(
                 "current_revision": int(row.revision),
             },
         )
-    payload = _freeze_composition(
+    payload = _serialize_composition(
         composition, registry=registry, require_valid=require_valid
     )
     new_rev = int(row.revision) + 1
@@ -492,3 +492,48 @@ async def get_draft_revision(
             },
         )
     return copy.deepcopy(dict(row.composition or {}))
+
+
+class SqlAlchemyDraftTipStore:
+    """Async draft tip over the request session. Not Forms Adapter."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def create(
+        self,
+        *,
+        tenant_id: str,
+        composition: FormDraftComposition,
+        form_id: str | None = None,
+        registry: FieldCatalogRegistry | None = None,
+        require_valid: bool = True,
+    ) -> DraftRecord:
+        return await create_draft(
+            self._session,
+            tenant_id=tenant_id,
+            composition=composition,
+            form_id=form_id,
+            registry=registry,
+            require_valid=require_valid,
+        )
+
+    async def update(
+        self,
+        *,
+        tenant_id: str,
+        draft_id: str,
+        composition: FormDraftComposition,
+        expected_revision: int,
+        registry: FieldCatalogRegistry | None = None,
+        require_valid: bool = True,
+    ) -> DraftRecord:
+        return await update_draft(
+            self._session,
+            tenant_id=tenant_id,
+            draft_id=draft_id,
+            composition=composition,
+            expected_revision=expected_revision,
+            registry=registry,
+            require_valid=require_valid,
+        )

@@ -35,6 +35,10 @@ Compatibility is a **Forms-owned closed set** of `(manifest_version × public_co
 
 Publish appends a new ledger row. Schema/identity mutation of an existing row is forbidden (`forms_publication_version_immutable`). Submission pins `form_id` + `published_version` (+ identity copy on the envelope DTO).
 
+### Builder Draft API (C3 — not Adapter)
+
+Builder mutates **`FormDefinition` ↔ Draft** only. Dirty Draft and Saved Draft are both mutable. Builder **does not** implement Adapter ops (`publish` / `resolve` / `submission`). Contract Identity and `schema_hash` are C2 publication fields — they must not appear on a draft. Publish remains `forms.endpoint_adapter_v1` **outside** `forms_platform/builder/`. HTTP `/platform/forms/builder` save goes through the Builder session (`save_session_async`); it is still not Adapter `publish`.
+
 ---
 
 ## Public operations
@@ -221,3 +225,4 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-08-13: Phase C C2 sealed as next — identity + gates; Builder locked until C2 feat ([`../tasks/forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md)).
 - 2026-08-14: C2 runtime — Contract Identity on publication versions; JCS+SHA-256; Forms-owned compatibility tuples; fail-closed backfill.
 - 2026-08-14: C1+C2 merged; Product Track → [C3 Builder Runtime](../tasks/forms-platform-c3-builder-runtime.md); P3 Publish UI / P4 / P5 stay locked.
+- 2026-08-14: C3 — Builder Draft API is FormDefinition-only; Adapter publish/resolve stay outside Builder.

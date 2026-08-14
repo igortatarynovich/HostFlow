@@ -54,6 +54,8 @@ export type BuilderDraft = {
   composition_contract: string
   composition: FormComposition
   exists: boolean
+  definition_id?: string
+  builder_state?: string
 }
 
 export async function fetchBuilderPalette(params?: {
@@ -101,7 +103,10 @@ export function isDraftRevisionConflict(err: unknown): boolean {
   if (err.response?.status !== 409) return false
   const detail = err.response.data?.detail
   if (typeof detail === 'object' && detail && 'error' in detail) {
-    return detail.error === 'forms_builder_draft_revision_conflict'
+    if (detail.error === 'forms_builder_draft_revision_conflict') return true
+    const state = (detail as { details?: { builder_state?: string } }).details?.builder_state
+    if (state === 'conflict') return true
+    return false
   }
   return true
 }
