@@ -1,11 +1,11 @@
 # Forms Public Contract v1 — Sprint 1 + Sprint 2 hardening
 
-**Status:** canonical · **ACTIVE** · Product Track = [Phase C C3](../tasks/forms-platform-c3-builder-runtime.md) · C1–C2 ✅  
+**Status:** canonical · **ACTIVE** · Product Track = [Phase C C4](../tasks/forms-platform-c4-form-runtime.md) · C1–C3 ✅  
 **Capability id:** `forms`  
 **Contract id:** `forms.public_contract.v1`  
 **Adapter id:** `forms.endpoint_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#forms)  
-**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · P1 Catalog ✅ · P2 Builder MVP ✅ · P3 Publish UI / P4 / P5 **LOCKED** · C1 [`forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md) ✅ · C2 [`forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md) ✅ · C3 [`forms-platform-c3-builder-runtime.md`](../tasks/forms-platform-c3-builder-runtime.md)  
+**Tasks:** [`forms-sprint-1.md`](../tasks/forms-sprint-1.md) … [`forms-sprint-6.md`](../tasks/forms-sprint-6.md) ✅ · P1 Catalog ✅ · P2 Builder MVP ✅ · P3 Publish UI / P4 / P5 **LOCKED** · C1 [`forms-platform-c1-contract-seal.md`](../tasks/forms-platform-c1-contract-seal.md) ✅ · C2 [`forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md) ✅ · C3 [`forms-platform-c3-builder-runtime.md`](../tasks/forms-platform-c3-builder-runtime.md) ✅ · C4 [`forms-platform-c4-form-runtime.md`](../tasks/forms-platform-c4-form-runtime.md)  
 **Normative:** [`ADR-007`](ADR-007-forms-platform-capability.md) · [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -38,6 +38,10 @@ Publish appends a new ledger row. Schema/identity mutation of an existing row is
 ### Builder Draft API (C3 — not Adapter)
 
 Builder mutates **`FormDefinition` ↔ Draft** only. Dirty Draft and Saved Draft are both mutable. Builder **does not** implement Adapter ops (`publish` / `resolve` / `submission`). Contract Identity and `schema_hash` are C2 publication fields — they must not appear on a draft. Publish remains `forms.endpoint_adapter_v1` **outside** `forms_platform/builder/`. HTTP `/platform/forms/builder` save goes through the Builder session (`save_session_async`); it is still not Adapter `publish`.
+
+### Form Runtime (C4 — not Builder, not submit)
+
+Runtime serves **frozen `FormPublicationVersion`** only. It consumes Adapter `resolve`. It **does not** import Builder, mutate `FormDefinition`, save drafts, publish, or accept submissions (C5). Historical Sprint HTTP C4 (`test_forms_platform_c4.py`) is not this slice.
 
 ---
 
@@ -108,7 +112,7 @@ Write path for payloads: `/api/v1/public/intake` + `intake_platform.submission_s
 4. First entry uses Universal Routing once; continuation inherits attribution (ADR-024).  
 5. Forms **never** owns Campaign / Flight / Outcome / KPI tables.  
 6. Consumers call **Adapter** ops only.  
-7. P1 Field Catalog is closed; P2 Builder MVP is complete; **C3 Builder Runtime** is the editor of FormDefinition ([brief](../tasks/forms-platform-c3-builder-runtime.md)). Draft save is not publish. **P3 Publish UI / P4 Themes / P5 Analytics remain LOCKED.** Builder **must not invent field types**.
+7. P1 Field Catalog is closed; P2 Builder MVP is complete; **C3 Builder Runtime** is the editor of FormDefinition ([brief](../tasks/forms-platform-c3-builder-runtime.md)). Draft save is not publish. **C4 Form Runtime** serves frozen publication versions ([brief](../tasks/forms-platform-c4-form-runtime.md)). **P3 Publish UI / P4 Themes / P5 Analytics remain LOCKED.** Builder **must not invent field types**.
 
 ---
 
@@ -224,5 +228,6 @@ Decision → Result → Acquisition.attribution / Outcome / KPI (3D)
 - 2026-08-13: Phase C C1 — Product Track seals Passport / Manifest / Public Contract / Adapter ids; P3–P5 remain locked.  
 - 2026-08-13: Phase C C2 sealed as next — identity + gates; Builder locked until C2 feat ([`../tasks/forms-platform-c2-runtime-contract.md`](../tasks/forms-platform-c2-runtime-contract.md)).
 - 2026-08-14: C2 runtime — Contract Identity on publication versions; JCS+SHA-256; Forms-owned compatibility tuples; fail-closed backfill.
+- 2026-08-14: C3 ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244); Product Track → [C4 Form Runtime](../tasks/forms-platform-c4-form-runtime.md); P3 Publish UI / P4 / P5 stay locked.
 - 2026-08-14: C1+C2 merged; Product Track → [C3 Builder Runtime](../tasks/forms-platform-c3-builder-runtime.md); P3 Publish UI / P4 / P5 stay locked.
 - 2026-08-14: C3 — Builder Draft API is FormDefinition-only; Adapter publish/resolve stay outside Builder.

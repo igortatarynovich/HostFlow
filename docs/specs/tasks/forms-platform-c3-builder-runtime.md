@@ -1,15 +1,16 @@
 # Forms Platform C3 — Builder Runtime
 
-**Status:** **IN PROGRESS** (feat — implementation complete, merge pending)  
+**Status:** **COMPLETE** ([#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244) · `638955d5`)  
+**Next:** [C4 Form Runtime](forms-platform-c4-form-runtime.md)  
 **Branch (docs):** `docs/forms-platform-c3-builder-runtime` ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)  
-**Branch (code):** `feat/forms-platform-c3-builder-runtime`  
+**Branch (code):** `feat/forms-platform-c3-builder-runtime` ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244)  
 **Parents:** [C2 runtime contract](forms-platform-c2-runtime-contract.md) · [C1 contract seal](forms-platform-c1-contract-seal.md) · [P2 Builder](forms-product-p2-builder.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md)
 
 > C3 edits **only** `FormDefinition`.  
 > Builder responsibility is `FormDefinition ↔ Draft`.  
 > Builder must not know publications, submissions, Adapter, resolve, or identity.
 
-**Naming (do not collapse):** this **Forms Platform C3** is not Communication Context C3 (policy ports). It is not historical **P3 Publish UI**. P2 Builder MVP already exists; C3 binds that editor to `FormDefinition` and a draft state machine. Phase C **C4 Form Runtime** stays locked.
+**Naming (do not collapse):** this **Forms Platform C3** is not Communication Context C3 (policy ports). It is not historical **P3 Publish UI**. P2 Builder MVP already exists; C3 binds that editor to `FormDefinition` and a draft state machine. Phase C **C4 Form Runtime** is next — [brief](forms-platform-c4-form-runtime.md).
 
 ---
 
@@ -179,7 +180,7 @@ Builder package (`backend/app/forms_platform/builder/`):
 | Deferred | Owner |
 |----------|--------|
 | Publish UI / calling Adapter `publish` | Later — not Builder |
-| C4 Form Runtime / C5 Execution / C6 | After C3 feat PASS |
+| C4 Form Runtime / C5 Execution / C6 | [C4 brief](forms-platform-c4-form-runtime.md) — after this COMPLETE |
 | P3 Publish UI · P4 Themes · P5 Analytics | Locked |
 | Autosave / collab UX | Consume the state machine later |
 | Stage 5 settings / R6 / FormTemplate / ADR-022 | Unchanged |
@@ -195,8 +196,8 @@ Do **not** mix Themes, Publish UI, public Form Runtime, Stage 5, or R6 into C3.
 |-------|--------|--------|
 | **C1** | Contract seal | ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239) / [#240](https://github.com/igortatarynovich/HostFlow/pull/240) |
 | **C2** | Runtime contract + gates | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241) / [#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
-| **C3** | Builder Runtime (this) | **active** |
-| **C4** | Form Runtime | Locked until C3 feat PASS |
+| **C3** | Builder Runtime (this) | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243) / [#244](https://github.com/igortatarynovich/HostFlow/pull/244) |
+| **C4** | Form Runtime | [brief](forms-platform-c4-form-runtime.md) ← next |
 | **C5** | Form Execution | After C4 |
 | **C6** | Optimization | After C5 |
 
@@ -248,7 +249,7 @@ Does **not** amend L0 P-rules.
 
 - [x] Brief #243 merged  
 - [x] Boundary sealed: FormDefinition-only; no Adapter; Publish outside Builder  
-- [x] Feat: FormDefinition + state machine + named gate (merge pending; C4 stays locked)  
+- [x] Feat: FormDefinition + state machine + named gate — [#244](https://github.com/igortatarynovich/HostFlow/pull/244) · `638955d5`  
 
 ---
 
@@ -260,3 +261,4 @@ Does **not** amend L0 P-rules.
 - 2026-08-14: HTTP draft save/load goes through FormDefinition session (`save_session_async`); still not Publish UI.  
 - 2026-08-14: Threat model [`forms-platform.md`](../../security/threat-models/forms-platform.md) covers C3 (FP-11…FP-13); named C3 gate remains the CI criterion.  
 - 2026-08-14: Existing P2.5 canvas reads `builder_state` from Draft API; no autosave, no Publish UI.
+- 2026-08-14: C3 feat merged [#244](https://github.com/igortatarynovich/HostFlow/pull/244) (`638955d5`; PASS-ready `2e5f9720`). Named C3 gate / docs-gates / security-gates / frontend-static-qa SUCCESS. Next = [C4 Form Runtime](forms-platform-c4-form-runtime.md).
