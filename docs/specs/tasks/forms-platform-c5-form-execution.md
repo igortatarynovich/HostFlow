@@ -1,7 +1,8 @@
 # Forms Platform C5 — Form Execution
 
-**Status:** **IN PROGRESS** (docs — brief seal; feat locked until this brief merges)  
-**Branch (docs):** `docs/forms-platform-c5-form-execution`  
+**Status:** **IN PROGRESS** (feat — Runtime Model → Validation → Submission → Persistence + named gate)  
+**Branch (docs):** `docs/forms-platform-c5-form-execution` ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)  
+**Branch (code):** `feat/forms-platform-c5-form-execution`  
 **Parents:** [C4 Form Runtime](forms-platform-c4-form-runtime.md) ✅ · [C3 Builder Runtime](forms-platform-c3-builder-runtime.md) · [C2 runtime contract](forms-platform-c2-runtime-contract.md) · [C1 contract seal](forms-platform-c1-contract-seal.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase C](../architecture/platform-completion-roadmap.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Forms Public Contract](../architecture/forms-public-contract.md)
 
 > C5 **executes against** frozen **Runtime Model** only.  
@@ -131,21 +132,21 @@ A Runtime Model without a complete Contract Identity **must not** accept submiss
 
 ---
 
-## Form Execution Gate (CI — mandatory on the later feat)
+## Form Execution Gate (CI — mandatory)
 
-Named step. Full-repo pytest red does not waive it.
+Named step: **Forms Platform C5 Form Execution Gate**  
+(`tests/forms_platform/test_forms_c5_form_execution_gate.py`). Full-repo pytest red does not waive it.
 
-Execution path / package:
+Package: `forms_platform/execution/`
 
-- does **not** import `forms_platform.builder`
+- does **not** import `forms_platform.builder` / Adapter publish surface
 - does **not** read or write Draft / `FormDefinition`
 - does **not** call `save_session` / `publish` / `commit_publish`
-- validates only against a Runtime Model (or an equivalent constructed solely from C4 `serve` output)
+- validates only against a Runtime Model (from C4 `serve`)
 - fail-closed when Contract Identity is missing, incompatible, or `schema_hash` mismatches
 - does **not** re-mint identity (`freeze_contract_identity` forbidden on execute)
-- does **not** add a second Forms submit engine / public HTTP
-
-This docs PR does **not** add that gate. The feat PR does.
+- does **not** add a second Forms submit engine / public HTTP — `PUBLIC_INTAKE_PATH` stays `/api/v1/public/intake`
+- persist goes through `persist_submission_envelope` (Shared Intake envelope write path)
 
 ---
 
@@ -162,13 +163,13 @@ This docs PR does **not** add that gate. The feat PR does.
 
 ---
 
-## Feat implementation order (mandatory — after this brief merges)
+## Feat implementation order (this PR)
 
-1. Name Form Execution as the submit contract over **Runtime Model**.  
-2. Bind validate / normalize / pin / persist to that model (no draft path).  
-3. Fail-closed on missing / incompatible identity (reuse C2 rules; do not re-mint).  
-4. **Then** named Form Execution Gate.  
-5. Do **not** add Publish UI, Themes, Analytics, Builder, or a second submit HTTP.
+1. ✅ Name Form Execution — `forms_platform/execution/`  
+2. ✅ Bind validate / pin / persist to Runtime Model (`validate_against_runtime_model` → `execute_submission` → `persist_execution`)  
+3. ✅ Fail-closed on missing / incompatible identity (reuse C2 verify; no re-mint)  
+4. ✅ Named Form Execution Gate  
+5. ✅ No Publish UI, Themes, Analytics, Builder, or second submit HTTP
 
 ---
 
@@ -176,7 +177,6 @@ This docs PR does **not** add that gate. The feat PR does.
 
 | Deferred | Owner |
 |----------|--------|
-| C5 **feat** (binding + named gate) | After this brief merges |
 | Publish UI / calling Adapter `publish` from canvas | P3 — locked |
 | Themes | P4 — locked |
 | Analytics | P5 — locked |
@@ -196,7 +196,7 @@ Do **not** mix Themes, Publish UI, Builder, Analytics, Stage 5, or R6 into C5.
 | **C2** | Runtime contract + gates | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241) / [#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
 | **C3** | Builder Runtime | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243) / [#244](https://github.com/igortatarynovich/HostFlow/pull/244) · `638955d5` |
 | **C4** | Form Runtime | ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245) / [#246](https://github.com/igortatarynovich/HostFlow/pull/246) · `4427b110` |
-| **C5** | Form Execution (this) | **active** (brief; feat locked) |
+| **C5** | Form Execution (this) | **active** (feat) |
 | **C6** | Optimization | After C5 |
 
 ---
@@ -222,26 +222,28 @@ Does **not** amend L0 P-rules.
 
 ## Acceptance
 
-- [ ] This brief merged (docs PR)  
-- [ ] C4 marked **COMPLETE** in canon (#246 / `4427b110` · PASS-ready `626e5a9d`)  
-- [ ] Product Track points here; C5 feat not opened in this PR  
-- [ ] P3 Publish UI / P4 Themes / P5 Analytics remain locked  
-- [ ] No second Forms submit engine named as this slice  
+- [x] Brief merged ([#247](https://github.com/igortatarynovich/HostFlow/pull/247))  
+- [x] C4 marked **COMPLETE** in canon (#246 / `4427b110` · PASS-ready `626e5a9d`)  
+- [x] Product Track points here; C5 feat open on `feat/forms-platform-c5-form-execution`  
+- [x] P3 Publish UI / P4 Themes / P5 Analytics remain locked  
+- [x] No second Forms submit engine — Shared Intake path only  
 
-Feat DoD (later PR, not this one): named Form Execution Gate green; Execution does not import Builder; validate/submit only against Runtime Model.
+Feat DoD: named Form Execution Gate green; Execution does not import Builder; validate/submit only against Runtime Model; persist via `persist_submission_envelope`.
 
-**CI criterion for the later feat:** named **Forms Platform C5 Form Execution Gate**. Full-repo `Tests with coverage` is Engineering Track debt and does not block C5.
+**CI criterion:** named **Forms Platform C5 Form Execution Gate**. Full-repo `Tests with coverage` is Engineering Track debt and does not block C5.
 
 ---
 
-## DoD (this docs PR)
+## DoD (this feat PR)
 
-- [ ] Brief sealed; inbound refs from queue / roadmap / AGENTS / ADR-007 / Public Contract  
-- [ ] C4 closed COMPLETE  
-- [ ] C5 feat, Publish UI, Themes, Analytics **not** started  
+- [x] Brief sealed ([#247](https://github.com/igortatarynovich/HostFlow/pull/247)); inbound refs from queue / roadmap / AGENTS / ADR-007 / Public Contract  
+- [x] `forms_platform/execution/` binds Runtime Model → validate → pin → persist  
+- [x] Named C5 Form Execution Gate in `backend-ci.yml`  
+- [x] P3 Publish UI / Themes / Analytics **not** opened  
 
 ---
 
 ## History
 
 - 2026-08-14: C4 Form Runtime merged [#246](https://github.com/igortatarynovich/HostFlow/pull/246) (`4427b110`, PASS-ready `626e5a9d`). C5 Form Execution brief opened (docs). Feat locked until this brief merges. Not P3 Publish UI / P4 Themes / P5 Analytics / second Forms submit engine.
+- 2026-08-14: C5 brief merged [#247](https://github.com/igortatarynovich/HostFlow/pull/247) (`0b39baa1`). Feat opens: Execution package + named Form Execution Gate; Shared Intake write path unchanged; P3 / P4 / P5 stay locked.

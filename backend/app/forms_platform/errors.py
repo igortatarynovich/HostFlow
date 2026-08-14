@@ -268,3 +268,12 @@ class FormsRuntimeNotPublicationError(FormsAdapterError):
     code = "forms_runtime_not_publication"
     http_status = 422
     default_message = "Form Runtime serves a frozen FormPublicationVersion only"
+
+
+# --- Forms Platform C5 — Form Execution ---
+
+
+class FormsExecutionRequiresRuntimeModelError(FormsAdapterError):
+    code = "forms_execution_requires_runtime_model"
+    http_status = 422
+    default_message = "Form Execution requires a Runtime Model"

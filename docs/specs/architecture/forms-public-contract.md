@@ -1,6 +1,6 @@
 # Forms Public Contract v1 — Sprint 1 + Sprint 2 hardening
 
-**Status:** canonical · **ACTIVE** · Product Track = [Phase C C5](../tasks/forms-platform-c5-form-execution.md) · C1–C4 ✅  
+**Status:** canonical · **ACTIVE** · Product Track = [Phase C C5](../tasks/forms-platform-c5-form-execution.md) (feat) · C1–C4 ✅ · brief [#247](https://github.com/igortatarynovich/HostFlow/pull/247)  
 **Capability id:** `forms`  
 **Contract id:** `forms.public_contract.v1`  
 **Adapter id:** `forms.endpoint_adapter_v1`  
