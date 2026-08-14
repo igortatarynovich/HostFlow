@@ -145,7 +145,7 @@ C3 edits mutable definitions. Draft save is not publish. C4 is **Runtime, not an
 
 ---
 
-## Phase D — Universal Entity Workspace ← **active**
+## Phase D — Universal Entity Workspace ← **active** (D1 ✅; D2 locked)
 
 **Not** the same as PX **minimal EntityWorkspace chrome** (header / actions / rail). Phase D composes **platforms** onto one entity. PX only stops Stage 3 from inventing a fifth card shell.
 
@@ -155,8 +155,8 @@ Ladder (locked start):
 
 | Slice | Focus | Status |
 |-------|--------|--------|
-| **D1** | Contract seal (ownership / PX ≠ Phase D) | ← **active** ([brief](../tasks/entity-workspace-d1-contract-seal.md); feat locked) |
-| **D2+** | Composition contract → consumer cutover | locked |
+| **D1** | Contract seal (ownership / PX ≠ Phase D) | ✅ ([brief](../tasks/entity-workspace-d1-contract-seal.md); named Contract Seal Gate) |
+| **D2+** | Composition contract → consumer cutover | locked until D2 brief |
 
 **Out of D1:** Catalog Passport mint · Documents Phase E · Forms P3–P5 · Billing · AI · module workspace promotion into the kit.
 
@@ -211,7 +211,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 2 | **A2** Platform Governance Review | ✅ Stable SoT / contracts gate (`PASS_WITH_CONSTRAINTS`) |
 | 3 | **B** Acquisition / Stage 3 + Meta | ✅ Meta / slice 3–4 (#222 / #224 / #238) |
 | 4 | **C** Forms Platform | ✅ Shared form runtime / Foundation ([C6](../tasks/forms-platform-c6-optimization.md) [#250](https://github.com/igortatarynovich/HostFlow/pull/250)) |
-| 5 | **D** Universal Entity Workspace | ← **active** ([D1](../tasks/entity-workspace-d1-contract-seal.md)) |
+| 5 | **D** Universal Entity Workspace | ← **active** (D1 ✅ [brief](../tasks/entity-workspace-d1-contract-seal.md); D2 locked) |
 | 6 | **E** Documents Platform | Full document lifecycle |
 | 7 | **F** Billing Platform | SaaS commercial layer |
 | 8 | **G** AI Platform | Assistants over existing canons |
@@ -235,7 +235,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Workspace D1 brief; feat locked) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Workspace D1 ✅; next = D2 brief locked) |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |
