@@ -1,8 +1,9 @@
 # Entity Workspace D6 — Sales Order Cutover (Phase D)
 
-**Status:** **OPEN** (feat; named Cutover Gate)  
-**Branch (docs):** `docs/entity-workspace-d6-sales-order-cutover`  
-**Branch (code):** `feat/entity-workspace-d6-sales-order-cutover`  
+**Status:** **COMPLETE** ([#261](https://github.com/igortatarynovich/HostFlow/pull/261)/[#262](https://github.com/igortatarynovich/HostFlow/pull/262) · `346f6fcc` · merge `bc819768`)  
+**Next:** [D7 Vacancy Cutover](entity-workspace-d7-vacancy-cutover.md) (brief; feat locked)  
+**Branch (docs):** `docs/entity-workspace-d6-sales-order-cutover` ✅ [#261](https://github.com/igortatarynovich/HostFlow/pull/261)  
+**Branch (code):** `feat/entity-workspace-d6-sales-order-cutover` ✅ [#262](https://github.com/igortatarynovich/HostFlow/pull/262)  
 **Parents:** [D5 Client Cutover](entity-workspace-d5-client-cutover.md) ✅ · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) ✅ · [D3 Consumer Cutover](entity-workspace-d3-consumer-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [D1 Contract Seal](entity-workspace-d1-contract-seal.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [ADR-032](../architecture/ADR-032-client-order-vacancy-flight-chain.md) · [A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md)
 
 > D5 bound Client to the D2 slot catalog.  
@@ -89,7 +90,8 @@ D3  → first consumer (Sales Inquiry)
 D4  → Candidate binds to D2 slots; Shell nav ≠ composition
 D5  → Client binds to D2 slots
 D6  → Sales Order binds to D2 slots (this)
-D7+ → remaining consumers (HR / Vacancy / Services /app/orders)
+D7  → Vacancy binds to D2 slots
+D8+ → remaining consumers (HR employee / Services /app/orders)
 ```
 
 D6 **must not**:
@@ -117,8 +119,8 @@ D6 **must not**:
 | **D3** | First consumer (Sales Inquiry) | ✅ [#255](https://github.com/igortatarynovich/HostFlow/pull/255)/[#256](https://github.com/igortatarynovich/HostFlow/pull/256) |
 | **D4** | Candidate cutover (Shell ≠ D2 slots) | ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257)/[#258](https://github.com/igortatarynovich/HostFlow/pull/258) |
 | **D5** | Client cutover | ✅ [#259](https://github.com/igortatarynovich/HostFlow/pull/259)/[#260](https://github.com/igortatarynovich/HostFlow/pull/260) |
-| **D6** | Sales Order cutover | **this feat** |
-| **D7+** | HR / Vacancy / Services `/app/orders` | locked until D7 brief |
+| **D6** | Sales Order cutover | ✅ [#261](https://github.com/igortatarynovich/HostFlow/pull/261)/[#262](https://github.com/igortatarynovich/HostFlow/pull/262) |
+| **D7** | Vacancy cutover | [brief](entity-workspace-d7-vacancy-cutover.md) (feat locked) |
 
 ---
 
@@ -149,7 +151,7 @@ Named step: **Entity Workspace D6 Cutover Gate**
 1. Named **Entity Workspace D6 Cutover Gate** — Sales Order bound to D2 enabled slots; reserved D2 `documents` cannot be enabled; Shell nav not collapsed; no Catalog Passport; D1–D5 gates still green.  
 2. Architecture Review Checklist (10 questions) in the feat PR description.  
 3. Sales Order detail (`SalesOrderDetailPage` / `/app/sales/orders/:id`) composes D2 slots via public adapters — **no** HR/Vacancy/Services-order cutover, **no** D2 `documents` enable.  
-4. Pointers stay on D6 until D7 brief opens.
+4. Pointers stay on D6 until D7 brief opens. *(closed — Product Track → D7 brief)*
 
 ---
 
@@ -157,7 +159,8 @@ Named step: **Entity Workspace D6 Cutover Gate**
 
 | Deferred | Owner |
 |----------|--------|
-| HR / Vacancy / Services `/app/orders` cutover | D7+ |
+| Vacancy cutover | D7 brief |
+| HR employee / Services `/app/orders` cutover | D8+ |
 | D2 `documents` enable / Documents lifecycle | Phase E |
 | Catalog Passport / Manifest | Later D slice (+ RFC if Catalog shape) |
 | Kit Baseline chrome file land | Engineering / Kit sync |
@@ -197,7 +200,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - [x] No Catalog Passport mint
 - [x] D1–D5 gates still green; Entity Foundation remains 🔄
 - [x] Forms P3–P5 and Documents Phase E stay out of Product Track
-- Product Track stays D6 until D7 brief opens
+- Product Track → [D7 Vacancy Cutover](entity-workspace-d7-vacancy-cutover.md) (brief; feat locked)
 
 ---
 
@@ -212,5 +215,6 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-15: D6 ✅ [#261](https://github.com/igortatarynovich/HostFlow/pull/261)/[#262](https://github.com/igortatarynovich/HostFlow/pull/262) (`346f6fcc` / merge `bc819768`). Next = [D7 Vacancy Cutover](entity-workspace-d7-vacancy-cutover.md) (brief; feat locked).
 - 2026-08-15: D6 feat — named **Entity Workspace D6 Cutover Gate**; Sales Order bound to D2 enabled slots; HR/Vacancy/Services `/app/orders` out; no Passport. Next = D7 brief (locked).
 - 2026-08-15: D6 brief opened — Sales Order cutover; HR / Vacancy / Services `/app/orders` locked as D7+. Feat locked. D5 ✅ [#259](https://github.com/igortatarynovich/HostFlow/pull/259)/[#260](https://github.com/igortatarynovich/HostFlow/pull/260) (`64289c22` / merge `069f441d`).
