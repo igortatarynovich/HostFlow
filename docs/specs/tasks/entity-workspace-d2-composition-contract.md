@@ -1,8 +1,9 @@
 # Entity Workspace D2 — Composition Contract (Phase D)
 
-**Status:** **COMPLETE** ([#253](https://github.com/igortatarynovich/HostFlow/pull/253) · feat `feat/entity-workspace-d2-composition-contract`)  
+**Status:** **COMPLETE** ([#253](https://github.com/igortatarynovich/HostFlow/pull/253)/[#254](https://github.com/igortatarynovich/HostFlow/pull/254) · `42bd51b7` · merge `a61543cf`)  
+**Next:** [D3 Consumer Cutover](entity-workspace-d3-consumer-cutover.md) (brief; feat locked)  
 **Branch (docs):** `docs/entity-workspace-d2-composition-contract` ✅ [#253](https://github.com/igortatarynovich/HostFlow/pull/253)  
-**Branch (code):** `feat/entity-workspace-d2-composition-contract`  
+**Branch (code):** `feat/entity-workspace-d2-composition-contract` ✅ [#254](https://github.com/igortatarynovich/HostFlow/pull/254)  
 **Parents:** [D1 Contract Seal](entity-workspace-d1-contract-seal.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md) · [Forms Public Contract](../architecture/forms-public-contract.md) · [Communication foundation](../architecture/communication-platform-foundation.md)
 
 > D1 sealed ownership and Shell ≠ Universal.  
@@ -18,7 +19,7 @@
 D1 locked: owner, chrome SoT path, Shell adapter, no module-workspace promotion, Entity Foundation 🔄.  
 The remaining hole: product screens will invent ad-hoc “slots” (thread panel here, form embed there, docs drawer elsewhere) without a shared composition contract — recreating temporary side panels that Phase D forbids.
 
-D2 names the **slot set** and **compose rules**. Runtime cutover is D3+.
+D2 names the **slot set** and **compose rules**. Runtime cutover starts at [D3](entity-workspace-d3-consumer-cutover.md) (Sales Inquiry first).
 
 ---
 
@@ -68,7 +69,8 @@ Modules configure **which slots are enabled** and supply overview body. They do 
 ```text
 D1  → who owns Entity Workspace + chrome/adapter boundary
 D2  → which slots exist and how platforms compose (this)
-D3+ → consumer cutover / enforcement on real screens
+D3  → first consumer (Sales Inquiry) binds to D2 slots
+D4+ → remaining consumers
 ```
 
 D2 **must not**:
@@ -87,8 +89,9 @@ D2 **must not**:
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **D1** | Contract seal | ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) |
-| **D2** | Composition contract (slots) | ✅ (this feat; named Composition Gate) |
-| **D3+** | Consumer cutover / enforcement | locked until D3 brief |
+| **D2** | Composition contract (slots) | ✅ [#253](https://github.com/igortatarynovich/HostFlow/pull/253)/[#254](https://github.com/igortatarynovich/HostFlow/pull/254) |
+| **D3** | First consumer cutover (Sales Inquiry) | [brief](entity-workspace-d3-consumer-cutover.md) (feat locked) |
+| **D4+** | Remaining consumers | locked until D4 brief |
 
 ---
 
@@ -118,7 +121,7 @@ Named step: **Entity Workspace D2 Composition Gate**
 1. Named **Entity Workspace D2 Composition Gate** — slot catalog frozen in docs + tests; reserved `documents` cannot be enabled; no Catalog Passport; D1 gate still green.  
 2. Architecture Review Checklist (10 questions) in the feat PR description.  
 3. Optional: typed slot-id constant / allowlist in frontend platform types — **no** consumer cutover screens.  
-4. Pointers stay on D2 until D3 brief opens.
+4. Pointers stay on D3 until D4 brief opens.
 
 ---
 
@@ -126,7 +129,8 @@ Named step: **Entity Workspace D2 Composition Gate**
 
 | Deferred | Owner |
 |----------|--------|
-| Consumer cutover (Sales Inquiry / Candidate / …) | D3+ |
+| Consumer cutover (Sales Inquiry first) | [D3](entity-workspace-d3-consumer-cutover.md) |
+| Remaining consumers (Candidate / HR / …) | D4+ |
 | Catalog Passport / Manifest | Later D slice (+ RFC if Catalog shape) |
 | Kit Baseline chrome file land | Engineering / Kit sync |
 | Documents lifecycle | Phase E |
@@ -163,7 +167,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - [x] No consumer cutover UI
 - [x] D1 gate still green; Entity Foundation remains 🔄
 - [x] Forms P3–P5 and Documents Phase E stay out of Product Track
-- Product Track stays D2 until D3 brief opens
+- Product Track → D3 brief (feat locked)
 
 ---
 
@@ -172,11 +176,12 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - [x] Brief sealed with slot catalog + in/out + acceptance  
 - [x] Queue + roadmap + AGENTS point at this brief  
 - [x] D1 marked complete with #252 merge ref  
-- [x] Feat PR — Composition Gate
+- [x] Feat PR — Composition Gate [#254](https://github.com/igortatarynovich/HostFlow/pull/254)
 
 ---
 
 ## History
 
+- 2026-08-15: D2 feat ✅ [#254](https://github.com/igortatarynovich/HostFlow/pull/254) (`42bd51b7` / merge `a61543cf`). Product Track → Entity Workspace D3 consumer cutover brief (feat locked).
 - 2026-08-15: D2 feat — named **Entity Workspace D2 Composition Gate**; slot allowlist frozen; `documents` reserved; no Passport; no cutover UI. Next = D3 cutover brief (locked).
 - 2026-08-14: D1 ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) (`3375adf1` / merge `f0572257`). Product Track → Entity Workspace D2 composition contract (this brief). Feat locked.
