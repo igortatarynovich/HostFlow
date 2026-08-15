@@ -72,7 +72,7 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 | Forms Sprint 5 | ✅ **COMPLETE** (PR #40 · `a6df02f0`) |
 | Forms Sprint 6 | ✅ **COMPLETE** (PR #41 · `7e259f22`) |
 | Forms Product Layer | P1 ✅ CLOSED · P2 MVP ✅ · C3–C6 ✅ / Foundation ✅ · P3 Publish UI / P4 / P5 **LOCKED** |
-| Entity Workspace Phase D | D1 ✅ · D2 ✅ · D3 ✅ · D4 ✅ ([brief](../tasks/entity-workspace-d4-candidate-cutover.md) · [#258](https://github.com/igortatarynovich/HostFlow/pull/258)); D5 [brief](../tasks/entity-workspace-d5-client-cutover.md) (feat locked); slot catalog; no Passport; D2 `documents` reserved |
+| Entity Workspace Phase D | D1 ✅ · D2 ✅ · D3 ✅ · D4 ✅ ([brief](../tasks/entity-workspace-d4-candidate-cutover.md) · [#258](https://github.com/igortatarynovich/HostFlow/pull/258)); D5 [brief](../tasks/entity-workspace-d5-client-cutover.md) (feat; named Cutover Gate); slot catalog; no Passport; D2 `documents` reserved |
 | Forms Platform C1 | ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) |
 | Forms Platform C2 | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
 | Forms Platform C3 | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244); draft save ≠ publish |

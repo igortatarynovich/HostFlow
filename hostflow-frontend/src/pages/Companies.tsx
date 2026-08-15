@@ -72,6 +72,14 @@ import { listTenantLinks, getContactPolicy, type TenantLink } from '../api/tenan
 import { AddClientModal } from '../components/clients/AddClientModal'
 import { ClientAccessPanel } from '../components/clients/ClientAccessPanel'
 import { ClientLeadOriginPanel } from '../components/clients/ClientLeadOriginPanel'
+import { ClientCommunicationSlot } from '../components/clients/ClientCommunicationSlot'
+import { ClientFormsSlot } from '../components/clients/ClientFormsSlot'
+import {
+  CLIENT_COMPOSITION_CONSUMER_ID,
+  CLIENT_COMPOSITION_SLOTS,
+  EntityWorkspaceCompositionHost,
+  assertClientCompositionSlots,
+} from '../platform/entity-workspace'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { useAuth } from '../store/useAuth'
 import { useToast } from '../components/Toast'
@@ -2127,8 +2135,17 @@ export default function Companies(){
         : []),
     ]
 
+    if (!isOperatingCompany && id && id !== 'new') {
+      assertClientCompositionSlots(CLIENT_COMPOSITION_SLOTS)
+    }
+
     return (
-      <PageShell>
+      <PageShell
+        data-entity-workspace-consumer={
+          !isOperatingCompany && id && id !== 'new' ? CLIENT_COMPOSITION_CONSUMER_ID : undefined
+        }
+      >
+        <div data-entity-workspace-slot="context-rail">
         <PageShellHeader>
           <PageHeader
             breadcrumbCurrentLabel={
@@ -2200,6 +2217,7 @@ export default function Companies(){
           ) : null}
           {saveError ? <div className="mt-2 text-sm text-rose-600">{saveError}</div> : null}
         </PageShellHeader>
+        </div>
 
         {!isOperatingCompany && id && id !== 'new' ? (
           <Toolbar>
@@ -2226,7 +2244,7 @@ export default function Companies(){
         {!isOperatingCompany && id && id !== 'new' ? (
           <>
             {clientWorkspaceTab === 'overview' && (
-              <>
+              <div data-entity-workspace-slot="overview" className="space-y-4">
                 <ClientLeadOriginPanel companyExtra={asRecord(currentAny ?? {}).extra as Record<string, unknown> | undefined} />
 
                 <SectionCard
@@ -2392,7 +2410,15 @@ export default function Companies(){
                   </button>
                   <span className="text-slate-500"> — {t('app.companies.detail.workspace.open_profile_hint')}</span>
                 </div>
-              </>
+                <EntityWorkspaceCompositionHost
+                  consumerId={CLIENT_COMPOSITION_CONSUMER_ID}
+                  enabledSlots={['communication', 'forms']}
+                  renderers={{
+                    communication: () => <ClientCommunicationSlot companyId={String(id)} />,
+                    forms: () => <ClientFormsSlot />,
+                  }}
+                />
+              </div>
             )}
 
             {clientWorkspaceTab === 'orders' && (
@@ -2514,6 +2540,7 @@ export default function Companies(){
             )}
 
             {clientWorkspaceTab === 'activity' && (
+              <div data-entity-workspace-slot="timeline">
               <SectionCard
                 title={t('app.companies.detail.workspace.activity.title')}
                 description={t('app.companies.detail.workspace.activity.subtitle')}
@@ -2555,6 +2582,7 @@ export default function Companies(){
                   </div>
                 </div>
               </SectionCard>
+              </div>
             )}
           </>
         ) : null}
