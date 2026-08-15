@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-15 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1 ✅ · D2 ✅ · D3 ✅ ([#255](https://github.com/igortatarynovich/HostFlow/pull/255)/[#256](https://github.com/igortatarynovich/HostFlow/pull/256)). **Product Track:** [Entity Workspace D4 — Candidate Cutover](entity-workspace-d4-candidate-cutover.md) (feat; named Cutover Gate). Shell `documents` nav ≠ D2 `documents` enable. Next = D5 brief (locked). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
+> **2026-08-15 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1 ✅ · D2 ✅ · D3 ✅ · D4 ✅ ([#257](https://github.com/igortatarynovich/HostFlow/pull/257)/[#258](https://github.com/igortatarynovich/HostFlow/pull/258)). **Product Track:** [Entity Workspace D5 — Client Cutover](entity-workspace-d5-client-cutover.md) (brief; feat locked). D2 `documents` stays reserved. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
 > Communication **C2.4 frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Entity Workspace D4** Candidate Cutover — [brief](entity-workspace-d4-candidate-cutover.md); feat; named Cutover Gate; Shell nav ≠ D2 slots; D5 brief locked | Almost all capacity |
+| **Product** | **Entity Workspace D5** Client Cutover — [brief](entity-workspace-d5-client-cutover.md); feat locked; HR/Vacancy/Order out | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -56,7 +56,8 @@
 - **Entity Workspace D1 — Contract Seal** ← ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) — [brief](entity-workspace-d1-contract-seal.md)  
 - **Entity Workspace D2 — Composition Contract** ← ✅ [#253](https://github.com/igortatarynovich/HostFlow/pull/253)/[#254](https://github.com/igortatarynovich/HostFlow/pull/254) — [brief](entity-workspace-d2-composition-contract.md); named Composition Gate; slot catalog frozen; Documents reserved empty; no Passport  
 - **Entity Workspace D3 — Consumer Cutover** ← ✅ [#255](https://github.com/igortatarynovich/HostFlow/pull/255)/[#256](https://github.com/igortatarynovich/HostFlow/pull/256) — [brief](entity-workspace-d3-consumer-cutover.md); named Cutover Gate; first consumer = Sales Inquiry  
-- **Entity Workspace D4 — Candidate Cutover** ← **active** (feat; named Cutover Gate) — [brief](entity-workspace-d4-candidate-cutover.md); Shell `documents` nav ≠ D2 `documents` enable; HR/Vacancy out; D5 brief locked  
+- **Entity Workspace D4 — Candidate Cutover** ← ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257)/[#258](https://github.com/igortatarynovich/HostFlow/pull/258) — [brief](entity-workspace-d4-candidate-cutover.md); Shell `documents` nav ≠ D2 `documents` enable  
+- **Entity Workspace D5 — Client Cutover** ← **active** (brief; feat locked) — [brief](entity-workspace-d5-client-cutover.md); HR / Vacancy / Order out  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -98,11 +99,12 @@
 | **19** | **Entity Workspace D1** Contract Seal | `docs/…` ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251) · `feat/…` ✅ [#252](https://github.com/igortatarynovich/HostFlow/pull/252) | ✅ Gate · merge `f0572257` |
 | **20** | **Entity Workspace D2** Composition Contract | `docs/…` ✅ [#253](https://github.com/igortatarynovich/HostFlow/pull/253) · `feat/…` ✅ [#254](https://github.com/igortatarynovich/HostFlow/pull/254) | ✅ named Composition Gate · merge `a61543cf` |
 | **21** | **Entity Workspace D3** Consumer cutover | `docs/…` ✅ [#255](https://github.com/igortatarynovich/HostFlow/pull/255) · `feat/…` ✅ [#256](https://github.com/igortatarynovich/HostFlow/pull/256) | ✅ named Cutover Gate · merge `c30b07f8` |
-| **22** | **Entity Workspace D4** Candidate cutover | `docs/…` ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257) · `feat/entity-workspace-d4-candidate-cutover` | **active** (feat; named Cutover Gate) — [brief](entity-workspace-d4-candidate-cutover.md) |
-| **23** | **Entity Workspace D5** remaining consumers | `docs/entity-workspace-d5-…` then `feat/…` | **locked** until D5 brief |
+| **22** | **Entity Workspace D4** Candidate cutover | `docs/…` ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257) · `feat/…` ✅ [#258](https://github.com/igortatarynovich/HostFlow/pull/258) | ✅ named Cutover Gate · merge `b5f1f00a` |
+| **23** | **Entity Workspace D5** Client cutover | `docs/entity-workspace-d5-client-cutover` then `feat/…` | **active** (brief; feat locked) — [brief](entity-workspace-d5-client-cutover.md) |
+| **24** | **Entity Workspace D6** remaining consumers | `docs/entity-workspace-d6-…` then `feat/…` | **locked** until D6 brief |
 
-**C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1 ✅. D2 ✅. D3 ✅.  
-**Active (Product):** Entity Workspace D4 — [Candidate Cutover](entity-workspace-d4-candidate-cutover.md) (feat; named Cutover Gate). Next = D5 brief (locked).  
+**C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1 ✅. D2 ✅. D3 ✅. D4 ✅.  
+**Active (Product):** Entity Workspace D5 — [Client Cutover](entity-workspace-d5-client-cutover.md) (brief; feat locked). Next = D6 brief (locked).  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -170,9 +172,13 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [entity-workspace-d3-consumer-cutover.md](entity-workspace-d3-consumer-cutover.md). First consumer = Sales Inquiry bound to D2 slots. Named D3 Cutover Gate. Merge `c30b07f8` / `bdaeb47b`.
 
-### Entity Workspace D4 — Candidate cutover ← **active** (feat; named Cutover Gate)
+### Entity Workspace D4 — Candidate cutover ← **DONE** (#257 / #258)
 
-[entity-workspace-d4-candidate-cutover.md](entity-workspace-d4-candidate-cutover.md). Candidate binds to D2 enabled slots. Shell `documents` nav ≠ D2 `documents` enable. D5+ HR / Vacancy / Client / Order locked.
+[entity-workspace-d4-candidate-cutover.md](entity-workspace-d4-candidate-cutover.md). Candidate binds to D2 enabled slots. Shell `documents` nav ≠ D2 `documents` enable. Named D4 Cutover Gate. Merge `b5f1f00a` / `0ab40717`.
+
+### Entity Workspace D5 — Client cutover ← **active** (brief; feat locked)
+
+[entity-workspace-d5-client-cutover.md](entity-workspace-d5-client-cutover.md). Client (`ClientAccount` / `/app/clients/:id`) binds to D2 enabled slots. D6+ HR / Vacancy / Order locked.
 
 ---
 
@@ -250,14 +256,14 @@ Next branch only after:
 **Do not** start C2.4 (frozen; gate residual R1).  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
 **Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Entity Workspace.  
-**Do not** treat Shell/chrome as Phase D Universal done; **do not** enable D2 Documents slot before Phase E; **do not** start D5 or Forms P3–P5 before this D4 feat merges; **do not** treat Shell `documents` nav as D2 `documents` enable; **do not** cut over HR/Vacancy in D4.  
-**Do** amend this queue when switching Product Active (this revision: live = Entity Workspace D4 feat; D5 brief locked).
+**Do not** treat Shell/chrome as Phase D Universal done; **do not** enable D2 Documents slot before Phase E; **do not** start D5 feat or Forms P3–P5 before this D5 brief merges; **do not** treat Shell `documents` nav as D2 `documents` enable; **do not** cut over HR/Vacancy/Order in D5.  
+**Do** amend this queue when switching Product Active (this revision: live = Entity Workspace D5 brief; feat locked).
 
 ---
 
 ## 8. History
 
-- 2026-08-15: D4 feat — named **Entity Workspace D4 Cutover Gate**; Candidate bound to D2 slots; Product Track → D4 feat; next = D5 brief (locked).
+- 2026-08-15: D4 ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257)/[#258](https://github.com/igortatarynovich/HostFlow/pull/258) (`b5f1f00a`); Product Track → **Entity Workspace D5** — [brief](entity-workspace-d5-client-cutover.md) (feat locked).
 - 2026-08-15: D4 brief ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257) (`cb543e68`); Product Track → **Entity Workspace D4** feat.
 - 2026-08-15: D3 ✅ [#255](https://github.com/igortatarynovich/HostFlow/pull/255)/[#256](https://github.com/igortatarynovich/HostFlow/pull/256) (`c30b07f8`); Product Track → **Entity Workspace D4** — [brief](entity-workspace-d4-candidate-cutover.md) (feat locked).
 - 2026-08-15: D2 ✅ [#253](https://github.com/igortatarynovich/HostFlow/pull/253)/[#254](https://github.com/igortatarynovich/HostFlow/pull/254) (`a61543cf`); Product Track → **Entity Workspace D3** — [brief](entity-workspace-d3-consumer-cutover.md) (feat locked).
