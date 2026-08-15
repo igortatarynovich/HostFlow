@@ -104,7 +104,7 @@ Horizon order of platform epics (does **not** amend frozen L0 constitution):
 Platform maturity (Foundation / Workspace / Automation / Complete):  
 [`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
 
-Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **Active slice** = [Entity Workspace D3 — Consumer Cutover](docs/specs/tasks/entity-workspace-d3-consumer-cutover.md) (brief; feat locked). First consumer = Sales Inquiry. D2 ✅ ([composition contract](docs/specs/tasks/entity-workspace-d2-composition-contract.md) · [#254](https://github.com/igortatarynovich/HostFlow/pull/254)). D1 ✅ ([contract seal](docs/specs/tasks/entity-workspace-d1-contract-seal.md) · [#252](https://github.com/igortatarynovich/HostFlow/pull/252)). Forms Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Stage 5 settings, R6, Forms P3–P5, and Documents Phase E are **not** this slice.
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **Active slice** = [Entity Workspace D3 — Consumer Cutover](docs/specs/tasks/entity-workspace-d3-consumer-cutover.md) ✅ (feat; named Cutover Gate). First consumer = Sales Inquiry. Next = D4 brief (locked). D2 ✅ ([composition contract](docs/specs/tasks/entity-workspace-d2-composition-contract.md) · [#254](https://github.com/igortatarynovich/HostFlow/pull/254)). D1 ✅ ([contract seal](docs/specs/tasks/entity-workspace-d1-contract-seal.md) · [#252](https://github.com/igortatarynovich/HostFlow/pull/252)). Forms Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Stage 5 settings, R6, Forms P3–P5, and Documents Phase E are **not** this slice.
 
 **Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
 [`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
@@ -113,9 +113,9 @@ Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/s
 
 **A2 Platform Governance Review** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/platform-governance-review-a2.md`](docs/specs/gates/platform-governance-review-a2.md).
 
-**Active close-out:** [Entity Workspace D3 — Consumer Cutover](docs/specs/tasks/entity-workspace-d3-consumer-cutover.md) (brief; feat locked) → D4+ remaining consumers → Documents → Billing → AI. D2 ✅ ([#254](https://github.com/igortatarynovich/HostFlow/pull/254)). D1 ✅ ([#252](https://github.com/igortatarynovich/HostFlow/pull/252)). Forms Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Forms P3–P5 stay locked. Shell/chrome ≠ Universal; Documents slot reserved empty until Phase E.
+**Active close-out:** [Entity Workspace D3 — Consumer Cutover](docs/specs/tasks/entity-workspace-d3-consumer-cutover.md) ✅ → D4 remaining consumers (locked) → Documents → Billing → AI. D2 ✅ ([#254](https://github.com/igortatarynovich/HostFlow/pull/254)). D1 ✅ ([#252](https://github.com/igortatarynovich/HostFlow/pull/252)). Forms Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Forms P3–P5 stay locked. Shell/chrome ≠ Universal; Documents slot reserved empty until Phase E.
 
-**Locked:** Acquisition/Stage 3 (Phase B) ✅ → Forms Platform ✅ → Entity Workspace ← **active** (D3 brief; feat locked) → Documents → Billing → AI.  
+**Locked:** Acquisition/Stage 3 (Phase B) ✅ → Forms Platform ✅ → Entity Workspace ← **active** (D3 ✅; D4 brief locked) → Documents → Billing → AI.  
 Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) — do not rewrite L0 Catalog without RFC. D3 does not mint Entity Catalog Passport.
 
 ## Documentation governance

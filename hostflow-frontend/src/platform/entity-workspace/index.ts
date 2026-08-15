@@ -12,6 +12,15 @@ export {
   isEntityWorkspaceSlotEnabled,
 } from './compositionSlots'
 
+export {
+  SALES_INQUIRY_COMPOSITION_CONSUMER_ID,
+  SALES_INQUIRY_COMPOSITION_SLOTS,
+  assertSalesInquiryCompositionSlots,
+} from './salesInquiryConsumer'
+export type { SalesInquiryCompositionSlotId } from './salesInquiryConsumer'
+
+export { EntityWorkspaceCompositionHost } from './compositionHost'
+
 export type {
   ContextRailBlockId,
   ContextRailConfig,
