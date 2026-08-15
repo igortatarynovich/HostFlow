@@ -24,6 +24,14 @@ import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { servicesWorkspacePath } from '../../modules/services/utils'
 import { NextActionBadge } from '../candidate/NextActionBadge'
 import { useVacancyNextAction } from '../vacancy/useVacancyNextAction'
+import { VacancyCommunicationSlot } from './VacancyCommunicationSlot'
+import { VacancyFormsSlot } from './VacancyFormsSlot'
+import {
+  EntityWorkspaceCompositionHost,
+  VACANCY_COMPOSITION_CONSUMER_ID,
+  VACANCY_COMPOSITION_SLOTS,
+  assertVacancyCompositionSlots,
+} from '../../platform/entity-workspace'
 import { useEffectiveVacancyLayout } from '../../hooks/useEffectiveVacancyLayout'
 import {
   getVacancyFieldsRenderOrder,
@@ -865,8 +873,16 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       }
     : undefined
 
+  const isCutover = Boolean(model?.id) && routeId !== 'new' && !isCreate
+  if (isCutover) {
+    assertVacancyCompositionSlots(VACANCY_COMPOSITION_SLOTS)
+  }
+
   return (
-    <PageShell>
+    <PageShell
+      data-entity-workspace-consumer={isCutover ? VACANCY_COMPOSITION_CONSUMER_ID : undefined}
+    >
+      <div data-entity-workspace-slot="context-rail">
       <PageShellHeader>
         <PageHeader
           breadcrumbCurrentLabel={watchTitle || model?.title || t('app.vacancies.detail.untitled')}
@@ -977,6 +993,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
           </div>
         ) : null}
       </PageShellHeader>
+      </div>
 
       <Toolbar>
         <div className="flex flex-wrap gap-2">
@@ -1003,7 +1020,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
       {tab === 'info' && (
-        <div className="space-y-4">
+        <div data-entity-workspace-slot="overview" className="space-y-4">
           <SectionCard title={t('app.vacancies.detail.sections.info')}>
             <form className="space-y-4" onSubmit={handleSubmit(submitVacancy)}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1253,6 +1270,18 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               </div>
             </div>
           </SectionCard>
+          {isCutover ? (
+            <EntityWorkspaceCompositionHost
+              consumerId={VACANCY_COMPOSITION_CONSUMER_ID}
+              enabledSlots={['communication', 'forms']}
+              renderers={{
+                communication: () => (
+                  <VacancyCommunicationSlot companyId={String(model?.company_id || watchCompanyId || '')} />
+                ),
+                forms: () => <VacancyFormsSlot />,
+              }}
+            />
+          ) : null}
         </div>
       )}
 
@@ -1286,9 +1315,11 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       )}
 
       {tab === 'notes' && (
+        <div data-entity-workspace-slot="timeline">
         <SectionCard title={t('app.vacancies.detail.tabs.notes')}>
           <p className="text-sm text-slate-500">{t('app.vacancies.detail.notes_coming')}</p>
         </SectionCard>
+        </div>
       )}
 
       </div>
