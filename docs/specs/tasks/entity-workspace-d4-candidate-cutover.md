@@ -1,8 +1,8 @@
 # Entity Workspace D4 — Candidate Cutover (Phase D)
 
-**Status:** **OPEN** (docs brief; feat locked until this merges)  
-**Branch (docs):** `docs/entity-workspace-d4-candidate-cutover`  
-**Branch (code):** `feat/entity-workspace-d4-candidate-cutover` (locked)  
+**Status:** **OPEN** (feat; named Cutover Gate)  
+**Branch (docs):** `docs/entity-workspace-d4-candidate-cutover` ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257)  
+**Branch (code):** `feat/entity-workspace-d4-candidate-cutover`  
 **Parents:** [D3 Consumer Cutover](entity-workspace-d3-consumer-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [D1 Contract Seal](entity-workspace-d1-contract-seal.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md)
 
 > D3 bound Sales Inquiry to the D2 slot catalog.  
@@ -104,7 +104,7 @@ D4 **must not**:
 | **D1** | Contract seal | ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) |
 | **D2** | Composition contract (slots) | ✅ [#253](https://github.com/igortatarynovich/HostFlow/pull/253)/[#254](https://github.com/igortatarynovich/HostFlow/pull/254) |
 | **D3** | First consumer (Sales Inquiry) | ✅ [#255](https://github.com/igortatarynovich/HostFlow/pull/255)/[#256](https://github.com/igortatarynovich/HostFlow/pull/256) |
-| **D4** | Candidate cutover (Shell ≠ D2 slots) | **this brief** (feat locked) |
+| **D4** | Candidate cutover (Shell ≠ D2 slots) | **this feat** |
 | **D5+** | HR / Vacancy / Client / Order | locked until D5 brief |
 
 ---
@@ -173,27 +173,28 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## Acceptance
 
-- [ ] Brief merged  
-- [ ] Named Entity Workspace D4 Cutover Gate (feat)  
-- [ ] Consumer = Candidate; HR / Vacancy / Client / Order not cut over  
-- [ ] D2 `documents` cannot be enabled; Shell `documents` nav is not that enable  
-- [ ] Shell `EntityWorkspaceSectionId` not collapsed into D2 slots  
-- [ ] No Catalog Passport mint  
-- [ ] D1–D3 gates still green; Entity Foundation remains 🔄  
-- [ ] Forms P3–P5 and Documents Phase E stay out of Product Track  
+- [x] Brief merged ([#257](https://github.com/igortatarynovich/HostFlow/pull/257))
+- [x] Named Entity Workspace D4 Cutover Gate (feat)
+- [x] Consumer = Candidate; HR / Vacancy / Client / Order not cut over
+- [x] D2 `documents` cannot be enabled; Shell `documents` nav is not that enable
+- [x] Shell `EntityWorkspaceSectionId` not collapsed into D2 slots
+- [x] No Catalog Passport mint
+- [x] D1–D3 gates still green; Entity Foundation remains 🔄
+- [x] Forms P3–P5 and Documents Phase E stay out of Product Track
 - Product Track stays D4 until D5 brief opens
 
 ---
 
 ## DoD
 
-- [ ] Brief sealed with Candidate consumer + Shell≠D2 distinction + in/out + acceptance  
-- [ ] Queue + roadmap + AGENTS point at this brief  
-- [ ] D3 marked complete with #256 merge ref  
-- [ ] Feat locked until this brief merges  
+- [x] Brief sealed with Candidate consumer + Shell≠D2 distinction + in/out + acceptance
+- [x] Queue + roadmap + AGENTS point at this brief
+- [x] D3 marked complete with #256 merge ref
+- [x] Feat: Candidate bound to D2 enabled slots; named Cutover Gate
 
 ---
 
 ## History
 
+- 2026-08-15: D4 feat — named **Entity Workspace D4 Cutover Gate**; Candidate bound to D2 enabled slots; Shell `documents` nav ≠ D2 `documents` enable; HR/Vacancy/Client/Order out; no Passport. Next = D5 brief (locked).
 - 2026-08-15: D4 brief opened — Candidate cutover; Shell `documents` nav ≠ D2 `documents` enable; D5+ remaining consumers locked. Feat locked. D3 ✅ [#255](https://github.com/igortatarynovich/HostFlow/pull/255)/[#256](https://github.com/igortatarynovich/HostFlow/pull/256) (`bdaeb47b` / merge `c30b07f8`).
