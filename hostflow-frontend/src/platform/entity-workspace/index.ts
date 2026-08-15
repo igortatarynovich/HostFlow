@@ -1,4 +1,18 @@
 export type {
+  EntityWorkspaceEnabledSlotId,
+  EntityWorkspaceReservedSlotId,
+  EntityWorkspaceSlotId,
+} from './compositionSlots'
+
+export {
+  ENTITY_WORKSPACE_ENABLED_SLOT_IDS,
+  ENTITY_WORKSPACE_RESERVED_SLOT_IDS,
+  ENTITY_WORKSPACE_SLOT_CATALOG,
+  ENTITY_WORKSPACE_SLOT_KIND,
+  isEntityWorkspaceSlotEnabled,
+} from './compositionSlots'
+
+export type {
   ContextRailBlockId,
   ContextRailConfig,
   ContextRailEventItem,

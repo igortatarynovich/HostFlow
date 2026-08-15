@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← **active** ([D2](../tasks/entity-workspace-d2-composition-contract.md); D1 ✅).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← **active** ([D2](../tasks/entity-workspace-d2-composition-contract.md) ✅; D1 ✅; D3 locked).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms ✅ → Phase D Entity Workspace → …
@@ -36,7 +36,7 @@ Order **after A2**:
 
 1. **A2 — Platform Governance Review** — ✅ PASS_WITH_CONSTRAINTS ([gate](../gates/platform-governance-review-a2.md))  
 2. **Phase B — Acquisition / Stage 3 + Meta** ← ✅  
-3. **Phase C — Forms Platform** ← ✅ ([C1](../tasks/forms-platform-c1-contract-seal.md)…[C6](../tasks/forms-platform-c6-optimization.md) / Foundation) → **Phase D — Entity Workspace** ← **active** ([D2](../tasks/entity-workspace-d2-composition-contract.md); D1 ✅) → Documents → Billing → AI  
+3. **Phase C — Forms Platform** ← ✅ ([C1](../tasks/forms-platform-c1-contract-seal.md)…[C6](../tasks/forms-platform-c6-optimization.md) / Foundation) → **Phase D — Entity Workspace** ← **active** ([D2](../tasks/entity-workspace-d2-composition-contract.md) ✅; D1 ✅; D3 locked) → Documents → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
 
@@ -145,7 +145,7 @@ C3 edits mutable definitions. Draft save is not publish. C4 is **Runtime, not an
 
 ---
 
-## Phase D — Universal Entity Workspace ← **active** (D2; D1 ✅)
+## Phase D — Universal Entity Workspace ← **active** (D2 ✅; D3 locked)
 
 **Not** the same as PX **minimal EntityWorkspace chrome** (header / actions / rail). Phase D composes **platforms** onto one entity. PX only stops Stage 3 from inventing a fifth card shell.
 
@@ -156,8 +156,8 @@ Ladder (locked start):
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **D1** | Contract seal (ownership / PX ≠ Phase D) | ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) |
-| **D2** | Composition contract (platform slots) | ← **active** ([brief](../tasks/entity-workspace-d2-composition-contract.md); feat locked) |
-| **D3+** | Consumer cutover / enforcement | locked until D2 feat |
+| **D2** | Composition contract (platform slots) | ✅ ([brief](../tasks/entity-workspace-d2-composition-contract.md); named Composition Gate) |
+| **D3+** | Consumer cutover / enforcement | locked until D3 brief |
 
 **Out of D2:** Catalog Passport mint · Documents Phase E enable · Forms P3–P5 · Billing · AI · consumer cutover screens · module workspace promotion into the kit.
 
@@ -212,7 +212,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 2 | **A2** Platform Governance Review | ✅ Stable SoT / contracts gate (`PASS_WITH_CONSTRAINTS`) |
 | 3 | **B** Acquisition / Stage 3 + Meta | ✅ Meta / slice 3–4 (#222 / #224 / #238) |
 | 4 | **C** Forms Platform | ✅ Shared form runtime / Foundation ([C6](../tasks/forms-platform-c6-optimization.md) [#250](https://github.com/igortatarynovich/HostFlow/pull/250)) |
-| 5 | **D** Universal Entity Workspace | ← **active** (D2 [brief](../tasks/entity-workspace-d2-composition-contract.md); D1 ✅) |
+| 5 | **D** Universal Entity Workspace | ← **active** (D2 ✅ [brief](../tasks/entity-workspace-d2-composition-contract.md); D3 locked) |
 | 6 | **E** Documents Platform | Full document lifecycle |
 | 7 | **F** Billing Platform | SaaS commercial layer |
 | 8 | **G** AI Platform | Assistants over existing canons |
@@ -225,11 +225,11 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). Phase D (Entity Workspace D2 brief) **is** the active phase; do not reopen Forms C6, Stage 5 settings, or R6.  
+5. Parallel product branches that compete across phases (one active product slice). Phase D (Entity Workspace D2 ✅; D3 brief locked) **is** the active phase; do not reopen Forms C6, Stage 5 settings, or R6.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Minting Entity Catalog Passport or enabling Documents slot before Phase E without Architecture checklist / RFC when Catalog shape changes.  
-9. Starting D2 **feat** or D3 cutover before this D2 brief merges.
+9. Starting D3 cutover before the D3 brief merges.
 
 ---
 
@@ -237,7 +237,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Workspace D2 brief; feat locked) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Workspace D2 ✅; next = D3 brief locked) |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |

@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-14 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1 ✅ ([#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252)). **Product Track:** [Entity Workspace D2 — Composition Contract](entity-workspace-d2-composition-contract.md) (docs; feat locked). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
+> **2026-08-15 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1 ✅ ([#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252)). **Product Track:** [Entity Workspace D2 — Composition Contract](entity-workspace-d2-composition-contract.md) ✅ (feat; named Composition Gate). Next = D3 cutover brief (locked). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
 > Communication **C2.4 frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Entity Workspace D2** Composition Contract — [brief](entity-workspace-d2-composition-contract.md); D1 ✅ [#252](https://github.com/igortatarynovich/HostFlow/pull/252); feat locked | Almost all capacity |
+| **Product** | **Entity Workspace D2** Composition Contract ✅ — [brief](entity-workspace-d2-composition-contract.md); named Composition Gate; next = D3 brief (locked) | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -54,7 +54,7 @@
 - **Forms Platform C5 — Form Execution** ← ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248) — [brief](forms-platform-c5-form-execution.md)
 - **Forms Platform C6 — Optimization** ← ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249)/[#250](https://github.com/igortatarynovich/HostFlow/pull/250) — [brief](forms-platform-c6-optimization.md); Forms Foundation ✅  
 - **Entity Workspace D1 — Contract Seal** ← ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) — [brief](entity-workspace-d1-contract-seal.md)  
-- **Entity Workspace D2 — Composition Contract** ← **active** (docs; feat locked) — [brief](entity-workspace-d2-composition-contract.md); slot catalog; Documents reserved empty; no Passport  
+- **Entity Workspace D2 — Composition Contract** ← ✅ (feat; named Composition Gate) — [brief](entity-workspace-d2-composition-contract.md); slot catalog frozen; Documents reserved empty; no Passport; next = D3 brief (locked)  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -94,10 +94,11 @@
 | **17** | **Forms Platform C5** Form Execution | `docs/…` ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247) · `feat/…` ✅ [#248](https://github.com/igortatarynovich/HostFlow/pull/248) | ✅ PASS-ready `c24bdc18` · merge `f6bbe03f` |
 | **18** | **Forms Platform C6** Optimization | `docs/…` ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249) · `feat/…` ✅ [#250](https://github.com/igortatarynovich/HostFlow/pull/250) | ✅ Foundation close `e81e2a08` · merge `9933a835` |
 | **19** | **Entity Workspace D1** Contract Seal | `docs/…` ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251) · `feat/…` ✅ [#252](https://github.com/igortatarynovich/HostFlow/pull/252) | ✅ Gate · merge `f0572257` |
-| **20** | **Entity Workspace D2** Composition Contract | `docs/entity-workspace-d2-composition-contract` | **active** (docs; feat locked) — [brief](entity-workspace-d2-composition-contract.md) |
+| **20** | **Entity Workspace D2** Composition Contract | `docs/…` ✅ [#253](https://github.com/igortatarynovich/HostFlow/pull/253) · `feat/entity-workspace-d2-composition-contract` | ✅ named Composition Gate |
+| **21** | **Entity Workspace D3** Consumer cutover | — | locked until D3 brief |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1 ✅.  
-**Active (Product):** Entity Workspace D2 — [Composition Contract](entity-workspace-d2-composition-contract.md) (docs; feat locked).  
+**Active (Product):** Entity Workspace D2 ✅ — [Composition Contract](entity-workspace-d2-composition-contract.md) (feat; named Composition Gate). Next = D3 brief (locked).  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -157,9 +158,13 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [entity-workspace-d1-contract-seal.md](entity-workspace-d1-contract-seal.md). Ownership + boundary. Named D1 Contract Seal Gate. Merge `f0572257` / `3375adf1`.
 
-### Entity Workspace D2 — Composition Contract ← **active** (docs; feat locked)
+### Entity Workspace D2 — Composition Contract ← **DONE** (feat; named Composition Gate)
 
-[entity-workspace-d2-composition-contract.md](entity-workspace-d2-composition-contract.md). Slot catalog (overview / timeline / communication / forms / documents-reserved). No cutover UI. No Catalog Passport. Documents empty until Phase E.
+[entity-workspace-d2-composition-contract.md](entity-workspace-d2-composition-contract.md). Slot catalog frozen (overview / timeline / communication / forms / documents-reserved / context-rail). Named D2 Composition Gate. No cutover UI. No Catalog Passport. Documents empty until Phase E.
+
+### Entity Workspace D3 — Consumer cutover ← locked until brief
+
+Enforcement on real screens. Do not start until D3 brief seals.
 
 ---
 
@@ -237,13 +242,14 @@ Next branch only after:
 **Do not** start C2.4 (frozen; gate residual R1).  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
 **Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Entity Workspace.  
-**Do not** treat Shell/chrome as Phase D Universal done; **do not** enable Documents slot before Phase E; **do not** start D2 **feat**, D3 cutover, or Forms P3–P5 in this brief PR.  
-**Do** amend this queue when switching Product Active (this revision: live = Entity Workspace D2 brief).
+**Do not** treat Shell/chrome as Phase D Universal done; **do not** enable Documents slot before Phase E; **do not** start D3 cutover or Forms P3–P5 before the D3 brief.  
+**Do** amend this queue when switching Product Active (this revision: live = Entity Workspace D2 ✅; next = D3 brief locked).
 
 ---
 
 ## 8. History
 
+- 2026-08-15: D2 feat — named **Entity Workspace D2 Composition Gate**; slot allowlist frozen; Product Track → D2 ✅; next = D3 cutover brief (locked).
 - 2026-08-14: D1 ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) (`f0572257`); Product Track → **Entity Workspace D2** — [brief](entity-workspace-d2-composition-contract.md) (feat locked).
 - 2026-08-14: D1 feat — named **Entity Workspace D1 Contract Seal Gate**; D1 ✅; Product Track → open D2 composition brief (locked).
 - 2026-08-14: D1 brief ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251) (`658c63b0`); Product Track → **Entity Workspace D1** feat.
