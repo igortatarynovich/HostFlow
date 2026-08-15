@@ -8,7 +8,11 @@ import type { EntityModel, EntityPassport } from '../entity-model'
  * Shell owns geometry only; modules supply passport + renderers.
  */
 
-/** Fixed navigation section order — modules enable subset, never reorder. */
+/**
+ * Shell navigation sections (adapter). D2 composition slots live in
+ * compositionSlots.ts — do not collapse the two contracts.
+ * Modules enable a subset of this order; they never reorder it.
+ */
 export type EntityWorkspaceSectionId =
   | 'overview'
   | 'contacts'

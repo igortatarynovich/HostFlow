@@ -1,7 +1,7 @@
 # Entity Workspace D1 — Contract Seal (Phase D)
 
 **Status:** **COMPLETE** ([#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) · `3375adf1` · merge `f0572257`)  
-**Next:** [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ← active (docs; feat locked)  
+**Next:** [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ (feat; named Composition Gate). Next = D3 cutover brief (locked)  
 **Branch (docs):** `docs/entity-workspace-phase-d-contract-seal` ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)  
 **Branch (code):** `feat/entity-workspace-d1-contract-seal` ✅ [#252](https://github.com/igortatarynovich/HostFlow/pull/252)  
 **Parents:** [Forms Platform C6 Optimization](forms-platform-c6-optimization.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010 Unified Resource List Shell](../architecture/ADR-010-unified-resource-list-shell.md) · [A2 gate A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md)
@@ -74,8 +74,8 @@ D1 **must not**:
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **D1** | Contract seal (ownership / boundary / PX ≠ Phase D) | ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) |
-| **D2** | Composition contract (platform slots on one entity) | ← active ([brief](entity-workspace-d2-composition-contract.md)) |
-| **D3+** | Consumer cutover / enforcement gates | locked |
+| **D2** | Composition contract (platform slots on one entity) | ✅ ([brief](entity-workspace-d2-composition-contract.md); named Composition Gate) |
+| **D3+** | Consumer cutover / enforcement gates | locked until D3 brief |
 
 ---
 
