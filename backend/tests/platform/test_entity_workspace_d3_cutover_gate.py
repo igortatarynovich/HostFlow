@@ -66,13 +66,6 @@ _TYPES_TS = (
     / "entity-workspace"
     / "types.ts"
 )
-_CANDIDATE_PAGE = (
-    _REPO_ROOT
-    / "hostflow-frontend"
-    / "src"
-    / "pages"
-    / "CandidateEntityWorkspacePage.tsx"
-)
 _FRONTEND_SRC = _REPO_ROOT / "hostflow-frontend" / "src"
 
 _EXPECTED_CONSUMER_SLOTS = (
@@ -146,11 +139,7 @@ def test_d3_panel_composes_d2_slots() -> None:
     )
 
 
-def test_d3_candidate_not_cut_over() -> None:
-    page = _CANDIDATE_PAGE.read_text(encoding="utf-8")
-    assert "SALES_INQUIRY_COMPOSITION_SLOTS" not in page
-    assert "EntityWorkspaceCompositionHost" not in page
-    assert "salesInquiryConsumer" not in page
+def test_d3_candidate_not_cut_over_as_sales_inquiry() -> None:
     leaked: list[str] = []
     for path in sorted(_FRONTEND_SRC.rglob("*.ts")) + sorted(_FRONTEND_SRC.rglob("*.tsx")):
         rel = path.relative_to(_FRONTEND_SRC).as_posix()
@@ -159,7 +148,7 @@ def test_d3_candidate_not_cut_over() -> None:
         text = path.read_text(encoding="utf-8")
         if "salesInquiryConsumer" in text or "SALES_INQUIRY_COMPOSITION_SLOTS" in text:
             leaked.append(rel)
-    assert not leaked, f"D3 must not cut over Candidate/HR: {leaked}"
+    assert not leaked, f"D3 must not bind Sales Inquiry onto Candidate/HR: {leaked}"
 
 
 def test_d3_shell_sections_not_collapsed() -> None:

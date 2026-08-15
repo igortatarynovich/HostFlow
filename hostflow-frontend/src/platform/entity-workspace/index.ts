@@ -19,6 +19,13 @@ export {
 } from './salesInquiryConsumer'
 export type { SalesInquiryCompositionSlotId } from './salesInquiryConsumer'
 
+export {
+  CANDIDATE_COMPOSITION_CONSUMER_ID,
+  CANDIDATE_COMPOSITION_SLOTS,
+  assertCandidateCompositionSlots,
+} from './candidateConsumer'
+export type { CandidateCompositionSlotId } from './candidateConsumer'
+
 export { EntityWorkspaceCompositionHost } from './compositionHost'
 
 export type {

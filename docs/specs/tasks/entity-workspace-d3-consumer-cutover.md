@@ -1,7 +1,7 @@
 # Entity Workspace D3 — Consumer Cutover (Phase D)
 
 **Status:** **COMPLETE** ([#255](https://github.com/igortatarynovich/HostFlow/pull/255)/[#256](https://github.com/igortatarynovich/HostFlow/pull/256) · `bdaeb47b` · merge `c30b07f8`)  
-**Next:** [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) (brief; feat locked)  
+**Next:** [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) (feat; named Cutover Gate)  
 **Branch (docs):** `docs/entity-workspace-d3-consumer-cutover` ✅ [#255](https://github.com/igortatarynovich/HostFlow/pull/255)  
 **Branch (code):** `feat/entity-workspace-d3-consumer-cutover` ✅ [#256](https://github.com/igortatarynovich/HostFlow/pull/256)  
 **Parents:** [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [D1 Contract Seal](entity-workspace-d1-contract-seal.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md) · [Forms Public Contract](../architecture/forms-public-contract.md) · [Communication foundation](../architecture/communication-platform-foundation.md)

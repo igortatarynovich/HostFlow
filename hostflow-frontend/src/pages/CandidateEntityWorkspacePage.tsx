@@ -3,6 +3,12 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { EntityWorkspaceShell } from '../platform/entity-workspace'
 import type { EntityContextRailModel, EntityWorkspaceSectionId } from '../platform/entity-workspace'
+import {
+  CANDIDATE_COMPOSITION_CONSUMER_ID,
+  CANDIDATE_COMPOSITION_SLOTS,
+  EntityWorkspaceCompositionHost,
+  assertCandidateCompositionSlots,
+} from '../platform/entity-workspace'
 import { projectEntityContextRail } from '../platform/entity-workspace/projectEntityWorkspaceView'
 import { useI18n } from '../i18n'
 import { useCandidateEntityWorkspace } from '../modules/candidates/hooks/useCandidateEntityWorkspace'
@@ -10,6 +16,8 @@ import { buildCandidateEntityWorkspaceSectionRenderers } from '../modules/candid
 import { buildCandidateEntityWorkspaceHeaderExtension } from '../modules/candidates/candidateEntityWorkspaceChrome'
 import { buildCandidateEntityWorkspaceSummary } from '../modules/candidates/candidateEntityWorkspaceSummary'
 import { CandidateEntityWorkspaceHeaderActions } from '../modules/candidates/candidateEntityWorkspaceHeaderActions'
+import { CandidateCommunicationSlot } from '../components/candidate/CandidateCommunicationSlot'
+import { CandidateFormsSlot } from '../components/candidate/CandidateFormsSlot'
 
 function candidateWorkspaceLabels(t: (key: string, options?: Record<string, unknown>) => string) {
   return {
@@ -66,7 +74,8 @@ export function CandidateEntityWorkspacePage() {
 
   const sectionRenderers = useMemo(() => {
     if (!passport || !candidate || !id) return undefined
-    return buildCandidateEntityWorkspaceSectionRenderers({
+    assertCandidateCompositionSlots(CANDIDATE_COMPOSITION_SLOTS)
+    const base = buildCandidateEntityWorkspaceSectionRenderers({
       passport,
       candidate,
       candidateId: id,
@@ -74,6 +83,25 @@ export function CandidateEntityWorkspacePage() {
       candidateProfile,
       effectiveLayout,
     })
+    return {
+      ...base,
+      overview: () => (
+        <div data-entity-workspace-slot="overview" className="space-y-4">
+          {base.overview?.()}
+          <EntityWorkspaceCompositionHost
+            consumerId={CANDIDATE_COMPOSITION_CONSUMER_ID}
+            enabledSlots={['communication', 'forms']}
+            renderers={{
+              communication: () => <CandidateCommunicationSlot candidateId={id} />,
+              forms: () => <CandidateFormsSlot />,
+            }}
+          />
+        </div>
+      ),
+      timeline: () => (
+        <div data-entity-workspace-slot="timeline">{base.timeline?.()}</div>
+      ),
+    }
   }, [candidate, candidateProfile, effectiveLayout, id, locale, passport])
 
   const actionConfig = useMemo(() => buildActionConfig(openDocuments) ?? {}, [buildActionConfig, openDocuments])
@@ -138,7 +166,11 @@ export function CandidateEntityWorkspacePage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-candidate-entity-workspace="mockup-v1">
+    <div
+      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      data-candidate-entity-workspace="mockup-v1"
+      data-entity-workspace-consumer={CANDIDATE_COMPOSITION_CONSUMER_ID}
+    >
       <EntityWorkspaceShell
         model={entityModel}
         passport={passport}

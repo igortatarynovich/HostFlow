@@ -225,6 +225,7 @@ export function EntityWorkspaceContextRail({
         className="flex shrink-0 flex-col border-l border-slate-200 bg-white p-4 text-sm text-slate-500"
         style={{ width: widthPx, minWidth: widthPx, maxWidth: widthPx }}
         data-entity-workspace-zone="context-rail"
+        data-entity-workspace-slot="context-rail"
       >
         Нет контекста
       </aside>
@@ -236,6 +237,7 @@ export function EntityWorkspaceContextRail({
       className="flex min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-slate-200 bg-white"
       style={{ width: widthPx, minWidth: widthPx, maxWidth: widthPx }}
       data-entity-workspace-zone="context-rail"
+      data-entity-workspace-slot="context-rail"
     >
       <div className="space-y-4 p-4">
         {visibleBlocks.map((blockId) => (

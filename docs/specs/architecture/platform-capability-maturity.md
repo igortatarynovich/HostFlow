@@ -30,7 +30,7 @@ Legend: ✅ done · 🔄 in progress · ⏳ not started
 | **Communication** | ✅ | ✅ (C1) | ✅ (C2.1–C2.3; C2.4 frozen) | ✅ `PASS_WITH_CONSTRAINTS` |
 | **Acquisition** | ✅ | ✅ | 🔄 residual | ⏳ |
 | **Forms** | ✅ Phase C C1–C6 | ⏳ | ⏳ | ⏳ |
-| **Entity Workspace** | 🔄 Phase D D3 | ⏳ | ⏳ | ⏳ |
+| **Entity Workspace** | 🔄 Phase D D4 | ⏳ | ⏳ | ⏳ |
 | **Documents** | 🔄 | ⏳ | ⏳ | ⏳ |
 | **Billing** | ⏳ | ⏳ | ⏳ | ⏳ |
 
@@ -43,7 +43,7 @@ Notes:
 - **A2 Platform Governance Review** = [PASS_WITH_CONSTRAINTS](../gates/platform-governance-review-a2.md) (2026-08-03). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
 - Acquisition Automation residual = Stage 5 settings / R6 deferred — **not** the active slice. Phase B Meta / slice 3–4 ✅ ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) · [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · [#238](https://github.com/igortatarynovich/HostFlow/pull/238)).  
 - Forms: Sprint 1–6 / Builder MVP + Phase C C1–C6 ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) — **Foundation ✅** (production serve→execute bound). P3–P5 stay locked.  
-- **Entity Workspace:** Phase D D3 ✅ ([consumer cutover](../tasks/entity-workspace-d3-consumer-cutover.md) · [#256](https://github.com/igortatarynovich/HostFlow/pull/256)). Next = [D4 Candidate Cutover](../tasks/entity-workspace-d4-candidate-cutover.md) (brief; feat locked). Shell adapter on tip; Sales Inquiry bound; Candidate Shell nav ≠ D2 slots; `documents` reserved empty; Universal runtime not yet. Foundation 🔄 ([A2-F7](../gates/platform-governance-review-a2.md)).  
+- **Entity Workspace:** Phase D D4 feat ([candidate cutover](../tasks/entity-workspace-d4-candidate-cutover.md); named Cutover Gate). D3 ✅ ([#256](https://github.com/igortatarynovich/HostFlow/pull/256)). Next = D5 brief (locked). Shell adapter on tip; Sales Inquiry bound; Candidate bound; Shell nav ≠ D2 slots; `documents` reserved empty; Universal runtime not yet. Foundation 🔄 ([A2-F7](../gates/platform-governance-review-a2.md)).  
 - Documents Foundation in progress = platform lifecycle contracts still consolidating (roadmap Phase E).
 
 AI remains sequenced later; it appears in the matrix when it becomes a platform SoT under active delivery.
