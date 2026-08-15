@@ -1,8 +1,8 @@
 # Entity Workspace D6 — Sales Order Cutover (Phase D)
 
-**Status:** **OPEN** (docs; feat locked)  
+**Status:** **OPEN** (feat; named Cutover Gate)  
 **Branch (docs):** `docs/entity-workspace-d6-sales-order-cutover`  
-**Branch (code):** `feat/entity-workspace-d6-sales-order-cutover` *(locked until this brief merges)*  
+**Branch (code):** `feat/entity-workspace-d6-sales-order-cutover`  
 **Parents:** [D5 Client Cutover](entity-workspace-d5-client-cutover.md) ✅ · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) ✅ · [D3 Consumer Cutover](entity-workspace-d3-consumer-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [D1 Contract Seal](entity-workspace-d1-contract-seal.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [ADR-032](../architecture/ADR-032-client-order-vacancy-flight-chain.md) · [A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md)
 
 > D5 bound Client to the D2 slot catalog.  
@@ -117,7 +117,7 @@ D6 **must not**:
 | **D3** | First consumer (Sales Inquiry) | ✅ [#255](https://github.com/igortatarynovich/HostFlow/pull/255)/[#256](https://github.com/igortatarynovich/HostFlow/pull/256) |
 | **D4** | Candidate cutover (Shell ≠ D2 slots) | ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257)/[#258](https://github.com/igortatarynovich/HostFlow/pull/258) |
 | **D5** | Client cutover | ✅ [#259](https://github.com/igortatarynovich/HostFlow/pull/259)/[#260](https://github.com/igortatarynovich/HostFlow/pull/260) |
-| **D6** | Sales Order cutover | **this brief** (feat locked) |
+| **D6** | Sales Order cutover | **this feat** |
 | **D7+** | HR / Vacancy / Services `/app/orders` | locked until D7 brief |
 
 ---
@@ -189,27 +189,28 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## Acceptance
 
-- [ ] Brief merged  
-- [ ] Named Entity Workspace D6 Cutover Gate (feat)  
-- [ ] Consumer = Sales Order; HR / Vacancy / Services `/app/orders` not cut over  
-- [ ] D2 `documents` cannot be enabled; order docs surface is not that enable  
-- [ ] Shell `EntityWorkspaceSectionId` not collapsed into D2 slots  
-- [ ] No Catalog Passport mint  
-- [ ] D1–D5 gates still green; Entity Foundation remains 🔄  
-- [ ] Forms P3–P5 and Documents Phase E stay out of Product Track  
+- [x] Brief merged ([#261](https://github.com/igortatarynovich/HostFlow/pull/261))
+- [x] Named Entity Workspace D6 Cutover Gate (feat)
+- [x] Consumer = Sales Order; HR / Vacancy / Services `/app/orders` not cut over
+- [x] D2 `documents` cannot be enabled; order docs surface is not that enable
+- [x] Shell `EntityWorkspaceSectionId` not collapsed into D2 slots
+- [x] No Catalog Passport mint
+- [x] D1–D5 gates still green; Entity Foundation remains 🔄
+- [x] Forms P3–P5 and Documents Phase E stay out of Product Track
 - Product Track stays D6 until D7 brief opens
 
 ---
 
 ## DoD
 
-- [ ] Brief sealed with Sales Order consumer + Shell≠D2 distinction + Sales≠Services order + in/out + acceptance  
-- [ ] Queue + roadmap + AGENTS point at this brief  
-- [ ] D5 marked complete with #260 merge ref  
-- [ ] Feat locked until this brief merges  
+- [x] Brief sealed with Sales Order consumer + Shell≠D2 distinction + Sales≠Services order + in/out + acceptance  
+- [x] Queue + roadmap + AGENTS point at this brief  
+- [x] D5 marked complete with #260 merge ref  
+- [x] Feat: Sales Order bound to D2 enabled slots; named Cutover Gate  
 
 ---
 
 ## History
 
+- 2026-08-15: D6 feat — named **Entity Workspace D6 Cutover Gate**; Sales Order bound to D2 enabled slots; HR/Vacancy/Services `/app/orders` out; no Passport. Next = D7 brief (locked).
 - 2026-08-15: D6 brief opened — Sales Order cutover; HR / Vacancy / Services `/app/orders` locked as D7+. Feat locked. D5 ✅ [#259](https://github.com/igortatarynovich/HostFlow/pull/259)/[#260](https://github.com/igortatarynovich/HostFlow/pull/260) (`64289c22` / merge `069f441d`).

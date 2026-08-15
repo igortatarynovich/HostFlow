@@ -16,6 +16,14 @@ import {
 import { listCompanies } from '../../api/client'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { SALES_ORDERS_PATH } from '../../app/salesPaths'
+import { SalesOrderCommunicationSlot } from '../../components/sales/SalesOrderCommunicationSlot'
+import { SalesOrderFormsSlot } from '../../components/sales/SalesOrderFormsSlot'
+import {
+  EntityWorkspaceCompositionHost,
+  SALES_ORDER_COMPOSITION_CONSUMER_ID,
+  SALES_ORDER_COMPOSITION_SLOTS,
+  assertSalesOrderCompositionSlots,
+} from '../../platform/entity-workspace'
 import { useI18n } from '../../i18n'
 
 const triggerLabel = (code: string) => code.replace(/_/g, ' ')
@@ -181,9 +189,15 @@ export default function SalesOrderDetailPage() {
     )
   }
 
+  assertSalesOrderCompositionSlots(SALES_ORDER_COMPOSITION_SLOTS)
+
   return (
-    <div className="mx-auto max-w-4xl space-y-6 overflow-y-auto px-4 py-4 sm:px-6" data-testid="sales-order-detail">
-      <div>
+    <div
+      className="mx-auto max-w-4xl space-y-6 overflow-y-auto px-4 py-4 sm:px-6"
+      data-testid="sales-order-detail"
+      data-entity-workspace-consumer={SALES_ORDER_COMPOSITION_CONSUMER_ID}
+    >
+      <div data-entity-workspace-slot="context-rail">
         <Link to={SALES_ORDERS_PATH} className="text-sm text-slate-600 hover:text-brand-700">
           ← {t('app.sales_orders.create.back', { defaultValue: 'К списку заказов' })}
         </Link>
@@ -214,6 +228,7 @@ export default function SalesOrderDetailPage() {
         </div>
       </div>
 
+      <div data-entity-workspace-slot="overview" className="space-y-6">
       <section className="rounded-xl border border-slate-200 bg-white p-4">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           {t('app.sales_orders.detail.snapshot', { defaultValue: 'Снимок сделки' })}
@@ -378,7 +393,19 @@ export default function SalesOrderDetailPage() {
           </button>
         </form>
       </section>
+        <EntityWorkspaceCompositionHost
+          consumerId={SALES_ORDER_COMPOSITION_CONSUMER_ID}
+          enabledSlots={['communication', 'forms']}
+          renderers={{
+            communication: () => (
+              <SalesOrderCommunicationSlot companyId={String(order.company_id)} />
+            ),
+            forms: () => <SalesOrderFormsSlot />,
+          }}
+        />
+      </div>
 
+      <div data-entity-workspace-slot="timeline">
       <section data-testid="sales-order-billables">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-base font-semibold text-slate-900">
@@ -456,6 +483,7 @@ export default function SalesOrderDetailPage() {
           </ul>
         )}
       </section>
+      </div>
 
       {message ? (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{message}</p>
