@@ -6,8 +6,15 @@ import SalesInquiryPossibleDuplicatesSection from '../../components/sales/SalesI
 import SalesInquiryQuestionnaireSection from '../../components/sales/SalesInquiryQuestionnaireSection'
 import SalesInquiryCallNotesSection from '../../components/sales/SalesInquiryCallNotesSection'
 import SalesInquiryTimelineSection from '../../components/sales/SalesInquiryTimelineSection'
+import { SalesInquiryCommunicationSlot } from '../../components/sales/SalesInquiryCommunicationSlot'
 import { MetaFormAnswersSection } from '../../components/sales/MetaFormAnswersSection'
 import { ContextRail } from '../context-rail'
+import { EntityWorkspaceCompositionHost } from '../entity-workspace/compositionHost'
+import {
+  SALES_INQUIRY_COMPOSITION_CONSUMER_ID,
+  SALES_INQUIRY_COMPOSITION_SLOTS,
+  assertSalesInquiryCompositionSlots,
+} from '../entity-workspace/salesInquiryConsumer'
 import {
   APPLICATION_STATUS_BADGE,
   APPLICATION_STATUS_TEXT,
@@ -68,12 +75,17 @@ export function ApplicationSalesDetailPanel({
     onConvert,
     t,
   })
+  assertSalesInquiryCompositionSlots(SALES_INQUIRY_COMPOSITION_SLOTS)
 
   const meta = application.source
     ? `${application.source}${application.created_at ? ` · ${new Date(application.created_at).toLocaleString()}` : ''}`
     : undefined
 
   return (
+    <div
+      data-entity-workspace-slot="context-rail"
+      data-entity-workspace-consumer={SALES_INQUIRY_COMPOSITION_CONSUMER_ID}
+    >
     <ContextRail
       railKind="sales"
       header={{
@@ -158,31 +170,44 @@ export function ApplicationSalesDetailPanel({
           </div>
         ),
         summary: (
-          <div className="space-y-5">
-            <MetaFormAnswersSection
-              answers={application.extensions?.meta_form_answers}
-              additionalAnswers={application.extensions?.additional_answers}
-            />
-            <SalesInquiryCallNotesSection
-              leadId={transportLeadId}
-              disabled={busy}
-              onSaved={() => {
-                setTimelineRefresh((n) => n + 1)
-                onQuestionnaireUpdated?.()
-              }}
-            />
-            <SalesInquiryPossibleDuplicatesSection applicationId={application.id} />
-            <SalesInquiryQuestionnaireSection
-              leadId={transportLeadId}
-              onUpdated={() => {
-                setTimelineRefresh((n) => n + 1)
-                onQuestionnaireUpdated?.()
-              }}
-            />
-          </div>
+          <EntityWorkspaceCompositionHost
+            consumerId={SALES_INQUIRY_COMPOSITION_CONSUMER_ID}
+            enabledSlots={['overview', 'forms', 'communication']}
+            renderers={{
+              overview: () => (
+                <div className="space-y-5">
+                  <MetaFormAnswersSection
+                    answers={application.extensions?.meta_form_answers}
+                    additionalAnswers={application.extensions?.additional_answers}
+                  />
+                  <SalesInquiryCallNotesSection
+                    leadId={transportLeadId}
+                    disabled={busy}
+                    onSaved={() => {
+                      setTimelineRefresh((n) => n + 1)
+                      onQuestionnaireUpdated?.()
+                    }}
+                  />
+                  <SalesInquiryPossibleDuplicatesSection applicationId={application.id} />
+                </div>
+              ),
+              forms: () => (
+                <SalesInquiryQuestionnaireSection
+                  leadId={transportLeadId}
+                  onUpdated={() => {
+                    setTimelineRefresh((n) => n + 1)
+                    onQuestionnaireUpdated?.()
+                  }}
+                />
+              ),
+              communication: () => <SalesInquiryCommunicationSlot inquiryId={application.id} />,
+            }}
+          />
         ),
         history: (
-          <SalesInquiryTimelineSection leadId={transportLeadId} refreshToken={timelineRefresh} />
+          <div data-entity-workspace-slot="timeline">
+            <SalesInquiryTimelineSection leadId={transportLeadId} refreshToken={timelineRefresh} />
+          </div>
         ),
       }}
       contextTitles={{
@@ -191,5 +216,6 @@ export function ApplicationSalesDetailPanel({
         history: t('app.leads.detail.timeline', { defaultValue: 'История' }),
       }}
     />
+    </div>
   )
 }

@@ -145,7 +145,7 @@ C3 edits mutable definitions. Draft save is not publish. C4 is **Runtime, not an
 
 ---
 
-## Phase D — Universal Entity Workspace ← **active** (D3 brief; D2 ✅)
+## Phase D — Universal Entity Workspace ← **active** (D3 ✅; D4 locked)
 
 **Not** the same as PX **minimal EntityWorkspace chrome** (header / actions / rail). Phase D composes **platforms** onto one entity. PX only stops Stage 3 from inventing a fifth card shell.
 
@@ -157,7 +157,7 @@ Ladder (locked start):
 |-------|--------|--------|
 | **D1** | Contract seal (ownership / PX ≠ Phase D) | ✅ [#251](https://github.com/igortatarynovich/HostFlow/pull/251)/[#252](https://github.com/igortatarynovich/HostFlow/pull/252) |
 | **D2** | Composition contract (platform slots) | ✅ [#253](https://github.com/igortatarynovich/HostFlow/pull/253)/[#254](https://github.com/igortatarynovich/HostFlow/pull/254) |
-| **D3** | First consumer cutover (Sales Inquiry) | [brief](../tasks/entity-workspace-d3-consumer-cutover.md) (feat locked) |
+| **D3** | First consumer cutover (Sales Inquiry) | ✅ ([brief](../tasks/entity-workspace-d3-consumer-cutover.md); named Cutover Gate) |
 | **D4+** | Remaining consumers | locked until D4 brief |
 
 **Out of D3:** Candidate / HR / Vacancy cutover · Shell `EntityWorkspaceSectionId` collapse into D2 slots · Catalog Passport mint · Documents Phase E enable · Forms P3–P5 · Billing · AI · module workspace promotion into the kit.
@@ -226,11 +226,11 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). Phase D (Entity Workspace D3 brief; feat locked) **is** the active phase; do not reopen Forms C6, Stage 5 settings, or R6.  
+5. Parallel product branches that compete across phases (one active product slice). Phase D (Entity Workspace D3 ✅; D4 brief locked) **is** the active phase; do not reopen Forms C6, Stage 5 settings, or R6.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Minting Entity Catalog Passport or enabling Documents slot before Phase E without Architecture checklist / RFC when Catalog shape changes.  
-9. Starting D3 feat cutover before the D3 brief merges.
+9. Starting D4 remaining-consumer cutover before the D4 brief merges.
 
 ---
 
@@ -238,7 +238,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Workspace D3 brief; feat locked) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Workspace D3 ✅; next = D4 brief locked) |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |
@@ -249,6 +249,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-15: D3 feat — named **Entity Workspace D3 Cutover Gate**; Sales Inquiry first consumer; Product Track → D3 ✅; next = D4 brief (locked).
 - 2026-08-15: D2 ✅ [#253](https://github.com/igortatarynovich/HostFlow/pull/253)/[#254](https://github.com/igortatarynovich/HostFlow/pull/254) (`a61543cf`); Product Track → **D3 Consumer Cutover** ([brief](../tasks/entity-workspace-d3-consumer-cutover.md); feat locked).
 - 2026-08-14: C4 ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) (`4427b110`); Product Track → **C5 Form Execution** ([brief](../tasks/forms-platform-c5-form-execution.md); feat locked).
 - 2026-08-14: C5 ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248) (`f6bbe03f`); Product Track → **C6 Optimization** ([brief](../tasks/forms-platform-c6-optimization.md); feat locked).

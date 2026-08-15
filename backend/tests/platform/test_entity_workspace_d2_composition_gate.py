@@ -146,15 +146,27 @@ def test_d2_slot_catalog_is_not_shell_section_order() -> None:
     assert "compositionSlots.ts" in types_src or "composition slot" in types_src.lower()
 
 
+_D3_FIRST_CONSUMER_PATHS = (
+    "platform/application-workspace/ApplicationSalesDetailPanel.tsx",
+    "platform/entity-workspace/salesInquiryConsumer.ts",
+    "platform/entity-workspace/compositionHost.tsx",
+    "components/sales/SalesInquiryCommunicationSlot.tsx",
+)
+
+
 def test_d2_no_consumer_cutover_screens() -> None:
     leaked: list[str] = []
+    allowed = set(_D3_FIRST_CONSUMER_PATHS)
     for path in sorted(_FRONTEND_SRC.rglob("*.ts")) + sorted(_FRONTEND_SRC.rglob("*.tsx")):
         rel = path.relative_to(_FRONTEND_SRC)
-        if rel.as_posix().startswith("platform/entity-workspace/"):
+        rel_posix = rel.as_posix()
+        if rel_posix.startswith("platform/entity-workspace/"):
+            continue
+        if rel_posix in allowed:
             continue
         text = path.read_text(encoding="utf-8")
         if any(marker in text for marker in _SLOT_IMPORT_MARKERS):
-            leaked.append(rel.as_posix())
+            leaked.append(rel_posix)
     assert not leaked, f"D2 must not cut over consumers onto slot catalog: {leaked}"
 
 
