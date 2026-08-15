@@ -145,7 +145,7 @@ C3 edits mutable definitions. Draft save is not publish. C4 is **Runtime, not an
 
 ---
 
-## Phase D — Universal Entity Workspace ← **active** (D6 brief; D5 ✅)
+## Phase D — Universal Entity Workspace ← **active** (D6 feat; D5 ✅)
 
 **Not** the same as PX **minimal EntityWorkspace chrome** (header / actions / rail). Phase D composes **platforms** onto one entity. PX only stops Stage 3 from inventing a fifth card shell.
 
@@ -160,7 +160,7 @@ Ladder (locked start):
 | **D3** | First consumer cutover (Sales Inquiry) | ✅ [#255](https://github.com/igortatarynovich/HostFlow/pull/255)/[#256](https://github.com/igortatarynovich/HostFlow/pull/256) |
 | **D4** | Candidate cutover (Shell ≠ D2 slots) | ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257)/[#258](https://github.com/igortatarynovich/HostFlow/pull/258) |
 | **D5** | Client cutover | ✅ [#259](https://github.com/igortatarynovich/HostFlow/pull/259)/[#260](https://github.com/igortatarynovich/HostFlow/pull/260) |
-| **D6** | Sales Order cutover | [brief](../tasks/entity-workspace-d6-sales-order-cutover.md) (feat locked) |
+| **D6** | Sales Order cutover | [brief](../tasks/entity-workspace-d6-sales-order-cutover.md) (feat; named Cutover Gate) |
 | **D7+** | HR / Vacancy / Services `/app/orders` | locked until D7 brief |
 
 **Out of D6:** HR / Vacancy / Services `/app/orders` cutover · D2 `documents` enable · Shell/D2 id collapse · Catalog Passport mint · Documents Phase E · Forms P3–P5 · Billing · AI · module workspace promotion into the kit · full `SalesOrderDetailPage` rewrite · PX mock `order` as this consumer.
@@ -229,11 +229,11 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). Phase D (Entity Workspace D6 brief; feat locked) **is** the active phase; do not reopen Forms C6, Stage 5 settings, or R6.  
+5. Parallel product branches that compete across phases (one active product slice). Phase D (Entity Workspace D6 feat; named Cutover Gate) **is** the active phase; do not reopen Forms C6, Stage 5 settings, or R6.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Minting Entity Catalog Passport or enabling Documents slot before Phase E without Architecture checklist / RFC when Catalog shape changes.  
-9. Starting D6 feat cutover before the D6 brief merges.
+9. Starting D7 remaining-consumer cutover before the D7 brief merges.
 
 ---
 
@@ -241,7 +241,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Workspace D6 brief; feat locked) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Workspace D6 feat; named Cutover Gate) |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |
@@ -252,6 +252,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-15: D6 feat — named **Entity Workspace D6 Cutover Gate**; Sales Order bound to D2 slots; Product Track → D6 feat; next = D7 brief (locked).
 - 2026-08-15: D5 ✅ [#259](https://github.com/igortatarynovich/HostFlow/pull/259)/[#260](https://github.com/igortatarynovich/HostFlow/pull/260) (`069f441d`); Product Track → **D6 Sales Order Cutover** ([brief](../tasks/entity-workspace-d6-sales-order-cutover.md); feat locked).
 - 2026-08-15: D5 feat — named **Entity Workspace D5 Cutover Gate**; Client bound to D2 slots; Product Track → D5 feat; next = D6 brief (locked).
 - 2026-08-15: D4 ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257)/[#258](https://github.com/igortatarynovich/HostFlow/pull/258) (`b5f1f00a`); Product Track → **D5 Client Cutover** ([brief](../tasks/entity-workspace-d5-client-cutover.md); feat locked).
