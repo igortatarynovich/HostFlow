@@ -14,6 +14,7 @@ import {
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../components/Toast'
 import { PageHeader } from '../../components/nav/PageHeader'
+import { PageShell } from '../../components/layout'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import HrReviewPanelCard from '../../components/hr/HrReviewPanel'
 import HrNextActionRail from '../../components/hr/HrNextActionRail'
@@ -22,6 +23,14 @@ import HrWorkEligibilityCompact from '../../components/hr/HrWorkEligibilityCompa
 import { EmployeeDossierView } from '../../components/hr/EmployeeDossierView'
 import { countVerifiedDocuments, documentsFromPanel } from '../../components/hr/hrDocumentVerificationFields'
 import { isEmploymentCaseWorkspace } from '../../utils/hrEmploymentCaseMode'
+import { HrEmployeeCommunicationSlot } from './HrEmployeeCommunicationSlot'
+import { HrEmployeeFormsSlot } from './HrEmployeeFormsSlot'
+import {
+  EntityWorkspaceCompositionHost,
+  HR_EMPLOYEE_COMPOSITION_CONSUMER_ID,
+  HR_EMPLOYEE_COMPOSITION_SLOTS,
+  assertHrEmployeeCompositionSlots,
+} from '../../platform/entity-workspace'
 
 const PAYROLL_STATUSES = [
   'missing_data',
@@ -241,9 +250,18 @@ export default function HrEmployeeDetailPage() {
     )
   }
 
+  const isCutover = Boolean(employeeId)
+  if (isCutover) {
+    assertHrEmployeeCompositionSlots(HR_EMPLOYEE_COMPOSITION_SLOTS)
+  }
+
   return (
-    <div className="hr-employee-workspace w-full min-w-0">
+    <PageShell
+      className="hr-employee-workspace w-full min-w-0 overflow-visible"
+      data-entity-workspace-consumer={isCutover ? HR_EMPLOYEE_COMPOSITION_CONSUMER_ID : undefined}
+    >
       <div className="w-full min-w-0">
+        <div data-entity-workspace-slot="context-rail">
         <PageHeader
           breadcrumbItems={[
             { label: t('app.nav.hr.workspace.title', { defaultValue: 'HR workspace' }), to: CRM_APP_PATHS.hr },
@@ -263,6 +281,7 @@ export default function HrEmployeeDetailPage() {
           subtitle={caseWorkspace ? t('app.hr.review_case.badge', { defaultValue: 'HR review case' }) : employee.id}
           kind="browse"
         />
+        </div>
 
         <div
           className={
@@ -272,6 +291,7 @@ export default function HrEmployeeDetailPage() {
           }
         >
           <div className="min-w-0 space-y-4">
+            <div data-entity-workspace-slot="overview" className="space-y-4">
             <EmployeeDossierView
               employeeId={employeeId!}
               employee={employee}
@@ -282,6 +302,7 @@ export default function HrEmployeeDetailPage() {
               onHrPanelUpdated={handleDossierHrPanelUpdated}
               onScrollTo={scrollToAnchor}
             />
+            </div>
             {showEmploymentDecision && hrReview ? (
               <details
                 id="hr-employee-review"
@@ -366,9 +387,47 @@ export default function HrEmployeeDetailPage() {
                 </div>
               </details>
             ) : null}
+            {isCutover ? (
+              <EntityWorkspaceCompositionHost
+                consumerId={HR_EMPLOYEE_COMPOSITION_CONSUMER_ID}
+                enabledSlots={['communication', 'forms']}
+                renderers={{
+                  communication: () => (
+                    <HrEmployeeCommunicationSlot candidateId={String(employee.candidate_id || '')} />
+                  ),
+                  forms: () => <HrEmployeeFormsSlot />,
+                }}
+              />
+            ) : null}
+            {isCutover ? (
+              <div data-entity-workspace-slot="timeline">
+                <section className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {t('app.entity_workspace.slot.timeline', { defaultValue: 'Timeline' })}
+                  </p>
+                  {profile.timeline.length === 0 ? (
+                    <p className="text-sm text-slate-600">
+                      {t('app.hr.employee_operational.timeline_empty', { defaultValue: 'No timeline events.' })}
+                    </p>
+                  ) : (
+                    <ul className="space-y-2 text-sm">
+                      {profile.timeline.slice(0, 5).map((ev) => (
+                        <li key={ev.id} className="text-slate-700">
+                          <span className="font-medium text-slate-900">{ev.title}</span>
+                          {ev.kind ? <span className="text-slate-500"> · {ev.kind}</span> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              </div>
+            ) : null}
           </div>
           {caseWorkspace && profile ? (
-            <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+            <aside
+              className="min-w-0 xl:sticky xl:top-4 xl:self-start"
+              data-entity-workspace-slot="context-rail"
+            >
               {caseWorkspace && hrReview ? (
                 <HrNextActionRail
                   panel={hrReview}
@@ -383,7 +442,7 @@ export default function HrEmployeeDetailPage() {
           ) : null}
         </div>
       </div>
-    </div>
+    </PageShell>
   )
 }
 

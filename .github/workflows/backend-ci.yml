@@ -221,6 +221,13 @@ jobs:
           HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
         run: |
           pytest -q tests/platform/test_entity_workspace_d7_cutover_gate.py
+      - name: Entity Workspace D8 Cutover Gate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+        run: |
+          pytest -q tests/platform/test_entity_workspace_d8_cutover_gate.py
       - name: Lint
         continue-on-error: true
         working-directory: backend
