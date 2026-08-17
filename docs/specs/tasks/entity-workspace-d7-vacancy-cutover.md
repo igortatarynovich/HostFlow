@@ -1,7 +1,7 @@
 # Entity Workspace D7 — Vacancy Cutover (Phase D)
 
 **Status:** **COMPLETE** ([#263](https://github.com/igortatarynovich/HostFlow/pull/263)/[#264](https://github.com/igortatarynovich/HostFlow/pull/264) · `9582c00d` · merge `7484f98e`)  
-**Next:** [D8 HR Employee Cutover](entity-workspace-d8-hr-employee-cutover.md) (brief; feat locked)  
+**Next:** [D8 HR Employee Cutover](entity-workspace-d8-hr-employee-cutover.md) ✅ → [D9 Services Order Cutover](entity-workspace-d9-services-order-cutover.md) (brief; feat locked)  
 **Branch (docs):** `docs/entity-workspace-d7-vacancy-cutover` ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263)  
 **Branch (code):** `feat/entity-workspace-d7-vacancy-cutover` ✅ [#264](https://github.com/igortatarynovich/HostFlow/pull/264)  
 **Parents:** [D6 Sales Order Cutover](entity-workspace-d6-sales-order-cutover.md) ✅ · [D5 Client Cutover](entity-workspace-d5-client-cutover.md) ✅ · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) ✅ · [D3 Consumer Cutover](entity-workspace-d3-consumer-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [D1 Contract Seal](entity-workspace-d1-contract-seal.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [ADR-032](../architecture/ADR-032-client-order-vacancy-flight-chain.md) · [A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md)
@@ -98,7 +98,7 @@ D5  → Client binds to D2 slots
 D6  → Sales Order binds to D2 slots
 D7  → Vacancy binds to D2 slots (this)
 D8  → HR employee (opened as D8 brief)
-D9+ → remaining consumer (Services /app/orders)
+D9  → Services order (opened as D9 brief)
 ```
 
 D7 **must not**:
@@ -129,7 +129,8 @@ D7 **must not**:
 | **D5** | Client cutover | ✅ [#259](https://github.com/igortatarynovich/HostFlow/pull/259)/[#260](https://github.com/igortatarynovich/HostFlow/pull/260) |
 | **D6** | Sales Order cutover | ✅ [#261](https://github.com/igortatarynovich/HostFlow/pull/261)/[#262](https://github.com/igortatarynovich/HostFlow/pull/262) |
 | **D7** | Vacancy cutover | ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263)/[#264](https://github.com/igortatarynovich/HostFlow/pull/264) |
-| **D8** | HR employee cutover | [brief](entity-workspace-d8-hr-employee-cutover.md) (feat locked) |
+| **D8** | HR employee cutover | ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265)/[#266](https://github.com/igortatarynovich/HostFlow/pull/266) |
+| **D9** | Services `/app/orders` | [brief](entity-workspace-d9-services-order-cutover.md) (feat locked) |
 
 ---
 
