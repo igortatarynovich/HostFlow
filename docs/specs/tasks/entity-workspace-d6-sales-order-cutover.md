@@ -1,7 +1,7 @@
 # Entity Workspace D6 — Sales Order Cutover (Phase D)
 
 **Status:** **COMPLETE** ([#261](https://github.com/igortatarynovich/HostFlow/pull/261)/[#262](https://github.com/igortatarynovich/HostFlow/pull/262) · `346f6fcc` · merge `bc819768`)  
-**Next:** [D7 Vacancy Cutover](entity-workspace-d7-vacancy-cutover.md) (feat; named Cutover Gate)  
+**Next:** [D7 Vacancy Cutover](entity-workspace-d7-vacancy-cutover.md) ✅ → [D8 HR Employee Cutover](entity-workspace-d8-hr-employee-cutover.md) (brief; feat locked)  
 **Branch (docs):** `docs/entity-workspace-d6-sales-order-cutover` ✅ [#261](https://github.com/igortatarynovich/HostFlow/pull/261)  
 **Branch (code):** `feat/entity-workspace-d6-sales-order-cutover` ✅ [#262](https://github.com/igortatarynovich/HostFlow/pull/262)  
 **Parents:** [D5 Client Cutover](entity-workspace-d5-client-cutover.md) ✅ · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) ✅ · [D3 Consumer Cutover](entity-workspace-d3-consumer-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [D1 Contract Seal](entity-workspace-d1-contract-seal.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [ADR-032](../architecture/ADR-032-client-order-vacancy-flight-chain.md) · [A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md)
