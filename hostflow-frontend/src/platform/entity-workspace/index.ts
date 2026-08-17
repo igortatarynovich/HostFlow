@@ -54,6 +54,13 @@ export {
 } from './hrEmployeeConsumer'
 export type { HrEmployeeCompositionSlotId } from './hrEmployeeConsumer'
 
+export {
+  SERVICES_ORDER_COMPOSITION_CONSUMER_ID,
+  SERVICES_ORDER_COMPOSITION_SLOTS,
+  assertServicesOrderCompositionSlots,
+} from './servicesOrderConsumer'
+export type { ServicesOrderCompositionSlotId } from './servicesOrderConsumer'
+
 export { EntityWorkspaceCompositionHost } from './compositionHost'
 
 export type {

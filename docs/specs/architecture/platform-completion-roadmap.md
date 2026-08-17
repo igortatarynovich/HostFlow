@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← **active** ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) brief; feat locked; D8 ✅ [#266](https://github.com/igortatarynovich/HostFlow/pull/266); D7 ✅; D6 ✅; D5 ✅; D4 ✅; D3 ✅; D2 ✅; D1 ✅).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← **active** ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) feat; named Cutover Gate; D8 ✅ [#266](https://github.com/igortatarynovich/HostFlow/pull/266); D7 ✅; D6 ✅; D5 ✅; D4 ✅; D3 ✅; D2 ✅; D1 ✅).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms ✅ → Phase D Entity Workspace → …
@@ -36,7 +36,7 @@ Order **after A2**:
 
 1. **A2 — Platform Governance Review** — ✅ PASS_WITH_CONSTRAINTS ([gate](../gates/platform-governance-review-a2.md))  
 2. **Phase B — Acquisition / Stage 3 + Meta** ← ✅  
-3. **Phase C — Forms Platform** ← ✅ ([C1](../tasks/forms-platform-c1-contract-seal.md)…[C6](../tasks/forms-platform-c6-optimization.md) / Foundation) → **Phase D — Entity Workspace** ← **active** ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) brief; D8 ✅; D7 ✅; D6 ✅; D5 ✅; D4 ✅; D3 ✅; D2 ✅; D1 ✅) → Documents → Billing → AI  
+3. **Phase C — Forms Platform** ← ✅ ([C1](../tasks/forms-platform-c1-contract-seal.md)…[C6](../tasks/forms-platform-c6-optimization.md) / Foundation) → **Phase D — Entity Workspace** ← **active** ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) feat; D8 ✅; D7 ✅; D6 ✅; D5 ✅; D4 ✅; D3 ✅; D2 ✅; D1 ✅) → Documents → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
 
@@ -145,7 +145,7 @@ C3 edits mutable definitions. Draft save is not publish. C4 is **Runtime, not an
 
 ---
 
-## Phase D — Universal Entity Workspace ← **active** (D9 brief; D8 ✅)
+## Phase D — Universal Entity Workspace ← **active** (D9 feat; D8 ✅)
 
 **Not** the same as PX **minimal EntityWorkspace chrome** (header / actions / rail). Phase D composes **platforms** onto one entity. PX only stops Stage 3 from inventing a fifth card shell.
 
@@ -163,7 +163,7 @@ Ladder (locked start):
 | **D6** | Sales Order cutover | ✅ [#261](https://github.com/igortatarynovich/HostFlow/pull/261)/[#262](https://github.com/igortatarynovich/HostFlow/pull/262) |
 | **D7** | Vacancy cutover | ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263)/[#264](https://github.com/igortatarynovich/HostFlow/pull/264) |
 | **D8** | HR employee cutover | ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265)/[#266](https://github.com/igortatarynovich/HostFlow/pull/266) |
-| **D9** | Services `/app/orders` cutover | [brief](../tasks/entity-workspace-d9-services-order-cutover.md) (feat locked) |
+| **D9** | Services `/app/orders` cutover | [brief](../tasks/entity-workspace-d9-services-order-cutover.md) (feat; named Cutover Gate) |
 
 **Out of D9:** `HrHandoffDetailPage` · D2 `documents` enable · Shell/D2 id collapse · Catalog Passport mint · Documents Phase E · Forms P3–P5 · Billing Platform · AI · module workspace promotion into the kit · full `ServicesPage` rewrite · Sales Order re-bind.
 
@@ -218,7 +218,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 2 | **A2** Platform Governance Review | ✅ Stable SoT / contracts gate (`PASS_WITH_CONSTRAINTS`) |
 | 3 | **B** Acquisition / Stage 3 + Meta | ✅ Meta / slice 3–4 (#222 / #224 / #238) |
 | 4 | **C** Forms Platform | ✅ Shared form runtime / Foundation ([C6](../tasks/forms-platform-c6-optimization.md) [#250](https://github.com/igortatarynovich/HostFlow/pull/250)) |
-| 5 | **D** Universal Entity Workspace | ← **active** (D9 [brief](../tasks/entity-workspace-d9-services-order-cutover.md); feat locked) |
+| 5 | **D** Universal Entity Workspace | ← **active** (D9 [brief](../tasks/entity-workspace-d9-services-order-cutover.md); feat; named Cutover Gate) |
 | 6 | **E** Documents Platform | Full document lifecycle |
 | 7 | **F** Billing Platform | SaaS commercial layer |
 | 8 | **G** AI Platform | Assistants over existing canons |
@@ -231,11 +231,11 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). Phase D (Entity Workspace D9 brief; feat locked) **is** the active phase; do not reopen Forms C6, Stage 5 settings, or R6.  
+5. Parallel product branches that compete across phases (one active product slice). Phase D (Entity Workspace D9 feat; named Cutover Gate) **is** the active phase; do not reopen Forms C6, Stage 5 settings, or R6.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Minting Entity Catalog Passport or enabling Documents slot before Phase E without Architecture checklist / RFC when Catalog shape changes.  
-9. Starting D9 feat before this brief merges, or starting Documents Phase E / `HrHandoffDetailPage` cutover before the D9 feat merges.
+9. Starting Documents Phase E / `HrHandoffDetailPage` cutover before the D9 feat merges.
 
 ---
 
@@ -243,7 +243,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Workspace D9 brief; feat locked) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Workspace D9 feat; named Cutover Gate) |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |
@@ -254,6 +254,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-17: D9 feat — named **Entity Workspace D9 Cutover Gate**; Services order bound to D2 slots; Product Track → D9 feat; next = Documents Phase E (locked).
 - 2026-08-17: D8 ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265)/[#266](https://github.com/igortatarynovich/HostFlow/pull/266) (`fae8202e`); Product Track → **D9 Services Order Cutover** ([brief](../tasks/entity-workspace-d9-services-order-cutover.md); feat locked).
 - 2026-08-17: D8 feat — named **Entity Workspace D8 Cutover Gate**; HR employee bound to D2 slots; Product Track → D8 feat; next = D9 brief (locked).
 - 2026-08-17: D7 ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263)/[#264](https://github.com/igortatarynovich/HostFlow/pull/264) (`7484f98e`); Product Track → **D8 HR Employee Cutover** ([brief](../tasks/entity-workspace-d8-hr-employee-cutover.md); feat locked).
