@@ -55,6 +55,14 @@ import {
 import { CatalogTab } from '../modules/services/ServicesCatalogTab'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
+import { ServicesOrderCommunicationSlot } from './ServicesOrderCommunicationSlot'
+import { ServicesOrderFormsSlot } from './ServicesOrderFormsSlot'
+import {
+  EntityWorkspaceCompositionHost,
+  SERVICES_ORDER_COMPOSITION_CONSUMER_ID,
+  SERVICES_ORDER_COMPOSITION_SLOTS,
+  assertServicesOrderCompositionSlots,
+} from '../platform/entity-workspace'
 
 const initialServiceState: NewServiceFormState = {
   code: '',
@@ -2030,9 +2038,17 @@ function OrdersTab({
     window.URL.revokeObjectURL(url)
   }
 
+  const isCutover = Boolean(selectedOrderId)
+  if (isCutover) {
+    assertServicesOrderCompositionSlots(SERVICES_ORDER_COMPOSITION_SLOTS)
+  }
+
   return (
     <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 px-4 pb-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
-      <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
+      <div
+        className="flex min-h-0 flex-col gap-4 overflow-hidden"
+        data-entity-workspace-slot="context-rail"
+      >
         {urlCompanyScopeId && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50/80 px-3 py-2 text-sm text-brand-900">
             <span className="min-w-0">
@@ -2694,22 +2710,60 @@ function OrdersTab({
         </DataTableFrame>
       </div>
 
-      <div className="card flex min-h-0 flex-col overflow-y-auto p-4 space-y-4">
+      <div
+        className="card flex min-h-0 flex-col overflow-y-auto p-4 space-y-4"
+        data-entity-workspace-consumer={isCutover ? SERVICES_ORDER_COMPOSITION_CONSUMER_ID : undefined}
+      >
         {!selectedOrderId || !order ? (
           <div className="text-sm text-slate-500">{t('app.services.orders.detail.placeholder')}</div>
         ) : (
-          <OrderDetail
-            order={order}
-            summary={summary}
-            invoiceSummary={invoiceMap[String(order.id)] || null}
-            canManage={canManage}
-            onInvoiceChanged={() => {
-              onRefreshInvoices()
-            }}
-            onStatusUpdate={onStatusUpdate}
-            onScheduleSubmit={onScheduleSubmit}
-            onDeliverItem={onDeliverItem}
-          />
+          <>
+            <div data-entity-workspace-slot="overview" className="space-y-4">
+              <OrderDetail
+                order={order}
+                summary={summary}
+                invoiceSummary={invoiceMap[String(order.id)] || null}
+                canManage={canManage}
+                onInvoiceChanged={() => {
+                  onRefreshInvoices()
+                }}
+                onStatusUpdate={onStatusUpdate}
+                onScheduleSubmit={onScheduleSubmit}
+                onDeliverItem={onDeliverItem}
+              />
+            </div>
+            <EntityWorkspaceCompositionHost
+              consumerId={SERVICES_ORDER_COMPOSITION_CONSUMER_ID}
+              enabledSlots={['communication', 'forms']}
+              renderers={{
+                communication: () => <ServicesOrderCommunicationSlot orderId={selectedOrderId} />,
+                forms: () => <ServicesOrderFormsSlot />,
+              }}
+            />
+            <div data-entity-workspace-slot="timeline">
+              <section className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-semibold text-slate-900">
+                  {t('app.entity_workspace.slot.timeline', { defaultValue: 'Timeline' })}
+                </p>
+                {order.items.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    {t('app.services.orders.timeline.empty', { defaultValue: 'No fulfillment events yet.' })}
+                  </p>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {order.items.slice(0, 8).map((item) => (
+                      <li key={item.id} className="text-slate-700">
+                        <span className="font-medium text-slate-900">
+                          {item.service?.name || item.service?.code || item.service_id.slice(0, 8)}
+                        </span>
+                        <span className="text-slate-500"> · {item.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+          </>
         )}
         {message && <div className="text-sm text-brand-700">{message}</div>}
       </div>

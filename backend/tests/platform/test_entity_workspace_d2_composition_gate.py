@@ -146,7 +146,7 @@ def test_d2_slot_catalog_is_not_shell_section_order() -> None:
     assert "compositionSlots.ts" in types_src or "composition slot" in types_src.lower()
 
 
-_D3_D4_D5_D6_D7_D8_CONSUMER_PATHS = (
+_D3_D4_D5_D6_D7_D8_D9_CONSUMER_PATHS = (
     "platform/application-workspace/ApplicationSalesDetailPanel.tsx",
     "platform/entity-workspace/salesInquiryConsumer.ts",
     "platform/entity-workspace/compositionHost.tsx",
@@ -166,12 +166,15 @@ _D3_D4_D5_D6_D7_D8_CONSUMER_PATHS = (
     "pages/hr/HrEmployeeDetailPage.tsx",
     "pages/hr/HrEmployeeCommunicationSlot.tsx",
     "pages/hr/HrEmployeeFormsSlot.tsx",
+    "pages/ServicesPage.tsx",
+    "pages/ServicesOrderCommunicationSlot.tsx",
+    "pages/ServicesOrderFormsSlot.tsx",
 )
 
 
 def test_d2_no_consumer_cutover_screens() -> None:
     leaked: list[str] = []
-    allowed = set(_D3_D4_D5_D6_D7_D8_CONSUMER_PATHS)
+    allowed = set(_D3_D4_D5_D6_D7_D8_D9_CONSUMER_PATHS)
     for path in sorted(_FRONTEND_SRC.rglob("*.ts")) + sorted(_FRONTEND_SRC.rglob("*.tsx")):
         rel = path.relative_to(_FRONTEND_SRC)
         rel_posix = rel.as_posix()
