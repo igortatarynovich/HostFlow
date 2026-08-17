@@ -47,6 +47,13 @@ export {
 } from './vacancyConsumer'
 export type { VacancyCompositionSlotId } from './vacancyConsumer'
 
+export {
+  HR_EMPLOYEE_COMPOSITION_CONSUMER_ID,
+  HR_EMPLOYEE_COMPOSITION_SLOTS,
+  assertHrEmployeeCompositionSlots,
+} from './hrEmployeeConsumer'
+export type { HrEmployeeCompositionSlotId } from './hrEmployeeConsumer'
+
 export { EntityWorkspaceCompositionHost } from './compositionHost'
 
 export type {

@@ -1,8 +1,8 @@
 # Entity Workspace D8 — HR Employee Cutover (Phase D)
 
-**Status:** **OPEN** (brief; feat locked)  
-**Branch (docs):** `docs/entity-workspace-d8-hr-employee-cutover`  
-**Branch (code):** `feat/entity-workspace-d8-hr-employee-cutover` (locked until this brief merges)  
+**Status:** **OPEN** (feat; named Cutover Gate)  
+**Branch (docs):** `docs/entity-workspace-d8-hr-employee-cutover` ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265)  
+**Branch (code):** `feat/entity-workspace-d8-hr-employee-cutover`  
 **Parents:** [D7 Vacancy Cutover](entity-workspace-d7-vacancy-cutover.md) ✅ · [D6 Sales Order Cutover](entity-workspace-d6-sales-order-cutover.md) ✅ · [D5 Client Cutover](entity-workspace-d5-client-cutover.md) ✅ · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) ✅ · [D3 Consumer Cutover](entity-workspace-d3-consumer-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [D1 Contract Seal](entity-workspace-d1-contract-seal.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md)
 
 > D7 bound Vacancy to the D2 slot catalog.  
@@ -129,7 +129,7 @@ D8 **must not**:
 | **D5** | Client cutover | ✅ [#259](https://github.com/igortatarynovich/HostFlow/pull/259)/[#260](https://github.com/igortatarynovich/HostFlow/pull/260) |
 | **D6** | Sales Order cutover | ✅ [#261](https://github.com/igortatarynovich/HostFlow/pull/261)/[#262](https://github.com/igortatarynovich/HostFlow/pull/262) |
 | **D7** | Vacancy cutover | ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263)/[#264](https://github.com/igortatarynovich/HostFlow/pull/264) |
-| **D8** | HR employee cutover | **this brief** (feat locked) |
+| **D8** | HR employee cutover | **this feat** |
 | **D9+** | Services `/app/orders` | locked until D9 brief |
 
 ---
@@ -203,14 +203,14 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## Acceptance
 
-- [ ] Brief merged
-- [ ] Named Entity Workspace D8 Cutover Gate (feat)
-- [ ] Consumer = HR employee; Services `/app/orders` and `HrHandoffDetailPage` not cut over
-- [ ] D2 `documents` cannot be enabled; dossier / linked-documents / Documents hub are not that enable
-- [ ] Shell `EntityWorkspaceSectionId` not collapsed into D2 slots
-- [ ] No Catalog Passport mint
-- [ ] D1–D7 gates still green; Entity Foundation remains 🔄
-- [ ] Forms P3–P5 and Documents Phase E stay out of Product Track
+- [x] Brief merged ([#265](https://github.com/igortatarynovich/HostFlow/pull/265))
+- [x] Named Entity Workspace D8 Cutover Gate (feat)
+- [x] Consumer = HR employee; Services `/app/orders` and `HrHandoffDetailPage` not cut over
+- [x] D2 `documents` cannot be enabled; dossier / linked-documents / Documents hub are not that enable
+- [x] Shell `EntityWorkspaceSectionId` not collapsed into D2 slots
+- [x] No Catalog Passport mint
+- [x] D1–D7 gates still green; Entity Foundation remains 🔄
+- [x] Forms P3–P5 and Documents Phase E stay out of Product Track
 - Product Track stays D8 until D9 brief opens
 
 ---
@@ -220,10 +220,11 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - [x] Brief sealed with HR employee consumer + Shell≠D2 distinction + HR employee≠Candidate≠handoff≠Services order + in/out + acceptance  
 - [x] Queue + roadmap + AGENTS point at this brief  
 - [x] D7 marked complete with #264 merge ref  
-- [ ] Feat: HR employee bound to D2 enabled slots; named Cutover Gate  
+- [x] Feat: HR employee bound to D2 enabled slots; named Cutover Gate  
 
 ---
 
 ## History
 
+- 2026-08-17: D8 feat — named **Entity Workspace D8 Cutover Gate**; HR employee bound to D2 enabled slots; Services `/app/orders` / `HrHandoffDetailPage` out; no Passport. Next = D9 brief (locked).
 - 2026-08-17: D8 brief opened — HR employee cutover; Services `/app/orders` locked as D9+. Feat locked. D7 ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263)/[#264](https://github.com/igortatarynovich/HostFlow/pull/264) (`9582c00d` / merge `7484f98e`).
