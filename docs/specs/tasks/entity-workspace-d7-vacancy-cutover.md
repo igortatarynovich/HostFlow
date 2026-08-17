@@ -1,8 +1,9 @@
 # Entity Workspace D7 — Vacancy Cutover (Phase D)
 
-**Status:** **OPEN** (feat; named Cutover Gate)  
+**Status:** **COMPLETE** ([#263](https://github.com/igortatarynovich/HostFlow/pull/263)/[#264](https://github.com/igortatarynovich/HostFlow/pull/264) · `9582c00d` · merge `7484f98e`)  
+**Next:** [D8 HR Employee Cutover](entity-workspace-d8-hr-employee-cutover.md) (brief; feat locked)  
 **Branch (docs):** `docs/entity-workspace-d7-vacancy-cutover` ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263)  
-**Branch (code):** `feat/entity-workspace-d7-vacancy-cutover`  
+**Branch (code):** `feat/entity-workspace-d7-vacancy-cutover` ✅ [#264](https://github.com/igortatarynovich/HostFlow/pull/264)  
 **Parents:** [D6 Sales Order Cutover](entity-workspace-d6-sales-order-cutover.md) ✅ · [D5 Client Cutover](entity-workspace-d5-client-cutover.md) ✅ · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) ✅ · [D3 Consumer Cutover](entity-workspace-d3-consumer-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [D1 Contract Seal](entity-workspace-d1-contract-seal.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase D](../architecture/platform-completion-roadmap.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [ADR-032](../architecture/ADR-032-client-order-vacancy-flight-chain.md) · [A2-F7](../gates/platform-governance-review-a2.md) · [UI constitution §3.3](../architecture/ui-constitution-v1.md)
 
 > D6 bound Sales Order to the D2 slot catalog.  
@@ -96,7 +97,8 @@ D4  → Candidate binds to D2 slots; Shell nav ≠ composition
 D5  → Client binds to D2 slots
 D6  → Sales Order binds to D2 slots
 D7  → Vacancy binds to D2 slots (this)
-D8+ → remaining consumers (HR employee / Services /app/orders)
+D8  → HR employee (opened as D8 brief)
+D9+ → remaining consumer (Services /app/orders)
 ```
 
 D7 **must not**:
@@ -126,8 +128,8 @@ D7 **must not**:
 | **D4** | Candidate cutover (Shell ≠ D2 slots) | ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257)/[#258](https://github.com/igortatarynovich/HostFlow/pull/258) |
 | **D5** | Client cutover | ✅ [#259](https://github.com/igortatarynovich/HostFlow/pull/259)/[#260](https://github.com/igortatarynovich/HostFlow/pull/260) |
 | **D6** | Sales Order cutover | ✅ [#261](https://github.com/igortatarynovich/HostFlow/pull/261)/[#262](https://github.com/igortatarynovich/HostFlow/pull/262) |
-| **D7** | Vacancy cutover | **this feat** |
-| **D8+** | HR employee / Services `/app/orders` | locked until D8 brief |
+| **D7** | Vacancy cutover | ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263)/[#264](https://github.com/igortatarynovich/HostFlow/pull/264) |
+| **D8** | HR employee cutover | [brief](entity-workspace-d8-hr-employee-cutover.md) (feat locked) |
 
 ---
 
@@ -159,7 +161,7 @@ Named step: **Entity Workspace D7 Cutover Gate**
 1. Named **Entity Workspace D7 Cutover Gate** — Vacancy bound to D2 enabled slots; reserved D2 `documents` cannot be enabled; Shell nav not collapsed; no Catalog Passport; D1–D6 gates still green.  
 2. Architecture Review Checklist (10 questions) in the feat PR description.  
 3. Vacancy detail (`VacancyDetail` / `/app/vacancies/:id`) composes D2 slots via public adapters — **no** HR employee / Services-order cutover, **no** D2 `documents` enable.  
-4. Pointers stay on D7 until D8 brief opens.
+4. Pointers moved to D8 when the D8 brief opened.
 
 ---
 
@@ -208,7 +210,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - [x] No Catalog Passport mint
 - [x] D1–D6 gates still green; Entity Foundation remains 🔄
 - [x] Forms P3–P5 and Documents Phase E stay out of Product Track
-- Product Track stays D7 until D8 brief opens
+- [x] Product Track stays D7 until D8 brief opens
 
 ---
 
@@ -223,5 +225,6 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-17: D7 ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263)/[#264](https://github.com/igortatarynovich/HostFlow/pull/264) (`9582c00d` / merge `7484f98e`). Next = [D8 HR Employee Cutover](entity-workspace-d8-hr-employee-cutover.md) (feat locked).
 - 2026-08-15: D7 feat — named **Entity Workspace D7 Cutover Gate**; Vacancy bound to D2 enabled slots; HR employee / Services `/app/orders` out; no Passport. Next = D8 brief (locked).
 - 2026-08-15: D7 brief opened — Vacancy cutover; HR employee / Services `/app/orders` locked as D8+. Feat locked. D6 ✅ [#261](https://github.com/igortatarynovich/HostFlow/pull/261)/[#262](https://github.com/igortatarynovich/HostFlow/pull/262) (`346f6fcc` / merge `bc819768`).
