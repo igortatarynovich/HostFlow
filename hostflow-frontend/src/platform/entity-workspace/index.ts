@@ -40,6 +40,13 @@ export {
 } from './salesOrderConsumer'
 export type { SalesOrderCompositionSlotId } from './salesOrderConsumer'
 
+export {
+  VACANCY_COMPOSITION_CONSUMER_ID,
+  VACANCY_COMPOSITION_SLOTS,
+  assertVacancyCompositionSlots,
+} from './vacancyConsumer'
+export type { VacancyCompositionSlotId } from './vacancyConsumer'
+
 export { EntityWorkspaceCompositionHost } from './compositionHost'
 
 export type {
