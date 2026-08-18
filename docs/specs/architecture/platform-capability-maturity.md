@@ -30,8 +30,8 @@ Legend: ✅ done · 🔄 in progress · ⏳ not started
 | **Communication** | ✅ | ✅ (C1) | ✅ (C2.1–C2.3; C2.4 frozen) | ✅ `PASS_WITH_CONSTRAINTS` |
 | **Acquisition** | ✅ | ✅ | 🔄 residual | ⏳ |
 | **Forms** | ✅ Phase C C1–C6 | ⏳ | ⏳ | ⏳ |
-| **Entity Workspace** | 🔄 Phase D D9 | ⏳ | ⏳ | ⏳ |
-| **Documents** | 🔄 | ⏳ | ⏳ | ⏳ |
+| **Entity Workspace** | 🔄 Phase D D1–D9 | ⏳ | ⏳ | ⏳ |
+| **Documents** | 🔄 Phase E E1 | ⏳ | ⏳ | ⏳ |
 | **Billing** | ⏳ | ⏳ | ⏳ | ⏳ |
 
 Notes:
@@ -43,8 +43,8 @@ Notes:
 - **A2 Platform Governance Review** = [PASS_WITH_CONSTRAINTS](../gates/platform-governance-review-a2.md) (2026-08-03). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
 - Acquisition Automation residual = Stage 5 settings / R6 deferred — **not** the active slice. Phase B Meta / slice 3–4 ✅ ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) · [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · [#238](https://github.com/igortatarynovich/HostFlow/pull/238)).  
 - Forms: Sprint 1–6 / Builder MVP + Phase C C1–C6 ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) — **Foundation ✅** (production serve→execute bound). P3–P5 stay locked.  
-- **Entity Workspace:** Phase D D9 feat ([Services order cutover](../tasks/entity-workspace-d9-services-order-cutover.md); named Cutover Gate). D8 ✅ ([#266](https://github.com/igortatarynovich/HostFlow/pull/266)). Next = Documents Phase E (locked). Shell adapter on tip; Sales Inquiry + Candidate + Client + Sales Order + Vacancy + HR employee + Services order bound; Shell nav ≠ D2 slots; `documents` reserved empty; Universal runtime not yet. Foundation 🔄 ([A2-F7](../gates/platform-governance-review-a2.md)).  
-- Documents Foundation in progress = platform lifecycle contracts still consolidating (roadmap Phase E).
+- **Entity Workspace:** Phase D D1–D9 ✅ ([Services order cutover](../tasks/entity-workspace-d9-services-order-cutover.md) · [#268](https://github.com/igortatarynovich/HostFlow/pull/268)). Shell adapter on tip; Sales Inquiry + Candidate + Client + Sales Order + Vacancy + HR employee + Services order bound; Shell nav ≠ D2 slots; `documents` reserved empty; Universal runtime / Catalog Passport not yet. Foundation 🔄 ([A2-F7](../gates/platform-governance-review-a2.md)).  
+- **Documents:** Phase E E1 ([contract seal](../tasks/documents-platform-e1-contract-seal.md); feat locked). Foundation stays 🔄 ([A2-F8](../gates/platform-governance-review-a2.md)). D2 `documents` not enabled. Not OCR / not Hub UI rebuild.
 
 AI remains sequenced later; it appears in the matrix when it becomes a platform SoT under active delivery.
 
