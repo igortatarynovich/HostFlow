@@ -1,7 +1,7 @@
 # Documents Platform E1 — Foundation contract seal (Phase E)
 
 **Status:** **COMPLETE** ([#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1`)  
-**Next:** [Documents Platform E2 — Public contract & D2 slot enable](documents-platform-e2-public-contract.md) (brief; feat locked)  
+**Next:** [Documents Platform E2 — Public contract & D2 slot enable](documents-platform-e2-public-contract.md) ([#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat locked)  
 **Branch (docs):** `docs/documents-platform-e1-contract-seal` ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)  
 **Branch (code):** `feat/documents-platform-e1-contract-seal` ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270)  
 **Parents:** [Entity Workspace D9](entity-workspace-d9-services-order-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
@@ -92,7 +92,7 @@ E1 **must not**:
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) |
-| **E2** | Public contract / D2 `documents` catalog enable | [brief](documents-platform-e2-public-contract.md) (feat locked) |
+| **E2** | Public contract / D2 `documents` catalog enable | [brief](documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271) (feat locked) |
 | **E3+** | First consumer bind / Document Link SoT / lifecycle | locked until E2 feat |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) are **horizon**, not this slice.
@@ -119,6 +119,8 @@ Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation
 
 Named step: **Documents Platform E1 Contract Seal Gate**  
 (`tests/platform/test_documents_e1_contract_seal_gate.py`). Full-repo pytest red does not waive it. D1–D9 gates stay green.
+
+**CI (#270):** named gate **11 passed**. Full-repo `Tests with coverage` **484 failed / 2740 passed** — Engineering Track, same baseline as D9; does not waive this gate.
 
 - Ownership / Hub ≠ dossier / D2 still reserved locked in brief  
 - Documents Foundation maturity stays 🔄 (not ✅)  
@@ -201,7 +203,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
-- 2026-08-18: E2 brief opened — public contract / D2 catalog enable; Product Track → [E2](documents-platform-e2-public-contract.md) (feat locked). E1 ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`f37deff1`).
+- 2026-08-18: E2 brief opened — public contract / D2 catalog enable; Product Track → [E2](documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271) (feat locked). E1 ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`f37deff1`). CI: named Contract Seal Gate 11 passed; full Tests with coverage 484 failed / 2740 passed (Engineering Track, same as D9).
 - 2026-08-18: E1 feat — named **Documents Platform E1 Contract Seal Gate**; D2 `documents` still reserved; no public-contract id; Foundation 🔄. Pointers stay on E1 until E2 brief.
 - 2026-08-18: E1 brief ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) (`17bd3dd3`).
 - 2026-08-18: D9 ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) (`28978a1f`). Product Track → Documents Platform E1 contract seal (this brief). Feat locked. Not D2 `documents` enable / not OCR / not Forms P3–P5 / not Billing.

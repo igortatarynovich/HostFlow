@@ -112,7 +112,7 @@
 | **26** | **Entity Workspace D8** HR employee cutover | `docs/…` ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265) · `feat/…` ✅ [#266](https://github.com/igortatarynovich/HostFlow/pull/266) | ✅ named Cutover Gate · merge `fae8202e` |
 | **27** | **Entity Workspace D9** Services `/app/orders` | `docs/…` ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267) · `feat/…` ✅ [#268](https://github.com/igortatarynovich/HostFlow/pull/268) | ✅ named Cutover Gate · merge `28978a1f` |
 | **28** | **Documents Platform E1** Contract Seal | `docs/…` ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) · `feat/…` ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270) | ✅ named Contract Seal Gate · merge `f37deff1` |
-| **29** | **Documents Platform E2** Public contract / D2 catalog enable | `docs/documents-platform-e2-public-contract` then `feat/…` | **active** (feat locked) — [brief](documents-platform-e2-public-contract.md) |
+| **29** | **Documents Platform E2** Public contract / D2 catalog enable | `docs/…` [#271](https://github.com/igortatarynovich/HostFlow/pull/271) · `feat/…` locked | **active** (feat locked) — [brief](documents-platform-e2-public-contract.md) |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 ✅.  
 **Active (Product):** Documents Platform E2 — [Public contract / D2 catalog enable](documents-platform-e2-public-contract.md) (feat locked). E1 ✅. D3–D9 stay unbound.  
@@ -209,11 +209,11 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 ### Documents Platform E1 — Contract Seal ← **DONE** (#269 / #270)
 
-[documents-platform-e1-contract-seal.md](documents-platform-e1-contract-seal.md). Ownership + Hub ≠ dossier ≠ D2 enable. Named E1 Contract Seal Gate. D2 `documents` stayed reserved. Merge `f37deff1`.
+[documents-platform-e1-contract-seal.md](documents-platform-e1-contract-seal.md). Ownership + Hub ≠ dossier ≠ D2 enable. Named E1 Contract Seal Gate (CI: 11 passed). D2 `documents` stayed reserved. Merge `f37deff1`. Full-repo Tests with coverage 484 failed / 2740 passed — Engineering Track, same as D9.
 
 ### Documents Platform E2 — Public contract / D2 catalog enable ← **active** (feat locked)
 
-[documents-platform-e2-public-contract.md](documents-platform-e2-public-contract.md). `documents.public_contract.v1` + D2 catalog unlock. D3–D9 stay unbound. Not OCR / not Forms P3–P5 / not Billing.
+[documents-platform-e2-public-contract.md](documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271). `documents.public_contract.v1` + D2 catalog unlock. D3–D9 stay unbound. Not OCR / not Forms P3–P5 / not Billing.
 
 ---
 
@@ -298,7 +298,7 @@ Next branch only after:
 
 ## 8. History
 
-- 2026-08-18: E1 feat [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`f37deff1`); Product Track → **Documents Platform E2** ([brief](documents-platform-e2-public-contract.md); feat locked). Catalog unlock ≠ D3–D9 bind.
+- 2026-08-18: E1 feat [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`f37deff1`); named gate 11 passed; full Tests with coverage 484 failed / 2740 passed (Engineering Track, same as D9). Product Track → **Documents Platform E2** ([brief](documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat locked). Catalog unlock ≠ D3–D9 bind.
 - 2026-08-18: E1 brief ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) (`17bd3dd3`); Product Track → **Documents Platform E1** feat (named Contract Seal Gate). D2 `documents` stays reserved. E2+ locked.
 - 2026-08-18: D9 ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) (`28978a1f`); Product Track → **Documents Platform E1** ([brief](documents-platform-e1-contract-seal.md); feat locked). D2 `documents` stays reserved.
 - 2026-08-17: D9 feat — named **Entity Workspace D9 Cutover Gate**; Services order bound to D2 slots; Product Track → D9 feat; next = Documents Phase E (locked).
