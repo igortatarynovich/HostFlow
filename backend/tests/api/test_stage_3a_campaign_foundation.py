@@ -24,6 +24,7 @@ from backend.app.constants.campaign_registries import (
 from backend.app.db.session import async_session_maker
 from backend.app.models.additional_service import Service
 from backend.app.models.campaign import Campaign, CampaignRun, CampaignTarget
+from backend.app.models.client_account import ClientAccount
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.vacancy import Vacancy
 from backend.tests.conftest import _init_data
@@ -136,7 +137,7 @@ async def _seed_own_company(tenant_id: str, *, name: str = "Other OC") -> str:
 async def _seed_vacancy(
     *,
     tenant_id: str,
-    own_company_id: str,
+    own_company_id: str | None,
     company_id: str,
     title: str = "CE Drivers",
 ) -> str:
@@ -156,6 +157,27 @@ async def _seed_vacancy(
         )
         await session.commit()
     return vac_id
+
+
+async def _seed_client_account(
+    *,
+    tenant_id: str,
+    display_name: str = "Rock Cargo",
+    own_company_id: str | None = None,
+) -> str:
+    account_id = str(uuid4())
+    async with async_session_maker() as session:
+        session.add(
+            ClientAccount(
+                id=account_id,
+                tenant_id=tenant_id,
+                display_name=display_name,
+                status="prospect",
+                own_company_id=own_company_id,
+            )
+        )
+        await session.commit()
+    return account_id
 
 
 async def _seed_service(*, tenant_id: str, code: str | None = None) -> str:
@@ -395,6 +417,58 @@ async def test_rejects_target_of_another_company(
         },
     )
     assert resp.status_code == 404, resp.text
+
+
+@pytest.mark.asyncio
+async def test_accepts_unscoped_vacancy_and_client_account(
+    client: AsyncClient,
+    auth_headers: dict,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(
+        "backend.app.acquisition.campaign_service.enforce_module_gate",
+        _allow_gate,
+    )
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    own_company_id = await _default_own_company_id(tenant_id)
+    vac_id = await _seed_vacancy(
+        tenant_id=tenant_id,
+        own_company_id=None,
+        company_id=data["company_id"],
+        title="Kierowca CE",
+    )
+    account_id = await _seed_client_account(tenant_id=tenant_id, own_company_id=None)
+
+    resp = await client.post(
+        "/api/v1/platform/campaigns",
+        headers=auth_headers,
+        json={
+            "name": "Rock Cargo drivers",
+            "goal_type": "hiring",
+            "primary_kpi": "applications",
+            "own_company_id": own_company_id,
+            "targets": [
+                {
+                    "target_type": "vacancy",
+                    "target_id": vac_id,
+                    "route_intent": "candidate_application",
+                    "role": "primary",
+                },
+                {
+                    "target_type": "client_account",
+                    "target_id": account_id,
+                    "route_intent": "sales_inquiry",
+                    "role": "context",
+                    "sort_order": 1,
+                },
+            ],
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    types = {row["target_type"] for row in body["targets"]}
+    assert types == {"vacancy", "client_account"}
 
 
 @pytest.mark.asyncio
