@@ -1,3 +1,9 @@
+"""Document Hub delivery façade (E1-era).
+
+Candidate-centric adapter over `modules.documents`. This is **not** the
+ADR-009 Document Link SoT and **not** `documents.public_contract.v1`.
+E1 seals ownership; a later named E slice may replace this façade.
+"""
 from __future__ import annotations
 
 from typing import Any

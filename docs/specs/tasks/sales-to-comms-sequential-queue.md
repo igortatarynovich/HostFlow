@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-18 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 ✅ ([#268](https://github.com/igortatarynovich/HostFlow/pull/268) · `28978a1f`). **Product Track:** [Documents Platform E1 — Contract Seal](documents-platform-e1-contract-seal.md) (docs; feat locked). D2 `documents` stays reserved (E1 ≠ enable). **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
+> **2026-08-18 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 ✅ ([#268](https://github.com/igortatarynovich/HostFlow/pull/268) · `28978a1f`). **Product Track:** [Documents Platform E1 — Contract Seal](documents-platform-e1-contract-seal.md) (feat; named Contract Seal Gate). D2 `documents` stays reserved (E1 ≠ enable). E2+ locked. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
 > Communication **C2.4 frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Documents Platform E1** Contract Seal — [brief](documents-platform-e1-contract-seal.md); D9 ✅ [#268](https://github.com/igortatarynovich/HostFlow/pull/268); feat locked; D2 `documents` stays reserved | Almost all capacity |
+| **Product** | **Documents Platform E1** Contract Seal — [brief](documents-platform-e1-contract-seal.md); [#269](https://github.com/igortatarynovich/HostFlow/pull/269); feat; named Contract Seal Gate; D2 `documents` stays reserved | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -62,7 +62,7 @@
 - **Entity Workspace D7 — Vacancy Cutover** ← ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263)/[#264](https://github.com/igortatarynovich/HostFlow/pull/264) — [brief](entity-workspace-d7-vacancy-cutover.md); named Cutover Gate; Vacancy bound  
 - **Entity Workspace D8 — HR Employee Cutover** ← ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265)/[#266](https://github.com/igortatarynovich/HostFlow/pull/266) — [brief](entity-workspace-d8-hr-employee-cutover.md); named Cutover Gate; HR employee bound  
 - **Entity Workspace D9 — Services Order Cutover** ← ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) — [brief](entity-workspace-d9-services-order-cutover.md); named Cutover Gate; Services order bound  
-- **Documents Platform E1 — Contract Seal** ← **active** (docs; feat locked) — [brief](documents-platform-e1-contract-seal.md); D2 `documents` stays reserved; not OCR / not Forms P3–P5 / not Billing  
+- **Documents Platform E1 — Contract Seal** ← **active** (feat; named Contract Seal Gate) — [brief](documents-platform-e1-contract-seal.md); D2 `documents` stays reserved; E2+ locked; not OCR / not Forms P3–P5 / not Billing  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -110,10 +110,10 @@
 | **25** | **Entity Workspace D7** Vacancy cutover | `docs/…` ✅ [#263](https://github.com/igortatarynovich/HostFlow/pull/263) · `feat/…` ✅ [#264](https://github.com/igortatarynovich/HostFlow/pull/264) | ✅ named Cutover Gate · merge `7484f98e` |
 | **26** | **Entity Workspace D8** HR employee cutover | `docs/…` ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265) · `feat/…` ✅ [#266](https://github.com/igortatarynovich/HostFlow/pull/266) | ✅ named Cutover Gate · merge `fae8202e` |
 | **27** | **Entity Workspace D9** Services `/app/orders` | `docs/…` ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267) · `feat/…` ✅ [#268](https://github.com/igortatarynovich/HostFlow/pull/268) | ✅ named Cutover Gate · merge `28978a1f` |
-| **28** | **Documents Platform E1** Contract Seal | `docs/documents-platform-e1-contract-seal` then `feat/…` | ← **active** (docs; feat locked) — [brief](documents-platform-e1-contract-seal.md) |
+| **28** | **Documents Platform E1** Contract Seal | `docs/…` ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) · `feat/documents-platform-e1-contract-seal` | **active** (feat; named Contract Seal Gate) — [brief](documents-platform-e1-contract-seal.md) |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 ✅.  
-**Active (Product):** Documents Platform E1 — [Contract Seal](documents-platform-e1-contract-seal.md) (docs; feat locked). D2 `documents` stays reserved.  
+**Active (Product):** Documents Platform E1 — [Contract Seal](documents-platform-e1-contract-seal.md) (feat; named Contract Seal Gate). D2 `documents` stays reserved. E2+ locked.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -205,9 +205,9 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [entity-workspace-d9-services-order-cutover.md](entity-workspace-d9-services-order-cutover.md). Services order (`ServicesPage` / `/app/orders` · `service_order`) binds to D2 enabled slots. Named D9 Cutover Gate. Merge `28978a1f`. `HrHandoffDetailPage` out.
 
-### Documents Platform E1 — Contract Seal ← **active** (docs; feat locked)
+### Documents Platform E1 — Contract Seal ← **active** (feat; named Contract Seal Gate)
 
-[documents-platform-e1-contract-seal.md](documents-platform-e1-contract-seal.md). Ownership + Hub ≠ dossier ≠ D2 enable. Named E1 Contract Seal Gate in feat. D2 `documents` stays reserved. Not OCR / not Forms P3–P5 / not Billing.
+[documents-platform-e1-contract-seal.md](documents-platform-e1-contract-seal.md). Ownership + Hub ≠ dossier ≠ D2 enable. Named E1 Contract Seal Gate. D2 `documents` stays reserved. E2+ locked. Not OCR / not Forms P3–P5 / not Billing.
 
 ---
 
@@ -286,12 +286,13 @@ Next branch only after:
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
 **Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Documents.  
 **Do not** treat Shell/chrome as Phase D Universal done; **do not** enable D2 Documents slot in E1; **do not** treat Shell `documents` nav, Vacancy docs section, HR dossier, or Services billing tab as D2 `documents` enable; **do not** start OCR / e-sign / packages / Forms P3–P5 / Billing / AI in this slice.  
-**Do** amend this queue when switching Product Active (this revision: live = Documents Platform E1; feat locked).
+**Do** amend this queue when switching Product Active (this revision: live = Documents Platform E1 feat; named Contract Seal Gate).
 
 ---
 
 ## 8. History
 
+- 2026-08-18: E1 brief ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) (`17bd3dd3`); Product Track → **Documents Platform E1** feat (named Contract Seal Gate). D2 `documents` stays reserved. E2+ locked.
 - 2026-08-18: D9 ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) (`28978a1f`); Product Track → **Documents Platform E1** ([brief](documents-platform-e1-contract-seal.md); feat locked). D2 `documents` stays reserved.
 - 2026-08-17: D9 feat — named **Entity Workspace D9 Cutover Gate**; Services order bound to D2 slots; Product Track → D9 feat; next = Documents Phase E (locked).
 - 2026-08-17: D9 brief opened — Services order cutover; Product Track → **Entity Workspace D9** (feat locked). D8 ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265)/[#266](https://github.com/igortatarynovich/HostFlow/pull/266) (`fae8202e`).

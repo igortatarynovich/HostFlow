@@ -235,6 +235,13 @@ jobs:
           HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
         run: |
           pytest -q tests/platform/test_entity_workspace_d9_cutover_gate.py
+      - name: Documents Platform E1 Contract Seal Gate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+        run: |
+          pytest -q tests/platform/test_documents_e1_contract_seal_gate.py
       - name: Lint
         continue-on-error: true
         working-directory: backend
