@@ -2,7 +2,8 @@
  * Entity Workspace D2 — composition slot catalog.
  *
  * Distinct from Shell `EntityWorkspaceSectionId` (adapter navigation).
- * Do not collapse the two. Do not enable `documents` until Phase E.
+ * Do not collapse the two. Do not enable `documents` until a named Phase E
+ * slice after E1. E1 contract seal is not enable.
  * Do not invent new slot kinds without amending the D2 brief.
  */
 

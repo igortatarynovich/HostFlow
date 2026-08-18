@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← ✅ D1–D9 ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)). **Phase E — Documents Platform** ← **active** ([E1](../tasks/documents-platform-e1-contract-seal.md); feat locked).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← ✅ D1–D9 ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)). **Phase E — Documents Platform** ← **active** ([E1](../tasks/documents-platform-e1-contract-seal.md); feat; named Contract Seal Gate).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms ✅ → Phase D Entity Workspace ✅ → Phase E Documents → …
@@ -173,7 +173,7 @@ Ladder (locked start):
 
 ---
 
-## Phase E — Documents Platform ← **active** (E1 brief; feat locked)
+## Phase E — Documents Platform ← **active** (E1 feat; named Contract Seal Gate)
 
 Evolve storage into a full document lifecycle platform (horizon):
 
@@ -190,7 +190,7 @@ Ladder (locked start):
 
 | Slice | Focus | Status |
 |-------|--------|--------|
-| **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | [brief](../tasks/documents-platform-e1-contract-seal.md) (docs; feat locked) |
+| **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | [brief](../tasks/documents-platform-e1-contract-seal.md) (feat; named Contract Seal Gate) |
 | **E2+** | Public contract / D2 `documents` enable / lifecycle | locked until E1 feat |
 
 **Out of E1:** D2 `documents` enable · OCR / e-sign / packages / Hub UI rebuild · `HrHandoffDetailPage` · Forms P3–P5 · Billing Platform · AI · L0 Catalog rewrite.
@@ -232,7 +232,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 3 | **B** Acquisition / Stage 3 + Meta | ✅ Meta / slice 3–4 (#222 / #224 / #238) |
 | 4 | **C** Forms Platform | ✅ Shared form runtime / Foundation ([C6](../tasks/forms-platform-c6-optimization.md) [#250](https://github.com/igortatarynovich/HostFlow/pull/250)) |
 | 5 | **D** Universal Entity Workspace | ✅ D1–D9 ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) [#268](https://github.com/igortatarynovich/HostFlow/pull/268)) |
-| 6 | **E** Documents Platform | ← **active** ([E1](../tasks/documents-platform-e1-contract-seal.md); feat locked) |
+| 6 | **E** Documents Platform | ← **active** ([E1](../tasks/documents-platform-e1-contract-seal.md); feat; named Contract Seal Gate) |
 | 7 | **F** Billing Platform | SaaS commercial layer |
 | 8 | **G** AI Platform | Assistants over existing canons |
 
@@ -244,7 +244,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). Phase E (Documents E1; feat locked) **is** the active phase; do not reopen D9, Forms C6, Stage 5 settings, or R6.  
+5. Parallel product branches that compete across phases (one active product slice). Phase E (Documents E1 feat; named Contract Seal Gate) **is** the active phase; do not reopen D9, Forms C6, Stage 5 settings, or R6.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Minting Entity Catalog Passport or enabling D2 Documents slot in E1 without a named later E slice + Architecture checklist / RFC when Catalog shape changes.  
@@ -256,7 +256,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Documents Platform E1; feat locked) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Documents Platform E1 feat; named Contract Seal Gate) |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |
@@ -267,6 +267,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-18: E1 brief ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) (`17bd3dd3`); Product Track → **Documents Platform E1** feat (named Contract Seal Gate). D2 `documents` stays reserved. E2+ locked.
 - 2026-08-18: D9 ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) (`28978a1f`); Product Track → **Documents Platform E1** ([brief](../tasks/documents-platform-e1-contract-seal.md); feat locked). D2 `documents` stays reserved.
 - 2026-08-17: D9 feat — named **Entity Workspace D9 Cutover Gate**; Services order bound to D2 slots; Product Track → D9 feat; next = Documents Phase E (locked).
 - 2026-08-17: D8 ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265)/[#266](https://github.com/igortatarynovich/HostFlow/pull/266) (`fae8202e`); Product Track → **D9 Services Order Cutover** ([brief](../tasks/entity-workspace-d9-services-order-cutover.md); feat locked).

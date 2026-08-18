@@ -1,8 +1,8 @@
 # Documents Platform E1 — Foundation contract seal (Phase E)
 
-**Status:** **IN PROGRESS** (docs — this brief)  
-**Branch (docs):** `docs/documents-platform-e1-contract-seal`  
-**Branch (code):** `feat/documents-platform-e1-contract-seal` (locked until this brief merges)  
+**Status:** **OPEN** (feat; named Contract Seal Gate)  
+**Branch (docs):** `docs/documents-platform-e1-contract-seal` ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)  
+**Branch (code):** `feat/documents-platform-e1-contract-seal`  
 **Parents:** [Entity Workspace D9](entity-workspace-d9-services-order-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
 
 > Phase D last named consumer closed via D9 ([#268](https://github.com/igortatarynovich/HostFlow/pull/268) · `28978a1f`).  
@@ -88,7 +88,7 @@ E1 **must not**:
 
 | Slice | Focus | Status |
 |-------|--------|--------|
-| **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ← **active** (this brief; feat locked) |
+| **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ← **active** (feat; named Contract Seal Gate) |
 | **E2+** | Public contract / D2 `documents` enable / lifecycle | locked until E1 feat |
 
 Exact E2+ DoD stays deferred until E1 feat closes — same pattern as Forms C1 → C2 and Entity Workspace D1 → D2.
@@ -102,7 +102,7 @@ Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation
 1. This brief.  
 2. Close **Entity Workspace D9** as **COMPLETE** after [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) (`28978a1f`).  
 3. Point Product Track / queue / roadmap / AGENTS / maturity here.  
-4. Clarify D2: Phase E open ≠ `documents` enable. Feat locked until this brief merges.
+4. Clarify D2: Phase E open ≠ `documents` enable. Feat locked until this brief merges. ← done [#269](https://github.com/igortatarynovich/HostFlow/pull/269)
 
 ## In scope (feat PR — after this brief)
 
@@ -110,6 +110,20 @@ Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation
 2. Architecture Review Checklist (10 questions) in the feat PR description.  
 3. Pointers stay on E1 until E2 brief opens.  
 4. **No** D2 slot enable, OCR/e-sign product, or Document Link table cutover unless a later named slice.
+
+---
+
+## Documents Platform E1 Contract Seal Gate (CI — mandatory)
+
+Named step: **Documents Platform E1 Contract Seal Gate**  
+(`tests/platform/test_documents_e1_contract_seal_gate.py`). Full-repo pytest red does not waive it. D1–D9 gates stay green.
+
+- Ownership / Hub ≠ dossier / D2 still reserved locked in brief  
+- Documents Foundation maturity stays 🔄 (not ✅)  
+- Entity Foundation stays 🔄  
+- Delivery façade `document_hub_delivery_contract.py` exists and is not `documents.public_contract.v1`  
+- D2 `documents` still cannot be enabled; Shell `documents` nav ≠ D2 slot  
+- No Catalog rewrite / no Entity Catalog Passport mint  
 
 ---
 
@@ -133,7 +147,7 @@ Do **not** mix D2 enable, OCR, Billing, AI, or Forms product unlocks into E1.
 
 ---
 
-## Architecture Review (L0 — this brief)
+## Architecture Review (L0 — this feat)
 
 | # | Answer |
 |---|--------|
@@ -146,7 +160,7 @@ Do **not** mix D2 enable, OCR, Billing, AI, or Forms product unlocks into E1.
 | 7 Events | Catalog `document.created` / `linked` / `verified` / `expired` — no new events this slice |
 | 8 Requires | D9 ✅ · D2 reserved slot named · ADR-009 / ADR-014 · Forms Foundation ✅ (compose later) |
 | 9 License | None new (Basic = platform; Advanced = existing addon flags) |
-| 10 Public contract | Docs-only this PR; feat may add enforcement tests without DTO bump / Catalog shape change |
+| 10 Public contract | Additive enforcement gate only; no DTO bump; no `documents.public_contract.v1`; no Catalog shape change |
 
 Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
@@ -154,10 +168,12 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## Acceptance
 
-- Product Track = this brief; Entity Workspace D9 is closed (#268 / `28978a1f`).  
-- Operators / agents cannot treat Candidate/HR dossier, Shell `documents` nav, or D2 reserved slot as Documents Foundation done.  
-- Feat locked until this brief merges.  
-- D2 `documents` remains un-enableable; Forms P3–P5 and Billing stay out of Product Track.
+- [x] Brief merged ([#269](https://github.com/igortatarynovich/HostFlow/pull/269))  
+- [x] Named Documents Platform E1 Contract Seal Gate  
+- [x] D9 remains closed (#268 / `28978a1f`)  
+- [x] D2 `documents` cannot be enabled; Shell nav ≠ D2 slot  
+- [x] No Catalog rewrite; Documents Foundation remains 🔄  
+- [x] Forms P3–P5 and Billing stay out of Product Track  
 
 ---
 
@@ -177,10 +193,12 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - [x] Brief sealed with ownership card + in/out + acceptance  
 - [x] Queue + roadmap + AGENTS + maturity point at this brief  
 - [x] D9 marked **COMPLETE** with #268 / `28978a1f`  
-- [ ] Feat PR — boundary gates (after brief merge)
+- [x] Feat PR — boundary gates (named Contract Seal Gate)
 
 ---
 
 ## History
 
+- 2026-08-18: E1 feat — named **Documents Platform E1 Contract Seal Gate**; D2 `documents` still reserved; no public-contract id; Foundation 🔄. Pointers stay on E1 until E2 brief.
+- 2026-08-18: E1 brief ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) (`17bd3dd3`).
 - 2026-08-18: D9 ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) (`28978a1f`). Product Track → Documents Platform E1 contract seal (this brief). Feat locked. Not D2 `documents` enable / not OCR / not Forms P3–P5 / not Billing.

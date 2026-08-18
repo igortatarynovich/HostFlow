@@ -2,7 +2,7 @@
 
 **Document Hub** — общий слой для HostFlow: документ как **самостоятельная сущность**, а не только вложение в одной карточке. Нормативное решение — **[`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)**.  
 **Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#documents).  
-**Product Track (live):** [Documents Platform E1 — Contract Seal](../specs/tasks/documents-platform-e1-contract-seal.md) (docs; feat locked). D2 Entity Workspace `documents` slot stays reserved.  
+**Product Track (live):** [Documents Platform E1 — Contract Seal](../specs/tasks/documents-platform-e1-contract-seal.md) (feat; named Contract Seal Gate). D2 Entity Workspace `documents` slot stays reserved.  
 В **§0** каталога модулей Hub стоит в **Core / Platform** рядом с Companies, Users/Roles, Forms, Integrations.
 
 ## Назначение
