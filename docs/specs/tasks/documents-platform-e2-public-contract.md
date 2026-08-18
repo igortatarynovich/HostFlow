@@ -5,7 +5,7 @@
 **Branch (code):** `feat/documents-platform-e2-public-contract` (locked until this brief merges)  
 **Parents:** [Documents Platform E1](documents-platform-e1-contract-seal.md) [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [ADR-025](../architecture/ADR-025-standard-adapter-boundary.md) · [Capability Contract](../architecture/capability-contract.md) · [Forms Public Contract](../architecture/forms-public-contract.md) (pattern) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
 
-> E1 sealed ownership: Hub ≠ Candidate/HR dossier ≠ Shell `documents` nav ≠ D2 enable ([#270](https://github.com/igortatarynovich/HostFlow/pull/270) · feat `9f24f5e9`).  
+> E1 sealed ownership: Hub ≠ Candidate/HR dossier ≠ Shell `documents` nav ≠ D2 enable ([#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1`).  
 > E2 seals **`documents.public_contract.v1`** and unlocks the D2 `documents` **catalog slot**.  
 > E2 does **not** bind D3–D9 consumers, replace `candidate_id` with Document Link, open OCR / packages, or mark Foundation ✅.
 
@@ -135,7 +135,7 @@ D2 / E1 / D3–D9 named gates stay in CI. E2 feat **amends** assertions that fre
 
 | Slice | Focus | Status |
 |-------|--------|--------|
-| **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · feat `9f24f5e9` |
+| **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1` |
 | **E2** | Public contract / D2 `documents` catalog enable | ← **active** (this brief; feat locked) |
 | **E3+** | First consumer bind / Document Link SoT / lifecycle | locked until E2 feat |
 
@@ -146,7 +146,7 @@ Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation
 ## In scope (this docs PR)
 
 1. This brief.  
-2. Close **Documents Platform E1** as **COMPLETE** after [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`9f24f5e9`).  
+2. Close **Documents Platform E1** as **COMPLETE** after [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`f37deff1`).  
 3. Point Product Track / queue / roadmap / AGENTS / maturity / Hub scope here.  
 4. Amend D2 composition contract: reserved-until-after-E1 → unlock = E2. Feat locked until this brief merges.
 
@@ -219,7 +219,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## Acceptance
 
-- Product Track = this brief; Documents Platform E1 is closed (#270 / `9f24f5e9`).  
+- Product Track = this brief; Documents Platform E1 is closed (#270 / `f37deff1`).  
 - Operators / agents cannot treat Candidate/HR dossier, Shell `documents` nav, or “slot now enabled” as consumer cutover or Foundation done.  
 - Feat locked until this brief merges.  
 - D3–D9 remain unbound on `documents`; Forms P3–P5 and Billing stay out of Product Track.
@@ -245,11 +245,11 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 - [x] Brief sealed with ownership / contract inventory / D2 unlock vs bind / in/out + acceptance  
 - [x] Queue + roadmap + AGENTS + maturity point at this brief  
-- [x] E1 marked **COMPLETE** with #270 / `9f24f5e9`  
+- [x] E1 marked **COMPLETE** with #270 / `f37deff1`  
 - [ ] Feat PR — public contract + catalog unlock (after brief merge)
 
 ---
 
 ## History
 
-- 2026-08-18: E1 feat [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`9f24f5e9`). Product Track → Documents Platform E2 public contract / D2 catalog enable (this brief). Feat locked. Not consumer bind / not OCR / not Forms P3–P5 / not Billing.
+- 2026-08-18: E1 feat [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`f37deff1`). Product Track → Documents Platform E2 public contract / D2 catalog enable (this brief). Feat locked. Not consumer bind / not OCR / not Forms P3–P5 / not Billing.

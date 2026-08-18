@@ -268,7 +268,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
-- 2026-08-18: E1 feat [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`9f24f5e9`); Product Track → **Documents Platform E2** ([brief](../tasks/documents-platform-e2-public-contract.md); feat locked). Catalog unlock ≠ D3–D9 bind.
+- 2026-08-18: E1 feat [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`f37deff1`); Product Track → **Documents Platform E2** ([brief](../tasks/documents-platform-e2-public-contract.md); feat locked). Catalog unlock ≠ D3–D9 bind.
 - 2026-08-18: E1 brief ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) (`17bd3dd3`); Product Track → **Documents Platform E1** feat (named Contract Seal Gate). D2 `documents` stays reserved. E2+ locked.
 - 2026-08-18: D9 ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) (`28978a1f`); Product Track → **Documents Platform E1** ([brief](../tasks/documents-platform-e1-contract-seal.md); feat locked). D2 `documents` stays reserved.
 - 2026-08-17: D9 feat — named **Entity Workspace D9 Cutover Gate**; Services order bound to D2 slots; Product Track → D9 feat; next = Documents Phase E (locked).

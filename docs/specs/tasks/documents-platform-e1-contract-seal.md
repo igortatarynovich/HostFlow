@@ -1,6 +1,6 @@
 # Documents Platform E1 — Foundation contract seal (Phase E)
 
-**Status:** **COMPLETE** ([#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · feat `9f24f5e9`)  
+**Status:** **COMPLETE** ([#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1`)  
 **Next:** [Documents Platform E2 — Public contract & D2 slot enable](documents-platform-e2-public-contract.md) (brief; feat locked)  
 **Branch (docs):** `docs/documents-platform-e1-contract-seal` ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)  
 **Branch (code):** `feat/documents-platform-e1-contract-seal` ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270)  
@@ -201,7 +201,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
-- 2026-08-18: E2 brief opened — public contract / D2 catalog enable; Product Track → [E2](documents-platform-e2-public-contract.md) (feat locked). E1 ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`9f24f5e9`).
+- 2026-08-18: E2 brief opened — public contract / D2 catalog enable; Product Track → [E2](documents-platform-e2-public-contract.md) (feat locked). E1 ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`f37deff1`).
 - 2026-08-18: E1 feat — named **Documents Platform E1 Contract Seal Gate**; D2 `documents` still reserved; no public-contract id; Foundation 🔄. Pointers stay on E1 until E2 brief.
 - 2026-08-18: E1 brief ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) (`17bd3dd3`).
 - 2026-08-18: D9 ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) (`28978a1f`). Product Track → Documents Platform E1 contract seal (this brief). Feat locked. Not D2 `documents` enable / not OCR / not Forms P3–P5 / not Billing.
