@@ -12,6 +12,10 @@ from backend.app.modules.companies.counters import (
     company_recruitment_metrics_for_list,
 )
 from backend.app.modules.companies.service_order_metrics import company_service_order_metrics
+from backend.app.modules.client_accounts.ensure_for_company import (
+    ensure_manual_client_account_for_company,
+    is_local_client_company,
+)
 from backend.app.modules.companies.service import (
     add_company_bank_account_service,
     add_company_contact_service,
@@ -181,12 +185,24 @@ async def create_company(
     current_user: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
 ):
-    db, _tenant_id = db_tenant
-    return await create_company_service(
+    db, tenant_id = db_tenant
+    actor = str(getattr(current_user, "sub", None) or "").strip()
+    company = await create_company_service(
         db=db,
         data=company_in,
         actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
     )
+    if actor and is_local_client_company(company):
+        await ensure_manual_client_account_for_company(
+            db,
+            tenant_id=str(tenant_id),
+            actor_user_id=actor,
+            company=company,
+            reason="operator_create_client_company",
+        )
+        await db.commit()
+        await db.refresh(company)
+    return company
 
 
 @router.get(

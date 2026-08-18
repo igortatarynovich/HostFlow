@@ -154,11 +154,13 @@ Do not implement in v1. Do not overload `manual_creation` for these.
 | Path today | Status under this canon |
 |------------|-------------------------|
 | `convert_sales_inquiry_mapping` | Canonical writer for `sales_inquiry_conversion` |
-| `create_client_account_service` / ClientAccounts POST | Pre-origins CRUD — rewire to `create_client_account_manually` + origin stamp |
+| `create_client_account_manually` / ClientAccounts POST | Canonical writer for `manual_creation` |
+| Operator Add Client (`POST /tenants/{id}/links` with `display_name`, `POST /companies` with `company_role=client`) | Creates Company (and optional tenant link) **and** stamps `manual_creation` ClientAccount linked via `primary_company_id` |
+| `POST /client-accounts/ensure-from-client-companies` | Backfill for local client companies created before that wiring |
 | Lead `convert_client_lead` HTTP / Sales mutations via Lead | Non-canonical for Sales spine — rewire to Convert Mapping (Pipeline v1 §3) |
 | Entity-profile `create_client_from_lead_conversion` | Pre-origins / migrate |
 
-This docs-slice does **not** change runtime behaviour.
+The original 2026-07-20 slice did not change runtime. Operator Add Client wiring (2026-08-18) does: a local client company is not campaign-ready until a `manual_creation` ClientAccount exists.
 
 ---
 
@@ -181,3 +183,4 @@ This Origins document remains the **contract** for `manual_creation`; it no long
 
 - 2026-07-20: Origins v1 docs-slice — `sales_inquiry_conversion` + `manual_creation`; forbid fake Lead/SI/Flights for manual path.  
 - 2026-07-20: §9 order superseded by Sales→Comms sequential queue (Capability UI before manual create runtime).
+- 2026-08-18: Operator Add Client (no client tenant required) wires `manual_creation` ClientAccount so campaigns/ads can target the same client shown on Sales → Clients.

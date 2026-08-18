@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CRM_APP_PATHS, marketingCampaignPath } from '../../app/crmAppPaths'
 import { listAdditionalServices } from '../../api/additionalServices'
-import { listClientAccounts, type ClientAccount } from '../../api/clientAccounts'
+import { ensureClientAccountsFromCompanies, listClientAccounts, type ClientAccount } from '../../api/clientAccounts'
 import {
   listOwnCompanies,
   ownCompanySettings,
@@ -71,7 +71,7 @@ export default function MarketingCampaignSetupPage() {
         listOwnCompanies().catch(() => ({ items: [] as OwnCompanyRecord[] })),
         listVacancies().catch(() => [] as Vacancy[]),
         listAdditionalServices().catch(() => [] as AdditionalService[]),
-        listClientAccounts({ limit: 200 }).catch(() => [] as ClientAccount[]),
+        ensureClientAccountsFromCompanies().catch(() => listClientAccounts({ limit: 200 })),
       ])
       const companyItems = Array.isArray(companyRes?.items) ? companyRes.items : []
       setCompanies(companyItems)

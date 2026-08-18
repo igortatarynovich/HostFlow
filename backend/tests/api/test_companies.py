@@ -280,6 +280,11 @@ async def test_tenant_link_display_name_sets_client_company_role(
     company = company_resp.json()
     assert company["extra"]["company_role"] == "client"
 
+    accounts_resp = await client.get("/api/v1/client-accounts", headers=manager_headers)
+    assert accounts_resp.status_code == 200, accounts_resp.text
+    names = [row.get("display_name") for row in accounts_resp.json().get("items") or []]
+    assert "Tenant Link Client Co" in names
+
 
 @pytest.mark.anyio
 async def test_client_company_create_auto_tenant_link(
@@ -305,3 +310,26 @@ async def test_client_company_create_auto_tenant_link(
     matched = [row for row in links if str(row.get("client_company_id") or "") == company["id"]]
     assert len(matched) == 1, links
     assert matched[0]["status"] == "active"
+
+    accounts_resp = await client.get("/api/v1/client-accounts", headers=manager_headers)
+    assert accounts_resp.status_code == 200, accounts_resp.text
+    names = [row.get("display_name") for row in accounts_resp.json().get("items") or []]
+    assert "Auto Link Client Co" in names
+
+
+@pytest.mark.anyio
+async def test_ensure_from_client_companies_is_idempotent(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+) -> None:
+    first = await client.post(
+        "/api/v1/client-accounts/ensure-from-client-companies",
+        headers=manager_headers,
+    )
+    assert first.status_code == 200, first.text
+    second = await client.post(
+        "/api/v1/client-accounts/ensure-from-client-companies",
+        headers=manager_headers,
+    )
+    assert second.status_code == 200, second.text
+    assert second.json().get("total") == first.json().get("total")
