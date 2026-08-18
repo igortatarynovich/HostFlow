@@ -166,7 +166,9 @@ async def _validate_and_resolve_targets(
             db,
             tenant_id=tenant_id,
             ctx=ctx,
-            modules=[t.target_module for t in validated],
+            # Context (e.g. client_account on a hiring campaign) is a reference, not a
+            # destination-module write. Sales must not be required to recruit for a client.
+            modules=[t.target_module for t in validated if t.role == "primary"],
             action="write",
         )
     return validated

@@ -471,6 +471,62 @@ async def test_accepts_unscoped_vacancy_and_client_account(
     assert types == {"vacancy", "client_account"}
 
 
+async def _deny_sales_allow_rest(*args, **kwargs):  # noqa: ANN002, ANN003
+    from fastapi import HTTPException
+
+    if str(kwargs.get("module_key") or "").strip().lower() == "sales":
+        raise HTTPException(status_code=403, detail="Sales module is disabled for this workspace")
+    return None
+
+
+@pytest.mark.asyncio
+async def test_hiring_campaign_does_not_require_sales_for_client_context(
+    client: AsyncClient,
+    auth_headers: dict,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(
+        "backend.app.acquisition.campaign_service.enforce_module_gate",
+        _deny_sales_allow_rest,
+    )
+    data = await _init_data()
+    tenant_id = data["tenant_id"]
+    own_company_id = await _default_own_company_id(tenant_id)
+    vac_id = await _seed_vacancy(
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        company_id=data["company_id"],
+    )
+    account_id = await _seed_client_account(tenant_id=tenant_id)
+
+    resp = await client.post(
+        "/api/v1/platform/campaigns",
+        headers=auth_headers,
+        json={
+            "name": "Hiring without Sales module",
+            "goal_type": "hiring",
+            "primary_kpi": "applications",
+            "own_company_id": own_company_id,
+            "targets": [
+                {
+                    "target_type": "vacancy",
+                    "target_id": vac_id,
+                    "route_intent": "candidate_application",
+                    "role": "primary",
+                },
+                {
+                    "target_type": "client_account",
+                    "target_id": account_id,
+                    "route_intent": "sales_inquiry",
+                    "role": "context",
+                    "sort_order": 1,
+                },
+            ],
+        },
+    )
+    assert resp.status_code == 201, resp.text
+
+
 @pytest.mark.asyncio
 async def test_rejects_disabled_destination_module(
     client: AsyncClient,
