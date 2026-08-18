@@ -1,8 +1,9 @@
 # Documents Platform E1 — Foundation contract seal (Phase E)
 
-**Status:** **OPEN** (feat; named Contract Seal Gate)  
+**Status:** **COMPLETE** ([#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · feat `9f24f5e9`)  
+**Next:** [Documents Platform E2 — Public contract & D2 slot enable](documents-platform-e2-public-contract.md) (brief; feat locked)  
 **Branch (docs):** `docs/documents-platform-e1-contract-seal` ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)  
-**Branch (code):** `feat/documents-platform-e1-contract-seal`  
+**Branch (code):** `feat/documents-platform-e1-contract-seal` ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270)  
 **Parents:** [Entity Workspace D9](entity-workspace-d9-services-order-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
 
 > Phase D last named consumer closed via D9 ([#268](https://github.com/igortatarynovich/HostFlow/pull/268) · `28978a1f`).  
@@ -65,8 +66,10 @@ PX / D1 chrome + D2 slot catalog
   → documents named as reserved until a later E slice unlocks
 E1 (this)
   → who owns Documents Platform + Hub ≠ dossier ≠ D2 enable
-E2+
-  → public contract / D2 enable / lifecycle (locked until E1 feat)
+E2
+  → public contract / D2 catalog enable ([documents-platform-e2-public-contract.md](documents-platform-e2-public-contract.md))
+E3+
+  → first consumer bind / Document Link SoT / lifecycle
 ```
 
 E1 **must not**:
@@ -88,10 +91,9 @@ E1 **must not**:
 
 | Slice | Focus | Status |
 |-------|--------|--------|
-| **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ← **active** (feat; named Contract Seal Gate) |
-| **E2+** | Public contract / D2 `documents` enable / lifecycle | locked until E1 feat |
-
-Exact E2+ DoD stays deferred until E1 feat closes — same pattern as Forms C1 → C2 and Entity Workspace D1 → D2.
+| **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) |
+| **E2** | Public contract / D2 `documents` catalog enable | [brief](documents-platform-e2-public-contract.md) (feat locked) |
+| **E3+** | First consumer bind / Document Link SoT / lifecycle | locked until E2 feat |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) are **horizon**, not this slice.
 
@@ -108,7 +110,7 @@ Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation
 
 1. Named **Documents Platform E1 Contract Seal Gate** — Hub ownership sealed; D2 `documents` still cannot be enabled; Shell nav ≠ D2 slot; no Catalog rewrite; D1–D9 gates still green; Documents Foundation stays 🔄.  
 2. Architecture Review Checklist (10 questions) in the feat PR description.  
-3. Pointers stay on E1 until E2 brief opens.  
+3. Pointers stay on E1 until E2 brief opens. ← done [E2 brief](documents-platform-e2-public-contract.md)  
 4. **No** D2 slot enable, OCR/e-sign product, or Document Link table cutover unless a later named slice.
 
 ---
@@ -131,8 +133,8 @@ Named step: **Documents Platform E1 Contract Seal Gate**
 
 | Deferred | Owner |
 |----------|--------|
-| D2 `documents` enable on Entity Workspace | Later E slice |
-| Sealed `documents.public_contract.v1` + Adapter id gates | Later E slice |
+| D2 `documents` enable on Entity Workspace | [E2](documents-platform-e2-public-contract.md) |
+| Sealed `documents.public_contract.v1` + Adapter id gates | [E2](documents-platform-e2-public-contract.md) |
 | Document Link SoT (replace `candidate_id` row ownership) | Later E slice |
 | OCR / e-sign / packages / approvals automation | Later E / Advanced |
 | Hub control-center UI rebuild | Later E Workspace |
@@ -199,6 +201,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-18: E2 brief opened — public contract / D2 catalog enable; Product Track → [E2](documents-platform-e2-public-contract.md) (feat locked). E1 ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`9f24f5e9`).
 - 2026-08-18: E1 feat — named **Documents Platform E1 Contract Seal Gate**; D2 `documents` still reserved; no public-contract id; Foundation 🔄. Pointers stay on E1 until E2 brief.
 - 2026-08-18: E1 brief ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) (`17bd3dd3`).
 - 2026-08-18: D9 ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) (`28978a1f`). Product Track → Documents Platform E1 contract seal (this brief). Feat locked. Not D2 `documents` enable / not OCR / not Forms P3–P5 / not Billing.
