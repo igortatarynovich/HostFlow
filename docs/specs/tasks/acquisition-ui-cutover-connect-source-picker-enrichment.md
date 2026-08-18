@@ -54,7 +54,9 @@ Reuse (already imported by `campaigns.py` for Detail cards):
 
 **Forbidden:** new local name dictionary; inventing page/form names without Graph or operator SoT.
 
-**Allowed Graph (this slice):** page token → form `name`, page `name`, sample ad `name`; cache form name on `meta_lead_form_mappings` only (do not wipe `mapping_rules`).
+**Connected Page scope:** when the tenant has active Meta credentials with a `page_id`, the picker lists only Lead Forms for those Pages. Historical profiles / leads from other Pages are hidden. Live Graph `/{page-id}/leadgen_forms` is merged in so a newly connected Page appears before the first lead.
+
+**Allowed Graph (this slice):** page token → form `name`, page `name`, sample ad `name`; cache form name on `meta_lead_form_mappings` only (do not wipe `mapping_rules`). Live page catalog: `leadgen_forms` (skip ARCHIVED/DELETED).
 
 ---
 
@@ -73,6 +75,7 @@ Add optional:
 | `page_name` | enrich (usually `null`) |
 | `last_submission_at` | activity endpoint map |
 | `sample_ad_ids` | top recent distinct `leads.ad_id` for this `form_id` (cap 3) — recognition aid when name empty |
+| `discovered_from` | `graph` (live Page catalog) or `leads` when `needs_create`; omitted for existing profiles |
 
 ---
 
@@ -98,6 +101,7 @@ Add optional:
 ## 7. Acceptance
 
 - [ ] `GET .../intake-source-options?provider=meta` returns enrichment fields for Meta profiles with bindings
+- [ ] With a connected Page credential, options from other Pages are omitted; Graph `leadgen_forms` appear as `needs_create`
 - [ ] Connect Source UI shows Form ID + Page (and sample ads when leads exist) — not sole `Meta form {id}` line
 - [ ] No new donor module; compose calls `campaign_source_cards`
 - [ ] Existing intake-source-options company filter tests still pass

@@ -133,8 +133,10 @@ export type IntakeSourceOption = {
   provider: string
   code: string
   is_active: boolean
-  /** True when option is a Meta form seen on leads but not yet an IntakeSourceProfile. */
+  /** True when option is a Meta form seen on the connected Page or in leads but not yet an IntakeSourceProfile. */
   needs_create?: boolean
+  /** `graph` = live Page catalog; `leads` = seen on inbound leads. */
+  discovered_from?: 'graph' | 'leads' | null
   display_title?: string | null
   lead_form_name?: string | null
   meta_form_id?: string | null

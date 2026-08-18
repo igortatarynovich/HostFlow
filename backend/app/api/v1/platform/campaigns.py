@@ -1062,7 +1062,8 @@ class IntakeSourceOptionOut(BaseModel):
     """Picker option for Marketing Workspace — bindable IntakeSourceProfile rows.
 
     Enrichment: ``campaign_source_cards`` + optional Meta Graph hydrate
-    (``connect_source_picker``). Discovered Meta forms from leads may appear with
+    (``connect_source_picker``). Meta rows are scoped to connected Pages.
+    Discovered forms (Graph page catalog or local leads) may appear with
     ``needs_create=true`` until Connect materializes a profile.
     """
 
@@ -1072,6 +1073,7 @@ class IntakeSourceOptionOut(BaseModel):
     code: str
     is_active: bool
     needs_create: bool = False
+    discovered_from: Optional[str] = None
     display_title: Optional[str] = None
     lead_form_name: Optional[str] = None
     meta_form_id: Optional[str] = None
@@ -1095,8 +1097,10 @@ async def list_intake_source_options(
 ):
     """List active intake sources for the current company (Marketing setup picker).
 
-    For provider=meta (or unset), also includes Meta Lead Forms discovered from
-    recent leads that are not yet IntakeSourceProfile rows (``needs_create``).
+    For provider=meta (or unset), Meta options are scoped to **currently
+    connected** Facebook Pages (active ``meta_lead_credentials`` with a
+    page_id). Live Graph Lead Forms on those pages are merged in, plus
+    matching local profiles / recent leads (``needs_create``).
     """
     from backend.app.acquisition.connect_source_picker import build_intake_source_options
 

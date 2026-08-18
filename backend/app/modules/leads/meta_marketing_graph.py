@@ -38,6 +38,47 @@ async def fetch_page_node(page_id: str, access_token: str) -> dict[str, Any]:
     return await _graph_get(str(page_id), access_token=access_token, params={"fields": "id,name"})
 
 
+_LEADGEN_FORM_SKIP_STATUSES = frozenset({"DELETED", "ARCHIVED"})
+
+
+async def fetch_page_leadgen_forms(
+    page_id: str,
+    access_token: str,
+    *,
+    limit: int = 80,
+) -> list[dict[str, Any]]:
+    """Live Lead Forms on a connected Facebook Page (Graph ``/{page-id}/leadgen_forms``)."""
+    pid = str(page_id or "").strip()
+    if not pid:
+        return []
+    rows = await _graph_get_paged(
+        f"{pid}/leadgen_forms",
+        access_token=access_token,
+        params={"fields": "id,name,status,locale"},
+        limit=limit,
+    )
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        form_id = str(row.get("id") or "").strip()
+        if not form_id:
+            continue
+        status = str(row.get("status") or "").strip().upper()
+        if status in _LEADGEN_FORM_SKIP_STATUSES:
+            continue
+        name = str(row.get("name") or "").strip() or None
+        out.append(
+            {
+                "form_id": form_id,
+                "name": name,
+                "status": status or "ACTIVE",
+                "page_id": pid,
+            }
+        )
+    return out
+
+
 async def fetch_ad_node(ad_id: str, access_token: str) -> dict[str, Any]:
     fields = "id,name,status,effective_status,campaign_id,adset_id"
     return await _graph_get(str(ad_id), access_token=access_token, params={"fields": fields})

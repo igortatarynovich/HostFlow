@@ -263,7 +263,7 @@ export default function MarketingConnectSourcePage() {
             <p className="text-sm text-slate-600">
               {t('app.marketing.connect.intro', {
                 defaultValue:
-                  'Application source for campaign “{name}”. Routing inherits the campaign Primary Target ({intent}). The Meta list is Lead Form (not a single ad). Forms already seen in leads are here too — even if a profile is not created yet. Per-ad Ad ID is on the campaign card.',
+                  'Application source for campaign “{name}”. Routing inherits the campaign Primary Target ({intent}). The Meta list is Lead Forms on the connected Facebook Page (not a single ad). Forms from other Pages stay out of this list. Per-ad Ad ID is on the campaign card.',
                 values: {
                   name: campaign.name,
                   intent:
@@ -328,7 +328,7 @@ export default function MarketingConnectSourcePage() {
                         })
                       : t('app.marketing.connect.kind.meta.desc_empty', {
                           defaultValue:
-                            'No Meta forms in the catalog or leads — configure Meta or wait for the first lead.',
+                            'No Lead Forms on the connected Facebook Page. Reconnect the Page in Settings or confirm the Page has Lead Forms.',
                         })}
                 </span>
               </MarketingOptionCard>
@@ -467,9 +467,13 @@ export default function MarketingConnectSourcePage() {
                             className="ml-2 inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-inset ring-amber-200"
                             data-testid={`marketing-connect-meta-discovered-${s.id}`}
                           >
-                            {t('app.marketing.connect.meta.from_leads', {
-                              defaultValue: 'from leads',
-                            })}
+                            {s.discovered_from === 'graph'
+                              ? t('app.marketing.connect.meta.from_page', {
+                                  defaultValue: 'on page',
+                                })
+                              : t('app.marketing.connect.meta.from_leads', {
+                                  defaultValue: 'from leads',
+                                })}
                           </span>
                         ) : null}
                       </span>

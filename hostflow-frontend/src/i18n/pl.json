@@ -9953,7 +9953,7 @@
           "body": "Można mieć najwyżej jeden aktywny primary formularz HostFlow i jedno primary źródło Meta. Wiele równorzędnych źródeł tego samego typu pojawi się później — UI nie oferuje połączenia, które się nie uda.",
           "back": "Wróć do kampanii"
         },
-        "intro": "Źródło zgłoszeń dla kampanii „{name}”. Routing dziedziczy Primary Target kampanii ({intent}). Lista Meta = Lead Form (nie pojedyncza reklama). Formularze już widziane w leadach też tu są — nawet bez profilu. Ad ID per reklama jest na karcie kampanii.",
+        "intro": "Źródło zgłoszeń dla kampanii „{name}”. Routing dziedziczy Primary Target kampanii ({intent}). Lista Meta = Lead Form podłączonej strony Facebook (nie pojedyncza reklama). Formularze z innych stron tu nie wchodzą. Ad ID per reklama jest na karcie kampanii.",
         "aria": {
           "source_type": "Typ źródła",
           "hostflow_form": "Formularz HostFlow",
@@ -9968,7 +9968,7 @@
           "meta": {
             "desc_taken": "Primary źródło Meta jest już podłączone do tego Flight.",
             "desc_available": "Powiąż Lead Form (Meta) jako źródło — wszystkie reklamy formularza trafią do tego Flight.",
-            "desc_empty": "Brak formularzy Meta w katalogu i leadach — skonfiguruj Meta lub poczekaj na pierwszy lead."
+            "desc_empty": "Na podłączonej stronie Facebook brak Lead Form. Podłącz stronę ponownie w Ustawieniach albo sprawdź, czy strona ma formularze."
           }
         },
         "no_forms": "Brak aktywnych formularzy.",
@@ -9985,7 +9985,8 @@
           "page": "Strona",
           "ads": "Ads",
           "last_lead": "Ostatni lead",
-          "from_leads": "z leadów"
+          "from_leads": "z leadów",
+          "from_page": "na stronie"
         },
         "cancel": "Anuluj",
         "connecting": "Łączenie…",

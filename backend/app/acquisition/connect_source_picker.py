@@ -292,6 +292,126 @@ def parse_discovered_form_id(option_id: str) -> Optional[str]:
     return fid or None
 
 
+async def list_connected_meta_page_tokens(
+    db: AsyncSession, *, tenant_id: str
+) -> dict[str, str]:
+    """Active Meta credentials with a page_id → page access token (newest first)."""
+    from backend.app.core.crypto import decrypt_secret
+    from backend.app.modules.leads import crud as leads_crud
+
+    out: dict[str, str] = {}
+    entries = await leads_crud.list_meta_credentials(db, tenant_id=tenant_id)
+    for entry in entries:
+        if str(getattr(entry, "status", "") or "").strip().lower() != "active":
+            continue
+        page_id = (decrypt_secret(entry.encrypted_page_id) or "").strip()
+        if not page_id or page_id in out:
+            continue
+        token = (decrypt_secret(entry.encrypted_access_token) or "").strip()
+        if not token:
+            continue
+        out[page_id] = token
+    return out
+
+
+def scoped_to_connected_pages(
+    items: list[dict[str, Any]], connected_page_ids: set[str]
+) -> list[dict[str, Any]]:
+    """Keep Meta options whose ``page_id`` is a currently connected Page.
+
+    Non-meta providers are unchanged. When no connected pages are known,
+    the list is returned as-is (legacy: no page-scoped credentials).
+    """
+    if not connected_page_ids:
+        return items
+    kept: list[dict[str, Any]] = []
+    for it in items:
+        provider = str(it.get("provider") or "").strip().lower()
+        if provider != "meta":
+            kept.append(it)
+            continue
+        page_id = str(it.get("page_id") or "").strip()
+        if page_id and page_id in connected_page_ids:
+            kept.append(it)
+    return kept
+
+
+def _discovered_option(
+    *,
+    form_id: str,
+    page_id: Optional[str],
+    lead_form_name: Optional[str],
+    ads: list[str],
+    discovered_from: str,
+    page_name: Optional[str] = None,
+) -> dict[str, Any]:
+    title = lead_form_name or f"Meta form {form_id}"
+    return {
+        "id": discovered_option_id(form_id),
+        "name": title,
+        "provider": "meta",
+        "code": f"meta-form-{form_id}",
+        "is_active": True,
+        "needs_create": True,
+        "discovered_from": discovered_from,
+        "display_title": title,
+        "lead_form_name": lead_form_name,
+        "meta_form_id": form_id,
+        "page_id": page_id,
+        "page_name": page_name,
+        "last_submission_at": None,
+        "sample_ad_ids": ads,
+        "sample_ads": [{"ad_id": a, "label": None} for a in ads],
+    }
+
+
+async def _merge_graph_page_forms(
+    draft: list[dict[str, Any]],
+    *,
+    page_tokens: dict[str, str],
+    known_form_ids: set[str],
+    sample_ads_map: dict[str, list[str]],
+    all_ad_ids: set[str],
+) -> None:
+    if not page_tokens:
+        return
+    from backend.app.modules.leads.meta_marketing_graph import fetch_page_leadgen_forms
+
+    async def one(page_id: str, token: str) -> list[dict[str, Any]]:
+        try:
+            return await fetch_page_leadgen_forms(page_id, token, limit=80)
+        except Exception as exc:
+            logger.info("graph leadgen_forms failed page_id=%s: %s", page_id, exc)
+            return []
+
+    results = await asyncio.gather(
+        *(one(pid, tok) for pid, tok in page_tokens.items()),
+        return_exceptions=True,
+    )
+    for rows in results:
+        if isinstance(rows, BaseException):
+            logger.info("graph leadgen_forms gather failed: %s", rows)
+            continue
+        for row in rows:
+            fid = str(row.get("form_id") or "").strip()
+            if not fid or fid in known_form_ids:
+                continue
+            known_form_ids.add(fid)
+            page_id = str(row.get("page_id") or "").strip() or None
+            name = str(row.get("name") or "").strip() or None
+            ads = list(sample_ads_map.get(fid, []))
+            all_ad_ids.update(ads)
+            draft.append(
+                _discovered_option(
+                    form_id=fid,
+                    page_id=page_id,
+                    lead_form_name=name,
+                    ads=ads,
+                    discovered_from="graph",
+                )
+            )
+
+
 async def build_intake_source_options(
     db: AsyncSession,
     *,
@@ -378,6 +498,7 @@ async def build_intake_source_options(
                 "code": str(r.code or ""),
                 "is_active": bool(r.is_active),
                 "needs_create": False,
+                "discovered_from": None,
                 "display_title": card.display_title,
                 "lead_form_name": card.lead_form_name,
                 "meta_form_id": card.meta_form_id,
@@ -405,25 +526,33 @@ async def build_intake_source_options(
                     page_id = str(getattr(meta_map, "page_id", None) or "").strip() or None
             ads = list(sample_ads_map.get(fid, []))
             all_ad_ids.update(ads)
-            code = f"meta-form-{fid}"
-            title = lead_form_name or f"Meta form {fid}"
             draft.append(
-                {
-                    "id": discovered_option_id(fid),
-                    "name": title,
-                    "provider": "meta",
-                    "code": code,
-                    "is_active": True,
-                    "needs_create": True,
-                    "display_title": title,
-                    "lead_form_name": lead_form_name,
-                    "meta_form_id": fid,
-                    "page_id": page_id,
-                    "page_name": page_name,
-                    "last_submission_at": None,
-                    "sample_ad_ids": ads,
-                    "sample_ads": [{"ad_id": a, "label": None} for a in ads],
-                }
+                _discovered_option(
+                    form_id=fid,
+                    page_id=page_id,
+                    lead_form_name=lead_form_name,
+                    ads=ads,
+                    discovered_from="leads",
+                    page_name=page_name,
+                )
+            )
+
+    page_tokens = await list_connected_meta_page_tokens(db, tenant_id=str(tenant_id))
+    connected_page_ids = set(page_tokens)
+    if connected_page_ids:
+        draft = scoped_to_connected_pages(draft, connected_page_ids)
+        known_form_ids = {
+            str(d.get("meta_form_id") or "").strip()
+            for d in draft
+            if str(d.get("meta_form_id") or "").strip()
+        }
+        if include_discovered and hydrate_graph:
+            await _merge_graph_page_forms(
+                draft,
+                page_tokens=page_tokens,
+                known_form_ids=known_form_ids,
+                sample_ads_map=sample_ads_map,
+                all_ad_ids=all_ad_ids,
             )
 
     if not draft:
@@ -473,6 +602,8 @@ __all__ = [
     "DISCOVERED_ID_PREFIX",
     "build_intake_source_options",
     "discovered_option_id",
+    "list_connected_meta_page_tokens",
     "parse_discovered_form_id",
     "sample_ad_ids_by_form_id",
+    "scoped_to_connected_pages",
 ]

@@ -9953,7 +9953,7 @@
           "body": "You can have at most one active primary HostFlow form and one primary Meta source. Multiple equal sources of the same type will come later — the UI does not offer a connection that would fail.",
           "back": "Return to campaign"
         },
-        "intro": "Application source for campaign “{name}”. Routing inherits the campaign Primary Target ({intent}). The Meta list is Lead Form (not a single ad). Forms already seen in leads are here too — even if a profile is not created yet. Per-ad Ad ID is on the campaign card.",
+        "intro": "Application source for campaign “{name}”. Routing inherits the campaign Primary Target ({intent}). The Meta list is Lead Forms on the connected Facebook Page (not a single ad). Forms from other Pages stay out of this list. Per-ad Ad ID is on the campaign card.",
         "aria": {
           "source_type": "Source type",
           "hostflow_form": "HostFlow form",
@@ -9968,7 +9968,7 @@
           "meta": {
             "desc_taken": "A primary Meta source is already connected to this Flight.",
             "desc_available": "Bind a Lead Form (Meta) as source — all ads for the form go to this Flight.",
-            "desc_empty": "No Meta forms in the catalog or leads — configure Meta or wait for the first lead."
+            "desc_empty": "No Lead Forms on the connected Facebook Page. Reconnect the Page in Settings or confirm the Page has Lead Forms."
           }
         },
         "no_forms": "No active forms.",
@@ -9985,7 +9985,8 @@
           "page": "Page",
           "ads": "Ads",
           "last_lead": "Last lead",
-          "from_leads": "from leads"
+          "from_leads": "from leads",
+          "from_page": "on page"
         },
         "cancel": "Cancel",
         "connecting": "Connecting…",
