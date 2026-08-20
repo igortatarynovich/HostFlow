@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← ✅ D1–D9 ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)). **Phase E — Documents Platform** ← **active** ([E2](../tasks/documents-platform-e2-public-contract.md); feat locked).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← ✅ D1–D9 ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)). **Phase E — Documents Platform** ← **active** ([E2](../tasks/documents-platform-e2-public-contract.md); feat; named Public Contract Gate).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms ✅ → Phase D Entity Workspace ✅ → Phase E Documents → …
@@ -167,13 +167,13 @@ Ladder (locked start):
 
 **Out of D9 (closed):** `HrHandoffDetailPage` stayed out · D2 `documents` stayed reserved · no Catalog Passport · Forms P3–P5 / Billing / AI out.
 
-**Result:** named D-series consumers bound to D2 enabled slots (Sales Inquiry · Candidate · Client · Sales Order · Vacancy · HR employee · Services order). D2 `documents` remains reserved. Universal runtime / Catalog Passport still later.
+**Result:** named D-series consumers bound to D2 enabled slots (Sales Inquiry · Candidate · Client · Sales Order · Vacancy · HR employee · Services order). D2 `documents` catalog-enabled in E2; consumers unbound. Universal runtime / Catalog Passport still later.
 
 **Ref:** [entity-workspace-d9-services-order-cutover.md](../tasks/entity-workspace-d9-services-order-cutover.md) ✅ · [D8](../tasks/entity-workspace-d8-hr-employee-cutover.md) ✅ · [D7](../tasks/entity-workspace-d7-vacancy-cutover.md) ✅ · [D6](../tasks/entity-workspace-d6-sales-order-cutover.md) ✅ · [D5](../tasks/entity-workspace-d5-client-cutover.md) ✅ · [D4](../tasks/entity-workspace-d4-candidate-cutover.md) ✅ · [D3](../tasks/entity-workspace-d3-consumer-cutover.md) ✅ · [D2](../tasks/entity-workspace-d2-composition-contract.md) ✅ · [D1](../tasks/entity-workspace-d1-contract-seal.md) ✅ · [A2-F7](../gates/platform-governance-review-a2.md) · [ADR-010](ADR-010-unified-resource-list-shell.md).
 
 ---
 
-## Phase E — Documents Platform ← **active** (E2 brief; feat locked)
+## Phase E — Documents Platform ← **active** (E2 feat; named Public Contract Gate)
 
 Evolve storage into a full document lifecycle platform (horizon):
 
@@ -191,7 +191,7 @@ Ladder (locked start):
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) |
-| **E2** | Public contract / D2 `documents` catalog enable | [brief](../tasks/documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271) (docs; feat locked) |
+| **E2** | Public contract / D2 `documents` catalog enable | [brief](../tasks/documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271) (feat; named Public Contract Gate) |
 | **E3+** | First consumer bind / Document Link SoT / lifecycle | locked until E2 feat |
 
 **Out of E2:** D3–D9 `documents` bind · OCR / e-sign / packages / Hub UI rebuild · `HrHandoffDetailPage` · Forms P3–P5 · Billing Platform · AI · L0 Catalog rewrite · Document Link table cutover.
@@ -233,7 +233,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 3 | **B** Acquisition / Stage 3 + Meta | ✅ Meta / slice 3–4 (#222 / #224 / #238) |
 | 4 | **C** Forms Platform | ✅ Shared form runtime / Foundation ([C6](../tasks/forms-platform-c6-optimization.md) [#250](https://github.com/igortatarynovich/HostFlow/pull/250)) |
 | 5 | **D** Universal Entity Workspace | ✅ D1–D9 ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) [#268](https://github.com/igortatarynovich/HostFlow/pull/268)) |
-| 6 | **E** Documents Platform | ← **active** ([E2](../tasks/documents-platform-e2-public-contract.md); feat locked) |
+| 6 | **E** Documents Platform | ← **active** ([E2](../tasks/documents-platform-e2-public-contract.md); feat; named Public Contract Gate) |
 | 7 | **F** Billing Platform | SaaS commercial layer |
 | 8 | **G** AI Platform | Assistants over existing canons |
 
@@ -245,7 +245,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). Phase E (Documents E2 brief; feat locked) **is** the active phase; do not reopen E1, D9, Forms C6, Stage 5 settings, or R6.  
+5. Parallel product branches that compete across phases (one active product slice). Phase E (Documents E2 feat; named Public Contract Gate) **is** the active phase; do not reopen E1, D9, Forms C6, Stage 5 settings, or R6.  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Minting Entity Catalog Passport, or binding D2 `documents` on D3–D9 consumers in E2, without a named later E slice + Architecture checklist / RFC when Catalog shape changes.  
@@ -257,7 +257,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Documents Platform E2 brief; feat locked) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Documents Platform E2 feat; named Public Contract Gate) |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |

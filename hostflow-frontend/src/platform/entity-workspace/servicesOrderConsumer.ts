@@ -2,7 +2,8 @@
  * Entity Workspace D9 — Services order consumer binding.
  *
  * Slot ids come from compositionSlots.ts. Do not re-bind Sales Order / HR employee.
- * Do not enable `documents`. Do not collapse Shell EntityWorkspaceSectionId.
+ * Do not bind `documents` (catalog-enabled in E2; not this consumer).
+ * Do not collapse Shell EntityWorkspaceSectionId.
  * This is ServicesPage / service_order, not SalesOrderDetailPage.
  */
 
@@ -30,7 +31,7 @@ export function assertServicesOrderCompositionSlots(
 ): asserts slots is readonly ServicesOrderCompositionSlotId[] {
   for (const id of slots) {
     if (id === 'documents') {
-      throw new Error('D9: Services order must not enable reserved documents slot')
+      throw new Error('D9: Services order must not bind documents slot this slice')
     }
     if (!ENABLED.has(id)) {
       throw new Error(`D9: Services order slot '${id}' is not in the D2 enabled catalog`)

@@ -272,7 +272,9 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 ### Documents
 
-**Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md)
+**Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md)  
+**Public Contract:** [`documents-public-contract.md`](documents-public-contract.md) (`documents.public_contract.v1`)  
+**Task:** [`../tasks/documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md)
 
 **Purpose.** Document Hub: документ как платформенный объект со links.
 
@@ -280,7 +282,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 |--|--|
 | **Owns** | Registry; Metadata; Versions; Storage; Verification / Review; Preview; Digital Signature; OCR capability; Links; Required Document Sets |
 | **Configures** | OCR, file storage, retention, auto-deletion, e-sign → Manifest [Documents](capability-settings-manifest.md#documents) |
-| **Exposes** | Document Adapter (**Stable**); Verification Adapter (**Stable**); document set resolution (**Stable**); OCR internals (**Internal**) |
+| **Exposes** | Document Adapter **`documents.hub_adapter_v1` (Stable)** — ops `list`/`resolve` · `set_resolution` · `owner_summary` · `verification_status` · `list_types`; Verification Adapter (**Stable**); document set resolution (**Stable**); OCR internals (**Internal**) |
 | **Non-Goals** | Employee/Candidate/Vehicle/Invoice domain; Recruitment pipeline; Notification delivery |
 | **Consumes** | Notifications (reminders); Automations (opt.); AI (opt. assist); Integrations (providers) |
 | **Requires** | — |
@@ -290,6 +292,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Events** | Publishes: `document.created` / `linked` / `verified` / `expired` |
 | **Forbidden** | Employee / Candidate / Vehicle / Invoice **domain** SoT; module-local file table как SoT; SMTP для бизнес-статусов |
 | **Data Ownership** | Document; DocumentVersion; DocumentType; DocumentTemplate; DocumentLink; DocumentRequirement; DocumentReview |
+| **Contract tests** | `backend/tests/platform/test_documents_e1_contract_seal_gate.py` · `test_documents_e2_public_contract_gate.py` |
 
 ---
 
