@@ -31,7 +31,7 @@ Legend: ✅ done · 🔄 in progress · ⏳ not started
 | **Acquisition** | ✅ | ✅ | 🔄 residual | ⏳ |
 | **Forms** | ✅ Phase C C1–C6 | ⏳ | ⏳ | ⏳ |
 | **Entity Workspace** | 🔄 Phase D D1–D9 | ⏳ | ⏳ | ⏳ |
-| **Documents** | 🔄 Phase E E1 ✅; E2 feat locked | ⏳ | ⏳ | ⏳ |
+| **Documents** | 🔄 Phase E E2 feat locked | ⏳ | ⏳ | ⏳ |
 | **Billing** | ⏳ | ⏳ | ⏳ | ⏳ |
 
 Notes:
