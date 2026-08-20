@@ -94,6 +94,27 @@ L1-документ **не может** ссылаться на L3 как «ис
 
 ---
 
+## §3.1 Platform phase briefs (Original Goal → Completion Proof)
+
+Каждый **platform phase brief** в `docs/specs/tasks/` обязан:
+
+1. Содержать маркер `**Phase class:** platform` в шапке.  
+2. Содержать отдельный заголовок `## Original Goal → Completion Proof` (не внутри списка deliverables).  
+3. Заполнить два поля:
+
+   - `**Problem this phase must permanently remove:**` — какую проблему этап должен **навсегда** устранить для следующего consumer.  
+   - `**Completion proof (named consumer):**` — каким **реальным** экраном/путём это доказано (или будет доказано); что этот consumer **не** имеет права форкать.
+
+Это brief-time контроль. Close-out — [Goal Completion Gate](../specs/gates/goal-completion-gate.md) G1–G5 **против этого раздела**, не против последнего декомпозированного AC.
+
+**Reject:** brief, который описывает только deliverables (слоты, виджеты, named CI) и не называет устраняемую проблему и proof-consumer.
+
+**Не ретроактивно** для исторических D1–D9 / C1–C6 briefs. Обязательно для новых platform phase briefs, начиная с [Entity Platform Completion](../specs/tasks/entity-platform-completion.md).
+
+Lint: `phase-brief-missing-goal-proof` (см. §7).
+
+---
+
 ## §4 Как добавлять новый workflow
 
 1. Создать файл `docs/specs/workflows/<slug>.md`.
@@ -138,9 +159,10 @@ L1-документ **не может** ссылаться на L3 как «ис
 | `broken-md-link` | Любой ссылочный путь `[..](..)` или `[..](<..>)` в `docs/**` или `AGENTS.md`, который не существует на диске и не является http(s) |
 | `orphan-canon-doc` | L1/L2 документ без единого inbound reference из L1/L2 / кода / `AGENTS.md` (warning, не fail-by-default; включается флагом) |
 | `superseded-without-status` | ADR помечен `Supersedes: ADR-MMM`, но в `ADR-MMM` нет `Status: Superseded by` |
+| `phase-brief-missing-goal-proof` | Task с `**Phase class:** platform` без `## Original Goal → Completion Proof` и двух обязательных полей (проблема навсегда + named consumer) |
 
 Severity:
-- `forbidden-filename`, `forbidden-path-canon`, `workflow-without-linkage`, `archive-without-canon-replacement`, `broken-md-link`, `superseded-without-status` — **error** (fail).
+- `forbidden-filename`, `forbidden-path-canon`, `workflow-without-linkage`, `archive-without-canon-replacement`, `broken-md-link`, `superseded-without-status`, `phase-brief-missing-goal-proof` — **error** (fail).
 - `orphan-canon-doc` — **warning** (по умолчанию; `--strict` поднимает до fail).
 
 ---
@@ -152,6 +174,7 @@ Lint не оценивает:
 - Содержательную правильность ADR / spec.
 - Стилистику.
 - Соответствие документа реальному коду (это работа PR review).
+- Содержательную достаточность Original Goal → Completion Proof (lint проверяет только наличие раздела и двух полей).
 - Конфликты между двумя L2-документами с одинаковой важностью (это работа owner — см. [`ownership.md`](ownership.md) § «Конфликт между owner-ами»).
 
 ---
@@ -167,6 +190,7 @@ Lint не оценивает:
 - [ ] Если это новый workflow — добавлена строка в `workflows/index.md`
 - [ ] Если это новый ADR — добавлен в `module-catalog-and-routing-map.md` или `hostflow-core-domain-map-v1.md`
 - [ ] Если архивируется старый документ — в `archive/legacy/YYYY-MM-DD/README.md` есть запись с canon replacement
+- [ ] Если это новый **platform phase brief** — есть `**Phase class:** platform` и раздел `Original Goal → Completion Proof` (см. §3.1 / [goal-completion-gate.md](../specs/gates/goal-completion-gate.md))
 - [ ] `make docs-lint` зелёный
 - [ ] Если затронут security perimeter — пройден чеклист `docs/security/security-review-checklist.md`
 
@@ -176,4 +200,5 @@ Lint не оценивает:
 
 | Дата | Изменение |
 |---|---|
+| 2026-08-20 | §3.1 — platform phase brief обязан иметь Original Goal → Completion Proof; lint `phase-brief-missing-goal-proof` |
 | 2026-05-12 | Введены вместе с governance package по итогам canonicalization pass (commits `9370fc4`…`b143e51`, archive `f1b986e` / `cb3e79a`) |
