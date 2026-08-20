@@ -109,7 +109,7 @@ L1-документ **не может** ссылаться на L3 как «ис
 
 **Reject:** brief, который описывает только deliverables (слоты, виджеты, named CI) и не называет устраняемую проблему и proof-consumer.
 
-**Не ретроактивно** для исторических D1–D9 / C1–C6 briefs. Обязательно для новых platform phase briefs, начиная с [Entity Platform Completion](../specs/tasks/entity-platform-completion.md).
+**Не ретроактивно** для исторических D1–D9 / C1–C6 briefs. Обязательно для новых platform phase briefs, начиная с [Workspace Capability Platform Completion](../specs/tasks/workspace-capability-platform-completion.md).
 
 Lint: `phase-brief-missing-goal-proof` (см. §7).
 

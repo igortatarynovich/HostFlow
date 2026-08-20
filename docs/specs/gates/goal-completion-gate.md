@@ -4,7 +4,7 @@
 **Date:** 2026-08-20  
 **Trusted base:** `integration/release-product-a-b`  
 **Parents:** [Architecture Review Checklist](../architecture/architecture-review-checklist.md) · [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md)  
-**First application:** [Platform Scope Completeness Audit](platform-scope-completeness-audit.md) · [Entity Platform Completion](../tasks/entity-platform-completion.md)
+**First application:** [Platform Scope Completeness Audit](platform-scope-completeness-audit.md) · [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md)
 
 > A phase may be **brief-complete** and still **goal-incomplete**.  
 > Named CI that checks the approved brief does **not** prove the original problem is gone.  
@@ -61,7 +61,7 @@ Close-out then applies G1–G5 against **this section**, not against the latest 
 
 **Reject the brief** if this section is missing, restates deliverables (“typed slots”, “named CI”, “component kit”), or names a proof that still allows the original local fork.
 
-Worked example: [Entity Platform Completion](../tasks/entity-platform-completion.md). D1–D9 failed this test: they proved brief-internal consistency, not the original Entity Shell goal.
+Worked example: [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md). D1–D9 failed this test: they proved brief-internal consistency, not the original Entity Shell goal.
 
 ---
 

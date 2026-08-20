@@ -1,8 +1,8 @@
 # Documents Platform E2 — Public contract & D2 slot enable (Phase E)
 
-**Status:** **LOCKED** — brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat must **not** start until [Entity Platform Completion](entity-platform-completion.md) exits via [Goal Completion Gate](../gates/goal-completion-gate.md) (original Entity Shell goal restored; proof screen without local composition).  
+**Status:** **LOCKED** — brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat must **not** start until [Workspace Capability Platform Completion](workspace-capability-platform-completion.md) exits via [Goal Completion Gate](../gates/goal-completion-gate.md) (Capability Host Contract; Recruitment Application proof without local composition).  
 **Branch (docs):** `docs/documents-platform-e2-public-contract` ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)  
-**Branch (code):** `feat/documents-platform-e2-public-contract` (locked behind Entity Platform Completion)  
+**Branch (code):** `feat/documents-platform-e2-public-contract` (locked behind Workspace Capability Platform Completion)  
 **Parents:** [Documents Platform E1](documents-platform-e1-contract-seal.md) [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [ADR-025](../architecture/ADR-025-standard-adapter-boundary.md) · [Capability Contract](../architecture/capability-contract.md) · [Forms Public Contract](../architecture/forms-public-contract.md) (pattern) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
 
 > E1 sealed ownership: Hub ≠ Candidate/HR dossier ≠ Shell `documents` nav ≠ D2 enable ([#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1`).  
@@ -136,7 +136,7 @@ D2 / E1 / D3–D9 named gates stay in CI. E2 feat **amends** assertions that fre
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1` |
-| **E2** | Public contract / D2 `documents` catalog enable | brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); **feat locked** until [Entity Platform Completion](entity-platform-completion.md) Goal Completion |
+| **E2** | Public contract / D2 `documents` catalog enable | brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); **feat locked** until [Workspace Capability Platform Completion](workspace-capability-platform-completion.md) Goal Completion |
 | **E3+** | First consumer bind / Document Link SoT / lifecycle | locked until E2 feat |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) stay **horizon**.
@@ -244,13 +244,14 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 ## DoD
 
 - [x] Brief sealed with ownership / contract inventory / D2 unlock vs bind / in/out + acceptance  
-- [x] Queue + roadmap + AGENTS + maturity pointed at this brief at merge; **2026-08-20:** Product Track moved to [Entity Platform Completion](entity-platform-completion.md); this feat stays locked  
+- [x] Queue + roadmap + AGENTS + maturity pointed at this brief at merge; **2026-08-20:** Product Track moved to [Workspace Capability Platform Completion](workspace-capability-platform-completion.md); this feat stays locked  
 - [x] E1 marked **COMPLETE** with #270 / `f37deff1`  
-- [ ] Feat PR — public contract + catalog unlock (**after** Entity Platform Goal Completion)
+- [ ] Feat PR — public contract + catalog unlock (**after** Workspace Capability Goal Completion)
 
 ---
 
 ## History
 
-- 2026-08-20: Product Track → [Entity Platform Completion](entity-platform-completion.md). This brief stays ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); **feat locked** until that program’s Goal Completion. Same-day Shared UI Capabilities draft superseded. Not a Notes/Consent-only seal — queue hygiene until Entity Shell is restored.
+- 2026-08-20: Product Track → [Entity Platform Completion](workspace-capability-platform-completion.md). This brief stays ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); **feat locked** until that program’s Goal Completion. Same-day Shared UI Capabilities draft superseded. Not a Notes/Consent-only seal — queue hygiene until Entity Shell is restored.
+- 2026-08-20: Program retitled Workspace Capability Platform Completion; feat remains locked until Recruitment Application proof.
 - 2026-08-18: E1 feat [#270](https://github.com/igortatarynovich/HostFlow/pull/270) (`f37deff1`). CI: named Contract Seal Gate **11 passed**; full Tests with coverage **484 failed / 2740 passed** (Engineering Track, same as D9). Product Track → this brief [#271](https://github.com/igortatarynovich/HostFlow/pull/271). Feat locked. Not consumer bind / not OCR / not Forms P3–P5 / not Billing.

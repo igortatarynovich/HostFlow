@@ -33,7 +33,7 @@ The ten questions above check **ownership and contracts**. They do **not** catch
 
 When a platform phase would be marked COMPLETE (or Foundation ✅ as “next layer may consume this”), also apply [`goal-completion-gate.md`](../gates/goal-completion-gate.md) G1–G5. First application: [`platform-scope-completeness-audit.md`](../gates/platform-scope-completeness-audit.md). Entity D1–D9 is the worked example of brief-complete / goal-incomplete.
 
-A **new platform phase brief** must include `**Phase class:** platform` and heading `## Original Goal → Completion Proof` (problem to permanently remove + named consumer proof). Deliverables-only briefs are reject. Corrective Product Track: [`entity-platform-completion.md`](../tasks/entity-platform-completion.md).
+A **new platform phase brief** must include `**Phase class:** platform` and heading `## Original Goal → Completion Proof` (problem to permanently remove + named consumer proof). Deliverables-only briefs are reject. Corrective Product Track: [`workspace-capability-platform-completion.md`](../tasks/workspace-capability-platform-completion.md).
 
 ---
 

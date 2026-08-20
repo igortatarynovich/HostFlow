@@ -4,7 +4,7 @@
 **Date:** 2026-08-20  
 **Trusted base:** `integration/release-product-a-b` @ `1c0dac88` (E2 brief [#271](https://github.com/igortatarynovich/HostFlow/pull/271); E2 feat not landed)  
 **Parents:** [Goal Completion Gate](goal-completion-gate.md) · [D1](../tasks/entity-workspace-d1-contract-seal.md)…[D9](../tasks/entity-workspace-d9-services-order-cutover.md) · [Epic C Complete Gate](epic-c-complete-gate.md) · [A2](platform-governance-review-a2.md) · [Forms C6](../tasks/forms-platform-c6-optimization.md) · [Sequential queue](../tasks/sales-to-comms-sequential-queue.md)  
-**Corrective Product Track:** [Entity Platform Completion](../tasks/entity-platform-completion.md)
+**Corrective Product Track:** [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md)
 
 > This is **not** a development sprint.  
 > It applies the [Goal Completion Gate](goal-completion-gate.md) to already-closed platform blocks.  
@@ -166,14 +166,14 @@ Self-consistency trap: D4–D9 were checked against D2, not against G1. Locally 
 - Entity Workspace D10 (eighth consumer on the weak D2 model)  
 - Reopening Forms P3–P5, R6, C2.4, or Catalog Notifications RFC as this slice  
 - Treating every residual as D-class substitution  
-- Starting Documents E2 feat, Billing, or AI before Entity Platform goal is restored  
+- Starting Documents E2 feat, Billing, or AI before Workspace Capability Goal Completion (Recruitment Application proof)  
 
 ---
 
 ## Disposition (locked)
 
 1. Introduce [Goal Completion Gate](goal-completion-gate.md) for every future phase close.  
-2. Product Track → [Entity Platform Completion](../tasks/entity-platform-completion.md) (restore Entity Shell + common capabilities + module contributions).  
+2. Product Track → [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md) (Capability Host Contract; host places, owners own semantics; proof = Recruitment Application).  
 3. Documents E2 feat stays locked (brief [#271](https://github.com/igortatarynovich/HostFlow/pull/271) unchanged).  
 4. Forms / Communication / Acquisition / RBAC residuals stay on their named owners — they do not jump the queue unless they are the original Entity Shell problem (they are not).
 
@@ -181,4 +181,5 @@ Self-consistency trap: D4–D9 were checked against D2, not against G1. Locally 
 
 ## History
 
-- 2026-08-20: Triggered by D1–D9 passing brief gates while failing the original Entity Shell goal. Same-day Shared UI Capabilities (Notes+Consent, no registry) draft **superseded** — still accepted the weak D model.
+- 2026-08-20: Triggered by D1–D9 passing brief gates while failing the original Entity Shell goal. Same-day Shared UI Capabilities (Notes+Consent, no registry) draft **superseded** — still accepted the weak D model.  
+- 2026-08-20: Corrective track retitled Workspace Capability Platform Completion (Capability Host Contract; proof = Recruitment Application).
