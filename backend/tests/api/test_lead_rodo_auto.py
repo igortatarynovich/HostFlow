@@ -363,3 +363,45 @@ async def test_unbound_destination_fail_closed_no_smtp(tenant_id, monkeypatch):
     assert "communication_pipeline_required" in msg
     assert rodo.get("status") == "failed"
     assert rodo.get("failure_reason") == "communication_pipeline_required"
+
+
+@pytest.mark.anyio
+async def test_maybe_auto_send_retries_auto_on_lead_created(monkeypatch):
+    """Gated actions heal missed ingest auto-send when firm mode is auto_on_lead_created."""
+    from backend.app.services.lead_lifecycle_email_policy import PURPOSE_GDPR_NOTICE, PolicyDecision
+    from backend.app.services.lead_rodo_auto import maybe_auto_send_before_gated_action
+
+    sent: list[str] = []
+
+    async def _fake_send(*_args, **kwargs):
+        sent.append(str(kwargs.get("trigger") or ""))
+
+    async def _fake_resolve(*_args, **_kwargs):
+        return PolicyDecision(
+            purpose=PURPOSE_GDPR_NOTICE,
+            send=True,
+            template_ref="tpl",
+            source_layer="own_company",
+            block_code=None,
+            send_mode="auto_on_lead_created",
+            enabled=True,
+        )
+
+    monkeypatch.setattr(
+        "backend.app.services.lead_rodo_auto.resolve_lifecycle_email_policy_for_lead",
+        _fake_resolve,
+    )
+    monkeypatch.setattr("backend.app.services.lead_rodo_auto._auto_send_once", _fake_send)
+    monkeypatch.setattr(
+        "backend.app.services.lead_rodo_auto._maybe_ensure_recruitment_result_before_outbound",
+        AsyncMock(return_value=None),
+    )
+
+    class _Lead:
+        id = "lead-1"
+        source = "meta"
+        candidate_id = None
+        normalized = {"email": "heal@example.com"}
+
+    await maybe_auto_send_before_gated_action(AsyncMock(), tenant_id="t1", lead=_Lead())
+    assert sent == ["lead_created"]

@@ -79,16 +79,16 @@ async def apply_lead_rodo_on_ingest(
     is_new_lead: bool,
 ) -> None:
     """
-    After a new ``Lead`` row is persisted: stamp source-provided or run auto-send per policy.
-    Idempotent for webhook replay (existing lead / already sent).
+    After a Lead row is persisted: stamp source-provided or run auto-send per policy.
+    Idempotent for webhook replay (already sent / satisfied). Replays of an
+    unsatisfied lead still attempt auto-send when firm mode is ``auto_on_lead_created``.
 
     ADR-031 PR-2: when Recruitment §2.4 holds and auto RODO would fire, ensure early
     Candidate shell + Application **before** send (Lead.candidate_id stays unset).
     """
-    if not is_new_lead:
-        return
+    del is_new_lead  # retries are keyed off unsatisfied + send_mode, not insert vs update
     # Early compliance shell must not block Lead-stage art.14 (gates stay on Lead.rodo).
-    if getattr(lead, "candidate_id", None) and lead_rodo_satisfied(lead):
+    if lead_rodo_satisfied(lead):
         return
 
     norm = dict(normalized or {}) if isinstance(normalized, dict) else {}
@@ -128,13 +128,17 @@ async def maybe_auto_send_before_gated_action(
     tenant_id: str,
     lead: Lead,
 ) -> None:
-    """When mode is auto_on_first_action, attempt outbound RODO before blocking the action."""
+    """Attempt outbound RODO before a gated action when firm mode is auto.
+
+    Covers ``auto_on_first_action`` and heals missed ``auto_on_lead_created``
+    (ingest skipped, routing incomplete, overlay drift, webhook replay).
+    """
     if lead_rodo_satisfied(lead):
         return
     decision = await resolve_lifecycle_email_policy_for_lead(
         db, tenant_id=tenant_id, lead=lead, purpose=PURPOSE_GDPR_NOTICE
     )
-    if decision.send_mode != "auto_on_first_action":
+    if decision.send_mode not in ("auto_on_lead_created", "auto_on_first_action"):
         return
     await _maybe_ensure_recruitment_result_before_outbound(
         db,
@@ -142,12 +146,17 @@ async def maybe_auto_send_before_gated_action(
         lead=lead,
         source=str(getattr(lead, "source", "") or "first_action"),
     )
+    trigger = (
+        "lead_created"
+        if decision.send_mode == "auto_on_lead_created"
+        else "first_action"
+    )
     await _auto_send_once(
         db,
         tenant_id=tenant_id,
         lead=lead,
         decision=decision,
-        trigger="first_action",
+        trigger=trigger,
         ingest_source=str(getattr(lead, "source", "") or ""),
     )
 

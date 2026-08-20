@@ -15,8 +15,8 @@ Delivery already must use Communication Pipeline ([ADR-031](ADR-031-compliance-o
 ## Decision
 
 1. **Operational SoT** for lead lifecycle email policy is the **operating firm** — `OwnCompany.extra.lead_lifecycle_email_v1` (same JSON shape as before).
-2. **Client company** (`Lead.company_id` → `company_module_settings` / recruitment) may hold an **optional sparse or full overlay** (`lead_lifecycle_email_v1`) when that employer must appear in copy or use a different template.
-3. **Vacancy** may hold a **sparse** override in JSONB `vacancies.settings_json` → `lead_lifecycle_email_override_v1` (no new table).
+2. **Client company** (`Lead.company_id` → `company_module_settings` / recruitment) may hold an **optional overlay** for **template / ops copy** (`lead_lifecycle_email_v1`) when that employer must appear in copy. **`rodo_send_mode` is OwnCompany-only** — client overlay cannot turn auto-send on or off.
+3. **Vacancy** may hold a **sparse** override in JSONB `vacancies.settings_json` → `lead_lifecycle_email_override_v1` (no new table). For RODO this is **template_ref only**; vacancy cannot disable art.14 or change send mode.
 4. **Tenant** JSON remains **preset + cutover/migration adapter** only; after own-company cutover, live resolution prefers own company (+ optional client + vacancy).
 5. **Resolver** `resolve_lifecycle_email_policy` is the single read SoT for runtime and Control Center preview.
 6. **Fail-closed:** enabled purpose without resolvable template → no send + **operator-visible** lead stamp (`pending_policy` / ops `failed` + `policy_*` reason codes). Silent HostFlow marketing fallback is forbidden when the purpose is enabled.
@@ -58,3 +58,4 @@ Normative triggers = RODO-gated actions only (Process, `request_info`, stage `co
 
 - 2026-07-29: Accepted — Company-owned lifecycle email policy + sparse vacancy override; Control Center under Communications.
 - 2026-07-31: **Errata / product lock** — SoT = **OwnCompany** (firm); client company + vacancy = optional override; sales leads without `company_id` use firm policy. Resolver + own-company cutover = implementation slice A; Control Center IA + sales RODO rail = later slices.
+- 2026-08-20: **Errata** — RODO `send_mode` is OwnCompany-only. Client overlay and vacancy override cannot enable, disable, or change auto vs manual; they may change RODO `template_ref` only. Gated actions retry missed `auto_on_lead_created` sends.

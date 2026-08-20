@@ -276,6 +276,31 @@ Zespół HostFlow
 Команда HostFlow"""
 
 
+def _first_usable_email(normalized: Dict[str, Any]) -> Optional[str]:
+    """Top-level email, then nested contacts / field answers (Meta mapping drift)."""
+    candidates: list[Any] = [normalized.get("email")]
+    contacts = normalized.get("contacts")
+    if isinstance(contacts, dict):
+        candidates.append(contacts.get("email"))
+    answers = normalized.get("field_answers")
+    if isinstance(answers, dict):
+        candidates.append(answers.get("email"))
+    elif isinstance(answers, list):
+        for item in answers:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or item.get("key") or "").strip().lower()
+            if name in ("email", "email_address", "e-mail"):
+                candidates.append(item.get("value") or item.get("values"))
+    for raw in candidates:
+        if isinstance(raw, (list, tuple)):
+            raw = raw[0] if raw else None
+        email = str(raw or "").strip()
+        if email and "@" in email:
+            return email
+    return None
+
+
 def _resolve_lead_email_for_channel(
     normalized: Dict[str, Any],
     channels: tuple[str, ...],
@@ -283,7 +308,7 @@ def _resolve_lead_email_for_channel(
     """Return (email, channel_name) for the first configured channel we can use."""
     for ch in channels:
         if ch == "email":
-            email = str(normalized.get("email") or "").strip()
+            email = _first_usable_email(normalized)
             if email:
                 return email, "email"
     return None, None
@@ -347,10 +372,9 @@ async def send_lead_rodo_email(
         )
     except ApplicationTransportConflictError:
         pass  # Sales-bound — not Recruitment ensure
-    except ComplianceOutboundEnsureError as exc:
-        if str((exc.details or {}).get("reason") or "") == "duplicate_review":
-            return False, "RODO blocked: lead is in duplicate_review"
-        # Missing funnel / shell create failure: continue; Pipeline bind fail-closes.
+    except ComplianceOutboundEnsureError:
+        # duplicate_review / missing shell: do not skip art.14; Pipeline bind fail-closes.
+        pass
 
     rodo_doc = await get_active_legal_document(db, tenant_id, "rodo_clause")
     if template_id and str(template_id).strip():

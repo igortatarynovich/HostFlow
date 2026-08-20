@@ -361,10 +361,10 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 | `lead_rodo_send_mode` | Behaviour |
 |-------------------------|-----------|
 | `manual` (default) | Recruiter sends from intake rail / API; no outbound on ingest. |
-| `auto_on_lead_created` | After **new** lead row + custom-field sync: auto-send for eligible ingest sources when email channel exists (MVP: Meta, generic webhook, `csv_import`, import, Telegram*, public form). |
+| `auto_on_lead_created` | After lead persist + custom-field sync: auto-send for eligible ingest sources when email exists. If ingest missed the send, **retry on the first gated action** (same triggers as `auto_on_first_action`). |
 | `auto_on_first_action` | Outbound attempt immediately before first gated action (process, request_info, stage `contacted`, `communication_call`). |
 
-**Policy SoT (ADR-033):** firm **OwnCompany** `lead_lifecycle_email_v1`; optional client + vacancy override — [lead-lifecycle-email-policy.md](lead-lifecycle-email-policy.md).
+**Policy SoT (ADR-033):** firm **OwnCompany** `lead_lifecycle_email_v1` owns **RODO send mode** (one switch for all vacancies/ads). Client overlay and vacancy override may change RODO **template_ref** only — [lead-lifecycle-email-policy.md](lead-lifecycle-email-policy.md).
 
 Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_id` (active `rodo_clause` version override).
 
@@ -386,9 +386,11 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 
 - `POST /api/v1/leads/{id}/compliance/rodo/send` — manual / retry (always available when auto is on).
 - `POST /api/v1/leads/{id}/compliance/rodo/source-provided` — mark covered at source.
+- `POST /api/v1/recruitment/applications/{id}/compliance/rodo/send` — Application-facade send (Отклики rail).
+- `POST /api/v1/recruitment/applications/{id}/compliance/rodo/source-provided` — Application-facade covered at source.
 - `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk re-send after Pipeline cutover (default `rodo.status=failed`; `dry_run` supported). CLI: `backend/scripts/retry_lead_rodo.py`.
 
-**UI:** Meta Leads settings — mode select; **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / manual hint; Send RODO + “covered at source” buttons retained for retry. **Sales inquiry rail / client lead call-result** — same Send / source-provided unlock (ADR-033 slice C) before `call-result` / stage `contacted`.
+**UI:** Meta Leads settings — mode select; **Intake Decision rail** (legacy Lead card) — status copy for `sent` / `failed` / `pending_channel` / manual hint; Send RODO + “covered at source”. **Recruitment Application ContextRail** — same unlock without opening a Lead card (`ApplicationRodoSection` + stage + comments). **Sales inquiry rail / client lead call-result** — same Send / source-provided unlock (ADR-033 slice C) before `call-result` / stage `contacted`.
 
 **Tests:** `backend/tests/api/test_lead_rodo_gate.py`, `backend/tests/api/test_lead_rodo_auto.py`.
 

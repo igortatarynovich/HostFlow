@@ -38,7 +38,7 @@ Vacancy sparse override (vacancies.settings_json.lead_lifecycle_email_override_v
 - **Net-new own company** defaults: ops emails **off**; RODO `manual`.
 - **Cutover:** every existing **own company** receives a **snapshot** of the then-current tenant preset. Pre-existing client-company `lead_lifecycle_email_v1` rows remain as overlays.
 
-**Product rule:** default is **one firm RODO**. Per-client RODO is the exception, not the model.
+**Product rule:** default is **one firm RODO**. Per-client RODO **copy** (template) is the exception, not the model. Whether the notice is sent automatically is **one OwnCompany switch** — it cannot differ by vacancy, Meta ad, or client overlay.
 
 ---
 
@@ -56,12 +56,14 @@ Same JSON on OwnCompany (`extra`) and as optional client overlay in `company_mod
 
 ### Client overlay
 
-Non-empty `lead_lifecycle_email_v1` on the client company **overlays** the own-company policy (set fields win). Empty / missing client block → firm policy only.
+Non-empty `lead_lifecycle_email_v1` on the client company **overlays** the own-company policy for **template_ref, channels, and ops purposes**. Empty / missing client block → firm policy only. **`rodo_send_mode` never overlays** — auto vs manual is the firm switch only.
 
 ### Vacancy override
 
 JSONB column `vacancies.settings_json` key `lead_lifecycle_email_override_v1`: sparse map  
 `purpose → { enabled?: bool, template_ref?: str }` (ops keys may use `application_received` / `rejection` / `moving_forward`). Missing purpose keys inherit own company (+ client overlay).
+
+**RODO / art.14 is firm-wide.** Vacancy and client overlay **must not** change `rodo_send_mode` or disable the notice. They may only set `template_ref` (white-label copy). Runtime ignores overlay `rodo_send_mode` and vacancy `gdpr_notice.enabled` / `send_mode`.
 
 ---
 

@@ -290,8 +290,9 @@ export default function LeadLifecycleEmailSettingsPage() {
     if (!companyId) return
     setError(null)
     try {
+      const firmSendMode = policy.rodo_send_mode
       const out = await getLeadLifecycleEmailPolicy(companyId)
-      setPolicy({ ...emptyPolicy(), ...(out.policy || {}) })
+      setPolicy({ ...emptyPolicy(), ...(out.policy || {}), rodo_send_mode: firmSendMode })
       setPolicySource(out.source)
     } catch (err: unknown) {
       setError(
@@ -347,7 +348,7 @@ export default function LeadLifecycleEmailSettingsPage() {
       title={t('admin.lead_lifecycle_email.page_title', { defaultValue: 'Lead lifecycle email' })}
       subtitle={t('admin.lead_lifecycle_email.subtitle', {
         defaultValue:
-          'Firm (own company) RODO and ops email policy. Optional client and vacancy overlays.',
+          'One firm RODO send mode for all vacancies and ads. Client overlay and vacancy override may change the template only.',
       })}
       actions={
         <div className="flex flex-wrap gap-2">
@@ -424,6 +425,9 @@ export default function LeadLifecycleEmailSettingsPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <section className="rounded-lg border border-slate-200 bg-white p-4">
             <h2 className="text-base font-semibold text-slate-900">RODO / art.14</h2>
+            <p className="mt-1 text-xs text-slate-600">
+              One setting for the firm. Send mode does not change per vacancy, ad, or client.
+            </p>
             <label className="mt-3 block text-sm text-slate-700">
               Send mode
               <select
@@ -568,7 +572,8 @@ export default function LeadLifecycleEmailSettingsPage() {
           <section className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-2">
             <h2 className="text-base font-semibold text-slate-900">Vacancy sparse override</h2>
             <p className="mt-1 text-xs text-slate-600">
-              Only set keys you want to override. Missing keys inherit company policy.
+              Ops purposes may set enabled + template. RODO send mode is firm-wide — vacancy may
+              override the RODO template only.
             </p>
             {!vacancyId ? (
               <p className="mt-2 text-sm text-slate-500">Select a vacancy in the preview panel to edit overrides.</p>
@@ -588,19 +593,23 @@ export default function LeadLifecycleEmailSettingsPage() {
                   return (
                     <div key={p.key} className="rounded border border-slate-100 p-3">
                       <p className="text-sm font-medium text-slate-800">{p.label}</p>
-                      <label className="mt-2 flex items-center gap-2 text-sm text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(block.enabled)}
-                          onChange={(e) =>
-                            setOverrideDraft((d) => ({
-                              ...d,
-                              [opsKey]: { ...block, enabled: e.target.checked },
-                            }))
-                          }
-                        />
-                        Override enabled
-                      </label>
+                      {p.key !== 'gdpr_notice' ? (
+                        <label className="mt-2 flex items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(block.enabled)}
+                            onChange={(e) =>
+                              setOverrideDraft((d) => ({
+                                ...d,
+                                [opsKey]: { ...block, enabled: e.target.checked },
+                              }))
+                            }
+                          />
+                          Override enabled
+                        </label>
+                      ) : (
+                        <p className="mt-2 text-xs text-slate-500">Template override only.</p>
+                      )}
                       <TemplateSelect
                         value={block.template_ref}
                         templates={templates}

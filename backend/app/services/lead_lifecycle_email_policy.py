@@ -132,6 +132,9 @@ def compose_own_and_client_policy(
     """
     Overlay optional client policy onto own-company SoT.
 
+    ``rodo_send_mode`` is never taken from the client overlay (one firm RODO).
+    Client may still overlay ``rodo_template_ref`` and ops purposes.
+
     Returns (merged_policy, base_layer) where base_layer is ``client`` if any
     client field contributed, else ``own_company`` when own is non-empty,
     else ``tenant_preset`` (caller still merges tenant).
@@ -142,12 +145,15 @@ def compose_own_and_client_policy(
         return {}, "tenant_preset"
 
     if not own:
-        return dict(client), "client"
+        # Client may overlay copy/ops, never RODO send_mode (firm / tenant SoT).
+        stripped = dict(client)
+        stripped.pop("rodo_send_mode", None)
+        return stripped, "client"
 
     out = dict(own)
     layer: SourceLayer = "own_company"
 
-    for key in ("version", "rodo_send_mode", "rodo_template_ref", "ops_enabled", "channels"):
+    for key in ("version", "rodo_template_ref", "ops_enabled", "channels"):
         if key not in client:
             continue
         val = client[key]
@@ -160,10 +166,6 @@ def compose_own_and_client_policy(
                 layer = "client"
         elif key == "rodo_template_ref":
             if _trim(val) is not None:
-                out[key] = _trim(val)
-                layer = "client"
-        elif key == "rodo_send_mode":
-            if _trim(val):
                 out[key] = _trim(val)
                 layer = "client"
         elif val is not None:
@@ -200,37 +202,16 @@ def _merge_layers(
     the win to company, map to ``company_layer`` (``own_company`` or ``client``).
     """
     if purpose == PURPOSE_GDPR_NOTICE:
+        # One firm RODO: send_mode is OwnCompany then tenant preset. Vacancy/client
+        # cannot disable the notice or change auto vs manual (template_ref only).
+        mode = _trim(company.get("rodo_send_mode")) or _trim(tenant.get("rodo_send_mode")) or "manual"
         v = _as_dict(vacancy_ov.get(PURPOSE_GDPR_NOTICE) or vacancy_ov.get("gdpr_notice"))
-        if v:
-            enabled = True if "enabled" not in v else bool(v.get("enabled"))
-            tmpl = _trim(v.get("template_ref"))
-            mode = (
-                _trim(v.get("send_mode"))
-                or _trim(company.get("rodo_send_mode"))
-                or _trim(tenant.get("rodo_send_mode"))
-                or "manual"
-            )
-            if tmpl is None:
-                tmpl = _trim(company.get("rodo_template_ref")) or _trim(tenant.get("rodo_template_ref"))
-                if _trim(company.get("rodo_template_ref")):
-                    layer: SourceLayer = company_layer
-                else:
-                    layer = "tenant_preset"
-            else:
-                layer = "vacancy"
-            if not _trim(v.get("send_mode")):
-                if _trim(company.get("rodo_send_mode")):
-                    mode = _trim(company.get("rodo_send_mode")) or mode
-                elif _trim(tenant.get("rodo_send_mode")):
-                    mode = _trim(tenant.get("rodo_send_mode")) or mode
-            return enabled, tmpl, layer, mode
-
-        if company:
-            mode = _trim(company.get("rodo_send_mode")) or "manual"
-            tmpl = _trim(company.get("rodo_template_ref"))
-            if tmpl or mode:
-                return True, tmpl, company_layer, mode
-        mode = _trim(tenant.get("rodo_send_mode")) or "manual"
+        tmpl = _trim(v.get("template_ref")) if v else None
+        if tmpl:
+            return True, tmpl, "vacancy", mode
+        tmpl = _trim(company.get("rodo_template_ref"))
+        if tmpl or _trim(company.get("rodo_send_mode")):
+            return True, tmpl, company_layer, mode
         tmpl = _trim(tenant.get("rodo_template_ref"))
         return True, tmpl, "tenant_preset" if tenant else "none", mode
 
@@ -355,7 +336,7 @@ def decide_from_layers(
                 block_code="disabled",
                 send_mode=mode,
                 enabled=False,
-                reason="RODO outbound disabled by vacancy override.",
+                reason="RODO outbound disabled by firm policy.",
             )
         if not tmpl:
             return PolicyDecision(

@@ -67,6 +67,66 @@ def test_decide_vacancy_override_wins_template() -> None:
     assert d.source_layer == "vacancy"
 
 
+def test_decide_client_overlay_cannot_change_rodo_send_mode() -> None:
+    own = {
+        "rodo_send_mode": "manual",
+        "rodo_template_ref": "firm-rodo",
+    }
+    client = {
+        "rodo_send_mode": "auto_on_lead_created",
+        "rodo_template_ref": "client-rodo",
+    }
+    d = decide_from_layers(
+        purpose=PURPOSE_GDPR_NOTICE,
+        vacancy_ov={},
+        own_company=own,
+        client_override=client,
+        tenant=SAFE_DEFAULT_COMPANY_POLICY,
+        own_company_id="oc1",
+    )
+    assert d.send is False
+    assert d.send_mode == "manual"
+    assert d.template_ref == "client-rodo"
+    assert d.source_layer == "client"
+    assert d.block_code is None
+
+
+def test_decide_vacancy_cannot_disable_rodo_or_change_mode() -> None:
+    own = {
+        "rodo_send_mode": "auto_on_lead_created",
+        "rodo_template_ref": "firm-rodo",
+    }
+    vacancy = {
+        "gdpr_notice": {
+            "enabled": False,
+            "send_mode": "manual",
+            "template_ref": "vac-rodo",
+        }
+    }
+    d = decide_from_layers(
+        purpose=PURPOSE_GDPR_NOTICE,
+        vacancy_ov=vacancy,
+        own_company=own,
+        tenant=SAFE_DEFAULT_COMPANY_POLICY,
+        own_company_id="oc1",
+    )
+    assert d.send is True
+    assert d.send_mode == "auto_on_lead_created"
+    assert d.template_ref == "vac-rodo"
+    assert d.source_layer == "vacancy"
+    assert d.block_code is None
+
+
+def test_compose_client_does_not_copy_rodo_send_mode() -> None:
+    merged, layer = compose_own_and_client_policy(
+        {"rodo_send_mode": "manual", "rodo_template_ref": "firm"},
+        {"rodo_send_mode": "auto_on_lead_created", "rodo_template_ref": "client"},
+    )
+    assert layer == "client"
+    assert merged["rodo_send_mode"] == "manual"
+    assert merged["rodo_template_ref"] == "client"
+
+
 def test_decide_client_overlay_wins_rodo_template() -> None:
     own = {
         "rodo_send_mode": "manual",

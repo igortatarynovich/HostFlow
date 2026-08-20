@@ -559,18 +559,17 @@ async def process_normalized_lead(
     )
     await db.flush()
 
-    if created_new:
-        from backend.app.services.lead_rodo_auto import apply_lead_rodo_on_ingest
+    from backend.app.services.lead_rodo_auto import apply_lead_rodo_on_ingest
 
-        await apply_lead_rodo_on_ingest(
-            db,
-            tenant_id=tenant_id,
-            lead=lead,
-            source=source,
-            normalized=lead.normalized if isinstance(lead.normalized, dict) else normalized,
-            is_new_lead=True,
-        )
-        await db.flush()
+    await apply_lead_rodo_on_ingest(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        source=source,
+        normalized=lead.normalized if isinstance(lead.normalized, dict) else normalized,
+        is_new_lead=created_new,
+    )
+    await db.flush()
 
     # At this point `lead.own_company_id` is known (from vacancy or OwnCompany fallback),
     # so we can determine the scenario using OwnCompany settings.

@@ -269,6 +269,7 @@ async def put_company_lifecycle_email_policy(
     before = dict(prev_settings.get("lead_lifecycle_email_v1") or {})
     merged = dict(prev_settings)
     new_policy = payload.policy.model_dump(mode="json")
+    new_policy.pop("rodo_send_mode", None)
     merged["lead_lifecycle_email_v1"] = new_policy
     normalized = normalize_company_module_settings_json("recruitment", merged)
     row = await cms_svc.upsert_settings(
@@ -339,6 +340,15 @@ async def put_vacancy_lifecycle_override(
     settings = dict(vac.settings_json or {}) if isinstance(vac.settings_json, dict) else {}
     before = dict(settings.get("lead_lifecycle_email_override_v1") or {})
     after = dict(payload.override or {})
+    gdpr = after.get("gdpr_notice") if isinstance(after.get("gdpr_notice"), dict) else None
+    if gdpr is not None:
+        cleaned = dict(gdpr)
+        cleaned.pop("enabled", None)
+        cleaned.pop("send_mode", None)
+        if cleaned.get("template_ref"):
+            after["gdpr_notice"] = cleaned
+        else:
+            after.pop("gdpr_notice", None)
     settings["lead_lifecycle_email_override_v1"] = after
     vac.settings_json = settings
     await log_audit_event(
