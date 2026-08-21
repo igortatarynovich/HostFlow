@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { WorkspaceCapabilityRenderContext } from '../../workspace-capability/renderContext'
+import type { WorkspaceCapabilityRenderContext } from '../../../workspace-capability/renderContext'
 import {
   consentSubjectKey,
   loadConsent,

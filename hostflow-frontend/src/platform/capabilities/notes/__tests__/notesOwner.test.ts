@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { WorkspaceCapabilityRenderContext } from '../../workspace-capability/renderContext'
+import type { WorkspaceCapabilityRenderContext } from '../../../workspace-capability/renderContext'
 import { addNote, listNotes, notesSubjectKey } from '../notesOwner'
 
 const get = vi.fn()
