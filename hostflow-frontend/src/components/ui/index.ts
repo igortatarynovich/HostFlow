@@ -43,16 +43,23 @@ export {
 export { SortControl, type SortControlDirection, type SortControlProps } from './SortControl'
 export { BulkActionBar, type BulkActionBarProps } from './BulkActionBar'
 export {
+  COLLECTION_ORCHESTRATION_ID,
+  LIST_REPRESENTATION_TABLE,
   ListWorkspace,
   SavedViewChips,
+  listQuerySignature,
+  sortApiField,
+  useListWorkspace,
+  type ListBulkAction,
   type ListColumnDef,
   type ListDefinition,
   type ListFieldKind,
-  type ListWorkspacePagination,
+  type ListFilterDef,
+  type ListQueryState,
+  type ListRepresentationId,
+  type ListSavedViewRecord,
+  type ListWorkspaceController,
   type ListWorkspaceProps,
-  type ListWorkspaceSearch,
-  type ListWorkspaceSelection,
-  type ListWorkspaceSort,
   type SavedViewChipItem,
   type SavedViewChipsProps,
 } from './ListWorkspace'

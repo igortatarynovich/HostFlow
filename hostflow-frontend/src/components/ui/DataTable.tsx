@@ -53,7 +53,7 @@ export type DataTableSortState = {
 
 /**
  * Optional Candidates / TABLE_V1 column-layout controller (resize, reorder).
- * ListWorkspace (K2) will own persistence; DataTable only renders the frame.
+ * ListWorkspace owns query/selection; DataTable only renders the table representation.
  */
 export type DataTableColumnLayout = {
   getColumnWidth: (columnKey: string) => number

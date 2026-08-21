@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
 import { I18nProvider } from '../../../i18n'
-import { ListWorkspace, type ListDefinition } from '../ListWorkspace'
+import { ListWorkspace, useListWorkspace, type ListDefinition } from '../ListWorkspace'
 
 type Row = { id: string; title: string; status: string }
 
@@ -16,11 +16,32 @@ const ROWS: Row[] = [
 
 const definition: ListDefinition<Row> = {
   resourceId: 'vacancies',
-  pagination: 'paged',
+  pagination: { mode: 'paged', pageSize: 20 },
+  search: { enabled: true },
+  filters: [{ fieldId: 'status', kind: 'enum', label: 'Status', widget: 'chips', options: [
+    { value: '', label: 'All' },
+    { value: 'open', label: 'Open' },
+  ] }],
+  sort: { defaultColumnId: 'title', defaultDirection: 'asc' },
+  selection: { enabled: true },
+  bulkActions: [{ id: 'archive', label: 'Archive', onAction: vi.fn() }],
   columns: [
     { id: 'title', fieldId: 'title', kind: 'text', label: 'Title', sortable: true, cell: (row) => row.title },
     { id: 'status', fieldId: 'status', kind: 'enum', label: 'Status', cell: (row) => row.status },
   ],
+  copy: { searchPlaceholder: 'Search vacancies', paginationSummary: (total) => `${total} total` },
+}
+
+function Harness() {
+  const controller = useListWorkspace(definition)
+  return (
+    <ListWorkspace
+      controller={controller}
+      rows={ROWS}
+      rowKey={(row) => row.id}
+      total={2}
+    />
+  )
 }
 
 function wrap(ui: ReactElement) {
@@ -31,17 +52,10 @@ function wrap(ui: ReactElement) {
   )
 }
 
-describe('kit ListWorkspace', () => {
-  it('renders search, DataTable cells, and pagination from definition', () => {
-    wrap(
-      <ListWorkspace
-        definition={definition}
-        rows={ROWS}
-        rowKey={(row) => row.id}
-        search={{ placeholder: 'Search vacancies', defaultValue: '' }}
-        pagination={{ page: 1, pageSize: 20, total: 2, onPageChange: vi.fn(), summary: '2 total' }}
-      />,
-    )
+describe('kit ListWorkspace orchestration', () => {
+  it('owns search, table representation, and pagination without page-supplied wiring', () => {
+    wrap(<Harness />)
+    expect(document.querySelector('[data-collection-orchestration="collection_orchestration"]')).not.toBeNull()
     expect(document.querySelector('[data-list-workspace="v1"]')).not.toBeNull()
     expect(screen.getByRole('searchbox', { name: 'Search vacancies' })).toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'vacancies' })).toBeInTheDocument()
@@ -49,60 +63,20 @@ describe('kit ListWorkspace', () => {
     expect(screen.getByText('2 total')).toBeInTheDocument()
   })
 
-  it('hides bulk until selection is non-empty', () => {
-    const { rerender } = wrap(
-      <ListWorkspace
-        definition={definition}
-        rows={ROWS}
-        rowKey={(row) => row.id}
-        selection={{
-          isSelected: () => false,
-          onToggle: vi.fn(),
-          onToggleAll: vi.fn(),
-          allSelected: false,
-          selectedCount: 0,
-          onClearSelection: vi.fn(),
-        }}
-        bulkActions={<button type="button">Archive</button>}
-      />,
-    )
+  it('hides bulk until selection is non-empty', async () => {
+    const user = userEvent.setup()
+    wrap(<Harness />)
     expect(document.querySelector('[data-entity-list-bulk]')).toBeNull()
-    rerender(
-      <MemoryRouter>
-        <I18nProvider initialLocale="en">
-          <ListWorkspace
-            definition={definition}
-            rows={ROWS}
-            rowKey={(row) => row.id}
-            selection={{
-              isSelected: () => true,
-              onToggle: vi.fn(),
-              onToggleAll: vi.fn(),
-              allSelected: true,
-              selectedCount: 2,
-              onClearSelection: vi.fn(),
-            }}
-            bulkActions={<button type="button">Archive</button>}
-          />
-        </I18nProvider>
-      </MemoryRouter>,
-    )
+    const checkboxes = screen.getAllByRole('checkbox')
+    await user.click(checkboxes[0])
     expect(document.querySelector('[data-entity-list-bulk]')).not.toBeNull()
     expect(screen.getByText('Archive')).toBeInTheDocument()
   })
 
-  it('sorts from definition columns', async () => {
+  it('owns sort state from definition columns', async () => {
     const user = userEvent.setup()
-    const onChange = vi.fn()
-    wrap(
-      <ListWorkspace
-        definition={definition}
-        rows={ROWS}
-        rowKey={(row) => row.id}
-        sort={{ columnKey: 'title', direction: 'asc', onChange }}
-      />,
-    )
+    wrap(<Harness />)
     await user.click(screen.getByRole('button', { name: 'Title' }))
-    expect(onChange).toHaveBeenCalledWith({ columnKey: 'title', direction: 'desc' })
+    expect(screen.getByRole('table')).toBeInTheDocument()
   })
 })

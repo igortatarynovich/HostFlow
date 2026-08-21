@@ -129,8 +129,9 @@ After the public `ListWorkspace` / `DataTable` API exists: no new operational `<
 ## Consequences
 
 - Positive: one place to improve sort, filters, column resize, sticky header, saved views, export; Fleet / Finance lists look like Recruitment lists; modules shrink to definition + domain cells.
-- Negative: until P1–P2 extract, parallel tables remain legal under migrate-on-touch; Candidates page stays large until wrap.
-- Follow-on: runtime extract → ADR-045 workspace templates.
+- Negative: until remaining lists migrate-on-touch, parallel tables remain legal; Candidates page stays large until wrap.
+- Follow-on: ADR-045 workspace templates.
+- **2026-08-21 runtime:** `collection_orchestration` — `useListWorkspace` owns query/filter/sort/pagination/selection/saved-view/URL; `DataTable` is a representation renderer. Vacancies is the orchestration proof. K2 chrome-only was not sufficient.
 
 ---
 

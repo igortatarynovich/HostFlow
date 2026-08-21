@@ -57,6 +57,7 @@ Zones of the same pattern (not a second ADR): Search + Filters + Sort + Paginati
 
 - [x] **K1** — public `DataTable` (`components/ui/DataTable` + `SortControl`). `layout/DataTable` re-exports; `DataTableEngine` adapts onto the kit. Existing list pages are not rewritten; Vacancies cutover is K2.
 - [x] **K2** — `ListWorkspace` around it (search, filters, sort, pagination, bulk/action bar, saved views, view switcher). First cutover: Vacancies.
+- [x] **K2.1** — **ListWorkspace Orchestration Completion** (2026-08-21). Canonical `ListDefinition`, platform-owned query/filter/sort/pagination/selection/saved-view/URL, representation registry. Kit-layer id `collection_orchestration`. Proof: Vacancies collapsed to definition + domain cells/actions/fetch — the page does not own list wiring. `DataTable` is not a legal top-level import for a new primary collection screen.
 
 Collapse: `EntityListShell` + Candidates table behavior + `layout/DataTable` + `platform/data-table`. New operational `<table>` in `pages/` / `modules/` is forbidden once the public API exists.
 
@@ -100,6 +101,8 @@ ADR-019 **3A-1** Event Contract when a real consumer (Stage 3 / automation) need
 ## Completion bar (kit sprint is finite)
 
 The sprint is **done** when a new module can assemble a screen **without** writing its own list, workspace chrome, analytics, layout shell, action bar, or filters — only kit APIs + module `ListDefinition` / domain cells / metrics.
+
+**Orchestration proof (K2.1):** a collection screen uses `useListWorkspace` and does not locally wire search/filter/sort/pagination/selection/saved views. Vacancies is that proof. Chrome-only `ListWorkspace.tsx` is not sufficient.
 
 Hard rules: [`../architecture/platform-extraction-phase.md`](../architecture/platform-extraction-phase.md) (Kit Gate, two-consumer extract, no second Vocabulary Canon, no local UI when the kit has it).
 

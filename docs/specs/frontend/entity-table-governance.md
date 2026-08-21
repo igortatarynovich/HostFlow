@@ -67,7 +67,7 @@ Shell **не** должен превращаться в monster component чер
 | **Composition** | `EntityListShell` = layout frame; дети/слоты заполняют зоны |
 | **Named slots / zones** | `header`, `toolbar`, `activeFilters`, `table`, `pagination`, `bulkBar` — ADR-010 §2 |
 | **Render props** | `renderToolbar`, `renderBulkActions`, `renderEmpty` — domain передаёт контент, не флаги |
-| **Controlled state** | `selection`, `sort`, `filters`, `pagination` — state в list page / hook; shell отображает |
+| **Controlled state** | `selection`, `sort`, `filters`, `pagination` — **platform-owned** in `useListWorkspace`; the collection screen does not wire these locally |
 | **`ListDefinition`** | Колонки, field kinds, row actions — data/config, не props shell |
 
 **Правило ревью:** если PR добавляет boolean prop на shell — отклонять, предложить slot или render prop.

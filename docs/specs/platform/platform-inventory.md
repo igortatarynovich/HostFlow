@@ -46,11 +46,21 @@ Later: “Module X requires Platform Baseline v1” or “this feature requires 
 
 ---
 
+## Capability layers
+
+These are **platform capabilities**, not widgets. Do not flatten Collection Workspace → DataTable.
+
+| ID | Status | Implementation | Notes |
+|----|--------|----------------|-------|
+| `collection_orchestration` | exists | `ListWorkspace` + `useListWorkspace` | Owns query, filter model, sort, pagination, selection, bulk binding, saved-view runtime, URL sync, representation dispatch. Constitution Collection Workspace consumes this. Proof: Vacancies |
+
+---
+
 ## Workspace
 
 | ID | Status | Legal import / slot | Notes |
 |----|--------|---------------------|-------|
-| `ListWorkspace` | exists | `components/ui` | Search, filters slot, sort, pagination, bulk, saved views, view switcher. Hosts one `DataTable`. Vacancies = first cutover |
+| `ListWorkspace` | exists | `components/ui` | Implementation of `collection_orchestration`. Vacancies = orchestration proof. Candidates page not wrapped |
 | `EntityWorkspace` | exists | `components/ui` | Header, optional action bar, summary, nav, content, rail. Timeline = **content slot** |
 | `EntityWorkspaceHeader` / `Summary` / `Rail` | exists | `components/ui` | Helpers for **new** chrome. Candidate header stays module-owned |
 | `EntityWorkspaceShell` | adapter | `platform/entity-workspace` | Passport adapter **onto** kit chrome — not a second shell |
@@ -66,7 +76,7 @@ Later: “Module X requires Platform Baseline v1” or “this feature requires 
 
 | ID | Status | Legal import | Notes |
 |----|--------|--------------|-------|
-| `DataTable` | exists | `components/ui` | One operational table API |
+| `DataTable` | exists | `components/ui` | Table **representation** renderer (TABLE_V1). **Not** a legal top-level import for a primary collection screen — compose `ListWorkspace`. Migrate-on-touch pages may still import it until cutover |
 | `SortControl` | exists | `components/ui` | TABLE_V1 / Candidates header pixels |
 | `TableHeader` | wrap | inside `DataTable` | Do not fork |
 | `Pagination` | exists | `components/ui` | ListWorkspace `paged` \| `infinite` |
@@ -134,8 +144,8 @@ Remaining efficiency dashboards = migrate-on-touch.
 | `Input` / `Textarea` | exists | `components/ui` | Wrappers over `.input` / `.textarea` |
 | `FormField` | exists | `components/ui` | Label + hint + error |
 | `Combobox` / `MultiCombobox` | exists | `components/ui` | SELECT_V1 tree |
-| List filters | slot | `ListWorkspace` `filters` | Module owns filter widgets; kit owns the zone |
-| `FilterBar` | gap | — | Canon ID; do not ship a fourth filter chrome |
+| List filters | slot | `ListWorkspace` filter model | Platform owns the zone and state; module declares `filters[]` on `ListDefinition` |
+| `FilterBar` | slot | ListWorkspace toolbar | Not a gap and not a separate widget — filters are a `collection_orchestration` zone |
 | `FacetFilter` | wrap | `FacetFilterMenu` | ListWorkspace |
 | `DateField` | wrap | native `input type=date` | Until DateField ships |
 
@@ -161,11 +171,11 @@ Remaining efficiency dashboards = migrate-on-touch.
 
 ## Adoption checklist (new product screen)
 
-- [ ] Operational list → `ListWorkspace` + `DataTable` (not a handwritten `<table>`, not `DataTableEngine`)
+- [ ] Operational list → `collection_orchestration` / `ListWorkspace` (not a handwritten `<table>`, not `DataTableEngine`, not a top-level `DataTable` on a primary collection screen)
 - [ ] Entity chrome → `EntityWorkspace` (not a fifth card shell)
 - [ ] Analytics → `components/analytics` (not a local KPI/chart)
 - [ ] Bulk / row actions → `BulkActionBar` or entity `actionBar` slot + `Button`
-- [ ] Search / filters → kit search + ListWorkspace filter slot / `AnalyticsFilterBar`
+- [ ] Search / filters / sort / pagination / selection / saved views → `useListWorkspace` (do not wire these locally on a new collection screen) / `AnalyticsFilterBar` for analytics
 - [ ] Empty → `EmptyState` or `AnalyticsEmptyState`
 - [ ] No promotion of Candidate/HR/Vacancy/Recruitment Workspace into the kit
 
@@ -177,4 +187,5 @@ This checklist is the intended seed for a later AST / ratchet scanner (KG-C3).
 
 ## History
 
+- 2026-08-21: `collection_orchestration` kit-layer id; `DataTable` is a representation, not a collection screen; FilterBar is a ListWorkspace zone.
 - 2026-08-13: Opened after Kit Gate. Index of Baseline v1 + full kit; contracts stay in existing canons.

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
-import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, pl as plFns, ru as ruFns } from 'date-fns/locale'
 import { useAuth } from '../../store/useAuth'
@@ -18,14 +18,16 @@ import { PageHeader } from '../nav/PageHeader'
 import { PageShell, PageShellHeader } from '../layout'
 import {
   Button,
-  Chip,
   EmptyState,
-  Input,
   ListWorkspace,
-  SavedViewChips,
   StatusBadge,
+  listQuerySignature,
+  sortApiField,
+  useListWorkspace,
   type ListColumnDef,
   type ListDefinition,
+  type ListQueryState,
+  type ListSavedViewRecord,
   type StatusBadgeSemantic,
 } from '../ui'
 import { ContextHelp } from '../help/ContextHelp'
@@ -199,8 +201,41 @@ function toCSV(rows: any[], headers: { key: string; label: string }[]) {
   return head + '\n' + body
 }
 
+function snapshotToSavedView(view: ListSavedViewRecord): UserSavedView {
+  return {
+    id: view.id,
+    name: view.name,
+    filters: view.query,
+    is_default: view.isDefault,
+  }
+}
+
+function savedViewToRecord(view: UserSavedView): ListSavedViewRecord {
+  const query: Record<string, string> = {}
+  for (const [key, value] of Object.entries(view.filters ?? {})) {
+    if (value === undefined || value === null || value === '') continue
+    query[key] = String(value)
+  }
+  return { id: view.id, name: view.name || '', isDefault: view.is_default, query }
+}
+
+function vacancyApiParams(query: ListQueryState, definition: ListDefinition<Vacancy>) {
+  const status = query.filters.status || ''
+  const company = query.filters.company || ''
+  const params: Record<string, string | number> = {
+    limit: query.pageSize,
+    offset: (query.page - 1) * query.pageSize,
+    order_by: sortApiField(definition, query.sortColumnId),
+    desc: query.sortDirection === 'desc' ? 1 : 0,
+  }
+  if (query.q) params.q = query.q
+  if (status) params.status = status
+  if (company) params.company_id = company
+  if (status.toLowerCase() === 'archived') params.include_archived = 1
+  return params
+}
+
 export default function VacancyList() {
-  const [search, setSearch] = useSearchParams()
   const navigate = useNavigate()
   const { me, preferences, updatePreferences } = useAuth()
   const currentTenantId = useCurrentTenantId()
@@ -213,24 +248,16 @@ export default function VacancyList() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
-  const [selected, setSelected] = useState<string[]>([])
-  const statusOptions = useMemo(
-    () => [
-      { value: '', label: t('app.vacancies.list.status.all') },
-      { value: 'open', label: t('app.vacancies.list.status.open') },
-      { value: 'on_hold', label: t('app.vacancies.list.status.on_hold') },
-      { value: 'closed', label: t('app.vacancies.list.status.closed') },
-      // Phase 2.6.D Stage C — surface the new canonical terminals
-      // alongside `closed`. `archived` stays at the bottom because
-      // it's an orthogonal boolean (soft-delete) rather than a
-      // status, and is rendered last to match the badge ordering
-      // operators are used to.
-      { value: 'filled', label: t('app.vacancies.list.status.filled') },
-      { value: 'cancelled', label: t('app.vacancies.list.status.cancelled') },
-      { value: 'archived', label: t('app.vacancies.list.status.archived') },
-    ],
-    [t]
+
+  const views = useMemo(
+    () => (preferences?.saved_views?.vacancies ?? []).map(savedViewToRecord),
+    [preferences?.saved_views?.vacancies],
   )
+  const candidateViews = useMemo(
+    () => preferences?.saved_views?.candidates ?? [],
+    [preferences?.saved_views?.candidates],
+  )
+
   const statusLabelMap = useMemo(
     () => ({
       open: t('app.vacancies.list.status.open'),
@@ -240,114 +267,337 @@ export default function VacancyList() {
       cancelled: t('app.vacancies.list.status.cancelled'),
       archived: t('app.vacancies.list.status.archived'),
     }),
-    [t]
+    [t],
   )
   const statusLabel = useCallback(
     (value?: string, archived?: boolean) => {
       const key = archived ? 'archived' : (value || '')
       return statusLabelMap[key as keyof typeof statusLabelMap] || t('common.labels.not_available')
     },
-    [statusLabelMap, t]
+    [statusLabelMap, t],
   )
 
-  // Search hotkey (Cmd/Ctrl + K)
-  const searchRef = useRef<HTMLInputElement>(null)
-  const actionsMenuRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        if (searchRef.current) {
-          searchRef.current.focus()
-          searchRef.current.select()
-        }
+  const formatLastCandidateActivity = useCallback(
+    (iso: string | null | undefined) => {
+      if (!iso) return '—'
+      try {
+        return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: dateFnsLocale })
+      } catch {
+        return '—'
       }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+    },
+    [dateFnsLocale],
+  )
 
-  // columns visibility
-  const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
-  const [visibleCols, setVisibleCols] = useState<{
-    title: boolean
-    company: boolean
-    status: boolean
-    updated: boolean
-    candidates: boolean
-    headcount: boolean
-    profile: boolean
-    lastActivity: boolean
-  }>({
-    title: true,
-    company: true,
-    status: true,
-    updated: true,
-    candidates: true,
-    headcount: true,
-    profile: false,
-    lastActivity: true,
-  })
+  const syncVacancyViews = useCallback(
+    async (next: UserSavedView[]) => {
+      try {
+        const result = await patchUserMe({
+          preferences: {
+            saved_views: {
+              candidates: candidateViews,
+              vacancies: next,
+            },
+          },
+        })
+        updatePreferences(result.preferences)
+      } catch (err) {
+        console.warn('[Vacancies] failed to persist saved views', err)
+      }
+    },
+    [candidateViews, updatePreferences],
+  )
 
-  const allSelected = useMemo(()=> selected.length > 0 && selected.length === (data.items?.length || 0), [selected, data.items])
+  const refresh = () => setRefreshTick((tick) => tick + 1)
 
-  // Saved views (global preferences)
-  const views = useMemo(() => preferences?.saved_views?.vacancies ?? [], [preferences?.saved_views?.vacancies])
-  const defaultVacancyViewApplied = useRef<string | null>(null)
-  const candidateViews = useMemo(() => preferences?.saved_views?.candidates ?? [], [preferences?.saved_views?.candidates])
+  const bulkSetStatus = useCallback(
+    async (ids: string[], status: 'open' | 'on_hold' | 'closed' | 'filled' | 'cancelled') => {
+      if (ids.length === 0) return
+      setData((prev) => ({
+        ...prev,
+        items: (prev.items || []).map((row) => (ids.includes(row.id) ? { ...row, status, is_archived: false } : row)),
+      }))
+      try {
+        await Promise.allSettled(
+          ids.map((id) => {
+            const row = (data.items || []).find((item) => item.id === id)
+            const tenantForRow = String((row as { tenant_id?: string } | undefined)?.tenant_id || '').trim() || effectiveTenantId
+            return patchJSON(`/vacancies/${id}`, { status }, tenantForRow)
+          }),
+        )
+      } catch {
+        /* refresh below */
+      }
+      refresh()
+    },
+    [data.items, effectiveTenantId],
+  )
 
-  // URL state
-  const q = search.get('q') || ''
-  const status = search.get('status') || ''
-  const company = search.get('company') || ''
-  const page = parseInt(search.get('page') || '1', 10)
-  const sort = (search.get('sort') || 'created_at')
-  const dir = ((search.get('dir') || 'desc') === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc'
+  const bulkArchive = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return
+      setData((prev) => ({
+        ...prev,
+        items: (prev.items || []).map((row) => (ids.includes(row.id) ? { ...row, is_archived: true } : row)),
+      }))
+      try {
+        await Promise.allSettled(
+          ids.map((id) => {
+            const row = (data.items || []).find((item) => item.id === id)
+            const tenantForRow = String((row as { tenant_id?: string } | undefined)?.tenant_id || '').trim() || effectiveTenantId
+            return patchJSON(`/vacancies/${id}`, { is_archived: true }, tenantForRow)
+          }),
+        )
+      } catch {
+        /* refresh below */
+      }
+      refresh()
+    },
+    [data.items, effectiveTenantId],
+  )
 
-  const limit = 20
-  const offset = (page - 1) * limit
+  const stop = (event: React.MouseEvent) => event.stopPropagation()
 
-  const params = useMemo(() => {
-    const p: Record<string, string | number> = { limit, offset, order_by: sort, desc: dir === 'desc' ? 1 : 0 }
-    if (q) p.q = q
-    if (status) p.status = status
-    if (company) p.company_id = company
-    if ((status || '').toLowerCase() === 'archived') {
-      p.include_archived = 1
-    }
-    return p
-  }, [q, status, company, sort, dir, limit, offset])
+  const vacancyColumns: ListColumnDef<Vacancy>[] = useMemo(
+    () => [
+      {
+        id: 'title',
+        fieldId: 'title',
+        kind: 'text',
+        label: t('app.vacancies.list.col_title'),
+        sortable: true,
+        cellClassName: 'font-medium',
+        cell: (row) => (
+          <Link className="text-brand-700 hover:underline" to={`${CRM_APP_PATHS.vacancies}/${row.id}`} onClick={stop}>
+            {row.title || t('app.vacancies.list.untitled')}
+          </Link>
+        ),
+      },
+      {
+        id: 'company',
+        fieldId: 'company_id',
+        kind: 'ref',
+        sortField: 'company_name',
+        label: t('app.vacancies.list.col_company'),
+        sortable: true,
+        cell: (row) => row.company_name || '—',
+      },
+      {
+        id: 'status',
+        fieldId: 'status',
+        kind: 'enum',
+        label: t('app.vacancies.list.col_status'),
+        sortable: true,
+        cell: (row) => (
+          <StatusBadge
+            label={statusLabel(row.status, row.is_archived)}
+            semantic={vacancyStatusSemantic(row.status, row.is_archived)}
+          />
+        ),
+      },
+      {
+        id: 'candidates',
+        fieldId: 'candidate_count',
+        kind: 'number',
+        label: t('app.vacancies.list.col_candidates'),
+        sortable: true,
+        defaultSortDirection: 'desc',
+        align: 'right',
+        tabularNums: true,
+        cell: (row) => (
+          <Link
+            className="font-medium text-brand-700 hover:underline"
+            to={`${CRM_APP_PATHS.vacancies}/${row.id}/candidates`}
+            onClick={stop}
+          >
+            {row.candidate_count ?? 0}
+          </Link>
+        ),
+      },
+      {
+        id: 'headcount',
+        fieldId: 'headcount_target',
+        kind: 'number',
+        label: t('app.vacancies.list.col_headcount'),
+        sortable: true,
+        defaultSortDirection: 'desc',
+        align: 'right',
+        tabularNums: true,
+        cellClassName: 'text-slate-700',
+        cell: (row) =>
+          row.headcount_target != null && row.headcount_target > 0 ? (
+            <span title={t('app.vacancies.list.headcount_title')}>
+              {row.candidate_count ?? 0}/{row.headcount_target}
+            </span>
+          ) : (
+            '—'
+          ),
+      },
+      {
+        id: 'profile',
+        fieldId: 'candidate_profile_name',
+        kind: 'text',
+        label: t('app.vacancies.list.col_profile'),
+        sortable: true,
+        defaultHidden: true,
+        cellClassName: 'text-slate-600',
+        cell: (row) => row.candidate_profile_name || '—',
+      },
+      {
+        id: 'lastActivity',
+        fieldId: 'last_candidate_activity_at',
+        kind: 'datetime',
+        label: t('app.vacancies.list.col_last_activity'),
+        sortable: true,
+        defaultSortDirection: 'desc',
+        cellClassName: 'text-slate-600',
+        cell: (row) => formatLastCandidateActivity(row.last_candidate_activity_at),
+      },
+      {
+        id: 'updated',
+        fieldId: 'updated_at',
+        kind: 'datetime',
+        sortField: 'updated_at',
+        label: t('app.vacancies.list.col_updated'),
+        sortable: true,
+        defaultSortDirection: 'desc',
+        cell: (row) =>
+          row.updated_at
+            ? new Date(row.updated_at).toLocaleDateString()
+            : row.created_at
+              ? new Date(row.created_at).toLocaleDateString()
+              : '—',
+      },
+    ],
+    [formatLastCandidateActivity, statusLabel, t],
+  )
+
+  const persistViews = useCallback(
+    async (_view: ListSavedViewRecord | string, next: ListSavedViewRecord[]) => {
+      await syncVacancyViews(next.map(snapshotToSavedView))
+    },
+    [syncVacancyViews],
+  )
+
+  const definition: ListDefinition<Vacancy> = useMemo(
+    () => ({
+      resourceId: 'vacancies',
+      density: 'comfortable',
+      pagination: { mode: 'paged', pageSize: 20 },
+      search: { enabled: true, debounceMs: 300 },
+      filters: [
+        {
+          fieldId: 'company',
+          kind: 'ref',
+          label: t('app.vacancies.list.col_company'),
+          urlKey: 'company',
+          queryKey: 'company_id',
+          widget: 'text',
+          placeholder: t('app.vacancies.list.company_placeholder'),
+        },
+        {
+          fieldId: 'status',
+          kind: 'enum',
+          label: t('app.vacancies.list.col_status'),
+          widget: 'chips',
+          options: [
+            { value: '', label: t('app.vacancies.list.status.all') },
+            { value: 'open', label: t('app.vacancies.list.status.open') },
+            { value: 'on_hold', label: t('app.vacancies.list.status.on_hold') },
+            { value: 'closed', label: t('app.vacancies.list.status.closed') },
+            { value: 'filled', label: t('app.vacancies.list.status.filled') },
+            { value: 'cancelled', label: t('app.vacancies.list.status.cancelled') },
+            { value: 'archived', label: t('app.vacancies.list.status.archived') },
+          ],
+        },
+      ],
+      sort: { defaultColumnId: 'updated', defaultDirection: 'desc' },
+      selection: { enabled: true },
+      columns: vacancyColumns,
+      bulkActions: [
+        {
+          id: 'status-open',
+          label: t('app.vacancies.list.status.open'),
+          groupId: 'status',
+          groupLabel: t('app.vacancies.list.bulk_set_status'),
+          onAction: (ids) => void bulkSetStatus(ids, 'open'),
+        },
+        {
+          id: 'status-on-hold',
+          label: t('app.vacancies.list.status.on_hold'),
+          groupId: 'status',
+          groupLabel: t('app.vacancies.list.bulk_set_status'),
+          onAction: (ids) => void bulkSetStatus(ids, 'on_hold'),
+        },
+        {
+          id: 'status-closed',
+          label: t('app.vacancies.list.status.closed'),
+          groupId: 'status',
+          groupLabel: t('app.vacancies.list.bulk_set_status'),
+          onAction: (ids) => void bulkSetStatus(ids, 'closed'),
+        },
+        {
+          id: 'archive',
+          label: t('app.vacancies.list.bulk_archive'),
+          onAction: (ids) => void bulkArchive(ids),
+        },
+      ],
+      savedViews: {
+        enabled: true,
+        views,
+        onSave: persistViews,
+        onRemove: persistViews,
+      },
+      representations: ['table'],
+      defaultRepresentation: 'table',
+      copy: {
+        searchPlaceholder: t('app.vacancies.list.search_placeholder'),
+        resetLabel: t('common.actions.reset'),
+        saveViewLabel: t('app.vacancies.list.save_view'),
+        saveViewPrompt: t('app.vacancies.list.view_name_prompt'),
+        columnsLabel: t('app.vacancies.list.columns'),
+        untitledViewLabel: t('app.vacancies.list.untitled'),
+        removeViewLabel: t('app.vacancies.list.delete_view'),
+        bulkSelectedLabel: (count) => t('app.vacancies.list.bulk_selected', { values: { count } }),
+        bulkClearLabel: t('app.vacancies.list.bulk_clear_selection'),
+        previousPageLabel: '←',
+        nextPageLabel: NEXT_PAGE_GLYPH,
+        pageLabel: (page, totalPages) => t('app.vacancies.list.page', { values: { page, total: totalPages } }),
+        paginationSummary: (total) => t('app.vacancies.list.total', { values: { total } }),
+      },
+    }),
+    [bulkArchive, bulkSetStatus, persistViews, t, vacancyColumns, views],
+  )
+
+  const role = String(me?.role || '').trim().toLowerCase()
+  const initialFilters = useMemo(() => {
+    if (role === 'superadmin') return undefined
+    const companyId = preferences?.defaults?.company_id
+    return companyId ? { company: companyId } : undefined
+  }, [preferences?.defaults?.company_id, role])
+
+  const list = useListWorkspace(definition, { initialFilters })
+
+  const querySignature = listQuerySignature(list.query)
 
   useEffect(() => {
-    const role = String(me?.role || '').trim().toLowerCase()
-    if (role === 'superadmin') return
-    const defaultCompanyId = preferences?.defaults?.company_id
-    if (defaultCompanyId && !company) {
-      const next = new URLSearchParams(search)
-      next.set('company', defaultCompanyId)
-      next.set('page', '1')
-      setSearch(next, { replace: true })
-    }
-  }, [me?.role, preferences?.defaults?.company_id, company, search, setSearch])
-
-  // load
-  useEffect(() => {
+    const params = vacancyApiParams(list.query, definition)
     setLoading(true)
     setError(null)
     getJSON<ListResponse | Vacancy[]>('/vacancies/', params, effectiveTenantId)
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setData({ items: data, total: data.length, limit, offset })
+      .then((payload) => {
+        if (Array.isArray(payload)) {
+          setData({ items: payload, total: payload.length, limit: list.query.pageSize, offset: params.offset as number })
         } else {
           setData({
-            items: (data as ListResponse).items ?? (data as any).results ?? [],
-            total: (data as ListResponse).total ?? (data as any).count ?? 0,
-            limit: (data as ListResponse).limit ?? limit,
-            offset: (data as ListResponse).offset ?? offset,
+            items: payload.items ?? [],
+            total: payload.total ?? 0,
+            limit: payload.limit ?? list.query.pageSize,
+            offset: payload.offset ?? (params.offset as number),
           })
         }
       })
-      .catch((err: any) => {
+      .catch((err: { message?: string }) => {
         console.error('[vacancies/list] failed', err)
         const unauthorized =
           err?.message === 'HTTP 401' || /Unauthorized|Missing Authorization/i.test(err?.message || '')
@@ -356,9 +606,7 @@ export default function VacancyList() {
             title: t('app.vacancies.list.errors.unauthorized'),
             hint: t('app.common.retry_hint'),
           })
-        } else if (
-          planLimitModal?.showPlanLimitIfNeeded(err, t('app.vacancies.list.errors.load_failed'))
-        ) {
+        } else if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.vacancies.list.errors.load_failed'))) {
           setError(null)
         } else {
           setError(getFriendlyErrorInfo(err, t('app.vacancies.list.errors.load_failed'), t))
@@ -366,65 +614,34 @@ export default function VacancyList() {
       })
       .finally(() => {
         setLoading(false)
-        setSelected([])
       })
-  }, [params, refreshTick, planLimitModal, t, effectiveTenantId])
+    // Fetch follows platform query signature, not definition object identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveTenantId, planLimitModal, querySignature, refreshTick, t])
 
-
-  // client-side сортировка (fallback)
   const items = useMemo(() => {
-    const arr = [...(data.items || [])]
-    const get = (v: Vacancy, key: string) => {
-      if (key === 'title') return (v.title || '').toLowerCase()
-      if (key === 'company_name') return (v.company_name || '').toLowerCase()
-      if (key === 'status') return (v.is_archived ? 'archived' : (v.status || ''))
-      if (key === 'updated_at' || key === 'created_at') return v[key as 'updated_at' | 'created_at'] || ''
-      if (key === 'candidate_count') return Number(v.candidate_count ?? 0)
-      if (key === 'headcount_target') return Number(v.headcount_target ?? 0)
-      if (key === 'last_candidate_activity_at') return v.last_candidate_activity_at || ''
-      if (key === 'candidate_profile_name') return (v.candidate_profile_name || '').toLowerCase()
-      return (v as any)[key] ?? ''
+    const rows = [...(data.items || [])]
+    const sortKey = sortApiField(definition, list.query.sortColumnId)
+    const get = (row: Vacancy, key: string) => {
+      if (key === 'title') return (row.title || '').toLowerCase()
+      if (key === 'company_name') return (row.company_name || '').toLowerCase()
+      if (key === 'status') return row.is_archived ? 'archived' : (row.status || '')
+      if (key === 'updated_at' || key === 'created_at') return row[key] || ''
+      if (key === 'candidate_count') return Number(row.candidate_count ?? 0)
+      if (key === 'headcount_target') return Number(row.headcount_target ?? 0)
+      if (key === 'last_candidate_activity_at') return row.last_candidate_activity_at || ''
+      if (key === 'candidate_profile_name') return (row.candidate_profile_name || '').toLowerCase()
+      return (row as Record<string, unknown>)[key] ?? ''
     }
-    arr.sort((a,b) => {
-      const av = get(a, sort)
-      const bv = get(b, sort)
-      if (av === bv) return 0
-      if (typeof av === 'number' && typeof bv === 'number') {
-        return av === bv ? 0 : (av > bv ? 1 : -1) * (dir === 'asc' ? 1 : -1)
-      }
-      return (String(av) > String(bv) ? 1 : -1) * (dir === 'asc' ? 1 : -1)
+    rows.sort((left, right) => {
+      const av = get(left, sortKey)
+      const bv = get(right, sortKey)
+      if (av < bv) return list.query.sortDirection === 'asc' ? -1 : 1
+      if (av > bv) return list.query.sortDirection === 'asc' ? 1 : -1
+      return 0
     })
-    return arr
-  }, [data.items, sort, dir])
-
-  // actions
-  const onSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const form = e.currentTarget as HTMLFormElement
-    const formData = new FormData(form)
-    const next = new URLSearchParams(search)
-    next.set('q', String(formData.get('q') || ''))
-    next.set('company', String(formData.get('company') || ''))
-    next.set('page', '1')
-    setSearch(next, { replace: true })
-  }
-
-  const goPage = (n: number) => {
-    const next = new URLSearchParams(search)
-    next.set('page', String(n))
-    setSearch(next, { replace: true })
-  }
-
-  const refresh = () => setRefreshTick(t => t + 1)
-
-  const resetFilters = () => {
-    const next = new URLSearchParams(search)
-    next.set('q', '')
-    next.set('company', '')
-    next.set('status', '')
-    next.set('page', '1')
-    setSearch(next, { replace: true })
-  }
+    return rows
+  }, [data.items, definition, list.query.sortColumnId, list.query.sortDirection])
 
   const exportCSV = () => {
     const headers = [
@@ -438,19 +655,19 @@ export default function VacancyList() {
       { key: 'updated_at', label: t('app.vacancies.list.col_updated') },
       { key: 'created_at', label: t('app.vacancies.list.col_created') },
     ]
-    const rows = items.map(v => ({
-      title: v.title || t('app.vacancies.list.untitled'),
-      company_name: v.company_name || '',
-      status: statusLabel(v.status, v.is_archived),
-      candidate_count: String(v.candidate_count ?? 0),
+    const rows = items.map((row) => ({
+      title: row.title || t('app.vacancies.list.untitled'),
+      company_name: row.company_name || '',
+      status: statusLabel(row.status, row.is_archived),
+      candidate_count: String(row.candidate_count ?? 0),
       headcount_target:
-        v.headcount_target != null && v.headcount_target > 0 ? String(v.headcount_target) : '',
-      candidate_profile_name: v.candidate_profile_name || '',
-      last_candidate_activity_at: v.last_candidate_activity_at
-        ? new Date(v.last_candidate_activity_at).toLocaleString()
+        row.headcount_target != null && row.headcount_target > 0 ? String(row.headcount_target) : '',
+      candidate_profile_name: row.candidate_profile_name || '',
+      last_candidate_activity_at: row.last_candidate_activity_at
+        ? new Date(row.last_candidate_activity_at).toLocaleString()
         : '',
-      updated_at: v.updated_at ? new Date(v.updated_at).toLocaleString() : '',
-      created_at: v.created_at ? new Date(v.created_at).toLocaleString() : '',
+      updated_at: row.updated_at ? new Date(row.updated_at).toLocaleString() : '',
+      created_at: row.created_at ? new Date(row.created_at).toLocaleString() : '',
     }))
     const csv = toCSV(rows, headers)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -460,267 +677,6 @@ export default function VacancyList() {
     a.download = 'vacancies.csv'
     a.click()
     URL.revokeObjectURL(url)
-  }
-
-  const bulkSetStatus = async (status: 'open'|'on_hold'|'closed'|'filled'|'cancelled') => {
-    if (selected.length === 0) return
-    // optimistic UI
-    setData(prev => ({...prev, items: (prev.items || []).map(v => selected.includes(v.id) ? {...v, status, is_archived: false} : v)}))
-    try{
-      await Promise.allSettled(
-        selected.map((id) => {
-          const row = (data.items || []).find((v) => v.id === id)
-          const tenantForRow = String((row as any)?.tenant_id || '').trim() || effectiveTenantId
-          return patchJSON(`/vacancies/${id}`, { status }, tenantForRow)
-        }),
-      )
-    } catch (_){}
-    setSelected([])
-    refresh()
-  }
-
-  const bulkArchive = async () => {
-    if (selected.length === 0) return
-    setData(prev => ({...prev, items: (prev.items || []).map(v => selected.includes(v.id) ? {...v, is_archived: true} : v)}))
-    try{
-      await Promise.allSettled(
-        selected.map((id) => {
-          const row = (data.items || []).find((v) => v.id === id)
-          const tenantForRow = String((row as any)?.tenant_id || '').trim() || effectiveTenantId
-          return patchJSON(`/vacancies/${id}`, { is_archived: true }, tenantForRow)
-        }),
-      )
-    } catch(_){}
-    setSelected([])
-    refresh()
-  }
-
-  const toggleCol = (k: keyof typeof visibleCols) => setVisibleCols((s) => ({ ...s, [k]: !s[k] }))
-
-  const syncVacancyViews = useCallback(async (next: UserSavedView[]) => {
-    try {
-      const result = await patchUserMe({
-        preferences: {
-          saved_views: {
-            candidates: candidateViews,
-            vacancies: next,
-          },
-        },
-      })
-      updatePreferences(result.preferences)
-    } catch (err) {
-      console.warn('[Vacancies] failed to persist saved views', err)
-    }
-  }, [candidateViews, updatePreferences])
-
-  const saveView = () => {
-    const name = window.prompt(t('app.vacancies.list.view_name_prompt'))?.trim()
-    if (!name) return
-    const filters = { q, company, status, sort, dir }
-    const newView: UserSavedView = {
-      id: (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : String(Date.now()),
-      name,
-      filters,
-    }
-    const next = [...views.filter((v) => v.name !== name), newView]
-    void syncVacancyViews(next)
-  }
-
-  const applyView = (view: UserSavedView) => {
-    const next = new URLSearchParams(search)
-    Object.entries(view.filters ?? {}).forEach(([key, value]) => {
-      if (value === undefined || value === null) {
-        next.delete(key)
-      } else {
-        next.set(key, String(value))
-      }
-    })
-    next.set('page', '1')
-    setSearch(next, { replace: true })
-  }
-
-  useEffect(() => {
-    const defaultView = views.find((view) => view.is_default)
-    if (defaultView && defaultVacancyViewApplied.current !== defaultView.id) {
-      applyView(defaultView)
-      defaultVacancyViewApplied.current = defaultView.id
-    }
-  }, [views])
-
-  useEffect(() => {
-    if (!actionsMenuOpen) return
-    const handler = (event: MouseEvent) => {
-      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
-        setActionsMenuOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [actionsMenuOpen])
-
-  const removeView = (id: string) => {
-    const next = views.filter((view) => view.id !== id)
-    void syncVacancyViews(next)
-  }
-
-  const resetDisabled = !q && !company && !status
-
-  const formatLastCandidateActivity = useCallback(
-    (iso: string | null | undefined) => {
-      if (!iso) return '—'
-      try {
-        return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: dateFnsLocale })
-      } catch {
-        return '—'
-      }
-    },
-    [dateFnsLocale]
-  )
-
-
-  const stop = (e: React.MouseEvent) => e.stopPropagation()
-
-  const COLUMN_SORT_FIELD: Record<string, string> = {
-    title: 'title',
-    company: 'company_name',
-    status: 'status',
-    candidates: 'candidate_count',
-    headcount: 'headcount_target',
-    profile: 'candidate_profile_name',
-    lastActivity: 'last_candidate_activity_at',
-    updated: 'updated_at',
-  }
-  const sortColumnKey =
-    Object.entries(COLUMN_SORT_FIELD).find(([, field]) => field === sort)?.[0] ?? sort
-
-  const vacancyColumns: ListColumnDef<Vacancy>[] = []
-  if (visibleCols.title) {
-    vacancyColumns.push({
-      id: 'title',
-      fieldId: 'title',
-      kind: 'text',
-      label: t('app.vacancies.list.col_title'),
-      sortable: true,
-      cellClassName: 'font-medium',
-      cell: (v) => (
-        <Link className="text-brand-700 hover:underline" to={`${CRM_APP_PATHS.vacancies}/${v.id}`} onClick={stop}>
-          {v.title || t('app.vacancies.list.untitled')}
-        </Link>
-      ),
-    })
-  }
-  if (visibleCols.company) {
-    vacancyColumns.push({
-      id: 'company',
-      fieldId: 'company_id',
-      kind: 'ref',
-      label: t('app.vacancies.list.col_company'),
-      sortable: true,
-      cell: (v) => v.company_name || '—',
-    })
-  }
-  if (visibleCols.status) {
-    vacancyColumns.push({
-      id: 'status',
-      fieldId: 'status',
-      kind: 'enum',
-      label: t('app.vacancies.list.col_status'),
-      sortable: true,
-      cell: (v) => (
-        <StatusBadge
-          label={statusLabel(v.status, v.is_archived)}
-          semantic={vacancyStatusSemantic(v.status, v.is_archived)}
-        />
-      ),
-    })
-  }
-  if (visibleCols.candidates) {
-    vacancyColumns.push({
-      id: 'candidates',
-      fieldId: 'candidate_count',
-      kind: 'number',
-      label: t('app.vacancies.list.col_candidates'),
-      sortable: true,
-      defaultSortDirection: 'desc',
-      align: 'right',
-      tabularNums: true,
-      cell: (v) => (
-        <Link
-          className="font-medium text-brand-700 hover:underline"
-          to={`${CRM_APP_PATHS.vacancies}/${v.id}/candidates`}
-          onClick={stop}
-        >
-          {v.candidate_count ?? 0}
-        </Link>
-      ),
-    })
-  }
-  if (visibleCols.headcount) {
-    vacancyColumns.push({
-      id: 'headcount',
-      fieldId: 'headcount_target',
-      kind: 'number',
-      label: t('app.vacancies.list.col_headcount'),
-      sortable: true,
-      defaultSortDirection: 'desc',
-      align: 'right',
-      tabularNums: true,
-      cellClassName: 'text-slate-700',
-      cell: (v) =>
-        v.headcount_target != null && v.headcount_target > 0 ? (
-          <span title={t('app.vacancies.list.headcount_title')}>
-            {v.candidate_count ?? 0}/{v.headcount_target}
-          </span>
-        ) : (
-          '—'
-        ),
-    })
-  }
-  if (visibleCols.profile) {
-    vacancyColumns.push({
-      id: 'profile',
-      fieldId: 'candidate_profile_name',
-      kind: 'text',
-      label: t('app.vacancies.list.col_profile'),
-      sortable: true,
-      cellClassName: 'text-slate-600',
-      cell: (v) => v.candidate_profile_name || '—',
-    })
-  }
-  if (visibleCols.lastActivity) {
-    vacancyColumns.push({
-      id: 'lastActivity',
-      fieldId: 'last_candidate_activity_at',
-      kind: 'datetime',
-      label: t('app.vacancies.list.col_last_activity'),
-      sortable: true,
-      defaultSortDirection: 'desc',
-      cellClassName: 'text-slate-600',
-      cell: (v) => formatLastCandidateActivity(v.last_candidate_activity_at),
-    })
-  }
-  if (visibleCols.updated) {
-    vacancyColumns.push({
-      id: 'updated',
-      fieldId: 'updated_at',
-      kind: 'datetime',
-      label: t('app.vacancies.list.col_updated'),
-      sortable: true,
-      defaultSortDirection: 'desc',
-      cell: (v) =>
-        v.updated_at
-          ? new Date(v.updated_at).toLocaleDateString()
-          : v.created_at
-            ? new Date(v.created_at).toLocaleDateString()
-            : '—',
-    })
-  }
-
-  const vacancyListDefinition: ListDefinition<Vacancy> = {
-    resourceId: 'vacancies',
-    density: 'comfortable',
-    pagination: 'paged',
-    columns: vacancyColumns,
   }
 
   const errorBanner = error ? (
@@ -757,9 +713,10 @@ export default function VacancyList() {
 
       <ListWorkspace
         className="min-h-0 flex-1"
-        definition={vacancyListDefinition}
+        controller={list}
         rows={items}
-        rowKey={(v) => v.id}
+        rowKey={(row) => row.id}
+        total={data.total || 0}
         loading={loading}
         error={errorBanner}
         emptyState={
@@ -789,185 +746,20 @@ export default function VacancyList() {
             }}
           />
         }
-        search={{
-          placeholder: t('app.vacancies.list.search_placeholder'),
-          defaultValue: q,
-        }}
-        searchInputRef={searchRef}
-        onToolbarSubmit={onSearch}
-        filters={
-          <>
-            <Input
-              name="company"
-              defaultValue={company}
-              placeholder={t('app.vacancies.list.company_placeholder')}
-              className="min-h-[40px] w-48 py-2 text-sm"
-            />
-            {statusOptions.map((s) => (
-              <Chip
-                key={s.value || 'all'}
-                behavior="selectable"
-                size="md"
-                selected={status === s.value}
-                selectedAppearance="soft"
-                label={s.label}
-                onClick={() => {
-                  const next = new URLSearchParams(search)
-                  if (!s.value) next.delete('status')
-                  else next.set('status', s.value)
-                  next.set('page', '1')
-                  setSearch(next, { replace: true })
-                }}
-              />
-            ))}
-          </>
-        }
         toolbarActions={
           <>
-            <Button type="submit" variant="secondary" size="sm">
-              {t('common.actions.apply')}
-            </Button>
-            <Button type="button" variant="secondary" size="sm" onClick={resetFilters} disabled={resetDisabled} title={t('app.vacancies.list.reset_filters_title')}>
-              {t('common.actions.reset')}
-            </Button>
             <Button type="button" variant="secondary" size="sm" onClick={refresh} disabled={loading} title={t('app.vacancies.list.refresh_title')}>
               {loading ? t('common.loading') : t('common.actions.refresh')}
             </Button>
             <Button type="button" variant="secondary" size="sm" onClick={exportCSV} title={t('app.vacancies.list.export_csv_title')}>
               {t('app.vacancies.list.export_csv')}
             </Button>
-            <div className="relative" ref={actionsMenuRef}>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setActionsMenuOpen((prev) => !prev)}
-                title={t('common.actions.more')}
-              >
-                ⋯
-              </Button>
-              {actionsMenuOpen && (
-                <div className="absolute right-0 z-20 mt-2 w-56 rounded-lg border border-slate-200 bg-white p-3 shadow-md">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    {t('app.vacancies.list.columns')}
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    <label className="flex items-center gap-2 py-1 text-sm">
-                      <input type="checkbox" checked={visibleCols.title} onChange={() => toggleCol('title')} />{' '}
-                      {t('app.vacancies.list.col_title')}
-                    </label>
-                    <label className="flex items-center gap-2 py-1 text-sm">
-                      <input type="checkbox" checked={visibleCols.company} onChange={() => toggleCol('company')} />{' '}
-                      {t('app.vacancies.list.col_company')}
-                    </label>
-                    <label className="flex items-center gap-2 py-1 text-sm">
-                      <input type="checkbox" checked={visibleCols.status} onChange={() => toggleCol('status')} />{' '}
-                      {t('app.vacancies.list.col_status')}
-                    </label>
-                    <label className="flex items-center gap-2 py-1 text-sm">
-                      <input type="checkbox" checked={visibleCols.updated} onChange={() => toggleCol('updated')} />{' '}
-                      {t('app.vacancies.list.col_updated')}
-                    </label>
-                    <label className="flex items-center gap-2 py-1 text-sm">
-                      <input type="checkbox" checked={visibleCols.candidates} onChange={() => toggleCol('candidates')} />{' '}
-                      {t('app.vacancies.list.col_candidates')}
-                    </label>
-                    <label className="flex items-center gap-2 py-1 text-sm">
-                      <input type="checkbox" checked={visibleCols.headcount} onChange={() => toggleCol('headcount')} />{' '}
-                      {t('app.vacancies.list.col_headcount')}
-                    </label>
-                    <label className="flex items-center gap-2 py-1 text-sm">
-                      <input type="checkbox" checked={visibleCols.profile} onChange={() => toggleCol('profile')} />{' '}
-                      {t('app.vacancies.list.col_profile')}
-                    </label>
-                    <label className="flex items-center gap-2 py-1 text-sm">
-                      <input type="checkbox" checked={visibleCols.lastActivity} onChange={() => toggleCol('lastActivity')} />{' '}
-                      {t('app.vacancies.list.col_last_activity')}
-                    </label>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    className="mt-3 w-full"
-                    onClick={() => {
-                      setActionsMenuOpen(false)
-                      saveView()
-                    }}
-                  >
-                    {t('app.vacancies.list.save_view')}
-                  </Button>
-                </div>
-              )}
-            </div>
           </>
         }
-        savedViews={
-          <SavedViewChips
-            views={views.map((v) => ({ id: v.id, name: v.name || '' }))}
-            onApply={(view) => {
-              const match = views.find((item) => item.id === view.id)
-              if (match) applyView(match)
-            }}
-            onRemove={removeView}
-            untitledLabel={t('app.vacancies.list.untitled')}
-            removeLabel={t('app.vacancies.list.delete_view')}
-          />
-        }
-        sort={{
-          columnKey: sortColumnKey,
-          direction: dir,
-          onChange: ({ columnKey, direction }) => {
-            const field = COLUMN_SORT_FIELD[columnKey] ?? columnKey
-            const next = new URLSearchParams(search)
-            next.set('sort', field)
-            next.set('dir', direction)
-            setSearch(next, { replace: true })
-          },
-        }}
-        onRowClick={(v) => navigate(`${CRM_APP_PATHS.vacancies}/${v.id}`)}
-        selection={{
-          isSelected: (id) => selected.includes(id),
-          onToggle: (id, checked) =>
-            setSelected((prev) => (checked ? Array.from(new Set([...prev, id])) : prev.filter((x) => x !== id))),
-          onToggleAll: (checked) => setSelected(checked ? (data.items || []).map((i) => i.id) : []),
-          allSelected,
-          someSelected: selected.length > 0,
-          selectedCount: selected.length,
-          onClearSelection: () => setSelected([]),
-        }}
-        bulkSelectedLabel={(count) => t('app.vacancies.list.bulk_selected', { values: { count } })}
-        bulkClearLabel={t('app.vacancies.list.bulk_clear_selection')}
-        bulkActions={
-          <>
-            <div className="flex items-center gap-1">
-              <span className="text-slate-500">{t('app.vacancies.list.bulk_set_status')}</span>
-              <Button type="button" variant="secondary" size="xs" onClick={() => bulkSetStatus('open')}>
-                {t('app.vacancies.list.status.open')}
-              </Button>
-              <Button type="button" variant="secondary" size="xs" onClick={() => bulkSetStatus('on_hold')}>
-                {t('app.vacancies.list.status.on_hold')}
-              </Button>
-              <Button type="button" variant="secondary" size="xs" onClick={() => bulkSetStatus('closed')}>
-                {t('app.vacancies.list.status.closed')}
-              </Button>
-            </div>
-            <Button type="button" variant="secondary" size="xs" onClick={bulkArchive}>
-              {t('app.vacancies.list.bulk_archive')}
-            </Button>
-          </>
-        }
-        pagination={{
-          page,
-          pageSize: limit,
-          total: data.total || 0,
-          onPageChange: goPage,
-          summary: t('app.vacancies.list.total', { values: { total: data.total } }),
-          previousLabel: '←',
-          nextLabel: NEXT_PAGE_GLYPH,
-          pageLabel: (p, tp) => t('app.vacancies.list.page', { values: { page: p, total: tp } }),
-        }}
+        onRowClick={(row) => navigate(`${CRM_APP_PATHS.vacancies}/${row.id}`)}
         ariaLabel={t('app.nav.items.vacancies')}
       />
     </PageShell>
   )
 }
+

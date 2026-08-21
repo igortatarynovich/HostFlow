@@ -85,8 +85,8 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
-| `SearchField` | exists | `SearchField.tsx` | ListWorkspace search zone (ADR-044) |
-| `FilterBar` | gap | Candidates / dashboard / pipeline one-offs | ListWorkspace toolbar; was FILTER_BAR_V1 |
+| `SearchField` | exists | `SearchField.tsx` | ListWorkspace search zone (ADR-044); platform-owned query state |
+| `FilterBar` | exists | ListWorkspace filter zone | Not a separate widget; filters belong to `collection_orchestration` |
 | `FormField` | exists | `FormField.tsx`; `controls/Field.tsx` is a legacy alias | Label + hint + error uses `text-rose-700` |
 | `Tabs` | exists | `Tabs.tsx` wraps `.tabs` / `.tab` | — |
 | `Modal` | exists | `components/Modal.tsx` close = `IconButton` | Re-exported from kit barrel |
@@ -101,7 +101,7 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
-| `DataTable` | exists | `components/ui/DataTable.tsx` | Public kit API (K1). `layout/DataTable` re-exports; `DataTableEngine` is an adapter, not a second table. Candidates page not cut over. |
+| `DataTable` | exists | `components/ui/DataTable.tsx` | Table representation (K1). Not a top-level import for a **new** primary collection screen. `layout/DataTable` re-exports; `DataTableEngine` is an adapter. Candidates page not cut over. |
 | `TableHeader` | wrap | kit `DataTable` header | ListWorkspace |
 | `SortControl` | exists | `components/ui/SortControl.tsx` | TABLE_V1 / Candidates header pixels |
 | `FacetFilter` | wrap | `FacetFilterMenu` | ListWorkspace filters |
@@ -112,7 +112,7 @@ P0 runtime (2026-08-13): control-layer React APIs landed. CSS remains implementa
 | component_id | status | runtime_today | notes |
 |--------------|--------|---------------|-------|
 | `PageHeader` | exists | ~64 pages | Best-adopted layout |
-| `ListWorkspace` | exists | `components/ui/ListWorkspace.tsx` | **First workspace pattern** — ADR-044 K2. Vacancies is the first cutover. Candidates page not wrapped. |
+| `ListWorkspace` | exists | `components/ui/ListWorkspace.tsx` | **`collection_orchestration`** — ADR-044. Canonical `ListDefinition` + `useListWorkspace`. Vacancies is the orchestration proof. Candidates page not wrapped. |
 | `EntityWorkspace` | exists | `components/ui/EntityWorkspace.tsx` | **K3** public chrome (header / tabs / summary / action bar / rail / content slots). Passport adapter stays `platform/entity-workspace`. Candidate/HR Workspace not extracted. Not Phase D; page templates remain ADR-045 |
 | `SettingsLayout` | wrap | `.settings-*` CSS | ADR-045 |
 | `SplitPane` | gap | rails / inspectors | ADR-045 |
@@ -164,6 +164,7 @@ Do not open a new `*_V1` as a sibling canon. Extend this catalog.
 
 ## 6. History
 
+- 2026-08-21: **ListWorkspace Orchestration Completion** — `collection_orchestration`; Vacancies proof (definition + domain, no local query wiring). `FilterBar` is a ListWorkspace zone, not a gap widget.
 - 2026-08-13: **Platform Inventory** — [`platform-inventory.md`](platform-inventory.md) (living catalog; not a sibling canon).
 - 2026-08-13: **Kit Gate PASS_WITH_CONSTRAINTS** — [`../gates/platform-extraction-kit-gate.md`](../gates/platform-extraction-kit-gate.md). Product Track → Meta / Stage 3.
 - 2026-08-13: **K3** public `EntityWorkspace` chrome. `EntityWorkspaceShell` is a passport adapter. Candidate Workspace not extracted.

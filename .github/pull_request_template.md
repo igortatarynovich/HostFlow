@@ -52,7 +52,7 @@
 - [ ] **Primitives (Select):** new selects follow `SELECT_V1` scenario tree — `Combobox` / `MultiCombobox` / native `<select className="input">`; no new combobox copies or `SelectAsync`. See `docs/specs/frontend/SELECT_V1.md`.
 - [ ] **Primitives (Button):** new buttons use `Button` or `.btn-*` canon; `variant="icon"` requires `aria-label` when no visible text. See `docs/specs/frontend/BUTTON_V1.md`.
 - [ ] **Primitives (Input):** new text fields use native `<input className="input">` / `<textarea className="textarea">`; no custom field chrome, no pass-through `Input.tsx`. See `docs/specs/frontend/INPUT_V1.md`.
-- [ ] **TABLE_V1 / ListWorkspace:** new operational entity lists use the Core Platform Kit (`ListWorkspace` + `DataTable`) once that public API exists; no new hand-written operational `<table>`. Visual child remains `docs/specs/frontend/TABLE_V1.md`.
+- [ ] **TABLE_V1 / ListWorkspace:** new primary collection screens use `collection_orchestration` (`ListWorkspace` + `useListWorkspace`), not a top-level `DataTable` and not a hand-written operational `<table>`. Visual child remains `docs/specs/frontend/TABLE_V1.md`.
 - [ ] **Kit Gate / Baseline v1** ([`docs/specs/gates/platform-extraction-kit-gate.md`](docs/specs/gates/platform-extraction-kit-gate.md) · [`docs/specs/platform/platform-inventory.md`](docs/specs/platform/platform-inventory.md)): a new product screen does not ship if its list / workspace chrome / analytics / action bar / filters are missing from the kit. No local stand-in. No module-only KPI card or fourth workspace shell.
 
 ## Labels (рекомендуется)

@@ -80,7 +80,7 @@ List of homogeneous objects. Filters, bulk actions, export.
 
 Examples: Кандидаты, Клиенты, Подборы (list), Заказы, Документы.
 
-Standard: ADR-010 Resource List Shell.
+Standard: ADR-010 Resource List Shell. Runtime orchestration: [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md) `ListWorkspace` (kit-layer id `collection_orchestration`). `DataTable` / `TABLE_V1` is a representation, not the collection screen.
 
 ### 3.2 Application Workspace
 
@@ -331,7 +331,7 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
-| 2026-08-13 | List workspace: [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md) — one `ListWorkspace` + `DataTable` |
+| 2026-08-21 | Collection orchestration: `ListWorkspace` owns query/filter/sort/pagination/selection/saved views/URL; DataTable is one representation (`collection_orchestration`) |
 | 2026-08-13 | Analytics canon: [`ADR-046`](ADR-046-analytics-visualization-canon.md) — four layers (semantics, grammar, composition, presentation/sharing); Recruitment efficiency reference |
 | 2026-08-13 | Composition canon: [`ADR-043`](ADR-043-ui-component-composition-canon.md) — pages assemble the React kit |
 | 2026-07-09 | Platform Canon + Interaction Rules layer; §10 roadmap |

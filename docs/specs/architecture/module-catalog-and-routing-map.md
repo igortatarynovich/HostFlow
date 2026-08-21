@@ -64,7 +64,7 @@
 | **Data Types** | Platform Reference (target) | [`ADR-041`](ADR-041-data-types.md) · [`../platform/data-types.md`](../platform/data-types.md) | Field Registry, Forms, UI binders | Semantic types — Field **uses** DataType; runtime adoption deferred |
 | **Relationships** | Platform architecture | [`ADR-042`](ADR-042-relationships.md) · [`../platform/relationships.md`](../platform/relationships.md) | Document Hub, handoff, Activity, Comms | RelationshipKind contract — confirmed slice only; **not** full CRM graph |
 | **UI Component Canon** | Frontend platform | [`ADR-043`](ADR-043-ui-component-composition-canon.md) · [`../platform/ui-component-canon.md`](../platform/ui-component-canon.md) | SPA product modules | React kit composition — **not** a restyle |
-| **List Workspace Canon** | Frontend platform | [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md) · [`../platform/ui-list-workspace-canon.md`](../platform/ui-list-workspace-canon.md) | All operational entity lists | One `ListWorkspace` + `DataTable`; modules pass definition — runtime = [Platform Extraction](platform-extraction-phase.md) |
+| **List Workspace Canon** | Frontend platform | [`ADR-044`](ADR-044-list-workspace-data-presentation-canon.md) · [`../platform/ui-list-workspace-canon.md`](../platform/ui-list-workspace-canon.md) | All operational entity lists | `collection_orchestration` / `ListWorkspace`; modules pass definition + data; DataTable is a representation |
 | **Analytics, Visualization & Reporting Canon** | Frontend platform | [`ADR-046`](ADR-046-analytics-visualization-canon.md) · [`../platform/ui-analytics-canon.md`](../platform/ui-analytics-canon.md) | Efficiency dashboards / Overview | Meaning→family + story composition + Analytics View; Recruitment = reference; other dashboards migrate-on-touch |
 | **Actions** | Platform Automations (target) | [`ADR-047`](ADR-047-actions.md) · [`../platform/actions.md`](../platform/actions.md) | Document Hub, PE, Activity, Notifications | Action contract — confirmed slice; **not** 3A-3 runtime registry |
 | **Platform Extraction** | Frontend platform + architecture | [`platform-extraction-phase.md`](platform-extraction-phase.md) · [`../tasks/ui-platform-composition-epic.md`](../tasks/ui-platform-composition-epic.md) | All product modules | Core Platform Kit before Phase B — **not** a fifteenth vocabulary area |
@@ -267,6 +267,7 @@
 
 ## История
 
+- 2026-08-21: **ListWorkspace orchestration** — kit-layer id `collection_orchestration`; Vacancies proof (`useListWorkspace` + definition; DataTable is a representation).
 - 2026-08-13: **Platform Extraction** — Vocabulary Canon (ADR-037…047) closed; Core Platform Kit is the active slice before Phase B ([`platform-extraction-phase.md`](platform-extraction-phase.md)).
 - 2026-08-13: **ADR-044** (Accepted) — List Workspace & Data Presentation (`ListWorkspace` + one `DataTable`); L2 [`../platform/ui-list-workspace-canon.md`](../platform/ui-list-workspace-canon.md); runtime extract epic P1–P2.
 - 2026-08-13: **ADR-046** (Accepted) — Analytics, Visualization & Reporting Canon (four layers; Analytics View; Recruitment efficiency reference); L2 [`../platform/ui-analytics-canon.md`](../platform/ui-analytics-canon.md).
