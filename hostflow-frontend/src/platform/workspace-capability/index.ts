@@ -27,10 +27,17 @@ export type {
 } from './catalogs'
 
 export {
+  KIT_CANDIDATE_FIELD_COUNT,
   KIT_DATA_TYPE_IDS,
   KIT_ENTITY_PROFILE_SOT,
   KIT_FIELD_SOT,
+  KIT_HARDENING_PRIMITIVE_IDS,
+  KIT_HOST_NAVIGATION_SOT,
   KIT_LAYER_ORDER,
+  KIT_LIST_WORKSPACE_ZONE_IDS,
+  KIT_PROOF_BLOCKER_PRIMITIVE_IDS,
+  KIT_REGISTERED_FIELD_COUNT,
+  KIT_SALES_UNCANONICAL_TYPE_COUNT,
   KIT_TABLE_FRAME_IDS,
   KIT_TABLE_SOT,
   KIT_UI_PRIMITIVE_IDS,
@@ -40,6 +47,9 @@ export {
 } from './kit'
 export type {
   KitDataTypeId,
+  KitHardeningPrimitiveId,
+  KitListWorkspaceZoneId,
+  KitProofBlockerPrimitiveId,
   KitTableFrameId,
   KitUiPrimitiveId,
   KitWidgetClassId,

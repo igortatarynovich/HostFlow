@@ -36,9 +36,16 @@ from backend.app.platform.workspace_capability.hosts import (
     WORKSPACE_HOST_REGION_IDS,
 )
 from backend.app.platform.workspace_capability.kit import (
+    KIT_CANDIDATE_FIELD_COUNT,
     KIT_DATA_TYPE_IDS,
     KIT_FIELD_SOT,
+    KIT_HARDENING_PRIMITIVE_IDS,
+    KIT_HOST_NAVIGATION_SOT,
     KIT_LAYER_ORDER,
+    KIT_LIST_WORKSPACE_ZONE_IDS,
+    KIT_PROOF_BLOCKER_PRIMITIVE_IDS,
+    KIT_REGISTERED_FIELD_COUNT,
+    KIT_SALES_UNCANONICAL_TYPE_COUNT,
     KIT_TABLE_FRAME_IDS,
     KIT_UI_PRIMITIVE_IDS,
     KIT_WIDGET_CLASS_IDS,
@@ -279,8 +286,25 @@ def test_platform_kit_is_substrate_not_rodo_slice() -> None:
     assert "consent" in KIT_WIDGET_CLASS_IDS
     assert "data_table" in KIT_WIDGET_CLASS_IDS
     assert "field_row" in KIT_WIDGET_CLASS_IDS
-    assert set(KIT_WIDGET_CLASS_IDS) - {"notes", "consent"}
-    assert "filter_bar" in KIT_WIDGET_GAP_IDS
+    assert len(KIT_WIDGET_CLASS_IDS) == 16
+    assert "filter_bar" not in KIT_WIDGET_GAP_IDS
+    assert "tabs" not in KIT_WIDGET_GAP_IDS
+    assert "tabs" not in KIT_WIDGET_CLASS_IDS
+    assert _ts_string_array(kit_ts, "KIT_LIST_WORKSPACE_ZONE_IDS") == KIT_LIST_WORKSPACE_ZONE_IDS
+    assert KIT_LIST_WORKSPACE_ZONE_IDS == (
+        "search",
+        "filters",
+        "sort",
+        "pagination",
+        "bulk",
+        "saved_views",
+    )
+    assert "checkbox" in KIT_PROOF_BLOCKER_PRIMITIVE_IDS
+    assert "input_runtime" in KIT_HARDENING_PRIMITIVE_IDS
+    assert KIT_WIDGET_GAP_IDS == ("modal", "radio", "toggle")
+    assert "EntityWorkspaceNavTabs" in KIT_HOST_NAVIGATION_SOT
+    assert "ListWorkspaceStatusTabs" in KIT_HOST_NAVIGATION_SOT
+    assert "not a kit widget" in kit_ts or "not a kit widget" in KIT_HOST_NAVIGATION_SOT.lower() + kit_ts
     assert KIT_FIELD_SOT.endswith("field-registry-card-configuration.md")
     assert "KIT_DATA_TYPE_IDS" in kit_ts
     assert "second dictionary" in kit_ts or "no second dictionary" in kit_ts
@@ -297,6 +321,99 @@ def test_platform_kit_is_substrate_not_rodo_slice() -> None:
     assert "TABLE_V1" in brief
     assert "Field Registry" in brief
     assert "Notes/Consent/RODO" in brief or "not a Notes/Consent" in brief
+    assert "16 data types" in brief
+    assert "78 fields" in brief
+    assert "filter_bar is not a gap" in brief
+    assert "tabs is not a kit id" in brief
+    assert "checkbox" in brief
+    assert "input_runtime" in brief
+
+
+def test_registered_field_counts_match_manifests() -> None:
+    from backend.app.field_registry.manifests.crm import crm_client_fields
+    from backend.app.field_registry.manifests.fleet import fleet_vehicle_fields
+    from backend.app.field_registry.manifests.hr import hr_employee_fields
+    from backend.app.field_registry.manifests.platform import platform_identity_fields
+    from backend.app.field_registry.manifests.recruitment import (
+        recruitment_candidate_fields,
+        recruitment_vacancy_fields,
+    )
+    from backend.app.field_registry.manifests.service_sales import (
+        service_sales_targeted_advertising_fields,
+    )
+
+    identity = platform_identity_fields()
+    candidate = recruitment_candidate_fields()
+    vacancy = recruitment_vacancy_fields()
+    client = crm_client_fields()
+    hr = hr_employee_fields()
+    fleet = fleet_vehicle_fields()
+    sales = service_sales_targeted_advertising_fields()
+    registered = identity + candidate + vacancy + client + hr + fleet + sales
+    uncanonical = [
+        row for row in sales if row["field_type"] in {"single_select", "multi_select"}
+    ]
+    assert len(candidate) == KIT_CANDIDATE_FIELD_COUNT == 18
+    assert any(row["qualified_code"].endswith("operations.stage") for row in candidate)
+    assert len(uncanonical) == KIT_SALES_UNCANONICAL_TYPE_COUNT == 18
+    assert len(registered) == KIT_REGISTERED_FIELD_COUNT == 78
+    kit_ts = _KIT_TS.read_text(encoding="utf-8")
+    assert f"KIT_REGISTERED_FIELD_COUNT = {KIT_REGISTERED_FIELD_COUNT}" in kit_ts
+    assert f"KIT_CANDIDATE_FIELD_COUNT = {KIT_CANDIDATE_FIELD_COUNT}" in kit_ts
+    assert f"KIT_SALES_UNCANONICAL_TYPE_COUNT = {KIT_SALES_UNCANONICAL_TYPE_COUNT}" in kit_ts
+
+
+def test_list_workspace_owns_filters_not_filter_bar_widget() -> None:
+    toolbar = (
+        _REPO_ROOT
+        / "hostflow-frontend"
+        / "src"
+        / "platform"
+        / "data-table"
+        / "ListWorkspaceToolbar.tsx"
+    )
+    rail = (
+        _REPO_ROOT
+        / "hostflow-frontend"
+        / "src"
+        / "platform"
+        / "data-table"
+        / "DataTableWithDetailRail.tsx"
+    )
+    nav = (
+        _REPO_ROOT
+        / "hostflow-frontend"
+        / "src"
+        / "platform"
+        / "entity-workspace"
+        / "EntityWorkspaceZones.tsx"
+    )
+    assert toolbar.is_file()
+    assert "ListWorkspaceToolbar" in toolbar.read_text(encoding="utf-8")
+    assert "ListWorkspaceStatusTabs" in toolbar.read_text(encoding="utf-8")
+    rail_src = rail.read_text(encoding="utf-8")
+    assert "filterRow" in rail_src
+    assert "statusTabs" in rail_src
+    assert "bulkBar" in rail_src
+    assert "export function EntityWorkspaceNavTabs" in nav.read_text(encoding="utf-8")
+    assert "tabs" not in KIT_WIDGET_CLASS_IDS
+    assert "filter_bar" not in KIT_WIDGET_GAP_IDS
+    assert "filter_bar" not in KIT_WIDGET_CLASS_IDS
+
+
+def test_g4_is_separation_not_catalog_rows() -> None:
+    brief = _BRIEF.read_text(encoding="utf-8")
+    assert "semantic owner remains Notes / Compliance" in brief
+    assert "ApplicationCommentsSection" in brief
+    assert "ApplicationRodoSection" in brief
+    assert "input type=checkbox" in brief or "input type=\"checkbox\"" in brief
+    proof_ts = _PROOF_TS.read_text(encoding="utf-8")
+    assert "host only places" in proof_ts
+    assert "checkbox primitive" in proof_ts
+    inventory = _INVENTORY.read_text(encoding="utf-8")
+    assert "G4 bind rules" in inventory
+    assert "checkbox" in inventory
+    assert "ListWorkspace zones" in inventory
 
 
 def test_no_rodo_capability_and_no_global_status_enum() -> None:

@@ -80,12 +80,26 @@
 
 ## Named kit gaps (do not invent locally)
 
-`filter_bar` · `modal` · `checkbox` · `radio` · `toggle` — listed in `KIT_WIDGET_GAP_IDS`. A module must not ship a private version while the gap is unnamed-unfilled.
+| Class | Ids | Rule |
+|-------|-----|------|
+| ListWorkspace zones (not a widget gap) | `search` · `filters` · `sort` · `pagination` · `bulk` · `saved_views` | Filters already exist here. Do not mint `filter_bar` |
+| Host chrome (not a kit id) | EntityWorkspaceNavTabs · ListWorkspaceStatusTabs · ApplicationWorkspace tabs | Inventory `tabs_*` map here. Tabs is not a platform primitive |
+| Proof-blocker primitive | `checkbox` | Required before G4 consent bind. No local `input type=checkbox` |
+| Hardening | `input_runtime` | Family `input` is locked CSS-only; extract a runtime component |
+| Deferred | `modal` · `radio` · `toggle` | Named; do not ship a private version |
 
----
+## G4 bind rules (next slice — not this feat)
+
+Notes / Consent proof is **separation**, not catalog presence:
+
+1. Widget ids `notes` and `consent` exist in kit.  
+2. Semantic owner remains Notes / Compliance.  
+3. Host only places.  
+4. Recruitment Application must not import `ApplicationCommentsSection` / `ApplicationRodoSection` (nor `SalesInquiryCallNotesSection` / `SalesInquiryRodoSection` / `CandidateRodoSection`).  
+5. A module contribution must not ship a copy of the shared widget.
+
+This feat does **not** rewrite `ApplicationRecruitmentDetailPanel`.
 
 ## Proof screen must not add a row
 
-G4 (next slice) binds Recruitment Application through the kit + contributions. If the page invents a local type, field, primitive, widget, or table — including “RODO here, comments there, stage below” in parent JSX — G4 fails.
-
-This feat does **not** rewrite that panel.
+If the page invents a local type, field, primitive, widget, or table — including “RODO here, comments there, stage below” in parent JSX — G4 fails. Missing kit id → register in kit first, then use.
