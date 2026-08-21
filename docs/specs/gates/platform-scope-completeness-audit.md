@@ -166,7 +166,7 @@ Self-consistency trap: D4–D9 were checked against D2, not against G1. Locally 
 - Entity Workspace D10 (eighth consumer on the weak D2 model)  
 - Reopening Forms P3–P5, R6, C2.4, or Catalog Notifications RFC as this slice  
 - Treating every residual as D-class substitution  
-- Starting Documents E2 feat, Billing, or AI before Workspace Capability Goal Completion (Recruitment Application proof)  
+- Starting Documents E2 feat, Billing, or AI before Workspace Capability program **COMPLETE** (G4 PASS / G1–G5 PASS_WITH_CONSTRAINTS do not unlock E2)  
 
 ---
 

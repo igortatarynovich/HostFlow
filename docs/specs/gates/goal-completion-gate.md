@@ -4,7 +4,7 @@
 **Date:** 2026-08-20  
 **Trusted base:** `integration/release-product-a-b`  
 **Parents:** [Architecture Review Checklist](../architecture/architecture-review-checklist.md) · [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md)  
-**First application:** [Platform Scope Completeness Audit](platform-scope-completeness-audit.md) · [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md)
+**First application:** [Platform Scope Completeness Audit](platform-scope-completeness-audit.md) · [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md) · [G1–G5 close-out](workspace-capability-platform-g1-g5-closeout.md)
 
 > A phase may be **brief-complete** and still **goal-incomplete**.  
 > Named CI that checks the approved brief does **not** prove the original problem is gone.  
@@ -132,3 +132,4 @@ Brief-open template (must appear under `## Original Goal → Completion Proof`):
 
 - 2026-08-20: Introduced after D1–D9 brief-completion vs original Entity Shell goal. First use: [platform-scope-completeness-audit.md](platform-scope-completeness-audit.md).  
 - 2026-08-20: Brief-time control — every platform phase brief must include **Original Goal → Completion Proof** (lint: `phase-brief-missing-goal-proof`).
+- 2026-08-21: First program close-out: [Workspace Capability G1–G5](workspace-capability-platform-g1-g5-closeout.md) **PASS_WITH_CONSTRAINTS**. G4 PASS on Recruitment Application. Program **not COMPLETE** (G1 dual-host runtime). Documents E2 stays locked. Next: [host runtime-equivalence](../tasks/workspace-capability-host-runtime-equivalence.md).

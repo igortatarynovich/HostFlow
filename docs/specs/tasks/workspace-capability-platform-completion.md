@@ -1,10 +1,12 @@
 # Workspace Capability Platform Completion
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **PASS_WITH_CONSTRAINTS** (G1–G5 close-out 2026-08-21) — program **not COMPLETE**  
 **Phase class:** platform  
 **Branch (docs):** `docs/shared-ui-capabilities-contract-seal` ✅ [#272](https://github.com/igortatarynovich/HostFlow/pull/272)  
-**Branch (code):** `feat/workspace-capability-platform-completion`  
-**Parents:** [Goal Completion Gate](../gates/goal-completion-gate.md) · [Scope Completeness Audit](../gates/platform-scope-completeness-audit.md) · [UI constitution §3](../architecture/ui-constitution-v1.md) · [D1](entity-workspace-d1-contract-seal.md)…[D9](entity-workspace-d9-services-order-cutover.md) ✅ (brief-complete, **goal-incomplete**) · [D2](entity-workspace-d2-composition-contract.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [ADR-011](../architecture/ADR-011-hostflow-ui-platform-standard.md) · [ADR-026](../architecture/ADR-026-capability-ownership.md) · [ADR-027](../architecture/ADR-027-capability-composition.md) · [ADR-036](../architecture/ADR-036-four-trust-roles-rbac.md) · [E2](documents-platform-e2-public-contract.md) (brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); **feat locked**)
+**Branch (code):** `feat/workspace-capability-platform-completion` · [PR #273](https://github.com/igortatarynovich/HostFlow/pull/273)  
+**Close-out:** [G1–G5](../gates/workspace-capability-platform-g1-g5-closeout.md)  
+**Next slice:** [Host runtime-equivalence](workspace-capability-host-runtime-equivalence.md)  
+**Parents:** [Goal Completion Gate](../gates/goal-completion-gate.md) · [Scope Completeness Audit](../gates/platform-scope-completeness-audit.md) · [UI constitution §3](../architecture/ui-constitution-v1.md) · [D1](entity-workspace-d1-contract-seal.md)…[D9](entity-workspace-d9-services-order-cutover.md) ✅ (brief-complete, **goal-incomplete**) · [D2](entity-workspace-d2-composition-contract.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [ADR-011](../architecture/ADR-011-hostflow-ui-platform-standard.md) · [ADR-026](../architecture/ADR-026-capability-ownership.md) · [ADR-027](../architecture/ADR-027-capability-composition.md) · [ADR-036](../architecture/ADR-036-four-trust-roles-rbac.md) · [E2](documents-platform-e2-public-contract.md) (brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); **feat locked until program COMPLETE**)
 
 > Previous same-day title **Entity Platform Completion** is **superseded in place** (this file).  
 > The original goal still holds. The wrong next abstraction would have been: Entity Shell **owns** Notes/Consent/Tasks/Documents, and Application Workspace is just another Entity envelope.  
@@ -83,7 +85,7 @@ ApplicationWorkspace host
 
 Candidate Entity Workspace is **not** the proof. It is closer to D4 and can yield a false PASS.
 
-G4 bind is the Recruitment Application on Application Workspace (`ApplicationWorkspaceCapabilityHost` + `RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS`). Contract-only commits cannot claim G4. This feat binds the proof screen. The program is still **not COMPLETE** until Goal Completion Gate review. Multiplying further entity/application pages, D10-on-weak-D2, or Documents E2 feat stays forbidden until that COMPLETE.
+G4 bind is the Recruitment Application on Application Workspace (`ApplicationWorkspaceCapabilityHost` + `RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS`). Contract-only commits cannot claim G4; this feat did bind the proof screen. Goal Completion review (2026-08-21): **G4 PASS**. The program is still **not COMPLETE** because G1 is **PASS_WITH_CONSTRAINTS** (second host runtime missing). Multiplying further entity/application pages, D10-on-weak-D2, or Documents E2 feat stays forbidden until program COMPLETE. ListWorkspace is a separate previous slice and is not this close-out.
 
 **False close (reject):** Entity Shell as semantic owner of Notes/Consent; Application folded into Entity; Notes/Consent/RODO **as the whole platform**; kit that modules still compose locally in parent JSX; stuffing JSX; Candidate-as-proof; D2 slot bind; treating D1–D9 ✅ as this program; minting a second Field Registry / primitives list / table standard.
 
@@ -334,9 +336,11 @@ This slice **must not**:
 |-------|--------|--------|
 | **Scope audit + Goal Completion Gate** | Classify closed phases | [audit](../gates/platform-scope-completeness-audit.md) ✅ |
 | **Contract seal** | Host contract + four-class catalogs + reference fields | brief ✅ [#272](https://github.com/igortatarynovich/HostFlow/pull/272) |
-| **Feat** | Typed contracts + four-class catalogs + technical registry + inventory + named gate | **this PR** |
-| **Proof screen** | Recruitment Application; Goal Completion Gate G4 | locked until this feat |
-| **Documents E2** | Public contract / D2 `documents` enable | brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat after proof + G4 that does **not** include “inner capabilities still module-owned” |
+| **Feat + G4 bind** | Typed registry + inventory + named gate + Recruitment Application host | ✅ [#273](https://github.com/igortatarynovich/HostFlow/pull/273) · G4 **PASS** |
+| **G1–G5 close-out** | Goal Completion review of #273 | [close-out](../gates/workspace-capability-platform-g1-g5-closeout.md) **PASS_WITH_CONSTRAINTS** — program **not COMPLETE** |
+| **Host runtime-equivalence** | Second host + Notes/Consent owner boundaries | ← **next** ([brief](workspace-capability-host-runtime-equivalence.md)) |
+| **Final Goal Completion** | Program COMPLETE | after runtime-equivalence |
+| **Documents E2** | Public contract / D2 `documents` enable | brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); **feat locked until program COMPLETE** — G4 PASS does **not** unlock E2 |
 
 ---
 
@@ -417,17 +421,19 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog. P-02 is why the hos
 
 ---
 
-## Goal Completion Gate (this program — preview)
+## Goal Completion Gate (this program — 2026-08-21 close-out)
 
-| # | This program |
-|---|--------------|
-| **G1** | Kit first (types/fields/primitives/widgets/tables); host places; owners own semantics; one contribution contract for Entity **and** Application hosts without collapsing them |
-| **G2** | Forbidden: new local data types/fields/primitives/widgets/tables; new module Notes/Consent/rail products; page-local composition; Shell as semantic owner; Application-as-Entity; global status enum; contribution-local RBAC/Actions/Events; treating RODO as the platform |
-| **G3** | Next entity **or** application screen uses kit + host contract + catalogs only |
-| **G4** | Recruitment Application assembled from the kit. PASS only if: (1) `notes` and `consent` widget ids exist in kit; (2) semantic owner remains Notes / Compliance; (3) host only places; (4) Recruitment Application does **not** import local `ApplicationCommentsSection` / `ApplicationRodoSection` (or `SalesInquiryCallNotesSection` / `SalesInquiryRodoSection` / `CandidateRodoSection`); (5) a module contribution does not ship a copy of those shared widgets; (6) consent boolean uses `checkbox` primitive — not local `input type=checkbox`. Catalog rows alone are **not** G4. |
-| **G5** | D2 `documents` reserved; `checkbox` landed (`CHECKBOX_V1`) and G4 consent uses it; `input_runtime` is named hardening; `filter_bar` is **not** a second layer (ListWorkspace zones); tabs remain host chrome; D3–D9 surface binds until migrate-on-touch; Action Canon / Event registry remain referenced, not built here |
+Formal record: [G1–G5 close-out](../gates/workspace-capability-platform-g1-g5-closeout.md).
 
-G4 bind evidence is in this feat (`ApplicationRecruitmentDetailPanel` → `ApplicationWorkspaceCapabilityHost`). Named gate enforces G2/G3: Recruitment Application cannot import local Notes/Consent/rail blocks. The program is **not COMPLETE** until Goal Completion Gate review + green CI. Contract-only commits cannot claim PASS on G4. Do not unlock Documents E2 until COMPLETE.
+| # | Verdict | This program |
+|---|---------|--------------|
+| **G1** | **PASS_WITH_CONSTRAINTS** | Kit first (types/fields/primitives/widgets/tables); host places; owners own semantics; one contribution contract for Entity **and** Application hosts without collapsing them. Typed hosts exist. **Runtime:** only `ApplicationWorkspaceCapabilityHost`. `EntityWorkspaceCapabilityHost` is not in the #273 diff. Dual-host sameness is types, not two implementations. **Not full PASS.** |
+| **G2** | **PASS** | Forbidden: new local data types/fields/primitives/widgets/tables; new module Notes/Consent/rail products; page-local composition; Shell as semantic owner; Application-as-Entity; global status enum; contribution-local RBAC/Actions/Events; treating RODO as the platform. Named gate forbids `ApplicationCommentsSection` / `ApplicationRodoSection` on the proof surface. |
+| **G3** | **PASS** for a new Application proof path | Next Application screen uses kit + host contract + catalogs only. Entity path still needs the second host runtime (G1). |
+| **G4** | **PASS** | Recruitment Application assembled from the kit. Evidence: (1) `notes` and `consent` widget ids exist in kit; (2) semantic owner remains Notes / Compliance; (3) host only places; (4) Recruitment Application does **not** import local `ApplicationCommentsSection` / `ApplicationRodoSection` (or `SalesInquiryCallNotesSection` / `SalesInquiryRodoSection` / `CandidateRodoSection`); (5) a module contribution does not ship a copy of those shared widgets; (6) consent boolean uses `checkbox` primitive — not local `input type=checkbox`. Catalog rows alone are **not** G4. Contract-only commits cannot claim PASS on G4; this feat bound the screen. |
+| **G5** | **PASS_WITH_CONSTRAINTS** | D2 `documents` reserved; `checkbox` landed (`CHECKBOX_V1`) and G4 consent uses it; `input_runtime` is named hardening; `filter_bar` is **not** a second layer (ListWorkspace zones); tabs remain host chrome; D3–D9 surface binds until migrate-on-touch; Action Canon / Event registry remain referenced. **Named residuals:** Notes pre-convert stub + candidate notes API; Consent UI still knows Lead API; Entity host runtime missing. Owner: [host runtime-equivalence](workspace-capability-host-runtime-equivalence.md). |
+
+Outcome: **PASS_WITH_CONSTRAINTS**. Program is **not COMPLETE**. Do not unlock Documents E2 until COMPLETE. G4 PASS does not unlock E2. ListWorkspace is not this close-out.
 
 ---
 
@@ -435,18 +441,21 @@ G4 bind evidence is in this feat (`ApplicationRecruitmentDetailPanel` → `Appli
 
 Capability-based (see table above). Checklist is **not** the proof:
 
-- [ ] Brief merged (this file + Original Goal → Completion Proof)  
-- [ ] Named Workspace Capability Platform Completion Gate (feat)  
-- [ ] Four-class catalogs + host contract frozen  
-- [ ] Host = placement only; owners = semantics/state  
-- [ ] Entity Workspace ≠ Application Workspace  
-- [ ] permissions/actions/events/license are references  
-- [ ] status is owner projection, not a global enum  
-- [ ] Default and paid contributions share one mechanism  
-- [ ] Local analogues of shared capabilities forbidden on new work  
-- [ ] Legacy inventory + migration map  
-- [ ] Registry is the only legal add-path on the proof  
-- [ ] G4 = Recruitment Application bind (`ApplicationWorkspaceCapabilityHost`) — **required for COMPLETE**  
+- [x] Brief merged (this file + Original Goal → Completion Proof)  
+- [x] Named Workspace Capability Platform Completion Gate (feat)  
+- [x] Four-class catalogs + host contract frozen  
+- [x] Host = placement only on the Application proof path; owners = semantics/state (transport leakage named under G5)  
+- [x] Entity Workspace ≠ Application Workspace  
+- [x] permissions/actions/events/license are references  
+- [x] status is owner projection, not a global enum  
+- [x] Default and paid contributions share one mechanism  
+- [x] Local analogues of shared capabilities forbidden on new work  
+- [x] Legacy inventory + migration map  
+- [x] Registry is the only legal add-path on the proof  
+- [x] G4 = Recruitment Application bind (`ApplicationWorkspaceCapabilityHost`) — **PASS**  
+- [ ] Entity Workspace runtime host (`EntityWorkspaceCapabilityHost`) — G1 residual  
+- [ ] Notes/Consent owner facades hide transport — G5 residual  
+- [ ] Program COMPLETE after [host runtime-equivalence](workspace-capability-host-runtime-equivalence.md) + final Goal Completion  
 - [ ] E2 feat stays locked until that COMPLETE  
 
 ---
@@ -468,3 +477,4 @@ Capability-based (see table above). Checklist is **not** the proof:
 - 2026-08-21: Brief merged [#272](https://github.com/igortatarynovich/HostFlow/pull/272). Feat: typed contracts, four-class catalogs, technical registry, inventory, named gate. Proof screen remains the next slice.
 - 2026-08-21: Catalog inconsistencies closed: 78/18 counters vs manifests; filters = ListWorkspace zones (not `filter_bar` widget); tabs = host chrome (not kit id); `checkbox` = G4 proof blocker; `input_runtime` = named hardening.
 - 2026-08-21: `CHECKBOX_V1` locked; `checkbox` registered in kit. Recruitment Application G4 bind via `ApplicationWorkspaceCapabilityHost` (Notes/Consent owned widgets; host places).
+- 2026-08-21: Goal Completion G1–G5 of [#273](https://github.com/igortatarynovich/HostFlow/pull/273) → **PASS_WITH_CONSTRAINTS**. G2 PASS · G3 PASS (Application path) · G4 PASS · G5 PASS_WITH_CONSTRAINTS · G1 PASS_WITH_CONSTRAINTS (not full PASS). Program **not COMPLETE**. Documents E2 stays locked. Next: [host runtime-equivalence](workspace-capability-host-runtime-equivalence.md). ListWorkspace is a separate previous slice.
