@@ -84,7 +84,7 @@ Lead, Candidate, Employee, Client, Service Order, Fleet records, Document, Billi
 
 **Done (Sprint 1–6):** Endpoint Engine (HostFlow Form publish); Version ledger; Schema/validation/normalization; Immutable submission envelope; Shared Intake handoff; Audit.
 
-**Open — Product Track:** [host runtime-equivalence](../tasks/workspace-capability-host-runtime-equivalence.md) ← active. WCP G1–G5 **PASS_WITH_CONSTRAINTS** / program **not COMPLETE**. Forms Phase C C1–C6 ✅ / Foundation ✅. D1–D9 brief-complete / goal-incomplete. P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is Core Platform Kit class (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
+**Open — Product Track:** [Documents Platform E2](../tasks/documents-platform-e2-public-contract.md) ← active (feat unlocked). WCP **COMPLETE**. Forms Phase C C1–C6 ✅ / Foundation ✅. D1–D9 brief-complete / goal-incomplete vs original D. P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is Core Platform Kit class (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
 
 Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Automations / Documents / Universal Entity integration.
 

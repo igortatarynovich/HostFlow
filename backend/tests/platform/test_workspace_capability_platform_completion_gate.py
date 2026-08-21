@@ -548,10 +548,9 @@ def test_proof_consumer_frozen_and_g4_bound() -> None:
     assert "optional" in licenses
     brief = _BRIEF.read_text(encoding="utf-8")
     assert "cannot claim G4" in brief or "cannot claim PASS on G4" in brief
-    assert "not COMPLETE" in brief or "never **COMPLETE**" in brief
-    assert "PASS_WITH_CONSTRAINTS" in brief
     assert "workspace-capability-host-runtime-equivalence.md" in brief
     assert "workspace-capability-platform-g1-g5-closeout.md" in brief
+    assert "workspace-capability-platform-complete.md" in brief
     assert "Recruitment Application" in brief
     assert "Candidate is **not** the proof" in brief or "Candidate Entity Workspace is **not** the proof" in brief
     panel = _RECRUITMENT_PANEL.read_text(encoding="utf-8")
@@ -710,8 +709,8 @@ def test_product_track_points_at_brief_and_feat() -> None:
     brief = _BRIEF.read_text(encoding="utf-8")
     assert "Workspace Capability Platform Completion Gate" in brief
     status_line = next(line for line in brief.splitlines() if line.startswith("**Status:**"))
-    assert "PASS_WITH_CONSTRAINTS" in status_line
-    assert "not COMPLETE" in status_line
+    assert "COMPLETE" in status_line
+    assert "PASS_WITH_CONSTRAINTS" not in status_line
     assert "feat/workspace-capability-platform-completion" in brief
     assert "workspace-capability-legacy-inventory.md" in brief
     closeout = (
@@ -722,6 +721,12 @@ def test_product_track_points_at_brief_and_feat() -> None:
     assert "**PASS**" in closeout
     assert "EntityWorkspaceCapabilityHost" in closeout
     assert "not COMPLETE" in closeout
+    complete = (
+        _REPO_ROOT / "docs" / "specs" / "gates" / "workspace-capability-platform-complete.md"
+    ).read_text(encoding="utf-8")
+    assert "WCP_G1_G5_PASS" in complete
+    assert "program **COMPLETE**" in complete
+    assert "Outcome: **PASS**" in complete
     next_brief = (
         _REPO_ROOT
         / "docs"

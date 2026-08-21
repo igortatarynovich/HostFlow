@@ -20,6 +20,9 @@ _CLOSEOUT = (
     _REPO_ROOT / "docs" / "specs" / "gates" / "workspace-capability-platform-g1-g5-closeout.md"
 )
 _E2 = _REPO_ROOT / "docs" / "specs" / "tasks" / "documents-platform-e2-public-contract.md"
+_COMPLETE = (
+    _REPO_ROOT / "docs" / "specs" / "gates" / "workspace-capability-platform-complete.md"
+)
 _CI = _REPO_ROOT / ".github" / "workflows" / "backend-ci.yml"
 _PROOF_TS = (
     _REPO_ROOT
@@ -289,15 +292,20 @@ def test_not_a_new_proof_screen_or_e2() -> None:
     assert "ApplicationRodoSection" in brief
     assert "ListWorkspace" in brief
     e2 = _E2.read_text(encoding="utf-8")
-    assert "locked" in e2.lower()
+    assert "READY FOR IMPLEMENTATION" in e2
+    assert "unlocked" in e2.lower()
     closeout = _CLOSEOUT.read_text(encoding="utf-8")
     assert "PASS_WITH_CONSTRAINTS" in closeout
     assert "not COMPLETE" in closeout
+    complete = _COMPLETE.read_text(encoding="utf-8")
+    assert "**COMPLETE**" in complete
+    assert "Outcome: **PASS**" in complete
+    assert "recruitment_application" in complete.lower() or "Recruitment Application" in complete
     slots = _SLOTS_TS.read_text(encoding="utf-8")
     assert "documents" in slots
 
 
-def test_goal_completion_template_present_program_not_complete() -> None:
+def test_goal_completion_filled_program_complete() -> None:
     brief = _BRIEF.read_text(encoding="utf-8")
     assert "## Original Goal → Completion Proof" in brief
     assert "G1 Original problem:" in brief
@@ -306,8 +314,12 @@ def test_goal_completion_template_present_program_not_complete() -> None:
     assert "G4 End-to-end proof" in brief
     assert "G5 Remaining allowed workarounds" in brief
     status_line = next(line for line in brief.splitlines() if line.startswith("**Status:**"))
-    assert "IN PROGRESS" in status_line
-    assert "COMPLETE" not in status_line.replace("not COMPLETE", "")
+    assert "COMPLETE" in status_line
+    assert "IN PROGRESS" not in status_line
+    complete = _COMPLETE.read_text(encoding="utf-8")
+    assert "WCP_G1_G5_PASS" in complete
+    assert "program **COMPLETE**" in complete
+    assert "Documents E2" in complete
 
 
 def test_ci_named_gate_and_parent_gate_remain() -> None:
