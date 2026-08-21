@@ -84,7 +84,7 @@ Lead, Candidate, Employee, Client, Service Order, Fleet records, Document, Billi
 
 **Done (Sprint 1–6):** Endpoint Engine (HostFlow Form publish); Version ledger; Schema/validation/normalization; Immutable submission envelope; Shared Intake handoff; Audit.
 
-**Open — Product Track:** [Entity Workspace D1](../tasks/entity-workspace-d1-contract-seal.md) ← active (docs; feat locked). Forms Phase C C1–C6 ✅ / Foundation ✅. P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is Core Platform Kit class (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
+**Open — Product Track:** [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md) ← active (docs; feat locked). Forms Phase C C1–C6 ✅ / Foundation ✅. D1–D9 brief-complete / goal-incomplete. P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is Core Platform Kit class (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
 
 Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Automations / Documents / Universal Entity integration.
 
@@ -110,6 +110,7 @@ Also roadmap: Consent Management depth; Conditional Logic; Multi-language; Autom
 - 2026-07-18: Sprint 1 infra — Public Contract v1 + Adapter + contract tests (no Builder).  
 - 2026-07-18: Sprint 1 COMPLETE (PR #36); Sprint 2 — immutable snapshot + activate/deactivate + version pin.  
 - 2026-07-18: Sprint 1–6 COMPLETE; Product Layer epic OPEN; Field Catalog SoT / Builder-no-invent-types rule.  
+- 2026-08-20: Product Track → [Entity Platform Completion](../tasks/workspace-capability-platform-completion.md); D1–D9 brief-complete / goal-incomplete; E2 feat locked.  
 - 2026-08-14: C6 ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249)/[#250](https://github.com/igortatarynovich/HostFlow/pull/250) (`e81e2a08`); Forms Foundation ✅; Product Track → Entity Workspace D1 ([`../tasks/entity-workspace-d1-contract-seal.md`](../tasks/entity-workspace-d1-contract-seal.md)); P3 Publish UI / P4 / P5 remain locked.
 - 2026-08-14: C5 ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248) (`f6bbe03f`); Product Track → C6 Optimization ([`../tasks/forms-platform-c6-optimization.md`](../tasks/forms-platform-c6-optimization.md)); P3 Publish UI / P4 / P5 remain locked.
 - 2026-08-14: C4 ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246) (`4427b110`); Product Track → C5 Form Execution ([`../tasks/forms-platform-c5-form-execution.md`](../tasks/forms-platform-c5-form-execution.md)); P3 Publish UI / P4 / P5 remain locked.
