@@ -1495,6 +1495,78 @@
         "complete_data": "Заполнить данные"
       }
     },
+    "recruitment_inquiry": {
+      "candidate_fallback": "Кандидат",
+      "new_application": "Новый отклик",
+      "select_vacancy": "Выберите подбор",
+      "link_vacancy": "Привязать к подбору",
+      "vacancy_linked": "Подбор привязан",
+      "assignee_placeholder": "ID пользователя",
+      "assign": "Назначить",
+      "assignee_set": "Ответственный назначен",
+      "candidate_created": "Кандидат создан",
+      "reject_title": "Отклонить отклик",
+      "reject_comment": "Комментарий",
+      "rejected": "Отклик отклонён",
+      "follow_up_default_title": "Перезвонить кандидату",
+      "follow_up_created": "Напоминание создано",
+      "call": "Позвонить",
+      "action_failed": "Не удалось выполнить действие",
+      "outcome_title": "Кандидат создан",
+      "outcome_body": "Отклик обработан. Продолжите в карточке кандидата.",
+      "closed_title": "Отклик закрыт",
+      "rejected_body": "Отклик отклонён.",
+      "rejected_body_terminal": "Отклик отклонён. Новых действий нет.",
+      "completed_body": "Обработка завершена.",
+      "contact_title": "Связаться с кандидатом",
+      "contact_why": "Первый контакт ещё не выполнен.",
+      "called": "Позвонил",
+      "reject": "Отклонить",
+      "after_call_hint": "После звонка привяжите подбор и создайте кандидата.",
+      "process_title": "Обработать отклик",
+      "process_body": "Привяжите подбор и создайте кандидата — или отклоните отклик.",
+      "create_candidate": "Создать кандидата",
+      "rail": {
+        "stages": "Этап",
+        "work": "RODO и комментарии"
+      },
+      "stages": {
+        "contacted": "Связались",
+        "qualified": "Квалифицирован",
+        "lost": "Отклонён"
+      },
+      "comments": {
+        "subtitle": "Внутренние заметки по отклику — видны команде.",
+        "placeholder": "Перезвонить завтра, спрашивал про ставку, думает…",
+        "save": "Сохранить комментарий",
+        "saved": "Комментарий сохранён",
+        "save_failed": "Не удалось сохранить комментарий.",
+        "empty": "Комментариев пока нет."
+      },
+      "errors": {
+        "INTAKE_INFO_REQUESTED": "Ранее запросили данные у кандидата. Повторите «Создать кандидата» после обновления.",
+        "VACANCY_NOT_CONFIRMED": "Сначала привяжите подбор в блоке «Вакансия».",
+        "INTAKE_ROUTING_INCOMPLETE": "Не хватает маршрутизации: привяжите подбор.",
+        "INTAKE_POOL_PATH_REQUIRED": "Сначала привяжите подбор в блоке «Вакансия», затем снова нажмите «Создать кандидата».",
+        "NO_INTAKE_CONTEXT": "Не удалось создать кандидата: у отклика нет полного intake-контекста. Привяжите актуальный подбор и повторите.",
+        "LEAD_RODO_REQUIRED": "Нужно подтвердить RODO перед этим действием.",
+        "LEAD_INTAKE_ALREADY_REJECTED": "Отклик уже закрыт.",
+        "INTAKE_REJECT_REASON_REQUIRED": "Укажите причину отклонения.",
+        "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "Это действие недоступно для данного источника."
+      },
+      "reject_reasons": {
+        "insufficient_experience": "Не подходит",
+        "no_response": "Не отвечает",
+        "duplicate_spam": "Дубликат",
+        "invalid_contact": "Спам",
+        "other": "Другое"
+      },
+      "object_name_plural": "Отклики",
+      "hero_call_title": "Позвонить {count} новым откликам",
+      "hero_call_hint": "Откроем отклики по одному: позвонить → принять решение → создать кандидата.",
+      "hero_empty": "Нет новых откликов для звонка",
+      "list_kind_label": "Отклик кандидата"
+    },
     "work_schedule": {
       "options": {
         "by_weeks": "Понедельно",
@@ -5189,6 +5261,65 @@
           "assignments": "Назначения",
           "assignments_today": "Назначения сегодня (UTC)",
           "assignments_month": "Назначения в месяце (UTC)"
+        }
+      },
+      "marketing": {
+        "title": "Эффективность маркетинга",
+        "subtitle": "KPI кампаний Acquisition: расходы, лиды, CPL. Мультивыбор кампаний или пресеты (например водители Poltrakt).",
+        "empty": "Нет кампаний в выбранном срезе.",
+        "empty_campaigns": "Нет кампаний для этой компании.",
+        "snapshot_badge": "Метрики из снимка Meta",
+        "snapshot_hint": "Показы и охват берутся из последнего снимка Meta Insights, а не из окна ledger расходов.",
+        "snapshot_chip": "Снимок",
+        "source_ledger": "Ledger расходов",
+        "source_attribution": "Атрибуция лидов",
+        "source_derived": "Расчётное (расход ÷ лиды)",
+        "filters": {
+          "currency": "Валюта отображения",
+          "presets": "Пресеты",
+          "campaigns": "Кампании",
+          "select_all": "Выбрать все",
+          "clear": "Сбросить",
+          "selected": "Выбрано {count} / {total}"
+        },
+        "fx": {
+          "loading": "Загрузка курсов NBP…",
+          "as_of": "Средний курс NBP · {date} ({provider})",
+          "unavailable": "Курсы недоступны — показана исходная валюта",
+          "error": "Не удалось загрузить курсы NBP. Суммы остаются в USD, пока курсы не появятся."
+        },
+        "presets": {
+          "drivers_poltrakt": "Водители Poltrakt",
+          "warehouse": "Склад",
+          "dispatcher": "Диспетчер",
+          "ru": "RU лиды",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Расход",
+          "leads": "Лиды",
+          "cpl": "CPL",
+          "impressions": "Показы",
+          "reach": "Охват"
+        },
+        "charts": {
+          "trend_title": "Динамика",
+          "trend_subtitle": "Ежедневный расход и лиды по выбранным кампаниям и периоду.",
+          "spend_title": "Расход по кампаниям",
+          "spend_subtitle": "Рекламные расходы в выбранной группе.",
+          "leads_title": "Лиды по кампаниям",
+          "leads_subtitle": "Атрибутированные лиды (Acquisition).",
+          "cpl_title": "Стоимость лида (CPL)",
+          "cpl_subtitle": "Меньше — лучше; лучший CPL выделен.",
+          "mix_title": "Микс лидов",
+          "mix_subtitle": "Доля лидов среди выбранных кампаний."
+        },
+        "table": {
+          "title": "Детализация кампаний",
+          "subtitle": "Выбранные кампании с показами/охватом из Meta-снимка, если есть.",
+          "campaign": "Кампания",
+          "best_cpl": "Лучший CPL"
         }
       }
     },
@@ -11413,6 +11544,12 @@
         "rules_title": "Правила маппинга",
         "rules_subtitle": "Свяжите вопрос формы Meta с тем, куда сохраняется ответ. Несколько имён источника — через запятую.",
         "rules_hint": "Источник — имя поля из таблицы выше. Цель — внутренний идентификатор поля (позже будет подпись из карточки кандидата).",
+        "form_select_label": "Лид-форма",
+        "form_select_tenant_default": "Общий маппинг workspace ({count} правил)",
+        "form_select_option": "Форма {form_id} · страница {page_id}",
+        "form_name_label": "Название формы (необязательно)",
+        "form_name_placeholder": "например Warehouse jobs PL",
+        "inherits_tenant_banner": "У этой формы ещё нет своего маппинга — показаны правила workspace по умолчанию. Сохраните, чтобы создать маппинг для формы.",
         "form_fields": {
           "title": "Поля формы",
           "subtitle": "Поля, которые приходят из рекламной формы, с примером значения. Проверьте статус перед сохранением правил ниже.",
@@ -11444,6 +11581,8 @@
         "empty": "Правил пока нет. Добавьте строку или оставьте пустым — будут только значения по умолчанию.",
         "add_row": "Добавить правило",
         "save": "Сохранить маппинг",
+        "save_tenant": "Сохранить общий маппинг workspace",
+        "save_form": "Сохранить маппинг этой формы",
         "suggestions_ready": "Подсказок по именам полей: {count} (из последних лидов и/или ответа Graph).",
         "graph_fetch_title": "Загрузить поля из Meta",
         "graph_fetch_body": "Выберите недавний лид или укажите ID лида и ID страницы Facebook, затем запросите поля. Нужен сохранённый Page access token в подключениях.",
@@ -11459,6 +11598,22 @@
         "graph_fetch_validation_title": "Недостаточно данных",
         "graph_fetch_validation_hint": "Выберите недавний лид или укажите leadgen_id и page_id.",
         "graph_fetch_error_title": "Не удалось запросить Meta"
+      },
+      "intake_route": {
+        "title": "Маршрут приёма",
+        "body": "Привяжите эту форму Meta к профилю компании и типу лида. Ingest использует маршрут до создания кандидата или клиента.",
+        "fallback_warning": "Маршрут не задан — ingest возьмёт тип бизнеса tenant (может создать не ту сущность).",
+        "own_company": "Профиль компании",
+        "own_company_placeholder": "Выберите профиль…",
+        "lead_target": "Тип лида",
+        "targets": {
+          "candidate": "Кандидат (водитель)",
+          "client_lead": "Клиентский лид (B2B)",
+          "service_order_lead": "Лид на заказ услуги",
+          "partner_lead": "Партнёрский лид"
+        },
+        "active": "Маршрут активен",
+        "save": "Сохранить маршрут"
       },
       "credentials": {
         "title": "Добавить подключение",

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
+from backend.app.constants.hostflow_canonical_tenants import FOCUS_PERSONNEL_TENANT_ID
 from backend.app.models.tenant import TenantLicense
-from backend.app.services.lead_quota import resolve_monthly_leads_cap
+from backend.app.services.lead_quota import ensure_monthly_lead_creation_allowed, resolve_monthly_leads_cap
 
 
 def test_resolve_monthly_leads_trial_uses_trial_cap() -> None:
@@ -27,3 +30,8 @@ def test_resolve_monthly_leads_includes_pack_addon() -> None:
     st = {"usage_v1": {"pack_addons_v1": {"monthly_leads_cap": 500}}}
     cap = resolve_monthly_leads_cap({"status": "active", "plan_code": "team"}, lic, st)
     assert cap == 2000
+
+
+@pytest.mark.asyncio
+async def test_ensure_monthly_lead_creation_skips_focus_personnel() -> None:
+    await ensure_monthly_lead_creation_allowed(None, FOCUS_PERSONNEL_TENANT_ID)  # type: ignore[arg-type]
