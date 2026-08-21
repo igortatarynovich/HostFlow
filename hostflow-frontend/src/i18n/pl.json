@@ -4910,6 +4910,12 @@
         "subtitle": "KPI kampanii Acquisition: wydatki, leady, CPL. Multi-select kampanii lub preset (np. kierowcy Poltrakt).",
         "empty": "Brak kampanii w wybranym przekroju.",
         "empty_campaigns": "Brak kampanii dla tej firmy.",
+        "snapshot_badge": "Metryki ze snapshotu Meta",
+        "snapshot_hint": "Wyświetlenia i zasięg pochodzą z ostatniego snapshotu Meta Insights, nie z okna ledger wydatków.",
+        "snapshot_chip": "Snapshot",
+        "source_ledger": "Ledger wydatków",
+        "source_attribution": "Atrybucja leadów",
+        "source_derived": "Wyliczone (wydatki ÷ leady)",
         "filters": {
           "currency": "Waluta wyświetlania",
           "presets": "Presety",
@@ -10415,12 +10421,29 @@
       "process_title": "Przetwórz aplikację",
       "process_body": "Przypisz rekrutację i utwórz kandydata — albo odrzuć aplikację.",
       "create_candidate": "Utwórz kandydata",
+      "rail": {
+        "stages": "Etap",
+        "work": "RODO i komentarze"
+      },
+      "stages": {
+        "contacted": "Kontakt",
+        "qualified": "Zakwalifikowany",
+        "lost": "Odrzucony"
+      },
+      "comments": {
+        "subtitle": "Wewnętrzne notatki do aplikacji — widoczne dla zespołu.",
+        "placeholder": "Oddzwonić jutro, pytał o stawkę, rozważa…",
+        "save": "Zapisz komentarz",
+        "saved": "Komentarz zapisany",
+        "save_failed": "Nie udało się zapisać komentarza.",
+        "empty": "Brak komentarzy."
+      },
       "errors": {
         "INTAKE_INFO_REQUESTED": "Wcześniej poproszono o dane kandydata. Ponów „Utwórz kandydata” po aktualizacji.",
         "VACANCY_NOT_CONFIRMED": "Najpierw przypisz rekrutację w bloku „Wakans”.",
         "INTAKE_ROUTING_INCOMPLETE": "Brakuje routingu: przypisz rekrutację.",
         "INTAKE_POOL_PATH_REQUIRED": "Najpierw przypisz rekrutację w bloku „Wakans”, potem ponownie naciśnij „Utwórz kandydata”.",
-        "NO_INTAKE_CONTEXT": "Nie udało się utworzyć kandydata: brak pełnego kontekstu intake. Przypisz aktualną rekrutację i spróbuj ponownie albo otwórz kartę leada do routingu.",
+        "NO_INTAKE_CONTEXT": "Nie udało się utworzyć kandydata: brak pełnego kontekstu intake. Przypisz aktualną rekrutację i spróbuj ponownie.",
         "LEAD_RODO_REQUIRED": "Potwierdź RODO przed tą czynnością.",
         "LEAD_INTAKE_ALREADY_REJECTED": "Aplikacja jest już zamknięta.",
         "INTAKE_REJECT_REASON_REQUIRED": "Podaj powód odrzucenia.",
@@ -13709,6 +13732,12 @@
         "rules_title": "Reguły mapowania",
         "rules_subtitle": "Powiąż pytanie z formularza Meta z miejscem zapisu odpowiedzi. Wiele nazw źródła — po przecinku.",
         "rules_hint": "Źródło = nazwa pola z tabeli powyżej. Cel = wewnętrzny identyfikator pola (później etykiety kandydata).",
+        "form_select_label": "Formularz leadów",
+        "form_select_tenant_default": "Domyślne mapowanie workspace ({count} reguł)",
+        "form_select_option": "Formularz {form_id} · strona {page_id}",
+        "form_name_label": "Nazwa formularza (opcjonalnie)",
+        "form_name_placeholder": "np. Warehouse jobs PL",
+        "inherits_tenant_banner": "Ten formularz nie ma własnego mapowania — wyświetlane są reguły domyślne workspace. Zapisz, aby utworzyć mapowanie dla formularza.",
         "form_fields": {
           "title": "Pola formularza",
           "subtitle": "Pola z formularza leadów z przykładową wartością. Sprawdź status przed zapisaniem reguł poniżej.",
@@ -13740,6 +13769,8 @@
         "empty": "Brak reguł. Dodaj wiersz lub zostaw puste — tylko wartości domyślne.",
         "add_row": "Dodaj regułę",
         "save": "Zapisz mapowanie",
+        "save_tenant": "Zapisz domyślne mapowanie workspace",
+        "save_form": "Zapisz mapowanie tego formularza",
         "suggestions_ready": "Podpowiedzi nazw pól: {count} (z ostatnich leadów i/lub Graph).",
         "graph_fetch_title": "Załaduj pola z Meta",
         "graph_fetch_body": "Wybierz ostatni lead lub podaj ID leada i ID strony Facebook, potem pobierz pola. Wymagany zapisany token Page w poświadczeniach.",
@@ -13755,6 +13786,22 @@
         "graph_fetch_validation_title": "Brak danych",
         "graph_fetch_validation_hint": "Wybierz ostatni lead lub podaj leadgen_id i page_id.",
         "graph_fetch_error_title": "Żądanie do Meta nie powiodło się"
+      },
+      "intake_route": {
+        "title": "Ścieżka przyjmowania",
+        "body": "Powiąż ten formularz Meta z profilem firmy i typem leada. Ingest używa tej ścieżki przed utworzeniem kandydata lub klienta.",
+        "fallback_warning": "Brak ścieżki — ingest użyje typu biznesu tenanta (może utworzyć zły typ encji).",
+        "own_company": "Profil firmy",
+        "own_company_placeholder": "Wybierz profil…",
+        "lead_target": "Typ leada",
+        "targets": {
+          "candidate": "Kandydat (kierowca)",
+          "client_lead": "Lead klienta (B2B)",
+          "service_order_lead": "Lead zlecenia usługi",
+          "partner_lead": "Lead partnerski"
+        },
+        "active": "Ścieżka aktywna",
+        "save": "Zapisz ścieżkę"
       },
       "credentials": {
         "title": "Dodaj połączenie",

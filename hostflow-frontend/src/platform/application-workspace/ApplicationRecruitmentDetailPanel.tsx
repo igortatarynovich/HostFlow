@@ -19,6 +19,10 @@ import {
   applicationInitial,
   applicationStatusLabel,
 } from './applicationDisplay'
+import { ApplicationCommentsSection } from './ApplicationCommentsSection'
+import { ApplicationRodoSection } from './ApplicationRodoSection'
+import { ApplicationStageSection } from './ApplicationStageSection'
+import { applicationRodoState } from './applicationRail'
 import { resolveRecruitmentApplicationDecision } from './resolveRecruitmentApplicationDecision'
 
 const REJECT_REASON_CODES = [
@@ -57,7 +61,7 @@ const RECRUITMENT_ERROR_DEFAULTS: Record<(typeof RECRUITMENT_ERROR_CODES)[number
   INTAKE_POOL_PATH_REQUIRED:
     'Link a vacancy in the Vacancy block, then press “Create candidate” again.',
   NO_INTAKE_CONTEXT:
-    'Could not create a candidate: this application is missing full intake context. Link a current vacancy and retry, or open the lead card for routing.',
+    'Could not create a candidate: this application is missing full intake context. Link a current vacancy and retry.',
   LEAD_RODO_REQUIRED: 'Confirm RODO before this action.',
   LEAD_INTAKE_ALREADY_REJECTED: 'Application is already closed.',
   INTAKE_REJECT_REASON_REQUIRED: 'Provide a rejection reason.',
@@ -117,6 +121,13 @@ export function ApplicationRecruitmentDetailPanel({
     t('app.recruitment_inquiry.follow_up_default_title', { defaultValue: 'Call the candidate back' }),
   )
   const [assigneeId, setAssigneeId] = useState(application.assignee_id || '')
+  const [appState, setAppState] = useState(application)
+
+  useEffect(() => {
+    setAppState(application)
+    setSelectedVacancyId(String(application.extensions?.vacancy_id || ''))
+    setAssigneeId(application.assignee_id || '')
+  }, [application])
 
   const rejectReasons = useMemo(
     () =>
@@ -130,15 +141,18 @@ export function ApplicationRecruitmentDetailPanel({
   )
 
   const contactName =
-    application.contact.name ||
-    application.title ||
+    appState.contact.name ||
+    appState.title ||
     t('app.recruitment_inquiry.candidate_fallback', { defaultValue: 'Candidate' })
-  const statusKey = application.status
-  const vacancyTitle = String(application.extensions?.vacancy_title || application.subtitle || '')
+  const statusKey = appState.status
+  const vacancyTitle = String(appState.extensions?.vacancy_title || appState.subtitle || '')
   const candidateId =
-    application.outcome_entity_type === 'candidate' ? String(application.outcome_entity_id || '').trim() : ''
+    appState.outcome_entity_type === 'candidate' ? String(appState.outcome_entity_id || '').trim() : ''
   const candidateHref = candidateId ? candidateDetailPath(candidateId) : undefined
   const openCardLabel = t('app.candidates.detail.open_full_profile', { defaultValue: 'Open full card' })
+  const contactPhone = appState.contact.phone?.trim() || ''
+  const contactEmail = appState.contact.email?.trim() || ''
+  const telHref = contactPhone ? `tel:${contactPhone.replace(/\s/g, '')}` : null
 
   useEffect(() => {
     let cancelled = false
@@ -169,7 +183,7 @@ export function ApplicationRecruitmentDetailPanel({
 
   const createCandidate = useCallback(() => {
     void run(async () => {
-      const result = await processRecruitmentApplication(application.id)
+      const result = await processRecruitmentApplication(appState.id)
       if (!result.candidate_id) {
         notify({
           title: recruitmentActionErrorMessage(processResultError(result.message), t),
@@ -183,12 +197,21 @@ export function ApplicationRecruitmentDetailPanel({
       })
       navigate(candidateDetailPath(String(result.candidate_id)))
     })
-  }, [application.id, navigate, notify, run, t])
+  }, [appState.id, navigate, notify, run, t])
+
+  const applyApp = useCallback(
+    (next: Application) => {
+      setAppState(next)
+      onRefresh()
+    },
+    [onRefresh],
+  )
 
   const decision = resolveRecruitmentApplicationDecision({
-    application,
+    application: appState,
     patching,
     busy,
+    rodoSatisfied: applicationRodoState(appState).satisfied,
     onStage,
     onCreateCandidate: createCandidate,
     onFollowUp: () => setShowFollowUp(true),
@@ -196,8 +219,8 @@ export function ApplicationRecruitmentDetailPanel({
     t,
   })
 
-  const meta = application.source
-    ? `${application.source}${application.created_at ? ` · ${new Date(application.created_at).toLocaleString()}` : ''}`
+  const meta = appState.source
+    ? `${appState.source}${appState.created_at ? ` · ${new Date(appState.created_at).toLocaleString()}` : ''}`
     : undefined
 
   const actionDisabled = patching || busy
@@ -222,6 +245,14 @@ export function ApplicationRecruitmentDetailPanel({
         onClose={onClose}
         closeLabel={t('common.close', { defaultValue: 'Close' })}
         contextSlots={{
+          workflow: (
+            <ApplicationStageSection
+              application={appState}
+              disabled={actionDisabled}
+              onStage={(stage) => void onStage(stage)}
+              onReject={() => setShowReject(true)}
+            />
+          ),
           vacancy: (
             <div>
               <select
@@ -243,7 +274,7 @@ export function ApplicationRecruitmentDetailPanel({
                 disabled={!selectedVacancyId || actionDisabled}
                 onClick={() =>
                   void run(async () => {
-                    await confirmRecruitmentApplicationVacancy(application.id, { vacancy_id: selectedVacancyId })
+                    await confirmRecruitmentApplicationVacancy(appState.id, { vacancy_id: selectedVacancyId })
                     notify({
                       title: t('app.recruitment_inquiry.vacancy_linked', { defaultValue: 'Vacancy linked' }),
                       variant: 'success',
@@ -271,7 +302,7 @@ export function ApplicationRecruitmentDetailPanel({
                 disabled={!assigneeId.trim() || actionDisabled}
                 onClick={() =>
                   void run(async () => {
-                    await assignRecruitmentApplication(application.id, { assignee_id: assigneeId.trim() })
+                    await assignRecruitmentApplication(appState.id, { assignee_id: assigneeId.trim() })
                     notify({
                       title: t('app.recruitment_inquiry.assignee_set', { defaultValue: 'Assignee set' }),
                       variant: 'success',
@@ -290,13 +321,36 @@ export function ApplicationRecruitmentDetailPanel({
             </Link>
           ) : null,
           contacts: (
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3">
               <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-800">
-                {applicationInitial(application)}
+                {applicationInitial(appState)}
               </span>
-              <span className="text-sm text-slate-600">{contactName}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-slate-800">{contactName}</p>
+                {telHref ? (
+                  <a href={telHref} className="mt-1 block break-all text-lg font-semibold text-slate-900 hover:text-brand-700">
+                    {contactPhone}
+                  </a>
+                ) : null}
+                {contactEmail ? (
+                  <a href={`mailto:${contactEmail}`} className="mt-1 block truncate text-sm text-slate-600 hover:text-brand-700">
+                    {contactEmail}
+                  </a>
+                ) : null}
+              </div>
             </div>
           ),
+          summary: (
+            <div className="space-y-5">
+              <ApplicationRodoSection application={appState} disabled={actionDisabled} onUpdated={applyApp} />
+              <ApplicationCommentsSection application={appState} disabled={actionDisabled} onUpdated={applyApp} />
+            </div>
+          ),
+        }}
+        contextTitles={{
+          workflow: t('app.recruitment_inquiry.rail.stages', { defaultValue: 'Stage' }),
+          summary: t('app.recruitment_inquiry.rail.work', { defaultValue: 'RODO and comments' }),
+          contacts: t('app.context_rail.blocks.contacts', { defaultValue: 'Contact' }),
         }}
       />
 
@@ -333,7 +387,7 @@ export function ApplicationRecruitmentDetailPanel({
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    await updateRecruitmentApplicationStage(application.id, {
+                    await updateRecruitmentApplicationStage(appState.id, {
                       stage: 'lost',
                       lost_reason_code: rejectCode,
                       lost_reason_note: rejectNote || undefined,
@@ -372,7 +426,7 @@ export function ApplicationRecruitmentDetailPanel({
                 disabled={busy || !followUpTitle.trim()}
                 onClick={() =>
                   void run(async () => {
-                    await createRecruitmentApplicationFollowUp(application.id, { title: followUpTitle.trim() })
+                    await createRecruitmentApplicationFollowUp(appState.id, { title: followUpTitle.trim() })
                     setShowFollowUp(false)
                     notify({
                       title: t('app.recruitment_inquiry.follow_up_created', {

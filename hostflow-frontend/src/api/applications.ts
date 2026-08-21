@@ -218,3 +218,41 @@ export async function assignRecruitmentApplication(
   )
   return data
 }
+
+export type ApplicationRodoActionResult = {
+  ok: boolean
+  message?: string | null
+  application: Application
+}
+
+export async function sendRecruitmentApplicationRodo(
+  applicationId: string,
+): Promise<ApplicationRodoActionResult> {
+  const { data } = await api.post<ApplicationRodoActionResult>(
+    `/recruitment/applications/${encodeURIComponent(applicationId)}/compliance/rodo/send`,
+  )
+  return data
+}
+
+export async function markRecruitmentApplicationRodoSourceProvided(
+  applicationId: string,
+  opts?: { note?: string },
+): Promise<ApplicationRodoActionResult> {
+  const { data } = await api.post<ApplicationRodoActionResult>(
+    `/recruitment/applications/${encodeURIComponent(applicationId)}/compliance/rodo/source-provided`,
+    null,
+    { params: opts?.note ? { note: opts.note } : undefined },
+  )
+  return data
+}
+
+export async function addRecruitmentApplicationComment(
+  applicationId: string,
+  payload: { note: string },
+): Promise<Application> {
+  const { data } = await api.post<Application>(
+    `/recruitment/applications/${encodeURIComponent(applicationId)}/comments`,
+    payload,
+  )
+  return data
+}

@@ -23,11 +23,13 @@ from backend.app.modules.applications.listing import (
 )
 from backend.app.modules.applications.schemas import (
     ApplicationAssignIn,
+    ApplicationCommentIn,
     ApplicationFollowUpIn,
     ApplicationIntakeDecisionIn,
     ApplicationListResponse,
     ApplicationOut,
     ApplicationProcessResult,
+    ApplicationRodoActionOut,
     ApplicationStagePatch,
     ApplicationVacancyConfirmIn,
     SalesCapabilitySpineOut,
@@ -351,6 +353,64 @@ async def recruitment_application_assign(
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
     return await mutations.recruitment_assign(
+        db,
+        tenant_id=str(tenant_id),
+        application_id=application_id,
+        payload=payload,
+        current_user=current_user,
+    )
+
+
+@recruitment_router.post(
+    "/{application_id}/compliance/rodo/send",
+    response_model=ApplicationRodoActionOut,
+)
+async def recruitment_application_send_rodo(
+    application_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+) -> ApplicationRodoActionOut:
+    db, tenant_id = db_tenant
+    return await mutations.recruitment_send_rodo(
+        db,
+        tenant_id=str(tenant_id),
+        application_id=application_id,
+        current_user=current_user,
+    )
+
+
+@recruitment_router.post(
+    "/{application_id}/compliance/rodo/source-provided",
+    response_model=ApplicationRodoActionOut,
+)
+async def recruitment_application_mark_rodo_source_provided(
+    application_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+    note: str | None = Query(None, max_length=2000),
+) -> ApplicationRodoActionOut:
+    db, tenant_id = db_tenant
+    return await mutations.recruitment_mark_rodo_source_provided(
+        db,
+        tenant_id=str(tenant_id),
+        application_id=application_id,
+        current_user=current_user,
+        note=note,
+    )
+
+
+@recruitment_router.post("/{application_id}/comments", response_model=ApplicationOut)
+async def recruitment_application_add_comment(
+    application_id: str,
+    payload: ApplicationCommentIn,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
+) -> ApplicationOut:
+    db, tenant_id = db_tenant
+    return await mutations.recruitment_add_comment(
         db,
         tenant_id=str(tenant_id),
         application_id=application_id,

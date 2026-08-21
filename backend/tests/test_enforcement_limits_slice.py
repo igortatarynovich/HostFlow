@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from backend.app.constants.hostflow_canonical_tenants import FOCUS_PERSONNEL_TENANT_ID
+from backend.app.services.lead_forms_quota import ensure_tenant_lead_form_active_count_allows_transition
 from backend.app.services.plan_feature_gates import (
     automation_rules_enabled_cap,
     communication_channel_accounts_cap_for_bucket,
@@ -43,7 +44,17 @@ def test_trial_unlocks_team_tier_and_meta_oauth() -> None:
 
 def test_focus_personnel_unlocks_tier_gates() -> None:
     assert plan_allows_team_tier_features("starter", tenant_id=FOCUS_PERSONNEL_TENANT_ID) is True
-    assert automation_rules_enabled_cap("starter", tenant_id=FOCUS_PERSONNEL_TENANT_ID) == 10_000
+    assert automation_rules_enabled_cap("starter", tenant_id=FOCUS_PERSONNEL_TENANT_ID) is None
+
+
+@pytest.mark.asyncio
+async def test_focus_personnel_skips_lead_form_active_cap() -> None:
+    await ensure_tenant_lead_form_active_count_allows_transition(
+        None,  # type: ignore[arg-type]
+        FOCUS_PERSONNEL_TENANT_ID,
+        was_active=False,
+        will_be_active=True,
+    )
 
 
 @pytest.mark.parametrize(

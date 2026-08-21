@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 
+from backend.app.constants.hostflow_canonical_tenants import FOCUS_PERSONNEL_TENANT_ID
 from backend.app.services import plan_feature_gates
 
 
@@ -36,3 +37,25 @@ async def test_ensure_lead_source_limit_blocks_over_cap(monkeypatch: pytest.Monk
     assert err.status_code == 402
     assert isinstance(err.detail, dict)
     assert err.detail.get("code") == "lead_sources_limit_reached"
+
+
+@pytest.mark.asyncio
+async def test_ensure_lead_source_limit_skips_focus_personnel() -> None:
+    await plan_feature_gates.ensure_lead_source_limit(
+        None,  # type: ignore[arg-type]
+        FOCUS_PERSONNEL_TENANT_ID,
+        current_count=10_000,
+        extra_sources=1,
+    )
+
+
+@pytest.mark.asyncio
+async def test_focus_personnel_skips_channel_and_funnel_caps() -> None:
+    await plan_feature_gates.ensure_communication_channel_account_create_allowed(
+        None,  # type: ignore[arg-type]
+        FOCUS_PERSONNEL_TENANT_ID,
+    )
+    await plan_feature_gates.ensure_custom_funnel_create_allowed(
+        None,  # type: ignore[arg-type]
+        FOCUS_PERSONNEL_TENANT_ID,
+    )

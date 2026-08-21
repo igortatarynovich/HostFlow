@@ -133,7 +133,7 @@ async def enforce_trial_usage_cap_and_increment(
     increment: int = 1,
 ) -> None:
     """Apply trial monthly usage cap for selected metric, then persist increment."""
-    if increment <= 0:
+    if increment <= 0 or is_focus_personnel_tenant(tenant_id):
         return
     metric_key = str(metric or "").strip().lower()
     cap = trial_usage_caps().get(metric_key)
@@ -276,6 +276,7 @@ def plan_bucket_for_limits(plan: str) -> str:
 
 
 async def resolve_plan_bucket_for_limits(db: AsyncSession, tenant_id: str) -> str:
+    """Commercial bucket for numeric caps. Focus Personnel skips enforcement instead of using this."""
     if is_focus_personnel_tenant(tenant_id):
         return "pro"
     return plan_bucket_for_limits(await resolve_tenant_plan_code(db, tenant_id))
@@ -347,7 +348,7 @@ async def ensure_lead_source_limit(
     current_count: int | None = None,
     extra_sources: int = 1,
 ) -> None:
-    if extra_sources <= 0:
+    if extra_sources <= 0 or is_focus_personnel_tenant(tenant_id):
         return
     bucket = await resolve_plan_bucket_for_limits(db, tenant_id)
     cap = lead_sources_cap_for_bucket(bucket)
@@ -386,6 +387,8 @@ async def count_communication_channel_accounts(db: AsyncSession, tenant_id: str)
 
 
 async def ensure_communication_channel_account_create_allowed(db: AsyncSession, tenant_id: str) -> None:
+    if is_focus_personnel_tenant(tenant_id):
+        return
     bucket = await resolve_plan_bucket_for_limits(db, tenant_id)
     cap = communication_channel_accounts_cap_for_bucket(bucket)
     n = await count_communication_channel_accounts(db, tenant_id)
@@ -413,6 +416,8 @@ async def count_tenant_owned_funnels(db: AsyncSession, tenant_id: str) -> int:
 
 
 async def ensure_custom_funnel_create_allowed(db: AsyncSession, tenant_id: str) -> None:
+    if is_focus_personnel_tenant(tenant_id):
+        return
     bucket = await resolve_plan_bucket_for_limits(db, tenant_id)
     cap = custom_funnel_definitions_cap_for_bucket(bucket)
     n = await count_tenant_owned_funnels(db, tenant_id)
@@ -448,7 +453,7 @@ async def ensure_automation_rules_mutation_allowed(db: AsyncSession, tenant_id: 
 def automation_rules_enabled_cap(plan: str, *, tenant_id: str | None = None) -> int | None:
     """Max enabled rules for Team-tier plans; None if tier cannot use rules (caller gates first)."""
     if is_focus_personnel_tenant(tenant_id):
-        return 10_000
+        return None
     p = (plan or "").strip().lower() or "starter"
     if not plan_allows_team_tier_features(p, tenant_id=tenant_id):
         return None

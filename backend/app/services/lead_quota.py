@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.constants.hostflow_canonical_tenants import is_focus_personnel_tenant
 from backend.app.intake_platform.operational_scope import OPERATIONAL_EXCLUDED_LEAD_STAGES
 from backend.app.models.lead import Lead
 from backend.app.models.tenant import Tenant, TenantLicense
@@ -72,6 +73,8 @@ async def count_leads_created_this_month_utc(db: AsyncSession, tenant_id: str) -
 
 
 async def ensure_monthly_lead_creation_allowed(db: AsyncSession, tenant_id: str) -> None:
+    if is_focus_personnel_tenant(tenant_id):
+        return
     tenant = await db.get(Tenant, tenant_id)
     sub = subscription_dict_from_tenant(tenant)
     lic_row = (

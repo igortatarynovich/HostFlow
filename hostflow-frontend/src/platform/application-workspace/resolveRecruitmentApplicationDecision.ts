@@ -11,6 +11,7 @@ type ResolveRecruitmentDecisionArgs = {
   application: Application
   patching: boolean
   busy: boolean
+  rodoSatisfied: boolean
   onStage: (stage: 'contacted' | 'qualified' | 'lost') => void | Promise<void>
   onCreateCandidate: () => void
   onFollowUp: () => void
@@ -19,11 +20,12 @@ type ResolveRecruitmentDecisionArgs = {
 }
 
 export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDecisionArgs): ObjectDecision {
-  const { application, patching, busy, onStage, onCreateCandidate, onFollowUp, onReject, t } = args
+  const { application, patching, busy, rodoSatisfied, onStage, onCreateCandidate, onFollowUp, onReject, t } = args
   const statusKey = application.status
   const terminal = statusKey === 'completed' || statusKey === 'rejected'
   const contactPhone = application.contact.phone
   const disabled = patching || busy
+  const contactBlocked = disabled || !rodoSatisfied
   const candidateId =
     application.outcome_entity_type === 'candidate' ? String(application.outcome_entity_id || '').trim() : ''
   const candidateHref = candidateId ? candidateDetailPath(candidateId) : undefined
@@ -90,12 +92,16 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
     return {
       stateId: 'recruitment.first_contact',
       currentState: t('app.recruitment_inquiry.contact_title', { defaultValue: 'Contact the candidate' }),
-      why: t('app.recruitment_inquiry.contact_why', { defaultValue: 'First contact has not been made yet.' }),
+      why: !rodoSatisfied
+        ? t('app.recruitment_inquiry.errors.LEAD_RODO_REQUIRED', {
+            defaultValue: 'Confirm RODO before this action.',
+          })
+        : t('app.recruitment_inquiry.contact_why', { defaultValue: 'First contact has not been made yet.' }),
       primaryAction: {
         id: 'contacted',
         label: t('app.recruitment_inquiry.called', { defaultValue: 'Called' }),
         onClick: () => void onStage('contacted'),
-        disabled,
+        disabled: contactBlocked,
       },
       secondaryActions: [
         { id: 'follow_up', label: 'Follow-up', onClick: onFollowUp, disabled },
@@ -108,24 +114,29 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
         },
       ],
       contactActions,
-      requiredContext: ['vacancy', 'assignee'],
+      requiredContext: ['contacts', 'workflow', 'vacancy', 'assignee', 'summary'],
       afterActionHint: t('app.recruitment_inquiry.after_call_hint', {
         defaultValue: 'After the call, link a vacancy and create a candidate.',
       }),
+      variant: rodoSatisfied ? 'default' : 'blocker',
     }
   }
 
   return {
     stateId: 'recruitment.process',
     currentState: t('app.recruitment_inquiry.process_title', { defaultValue: 'Process application' }),
-    why: t('app.recruitment_inquiry.process_body', {
-      defaultValue: 'Link a vacancy and create a candidate — or reject the application.',
-    }),
+    why: !rodoSatisfied
+      ? t('app.recruitment_inquiry.errors.LEAD_RODO_REQUIRED', {
+          defaultValue: 'Confirm RODO before this action.',
+        })
+      : t('app.recruitment_inquiry.process_body', {
+          defaultValue: 'Link a vacancy and create a candidate — or reject the application.',
+        }),
     primaryAction: {
       id: 'create_candidate',
       label: t('app.recruitment_inquiry.create_candidate', { defaultValue: 'Create candidate' }),
       onClick: onCreateCandidate,
-      disabled,
+      disabled: contactBlocked,
     },
     secondaryActions: [
       { id: 'follow_up', label: 'Follow-up', onClick: onFollowUp, disabled },
@@ -138,6 +149,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
       },
     ],
     contactActions,
-    requiredContext: ['vacancy', 'assignee'],
+    requiredContext: ['contacts', 'workflow', 'vacancy', 'assignee', 'summary'],
+    variant: rodoSatisfied ? 'default' : 'blocker',
   }
 }

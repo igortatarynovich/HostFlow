@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -14,10 +14,12 @@ from backend.app.models import Lead
 from backend.app.modules.applications.mappers import lead_to_recruitment_application, lead_to_sales_inquiry
 from backend.app.modules.applications.schemas import (
     ApplicationAssignIn,
+    ApplicationCommentIn,
     ApplicationFollowUpIn,
     ApplicationIntakeDecisionIn,
     ApplicationOut,
     ApplicationProcessResult,
+    ApplicationRodoActionOut,
     ApplicationStagePatch,
     ApplicationVacancyConfirmIn,
 )
@@ -453,5 +455,125 @@ async def recruitment_assign(
     meta["assigned_manager_id"] = payload.assignee_id.strip()
     norm["meta"] = meta
     lead.normalized = norm
+    await db.flush()
+    return await _reload_recruitment(db, tenant_id, application_id)
+
+
+async def _recruitment_lead_or_404(db: AsyncSession, tenant_id: str, application_id: str) -> Lead:
+    lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
+    if not lead or (lead.lead_type == "client" and lead.lead_target_type == "client_lead"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    return lead
+
+
+async def recruitment_send_rodo(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    application_id: str,
+    current_user: UserCtx,
+) -> ApplicationRodoActionOut:
+    from backend.app.services.lead_lifecycle_email_policy import (
+        PURPOSE_GDPR_NOTICE,
+        resolve_lifecycle_email_policy_for_lead,
+    )
+    from backend.app.services.lead_rodo import (
+        LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
+        mark_lead_rodo_pending_policy,
+        send_lead_rodo_email,
+    )
+    from backend.app.services.lead_rodo_settings import DEFAULT_LEAD_RODO_CHANNELS
+
+    lead = await _recruitment_lead_or_404(db, tenant_id, application_id)
+    actor_id = str(current_user.sub or "").strip() or None
+    decision = await resolve_lifecycle_email_policy_for_lead(
+        db, tenant_id=tenant_id, lead=lead, purpose=PURPOSE_GDPR_NOTICE
+    )
+    if decision.block_code in ("policy_template_missing", "policy_misconfigured") or not decision.template_ref:
+        mark_lead_rodo_pending_policy(
+            lead,
+            reason=decision.reason or "RODO template_ref is missing; configure Lead lifecycle email policy.",
+            reason_code=str(decision.block_code or LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING),
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=decision.reason or "RODO email policy blocked send (template missing).",
+        )
+    ok, msg = await send_lead_rodo_email(
+        db,
+        lead=lead,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        channels=DEFAULT_LEAD_RODO_CHANNELS,
+        template_id=None,
+        message_template_id=decision.template_ref,
+    )
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+    await db.commit()
+    app = await _reload_recruitment(db, tenant_id, application_id)
+    return ApplicationRodoActionOut(ok=True, message=msg, application=app)
+
+
+async def recruitment_mark_rodo_source_provided(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    application_id: str,
+    current_user: UserCtx,
+    note: str | None = None,
+) -> ApplicationRodoActionOut:
+    from backend.app.services.lead_rodo import mark_lead_rodo_source_provided
+
+    lead = await _recruitment_lead_or_404(db, tenant_id, application_id)
+    mark_lead_rodo_source_provided(
+        lead,
+        actor_id=str(current_user.sub or "").strip() or None,
+        note=note,
+    )
+    await db.commit()
+    app = await _reload_recruitment(db, tenant_id, application_id)
+    return ApplicationRodoActionOut(ok=True, application=app)
+
+
+async def recruitment_add_comment(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    application_id: str,
+    payload: ApplicationCommentIn,
+    current_user: UserCtx,
+) -> ApplicationOut:
+    from sqlalchemy.orm.attributes import flag_modified
+
+    from backend.app.services.audit import log_activity
+
+    lead = await _recruitment_lead_or_404(db, tenant_id, application_id)
+    note = str(payload.note or "").strip()
+    if not note:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="note is required")
+    actor_id = str(current_user.sub or "").strip() or None
+    now_iso = datetime.now(timezone.utc).isoformat()
+    entry = {"note": note[:2000], "at": now_iso}
+    if actor_id:
+        entry["by"] = actor_id
+    norm: Dict[str, Any] = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    history = [h for h in (norm.get("application_comments_v1") or []) if isinstance(h, dict)]
+    history.append(entry)
+    if len(history) > 50:
+        history = history[-50:]
+    norm["application_comments_v1"] = history
+    lead.normalized = norm
+    flag_modified(lead, "normalized")
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        action="application.comment",
+        actor_id=actor_id,
+        target_type="lead",
+        target_id=str(lead.id),
+        payload={"note": note[:2000]},
+    )
     await db.flush()
     return await _reload_recruitment(db, tenant_id, application_id)

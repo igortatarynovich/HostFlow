@@ -3061,7 +3061,7 @@ export default function MetaLeadsAdminPage() {
             </label>
             {selectedFormKey !== META_FORM_TENANT_DEFAULT_KEY && (
               <label className="mt-3 flex max-w-md flex-col gap-1 text-xs font-medium text-slate-700">
-                {t('admin.meta_leads.detail.fields.form_name_label', { defaultValue: 'Form label (optional)' })}
+                {t('admin.meta_leads.field_mapping.form_name_label')}
                 <input
                   type="text"
                   className="input text-sm"
