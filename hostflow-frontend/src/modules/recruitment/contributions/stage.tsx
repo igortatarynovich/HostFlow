@@ -82,6 +82,7 @@ export function RecruitmentStageContribution({
   )
 
   const createCandidate = useCallback(() => {
+    if (!application) return
     void run(async () => {
       const result = await processRecruitmentApplication(application.id)
       if (!result.candidate_id) {
@@ -94,7 +95,9 @@ export function RecruitmentStageContribution({
       notify({ title: 'Кандидат создан', variant: 'success' })
       navigate(candidateDetailPath(String(result.candidate_id)))
     })
-  }, [application.id, navigate, notify, run, t])
+  }, [application, navigate, notify, run, t])
+
+  if (!application || !onStage) return null
 
   const decision = resolveRecruitmentApplicationDecision({
     application,

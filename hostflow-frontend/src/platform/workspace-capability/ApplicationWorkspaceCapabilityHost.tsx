@@ -1,17 +1,11 @@
 import { IconX } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
 import type { WorkspaceContributionDefinition } from './contribution'
-import { WORKSPACE_CAPABILITY_RENDERERS } from './renderers'
+import { groupContributionsByRegion, renderWorkspaceContribution } from './placement'
 import type { WorkspaceCapabilityRenderContext } from './renderContext'
 
 type Props = WorkspaceCapabilityRenderContext & {
   contributions: readonly WorkspaceContributionDefinition[]
-}
-
-function renderContribution(row: WorkspaceContributionDefinition, ctx: WorkspaceCapabilityRenderContext) {
-  const Renderer = WORKSPACE_CAPABILITY_RENDERERS[row.component_id as keyof typeof WORKSPACE_CAPABILITY_RENDERERS]
-  if (!Renderer) return null
-  return <Renderer key={row.capability_id} {...ctx} />
 }
 
 /**
@@ -20,11 +14,11 @@ function renderContribution(row: WorkspaceContributionDefinition, ctx: Workspace
  */
 export function ApplicationWorkspaceCapabilityHost({ contributions, ...ctx }: Props) {
   const { t } = useI18n()
-  const ordered = [...contributions].sort((a, b) => a.ordering - b.ordering)
-  const header = ordered.filter((row) => row.placement.region === 'header')
-  const decision = ordered.filter((row) => row.placement.region === 'decision')
-  const overview = ordered.filter((row) => row.placement.region === 'overview')
-  const rail = ordered.filter((row) => row.placement.region === 'rail')
+  const renderCtx: WorkspaceCapabilityRenderContext = {
+    ...ctx,
+    host: ctx.host ?? 'application_workspace',
+  }
+  const byRegion = groupContributionsByRegion(contributions)
 
   return (
     <div
@@ -34,7 +28,7 @@ export function ApplicationWorkspaceCapabilityHost({ contributions, ...ctx }: Pr
     >
       <header className="flex shrink-0 items-start justify-between gap-2 border-b border-slate-100 p-4" data-host-region="header">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          {header.map((row) => renderContribution(row, ctx))}
+          {byRegion.header.map((row) => renderWorkspaceContribution(row, renderCtx))}
         </div>
         <button
           type="button"
@@ -45,18 +39,28 @@ export function ApplicationWorkspaceCapabilityHost({ contributions, ...ctx }: Pr
           <IconX size={18} stroke={2} />
         </button>
       </header>
+      {byRegion.summary.length ? (
+        <section className="shrink-0 border-b border-slate-100 p-4" data-host-region="summary">
+          {byRegion.summary.map((row) => renderWorkspaceContribution(row, renderCtx))}
+        </section>
+      ) : null}
       <section className="shrink-0 border-b border-slate-100 p-4" data-host-region="decision">
-        {decision.map((row) => renderContribution(row, ctx))}
+        {byRegion.decision.map((row) => renderWorkspaceContribution(row, renderCtx))}
       </section>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        {overview.length ? (
+        {byRegion.overview.length ? (
           <div className="space-y-4 border-b border-slate-100 p-4" data-host-region="overview">
-            {overview.map((row) => renderContribution(row, ctx))}
+            {byRegion.overview.map((row) => renderWorkspaceContribution(row, renderCtx))}
           </div>
         ) : null}
-        {rail.length ? (
+        {byRegion.platform_slot.length ? (
+          <div className="space-y-4 border-b border-slate-100 p-4" data-host-region="platform_slot">
+            {byRegion.platform_slot.map((row) => renderWorkspaceContribution(row, renderCtx))}
+          </div>
+        ) : null}
+        {byRegion.rail.length ? (
           <div className="space-y-4 p-4" data-host-region="rail">
-            {rail.map((row) => renderContribution(row, ctx))}
+            {byRegion.rail.map((row) => renderWorkspaceContribution(row, renderCtx))}
           </div>
         ) : null}
       </div>

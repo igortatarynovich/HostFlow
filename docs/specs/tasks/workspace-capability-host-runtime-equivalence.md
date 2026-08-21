@@ -1,9 +1,10 @@
 # Workspace Capability — Host runtime-equivalence
 
-**Status:** **IN PROGRESS** (docs — this brief)  
+**Status:** **IN PROGRESS** (code) — parent program **not COMPLETE**  
 **Phase class:** platform  
 **Branch (docs):** lands with [#273](https://github.com/igortatarynovich/HostFlow/pull/273) close-out  
-**Branch (code):** `feat/workspace-capability-host-runtime-equivalence` (locked until the G1–G5 close-out is on the feat)  
+**Branch (code):** `feat/workspace-capability-host-runtime-equivalence`  
+**Named gate:** Workspace Capability Host Runtime Equivalence Gate (`tests/platform/test_workspace_capability_host_runtime_equivalence_gate.py`)  
 **Parents:** [G1–G5 close-out](../gates/workspace-capability-platform-g1-g5-closeout.md) **PASS_WITH_CONSTRAINTS** · [Workspace Capability Platform Completion](workspace-capability-platform-completion.md) · [Goal Completion Gate](../gates/goal-completion-gate.md) · [UI constitution §3](../architecture/ui-constitution-v1.md)
 
 > Corrective slice **inside** Workspace Capability Platform Completion.  
@@ -39,7 +40,7 @@ False close (reject): wrapping Entity chrome without the contract; Candidate-as-
 ## In scope (feat)
 
 1. `EntityWorkspaceCapabilityHost` — placement-only runtime for `entity_workspace`. Same contribution protocol. Must not import Notes/Consent/Recruitment/HR internals.  
-2. Notes owner boundary — capability UI talks to a Notes facade/API owned by Notes, not `/candidates/:id/notes` from the widget and not a page stub that the host understands as candidate-only. Pre-convert Application notes remain a named constraint until that facade exists.  
+2. Notes owner boundary — capability UI talks to a Notes facade/API owned by Notes, not `/candidates/:id/notes` from the widget and not a page stub that the host understands as candidate-only. Pre-convert Application notes remain an owner stub (no candidate subject yet).  
 3. Consent owner boundary — capability UI talks to Compliance (`consent` + policy `lead_rodo_v1`). No `getLead` / `sendLeadRodoCompliance` / `markLeadRodoSourceProvided` in `ConsentCapability`, host, or page.  
 4. Named-gate extensions: both host implementations exist; capability UI files do not import Lead client modules.  
 5. Goal Completion template in the feat PR. Program COMPLETE **only** after a **final** G1–G5 review of this slice.
@@ -63,7 +64,7 @@ False close (reject): wrapping Entity chrome without the contract; Candidate-as-
 | # | Answer |
 |---|--------|
 | 1 Owner | Host owns placement only. Notes owns notes state. Compliance owns consent. Unchanged from the parent program. |
-| 2 Exists? | Typed hosts exist; Entity **runtime** host does not. Notes/Consent widgets exist; owner facades do not. |
+| 2 Exists? | This feat lands `EntityWorkspaceCapabilityHost` plus Notes/Consent owner facades. Typed catalogs already exist on #273. |
 | 3 Adapter | Consent/Lead transport adapter belongs to Compliance, not the page. Notes storage adapter belongs to Notes. |
 | 4 Boundary | No E2; no new G4 screen; no Application=Entity; no Shell-owns-semantics; no ListWorkspace mix-in |
 | 5 Settings | None |
@@ -77,6 +78,23 @@ Does **not** amend L0.
 
 ---
 
+## Goal Completion Gate — template (feat; not COMPLETE)
+
+Copy of [goal-completion-gate.md](../gates/goal-completion-gate.md) for this slice. Fill at **final** review. This feat does **not** mark the parent program COMPLETE and does **not** unlock Documents E2.
+
+```text
+Goal Completion Gate — Workspace Capability host runtime-equivalence
+G1 Original problem: After #273 a new Entity screen can still assemble without a runtime Capability Host, and Notes/Consent UI still know transport APIs.
+G2 Now forbidden local implementations: Lead/candidate-notes imports in ConsentCapability / NotesCapability / host / G4 panel; wrapping Entity chrome without EntityWorkspaceCapabilityHost; Candidate-as-G4; ApplicationRodoSection as WCP; new proof-screen.
+G3 Next consumer without new primitive? Yes for a second host consumer using the same contribution protocol. No for Documents E2 until parent COMPLETE.
+G4 End-to-end proof (path + what it does not fork): EntityWorkspaceCapabilityHost + owner facades; Recruitment Application G4 bind remains; not a new proof-screen.
+G5 Remaining allowed workarounds (owner / until): mass Sales/Candidate inventory migrate-on-touch after COMPLETE; D2 documents reserved until E2; ListWorkspace separate; pre-convert Notes stub when no candidate subject.
+Outcome: (not reviewed — IN PROGRESS)
+```
+
+---
+
 ## History
 
 - 2026-08-21: Opened after G1–G5 close-out **PASS_WITH_CONSTRAINTS**. G4 remains PASS. E2 stays locked until program COMPLETE.
+- 2026-08-21: Feat branch opened — Entity host runtime + Notes/Consent owner facades. Named gate added. Program still **not COMPLETE**.

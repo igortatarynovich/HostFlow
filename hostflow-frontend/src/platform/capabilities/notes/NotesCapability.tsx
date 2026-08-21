@@ -1,58 +1,56 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '../../../api/client'
 import { Button } from '../../../components/ui/Button'
 import { useToast } from '../../../components/Toast'
 import { useI18n } from '../../../i18n'
 import type { WorkspaceCapabilityRenderContext } from '../../workspace-capability/renderContext'
-
-type NoteRow = {
-  id: string
-  text: string
-  created_at?: string
-  author_name?: string | null
-}
+import { addNote, listNotes, notesSubjectKey, type NotesListItem } from './notesOwner'
 
 /**
  * Shared Notes widget. Owner = Notes. Host only places this contribution.
- * Storage: candidate notes when the application has produced a candidate.
+ * Storage transport is the Notes owner facade — not candidate-notes API here.
  */
-export function NotesCapability({ application, onRefresh }: WorkspaceCapabilityRenderContext) {
+export function NotesCapability(ctx: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()
   const { notify } = useToast()
-  const candidateId =
-    application.outcome_entity_type === 'candidate' ? String(application.outcome_entity_id || '').trim() : ''
-  const [notes, setNotes] = useState<NoteRow[]>([])
-  const [loading, setLoading] = useState(Boolean(candidateId))
+  const { onRefresh } = ctx
+  const subjectKey = notesSubjectKey(ctx)
+  const [notes, setNotes] = useState<NotesListItem[]>([])
+  const [available, setAvailable] = useState(Boolean(subjectKey))
+  const [loading, setLoading] = useState(Boolean(subjectKey))
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
-    if (!candidateId) {
+    if (!subjectKey) {
       setNotes([])
+      setAvailable(false)
       setLoading(false)
       return
     }
     setLoading(true)
     try {
-      const { data } = await api.get<NoteRow[]>(`/candidates/${encodeURIComponent(candidateId)}/notes`)
-      setNotes(Array.isArray(data) ? data : [])
+      const result = await listNotes(ctx)
+      setAvailable(result.available)
+      setNotes(result.items)
     } catch {
       setNotes([])
+      setAvailable(false)
     } finally {
       setLoading(false)
     }
-  }, [candidateId])
+    // subjectKey is the owner-resolved transport id; avoid depending on ctx identity.
+  }, [subjectKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     void load()
   }, [load])
 
-  const addNote = async () => {
+  const save = async () => {
     const text = draft.trim()
-    if (!candidateId || !text || saving) return
+    if (!available || !text || saving) return
     setSaving(true)
     try {
-      await api.post(`/candidates/${encodeURIComponent(candidateId)}/notes`, { text, visibility: 'internal' })
+      await addNote(ctx, text)
       setDraft('')
       await load()
       onRefresh()
@@ -70,12 +68,12 @@ export function NotesCapability({ application, onRefresh }: WorkspaceCapabilityR
         {t('app.candidate_card.notes.title', { defaultValue: 'Заметки' })}
       </p>
       {loading ? <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p> : null}
-      {!loading && !candidateId ? (
+      {!loading && !available ? (
         <p className="text-sm text-slate-500">
           Заметки появятся после создания кандидата. Shared Notes widget размещён хостом — локальная секция комментариев запрещена.
         </p>
       ) : null}
-      {!loading && candidateId
+      {!loading && available
         ? notes.map((note) => (
             <article key={note.id} className="rounded-none border border-slate-200 bg-white p-3 text-sm text-slate-700">
               <p>{note.text}</p>
@@ -83,7 +81,7 @@ export function NotesCapability({ application, onRefresh }: WorkspaceCapabilityR
             </article>
           ))
         : null}
-      {candidateId ? (
+      {available ? (
         <div className="space-y-2">
           <textarea
             className="textarea"
@@ -92,7 +90,7 @@ export function NotesCapability({ application, onRefresh }: WorkspaceCapabilityR
             onChange={(event) => setDraft(event.target.value)}
             placeholder={t('app.candidate_card.notes.placeholder', { defaultValue: 'Внутренняя заметка' })}
           />
-          <Button variant="secondary" size="sm" disabled={saving || !draft.trim()} onClick={() => void addNote()}>
+          <Button variant="secondary" size="sm" disabled={saving || !draft.trim()} onClick={() => void save()}>
             {t('common.save', { defaultValue: 'Сохранить' })}
           </Button>
         </div>

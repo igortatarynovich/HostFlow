@@ -15,7 +15,7 @@ export function RecruitmentVacancyContribution({
   const { notify } = useToast()
   const { t } = useI18n()
   const [vacancies, setVacancies] = useState<Array<{ id: string; title: string }>>([])
-  const [selectedVacancyId, setSelectedVacancyId] = useState(String(application.extensions?.vacancy_id || ''))
+  const [selectedVacancyId, setSelectedVacancyId] = useState(String(application?.extensions?.vacancy_id || ''))
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export function RecruitmentVacancyContribution({
   }, [])
 
   const bind = useCallback(async () => {
-    if (!selectedVacancyId || busy || patching) return
+    if (!application || !selectedVacancyId || busy || patching) return
     setBusy(true)
     try {
       await confirmRecruitmentApplicationVacancy(application.id, { vacancy_id: selectedVacancyId })
@@ -43,7 +43,7 @@ export function RecruitmentVacancyContribution({
     } finally {
       setBusy(false)
     }
-  }, [application.id, busy, notify, onRefresh, patching, selectedVacancyId, t])
+  }, [application, busy, notify, onRefresh, patching, selectedVacancyId, t])
 
   return (
     <section className="space-y-2" data-capability-id="recruitment.vacancy">

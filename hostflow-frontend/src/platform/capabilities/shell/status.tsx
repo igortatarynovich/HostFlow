@@ -13,6 +13,7 @@ const STATUS_SEMANTIC: Record<string, StatusBadgeSemantic> = {
 }
 
 export function StatusCapability({ application }: WorkspaceCapabilityRenderContext) {
+  if (!application) return null
   const statusKey = application.status
   return (
     <div data-capability-id="status">

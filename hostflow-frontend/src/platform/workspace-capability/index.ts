@@ -106,6 +106,14 @@ export {
   RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS,
 } from './proof'
 
+export type {
+  WorkspaceCapabilityRenderContext,
+  WorkspaceEntityRef,
+  RecruitmentApplicationStage,
+} from './renderContext'
+
 export { ApplicationWorkspaceCapabilityHost } from './ApplicationWorkspaceCapabilityHost'
+export { EntityWorkspaceCapabilityHost } from './EntityWorkspaceCapabilityHost'
 export { WORKSPACE_CAPABILITY_RENDERERS } from './renderers'
+export { groupContributionsByRegion } from './placement'
 

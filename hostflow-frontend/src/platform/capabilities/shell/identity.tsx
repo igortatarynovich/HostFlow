@@ -9,6 +9,7 @@ function candidateDetailPath(candidateId: string): string {
 
 export function IdentityCapability({ application }: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()
+  if (!application) return null
   const contactName = application.contact.name || application.title || 'Кандидат'
   const vacancyTitle = String(application.extensions?.vacancy_title || application.subtitle || '')
   const candidateId =
