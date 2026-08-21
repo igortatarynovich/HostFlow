@@ -248,6 +248,7 @@ Admin/integration diagnostics: separate Monitoring surfaces (not primary CRM nav
 | Frontend `listLeads()` in sales/recruitment pages | **DONE** (2026-07-09) | Application facade API |
 | Mutations via `/leads` in module pages | **DONE** (2026-07-09) | `/sales/inquiries`, `/recruitment/applications` facades |
 | Dual reference (Search Home + Sales) | **RESOLVED** | Sales Application Workspace only |
+| Recruitment ContextRail missing RODO / stage / comments | **DONE** (2026-08-20) | `ApplicationRodoSection` + stage picker + comments on `/app/recruitment/inbox` rail; Application facade (`…/compliance/rodo/*`, `…/comments`) |
 
 Track progress in [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md). Remaining mixed `/app/leads` product surface → Stage 3 slice 4 ([brief](../tasks/stage-3-slice-4-hard-module-separation.md)).
 

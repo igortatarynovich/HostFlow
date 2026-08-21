@@ -182,6 +182,20 @@ class ApplicationAssignIn(BaseModel):
     assignee_id: str = Field(min_length=1, max_length=36)
 
 
+class ApplicationRodoActionOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ok: bool = True
+    message: Optional[str] = None
+    application: ApplicationOut
+
+
+class ApplicationCommentIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    note: str = Field(min_length=1, max_length=2000)
+
+
 class ApplicationProcessResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

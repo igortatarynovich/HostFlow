@@ -324,8 +324,10 @@ async def _enrich_meta_settings_plan_limits(
     plan = await resolve_tenant_plan_code(db, tenant_id)
     return out.model_copy(
         update={
-            "plan_field_mapping_rules_limit": lead_meta_field_mapping_rules_cap(plan),
-            "plan_meta_credentials_limit": lead_meta_credentials_cap(plan),
+            "plan_field_mapping_rules_limit": lead_meta_field_mapping_rules_cap(
+                plan, tenant_id=tenant_id
+            ),
+            "plan_meta_credentials_limit": lead_meta_credentials_cap(plan, tenant_id=tenant_id),
         }
     )
 

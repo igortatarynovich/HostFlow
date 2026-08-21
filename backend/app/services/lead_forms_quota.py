@@ -10,6 +10,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.constants.hostflow_canonical_tenants import is_focus_personnel_tenant
 from backend.app.models.tenant import Tenant, TenantLicense
 from backend.app.models.tenant_lead_form import TenantLeadForm
 from backend.app.services.billing_pack_addons import LEAD_FORMS_ACTIVE_CAP, pack_addon_int
@@ -81,7 +82,7 @@ async def ensure_tenant_lead_form_active_count_allows_transition(
     will_be_active: bool,
 ) -> None:
     """402 when enabling a form would exceed cap (create or re-activate)."""
-    if not will_be_active or was_active:
+    if not will_be_active or was_active or is_focus_personnel_tenant(tenant_id):
         return
     cap, plan = await resolve_effective_lead_forms_cap(db, tenant_id)
     n = await count_active_tenant_lead_forms(db, tenant_id)

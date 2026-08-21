@@ -1513,6 +1513,78 @@
         "complete_data": "Complete data"
       }
     },
+    "recruitment_inquiry": {
+      "candidate_fallback": "Candidate",
+      "new_application": "New application",
+      "select_vacancy": "Select a vacancy",
+      "link_vacancy": "Link to vacancy",
+      "vacancy_linked": "Vacancy linked",
+      "assignee_placeholder": "User ID",
+      "assign": "Assign",
+      "assignee_set": "Assignee set",
+      "candidate_created": "Candidate created",
+      "reject_title": "Reject application",
+      "reject_comment": "Comment",
+      "rejected": "Application rejected",
+      "follow_up_default_title": "Call the candidate back",
+      "follow_up_created": "Reminder created",
+      "call": "Call",
+      "action_failed": "Action failed",
+      "outcome_title": "Candidate created",
+      "outcome_body": "Application processed. Continue in the candidate card.",
+      "closed_title": "Application closed",
+      "rejected_body": "Application rejected.",
+      "rejected_body_terminal": "Application rejected. No further actions.",
+      "completed_body": "Processing completed.",
+      "contact_title": "Contact the candidate",
+      "contact_why": "First contact has not been made yet.",
+      "called": "Called",
+      "reject": "Reject",
+      "after_call_hint": "After the call, link a vacancy and create a candidate.",
+      "process_title": "Process application",
+      "process_body": "Link a vacancy and create a candidate — or reject the application.",
+      "create_candidate": "Create candidate",
+      "rail": {
+        "stages": "Stage",
+        "work": "RODO and comments"
+      },
+      "stages": {
+        "contacted": "Contacted",
+        "qualified": "Qualified",
+        "lost": "Lost"
+      },
+      "comments": {
+        "subtitle": "Internal notes on this application — visible to the team.",
+        "placeholder": "Callback tomorrow, asked about rate, considering…",
+        "save": "Save comment",
+        "saved": "Comment saved",
+        "save_failed": "Could not save comment.",
+        "empty": "No comments yet."
+      },
+      "errors": {
+        "INTAKE_INFO_REQUESTED": "Candidate data was requested earlier. Retry “Create candidate” after it is updated.",
+        "VACANCY_NOT_CONFIRMED": "Link a vacancy in the Vacancy block first.",
+        "INTAKE_ROUTING_INCOMPLETE": "Routing is incomplete: link a vacancy.",
+        "INTAKE_POOL_PATH_REQUIRED": "Link a vacancy in the Vacancy block, then press “Create candidate” again.",
+        "NO_INTAKE_CONTEXT": "Could not create a candidate: this application is missing full intake context. Link a current vacancy and retry.",
+        "LEAD_RODO_REQUIRED": "Confirm RODO before this action.",
+        "LEAD_INTAKE_ALREADY_REJECTED": "Application is already closed.",
+        "INTAKE_REJECT_REASON_REQUIRED": "Provide a rejection reason.",
+        "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "This action is not available for this source."
+      },
+      "reject_reasons": {
+        "insufficient_experience": "Not a fit",
+        "no_response": "No response",
+        "duplicate_spam": "Duplicate",
+        "invalid_contact": "Spam",
+        "other": "Other"
+      },
+      "object_name_plural": "Applications",
+      "hero_call_title": "Call {count} new applications",
+      "hero_call_hint": "We will open applications one by one: call → make a decision → create a candidate.",
+      "hero_empty": "No new applications to call",
+      "list_kind_label": "Candidate application"
+    },
     "work_schedule": {
       "options": {
         "by_weeks": "By weeks",
@@ -5262,6 +5334,65 @@
           "assignments": "Assignments",
           "assignments_today": "Assignments today (UTC)",
           "assignments_month": "Assignments this month (UTC)"
+        }
+      },
+      "marketing": {
+        "title": "Marketing efficiency",
+        "subtitle": "Acquisition campaign KPIs: spend, leads, CPL. Multi-select campaigns or use presets (e.g. Poltrakt drivers).",
+        "empty": "No campaigns in the selected slice.",
+        "empty_campaigns": "No campaigns available for this company.",
+        "snapshot_badge": "Meta snapshot metrics",
+        "snapshot_hint": "Impressions and reach come from the latest Meta insights snapshot, not the spend ledger window.",
+        "snapshot_chip": "Snapshot",
+        "source_ledger": "Spend ledger",
+        "source_attribution": "Lead attribution",
+        "source_derived": "Derived (spend ÷ leads)",
+        "filters": {
+          "currency": "Display currency",
+          "presets": "Presets",
+          "campaigns": "Campaigns",
+          "select_all": "Select all",
+          "clear": "Clear",
+          "selected": "Selected {count} / {total}"
+        },
+        "fx": {
+          "loading": "Loading NBP rates…",
+          "as_of": "NBP mid · {date} ({provider})",
+          "unavailable": "FX rates unavailable — showing source currency",
+          "error": "Could not load NBP rates. Amounts stay in USD until rates are available."
+        },
+        "presets": {
+          "drivers_poltrakt": "Poltrakt drivers",
+          "warehouse": "Warehouse",
+          "dispatcher": "Dispatcher",
+          "ru": "RU leads",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Spend",
+          "leads": "Leads",
+          "cpl": "Cost per lead",
+          "impressions": "Impressions",
+          "reach": "Reach"
+        },
+        "charts": {
+          "trend_title": "Trend",
+          "trend_subtitle": "Daily spend and leads for the selected campaigns and period.",
+          "spend_title": "Spend by campaign",
+          "spend_subtitle": "Ad spend in the selected group.",
+          "leads_title": "Leads by campaign",
+          "leads_subtitle": "Attributed leads (Acquisition results).",
+          "cpl_title": "Cost per lead",
+          "cpl_subtitle": "Lower is better — best CPL highlighted.",
+          "mix_title": "Lead mix",
+          "mix_subtitle": "Share of leads across selected campaigns."
+        },
+        "table": {
+          "title": "Campaign detail",
+          "subtitle": "Selected campaigns with Meta snapshot reach/impressions when available.",
+          "campaign": "Campaign",
+          "best_cpl": "Best CPL"
         }
       }
     },
@@ -11413,6 +11544,12 @@
         "rules_title": "Mapping rules",
         "rules_subtitle": "Link each Meta form question to where the answer is stored. Use comma-separated names when one question has several aliases.",
         "rules_hint": "Source = question name from the form (see table above). Target = internal field id until candidate labels are added (PR-3).",
+        "form_select_label": "Lead form",
+        "form_select_tenant_default": "Workspace default ({count} rules)",
+        "form_select_option": "Form {form_id} · page {page_id}",
+        "form_name_label": "Form label (optional)",
+        "form_name_placeholder": "e.g. Warehouse jobs PL",
+        "inherits_tenant_banner": "This form has no mapping of its own — workspace default rules are shown. Save to create a form-specific mapping.",
         "form_fields": {
           "title": "Form fields",
           "subtitle": "Fields seen on your lead form with a sample answer. Check mapping status before saving rules below.",
@@ -11444,6 +11581,8 @@
         "empty": "No rules yet. Add a row or leave empty to use defaults only.",
         "add_row": "Add rule",
         "save": "Save mapping",
+        "save_tenant": "Save workspace default mapping",
+        "save_form": "Save mapping for this form",
         "suggestions_ready": "{count} field name suggestion(s) (from recent leads and/or Graph).",
         "graph_fetch_title": "Load fields from Meta",
         "graph_fetch_body": "Pick a recent lead or enter lead ID and Facebook page ID, then fetch. Requires a saved page access token in credentials.",
@@ -11459,6 +11598,22 @@
         "graph_fetch_validation_title": "Missing information",
         "graph_fetch_validation_hint": "Pick a recent lead or enter both leadgen_id and page_id.",
         "graph_fetch_error_title": "Meta request failed"
+      },
+      "intake_route": {
+        "title": "Intake route",
+        "body": "Bind this Meta form to a company profile and lead target. Ingest uses this before creating candidates or clients.",
+        "fallback_warning": "No route configured — ingest falls back to tenant business type (may create the wrong entity type).",
+        "own_company": "Company profile",
+        "own_company_placeholder": "Select profile…",
+        "lead_target": "Lead target type",
+        "targets": {
+          "candidate": "Candidate (driver)",
+          "client_lead": "Client lead (B2B)",
+          "service_order_lead": "Service order lead",
+          "partner_lead": "Partner lead"
+        },
+        "active": "Route active",
+        "save": "Save intake route"
       },
       "credentials": {
         "title": "Add credential",

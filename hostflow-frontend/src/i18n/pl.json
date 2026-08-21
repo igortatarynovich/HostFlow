@@ -1495,6 +1495,78 @@
         "complete_data": "Uzupełnij dane"
       }
     },
+    "recruitment_inquiry": {
+      "candidate_fallback": "Kandydat",
+      "new_application": "Nowa aplikacja",
+      "select_vacancy": "Wybierz rekrutację",
+      "link_vacancy": "Przypisz do rekrutacji",
+      "vacancy_linked": "Rekrutacja przypisana",
+      "assignee_placeholder": "ID użytkownika",
+      "assign": "Przypisz",
+      "assignee_set": "Osoba odpowiedzialna przypisana",
+      "candidate_created": "Kandydat utworzony",
+      "reject_title": "Odrzuć aplikację",
+      "reject_comment": "Komentarz",
+      "rejected": "Aplikacja odrzucona",
+      "follow_up_default_title": "Oddzwoń do kandydata",
+      "follow_up_created": "Przypomnienie utworzone",
+      "call": "Zadzwoń",
+      "action_failed": "Nie udało się wykonać działania",
+      "outcome_title": "Kandydat utworzony",
+      "outcome_body": "Aplikacja przetworzona. Kontynuuj w karcie kandydata.",
+      "closed_title": "Aplikacja zamknięta",
+      "rejected_body": "Aplikacja odrzucona.",
+      "rejected_body_terminal": "Aplikacja odrzucona. Brak dalszych działań.",
+      "completed_body": "Przetwarzanie zakończone.",
+      "contact_title": "Skontaktuj się z kandydatem",
+      "contact_why": "Pierwszy kontakt jeszcze nie został wykonany.",
+      "called": "Zadzwoniono",
+      "reject": "Odrzuć",
+      "after_call_hint": "Po rozmowie przypisz rekrutację i utwórz kandydata.",
+      "process_title": "Przetwórz aplikację",
+      "process_body": "Przypisz rekrutację i utwórz kandydata — albo odrzuć aplikację.",
+      "create_candidate": "Utwórz kandydata",
+      "rail": {
+        "stages": "Etap",
+        "work": "RODO i komentarze"
+      },
+      "stages": {
+        "contacted": "Kontakt",
+        "qualified": "Zakwalifikowany",
+        "lost": "Odrzucony"
+      },
+      "comments": {
+        "subtitle": "Wewnętrzne notatki do aplikacji — widoczne dla zespołu.",
+        "placeholder": "Oddzwonić jutro, pytał o stawkę, rozważa…",
+        "save": "Zapisz komentarz",
+        "saved": "Komentarz zapisany",
+        "save_failed": "Nie udało się zapisać komentarza.",
+        "empty": "Brak komentarzy."
+      },
+      "errors": {
+        "INTAKE_INFO_REQUESTED": "Wcześniej poproszono o dane kandydata. Ponów „Utwórz kandydata” po aktualizacji.",
+        "VACANCY_NOT_CONFIRMED": "Najpierw przypisz rekrutację w bloku „Wakans”.",
+        "INTAKE_ROUTING_INCOMPLETE": "Brakuje routingu: przypisz rekrutację.",
+        "INTAKE_POOL_PATH_REQUIRED": "Najpierw przypisz rekrutację w bloku „Wakans”, potem ponownie naciśnij „Utwórz kandydata”.",
+        "NO_INTAKE_CONTEXT": "Nie udało się utworzyć kandydata: brak pełnego kontekstu intake. Przypisz aktualną rekrutację i spróbuj ponownie.",
+        "LEAD_RODO_REQUIRED": "Potwierdź RODO przed tą czynnością.",
+        "LEAD_INTAKE_ALREADY_REJECTED": "Aplikacja jest już zamknięta.",
+        "INTAKE_REJECT_REASON_REQUIRED": "Podaj powód odrzucenia.",
+        "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "To działanie jest niedostępne dla tego źródła."
+      },
+      "reject_reasons": {
+        "insufficient_experience": "Niepasujący",
+        "no_response": "Brak odpowiedzi",
+        "duplicate_spam": "Duplikat",
+        "invalid_contact": "Spam",
+        "other": "Inne"
+      },
+      "object_name_plural": "Aplikacje",
+      "hero_call_title": "Zadzwoń do {count} nowych aplikacji",
+      "hero_call_hint": "Otworzymy aplikacje po kolei: telefon → decyzja → utwórz kandydata.",
+      "hero_empty": "Brak nowych aplikacji do telefonu",
+      "list_kind_label": "Aplikacja kandydata"
+    },
     "work_schedule": {
       "options": {
         "by_weeks": "Tygodniowo",
@@ -4668,6 +4740,65 @@
           "assignments": "Przydziały",
           "assignments_today": "Przydziały dziś (UTC)",
           "assignments_month": "Przydziały w miesiącu (UTC)"
+        }
+      },
+      "marketing": {
+        "title": "Efektywność marketingu",
+        "subtitle": "KPI kampanii Acquisition: wydatki, leady, CPL. Multi-select kampanii lub preset (np. kierowcy Poltrakt).",
+        "empty": "Brak kampanii w wybranym przekroju.",
+        "empty_campaigns": "Brak kampanii dla tej firmy.",
+        "snapshot_badge": "Metryki ze snapshotu Meta",
+        "snapshot_hint": "Wyświetlenia i zasięg pochodzą z ostatniego snapshotu Meta Insights, nie z okna ledger wydatków.",
+        "snapshot_chip": "Snapshot",
+        "source_ledger": "Ledger wydatków",
+        "source_attribution": "Atrybucja leadów",
+        "source_derived": "Wyliczone (wydatki ÷ leady)",
+        "filters": {
+          "currency": "Waluta wyświetlania",
+          "presets": "Presety",
+          "campaigns": "Kampanie",
+          "select_all": "Zaznacz wszystkie",
+          "clear": "Wyczyść",
+          "selected": "Wybrano {count} / {total}"
+        },
+        "fx": {
+          "loading": "Ładowanie kursów NBP…",
+          "as_of": "Kurs średni NBP · {date} ({provider})",
+          "unavailable": "Brak kursów — pokazywana waluta źródłowa",
+          "error": "Nie udało się pobrać kursów NBP. Kwoty pozostają w USD do czasu dostępności kursów."
+        },
+        "presets": {
+          "drivers_poltrakt": "Kierowcy Poltrakt",
+          "warehouse": "Magazyn",
+          "dispatcher": "Dyspozytor",
+          "ru": "Leady RU",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Wydatki",
+          "leads": "Leady",
+          "cpl": "CPL",
+          "impressions": "Wyświetlenia",
+          "reach": "Zasięg"
+        },
+        "charts": {
+          "trend_title": "Dynamika",
+          "trend_subtitle": "Dzienne wydatki i leady dla wybranych kampanii i okresu.",
+          "spend_title": "Wydatki wg kampanii",
+          "spend_subtitle": "Wydatki reklamowe w wybranej grupie.",
+          "leads_title": "Leady wg kampanii",
+          "leads_subtitle": "Przypisane leady (Acquisition).",
+          "cpl_title": "Koszt leada (CPL)",
+          "cpl_subtitle": "Niżej = lepiej; najlepszy CPL wyróżniony.",
+          "mix_title": "Mix leadów",
+          "mix_subtitle": "Udział leadów wśród wybranych kampanii."
+        },
+        "table": {
+          "title": "Szczegóły kampanii",
+          "subtitle": "Wybrane kampanie z wyświetleniami/zasięgiem ze snapshotu Meta, jeśli dostępne.",
+          "campaign": "Kampania",
+          "best_cpl": "Najlepszy CPL"
         }
       }
     },
@@ -11413,6 +11544,12 @@
         "rules_title": "Reguły mapowania",
         "rules_subtitle": "Powiąż pytanie z formularza Meta z miejscem zapisu odpowiedzi. Wiele nazw źródła — po przecinku.",
         "rules_hint": "Źródło = nazwa pola z tabeli powyżej. Cel = wewnętrzny identyfikator pola (później etykiety kandydata).",
+        "form_select_label": "Formularz leadów",
+        "form_select_tenant_default": "Domyślne mapowanie workspace ({count} reguł)",
+        "form_select_option": "Formularz {form_id} · strona {page_id}",
+        "form_name_label": "Nazwa formularza (opcjonalnie)",
+        "form_name_placeholder": "np. Warehouse jobs PL",
+        "inherits_tenant_banner": "Ten formularz nie ma własnego mapowania — wyświetlane są reguły domyślne workspace. Zapisz, aby utworzyć mapowanie dla formularza.",
         "form_fields": {
           "title": "Pola formularza",
           "subtitle": "Pola z formularza leadów z przykładową wartością. Sprawdź status przed zapisaniem reguł poniżej.",
@@ -11444,6 +11581,8 @@
         "empty": "Brak reguł. Dodaj wiersz lub zostaw puste — tylko wartości domyślne.",
         "add_row": "Dodaj regułę",
         "save": "Zapisz mapowanie",
+        "save_tenant": "Zapisz domyślne mapowanie workspace",
+        "save_form": "Zapisz mapowanie tego formularza",
         "suggestions_ready": "Podpowiedzi nazw pól: {count} (z ostatnich leadów i/lub Graph).",
         "graph_fetch_title": "Załaduj pola z Meta",
         "graph_fetch_body": "Wybierz ostatni lead lub podaj ID leada i ID strony Facebook, potem pobierz pola. Wymagany zapisany token Page w poświadczeniach.",
@@ -11459,6 +11598,22 @@
         "graph_fetch_validation_title": "Brak danych",
         "graph_fetch_validation_hint": "Wybierz ostatni lead lub podaj leadgen_id i page_id.",
         "graph_fetch_error_title": "Żądanie do Meta nie powiodło się"
+      },
+      "intake_route": {
+        "title": "Ścieżka przyjmowania",
+        "body": "Powiąż ten formularz Meta z profilem firmy i typem leada. Ingest używa tej ścieżki przed utworzeniem kandydata lub klienta.",
+        "fallback_warning": "Brak ścieżki — ingest użyje typu biznesu tenanta (może utworzyć zły typ encji).",
+        "own_company": "Profil firmy",
+        "own_company_placeholder": "Wybierz profil…",
+        "lead_target": "Typ leada",
+        "targets": {
+          "candidate": "Kandydat (kierowca)",
+          "client_lead": "Lead klienta (B2B)",
+          "service_order_lead": "Lead zlecenia usługi",
+          "partner_lead": "Lead partnerski"
+        },
+        "active": "Ścieżka aktywna",
+        "save": "Zapisz ścieżkę"
       },
       "credentials": {
         "title": "Dodaj połączenie",

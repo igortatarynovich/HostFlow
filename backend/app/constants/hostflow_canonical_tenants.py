@@ -1,8 +1,8 @@
 """Stable HostFlow production IDs shared by scripts and platform behavior (single source of truth)."""
 
-# Focus Personnel — operational agency tenant (Meta leads, Poltrakt, etc.).
-# Product: plan-gated features and communications defaults are treated as **all-on** for this
-# id (``plan_allows_*`` with ``tenant_id``, ``resolve_plan_bucket_for_limits`` → pro, comm settings merge).
+# Focus Personnel — operator / founder workspace (Meta leads, Poltrakt, etc.).
+# Product: plan-gated features are **all-on** and commercial numeric caps are **not enforced**
+# (``plan_allows_*`` with ``tenant_id``, ``ensure_*_limit`` skip, comm settings merge).
 # See also: scripts/focus_poltrakt_provision_user.py, migrate_poltrakt_company_to_focus.sql
 FOCUS_PERSONNEL_TENANT_ID = "9497fc29-6051-424d-9344-abb4aed9b110"
 

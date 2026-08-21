@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from backend.app.models import Lead
 from backend.app.modules.leads.normalizer import resolve_b2b_inquiry_company_name
+from backend.app.services.lead_rodo import (
+    lead_normalized_rodo_block,
+    lead_rodo_notice_status_from_normalized,
+    lead_rodo_satisfied_from_normalized,
+)
 
 from .schemas import ApplicationContactOut, ApplicationOut, ApplicationStatus, ApplicationTabBucket
 
@@ -106,6 +111,48 @@ def _sales_status(lead: Lead) -> ApplicationStatus:
     if stage == "qualified":
         return "waiting"
     return "in_progress"
+
+
+def _application_rodo_extension(lead: Lead, normalized: Dict[str, Any]) -> Dict[str, Any]:
+    block = lead_normalized_rodo_block(normalized)
+    status = lead_rodo_notice_status_from_normalized(normalized)
+    if getattr(lead, "candidate_id", None):
+        satisfied = True
+    else:
+        satisfied = lead_rodo_satisfied_from_normalized(normalized)
+    code = _text(block.get("failure_reason_code")).lower()
+    policy_blocked = (
+        status == "pending_policy"
+        or bool(block.get("policy_blocked"))
+        or code.startswith("policy_")
+    )
+    return {
+        "status": status,
+        "satisfied": satisfied,
+        "policy_blocked": policy_blocked,
+    }
+
+
+def _application_comment_entries(normalized: Dict[str, Any]) -> List[Dict[str, Any]]:
+    raw = normalized.get("application_comments_v1")
+    if not isinstance(raw, list):
+        return []
+    out: List[Dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        note = _text(item.get("note"))
+        if not note:
+            continue
+        out.append(
+            {
+                "note": note[:2000],
+                "at": _text(item.get("at")) or None,
+                "by": _text(item.get("by")) or None,
+            }
+        )
+    out.reverse()
+    return out
 
 
 def _recruitment_status(lead: Lead) -> ApplicationStatus:
@@ -309,6 +356,9 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
             "vacancy_id": vacancy_id,
             "vacancy_title": _text(getattr(lead, "vacancy_title", None)) or _text(normalized.get("vacancy_title")) or None,
             "fit_status": _text(getattr(lead, "fit_status", None)) or None,
+            "stage": _text(getattr(lead, "stage", None)).lower() or "new",
+            "rodo": _application_rodo_extension(lead, normalized),
+            "comments": _application_comment_entries(normalized),
         },
         outcome_entity_id=candidate_id,
         outcome_entity_type="candidate" if candidate_id else None,
