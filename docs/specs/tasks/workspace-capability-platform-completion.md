@@ -8,13 +8,14 @@
 
 > Previous same-day title **Entity Platform Completion** is **superseded in place** (this file).  
 > The original goal still holds. The wrong next abstraction would have been: Entity Shell **owns** Notes/Consent/Tasks/Documents, and Application Workspace is just another Entity envelope.  
-> This slice seals a **Capability Host Contract**. Entity Workspace and Application Workspace stay **distinct** constitution types (§3.2 vs §3.3). Both **implement the same host contract**.  
-> Not D10. Not a Recruitment rail patch. Not Documents E2. Not a UI-component kit.
+> This slice seals a **Capability Host Contract** on top of the **platform kit** (data types, fields, primitives, widgets, tables). Entity Workspace and Application Workspace stay **distinct** constitution types (§3.2 vs §3.3). Both **implement the same host contract**.  
+> Not D10. Not a Recruitment rail patch. Not Documents E2. Not a Notes/Consent-only kit. Constitution §0: there are no screens; there are compositions of the kit.
 
 **Naming (do not collapse):**
 
 | Term | Meaning |
 |------|---------|
+| **Kit** | Data types, fields, UI primitives, widgets, tables. Screens are assembled **only** from this. **This** slice seals the typed catalogs as references to existing canons (Field Registry, PRIMITIVES_V1, TABLE_V1). |
 | **Capability Host Contract** | Shared protocol: host → regions → contributions. **This** slice. |
 | **Entity Workspace** | Constitution §3.3 host (converted object). Implements the contract. |
 | **Application Workspace** | Constitution §3.2 host (inbound before conversion). Implements the contract. **Not** an Entity Workspace. |
@@ -30,12 +31,15 @@ Do not invent a fifth shell. Do not collapse Shell `EntityWorkspaceSectionId` in
 Original goal (pre-decomposition):
 
 ```text
-One envelope for the object
-  + common information and functions
+Platform kit (defined first)
+  data types → fields → primitives → widgets → tables
+Then
+  One envelope for the object
+  + kit widgets placed by the host
 Default and paid modules add blocks
   through one composition / contribution contract
 The host does not know Recruitment or HR
-  — it knows the capability contract
+  — it knows the kit + capability contract
 Same object, same behaviour
   regardless of which modules are enabled
 ```
@@ -61,32 +65,33 @@ That would recreate a 3000-line `EntityWorkspace.tsx` monolith and erase constit
 This section is the acceptance of the program. Deliverables (typed ids, registry module, named CI) are evidence **for** this test, not a substitute for it.
 
 **Problem this phase must permanently remove:**  
-After this program, a new Entity **or** Application screen **cannot** be assembled by inventing a local rail, notes, consent, actions, widgets, or page-specific composition of shared capabilities. The **host** places regions; **capability owners** own semantics and state; modules add only through the Capability Host Contract. Default and paid modules use **the same** mechanism. Application Workspace stays Application Workspace. D1–D9 named cutovers do **not** count as this proof.
+After this program, a new Entity **or** Application screen **cannot** be assembled by inventing a local data type, field, primitive, widget, table, rail, notes, consent, actions, or page-specific composition. The **kit** is the only legal substrate (Field Registry types/fields, PRIMITIVES_V1, TABLE_V1, widget classes). The **host** places regions; **capability owners** own semantics and state; modules add only through the Capability Host Contract. Default and paid modules use **the same** mechanism. Application Workspace stays Application Workspace. D1–D9 named cutovers do **not** count as this proof. A Notes/Consent/RODO widget kit is **not** this proof.
 
 **Completion proof (named consumer):**  
 **Recruitment Application** — Application Workspace host. Locked; feat does **not** choose Candidate instead.
 
 ```text
 ApplicationWorkspace host
+  assembled only from the platform kit
+    (data types, Field Registry fields, PRIMITIVES_V1, widgets, TABLE_V1)
   + shell primitives (identity, status as owner projection, ownership region)
-  + shared Notes
-  + shared Consent
+  + shared widgets (including Notes and Consent — not only those)
   + Recruitment contributions: stage / vacancy / assignee
   + one optional/paid contribution via the same contract
-  + zero page-local rail stuffing / Notes / Consent widgets
+  + zero page-local types / fields / primitives / widgets / tables / rail stuffing
 ```
 
 Candidate Entity Workspace is **not** the proof. It is closer to D4 and can yield a false PASS.
 
 Until that screen exists, this program is **brief-complete at most**, never **COMPLETE**. Contract feat alone cannot claim G4. Multiplying further entity/application pages, D10-on-weak-D2, or Documents E2 feat is forbidden until this proof.
 
-**False close (reject):** Entity Shell as semantic owner of Notes/Consent; Application folded into Entity; Notes/Consent **component kit** that modules still compose locally; stuffing JSX; Candidate-as-proof; D2 slot bind; treating D1–D9 ✅ as this program.
+**False close (reject):** Entity Shell as semantic owner of Notes/Consent; Application folded into Entity; Notes/Consent/RODO **as the whole platform**; kit that modules still compose locally in parent JSX; stuffing JSX; Candidate-as-proof; D2 slot bind; treating D1–D9 ✅ as this program; minting a second Field Registry / primitives list / table standard.
 
 ---
 
 ## Capability-based acceptance (normative)
 
-This program is **not** a UI-component slice and **not** “Entity Shell owns everything common.” COMPLETE only if all of the following are true:
+This program is **not** “ship Notes and Consent widgets” and **not** “Entity Shell owns everything common.” COMPLETE only if all of the following are true:
 
 | # | Condition | Fail if |
 |---|-----------|---------|
@@ -96,9 +101,9 @@ This program is **not** a UI-component slice and **not** “Entity Shell owns ev
 | 4 | **Default and paid** modules use the same contribution mechanism | Paid module gets a special page or a second composition path |
 | 5 | **permissions / actions / events / license** on a contribution are **references** to existing canons, not local vocabularies | Second RBAC, second Actions layer, second Event registry, new license SoT |
 | 6 | **status** is a host region + **owner projection**. No global status enum | Candidate/Application/Employee/Vacancy/Company forced onto one enum |
-| 7 | **Local analogues** of a shared capability are forbidden on new work | New Notes/Consent/rail/widget forks remain legal |
-| 8 | **Inventory of legacy implementations + migration map** exists | Forks unnamed; no map local widget → `capability_id` |
-| 9 | **E2E proof** is Recruitment Application as specified above | Proof is Candidate, a widget, a slot bind, or a catalog freeze |
+| 7 | **Local analogues** of a kit piece are forbidden on new work | New data type / field / primitive / widget / table / Notes/Consent/rail forks remain legal |
+| 8 | **Inventory of legacy implementations + migration map** exists | Forks unnamed; no map local widget → kit id / `capability_id` |
+| 9 | **E2E proof** is Recruitment Application assembled from the kit | Proof is Candidate, a RODO widget, a slot bind, or a catalog freeze |
 
 **Exit (Goal Completion Gate):** G1–G5 on **this** Original Goal section, not on “D10 consumer bound” and not on “we shipped cards.”
 
@@ -107,15 +112,21 @@ This program is **not** a UI-component slice and **not** “Entity Shell owns ev
 ## Locked layer model
 
 ```text
-Capability Host Contract (this)
+Platform kit (this feat seals typed catalogs; SoT stays on existing canons)
+  data types     → Field Registry §4
+  fields         → Field Registry + Entity Profile (no copy)
+  ui primitives  → PRIMITIVES_V1
+  widgets        → compositions of primitives + fields
+  tables         → TABLE_V1
+Then
+Capability Host Contract
   implemented by:
     EntityWorkspace     (constitution §3.3)
     ApplicationWorkspace (constitution §3.2)
-    future standardized envelopes (not this slice)
 
 Workspace Host
-  → regions (header · summary · overview · rail · decision · D2 slots)
-  → contributions (one protocol)
+  → regions (header · summary · overview · rail · decision · platform_slot)
+  → contributions (one protocol) that bind kit widgets, not ad-hoc JSX
 
 Four classes (same protocol, different ownership / lifecycle):
 
@@ -143,7 +154,24 @@ Four classes (same protocol, different ownership / lifecycle):
 
 **Rule:** Shell / host **must not** import Recruitment, HR, Notes storage, Consent policy, or Documents Hub internals. It resolves `capability_id` / `component_id` + placement + referenced permissions.
 
-D2 slot ids **do not** grow `notes` / `consent` / `rodo`. Those are **shared capabilities** placed into host regions (e.g. `overview` / `rail`), not new platform surfaces.
+D2 slot ids **do not** grow `notes` / `consent` / `rodo`. Those are **shared capability widgets** placed into host regions (e.g. `overview` / `rail`), not new platform surfaces.
+
+---
+
+## Platform kit catalogs (normative — this feat)
+
+Typed in `hostflow-frontend/src/platform/workspace-capability/kit.ts` and `backend/app/platform/workspace_capability/kit.py`. **References**, not second dictionaries.
+
+| Layer | SoT | This feat |
+|-------|-----|-----------|
+| **Data types** | Field Registry [§4](../platform/field-registry-card-configuration.md#4-field-types) | Frozen `KIT_DATA_TYPE_IDS` must equal that table |
+| **Fields** | [Field Registry](../platform/field-registry-card-configuration.md) + [Entity Profile](../platform/entity-profile-definition-registry.md) | Pointer only. Do **not** copy canonical field codes into this slice |
+| **UI primitives** | [PRIMITIVES_V1](../frontend/PRIMITIVES_V1.md) | `status_badge` · `chip` · `select` · `button` · `input` |
+| **Widgets** | compositions of primitives + fields | `KIT_WIDGET_CLASS_IDS` (identity, notes, consent, data_table, …). Notes/Consent are **two** widget classes, not the kit |
+| **Tables** | [TABLE_V1](../frontend/TABLE_V1.md) | `table_v1_entity_list` |
+| **Gaps** | named, not invented locally | `filter_bar` · `modal` · `checkbox` · `radio` · `toggle` |
+
+New work **must not** mint a local data type, field matrix, primitive, widget, or table when a kit id exists.
 
 ---
 
@@ -283,7 +311,8 @@ This slice **must not**:
 - mass-migrate every inventory row  
 - rewrite Decision Model wholesale (decision zone may **host** contributed actions)  
 - reopen P3–P5, R6, C2.4, Catalog Notifications RFC  
-- reduce this program to a Notes/Consent **component kit**  
+- reduce this program to Notes/Consent/RODO  
+- mint a second Field Registry, primitives list, or table standard  
 - multiply new entity/application screens before the E2E proof  
 
 ---
@@ -306,13 +335,14 @@ Named step: **Workspace Capability Platform Completion Gate**
 (`tests/platform/test_workspace_capability_platform_completion_gate.py`).
 
 - Four-class catalogs frozen as in this brief  
+- Platform kit catalogs frozen: data types = Field Registry §4; fields SoT = Field Registry (no copy); primitives = PRIMITIVES_V1; tables = TABLE_V1; widget classes include more than notes/consent  
 - Contribution field set frozen, including `host` and `class`  
 - `permissions` / `actions` / `events` / `license` documented as **references**, not new SoTs  
 - No `rodo` capability_id  
 - No global `status` enum introduced  
 - Static registry module exists (or feat explicitly defers registry to proof slice **in the gate** — default: registry lands with feat)  
 - D2 catalog unchanged; `documents` still reserved  
-- Inventory file exists and lists Notes/Consent forks **and** Recruitment Application rail stuffing  
+- Inventory file exists and lists kit forks (fields / primitives / tables / widgets) **and** Recruitment Application rail stuffing  
 - D1–D9 / E1 gates stay green  
 - E2 feat must not land  
 - Goal Completion template filled in the feat PR description  
@@ -332,10 +362,11 @@ Proof-screen slice adds G4 evidence; contract feat alone is **not** phase COMPLE
 
 1. Named Workspace Capability Platform Completion Gate.  
 2. Typed host / capability / contribution contracts. Four classes as separate types, not one flat enum.  
-3. Static renderer registry (`component_id` → module path only — not the platform).  
-4. Migration inventory markdown.  
-5. Architecture Review 10 questions **and** Goal Completion G1–G5 in the PR body.  
-6. **No** proof-screen rewrite. Next slice = Recruitment Application only.
+3. Typed **platform kit** catalogs (data types, fields pointer, primitives, widgets, tables) as references to existing canons.  
+4. Static renderer registry (`component_id` → module path only — not the platform).  
+5. Migration inventory markdown (not RODO-only).  
+6. Architecture Review 10 questions **and** Goal Completion G1–G5 in the PR body.  
+7. **No** proof-screen rewrite. Next slice = Recruitment Application only.
 
 ---
 
@@ -365,7 +396,7 @@ Proof-screen slice adds G4 evidence; contract feat alone is **not** phase COMPLE
 | 3 Adapter | None new this docs PR. Consent/Forms boundary: capture vs post-intake notice |
 | 4 Boundary | No E2 feat; no D10; no Application=Entity; no Shell-owns-semantics; no L0 Catalog rewrite |
 | 5 Settings | No new Manifest keys. `license` **references** existing entitlement |
-| 6 SoT | This brief = host contract + four-class catalogs. D2 remains surface SoT. Permission/action/event SoTs stay on their canons |
+| 6 SoT | This brief = kit catalogs (references) + host contract + four-class catalogs. Field Registry / PRIMITIVES_V1 / TABLE_V1 remain SoT. D2 remains surface SoT. Permission/action/event SoTs stay on their canons |
 | 7 Events | Contribution `events` = references to existing registered events only |
 | 8 Requires | D1–D9 as surface binds · audit STOP · ADR-026/027 · ADR-036 · UI constitution §3 |
 | 9 License | `default`/`optional`/`paid` is an entitlement **view**, not a new license capability |
@@ -379,9 +410,9 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog. P-02 is why the hos
 
 | # | This program |
 |---|--------------|
-| **G1** | Host places; owners own semantics; one contribution contract for Entity **and** Application hosts without collapsing them |
-| **G2** | Forbidden: new module Notes/Consent/rail products; page-local composition; Shell as semantic owner; Application-as-Entity; global status enum; contribution-local RBAC/Actions/Events |
-| **G3** | Next entity **or** application screen uses host contract + catalogs only |
+| **G1** | Kit first (types/fields/primitives/widgets/tables); host places; owners own semantics; one contribution contract for Entity **and** Application hosts without collapsing them |
+| **G2** | Forbidden: new local data types/fields/primitives/widgets/tables; new module Notes/Consent/rail products; page-local composition; Shell as semantic owner; Application-as-Entity; global status enum; contribution-local RBAC/Actions/Events; treating RODO as the platform |
+| **G3** | Next entity **or** application screen uses kit + host contract + catalogs only |
 | **G4** | Recruitment Application (later slice) |
 | **G5** | D2 `documents` reserved; Notes storage split until named slice; D3–D9 surface binds until migrate-on-touch; Action Canon / Event registry remain referenced, not built here |
 
@@ -424,3 +455,4 @@ Capability-based (see table above). Checklist is **not** the proof:
 - 2026-08-20: Product Track → Entity Platform Completion (flat common-capability catalog; Shell as owner of commons; proof Candidate **or** Recruitment).  
 - 2026-08-20: **This revision:** rename to Workspace Capability Platform Completion. Capability Host Contract. Host ≠ semantic owner. Entity ≠ Application. Four-class catalogs. Canon references for permissions/actions/events/license. Status = owner projection. Proof locked to Recruitment Application.
 - 2026-08-21: Brief merged [#272](https://github.com/igortatarynovich/HostFlow/pull/272). Feat: typed contracts, four-class catalogs, technical registry, inventory, named gate. Proof screen remains the next slice.
+- 2026-08-21: Kit layer restored (data types / fields / primitives / widgets / tables). Program is not a Notes/Consent/RODO slice.

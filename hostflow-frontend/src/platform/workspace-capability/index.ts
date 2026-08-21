@@ -27,6 +27,26 @@ export type {
 } from './catalogs'
 
 export {
+  KIT_DATA_TYPE_IDS,
+  KIT_ENTITY_PROFILE_SOT,
+  KIT_FIELD_SOT,
+  KIT_LAYER_ORDER,
+  KIT_TABLE_FRAME_IDS,
+  KIT_TABLE_SOT,
+  KIT_UI_PRIMITIVE_IDS,
+  KIT_UI_PRIMITIVE_SOT,
+  KIT_WIDGET_CLASS_IDS,
+  KIT_WIDGET_GAP_IDS,
+} from './kit'
+export type {
+  KitDataTypeId,
+  KitTableFrameId,
+  KitUiPrimitiveId,
+  KitWidgetClassId,
+  KitWidgetGapId,
+} from './kit'
+
+export {
   MODULE_CAPABILITY_DEFINITIONS,
   PLATFORM_SURFACE_CAPABILITIES,
   SHARED_CAPABILITY_DEFINITIONS,

@@ -1,7 +1,8 @@
 """Workspace Capability Platform Completion Gate.
 
-Typed host / capability / contribution contracts.
-Four classes stay separate catalogs. Renderer registry is technical only.
+Typed host / capability / contribution contracts plus the platform kit
+(data types, fields, primitives, widgets, tables). Four classes stay
+separate catalogs. Renderer registry is technical only. Not a RODO slice.
 Inventory exists. Proof screen is NOT rewritten. G4 is not claimed.
 D2 `documents` stays reserved. No Postgres required.
 """
@@ -33,6 +34,15 @@ from backend.app.platform.workspace_capability.hosts import (
     ENTITY_WORKSPACE_HOST,
     WORKSPACE_CAPABILITY_HOST_IDS,
     WORKSPACE_HOST_REGION_IDS,
+)
+from backend.app.platform.workspace_capability.kit import (
+    KIT_DATA_TYPE_IDS,
+    KIT_FIELD_SOT,
+    KIT_LAYER_ORDER,
+    KIT_TABLE_FRAME_IDS,
+    KIT_UI_PRIMITIVE_IDS,
+    KIT_WIDGET_CLASS_IDS,
+    KIT_WIDGET_GAP_IDS,
 )
 from backend.app.platform.workspace_capability.proof import (
     PROOF_CONSUMER_ID,
@@ -84,6 +94,23 @@ _CONTRIBUTION_TS = (
     / "workspace-capability"
     / "contribution.ts"
 )
+_KIT_TS = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "platform"
+    / "workspace-capability"
+    / "kit.ts"
+)
+_FIELD_REGISTRY_CANON = (
+    _REPO_ROOT
+    / "docs"
+    / "specs"
+    / "platform"
+    / "field-registry-card-configuration.md"
+)
+_PRIMITIVES_V1 = _REPO_ROOT / "docs" / "specs" / "frontend" / "PRIMITIVES_V1.md"
+_TABLE_V1 = _REPO_ROOT / "docs" / "specs" / "frontend" / "TABLE_V1.md"
 _REGISTRY_TS = (
     _REPO_ROOT
     / "hostflow-frontend"
@@ -172,7 +199,7 @@ _REGISTRY_FORBIDDEN_KEYS = (
 
 def _ts_string_array(src: str, const_name: str) -> tuple[str, ...]:
     match = re.search(
-        rf"export const {const_name}(?:\s*:\s*[^=]+)?\s*=\s*\[(.*?)\](?:\s*as const)?",
+        rf"export const {const_name}(?:\s*:\s*[^=]+)?\s*=\s*\[(.*?)\]\s*as const",
         src,
         re.S,
     )
@@ -224,6 +251,52 @@ def test_four_classes_are_separate_catalogs_not_flat_enum() -> None:
     assert "ModuleCapabilityDefinition" in capability_ts
     assert "projection: 'owner_status'" in capability_ts
     assert SHELL_PRIMITIVE_CAPABILITIES["status"]["projection"] == "owner_status"
+
+
+def _field_types_from_canon() -> tuple[str, ...]:
+    text = _FIELD_REGISTRY_CANON.read_text(encoding="utf-8")
+    section = text.split("## 4. Field types", 1)[1]
+    table = section.split("**Reference-backed", 1)[0]
+    return tuple(re.findall(r"\|\s+`([^`]+)`\s+\|", table))
+
+
+def test_platform_kit_is_substrate_not_rodo_slice() -> None:
+    assert KIT_LAYER_ORDER == (
+        "data_types",
+        "fields",
+        "ui_primitives",
+        "widgets",
+        "tables",
+        "hosts",
+    )
+    assert _field_types_from_canon() == KIT_DATA_TYPE_IDS
+    kit_ts = _KIT_TS.read_text(encoding="utf-8")
+    assert _ts_string_array(kit_ts, "KIT_DATA_TYPE_IDS") == KIT_DATA_TYPE_IDS
+    assert _ts_string_array(kit_ts, "KIT_UI_PRIMITIVE_IDS") == KIT_UI_PRIMITIVE_IDS
+    assert _ts_string_array(kit_ts, "KIT_TABLE_FRAME_IDS") == KIT_TABLE_FRAME_IDS
+    assert _ts_string_array(kit_ts, "KIT_WIDGET_CLASS_IDS") == KIT_WIDGET_CLASS_IDS
+    assert "notes" in KIT_WIDGET_CLASS_IDS
+    assert "consent" in KIT_WIDGET_CLASS_IDS
+    assert "data_table" in KIT_WIDGET_CLASS_IDS
+    assert "field_row" in KIT_WIDGET_CLASS_IDS
+    assert set(KIT_WIDGET_CLASS_IDS) - {"notes", "consent"}
+    assert "filter_bar" in KIT_WIDGET_GAP_IDS
+    assert KIT_FIELD_SOT.endswith("field-registry-card-configuration.md")
+    assert "KIT_DATA_TYPE_IDS" in kit_ts
+    assert "second dictionary" in kit_ts or "no second dictionary" in kit_ts
+    primitives = _PRIMITIVES_V1.read_text(encoding="utf-8")
+    assert "StatusBadge" in primitives
+    assert "CHIP_V1" in primitives or "Chip" in primitives
+    assert "BUTTON_V1" in primitives or "Button" in primitives
+    assert "INPUT_V1" in primitives
+    assert "SELECT_V1" in primitives or "Select" in primitives
+    assert _TABLE_V1.is_file()
+    brief = _BRIEF.read_text(encoding="utf-8")
+    assert "KIT_DATA_TYPE_IDS" in brief or "Platform kit catalogs" in brief
+    assert "PRIMITIVES_V1" in brief
+    assert "TABLE_V1" in brief
+    assert "Field Registry" in brief
+    assert "Notes/Consent/RODO" in brief or "not a Notes/Consent" in brief
 
 
 def test_no_rodo_capability_and_no_global_status_enum() -> None:
@@ -337,8 +410,13 @@ def test_inventory_lists_notes_consent_and_recruitment_rail() -> None:
     assert "recruitment.vacancy" in text
     assert "recruitment.assignee" in text
     assert "ApplicationRecruitmentDetailPanel" in text
-    assert "shared `notes`" in text
-    assert "shared `consent`" in text
+    assert "widget `notes`" in text
+    assert "widget `consent`" in text
+    assert "Field Registry" in text
+    assert "PRIMITIVES_V1" in text
+    assert "TABLE_V1" in text
+    assert "CandidateProfile.config" in text
+    assert "table_candidates_main_v7" in text
     assert "Proof screen must not add a row" in text
     brief = _BRIEF.read_text(encoding="utf-8")
     assert "workspace-capability-legacy-inventory.md" in brief

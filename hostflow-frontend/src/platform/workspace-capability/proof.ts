@@ -1,9 +1,9 @@
 /**
  * Frozen G4 proof composition — typed records only.
  *
- * Next slice binds these onto ApplicationWorkspaceHost.
- * This feat must not rewrite ApplicationRecruitmentDetailPanel.
- * Parent JSX that still places RODO / comments / stage locally fails G4.
+ * Next slice binds these onto ApplicationWorkspaceHost using the platform kit
+ * (data types, fields, primitives, widgets, tables) — not page-local sections.
+ * Notes/Consent are widgets in that kit, not the definition of the program.
  */
 
 import type { WorkspaceContributionDefinition } from './contribution'

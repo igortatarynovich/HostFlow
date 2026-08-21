@@ -283,14 +283,14 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 | **1** | Universal Data Table + Selection Model + Detail Rail |
 | **2** | Universal Entity Workspace + Context Rail (D1 chrome) |
 | 2a | Platform surfaces on one entity (D2: overview / timeline / communication / forms / documents / context-rail) — brief-complete, **goal-incomplete** |
-| **2b ← active** | [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md): Capability Host Contract. Host owns placement only. Shared capabilities (notes, consent, …) keep their owners. Documents remain Phase E. Timeline / Communication / Forms stay D2 surfaces |
+| **2b ← active** | [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md): platform kit (data types, fields, primitives, widgets, tables) + Capability Host Contract. Host owns placement only. Shared widgets keep their owners. Documents remain Phase E. |
 | **3** | Application Workspace implements the **same** host contract — it does **not** become Entity Workspace |
 | 4–5 | Process + Collection completion |
 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
 Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`workspace-capability-platform-completion.md`](../tasks/workspace-capability-platform-completion.md). Close-out: [`goal-completion-gate.md`](../gates/goal-completion-gate.md).
 
-**Do not** invent module rails, notes, consent, actions, or widgets while 2b is the active contract. Stage / vacancy / assignee stay **module contributions**. Proof = Recruitment Application without page-local composition. Shipping a Notes/Consent **component kit** that modules still compose locally fails 2b. Do not fold Application into Entity. Do not multiply new screens until 2b Goal Completion.
+**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while 2b is the active contract. Stage / vacancy / assignee stay **module contributions**. Proof = Recruitment Application assembled from the kit without page-local composition. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Do not multiply new screens until 2b Goal Completion.
 
 ---
 

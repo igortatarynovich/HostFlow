@@ -1,6 +1,7 @@
 """Workspace Capability Host Contract (typed catalogs + contribution fields).
 
-The platform is the capability / contribution contract.
+The platform is the kit (data types → fields → primitives → widgets → tables)
+plus the capability / contribution host contract.
 The renderer registry is technical lookup only.
 """
 
@@ -26,6 +27,16 @@ from backend.app.platform.workspace_capability.hosts import (
     WORKSPACE_CAPABILITY_HOST_IDS,
     WORKSPACE_HOST_REGION_IDS,
 )
+from backend.app.platform.workspace_capability.kit import (
+    KIT_DATA_TYPE_IDS,
+    KIT_FIELD_SOT,
+    KIT_LAYER_ORDER,
+    KIT_TABLE_FRAME_IDS,
+    KIT_TABLE_SOT,
+    KIT_UI_PRIMITIVE_IDS,
+    KIT_WIDGET_CLASS_IDS,
+    KIT_WIDGET_GAP_IDS,
+)
 from backend.app.platform.workspace_capability.proof import (
     PROOF_CONSUMER_ID,
     PROOF_HOST_ID,
@@ -39,6 +50,14 @@ from backend.app.platform.workspace_capability.registry import (
 __all__ = [
     "APPLICATION_WORKSPACE_HOST",
     "ENTITY_WORKSPACE_HOST",
+    "KIT_DATA_TYPE_IDS",
+    "KIT_FIELD_SOT",
+    "KIT_LAYER_ORDER",
+    "KIT_TABLE_FRAME_IDS",
+    "KIT_TABLE_SOT",
+    "KIT_UI_PRIMITIVE_IDS",
+    "KIT_WIDGET_CLASS_IDS",
+    "KIT_WIDGET_GAP_IDS",
     "MODULE_CONTRIBUTION_IDS",
     "PLATFORM_SURFACE_IDS",
     "PROOF_CONSUMER_ID",
