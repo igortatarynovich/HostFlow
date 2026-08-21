@@ -24,5 +24,12 @@ export function renderWorkspaceContribution(
 ) {
   const Renderer = WORKSPACE_CAPABILITY_RENDERERS[row.component_id as keyof typeof WORKSPACE_CAPABILITY_RENDERERS]
   if (!Renderer) return null
+  if (row.placement.region === 'platform_slot' && 'slot_id' in row.placement) {
+    return (
+      <div key={row.capability_id} data-entity-workspace-slot={row.placement.slot_id}>
+        <Renderer {...ctx} />
+      </div>
+    )
+  }
   return <Renderer key={row.capability_id} {...ctx} />
 }

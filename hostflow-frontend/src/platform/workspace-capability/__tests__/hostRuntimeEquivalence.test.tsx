@@ -1,10 +1,19 @@
 import { render } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
+import { describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../../i18n'
 import type { Application } from '../../../api/types/application'
 import { ApplicationWorkspaceCapabilityHost } from '../ApplicationWorkspaceCapabilityHost'
 import { EntityWorkspaceCapabilityHost } from '../EntityWorkspaceCapabilityHost'
+import { CANDIDATE_ENTITY_HOST_CONTRIBUTIONS, ENTITY_EQUIVALENCE_CONSUMER_ID, ENTITY_EQUIVALENCE_HOST_ID } from '../candidateEntity'
 import type { WorkspaceContributionDefinition } from '../contribution'
+
+vi.mock('../../../api/communications', () => ({
+  listCommunicationThreads: vi.fn(async () => ({ items: [] })),
+}))
+vi.mock('../../../api/formsPlatform', () => ({
+  listFormsPlatformHandlers: vi.fn(async () => []),
+}))
 
 const APPLICATION: Application = {
   id: 'app-1',
@@ -57,6 +66,48 @@ describe('host runtime equivalence', () => {
     expect(container.querySelector('[data-capability-id="fixture.optional_addon"]')).toBeTruthy()
     expect(container.querySelector('[data-host-region="header"]')).toBeNull()
     expect(container.querySelector('[data-host-region="decision"]')).toBeNull()
+  })
+
+  it('Candidate Entity bind is host-equivalence, not a second G4 proof', () => {
+    expect(ENTITY_EQUIVALENCE_HOST_ID).toBe('entity_workspace')
+    expect(ENTITY_EQUIVALENCE_CONSUMER_ID).toBe('candidate')
+    expect(CANDIDATE_ENTITY_HOST_CONTRIBUTIONS.map((row) => row.capability_id)).toEqual([
+      'communication',
+      'forms',
+    ])
+    for (const row of CANDIDATE_ENTITY_HOST_CONTRIBUTIONS) {
+      expect(row.host).toBe('entity_workspace')
+      expect(row.consumer).toBe('candidate')
+      expect(row.placement.region).toBe('platform_slot')
+    }
+  })
+
+  it('Entity host chrome adapter still places platform_slot through the contribution contract', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <I18nProvider>
+          <EntityWorkspaceCapabilityHost
+            entity={{ resourceType: 'candidate', resourceId: 'cand-1' }}
+            onClose={() => undefined}
+            onRefresh={() => undefined}
+            contributions={CANDIDATE_ENTITY_HOST_CONTRIBUTIONS}
+          >
+            {(placed) => (
+              <div data-entity-chrome-adapter="shell">
+                <div data-host-region="platform_slot">{placed.platform_slot}</div>
+              </div>
+            )}
+          </EntityWorkspaceCapabilityHost>
+        </I18nProvider>
+      </MemoryRouter>,
+    )
+    expect(container.querySelector('[data-workspace-capability-host="entity_workspace"]')).toBeTruthy()
+    expect(container.querySelector('[data-proof-consumer]')).toBeNull()
+    expect(container.querySelector('[data-entity-chrome-adapter="shell"]')).toBeTruthy()
+    expect(container.querySelector('[data-entity-workspace-slot="communication"]')).toBeTruthy()
+    expect(container.querySelector('[data-entity-workspace-slot="forms"]')).toBeTruthy()
+    expect(container.querySelector('[data-capability-id="communication"]')).toBeTruthy()
+    expect(container.querySelector('[data-capability-id="forms"]')).toBeTruthy()
   })
 
   it('ApplicationWorkspaceCapabilityHost still places G4 chrome and the same regions', () => {

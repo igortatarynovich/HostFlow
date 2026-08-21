@@ -105,6 +105,47 @@ _SLOTS_TS = (
     / "entity-workspace"
     / "compositionSlots.ts"
 )
+_CANDIDATE_PAGE = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "pages"
+    / "CandidateEntityWorkspacePage.tsx"
+)
+_CANDIDATE_PANEL = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "platform"
+    / "entity-workspace"
+    / "CandidateEntityWorkspacePanel.tsx"
+)
+_CANDIDATE_ENTITY = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "platform"
+    / "workspace-capability"
+    / "candidateEntity.ts"
+)
+_COMMUNICATION_UI = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "platform"
+    / "capabilities"
+    / "communication"
+    / "CommunicationCapability.tsx"
+)
+_FORMS_UI = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "platform"
+    / "capabilities"
+    / "forms"
+    / "FormsCapability.tsx"
+)
 
 _LEAD_TRANSPORT = (
     "getLead",
@@ -190,6 +231,54 @@ def test_g4_proof_consumer_unchanged() -> None:
     assert "PROOF_HOST_ID = 'application_workspace'" in proof
     parent = _PARENT.read_text(encoding="utf-8")
     assert "Candidate Entity Workspace is **not** the proof" in parent or "Candidate is **not** the proof" in parent
+    candidate_entity = _CANDIDATE_ENTITY.read_text(encoding="utf-8")
+    assert "PROOF_CONSUMER_ID" not in candidate_entity
+    assert "recruitment_application" not in candidate_entity
+    assert "Not G4" in candidate_entity or "Not G4" in _CANDIDATE_PANEL.read_text(encoding="utf-8")
+
+
+def test_candidate_entity_is_real_host_consumer_not_g4() -> None:
+    """Runtime equivalence proof: a real Entity screen enters through the host."""
+    page = _CANDIDATE_PAGE.read_text(encoding="utf-8")
+    panel = _CANDIDATE_PANEL.read_text(encoding="utf-8")
+    contrib = _CANDIDATE_ENTITY.read_text(encoding="utf-8")
+    host = _ENTITY_HOST.read_text(encoding="utf-8")
+    placement = _PLACEMENT.read_text(encoding="utf-8")
+    assert "CandidateEntityWorkspacePanel" in page
+    assert "EntityWorkspaceCapabilityHost" in panel
+    assert "CANDIDATE_ENTITY_HOST_CONTRIBUTIONS" in panel
+    assert "EntityWorkspaceShell" in panel
+    assert "EntityWorkspaceCompositionHost" not in page
+    assert "EntityWorkspaceCompositionHost" not in panel
+    assert "CandidateCommunicationSlot" not in page
+    assert "CandidateFormsSlot" not in page
+    assert "data-proof-consumer" not in host
+    assert "groupContributionsByRegion" in placement
+    assert "slot_id" in placement
+    assert "ENTITY_EQUIVALENCE_CONSUMER_ID = 'candidate'" in contrib
+    assert "ENTITY_EQUIVALENCE_HOST_ID = 'entity_workspace'" in contrib
+    assert "capability_id: 'communication'" in contrib
+    assert "capability_id: 'forms'" in contrib
+    assert "host: 'entity_workspace'" in contrib
+    assert "consumer: 'candidate'" in contrib
+    assert "documents" not in contrib.split("CANDIDATE_ENTITY_HOST_CONTRIBUTIONS", 1)[1]
+    communication = _COMMUNICATION_UI.read_text(encoding="utf-8")
+    forms = _FORMS_UI.read_text(encoding="utf-8")
+    assert "listCommunicationThreads" in communication
+    assert "listFormsPlatformHandlers" in forms
+    assert "getLead" not in communication
+    assert "getLead" not in forms
+    assert "/candidates/" not in communication
+    for marker in (
+        "ApplicationRodoSection",
+        "ApplicationCommentsSection",
+        "CandidateRodoSection",
+        "NotesCapability",
+        "ConsentCapability",
+    ):
+        assert marker not in page
+        assert marker not in panel
+        assert marker not in contrib
 
 
 def test_not_a_new_proof_screen_or_e2() -> None:
