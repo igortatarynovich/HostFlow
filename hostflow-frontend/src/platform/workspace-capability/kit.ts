@@ -2,7 +2,7 @@
  * Platform kit — what every screen is assembled FROM.
  *
  * Summary (gate-checked against Field Registry manifests):
- * 16 data types · 5 primitives · 78 fields · 16 widgets · 1 table frame · 2 hosts
+ * 16 data types · 6 primitives · 78 fields · 16 widgets · 1 table frame · 2 hosts
  *
  * Not a fifth capability class. Not a Notes/Consent kit.
  * Data types and fields are references to Field Registry (no second dictionary).
@@ -54,6 +54,7 @@ export const KIT_UI_PRIMITIVE_IDS = [
   'select',
   'button',
   'input',
+  'checkbox',
 ] as const
 
 export type KitUiPrimitiveId = (typeof KIT_UI_PRIMITIVE_IDS)[number]
@@ -61,10 +62,10 @@ export type KitUiPrimitiveId = (typeof KIT_UI_PRIMITIVE_IDS)[number]
 export const KIT_UI_PRIMITIVE_SOT = 'docs/specs/frontend/PRIMITIVES_V1.md' as const
 
 /**
- * boolean is a canonical data type. Consent proof cannot bind without a
- * checkbox primitive. Local `<input type="checkbox">` is forbidden.
+ * Proof-blocker primitives that still lack a CHECKBOX_V1-class lock.
+ * `checkbox` landed 2026-08-21 — empty until the next named blocker.
  */
-export const KIT_PROOF_BLOCKER_PRIMITIVE_IDS = ['checkbox'] as const
+export const KIT_PROOF_BLOCKER_PRIMITIVE_IDS = [] as const
 
 export type KitProofBlockerPrimitiveId = (typeof KIT_PROOF_BLOCKER_PRIMITIVE_IDS)[number]
 
@@ -133,7 +134,7 @@ export const KIT_WIDGET_CLASS_IDS = [
 
 export type KitWidgetClassId = (typeof KIT_WIDGET_CLASS_IDS)[number]
 
-/** Deferred widgets. Not filter_bar (ListWorkspace). Not tabs (host chrome). Not checkbox (proof blocker primitive). */
+/** Deferred widgets. Not filter_bar (ListWorkspace). Not tabs (host chrome). Not checkbox (locked primitive). */
 export const KIT_WIDGET_GAP_IDS = ['modal', 'radio', 'toggle'] as const
 
 export type KitWidgetGapId = (typeof KIT_WIDGET_GAP_IDS)[number]

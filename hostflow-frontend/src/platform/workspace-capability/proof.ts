@@ -1,12 +1,9 @@
 /**
- * Frozen G4 proof composition — typed records only.
- *
- * Next slice binds these onto ApplicationWorkspaceHost using the platform kit.
- * G4 is not catalog rows. G4 is: widget id in kit; Notes/Compliance own
- * semantics; host only places; Recruitment Application does not import local
+ * Frozen G4 proof composition. Bound on Application Workspace via
+ * ApplicationWorkspaceCapabilityHost. host only places; Notes/Compliance own
+ * semantics. Recruitment Application does not import local
  * ApplicationCommentsSection / ApplicationRodoSection (or SalesInquiry* /
- * CandidateRodoSection); module contribution does not ship a copy of shared
- * notes/consent; consent boolean uses checkbox primitive — not input type=checkbox.
+ * CandidateRodoSection). Consent boolean uses checkbox primitive — not input type=checkbox.
  */
 
 import type { WorkspaceContributionDefinition } from './contribution'

@@ -84,11 +84,11 @@
 |-------|-----|------|
 | ListWorkspace zones (not a widget gap) | `search` · `filters` · `sort` · `pagination` · `bulk` · `saved_views` | Filters already exist here. Do not mint `filter_bar` |
 | Host chrome (not a kit id) | EntityWorkspaceNavTabs · ListWorkspaceStatusTabs · ApplicationWorkspace tabs | Inventory `tabs_*` map here. Tabs is not a platform primitive |
-| Proof-blocker primitive | `checkbox` | Required before G4 consent bind. No local `input type=checkbox` |
+| Proof-blocker primitive | — (checkbox landed) | `CHECKBOX_V1`. No local `input type=checkbox` |
 | Hardening | `input_runtime` | Family `input` is locked CSS-only; extract a runtime component |
 | Deferred | `modal` · `radio` · `toggle` | Named; do not ship a private version |
 
-## G4 bind rules (next slice — not this feat)
+## G4 bind rules
 
 Notes / Consent proof is **separation**, not catalog presence:
 
@@ -97,8 +97,9 @@ Notes / Consent proof is **separation**, not catalog presence:
 3. Host only places.  
 4. Recruitment Application must not import `ApplicationCommentsSection` / `ApplicationRodoSection` (nor `SalesInquiryCallNotesSection` / `SalesInquiryRodoSection` / `CandidateRodoSection`).  
 5. A module contribution must not ship a copy of the shared widget.
+6. Consent boolean uses `checkbox` primitive (`CHECKBOX_V1`).
 
-This feat does **not** rewrite `ApplicationRecruitmentDetailPanel`.
+`ApplicationRecruitmentDetailPanel` binds `RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS` through `ApplicationWorkspaceCapabilityHost`.
 
 ## Proof screen must not add a row
 

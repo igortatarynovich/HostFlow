@@ -3,7 +3,7 @@
 Typed host / capability / contribution contracts plus the platform kit
 (data types, fields, primitives, widgets, tables). Four classes stay
 separate catalogs. Renderer registry is technical only. Not a RODO slice.
-Inventory exists. Proof screen is NOT rewritten. G4 is not claimed.
+G4 bind: Recruitment Application via ApplicationWorkspaceCapabilityHost.
 D2 `documents` stays reserved. No Postgres required.
 """
 
@@ -166,6 +166,47 @@ _RECRUITMENT_PANEL = (
     / "application-workspace"
     / "ApplicationRecruitmentDetailPanel.tsx"
 )
+_CHECKBOX_TS = (
+    _REPO_ROOT / "hostflow-frontend" / "src" / "components" / "ui" / "Checkbox.tsx"
+)
+_CHECKBOX_V1 = _REPO_ROOT / "docs" / "specs" / "frontend" / "CHECKBOX_V1.md"
+_CONSENT_TS = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "platform"
+    / "capabilities"
+    / "consent"
+    / "ConsentCapability.tsx"
+)
+_NOTES_TS = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "platform"
+    / "capabilities"
+    / "notes"
+    / "NotesCapability.tsx"
+)
+_CAPABILITY_HOST_TS = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "platform"
+    / "workspace-capability"
+    / "ApplicationWorkspaceCapabilityHost.tsx"
+)
+_RECRUITMENT_CONTRIB_DIR = (
+    _REPO_ROOT / "hostflow-frontend" / "src" / "modules" / "recruitment" / "contributions"
+)
+_RECRUITMENT_WORKSPACE = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "pages"
+    / "recruitment"
+    / "RecruitmentApplicationWorkspace.tsx"
+)
 _CATALOG = (
     _REPO_ROOT
     / "docs"
@@ -187,6 +228,17 @@ _HOST_FORBIDDEN_IMPORTS = (
     "CandidateRodoSection",
     "SalesInquiryRodoSection",
     "SalesInquiryCallNotesSection",
+    "NotesCapability",
+    "ConsentCapability",
+)
+
+_PROOF_SURFACE_LOCAL_BLOCKS = (
+    "CandidateRodoSection",
+    "SalesInquiryRodoSection",
+    "SalesInquiryCallNotesSection",
+    "ApplicationCommentsSection",
+    "ApplicationRodoSection",
+    "CandidateNotesSection",
 )
 
 _REGISTRY_FORBIDDEN_KEYS = (
@@ -299,7 +351,9 @@ def test_platform_kit_is_substrate_not_rodo_slice() -> None:
         "bulk",
         "saved_views",
     )
-    assert "checkbox" in KIT_PROOF_BLOCKER_PRIMITIVE_IDS
+    assert "checkbox" in KIT_UI_PRIMITIVE_IDS
+    assert KIT_PROOF_BLOCKER_PRIMITIVE_IDS == ()
+    assert _ts_string_array(kit_ts, "KIT_PROOF_BLOCKER_PRIMITIVE_IDS") == KIT_PROOF_BLOCKER_PRIMITIVE_IDS
     assert "input_runtime" in KIT_HARDENING_PRIMITIVE_IDS
     assert KIT_WIDGET_GAP_IDS == ("modal", "radio", "toggle")
     assert "EntityWorkspaceNavTabs" in KIT_HOST_NAVIGATION_SOT
@@ -314,6 +368,8 @@ def test_platform_kit_is_substrate_not_rodo_slice() -> None:
     assert "BUTTON_V1" in primitives or "Button" in primitives
     assert "INPUT_V1" in primitives
     assert "SELECT_V1" in primitives or "Select" in primitives
+    assert "SELECT_V1" in primitives or "Select" in primitives
+    assert "CHECKBOX_V1" in primitives or "Checkbox" in primitives
     assert _TABLE_V1.is_file()
     brief = _BRIEF.read_text(encoding="utf-8")
     assert "KIT_DATA_TYPE_IDS" in brief or "Platform kit catalogs" in brief
@@ -463,7 +519,7 @@ def test_registry_is_technical_lookup_only() -> None:
     assert "workspace.module.recruitment.stage" in WORKSPACE_RENDERER_REGISTRY
 
 
-def test_proof_consumer_frozen_and_g4_not_claimed() -> None:
+def test_proof_consumer_frozen_and_g4_bound() -> None:
     assert PROOF_CONSUMER_ID == "recruitment_application"
     assert PROOF_HOST_ID == "application_workspace"
     proof_ts = _PROOF_TS.read_text(encoding="utf-8")
@@ -484,14 +540,86 @@ def test_proof_consumer_frozen_and_g4_not_claimed() -> None:
     assert "optional" in licenses
     brief = _BRIEF.read_text(encoding="utf-8")
     assert "cannot claim G4" in brief or "cannot claim PASS on G4" in brief
+    assert "not COMPLETE" in brief or "never **COMPLETE**" in brief
     assert "Recruitment Application" in brief
     assert "Candidate is **not** the proof" in brief or "Candidate Entity Workspace is **not** the proof" in brief
     panel = _RECRUITMENT_PANEL.read_text(encoding="utf-8")
-    assert "contextSlots" in panel
-    assert "vacancy:" in panel
-    assert "assignee:" in panel
-    assert "workspace-capability" not in panel
-    assert "RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS" not in panel
+    assert "ApplicationWorkspaceCapabilityHost" in panel
+    assert "RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS" in panel
+    assert "workspace-capability" in panel
+    assert "contextSlots" not in panel
+    assert "vacancy:" not in panel
+    assert "assignee:" not in panel
+    for marker in (
+        "SalesInquiryRodoSection",
+        "CandidateRodoSection",
+        "SalesInquiryCallNotesSection",
+        "ApplicationCommentsSection",
+        "ApplicationRodoSection",
+    ):
+        assert marker not in panel
+    host = _CAPABILITY_HOST_TS.read_text(encoding="utf-8")
+    assert "data-workspace-capability-host" in host
+    assert "data-host-region" in host
+
+
+def test_checkbox_primitive_locked() -> None:
+    assert _CHECKBOX_TS.is_file()
+    assert _CHECKBOX_V1.is_file()
+    checkbox = _CHECKBOX_TS.read_text(encoding="utf-8")
+    assert "export function Checkbox" in checkbox
+    spec = _CHECKBOX_V1.read_text(encoding="utf-8")
+    assert "CHECKBOX_V1" in spec or "Question Answered" in spec
+    assert "boolean" in spec.lower()
+
+
+def test_g4_notes_consent_separation() -> None:
+    assert _CONSENT_TS.is_file()
+    assert _NOTES_TS.is_file()
+    consent = _CONSENT_TS.read_text(encoding="utf-8")
+    notes = _NOTES_TS.read_text(encoding="utf-8")
+    assert "from '../../../components/ui/Checkbox'" in consent
+    assert 'type="checkbox"' not in consent
+    assert "SalesInquiryRodoSection" not in consent
+    assert "CandidateRodoSection" not in consent
+    assert "capability_id=\"consent\"" in consent or "data-capability-id=\"consent\"" in consent
+    assert "SalesInquiryCallNotesSection" not in notes
+    assert "CandidateNotesSection" not in notes
+    assert "data-capability-id=\"notes\"" in notes
+    for path in _RECRUITMENT_CONTRIB_DIR.glob("*.tsx"):
+        src = path.read_text(encoding="utf-8")
+        assert "NotesCapability" not in src, f"{path.name} must not copy notes widget"
+        assert "ConsentCapability" not in src, f"{path.name} must not copy consent widget"
+        assert "SalesInquiryRodoSection" not in src
+        assert "CandidateRodoSection" not in src
+        assert "SalesInquiryCallNotesSection" not in src
+
+
+def test_g2_g3_proof_surface_cannot_import_local_blocks() -> None:
+    """G2/G3: Recruitment Application cannot silently import local Notes/Consent/rail."""
+    assert _RECRUITMENT_WORKSPACE.is_file()
+    workspace = _RECRUITMENT_WORKSPACE.read_text(encoding="utf-8")
+    assert "ApplicationWorkspace" in workspace
+    assert "ApplicationRecruitmentDetailPanel" in workspace
+    for marker in _PROOF_SURFACE_LOCAL_BLOCKS + ("NotesCapability", "ConsentCapability"):
+        assert marker not in workspace, f"RecruitmentApplicationWorkspace must not import {marker}"
+
+    surfaces = [
+        _RECRUITMENT_WORKSPACE,
+        _RECRUITMENT_PANEL,
+        _APPLICATION_TS,
+        _SHELL_TS,
+        *_RECRUITMENT_CONTRIB_DIR.glob("*.tsx"),
+    ]
+    for path in surfaces:
+        src = path.read_text(encoding="utf-8")
+        for marker in _PROOF_SURFACE_LOCAL_BLOCKS:
+            assert marker not in src, f"{path.name} must not import {marker}"
+
+    panel = _RECRUITMENT_PANEL.read_text(encoding="utf-8")
+    assert "ApplicationWorkspaceCapabilityHost" in panel
+    assert "RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS" in panel
+    assert "contextSlots" not in panel
 
 
 def test_hosts_do_not_import_notes_consent_widgets() -> None:

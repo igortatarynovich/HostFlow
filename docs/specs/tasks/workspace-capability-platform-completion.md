@@ -83,7 +83,7 @@ ApplicationWorkspace host
 
 Candidate Entity Workspace is **not** the proof. It is closer to D4 and can yield a false PASS.
 
-Until that screen exists, this program is **brief-complete at most**, never **COMPLETE**. Contract feat alone cannot claim G4. Multiplying further entity/application pages, D10-on-weak-D2, or Documents E2 feat is forbidden until this proof.
+G4 bind is the Recruitment Application on Application Workspace (`ApplicationWorkspaceCapabilityHost` + `RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS`). Contract-only commits cannot claim G4. This feat binds the proof screen. The program is still **not COMPLETE** until Goal Completion Gate review. Multiplying further entity/application pages, D10-on-weak-D2, or Documents E2 feat stays forbidden until that COMPLETE.
 
 **False close (reject):** Entity Shell as semantic owner of Notes/Consent; Application folded into Entity; Notes/Consent/RODO **as the whole platform**; kit that modules still compose locally in parent JSX; stuffing JSX; Candidate-as-proof; D2 slot bind; treating D1–D9 ✅ as this program; minting a second Field Registry / primitives list / table standard.
 
@@ -162,7 +162,7 @@ D2 slot ids **do not** grow `notes` / `consent` / `rodo`. Those are **shared cap
 
 Typed in `hostflow-frontend/src/platform/workspace-capability/kit.ts` and `backend/app/platform/workspace_capability/kit.py`. **References**, not second dictionaries.
 
-**Summary:** 16 data types · 5 primitives · 78 fields · 16 widgets · 1 table frame · 2 hosts.
+**Summary:** 16 data types · 6 primitives · 78 fields · 16 widgets · 1 table frame · 2 hosts.
 
 Gate counts Field Registry manifests (not prose): candidate = **18** (includes `operations.stage`); sales `single_select` / `multi_select` = **18** (must map to `code` / `reference_code[]`, not a 17th type).
 
@@ -170,11 +170,11 @@ Gate counts Field Registry manifests (not prose): candidate = **18** (includes `
 |-------|-----|-----------|
 | **Data types** | Field Registry [§4](../platform/field-registry-card-configuration.md#4-field-types) | Frozen `KIT_DATA_TYPE_IDS` must equal that table |
 | **Fields** | [Field Registry](../platform/field-registry-card-configuration.md) + [Entity Profile](../platform/entity-profile-definition-registry.md) | Pointer only. Snapshot `KIT_REGISTERED_FIELD_COUNT = 78` asserted vs manifests |
-| **UI primitives** | [PRIMITIVES_V1](../frontend/PRIMITIVES_V1.md) | `status_badge` · `chip` · `select` · `button` · `input` |
+| **UI primitives** | [PRIMITIVES_V1](../frontend/PRIMITIVES_V1.md) + [CHECKBOX_V1](../frontend/CHECKBOX_V1.md) | `status_badge` · `chip` · `select` · `button` · `input` · `checkbox` |
 | **Widgets** | compositions of primitives + fields | `KIT_WIDGET_CLASS_IDS` (16). Notes/Consent are **two** widget classes, not the kit |
 | **Tables** | [TABLE_V1](../frontend/TABLE_V1.md) + ListWorkspace | `table_v1_entity_list`. Filter/search/sort/pagination/bulk/saved views = **ListWorkspace zones**, not a `filter_bar` widget |
 | **Host navigation** | Entity Workspace K3 · ListWorkspace status tabs · Application Workspace tabs | Tabs SoT = **host chrome**. Not a kit widget. Inventory `tabs_*` map here |
-| **Proof-blocker primitive** | boolean data type | `checkbox` — G4 consent cannot use local `<input type="checkbox">` |
+| **Proof-blocker primitive** | — | empty after `checkbox` lock. Do not use local `<input type="checkbox">` |
 | **Hardening** | INPUT_V1 family locked CSS-only | `input_runtime` — extract a runtime component so pages cannot assemble ad-hoc `<input className="input">` |
 | **Deferred gaps** | named, not invented locally | `modal` · `radio` · `toggle` |
 
@@ -425,9 +425,9 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog. P-02 is why the hos
 | **G2** | Forbidden: new local data types/fields/primitives/widgets/tables; new module Notes/Consent/rail products; page-local composition; Shell as semantic owner; Application-as-Entity; global status enum; contribution-local RBAC/Actions/Events; treating RODO as the platform |
 | **G3** | Next entity **or** application screen uses kit + host contract + catalogs only |
 | **G4** | Recruitment Application assembled from the kit. PASS only if: (1) `notes` and `consent` widget ids exist in kit; (2) semantic owner remains Notes / Compliance; (3) host only places; (4) Recruitment Application does **not** import local `ApplicationCommentsSection` / `ApplicationRodoSection` (or `SalesInquiryCallNotesSection` / `SalesInquiryRodoSection` / `CandidateRodoSection`); (5) a module contribution does not ship a copy of those shared widgets; (6) consent boolean uses `checkbox` primitive — not local `input type=checkbox`. Catalog rows alone are **not** G4. |
-| **G5** | D2 `documents` reserved; `checkbox` is a proof blocker (must land before/with G4 bind); `input_runtime` is named hardening; `filter_bar` is **not** a second layer (ListWorkspace zones); tabs remain host chrome; D3–D9 surface binds until migrate-on-touch; Action Canon / Event registry remain referenced, not built here |
+| **G5** | D2 `documents` reserved; `checkbox` landed (`CHECKBOX_V1`) and G4 consent uses it; `input_runtime` is named hardening; `filter_bar` is **not** a second layer (ListWorkspace zones); tabs remain host chrome; D3–D9 surface binds until migrate-on-touch; Action Canon / Event registry remain referenced, not built here |
 
-Contract-seal feat **cannot** claim PASS on G4. It may claim brief-complete for the contract only.
+G4 bind evidence is in this feat (`ApplicationRecruitmentDetailPanel` → `ApplicationWorkspaceCapabilityHost`). Named gate enforces G2/G3: Recruitment Application cannot import local Notes/Consent/rail blocks. The program is **not COMPLETE** until Goal Completion Gate review + green CI. Contract-only commits cannot claim PASS on G4. Do not unlock Documents E2 until COMPLETE.
 
 ---
 
@@ -446,7 +446,7 @@ Capability-based (see table above). Checklist is **not** the proof:
 - [ ] Local analogues of shared capabilities forbidden on new work  
 - [ ] Legacy inventory + migration map  
 - [ ] Registry is the only legal add-path on the proof  
-- [ ] G4 = Recruitment Application (later slice) — **required for COMPLETE**  
+- [ ] G4 = Recruitment Application bind (`ApplicationWorkspaceCapabilityHost`) — **required for COMPLETE**  
 - [ ] E2 feat stays locked until that COMPLETE  
 
 ---
@@ -467,3 +467,4 @@ Capability-based (see table above). Checklist is **not** the proof:
 - 2026-08-20: **This revision:** rename to Workspace Capability Platform Completion. Capability Host Contract. Host ≠ semantic owner. Entity ≠ Application. Four-class catalogs. Canon references for permissions/actions/events/license. Status = owner projection. Proof locked to Recruitment Application.
 - 2026-08-21: Brief merged [#272](https://github.com/igortatarynovich/HostFlow/pull/272). Feat: typed contracts, four-class catalogs, technical registry, inventory, named gate. Proof screen remains the next slice.
 - 2026-08-21: Catalog inconsistencies closed: 78/18 counters vs manifests; filters = ListWorkspace zones (not `filter_bar` widget); tabs = host chrome (not kit id); `checkbox` = G4 proof blocker; `input_runtime` = named hardening.
+- 2026-08-21: `CHECKBOX_V1` locked; `checkbox` registered in kit. Recruitment Application G4 bind via `ApplicationWorkspaceCapabilityHost` (Notes/Consent owned widgets; host places).

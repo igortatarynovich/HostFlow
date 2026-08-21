@@ -105,3 +105,7 @@ export {
   PROOF_HOST_ID,
   RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS,
 } from './proof'
+
+export { ApplicationWorkspaceCapabilityHost } from './ApplicationWorkspaceCapabilityHost'
+export { WORKSPACE_CAPABILITY_RENDERERS } from './renderers'
+

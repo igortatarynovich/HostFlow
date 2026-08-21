@@ -1,4 +1,4 @@
-"""Frozen G4 proof composition — typed records only. Not a page rewrite."""
+"""Frozen G4 proof composition. Bound by ApplicationWorkspaceCapabilityHost."""
 
 from __future__ import annotations
 

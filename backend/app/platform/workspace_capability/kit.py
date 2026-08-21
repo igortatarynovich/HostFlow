@@ -1,7 +1,7 @@
 """Platform kit — data types, fields, primitives, widgets, tables.
 
 Summary (gate-checked against Field Registry manifests):
-16 data types · 5 primitives · 78 fields · 16 widgets · 1 table frame · 2 hosts
+16 data types · 6 primitives · 78 fields · 16 widgets · 1 table frame · 2 hosts
 
 Not a fifth capability class. Field types reference Field Registry §4.
 Fields stay in Field Registry (no parallel dictionary).
@@ -45,9 +45,10 @@ KIT_UI_PRIMITIVE_IDS: tuple[str, ...] = (
     "select",
     "button",
     "input",
+    "checkbox",
 )
 
-KIT_PROOF_BLOCKER_PRIMITIVE_IDS: tuple[str, ...] = ("checkbox",)
+KIT_PROOF_BLOCKER_PRIMITIVE_IDS: tuple[str, ...] = ()
 KIT_HARDENING_PRIMITIVE_IDS: tuple[str, ...] = ("input_runtime",)
 
 KIT_TABLE_FRAME_IDS: tuple[str, ...] = ("table_v1_entity_list",)

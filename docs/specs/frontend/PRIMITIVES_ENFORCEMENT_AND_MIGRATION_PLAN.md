@@ -1,9 +1,9 @@
 # PRIMITIVES_ENFORCEMENT_AND_MIGRATION_PLAN
 
-Status: Complete (Layer 2 — Badge, Chip, Select, Button, Input)  
+Status: Complete (Layer 2 — Badge, Chip, Select, Button, Input, Checkbox)  
 Date: 2026-05-29  
-Updated: 2026-05-31 (Input lock — Layer 2 closed)  
-Input: `STATUS_BADGE_V1.md`, `CHIP_V1.md`, `SELECT_V1.md`, `BUTTON_V1.md`, `INPUT_V1.md`, `FOUNDATION_ENFORCEMENT_AND_MIGRATION_PLAN.md`  
+Updated: 2026-08-21 (Checkbox lock — boolean proof blocker)  
+Input: `STATUS_BADGE_V1.md`, `CHIP_V1.md`, `SELECT_V1.md`, `BUTTON_V1.md`, `INPUT_V1.md`, `CHECKBOX_V1.md`, `FOUNDATION_ENFORCEMENT_AND_MIGRATION_PLAN.md`  
 Purpose: define how all Layer 2 locked primitives become real.
 
 ## Question Answered
@@ -21,6 +21,7 @@ Purpose: define how all Layer 2 locked primitives become real.
 | Selects | `SELECT_V1.md` | PR review + migrate on touch |
 | Buttons | `BUTTON_V1.md` | PR review + migrate on touch |
 | Input | `INPUT_V1.md` | PR review + migrate on touch (CSS-first) |
+| Checkbox | `CHECKBOX_V1.md` | PR review + migrate on touch; G4 consent must use it |
 
 Full primitive CI grep checks are **Phase 2** (after remaining P0 migrations and backlog scan).
 
