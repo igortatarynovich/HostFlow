@@ -1,9 +1,9 @@
 # Workspace Capability Platform Completion
 
-**Status:** **IN PROGRESS** (docs — this brief)  
+**Status:** **IN PROGRESS** (feat)  
 **Phase class:** platform  
-**Branch (docs):** `docs/shared-ui-capabilities-contract-seal`  
-**Branch (code):** `feat/workspace-capability-platform-completion` (locked until this brief merges)  
+**Branch (docs):** `docs/shared-ui-capabilities-contract-seal` ✅ [#272](https://github.com/igortatarynovich/HostFlow/pull/272)  
+**Branch (code):** `feat/workspace-capability-platform-completion`  
 **Parents:** [Goal Completion Gate](../gates/goal-completion-gate.md) · [Scope Completeness Audit](../gates/platform-scope-completeness-audit.md) · [UI constitution §3](../architecture/ui-constitution-v1.md) · [D1](entity-workspace-d1-contract-seal.md)…[D9](entity-workspace-d9-services-order-cutover.md) ✅ (brief-complete, **goal-incomplete**) · [D2](entity-workspace-d2-composition-contract.md) · [ADR-010](../architecture/ADR-010-unified-resource-list-shell.md) · [ADR-011](../architecture/ADR-011-hostflow-ui-platform-standard.md) · [ADR-026](../architecture/ADR-026-capability-ownership.md) · [ADR-027](../architecture/ADR-027-capability-composition.md) · [ADR-036](../architecture/ADR-036-four-trust-roles-rbac.md) · [E2](documents-platform-e2-public-contract.md) (brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); **feat locked**)
 
 > Previous same-day title **Entity Platform Completion** is **superseded in place** (this file).  
@@ -239,6 +239,8 @@ Sales CallNotes/RODO remain inventory until migrate-on-touch. They are not the p
 
 ## Migration inventory (feat — required)
 
+SoT: [workspace-capability-legacy-inventory.md](workspace-capability-legacy-inventory.md).
+
 Feat lists current **local** blocks that violate the restored goal (non-exhaustive start):
 
 | Local widget | Consumer | Host | Maps toward |
@@ -291,14 +293,14 @@ This slice **must not**:
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **Scope audit + Goal Completion Gate** | Classify closed phases | [audit](../gates/platform-scope-completeness-audit.md) ✅ |
-| **Contract seal** | Host contract + four-class catalogs + reference fields | **this brief** (feat locked) |
-| **Feat** | Typed registry + inventory + named gate | after brief |
-| **Proof screen** | Recruitment Application; Goal Completion Gate G4 | locked until feat |
+| **Contract seal** | Host contract + four-class catalogs + reference fields | brief ✅ [#272](https://github.com/igortatarynovich/HostFlow/pull/272) |
+| **Feat** | Typed contracts + four-class catalogs + technical registry + inventory + named gate | **this PR** |
+| **Proof screen** | Recruitment Application; Goal Completion Gate G4 | locked until this feat |
 | **Documents E2** | Public contract / D2 `documents` enable | brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat after proof + G4 that does **not** include “inner capabilities still module-owned” |
 
 ---
 
-## Workspace Capability Platform Completion Gate (CI — after feat)
+## Workspace Capability Platform Completion Gate (CI — this feat)
 
 Named step: **Workspace Capability Platform Completion Gate**  
 (`tests/platform/test_workspace_capability_platform_completion_gate.py`).
@@ -320,19 +322,20 @@ Proof-screen slice adds G4 evidence; contract feat alone is **not** phase COMPLE
 
 ---
 
-## In scope (this docs PR)
+## In scope (docs PR — merged [#272](https://github.com/igortatarynovich/HostFlow/pull/272))
 
 1. This brief (rename from Entity Platform Completion).  
 2. Queue / roadmap / AGENTS / maturity / UI constitution / Architecture Review / E2 pointers.  
-3. E2 feat stays locked. Feat locked until this brief merges.
+3. E2 feat stays locked.
 
-## In scope (feat PR)
+## In scope (this feat PR)
 
 1. Named Workspace Capability Platform Completion Gate.  
-2. Typed ids + contribution fields + static `component_id` registry.  
-3. Migration inventory markdown.  
-4. Architecture Review 10 questions **and** Goal Completion G1–G5 in the PR body.  
-5. **No** proof-screen rewrite unless the same PR can still stay one concern — default: proof is the **next** slice (Recruitment Application).
+2. Typed host / capability / contribution contracts. Four classes as separate types, not one flat enum.  
+3. Static renderer registry (`component_id` → module path only — not the platform).  
+4. Migration inventory markdown.  
+5. Architecture Review 10 questions **and** Goal Completion G1–G5 in the PR body.  
+6. **No** proof-screen rewrite. Next slice = Recruitment Application only.
 
 ---
 
@@ -420,3 +423,4 @@ Capability-based (see table above). Checklist is **not** the proof:
 - 2026-08-20: Shared UI Capabilities Contract Seal drafted, then superseded (still accepted shell = geometry).  
 - 2026-08-20: Product Track → Entity Platform Completion (flat common-capability catalog; Shell as owner of commons; proof Candidate **or** Recruitment).  
 - 2026-08-20: **This revision:** rename to Workspace Capability Platform Completion. Capability Host Contract. Host ≠ semantic owner. Entity ≠ Application. Four-class catalogs. Canon references for permissions/actions/events/license. Status = owner projection. Proof locked to Recruitment Application.
+- 2026-08-21: Brief merged [#272](https://github.com/igortatarynovich/HostFlow/pull/272). Feat: typed contracts, four-class catalogs, technical registry, inventory, named gate. Proof screen remains the next slice.

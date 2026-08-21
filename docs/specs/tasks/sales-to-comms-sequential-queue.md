@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](../gates/goal-completion-gate.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-20 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 brief ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)). **Product Track:** [Workspace Capability Platform Completion](workspace-capability-platform-completion.md) (Capability Host Contract; feat locked; proof = Recruitment Application). Close-out: [Goal Completion Gate](../gates/goal-completion-gate.md). Documents E2 feat stays locked. Not D10. Not a Recruitment rail patch. Entity Workspace ≠ Application Workspace. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
+> **2026-08-20 strategy:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 brief ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)). **Product Track:** [Workspace Capability Platform Completion](workspace-capability-platform-completion.md) (Capability Host Contract; feat; proof = Recruitment Application). Close-out: [Goal Completion Gate](../gates/goal-completion-gate.md). Documents E2 feat stays locked. Not D10. Not a Recruitment rail patch. Entity Workspace ≠ Application Workspace. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
 > Communication **C2.4 frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Workspace Capability Platform Completion** — [brief](workspace-capability-platform-completion.md); feat locked; E2 feat stays locked; proof = Recruitment Application; not D10 | Almost all capacity |
+| **Product** | **Workspace Capability Platform Completion** — [brief](workspace-capability-platform-completion.md); feat; E2 feat stays locked; proof = Recruitment Application; not D10 | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -63,7 +63,7 @@
 - **Entity Workspace D8 — HR Employee Cutover** ← ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265)/[#266](https://github.com/igortatarynovich/HostFlow/pull/266) — [brief](entity-workspace-d8-hr-employee-cutover.md); named Cutover Gate; HR employee bound  
 - **Entity Workspace D9 — Services Order Cutover** ← ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267)/[#268](https://github.com/igortatarynovich/HostFlow/pull/268) — [brief](entity-workspace-d9-services-order-cutover.md); named Cutover Gate; Services order bound  
 - **Documents Platform E1 — Contract Seal** ← ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) — [brief](documents-platform-e1-contract-seal.md); named Contract Seal Gate; D2 `documents` stayed reserved  
-- **Workspace Capability Platform Completion** ← **active** (brief; feat locked) — [brief](workspace-capability-platform-completion.md); Capability Host Contract; Entity ≠ Application; proof = Recruitment Application; [audit](../gates/platform-scope-completeness-audit.md) STOP on original D goal  
+- **Workspace Capability Platform Completion** ← **active** (feat) — [brief](workspace-capability-platform-completion.md); Capability Host Contract; Entity ≠ Application; proof = Recruitment Application; [audit](../gates/platform-scope-completeness-audit.md) STOP on original D goal  
 - **Documents Platform E2 — Public contract / D2 catalog enable** ← **locked** (brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat after Workspace Capability proof + Goal Completion Gate) — [brief](documents-platform-e2-public-contract.md); catalog unlock ≠ consumer bind  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
@@ -113,11 +113,11 @@
 | **26** | **Entity Workspace D8** HR employee cutover | `docs/…` ✅ [#265](https://github.com/igortatarynovich/HostFlow/pull/265) · `feat/…` ✅ [#266](https://github.com/igortatarynovich/HostFlow/pull/266) | ✅ named Cutover Gate · merge `fae8202e` |
 | **27** | **Entity Workspace D9** Services `/app/orders` | `docs/…` ✅ [#267](https://github.com/igortatarynovich/HostFlow/pull/267) · `feat/…` ✅ [#268](https://github.com/igortatarynovich/HostFlow/pull/268) | ✅ named Cutover Gate · merge `28978a1f` |
 | **28** | **Documents Platform E1** Contract Seal | `docs/…` ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) · `feat/…` ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270) | ✅ named Contract Seal Gate · merge `f37deff1` |
-| **29** | **Workspace Capability Platform Completion** | `docs/…` then `feat/…` | **active** (brief; feat locked) — [brief](workspace-capability-platform-completion.md) · [audit](../gates/platform-scope-completeness-audit.md) · [Goal Completion Gate](../gates/goal-completion-gate.md) |
+| **29** | **Workspace Capability Platform Completion** | `feat/workspace-capability-platform-completion` | **active** (feat) — [brief](workspace-capability-platform-completion.md) · [inventory](workspace-capability-legacy-inventory.md) · [Goal Completion Gate](../gates/goal-completion-gate.md) |
 | **30** | **Documents Platform E2** Public contract / D2 catalog enable | `docs/…` ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271) · `feat/…` locked | **locked** until Workspace Capability Goal Completion — [brief](documents-platform-e2-public-contract.md) |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** Workspace Capability Platform Completion — [brief](workspace-capability-platform-completion.md) (feat locked). E2 feat locked. Proof = Recruitment Application.  
+**Active (Product):** Workspace Capability Platform Completion — [brief](workspace-capability-platform-completion.md) (feat). E2 feat locked. Proof = Recruitment Application.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -213,9 +213,9 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [documents-platform-e1-contract-seal.md](documents-platform-e1-contract-seal.md). Ownership + Hub ≠ dossier ≠ D2 enable. Named E1 Contract Seal Gate (CI: 11 passed). D2 `documents` stayed reserved. Merge `f37deff1`. Full-repo Tests with coverage 484 failed / 2740 passed — Engineering Track, same as D9.
 
-### Workspace Capability Platform Completion ← **active** (brief; feat locked)
+### Workspace Capability Platform Completion ← **active** (feat)
 
-[workspace-capability-platform-completion.md](workspace-capability-platform-completion.md). Capability Host Contract: host places, owners own semantics. Entity Workspace ≠ Application Workspace. Proof = Recruitment Application. Not D10. Not a Recruitment rail patch. [Audit](../gates/platform-scope-completeness-audit.md) · [Goal Completion Gate](../gates/goal-completion-gate.md). Documents E2 feat stays locked.
+[workspace-capability-platform-completion.md](workspace-capability-platform-completion.md). Capability Host Contract: host places, owners own semantics. Entity Workspace ≠ Application Workspace. Proof = Recruitment Application (next slice). Registry is technical lookup only. [Inventory](workspace-capability-legacy-inventory.md) · [Audit](../gates/platform-scope-completeness-audit.md) · [Goal Completion Gate](../gates/goal-completion-gate.md). Documents E2 feat stays locked.
 
 ### Documents Platform E2 — Public contract / D2 catalog enable ← **locked** (brief ✅; feat after Workspace Capability Platform)
 

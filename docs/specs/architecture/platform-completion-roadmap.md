@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **active** ([brief](../tasks/workspace-capability-platform-completion.md); feat locked). **Phase E — Documents Platform** ← locked (E1 ✅; E2 brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat after Workspace Capability Platform).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **active** ([brief](../tasks/workspace-capability-platform-completion.md); feat). **Phase E — Documents Platform** ← locked (E1 ✅; E2 brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat after Workspace Capability Platform).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms ✅ → Phase D Entity Workspace (brief-complete) → Workspace Capability Platform Completion → Phase E Documents → …
@@ -173,7 +173,7 @@ Ladder (locked start):
 
 ---
 
-## Workspace Capability Platform Completion ← **active** (corrective; feat locked)
+## Workspace Capability Platform Completion ← **active** (corrective; feat)
 
 Queue insert **between** Phase D and Documents E2 feat. Not D10. Not Platform Extraction 2. Not a new A–G letter.
 
@@ -184,8 +184,8 @@ D1–D9 closed chrome + D2 **surfaces** + named consumer binds. That was a **sub
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **Audit + Goal Completion Gate** | Classify closed phases | [audit](../gates/platform-scope-completeness-audit.md) · [gate](../gates/goal-completion-gate.md) |
-| **Contract** | Capability Host Contract + four-class catalogs | [brief](../tasks/workspace-capability-platform-completion.md) (feat locked) |
-| **Proof screen** | Recruitment Application without local composition | locked until feat |
+| **Contract** | Capability Host Contract + four-class catalogs | [brief](../tasks/workspace-capability-platform-completion.md) ✅ [#272](https://github.com/igortatarynovich/HostFlow/pull/272); feat |
+| **Proof screen** | Recruitment Application without local composition | locked until this feat |
 | **Then E2** | Documents public contract / D2 `documents` enable | locked until Goal Completion on this program |
 
 **Out:** Shell-as-semantic-owner · Application-as-Entity · Candidate-as-proof · Recruitment rail patch as done · mass migration · E2 feat · P3–P5 / R6 / C2.4.
