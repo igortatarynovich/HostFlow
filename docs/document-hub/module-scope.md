@@ -2,7 +2,7 @@
 
 **Document Hub** — общий слой для HostFlow: документ как **самостоятельная сущность**, а не только вложение в одной карточке. Нормативное решение — **[`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)**.  
 **Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#documents).  
-**Product Track (live):** [Documents Platform E4 — Candidate Document Link](../specs/tasks/documents-platform-e4-candidate-document-link.md) (brief; feat locked). E3 ✅ ([#278](https://github.com/igortatarynovich/HostFlow/pull/278); [documents-platform-e3-first-consumer-bind.md](../specs/tasks/documents-platform-e3-first-consumer-bind.md); named First Consumer Bind Gate). E2 ✅ ([#276](https://github.com/igortatarynovich/HostFlow/pull/276); [documents-platform-e2-public-contract.md](../specs/tasks/documents-platform-e2-public-contract.md)). Public contract: [`documents-public-contract.md`](../specs/architecture/documents-public-contract.md). WCP [COMPLETE](../specs/gates/workspace-capability-platform-complete.md). E1 ✅. D2 `documents` catalog unlock is E2; first consumer bind is E3 (HR employee). Candidate Document Link is E4. D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.  
+**Product Track (live):** [Documents Platform E4 — Candidate Document Link](../specs/tasks/documents-platform-e4-candidate-document-link.md) (feat). E3 ✅ ([#278](https://github.com/igortatarynovich/HostFlow/pull/278); [documents-platform-e3-first-consumer-bind.md](../specs/tasks/documents-platform-e3-first-consumer-bind.md); named First Consumer Bind Gate). E2 ✅ ([#276](https://github.com/igortatarynovich/HostFlow/pull/276); [documents-platform-e2-public-contract.md](../specs/tasks/documents-platform-e2-public-contract.md)). Public contract: [`documents-public-contract.md`](../specs/architecture/documents-public-contract.md). WCP [COMPLETE](../specs/gates/workspace-capability-platform-complete.md). E1 ✅. D2 `documents` catalog unlock is E2; first consumer bind is E3 (HR employee). Candidate Document Link is E4. D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.  
 В **§0** каталога модулей Hub стоит в **Core / Platform** рядом с Companies, Users/Roles, Forms, Integrations.
 
 ## Назначение
@@ -82,6 +82,7 @@
 
 ## История
 
+- 2026-08-22: Product Track → [Documents Platform E4](../specs/tasks/documents-platform-e4-candidate-document-link.md) (feat); Candidate Document Link on D4. E3 ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278). Foundation stays 🔄.
 - 2026-08-20: Product Track → [Entity Platform Completion](../specs/tasks/workspace-capability-platform-completion.md); E2 brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271) (feat locked).  
 - 2026-08-18: Product Track → Documents Platform E1 ([brief](../specs/tasks/documents-platform-e1-contract-seal.md)); D9 ✅ [#268](https://github.com/igortatarynovich/HostFlow/pull/268). D2 slot not enabled.
 - 2026-05: первичная фиксация scope Document Hub и таблица примеров по модулям.

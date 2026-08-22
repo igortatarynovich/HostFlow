@@ -32,7 +32,7 @@
 - [ ] Нет новых публичных прямых URL на файлы без подписи и короткого TTL.
 - [ ] Генерация signed URL только после проверки права.
 - [ ] CLASS 3: аудит + короткий TTL (см. SSOT §2, §7).
-- [ ] Documents Platform (E3 public resolve): см. [`threat-models/documents-platform.md`](threat-models/documents-platform.md) (JWT + tenant bind; closed `workforce_employee` / `reused_for_hr`; metadata only; no second Adapter; no file bytes).
+- [ ] Documents Platform (E3+E4 public resolve): см. [`threat-models/documents-platform.md`](threat-models/documents-platform.md) (JWT + tenant bind; closed `workforce_employee` / `reused_for_hr` and `candidate` / `primary`; metadata only; no second Adapter; no file bytes).
 
 ### 5. Загрузки файлов
 
@@ -74,7 +74,7 @@
 - [ ] Source Diagnostics (PR1–PR9): см. [`threat-models/acquisition-source-diagnostics.md`](threat-models/acquisition-source-diagnostics.md) (read-only Lead + Activity compose; filters; duplicate; Mapping Health; drift alerts/summary; export; Replay via Leads process; SPA-only drift notify; tenant scope; no Diagnostics write on GET).
 - [ ] Communication Campaign Orchestrator (C2.3): см. [`threat-models/communication-campaign-orchestrator.md`](threat-models/communication-campaign-orchestrator.md) (Intent-only, tenant scope, no provider/Thread, distinct from Acquisition campaigns).
 - [ ] Forms Platform (C2 identity + C3 Builder + C4 Runtime + C5 Execution + C6 Optimization): см. [`threat-models/forms-platform.md`](threat-models/forms-platform.md) (frozen publication identity; FormDefinition ↔ Draft only; Runtime Model read-only; Execution validates Runtime Model only; production apply-submit resolve→serve→execute; Shared Intake write path; no Builder↔Runtime/Execution import; tenant resolve; submit pin; fail-closed backfill).
-- [ ] Documents Platform (E3 public resolve): см. [`threat-models/documents-platform.md`](threat-models/documents-platform.md) (authenticated Hub metadata + Document Link; tenant bind; closed entity/relation types; no file bytes / second Adapter).
+- [ ] Documents Platform (E3+E4 public resolve): см. [`threat-models/documents-platform.md`](threat-models/documents-platform.md) (authenticated Hub metadata + Document Link; tenant bind; closed entity/relation types; no file bytes / second Adapter).
 
 ---
 

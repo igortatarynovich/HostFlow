@@ -5,6 +5,8 @@ import {
   DOCUMENTS_PUBLIC_CONTRACT_ID,
   E3_LINKED_ENTITY_TYPE,
   E3_RELATION_TYPE,
+  E4_LINKED_ENTITY_TYPE,
+  E4_RELATION_TYPE,
   documentsEntityKey,
   listLinkedDocuments,
 } from '../documentsOwner'
@@ -33,16 +35,26 @@ describe('documentsOwner', () => {
     get.mockReset()
   })
 
-  it('ignores candidate entity — E3 consume path is workforce_employee links', async () => {
-    const subject = ctx({ entity: { resourceType: 'candidate', resourceId: 'cand-1' } })
-    expect(documentsEntityKey(subject)).toBe('')
-    await expect(listLinkedDocuments(subject)).resolves.toEqual({
-      available: false,
-      contractId: DOCUMENTS_PUBLIC_CONTRACT_ID,
-      adapterId: DOCUMENTS_HUB_ADAPTER_ID,
-      items: [],
+  it('resolves Candidate via Document Link, not candidate_id list', async () => {
+    get.mockResolvedValue({
+      data: {
+        contract_id: DOCUMENTS_PUBLIC_CONTRACT_ID,
+        adapter_id: DOCUMENTS_HUB_ADAPTER_ID,
+        items: [{ id: 'doc-c', title: 'CV', doc_type: 'cv', status: 'uploaded', link: {} }],
+      },
     })
-    expect(get).not.toHaveBeenCalled()
+    const subject = ctx({ entity: { resourceType: E4_LINKED_ENTITY_TYPE, resourceId: 'cand-1' } })
+    expect(documentsEntityKey(subject)).toBe('cand-1')
+    const result = await listLinkedDocuments(subject)
+    expect(result.available).toBe(true)
+    expect(result.items).toHaveLength(1)
+    expect(get).toHaveBeenCalledWith('/platform/documents/resolve', {
+      params: {
+        linked_entity_type: E4_LINKED_ENTITY_TYPE,
+        linked_entity_id: 'cand-1',
+        relation_type: E4_RELATION_TYPE,
+      },
+    })
   })
 
   it('resolves HR employee via public contract entity-link, not workforce documents', async () => {
@@ -67,5 +79,17 @@ describe('documentsOwner', () => {
         relation_type: E3_RELATION_TYPE,
       },
     })
+  })
+
+  it('ignores unbound consumers', async () => {
+    const subject = ctx({ entity: { resourceType: 'client', resourceId: 'cl-1' } })
+    expect(documentsEntityKey(subject)).toBe('')
+    await expect(listLinkedDocuments(subject)).resolves.toEqual({
+      available: false,
+      contractId: DOCUMENTS_PUBLIC_CONTRACT_ID,
+      adapterId: DOCUMENTS_HUB_ADAPTER_ID,
+      items: [],
+    })
+    expect(get).not.toHaveBeenCalled()
   })
 })

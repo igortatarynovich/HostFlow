@@ -16,7 +16,8 @@ type Props = EntityWorkspaceShellProps & {
 
 /**
  * Candidate Entity host-equivalence bind. Not G4.
- * Host places platform surfaces. Shell is chrome adapter only.
+ * Host places platform surfaces including D2 `documents` (E4 Document Link).
+ * Shell is chrome adapter only. Shell `documents` nav ≠ this slot.
  */
 export function CandidateEntityWorkspacePanel({
   entityId,

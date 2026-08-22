@@ -1,7 +1,7 @@
 # Documents Platform E3 — First Consumer Bind + Document Link SoT (Phase E)
 
 **Status:** **COMPLETE** ([#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) · merge `cc106a38`)  
-**Next:** [Documents Platform E4 — Candidate Document Link](documents-platform-e4-candidate-document-link.md) (brief; feat locked)  
+**Next:** [Documents Platform E4 — Candidate Document Link](documents-platform-e4-candidate-document-link.md) (feat)  
 **Phase class:** platform  
 **Branch (docs):** `docs/documents-platform-e3-first-consumer-bind` ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)  
 **Branch (code):** `feat/documents-platform-e3-first-consumer-bind` ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278)  
@@ -191,7 +191,7 @@ E2 already enabled the catalog slot. **This slice binds it once.**
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1` |
 | **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5` |
 | **E3** | First consumer bind (HR employee) + Document Link SoT | ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) · merge `cc106a38` |
-| **E4** | Candidate Document Link bind (D4) | [brief](documents-platform-e4-candidate-document-link.md) (feat locked) |
+| **E4** | Candidate Document Link bind (D4) | [brief](documents-platform-e4-candidate-document-link.md) (feat) |
 | **E5+** | Remaining consumers / `candidate_id` drop / lifecycle | locked until E4 feat |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) stay **horizon**. Documents Foundation stays 🔄.

@@ -94,7 +94,7 @@ E1 **must not**:
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) |
 | **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) |
 | **E3** | First consumer bind (HR employee) + Document Link SoT | ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) |
-| **E4** | Candidate Document Link bind (D4) | [brief](documents-platform-e4-candidate-document-link.md) (feat locked) |
+| **E4** | Candidate Document Link bind (D4) | [brief](documents-platform-e4-candidate-document-link.md) (feat) |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) are **horizon**, not this slice.
 

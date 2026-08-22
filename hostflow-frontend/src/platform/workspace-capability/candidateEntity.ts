@@ -1,10 +1,10 @@
 /**
- * Candidate Entity Workspace — host-equivalence bind.
+ * Candidate Entity Workspace — host-equivalence bind + E4 documents.
  *
  * Not G4. G4 stays Recruitment Application on Application Workspace.
  * This is the runtime consumer for `entity_workspace`: the same Capability
  * Host Contract, D2 platform surfaces placed by the host.
- * Do not enable `documents`. Do not treat this file as a proof screen.
+ * E4 places `documents` via Document Link. Do not treat this file as G4.
  */
 
 import type { WorkspaceContributionDefinition } from './contribution'
@@ -44,6 +44,24 @@ export const CANDIDATE_ENTITY_HOST_CONTRIBUTIONS = [
     visibility: 'always',
     permissions: [],
     state_owner: 'forms',
+    actions: [],
+    events: [],
+    license: 'default',
+    conflicts: [],
+  },
+  {
+    class: 'platform_surface',
+    capability_id: 'documents',
+    owner: 'documents',
+    contributor: 'documents',
+    host: 'entity_workspace',
+    consumer: 'candidate',
+    component_id: 'workspace.surface.documents',
+    placement: { region: 'platform_slot', slot_id: 'documents' },
+    ordering: 30,
+    visibility: 'always',
+    permissions: [],
+    state_owner: 'documents',
     actions: [],
     events: [],
     license: 'default',

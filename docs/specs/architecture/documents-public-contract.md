@@ -5,7 +5,7 @@
 **Contract id:** `documents.public_contract.v1`  
 **Adapter id:** `documents.hub_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#documents)  
-**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) (feat locked)  
+**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) (feat)  
 **Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-014`](ADR-014-document-hub-access-model.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -61,7 +61,7 @@ Catalog already publishes `document.created` / `linked` / `verified` / `expired`
 |-------|--------|
 | **Implementation (E2)** | Existing `backend/app/services/document_hub_delivery_contract.py` bound to the ids above |
 | **E3 resolve** | Same adapter: `list_entity_link_documents_via_contract` (`workforce_employee` / `reused_for_hr`). HTTP: `GET /api/v1/platform/documents/resolve` |
-| **E4 resolve** | Same adapter: entity-link resolve (`candidate` / `primary`). No second Adapter |
+| **E4 resolve** | Same adapter: `list_entity_link_documents_via_contract` (`candidate` / `primary`). HTTP: `GET /api/v1/platform/documents/resolve`. No second Adapter |
 | **Second Adapter** | Forbidden |
 | **Document Link SoT** | E3 HR employee + E4 Candidate via `document_entity_links`. `documents.candidate_id` remains the Candidate storage bridge |
 
@@ -77,12 +77,13 @@ E2 marked D2 `documents` as an **enabled platform slot**. E3 binds it on **HR em
 
 `backend/tests/platform/test_documents_e2_public_contract_gate.py` — named **Documents Platform E2 Public Contract Gate**.  
 `backend/tests/platform/test_documents_e3_first_consumer_bind_gate.py` — named **Documents Platform E3 First Consumer Bind Gate**.  
-E4 feat adds `test_documents_e4_candidate_document_link_gate.py`. E1 / E2 / E3 / D1–D9 / WCP gates stay green (amended where they froze “Candidate must not bind documents”).
+`backend/tests/platform/test_documents_e4_candidate_document_link_gate.py` — named **Documents Platform E4 Candidate Document Link Gate**. E1 / E2 / E3 / D1–D9 / WCP gates stay green (amended where they froze “Candidate must not bind documents”).
 
 ---
 
 ## History
 
+- 2026-08-22: E4 feat — Candidate entity-link resolve (`candidate` / `primary`) on `documents.hub_adapter_v1`; D4 bind; column stays; Foundation stays 🔄.
 - 2026-08-22: E4 brief — Candidate Document Link (`candidate` / `primary`) named; this contract stays v1 (no id bump). Column drop stays later.
 - 2026-08-22: E3 feat — entity-link resolve on `documents.hub_adapter_v1`; D8 first consumer bind; Document Link SoT for HR employee; Foundation stays 🔄.
 - 2026-08-22: E3 brief — first consumer bind / Document Link SoT named; this contract stays v1 (no id bump). Entity-link resolve is E3 feat.

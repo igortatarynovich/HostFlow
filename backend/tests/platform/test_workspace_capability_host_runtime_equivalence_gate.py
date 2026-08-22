@@ -262,9 +262,9 @@ def test_candidate_entity_is_real_host_consumer_not_g4() -> None:
     assert "ENTITY_EQUIVALENCE_HOST_ID = 'entity_workspace'" in contrib
     assert "capability_id: 'communication'" in contrib
     assert "capability_id: 'forms'" in contrib
+    assert "capability_id: 'documents'" in contrib
     assert "host: 'entity_workspace'" in contrib
     assert "consumer: 'candidate'" in contrib
-    assert "documents" not in contrib.split("CANDIDATE_ENTITY_HOST_CONTRIBUTIONS", 1)[1]
     communication = _COMMUNICATION_UI.read_text(encoding="utf-8")
     forms = _FORMS_UI.read_text(encoding="utf-8")
     assert "listCommunicationThreads" in communication
