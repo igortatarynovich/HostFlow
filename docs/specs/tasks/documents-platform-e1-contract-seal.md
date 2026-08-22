@@ -1,7 +1,7 @@
 # Documents Platform E1 — Foundation contract seal (Phase E)
 
 **Status:** **COMPLETE** ([#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1`)  
-**Next:** [Documents Platform E2 — Public contract & D2 slot enable](documents-platform-e2-public-contract.md) ([#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat locked)  
+**Next:** [Documents Platform E2](documents-platform-e2-public-contract.md) ✅ → [Documents Platform E3 — First Consumer Bind + Document Link SoT](documents-platform-e3-first-consumer-bind.md) (feat locked)  
 **Branch (docs):** `docs/documents-platform-e1-contract-seal` ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)  
 **Branch (code):** `feat/documents-platform-e1-contract-seal` ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270)  
 **Parents:** [Entity Workspace D9](entity-workspace-d9-services-order-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
@@ -92,8 +92,8 @@ E1 **must not**:
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) |
-| **E2** | Public contract / D2 `documents` catalog enable | [brief](documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271) (feat locked) |
-| **E3+** | First consumer bind / Document Link SoT / lifecycle | locked until E2 feat |
+| **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) |
+| **E3** | First consumer bind (HR employee) + Document Link SoT | [brief](documents-platform-e3-first-consumer-bind.md) (feat locked) |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) are **horizon**, not this slice.
 

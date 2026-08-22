@@ -276,7 +276,7 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 
 ## §10. Development order (primitives first, workspaces composed)
 
-**Nearest goal:** Host runtime-equivalence (Entity Workspace implements the same Capability Host Contract; Notes/Consent hide transport) → final Goal Completion → Documents E2. G4 on Recruitment Application already **PASS**. Entity Workspace and Application Workspace stay distinct (§3.2 / §3.3).
+**Nearest goal:** Documents Platform E3 — first consumer bind (HR employee) through D2 `documents` + Document Link SoT. Workspace Capability Platform is **COMPLETE**. G4 on Recruitment Application already **PASS** and is **not** the Documents proof. Entity Workspace and Application Workspace stay distinct (§3.2 / §3.3).
 
 | Phase | Deliverable |
 |-------|-------------|
@@ -285,13 +285,14 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 | 2a | Platform surfaces on one entity (D2: overview / timeline / communication / forms / documents / context-rail) — brief-complete, **goal-incomplete** |
 | **2b** | [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md): G4 PASS on Recruitment Application. Program **COMPLETE** ([record](../gates/workspace-capability-platform-complete.md)). |
 | **2b-eq ✅** | [Host runtime-equivalence](../tasks/workspace-capability-host-runtime-equivalence.md): Entity Workspace implements the same host contract at runtime; Notes/Consent hide transport. |
+| **2c ← active** | [Documents Platform E3](../tasks/documents-platform-e3-first-consumer-bind.md): first D2 `documents` consumer bind (HR employee) + Document Link SoT. Host places; Documents owns semantics. G4 stays Recruitment Application. |
 | **3** | Application Workspace implements the **same** host contract — it does **not** become Entity Workspace |
 | 4–5 | Process + Collection completion |
 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
-Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
+Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
 
-**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E2 feat is **unlocked** after 2b program COMPLETE. ListWorkspace is a separate collection slice.
+**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E3 feat is **locked** until this brief merges. ListWorkspace is a separate collection slice.
 
 ---
 
@@ -315,6 +316,7 @@ If any answer fails — stop and fix design before coding.
 |----------|------|
 | [`applications-operating-model.md`](applications-operating-model.md) | L1 — operational work model |
 | [`../tasks/workspace-capability-platform-completion.md`](../tasks/workspace-capability-platform-completion.md) | Capability Host Contract (Entity + Application hosts) |
+| [`../tasks/documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) | Documents E3 — first D2 documents consumer + Document Link SoT |
 | [`../gates/workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md) | WCP program COMPLETE |
 | [`../gates/goal-completion-gate.md`](../gates/goal-completion-gate.md) | Phase close: original goal vs substituted brief |
 | [`../gates/platform-scope-completeness-audit.md`](../gates/platform-scope-completeness-audit.md) | Closed-phase completeness vs residual capability |
@@ -336,6 +338,7 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
+| 2026-08-22 | 2c = Documents E3 brief (HR employee bind + Document Link SoT); E2 ✅; G4 stays Recruitment Application |
 | 2026-08-21 | 2b COMPLETE (#274); G4 PASS; 2b-eq host runtime-equivalence done; E2 feat unlocked |
 | 2026-08-21 | 2b G1–G5 PASS_WITH_CONSTRAINTS (#273); G4 PASS; 2b-eq host runtime-equivalence active; E2 locked until 2b COMPLETE |
 | 2026-08-20 | §10 2b = Workspace Capability Platform (host places, owners own semantics; Entity ≠ Application); proof = Recruitment Application; D1–D9 brief-complete / goal-incomplete; Documents stay Phase E |

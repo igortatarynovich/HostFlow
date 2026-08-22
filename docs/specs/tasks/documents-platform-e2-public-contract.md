@@ -1,8 +1,9 @@
 # Documents Platform E2 — Public contract & D2 slot enable (Phase E)
 
-**Status:** **IN PROGRESS** (feat — named Public Contract Gate) — brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); unlocked by [Workspace Capability Platform COMPLETE](../gates/workspace-capability-platform-complete.md) ([#274](https://github.com/igortatarynovich/HostFlow/pull/274)). G4 PASS and [G1–G5 PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md) on [#273](https://github.com/igortatarynovich/HostFlow/pull/273) **did not** unlock this feat.  
+**Status:** **COMPLETE** ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5`)  
+**Next:** [Documents Platform E3 — First Consumer Bind + Document Link SoT](documents-platform-e3-first-consumer-bind.md) (brief; feat locked)  
 **Branch (docs):** `docs/documents-platform-e2-public-contract` ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)  
-**Branch (code):** `feat/documents-platform-e2-public-contract`  
+**Branch (code):** `feat/documents-platform-e2-public-contract` ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276)  
 **Parents:** [Documents Platform E1](documents-platform-e1-contract-seal.md) [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [ADR-025](../architecture/ADR-025-standard-adapter-boundary.md) · [Capability Contract](../architecture/capability-contract.md) · [Forms Public Contract](../architecture/forms-public-contract.md) (pattern) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
 
 > E1 sealed ownership: Hub ≠ Candidate/HR dossier ≠ Shell `documents` nav ≠ D2 enable ([#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1`).  
@@ -48,8 +49,8 @@ E2 (this)
   → documents.public_contract.v1 + documents.hub_adapter_v1
   → D2 documents catalog unlock (reserved → enabled platform slot)
   → D3–D9 consumers still omit documents
-E3+
-  → first consumer bind / Document Link SoT / lifecycle (locked until E2 feat)
+E3
+  → first consumer bind (HR employee) / Document Link SoT ([documents-platform-e3-first-consumer-bind.md](documents-platform-e3-first-consumer-bind.md))
 ```
 
 E2 **must not**:
@@ -125,7 +126,7 @@ D2 already named `documents` as reserved until a named Phase E slice **after E1*
 | D3–D9 `*_COMPOSITION_SLOTS` | omit `documents` (throw if passed) | **still omit**; throw becomes “not bound this slice”, not “reserved” |
 | Shell `EntityWorkspaceSectionId` `documents` | ≠ D2 slot | still ≠ D2 slot |
 
-`EntityWorkspaceCompositionHost` may accept `documents` once it is in the enabled catalog. Feat must **not** add `documents` to any D3–D9 consumer slot list. First consumer bind = later named E slice (Candidate is the likely first, not this PR).
+`EntityWorkspaceCompositionHost` may accept `documents` once it is in the enabled catalog. Feat must **not** add `documents` to any D3–D9 consumer slot list. First consumer bind = [E3](documents-platform-e3-first-consumer-bind.md) (HR employee, not Candidate).
 
 D2 / E1 / D3–D9 named gates stay in CI. E2 feat **amends** assertions that freeze E1-era “no contract id” and “documents reserved”. Ownership / Hub ≠ dossier / Shell ≠ D2 / Foundation 🔄 stay enforced.
 
@@ -136,8 +137,8 @@ D2 / E1 / D3–D9 named gates stay in CI. E2 feat **amends** assertions that fre
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1` |
-| **E2** | Public contract / D2 `documents` catalog enable | ← **active** (feat; named Public Contract Gate). Brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); unlocked after [WCP COMPLETE](../gates/workspace-capability-platform-complete.md) |
-| **E3+** | First consumer bind / Document Link SoT / lifecycle | locked until E2 feat |
+| **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5` |
+| **E3** | First consumer bind (HR employee) + Document Link SoT | [brief](documents-platform-e3-first-consumer-bind.md) (feat locked) |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) stay **horizon**.
 
@@ -158,7 +159,7 @@ Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation
 4. `compositionSlots.ts`: `documents` enabled platform slot; reserved empty.  
 5. Named **Documents Platform E2 Public Contract Gate** — contract id + adapter id + D2 unlock + D3–D9 still unbound; E1/D1–D9 gates still green (amended where E1 froze “no id / reserved”); Documents Foundation stays 🔄.  
 6. Architecture Review Checklist (10 questions) in the feat PR description.  
-7. Pointers stay on E2 until E3 brief opens.
+7. Pointers stay on E2 until E3 brief opens. ← done [E3 brief](documents-platform-e3-first-consumer-bind.md)
 
 ---
 
@@ -182,8 +183,8 @@ Named step: **Documents Platform E2 Public Contract Gate**
 
 | Deferred | Owner |
 |----------|--------|
-| First D2 `documents` consumer bind (likely Candidate) | Later E slice |
-| Document Link SoT (replace `candidate_id` row ownership) | Later E slice |
+| First D2 `documents` consumer bind (HR employee) + Document Link SoT | [E3](documents-platform-e3-first-consumer-bind.md) |
+| Candidate Document Link bind (replace `candidate_id` consume path) | Later E slice |
 | OCR / e-sign / packages / approvals automation | Later E / Advanced |
 | Hub control-center UI rebuild | Later E Workspace |
 | `HrHandoffDetailPage` cutover | Out (not E2) |
@@ -237,7 +238,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 | Consumers | D3–D9 `*Consumer.ts` — keep omitting `documents`; retitle the throw |
 | Gate | `backend/tests/platform/test_documents_e2_public_contract_gate.py` |
 | Prior gates | E1 + D2 assertions that froze “no id / reserved” |
-| Pointers | queue / roadmap / AGENTS / maturity stay on E2 until E3 |
+| Pointers | queue / roadmap / AGENTS / maturity → [E3](documents-platform-e3-first-consumer-bind.md) |
 
 ---
 
@@ -246,12 +247,13 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - [x] Brief sealed with ownership / contract inventory / D2 unlock vs bind / in/out + acceptance  
 - [x] Queue + roadmap + AGENTS + maturity pointed at this brief at merge; **2026-08-20:** Product Track moved to [Workspace Capability Platform Completion](workspace-capability-platform-completion.md); this feat stays locked  
 - [x] E1 marked **COMPLETE** with #270 / `f37deff1`  
-- [x] Feat PR — public contract + catalog unlock (this PR; named Public Contract Gate)
+- [x] Feat PR — public contract + catalog unlock ([#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5`)
 
 ---
 
 ## History
 
+- 2026-08-22: E3 brief opened — first consumer bind = HR employee + Document Link SoT; Product Track → [E3](documents-platform-e3-first-consumer-bind.md) (feat locked). This slice ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276) (`826877b5`).
 - 2026-08-22: E2 feat — `documents.public_contract.v1` / `documents.hub_adapter_v1`; D2 `documents` catalog enabled; D3–D9 unbound; named Public Contract Gate. Foundation stays 🔄. Stacked after [#273](https://github.com/igortatarynovich/HostFlow/pull/273)/[#274](https://github.com/igortatarynovich/HostFlow/pull/274) merge `84a2ea94`.
 - 2026-08-21: WCP program **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)). Feat **unlocked**. Product Track → this brief. D2 `documents` still reserved until the E2 feat. G4 did not unlock this.
 - 2026-08-21: WCP G1–G5 **PASS_WITH_CONSTRAINTS** ([#273](https://github.com/igortatarynovich/HostFlow/pull/273)). G4 PASS. Feat remains **locked** until program **COMPLETE**, not until G4. Next: [host runtime-equivalence](workspace-capability-host-runtime-equivalence.md).

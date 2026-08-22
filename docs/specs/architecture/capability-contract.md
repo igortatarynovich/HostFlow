@@ -118,14 +118,14 @@ Passport → Manifest (unchanged) → Public Contract
 
 | Artifact | Path |
 |----------|------|
-| E1 / E2 tasks | [`../tasks/documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) |
+| E1 / E2 / E3 tasks | [`../tasks/documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) (feat locked) |
 | Public Contract | [`documents-public-contract.md`](documents-public-contract.md) |
 | Adapter | `backend/app/services/document_hub_delivery_contract.py` (`documents.hub_adapter_v1`) |
 | Manifest keys | [`capability-settings-manifest.md`](capability-settings-manifest.md#documents) — unchanged this slice |
 | Contract tests | `test_documents_e1_contract_seal_gate.py` · `test_documents_e2_public_contract_gate.py` |
 
-Candidate-centric façade remains a **bridge**, not Document Link SoT. D2 `documents` catalog enabled; D3–D9 consumers unbound. Foundation stays 🔄.  
-**Не** OCR / e-sign / packages / Hub UI rebuild / consumer bind / Catalog shape rewrite.
+Candidate-centric façade remains a **bridge**, not Document Link SoT. D2 `documents` catalog enabled. First consumer bind = [E3](../tasks/documents-platform-e3-first-consumer-bind.md) (HR employee). D3–D7 / D9 unbound. Foundation stays 🔄.  
+**Не** OCR / e-sign / packages / Hub UI rebuild / mass bind / Catalog shape rewrite / G4 reopen.
 
 ---
 
@@ -158,4 +158,5 @@ Candidate-centric façade remains a **bridge**, not Document Link SoT. D2 `docum
 - 2026-07-18: Introduced as Phase 1 mandatory artifact between Passport and Adapter.  
 - 2026-07-18: Epic P COMPLETE; Forms Sprint 1 unlocked; Builder locked.  
 - 2026-07-18: Forms Sprint 1 infra — Public Contract + Adapter + contract tests linked.  
+- 2026-08-22: Documents Platform E3 brief — first consumer bind (HR employee) + Document Link SoT; this file stays E2 contract inventory (no id bump).
 - 2026-08-20: Documents Platform E2 — [`documents-public-contract.md`](documents-public-contract.md) + `documents.hub_adapter_v1`; D2 catalog unlock.
