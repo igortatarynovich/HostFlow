@@ -1,0 +1,55 @@
+# Threat Model — Documents Platform (E3 public resolve)
+
+## Assets
+
+- Authenticated resolve DTO (`GET /api/v1/platform/documents/resolve`) — Hub document **metadata** + Document Link ids  
+- Hub table `document_entity_links` (relationship SoT for the named consumer)  
+- Document Hub rows (`documents`) scoped by tenant  
+- Public contract / adapter ids: `documents.public_contract.v1` / `documents.hub_adapter_v1`
+
+This model covers the **platform capability** consume path sealed in E3: HR employee (D8) reads reused documents via Document Link, not via a page-local widget and not via `documents.candidate_id`. File bytes, signed URLs, and upload remain [`document-uploads.md`](./document-uploads.md). Candidate portal uploads remain [`candidate-portal.md`](./candidate-portal.md). Handoff copy-vs-link remains [`handoff.md`](./handoff.md) — E3 does not add a file-copy path.
+
+Not this surface: OCR / e-sign / packages, Candidate primary-link cutover, D3–D7 / D9 bind, Foundation close, anonymous public links.
+
+## Trust boundaries
+
+- Authenticated tenant operator → platform Documents APIs (JWT + `X-Tenant-Id` + RLS via `get_db_with_tenant`)  
+- Adapter (`documents.hub_adapter_v1`) is the only consumer contract; HR must not import `modules.documents.crud` or `HrEmployeeDocumentsSection` as the D2 consume path  
+- Entity/relation closed set for this HTTP: `workforce_employee` / `reused_for_hr` only  
+- Resolve returns metadata (id / title / type / status / expiry / link). It is **not** a file download and must not mint a signed URL  
+- `documents.candidate_id` remains a Candidate storage bridge; it is not the HR consume key
+
+## Угрозы
+
+| ID | Угроза | Вектор |
+|----|--------|--------|
+| DP-1 | Cross-tenant link leak | Resolve by `linked_entity_id` without tenant bind / RLS |
+| DP-2 | JWT / header tenant mismatch | Token tenant ≠ `X-Tenant-Id` still returns another tenant’s links |
+| DP-3 | Open entity/relation types | Arbitrary `linked_entity_type` / `relation_type` enumerates other Hub graphs |
+| DP-4 | File bytes on resolve | Endpoint returns storage path, signed URL, or raw object |
+| DP-5 | Second Adapter / local join | HR consumes via workforce documents list, `employee_id` on `documents`, or a new adapter id |
+| DP-6 | Public / anonymous resolve | Treating this path as a public-link or portal token |
+| DP-7 | Handoff copy | Creating a second file instead of a Document Link |
+| DP-8 | Candidate-id consume for HR | Using `documents.candidate_id` as the D8 D2 path |
+
+## Митигации
+
+- HTTP resolve uses `get_current_user` + `get_db_with_tenant`; token tenant must match session tenant (`403`).  
+- Adapter filters `document_entity_links` and `documents` by `tenant_id`. Missing / other-tenant ids return an empty list, not a cross-tenant row.  
+- Unknown entity/relation types fail closed (`400`). E3 does not accept Candidate / client / vacancy types on this route.  
+- Response schema is Hub view + link ids only. Upload, download, and signed URL stay on existing document routes.  
+- Same adapter id as E2. Named **Documents Platform E3 First Consumer Bind Gate** fails if D8 binds via `HrEmployeeDocumentsSection` or if D3–D7 / D9 bind `documents`.  
+- No new security events. Catalog events stay `document.created` / `linked` / `verified` / `expired`.
+
+## Тесты
+
+- `backend/tests/platform/test_documents_e3_first_consumer_bind_gate.py`  
+- `backend/tests/platform/test_documents_e2_public_contract_gate.py`  
+- `backend/tests/platform/test_entity_workspace_d8_cutover_gate.py`
+
+## Связанные спеки
+
+- `docs/specs/architecture/documents-public-contract.md`  
+- `docs/specs/tasks/documents-platform-e3-first-consumer-bind.md`  
+- `docs/specs/architecture/ADR-009-document-hub-platform-layer.md`  
+- `docs/specs/architecture/ADR-014-document-hub-access-model.md`
