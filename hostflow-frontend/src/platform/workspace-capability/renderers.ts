@@ -5,6 +5,7 @@ import { NotesCapability } from '../capabilities/notes/NotesCapability'
 import { ConsentCapability } from '../capabilities/consent/ConsentCapability'
 import { CommunicationCapability } from '../capabilities/communication/CommunicationCapability'
 import { FormsCapability } from '../capabilities/forms/FormsCapability'
+import { DocumentsCapability } from '../capabilities/documents/DocumentsCapability'
 import { RecruitmentStageContribution } from '../../modules/recruitment/contributions/stage'
 import { RecruitmentVacancyContribution } from '../../modules/recruitment/contributions/vacancy'
 import { RecruitmentAssigneeContribution } from '../../modules/recruitment/contributions/assignee'
@@ -25,6 +26,7 @@ export const WORKSPACE_CAPABILITY_RENDERERS = {
   'workspace.shared.consent': ConsentCapability,
   'workspace.surface.communication': CommunicationCapability,
   'workspace.surface.forms': FormsCapability,
+  'workspace.surface.documents': DocumentsCapability,
   'workspace.module.recruitment.stage': RecruitmentStageContribution,
   'workspace.module.recruitment.vacancy': RecruitmentVacancyContribution,
   'workspace.module.recruitment.assignee': RecruitmentAssigneeContribution,

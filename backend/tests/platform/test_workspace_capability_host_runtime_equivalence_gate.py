@@ -292,7 +292,7 @@ def test_not_a_new_proof_screen_or_e2() -> None:
     assert "ApplicationRodoSection" in brief
     assert "ListWorkspace" in brief
     e2 = _E2.read_text(encoding="utf-8")
-    assert "IN PROGRESS" in e2
+    assert "**COMPLETE**" in e2 or "#276" in e2
     assert "named Public Contract Gate" in e2
     assert "unlocked" in e2.lower()
     assert "does not start e2" in brief.lower()

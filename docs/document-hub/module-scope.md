@@ -2,7 +2,7 @@
 
 **Document Hub** — общий слой для HostFlow: документ как **самостоятельная сущность**, а не только вложение в одной карточке. Нормативное решение — **[`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)**.  
 **Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#documents).  
-**Product Track (live):** [Documents Platform E3 — First Consumer Bind + Document Link SoT](../specs/tasks/documents-platform-e3-first-consumer-bind.md) (brief; feat locked). E2 ✅ ([#276](https://github.com/igortatarynovich/HostFlow/pull/276)). Public contract: [`documents-public-contract.md`](../specs/architecture/documents-public-contract.md). WCP [COMPLETE](../specs/gates/workspace-capability-platform-complete.md). E1 ✅. D2 `documents` catalog unlock is E2; first consumer bind is E3 (HR employee). D3–D7 / D9 stay unbound. Foundation stays 🔄.  
+**Product Track (live):** [Documents Platform E3 — First Consumer Bind + Document Link SoT](../specs/tasks/documents-platform-e3-first-consumer-bind.md) (feat; named First Consumer Bind Gate). E2 ✅ ([#276](https://github.com/igortatarynovich/HostFlow/pull/276); [documents-platform-e2-public-contract.md](../specs/tasks/documents-platform-e2-public-contract.md)). Public contract: [`documents-public-contract.md`](../specs/architecture/documents-public-contract.md). WCP [COMPLETE](../specs/gates/workspace-capability-platform-complete.md). E1 ✅. D2 `documents` catalog unlock is E2; first consumer bind is E3 (HR employee). D3–D7 / D9 stay unbound. Foundation stays 🔄.  
 В **§0** каталога модулей Hub стоит в **Core / Platform** рядом с Companies, Users/Roles, Forms, Integrations.
 
 ## Назначение

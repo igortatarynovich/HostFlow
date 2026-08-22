@@ -13,6 +13,10 @@ import { HrEmployeeDocumentVerifyActions } from '../../components/hr/HrEmployeeD
 import { findReviewDocumentForEmployeeDoc } from '../../components/hr/hrDocumentVerificationFields'
 import type { HrReviewPanel } from '../../api/workforce'
 
+/**
+ * Local HR documents matrix. Not the D2 `documents` consume path (E3).
+ * Proof surface is DocumentsCapability via Document Link + hub adapter.
+ */
 type Props = {
   employeeId: string
   manage?: boolean

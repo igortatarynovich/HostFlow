@@ -1,7 +1,7 @@
 """Entity Workspace D2 — Composition Gate.
 
 Slot catalog frozen. `documents` is an enabled platform slot (E2).
-Reserved list empty. No Catalog Passport. No consumer documents bind.
+Reserved list empty. No Catalog Passport. D8 documents bind is E3; D3–D7 / D9 stay unbound.
 D1 gate remains. No Postgres required.
 """
 

@@ -1,15 +1,20 @@
 """Document Hub delivery façade — `documents.hub_adapter_v1`.
 
-Candidate-centric adapter over `modules.documents`. This is **not** the
-ADR-009 Document Link SoT. E2 binds public-contract / adapter ids onto this
-façade; a later named E slice may replace the candidate-owned row with links.
+E2 bound public-contract / adapter ids onto this façade. E3 adds
+entity-link resolve for the named consumer (HR employee) via Hub table
+`document_entity_links`. `documents.candidate_id` remains a **legacy
+bridge** for Candidate-origin rows — not the HR consume path, and **not**
+a second Adapter.
 """
 from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.models.document import Document
+from backend.app.models.document_entity_link import DocumentEntityLink
 from backend.app.modules.documents.crud import ensure_ruleset_seed, list_candidate_documents
 from backend.app.modules.documents.crud import list_document_types as list_document_types_crud
 from backend.app.modules.documents.owner_summary import compute_owner_summary
@@ -32,6 +37,31 @@ PUBLIC_OPERATIONS = (
     "verification_status",
     "list_types",
 )
+
+# E3 first consumer — Document Link SoT (no new linked_entity_type).
+E3_LINKED_ENTITY_TYPE = "workforce_employee"
+E3_RELATION_TYPE = "reused_for_hr"
+
+
+def _enum_value(value: Any) -> str:
+    return str(getattr(value, "value", value) or "")
+
+
+def _hub_document_view(doc: Document, link: DocumentEntityLink) -> dict[str, Any]:
+    expires = getattr(doc, "expires_at", None) or getattr(doc, "expire_date", None)
+    return {
+        "id": str(doc.id),
+        "title": str(getattr(doc, "custom_name", None) or getattr(doc, "doc_type", "") or ""),
+        "doc_type": str(getattr(doc, "doc_type", "") or ""),
+        "status": _enum_value(getattr(doc, "status", None)),
+        "expires_at": expires.isoformat() if expires is not None else None,
+        "link": {
+            "id": str(link.id),
+            "linked_entity_type": str(link.linked_entity_type),
+            "linked_entity_id": str(link.linked_entity_id),
+            "relation_type": str(link.relation_type),
+        },
+    }
 
 
 async def list_candidate_documents_via_contract(
@@ -58,6 +88,73 @@ async def list_candidate_documents_via_contract(
         offset=offset,
         active_own_company_id=active_own_company_id,
     )
+
+
+async def list_entity_link_documents_via_contract(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    linked_entity_type: str,
+    linked_entity_id: str,
+    relation_type: str = E3_RELATION_TYPE,
+) -> list[dict[str, Any]]:
+    """Same `documents.hub_adapter_v1` — entity-link resolve (E3).
+
+    Document Link SoT for the named consumer is Hub table `document_entity_links`.
+    This is not a second Adapter and does not drop `documents.candidate_id`.
+    """
+    etype = str(linked_entity_type or "").strip()
+    eid = str(linked_entity_id or "").strip()
+    rel = str(relation_type or "").strip() or E3_RELATION_TYPE
+    tid = str(tenant_id or "").strip()
+    if not (tid and etype and eid):
+        return []
+    if etype != E3_LINKED_ENTITY_TYPE or rel != E3_RELATION_TYPE:
+        raise ValueError(
+            "E3 entity-link resolve is workforce_employee / reused_for_hr only"
+        )
+
+    links = list(
+        (
+            await db.execute(
+                select(DocumentEntityLink)
+                .where(
+                    DocumentEntityLink.tenant_id == tid,
+                    DocumentEntityLink.linked_entity_type == etype,
+                    DocumentEntityLink.linked_entity_id == eid,
+                    DocumentEntityLink.relation_type == rel,
+                )
+                .order_by(DocumentEntityLink.created_at.asc())
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not links:
+        return []
+
+    doc_ids = [str(link.document_id) for link in links]
+    docs = list(
+        (
+            await db.execute(
+                select(Document).where(
+                    Document.tenant_id == tid,
+                    Document.id.in_(doc_ids),
+                    Document.deleted_at.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_id = {str(doc.id): doc for doc in docs}
+    views: list[dict[str, Any]] = []
+    for link in links:
+        doc = by_id.get(str(link.document_id))
+        if doc is None:
+            continue
+        views.append(_hub_document_view(doc, link))
+    return views
 
 
 async def ensure_ruleset_seed_via_contract(

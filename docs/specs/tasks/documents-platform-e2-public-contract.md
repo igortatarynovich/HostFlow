@@ -1,7 +1,7 @@
 # Documents Platform E2 — Public contract & D2 slot enable (Phase E)
 
 **Status:** **COMPLETE** ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5`)  
-**Next:** [Documents Platform E3 — First Consumer Bind + Document Link SoT](documents-platform-e3-first-consumer-bind.md) (brief; feat locked)  
+**Next:** [Documents Platform E3 — First Consumer Bind + Document Link SoT](documents-platform-e3-first-consumer-bind.md) (feat)  
 **Branch (docs):** `docs/documents-platform-e2-public-contract` ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)  
 **Branch (code):** `feat/documents-platform-e2-public-contract` ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276)  
 **Parents:** [Documents Platform E1](documents-platform-e1-contract-seal.md) [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [ADR-025](../architecture/ADR-025-standard-adapter-boundary.md) · [Capability Contract](../architecture/capability-contract.md) · [Forms Public Contract](../architecture/forms-public-contract.md) (pattern) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
