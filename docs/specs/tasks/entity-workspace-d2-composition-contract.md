@@ -35,7 +35,7 @@ EntityWorkspace chrome (SoT path: components/ui/EntityWorkspace)
   │     ├── timeline (content slot — not a second product)
   │     ├── communication (platform surface)
   │     ├── forms (platform surface — HostFlow Form / submissions)
-  │     └── documents (platform — catalog-enabled in [E2](documents-platform-e2-public-contract.md) ✅; first bind = [E3](documents-platform-e3-first-consumer-bind.md) HR employee ✅; Candidate = [E4](documents-platform-e4-candidate-document-link.md))
+  │     └── documents (platform — catalog-enabled in [E2](documents-platform-e2-public-contract.md) ✅; first bind = [E3](documents-platform-e3-first-consumer-bind.md) HR employee ✅; Candidate = [E4](documents-platform-e4-candidate-document-link.md) ✅; storage-bridge retirement = [E5](documents-platform-e5-candidate-storage-bridge.md))
   └── context rail                              ← chrome slot (D1)
 EntityWorkspaceShell                            ← passport adapter only
 ```

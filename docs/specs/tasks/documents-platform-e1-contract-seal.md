@@ -1,7 +1,7 @@
 # Documents Platform E1 — Foundation contract seal (Phase E)
 
 **Status:** **COMPLETE** ([#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1`)  
-**Next:** [Documents Platform E2](documents-platform-e2-public-contract.md) ✅ → [Documents Platform E3 — First Consumer Bind + Document Link SoT](documents-platform-e3-first-consumer-bind.md) (feat locked)  
+**Next:** [Documents Platform E2](documents-platform-e2-public-contract.md) ✅ → [Documents Platform E3](documents-platform-e3-first-consumer-bind.md) ✅ → [Documents Platform E4](documents-platform-e4-candidate-document-link.md) ✅ → [Documents Platform E5 — Candidate Storage Bridge Retirement](documents-platform-e5-candidate-storage-bridge.md) (brief; feat locked)  
 **Branch (docs):** `docs/documents-platform-e1-contract-seal` ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)  
 **Branch (code):** `feat/documents-platform-e1-contract-seal` ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270)  
 **Parents:** [Entity Workspace D9](entity-workspace-d9-services-order-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
@@ -94,7 +94,8 @@ E1 **must not**:
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) |
 | **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) |
 | **E3** | First consumer bind (HR employee) + Document Link SoT | ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) |
-| **E4** | Candidate Document Link bind (D4) | [brief](documents-platform-e4-candidate-document-link.md) (feat) |
+| **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) |
+| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | [brief](documents-platform-e5-candidate-storage-bridge.md) (feat locked) |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) are **horizon**, not this slice.
 

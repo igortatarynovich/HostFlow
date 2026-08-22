@@ -197,6 +197,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-22: E5 brief — Candidate consume path stays E4 Document Link; storage FK drop is [E5](documents-platform-e5-candidate-storage-bridge.md). Shell `documents` nav still ≠ D2 slot.
 - 2026-08-22: E4 brief — D2 `documents` bind for this consumer is [Candidate Document Link](documents-platform-e4-candidate-document-link.md). D4 chrome cutover did not bind the slot. Shell `documents` nav still ≠ D2 slot.
 - 2026-08-15: D4 ✅ [#257](https://github.com/igortatarynovich/HostFlow/pull/257)/[#258](https://github.com/igortatarynovich/HostFlow/pull/258) (`0ab40717` / merge `b5f1f00a`). Next = [D5 Client Cutover](entity-workspace-d5-client-cutover.md) (brief; feat locked).
 - 2026-08-15: D4 feat — named **Entity Workspace D4 Cutover Gate**; Candidate bound to D2 enabled slots; Shell `documents` nav ≠ D2 `documents` enable; HR/Vacancy/Client/Order out; no Passport. Next = D5 brief (locked).
