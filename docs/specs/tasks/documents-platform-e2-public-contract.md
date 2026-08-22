@@ -1,7 +1,7 @@
 # Documents Platform E2 — Public contract & D2 slot enable (Phase E)
 
 **Status:** **COMPLETE** ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5`)  
-**Next:** [Documents Platform E3](documents-platform-e3-first-consumer-bind.md) ✅ → [Documents Platform E4 — Candidate Document Link](documents-platform-e4-candidate-document-link.md) (feat)  
+**Next:** [Documents Platform E3](documents-platform-e3-first-consumer-bind.md) ✅ → [Documents Platform E4 — Candidate Document Link](documents-platform-e4-candidate-document-link.md) ✅ → [Documents Platform E5 — Candidate Storage Bridge Retirement](documents-platform-e5-candidate-storage-bridge.md) (brief; feat locked)  
 **Branch (docs):** `docs/documents-platform-e2-public-contract` ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)  
 **Branch (code):** `feat/documents-platform-e2-public-contract` ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276)  
 **Parents:** [Documents Platform E1](documents-platform-e1-contract-seal.md) [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [ADR-025](../architecture/ADR-025-standard-adapter-boundary.md) · [Capability Contract](../architecture/capability-contract.md) · [Forms Public Contract](../architecture/forms-public-contract.md) (pattern) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
@@ -126,7 +126,7 @@ D2 already named `documents` as reserved until a named Phase E slice **after E1*
 | D3–D9 `*_COMPOSITION_SLOTS` | omit `documents` (throw if passed) | **still omit**; throw becomes “not bound this slice”, not “reserved” |
 | Shell `EntityWorkspaceSectionId` `documents` | ≠ D2 slot | still ≠ D2 slot |
 
-`EntityWorkspaceCompositionHost` may accept `documents` once it is in the enabled catalog. E2 feat did **not** add `documents` to any D3–D9 consumer slot list. First consumer bind = [E3](documents-platform-e3-first-consumer-bind.md) ✅ (HR employee). Candidate bind = [E4](documents-platform-e4-candidate-document-link.md). D3 / D5–D7 / D9 stay unbound.
+`EntityWorkspaceCompositionHost` may accept `documents` once it is in the enabled catalog. E2 feat did **not** add `documents` to any D3–D9 consumer slot list. First consumer bind = [E3](documents-platform-e3-first-consumer-bind.md) ✅ (HR employee). Candidate bind = [E4](documents-platform-e4-candidate-document-link.md) ✅. Storage-bridge retirement = [E5](documents-platform-e5-candidate-storage-bridge.md). D3 / D5–D7 / D9 stay unbound.
 
 D2 / E1 / D3–D9 named gates stay in CI. E2 feat **amends** assertions that freeze E1-era “no contract id” and “documents reserved”. Ownership / Hub ≠ dossier / Shell ≠ D2 / Foundation 🔄 stay enforced.
 
@@ -139,7 +139,8 @@ D2 / E1 / D3–D9 named gates stay in CI. E2 feat **amends** assertions that fre
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1` |
 | **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5` |
 | **E3** | First consumer bind (HR employee) + Document Link SoT | ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) · merge `cc106a38` |
-| **E4** | Candidate Document Link bind (D4) | [brief](documents-platform-e4-candidate-document-link.md) (feat) |
+| **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913` |
+| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | [brief](documents-platform-e5-candidate-storage-bridge.md) (feat locked) |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) stay **horizon**.
 
@@ -254,6 +255,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-22: E5 brief opened — Candidate storage-bridge retirement (`candidate_id` drop); Product Track → [E5](documents-platform-e5-candidate-storage-bridge.md) (feat locked). E4 ✅ [#280](https://github.com/igortatarynovich/HostFlow/pull/280) (`0af74913`). This slice ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276) (`826877b5`).
 - 2026-08-22: E4 brief opened — Candidate Document Link (D4); Product Track → [E4](documents-platform-e4-candidate-document-link.md) (feat locked). E3 ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278) (`cc106a38`). This slice ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276) (`826877b5`).
 - 2026-08-22: E2 feat — `documents.public_contract.v1` / `documents.hub_adapter_v1`; D2 `documents` catalog enabled; D3–D9 unbound; named Public Contract Gate. Foundation stays 🔄. Stacked after [#273](https://github.com/igortatarynovich/HostFlow/pull/273)/[#274](https://github.com/igortatarynovich/HostFlow/pull/274) merge `84a2ea94`.
 - 2026-08-21: WCP program **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)). Feat **unlocked**. Product Track → this brief. D2 `documents` still reserved until the E2 feat. G4 did not unlock this.

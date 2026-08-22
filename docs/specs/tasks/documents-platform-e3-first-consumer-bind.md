@@ -1,7 +1,7 @@
 # Documents Platform E3 — First Consumer Bind + Document Link SoT (Phase E)
 
 **Status:** **COMPLETE** ([#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) · merge `cc106a38`)  
-**Next:** [Documents Platform E4 — Candidate Document Link](documents-platform-e4-candidate-document-link.md) (feat)  
+**Next:** [Documents Platform E4 — Candidate Document Link](documents-platform-e4-candidate-document-link.md) ✅ → [Documents Platform E5 — Candidate Storage Bridge Retirement](documents-platform-e5-candidate-storage-bridge.md) (brief; feat locked)  
 **Phase class:** platform  
 **Branch (docs):** `docs/documents-platform-e3-first-consumer-bind` ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)  
 **Branch (code):** `feat/documents-platform-e3-first-consumer-bind` ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278)  
@@ -124,9 +124,11 @@ E3 (this)
     → same adapter; entity-link resolve; no second Adapter
     → D3–D7 / D9 stay unbound
 E4
-    → Candidate Document Link bind (D4) — [brief](documents-platform-e4-candidate-document-link.md)
-E5+
-    → remaining consumers / candidate_id drop / lifecycle (locked until E4 feat)
+    → Candidate Document Link bind (D4) — [brief](documents-platform-e4-candidate-document-link.md) ✅
+E5
+    → Candidate storage-bridge retirement (`candidate_id` drop) — [brief](documents-platform-e5-candidate-storage-bridge.md)
+E6+
+    → remaining consumers / lifecycle (locked until E5 feat)
 ```
 
 E3 **must not**:
@@ -191,8 +193,9 @@ E2 already enabled the catalog slot. **This slice binds it once.**
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1` |
 | **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5` |
 | **E3** | First consumer bind (HR employee) + Document Link SoT | ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) · merge `cc106a38` |
-| **E4** | Candidate Document Link bind (D4) | [brief](documents-platform-e4-candidate-document-link.md) (feat) |
-| **E5+** | Remaining consumers / `candidate_id` drop / lifecycle | locked until E4 feat |
+| **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913` |
+| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | [brief](documents-platform-e5-candidate-storage-bridge.md) (feat locked) |
+| **E6+** | Remaining consumers / lifecycle | locked until E5 feat |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) stay **horizon**. Documents Foundation stays 🔄.
 
@@ -213,7 +216,7 @@ Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation
 4. Named **Documents Platform E3 First Consumer Bind Gate** — D8 bound; D3–D7/D9 unbound; adapter still `documents.hub_adapter_v1`; consume path = Document Link; `candidate_id` still bridge; Shell nav ≠ D2; Foundation 🔄; G4 unchanged.  
 5. E1 / E2 / D1–D9 / WCP named gates stay green (amend only assertions that froze “no consumer bind”).  
 6. Architecture Review Checklist (10 questions) + Goal Completion G1–G5 in the feat PR description.  
-7. Pointers moved to [E4](documents-platform-e4-candidate-document-link.md) after this feat merged.
+7. Pointers moved to [E4](documents-platform-e4-candidate-document-link.md) after this feat merged; now [E5](documents-platform-e5-candidate-storage-bridge.md).
 
 ---
 
@@ -278,7 +281,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## Acceptance
 
-- Product Track → [Documents Platform E4](documents-platform-e4-candidate-document-link.md); this slice is closed (#278 / `cc106a38`).  
+- Product Track → [Documents Platform E5](documents-platform-e5-candidate-storage-bridge.md); this slice is closed (#278 / `cc106a38`). E4 ✅ (#280 / `0af74913`).  
 - Operators / agents cannot treat catalog enable, HR dossier, Shell `documents` nav, Candidate `candidate_id`, or Recruitment Application as this proof.  
 - Feat ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278) (brief ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)).  
 - D3–D7 / D9 remain unbound on `documents`; Forms P3–P5, OCR, and Billing stay out of Product Track.  
@@ -298,7 +301,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 | Public contract note | `docs/specs/architecture/documents-public-contract.md` — E3 entity-link resolve; still not Candidate column drop |
 | Gate | `backend/tests/platform/test_documents_e3_first_consumer_bind_gate.py` |
 | Prior gates | E2 / D8 assertions that froze “no documents bind” |
-| Pointers | queue / roadmap / AGENTS / maturity → [E4](documents-platform-e4-candidate-document-link.md) |
+| Pointers | queue / roadmap / AGENTS / maturity → [E5](documents-platform-e5-candidate-storage-bridge.md) |
 
 ---
 
@@ -313,6 +316,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-22: E5 brief opened — Product Track → [E5](documents-platform-e5-candidate-storage-bridge.md) (feat locked). E4 ✅ [#280](https://github.com/igortatarynovich/HostFlow/pull/280). This slice ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278) (`cc106a38`).
 - 2026-08-22: E3 feat ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278) (`cc106a38`) — D8 bind + entity-link resolve; named First Consumer Bind Gate. Product Track → [E4](documents-platform-e4-candidate-document-link.md). Foundation stays 🔄.
 - 2026-08-22: E3 feat opened — D8 bind + entity-link resolve on `documents.hub_adapter_v1`; named First Consumer Bind Gate. Brief ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277). Foundation stays 🔄.
 - 2026-08-22: E3 brief opened — first consumer bind = HR employee (D8) + Document Link SoT. Product Track → this brief (feat locked). E2 ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276) (`826877b5`). WCP COMPLETE [#274](https://github.com/igortatarynovich/HostFlow/pull/274). G4 stays Recruitment Application. Foundation stays 🔄.
