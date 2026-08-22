@@ -1,7 +1,7 @@
 """Entity Workspace D4 — Cutover Gate.
 
 Consumer = Candidate. D2 catalog unchanged.
-Reserved `documents` cannot be enabled. Shell nav ≠ composition slots.
+E4 binds D2 `documents` here; Shell nav ≠ composition slots.
 No Catalog Passport. No HR / Vacancy / Client / Order cutover.
 D1 + D2 + D3 gates remain. No Postgres required.
 """
@@ -120,6 +120,7 @@ _EXPECTED_CONSUMER_SLOTS = (
     "timeline",
     "communication",
     "forms",
+    "documents",
     "context-rail",
 )
 
@@ -148,7 +149,7 @@ def test_d4_candidate_binding_matches_enabled_catalog() -> None:
     src = _CONSUMER_TS.read_text(encoding="utf-8")
     slots = _ts_string_array(src, "CANDIDATE_COMPOSITION_SLOTS")
     assert slots == _EXPECTED_CONSUMER_SLOTS
-    assert "documents" not in slots
+    assert "documents" in slots
     assert "CANDIDATE_COMPOSITION_CONSUMER_ID" in src
     assert "candidate" in src
     assert "assertCandidateCompositionSlots" in src
@@ -157,7 +158,6 @@ def test_d4_candidate_binding_matches_enabled_catalog() -> None:
         "ENTITY_WORKSPACE_ENABLED_SLOT_IDS",
     )
     assert "documents" in enabled
-    assert "documents" not in slots
     assert set(slots).issubset(enabled)
 
 
@@ -177,9 +177,10 @@ def test_d4_page_composes_d2_slots() -> None:
     assert "CANDIDATE_COMPOSITION_SLOTS" in panel
     assert "capability_id: 'communication'" in contributions
     assert "capability_id: 'forms'" in contributions
+    assert "capability_id: 'documents'" in contributions
     assert "slot_id: 'communication'" in contributions
     assert "slot_id: 'forms'" in contributions
-    assert "documents" not in contributions.split("CANDIDATE_ENTITY_HOST_CONTRIBUTIONS", 1)[1].split("] as const", 1)[0]
+    assert "slot_id: 'documents'" in contributions
     assert 'data-entity-workspace-slot="overview"' in panel
     assert 'data-entity-workspace-slot="timeline"' in panel
     assert 'data-entity-workspace-slot="context-rail"' in rail
@@ -208,7 +209,7 @@ def test_d4_page_composes_d2_slots() -> None:
         _REPO_ROOT / "hostflow-frontend" / "src" / "api" / "formsPlatform.ts"
     ).read_text(encoding="utf-8")
     assert "data-entity-workspace-slot" in host
-    assert "documents" not in _ts_string_array(
+    assert "documents" in _ts_string_array(
         _CONSUMER_TS.read_text(encoding="utf-8"),
         "CANDIDATE_COMPOSITION_SLOTS",
     )
@@ -223,7 +224,7 @@ def test_d4_shell_documents_nav_is_not_d2_documents_enable() -> None:
         _CONSUMER_TS.read_text(encoding="utf-8"),
         "CANDIDATE_COMPOSITION_SLOTS",
     )
-    assert "documents" not in consumer
+    assert "documents" in consumer
     assert "contacts" not in consumer
     page = _PAGE.read_text(encoding="utf-8")
     panel = _PANEL.read_text(encoding="utf-8")

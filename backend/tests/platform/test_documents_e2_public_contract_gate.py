@@ -2,7 +2,7 @@
 
 `documents.public_contract.v1` + `documents.hub_adapter_v1` bound.
 D2 `documents` catalog enabled; reserved empty.
-D3–D7 / D9 consumers still omit `documents` (D8 bind is E3).
+D3 / D5–D7 / D9 consumers still omit `documents` (D8 bind is E3; D4 bind is E4).
 Shell nav ≠ D2 slot. Documents Foundation stays 🔄.
 No OCR / e-sign / packages product. No Catalog shape rewrite.
 E1 and D1–D9 gates remain. No Postgres required.
@@ -69,7 +69,6 @@ _DELIVERY = (
 
 _UNBOUND_CONSUMERS = (
     ("salesInquiryConsumer.ts", "SALES_INQUIRY_COMPOSITION_SLOTS"),
-    ("candidateConsumer.ts", "CANDIDATE_COMPOSITION_SLOTS"),
     ("clientConsumer.ts", "CLIENT_COMPOSITION_SLOTS"),
     ("salesOrderConsumer.ts", "SALES_ORDER_COMPOSITION_SLOTS"),
     ("vacancyConsumer.ts", "VACANCY_COMPOSITION_SLOTS"),

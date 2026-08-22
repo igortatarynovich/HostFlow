@@ -14,6 +14,9 @@ vi.mock('../../../api/communications', () => ({
 vi.mock('../../../api/formsPlatform', () => ({
   listFormsPlatformHandlers: vi.fn(async () => []),
 }))
+vi.mock('../../../api/client', () => ({
+  api: { get: vi.fn(async () => ({ data: { items: [] } })) },
+}))
 
 const APPLICATION: Application = {
   id: 'app-1',
@@ -74,6 +77,7 @@ describe('host runtime equivalence', () => {
     expect(CANDIDATE_ENTITY_HOST_CONTRIBUTIONS.map((row) => row.capability_id)).toEqual([
       'communication',
       'forms',
+      'documents',
     ])
     for (const row of CANDIDATE_ENTITY_HOST_CONTRIBUTIONS) {
       expect(row.host).toBe('entity_workspace')
@@ -108,6 +112,7 @@ describe('host runtime equivalence', () => {
     expect(container.querySelector('[data-entity-workspace-slot="forms"]')).toBeTruthy()
     expect(container.querySelector('[data-capability-id="communication"]')).toBeTruthy()
     expect(container.querySelector('[data-capability-id="forms"]')).toBeTruthy()
+    expect(container.querySelector('[data-capability-id="documents"]')).toBeTruthy()
   })
 
   it('ApplicationWorkspaceCapabilityHost still places G4 chrome and the same regions', () => {

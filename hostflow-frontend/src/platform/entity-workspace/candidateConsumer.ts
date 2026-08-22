@@ -2,7 +2,7 @@
  * Entity Workspace D4 — Candidate consumer binding.
  *
  * Slot ids come from compositionSlots.ts. Do not add HR / Vacancy / Client / Order.
- * Do not bind `documents` (catalog-enabled in E2; not this consumer).
+ * E4 binds `documents` here (Candidate Document Link). D3 / D5–D7 / D9 stay unbound.
  * Do not collapse Shell EntityWorkspaceSectionId.
  */
 
@@ -18,6 +18,7 @@ export const CANDIDATE_COMPOSITION_SLOTS = [
   'timeline',
   'communication',
   'forms',
+  'documents',
   'context-rail',
 ] as const satisfies readonly EntityWorkspaceEnabledSlotId[]
 
@@ -29,9 +30,6 @@ export function assertCandidateCompositionSlots(
   slots: readonly string[] = CANDIDATE_COMPOSITION_SLOTS,
 ): asserts slots is readonly CandidateCompositionSlotId[] {
   for (const id of slots) {
-    if (id === 'documents') {
-      throw new Error('D4: Candidate must not bind documents slot this slice')
-    }
     if (!ENABLED.has(id)) {
       throw new Error(`D4: Candidate slot '${id}' is not in the D2 enabled catalog`)
     }

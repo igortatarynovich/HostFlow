@@ -1,6 +1,6 @@
-"""Documents public contract v1 — entity-link resolve (E3).
+"""Documents public contract v1 — entity-link resolve (E3 + E4).
 
-Same adapter id as E2. Not a second Adapter. Not a workforce documents list.
+Same adapter id as E2. Not a second Adapter. Not a candidate_id list.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services.document_hub_delivery_contract import (
     ADAPTER_ID,
-    E3_LINKED_ENTITY_TYPE,
+    ALLOWED_ENTITY_LINK_RESOLVE,
     E3_RELATION_TYPE,
     PUBLIC_CONTRACT_ID,
     list_entity_link_documents_via_contract,
@@ -69,10 +69,10 @@ async def resolve_documents_via_public_contract(
     _ensure_tenant(ctx, tenant_id)
     etype = linked_entity_type.strip()
     rel = (relation_type or E3_RELATION_TYPE).strip() or E3_RELATION_TYPE
-    if etype != E3_LINKED_ENTITY_TYPE or rel != E3_RELATION_TYPE:
+    if (etype, rel) not in ALLOWED_ENTITY_LINK_RESOLVE:
         raise HTTPException(
             status_code=400,
-            detail="E3 entity-link resolve is workforce_employee / reused_for_hr only",
+            detail="entity-link resolve allows workforce_employee / reused_for_hr or candidate / primary only",
         )
     try:
         items = await list_entity_link_documents_via_contract(

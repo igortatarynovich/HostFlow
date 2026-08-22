@@ -2,7 +2,7 @@
  * Entity Workspace D8 — HR employee consumer binding.
  *
  * Slot ids come from compositionSlots.ts. Do not add Services order / handoff.
- * E3 binds `documents` here (first consumer). D3–D7 / D9 stay unbound.
+ * E3 binds `documents` here (first consumer). D4 bind is E4. D3 / D5–D7 / D9 stay unbound.
  * Do not collapse Shell EntityWorkspaceSectionId.
  * This is HrEmployeeDetailPage, not Candidate and not HrHandoffDetailPage.
  */

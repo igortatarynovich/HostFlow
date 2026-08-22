@@ -12,7 +12,7 @@ import {
  * Platform surface `documents`. Owner = Documents.
  * Host places this contribution under `platform_slot`. Consume path is
  * `documents.public_contract.v1` / `documents.hub_adapter_v1` via Document Link.
- * Not the local HR documents matrix. Not Shell nav. Not Candidate `candidate_id`.
+ * Not the local HR documents matrix. Not Shell nav. Not `documents.candidate_id`.
  */
 export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()

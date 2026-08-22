@@ -5,6 +5,19 @@ export const DOCUMENTS_PUBLIC_CONTRACT_ID = 'documents.public_contract.v1'
 export const DOCUMENTS_HUB_ADAPTER_ID = 'documents.hub_adapter_v1'
 export const E3_LINKED_ENTITY_TYPE = 'workforce_employee'
 export const E3_RELATION_TYPE = 'reused_for_hr'
+export const E4_LINKED_ENTITY_TYPE = 'candidate'
+export const E4_RELATION_TYPE = 'primary'
+
+const RESOLVE_BY_RESOURCE: Record<string, { linkedEntityType: string; relationType: string }> = {
+  [E3_LINKED_ENTITY_TYPE]: {
+    linkedEntityType: E3_LINKED_ENTITY_TYPE,
+    relationType: E3_RELATION_TYPE,
+  },
+  [E4_LINKED_ENTITY_TYPE]: {
+    linkedEntityType: E4_LINKED_ENTITY_TYPE,
+    relationType: E4_RELATION_TYPE,
+  },
+}
 
 export type DocumentLinkView = {
   id: string
@@ -30,21 +43,29 @@ export type DocumentsResolveResult = {
 }
 
 /**
- * Documents owner facade. Transport stays here — hosts and HR pages must not
- * call `/workforce/employees/:id/documents` for the D2 `documents` surface.
+ * Documents owner facade. Transport stays here — hosts must not call
+ * `documents.candidate_id` lists or local Candidate/HR documents panels
+ * for the D2 `documents` surface.
  */
+export function documentsResolveTarget(
+  ctx: WorkspaceCapabilityRenderContext,
+): { linkedEntityType: string; relationType: string; entityId: string } | null {
+  const resourceType = String(ctx.entity?.resourceType || '').trim()
+  const entityId = String(ctx.entity?.resourceId || '').trim()
+  const spec = RESOLVE_BY_RESOURCE[resourceType]
+  if (!spec || !entityId) return null
+  return { ...spec, entityId }
+}
+
 export function documentsEntityKey(ctx: WorkspaceCapabilityRenderContext): string {
-  if (ctx.entity?.resourceType === E3_LINKED_ENTITY_TYPE) {
-    return String(ctx.entity.resourceId || '').trim()
-  }
-  return ''
+  return documentsResolveTarget(ctx)?.entityId || ''
 }
 
 export async function listLinkedDocuments(
   ctx: WorkspaceCapabilityRenderContext,
 ): Promise<DocumentsResolveResult> {
-  const entityId = documentsEntityKey(ctx)
-  if (!entityId) {
+  const target = documentsResolveTarget(ctx)
+  if (!target) {
     return {
       available: false,
       contractId: DOCUMENTS_PUBLIC_CONTRACT_ID,
@@ -58,9 +79,9 @@ export async function listLinkedDocuments(
     items?: DocumentHubView[]
   }>('/platform/documents/resolve', {
     params: {
-      linked_entity_type: E3_LINKED_ENTITY_TYPE,
-      linked_entity_id: entityId,
-      relation_type: E3_RELATION_TYPE,
+      linked_entity_type: target.linkedEntityType,
+      linked_entity_id: target.entityId,
+      relation_type: target.relationType,
     },
   })
   return {
