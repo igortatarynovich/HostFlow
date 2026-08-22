@@ -276,7 +276,7 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 
 ## §10. Development order (primitives first, workspaces composed)
 
-**Nearest goal:** Documents Platform E3 — first consumer bind (HR employee) through D2 `documents` + Document Link SoT. Workspace Capability Platform is **COMPLETE**. G4 on Recruitment Application already **PASS** and is **not** the Documents proof. Entity Workspace and Application Workspace stay distinct (§3.2 / §3.3).
+**Nearest goal:** Documents Platform E4 — Candidate Document Link through D2 `documents` + Hub `document_entity_links`. E3 First Consumer Bind (HR employee) is **COMPLETE**. Workspace Capability Platform is **COMPLETE**. G4 on Recruitment Application already **PASS** and is **not** the Documents proof. Entity Workspace and Application Workspace stay distinct (§3.2 / §3.3).
 
 | Phase | Deliverable |
 |-------|-------------|
@@ -285,14 +285,15 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 | 2a | Platform surfaces on one entity (D2: overview / timeline / communication / forms / documents / context-rail) — brief-complete, **goal-incomplete** |
 | **2b** | [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md): G4 PASS on Recruitment Application. Program **COMPLETE** ([record](../gates/workspace-capability-platform-complete.md)). |
 | **2b-eq ✅** | [Host runtime-equivalence](../tasks/workspace-capability-host-runtime-equivalence.md): Entity Workspace implements the same host contract at runtime; Notes/Consent hide transport. |
-| **2c ← active** | [Documents Platform E3](../tasks/documents-platform-e3-first-consumer-bind.md): first D2 `documents` consumer bind (HR employee) + Document Link SoT. Host places; Documents owns semantics. G4 stays Recruitment Application. |
+| **2c ✅** | [Documents Platform E3](../tasks/documents-platform-e3-first-consumer-bind.md): first D2 `documents` consumer bind (HR employee) + Document Link SoT. |
+| **2d ← active** | [Documents Platform E4](../tasks/documents-platform-e4-candidate-document-link.md): Candidate Document Link. Host places; Documents owns semantics. Not mass D3–D9 bind. G4 stays Recruitment Application. |
 | **3** | Application Workspace implements the **same** host contract — it does **not** become Entity Workspace |
 | 4–5 | Process + Collection completion |
 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
-Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
+Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
 
-**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E3 feat is **locked** until this brief merges. ListWorkspace is a separate collection slice.
+**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E4 feat is **locked** until this brief merges. ListWorkspace is a separate collection slice.
 
 ---
 
