@@ -57,6 +57,22 @@ _PAGE = (
     / "pages"
     / "CandidateEntityWorkspacePage.tsx"
 )
+_PANEL = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "platform"
+    / "entity-workspace"
+    / "CandidateEntityWorkspacePanel.tsx"
+)
+_EQUIVALENCE = (
+    _REPO_ROOT
+    / "hostflow-frontend"
+    / "src"
+    / "platform"
+    / "workspace-capability"
+    / "candidateEntity.ts"
+)
 _TYPES_TS = (
     _REPO_ROOT
     / "hostflow-frontend"
@@ -147,19 +163,46 @@ def test_d4_candidate_binding_matches_enabled_catalog() -> None:
 
 def test_d4_page_composes_d2_slots() -> None:
     page = _PAGE.read_text(encoding="utf-8")
+    panel = _PANEL.read_text(encoding="utf-8")
     host = _HOST_TSX.read_text(encoding="utf-8")
     rail = _RAIL.read_text(encoding="utf-8")
-    assert "EntityWorkspaceCompositionHost" in page
+    contributions = _EQUIVALENCE.read_text(encoding="utf-8")
+    assert "EntityWorkspaceCapabilityHost" in panel
+    assert "CANDIDATE_ENTITY_HOST_CONTRIBUTIONS" in panel
+    assert "EntityWorkspaceShell" in panel
+    assert "CandidateEntityWorkspacePanel" in page
+    assert _COMM_SLOT.is_file()
+    assert _FORMS_SLOT.is_file()
     assert "CANDIDATE_COMPOSITION_SLOTS" in page
-    assert "CandidateCommunicationSlot" in page
-    assert "CandidateFormsSlot" in page
-    assert 'data-entity-workspace-slot="overview"' in page
-    assert 'data-entity-workspace-slot="timeline"' in page
+    assert "CANDIDATE_COMPOSITION_SLOTS" in panel
+    assert "capability_id: 'communication'" in contributions
+    assert "capability_id: 'forms'" in contributions
+    assert "slot_id: 'communication'" in contributions
+    assert "slot_id: 'forms'" in contributions
+    assert "documents" not in contributions.split("CANDIDATE_ENTITY_HOST_CONTRIBUTIONS", 1)[1].split("] as const", 1)[0]
+    assert 'data-entity-workspace-slot="overview"' in panel
+    assert 'data-entity-workspace-slot="timeline"' in panel
     assert 'data-entity-workspace-slot="context-rail"' in rail
-    comm = _COMM_SLOT.read_text(encoding="utf-8")
+    comm = (
+        _REPO_ROOT
+        / "hostflow-frontend"
+        / "src"
+        / "platform"
+        / "capabilities"
+        / "communication"
+        / "CommunicationCapability.tsx"
+    ).read_text(encoding="utf-8")
     assert "listCommunicationThreads" in comm
-    assert "entityType: 'candidate'" in comm
-    forms = _FORMS_SLOT.read_text(encoding="utf-8")
+    assert "entity.resourceType" in comm or "resourceType" in comm
+    forms = (
+        _REPO_ROOT
+        / "hostflow-frontend"
+        / "src"
+        / "platform"
+        / "capabilities"
+        / "forms"
+        / "FormsCapability.tsx"
+    ).read_text(encoding="utf-8")
     assert "listFormsPlatformHandlers" in forms
     assert "/platform/forms/handlers" in (
         _REPO_ROOT / "hostflow-frontend" / "src" / "api" / "formsPlatform.ts"
@@ -183,6 +226,7 @@ def test_d4_shell_documents_nav_is_not_d2_documents_enable() -> None:
     assert "documents" not in consumer
     assert "contacts" not in consumer
     page = _PAGE.read_text(encoding="utf-8")
+    panel = _PANEL.read_text(encoding="utf-8")
     assert "CandidateDocsWorkspacePanel" in (
         _REPO_ROOT
         / "hostflow-frontend"
@@ -192,7 +236,9 @@ def test_d4_shell_documents_nav_is_not_d2_documents_enable() -> None:
         / "candidateEntityWorkspaceSections.tsx"
     ).read_text(encoding="utf-8")
     assert sections != consumer
-    assert "EntityWorkspaceShell" in page
+    assert "EntityWorkspaceShell" in panel
+    assert "EntityWorkspaceCapabilityHost" in panel
+    assert "CandidateEntityWorkspacePanel" in page
 
 
 def test_d4_hr_vacancy_client_order_not_cut_over() -> None:

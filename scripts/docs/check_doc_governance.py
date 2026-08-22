@@ -10,6 +10,7 @@
   archive-without-canon-replacement — файл в `archive/legacy/<DATE>/` без записи в `archive/legacy/<DATE>/README.md`
   broken-md-link                    — относительная ссылка `[..](..)` указывает в несуществующий файл
   superseded-without-status         — ADR с `Supersedes: ADR-NNN`, но в ADR-NNN нет `Status: Superseded by`
+  phase-brief-missing-goal-proof    — task с `Phase class: platform` без Original Goal → Completion Proof
   orphan-canon-doc (warning)        — L1/L2 документ без inbound reference; включается `--check-orphans`
 
 Использование:
@@ -106,6 +107,23 @@ ADR_SUPERSEDED_BY_RE = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 ADR_FILENAME_RE = re.compile(r"(ADR-\d+)", re.IGNORECASE)
+
+PHASE_CLASS_PLATFORM_RE = re.compile(
+    r"^\s*\*?\*?Phase class\*?\*?\s*:\s*platform\b",
+    re.IGNORECASE | re.MULTILINE,
+)
+GOAL_PROOF_HEADING_RE = re.compile(
+    r"^##\s+Original Goal\s*(?:→|->)\s*Completion Proof\s*$",
+    re.MULTILINE,
+)
+GOAL_PROOF_PROBLEM_RE = re.compile(
+    r"\*\*Problem this phase must permanently remove:\*\*",
+    re.IGNORECASE,
+)
+GOAL_PROOF_CONSUMER_RE = re.compile(
+    r"\*\*Completion proof \(named consumer\):\*\*",
+    re.IGNORECASE,
+)
 
 
 @dataclass
@@ -428,6 +446,44 @@ def check_superseded_adr(files: list[Path], result: LintResult) -> None:
                 )
 
 
+def check_phase_brief_goal_proof(files: list[Path], result: LintResult) -> None:
+    """Platform phase briefs must declare Original Goal → Completion Proof.
+
+    Opt-in marker: `**Phase class:** platform` in docs/specs/tasks/*.md.
+    Historical D/C briefs are not retroactively required to add the marker.
+    """
+    for f in files:
+        rel_path = rel(f)
+        if not rel_path.startswith("docs/specs/tasks/") or not rel_path.endswith(".md"):
+            continue
+        if rel_path.startswith(ARCHIVE_PREFIX):
+            continue
+        text = f.read_text(encoding="utf-8")
+        if not PHASE_CLASS_PLATFORM_RE.search(text):
+            continue
+        missing: list[str] = []
+        if not GOAL_PROOF_HEADING_RE.search(text):
+            missing.append("heading `## Original Goal → Completion Proof`")
+        if not GOAL_PROOF_PROBLEM_RE.search(text):
+            missing.append("`**Problem this phase must permanently remove:**`")
+        if not GOAL_PROOF_CONSUMER_RE.search(text):
+            missing.append("`**Completion proof (named consumer):**`")
+        if not missing:
+            continue
+        result.issues.append(
+            Issue(
+                rule="phase-brief-missing-goal-proof",
+                severity="error",
+                path=rel_path,
+                message=(
+                    "platform phase brief must include Original Goal → Completion Proof "
+                    f"({'; '.join(missing)})"
+                ),
+                line=1,
+            )
+        )
+
+
 def check_orphan_canon(files: list[Path], result: LintResult) -> None:
     """L1/L2 документы должны иметь хотя бы одну inbound reference.
 
@@ -554,6 +610,7 @@ def main(argv: list[str] | None = None) -> int:
     check_archive_canon_replacement(files, result)
     check_broken_md_links(files, result)
     check_superseded_adr(files, result)
+    check_phase_brief_goal_proof(files, result)
     if args.check_orphans:
         check_orphan_canon(files, result)
 

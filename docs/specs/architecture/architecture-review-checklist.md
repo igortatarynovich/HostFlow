@@ -27,6 +27,16 @@
 
 ---
 
+## Goal Completion Gate (mandatory at phase close)
+
+The ten questions above check **ownership and contracts**. They do **not** catch a substituted goal.
+
+When a platform phase would be marked COMPLETE (or Foundation ✅ as “next layer may consume this”), also apply [`goal-completion-gate.md`](../gates/goal-completion-gate.md) G1–G5. First application: [`platform-scope-completeness-audit.md`](../gates/platform-scope-completeness-audit.md). Entity D1–D9 is the worked example of brief-complete / goal-incomplete.
+
+A **new platform phase brief** must include `**Phase class:** platform` and heading `## Original Goal → Completion Proof` (problem to permanently remove + named consumer proof). Deliverables-only briefs are reject. Corrective Product Track: [`workspace-capability-platform-completion.md`](../tasks/workspace-capability-platform-completion.md).
+
+---
+
 ## Приоритет принятия решений (обязателен)
 
 См. [`decision-priority-rule.md`](decision-priority-rule.md) · **INV-16**.
@@ -55,6 +65,8 @@
 - [ ] Новый модуль/capability: полный шаблон (Passport, Exposes, Data Ownership, deps, license; Manifest если config)  
 - [ ] **L1 delivery:** Passport → Manifest → **Public Contract** → Adapter → Contract Tests → **только потом** UI ([`capability-contract.md`](capability-contract.md))  
 - [ ] Public Contract зафиксирован до merge Adapter; contract tests покрывают публичную цепочку  
+- [ ] Если это **platform phase brief**: есть `**Phase class:** platform` и раздел [Original Goal → Completion Proof](../gates/goal-completion-gate.md) (проблема навсегда + named consumer; не список deliverables)  
+- [ ] Если PR закрывает platform phase / Foundation как «следующий слой может потреблять»: заполнен [Goal Completion Gate](../gates/goal-completion-gate.md) G1–G5  
 
 ---
 
@@ -65,3 +77,5 @@
 - 2026-07-18: Capability Contract sequence added (Phase 1).  
 - 2026-07-19: INV-16 Decision Priority Rule + reject signals (Intake/Flights L0 correction).  
 - 2026-07-19: INV-17 Communication Pipeline sole outbound entry (C5).
+- 2026-08-20: Goal Completion Gate (G1–G5) — original problem vs substituted brief; first application [platform-scope-completeness-audit.md](../gates/platform-scope-completeness-audit.md).  
+- 2026-08-20: Platform phase briefs require Original Goal → Completion Proof (capability test, not deliverables).

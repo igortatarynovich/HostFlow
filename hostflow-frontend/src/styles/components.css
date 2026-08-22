@@ -44,6 +44,24 @@
     @apply input min-h-[96px];
   }
 
+  /* Boolean — CHECKBOX_V1. Native input lives only inside <Checkbox>. */
+  .checkbox-field {
+    @apply inline-flex max-w-full items-start gap-2;
+  }
+  .checkbox-field-disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+  .checkbox {
+    @apply mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-brand-600
+           accent-brand-500 focus:ring-2 focus:ring-brand-200;
+  }
+  .checkbox-label {
+    @apply block text-sm font-medium text-slate-800;
+  }
+  .checkbox-description {
+    @apply mt-0.5 block text-xs leading-relaxed text-slate-500;
+  }
+
   /* Кнопки */
   .btn {
     @apply inline-flex items-center gap-2 rounded-xl

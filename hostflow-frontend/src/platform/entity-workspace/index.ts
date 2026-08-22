@@ -62,6 +62,7 @@ export {
 export type { ServicesOrderCompositionSlotId } from './servicesOrderConsumer'
 
 export { EntityWorkspaceCompositionHost } from './compositionHost'
+export { CandidateEntityWorkspacePanel } from './CandidateEntityWorkspacePanel'
 
 export type {
   ContextRailBlockId,

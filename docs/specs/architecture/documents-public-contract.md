@@ -79,4 +79,4 @@ E2 marks D2 `documents` as an **enabled platform slot**. D3–D9 consumer slot l
 
 ## History
 
-- 2026-08-20: E2 feat — sealed `documents.public_contract.v1` / `documents.hub_adapter_v1`; D2 `documents` catalog enabled; D3–D9 unbound; Foundation stays 🔄.
+- 2026-08-22: E2 feat — sealed `documents.public_contract.v1` / `documents.hub_adapter_v1`; D2 `documents` catalog enabled; D3–D9 unbound; Foundation stays 🔄. After WCP COMPLETE [#274](https://github.com/igortatarynovich/HostFlow/pull/274) merge `84a2ea94`.

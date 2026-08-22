@@ -242,6 +242,20 @@ jobs:
           HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
         run: |
           pytest -q tests/platform/test_documents_e1_contract_seal_gate.py
+      - name: Workspace Capability Platform Completion Gate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+        run: |
+          pytest -q tests/platform/test_workspace_capability_platform_completion_gate.py
+      - name: Workspace Capability Host Runtime Equivalence Gate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+        run: |
+          pytest -q tests/platform/test_workspace_capability_host_runtime_equivalence_gate.py
       - name: Documents Platform E2 Public Contract Gate
         working-directory: backend
         env:

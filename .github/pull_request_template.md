@@ -46,6 +46,8 @@
 
 - [ ] Пройден [`docs/security/security-review-checklist.md`](docs/security/security-review-checklist.md), если PR в security perimeter
 - [ ] Документы/ADR: при смене контрактов — `docs/specs/**` и при необходимости `docs/devel/pr-checklist-adr014-document-access.md`
+- [ ] **Platform phase brief:** `**Phase class:** platform` + раздел Original Goal → Completion Proof (проблема навсегда + named consumer — не список deliverables). См. `docs/specs/gates/goal-completion-gate.md`.
+- [ ] **Platform phase close:** Goal Completion Gate G1–G5 в теле PR, если claim COMPLETE / Foundation «следующий слой может потреблять».
 - [ ] `make lint` / `make test` (или эквивалент CI) зелёные
 - [ ] **Foundation:** no new deprecated foundation tokens introduced (`npm run foundation:check` in `hostflow-frontend`). If using `foundation-allow:`, include a short reason (min 8 chars) on the same line or the line above.
 - [ ] **Primitives (Badge + Chip):** new status labels use `StatusBadge` (semantic API); new filter/toggle/action chips use `Chip` with allowed `behavior`. See `docs/specs/frontend/PRIMITIVES_V1.md`.

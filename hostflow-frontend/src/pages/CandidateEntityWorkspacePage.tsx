@@ -1,14 +1,13 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { EntityWorkspaceShell } from '../platform/entity-workspace'
 import type { EntityContextRailModel, EntityWorkspaceSectionId } from '../platform/entity-workspace'
 import {
   CANDIDATE_COMPOSITION_CONSUMER_ID,
   CANDIDATE_COMPOSITION_SLOTS,
-  EntityWorkspaceCompositionHost,
   assertCandidateCompositionSlots,
 } from '../platform/entity-workspace'
+import { CandidateEntityWorkspacePanel } from '../platform/entity-workspace/CandidateEntityWorkspacePanel'
 import { projectEntityContextRail } from '../platform/entity-workspace/projectEntityWorkspaceView'
 import { useI18n } from '../i18n'
 import { useCandidateEntityWorkspace } from '../modules/candidates/hooks/useCandidateEntityWorkspace'
@@ -16,8 +15,6 @@ import { buildCandidateEntityWorkspaceSectionRenderers } from '../modules/candid
 import { buildCandidateEntityWorkspaceHeaderExtension } from '../modules/candidates/candidateEntityWorkspaceChrome'
 import { buildCandidateEntityWorkspaceSummary } from '../modules/candidates/candidateEntityWorkspaceSummary'
 import { CandidateEntityWorkspaceHeaderActions } from '../modules/candidates/candidateEntityWorkspaceHeaderActions'
-import { CandidateCommunicationSlot } from '../components/candidate/CandidateCommunicationSlot'
-import { CandidateFormsSlot } from '../components/candidate/CandidateFormsSlot'
 
 function candidateWorkspaceLabels(t: (key: string, options?: Record<string, unknown>) => string) {
   return {
@@ -44,11 +41,14 @@ function candidateWorkspaceLabels(t: (key: string, options?: Record<string, unkn
 
 /**
  * Candidate Entity Workspace — mockup-aligned consumer (5 zones, semantic content).
+ * Composition path: EntityWorkspaceCapabilityHost. Shell is chrome adapter.
+ * Not G4 — G4 remains Recruitment Application.
  */
 export function CandidateEntityWorkspacePage() {
   const { t, locale } = useI18n()
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
+  const navigate = useNavigate()
   const [activeSectionId, setActiveSectionId] = useState<EntityWorkspaceSectionId>('overview')
 
   const {
@@ -61,6 +61,7 @@ export function CandidateEntityWorkspacePage() {
     workPanel,
     candidateProfile,
     effectiveLayout,
+    reloadCandidate,
   } = useCandidateEntityWorkspace(id)
 
   const originPath =
@@ -75,7 +76,7 @@ export function CandidateEntityWorkspacePage() {
   const sectionRenderers = useMemo(() => {
     if (!passport || !candidate || !id) return undefined
     assertCandidateCompositionSlots(CANDIDATE_COMPOSITION_SLOTS)
-    const base = buildCandidateEntityWorkspaceSectionRenderers({
+    return buildCandidateEntityWorkspaceSectionRenderers({
       passport,
       candidate,
       candidateId: id,
@@ -83,25 +84,6 @@ export function CandidateEntityWorkspacePage() {
       candidateProfile,
       effectiveLayout,
     })
-    return {
-      ...base,
-      overview: () => (
-        <div data-entity-workspace-slot="overview" className="space-y-4">
-          {base.overview?.()}
-          <EntityWorkspaceCompositionHost
-            consumerId={CANDIDATE_COMPOSITION_CONSUMER_ID}
-            enabledSlots={['communication', 'forms']}
-            renderers={{
-              communication: () => <CandidateCommunicationSlot candidateId={id} />,
-              forms: () => <CandidateFormsSlot />,
-            }}
-          />
-        </div>
-      ),
-      timeline: () => (
-        <div data-entity-workspace-slot="timeline">{base.timeline?.()}</div>
-      ),
-    }
   }, [candidate, candidateProfile, effectiveLayout, id, locale, passport])
 
   const actionConfig = useMemo(() => buildActionConfig(openDocuments) ?? {}, [buildActionConfig, openDocuments])
@@ -171,7 +153,10 @@ export function CandidateEntityWorkspacePage() {
       data-candidate-entity-workspace="mockup-v1"
       data-entity-workspace-consumer={CANDIDATE_COMPOSITION_CONSUMER_ID}
     >
-      <EntityWorkspaceShell
+      <CandidateEntityWorkspacePanel
+        entityId={id}
+        onClose={() => navigate(originPath)}
+        onRefresh={() => void reloadCandidate()}
         model={entityModel}
         passport={passport}
         resourceTypeLabel={t('app.candidates.entity_type', { defaultValue: 'Кандидат' })}
