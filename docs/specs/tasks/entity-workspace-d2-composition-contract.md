@@ -35,7 +35,7 @@ EntityWorkspace chrome (SoT path: components/ui/EntityWorkspace)
   │     ├── timeline (content slot — not a second product)
   │     ├── communication (platform surface)
   │     ├── forms (platform surface — HostFlow Form / submissions)
-  │     └── documents (platform — catalog-enabled in [E2](documents-platform-e2-public-contract.md); D3–D9 still unbound)
+  │     └── documents (platform — catalog-enabled in [E2](documents-platform-e2-public-contract.md) ✅; first bind = [E3](documents-platform-e3-first-consumer-bind.md) HR employee)
   └── context rail                              ← chrome slot (D1)
 EntityWorkspaceShell                            ← passport adapter only
 ```
@@ -52,14 +52,14 @@ Modules configure **which slots are enabled** and supply overview body. They do 
 | `timeline` | content | Platform chrome slot | Named; not a second Activity product |
 | `communication` | platform | Communication platform | Contracted; compose via public contracts only |
 | `forms` | platform | Forms platform (ADR-007) | Contracted; HostFlow Form / envelope — no second form stack |
-| `documents` | platform | Documents (Phase E) | Catalog-enabled in [E2](documents-platform-e2-public-contract.md). E1 contract seal was **not** enable. D3–D9 consumers stay unbound until a later named E slice |
+| `documents` | platform | Documents (Phase E) | Catalog-enabled in [E2](documents-platform-e2-public-contract.md) ✅. First consumer bind = [E3](documents-platform-e3-first-consumer-bind.md) (HR employee). D3–D7 / D9 stay unbound |
 | `context-rail` | chrome | Kit / Shell adapter | Already D1 chrome; not a new platform SoT |
 
 **Rules:**
 
 1. New slot kinds require amending this contract (and Architecture Review) — no silent product slots.  
 2. Platform slots consume **public contracts / adapters** only — no cross-module internal imports (Architecture Rule 2).  
-3. `documents` is a named platform slot. Enabling it in the **catalog** is [E2](documents-platform-e2-public-contract.md). Binding it on a D3–D9 consumer before a named later E slice is **forbidden**. E1 contract seal is not enable.  
+3. `documents` is a named platform slot. Enabling it in the **catalog** is [E2](documents-platform-e2-public-contract.md) ✅. Binding it on a consumer is [E3](documents-platform-e3-first-consumer-bind.md) (HR employee only). Binding D3–D7 / D9 before a later named E slice is **forbidden**. E1 contract seal is not enable.  
 4. Timeline stays a **content slot**, not a separate Activity Workspace product.
 
 ---
@@ -102,7 +102,7 @@ Named step: **Entity Workspace D2 Composition Gate**
 
 - Slot catalog frozen: `overview` · `timeline` · `communication` · `forms` · `documents` · `context-rail`
 - Typed allowlist: `hostflow-frontend/src/platform/entity-workspace/compositionSlots.ts` (not Shell `EntityWorkspaceSectionId`)
-Until [E2](documents-platform-e2-public-contract.md) feat, runtime was **Empty / unavailable** (reserved in `compositionSlots.ts`). E2 feat enables the catalog slot; D3–D9 bind stays a later E slice.
+Until [E2](documents-platform-e2-public-contract.md) feat, runtime was **Empty / unavailable** (reserved in `compositionSlots.ts`). E2 feat enabled the catalog slot. First consumer bind is [E3](documents-platform-e3-first-consumer-bind.md) (HR employee); D3–D7 / D9 stay unbound.
 - No Entity Catalog Passport mint
 - No consumer cutover screens
 - Entity Foundation maturity stays 🔄 (not ✅)
@@ -182,6 +182,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-22: E3 brief — first D2 `documents` consumer bind = HR employee ([documents-platform-e3-first-consumer-bind.md](documents-platform-e3-first-consumer-bind.md)). D3–D7 / D9 stay unbound.
 - 2026-08-18: E2 brief — D2 `documents` catalog unlock is [E2](documents-platform-e2-public-contract.md) (feat locked). E1 stays not-enable. D3–D9 stay unbound.
 - 2026-08-18: Phase E opened at E1 — D2 `documents` stays reserved; unlock is a later named E slice, not E1.
 - 2026-08-15: D2 feat ✅ [#254](https://github.com/igortatarynovich/HostFlow/pull/254) (`42bd51b7` / merge `a61543cf`). Product Track → Entity Workspace D3 consumer cutover brief (feat locked).

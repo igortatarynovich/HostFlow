@@ -31,7 +31,7 @@ Legend: ✅ done · 🔄 in progress · ⏳ not started
 | **Acquisition** | ✅ | ✅ | 🔄 residual | ⏳ |
 | **Forms** | ✅ Phase C C1–C6 | ⏳ | ⏳ | ⏳ |
 | **Entity Workspace** | 🔄 Phase D D1–D9 | ⏳ | ⏳ | ⏳ |
-| **Documents** | 🔄 Phase E E2 feat unlocked | ⏳ | ⏳ | ⏳ |
+| **Documents** | 🔄 Phase E E3 brief (feat locked) | ⏳ | ⏳ | ⏳ |
 | **Billing** | ⏳ | ⏳ | ⏳ | ⏳ |
 
 Notes:
@@ -43,8 +43,8 @@ Notes:
 - **A2 Platform Governance Review** = [PASS_WITH_CONSTRAINTS](../gates/platform-governance-review-a2.md) (2026-08-03). Catalog Notifications↔Communication → Architecture RFC (A2-F1).  
 - Acquisition Automation residual = Stage 5 settings / R6 deferred — **not** the active slice. Phase B Meta / slice 3–4 ✅ ([#222](https://github.com/igortatarynovich/HostFlow/pull/222) · [#224](https://github.com/igortatarynovich/HostFlow/pull/224) · [#238](https://github.com/igortatarynovich/HostFlow/pull/238)).  
 - Forms: Sprint 1–6 / Builder MVP + Phase C C1–C6 ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)) — **Foundation ✅** (production serve→execute bound). P3–P5 stay locked.  
-- **Entity Workspace:** Phase D D1–D9 brief-complete ([Services order cutover](../tasks/entity-workspace-d9-services-order-cutover.md) · [#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete** vs original Entity Shell chrome-only ([audit](../gates/platform-scope-completeness-audit.md)). Capability Host Contract is program **COMPLETE** ([record](../gates/workspace-capability-platform-complete.md) · [#274](https://github.com/igortatarynovich/HostFlow/pull/274)): both hosts at runtime; G4 PASS on Recruitment Application; Candidate is the Entity bind, not G4. Product Track = [Documents E2](../tasks/documents-platform-e2-public-contract.md) (feat; named Public Contract Gate). D2 `documents` catalog unlock = E2 (consumers unbound). Foundation 🔄 ([A2-F7](../gates/platform-governance-review-a2.md)). Do not mark Entity Complete without Documents Foundation and remaining migrate-on-touch.  
-- **Documents:** Phase E E2 ([public contract / D2 catalog enable](../tasks/documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat; named Public Contract Gate). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). Foundation stays 🔄 ([A2-F8](../gates/platform-governance-review-a2.md)). D2 `documents` catalog unlock is E2; D3–D9 unbound. Not OCR / not Hub UI rebuild.  
+- **Entity Workspace:** Phase D D1–D9 brief-complete ([Services order cutover](../tasks/entity-workspace-d9-services-order-cutover.md) · [#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete** vs original Entity Shell chrome-only ([audit](../gates/platform-scope-completeness-audit.md)). Capability Host Contract is program **COMPLETE** ([record](../gates/workspace-capability-platform-complete.md) · [#274](https://github.com/igortatarynovich/HostFlow/pull/274)): both hosts at runtime; G4 PASS on Recruitment Application; Candidate is the Entity bind, not G4. Product Track = [Documents E3](../tasks/documents-platform-e3-first-consumer-bind.md) (brief; feat locked). D2 `documents` catalog unlock = E2 ✅; first consumer bind = E3 (HR employee). Foundation 🔄 ([A2-F7](../gates/platform-governance-review-a2.md)). Do not mark Entity Complete without Documents Foundation and remaining migrate-on-touch.  
+- **Documents:** Phase E E3 ([first consumer bind + Document Link SoT](../tasks/documents-platform-e3-first-consumer-bind.md); feat locked). E2 ✅ ([#276](https://github.com/igortatarynovich/HostFlow/pull/276)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). Foundation stays 🔄 ([A2-F8](../gates/platform-governance-review-a2.md)). D2 `documents` catalog unlock is E2; first consumer bind is E3 (HR employee). D3–D7 / D9 unbound. Not OCR / not Hub UI rebuild / not G4 / not Foundation ✅.  
 - **Workspace Capability Platform:** not a new Catalog platform row. Capability Host Contract between hosts and capability owners. Does not collapse Entity and Application. G1–G5 [COMPLETE](../gates/workspace-capability-platform-complete.md). Does not claim Entity Foundation ✅.
 
 AI remains sequenced later; it appears in the matrix when it becomes a platform SoT under active delivery.
@@ -69,5 +69,6 @@ AI remains sequenced later; it appears in the matrix when it becomes a platform 
 - WCP COMPLETE: [workspace-capability-platform-complete.md](../gates/workspace-capability-platform-complete.md)  
 - Scope audit: [platform-scope-completeness-audit.md](../gates/platform-scope-completeness-audit.md)  
 - Workspace Capability Platform Completion: [workspace-capability-platform-completion.md](../tasks/workspace-capability-platform-completion.md)  
+- Documents Platform E3: [documents-platform-e3-first-consumer-bind.md](../tasks/documents-platform-e3-first-consumer-bind.md)  
 - Host runtime-equivalence: [workspace-capability-host-runtime-equivalence.md](../tasks/workspace-capability-host-runtime-equivalence.md)  
 - Communication Foundation: [communication-platform-foundation.md](communication-platform-foundation.md)  

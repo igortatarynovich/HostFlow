@@ -5,7 +5,7 @@
 **Contract id:** `documents.public_contract.v1`  
 **Adapter id:** `documents.hub_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#documents)  
-**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md)  
+**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) (feat locked)  
 **Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-014`](ADR-014-document-hub-access-model.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -15,7 +15,7 @@
 Documents владеет **Document Hub** (registry, versions, types, required sets, verification, links).  
 Candidate / HR dossier pages, Shell `documents` nav, and Entity Workspace D2 `documents` **consumer bind** — **не** Documents SoT.
 
-Storage bridge: existing `document_hub_delivery_contract.py` façade over `modules.documents` (candidate-centric). **Not** ADR-009 Document Link SoT. Link cutover is a later E slice.
+Storage bridge: existing `document_hub_delivery_contract.py` façade over `modules.documents` (candidate-centric after E2). **Document Link SoT for the first consumer** is [E3](../tasks/documents-platform-e3-first-consumer-bind.md) (HR employee / `document_entity_links`). `documents.candidate_id` remains a legacy bridge until a later Candidate bind.
 
 ---
 
@@ -61,13 +61,13 @@ Catalog already publishes `document.created` / `linked` / `verified` / `expired`
 |-------|--------|
 | **Implementation (E2)** | Existing `backend/app/services/document_hub_delivery_contract.py` bound to the ids above |
 | **Second Adapter** | Forbidden |
-| **Document Link SoT** | Not this slice |
+| **Document Link SoT** | [E3](../tasks/documents-platform-e3-first-consumer-bind.md) — first consumer (HR employee) via `document_entity_links`; not this E2 seal |
 
 ---
 
 ## D2 catalog unlock (not consumer cutover)
 
-E2 marks D2 `documents` as an **enabled platform slot**. D3–D9 consumer slot lists **omit** `documents` until a named later E slice. Catalog unlock ≠ bind. Shell `EntityWorkspaceSectionId` `documents` ≠ this slot.
+E2 marks D2 `documents` as an **enabled platform slot**. First consumer bind is [E3](../tasks/documents-platform-e3-first-consumer-bind.md) (HR employee). D3–D7 / D9 stay unbound. Catalog unlock ≠ bind. Shell `EntityWorkspaceSectionId` `documents` ≠ this slot.
 
 ---
 
@@ -79,4 +79,5 @@ E2 marks D2 `documents` as an **enabled platform slot**. D3–D9 consumer slot l
 
 ## History
 
+- 2026-08-22: E3 brief — first consumer bind / Document Link SoT named; this contract stays v1 (no id bump). Entity-link resolve is E3 feat.
 - 2026-08-22: E2 feat — sealed `documents.public_contract.v1` / `documents.hub_adapter_v1`; D2 `documents` catalog enabled; D3–D9 unbound; Foundation stays 🔄. After WCP COMPLETE [#274](https://github.com/igortatarynovich/HostFlow/pull/274) merge `84a2ea94`.
