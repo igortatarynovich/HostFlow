@@ -1,9 +1,9 @@
 # Documents Platform E5 — Candidate Storage Bridge Retirement (Phase E)
 
-**Status:** **IN PROGRESS** (docs — this brief); feat locked until this brief merges  
+**Status:** **IN PROGRESS** (feat)  
 **Phase class:** platform  
-**Branch (docs):** `docs/documents-platform-e5-candidate-storage-bridge`  
-**Branch (code):** `feat/documents-platform-e5-candidate-storage-bridge` (locked until this brief merges)  
+**Branch (docs):** `docs/documents-platform-e5-candidate-storage-bridge` ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)  
+**Branch (code):** `feat/documents-platform-e5-candidate-storage-bridge`  
 **Parents:** [Documents Platform E4](documents-platform-e4-candidate-document-link.md) [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · [E3](documents-platform-e3-first-consumer-bind.md) ✅ · [E2](documents-platform-e2-public-contract.md) ✅ · [E1](documents-platform-e1-contract-seal.md) ✅ · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Workspace Capability Platform COMPLETE](../gates/workspace-capability-platform-complete.md) [#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [ADR-025](../architecture/ADR-025-standard-adapter-boundary.md) · [Capability Contract](../architecture/capability-contract.md) · [Documents Public Contract](../architecture/documents-public-contract.md) · [Document Hub scope](../../document-hub/module-scope.md) · [A2-F8](../gates/platform-governance-review-a2.md)
 
 > E4 bound D2 `documents` on Candidate through Capability Host + Document Link ([#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913`). Consume path is Hub `document_entity_links` (`candidate` / `primary`). `documents.candidate_id` stayed a required storage FK. Foundation stayed 🔄.  
@@ -176,7 +176,7 @@ E4 bound D4. **This slice does not bind another consumer.**
 | **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5` |
 | **E3** | First consumer bind (HR employee) + Document Link SoT | ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) · merge `cc106a38` |
 | **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913` |
-| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ← **active** (this brief; feat locked) |
+| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ← **active** (feat) |
 | **E6+** | Remaining consumers / lifecycle | locked until E5 feat |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) stay **horizon**. Documents Foundation stays 🔄.
@@ -298,4 +298,5 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-22: E5 feat opened — drop `documents.candidate_id`; Hub-only Candidate relationship; named Candidate Storage Bridge Gate. Brief ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281) (`0a40b5cd`). D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.
 - 2026-08-22: E5 brief opened — Candidate storage-bridge retirement (`candidate_id` drop). Product Track → this brief (feat locked). E4 ✅ [#280](https://github.com/igortatarynovich/HostFlow/pull/280) (`0af74913`). D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.

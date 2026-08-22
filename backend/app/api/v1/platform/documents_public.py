@@ -1,6 +1,6 @@
-"""Documents public contract v1 — entity-link resolve (E3 + E4).
+"""Documents public contract v1 — entity-link resolve (E3 + E4 + E5).
 
-Same adapter id as E2. Not a second Adapter. Not a candidate_id list.
+Same adapter id as E2. Not a second Adapter. Not a candidate_id column list.
 """
 
 from __future__ import annotations

@@ -118,7 +118,7 @@ Passport → Manifest (unchanged) → Public Contract
 
 | Artifact | Path |
 |----------|------|
-| E1 / E2 / E3 / E4 / E5 tasks | [`../tasks/documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [`documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) (feat locked) |
+| E1 / E2 / E3 / E4 / E5 tasks | [`../tasks/documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [`documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) (feat) |
 | Public Contract | [`documents-public-contract.md`](documents-public-contract.md) |
 | Adapter | `backend/app/services/document_hub_delivery_contract.py` (`documents.hub_adapter_v1`) |
 | Manifest keys | [`capability-settings-manifest.md`](capability-settings-manifest.md#documents) — unchanged this slice |

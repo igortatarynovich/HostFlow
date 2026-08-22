@@ -2,13 +2,12 @@
 
 E2 bound public-contract / adapter ids onto this façade. E3 adds
 entity-link resolve for HR employee. E4 adds Candidate primary-link
-resolve on the same adapter. `documents.candidate_id` remains a **legacy
-storage bridge** — not the D2 consume path, and **not** a second Adapter.
+resolve on the same adapter. E5 drops `documents.candidate_id`; Candidate
+relationship SoT is Hub `document_entity_links` only. Not a second Adapter.
 """
 from __future__ import annotations
 
 from typing import Any
-from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +40,7 @@ PUBLIC_OPERATIONS = (
 # E3 first consumer — Document Link SoT.
 E3_LINKED_ENTITY_TYPE = "workforce_employee"
 E3_RELATION_TYPE = "reused_for_hr"
-# E4 Candidate Document Link — persist Hub rows; column stays storage.
+# E4 Candidate Document Link — persist Hub rows; column dropped in E5.
 E4_LINKED_ENTITY_TYPE = "candidate"
 E4_RELATION_TYPE = "primary"
 
@@ -86,7 +85,10 @@ async def list_candidate_documents_via_contract(
     offset: int | None = None,
     active_own_company_id: str | None = None,
 ) -> list[Any]:
-    """Document Hub delivery contract adapter for candidate document reads."""
+    """Internal façade for Candidate-origin rows via Hub primary links.
+
+    Not the D2 consume path (that is ``list_entity_link_documents_via_contract``).
+    """
     return await list_candidate_documents(
         db,
         tenant_id,
@@ -100,63 +102,6 @@ async def list_candidate_documents_via_contract(
     )
 
 
-async def ensure_candidate_primary_document_links(
-    db: AsyncSession,
-    *,
-    tenant_id: str,
-    candidate_id: str,
-) -> None:
-    """Mint Hub `candidate` / `primary` links from the storage FK (E4).
-
-    D2 consume still lists via `document_entity_links`. This is not
-    `list_candidate_documents_via_contract` as the proof path.
-    """
-    tid = str(tenant_id or "").strip()
-    cid = str(candidate_id or "").strip()
-    if not (tid and cid):
-        return
-    doc_ids = [
-        str(row[0])
-        for row in (
-            await db.execute(
-                select(Document.id).where(
-                    Document.tenant_id == tid,
-                    Document.candidate_id == cid,
-                    Document.deleted_at.is_(None),
-                )
-            )
-        ).all()
-        if str(row[0] or "").strip()
-    ]
-    for did in doc_ids:
-        exists = (
-            await db.execute(
-                select(DocumentEntityLink.id).where(
-                    DocumentEntityLink.tenant_id == tid,
-                    DocumentEntityLink.document_id == did,
-                    DocumentEntityLink.linked_entity_type == E4_LINKED_ENTITY_TYPE,
-                    DocumentEntityLink.linked_entity_id == cid,
-                    DocumentEntityLink.relation_type == E4_RELATION_TYPE,
-                )
-            )
-        ).scalar_one_or_none()
-        if exists:
-            continue
-        db.add(
-            DocumentEntityLink(
-                id=str(uuid4()),
-                tenant_id=tid,
-                document_id=did,
-                linked_entity_type=E4_LINKED_ENTITY_TYPE,
-                linked_entity_id=cid,
-                relation_type=E4_RELATION_TYPE,
-                module_key="recruitment",
-            )
-        )
-    if doc_ids:
-        await db.flush()
-
-
 async def list_entity_link_documents_via_contract(
     db: AsyncSession,
     *,
@@ -168,7 +113,7 @@ async def list_entity_link_documents_via_contract(
     """Same `documents.hub_adapter_v1` — entity-link resolve (E3 + E4).
 
     Document Link SoT is Hub table `document_entity_links`.
-    This is not a second Adapter and does not drop `documents.candidate_id`.
+    This is not a second Adapter. E5 dropped `documents.candidate_id`.
     """
     etype = str(linked_entity_type or "").strip()
     eid = str(linked_entity_id or "").strip()
@@ -180,10 +125,6 @@ async def list_entity_link_documents_via_contract(
         raise ValueError(
             "entity-link resolve allows workforce_employee / reused_for_hr "
             "or candidate / primary only"
-        )
-    if etype == E4_LINKED_ENTITY_TYPE and rel == E4_RELATION_TYPE:
-        await ensure_candidate_primary_document_links(
-            db, tenant_id=tid, candidate_id=eid
         )
 
     links = list(

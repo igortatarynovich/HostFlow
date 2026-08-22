@@ -44,7 +44,7 @@ export type DocumentsResolveResult = {
 
 /**
  * Documents owner facade. Transport stays here — hosts must not call
- * `documents.candidate_id` lists or local Candidate/HR documents panels
+ * `documents.candidate_id` lists, a leftover FK, or local Candidate/HR documents panels
  * for the D2 `documents` surface.
  */
 export function documentsResolveTarget(

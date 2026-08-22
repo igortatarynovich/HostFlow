@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS. **Host runtime-equivalence** ← ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)). **Phase E — Documents Platform** ← **active** ([E5](../tasks/documents-platform-e5-candidate-storage-bridge.md); brief; feat locked). E4 ✅ ([#280](https://github.com/igortatarynovich/HostFlow/pull/280)).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS. **Host runtime-equivalence** ← ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)). **Phase E — Documents Platform** ← **active** ([E5](../tasks/documents-platform-e5-candidate-storage-bridge.md); feat). E4 ✅ ([#280](https://github.com/igortatarynovich/HostFlow/pull/280)).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms ✅ → Phase D Entity Workspace (brief-complete) → Workspace Capability Platform Completion → Phase E Documents → …
@@ -218,7 +218,7 @@ Ladder (E4 ✅; E5 brief):
 | **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5` |
 | **E3** | First consumer bind (HR employee) + Document Link SoT | ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) · merge `cc106a38` |
 | **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913` |
-| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | [brief](../tasks/documents-platform-e5-candidate-storage-bridge.md) (feat locked) |
+| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | [brief](../tasks/documents-platform-e5-candidate-storage-bridge.md) (feat) |
 | **E6+** | Remaining consumers / lifecycle | locked until E5 feat |
 
 **Out of E5:** D3 / D5–D7 / D9 `documents` bind · OCR / e-sign / packages / Hub UI rebuild · Forms P3–P5 · Billing Platform · AI · L0 Catalog rewrite · G4 reopen · unbind D8 / D4.

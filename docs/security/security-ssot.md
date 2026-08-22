@@ -68,7 +68,7 @@ Interactive Growth demo (per-tenant sample pack, no shared guest tenant in Wave-
 
 Forms Platform C2+C3 (frozen publication Contract Identity; Builder FormDefinition ↔ Draft only, no Adapter publish): [`threat-models/forms-platform.md`](threat-models/forms-platform.md). Public intake tokens remain [`threat-models/public-links.md`](threat-models/public-links.md).
 
-Documents Platform E3+E4 (authenticated Hub metadata resolve via Document Link, not file download): [`threat-models/documents-platform.md`](threat-models/documents-platform.md). Uploads / MIME / storage ACL remain [`threat-models/document-uploads.md`](threat-models/document-uploads.md).
+Documents Platform E3–E5 (authenticated Hub metadata resolve via Document Link, not file download; `candidate_id` column dropped): [`threat-models/documents-platform.md`](threat-models/documents-platform.md). Uploads / MIME / storage ACL remain [`threat-models/document-uploads.md`](threat-models/document-uploads.md).
 
 ---
 
@@ -193,7 +193,7 @@ Handoff — **контролируемая** видимость между те�
 - MIME/extension validation, лимиты размера, antivirus — по политике upload (§9).
 - PDF/image sanitization — по мере внедрения; до этого — минимизация поверхности (запрет SVG/HTML как «документ»).
 
-Детали: `docs/specs/architecture/object_storage.md`, `threat-models/document-uploads.md`, `threat-models/public-links.md`, `threat-models/documents-platform.md` (E3+E4 metadata resolve, not bytes).
+Детали: `docs/specs/architecture/object_storage.md`, `threat-models/document-uploads.md`, `threat-models/public-links.md`, `threat-models/documents-platform.md` (E3–E5 metadata resolve, not bytes).
 
 ---
 

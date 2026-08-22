@@ -23,6 +23,6 @@
 | [acquisition-source-diagnostics.md](./acquisition-source-diagnostics.md) | Source Diagnostics PR1–PR9: read-only Lead + Activity casework, filters, duplicate, Mapping Health, drift alerts/summary, export, Replay via Leads process; SPA-only drift notify |
 | [rbac-trust-roles.md](./rbac-trust-roles.md) | ADR-036 four trust roles: ceilings, matrix PATCH, `access_context`, legacy job-title/portal aliases, inventory lint |
 | [forms-platform.md](./forms-platform.md) | Forms Platform C2–C5: frozen identity; Builder Draft only; Runtime Model; Execution via Shared Intake; no draft-as-publication; no second submit engine |
-| [documents-platform.md](./documents-platform.md) | Documents Platform E3+E4 resolve: authenticated Hub metadata + Document Link; tenant bind; closed entity/relation types (`workforce_employee` / `reused_for_hr` and `candidate` / `primary`); no file bytes / signed URL / second Adapter |
+| [documents-platform.md](./documents-platform.md) | Documents Platform E3–E5 resolve: authenticated Hub metadata + Document Link; `candidate_id` column dropped; tenant bind; closed entity/relation types (`workforce_employee` / `reused_for_hr` and `candidate` / `primary`); no file bytes / signed URL / second Adapter |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).
