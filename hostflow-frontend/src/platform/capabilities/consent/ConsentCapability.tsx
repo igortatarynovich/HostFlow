@@ -1,60 +1,59 @@
 import { useCallback, useEffect, useState } from 'react'
-import {
-  getLead,
-  markLeadRodoSourceProvided,
-  sendLeadRodoCompliance,
-} from '../../../api/client'
-import type { Lead } from '../../../api/types'
 import { Button } from '../../../components/ui/Button'
 import { Checkbox } from '../../../components/ui/Checkbox'
 import { useToast } from '../../../components/Toast'
 import { useI18n } from '../../../i18n'
-import { leadEmailPolicyBlocked, leadRodoNoticeStatus, leadRodoSatisfied } from '../../../utils/intakeResolution'
 import type { WorkspaceCapabilityRenderContext } from '../../workspace-capability/renderContext'
+import {
+  consentSubjectKey,
+  loadConsent,
+  markConsentCoveredAtSource,
+  sendConsentNotice,
+  type ConsentView,
+} from './consentOwner'
 
 /**
  * Shared Consent widget. Owner = Compliance. Host only places.
  * Policy action remains `lead_rodo_v1` — capability_id is `consent`, never `rodo`.
  * Boolean acknowledgement must use CHECKBOX_V1 — not a local input.
+ * Lead transport is the Compliance owner facade — not imported here.
  */
-export function ConsentCapability({ application, onRefresh }: WorkspaceCapabilityRenderContext) {
+export function ConsentCapability(ctx: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()
   const { notify } = useToast()
-  const leadId = String(application.transport_lead_id || '').trim()
-  const [lead, setLead] = useState<Lead | null>(null)
-  const [loading, setLoading] = useState(Boolean(leadId))
+  const { onRefresh } = ctx
+  const subjectKey = consentSubjectKey(ctx)
+  const [view, setView] = useState<ConsentView | null>(null)
+  const [loading, setLoading] = useState(Boolean(subjectKey))
   const [busy, setBusy] = useState(false)
   const [sourceAcknowledged, setSourceAcknowledged] = useState(false)
 
   const load = useCallback(async () => {
-    if (!leadId) {
-      setLead(null)
+    if (!subjectKey) {
+      setView({ available: false, satisfied: false, status: null, policyBlocked: false })
       setLoading(false)
       return
     }
     setLoading(true)
     try {
-      setLead(await getLead(leadId))
+      setView(await loadConsent(ctx))
     } catch {
-      setLead(null)
+      setView({ available: false, satisfied: false, status: null, policyBlocked: false })
     } finally {
       setLoading(false)
     }
-  }, [leadId])
+    // subjectKey is the owner-resolved transport id; avoid depending on ctx identity.
+  }, [subjectKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     void load()
   }, [load])
 
-  const satisfied = leadRodoSatisfied(lead)
-  const status = leadRodoNoticeStatus(lead)
-  const policyBlocked = leadEmailPolicyBlocked(lead)
-
   const sendNotice = async () => {
-    if (!leadId || busy) return
+    if (!subjectKey || busy) return
     setBusy(true)
     try {
-      await sendLeadRodoCompliance(leadId)
+      await sendConsentNotice(ctx)
       await load()
       onRefresh()
       notify({
@@ -70,10 +69,10 @@ export function ConsentCapability({ application, onRefresh }: WorkspaceCapabilit
   }
 
   const markCovered = async () => {
-    if (!leadId || busy || !sourceAcknowledged) return
+    if (!subjectKey || busy || !sourceAcknowledged) return
     setBusy(true)
     try {
-      await markLeadRodoSourceProvided(leadId)
+      await markConsentCoveredAtSource(ctx)
       setSourceAcknowledged(false)
       await load()
       onRefresh()
@@ -91,23 +90,28 @@ export function ConsentCapability({ application, onRefresh }: WorkspaceCapabilit
     }
   }
 
+  const available = Boolean(view?.available)
+  const satisfied = Boolean(view?.satisfied)
+  const status = view?.status
+  const policyBlocked = Boolean(view?.policyBlocked)
+
   return (
     <section className="space-y-3" data-capability-id="consent" data-widget-class="consent">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {t('app.leads.intake_workspace.decision_rail.rodo_required_title', { defaultValue: 'Согласие / уведомление' })}
       </p>
       {loading ? <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p> : null}
-      {!leadId ? (
+      {!subjectKey ? (
         <p className="text-sm text-slate-500">Нет intake-контекста для согласия на этом отклике.</p>
       ) : null}
-      {!loading && lead && satisfied ? (
+      {!loading && available && satisfied ? (
         <p className="text-sm font-medium text-emerald-800">
           {t('app.leads.intake_workspace.decision_rail.rodo_ok_hint', {
             defaultValue: 'Notice is satisfied for this intake.',
           })}
         </p>
       ) : null}
-      {!loading && lead && !satisfied ? (
+      {!loading && available && !satisfied ? (
         <>
           <p className="text-sm text-slate-600">
             {status === 'pending_channel'

@@ -1,6 +1,6 @@
 # Workspace Capability Platform — Goal Completion G1–G5 close-out
 
-**Status:** **PASS_WITH_CONSTRAINTS** (2026-08-21)  
+**Status:** **PASS_WITH_CONSTRAINTS** (2026-08-21) — historical review of #273; program status **superseded** by [COMPLETE](workspace-capability-platform-complete.md)  
 **Decision ID:** `WCP_G1_G5_PASS_WITH_CONSTRAINTS`  
 **Type:** Goal Completion Gate application (not a product feature)  
 **Parents:** [Goal Completion Gate](goal-completion-gate.md) · [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md) · [Host runtime-equivalence slice](../tasks/workspace-capability-host-runtime-equivalence.md) · [Scope Completeness Audit](platform-scope-completeness-audit.md)  
@@ -8,7 +8,8 @@
 
 > This is the Goal Completion review of [#273](https://github.com/igortatarynovich/HostFlow/pull/273).  
 > It is **not** program COMPLETE. It does **not** unlock Documents E2 feat.  
-> ListWorkspace Orchestration is a **separate** previous slice and is not this close-out.
+> ListWorkspace Orchestration is a **separate** previous slice and is not this close-out.  
+> **2026-08-21:** program status superseded by [final PASS / COMPLETE](workspace-capability-platform-complete.md) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274). Keep this file as the #273 G1 residual record.
 
 ---
 
@@ -96,3 +97,4 @@ Not a new proof-screen. Not a new widget. Not ListWorkspace.
 ## History
 
 - 2026-08-21: Goal Completion review of [#273](https://github.com/igortatarynovich/HostFlow/pull/273) @ `18f2a7aa`. Outcome **PASS_WITH_CONSTRAINTS**. G4 PASS. G1 not full PASS. E2 remains locked.
+- 2026-08-21: Program status superseded by [COMPLETE](workspace-capability-platform-complete.md) after host runtime-equivalence on [#274](https://github.com/igortatarynovich/HostFlow/pull/274). This file stays the #273 review.

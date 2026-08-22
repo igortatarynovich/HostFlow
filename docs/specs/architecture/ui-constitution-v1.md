@@ -283,15 +283,15 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 | **1** | Universal Data Table + Selection Model + Detail Rail |
 | **2** | Universal Entity Workspace + Context Rail (D1 chrome) |
 | 2a | Platform surfaces on one entity (D2: overview / timeline / communication / forms / documents / context-rail) — brief-complete, **goal-incomplete** |
-| **2b** | [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md): G4 PASS on Recruitment Application. G1–G5 [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). Program **not COMPLETE**. |
-| **2b-eq ← active** | [Host runtime-equivalence](../tasks/workspace-capability-host-runtime-equivalence.md): Entity Workspace implements the same host contract at runtime; Notes/Consent hide transport. |
+| **2b** | [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md): G4 PASS on Recruitment Application. Program **COMPLETE** ([record](../gates/workspace-capability-platform-complete.md)). |
+| **2b-eq ✅** | [Host runtime-equivalence](../tasks/workspace-capability-host-runtime-equivalence.md): Entity Workspace implements the same host contract at runtime; Notes/Consent hide transport. |
 | **3** | Application Workspace implements the **same** host contract — it does **not** become Entity Workspace |
 | 4–5 | Process + Collection completion |
 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
-Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`workspace-capability-host-runtime-equivalence.md`](../tasks/workspace-capability-host-runtime-equivalence.md). Close-out: [`workspace-capability-platform-g1-g5-closeout.md`](../gates/workspace-capability-platform-g1-g5-closeout.md).
+Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
 
-**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while 2b/2b-eq is the active contract. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Do not start Documents E2 until 2b program COMPLETE. ListWorkspace is a separate collection slice.
+**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E2 feat is **unlocked** after 2b program COMPLETE. ListWorkspace is a separate collection slice.
 
 ---
 
@@ -314,7 +314,8 @@ If any answer fails — stop and fix design before coding.
 | Document | Role |
 |----------|------|
 | [`applications-operating-model.md`](applications-operating-model.md) | L1 — operational work model |
-| [`../tasks/workspace-capability-platform-completion.md`](../tasks/workspace-capability-platform-completion.md) | Capability Host Contract (Entity + Application hosts) — Product Track |
+| [`../tasks/workspace-capability-platform-completion.md`](../tasks/workspace-capability-platform-completion.md) | Capability Host Contract (Entity + Application hosts) |
+| [`../gates/workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md) | WCP program COMPLETE |
 | [`../gates/goal-completion-gate.md`](../gates/goal-completion-gate.md) | Phase close: original goal vs substituted brief |
 | [`../gates/platform-scope-completeness-audit.md`](../gates/platform-scope-completeness-audit.md) | Closed-phase completeness vs residual capability |
 | [`ADR-010`](ADR-010-unified-resource-list-shell.md) | Collection Workspace |
@@ -335,6 +336,7 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
+| 2026-08-21 | 2b COMPLETE (#274); G4 PASS; 2b-eq host runtime-equivalence done; E2 feat unlocked |
 | 2026-08-21 | 2b G1–G5 PASS_WITH_CONSTRAINTS (#273); G4 PASS; 2b-eq host runtime-equivalence active; E2 locked until 2b COMPLETE |
 | 2026-08-20 | §10 2b = Workspace Capability Platform (host places, owners own semantics; Entity ≠ Application); proof = Recruitment Application; D1–D9 brief-complete / goal-incomplete; Documents stay Phase E |
 | 2026-07-09 | Platform Canon + Interaction Rules layer; §10 roadmap |

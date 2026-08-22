@@ -105,7 +105,20 @@ export {
   PROOF_HOST_ID,
   RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS,
 } from './proof'
+export {
+  CANDIDATE_ENTITY_HOST_CONTRIBUTIONS,
+  ENTITY_EQUIVALENCE_CONSUMER_ID,
+  ENTITY_EQUIVALENCE_HOST_ID,
+} from './candidateEntity'
+
+export type {
+  WorkspaceCapabilityRenderContext,
+  WorkspaceEntityRef,
+  RecruitmentApplicationStage,
+} from './renderContext'
 
 export { ApplicationWorkspaceCapabilityHost } from './ApplicationWorkspaceCapabilityHost'
+export { EntityWorkspaceCapabilityHost } from './EntityWorkspaceCapabilityHost'
 export { WORKSPACE_CAPABILITY_RENDERERS } from './renderers'
+export { groupContributionsByRegion } from './placement'
 

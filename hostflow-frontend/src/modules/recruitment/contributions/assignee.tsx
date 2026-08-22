@@ -13,7 +13,7 @@ export function RecruitmentAssigneeContribution({
 }: WorkspaceCapabilityRenderContext) {
   const { notify } = useToast()
   const { t } = useI18n()
-  const [assigneeId, setAssigneeId] = useState(application.assignee_id || '')
+  const [assigneeId, setAssigneeId] = useState(application?.assignee_id || '')
   const [busy, setBusy] = useState(false)
 
   return (
@@ -32,6 +32,7 @@ export function RecruitmentAssigneeContribution({
           disabled={!assigneeId.trim() || patching || busy}
           onClick={() => {
             void (async () => {
+              if (!application) return
               setBusy(true)
               try {
                 await assignRecruitmentApplication(application.id, { assignee_id: assigneeId.trim() })
