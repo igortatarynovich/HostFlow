@@ -30,6 +30,8 @@
 
 Матрица из `security-ssot.md` §17C; фикстуры с двойным расширением и неверным MIME.
 
+Authenticated Hub **metadata** resolve is [`documents-platform.md`](./documents-platform.md), not this upload/ACL surface.
+
 ## Связанные спеки
 
 - `docs/specs/architecture/object_storage.md`

@@ -119,6 +119,16 @@ export type {
 
 export { ApplicationWorkspaceCapabilityHost } from './ApplicationWorkspaceCapabilityHost'
 export { EntityWorkspaceCapabilityHost } from './EntityWorkspaceCapabilityHost'
+export {
+  CANDIDATE_ENTITY_HOST_CONTRIBUTIONS,
+  ENTITY_EQUIVALENCE_CONSUMER_ID,
+  ENTITY_EQUIVALENCE_HOST_ID,
+} from './candidateEntity'
+export {
+  HR_EMPLOYEE_ENTITY_HOST_CONTRIBUTIONS,
+  HR_EMPLOYEE_ENTITY_CONSUMER_ID,
+  HR_EMPLOYEE_ENTITY_HOST_ID,
+} from './hrEmployeeEntity'
 export { WORKSPACE_CAPABILITY_RENDERERS } from './renderers'
 export { groupContributionsByRegion } from './placement'
 

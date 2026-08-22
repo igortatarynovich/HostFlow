@@ -2,7 +2,7 @@
 
 `documents.public_contract.v1` + `documents.hub_adapter_v1` bound.
 D2 `documents` catalog enabled; reserved empty.
-D3–D9 consumers still omit `documents`.
+D3–D7 / D9 consumers still omit `documents` (D8 bind is E3).
 Shell nav ≠ D2 slot. Documents Foundation stays 🔄.
 No OCR / e-sign / packages product. No Catalog shape rewrite.
 E1 and D1–D9 gates remain. No Postgres required.
@@ -67,13 +67,12 @@ _DELIVERY = (
     / "document_hub_delivery_contract.py"
 )
 
-_CONSUMERS = (
+_UNBOUND_CONSUMERS = (
     ("salesInquiryConsumer.ts", "SALES_INQUIRY_COMPOSITION_SLOTS"),
     ("candidateConsumer.ts", "CANDIDATE_COMPOSITION_SLOTS"),
     ("clientConsumer.ts", "CLIENT_COMPOSITION_SLOTS"),
     ("salesOrderConsumer.ts", "SALES_ORDER_COMPOSITION_SLOTS"),
     ("vacancyConsumer.ts", "VACANCY_COMPOSITION_SLOTS"),
-    ("hrEmployeeConsumer.ts", "HR_EMPLOYEE_COMPOSITION_SLOTS"),
     ("servicesOrderConsumer.ts", "SERVICES_ORDER_COMPOSITION_SLOTS"),
 )
 
@@ -152,11 +151,11 @@ def test_e2_d2_documents_catalog_enabled_reserved_empty() -> None:
     assert re.search(r"documents:\s*'platform'", src)
 
 
-def test_e2_d3_d9_consumers_still_omit_documents() -> None:
+def test_e2_d3_d7_d9_consumers_still_omit_documents() -> None:
     consumer_dir = (
         _REPO_ROOT / "hostflow-frontend" / "src" / "platform" / "entity-workspace"
     )
-    for filename, const_name in _CONSUMERS:
+    for filename, const_name in _UNBOUND_CONSUMERS:
         src = (consumer_dir / filename).read_text(encoding="utf-8")
         slots = _ts_string_array(src, const_name)
         assert "documents" not in slots, filename

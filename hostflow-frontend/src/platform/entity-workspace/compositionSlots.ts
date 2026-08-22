@@ -3,7 +3,7 @@
  *
  * Distinct from Shell `EntityWorkspaceSectionId` (adapter navigation).
  * Do not collapse the two. `documents` is an enabled platform slot (E2);
- * D3–D9 consumers still omit it until a named later E slice.
+ * E3 binds it on HR employee (D8). D3–D7 / D9 consumers still omit it.
  * Do not invent new slot kinds without amending the D2 brief.
  */
 

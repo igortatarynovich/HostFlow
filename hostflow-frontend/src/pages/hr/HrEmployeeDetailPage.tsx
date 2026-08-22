@@ -31,6 +31,8 @@ import {
   HR_EMPLOYEE_COMPOSITION_SLOTS,
   assertHrEmployeeCompositionSlots,
 } from '../../platform/entity-workspace'
+import { EntityWorkspaceCapabilityHost } from '../../platform/workspace-capability/EntityWorkspaceCapabilityHost'
+import { HR_EMPLOYEE_ENTITY_HOST_CONTRIBUTIONS } from '../../platform/workspace-capability/hrEmployeeEntity'
 
 const PAYROLL_STATUSES = [
   'missing_data',
@@ -398,6 +400,16 @@ export default function HrEmployeeDetailPage() {
                   forms: () => <HrEmployeeFormsSlot />,
                 }}
               />
+            ) : null}
+            {isCutover ? (
+              <EntityWorkspaceCapabilityHost
+                entity={{ resourceType: 'workforce_employee', resourceId: employeeId }}
+                contributions={HR_EMPLOYEE_ENTITY_HOST_CONTRIBUTIONS}
+                onClose={() => undefined}
+                onRefresh={() => void refreshProfile()}
+              >
+                {(placed) => <div data-host-region="platform_slot">{placed.platform_slot}</div>}
+              </EntityWorkspaceCapabilityHost>
             ) : null}
             {isCutover ? (
               <div data-entity-workspace-slot="timeline">

@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](../gates/goal-completion-gate.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-22:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** vs original D ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276)). **Workspace Capability Platform Completion** [COMPLETE](../gates/workspace-capability-platform-complete.md) (**PASS**) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); G4 PASS (Recruitment Application) — **not** the Documents proof. Intermediate #273: [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). **Product Track:** [Documents Platform E3](documents-platform-e3-first-consumer-bind.md) — brief; feat locked; first consumer = HR employee + Document Link SoT. Catalog unlock ≠ mass bind. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Entity Workspace ≠ Application Workspace. Documents Foundation stays 🔄. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
+> **2026-08-22:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** vs original D ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276)). **Workspace Capability Platform Completion** [COMPLETE](../gates/workspace-capability-platform-complete.md) (**PASS**) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); G4 PASS (Recruitment Application) — **not** the Documents proof. Intermediate #273: [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). **Product Track:** [Documents Platform E3](documents-platform-e3-first-consumer-bind.md) — feat; named First Consumer Bind Gate; first consumer = HR employee + Document Link SoT. Catalog unlock ≠ mass bind. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Entity Workspace ≠ Application Workspace. Documents Foundation stays 🔄. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
 > Communication **C2.4 frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Documents Platform E3** First consumer bind + Document Link SoT — [brief](documents-platform-e3-first-consumer-bind.md); feat locked; first consumer = HR employee; D3–D7 / D9 stay unbound | Almost all capacity |
+| **Product** | **Documents Platform E3** First consumer bind + Document Link SoT — [brief](documents-platform-e3-first-consumer-bind.md); feat; first consumer = HR employee; D3–D7 / D9 stay unbound | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -66,7 +66,8 @@
 - **Workspace Capability Platform Completion** ← **COMPLETE** ([PASS](../gates/workspace-capability-platform-complete.md) [#274](https://github.com/igortatarynovich/HostFlow/pull/274)) — intermediate [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md) [#273](https://github.com/igortatarynovich/HostFlow/pull/273); G4 PASS; [brief](workspace-capability-platform-completion.md)  
 - **Workspace Capability host runtime-equivalence** ← ✅ [#274](https://github.com/igortatarynovich/HostFlow/pull/274) — [brief](workspace-capability-host-runtime-equivalence.md); second host + Notes/Consent owner boundaries  
 - **Documents Platform E2 — Public contract / D2 catalog enable** ← ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) — [brief](documents-platform-e2-public-contract.md); catalog unlock ≠ consumer bind; named Public Contract Gate  
-- **Documents Platform E3 — First Consumer Bind + Document Link SoT** ← **active** (brief; feat locked) — [brief](documents-platform-e3-first-consumer-bind.md); first consumer = HR employee; D3–D7 / D9 stay unbound; not OCR / not G4 / not Foundation ✅  
+- **Documents Platform E3 — First Consumer Bind + Document Link SoT** ← **active** (feat) — [brief](documents-platform-e3-first-consumer-bind.md); first consumer = HR employee; D3–D7 / D9 stay unbound; not OCR / not G4 / not Foundation ✅  
+- **Documents Platform E4+** Candidate Document Link bind / remaining consumers / lifecycle ← **locked until E3 feat**  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -118,10 +119,11 @@
 | **29** | **Workspace Capability Platform Completion** | `feat/workspace-capability-platform-completion` | **COMPLETE** [#274](https://github.com/igortatarynovich/HostFlow/pull/274) — G4 PASS; [COMPLETE](../gates/workspace-capability-platform-complete.md) · intermediate [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md) [#273](https://github.com/igortatarynovich/HostFlow/pull/273) · [brief](workspace-capability-platform-completion.md) · [inventory](workspace-capability-legacy-inventory.md) |
 | **29b** | **Workspace Capability host runtime-equivalence** | `feat/workspace-capability-host-runtime-equivalence` | ✅ [#274](https://github.com/igortatarynovich/HostFlow/pull/274) — [brief](workspace-capability-host-runtime-equivalence.md) |
 | **30** | **Documents Platform E2** Public contract / D2 catalog enable | `docs/…` ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271) · `feat/…` ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276) | ✅ named Public Contract Gate · merge `826877b5` |
-| **31** | **Documents Platform E3** First consumer bind + Document Link SoT | `docs/…` then `feat/…` | **active** (brief; feat locked) — [brief](documents-platform-e3-first-consumer-bind.md); first consumer = HR employee |
+| **31** | **Documents Platform E3** First consumer bind + Document Link SoT | `docs/…` ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277) · `feat/…` | **active** (feat) — [brief](documents-platform-e3-first-consumer-bind.md); named First Consumer Bind Gate; first consumer = HR employee |
+| **32** | **Documents Platform E4+** Candidate Document Link / remaining consumers / lifecycle | locked | until E3 feat |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** Documents Platform E3 — [First Consumer Bind + Document Link SoT](documents-platform-e3-first-consumer-bind.md) (brief; feat locked). First consumer = HR employee. E2 ✅. WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E1 ✅. D3–D7 / D9 stay unbound. G4 stays Recruitment Application. Foundation stays 🔄.  
+**Active (Product):** Documents Platform E3 — [First Consumer Bind + Document Link SoT](documents-platform-e3-first-consumer-bind.md) (feat; named First Consumer Bind Gate). First consumer = HR employee. E2 ✅. WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E1 ✅. D3–D7 / D9 stay unbound. G4 stays Recruitment Application. Foundation stays 🔄. E4+ locked until this feat.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -229,7 +231,7 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [documents-platform-e2-public-contract.md](documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276). `documents.public_contract.v1` + D2 catalog unlock. D3–D9 stayed unbound. Merge `826877b5`. Foundation stayed 🔄.
 
-### Documents Platform E3 — First Consumer Bind + Document Link SoT ← **active** (brief; feat locked)
+### Documents Platform E3 — First Consumer Bind + Document Link SoT ← **active** (feat)
 
 [documents-platform-e3-first-consumer-bind.md](documents-platform-e3-first-consumer-bind.md). One named consumer (HR employee / D8) receives documents via D2 `documents` surface + `documents.hub_adapter_v1` + `document_entity_links`. Not Candidate via `candidate_id`. Not G4. Not OCR / e-sign / packages. D3–D7 / D9 stay unbound. Foundation stays 🔄.
 
@@ -312,12 +314,13 @@ Next branch only after:
 **Do not** treat Shell/chrome or D1–D9 named gates as original Entity Platform done; **do not** mix E3 into an E2/WCP PR; **do not** multiply new entity/application screens, rails, or D10 cutovers; **do not** fold Application Workspace into Entity Workspace; **do not** treat E2 catalog unlock as mass D3–D9 `documents` bind; **do not** treat Shell `documents` nav, Vacancy docs section, HR dossier, or Services billing tab as the D2 `documents` slot; **do not** treat Recruitment Application G4 as the Documents proof; **do not** start OCR / e-sign / packages / Forms P3–P5 / Billing / AI; **do not** drop `documents.candidate_id` in E3; **do not** patch Recruitment RODO/comments as the platform fix; **do not** mix ListWorkspace into this close-out.  
 **Do** apply [Goal Completion Gate](../gates/goal-completion-gate.md) before marking a future platform phase COMPLETE.  
 **Do** require `**Phase class:** platform` + [Original Goal → Completion Proof](../gates/goal-completion-gate.md) on every new platform phase brief (problem to permanently remove + named consumer — not a deliverables list).  
-**Do** amend this queue when switching Product Active (this revision: live = Documents Platform E3 brief; feat locked).
+**Do** amend this queue when switching Product Active (this revision: live = Documents Platform E3 feat).
 
 ---
 
 ## 8. History
 
+- 2026-08-22: E3 feat opened — D8 bind + entity-link resolve on `documents.hub_adapter_v1`; named First Consumer Bind Gate. Product Track stays [Documents Platform E3](documents-platform-e3-first-consumer-bind.md). E4+ locked. Foundation stays 🔄.
 - 2026-08-22: E3 brief opened — first consumer bind = HR employee + Document Link SoT. Product Track → [Documents Platform E3](documents-platform-e3-first-consumer-bind.md) (feat locked). E2 ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276) (`826877b5`). G4 stays Recruitment Application. Foundation stays 🔄.
 - 2026-08-22: E2 feat — `documents.public_contract.v1` / `documents.hub_adapter_v1`; D2 `documents` catalog enabled; D3–D9 unbound; named Public Contract Gate. Foundation stays 🔄. After [#273](https://github.com/igortatarynovich/HostFlow/pull/273)/[#274](https://github.com/igortatarynovich/HostFlow/pull/274) merge `84a2ea94`.
 - 2026-08-21: WCP program **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)). G1 PASS. Product Track → [Documents Platform E2](documents-platform-e2-public-contract.md) (feat unlocked, not started). G4 remains Recruitment Application.

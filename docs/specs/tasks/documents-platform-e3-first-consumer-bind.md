@@ -1,9 +1,9 @@
 # Documents Platform E3 — First Consumer Bind + Document Link SoT (Phase E)
 
-**Status:** **IN PROGRESS** (docs — this brief); feat locked until this brief merges  
+**Status:** **IN PROGRESS** (feat)  
 **Phase class:** platform  
-**Branch (docs):** `docs/documents-platform-e3-first-consumer-bind`  
-**Branch (code):** `feat/documents-platform-e3-first-consumer-bind` (locked until this brief merges)  
+**Branch (docs):** `docs/documents-platform-e3-first-consumer-bind` ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)  
+**Branch (code):** `feat/documents-platform-e3-first-consumer-bind`  
 **Parents:** [Documents Platform E2](documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · [E1](documents-platform-e1-contract-seal.md) ✅ · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [D8 HR Employee Cutover](entity-workspace-d8-hr-employee-cutover.md) ✅ · [Workspace Capability Platform COMPLETE](../gates/workspace-capability-platform-complete.md) [#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [ADR-025](../architecture/ADR-025-standard-adapter-boundary.md) · [Capability Contract](../architecture/capability-contract.md) · [Documents Public Contract](../architecture/documents-public-contract.md) · [Document Hub scope](../../document-hub/module-scope.md) · [A2-F8](../gates/platform-governance-review-a2.md)
 
 > E2 sealed `documents.public_contract.v1` / `documents.hub_adapter_v1` and enabled the D2 `documents` **catalog** slot ([#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5`). D3–D9 stayed unbound. Foundation stayed 🔄.  
@@ -187,7 +187,7 @@ E2 already enabled the catalog slot. **This slice binds it once.**
 |-------|--------|--------|
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · merge `f37deff1` |
 | **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5` |
-| **E3** | First consumer bind (HR employee) + Document Link SoT | ← **active** (this brief; feat locked) |
+| **E3** | First consumer bind (HR employee) + Document Link SoT | ← **active** (this feat) |
 | **E4+** | Candidate Document Link bind / remaining consumers / lifecycle | locked until E3 feat |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) stay **horizon**. Documents Foundation stays 🔄.
@@ -199,9 +199,9 @@ Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation
 1. This brief — consumer decision + Original Goal → Completion Proof.  
 2. Close **Documents Platform E2** as **COMPLETE** after [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) (`826877b5`).  
 3. Point Product Track / queue / roadmap / AGENTS / maturity / Hub scope / D2 / D8 here.  
-4. Feat locked until this brief merges.
+4. Feat follows this brief.
 
-## In scope (feat PR — after this brief)
+## In scope (feat PR — this)
 
 1. Bind D8 `documents` through the Capability Host contribution / D2 slot contract.  
 2. Extend `documents.hub_adapter_v1` with entity-link resolve for `workforce_employee` / `reused_for_hr` — **no second Adapter**, no contract id bump.  
@@ -276,7 +276,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 - Product Track = this brief; Documents Platform E2 is closed (#276 / `826877b5`).  
 - Operators / agents cannot treat catalog enable, HR dossier, Shell `documents` nav, Candidate `candidate_id`, or Recruitment Application as this proof.  
-- Feat locked until this brief merges.  
+- Feat is `feat/documents-platform-e3-first-consumer-bind` (brief ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)).  
 - D3–D7 / D9 remain unbound on `documents`; Forms P3–P5, OCR, and Billing stay out of Product Track.  
 - Documents Foundation stays 🔄.
 
@@ -303,10 +303,11 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - [x] Brief sealed with consumer decision / Document Link ownership / D2 live vs enabled / in/out + Original Goal → Completion Proof  
 - [x] Queue + roadmap + AGENTS + maturity pointed at this brief (this docs PR)  
 - [x] E2 marked **COMPLETE** with #276 / `826877b5`  
-- [ ] Feat PR — D8 bind + adapter entity-link resolve (**after** this brief)
+- [ ] Feat PR — D8 bind + adapter entity-link resolve (this branch)
 
 ---
 
 ## History
 
+- 2026-08-22: E3 feat — D8 bind + entity-link resolve on `documents.hub_adapter_v1`; named First Consumer Bind Gate. Brief ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277). Foundation stays 🔄.
 - 2026-08-22: E3 brief opened — first consumer bind = HR employee (D8) + Document Link SoT. Product Track → this brief (feat locked). E2 ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276) (`826877b5`). WCP COMPLETE [#274](https://github.com/igortatarynovich/HostFlow/pull/274). G4 stays Recruitment Application. Foundation stays 🔄.

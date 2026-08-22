@@ -132,6 +132,7 @@ _EXPECTED_CONSUMER_SLOTS = (
     "timeline",
     "communication",
     "forms",
+    "documents",
     "context-rail",
 )
 
@@ -177,7 +178,7 @@ def test_d8_hr_employee_binding_matches_enabled_catalog() -> None:
     src = _CONSUMER_TS.read_text(encoding="utf-8")
     slots = _ts_string_array(src, "HR_EMPLOYEE_COMPOSITION_SLOTS")
     assert slots == _EXPECTED_CONSUMER_SLOTS
-    assert "documents" not in slots
+    assert "documents" in slots
     assert "HR_EMPLOYEE_COMPOSITION_CONSUMER_ID" in src
     assert "hr-employee" in src
     assert "assertHrEmployeeCompositionSlots" in src
@@ -186,7 +187,6 @@ def test_d8_hr_employee_binding_matches_enabled_catalog() -> None:
         "ENTITY_WORKSPACE_ENABLED_SLOT_IDS",
     )
     assert "documents" in enabled
-    assert "documents" not in slots
     assert set(slots).issubset(enabled)
 
 
@@ -197,6 +197,9 @@ def test_d8_page_composes_d2_slots() -> None:
     assert "HR_EMPLOYEE_COMPOSITION_SLOTS" in page
     assert "HrEmployeeCommunicationSlot" in page
     assert "HrEmployeeFormsSlot" in page
+    assert "EntityWorkspaceCapabilityHost" in page
+    assert "HR_EMPLOYEE_ENTITY_HOST_CONTRIBUTIONS" in page
+    assert "HrEmployeeDocumentsSection" not in page
     assert "PageShell" in page
     assert 'data-entity-workspace-slot="overview"' in page
     assert 'data-entity-workspace-slot="timeline"' in page
@@ -215,7 +218,7 @@ def test_d8_page_composes_d2_slots() -> None:
         _REPO_ROOT / "hostflow-frontend" / "src" / "api" / "formsPlatform.ts"
     ).read_text(encoding="utf-8")
     assert "data-entity-workspace-slot" in host
-    assert "documents" not in _ts_string_array(
+    assert "documents" in _ts_string_array(
         _CONSUMER_TS.read_text(encoding="utf-8"),
         "HR_EMPLOYEE_COMPOSITION_SLOTS",
     )
@@ -238,7 +241,7 @@ def test_d8_shell_sections_not_collapsed() -> None:
     assert "contacts" in sections
     assert "contacts" not in consumer
     assert "documents" in sections
-    assert "documents" not in consumer
+    assert "documents" in consumer
     assert sections != consumer
     page = _PAGE.read_text(encoding="utf-8")
     assert "EmployeeDossierView" in page
