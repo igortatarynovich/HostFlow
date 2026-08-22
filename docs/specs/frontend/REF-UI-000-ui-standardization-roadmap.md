@@ -34,7 +34,7 @@ Current Primitives chain questions:
 1. `PRIMITIVES_AUDIT.md` -> What primitive components exist now? ✅
 2. `PRIMITIVES_INVENTORY.md` -> Which variants are unique vs duplicates? ✅
 3. `PRIMITIVES_BENCHMARK.md` -> Badge/Chip: keep, legacy, or deprecate? ✅
-4. `STATUS_BADGE_V1` / `CHIP_V1` / `SELECT_V1` / `BUTTON_V1` / `INPUT_V1` -> What is allowed? ✅ Locked
+4. `STATUS_BADGE_V1` / `CHIP_V1` / `SELECT_V1` / `BUTTON_V1` / `INPUT_V1` / `CHECKBOX_V1` -> What is allowed? ✅ Locked
 5. `PRIMITIVES_ENFORCEMENT_AND_MIGRATION_PLAN.md` -> How does V1 become real? ✅
 6. `PRIMITIVES_V1.md` -> Official allow-list (Layer 2) ✅ **Locked**
 

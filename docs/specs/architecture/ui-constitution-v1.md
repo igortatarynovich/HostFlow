@@ -276,21 +276,22 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 
 ## §10. Development order (primitives first, workspaces composed)
 
-**Nearest goal:** Capability Host Contract (host places; owners own semantics) → Recruitment Application proof → Documents E2. Entity Workspace and Application Workspace stay distinct (§3.2 / §3.3).
+**Nearest goal:** Host runtime-equivalence (Entity Workspace implements the same Capability Host Contract; Notes/Consent hide transport) → final Goal Completion → Documents E2. G4 on Recruitment Application already **PASS**. Entity Workspace and Application Workspace stay distinct (§3.2 / §3.3).
 
 | Phase | Deliverable |
 |-------|-------------|
 | **1** | Universal Data Table + Selection Model + Detail Rail |
 | **2** | Universal Entity Workspace + Context Rail (D1 chrome) |
 | 2a | Platform surfaces on one entity (D2: overview / timeline / communication / forms / documents / context-rail) — brief-complete, **goal-incomplete** |
-| **2b ← active** | [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md): Capability Host Contract. Host owns placement only. Shared capabilities (notes, consent, …) keep their owners. Documents remain Phase E. Timeline / Communication / Forms stay D2 surfaces |
+| **2b** | [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md): G4 PASS on Recruitment Application. G1–G5 [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). Program **not COMPLETE**. |
+| **2b-eq ← active** | [Host runtime-equivalence](../tasks/workspace-capability-host-runtime-equivalence.md): Entity Workspace implements the same host contract at runtime; Notes/Consent hide transport. |
 | **3** | Application Workspace implements the **same** host contract — it does **not** become Entity Workspace |
 | 4–5 | Process + Collection completion |
 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
-Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`workspace-capability-platform-completion.md`](../tasks/workspace-capability-platform-completion.md). Close-out: [`goal-completion-gate.md`](../gates/goal-completion-gate.md).
+Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`workspace-capability-host-runtime-equivalence.md`](../tasks/workspace-capability-host-runtime-equivalence.md). Close-out: [`workspace-capability-platform-g1-g5-closeout.md`](../gates/workspace-capability-platform-g1-g5-closeout.md).
 
-**Do not** invent module rails, notes, consent, actions, or widgets while 2b is the active contract. Stage / vacancy / assignee stay **module contributions**. Proof = Recruitment Application without page-local composition. Shipping a Notes/Consent **component kit** that modules still compose locally fails 2b. Do not fold Application into Entity. Do not multiply new screens until 2b Goal Completion.
+**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while 2b/2b-eq is the active contract. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Do not start Documents E2 until 2b program COMPLETE. ListWorkspace is a separate collection slice.
 
 ---
 
@@ -334,6 +335,7 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
+| 2026-08-21 | 2b G1–G5 PASS_WITH_CONSTRAINTS (#273); G4 PASS; 2b-eq host runtime-equivalence active; E2 locked until 2b COMPLETE |
 | 2026-08-20 | §10 2b = Workspace Capability Platform (host places, owners own semantics; Entity ≠ Application); proof = Recruitment Application; D1–D9 brief-complete / goal-incomplete; Documents stay Phase E |
 | 2026-07-09 | Platform Canon + Interaction Rules layer; §10 roadmap |
 | 2026-07-09 | Renamed scope → Product Surface Contract; UI Platform split to hostflow-ui-platform-v1 |

@@ -2,7 +2,7 @@
 
 **Document Hub** — общий слой для HostFlow: документ как **самостоятельная сущность**, а не только вложение в одной карточке. Нормативное решение — **[`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)**.  
 **Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#documents).  
-**Product Track (live):** [Workspace Capability Platform Completion](../specs/tasks/workspace-capability-platform-completion.md) (feat locked). E2 brief ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271); **feat locked** until Workspace Capability Goal Completion). E1 ✅. D2 `documents` catalog unlock is E2; D3–D9 stay unbound.  
+**Product Track (live):** [host runtime-equivalence](../specs/tasks/workspace-capability-host-runtime-equivalence.md). Parent WCP G1–G5 [PASS_WITH_CONSTRAINTS](../specs/gates/workspace-capability-platform-g1-g5-closeout.md); program **not COMPLETE**. E2 brief ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271); **feat locked** until WCP **COMPLETE** — G4 does not unlock). E1 ✅. D2 `documents` catalog unlock is E2; D3–D9 stay unbound.  
 В **§0** каталога модулей Hub стоит в **Core / Platform** рядом с Companies, Users/Roles, Forms, Integrations.
 
 ## Назначение

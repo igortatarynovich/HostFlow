@@ -3,15 +3,16 @@
 Status: **Locked (Layer 2 — all primitive families)**  
 Draft date: 2026-05-29  
 Locked date: 2026-05-31 (Input lock — Layer 2 closed)  
-Governance: Approved (REF-UI-000 Layer 2 complete)  
-Input: `STATUS_BADGE_V1.md`, `CHIP_V1.md`, `SELECT_V1.md`, `BUTTON_V1.md`, `INPUT_V1.md`, `PRIMITIVES_ENFORCEMENT_AND_MIGRATION_PLAN.md`  
+Updated: 2026-08-21 (`CHECKBOX_V1` — boolean proof blocker)  
+Governance: Approved (REF-UI-000 Layer 2 complete; checkbox reopen)  
+Input: `STATUS_BADGE_V1.md`, `CHIP_V1.md`, `SELECT_V1.md`, `BUTTON_V1.md`, `INPUT_V1.md`, `CHECKBOX_V1.md`, `PRIMITIVES_ENFORCEMENT_AND_MIGRATION_PLAN.md`  
 Supersedes: `PRIMITIVES_V1_DRAFT.md`
 
 ## Question Answered
 
 > Что официально разрешено использовать для primitive components в HostFlow?
 
-**Layer 2 (Primitives) is closed.** Checkbox/Radio/Toggle and form layout are **not** part of this lock — separate streams if needed.
+**Layer 2 (Primitives) is closed** except the named checkbox reopen. Radio/Toggle and form layout stay deferred.
 
 ---
 
@@ -78,12 +79,21 @@ Spec: `INPUT_V1.md` | Implementation: **`styles/components.css`** — no `Input.
 | Date | `<input className="input" type="date">` |
 | Multiline | `<textarea className="textarea">` |
 | Label | `<div className="label">` |
+| Boolean | **Not Input** — use `Checkbox` (`CHECKBOX_V1`) |
 
 **Architectural note:** Input is intentionally CSS-only at V1. Button and Select have React components because they add semantics or non-native behavior. Input does not — see `INPUT_V1` Wrapper Justification Decision.
 
 ---
 
-## 6) Implemented / Canonical Summary
+## 6) Checkbox
+
+Spec: `CHECKBOX_V1.md` | Implementation: `components/ui/Checkbox.tsx`
+
+Canonical control for Field Registry `boolean`. New code must not assemble `<input type="checkbox">` outside this primitive. Radio and Toggle remain deferred.
+
+---
+
+## 7) Implemented / Canonical Summary
 
 | Family | Canon | React component |
 |---|---|---|
@@ -92,32 +102,33 @@ Spec: `INPUT_V1.md` | Implementation: **`styles/components.css`** — no `Input.
 | Select | Scenario tree | ✅ `Combobox`, `MultiCombobox` |
 | Button | Variant + size | ✅ `Button` |
 | Input | `.input` / `.textarea` | ❌ None (by design) |
+| Checkbox | Boolean control | ✅ `Checkbox` |
 
 ---
 
-## 7) Explicitly Not in Layer 2
+## 8) Explicitly Not in Layer 2
 
 | Topic | Status |
 |---|---|
 | Form System / field layout | Out of scope |
 | Validation framework | Out of scope |
-| Checkbox / Radio / Toggle V1 | Deferred |
+| Radio / Toggle V1 | Deferred |
 | Masked input | Deferred (governance trigger) |
 
 ---
 
-## 8) Chain Status
+## 9) Chain Status
 
 | Artifact | Status |
 |---|---|
 | Audit → Inventory → Benchmark (per family) | ✅ |
 | `PRIMITIVES_ENFORCEMENT_AND_MIGRATION_PLAN.md` | ✅ |
-| `STATUS_BADGE_V1` / `CHIP_V1` / `SELECT_V1` / `BUTTON_V1` / `INPUT_V1` | ✅ All locked |
+| `STATUS_BADGE_V1` / `CHIP_V1` / `SELECT_V1` / `BUTTON_V1` / `INPUT_V1` / `CHECKBOX_V1` | ✅ All locked |
 | **`PRIMITIVES_V1.md`** | ✅ **Layer 2 locked** |
 
 ---
 
-## 9) Next Steps (Layer 3+)
+## 10) Next Steps (Layer 3+)
 
 Layer 2 is **closed**. Further UI standardization follows `REF-UI-000-ui-standardization-roadmap.md`:
 
@@ -125,6 +136,6 @@ Layer 2 is **closed**. Further UI standardization follows `REF-UI-000-ui-standar
 - Layer 4 layouts
 - Layer 5 page templates
 - Optional: primitive CI grep (Phase 2)
-- Optional: Checkbox/Toggle family if product requires
 
 Do not reopen Input wrapper without governance trigger documented in `INPUT_V1.md`.
+Do not mint Radio/Toggle without a `REF-UI-*` family spec.
