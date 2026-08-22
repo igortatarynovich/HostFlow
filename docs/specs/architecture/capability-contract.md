@@ -72,7 +72,7 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 | Forms Sprint 5 | ✅ **COMPLETE** (PR #40 · `a6df02f0`) |
 | Forms Sprint 6 | ✅ **COMPLETE** (PR #41 · `7e259f22`) |
 | Forms Product Layer | P1 ✅ CLOSED · P2 MVP ✅ · C3–C6 ✅ / Foundation ✅ · P3 Publish UI / P4 / P5 **LOCKED** |
-| Entity Workspace Phase D | D1 ✅ · D2 ✅ · D3 ✅ · D4 ✅ · D5 ✅ · D6 ✅ · D7 ✅ · D8 ✅ · D9 ✅ ([brief](../tasks/entity-workspace-d9-services-order-cutover.md) · [#268](https://github.com/igortatarynovich/HostFlow/pull/268)); slot catalog; no Passport; D2 `documents` catalog-enabled in E2 (consumers unbound) |
+| Entity Workspace Phase D | D1 ✅ · D2 ✅ · D3 ✅ · D4 ✅ · D5 ✅ · D6 ✅ · D7 ✅ · D8 ✅ · D9 ✅ ([brief](../tasks/entity-workspace-d9-services-order-cutover.md) · [#268](https://github.com/igortatarynovich/HostFlow/pull/268)); slot catalog; no Passport; D2 `documents` catalog-enabled in E2; E3 HR bind ✅; E4 Candidate bind (feat locked); D3 / D5–D7 / D9 unbound |
 | Forms Platform C1 | ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) |
 | Forms Platform C2 | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
 | Forms Platform C3 | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244); draft save ≠ publish |
@@ -118,13 +118,13 @@ Passport → Manifest (unchanged) → Public Contract
 
 | Artifact | Path |
 |----------|------|
-| E1 / E2 / E3 tasks | [`../tasks/documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) (feat locked) |
+| E1 / E2 / E3 / E4 tasks | [`../tasks/documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) (feat locked) |
 | Public Contract | [`documents-public-contract.md`](documents-public-contract.md) |
 | Adapter | `backend/app/services/document_hub_delivery_contract.py` (`documents.hub_adapter_v1`) |
 | Manifest keys | [`capability-settings-manifest.md`](capability-settings-manifest.md#documents) — unchanged this slice |
 | Contract tests | `test_documents_e1_contract_seal_gate.py` · `test_documents_e2_public_contract_gate.py` |
 
-Candidate-centric façade remains a **bridge**, not Document Link SoT. D2 `documents` catalog enabled. First consumer bind = [E3](../tasks/documents-platform-e3-first-consumer-bind.md) (HR employee). D3–D7 / D9 unbound. Foundation stays 🔄.  
+Candidate-centric façade remains a **storage bridge**, not Document Link SoT. D2 `documents` catalog enabled. First consumer bind = [E3](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ (HR employee). Candidate Document Link = [E4](../tasks/documents-platform-e4-candidate-document-link.md). D3 / D5–D7 / D9 unbound. Foundation stays 🔄.  
 **Не** OCR / e-sign / packages / Hub UI rebuild / mass bind / Catalog shape rewrite / G4 reopen.
 
 ---
@@ -158,5 +158,6 @@ Candidate-centric façade remains a **bridge**, not Document Link SoT. D2 `docum
 - 2026-07-18: Introduced as Phase 1 mandatory artifact between Passport and Adapter.  
 - 2026-07-18: Epic P COMPLETE; Forms Sprint 1 unlocked; Builder locked.  
 - 2026-07-18: Forms Sprint 1 infra — Public Contract + Adapter + contract tests linked.  
+- 2026-08-22: Documents Platform E4 brief — Candidate Document Link (D4); this file stays E2 contract inventory (no id bump).
 - 2026-08-22: Documents Platform E3 brief — first consumer bind (HR employee) + Document Link SoT; this file stays E2 contract inventory (no id bump).
 - 2026-08-20: Documents Platform E2 — [`documents-public-contract.md`](documents-public-contract.md) + `documents.hub_adapter_v1`; D2 catalog unlock.
