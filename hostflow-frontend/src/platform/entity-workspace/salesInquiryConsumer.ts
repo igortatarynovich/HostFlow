@@ -2,7 +2,8 @@
  * Entity Workspace D3 — first consumer binding (Sales Inquiry).
  *
  * Slot ids come from compositionSlots.ts. Do not add Candidate / HR here.
- * Do not enable `documents`. Do not collapse Shell EntityWorkspaceSectionId.
+ * Do not bind `documents` (catalog-enabled in E2; not this consumer).
+ * Do not collapse Shell EntityWorkspaceSectionId.
  */
 
 import {
@@ -29,7 +30,7 @@ export function assertSalesInquiryCompositionSlots(
 ): asserts slots is readonly SalesInquiryCompositionSlotId[] {
   for (const id of slots) {
     if (id === 'documents') {
-      throw new Error('D3: Sales Inquiry must not enable reserved documents slot')
+      throw new Error('D3: Sales Inquiry must not bind documents slot this slice')
     }
     if (!ENABLED.has(id)) {
       throw new Error(`D3: Sales Inquiry slot '${id}' is not in the D2 enabled catalog`)

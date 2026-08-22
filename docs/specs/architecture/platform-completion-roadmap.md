@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS. **Host runtime-equivalence** ← ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)). **Phase E — Documents Platform** ← **unlocked** (E1 ✅; E2 brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat after WCP program COMPLETE — G4 does not unlock E2).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS. **Host runtime-equivalence** ← ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)). **Phase E — Documents Platform** ← **active** ([E2](../tasks/documents-platform-e2-public-contract.md); feat; named Public Contract Gate).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms ✅ → Phase D Entity Workspace (brief-complete) → Workspace Capability Platform Completion → Phase E Documents → …
@@ -36,7 +36,7 @@ Order **after A2**:
 
 1. **A2 — Platform Governance Review** — ✅ PASS_WITH_CONSTRAINTS ([gate](../gates/platform-governance-review-a2.md))  
 2. **Phase B — Acquisition / Stage 3 + Meta** ← ✅  
-3. **Phase C — Forms Platform** ← ✅ ([C1](../tasks/forms-platform-c1-contract-seal.md)…[C6](../tasks/forms-platform-c6-optimization.md) / Foundation) → **Phase D — Entity Workspace** D1–D9 brief-complete ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) [#268](https://github.com/igortatarynovich/HostFlow/pull/268)) → **Workspace Capability Platform Completion** **COMPLETE** ([record](../gates/workspace-capability-platform-complete.md)) → **host runtime-equivalence** ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)) → **Phase E — Documents Platform** (E2 feat **unlocked** after program COMPLETE) → Billing → AI  
+3. **Phase C — Forms Platform** ← ✅ ([C1](../tasks/forms-platform-c1-contract-seal.md)…[C6](../tasks/forms-platform-c6-optimization.md) / Foundation) → **Phase D — Entity Workspace** D1–D9 brief-complete ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) [#268](https://github.com/igortatarynovich/HostFlow/pull/268)) → **Workspace Capability Platform Completion** **COMPLETE** ([record](../gates/workspace-capability-platform-complete.md)) → **host runtime-equivalence** ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)) → **Phase E — Documents Platform** (E2 feat; named Public Contract Gate) → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
 
@@ -167,7 +167,7 @@ Ladder (locked start):
 
 **Out of D9 (closed):** `HrHandoffDetailPage` stayed out · D2 `documents` stayed reserved · no Catalog Passport · Forms P3–P5 / Billing / AI out.
 
-**Result:** named D-series consumers bound to D2 enabled slots (Sales Inquiry · Candidate · Client · Sales Order · Vacancy · HR employee · Services order). D2 `documents` remains reserved. **Brief-complete / goal-incomplete** vs original Entity Shell — [audit](../gates/platform-scope-completeness-audit.md).
+**Result:** named D-series consumers bound to D2 enabled slots (Sales Inquiry · Candidate · Client · Sales Order · Vacancy · HR employee · Services order). D2 `documents` stayed reserved through D9. **Brief-complete / goal-incomplete** vs original Entity Shell — [audit](../gates/platform-scope-completeness-audit.md). Catalog unlock is E2 (consumers unbound).
 
 **Ref:** [entity-workspace-d9-services-order-cutover.md](../tasks/entity-workspace-d9-services-order-cutover.md) ✅ · [D8](../tasks/entity-workspace-d8-hr-employee-cutover.md) ✅ · [D7](../tasks/entity-workspace-d7-vacancy-cutover.md) ✅ · [D6](../tasks/entity-workspace-d6-sales-order-cutover.md) ✅ · [D5](../tasks/entity-workspace-d5-client-cutover.md) ✅ · [D4](../tasks/entity-workspace-d4-candidate-cutover.md) ✅ · [D3](../tasks/entity-workspace-d3-consumer-cutover.md) ✅ · [D2](../tasks/entity-workspace-d2-composition-contract.md) ✅ · [D1](../tasks/entity-workspace-d1-contract-seal.md) ✅ · [A2-F7](../gates/platform-governance-review-a2.md) · [ADR-010](ADR-010-unified-resource-list-shell.md).
 
@@ -189,7 +189,7 @@ D1–D9 closed chrome + D2 **surfaces** + named consumer binds. That was a **sub
 | **G1–G5 close-out** | Goal Completion review of #273 | [close-out](../gates/workspace-capability-platform-g1-g5-closeout.md) **PASS_WITH_CONSTRAINTS** |
 | **Host runtime-equivalence** | Second host + Notes/Consent owner boundaries | ✅ [#274](https://github.com/igortatarynovich/HostFlow/pull/274) ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)) |
 | **Final Goal Completion** | Program COMPLETE | [COMPLETE](../gates/workspace-capability-platform-complete.md) **PASS** |
-| **Then E2** | Documents public contract / D2 `documents` enable | **unlocked** after program **COMPLETE** (G4 did not unlock) |
+| **Then E2** | Documents public contract / D2 `documents` enable | **active** (feat; named Public Contract Gate) |
 
 **Out:** Shell-as-semantic-owner · Application-as-Entity · Candidate-as-proof · Recruitment rail patch as done · mass migration · starting E2 in the WCP PR · P3–P5 / R6 / C2.4 · mixing ListWorkspace into this close-out.
 
@@ -197,7 +197,7 @@ D1–D9 closed chrome + D2 **surfaces** + named consumer binds. That was a **sub
 
 ---
 
-## Phase E — Documents Platform ← **unlocked** (E1 ✅; E2 brief ✅; feat after WCP program COMPLETE)
+## Phase E — Documents Platform ← **active** (E2 feat; named Public Contract Gate)
 
 Evolve storage into a full document lifecycle platform (horizon):
 
@@ -215,7 +215,7 @@ Ladder (E2 feat unlocked):
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **E1** | Contract seal (ownership / Hub ≠ dossier / D2 still reserved) | ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) |
-| **E2** | Public contract / D2 `documents` catalog enable | [brief](../tasks/documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271) (docs ✅; **feat unlocked** after WCP program **COMPLETE** — G4 did not unlock) |
+| **E2** | Public contract / D2 `documents` catalog enable | [brief](../tasks/documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271) (feat; named Public Contract Gate) |
 | **E3+** | First consumer bind / Document Link SoT / lifecycle | locked until E2 feat |
 
 **Out of E2:** D3–D9 `documents` bind · OCR / e-sign / packages / Hub UI rebuild · `HrHandoffDetailPage` · Forms P3–P5 · Billing Platform · AI · L0 Catalog rewrite · Document Link table cutover.
@@ -259,7 +259,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 5 | **D** Universal Entity Workspace | D1–D9 brief-complete ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) [#268](https://github.com/igortatarynovich/HostFlow/pull/268)); goal-incomplete |
 | 5b | **Workspace Capability Platform Completion** | **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS |
 | 5c | **Host runtime-equivalence** | Second host + Notes/Consent owner boundaries ✅ [#274](https://github.com/igortatarynovich/HostFlow/pull/274) |
-| 6 | **E** Documents Platform | Unlocked (E1 ✅; E2 brief ✅; feat after 5b **COMPLETE**, not after G4) |
+| 6 | **E** Documents Platform | ← **active** ([E2](../tasks/documents-platform-e2-public-contract.md); feat; named Public Contract Gate) |
 | 7 | **F** Billing Platform | SaaS commercial layer |
 | 8 | **G** AI Platform | Assistants over existing canons |
 
@@ -271,7 +271,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). **Documents Platform E2** **is** the active slice after WCP COMPLETE; do not start E2 **in a mixed WCP PR**, D10-on-weak-D2, Recruitment rail patches, reopen D9, Forms C6, Stage 5 settings, or R6. Do not fold Application into Entity. Do not mix ListWorkspace into the WCP close-out. Closing a later phase as COMPLETE requires the [Goal Completion Gate](../gates/goal-completion-gate.md). New platform phase briefs require [Original Goal → Completion Proof](../gates/goal-completion-gate.md).  
+5. Parallel product branches that compete across phases (one active product slice). **Documents Platform E2** **is** the active slice (feat; named Public Contract Gate) after WCP COMPLETE; do not mix E2 into a WCP PR, D10-on-weak-D2, Recruitment rail patches, reopen D9, Forms C6, Stage 5 settings, or R6. Do not fold Application into Entity. Do not mix ListWorkspace into the WCP close-out. Closing a later phase as COMPLETE requires the [Goal Completion Gate](../gates/goal-completion-gate.md). New platform phase briefs require [Original Goal → Completion Proof](../gates/goal-completion-gate.md).  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Minting Entity Catalog Passport, or binding D2 `documents` on D3–D9 consumers in E2, without a named later E slice + Architecture checklist / RFC when Catalog shape changes.  
@@ -283,7 +283,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Documents E2; WCP COMPLETE) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Documents Platform E2 feat; named Public Contract Gate) |
 | [workspace-capability-platform-completion.md](../tasks/workspace-capability-platform-completion.md) | Corrective program — Capability Host Contract; **COMPLETE** |
 | [workspace-capability-host-runtime-equivalence.md](../tasks/workspace-capability-host-runtime-equivalence.md) | Equivalence slice — second host + owner boundaries ✅ |
 | [workspace-capability-platform-complete.md](../gates/workspace-capability-platform-complete.md) | Final Goal Completion — program COMPLETE |
@@ -300,6 +300,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-22: Documents E2 feat — `documents.public_contract.v1` / D2 catalog enable; named Public Contract Gate. After [#273](https://github.com/igortatarynovich/HostFlow/pull/273)/[#274](https://github.com/igortatarynovich/HostFlow/pull/274) merge `84a2ea94`.
 - 2026-08-21: WCP program **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)). Active = [Documents E2](../tasks/documents-platform-e2-public-contract.md) (feat unlocked, not started).
 - 2026-08-21: WCP G1–G5 **PASS_WITH_CONSTRAINTS** ([#273](https://github.com/igortatarynovich/HostFlow/pull/273) · [close-out](../gates/workspace-capability-platform-g1-g5-closeout.md)). G4 PASS. Program **not COMPLETE**. Active = [host runtime-equivalence](../tasks/workspace-capability-host-runtime-equivalence.md). E2 stays locked until COMPLETE.  
 - 2026-08-20: D1–D9 reclassified brief-complete / goal-incomplete. Product Track → **Entity Platform Completion** ([brief](../tasks/workspace-capability-platform-completion.md)). [Goal Completion Gate](../gates/goal-completion-gate.md) + [audit](../gates/platform-scope-completeness-audit.md). Same-day Shared UI Capabilities draft superseded. E2 feat locked.  

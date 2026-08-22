@@ -102,7 +102,7 @@ Named step: **Entity Workspace D2 Composition Gate**
 
 - Slot catalog frozen: `overview` · `timeline` · `communication` · `forms` · `documents` · `context-rail`
 - Typed allowlist: `hostflow-frontend/src/platform/entity-workspace/compositionSlots.ts` (not Shell `EntityWorkspaceSectionId`)
-Until [E2](documents-platform-e2-public-contract.md) feat lands, runtime stays **Empty / unavailable** (reserved in `compositionSlots.ts`). This brief names E2 as the catalog unlock; D3–D9 bind stays a later E slice.
+Until [E2](documents-platform-e2-public-contract.md) feat, runtime was **Empty / unavailable** (reserved in `compositionSlots.ts`). E2 feat enables the catalog slot; D3–D9 bind stays a later E slice.
 - No Entity Catalog Passport mint
 - No consumer cutover screens
 - Entity Foundation maturity stays 🔄 (not ✅)

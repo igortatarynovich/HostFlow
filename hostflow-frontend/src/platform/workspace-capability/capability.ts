@@ -166,7 +166,6 @@ export const PLATFORM_SURFACE_CAPABILITIES: {
     allowed_hosts: BOTH_HOSTS,
     allowed_regions: ['platform_slot'],
     d2_slot: 'documents',
-    reserved: true,
   },
   communication: {
     class: 'platform_surface',

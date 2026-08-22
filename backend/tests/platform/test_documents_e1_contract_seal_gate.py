@@ -1,7 +1,7 @@
 """Documents Platform E1 — Contract Seal Gate.
 
-Hub ownership sealed. D2 `documents` still cannot be enabled.
-Shell nav ≠ composition slots. No public-contract id mint.
+Hub ownership sealed. E1 itself did not enable D2 `documents`
+(runtime catalog unlock is E2). Shell nav ≠ composition slots.
 No Catalog rewrite. Documents Foundation stays 🔄.
 D1–D9 gates remain. No Postgres required.
 """
@@ -58,15 +58,6 @@ _DELIVERY = (
     / "services"
     / "document_hub_delivery_contract.py"
 )
-
-_ENABLED_SLOTS = (
-    "overview",
-    "timeline",
-    "communication",
-    "forms",
-    "context-rail",
-)
-_RESERVED_SLOTS = ("documents",)
 
 
 def _ts_string_array(src: str, const_name: str) -> tuple[str, ...]:
@@ -126,32 +117,30 @@ def test_e1_catalog_documents_passport_unchanged_shape() -> None:
     catalog = _CATALOG.read_text(encoding="utf-8")
     assert re.search(r"(?im)^###\s+Documents\b", catalog)
     assert "ADR-009" in catalog
-    assert "documents.public_contract.v1" not in catalog
     assert "entity.workspace.public_contract" not in catalog
     assert not re.search(r"(?im)^#{2,3}\s+Entity Workspace\b", catalog)
 
 
-def test_e1_delivery_facade_exists_and_is_not_public_contract() -> None:
+def test_e1_delivery_facade_exists_and_is_not_link_sot() -> None:
     src = _DELIVERY.read_text(encoding="utf-8")
     assert "list_candidate_documents_via_contract" in src
-    assert "E1-era" in src or "not ADR-009 Document Link SoT" in src
-    assert "PUBLIC_CONTRACT_ID" not in src
-    assert not re.search(r'=\s*["\']documents\.public_contract\.v1["\']', src)
+    assert "not ADR-009 Document Link SoT" in src or "not the\nADR-009 Document Link SoT" in src or "Document Link SoT" in src
     assert _HUB_SCOPE.is_file()
     hub = _HUB_SCOPE.read_text(encoding="utf-8")
     assert "ADR-009" in hub
     assert "documents-platform-e1-contract-seal.md" in hub
 
 
-def test_e1_d2_documents_still_cannot_be_enabled() -> None:
-    src = _SLOTS_TS.read_text(encoding="utf-8")
-    enabled = _ts_string_array(src, "ENTITY_WORKSPACE_ENABLED_SLOT_IDS")
-    reserved = _ts_string_array(src, "ENTITY_WORKSPACE_RESERVED_SLOT_IDS")
-    assert "documents" in reserved
-    assert "documents" not in enabled
-    assert enabled == _ENABLED_SLOTS
-    assert reserved == _RESERVED_SLOTS
-    assert "after E1" in src or "named Phase E slice" in src
+def test_e1_did_not_treat_itself_as_d2_enable() -> None:
+    text = _BRIEF.read_text(encoding="utf-8")
+    assert "does **not** enable D2" in text or "must keep reserved" in text or "still reserved" in text
+    types_src = _TYPES_TS.read_text(encoding="utf-8")
+    sections = _ts_string_array(types_src, "ENTITY_WORKSPACE_SECTION_ORDER")
+    slots = _ts_string_array(
+        _SLOTS_TS.read_text(encoding="utf-8"), "ENTITY_WORKSPACE_SLOT_CATALOG"
+    )
+    assert "documents" in sections
+    assert sections != slots
 
 
 def test_e1_shell_documents_nav_is_not_d2_slot() -> None:

@@ -1,8 +1,8 @@
 """Entity Workspace D2 — Composition Gate.
 
-Slot catalog frozen. Reserved `documents` cannot be enabled.
-No Catalog Passport. No consumer cutover UI. D1 gate remains.
-No Postgres required.
+Slot catalog frozen. `documents` is an enabled platform slot (E2).
+Reserved list empty. No Catalog Passport. No consumer documents bind.
+D1 gate remains. No Postgres required.
 """
 
 from __future__ import annotations
@@ -72,9 +72,10 @@ _ENABLED_SLOTS = (
     "timeline",
     "communication",
     "forms",
+    "documents",
     "context-rail",
 )
-_RESERVED_SLOTS = ("documents",)
+_RESERVED_SLOTS: tuple[str, ...] = ()
 
 _SLOT_IMPORT_MARKERS = (
     "compositionSlots",
@@ -126,14 +127,15 @@ def test_d2_frontend_slot_allowlist_matches_catalog() -> None:
     assert "from './compositionSlots'" in index or 'from "./compositionSlots"' in index
 
 
-def test_d2_documents_slot_cannot_be_enabled() -> None:
+def test_d2_documents_slot_is_enabled_platform_not_reserved() -> None:
     src = _SLOTS_TS.read_text(encoding="utf-8")
     enabled = _ts_string_array(src, "ENTITY_WORKSPACE_ENABLED_SLOT_IDS")
     reserved = _ts_string_array(src, "ENTITY_WORKSPACE_RESERVED_SLOT_IDS")
     catalog = _ts_string_array(src, "ENTITY_WORKSPACE_SLOT_CATALOG")
     assert "documents" in catalog
-    assert "documents" in reserved
-    assert "documents" not in enabled
+    assert "documents" in enabled
+    assert "documents" not in reserved
+    assert reserved == _RESERVED_SLOTS
     assert "isEntityWorkspaceSlotEnabled" in src
     assert set(enabled).isdisjoint(reserved)
     assert tuple(slot for slot in catalog if slot not in reserved) == enabled

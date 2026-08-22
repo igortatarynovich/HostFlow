@@ -1,8 +1,8 @@
-"""Document Hub delivery façade (E1-era).
+"""Document Hub delivery façade — `documents.hub_adapter_v1`.
 
 Candidate-centric adapter over `modules.documents`. This is **not** the
-ADR-009 Document Link SoT and **not** `documents.public_contract.v1`.
-E1 seals ownership; a later named E slice may replace this façade.
+ADR-009 Document Link SoT. E2 binds public-contract / adapter ids onto this
+façade; a later named E slice may replace the candidate-owned row with links.
 """
 from __future__ import annotations
 
@@ -21,6 +21,17 @@ from backend.app.modules.documents.rules_engine import compute_candidate_checkli
 from backend.app.modules.documents.router import _build_synthetic_documents
 from backend.app.modules.documents.storage import get_uploads_root, sanitize_filename
 from backend.app.services.document_catalog import DOCUMENT_TYPE_DEFAULTS
+
+PUBLIC_CONTRACT_ID = "documents.public_contract.v1"
+ADAPTER_ID = "documents.hub_adapter_v1"
+PUBLIC_OPERATIONS = (
+    "list",
+    "resolve",
+    "set_resolution",
+    "owner_summary",
+    "verification_status",
+    "list_types",
+)
 
 
 async def list_candidate_documents_via_contract(

@@ -121,7 +121,6 @@ PLATFORM_SURFACE_CAPABILITIES: dict[str, dict[str, Any]] = {
         "allowed_hosts": _BOTH_HOSTS,
         "allowed_regions": ("platform_slot",),
         "d2_slot": "documents",
-        "reserved": True,
     },
     "communication": {
         "class": "platform_surface",

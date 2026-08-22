@@ -2,8 +2,8 @@
  * Entity Workspace D2 — composition slot catalog.
  *
  * Distinct from Shell `EntityWorkspaceSectionId` (adapter navigation).
- * Do not collapse the two. Do not enable `documents` until a named Phase E
- * slice after E1. E1 contract seal is not enable.
+ * Do not collapse the two. `documents` is an enabled platform slot (E2);
+ * D3–D9 consumers still omit it until a named later E slice.
  * Do not invent new slot kinds without amending the D2 brief.
  */
 
@@ -18,7 +18,7 @@ export const ENTITY_WORKSPACE_SLOT_CATALOG = [
 
 export type EntityWorkspaceSlotId = (typeof ENTITY_WORKSPACE_SLOT_CATALOG)[number]
 
-export const ENTITY_WORKSPACE_RESERVED_SLOT_IDS = ['documents'] as const
+export const ENTITY_WORKSPACE_RESERVED_SLOT_IDS = [] as const
 
 export type EntityWorkspaceReservedSlotId =
   (typeof ENTITY_WORKSPACE_RESERVED_SLOT_IDS)[number]
@@ -28,6 +28,7 @@ export const ENTITY_WORKSPACE_ENABLED_SLOT_IDS = [
   'timeline',
   'communication',
   'forms',
+  'documents',
   'context-rail',
 ] as const
 
@@ -39,7 +40,7 @@ export const ENTITY_WORKSPACE_SLOT_KIND = {
   timeline: 'content',
   communication: 'platform',
   forms: 'platform',
-  documents: 'platform-reserved',
+  documents: 'platform',
   'context-rail': 'chrome',
 } as const satisfies Record<EntityWorkspaceSlotId, string>
 

@@ -4,7 +4,7 @@ Typed host / capability / contribution contracts plus the platform kit
 (data types, fields, primitives, widgets, tables). Four classes stay
 separate catalogs. Renderer registry is technical only. Not a RODO slice.
 G4 bind: Recruitment Application via ApplicationWorkspaceCapabilityHost.
-D2 `documents` stays reserved. No Postgres required.
+D2 `documents` catalog enable is E2 (consumers unbound). No Postgres required.
 """
 
 from __future__ import annotations
@@ -228,9 +228,10 @@ _ENABLED_SLOTS = (
     "timeline",
     "communication",
     "forms",
+    "documents",
     "context-rail",
 )
-_RESERVED_SLOTS = ("documents",)
+_RESERVED_SLOTS: tuple[str, ...] = ()
 
 _HOST_FORBIDDEN_IMPORTS = (
     "CandidateRodoSection",
@@ -640,22 +641,23 @@ def test_hosts_do_not_import_notes_consent_widgets() -> None:
             assert marker not in src, f"{path.name} must not import {marker}"
 
 
-def test_d2_documents_still_reserved_e2_feat_not_landed() -> None:
+def test_d2_documents_catalog_enabled_e2_contract_ids() -> None:
     src = _SLOTS_TS.read_text(encoding="utf-8")
     enabled = _ts_string_array(src, "ENTITY_WORKSPACE_ENABLED_SLOT_IDS")
     reserved = _ts_string_array(src, "ENTITY_WORKSPACE_RESERVED_SLOT_IDS")
     catalog = _ts_string_array(src, "ENTITY_WORKSPACE_SLOT_CATALOG")
-    assert "documents" in reserved
-    assert "documents" not in enabled
+    assert "documents" in catalog
+    assert "documents" in enabled
+    assert "documents" not in reserved
     assert enabled == _ENABLED_SLOTS
     assert reserved == _RESERVED_SLOTS
     contribution_ts = _CONTRIBUTION_TS.read_text(encoding="utf-8")
     assert _ts_string_array(contribution_ts, "WORKSPACE_PLATFORM_SLOT_IDS") == catalog
     assert "compositionSlots" not in contribution_ts
-    assert PLATFORM_SURFACE_CAPABILITIES["documents"].get("reserved") is True
-    catalog = _CATALOG.read_text(encoding="utf-8")
-    assert "documents.public_contract.v1" not in catalog
-    assert not re.search(r"(?im)^#{2,3}\s+Entity Workspace\b", catalog)
+    assert PLATFORM_SURFACE_CAPABILITIES["documents"].get("reserved") is not True
+    catalog_md = _CATALOG.read_text(encoding="utf-8")
+    assert "documents.public_contract.v1" in catalog_md
+    assert not re.search(r"(?im)^#{2,3}\s+Entity Workspace\b", catalog_md)
 
 
 def test_inventory_lists_notes_consent_and_recruitment_rail() -> None:

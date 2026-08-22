@@ -72,7 +72,7 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 | Forms Sprint 5 | ✅ **COMPLETE** (PR #40 · `a6df02f0`) |
 | Forms Sprint 6 | ✅ **COMPLETE** (PR #41 · `7e259f22`) |
 | Forms Product Layer | P1 ✅ CLOSED · P2 MVP ✅ · C3–C6 ✅ / Foundation ✅ · P3 Publish UI / P4 / P5 **LOCKED** |
-| Entity Workspace Phase D | D1 ✅ · D2 ✅ · D3 ✅ · D4 ✅ · D5 ✅ · D6 ✅ · D7 ✅ · D8 ✅ ([brief](../tasks/entity-workspace-d8-hr-employee-cutover.md) · [#266](https://github.com/igortatarynovich/HostFlow/pull/266)); D9 [brief](../tasks/entity-workspace-d9-services-order-cutover.md) (feat; named Cutover Gate); slot catalog; no Passport; D2 `documents` reserved |
+| Entity Workspace Phase D | D1 ✅ · D2 ✅ · D3 ✅ · D4 ✅ · D5 ✅ · D6 ✅ · D7 ✅ · D8 ✅ · D9 ✅ ([brief](../tasks/entity-workspace-d9-services-order-cutover.md) · [#268](https://github.com/igortatarynovich/HostFlow/pull/268)); slot catalog; no Passport; D2 `documents` catalog-enabled in E2 (consumers unbound) |
 | Forms Platform C1 | ✅ [#239](https://github.com/igortatarynovich/HostFlow/pull/239)/[#240](https://github.com/igortatarynovich/HostFlow/pull/240) |
 | Forms Platform C2 | ✅ [#241](https://github.com/igortatarynovich/HostFlow/pull/241)/[#242](https://github.com/igortatarynovich/HostFlow/pull/242) |
 | Forms Platform C3 | ✅ [#243](https://github.com/igortatarynovich/HostFlow/pull/243)/[#244](https://github.com/igortatarynovich/HostFlow/pull/244); draft save ≠ publish |
@@ -108,6 +108,25 @@ Passport → Manifest → Public Contract
 Без собственного pipeline вне Endpoint spine. Adapter поверх Endpoint / C4 publication bridge — не новая form engine.  
 **Не** Builder / drag-and-drop / schema editor / marketplace / новый routing / Forms Outcome-KPI.
 
+### Documents Platform E2 ✅ (public contract + D2 catalog unlock)
+
+```text
+Passport → Manifest (unchanged) → Public Contract
+  list/resolve · set_resolution · owner_summary · verification_status · list_types
+→ Adapter `documents.hub_adapter_v1` (existing façade) → Contract Tests
+```
+
+| Artifact | Path |
+|----------|------|
+| E1 / E2 tasks | [`../tasks/documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) |
+| Public Contract | [`documents-public-contract.md`](documents-public-contract.md) |
+| Adapter | `backend/app/services/document_hub_delivery_contract.py` (`documents.hub_adapter_v1`) |
+| Manifest keys | [`capability-settings-manifest.md`](capability-settings-manifest.md#documents) — unchanged this slice |
+| Contract tests | `test_documents_e1_contract_seal_gate.py` · `test_documents_e2_public_contract_gate.py` |
+
+Candidate-centric façade remains a **bridge**, not Document Link SoT. D2 `documents` catalog enabled; D3–D9 consumers unbound. Foundation stays 🔄.  
+**Не** OCR / e-sign / packages / Hub UI rebuild / consumer bind / Catalog shape rewrite.
+
 ---
 
 ## Review gate
@@ -138,4 +157,5 @@ Passport → Manifest → Public Contract
 
 - 2026-07-18: Introduced as Phase 1 mandatory artifact between Passport and Adapter.  
 - 2026-07-18: Epic P COMPLETE; Forms Sprint 1 unlocked; Builder locked.  
-- 2026-07-18: Forms Sprint 1 infra — Public Contract + Adapter + contract tests linked.
+- 2026-07-18: Forms Sprint 1 infra — Public Contract + Adapter + contract tests linked.  
+- 2026-08-20: Documents Platform E2 — [`documents-public-contract.md`](documents-public-contract.md) + `documents.hub_adapter_v1`; D2 catalog unlock.

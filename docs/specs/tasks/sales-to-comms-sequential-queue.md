@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](../gates/goal-completion-gate.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-21 close-out:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** vs original D ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 brief ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)). **Workspace Capability Platform Completion** [COMPLETE](../gates/workspace-capability-platform-complete.md) (**PASS**) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); G4 PASS (Recruitment Application). Intermediate #273: [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). **Product Track:** [Documents Platform E2](documents-platform-e2-public-contract.md) — feat **unlocked**, not started. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Entity Workspace ≠ Application Workspace. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
+> **2026-08-22:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** vs original D ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 brief ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)). **Workspace Capability Platform Completion** [COMPLETE](../gates/workspace-capability-platform-complete.md) (**PASS**) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); G4 PASS (Recruitment Application). Intermediate #273: [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). **Product Track:** [Documents Platform E2](documents-platform-e2-public-contract.md) — feat; named Public Contract Gate. Catalog unlock ≠ D3–D9 bind. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Entity Workspace ≠ Application Workspace. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
 > Communication **C2.4 frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Documents Platform E2** — [brief](documents-platform-e2-public-contract.md); WCP [COMPLETE](../gates/workspace-capability-platform-complete.md); feat **unlocked**, not started; G4 PASS on Recruitment Application; not D10 | Almost all capacity |
+| **Product** | **Documents Platform E2** Public contract / D2 catalog enable — [brief](documents-platform-e2-public-contract.md); WCP [COMPLETE](../gates/workspace-capability-platform-complete.md); feat; named Public Contract Gate; D3–D9 stay unbound | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -65,7 +65,7 @@
 - **Documents Platform E1 — Contract Seal** ← ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) — [brief](documents-platform-e1-contract-seal.md); named Contract Seal Gate; D2 `documents` stayed reserved  
 - **Workspace Capability Platform Completion** ← **COMPLETE** ([PASS](../gates/workspace-capability-platform-complete.md) [#274](https://github.com/igortatarynovich/HostFlow/pull/274)) — intermediate [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md) [#273](https://github.com/igortatarynovich/HostFlow/pull/273); G4 PASS; [brief](workspace-capability-platform-completion.md)  
 - **Workspace Capability host runtime-equivalence** ← ✅ [#274](https://github.com/igortatarynovich/HostFlow/pull/274) — [brief](workspace-capability-host-runtime-equivalence.md); second host + Notes/Consent owner boundaries  
-- **Documents Platform E2 — Public contract / D2 catalog enable** ← **unlocked** (brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); feat after program **COMPLETE**, not after G4) — [brief](documents-platform-e2-public-contract.md); catalog unlock ≠ consumer bind  
+- **Documents Platform E2 — Public contract / D2 catalog enable** ← **active** (feat; named Public Contract Gate) — [brief](documents-platform-e2-public-contract.md); catalog unlock ≠ consumer bind; not OCR / not Forms P3–P5 / not Billing  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -116,10 +116,10 @@
 | **28** | **Documents Platform E1** Contract Seal | `docs/…` ✅ [#269](https://github.com/igortatarynovich/HostFlow/pull/269) · `feat/…` ✅ [#270](https://github.com/igortatarynovich/HostFlow/pull/270) | ✅ named Contract Seal Gate · merge `f37deff1` |
 | **29** | **Workspace Capability Platform Completion** | `feat/workspace-capability-platform-completion` | **COMPLETE** [#274](https://github.com/igortatarynovich/HostFlow/pull/274) — G4 PASS; [COMPLETE](../gates/workspace-capability-platform-complete.md) · intermediate [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md) [#273](https://github.com/igortatarynovich/HostFlow/pull/273) · [brief](workspace-capability-platform-completion.md) · [inventory](workspace-capability-legacy-inventory.md) |
 | **29b** | **Workspace Capability host runtime-equivalence** | `feat/workspace-capability-host-runtime-equivalence` | ✅ [#274](https://github.com/igortatarynovich/HostFlow/pull/274) — [brief](workspace-capability-host-runtime-equivalence.md) |
-| **30** | **Documents Platform E2** Public contract / D2 catalog enable | `docs/…` ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271) · `feat/…` **unlocked** | **unlocked** after WCP program **COMPLETE** (G4 did not unlock) — [brief](documents-platform-e2-public-contract.md) |
+| **30** | **Documents Platform E2** Public contract / D2 catalog enable | `docs/…` ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271) · `feat/documents-platform-e2-public-contract` | **active** (named Public Contract Gate) — [brief](documents-platform-e2-public-contract.md) |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** [Documents Platform E2](documents-platform-e2-public-contract.md). WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E2 feat unlocked, not started. G4 PASS on Recruitment Application.  
+**Active (Product):** Documents Platform E2 — [Public contract / D2 catalog enable](documents-platform-e2-public-contract.md) (feat; named Public Contract Gate). WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E1 ✅. D3–D9 stay unbound.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -223,9 +223,9 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [workspace-capability-host-runtime-equivalence.md](workspace-capability-host-runtime-equivalence.md). `EntityWorkspaceCapabilityHost` + Notes/Consent owner facades (no Lead / candidate-notes API in capability UI). Not a new proof-screen. Not a new widget. Documents E2 feat unlocked by program COMPLETE.
 
-### Documents Platform E2 — Public contract / D2 catalog enable ← **unlocked** (brief ✅; feat after WCP program COMPLETE)
+### Documents Platform E2 — Public contract / D2 catalog enable ← **active** (feat; named Public Contract Gate)
 
-[documents-platform-e2-public-contract.md](documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271). `documents.public_contract.v1` + D2 catalog unlock. D3–D9 stay unbound. Not OCR / not Forms P3–P5 / not Billing. G4 PASS does **not** start this feat. COMPLETE does unlock it.
+[documents-platform-e2-public-contract.md](documents-platform-e2-public-contract.md) [#271](https://github.com/igortatarynovich/HostFlow/pull/271). `documents.public_contract.v1` + D2 catalog unlock. D3–D9 stay unbound. Not OCR / not Forms P3–P5 / not Billing. **E3+** (first consumer bind / Document Link SoT) locked until this feat.
 
 ---
 
@@ -303,15 +303,16 @@ Next branch only after:
 **Do not** start C2.4 (frozen; gate residual R1).  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
 **Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Documents.  
-**Do not** treat Shell/chrome or D1–D9 named gates as original Entity Platform done; **do not** start Documents E2 **code** in a mixed PR (Product Track is E2 after WCP **COMPLETE**; G4 PASS and G1–G5 PASS_WITH_CONSTRAINTS did **not** unlock E2); **do not** multiply new entity/application screens, rails, or D10 cutovers; **do not** fold Application Workspace into Entity Workspace; **do not** treat E2 catalog unlock as D3–D9 `documents` bind; **do not** treat Shell `documents` nav, Vacancy docs section, HR dossier, or Services billing tab as the D2 `documents` slot; **do not** start OCR / e-sign / packages / Forms P3–P5 / Billing / AI; **do not** patch Recruitment RODO/comments as the platform fix; **do not** mix ListWorkspace into this close-out.  
+**Do not** treat Shell/chrome or D1–D9 named gates as original Entity Platform done; **do not** mix E2 into a WCP PR; **do not** multiply new entity/application screens, rails, or D10 cutovers; **do not** fold Application Workspace into Entity Workspace; **do not** treat E2 catalog unlock as D3–D9 `documents` bind; **do not** treat Shell `documents` nav, Vacancy docs section, HR dossier, or Services billing tab as the D2 `documents` slot; **do not** start OCR / e-sign / packages / Forms P3–P5 / Billing / AI; **do not** patch Recruitment RODO/comments as the platform fix; **do not** mix ListWorkspace into this close-out.  
 **Do** apply [Goal Completion Gate](../gates/goal-completion-gate.md) before marking a future platform phase COMPLETE.  
 **Do** require `**Phase class:** platform` + [Original Goal → Completion Proof](../gates/goal-completion-gate.md) on every new platform phase brief (problem to permanently remove + named consumer — not a deliverables list).  
-**Do** amend this queue when switching Product Active (this revision: live = [Documents Platform E2](documents-platform-e2-public-contract.md); WCP COMPLETE).
+**Do** amend this queue when switching Product Active (this revision: live = Documents Platform E2 feat; named Public Contract Gate).
 
 ---
 
 ## 8. History
 
+- 2026-08-22: E2 feat — `documents.public_contract.v1` / `documents.hub_adapter_v1`; D2 `documents` catalog enabled; D3–D9 unbound; named Public Contract Gate. Foundation stays 🔄. After [#273](https://github.com/igortatarynovich/HostFlow/pull/273)/[#274](https://github.com/igortatarynovich/HostFlow/pull/274) merge `84a2ea94`.
 - 2026-08-21: WCP program **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)). G1 PASS. Product Track → [Documents Platform E2](documents-platform-e2-public-contract.md) (feat unlocked, not started). G4 remains Recruitment Application.
 - 2026-08-21: WCP G1–G5 close-out **PASS_WITH_CONSTRAINTS** ([#273](https://github.com/igortatarynovich/HostFlow/pull/273) · [record](../gates/workspace-capability-platform-g1-g5-closeout.md)). G4 PASS. Program **not COMPLETE**. Product Track → [host runtime-equivalence](workspace-capability-host-runtime-equivalence.md). E2 stays locked until COMPLETE. ListWorkspace not this close-out.  
 - 2026-08-20: **Goal substitution** on D caught. Queue: [Goal Completion Gate](../gates/goal-completion-gate.md) + [scope audit](../gates/platform-scope-completeness-audit.md) + **Entity Platform Completion** ([brief](workspace-capability-platform-completion.md); feat locked). Same-day Shared UI Capabilities (Notes+Consent, no registry) draft superseded. Documents E2 brief stays ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271); **E2 feat locked**. Not D10.  

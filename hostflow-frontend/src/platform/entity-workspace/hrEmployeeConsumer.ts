@@ -2,7 +2,8 @@
  * Entity Workspace D8 — HR employee consumer binding.
  *
  * Slot ids come from compositionSlots.ts. Do not add Services order / handoff.
- * Do not enable `documents`. Do not collapse Shell EntityWorkspaceSectionId.
+ * Do not bind `documents` (catalog-enabled in E2; not this consumer).
+ * Do not collapse Shell EntityWorkspaceSectionId.
  * This is HrEmployeeDetailPage, not Candidate and not HrHandoffDetailPage.
  */
 
@@ -30,7 +31,7 @@ export function assertHrEmployeeCompositionSlots(
 ): asserts slots is readonly HrEmployeeCompositionSlotId[] {
   for (const id of slots) {
     if (id === 'documents') {
-      throw new Error('D8: HR employee must not enable reserved documents slot')
+      throw new Error('D8: HR employee must not bind documents slot this slice')
     }
     if (!ENABLED.has(id)) {
       throw new Error(`D8: HR employee slot '${id}' is not in the D2 enabled catalog`)

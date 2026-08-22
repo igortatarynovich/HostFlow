@@ -2,7 +2,7 @@
 
 **Document Hub** — общий слой для HostFlow: документ как **самостоятельная сущность**, а не только вложение в одной карточке. Нормативное решение — **[`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)**.  
 **Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#documents).  
-**Product Track (live):** [Documents Platform E2](../specs/tasks/documents-platform-e2-public-contract.md) (feat **unlocked**). WCP [COMPLETE](../specs/gates/workspace-capability-platform-complete.md); intermediate [PASS_WITH_CONSTRAINTS](../specs/gates/workspace-capability-platform-g1-g5-closeout.md) on #273. E2 brief ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)). E1 ✅. D2 `documents` catalog unlock is E2; D3–D9 stay unbound.  
+**Product Track (live):** [Documents Platform E2](../specs/tasks/documents-platform-e2-public-contract.md) (feat; named Public Contract Gate). Public contract: [`documents-public-contract.md`](../specs/architecture/documents-public-contract.md). WCP [COMPLETE](../specs/gates/workspace-capability-platform-complete.md); intermediate [PASS_WITH_CONSTRAINTS](../specs/gates/workspace-capability-platform-g1-g5-closeout.md) on #273. E2 brief ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)). E1 ✅. D2 `documents` catalog unlock is E2; D3–D9 stay unbound.  
 В **§0** каталога модулей Hub стоит в **Core / Platform** рядом с Companies, Users/Roles, Forms, Integrations.
 
 ## Назначение

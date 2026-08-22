@@ -2,7 +2,8 @@
  * Entity Workspace D5 — Client consumer binding.
  *
  * Slot ids come from compositionSlots.ts. Do not add HR / Vacancy / Order.
- * Do not enable `documents`. Do not collapse Shell EntityWorkspaceSectionId.
+ * Do not bind `documents` (catalog-enabled in E2; not this consumer).
+ * Do not collapse Shell EntityWorkspaceSectionId.
  */
 
 import {
@@ -29,7 +30,7 @@ export function assertClientCompositionSlots(
 ): asserts slots is readonly ClientCompositionSlotId[] {
   for (const id of slots) {
     if (id === 'documents') {
-      throw new Error('D5: Client must not enable reserved documents slot')
+      throw new Error('D5: Client must not bind documents slot this slice')
     }
     if (!ENABLED.has(id)) {
       throw new Error(`D5: Client slot '${id}' is not in the D2 enabled catalog`)

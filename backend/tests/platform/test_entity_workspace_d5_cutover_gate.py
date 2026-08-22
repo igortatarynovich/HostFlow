@@ -128,7 +128,8 @@ def test_d5_client_binding_matches_enabled_catalog() -> None:
         _SLOTS_TS.read_text(encoding="utf-8"),
         "ENTITY_WORKSPACE_ENABLED_SLOT_IDS",
     )
-    assert "documents" not in enabled
+    assert "documents" in enabled
+    assert "documents" not in slots
     assert set(slots).issubset(enabled)
 
 

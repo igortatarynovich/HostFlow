@@ -2,7 +2,8 @@
  * Entity Workspace D7 — Vacancy consumer binding.
  *
  * Slot ids come from compositionSlots.ts. Do not add HR employee / Services order.
- * Do not enable `documents`. Do not collapse Shell EntityWorkspaceSectionId.
+ * Do not bind `documents` (catalog-enabled in E2; not this consumer).
+ * Do not collapse Shell EntityWorkspaceSectionId.
  * This is ADR-032 Vacancy, not the PX mock vacancy relation.
  */
 
@@ -30,7 +31,7 @@ export function assertVacancyCompositionSlots(
 ): asserts slots is readonly VacancyCompositionSlotId[] {
   for (const id of slots) {
     if (id === 'documents') {
-      throw new Error('D7: Vacancy must not enable reserved documents slot')
+      throw new Error('D7: Vacancy must not bind documents slot this slice')
     }
     if (!ENABLED.has(id)) {
       throw new Error(`D7: Vacancy slot '${id}' is not in the D2 enabled catalog`)
