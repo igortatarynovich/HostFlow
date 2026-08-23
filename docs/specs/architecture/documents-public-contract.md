@@ -5,7 +5,7 @@
 **Contract id:** `documents.public_contract.v1`  
 **Adapter id:** `documents.hub_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#documents)  
-**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [`documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) ✅ · [`documents-platform-e6-document-expiry.md`](../tasks/documents-platform-e6-document-expiry.md) (feat)  
+**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [`documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) ✅ · [`documents-platform-e6-document-expiry.md`](../tasks/documents-platform-e6-document-expiry.md) ✅ · [`documents-platform-e7-document-requests.md`](../tasks/documents-platform-e7-document-requests.md) (brief; feat locked)  
 **Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-014`](ADR-014-document-hub-access-model.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -15,7 +15,7 @@
 Documents владеет **Document Hub** (registry, versions, types, required sets, verification, links).  
 Candidate / HR dossier pages, Shell `documents` nav, and Entity Workspace D2 `documents` **consumer bind** — **не** Documents SoT.
 
-Storage bridge: existing `document_hub_delivery_contract.py` façade over `modules.documents`. E3 adds **entity-link resolve** on the same adapter for HR employee (`workforce_employee` / `reused_for_hr`) via Hub table `document_entity_links`. E4 adds Candidate entity-link resolve (`candidate` / `primary`) on the same adapter. E5 retires `documents.candidate_id` (storage-bridge drop). E6 seals expiry / validity as Hub `expires_at` + `expiry_state` on the same adapter.
+Storage bridge: existing `document_hub_delivery_contract.py` façade over `modules.documents`. E3 adds **entity-link resolve** on the same adapter for HR employee (`workforce_employee` / `reused_for_hr`) via Hub table `document_entity_links`. E4 adds Candidate entity-link resolve (`candidate` / `primary`) on the same adapter. E5 retires `documents.candidate_id` (storage-bridge drop). E6 seals expiry / validity as Hub `expires_at` + `expiry_state` on the same adapter. E7 seals outstanding ask (required type + entity via Document Link) as additive `set_resolution` / `owner_summary` consume — **feat locked** until the E7 brief merges.
 
 ---
 
@@ -26,12 +26,12 @@ Catalog Exposes already name Document Adapter / Verification Adapter / document 
 | Op | Stability | Maps from façade (today) | Description |
 |----|-----------|--------------------------|-------------|
 | `list` / `resolve` | **Stable** | `list_entity_link_documents_via_contract` | Entity-scoped read. E3 D8 and E4 D4 consume paths are entity-link resolve. E5 dropped the Candidate FK list as public consume. E6 adds Hub validity fields on the same view: `expires_at` / `expiry_state` / `days_left` (from `document_expiry_engine`). Output is Hub document view, not a module file row |
-| `set_resolution` | **Stable** | `project_document_packs_via_contract` · `compute_candidate_checklist_via_contract` · `evaluate_document_hub_requirements_via_contract` | Document set / pack / checklist projection |
+| `set_resolution` | **Stable** | `project_document_packs_via_contract` · `compute_candidate_checklist_via_contract` · `evaluate_document_hub_requirements_via_contract` | Document set / pack / checklist projection. E7 (feat locked) seals this as the outstanding-ask consume path — not Candidate stage / HR JSON |
 | `owner_summary` | **Stable** | `compute_owner_summary_via_contract` · `merge_document_hub_requirements_into_summary_via_contract` | Read model for compose |
 | `verification_status` | **Stable** | Review fields on owner summary / list | Verification Adapter read — no new review engine |
 | `list_types` | **Stable** | `list_document_types_via_contract` · `list_canonical_document_type_codes_via_contract` | Hub types only (Architecture Rule 1) |
 
-**Not public v1 (Internal / deferred):** OCR internals · e-sign · `get_uploads_root` / `sanitize_filename` · reminder work-queue projection as a product API · ruleset seed writes · synthetic checklist row builders as a consumer API · Candidate status auto-flip as Documents SoT.
+**Not public v1 (Internal / deferred):** OCR internals · e-sign · `get_uploads_root` / `sanitize_filename` · reminder / request work-queue projection as a product API · ruleset seed writes · synthetic checklist row builders as a consumer API · Candidate status auto-flip as Documents SoT · HR `hr_document_requests` JSON as Documents SoT.
 
 ### Error semantics
 

@@ -58,6 +58,7 @@ Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation cl
 
 - `docs/specs/architecture/documents-public-contract.md`  
 - `docs/specs/workflows/document_expiry.md`  
+- `docs/specs/tasks/documents-platform-e7-document-requests.md`  
 - `docs/specs/tasks/documents-platform-e6-document-expiry.md`  
 - `docs/specs/tasks/documents-platform-e5-candidate-storage-bridge.md`  
 - `docs/specs/tasks/documents-platform-e4-candidate-document-link.md`  
