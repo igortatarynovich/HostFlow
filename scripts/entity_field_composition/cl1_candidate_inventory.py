@@ -40,6 +40,12 @@ QUALIFICATION_FIELD_SUFFIXES = (
 
 
 def _bootstrap_imports() -> None:
+    import os
+
+    # Standalone --check must not require a loaded .env (subprocess gate / local regen).
+    default_db = "postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow"
+    os.environ.setdefault("DATABASE_URL", default_db)
+    os.environ.setdefault("ASYNC_DATABASE_URL", default_db)
     sys.path.insert(0, str(REPO_ROOT))
 
 
