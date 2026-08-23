@@ -3,6 +3,7 @@
  */
 
 import type { DocumentKind, DocumentStatus, DocumentRequestedFrom, DocumentProcessType } from "../../api/types";
+import { DOC_TYPE_LEGACY_ALIASES, EQUIVALENT_TYPE_GROUPS as ALIAS_EQUIVALENT_TYPE_GROUPS } from "../../data/documentTypeAliases";
 
 export const MAX_FILE_MB = 25;
 export const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
@@ -67,10 +68,7 @@ export const PROCESS_LABEL_KEYS: Record<DocumentProcessType, string> = {
 export const READY_STATUSES = new Set<DocumentStatus>(["approved", "received"]);
 export const NEGATIVE_STATUSES = new Set<DocumentStatus>(["rejected", "expired"]);
 
-export const EQUIVALENT_TYPE_GROUPS: string[][] = [
-  ["passport", "national_id", "eu_driver_license_code95"],
-  ["driver_license", "eu_driver_license_code95"],
-];
+export const EQUIVALENT_TYPE_GROUPS: string[][] = ALIAS_EQUIVALENT_TYPE_GROUPS;
 
 export const REQUIRED_STATUS_META: Record<string, { labelKey: string; className: string }> = {
   ready: { labelKey: "admin.documents.required_status.ready", className: "bg-green-50 text-green-700" },
@@ -123,16 +121,8 @@ export const CORE_METADATA_FIELDS = new Set([
 
 export const METADATA_LABEL_NS = "documents.meta_fields";
 
-// Legacy/alias codes that still exist in tenant configs must resolve to canonical catalog types.
-export const DOC_TYPE_CODE_ALIASES: Record<string, string> = {
-  // Align with backend catalog: `national_id` lists identity_document / dowód as aliases.
-  identity_document: "national_id",
-  qualification_code95: "code95",
-  tachograph_card: "tacho_card",
-  residence_card: "residence_permit",
-  swiadectwo_kierowcy: "driver_certificate",
-  eu_driver_license_code95: "driver_license_code95",
-};
+// Legacy alias strings → canonical registry codes (projection of document-type-legacy-aliases-v1.json).
+export const DOC_TYPE_CODE_ALIASES: Record<string, string> = DOC_TYPE_LEGACY_ALIASES;
 
 // Broken default profile often contains only a reduced legacy set; enrich it to full driver flow.
 export const DRIVER_DEFAULT_ENRICHMENT_CODES: string[] = [
