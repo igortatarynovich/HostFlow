@@ -20,8 +20,8 @@ pytestmark = pytest.mark.anyio
 
 def test_tacho_card_and_psych_tests_map_to_ref_canonical() -> None:
     assert normalize_legacy_doc_type("tacho_card") == "tachograph_card"
-    assert normalize_legacy_doc_type("psych_tests") == "psychotest"
-    assert normalize_legacy_doc_type("code95") == "code_95"
+    assert normalize_legacy_doc_type("psych_tests") == "psychological_certificate"
+    assert normalize_legacy_doc_type("code95") == "driver_qualification_card"
     assert normalize_legacy_doc_type("driver_license") == "driver_license"
 
 
@@ -30,14 +30,15 @@ def test_aliases_share_ref_canonical() -> None:
     assert "tacho_card" in tacho_aliases
     assert "tachograph" in tacho_aliases
 
-    psycho_aliases = legacy_codes_for_ref_canonical("psychotest")
+    psycho_aliases = legacy_codes_for_ref_canonical("psychological_certificate")
     assert "psych_tests" in psycho_aliases
+    assert "psychotest" in psycho_aliases
     assert "psycho_test" in psycho_aliases
 
 
 def test_supplemental_and_ref_codes_in_map() -> None:
     mapping = build_legacy_to_ref_canonical_map()
-    assert mapping["id"] == "id_card"
+    assert mapping["id"] == "national_identity_card"
     assert mapping["contract"] == "employment_contract"
     assert mapping["passport"] == "passport"
 

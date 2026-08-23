@@ -44,10 +44,10 @@ def test_legacy_aliases_normalize_to_canonical() -> None:
     assert normalize_input_doc_type("psych_tests") == "psychological_certificate"
     assert normalize_input_doc_type("code95") == "driver_qualification_card"
     assert normalize_input_doc_type("national_id") == "national_identity_card"
-    assert normalize_input_doc_type("decision") == "unclassified"
-    assert normalize_input_doc_type("voivodeship_decision") == "unclassified"
-    assert normalize_input_doc_type("driver_certificate") == "driver_attestation"
-    assert normalize_input_doc_type("additional_document") == "unclassified"
+    assert normalize_input_doc_type("decision") == "other"
+    assert normalize_input_doc_type("voivodeship_decision") == "other"
+    assert normalize_input_doc_type("driver_certificate") == "other"
+    assert normalize_input_doc_type("additional_document") == "other"
 
 
 def test_deprecated_canonical_codes_map_forward() -> None:
