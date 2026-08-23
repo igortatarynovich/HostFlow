@@ -52,6 +52,12 @@ Normative document type contract for this architecture:
 - Reference entities are globally stable, versioned, and auditable.
 - Tenant overrides cannot break legal-required constraints in active packs.
 - Runtime checklist is deterministic for identical input context and reference snapshot version.
+- **One authoritative definition per domain.** JSON → DB seed → facade/API is one SoT plus projections, not three SoTs.
+- **Country identity ≠ country attributes.** `alpha2` / `alpha3` / `numeric` / labels are identity. `dial_code`, `eu_member`, `schengen_member` (and later EEA/EFTA) are attributes that may change over time. Prefer `COUNTRY_REGISTRY` over promising “immutable” for attributes. `dial_code` is not unique (`US`/`CA` → `+1`). `OTHER` is UI presentation, not a country.
+- **Document type existence** lives only in [`document-type-registry-v1.json`](../platform/document-type-registry-v1.json). Module `definitions.py` is configuration for a registry code, not a second catalog. Tenant has **no** document-type list; tenant stores **policy overlay deltas** only.
+- **Reference / Policy / Evaluation stay separate.** Operating program: [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) (Engineering R1–R5; R1 parallel CL0). Do not execute policy in the Reference Layer.
+
+See also specialized registries below: `iso2`/`iso3`/`numeric_code` are identity; `eu_member`/`schengen_member` on `ref_country` are attributes on the same row, not a second identity key.
 
 ## Data Model (target)
 
