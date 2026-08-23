@@ -1,6 +1,7 @@
 # Documents Platform E7 — Document Requests (Phase E)
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **COMPLETE** ([#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) · merge `ceafbd48`)  
+**Next:** [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) (brief; feat locked)  
 **Phase class:** platform  
 **Branch (docs):** `docs/documents-platform-e7-document-requests` ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)  
 **Branch (code):** `feat/documents-platform-e7-document-requests`  
@@ -124,7 +125,7 @@ E7 (this)
     → D4 + D8 stay bound; D3 / D5–D7 / D9 stay unbound
     → same adapter; no second Adapter
 E8+
-    → remaining consumers / later lifecycle (locked until E7 feat)
+    → remaining consumers / later lifecycle (locked; Product Track = CL0)
 ```
 
 E7 **must not**:
@@ -190,8 +191,8 @@ E6 did not bind another consumer. **This slice does not either.**
 | **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913` |
 | **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) · merge `702b922c` |
 | **E6** | Document expiry / validity | ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) · merge `79e638c3` |
-| **E7** | Document requests | ← **active** (feat) |
-| **E8+** | Remaining consumers / later lifecycle | locked until E7 feat |
+| **E7** | Document requests | ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) · merge `ceafbd48` |
+| **E8+** | Remaining consumers / later lifecycle | locked (Product Track = CL0; do not start E8) |
 
 Roadmap later themes (packages, OCR, approvals, automation, remaining D3 / D5–D7 / D9 bind) stay **horizon**. Documents Foundation stays 🔄.
 
@@ -292,7 +293,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 | Adapter | `document_hub_delivery_contract.py` — same façade; additive projection |
 | Activity | keep `document_request` in ADR-012; do not mint Hub table |
 | Gate | `backend/tests/platform/test_documents_e7_document_requests_gate.py` |
-| Pointers | queue / roadmap / AGENTS / maturity stay on E7 until E8 |
+| Pointers | queue / roadmap / AGENTS / maturity point at [CL0](entity-field-composition-cl0-contract-seal.md); this brief stays COMPLETE |
 
 ---
 
@@ -307,5 +308,6 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-23: E7 feat COMPLETE — Hub `outstanding_asks` on `documents.hub_adapter_v1`. Product Track → [CL0](entity-field-composition-cl0-contract-seal.md). Merge `ceafbd48`. Foundation stays 🔄.
 - 2026-08-23: E7 feat opened — Hub `outstanding_asks` on `documents.hub_adapter_v1` resolve / owner_summary. Product Track stays this brief. E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285). Foundation stays 🔄.
 - 2026-08-23: E7 brief opened — Document requests. Product Track → this brief (feat locked). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285) (`79e638c3`). D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.
