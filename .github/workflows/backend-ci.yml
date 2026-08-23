@@ -1,20 +1,14 @@
 name: backend-ci
+
+# PR-path only. Named gates are independent jobs + path filters so a CL1
+# slice does not replay Forms C1–C6 / D1–D9 / E1–E7 / R1–R5. Full pytest +
+# coverage lives in backend-regression.yml (non-blocking / nightly).
+#
+# Contract tests grep this file for named-gate titles and test filenames.
+# Keep those substrings when adding a gate: add the pytest path to the
+# matching family job and keep the human title in a comment or job name.
+
 on:
-  push:
-    paths:
-      - "backend/**"
-      - "shared/crm_app_paths.json"
-      - "shared/crm_app_paths.schema.json"
-      - "scripts/codegen/**"
-      - "scripts/architecture/**"
-      - "scripts/security/**"
-      - "scripts/deploy/**"
-      - "docs/specs/gates/**"
-      - "docs/devel/pr-checklist-adr014-document-access.md"
-      - ".github/workflows/backend-ci.yml"
-      - ".github/workflows/security-gates.yml"
-      - ".github/pull_request_template.md"
-      - ".github/PULL_REQUEST_TEMPLATE/**"
   pull_request:
     paths:
       - "backend/**"
@@ -22,23 +16,157 @@ on:
       - "shared/crm_app_paths.schema.json"
       - "scripts/codegen/**"
       - "scripts/architecture/**"
-      - "scripts/security/**"
-      - "scripts/deploy/**"
+      - "scripts/entity_field_composition/**"
       - "docs/specs/gates/**"
+      - "docs/specs/tasks/forms-platform*"
+      - "docs/specs/tasks/entity-workspace*"
+      - "docs/specs/tasks/documents-platform*"
+      - "docs/specs/tasks/platform-reference*"
+      - "docs/specs/tasks/workspace-capability*"
+      - "docs/specs/tasks/entity-field-composition*"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
-      - ".github/workflows/security-gates.yml"
-      - ".github/pull_request_template.md"
-      - ".github/PULL_REQUEST_TEMPLATE/**"
+      - ".github/actions/backend-pytest/**"
+  push:
+    branches:
+      - integration/release-product-a-b
+    paths:
+      - "backend/**"
+      - "shared/crm_app_paths.json"
+      - "shared/crm_app_paths.schema.json"
+      - "scripts/codegen/**"
+      - "scripts/architecture/**"
+      - "scripts/entity_field_composition/**"
+      - "docs/specs/gates/**"
+      - "docs/specs/tasks/forms-platform*"
+      - "docs/specs/tasks/entity-workspace*"
+      - "docs/specs/tasks/documents-platform*"
+      - "docs/specs/tasks/platform-reference*"
+      - "docs/specs/tasks/workspace-capability*"
+      - "docs/specs/tasks/entity-field-composition*"
+      - "docs/devel/pr-checklist-adr014-document-access.md"
+      - ".github/workflows/backend-ci.yml"
+      - ".github/actions/backend-pytest/**"
   workflow_dispatch:
 
+concurrency:
+  group: backend-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  HOSTFLOW_ALLOW_NON_TEST_DB: "1"
+  HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+
 jobs:
-  tests:
+  changes:
+    name: path filter
     runs-on: ubuntu-latest
-    # Scratch CI DB is named `hostflow` (service POSTGRES_DB). conftest refuses
-    # non-*test* names unless explicitly allowed — CI deliberately opts in.
-    env:
-      HOSTFLOW_ALLOW_NON_TEST_DB: "1"
+    outputs:
+      ci: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ci == 'true' }}
+      shared: ${{ github.event_name != 'pull_request' || steps.filter.outputs.shared == 'true' }}
+      guards: ${{ github.event_name != 'pull_request' || steps.filter.outputs.guards == 'true' }}
+      alembic: ${{ github.event_name != 'pull_request' || steps.filter.outputs.alembic == 'true' }}
+      sales: ${{ github.event_name != 'pull_request' || steps.filter.outputs.sales == 'true' }}
+      forms: ${{ github.event_name != 'pull_request' || steps.filter.outputs.forms == 'true' }}
+      entity: ${{ github.event_name != 'pull_request' || steps.filter.outputs.entity == 'true' }}
+      documents: ${{ github.event_name != 'pull_request' || steps.filter.outputs.documents == 'true' }}
+      workspace: ${{ github.event_name != 'pull_request' || steps.filter.outputs.workspace == 'true' }}
+      reference: ${{ github.event_name != 'pull_request' || steps.filter.outputs.reference == 'true' }}
+      cl1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl1 == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ci:
+              - '.github/workflows/backend-ci.yml'
+              - '.github/actions/backend-pytest/**'
+            shared:
+              - 'backend/tests/conftest.py'
+              - 'backend/requirements.txt'
+              - 'backend/pytest.ini'
+              - 'backend/app/**'
+              - '!backend/app/forms_platform/**'
+              - '!backend/app/reference/**'
+              - '!backend/app/modules/documents/**'
+              - '!backend/app/modules/sales/**'
+              - '!backend/app/modules/client_accounts/**'
+            guards:
+              - 'backend/app/**'
+              - 'backend/scripts/**'
+              - 'scripts/codegen/**'
+              - 'scripts/architecture/**'
+              - 'shared/crm_app_paths.json'
+              - 'shared/crm_app_paths.schema.json'
+              - 'docs/devel/pr-checklist-adr014-document-access.md'
+            alembic:
+              - 'backend/alembic/**'
+              - 'backend/scripts/check_alembic_heads.py'
+              - 'backend/scripts/check_alembic_revision_graph.py'
+              - 'backend/scripts/check_stage1a_migrations.py'
+              - 'backend/app/models/**'
+            sales:
+              - 'backend/app/modules/sales/**'
+              - 'backend/app/modules/client_accounts/**'
+              - 'backend/tests/modules/sales/**'
+              - 'backend/tests/modules/client_accounts/**'
+              - 'backend/tests/unit/test_sales_inquiry_duplicates.py'
+            forms:
+              - 'backend/app/forms_platform/**'
+              - 'backend/tests/forms_platform/**'
+              - 'docs/specs/tasks/forms-platform*'
+            entity:
+              - 'backend/tests/platform/test_entity_workspace_*'
+              - 'docs/specs/tasks/entity-workspace*'
+              - 'hostflow-frontend/src/components/ui/EntityWorkspace*'
+              - 'hostflow-frontend/src/**/entityWorkspace/**'
+              - 'hostflow-frontend/src/**/EntityWorkspace*'
+            documents:
+              - 'backend/app/modules/documents/**'
+              - 'backend/tests/platform/test_documents_e*'
+              - 'docs/specs/tasks/documents-platform*'
+            workspace:
+              - 'backend/tests/platform/test_workspace_capability_*'
+              - 'docs/specs/tasks/workspace-capability*'
+              - 'docs/specs/gates/workspace-capability*'
+            reference:
+              - 'backend/app/reference/**'
+              - 'backend/tests/platform/test_reference_r*'
+              - 'docs/specs/platform/country-registry*'
+              - 'docs/specs/platform/*document-type*'
+              - 'docs/specs/tasks/platform-reference*'
+            cl1:
+              - 'scripts/entity_field_composition/**'
+              - 'backend/tests/entity_field_composition/**'
+              - 'docs/specs/tasks/entity-field-composition-cl1*'
+
+  guards:
+    name: guards
+    needs: changes
+    if: needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: CRM app paths codegen drift check
+        run: python3 scripts/codegen/generate_crm_app_paths.py --check
+      - name: SPA path literals (no stray /app/... in app/)
+        run: python3 backend/scripts/check_spa_path_literals.py
+      - name: ADR-014 document access guardrails (documents-db module)
+        run: python3 backend/scripts/check_adr014_document_access.py
+      - name: REF-3.1 facade boundary guard scan
+        run: python3 scripts/architecture/check_reference_facade_boundary.py
+
+  alembic:
+    name: alembic
+    needs: changes
+    if: needs.changes.outputs.alembic == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
     services:
       db:
         image: postgres:15
@@ -48,16 +176,17 @@ jobs:
           POSTGRES_DB: hostflow
         ports: ["5432:5432"]
         options: >-
-          --health-cmd="pg_isready -U hostflow" 
+          --health-cmd="pg_isready -U hostflow"
           --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - name: CRM app paths codegen drift check
-        run: python3 scripts/codegen/generate_crm_app_paths.py --check
-      - name: SPA path literals (no stray /app/... in app/)
-        run: python3 backend/scripts/check_spa_path_literals.py
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
       - name: Install deps
         working-directory: backend
         run: |
@@ -69,316 +198,238 @@ jobs:
         run: python3 backend/scripts/check_alembic_revision_graph.py --with-alembic
       - name: Alembic upgrade
         working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
         run: alembic upgrade head
       - name: Stage 1A migration roundtrip (when present)
         working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
         run: |
           if [ -f scripts/check_stage1a_migrations.py ]; then
             python scripts/check_stage1a_migrations.py
           else
             echo "skip: Stage 1A migration checker not in tree"
           fi
-      - name: Stage 1A client account tests (PostgreSQL)
-        working-directory: backend
+
+  sales-gates:
+    name: sales gates
+    needs: changes
+    if: needs.changes.outputs.sales == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:15
         env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-        run: |
-          pip install pytest pytest-asyncio
-          if [ -d tests/modules/client_accounts ]; then
-            pytest -q tests/modules/client_accounts/
-          else
-            echo "skip: no client_accounts tests"
-          fi
-      - name: Stage 3 slice 3 SalesInquiry identity
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q \
-            tests/modules/sales/test_stage3_slice3_product_identity.py \
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      # Stage 1A client account tests (PostgreSQL)
+      # Stage 3 slice 3 SalesInquiry identity
+      # Stage 3 slice 4 hard module separation
+      - uses: ./.github/actions/backend-pytest
+        with:
+          skip-alembic: "0"
+          tests: >-
+            tests/modules/client_accounts/
+            tests/modules/sales/test_stage3_slice3_product_identity.py
             tests/unit/test_sales_inquiry_duplicates.py
-      - name: Stage 3 slice 4 hard module separation
-        working-directory: backend
+            tests/modules/sales/test_stage3_slice4_module_separation.py
+
+  forms-gates:
+    name: Forms Platform C1–C6
+    needs: changes
+    if: needs.changes.outputs.forms == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:15
         env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/modules/sales/test_stage3_slice4_module_separation.py
-      - name: Forms Platform C1 contract seal
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/forms_platform/test_forms_c1_contract_seal.py
-      - name: Forms Platform C2 Manifest Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/forms_platform/test_forms_c2_manifest_gate.py
-      - name: Forms Platform C2 Public Contract Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/forms_platform/test_forms_c2_public_contract_gate.py
-      - name: Forms Platform C2 Adapter Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/forms_platform/test_forms_c2_adapter_gate.py
-      - name: Forms Platform C2 Contract Identity Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/forms_platform/test_forms_c2_identity_gate.py
-      - name: Forms Platform C3 Builder Runtime Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/forms_platform/test_forms_c3_builder_runtime_gate.py
-      - name: Forms Platform C4 Form Runtime Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/forms_platform/test_forms_c4_form_runtime_gate.py
-      - name: Forms Platform C5 Form Execution Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/forms_platform/test_forms_c5_form_execution_gate.py
-      - name: Forms Platform C6 Optimization Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/forms_platform/test_forms_c6_optimization_gate.py
-      - name: Entity Workspace D1 Contract Seal Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_entity_workspace_d1_contract_seal.py
-      - name: Entity Workspace D2 Composition Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_entity_workspace_d2_composition_gate.py
-      - name: Entity Workspace D3 Cutover Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_entity_workspace_d3_cutover_gate.py
-      - name: Entity Workspace D4 Cutover Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_entity_workspace_d4_cutover_gate.py
-      - name: Entity Workspace D5 Cutover Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_entity_workspace_d5_cutover_gate.py
-      - name: Entity Workspace D6 Cutover Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_entity_workspace_d6_cutover_gate.py
-      - name: Entity Workspace D7 Cutover Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_entity_workspace_d7_cutover_gate.py
-      - name: Entity Workspace D8 Cutover Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_entity_workspace_d8_cutover_gate.py
-      - name: Entity Workspace D9 Cutover Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_entity_workspace_d9_cutover_gate.py
-      - name: Documents Platform E1 Contract Seal Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_documents_e1_contract_seal_gate.py
-      - name: Workspace Capability Platform Completion Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_workspace_capability_platform_completion_gate.py
-      - name: Workspace Capability Host Runtime Equivalence Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_workspace_capability_host_runtime_equivalence_gate.py
-      - name: Documents Platform E2 Public Contract Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_documents_e2_public_contract_gate.py
-      - name: Documents Platform E3 First Consumer Bind Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_documents_e3_first_consumer_bind_gate.py
-      - name: Documents Platform E4 Candidate Document Link Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_documents_e4_candidate_document_link_gate.py
-      - name: Documents Platform E5 Candidate Storage Bridge Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_documents_e5_candidate_storage_bridge_gate.py
-      - name: Documents Platform E6 Document Expiry Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_documents_e6_document_expiry_gate.py
-      - name: Documents Platform E7 Document Requests Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_documents_e7_document_requests_gate.py
-      - name: Reference R1 Country Registry Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_reference_r1_country_registry_gate.py
-      - name: Reference R2 Country Runtime Cutover Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_reference_r2_country_runtime_cutover_gate.py
-      - name: Reference R3 Document Identity Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_reference_r3_document_identity_gate.py
-      - name: Reference R4 Alias Consolidation Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_reference_r4_alias_consolidation_gate.py
-      - name: Reference R5 Policy Merge Gate
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pytest -q tests/platform/test_reference_r5_policy_merge_gate.py
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      # Forms Platform C1 contract seal
+      # Forms Platform C2 Manifest Gate
+      # Forms Platform C2 Public Contract Gate
+      # Forms Platform C2 Adapter Gate
+      # Forms Platform C2 Contract Identity Gate
+      # Forms Platform C3 Builder Runtime Gate
+      # Forms Platform C4 Form Runtime Gate
+      # Forms Platform C5 Form Execution Gate
+      # Forms Platform C6 Optimization Gate
+      - uses: ./.github/actions/backend-pytest
+        with:
+          skip-alembic: "0"
+          tests: >-
+            tests/forms_platform/test_forms_c1_contract_seal.py
+            tests/forms_platform/test_forms_c2_manifest_gate.py
+            tests/forms_platform/test_forms_c2_public_contract_gate.py
+            tests/forms_platform/test_forms_c2_adapter_gate.py
+            tests/forms_platform/test_forms_c2_identity_gate.py
+            tests/forms_platform/test_forms_c3_builder_runtime_gate.py
+            tests/forms_platform/test_forms_c4_form_runtime_gate.py
+            tests/forms_platform/test_forms_c5_form_execution_gate.py
+            tests/forms_platform/test_forms_c6_optimization_gate.py
+
+  entity-workspace-gates:
+    name: Entity Workspace D1–D9
+    needs: changes
+    if: needs.changes.outputs.entity == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Entity Workspace D1 Contract Seal Gate
+      # Entity Workspace D2 Composition Gate
+      # Entity Workspace D3 Cutover Gate
+      # Entity Workspace D4 Cutover Gate
+      # Entity Workspace D5 Cutover Gate
+      # Entity Workspace D6 Cutover Gate
+      # Entity Workspace D7 Cutover Gate
+      # Entity Workspace D8 Cutover Gate
+      # Entity Workspace D9 Cutover Gate
+      - uses: ./.github/actions/backend-pytest
+        with:
+          tests: >-
+            tests/platform/test_entity_workspace_d1_contract_seal.py
+            tests/platform/test_entity_workspace_d2_composition_gate.py
+            tests/platform/test_entity_workspace_d3_cutover_gate.py
+            tests/platform/test_entity_workspace_d4_cutover_gate.py
+            tests/platform/test_entity_workspace_d5_cutover_gate.py
+            tests/platform/test_entity_workspace_d6_cutover_gate.py
+            tests/platform/test_entity_workspace_d7_cutover_gate.py
+            tests/platform/test_entity_workspace_d8_cutover_gate.py
+            tests/platform/test_entity_workspace_d9_cutover_gate.py
+
+  documents-gates:
+    name: Documents Platform E1–E7
+    needs: changes
+    if: needs.changes.outputs.documents == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Documents Platform E1 Contract Seal Gate
+      # Documents Platform E2 Public Contract Gate
+      # Documents Platform E3 First Consumer Bind Gate
+      # Documents Platform E4 Candidate Document Link Gate
+      # Documents Platform E5 Candidate Storage Bridge Gate
+      # Documents Platform E6 Document Expiry Gate
+      # Documents Platform E7 Document Requests Gate
+      - uses: ./.github/actions/backend-pytest
+        with:
+          tests: >-
+            tests/platform/test_documents_e1_contract_seal_gate.py
+            tests/platform/test_documents_e2_public_contract_gate.py
+            tests/platform/test_documents_e3_first_consumer_bind_gate.py
+            tests/platform/test_documents_e4_candidate_document_link_gate.py
+            tests/platform/test_documents_e5_candidate_storage_bridge_gate.py
+            tests/platform/test_documents_e6_document_expiry_gate.py
+            tests/platform/test_documents_e7_document_requests_gate.py
+
+  workspace-capability-gates:
+    name: Workspace Capability gates
+    needs: changes
+    if: needs.changes.outputs.workspace == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Workspace Capability Platform Completion Gate
+      # Workspace Capability Host Runtime Equivalence Gate
+      - uses: ./.github/actions/backend-pytest
+        with:
+          tests: >-
+            tests/platform/test_workspace_capability_platform_completion_gate.py
+            tests/platform/test_workspace_capability_host_runtime_equivalence_gate.py
+
+  reference-gates:
+    name: Reference R1–R5
+    needs: changes
+    if: needs.changes.outputs.reference == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Reference R1 Country Registry Gate
+      # Reference R2 Country Runtime Cutover Gate
+      # Reference R3 Document Identity Gate
+      # Reference R4 Alias Consolidation Gate
+      # Reference R5 Policy Merge Gate
+      - uses: ./.github/actions/backend-pytest
+        with:
+          tests: >-
+            tests/platform/test_reference_r1_country_registry_gate.py
+            tests/platform/test_reference_r2_country_runtime_cutover_gate.py
+            tests/platform/test_reference_r3_document_identity_gate.py
+            tests/platform/test_reference_r4_alias_consolidation_gate.py
+            tests/platform/test_reference_r5_policy_merge_gate.py
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
       - name: Lint
         continue-on-error: true
         working-directory: backend
         run: |
           pip install ruff
           ruff check .
-      - name: ADR-014 document access guardrails (documents-db module)
-        run: python3 backend/scripts/check_adr014_document_access.py
-      - name: REF-3.1 facade boundary guard scan
-        run: python3 scripts/architecture/check_reference_facade_boundary.py
-      - name: Tests with coverage
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          # Before any import of backend.app.db.session (incl. pytest-cov early import):
-          # QueuePool keeps asyncpg conns tied to a closed loop across pytest-asyncio
-          # loop boundaries. conftest also setdefault's this; workflow makes it process-wide.
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pip install pytest pytest-asyncio pytest-cov
-          pytest -q \
-            --cov=backend/app \
-            --cov-config=.coveragerc \
-            --cov-report=term \
-            --cov-report=xml:coverage.xml
-      - name: Tenant isolation (Postgres, integration)
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: |
-          pip install pytest pytest-asyncio
-          pytest -q tests/api/test_tenant_isolation.py -m postgres_integration
-      - name: Security regression package
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
-        run: pytest -q tests/security
-      - name: Coverage gate (Phase 0 #7 — ratchet)
-        run: python backend/scripts/check_coverage.py
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
+
+  cl1-inventory-gate:
+    name: Entity Field Composition CL1 Inventory Gate
+    needs: changes
+    if: needs.changes.outputs.cl1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL1 gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl1_inventory_gate.py') == ''
+        run: echo "CL1 inventory gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl1_inventory_gate.py') != ''
         with:
-          name: backend-coverage
-          path: backend/coverage.xml
-          if-no-files-found: warn
-          retention-days: 14
+          tests: tests/entity_field_composition/test_cl1_inventory_gate.py
+
+  tests:
+    name: tests
+    if: always() && !cancelled()
+    needs:
+      - changes
+      - lint
+      - guards
+      - alembic
+      - sales-gates
+      - forms-gates
+      - entity-workspace-gates
+      - documents-gates
+      - workspace-capability-gates
+      - reference-gates
+      - cl1-inventory-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if a blocking job failed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          needs = json.loads(os.environ["NEEDS_JSON"])
+          for name, payload in sorted(needs.items()):
+              print(f"{name}: {payload.get('result')}")
+          bad = [
+              name
+              for name, payload in needs.items()
+              if payload.get("result") in ("failure", "cancelled")
+          ]
+          if bad:
+              print("blocking failures: " + ", ".join(bad), file=sys.stderr)
+              sys.exit(1)
+          PY

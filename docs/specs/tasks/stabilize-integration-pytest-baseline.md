@@ -19,6 +19,8 @@ The **~650+** full-suite failures observed after SPA/docs/axios unblocked (and a
 
 Therefore: **do not** spend a product week fixing 657 historical tests. Keep full pytest as the long-term Engineering gate; do **not** weaken it with mass xfail — just **do not stop Flights** for it.
 
+**CI posture (2026-08-23):** full suite + coverage ratchet moved off the PR path into [`.github/workflows/backend-regression.yml`](../../../.github/workflows/backend-regression.yml) (nightly / `integration` push). Named gates stay in [`backend-ci.yml`](../../../.github/workflows/backend-ci.yml) as parallel path-filtered jobs. See [`ci_gates.md`](../quality/ci_gates.md). This does **not** close the stabilize slice.
+
 ## Two tracks
 
 1. **Product Track (active):** [acquisition-stage-3e-activity-timeline.md](acquisition-stage-3e-activity-timeline.md)  
