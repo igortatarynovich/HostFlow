@@ -68,7 +68,7 @@
 - **Documents Platform E2 — Public contract / D2 catalog enable** ← ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) — [brief](documents-platform-e2-public-contract.md); catalog unlock ≠ consumer bind; named Public Contract Gate  
 - **Documents Platform E3 — First Consumer Bind + Document Link SoT** ← ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) — [brief](documents-platform-e3-first-consumer-bind.md); first consumer = HR employee; named First Consumer Bind Gate  
 - **Documents Platform E4 — Candidate Document Link** ← ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) — [brief](documents-platform-e4-candidate-document-link.md); D4 consume path = Document Link; named Candidate Document Link Gate  
-- **Documents Platform E5 — Candidate Storage Bridge Retirement** ← **active** (brief; feat locked) — [brief](documents-platform-e5-candidate-storage-bridge.md); drop `candidate_id`; D4/D8 stay; D3 / D5–D7 / D9 stay unbound; not mass bind / not OCR / not Foundation ✅  
+- **Documents Platform E5 — Candidate Storage Bridge Retirement** ← **active** (feat) — [brief](documents-platform-e5-candidate-storage-bridge.md); drop `candidate_id`; D4/D8 stay; D3 / D5–D7 / D9 stay unbound; not mass bind / not OCR / not Foundation ✅  
 - **Documents Platform E6+** Remaining consumers / lifecycle ← **locked until E5 feat**  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
@@ -123,11 +123,11 @@
 | **30** | **Documents Platform E2** Public contract / D2 catalog enable | `docs/…` ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271) · `feat/…` ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276) | ✅ named Public Contract Gate · merge `826877b5` |
 | **31** | **Documents Platform E3** First consumer bind + Document Link SoT | `docs/…` ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277) · `feat/…` ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278) | ✅ named First Consumer Bind Gate · merge `cc106a38` |
 | **32** | **Documents Platform E4** Candidate Document Link | `docs/…` ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279) · `feat/…` ✅ [#280](https://github.com/igortatarynovich/HostFlow/pull/280) | ✅ named Candidate Document Link Gate · merge `0af74913` |
-| **33** | **Documents Platform E5** Candidate storage-bridge retirement | `docs/…` | **active** (brief; feat locked) — [brief](documents-platform-e5-candidate-storage-bridge.md); drop `candidate_id`; not mass D3–D9 |
+| **33** | **Documents Platform E5** Candidate storage-bridge retirement | `docs/…` ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281) · `feat/…` | **active** (feat) — [brief](documents-platform-e5-candidate-storage-bridge.md); drop `candidate_id`; not mass D3–D9 |
 | **34** | **Documents Platform E6+** Remaining consumers / lifecycle | locked | until E5 feat |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** Documents Platform E5 — [Candidate Storage Bridge Retirement](documents-platform-e5-candidate-storage-bridge.md) (brief; feat locked). Drop `documents.candidate_id`. E4 ✅ [#280](https://github.com/igortatarynovich/HostFlow/pull/280) (named Candidate Document Link Gate). E3 ✅. E2 ✅. WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E1 ✅. D4/D8 stay bound. D3 / D5–D7 / D9 stay unbound. G4 stays Recruitment Application. Foundation stays 🔄. E6+ locked until this feat.  
+**Active (Product):** Documents Platform E5 — [Candidate Storage Bridge Retirement](documents-platform-e5-candidate-storage-bridge.md) (feat). Drop `documents.candidate_id`. E4 ✅ [#280](https://github.com/igortatarynovich/HostFlow/pull/280) (named Candidate Document Link Gate). E3 ✅. E2 ✅. WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E1 ✅. D4/D8 stay bound. D3 / D5–D7 / D9 stay unbound. G4 stays Recruitment Application. Foundation stays 🔄. E6+ locked until this feat.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -332,6 +332,7 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-08-22: E5 feat opened — drop `documents.candidate_id`; Hub-only Candidate relationship. Product Track stays [Documents Platform E5](documents-platform-e5-candidate-storage-bridge.md). E6+ locked. Foundation stays 🔄.
 - 2026-08-22: E5 brief opened — Candidate storage-bridge retirement (`candidate_id` drop). Product Track → [Documents Platform E5](documents-platform-e5-candidate-storage-bridge.md) (feat locked). E4 ✅ [#280](https://github.com/igortatarynovich/HostFlow/pull/280) (`0af74913`). D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.
 - 2026-08-22: E4 feat opened — D4 bind + Candidate Document Link resolve on `documents.hub_adapter_v1`; named Candidate Document Link Gate. Product Track stays [Documents Platform E4](documents-platform-e4-candidate-document-link.md). E5+ locked. Foundation stays 🔄.
 - 2026-08-22: E4 brief opened — Candidate Document Link (D4). Product Track → [Documents Platform E4](documents-platform-e4-candidate-document-link.md) (feat locked). E3 ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278) (`cc106a38`). D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.

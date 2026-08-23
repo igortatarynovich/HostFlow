@@ -1,10 +1,11 @@
-"""Documents Platform E4 — Candidate Document Link Gate.
+"""Documents Platform E5 — Candidate Storage Bridge Gate.
 
-D4 binds `documents` through Capability Host + `documents.hub_adapter_v1`.
-Consume path = Document Link (`document_entity_links`, `candidate` / `primary`).
-D8 stays bound. D3 / D5–D7 / D9 stay unbound. `documents.candidate_id`
-column is retired (E5). Shell nav ≠ D2 slot. G4 unchanged. Documents Foundation
-stays 🔄. No OCR / e-sign / packages product. No Catalog shape rewrite.
+D4 + D8 stay bound through Capability Host + `documents.hub_adapter_v1`.
+Consume path = Document Link (`document_entity_links`, `candidate` / `primary`
+and `workforce_employee` / `reused_for_hr`). `documents.candidate_id` column
+is dropped. Writers persist Hub links. D3 / D5–D7 / D9 stay unbound.
+Shell nav ≠ D2 slot. G4 unchanged. Documents Foundation stays 🔄.
+No OCR / e-sign / packages product. No Catalog shape rewrite.
 No Postgres required.
 """
 
@@ -16,13 +17,13 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 _BRIEF = (
-    _REPO_ROOT / "docs" / "specs" / "tasks" / "documents-platform-e4-candidate-document-link.md"
+    _REPO_ROOT / "docs" / "specs" / "tasks" / "documents-platform-e5-candidate-storage-bridge.md"
 )
 _CONTRACT = (
     _REPO_ROOT / "docs" / "specs" / "architecture" / "documents-public-contract.md"
 )
-_E3_BRIEF = (
-    _REPO_ROOT / "docs" / "specs" / "tasks" / "documents-platform-e3-first-consumer-bind.md"
+_E4_BRIEF = (
+    _REPO_ROOT / "docs" / "specs" / "tasks" / "documents-platform-e4-candidate-document-link.md"
 )
 _HUB_SCOPE = _REPO_ROOT / "docs" / "document-hub" / "module-scope.md"
 _MATURITY = (
@@ -64,6 +65,13 @@ _DELIVERY = (
     / "document_hub_delivery_contract.py"
 )
 _DOCUMENT_MODEL = _REPO_ROOT / "backend" / "app" / "models" / "document.py"
+_ALEMBIC = (
+    _REPO_ROOT
+    / "backend"
+    / "alembic"
+    / "versions"
+    / "202608250001_drop_documents_candidate_id.py"
+)
 _PUBLIC_API = (
     _REPO_ROOT
     / "backend"
@@ -184,19 +192,17 @@ def _ts_string_array(src: str, const_name: str) -> tuple[str, ...]:
     return tuple(re.findall(r"'([^']+)'", match.group(1)))
 
 
-def test_e4_brief_locks_candidate_and_link_sot() -> None:
+def test_e5_brief_locks_storage_bridge_retirement() -> None:
     text = _BRIEF.read_text(encoding="utf-8")
-    assert "Documents Platform E4" in text
-    assert "Candidate Document Link" in text
-    assert "document_entity_links" in text
-    assert "linked_entity_type=candidate" in text or "candidate" in text
-    assert "relation_type=primary" in text or "primary" in text
-    assert "Documents Platform E4 Candidate Document Link Gate" in text
-    assert "OCR" in text
+    assert "Documents Platform E5" in text
     assert "candidate_id" in text
+    assert "document_entity_links" in text
+    assert "Documents Platform E5 Candidate Storage Bridge Gate" in text
+    assert "OCR" in text
+    assert "nullable leftover" in text.lower() or "Dropped" in text or "drop" in text.lower()
 
 
-def test_e4_d4_consumer_binds_documents_d8_stays_others_omit() -> None:
+def test_e5_d4_and_d8_stay_bound_others_omit() -> None:
     src = _CONSUMER_TS.read_text(encoding="utf-8")
     slots = _ts_string_array(src, "CANDIDATE_COMPOSITION_SLOTS")
     assert slots == _D4_SLOTS
@@ -215,7 +221,29 @@ def test_e4_d4_consumer_binds_documents_d8_stays_others_omit() -> None:
         assert "not bind documents slot this slice" in other, filename
 
 
-def test_e4_proof_surface_uses_capability_host_and_hub_adapter() -> None:
+def test_e5_candidate_id_column_dropped_writers_mint_hub_links() -> None:
+    model = _DOCUMENT_MODEL.read_text(encoding="utf-8")
+    assert not re.search(r"candidate_id:\s*Mapped\[str\]\s*=\s*mapped_column", model)
+    assert "column_property" in model
+    assert "_pending_candidate_id" in model
+    assert "after_insert" in model or "_mint_candidate_primary_link" in model
+    assert _ALEMBIC.is_file()
+    alembic = _ALEMBIC.read_text(encoding="utf-8")
+    assert "drop_column" in alembic
+    assert "candidate_id" in alembic
+    assert "document_entity_links" in alembic
+    assert "'candidate'" in alembic or '"candidate"' in alembic
+    assert "'primary'" in alembic or '"primary"' in alembic
+    delivery = _DELIVERY.read_text(encoding="utf-8")
+    assert "ensure_candidate_primary_document_links" not in delivery
+    assert "list_entity_link_documents_via_contract" in delivery
+    assert "list_candidate_documents_via_contract" in delivery
+    owner = _OWNER.read_text(encoding="utf-8")
+    assert "list_candidate_documents_via_contract" not in owner
+    assert "/platform/documents/resolve" in owner
+
+
+def test_e5_proof_surface_uses_capability_host_and_hub_adapter() -> None:
     page = _PAGE.read_text(encoding="utf-8")
     panel = _PANEL.read_text(encoding="utf-8")
     contrib = _CONTRIB.read_text(encoding="utf-8")
@@ -228,7 +256,6 @@ def test_e4_proof_surface_uses_capability_host_and_hub_adapter() -> None:
     assert "EntityWorkspaceCapabilityHost" in panel
     assert "CANDIDATE_ENTITY_HOST_CONTRIBUTIONS" in panel
     assert "CandidateDocsWorkspacePanel" not in panel
-    assert "list_candidate_documents_via_contract" not in owner
     assert "capability_id: 'documents'" in contrib
     assert "consumer: 'candidate'" in contrib
     assert "workspace.surface.documents" in contrib
@@ -237,40 +264,20 @@ def test_e4_proof_surface_uses_capability_host_and_hub_adapter() -> None:
     assert "/platform/documents/resolve" in owner
     assert "documents.public_contract.v1" in owner
     assert "documents.hub_adapter_v1" in owner
-    assert "E4_LINKED_ENTITY_TYPE" in owner
-    assert "E4_RELATION_TYPE" in owner
-    assert "'candidate'" in owner
-    assert "'primary'" in owner
     assert 'PUBLIC_CONTRACT_ID = "documents.public_contract.v1"' in delivery
     assert 'ADAPTER_ID = "documents.hub_adapter_v1"' in delivery
     assert "list_entity_link_documents_via_contract" in delivery
     assert "list_entity_link_documents_via_contract" in api
-    assert "ensure_candidate_primary_document_links" not in delivery
-    assert "document_entity_links" in delivery or "DocumentEntityLink" in delivery
     assert 'E4_LINKED_ENTITY_TYPE = "candidate"' in delivery
     assert 'E4_RELATION_TYPE = "primary"' in delivery
     assert 'E3_LINKED_ENTITY_TYPE = "workforce_employee"' in delivery
     assert "ALLOWED_ENTITY_LINK_RESOLVE" in delivery
-    assert "ALLOWED_ENTITY_LINK_RESOLVE" in api
     assert "hub_adapter_v2" not in delivery
     assert "documents.public_contract.v2" not in delivery
     assert "documents.public_contract.v2" not in _CONTRACT.read_text(encoding="utf-8")
 
 
-def test_e4_candidate_storage_bridge_retired() -> None:
-    model = _DOCUMENT_MODEL.read_text(encoding="utf-8")
-    assert not re.search(
-        r"candidate_id:\s*Mapped\[str\]\s*=\s*mapped_column", model
-    )
-    delivery = _DELIVERY.read_text(encoding="utf-8")
-    assert "list_entity_link_documents_via_contract" in delivery
-    assert "ensure_candidate_primary_document_links" not in delivery
-    owner = _OWNER.read_text(encoding="utf-8")
-    assert "list_candidate_documents_via_contract" not in owner
-    assert "/platform/documents/resolve" in owner
-
-
-def test_e4_shell_documents_nav_is_not_d2_slot() -> None:
+def test_e5_shell_documents_nav_is_not_d2_slot() -> None:
     types_src = _TYPES_TS.read_text(encoding="utf-8")
     sections = _ts_string_array(types_src, "ENTITY_WORKSPACE_SECTION_ORDER")
     slots = _ts_string_array(
@@ -288,7 +295,7 @@ def test_e4_shell_documents_nav_is_not_d2_slot() -> None:
     assert "contacts" not in consumer
 
 
-def test_e4_g4_recruitment_application_unchanged() -> None:
+def test_e5_g4_recruitment_application_unchanged() -> None:
     proof = _PROOF.read_text(encoding="utf-8")
     assert "PROOF_CONSUMER_ID = 'recruitment_application'" in proof
     assert "PROOF_HOST_ID = 'application_workspace'" in proof
@@ -298,7 +305,7 @@ def test_e4_g4_recruitment_application_unchanged() -> None:
     assert "recruitment_application" not in contrib
 
 
-def test_e4_maturity_documents_foundation_not_complete() -> None:
+def test_e5_maturity_documents_foundation_not_complete() -> None:
     text = _MATURITY.read_text(encoding="utf-8")
     row = next(
         line for line in text.splitlines() if line.startswith("| **Documents**")
@@ -306,10 +313,10 @@ def test_e4_maturity_documents_foundation_not_complete() -> None:
     foundation_cell = row.split("|")[2]
     assert "🔄" in foundation_cell
     assert "✅" not in foundation_cell
-    assert "E4" in foundation_cell or "Phase E" in foundation_cell
+    assert "E5" in foundation_cell or "Phase E" in foundation_cell
 
 
-def test_e4_catalog_shape_unchanged_no_ocr_product() -> None:
+def test_e5_catalog_shape_unchanged_no_ocr_product() -> None:
     catalog = _CATALOG.read_text(encoding="utf-8")
     assert re.search(r"(?im)^###\s+Documents\b", catalog)
     assert not re.search(r"(?im)^#{2,3}\s+Entity Workspace\b", catalog)
@@ -318,31 +325,30 @@ def test_e4_catalog_shape_unchanged_no_ocr_product() -> None:
     assert "documents.public_contract.v1" in contract
     assert "list_entity_link_documents_via_contract" in contract
     assert "OCR internals" in contract
-    assert "candidate" in contract
-    assert "primary" in contract
     brief = _BRIEF.read_text(encoding="utf-8")
     assert "e-sign" in brief.lower()
     assert "packages" in brief.lower()
 
 
-def test_e4_e3_closed_and_prior_gates_present() -> None:
-    e3 = _E3_BRIEF.read_text(encoding="utf-8")
-    assert "**COMPLETE**" in e3 or "#278" in e3
+def test_e5_e4_closed_and_prior_gates_present() -> None:
+    e4 = _E4_BRIEF.read_text(encoding="utf-8")
+    assert "**COMPLETE**" in e4 or "#280" in e4
     ci = _CI.read_text(encoding="utf-8")
     assert "Documents Platform E1 Contract Seal Gate" in ci
     assert "Documents Platform E2 Public Contract Gate" in ci
     assert "Documents Platform E3 First Consumer Bind Gate" in ci
     assert "Documents Platform E4 Candidate Document Link Gate" in ci
-    assert "test_documents_e4_candidate_document_link_gate.py" in ci
+    assert "Documents Platform E5 Candidate Storage Bridge Gate" in ci
+    assert "test_documents_e5_candidate_storage_bridge_gate.py" in ci
     assert "Entity Workspace D4 Cutover Gate" in ci
     assert "Entity Workspace D8 Cutover Gate" in ci
     assert "Workspace Capability Host Runtime Equivalence Gate" in ci
     assert _HUB_SCOPE.is_file()
     hub = _HUB_SCOPE.read_text(encoding="utf-8")
-    assert "documents-platform-e4-candidate-document-link.md" in hub
+    assert "documents-platform-e5-candidate-storage-bridge.md" in hub
 
 
-def test_e4_product_track_points_at_feat() -> None:
+def test_e5_product_track_points_at_e5() -> None:
     queue = (
         _REPO_ROOT
         / "docs"
@@ -351,11 +357,10 @@ def test_e4_product_track_points_at_feat() -> None:
         / "sales-to-comms-sequential-queue.md"
     ).read_text(encoding="utf-8")
     agents = (_REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    assert "documents-platform-e4-candidate-document-link.md" in queue
-    assert "documents-platform-e4-candidate-document-link.md" in agents
-    assert "Candidate Document Link" in agents
-    assert "E5" in queue
+    assert "documents-platform-e5-candidate-storage-bridge.md" in queue
+    assert "documents-platform-e5-candidate-storage-bridge.md" in agents
+    assert "storage-bridge" in agents.lower() or "candidate_id" in agents
 
 
-def test_e4_gate_filename() -> None:
-    assert Path(__file__).name == "test_documents_e4_candidate_document_link_gate.py"
+def test_e5_gate_filename() -> None:
+    assert Path(__file__).name == "test_documents_e5_candidate_storage_bridge_gate.py"

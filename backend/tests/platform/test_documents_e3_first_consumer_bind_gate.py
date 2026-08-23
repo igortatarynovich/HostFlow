@@ -2,8 +2,8 @@
 
 D8 binds `documents` through Capability Host + `documents.hub_adapter_v1`.
 Consume path = Document Link (`document_entity_links`).
-D4 bind is E4. D3 / D5–D7 / D9 stay unbound. `candidate_id` remains a
-legacy bridge.
+D4 bind is E4. D3 / D5–D7 / D9 stay unbound. `documents.candidate_id`
+column is retired (E5).
 Shell nav ≠ D2 slot. G4 unchanged. Documents Foundation stays 🔄.
 No OCR / e-sign / packages product. No Catalog shape rewrite.
 No Postgres required.
@@ -241,13 +241,14 @@ def test_e3_proof_surface_uses_capability_host_and_hub_adapter() -> None:
     assert "documents.public_contract.v2" not in _CONTRACT.read_text(encoding="utf-8")
 
 
-def test_e3_candidate_id_remains_legacy_bridge() -> None:
+def test_e3_candidate_storage_is_hub_links() -> None:
     model = _DOCUMENT_MODEL.read_text(encoding="utf-8")
-    assert "candidate_id" in model
-    assert "nullable=False" in model
+    assert not re.search(
+        r"candidate_id:\s*Mapped\[str\]\s*=\s*mapped_column", model
+    )
     delivery = _DELIVERY.read_text(encoding="utf-8")
-    assert "legacy" in delivery.lower()
-    assert "bridge" in delivery.lower()
+    assert "list_entity_link_documents_via_contract" in delivery
+    assert "document_entity_links" in delivery or "DocumentEntityLink" in delivery
     local = _LOCAL_DOCS.read_text(encoding="utf-8")
     assert "Not the D2" in local or "not the D2" in local
 

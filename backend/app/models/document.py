@@ -4,15 +4,17 @@ from datetime import date, datetime
 from typing import Any, Optional
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text, text
+from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, String, Text, event, insert, select, text
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.mutable import MutableDict, MutableList
-from sqlalchemy.orm import Mapped, mapped_column, synonym
+from sqlalchemy.orm import Mapped, column_property, mapped_column, synonym
+from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.sql import func
 
 from backend.app.db.base import Base
 from backend.app.db.tsvector_compat import TsVector
+from backend.app.models.document_entity_link import DocumentEntityLink
 from .enums import (
     DocumentKind,
     DocumentProcessType,
@@ -24,7 +26,8 @@ from .enums import (
 class Document(Base):
     """
     Canonical document model.
-    Stores candidate-bound documents with full lifecycle tracking and metadata.
+    Candidate relationship SoT is Hub ``document_entity_links``
+    (``candidate`` / ``primary``). ``candidate_id`` is a read projection, not a column.
     """
 
     __tablename__ = "documents"
@@ -39,11 +42,30 @@ class Document(Base):
     tenant_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
     own_company_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
 
-    # Candidate / company ownership
-    candidate_id: Mapped[str] = mapped_column(
-        String(36),
-        index=True,
-        nullable=False,
+    def __init__(self, **kwargs: Any) -> None:
+        pending = kwargs.pop("candidate_id", None)
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        if pending is not None and str(pending).strip():
+            cid = str(pending).strip()
+            object.__setattr__(self, "_pending_candidate_id", cid)
+            try:
+                set_committed_value(self, "candidate_id", cid)
+            except Exception:
+                pass
+
+    # Candidate / company ownership — Hub link projection (E5; not a table column)
+    candidate_id = column_property(
+        select(DocumentEntityLink.linked_entity_id)
+        .where(
+            DocumentEntityLink.document_id == id,
+            DocumentEntityLink.tenant_id == tenant_id,
+            DocumentEntityLink.linked_entity_type == "candidate",
+            DocumentEntityLink.relation_type == "primary",
+        )
+        .correlate_except(DocumentEntityLink)
+        .limit(1)
+        .scalar_subquery()
     )
     company_id: Mapped[Optional[str]] = mapped_column(
         String(36), nullable=True, index=True
@@ -150,3 +172,39 @@ class Document(Base):
     expires_at = synonym("expire_date")
     extra = synonym("meta")
     meta_json = synonym("meta")
+
+
+def _mint_candidate_primary_link(mapper, connection, target) -> None:  # noqa: ANN001
+    cid = str(getattr(target, "_pending_candidate_id", "") or "").strip()
+    if not cid:
+        return
+    tid = str(getattr(target, "tenant_id", "") or "").strip()
+    did = str(getattr(target, "id", "") or "").strip()
+    if not (tid and did):
+        return
+    table = DocumentEntityLink.__table__
+    exists = connection.execute(
+        select(table.c.id).where(
+            table.c.tenant_id == tid,
+            table.c.document_id == did,
+            table.c.linked_entity_type == "candidate",
+            table.c.linked_entity_id == cid,
+            table.c.relation_type == "primary",
+        )
+    ).first()
+    if exists:
+        return
+    connection.execute(
+        insert(table).values(
+            id=str(uuid4()),
+            tenant_id=tid,
+            document_id=did,
+            linked_entity_type="candidate",
+            linked_entity_id=cid,
+            relation_type="primary",
+            module_key="recruitment",
+        )
+    )
+
+
+event.listen(Document, "after_insert", _mint_candidate_primary_link)

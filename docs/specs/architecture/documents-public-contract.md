@@ -5,7 +5,7 @@
 **Contract id:** `documents.public_contract.v1`  
 **Adapter id:** `documents.hub_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#documents)  
-**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [`documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) (feat locked)  
+**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [`documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) (feat)  
 **Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-014`](ADR-014-document-hub-access-model.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -25,7 +25,7 @@ Catalog Exposes already name Document Adapter / Verification Adapter / document 
 
 | Op | Stability | Maps from façade (today) | Description |
 |----|-----------|--------------------------|-------------|
-| `list` / `resolve` | **Stable** | `list_entity_link_documents_via_contract` · (E4 leftover) `list_candidate_documents_via_contract` | Entity-scoped read. E3 D8 and E4 D4 consume paths are entity-link resolve. E5 retires the Candidate FK list as public consume. Output is Hub document view, not a module file row |
+| `list` / `resolve` | **Stable** | `list_entity_link_documents_via_contract` | Entity-scoped read. E3 D8 and E4 D4 consume paths are entity-link resolve. E5 dropped the Candidate FK list as public consume. Output is Hub document view, not a module file row |
 | `set_resolution` | **Stable** | `project_document_packs_via_contract` · `compute_candidate_checklist_via_contract` · `evaluate_document_hub_requirements_via_contract` | Document set / pack / checklist projection |
 | `owner_summary` | **Stable** | `compute_owner_summary_via_contract` · `merge_document_hub_requirements_into_summary_via_contract` | Read model for compose |
 | `verification_status` | **Stable** | Review fields on owner summary / list | Verification Adapter read — no new review engine |
@@ -49,7 +49,7 @@ Catalog already publishes `document.created` / `linked` / `verified` / `expired`
 
 1. Modules consume **only** `documents.public_contract.v1` / `documents.hub_adapter_v1` — no `modules.documents.crud` imports from other modules (Architecture Rule 2).  
 2. File is a version; Document is the business object (ADR-009). Handoff is **links + permissions**, never copy.  
-3. Legacy `documents.candidate_id` is retired in [E5](../tasks/documents-platform-e5-candidate-storage-bridge.md). Until that feat merges it remains a **bridge**, not Hub SoT.  
+3. Legacy `documents.candidate_id` is **dropped** in [E5](../tasks/documents-platform-e5-candidate-storage-bridge.md). Candidate relationship SoT is Hub `document_entity_links` only.  
 4. D2 `documents` slot on D8 and D4 renders via this adapter only — not Shell nav, not dossier pages, not `HrEmployeeDocumentsSection`, not CandidateCard.  
 5. No new local type / status dictionaries.
 
@@ -79,12 +79,14 @@ E2 marked D2 `documents` as an **enabled platform slot**. E3 binds it on **HR em
 `backend/tests/platform/test_documents_e2_public_contract_gate.py` — named **Documents Platform E2 Public Contract Gate**.  
 `backend/tests/platform/test_documents_e3_first_consumer_bind_gate.py` — named **Documents Platform E3 First Consumer Bind Gate**.  
 `backend/tests/platform/test_documents_e4_candidate_document_link_gate.py` — named **Documents Platform E4 Candidate Document Link Gate**.  
-E5 feat adds `test_documents_e5_candidate_storage_bridge_gate.py`. E1 / E2 / E3 / E4 / D1–D9 / WCP gates stay green (amended where they froze “`candidate_id` must remain”).
+`backend/tests/platform/test_documents_e5_candidate_storage_bridge_gate.py` — named **Documents Platform E5 Candidate Storage Bridge Gate**.  
+E1 / E2 / E3 / E4 / D1–D9 / WCP gates stay green (amended where they froze “`candidate_id` must remain”).
 
 ---
 
 ## History
 
+- 2026-08-22: E5 feat — drop `documents.candidate_id`; writers persist Hub `candidate` / `primary` links; this contract stays v1 (no id bump). Foundation stays 🔄.
 - 2026-08-22: E5 brief — Candidate storage-bridge retirement (`candidate_id` drop) named; this contract stays v1 (no id bump).
 - 2026-08-22: E4 feat — Candidate entity-link resolve (`candidate` / `primary`) on `documents.hub_adapter_v1`; D4 bind; column stays; Foundation stays 🔄.
 - 2026-08-22: E4 brief — Candidate Document Link (`candidate` / `primary`) named; this contract stays v1 (no id bump). Column drop stays later.
