@@ -243,6 +243,17 @@ jobs:
     needs: changes
     if: needs.changes.outputs.forms == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
       # Forms Platform C1 contract seal
@@ -256,6 +267,7 @@ jobs:
       # Forms Platform C6 Optimization Gate
       - uses: ./.github/actions/backend-pytest
         with:
+          skip-alembic: "0"
           tests: >-
             tests/forms_platform/test_forms_c1_contract_seal.py
             tests/forms_platform/test_forms_c2_manifest_gate.py
