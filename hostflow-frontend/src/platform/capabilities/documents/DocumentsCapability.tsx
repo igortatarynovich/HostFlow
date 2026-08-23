@@ -13,6 +13,7 @@ import {
  * Host places this contribution under `platform_slot`. Consume path is
  * `documents.public_contract.v1` / `documents.hub_adapter_v1` via Document Link.
  * Not the local HR documents matrix. Not Shell nav. Not a `documents.candidate_id` column.
+ * Validity is Hub `expires_at` / `expiry_state` on the same adapter (E6).
  */
 export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()
@@ -73,9 +74,11 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
       {!loading && items.length > 0 ? (
         <ul className="space-y-1 text-sm text-slate-700">
           {items.slice(0, 8).map((row) => (
-            <li key={row.id}>
+            <li key={row.id} data-expiry-state={row.expiry_state || undefined}>
               <span className="font-medium text-slate-900">{row.title || row.doc_type}</span>
               {row.status ? <span className="text-slate-500"> · {row.status}</span> : null}
+              {row.expires_at ? <span className="text-slate-500"> · {row.expires_at}</span> : null}
+              {row.expiry_state ? <span className="text-slate-500"> · {row.expiry_state}</span> : null}
             </li>
           ))}
         </ul>

@@ -3,7 +3,9 @@
 E2 bound public-contract / adapter ids onto this façade. E3 adds
 entity-link resolve for HR employee. E4 adds Candidate primary-link
 resolve on the same adapter. E5 drops `documents.candidate_id`; Candidate
-relationship SoT is Hub `document_entity_links` only. Not a second Adapter.
+relationship SoT is Hub `document_entity_links` only. E6 seals expiry /
+validity as Hub `expires_at` + engine evaluation on the same adapter.
+Not a second Adapter. Not a Hub reminder table.
 """
 from __future__ import annotations
 
@@ -25,6 +27,7 @@ from backend.app.modules.documents.rules_engine import compute_candidate_checkli
 from backend.app.modules.documents.router import _build_synthetic_documents
 from backend.app.modules.documents.storage import get_uploads_root, sanitize_filename
 from backend.app.services.document_catalog import DOCUMENT_TYPE_DEFAULTS
+from backend.app.services.document_expiry_engine import evaluate_expiry
 
 PUBLIC_CONTRACT_ID = "documents.public_contract.v1"
 ADAPTER_ID = "documents.hub_adapter_v1"
@@ -58,12 +61,15 @@ def _enum_value(value: Any) -> str:
 
 def _hub_document_view(doc: Document, link: DocumentEntityLink) -> dict[str, Any]:
     expires = getattr(doc, "expires_at", None) or getattr(doc, "expire_date", None)
+    evaluation = evaluate_expiry(expires_on=expires)
     return {
         "id": str(doc.id),
         "title": str(getattr(doc, "custom_name", None) or getattr(doc, "doc_type", "") or ""),
         "doc_type": str(getattr(doc, "doc_type", "") or ""),
         "status": _enum_value(getattr(doc, "status", None)),
         "expires_at": expires.isoformat() if expires is not None else None,
+        "expiry_state": None if evaluation is None else evaluation.state,
+        "days_left": None if evaluation is None else evaluation.days_left,
         "link": {
             "id": str(link.id),
             "linked_entity_type": str(link.linked_entity_type),

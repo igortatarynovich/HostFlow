@@ -18,7 +18,7 @@
 | [**adr022-phase2-sales-only-capability-flow.md**](adr022-phase2-sales-only-capability-flow.md) | **ADR-022 Phase 2 / F3-B-10:** Sales-only spine SalesInquiry → Flights → Capability → Review → Convert → Traceability; contracts; fail-closed; no shared wizard | SalesInquiry, Flights destination, ClientAccount | Flights dispatch; Sales convert (next PR) |
 | [**recruitment-operational-goals-and-order.md**](recruitment-operational-goals-and-order.md) | **Hub:** цели, порядок этапов Lead → Candidate → Handoff → HR; requirements-driven flow; кто решает обязательность; очередь работ по трём направлениям | Lead, Candidate, Requirement, Handoff, WorkforceEmployee | Requirement Engine gates; читать **в любой ветке** |
 | [a3-requirements-workspace-backlog.md](../tasks/a3-requirements-workspace-backlog.md) | **A3 backlog:** экраны, API bundle, срезы PR, acceptance по типам требований | Candidate, Requirement, CandidateEvidence | Workspace route + evidence flow |
-| [document_expiry.md](document_expiry.md) | Контроль сроков действия документов и напоминания | Document, Candidate, Reminder | Автоматические напоминания, изменение статуса |
+| [document_expiry.md](document_expiry.md) | Срок действия как свойство Document Hub; reminders в Activity layer | Document Hub, Document Link, Catalog `document.expired` | Evaluation на public resolve; Hub не владеет reminder table |
 | [reminders.md](reminders.md) | Подсистема напоминаний и уведомлений | Reminder, Candidate, Document | Cron-задачи, уведомления, RLS |
 | [reminders_matrix.md](reminders_matrix.md) | SLA и эскалации напоминаний | Reminder, Notification | Каналы доставки, дедупликация |
 | [recruitment-application-lifecycle.md](recruitment-application-lifecycle.md) | Семантика жизненного цикла **Application** (intent/cycle), матрица переходов, идемпотентность; не пайплайн кандидата | RecruitmentApplication, Candidate | Без workflow engine; см. документ |
@@ -57,8 +57,8 @@ Lead → Candidate → Documents → Reminders → Hiring
 
 1. **Lead** создаётся через webhook и конвертируется в **Candidate**.  
 2. **Candidate** проходит статусы пайплайна (канон: `../architecture/recruitment-domain-model.md` + `../architecture/ADR-002-modular-recruitment-hr-boundary.md`).  
-3. **Documents** добавляются и отслеживаются (см. `document_expiry.md`).  
-4. При приближении срока создаются **Reminders** (см. `reminders.md`).  
+3. **Documents** добавляются в Document Hub и отслеживаются по сроку Hub (см. `document_expiry.md`).  
+4. Напоминания живут в Activity layer (см. `reminders.md` / ADR-012), не в таблице Document Hub.  
 5. После успешного завершения всех этапов кандидат становится “Трудоустроен”.
 
 ---

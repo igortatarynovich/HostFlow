@@ -1,6 +1,7 @@
-"""Documents public contract v1 — entity-link resolve (E3 + E4 + E5).
+"""Documents public contract v1 — entity-link resolve (E3 + E4 + E5 + E6).
 
 Same adapter id as E2. Not a second Adapter. Not a candidate_id column list.
+E6 projects Hub expiry (`expires_at` / `expiry_state`) on the resolve view.
 """
 
 from __future__ import annotations
@@ -41,6 +42,8 @@ class DocumentHubViewOut(BaseModel):
     doc_type: str
     status: str
     expires_at: str | None = None
+    expiry_state: str | None = None
+    days_left: int | None = None
     link: DocumentLinkOut
 
 
