@@ -1,13 +1,13 @@
 # Sales → Communication — sequential product queue (locked)
 
-**Status:** **NORMATIVE QUEUE** (one active **Product Track** slice; Engineering Track is background)  
+**Status:** **NORMATIVE QUEUE** (exactly one active **Product Track** slice; exactly one active **Engineering Track** slice except the named `{R2, R3}` fan-out; Engineering ≠ pytest background)  
 **Date:** 2026-07-21 (rev. Product vs Engineering tracks)  
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](../gates/goal-completion-gate.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-23:** **ADR-037** Lifecycle Identity Canon sealed (docs). Runtime **queued after CL0** — [brief](lifecycle-identity-l0-contract-seal.md). Does **not** steal Product Track.  
-> **2026-08-22:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** vs original D ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276)). **Workspace Capability Platform Completion** [COMPLETE](../gates/workspace-capability-platform-complete.md) (**PASS**) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); G4 PASS (Recruitment Application) — **not** the Documents proof. Intermediate #273: [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). **Product Track:** [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) — brief; feat locked; Page Type + two builder modes + Profile as role manifest. E7 ✅ ([#287](https://github.com/igortatarynovich/HostFlow/pull/287); named Document Requests Gate). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285); named Document Expiry Gate). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282); named Candidate Storage Bridge Gate). E4 ✅. Catalog unlock ≠ mass bind. Not mass D3–D9 bind. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Entity Workspace ≠ Application Workspace. Documents Foundation stays 🔄. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
-> Communication **C2.4 frozen** (gate residual R1).  
+> **2026-08-23:** Execution canon sealed — see **§ Locked execution sequence**. Product = [CL0](entity-field-composition-cl0-contract-seal.md). Engineering = [Reference R1](platform-reference-identity-sot.md) (`ref-id-r1`). After CL0: **CL1**. Fan-out after R1: **Reference R2 ∥ Reference R3**. E8-bind unlocked after R3∧R4 (not auto-scheduled). E8-eval after R5 ∧ E8-bind. **ADR-037** docs sealed. C2.4 frozen (**Epic C residual R1**).  
+> **2026-08-22:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** vs original D ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276)). **Workspace Capability Platform Completion** [COMPLETE](../gates/workspace-capability-platform-complete.md) (**PASS**) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); G4 PASS (Recruitment Application) — **not** the Documents proof. Intermediate #273: [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). **Product Track:** [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) — brief; feat locked; Page Type + two builder modes + Profile as role manifest. E7 ✅ ([#287](https://github.com/igortatarynovich/HostFlow/pull/287); named Document Requests Gate). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285); named Document Expiry Gate). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282); named Candidate Storage Bridge Gate). E4 ✅. Catalog unlock ≠ mass bind. Not mass D3–D9 bind. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Entity Workspace ≠ Application Workspace. Documents Foundation stays 🔄. **Engineering Track** = **Reference R1** (active). Legacy pytest / Catalog RFC / Kit chrome = background.  
+> Communication **C2.4 frozen** (**Epic C residual R1** — **not** Reference R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
 ---
@@ -30,7 +30,146 @@
 | Track | Active work | Rule |
 |-------|-------------|------|
 | **Product** | **Entity Field Composition CL0** Contract seal — [brief](entity-field-composition-cl0-contract-seal.md); feat locked; docs only; not E8 / not D10 / not Forms P3 | Almost all capacity |
-| **Engineering** | **Platform Reference Identity SoT R1** — [brief](platform-reference-identity-sot.md); country registry completeness; parallel CL0; no runtime/UI cutover | Active engineering slice; [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest baseline deferred; Catalog Notifications↔Communication RFC background |
+| **Engineering** | **Reference R1** (`ref-id-r1`) — [brief](platform-reference-identity-sot.md); Country Registry completeness; parallel CL0 only; no runtime/UI cutover | Active Engineering slice. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background |
+
+---
+
+## Locked execution sequence (normative)
+
+This section is the **only** “what starts next” SoT. Horizon A–G stays in the [roadmap](../architecture/platform-completion-roadmap.md). If another doc disagrees with this ladder, **this ladder wins**.
+
+### Current execution header
+
+| Role | Value |
+|------|--------|
+| **Active Product** | CL0 — [Entity Field Composition contract seal](entity-field-composition-cl0-contract-seal.md) (brief; feat locked) |
+| **Queued Product successor** | **CL1** (inventory). Not LI-1. Not DR1. Not E8. |
+| **Active Engineering** | **Reference R1** (`ref-id-r1`) |
+| **Queued Engineering after R1** | fan-out window **{Reference R2 ∥ Reference R3}** |
+| **Phase E** | **E7 = DONE**. **E8-bind = locked**. **E8-eval = locked** |
+| **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1) |
+
+Historical markers (A2 active, Meta Intake next, Phase E active = E7 feat) live only in §8 History. They are **not** current execution instructions.
+
+### Invariants (mandatory)
+
+1. **One Active Product slice.**  
+2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate. After that window, Engineering collapses to one slice again.  
+3. **No third track.** Unlocked work does not create a stream.  
+4. **Unlock ≠ schedule.** A satisfied unlock condition does **not** auto-start the slice. Only the owning track’s queue may activate it.  
+5. **One work = one unlock condition.** Two independent unlocks ⇒ two named slices.  
+6. **Do not skip a named gate.** Do not start the next slice in the same PR as its predecessor.  
+7. **Park, don’t substitute.** If the next *scheduled* Product slice waits on an Engineering gate, Product waits. Do not jump to Billing / Forms P3 / E8-eval.  
+8. **Write-set guard.** Product CL and Reference R may run in parallel **only while write sets do not overlap.**  
+   - CL0 docs-only ∥ Reference R1 — allowed.  
+   - CL1 observe ∥ Reference R3 — allowed (CL1 does not canonize).  
+   - CL runtime country fields ∥ Reference R2 — forbidden.  
+   - CL document identity ∥ Reference R3 — forbidden.  
+   - CL required-doc policy ∥ Reference R5 — forbidden.  
+9. **Naming.** Prose: **Reference Rn**, **Epic C residual R1**, **Acquisition R6**. Machine ids: `ref-id-r1` … `ref-id-r5`. Never a bare `R1` in execution text.
+
+### Engineering ladder
+
+```text
+Reference R1
+  → { Reference R2 ∥ Reference R3 }
+  → R3 → Reference R4
+  → (R2 PASS ∧ R4 PASS) → Reference R5
+  → Reference Program Exit Gate
+```
+
+Fan-out is **only** `{R2, R3}`. Reference R5 is **not** a third concurrent Engineering slice. Draft branches for R5 before the join are not Active Engineering.
+
+| # | Slice | Machine id | Gate (PASS =) | Depends on | Unlocks |
+|---|--------|------------|----------------|------------|---------|
+| **ER1** | [Reference R1](platform-reference-identity-sot.md) Country Registry completeness | `ref-id-r1` | **Reference R1 Country Registry Gate** — ISO set in registry; facade `identity` / `classifications` / `labels`; `en`+`pl`+`ru`; `XK` ∉ canon; `OTHER` ∉ registry; no unique `dial_code`; `catalogs.py` still runtime SoT; checksum deterministic. Proof: country identity **definition** exists (not runtime cutover). | REF-4 Phase 1 ✅. **Not** REF-4 Phase 2 | fan-out {R2, R3} |
+| **ER2** | Reference R2 Country runtime cutover | `ref-id-r2` | **Reference R2 Country Runtime Cutover Gate** — `/catalogs/*` + frontend country/dial from registry only; Q1–Q2 (existence, dial; EU/Schengen classifications) answered from Country Registry | **Reference R1 Gate**. This slice **is** REF-4 Phase 2 country adoption | R5 join (with R4) |
+| **ER3** | Reference R3 Document type identity | `ref-id-r3` | **Reference R3 Document Identity Gate** — existence = `document-type-registry-v1.json` only; Q3 | **Reference R1 Gate** (parallel with R2) | Reference R4 |
+| **ER4** | Reference R4 Alias consolidation | `ref-id-r4` | **Reference R4 Alias Consolidation Gate** — scanner/UI/legacy use alias registry only; Q4; no consumer-local alias maps | **Reference R3 Gate** | E8-bind unlock; R5 join (with R2) |
+| **ER5** | Reference R5 Policy merge | `ref-id-r5` | **Reference R5 Policy Merge Gate** — `merge(pack, tenant_delta)`; overlay ≠ fork; pack codes ⊆ registry; Q5 (required docs) | **Reference R2 Gate ∧ Reference R4 Gate** | E8-eval unlock; DR1-runtime unlock; Program Exit Gate |
+| **ER-X** | **Reference Program Exit Gate** | `ref-id-exit` | Q1–Q5 answered by **one** chain: Country Registry → Document Type Registry + aliases → resolved policy → evaluator | **Reference R5 Gate** (implies R2+R3+R4) | Reference program DONE |
+
+**Now:** ER1. **Stop:** C2.4, tenant-minted document types, XK-in-canon, runtime cutover inside R1, R5 active while R2 still open.
+
+### Product ladder
+
+```text
+CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → …
+DR1-runtime  waits on  DR1-contract ∧ Reference R5   (does not block CL2+)
+```
+
+| # | Slice | Gate (PASS =) | Depends on | Unlocks |
+|---|--------|----------------|------------|---------|
+| **P0** | [CL0](entity-field-composition-cl0-contract-seal.md) contract seal | **CL0 Gate** — brief merged; queue/roadmap/AGENTS point here; no runtime | E7 ✅ | CL1 |
+| **P1** | CL1 Candidate inventory | **CL1 Gate** — live Candidate fields / `document_configs` / screening-as-required **observed** (code, source, tenant/module, enabled, required-as-found, fields, consumers, legacy usage). Does **not** emit canonical / alias / invalid / migration-required — that is R3/R4 | **CL0 Gate** | LI-1 |
+| **P2** | [LI-1](lifecycle-identity-l0-contract-seal.md) existence guard | **LI-1 Existence Guard Gate** — one producer for “is stage X registered?”; no Funnel/UI cutover | **CL1 Gate** | DR1-contract. LI-2+ stay in the Lifecycle queue and do **not** block CL2+ |
+| **P3** | **DR1-contract** Engine → Document Request contract | **DR1 Contract Gate** — Engine→Hub outstanding-ask contract sealed; no mass generation | **CL1 Gate ∧ LI-1 Gate**. If the contract already names canonical type ids: also **Reference R3 Gate ∧ Reference R4 Gate** | CL2; DR1-runtime (join R5) |
+| **P4** | CL2 Membership runtime | **CL2 Gate** | **DR1-contract Gate** | CL3 |
+| **P5** | CL3 Layout runtime | **CL3 Gate** — D4 Information zone proof | CL2 | CL4 |
+| **P6** | CL4 Builder (two modes) | **CL4 Gate** | CL3 | CL5 |
+| **P7** | CL5 Q&A | **CL5 Gate** | CL4 | CL6 |
+| **P8** | CL6 Flight mapping | **CL6 Gate** | CL5 | later CL via queue amendment |
+| **P-DR** | **DR1-runtime** Engine generation | **DR1 Runtime Gate** — Engine may create Hub outstanding asks; evaluation consumers may run | **DR1-contract Gate ∧ Reference R5 Gate** | does **not** block CL2+ |
+
+**Now:** P0 (CL0, feat locked). **Next Product after CL0 merge:** CL1 brief. **Not** LI-1 feat. **Not** DR1. **Not** E8.
+
+LI-1 is the **only** Lifecycle slice between CL1 and CL2. LI-2…LI-4 stay in [the Lifecycle brief](lifecycle-identity-l0-contract-seal.md) and do not stall Field Composition.
+
+### Documents / E8 (two slices)
+
+| Slice | Unlock (may start) | Schedule | Gate |
+|-------|--------------------|----------|------|
+| **E8-bind** | **Reference R3 Gate ∧ Reference R4 Gate** | Product Track only; **not auto-start**. Default: do not steal CL2+. Pull-forward only by explicit queue amendment | remaining consumers bind to **canonical** document types; display/select canonical types; identity migration. **Not** required/optional, applicability, candidate evaluation, packages, OCR↔requirement matching |
+| **E8-eval** | **Reference R5 Gate ∧ E8-bind Gate** | Product Track; not auto-start | required/optional; applicability; candidate requirement evaluation; document packages; OCR requirement matching |
+
+Briefs for E8-bind / E8-eval are **not** opened in this amendment. Unlock does not schedule.
+
+### Join graph (checkable)
+
+```text
+Engineering:
+  ref-id-r1 → { ref-id-r2 ∥ ref-id-r3 } → ref-id-r4
+            → (r2 ∧ r4) → ref-id-r5 → ref-id-exit
+
+Product:
+  CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → …
+  DR1-runtime: DR1-contract ∧ ref-id-r5
+
+Documents:
+  r3 ∧ r4  → E8-bind   unlocked (schedule = Product)
+  r5 ∧ E8-bind → E8-eval
+```
+
+Program horizon of this amendment: Reference Program Exit Gate **or** CL6 (whichever the tracks reach). After that, a new queue amendment names the next Product slice. No silent successor.
+
+### Naming (mandatory)
+
+| Token | Machine id | Meaning |
+|-------|------------|---------|
+| **Reference R1…R5** | `ref-id-r1`…`ref-id-r5` | Platform Reference Identity SoT |
+| **Reference Program Exit Gate** | `ref-id-exit` | Five-questions integration proof |
+| **Epic C residual R1** | — | C2.4 Scheduling freeze |
+| **Acquisition R6** | — | Acquisition table-cutover (out of this slice) |
+| **E8-bind / E8-eval** | — | two Documents slices; never one E8 with two unlocks |
+| **DR1-contract / DR1-runtime** | — | two Document Request slices |
+
+### Exit test (this docs amendment)
+
+A reader who has only this section can answer every item **yes**:
+
+1. Exactly one **Active Product** slice (now: CL0).  
+2. Exactly one **Active Engineering** slice, **or** the named fan-out `{Reference R2, Reference R3}` after Reference R1 Gate — never a third concurrent Engineering slice. After that window, Engineering collapses to one Active slice.  
+3. Every queued slice has a named predecessor.  
+4. Every slice has an owner track. Unlocked work is not a third track.  
+5. **One work = one unlock condition.** Independent unlocks ⇒ split into named slices.  
+6. **Unlock ≠ schedule.** Satisfying an unlock does not auto-activate the slice.  
+7. An integration gate (Reference Program Exit; E8-eval; DR1-runtime) depends on every domain it checks.  
+8. No runtime consumer starts before the authoritative definition exists.  
+9. Tenant cannot mint identity where a registry is existence SoT.  
+10. Historical status lines do not contradict the **Current execution header**.  
+11. The graph from **now** to program close is finite.
+
+---
 
 **Open product GAPs:**
 
@@ -42,7 +181,7 @@
 - **Acquisition Stage 5 / Optimization** ← PR-1 DONE · **PR-2 DONE** (#203) — [stage-5](acquisition-stage-5-optimization.md)  
 - **Acquisition Stage 6 Analytics** ← **DONE** (PR-1…PR-6b) — [brief](acquisition-stage-6-analytics.md) · [ownership](../../modules/acquisition/outcome-commercial-value-ownership.md)  
 - C2.3 Campaign Orchestrator ← **DONE** (landed on tip; #121–#126 superseded; **#219**)  
-- C2.4 Scheduling ← **frozen** (gate residual R1; do not start)  
+- C2.4 Scheduling ← **frozen** (**Epic C residual R1**; do not start; **not** Reference R1)  
 - **Epic C Complete Gate** ← **PASS_WITH_CONSTRAINTS** (2026-08-03) — [gate](../gates/epic-c-complete-gate.md)  
 - **A2 Platform Governance Review** ← **PASS_WITH_CONSTRAINTS** (2026-08-03) — [gate](../gates/platform-governance-review-a2.md)  
 - **Meta intake completeness** ← **MERGED** [#222](https://github.com/igortatarynovich/HostFlow/pull/222) — [meta-intake-completeness.md](meta-intake-completeness.md)  
@@ -73,9 +212,11 @@
 - **Documents Platform E6 — Document Expiry / Validity** ← ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) — [brief](documents-platform-e6-document-expiry.md); Hub validity SoT; named Document Expiry Gate  
 - **Documents Platform E7 — Document Requests** ← ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) — [brief](documents-platform-e7-document-requests.md); Hub outstanding-ask SoT; named Document Requests Gate  
 - **Entity Field Composition CL0 — Contract Seal** ← **active** (brief; feat locked) — [brief](entity-field-composition-cl0-contract-seal.md); Page Type + two builder modes; Profile = role manifest; four requirement kinds; Engine not boolean; `transition`/`handoff` off Profile field  
-- **Platform Reference Identity SoT R1–R5** ← **R1 next** (Engineering; parallel CL0) — [brief](platform-reference-identity-sot.md); country + document identity + policy overlay; E8 locked until R3+  
-- **Lifecycle Identity — Contract Seal** ← **queued after CL0** (docs sealed; feat locked) — [brief](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md); Funnel ≠ existence SoT; not Product Track  
-- **Documents Platform E8+** Remaining consumers / later lifecycle ← **locked** (E7 feat ✅; Product Track = CL0; E8 locked until R3+; do not start E8 in CL0 slice)  
+- **Reference R1–R5** ← **R1 now** (Engineering; parallel CL0 only) — [brief](platform-reference-identity-sot.md); after R1: **{R2 ∥ R3}** then R3→R4 then (R2 ∧ R4)→R5 → **Reference Program Exit Gate**. E8-bind unlock after R3∧R4 (not auto-scheduled). E8-eval after R5 ∧ E8-bind
+- **CL1+** Entity Field Composition remainder ← **locked** until prior Product gate; Product after CL0 = **CL1 → LI-1 → DR1-contract → CL2…**; [CL0](entity-field-composition-cl0-contract-seal.md)
+- **Lifecycle Identity** ← docs sealed; **LI-1 feat after CL1** (existence/identity guard only) — [brief](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md); LI-2+ do **not** block CL2+; Funnel ≠ existence SoT
+- **DR1-contract / DR1-runtime** ← **locked** (briefs not opened). Contract after CL1 + LI-1 (and R3∧R4 if the contract already names canonical type ids). Runtime after DR1-contract ∧ Reference R5; does **not** block CL2+
+- **Documents E8-bind / E8-eval** ← **locked** (briefs not opened). Bind unlock = R3∧R4. Eval unlock = R5 ∧ E8-bind. Unlock ≠ schedule
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -133,14 +274,23 @@
 | **34** | **Documents Platform E6** Document expiry / validity | `docs/…` ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284) · `feat/…` ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285) | ✅ named Document Expiry Gate · merge `79e638c3` |
 | **35** | **Documents Platform E7** Document requests | `docs/…` ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286) · `feat/…` ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287) | ✅ named Document Requests Gate · merge `ceafbd48` |
 | **36** | **Entity Field Composition CL0** Contract seal | `docs/…` | **active** (brief; feat locked) — Page Type + two builder modes; Profile = role manifest |
-| **37** | **Platform Reference Identity SoT R1** Country registry | `feat/platform-reference-r1-country-registry` | **active** (Engineering; parallel CL0) — [brief](platform-reference-identity-sot.md) |
-| **38** | **Platform Reference Identity SoT R2–R5** Cutover / doc identity / aliases / policy | locked | after prior R gate; E8 locked until R3+ |
-| **39** | **Documents Platform E8+** Remaining consumers / later lifecycle | locked | Product Track = CL0; E8 locked until R3+ |
-| **40** | **Lifecycle Identity** Contract seal (ADR-037) | [brief](lifecycle-identity-l0-contract-seal.md) | **queued after CL0** — docs sealed; feat locked; not Product Track |
+| **37** | **Reference R1** Country registry | `feat/platform-reference-r1-country-registry` | **active** (Engineering; parallel CL0 only) — [brief](platform-reference-identity-sot.md) |
+| **38** | **Reference R2** Country runtime cutover | locked | after **Reference R1 Gate**; fan-out with R3; = REF-4 Phase 2 country adoption |
+| **39** | **Reference R3** Document type identity | locked | after **Reference R1 Gate**; fan-out with R2 |
+| **40** | **Reference R4** Alias consolidation | locked | after **Reference R3 Gate** |
+| **41** | **Reference R5** Policy merge | locked | after **R2 Gate ∧ R4 Gate**; **not** a third concurrent Engineering slice; Q5 only |
+| **41b** | **Reference Program Exit Gate** | locked | after **Reference R5 Gate**; Q1–Q5 one chain |
+| **42** | **CL1** Field composition inventory | locked | after **CL0 Gate**; observes codes; does not canonize identity |
+| **42b** | **LI-1** Existence guard (ADR-037) | [brief](lifecycle-identity-l0-contract-seal.md) | after **CL1 Gate**; docs sealed; not full Lifecycle; does not block CL2+ after it PASSes |
+| **43** | **DR1-contract** Engine → Document Request contract | locked | after CL1 ∧ LI-1; also R3∧R4 if the contract already names canonical type ids |
+| **43b** | **CL2–CL6** Field composition remainder | locked | after **DR1-contract Gate**; not parked on R5 |
+| **44** | **DR1-runtime** Engine generation | locked | after **DR1-contract Gate ∧ Reference R5 Gate**; does **not** block CL2+ |
+| **45** | **E8-bind** Canonical type bind | locked | unlock = R3∧R4; schedule = Product only; not auto-start |
+| **45b** | **E8-eval** Required-doc evaluation | locked | unlock = R5 ∧ E8-bind; not auto-start |
 
-**C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** Entity Field Composition CL0 — [contract seal](entity-field-composition-cl0-contract-seal.md) (brief; feat locked). **Queued after CL0:** Lifecycle Identity — [brief](lifecycle-identity-l0-contract-seal.md) (ADR-037). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287) (named Document Requests Gate). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285). E5 ✅ [#282](https://github.com/igortatarynovich/HostFlow/pull/282). E4 ✅. E3 ✅. E2 ✅. WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E1 ✅. D4/D8 stay bound. D3 / D5–D7 / D9 stay unbound. G4 stays Recruitment Application. Foundation stays 🔄. E8+ locked until R3+.  
-**Active (Engineering):** Platform Reference Identity SoT **R1** — [brief](platform-reference-identity-sot.md) (parallel CL0; reference only). Legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
+**C0–C2.3** ✅. **C2.4 frozen (Epic C residual R1).** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
+**Active (Product):** Entity Field Composition CL0 — [contract seal](entity-field-composition-cl0-contract-seal.md) (brief; feat locked). **Next Product after CL0 merge:** CL1 brief. **Not** LI-1 feat. **Not** DR1. **Not** E8. E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄. E8-bind / E8-eval locked (split-gated).  
+**Active (Engineering):** **Reference R1** — [brief](platform-reference-identity-sot.md) (parallel CL0; no runtime cutover). After R1: **{R2 ∥ R3}**, then collapse. Legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
 
@@ -271,9 +421,13 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [entity-field-composition-cl0-contract-seal.md](entity-field-composition-cl0-contract-seal.md). Page Type + two builder modes. Entity Profile = role manifest. Four requirement kinds; Engine not boolean. `transition` / `handoff` off Profile field. Docs only. Not E8. Not D10. Not Forms P3. Proof later = D4 Information zone.
 
-### Lifecycle Identity — Contract Seal ← **queued after CL0** (docs sealed; feat locked)
+### CL1+ — Entity Field Composition remainder ← **locked**
 
-[lifecycle-identity-l0-contract-seal.md](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md). Module Stage Registry owns existence; Funnel = company overlay; PE = mechanism; Handoff ≠ FunnelTransition. **Not Product Track.** First feat (existence guard) only after CL0. Do not universalize `FunnelStage.code`. Do not cut over Candidate/Sales/Client UI in the docs slice.
+After CL0: **CL1 → LI-1 → DR1-contract → CL2…CL6**. CL1 observes live codes; it does **not** canonize country or document-type identity. **DR1-contract** is not a Field Composition slice. **DR1-runtime** waits on Reference R5 and does **not** park CL2+.
+
+### Lifecycle Identity — LI-1 after CL1 (docs sealed; feat locked until CL1 Gate)
+
+[lifecycle-identity-l0-contract-seal.md](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md). Module Stage Registry owns existence; Funnel = company overlay; PE = mechanism; Handoff ≠ FunnelTransition. **LI-1** is the only Lifecycle slice between CL1 and CL2: existence/identity guard. LI-2+ stay in the Lifecycle ladder and do **not** block CL2+. Do not universalize `FunnelStage.code`. Do not cut over Candidate/Sales/Client UI in LI-1.
 
 ---
 
@@ -313,7 +467,7 @@ Not a second CRM and not Settings. Working folders only (Inbox, Unread, Needs re
 ## 5b. Epic C2 — Communication Capability Epic ← **closed (C2.4 frozen)**
 
 **Epic:** [epic-c2-communication-campaigns.md](epic-c2-communication-campaigns.md)  
-**Product active:** **A2 Platform Governance Review**. C2.1–C2.3 ✅; C2.4 = frozen (gate residual R1).
+**Product active (historical):** **A2 Platform Governance Review** — closed. **Current Product = CL0.** C2.1–C2.3 ✅; C2.4 = frozen (**Epic C residual R1**, not Reference R1).
 
 C2 is **not** Communication v2. Sole responsibility: emit `CommunicationIntent` into the existing platform pipeline.  
 Order: Template Platform → Automation → Campaigns → Scheduling → Complete Gate.  
@@ -324,7 +478,7 @@ Merge gates: Intent-only egress · no second pipeline · capability isolation ·
 ## 5c. A2 — Platform Governance Review ← **PASS_WITH_CONSTRAINTS**
 
 Short L0 gate — [platform-governance-review-a2.md](../gates/platform-governance-review-a2.md) (2026-08-03).  
-Catalog Notifications↔Communication deferred to Architecture RFC (A2-F1). **Next Product Track:** Meta Intake Completeness.
+Catalog Notifications↔Communication deferred to Architecture RFC (A2-F1). **Historical next (closed):** Meta Intake Completeness. **Current Product = CL0.**
 
 ---
 
@@ -348,11 +502,19 @@ Next branch only after:
 4. Stale worktrees pruned  
 5. One dedicated worktree  
 
-**Do not** start C2.4 (frozen; gate residual R1).  
+**Do not** start C2.4 (frozen; **Epic C residual R1** — not Reference R1).  
+**Do not** skip a named gate in § Locked execution sequence.  
+**Do not** treat unlock as schedule. Unlocked work is not Active until the owning track queues it.  
+**Do not** give one named slice two independent unlock conditions — split it.  
+**Do not** run a third concurrent Engineering slice. Fan-out is only `{Reference R2, Reference R3}` after Reference R1 Gate; then collapse.  
+**Do not** activate Reference R5 while Reference R2 is still open.  
+**Do not** auto-start E8-bind after R3∧R4, or E8-eval after R5.  
+**Do not** park CL2+ on Reference R5 (only DR1-runtime parks there).  
+**Do not** start full Lifecycle / Funnel UI cutover as LI-1.  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
-**Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Documents.  
+**Do not** mix Stage 5 settings/enable-disable or Acquisition R6 table-cutover into Documents.  
 **Do not** treat Shell/chrome or D1–D9 named gates as original Entity Platform done; **do not** mix E7 into an E6/E5/E4/E3/E2/WCP PR; **do not** multiply new entity/application screens, rails, or D10 cutovers; **do not** fold Application Workspace into Entity Workspace; **do not** treat E3 HR bind or E4 Candidate bind as mass D3–D9 `documents` bind; **do not** treat Shell `documents` nav, Vacancy docs section, HR dossier, CandidateCard, or Services billing tab as the D2 `documents` slot; **do not** treat Recruitment Application G4 as the Documents proof; **do not** start OCR / e-sign / packages / Forms P3–P5 / Billing / AI; **do not** put a request / reminder table in Document Hub; **do not** mint Catalog `document.requested`; **do not** leave `documents.candidate_id` as a nullable write target in E5; **do not** patch Recruitment RODO/comments as the platform fix; **do not** mix ListWorkspace into this close-out.  
-**Do not** start Lifecycle Identity **feat** while CL0 holds Product Track; **do not** treat `funnels` / `FunnelStage.code` as stage-existence SoT; **do not** union `stages.py` + Lead literals + client FE lists into a new canon.  
+**Do not** start LI-1 feat while CL0 holds Product Track; **do not** treat `funnels` / `FunnelStage.code` as stage-existence SoT; **do not** union `stages.py` + Lead literals + client FE lists into a new canon; **do not** let LI-2+ stall CL2+.  
 **Do** apply [Goal Completion Gate](../gates/goal-completion-gate.md) before marking a future platform phase COMPLETE.  
 **Do** require `**Phase class:** platform` + [Original Goal → Completion Proof](../gates/goal-completion-gate.md) on every new platform phase brief (problem to permanently remove + named consumer — not a deliverables list).  
 **Do** amend this queue when switching Product Active (this revision: live = Entity Field Composition CL0 brief).
@@ -361,8 +523,9 @@ Next branch only after:
 
 ## 8. History
 
-- 2026-08-23: **ADR-037** + Lifecycle Identity L2 + brief — canon sealed; **queued after CL0** ([brief](lifecycle-identity-l0-contract-seal.md)). Product Track **stays** [CL0](entity-field-composition-cl0-contract-seal.md). No feat. E8 stays locked.
-- 2026-08-23: Platform Reference Identity SoT brief — normative contract R1–R5. Engineering Track → **R1** next (parallel CL0). [brief](platform-reference-identity-sot.md). E8 locked until R3+. XK excluded from R1 ISO set.
+- 2026-08-23: Execution canon sealed — one work = one unlock; unlock ≠ schedule; Engineering fan-out only `{R2, R3}` then collapse; Product `CL0 → CL1 → LI-1 → DR1-contract → CL2…`; DR1-runtime parks on R5 without blocking CL2+; E8-bind / E8-eval split. Always **Reference Rn** vs **Epic C residual R1**.
+- 2026-08-23: **ADR-037** + Lifecycle Identity L2 + brief — canon sealed. **LI-1 after CL1**, not after CL7 / not full Lifecycle ([brief](lifecycle-identity-l0-contract-seal.md)). Product Track **stays** [CL0](entity-field-composition-cl0-contract-seal.md).
+- 2026-08-23: Platform Reference Identity SoT brief — normative contract Reference R1–R5. Engineering Track → **Reference R1** (parallel CL0 only). [brief](platform-reference-identity-sot.md). E8 split-gated. XK excluded from R1 ISO set.
 - 2026-08-23: CL0 brief opened — Entity Field Composition contract seal. Product Track → [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) (feat locked). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287) (`ceafbd48`). E8 stays locked. Foundation stays 🔄.
 - 2026-08-23: E7 feat opened — Hub outstanding-ask read on public contract. Product Track stays [Documents Platform E7](documents-platform-e7-document-requests.md). E8+ locked. Foundation stays 🔄.
 - 2026-08-23: E7 brief opened — Document requests. Product Track → [Documents Platform E7](documents-platform-e7-document-requests.md) (feat locked). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285) (`79e638c3`). D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.

@@ -106,14 +106,15 @@ E7 already matches Document kind: request lives on `document_type_code`. Engine 
 | Slice | Focus | Status |
 |-------|--------|--------|
 | **CL0** | Contract seal (this) | ← **active** (brief; feat locked — docs only) |
-| **CL1** | Inventory current Candidate: fields, `document_configs`, screening-as-required, extra/UI holes | locked until CL0 brief |
+| **CL1** | Inventory current Candidate: fields, `document_configs`, screening-as-required, extra/UI holes | **next Product** after CL0 Gate; observes codes, does **not** canonize country/document-type existence |
 | **CL2** | Membership runtime | locked until CL1 |
 | **CL3** | Layout runtime (proof = D4 Information zone) | locked until CL2 |
 | **CL4** | Builder (two modes) | locked until CL3 |
 | **CL5** | Q&A | locked until CL4 |
 | **CL6** | Flight mapping | locked until CL5 |
 
-CL1 is classification, **not** runtime. Do not skip to CL3 because “the card already renders”.
+CL1 is classification, **not** runtime. Do not skip to CL3 because “the card already renders”.  
+**Product after CL0 Gate:** CL1 → LI-1 → DR1-contract → CL2…. **DR1-runtime** is not a CL slice; it waits on DR1-contract ∧ Reference R5 and does **not** park CL2+. **E8-bind / E8-eval** are Documents slices (unlock ≠ schedule). Do not name Engine→Request as CL7.
 
 ---
 
@@ -129,10 +130,10 @@ CL1 is classification, **not** runtime. Do not skip to CL3 because “the card a
 
 | Deferred | Owner |
 |----------|--------|
-| CL1 inventory of live Candidate config | next brief |
-| CL2–CL6 runtime / builder / Q&A / Flight | later CL |
-| Engine → Document Request consumer | after CL, not E7, not E8 |
-| Documents E8 remaining consumers | locked |
+| CL1 inventory of live Candidate config | **next Product brief** after this CL0 Gate |
+| CL2–CL6 runtime / builder / Q&A / Flight | later CL (after DR1-contract) |
+| **DR1-contract / DR1-runtime** | not a CL slice; contract after CL1+LI-1; runtime after contract ∧ Reference R5 |
+| **E8-bind / E8-eval** | locked; unlock ≠ schedule; see queue |
 | Forms P3 / P4 / P5 | locked |
 | D10 / mass D3–D9 bind | forbidden |
 | OCR / packages / Billing / AI | forbidden |
@@ -163,7 +164,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - Product Track = this brief (feat locked, docs only). Documents Platform E7 is closed (#287 / `ceafbd48`).  
 - Operators / agents cannot treat CandidateProfile.config, Documents E8, Forms P3, D10, or Engine boolean as this seal.  
 - `transition` / `handoff` are not Profile-field properties in canon.  
-- Documents Foundation stays 🔄. E8 stays locked.
+- Documents Foundation stays 🔄. E8-bind / E8-eval stay locked (split-gated; unlock ≠ schedule). Next Product after this brief = **CL1**.
 
 ---
 
@@ -179,4 +180,5 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-23: Sequence sealed — next Product after CL0 = CL1 → LI-1 → DR1-contract → CL2…; Engine→Request is DR1 (not CL7); E8-bind / E8-eval split.
 - 2026-08-23: CL0 brief opened — Entity Field Composition contract seal. Product Track → this brief (feat locked, docs only). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287) (`ceafbd48`). E8 stays locked. Foundation stays 🔄.

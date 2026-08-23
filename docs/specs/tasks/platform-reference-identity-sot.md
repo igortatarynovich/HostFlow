@@ -9,9 +9,9 @@
 
 > HostFlow currently has **multiple authoritative-looking catalogs** for countries, dial codes, document types, and document policy. This program converges them to **one authoritative definition per domain** with explicit projections, overlays, and alias boundaries.  
 > **R1** is reference completeness only — **no runtime/UI adoption**. It may run **in parallel with CL0** because scope is isolated.  
-> **E8+** stays **locked until R3+** (unique document type identity). **CL0** stays the active **Product** slice.
+> **E8-bind** unlocks after **Reference R3 ∧ R4** (not auto-scheduled). **E8-eval** unlocks after **Reference R5 ∧ E8-bind**. **CL0** stays the active **Product** slice. Unlock ≠ schedule.
 
-**Naming (do not collapse):** this program is **not** Documents E8, not Entity Field Composition CL0, not a second document-type catalog in `definitions.py`, not REF-4 Phase 1 re-open, not tenant-owned document type lists, not a monolithic “catalog of everything”, not L0 Catalog rewrite, not Billing / AI / Forms P3–P5.
+**Naming (do not collapse):** this program is **Reference R1–R5**. It is **not** Documents E8, not Entity Field Composition CL0, not **Epic C residual R1** (C2.4 freeze), not Acquisition R6, not a second document-type catalog in `definitions.py`, not REF-4 Phase 1 re-open, not REF-4 Phase 2 (that is **Reference R2**), not tenant-owned document type lists, not a monolithic “catalog of everything”, not L0 Catalog rewrite, not Billing / AI / Forms P3–P5.
 
 ---
 
@@ -255,26 +255,36 @@ After R1–R5, each question must have **exactly one** authoritative answer:
 
 ---
 
-## Slice ladder (R1–R5)
+## Slice ladder (Reference R1–R5)
 
-| Slice | Focus | Track | Depends on | Blocks |
-|-------|--------|-------|------------|--------|
-| **R1** | Country Registry completeness (identity + classifications contract); facade snapshot; ISO validation; no runtime cutover | Engineering | REF-4 Phase 1 ✅ | R2 |
-| **R2** | Country runtime cutover — `/catalogs/*`, frontend lists killed; dial from registry | Engineering | **R1 gate** | — |
-| **R3** | Document identity — registry JSON sole existence; seed sync; kill parallel stubs | Engineering | brief ✅ (parallel with R2 after R1) | R4, E8 |
-| **R4** | Alias consolidation — scanner, UI equivalence, legacy paths | Engineering | **R3 gate** | R5 |
-| **R5** | Policy merge — packs + tenant delta; kill fork rulesets; EU from registry | Engineering | **R3**, **R4** | E8 unlock |
+```text
+Reference R1 → { Reference R2 ∥ Reference R3 } → R3 → Reference R4
+  → (R2 PASS ∧ R4 PASS) → Reference R5 → Reference Program Exit Gate
+```
 
-**Parallelism:**
+Fan-out is **only** `{R2, R3}`. R5 is **not** a third concurrent Engineering slice.
 
-- **CL0** (Product) continues independently.  
-- **R1** may start **now** (parallel CL0).  
-- After **R1 gate**: **R2** and **R3** may proceed in parallel PRs.  
-- **E8+** locked until **R3+** gate.
+| Slice | Focus | Track | Depends on | Unlocks |
+|-------|--------|-------|------------|---------|
+| **Reference R1** | Country Registry completeness (identity + classifications contract); facade snapshot; ISO validation; no runtime cutover | Engineering | REF-4 Phase 1 ✅. **Not** REF-4 Phase 2 start gate | fan-out {R2, R3} |
+| **Reference R2** | Country runtime cutover — `/catalogs/*`, frontend lists killed; dial from registry. **This slice is REF-4 Phase 2 country adoption**. Proof: Q1–Q2 | Engineering | **Reference R1 Gate** | R5 join (with R4) |
+| **Reference R3** | Document identity — registry JSON sole existence; seed sync; kill parallel stubs. Proof: Q3 | Engineering | **Reference R1 Gate** (parallel R2) | Reference R4 |
+| **Reference R4** | Alias consolidation — scanner, UI equivalence, legacy paths. Proof: Q4 | Engineering | **Reference R3 Gate** | E8-bind unlock; R5 join (with R2) |
+| **Reference R5** | Policy merge — packs + tenant delta; overlay ≠ fork; pack codes ⊆ registry. Proof: Q5 only | Engineering | **Reference R2 Gate ∧ Reference R4 Gate** | E8-eval unlock; DR1-runtime unlock; Program Exit |
+| **Reference Program Exit Gate** | Q1–Q5 answered by one chain | Engineering | **Reference R5 Gate** | Reference program DONE |
+
+**Parallelism (only this):**
+
+- **CL0** (Product) continues independently while R1 has **no** runtime cutover.  
+- **Reference R1** may run **now** (parallel CL0).  
+- After **Reference R1 Gate**: fan-out **{R2 ∥ R3}** only. Then collapse.  
+- **E8-bind** unlocks after R3∧R4; **does not auto-start**.  
+- **E8-eval** unlocks after R5 ∧ E8-bind.  
+- **DR1-runtime** (not CL7) waits on R5; it does **not** park CL2+.
 
 ### R1 gate (named)
 
-**Platform Reference R1 Country Registry Gate**
+**Reference R1 Country Registry Gate**
 
 Pass requires:
 
@@ -300,7 +310,7 @@ CI / guard tests (introduced incrementally; full set required at R5 close):
 | Pack codes ⊆ registry | R5 |
 | No module `EU_COUNTRIES` frozenset | R5 |
 | Tenant ruleset validates as overlay/delta schema | R5 |
-| Five questions — single-answer integration test | R5 |
+| Five questions — single-answer integration test | Reference Program Exit Gate |
 
 Existing: `backend/scripts/check_document_type_registry.py` — extend per slice.
 
@@ -311,7 +321,9 @@ Existing: `backend/scripts/check_document_type_registry.py` — extend per slice
 | STOP | Reason |
 |------|--------|
 | CL0 feat / Entity Profile runtime in R1–R5 PRs | Product track |
-| Documents **E8+** before R3 gate | needs unique type identity |
+| Documents **E8-eval** before **Reference R5 Gate** and E8-bind | remaining consumers evaluate required docs; type identity alone is not enough |
+| Documents **E8-bind** before **Reference R3 Gate ∧ R4 Gate** | bind needs canonical identity + alias boundary |
+| Activating **Reference R5** while **Reference R2** is still open | fan-out window is only {R2, R3} |
 | Hub request table / E7 semantics | closed ✅ |
 | Reference layer executing policy | REF-4 Phase 1 rule |
 | New document types without registry JSON change | ADR-018 |
@@ -319,6 +331,7 @@ Existing: `backend/scripts/check_document_type_registry.py` — extend per slice
 | L0 Catalog rewrite | Architecture RFC only |
 | Forms P3–P5, Billing, AI | roadmap locked |
 | Mass D3–D9 documents bind | separate slices |
+| Tenant-minted document types / `tenant_custom` during R1–R5 | deferred; strict mode only until a later named gate |
 | Including `XK` in R1 ISO set | breaks registry ⊆ ISO invariant |
 
 ---
@@ -349,11 +362,12 @@ Does **not** amend L0. Does **not** rewrite Catalog Passport.
 - [ ] R3 gate PASS — document type existence = registry JSON only  
 - [ ] R4 gate PASS — scanner/UI use alias registry only  
 - [ ] R5 gate PASS — policy merge semantics; tenant overlay ≠ fork  
-- [ ] Five architectural questions — single answer enforced  
-- [ ] E8 unlock allowed (R3+); CL0/E7 unaffected  
+- [ ] Five architectural questions — single answer enforced at **Reference Program Exit Gate**  
+- [ ] E8-bind unlock after R3∧R4; E8-eval unlock after R5 ∧ E8-bind; unlock ≠ schedule; CL0/E7 unaffected  
 
 ---
 
 ## History
 
-- 2026-08-23: Normative brief opened — Platform Reference Identity SoT R1–R5. R1 may run parallel CL0. XK excluded from R1 ISO set. Queue: docs brief → R1 → gate → R2/R3 parallel → R4 → R5.
+- 2026-08-23: Sequence sealed with queue — Engineering `R1 → {R2 ∥ R3} → R4 → (R2 ∧ R4) → R5 → Program Exit`. E8-bind / E8-eval split. DR1-runtime (not CL7) joins R5. REF-4 Phase 2 = R2, not R1. Always **Reference Rn**.
+- 2026-08-23: Normative brief opened — Platform Reference Identity SoT R1–R5. R1 may run parallel CL0. XK excluded from R1 ISO set.

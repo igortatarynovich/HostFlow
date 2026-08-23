@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS. **Host runtime-equivalence** ← ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)). **Phase E — Documents Platform** ← **active** ([E7](../tasks/documents-platform-e7-document-requests.md); feat). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285)). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282)).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS. **Host runtime-equivalence** ← ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)). **Phase E — Documents Platform** ← E7 ✅; **Product Track = CL0** ([brief](../tasks/entity-field-composition-cl0-contract-seal.md); feat locked). **Engineering Track = Reference R1** ([brief](../tasks/platform-reference-identity-sot.md); parallel CL0). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285)). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282)). E8-bind / E8-eval locked (see [queue § Locked execution sequence](../tasks/sales-to-comms-sequential-queue.md)).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms ✅ → Phase D Entity Workspace (brief-complete) → Workspace Capability Platform Completion → Phase E Documents → …
@@ -36,7 +36,7 @@ Order **after A2**:
 
 1. **A2 — Platform Governance Review** — ✅ PASS_WITH_CONSTRAINTS ([gate](../gates/platform-governance-review-a2.md))  
 2. **Phase B — Acquisition / Stage 3 + Meta** ← ✅  
-3. **Phase C — Forms Platform** ← ✅ ([C1](../tasks/forms-platform-c1-contract-seal.md)…[C6](../tasks/forms-platform-c6-optimization.md) / Foundation) → **Phase D — Entity Workspace** D1–D9 brief-complete ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) [#268](https://github.com/igortatarynovich/HostFlow/pull/268)) → **Workspace Capability Platform Completion** **COMPLETE** ([record](../gates/workspace-capability-platform-complete.md)) → **host runtime-equivalence** ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)) → **Phase E — Documents Platform** (E6 ✅; [E7](../tasks/documents-platform-e7-document-requests.md) feat) → Billing → AI  
+3. **Phase C — Forms Platform** ← ✅ ([C1](../tasks/forms-platform-c1-contract-seal.md)…[C6](../tasks/forms-platform-c6-optimization.md) / Foundation) → **Phase D — Entity Workspace** D1–D9 brief-complete ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) [#268](https://github.com/igortatarynovich/HostFlow/pull/268)) → **Workspace Capability Platform Completion** **COMPLETE** ([record](../gates/workspace-capability-platform-complete.md)) → **host runtime-equivalence** ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)) → **Phase E — Documents Platform** (E7 ✅; Product = [CL0](../tasks/entity-field-composition-cl0-contract-seal.md); Engineering = [Reference R1](../tasks/platform-reference-identity-sot.md)) → Billing → AI  
 
 Near-term slice execution remains one-at-a-time per [sequential queue](../tasks/sales-to-comms-sequential-queue.md).
 
@@ -221,13 +221,16 @@ Ladder (E7 ✅; Product Track = CL0):
 | **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) · merge `702b922c` |
 | **E6** | Document expiry / validity | ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) · merge `79e638c3` |
 | **E7** | Document requests | ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) · merge `ceafbd48` |
-| **R1** | [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) — Country Registry completeness | **active** (Engineering; parallel CL0) |
-| **R2–R5** | same brief — cutover / document identity / aliases / policy merge | locked until prior R gate; not E8 |
-| **E8+** | Remaining consumers / later lifecycle | locked until R3+ (type identity); Product Track stays CL0 |
+| **Reference R1** | [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) — Country Registry completeness | **active** (Engineering; parallel CL0 only; no runtime cutover) |
+| **Reference R2** | Country runtime cutover (= REF-4 Phase 2 country adoption) | locked until Reference R1 Gate; fan-out with R3 |
+| **Reference R3** | Document type identity | locked until Reference R1 Gate; fan-out with R2 |
+| **Reference R4** | Alias consolidation | locked until Reference R3 Gate |
+| **Reference R5** | Policy merge (Q5 only) | locked until R2 Gate ∧ R4 Gate; **not** a third concurrent Engineering slice |
+| **E8-bind / E8-eval** | Remaining consumers split | bind unlock = R3∧R4 (not auto-scheduled); eval unlock = R5 ∧ E8-bind; briefs not opened |
 
 **Out of E7:** D3 / D5–D7 / D9 `documents` bind · OCR / e-sign / packages / Hub UI rebuild · Hub request table · Catalog `document.requested` · Forms P3–P5 · Billing Platform · AI · L0 Catalog rewrite · G4 reopen · unbind D8 / D4.
 
-**Result:** validity is Hub. Outstanding ask is Hub required type + entity (E7 ✅). Product Track = [Entity Field Composition CL0](../tasks/entity-field-composition-cl0-contract-seal.md). Engineering Track (parallel): [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) **R1** active. Foundation stays 🔄. E8 stays locked until R3+.
+**Result:** validity is Hub. Outstanding ask is Hub required type + entity (E7 ✅). Product Track = [Entity Field Composition CL0](../tasks/entity-field-composition-cl0-contract-seal.md). Engineering Track: [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) **Reference R1** active; after R1: **{R2 ∥ R3}**, then collapse. Foundation stays 🔄. E8-bind / E8-eval split-gated (unlock ≠ schedule). Slice order: [queue § Locked execution sequence](../tasks/sales-to-comms-sequential-queue.md).
 
 **Ref:** [entity-field-composition-cl0-contract-seal.md](../tasks/entity-field-composition-cl0-contract-seal.md) · [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md) ✅ · [E6](../tasks/documents-platform-e6-document-expiry.md) ✅ · [E5](../tasks/documents-platform-e5-candidate-storage-bridge.md) ✅ · [E4](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [E3](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [E2](../tasks/documents-platform-e2-public-contract.md) ✅ · [E1](../tasks/documents-platform-e1-contract-seal.md) ✅ · [ADR-009](ADR-009-document-hub-platform-layer.md) · [ADR-012](ADR-012-activity-notification-operating-layer.md) · [A2-F8](../gates/platform-governance-review-a2.md).
 
@@ -266,7 +269,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 5 | **D** Universal Entity Workspace | D1–D9 brief-complete ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) [#268](https://github.com/igortatarynovich/HostFlow/pull/268)); goal-incomplete |
 | 5b | **Workspace Capability Platform Completion** | **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS |
 | 5c | **Host runtime-equivalence** | Second host + Notes/Consent owner boundaries ✅ [#274](https://github.com/igortatarynovich/HostFlow/pull/274) |
-| 6 | **E** Documents Platform | ← **active** ([E7](../tasks/documents-platform-e7-document-requests.md); feat). E6 ✅ |
+| 6 | **E** Documents Platform | E7 ✅. Product = CL0. Engineering = Reference R1. E8-bind / E8-eval locked (split-gated) |
 | 7 | **F** Billing Platform | SaaS commercial layer |
 | 8 | **G** AI Platform | Assistants over existing canons |
 
@@ -278,7 +281,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). **Entity Field Composition CL0** **is** the active slice (brief; feat locked). Do not start [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) or E8 in a CL0 PR. Do not mix E7 into an E6/E5/E4/E3/E2/WCP PR, mass-bind D3–D9, reopen G4, D10-on-weak-D2, Recruitment rail patches, reopen D9, Forms C6, Stage 5 settings, or R6. Do not fold Application into Entity. Do not mix ListWorkspace into the WCP close-out. Closing a later phase as COMPLETE requires the [Goal Completion Gate](../gates/goal-completion-gate.md). New platform phase briefs require [Original Goal → Completion Proof](../gates/goal-completion-gate.md).  
+5. Parallel product branches that compete across phases (one active product slice). **Entity Field Composition CL0** **is** the active Product slice (brief; feat locked). **Reference R1** may run as Engineering in a **separate** PR, not inside a CL0 PR. Do not start E8 in a CL0 or Reference R1–R4 PR. Do not mix E7 into an E6/E5/E4/E3/E2/WCP PR, mass-bind D3–D9, reopen G4, D10-on-weak-D2, Recruitment rail patches, reopen D9, Forms C6, Stage 5 settings, or Acquisition R6. Do not fold Application into Entity. Do not mix ListWorkspace into the WCP close-out. Closing a later phase as COMPLETE requires the [Goal Completion Gate](../gates/goal-completion-gate.md). New platform phase briefs require [Original Goal → Completion Proof](../gates/goal-completion-gate.md). Slice order is the [queue locked sequence](../tasks/sales-to-comms-sequential-queue.md).  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Minting Entity Catalog Passport, or binding D2 `documents` on D3 / D5–D7 / D9 in E5, without a later named E slice + Architecture checklist / RFC when Catalog shape changes.  
@@ -290,7 +293,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Field Composition CL0 brief) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (Product = CL0; Engineering = Reference R1; § Locked execution sequence) |
 | [workspace-capability-platform-completion.md](../tasks/workspace-capability-platform-completion.md) | Corrective program — Capability Host Contract; **COMPLETE** |
 | [workspace-capability-host-runtime-equivalence.md](../tasks/workspace-capability-host-runtime-equivalence.md) | Equivalence slice — second host + owner boundaries ✅ |
 | [workspace-capability-platform-complete.md](../gates/workspace-capability-platform-complete.md) | Final Goal Completion — program COMPLETE |
@@ -302,8 +305,8 @@ Not standalone AI features. A **service layer over existing platforms**:
 | [documents-platform-e6-document-expiry.md](../tasks/documents-platform-e6-document-expiry.md) | E6 COMPLETE — Document expiry / validity |
 | [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md) | E7 COMPLETE — Document requests |
 | [entity-field-composition-cl0-contract-seal.md](../tasks/entity-field-composition-cl0-contract-seal.md) | **Active Product Track** — Entity Field Composition CL0 (brief; feat locked) |
-| [platform-reference-identity-sot.md](../tasks/platform-reference-identity-sot.md) | **Active Engineering Track** — Platform Reference Identity SoT R1–R5 (R1 next; parallel CL0) |
-| [lifecycle-identity-l0-contract-seal.md](../tasks/lifecycle-identity-l0-contract-seal.md) | **Queued after CL0** — Lifecycle Identity (ADR-037); docs sealed; feat locked |
+| [platform-reference-identity-sot.md](../tasks/platform-reference-identity-sot.md) | **Active Engineering Track** — Reference R1 now; then {R2 ∥ R3}; not Epic C residual R1 |
+| [lifecycle-identity-l0-contract-seal.md](../tasks/lifecycle-identity-l0-contract-seal.md) | **LI-1 after CL1** — existence/identity guard (ADR-037); docs sealed; LI-2+ do not block CL2+ |
 | [documents-platform-e3-first-consumer-bind.md](../tasks/documents-platform-e3-first-consumer-bind.md) | E3 first consumer bind ✅ |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
@@ -315,8 +318,10 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
-- 2026-08-23: **ADR-037** Lifecycle Identity Canon. Runtime **queued after CL0** ([brief](../tasks/lifecycle-identity-l0-contract-seal.md)). Active Product Track **unchanged** = [CL0](../tasks/entity-field-composition-cl0-contract-seal.md).
-- 2026-08-23: Platform Reference Identity SoT brief — normative R1–R5 contract. Engineering **R1** active (parallel CL0). [brief](../tasks/platform-reference-identity-sot.md). E8 locked until R3+.
+- 2026-08-23: Execution canon sealed — Product `CL0 → CL1 → LI-1 → DR1-contract → CL2…`; Engineering `R1 → {R2 ∥ R3} → R4 → (R2 ∧ R4) → R5 → Program Exit`; E8-bind / E8-eval split; unlock ≠ schedule. Phase E E7 is **not** the active Product slice.
+- 2026-08-23: *(superseded same day)* Linear Engineering ladder / CL7 / E8=R5+LI-1 — replaced by execution canon above.
+- 2026-08-23: **ADR-037** Lifecycle Identity Canon. **LI-1 after CL1** ([brief](../tasks/lifecycle-identity-l0-contract-seal.md)). Active Product Track **unchanged** = [CL0](../tasks/entity-field-composition-cl0-contract-seal.md).
+- 2026-08-23: Platform Reference Identity SoT brief — normative Reference R1–R5. Engineering **Reference R1** active (parallel CL0 only). [brief](../tasks/platform-reference-identity-sot.md). E8-bind / E8-eval split-gated.
 - 2026-08-23: CL0 brief — Entity Field Composition contract seal. Active = [Entity Field Composition CL0](../tasks/entity-field-composition-cl0-contract-seal.md) (feat locked). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287).
 - 2026-08-23: E7 feat — Hub outstanding-ask read on public contract. Active = [Documents Platform E7](../tasks/documents-platform-e7-document-requests.md) (feat). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285).
 - 2026-08-23: E7 brief — Document requests. Active = [Documents Platform E7](../tasks/documents-platform-e7-document-requests.md) (feat locked). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285).

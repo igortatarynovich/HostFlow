@@ -1,13 +1,13 @@
 # Lifecycle Identity L0 — Contract Seal
 
-**Status:** **QUEUED** (docs sealed with ADR-037; feat locked until after CL0)  
+**Status:** **QUEUED** (docs sealed with ADR-037; **LI-1 feat after CL1 Gate**; LI-2+ do not block CL2+)  
 **Phase class:** platform  
 **Branch (docs):** this slice — ADR + L2 + queue linkage  
-**Branch (code):** none until Product Track finishes Entity Field Composition CL0; then `feat/lifecycle-identity-…` per slice  
+**Branch (code):** none until **CL1 Gate**; then `feat/lifecycle-identity-li1-…` for LI-1 only. LI-2+ stay in the Lifecycle ladder  
 **Parents:** [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md) · [Lifecycle Identity Canon](../architecture/lifecycle-identity-canon.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Process Engine](../platform/process-engine.md) · [Module-owned pipelines P0](../architecture/module-owned-pipelines-p0.md) · [CL0](entity-field-composition-cl0-contract-seal.md)
 
 > ADR-037 seals **stage existence vs company funnel vs Process Engine vs Handoff**. Funnel tables are configuration, not a catalog.  
-> This brief does **not** become Product Track. **Active Product Track remains CL0.** Runtime slices are appended to the existing sequential queue **after** CL0.  
+> This brief does **not** become Product Track **now**. **Active Product Track remains CL0.** **LI-1** (existence/identity guard only) is the only Lifecycle slice between CL1 and CL2. Do not start LI-1 while CL0 holds Product Track. LI-2+ do **not** block CL2+.  
 > This brief does **not** ship registry loader, funnel FK, Candidate UI cutover, Sales namespaces, HR handoff runtime, Documents E8, Forms P3–P5, or custom stages.
 
 **Naming (do not collapse):** Lifecycle Identity is not Funnel Engine v2, not PE P7, not Country Registry, not Documents E8, not Entity D10, not a Recruitment rail patch. Registry ≠ funnel row. PE ≠ existence. Handoff ≠ FunnelTransition.
@@ -37,7 +37,7 @@ Module Stage Registry (existence)
   → UI /meta/stages (projection)
 ```
 
-**False close (reject):** funnel table as SoT; PE `module.code` as SoT without `entity_kind`; union of legacy lists as canon; Candidate UI cutover before existence test; custom `FunnelStage.code`; starting this as Product Track while CL0 is active; E8 / Forms P3; minting `sales.*` keys from Recruitment Lead codes.
+**False close (reject):** funnel table as SoT; PE `module.code` as SoT without `entity_kind`; union of legacy lists as canon; Candidate UI cutover before existence test; custom `FunnelStage.code`; starting LI-1 as Product Track while CL0 is active; E8 / Forms P3; minting `sales.*` keys from Recruitment Lead codes.
 
 ---
 
@@ -45,10 +45,10 @@ Module Stage Registry (existence)
 
 | Track | Role |
 |-------|------|
-| **Product (now)** | [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) — unchanged |
-| **This program** | Docs (ADR-037 + L2) land without stealing Product Track. **Feat slices start only after CL0** (or later if CL0 still holds the track). |
+| **Product (now)** | [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) — then CL1 → **LI-1** → DR1-contract → CL2… per [queue locked sequence](sales-to-comms-sequential-queue.md) |
+| **This program** | Docs (ADR-037 + L2) land without stealing Product Track. **LI-1 feat starts after CL1 Gate PASS.** LI-1 is the existence/identity guard only. LI-2+ stay queued and do not block CL2+. |
 
-Do not parallelize Lifecycle Identity feat with CL0, Documents E8, or Forms P3.
+Do not parallelize LI-1 with CL0. Do not expand LI-1 into Funnel/UI cutover. Do not let LI-2+ stall Field Composition CL2+.
 
 ---
 
@@ -63,7 +63,7 @@ Do not parallelize Lifecycle Identity feat with CL0, Documents E8, or Forms P3.
 
 ---
 
-## Queued runtime slices (after CL0; one-at-a-time)
+## Queued runtime slices (LI-1 after CL1; LI-2+ later; one-at-a-time)
 
 Order is locked. Do not skip to UI.
 
@@ -100,4 +100,5 @@ Owner = module (identities) + platform Funnel primitive (shape) + PE (evaluation
 
 ## History
 
-- 2026-08-23: Brief queued after CL0. Canon sealed in ADR-037 + L2. Product Track stays CL0. No feat.
+- 2026-08-23: Feat placement sealed — **LI-1 after CL1**, not after CL7 / not full Lifecycle. LI-2+ do not block CL2+.
+- 2026-08-23: Brief opened. Canon sealed in ADR-037 + L2. Product Track stays CL0. No feat.
