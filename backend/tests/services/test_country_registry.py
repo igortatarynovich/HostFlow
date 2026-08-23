@@ -78,13 +78,12 @@ def test_country_registry_dial_code_is_not_unique() -> None:
 
 
 def test_country_registry_does_not_auto_promote_discovery_union() -> None:
-    """Legacy lists are discovery input only — they cannot extend canon."""
+    """Runtime catalogs are registry projections — they cannot extend canon."""
     discovery = set(COUNTRIES) | set(DIAL_CODES) | _frontend_country_codes()
     canon = country_registry_alpha2_set()
-    assert "XK" in discovery
+    assert "XK" not in discovery
     assert "XK" not in canon
-    extras = discovery - canon
-    assert extras <= FORBIDDEN_IDENTITY_CODES | {"XK"}
+    assert discovery == canon
 
 
 def test_country_registry_json_has_no_immutable_keys() -> None:
