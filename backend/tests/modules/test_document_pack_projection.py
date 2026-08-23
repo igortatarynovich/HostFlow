@@ -44,7 +44,11 @@ def test_driver_pack_missing_license() -> None:
     assert "driver_license" in driver["missing"]
     assert "driver_license" in driver["gaps"]
     assert "driver_license" in driver["blockers"]
-    assert "code95" in driver["present"] or "code_95" in driver["present"]
+    assert (
+        "driver_qualification_card" in driver["present"]
+        or "code95" in driver["present"]
+        or "code_95" in driver["present"]
+    )
     assert driver["status"] == "gaps"
 
 

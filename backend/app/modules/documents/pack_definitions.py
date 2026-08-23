@@ -1,18 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, FrozenSet, Optional
+from typing import Any, Callable, Optional
 
-from backend.app.services.document_applicability_policy import derive_document_applicability_decision
-
-# Module-owned baseline sets for applicability policy (no platform reference imports).
-_DEFAULT_EU_COUNTRIES: FrozenSet[str] = frozenset(
-    {
-        "at", "be", "bg", "hr", "cy", "cz", "dk", "ee", "fi", "fr", "de", "gr", "hu", "ie",
-        "it", "lv", "lt", "lu", "mt", "nl", "pl", "pt", "ro", "sk", "si", "es", "se",
-    }
+from backend.app.reference.document_policy_merge import (
+    eu_member_alpha2_lower,
+    oswiadczenie_eligible_alpha2_lower,
 )
-_DEFAULT_OSWIADCZENIE_COUNTRIES: FrozenSet[str] = frozenset({"ua", "by", "md", "ge"})
+from backend.app.services.document_applicability_policy import derive_document_applicability_decision
 
 
 def _norm(value: Any) -> str:
@@ -32,8 +27,8 @@ def _applicability_decision(ctx: dict[str, Any]):
         citizenship=_ctx_value(ctx, "citizenship"),
         work_country=_ctx_value(ctx, "work_country") or "pl",
         role=_ctx_value(ctx, "position_category", "role", "profession_category"),
-        eu_countries=set(_DEFAULT_EU_COUNTRIES),
-        oswiadczenie_countries=set(_DEFAULT_OSWIADCZENIE_COUNTRIES),
+        eu_countries=set(eu_member_alpha2_lower()),
+        oswiadczenie_countries=set(oswiadczenie_eligible_alpha2_lower()),
     )
 
 
@@ -52,7 +47,6 @@ def _driver_pack_applies(ctx: dict[str, Any]) -> bool:
 
 
 def _legal_stay_pack_applies(ctx: dict[str, Any]) -> bool:
-    # Pack projection is always available; required codes are filtered by module policy.
     return bool(_ctx_value(ctx, "citizenship")) or bool(_ctx_value(ctx, "residency_status"))
 
 
@@ -73,7 +67,7 @@ def _legal_stay_required_codes(ctx: dict[str, Any], base_codes: tuple[str, ...])
     decision = _applicability_decision(ctx)
     citizenship = _ctx_value(ctx, "citizenship")
     codes = list(base_codes)
-    if citizenship in _DEFAULT_EU_COUNTRIES:
+    if citizenship in eu_member_alpha2_lower():
         codes = [c for c in codes if c not in {"work_permit", "visa", "residence_card"}]
     elif not decision.visa_required:
         codes = [c for c in codes if c != "visa"]
@@ -86,10 +80,10 @@ DOCUMENT_PACK_DEFINITIONS: tuple[DocumentPackDefinition, ...] = (
         label="Driver Pack",
         document_codes=(
             "driver_license",
-            "code_95",
+            "driver_qualification_card",
             "tachograph_card",
             "medical_certificate",
-            "psychotest",
+            "psychological_certificate",
         ),
         ref_pack_codes=("pl_transport_driver", "eu_driver_compliance"),
         applies=_driver_pack_applies,
@@ -99,7 +93,7 @@ DOCUMENT_PACK_DEFINITIONS: tuple[DocumentPackDefinition, ...] = (
         label="Legal Stay Pack",
         document_codes=(
             "passport",
-            "id_card",
+            "national_identity_card",
             "residence_card",
             "visa",
             "work_permit",
