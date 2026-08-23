@@ -37,17 +37,24 @@ export type DocumentHubView = {
   link: DocumentLinkView
 }
 
+export type OutstandingAskView = {
+  doc_type: string
+  state: string
+}
+
 export type DocumentsResolveResult = {
   available: boolean
   contractId: string
   adapterId: string
   items: DocumentHubView[]
+  outstandingAsks: OutstandingAskView[]
 }
 
 /**
  * Documents owner facade. Transport stays here — hosts must not call
  * `documents.candidate_id` lists, a leftover FK, or local Candidate/HR documents panels
- * for the D2 `documents` surface.
+ * for the D2 `documents` surface. Outstanding ask is Hub `outstanding_asks`
+ * (required type + entity via Document Link) — not Candidate stage / HR JSON.
  */
 export function documentsResolveTarget(
   ctx: WorkspaceCapabilityRenderContext,
@@ -73,12 +80,14 @@ export async function listLinkedDocuments(
       contractId: DOCUMENTS_PUBLIC_CONTRACT_ID,
       adapterId: DOCUMENTS_HUB_ADAPTER_ID,
       items: [],
+      outstandingAsks: [],
     }
   }
   const { data } = await api.get<{
     contract_id?: string
     adapter_id?: string
     items?: DocumentHubView[]
+    outstanding_asks?: OutstandingAskView[]
   }>('/platform/documents/resolve', {
     params: {
       linked_entity_type: target.linkedEntityType,
@@ -91,5 +100,6 @@ export async function listLinkedDocuments(
     contractId: String(data?.contract_id || DOCUMENTS_PUBLIC_CONTRACT_ID),
     adapterId: String(data?.adapter_id || DOCUMENTS_HUB_ADAPTER_ID),
     items: Array.isArray(data?.items) ? data.items : [],
+    outstandingAsks: Array.isArray(data?.outstanding_asks) ? data.outstanding_asks : [],
   }
 }

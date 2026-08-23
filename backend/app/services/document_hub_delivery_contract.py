@@ -5,7 +5,9 @@ entity-link resolve for HR employee. E4 adds Candidate primary-link
 resolve on the same adapter. E5 drops `documents.candidate_id`; Candidate
 relationship SoT is Hub `document_entity_links` only. E6 seals expiry /
 validity as Hub `expires_at` + engine evaluation on the same adapter.
-Not a second Adapter. Not a Hub reminder table.
+E7 seals outstanding ask (required type + entity via Document Link) as
+additive `outstanding_asks` on resolve / owner_summary. Not a second
+Adapter. Not a Hub request / reminder table.
 """
 from __future__ import annotations
 
@@ -28,6 +30,7 @@ from backend.app.modules.documents.router import _build_synthetic_documents
 from backend.app.modules.documents.storage import get_uploads_root, sanitize_filename
 from backend.app.services.document_catalog import DOCUMENT_TYPE_DEFAULTS
 from backend.app.services.document_expiry_engine import evaluate_expiry
+from backend.app.services.document_ruleset import load_default_ruleset
 
 PUBLIC_CONTRACT_ID = "documents.public_contract.v1"
 ADAPTER_ID = "documents.hub_adapter_v1"
@@ -192,13 +195,49 @@ async def ensure_ruleset_seed_via_contract(
     )
 
 
+def _outstanding_asks_from_required(required: dict[str, Any] | None) -> list[dict[str, Any]]:
+    payload = required or {}
+    asks: list[dict[str, Any]] = []
+    for code in payload.get("missing") or []:
+        asks.append({"doc_type": str(code), "state": "missing"})
+    for code in payload.get("in_progress_types") or []:
+        asks.append({"doc_type": str(code), "state": "requested"})
+    for code in payload.get("problematic") or []:
+        asks.append({"doc_type": str(code), "state": "problem"})
+    return asks
+
+
+def project_outstanding_asks_via_contract(
+    items: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Hub outstanding-ask projection for public resolve / owner_summary.
+
+    SoT is Hub required type vs Document Link rows — not Candidate stage,
+    not HR ``hr_document_requests`` JSON, not Activity ``document_request``,
+    and not a Hub request table.
+    """
+    docs = [
+        {
+            "doc_type": row.get("doc_type") or row.get("type"),
+            "status": row.get("status"),
+            "expires_at": row.get("expires_at"),
+        }
+        for row in (items or [])
+    ]
+    summary = compute_owner_summary({}, load_default_ruleset(), docs)
+    return _outstanding_asks_from_required(summary.get("required") if isinstance(summary, dict) else None)
+
+
 def compute_owner_summary_via_contract(
     owner_context: dict[str, Any],
     ruleset_payload: dict[str, Any],
     docs_payload: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Document Hub delivery contract adapter for owner-summary projection."""
-    return compute_owner_summary(owner_context, ruleset_payload, docs_payload)
+    summary = compute_owner_summary(owner_context, ruleset_payload, docs_payload)
+    if isinstance(summary, dict):
+        summary["outstanding_asks"] = _outstanding_asks_from_required(summary.get("required"))
+    return summary
 
 
 def project_document_packs_via_contract(

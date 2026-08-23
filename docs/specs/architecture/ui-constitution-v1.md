@@ -296,7 +296,7 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
 Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`documents-platform-e7-document-requests.md`](../tasks/documents-platform-e7-document-requests.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
 
-**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E7 feat is **locked** until the brief merges. ListWorkspace is a separate collection slice.
+**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E7 feat is **open**. ListWorkspace is a separate collection slice.
 
 ---
 
@@ -345,6 +345,7 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
+| 2026-08-23 | 2g = Documents E7 feat (Hub outstanding asks on D4); Foundation stays 🔄 |
 | 2026-08-23 | 2g = Documents E7 brief (Hub document requests); 2f ✅ E6; G4 stays Recruitment Application |
 | 2026-08-23 | 2f = Documents E6 feat (Hub expiry / validity on D4); Foundation stays 🔄 |
 | 2026-08-23 | 2f = Documents E6 brief (Hub expiry / validity); E5 ✅; G4 stays Recruitment Application |

@@ -6,6 +6,7 @@ import {
   DOCUMENTS_PUBLIC_CONTRACT_ID,
   listLinkedDocuments,
   type DocumentHubView,
+  type OutstandingAskView,
 } from './documentsOwner'
 
 /**
@@ -14,10 +15,12 @@ import {
  * `documents.public_contract.v1` / `documents.hub_adapter_v1` via Document Link.
  * Not the local HR documents matrix. Not Shell nav. Not a `documents.candidate_id` column.
  * Validity is Hub `expires_at` / `expiry_state` on the same adapter (E6).
+ * Outstanding ask is Hub `outstanding_asks` on the same adapter (E7).
  */
 export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()
   const [items, setItems] = useState<DocumentHubView[]>([])
+  const [outstandingAsks, setOutstandingAsks] = useState<OutstandingAskView[]>([])
   const [loading, setLoading] = useState(false)
   const [available, setAvailable] = useState(false)
 
@@ -30,10 +33,12 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
         if (!mounted) return
         setAvailable(result.available)
         setItems(result.items)
+        setOutstandingAsks(result.outstandingAsks)
       } catch {
         if (mounted) {
           setAvailable(false)
           setItems([])
+          setOutstandingAsks([])
         }
       } finally {
         if (mounted) setLoading(false)
@@ -79,6 +84,20 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
               {row.status ? <span className="text-slate-500"> · {row.status}</span> : null}
               {row.expires_at ? <span className="text-slate-500"> · {row.expires_at}</span> : null}
               {row.expiry_state ? <span className="text-slate-500"> · {row.expiry_state}</span> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {!loading && available && outstandingAsks.length > 0 ? (
+        <ul className="space-y-1 text-sm text-slate-700">
+          {outstandingAsks.slice(0, 8).map((ask) => (
+            <li
+              key={`${ask.doc_type}:${ask.state}`}
+              data-outstanding-ask={ask.doc_type}
+              data-ask-state={ask.state}
+            >
+              <span className="font-medium text-slate-900">{ask.doc_type}</span>
+              {ask.state ? <span className="text-slate-500"> · {ask.state}</span> : null}
             </li>
           ))}
         </ul>

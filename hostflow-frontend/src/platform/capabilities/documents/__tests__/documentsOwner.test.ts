@@ -48,6 +48,7 @@ describe('documentsOwner', () => {
     const result = await listLinkedDocuments(subject)
     expect(result.available).toBe(true)
     expect(result.items).toHaveLength(1)
+    expect(result.outstandingAsks).toEqual([])
     expect(get).toHaveBeenCalledWith('/platform/documents/resolve', {
       params: {
         linked_entity_type: E4_LINKED_ENTITY_TYPE,
@@ -55,6 +56,21 @@ describe('documentsOwner', () => {
         relation_type: E4_RELATION_TYPE,
       },
     })
+  })
+
+  it('projects Hub outstanding asks on Candidate resolve, not a request table', async () => {
+    get.mockResolvedValue({
+      data: {
+        contract_id: DOCUMENTS_PUBLIC_CONTRACT_ID,
+        adapter_id: DOCUMENTS_HUB_ADAPTER_ID,
+        items: [],
+        outstanding_asks: [{ doc_type: 'passport', state: 'missing' }],
+      },
+    })
+    const subject = ctx({ entity: { resourceType: E4_LINKED_ENTITY_TYPE, resourceId: 'cand-1' } })
+    const result = await listLinkedDocuments(subject)
+    expect(result.available).toBe(true)
+    expect(result.outstandingAsks).toEqual([{ doc_type: 'passport', state: 'missing' }])
   })
 
   it('resolves HR employee via public contract entity-link, not workforce documents', async () => {
@@ -89,6 +105,7 @@ describe('documentsOwner', () => {
       contractId: DOCUMENTS_PUBLIC_CONTRACT_ID,
       adapterId: DOCUMENTS_HUB_ADAPTER_ID,
       items: [],
+      outstandingAsks: [],
     })
     expect(get).not.toHaveBeenCalled()
   })
