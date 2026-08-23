@@ -10,7 +10,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PACK_DEFINITIONS = REPO_ROOT / "backend" / "app" / "modules" / "documents" / "pack_definitions.py"
 
 
+def _bootstrap_imports() -> None:
+    sys.path.insert(0, str(REPO_ROOT))
+
+
 def main() -> int:
+    _bootstrap_imports()
     errors: list[str] = []
 
     source = PACK_DEFINITIONS.read_text(encoding="utf-8")
