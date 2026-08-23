@@ -1,7 +1,7 @@
 # Documents Platform E2 — Public contract & D2 slot enable (Phase E)
 
 **Status:** **COMPLETE** ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5`)  
-**Next:** [Documents Platform E3](documents-platform-e3-first-consumer-bind.md) ✅ → [Documents Platform E4 — Candidate Document Link](documents-platform-e4-candidate-document-link.md) ✅ → [Documents Platform E5 — Candidate Storage Bridge Retirement](documents-platform-e5-candidate-storage-bridge.md) (brief; feat locked)  
+**Next:** [Documents Platform E3](documents-platform-e3-first-consumer-bind.md) ✅ → [Documents Platform E4](documents-platform-e4-candidate-document-link.md) ✅ → [Documents Platform E5](documents-platform-e5-candidate-storage-bridge.md) ✅ → [Documents Platform E6 — Document Expiry / Validity](documents-platform-e6-document-expiry.md) (brief; feat locked)  
 **Branch (docs):** `docs/documents-platform-e2-public-contract` ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)  
 **Branch (code):** `feat/documents-platform-e2-public-contract` ✅ [#276](https://github.com/igortatarynovich/HostFlow/pull/276)  
 **Parents:** [Documents Platform E1](documents-platform-e1-contract-seal.md) [#269](https://github.com/igortatarynovich/HostFlow/pull/269)/[#270](https://github.com/igortatarynovich/HostFlow/pull/270) · [D2 Composition Contract](entity-workspace-d2-composition-contract.md) ✅ · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [ADR-025](../architecture/ADR-025-standard-adapter-boundary.md) · [Capability Contract](../architecture/capability-contract.md) · [Forms Public Contract](../architecture/forms-public-contract.md) (pattern) · [Document Hub scope](../../document-hub/module-scope.md) · [Catalog Documents](../architecture/platform-capability-catalog.md#documents) · [A2-F8](../gates/platform-governance-review-a2.md)
@@ -140,7 +140,8 @@ D2 / E1 / D3–D9 named gates stay in CI. E2 feat **amends** assertions that fre
 | **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5` |
 | **E3** | First consumer bind (HR employee) + Document Link SoT | ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) · merge `cc106a38` |
 | **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913` |
-| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | [brief](documents-platform-e5-candidate-storage-bridge.md) (feat locked) |
+| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) · merge `702b922c` |
+| **E6** | Document expiry / validity | [brief](documents-platform-e6-document-expiry.md) (feat locked) |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) stay **horizon**.
 

@@ -5,7 +5,7 @@
 **Contract id:** `documents.public_contract.v1`  
 **Adapter id:** `documents.hub_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#documents)  
-**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [`documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) (feat)  
+**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [`documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) ✅ · [`documents-platform-e6-document-expiry.md`](../tasks/documents-platform-e6-document-expiry.md) (feat locked)  
 **Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-014`](ADR-014-document-hub-access-model.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
