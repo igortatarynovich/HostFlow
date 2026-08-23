@@ -14,7 +14,7 @@ from sqlalchemy.sql import func
 
 from backend.app.db.base import Base
 from backend.app.db.tsvector_compat import TsVector
-from backend.app.models.document_entity_link import DocumentEntityLink
+from .document_entity_link import DocumentEntityLink
 from .enums import (
     DocumentKind,
     DocumentProcessType,
