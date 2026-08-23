@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](../gates/goal-completion-gate.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-23:** Execution canon sealed — see **§ Locked execution sequence**. Product = [CL0](entity-field-composition-cl0-contract-seal.md). Engineering = **Reference R5** after R2∧R4 Gates PASS [#294](https://github.com/igortatarynovich/HostFlow/pull/294) / [#296](https://github.com/igortatarynovich/HostFlow/pull/296). R1 [#292](https://github.com/igortatarynovich/HostFlow/pull/292), R3 [#295](https://github.com/igortatarynovich/HostFlow/pull/295) complete. After CL0: **CL1**. **E8-bind unlocked** (not auto-scheduled). E8-eval after R5 ∧ E8-bind. **ADR-037** docs sealed. C2.4 frozen (**Epic C residual R1**).  
+> **2026-08-23:** Execution canon sealed — see **§ Locked execution sequence**. Product = [CL0](entity-field-composition-cl0-contract-seal.md). Engineering = **Reference Program Exit Gate** after R5 Gate PASS [#297](https://github.com/igortatarynovich/HostFlow/pull/297). R1 [#292](https://github.com/igortatarynovich/HostFlow/pull/292), R2 [#294](https://github.com/igortatarynovich/HostFlow/pull/294), R3 [#295](https://github.com/igortatarynovich/HostFlow/pull/295), R4 [#296](https://github.com/igortatarynovich/HostFlow/pull/296) complete. After CL0: **CL1**. **E8-bind unlocked** (not auto-scheduled). E8-eval after R5 ∧ E8-bind. **ADR-037** docs sealed. C2.4 frozen (**Epic C residual R1**).  
 > **2026-08-22:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** vs original D ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276)). **Workspace Capability Platform Completion** [COMPLETE](../gates/workspace-capability-platform-complete.md) (**PASS**) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); G4 PASS (Recruitment Application) — **not** the Documents proof. Intermediate #273: [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). **Product Track:** [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) — brief; feat locked; Page Type + two builder modes + Profile as role manifest. E7 ✅ ([#287](https://github.com/igortatarynovich/HostFlow/pull/287); named Document Requests Gate). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285); named Document Expiry Gate). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282); named Candidate Storage Bridge Gate). E4 ✅. Catalog unlock ≠ mass bind. Not mass D3–D9 bind. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Entity Workspace ≠ Application Workspace. Documents Foundation stays 🔄. **Engineering Track** = **Reference R1** (active). Legacy pytest / Catalog RFC / Kit chrome = background.  
 > Communication **C2.4 frozen** (**Epic C residual R1** — **not** Reference R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
@@ -30,7 +30,7 @@
 | Track | Active work | Rule |
 |-------|-------------|------|
 | **Product** | **Entity Field Composition CL0** Contract seal — [brief](entity-field-composition-cl0-contract-seal.md); feat locked; docs only; not E8 / not D10 / not Forms P3 | Almost all capacity |
-| **Engineering** | **Reference R5** Policy merge — [brief](platform-reference-identity-sot.md); after R2∧R4 Gates PASS | Active Engineering slice. Parallel CL0 only. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background |
+| **Engineering** | **Reference Program Exit Gate** — Q1–Q5 single chain — [brief](platform-reference-identity-sot.md); after R5 Gate PASS | Active Engineering slice. Parallel CL0 only. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background |
 
 ---
 
@@ -44,8 +44,8 @@ This section is the **only** “what starts next” SoT. Horizon A–G stays in 
 |------|--------|
 | **Active Product** | CL0 — [Entity Field Composition contract seal](entity-field-composition-cl0-contract-seal.md) (brief; feat locked) |
 | **Queued Product successor** | **CL1** (inventory). Not LI-1. Not DR1. Not E8. |
-| **Active Engineering** | **Reference R5** (`ref-id-r5`) |
-| **Queued Engineering after R5** | Reference Program Exit Gate |
+| **Active Engineering** | **Reference Program Exit Gate** (`ref-id-exit`) |
+| **Queued Engineering after Exit** | Reference program DONE → successors per queue amendment |
 | **Phase E** | **E7 = DONE**. **E8-bind = unlocked** (not auto-scheduled). **E8-eval = locked** |
 | **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1) |
 
@@ -278,8 +278,8 @@ A reader who has only this section can answer every item **yes**:
 | **38** | **Reference R2** Country runtime cutover | `feat/platform-reference-r2-country-runtime-cutover` | ✅ [#294](https://github.com/igortatarynovich/HostFlow/pull/294) `5034a4b6` |
 | **39** | **Reference R3** Document type identity | `feat/platform-reference-r3-document-identity` | ✅ [#295](https://github.com/igortatarynovich/HostFlow/pull/295) `72d24b70` |
 | **40** | **Reference R4** Alias consolidation | `feat/platform-reference-r4-alias-consolidation` | ✅ [#296](https://github.com/igortatarynovich/HostFlow/pull/296) `69a4b992` |
-| **41** | **Reference R5** Policy merge | `feat/platform-reference-r5-policy-merge` | **active** (Engineering; after R2∧R4 join) |
-| **41b** | **Reference Program Exit Gate** | locked | after **Reference R5 Gate**; Q1–Q5 one chain |
+| **41** | **Reference R5** Policy merge | `feat/platform-reference-r5-policy-merge` | ✅ [#297](https://github.com/igortatarynovich/HostFlow/pull/297) `6ce7d350` |
+| **41b** | **Reference Program Exit Gate** | `feat/platform-reference-program-exit` | **active** (Engineering; Q1–Q5 one chain) |
 | **42** | **CL1** Field composition inventory | locked | after **CL0 Gate**; observes codes; does not canonize identity |
 | **42b** | **LI-1** Existence guard (ADR-037) | [brief](lifecycle-identity-l0-contract-seal.md) | after **CL1 Gate**; docs sealed; not full Lifecycle; does not block CL2+ after it PASSes |
 | **43** | **DR1-contract** Engine → Document Request contract | locked | after CL1 ∧ LI-1; also R3∧R4 if the contract already names canonical type ids |
