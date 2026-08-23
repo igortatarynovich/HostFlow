@@ -1,0 +1,70 @@
+{
+  "pack_version": "ref-id-r5-platform-pack-v1",
+  "effective_from": "2026-08-23",
+  "description": "Platform document policy base pack. Tenant rows store overlay deltas only — not independent forks.",
+  "country_sets": {
+    "oswiadczenie_eligible_alpha2": ["UA", "BY", "MD", "GE"]
+  },
+  "ruleset": {
+    "version": "1.1.0",
+    "expiring_soon_default_days": 30,
+    "candidate": {
+      "defaults": {
+        "requiredTypes": [
+          "driver_license",
+          "driver_qualification_card",
+          "tachograph_card",
+          "passport"
+        ],
+        "optionalTypes": [
+          "driver_license",
+          "national_identity_card",
+          "visa",
+          "residence_card",
+          "medical_certificate",
+          "psychological_certificate",
+          "adr_certificate",
+          "work_permit",
+          "unclassified"
+        ]
+      },
+      "overrides": [
+        {
+          "when": { "residency_status": ["eu_citizen"] },
+          "require": ["national_identity_card"],
+          "remove": ["passport", "visa", "residence_card", "work_permit"]
+        },
+        {
+          "when": { "residency_status": ["visa", "none", "no_residence_card"] },
+          "require": ["passport", "visa"],
+          "remove": ["national_identity_card"]
+        },
+        {
+          "when": { "residency_status": ["card"] },
+          "require": ["passport", "residence_card"],
+          "remove": ["national_identity_card"]
+        }
+      ]
+    },
+    "vacancy": {
+      "additions": [
+        {
+          "when": { "requires_driver_attestation": true },
+          "require": ["driver_attestation"]
+        }
+      ]
+    },
+    "validity": {
+      "national_identity_card": { "expiring_soon_days": 180 },
+      "driver_qualification_card": { "expiring_soon_days": 45 },
+      "driver_license": { "expiring_soon_days": 60 },
+      "passport": { "expiring_soon_days": 180 },
+      "visa": { "expiring_soon_days": 90 },
+      "residence_card": { "expiring_soon_days": 90 },
+      "tachograph_card": { "expiring_soon_days": 60 },
+      "medical_certificate": { "expiring_soon_days": 30 },
+      "psychological_certificate": { "expiring_soon_days": 30 },
+      "adr_certificate": { "expiring_soon_days": 60 }
+    }
+  }
+}
