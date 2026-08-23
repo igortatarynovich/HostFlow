@@ -231,6 +231,9 @@ def test_e5_candidate_id_column_dropped_writers_mint_hub_links() -> None:
     alembic = _ALEMBIC.read_text(encoding="utf-8")
     assert "drop_column" in alembic
     assert "candidate_id" in alembic
+    assert "DROP TRIGGER IF EXISTS" in alembic
+    assert "trg_documents_hostflow_search_tsv" in alembic
+    assert "trg_refresh_document_search_tsv" in alembic
     assert "document_entity_links" in alembic
     assert "'candidate'" in alembic or '"candidate"' in alembic
     assert "'primary'" in alembic or '"primary"' in alembic

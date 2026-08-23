@@ -18,7 +18,7 @@ Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation cl
 - Entity/relation closed set for this HTTP: `workforce_employee` / `reused_for_hr` **and** `candidate` / `primary`  
 - Resolve returns metadata (id / title / type / status / expiry / expiry_state / outstanding_asks / link). It is **not** a file download and must not mint a signed URL  
 - `documents.candidate_id` is dropped. Writers persist Hub `candidate` / `primary` links. Listing still goes through `document_entity_links`  
-- Expiry evaluation is Documents-owned (`document_expiry_engine`). Outstanding ask is Documents-owned (`project_outstanding_asks_via_contract`). Activity / reminders stay in ADR-012 — Hub does not own a task / request table
+- E5 follow-up (#288): FTS trigger `trg_documents_hostflow_search_tsv` / function concatenated `NEW.candidate_id` and listed it in `UPDATE OF`. Empty-CI `alembic upgrade` cannot `DROP COLUMN documents.candidate_id` while that trigger exists. Mitigation: drop trigger, drop column, recreate function+trigger **without** `candidate_id`. Search tsv no longer indexes the Candidate UUID column; relationship remains Hub Document Links. Does not restore the FK; does not change resolve auth or tenant RLS.
 
 ## Угрозы
 
