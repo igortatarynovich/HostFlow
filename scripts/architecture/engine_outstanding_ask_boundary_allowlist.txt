@@ -1,0 +1,2 @@
+# DR1-contract — sole producer for Engine→Hub outstanding-ask projection.
+engine_to_hub_outstanding_ask|backend/app/requirement_rules/engine_to_hub_outstanding_ask_contract.py
