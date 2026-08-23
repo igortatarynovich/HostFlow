@@ -11,6 +11,7 @@
 | Document | Relationship |
 |----------|--------------|
 | [`entity-profile-definition-registry.md`](entity-profile-definition-registry.md) | Entity Profile defines *which* fields/documents/process profile apply; Requirement Engine evaluates *what is still required* |
+| [`entity-field-composition-cl0-contract-seal.md`](../tasks/entity-field-composition-cl0-contract-seal.md) | **CL0:** four requirement kinds; Engine returns structured `ready`/`not_ready` + `blockers[]`; screening ≠ `required=true`; `transition`/`handoff` off Profile field |
 | [`field-registry-card-configuration.md`](field-registry-card-configuration.md) | Canonical field codes; requirement rules reference `qualified_code` only |
 | [`process-engine.md`](process-engine.md) | Transition / handoff evaluation consumes requirement results; Field & Document Requirement Registries migrate here |
 | [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) | Document lifecycle runtime (**v1 closed** §20); feeds back into requirement satisfaction |
@@ -31,7 +32,7 @@ It is a **platform evaluation layer**, not a form or UI feature.
 
 | Responsibility | Detail |
 |----------------|--------|
-| **Data requirements** | Which canonical fields must be populated (by context: intake, card save, transition, handoff) |
+| **Data requirements** | Which canonical fields must be populated (baseline contexts: intake, card save). Transition / handoff field required lives on Process Profile ([CL0](../tasks/entity-field-composition-cl0-contract-seal.md)) |
 | **Document requirements** | Which document types / packs must be present, verified, or unexpired |
 | **Readiness** | Aggregated completeness for modules (dossier ready, package ready, transfer ready) |
 | **Gates** | Blocking reasons that prevent stage transition or outcome execution |
@@ -237,7 +238,7 @@ Single evaluation request contract (P1 API target):
 | `route_intent` | string \| null | Intake routing context |
 | `normalized_payload` | object | Canonical field values keyed by `qualified_code` and/or legacy normalized paths |
 | `documents` | array | Document Hub snapshot: type, status, verification, expiry |
-| `context` | enum | `intake`, `card_save`, `transition`, `handoff`, `readiness` — which requirement set applies |
+| `context` | enum | `intake`, `card_save`, `readiness` from Profile baseline; `transition`, `handoff` from Process Profile / Transfer Policy ([CL0](../tasks/entity-field-composition-cl0-contract-seal.md)) |
 | `target_stage` | string \| null | For transition evaluation |
 | `vacancy_id` | uuid \| null | Optional vacancy-scoped modifiers |
 | `process_profile_code` | string \| null | Override / confirm from Entity Profile |
@@ -265,12 +266,24 @@ Single evaluation result contract:
 | `context` | string | Echo evaluation context |
 | `required_fields` | array | `{ qualified_code, level: blocking \| warning, reason_code }` |
 | `required_documents` | array | `{ document_type_code, pack_code?, level, verification, reason_code }` |
-| `blockers` | array | Hard stops: `{ code, message, source_rule_id, layer }` |
+| `status` | enum | **`ready` \| `not_ready`** — the contract. Not a boolean API. |
+| `blockers` | array | Hard stops: `{ kind, code, owner, message, evidence, source_rule_id, layer }` |
 | `warnings` | array | Non-blocking gaps |
-| `satisfied` | bool | No blocking items for this context |
+| `satisfied` | bool | **Derived convenience only** (status == ready). Must not be the Engine contract ([CL0](../tasks/entity-field-composition-cl0-contract-seal.md)). |
 | `evaluation_version` | string | `requirement_evaluation_v1` |
 | `rule_sources_applied` | array | Audit: which sources contributed |
 | `evaluated_at` | datetime | Server timestamp |
+
+**Four requirement kinds (CL0):**
+
+| Kind | Owner | Not |
+|------|-------|-----|
+| **Presence** | Entity Profile membership + intake / card_save | `transition` / `handoff` on the Profile field |
+| **Value** | Field Registry + value rules | screening threshold as `required=true` |
+| **Document** | Document pack / Hub required type | a Hub request table; Catalog `document.requested` |
+| **Process** | Process Profile / Transfer Policy | `transition_level` on a Profile field |
+
+Screening is Process/pack evaluation via `screening_pack_code`, **not** `required=true` on a field. `blockers[].kind` is one of the four kinds.
 
 Consumers map output to UX:
 

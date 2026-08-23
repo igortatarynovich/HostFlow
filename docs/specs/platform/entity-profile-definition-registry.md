@@ -4,6 +4,8 @@
 **Hierarchy:** L2 operating canon — platform layer. **Composition layer** between Field Registry and Intake / Process runtime.  
 **Owner:** Architecture canon + platform core team.
 
+> **CL0 (2026-08-23):** Entity Profile is a **role manifest** ([brief](../tasks/entity-field-composition-cl0-contract-seal.md)). Baseline presence on a Profile field is `member` / `intake` / `card_save` only. `transition` / `handoff` / `transition_level` are **not** Profile-field properties — they belong to Process Profile / Transfer Policy. `screening_pack_code` is a **ref** (same class as `document_pack_code` / `default_layout_code` / `process_profile_code`). Runtime schema columns may remain until a later CL migration; new code must not treat transition/handoff as Profile-field required. Docs only in CL0 — **do not drop DB columns in this slice**.
+
 ### P1 implementation status (2026-06-22)
 
 | Deliverable | Status | Location |
@@ -369,9 +371,10 @@ Examples:
 | `profile_code` | Stable qualified identifier | Unique per tenant or platform seed; `{module}.{entity}.{variant}` |
 | `module_owner` | Registering business module | `recruitment`, `hr`, `crm`, `services`, `fleet`, … |
 | `fields[]` | Canonical field membership | List of `qualified_code` from Field Registry |
-| `requirement_contexts` | When fields are required | Per-field overrides for `intake`, `card_save`, `transition`, `handoff` |
+| `requirement_contexts` | When fields are required | Per-field overrides for baseline presence: `intake`, `card_save` only. `transition` / `handoff` live on Process Profile / Transfer Policy ([CL0](../tasks/entity-field-composition-cl0-contract-seal.md)) |
 | `default_layout_code` | Card presentation default | Field Registry layout profile code |
 | `document_pack_code` | Related documents | Document Hub pack / requirement set |
+| `screening_pack_code` | Screening / qualification pack | Screening pack ref — **not** `required=true` on a field ([CL0](../tasks/entity-field-composition-cl0-contract-seal.md)) |
 | `process_profile_code` | Default process binding | Process Engine `pe_process_profiles.code` |
 | `name`, `description` | Operator-facing labels | i18n-ready display metadata |
 | `is_active`, `version` | Lifecycle | Soft disable; version for migration |
@@ -398,6 +401,7 @@ fields:
   - qualified_code: recruitment.candidate.driver_card
 default_layout_code: recruitment.candidate.driver_ce
 document_pack_code: recruitment.driver_ce_documents
+screening_pack_code: recruitment.driver_ce_screening
 process_profile_code: recruitment.driver_ce_default
 ```
 
@@ -431,7 +435,7 @@ The Entity Profile still defines all 50 fields for the full candidate card. The 
 
 - Entity Profile **`fields[]`** entries **must** reference existing `qualified_code` values in Field Registry.
 - Entity Profile **does not duplicate** field semantics (type, normalization, storage, PII class).
-- Field Registry **`requirement_contexts`** provide defaults; Entity Profile may override per profile variant.
+- Field Registry **`requirement_contexts`** provide defaults for `intake` / `card_save`; Entity Profile may override those two. `transition` / `handoff` defaults belong to Process Profile ([CL0](../tasks/entity-field-composition-cl0-contract-seal.md)).
 - Resolver: `resolve_entity_profile(profile_code) → { fields with effective requirements }`.
 
 ### 5.2 Entity Profile → Intake Sources
@@ -564,6 +568,7 @@ flowchart TB
 | `description` | text? | |
 | `default_layout_code` | string(128)? | FK ref → Field Registry layout |
 | `document_pack_code` | string(128)? | FK ref → Document Hub pack |
+| `screening_pack_code` | string(128)? | FK ref → screening pack (CL0; docs only — column may be added in a later CL migration) |
 | `process_profile_code` | string(128)? | FK ref → `pe_process_profiles.code` |
 | `is_active` | bool | |
 | `version` | int | Monotonic profile version |
@@ -581,7 +586,7 @@ flowchart TB
 | `sort_order` | int | Default field order |
 | `intake_level` | enum? | `required` / `optional` / `hidden` |
 | `card_save_level` | enum? | Override for card save context |
-| `transition_level` | enum? | Override for transition context |
+| `transition_level` | enum? | **Deprecated (CL0).** Must not be used as Profile-field required. Canon owner = Process Profile / Transfer Policy. Column may remain until a later CL migration — **do not DROP in CL0**. |
 | `is_active` | bool | |
 
 **Unique:** `(entity_profile_id, qualified_code)`
@@ -910,7 +915,8 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 **Must stay consistent:**
 
 - [`field-registry-card-configuration.md`](field-registry-card-configuration.md) — canonical field semantics (layer below)
-- [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) — business requirements / readiness / gates (**v1 closed** §20)
+- [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) — business requirements / readiness / gates (**v1 closed** §20); CL0: four kinds, structured result, not a boolean
+- [`entity-field-composition-cl0-contract-seal.md`](../tasks/entity-field-composition-cl0-contract-seal.md) — Profile = role manifest; `transition` / `handoff` off Profile field; `screening_pack_code` as ref
 - [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — document instance lifecycle runtime (**v1 closed** §20)
 - [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — expiry notification events (downstream of Document Runtime v1)
 - [`process-engine.md`](process-engine.md) — process behaviour (layer above)

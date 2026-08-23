@@ -289,14 +289,15 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 | **2d ✅** | [Documents Platform E4](../tasks/documents-platform-e4-candidate-document-link.md): Candidate Document Link. Host places; Documents owns semantics. |
 | **2e ✅** | [Documents Platform E5](../tasks/documents-platform-e5-candidate-storage-bridge.md): drop `candidate_id`. Document Link is the only Candidate relationship. |
 | **2f ✅** | [Documents Platform E6](../tasks/documents-platform-e6-document-expiry.md): Hub expiry / validity. |
-| **2g ← active** | [Documents Platform E7](../tasks/documents-platform-e7-document-requests.md): Hub document requests. Not mass D3–D9 bind. G4 stays Recruitment Application. |
+| **2g ✅** | [Documents Platform E7](../tasks/documents-platform-e7-document-requests.md): Hub document requests. Not mass D3–D9 bind. G4 stays Recruitment Application. |
+| **2h ← active** | [Entity Field Composition CL0](../tasks/entity-field-composition-cl0-contract-seal.md): Page Type + two builder modes; Profile = role manifest. Not E8. |
 | **3** | Application Workspace implements the **same** host contract — it does **not** become Entity Workspace |
 | 4–5 | Process + Collection completion |
 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
-Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`documents-platform-e7-document-requests.md`](../tasks/documents-platform-e7-document-requests.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
+Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`entity-field-composition-cl0-contract-seal.md`](../tasks/entity-field-composition-cl0-contract-seal.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
 
-**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E7 feat is **open**. ListWorkspace is a separate collection slice.
+**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E7 is **complete**. Entity Field Composition CL0 brief is **open** (feat locked). ListWorkspace is a separate collection slice.
 
 ---
 
@@ -323,7 +324,8 @@ If any answer fails — stop and fix design before coding.
 | [`../tasks/documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) | Documents E3 — first D2 documents consumer + Document Link SoT |
 | [`../tasks/documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) | Documents E5 — Candidate storage-bridge retirement ✅ |
 | [`../tasks/documents-platform-e6-document-expiry.md`](../tasks/documents-platform-e6-document-expiry.md) | Documents E6 — Document expiry / validity ✅ |
-| [`../tasks/documents-platform-e7-document-requests.md`](../tasks/documents-platform-e7-document-requests.md) | Documents E7 — Document requests (active) |
+| [`../tasks/documents-platform-e7-document-requests.md`](../tasks/documents-platform-e7-document-requests.md) | Documents E7 — Document requests ✅ |
+| [`../tasks/entity-field-composition-cl0-contract-seal.md`](../tasks/entity-field-composition-cl0-contract-seal.md) | Entity Field Composition CL0 — contract seal (active) |
 | [`../gates/workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md) | WCP program COMPLETE |
 | [`../gates/goal-completion-gate.md`](../gates/goal-completion-gate.md) | Phase close: original goal vs substituted brief |
 | [`../gates/platform-scope-completeness-audit.md`](../gates/platform-scope-completeness-audit.md) | Closed-phase completeness vs residual capability |
@@ -345,6 +347,7 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
+| 2026-08-23 | 2h = Entity Field Composition CL0 brief (feat locked); 2g ✅ E7; Foundation stays 🔄 |
 | 2026-08-23 | 2g = Documents E7 feat (Hub outstanding asks on D4); Foundation stays 🔄 |
 | 2026-08-23 | 2g = Documents E7 brief (Hub document requests); 2f ✅ E6; G4 stays Recruitment Application |
 | 2026-08-23 | 2f = Documents E6 feat (Hub expiry / validity on D4); Foundation stays 🔄 |

@@ -197,12 +197,12 @@ D1–D9 closed chrome + D2 **surfaces** + named consumer binds. That was a **sub
 
 ---
 
-## Phase E — Documents Platform ← **active** (E7 feat)
+## Phase E — Documents Platform ← E7 ✅; Product Track = CL0
 
 Evolve storage into a full document lifecycle platform (horizon):
 
 - expiry / validity ✅ E6  
-- document requests ← **active** (E7)  
+- document requests ✅ E7  
 - document packages  
 - OCR  
 - approvals  
@@ -210,7 +210,7 @@ Evolve storage into a full document lifecycle platform (horizon):
 
 Especially critical for transport-industry compliance flows.
 
-Ladder (E6 ✅; E7 brief):
+Ladder (E7 ✅; Product Track = CL0):
 
 | Slice | Focus | Status |
 |-------|--------|--------|
@@ -220,14 +220,14 @@ Ladder (E6 ✅; E7 brief):
 | **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913` |
 | **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) · merge `702b922c` |
 | **E6** | Document expiry / validity | ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) · merge `79e638c3` |
-| **E7** | Document requests | [brief](../tasks/documents-platform-e7-document-requests.md) (feat) |
-| **E8+** | Remaining consumers / later lifecycle | locked until E7 feat |
+| **E7** | Document requests | ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) · merge `ceafbd48` |
+| **E8+** | Remaining consumers / later lifecycle | locked (Product Track = [CL0](../tasks/entity-field-composition-cl0-contract-seal.md); do not start E8 here) |
 
 **Out of E7:** D3 / D5–D7 / D9 `documents` bind · OCR / e-sign / packages / Hub UI rebuild · Hub request table · Catalog `document.requested` · Forms P3–P5 · Billing Platform · AI · L0 Catalog rewrite · G4 reopen · unbind D8 / D4.
 
-**Result:** validity is Hub. The outstanding ask is still split across Candidate stage / HR JSON / Activity — E7 seals it as Hub required type + entity. Foundation stays 🔄.
+**Result:** validity is Hub. Outstanding ask is Hub required type + entity (E7 ✅). Product Track = [Entity Field Composition CL0](../tasks/entity-field-composition-cl0-contract-seal.md). Foundation stays 🔄. E8 stays locked.
 
-**Ref:** [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md) · [E6](../tasks/documents-platform-e6-document-expiry.md) ✅ · [E5](../tasks/documents-platform-e5-candidate-storage-bridge.md) ✅ · [E4](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [E3](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [E2](../tasks/documents-platform-e2-public-contract.md) ✅ · [E1](../tasks/documents-platform-e1-contract-seal.md) ✅ · [ADR-009](ADR-009-document-hub-platform-layer.md) · [ADR-012](ADR-012-activity-notification-operating-layer.md) · [A2-F8](../gates/platform-governance-review-a2.md).
+**Ref:** [entity-field-composition-cl0-contract-seal.md](../tasks/entity-field-composition-cl0-contract-seal.md) · [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md) ✅ · [E6](../tasks/documents-platform-e6-document-expiry.md) ✅ · [E5](../tasks/documents-platform-e5-candidate-storage-bridge.md) ✅ · [E4](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [E3](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [E2](../tasks/documents-platform-e2-public-contract.md) ✅ · [E1](../tasks/documents-platform-e1-contract-seal.md) ✅ · [ADR-009](ADR-009-document-hub-platform-layer.md) · [ADR-012](ADR-012-activity-notification-operating-layer.md) · [A2-F8](../gates/platform-governance-review-a2.md).
 
 ---
 
@@ -288,7 +288,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Documents Platform E7 feat) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (active = Entity Field Composition CL0 brief) |
 | [workspace-capability-platform-completion.md](../tasks/workspace-capability-platform-completion.md) | Corrective program — Capability Host Contract; **COMPLETE** |
 | [workspace-capability-host-runtime-equivalence.md](../tasks/workspace-capability-host-runtime-equivalence.md) | Equivalence slice — second host + owner boundaries ✅ |
 | [workspace-capability-platform-complete.md](../gates/workspace-capability-platform-complete.md) | Final Goal Completion — program COMPLETE |
@@ -298,7 +298,8 @@ Not standalone AI features. A **service layer over existing platforms**:
 | [documents-platform-e4-candidate-document-link.md](../tasks/documents-platform-e4-candidate-document-link.md) | E4 COMPLETE — Candidate Document Link |
 | [documents-platform-e5-candidate-storage-bridge.md](../tasks/documents-platform-e5-candidate-storage-bridge.md) | E5 COMPLETE — Candidate storage-bridge retirement |
 | [documents-platform-e6-document-expiry.md](../tasks/documents-platform-e6-document-expiry.md) | E6 COMPLETE — Document expiry / validity |
-| [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md) | Active Documents slice — Document requests |
+| [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md) | E7 COMPLETE — Document requests |
+| [entity-field-composition-cl0-contract-seal.md](../tasks/entity-field-composition-cl0-contract-seal.md) | **Active Product Track** — Entity Field Composition CL0 (brief; feat locked) |
 | [documents-platform-e3-first-consumer-bind.md](../tasks/documents-platform-e3-first-consumer-bind.md) | E3 first consumer bind ✅ |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
@@ -310,6 +311,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-23: CL0 brief — Entity Field Composition contract seal. Active = [Entity Field Composition CL0](../tasks/entity-field-composition-cl0-contract-seal.md) (feat locked). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287).
 - 2026-08-23: E7 feat — Hub outstanding-ask read on public contract. Active = [Documents Platform E7](../tasks/documents-platform-e7-document-requests.md) (feat). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285).
 - 2026-08-23: E7 brief — Document requests. Active = [Documents Platform E7](../tasks/documents-platform-e7-document-requests.md) (feat locked). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285).
 - 2026-08-23: E6 brief — Document expiry / validity. Active = [Documents Platform E6](../tasks/documents-platform-e6-document-expiry.md) (feat locked). E5 ✅ [#282](https://github.com/igortatarynovich/HostFlow/pull/282).
