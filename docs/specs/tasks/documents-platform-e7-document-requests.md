@@ -1,9 +1,9 @@
 # Documents Platform E7 — Document Requests (Phase E)
 
-**Status:** **IN PROGRESS** (brief; feat locked)  
+**Status:** **IN PROGRESS** (feat)  
 **Phase class:** platform  
-**Branch (docs):** `docs/documents-platform-e7-document-requests`  
-**Branch (code):** `feat/documents-platform-e7-document-requests` *(locked until this brief merges)*  
+**Branch (docs):** `docs/documents-platform-e7-document-requests` ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)  
+**Branch (code):** `feat/documents-platform-e7-document-requests`  
 **Parents:** [Documents Platform E6](documents-platform-e6-document-expiry.md) [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) · [E5](documents-platform-e5-candidate-storage-bridge.md) ✅ · [E4](documents-platform-e4-candidate-document-link.md) ✅ · [E3](documents-platform-e3-first-consumer-bind.md) ✅ · [E2](documents-platform-e2-public-contract.md) ✅ · [E1](documents-platform-e1-contract-seal.md) ✅ · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) ✅ · [D8 HR Employee Cutover](entity-workspace-d8-hr-employee-cutover.md) ✅ · [Workspace Capability Platform COMPLETE](../gates/workspace-capability-platform-complete.md) [#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-012](../architecture/ADR-012-activity-notification-operating-layer.md) · [ADR-014](../architecture/ADR-014-document-hub-access-model.md) · [ADR-025](../architecture/ADR-025-standard-adapter-boundary.md) · [Capability Contract](../architecture/capability-contract.md) · [Documents Public Contract](../architecture/documents-public-contract.md) · [Document Hub scope](../../document-hub/module-scope.md) · [Activity operating layer](../architecture/activity-notification-operating-layer.md) · [A2-F8](../gates/platform-governance-review-a2.md)
 
 > E6 sealed expiry / validity as Hub `expires_at` / `expiry_state` on the same adapter ([#285](https://github.com/igortatarynovich/HostFlow/pull/285) · merge `79e638c3`). D4 and D8 stay bound. Foundation stayed 🔄.  
@@ -190,7 +190,7 @@ E6 did not bind another consumer. **This slice does not either.**
 | **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913` |
 | **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) · merge `702b922c` |
 | **E6** | Document expiry / validity | ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) · merge `79e638c3` |
-| **E7** | Document requests | ← **active** (brief; feat locked) |
+| **E7** | Document requests | ← **active** (feat) |
 | **E8+** | Remaining consumers / later lifecycle | locked until E7 feat |
 
 Roadmap later themes (packages, OCR, approvals, automation, remaining D3 / D5–D7 / D9 bind) stay **horizon**. Documents Foundation stays 🔄.
@@ -277,7 +277,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## Acceptance
 
-- Product Track = this brief (feat locked). Documents Platform E6 is closed (#285 / `79e638c3`).  
+- Product Track = this brief (feat). Documents Platform E6 is closed (#285 / `79e638c3`).  
 - Operators / agents cannot treat D4 bind, column drop, expiry fields, CandidateCard, Shell `documents` nav, Candidate stage, HR JSON, Activity `document_request`, `next_action`, or Recruitment Application as this proof.  
 - D3 / D5–D7 / D9 remain unbound on `documents`; D4 / D8 stay bound; Forms P3–P5, OCR, packages, and Billing stay out of Product Track.  
 - Documents Foundation stays 🔄.
@@ -301,10 +301,11 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - [x] Brief sealed with request decision / Activity-layer boundary / in/out + Original Goal → Completion Proof  
 - [x] Queue + roadmap + AGENTS + maturity pointed at this brief (this docs PR)  
 - [x] E6 marked **COMPLETE** with #285 / `79e638c3`  
-- [ ] Feat PR — outstanding-ask public-contract seal (after this brief merges)
+- [x] Feat PR — outstanding-ask public-contract seal (**this PR**)
 
 ---
 
 ## History
 
+- 2026-08-23: E7 feat opened — Hub `outstanding_asks` on `documents.hub_adapter_v1` resolve / owner_summary. Product Track stays this brief. E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285). Foundation stays 🔄.
 - 2026-08-23: E7 brief opened — Document requests. Product Track → this brief (feat locked). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285) (`79e638c3`). D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.

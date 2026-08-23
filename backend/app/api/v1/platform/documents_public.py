@@ -1,7 +1,8 @@
-"""Documents public contract v1 — entity-link resolve (E3 + E4 + E5 + E6).
+"""Documents public contract v1 — entity-link resolve (E3 + E4 + E5 + E6 + E7).
 
 Same adapter id as E2. Not a second Adapter. Not a candidate_id column list.
 E6 projects Hub expiry (`expires_at` / `expiry_state`) on the resolve view.
+E7 projects Hub outstanding asks (`outstanding_asks`) on the same resolve.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from backend.app.services.document_hub_delivery_contract import (
     E3_RELATION_TYPE,
     PUBLIC_CONTRACT_ID,
     list_entity_link_documents_via_contract,
+    project_outstanding_asks_via_contract,
 )
 
 router = APIRouter(
@@ -47,10 +49,16 @@ class DocumentHubViewOut(BaseModel):
     link: DocumentLinkOut
 
 
+class OutstandingAskOut(BaseModel):
+    doc_type: str
+    state: str
+
+
 class DocumentsResolveOut(BaseModel):
     contract_id: str = PUBLIC_CONTRACT_ID
     adapter_id: str = ADAPTER_ID
     items: list[DocumentHubViewOut] = Field(default_factory=list)
+    outstanding_asks: list[OutstandingAskOut] = Field(default_factory=list)
 
 
 def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
@@ -87,4 +95,8 @@ async def resolve_documents_via_public_contract(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return DocumentsResolveOut(items=[DocumentHubViewOut.model_validate(row) for row in items])
+    asks = project_outstanding_asks_via_contract(items)
+    return DocumentsResolveOut(
+        items=[DocumentHubViewOut.model_validate(row) for row in items],
+        outstanding_asks=[OutstandingAskOut.model_validate(row) for row in asks],
+    )

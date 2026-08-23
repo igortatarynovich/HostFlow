@@ -1,7 +1,7 @@
 # Documents Platform E6 — Document Expiry / Validity (Phase E)
 
 **Status:** **COMPLETE** ([#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) · merge `79e638c3`)  
-**Next:** [Documents Platform E7 — Document Requests](documents-platform-e7-document-requests.md) (brief; feat locked)  
+**Next:** [Documents Platform E7 — Document Requests](documents-platform-e7-document-requests.md) (feat)  
 **Phase class:** platform  
 **Branch (docs):** `docs/documents-platform-e6-document-expiry` ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)  
 **Branch (code):** `feat/documents-platform-e6-document-expiry` ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285)  
@@ -181,7 +181,7 @@ E5 did not bind another consumer. **This slice does not either.**
 | **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913` |
 | **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) · merge `702b922c` |
 | **E6** | Document expiry / validity | ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) · merge `79e638c3` |
-| **E7** | Document requests | [brief](documents-platform-e7-document-requests.md) (brief; feat locked) |
+| **E7** | Document requests | [brief](documents-platform-e7-document-requests.md) (feat) |
 | **E8+** | Remaining consumers / later lifecycle | locked until E7 feat |
 
 Roadmap later themes (requests, packages, OCR, approvals, automation) stay **horizon**. Documents Foundation stays 🔄.
