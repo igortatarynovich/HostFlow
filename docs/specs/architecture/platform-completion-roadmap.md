@@ -221,11 +221,13 @@ Ladder (E7 ✅; Product Track = CL0):
 | **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) · merge `702b922c` |
 | **E6** | Document expiry / validity | ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) · merge `79e638c3` |
 | **E7** | Document requests | ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) · merge `ceafbd48` |
-| **E8+** | Remaining consumers / later lifecycle | locked (Product Track = [CL0](../tasks/entity-field-composition-cl0-contract-seal.md); do not start E8 here) |
+| **R1** | [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) — Country Registry completeness | **active** (Engineering; parallel CL0) |
+| **R2–R5** | same brief — cutover / document identity / aliases / policy merge | locked until prior R gate; not E8 |
+| **E8+** | Remaining consumers / later lifecycle | locked until R3+ (type identity); Product Track stays CL0 |
 
 **Out of E7:** D3 / D5–D7 / D9 `documents` bind · OCR / e-sign / packages / Hub UI rebuild · Hub request table · Catalog `document.requested` · Forms P3–P5 · Billing Platform · AI · L0 Catalog rewrite · G4 reopen · unbind D8 / D4.
 
-**Result:** validity is Hub. Outstanding ask is Hub required type + entity (E7 ✅). Product Track = [Entity Field Composition CL0](../tasks/entity-field-composition-cl0-contract-seal.md). Foundation stays 🔄. E8 stays locked.
+**Result:** validity is Hub. Outstanding ask is Hub required type + entity (E7 ✅). Product Track = [Entity Field Composition CL0](../tasks/entity-field-composition-cl0-contract-seal.md). Engineering Track (parallel): [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) **R1** active. Foundation stays 🔄. E8 stays locked until R3+.
 
 **Ref:** [entity-field-composition-cl0-contract-seal.md](../tasks/entity-field-composition-cl0-contract-seal.md) · [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md) ✅ · [E6](../tasks/documents-platform-e6-document-expiry.md) ✅ · [E5](../tasks/documents-platform-e5-candidate-storage-bridge.md) ✅ · [E4](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [E3](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [E2](../tasks/documents-platform-e2-public-contract.md) ✅ · [E1](../tasks/documents-platform-e1-contract-seal.md) ✅ · [ADR-009](ADR-009-document-hub-platform-layer.md) · [ADR-012](ADR-012-activity-notification-operating-layer.md) · [A2-F8](../gates/platform-governance-review-a2.md).
 
@@ -276,7 +278,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). **Documents Platform E7** **is** the active slice (feat) after E6 ✅; do not mix E7 into an E6/E5/E4/E3/E2/WCP PR, mass-bind D3–D9, reopen G4, D10-on-weak-D2, Recruitment rail patches, reopen D9, Forms C6, Stage 5 settings, or R6. Do not fold Application into Entity. Do not mix ListWorkspace into the WCP close-out. Closing a later phase as COMPLETE requires the [Goal Completion Gate](../gates/goal-completion-gate.md). New platform phase briefs require [Original Goal → Completion Proof](../gates/goal-completion-gate.md).  
+5. Parallel product branches that compete across phases (one active product slice). **Entity Field Composition CL0** **is** the active slice (brief; feat locked). Do not start [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) or E8 in a CL0 PR. Do not mix E7 into an E6/E5/E4/E3/E2/WCP PR, mass-bind D3–D9, reopen G4, D10-on-weak-D2, Recruitment rail patches, reopen D9, Forms C6, Stage 5 settings, or R6. Do not fold Application into Entity. Do not mix ListWorkspace into the WCP close-out. Closing a later phase as COMPLETE requires the [Goal Completion Gate](../gates/goal-completion-gate.md). New platform phase briefs require [Original Goal → Completion Proof](../gates/goal-completion-gate.md).  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Minting Entity Catalog Passport, or binding D2 `documents` on D3 / D5–D7 / D9 in E5, without a later named E slice + Architecture checklist / RFC when Catalog shape changes.  
@@ -300,6 +302,8 @@ Not standalone AI features. A **service layer over existing platforms**:
 | [documents-platform-e6-document-expiry.md](../tasks/documents-platform-e6-document-expiry.md) | E6 COMPLETE — Document expiry / validity |
 | [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md) | E7 COMPLETE — Document requests |
 | [entity-field-composition-cl0-contract-seal.md](../tasks/entity-field-composition-cl0-contract-seal.md) | **Active Product Track** — Entity Field Composition CL0 (brief; feat locked) |
+| [platform-reference-identity-sot.md](../tasks/platform-reference-identity-sot.md) | **Active Engineering Track** — Platform Reference Identity SoT R1–R5 (R1 next; parallel CL0) |
+| [lifecycle-identity-l0-contract-seal.md](../tasks/lifecycle-identity-l0-contract-seal.md) | **Queued after CL0** — Lifecycle Identity (ADR-037); docs sealed; feat locked |
 | [documents-platform-e3-first-consumer-bind.md](../tasks/documents-platform-e3-first-consumer-bind.md) | E3 first consumer bind ✅ |
 | This roadmap | **Horizon** order of platform phases A–G |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
@@ -311,6 +315,8 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-23: **ADR-037** Lifecycle Identity Canon. Runtime **queued after CL0** ([brief](../tasks/lifecycle-identity-l0-contract-seal.md)). Active Product Track **unchanged** = [CL0](../tasks/entity-field-composition-cl0-contract-seal.md).
+- 2026-08-23: Platform Reference Identity SoT brief — normative R1–R5 contract. Engineering **R1** active (parallel CL0). [brief](../tasks/platform-reference-identity-sot.md). E8 locked until R3+.
 - 2026-08-23: CL0 brief — Entity Field Composition contract seal. Active = [Entity Field Composition CL0](../tasks/entity-field-composition-cl0-contract-seal.md) (feat locked). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287).
 - 2026-08-23: E7 feat — Hub outstanding-ask read on public contract. Active = [Documents Platform E7](../tasks/documents-platform-e7-document-requests.md) (feat). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285).
 - 2026-08-23: E7 brief — Document requests. Active = [Documents Platform E7](../tasks/documents-platform-e7-document-requests.md) (feat locked). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285).

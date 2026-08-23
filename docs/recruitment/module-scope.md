@@ -57,6 +57,8 @@ Recruitment **owns** candidate and lead pipeline definitions. Canonical scope:
 
 **Runtime entry points** use `recruitment_funnel_assignment` helpers → `resolve_recruitment_funnel`. **Forbidden after P0 gate:** new tenant-wide operational funnels; cross-module funnel rows; gates on legacy `system_stage` alone.
 
+**Stage existence (ADR-037):** company funnels configure **which registered `recruitment.lead.*` / `recruitment.candidate.*` keys** are used. They do not mint stage identity. Candidate HR/client tail on `Candidate.stage` is strangler — [`lifecycle-identity-canon.md`](../specs/architecture/lifecycle-identity-canon.md). Runtime of that split is **queued after CL0**, not this file’s job.
+
 **Temporary strangler:** pre-migration tenant funnels (`company_id IS NULL`) remain readable via resolver step 4 and analytics `legacy_tenant=true` until backfill + dashboard migration. See spec §7.3.
 
 ## Сопровождение

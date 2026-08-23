@@ -93,6 +93,7 @@
 - [`ADR-004`](../architecture/ADR-004-five-product-modules-and-billing-events.md) — independent product modules
 - [`ADR-009`](../architecture/ADR-009-document-hub-platform-layer.md) — Document Hub (sibling capability)
 - [`handoff-contract.md`](../architecture/handoff-contract.md) — cross-module handoff product contract
+- [`ADR-037`](../architecture/ADR-037-lifecycle-identity-canon.md) — Module Stage Registry owns stage **existence**; PE does not
 - [`transfer-policy.md`](../workflows/transfer-policy.md) — **tactical slice** (Recruitment transition evaluator; migrates here)
 
 ---
@@ -241,7 +242,9 @@ registry_item:
 
 ### 3.1 System Stage Registry
 
-**Purpose:** Immutable semantic stage codes. User never deletes or renames these; they only map display labels to them.
+**Existence owner (ADR-037):** “Does this stage exist for this **module + entity kind**?” is answered by the **Module Stage Registry**, not by this PE table and not by `funnel_stages`. See [`ADR-037`](../architecture/ADR-037-lifecycle-identity-canon.md) and [`lifecycle-identity-canon.md`](../architecture/lifecycle-identity-canon.md). PE **consumes** registered `{module}.{entity_kind}.{stage_key}` for templates, transition rules, and handoff. Current `module.code` rows (no `entity_kind`; Recruitment still lists `processing_by_hr` / `hired`) are a **strangler**. Do not mint a second existence catalog.
+
+**Purpose:** Mechanism catalog — templates and evaluator hooks keyed by registered stage identity. User never deletes or renames **registry** identities; they only map display labels (company funnel overlay) to them.
 
 ```yaml
 system_stage:
@@ -330,7 +333,7 @@ pipeline_template:
       to: [recruitment.ready_for_handoff, recruitment.rejected]
 ```
 
-**Invariant:** every pipeline stage **must** `maps_to` exactly one `module.code` system stage. Arbitrary user `code` must not drive gate logic.
+**Invariant:** every pipeline stage **must** `maps_to` exactly one **registered** stage identity (`{module}.{entity_kind}.{stage_key}` per ADR-037). Legacy `module.code` without `entity_kind` is strangler. Arbitrary user `code` must not drive gate logic and must not create existence.
 
 ### 3.4 Transition Rule Registry
 

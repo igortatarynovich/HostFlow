@@ -55,6 +55,7 @@ UI **не** определяет архитектуру.
 | Invariants | INV-01…15 |
 | Checklist | Обязателен перед ADR/PR |
 | Epic P (3D) | Закрытие Acquisition V1 vertical |
+| **Lifecycle Identity (ADR-037)** | Stage existence vs Funnel vs PE vs Handoff — [`ADR-037`](ADR-037-lifecycle-identity-canon.md); runtime queued after CL0 |
 
 ## История
 

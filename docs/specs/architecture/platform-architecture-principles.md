@@ -162,7 +162,7 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 |---|------------|------------|
 | 1 | **Forms / Public Forms** | Input layer ([`ADR-007`](ADR-007-forms-platform-capability.md)); consumers via **Endpoint Adapter** ([`ADR-025`](ADR-025-standard-adapter-boundary.md) / [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)). Basic core / Advanced addon. |
 | 2 | **Document Hub** | Единый слой документов ([`ADR-009`](ADR-009-document-hub-platform-layer.md)). |
-| 3 | **Process Engine** | Единый движок процессов: system stages, profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)). |
+| 3 | **Process Engine** | Единый движок процессов: profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)). Stage **existence** = Module Stage Registry ([`ADR-037`](ADR-037-lifecycle-identity-canon.md)); PE does not own identity. |
 | 3a | **Field Registry & Card Configuration** | Канон полей, layouts, requirements ([`field-registry-card-configuration.md`](../platform/field-registry-card-configuration.md)). |
 | 3b | **Entity Profile Definition Registry** | Композиция canonical fields в типы бизнес-объектов; слой между Field Registry и Intake/Process ([`entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md)). |
 | 4 | **Integrations / Marketplace** | Core integrations + apps ([`ADR-006`](ADR-006-marketplace-and-integration-platform.md)). |
@@ -179,7 +179,7 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 
 **Document Hub** — детальная модель Document / Link / Requirement / Review — ADR-009; модули **запрашивают** required sets из Hub, не дублируют канонические списки.
 
-**Process Engine** — system stages, process profiles, transition/handoff rules, runtime evaluator — [`process-engine.md`](../platform/process-engine.md); модули **регистрируют** свои stages и rules, не строят отдельные pipeline engines.
+**Process Engine** — process profiles, transition/handoff rules, runtime evaluator — [`process-engine.md`](../platform/process-engine.md); модули **регистрируют** stage identities in the Module Stage Registry ([`ADR-037`](ADR-037-lifecycle-identity-canon.md)) and rules in PE; they do not own existence via `funnel_stages` and do not build parallel pipeline engines.
 
 ### 6.1 Trust & Reputation Layer, Driver App, порталы
 

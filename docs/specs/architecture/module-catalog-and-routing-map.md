@@ -25,7 +25,7 @@
 | **Forms** | **Input layer** ([`ADR-007`](ADR-007-forms-platform-capability.md), [`../../forms/module-scope.md`](../../forms/module-scope.md)) |
 | **Acquisition / Campaigns** | Demand flow + intake routing ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md)); **не** Marketing-продукт |
 | **Document Hub** | Единый registry документов ([`ADR-009`](ADR-009-document-hub-platform-layer.md), [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md)) |
-| **Process Engine** | Единый движок процессов: stages, profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)) |
+| **Process Engine** | Единый движок процессов: profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)). Stage existence: [`ADR-037`](ADR-037-lifecycle-identity-canon.md). |
 | **Integrations / Marketplace** | Core integrations + apps ([`ADR-006`](ADR-006-marketplace-and-integration-platform.md)); module installation audit/canon: [`module-registry-marketplace-installation.md`](../platform/module-registry-marketplace-installation.md) |
 | **Automations** | Правила, триггеры, сценарии между сущностями |
 | **Activity & Notification Operating Layer** | Единый слой задач, напоминаний, уведомлений, планировщика и календарных представлений; **не** разные модули, см. [`ADR-012`](ADR-012-activity-notification-operating-layer.md) и canon [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md) |
@@ -131,7 +131,7 @@
 
 **Текущий код** частично кладёт всё в `tenant.settings`; новые фичи — с company scope и ADR-005.
 
-**Architecture gate (P0, блокирует модульную независимость):** [`module-owned-pipelines-p0.md`](module-owned-pipelines-p0.md) — company-scoped funnels, module ownership, Recruitment resolver, strangler для legacy `system_stage`. **HR manifest / employee pipeline / typed module-settings UI — только после закрытия P0 gate.**
+**Architecture gate (P0, блокирует модульную независимость):** [`module-owned-pipelines-p0.md`](module-owned-pipelines-p0.md) — company-scoped funnels, module ownership, Recruitment resolver, strangler для legacy `system_stage`. **HR manifest / employee pipeline / typed module-settings UI — только после закрытия P0 gate.** **Stage existence** after P0: [`ADR-037`](ADR-037-lifecycle-identity-canon.md) — Funnel = configuration; Module Stage Registry = identities.
 
 ---
 
@@ -256,6 +256,7 @@
 
 ## История
 
+- 2026-08-23: **ADR-037** (Accepted) — Lifecycle Identity Canon; Module Stage Registry owns stage existence; Funnel = company configuration; PE = mechanism; Handoff ≠ FunnelTransition; runtime queued after CL0 — [`ADR-037-lifecycle-identity-canon.md`](ADR-037-lifecycle-identity-canon.md) · [`lifecycle-identity-canon.md`](lifecycle-identity-canon.md).
 - 2026-08-07: **ADR-036** (Accepted) — four trust roles invariant; ceilings; presets ≠ roles; `access_context` tenant\|portal; inventory gate [`rbac-role-usage-inventory.md`](rbac-role-usage-inventory.md); [`ADR-036-four-trust-roles-rbac.md`](ADR-036-four-trust-roles-rbac.md).
 - 2026-07-30: **ADR-034** (Accepted) — three canonical public funnels (Growth / Auth / Candidate); Success Path via guided readiness UI [`self-service-success-path.md`](../journeys/self-service-success-path.md); no parallel product landings.
 - 2026-07-29: **ADR-033** (Accepted) — Company-owned lead lifecycle email policy + sparse Vacancy override; Control Center under Communications; [`lead-lifecycle-email-policy.md`](../workflows/lead-lifecycle-email-policy.md).

@@ -4,6 +4,8 @@
 
 Accepted — implemented incrementally starting 2026-05-06.
 
+**Amended by [`ADR-037`](ADR-037-lifecycle-identity-canon.md):** Recruitment still must not own Employee lifecycle (this ADR). Encoding HR/client progress as **Candidate.stage** codes (`processing_by_hr`, `hired`, `processing_by_client`, hidden recruiter lanes) is a **strangler**, not the target. Target: Recruitment Candidate lifecycle ends at a Recruitment terminal / handoff-ready **registry** identity; PE Handoff creates/activates `hr.employee.*`. Do not add new HR identities onto the candidate axis.
+
 ## Context
 
 HostFlow mixed recruitment progress and post-hire HR work on a single candidate stage axis. Product-wise, **contract signing and ZUS are HR processes**; the recruiter’s job can end earlier. Selling **Recruitment**, **HR**, and **Fleet** as separate modules requires a clear handoff point from the candidate record to the **Workforce (Employee)** record.
@@ -25,6 +27,7 @@ HostFlow mixed recruitment progress and post-hire HR work on a single candidate 
 
 ## References
 
+- [`ADR-037-lifecycle-identity-canon.md`](ADR-037-lifecycle-identity-canon.md) — Module Stage Registry owns existence; Candidate.stage HR/client lane = strangler
 - [`handoff-contract.md`](handoff-contract.md) — продуктовый маппинг `ready_for_hr` / `ready_for_handoff` и типы handoff (internal vs client portal)
 - [`operational-event-boundaries.md`](operational-event-boundaries.md) — границы операционных фактов: смена стадии vs создание handoff vs материализация HR
 - `backend/app/constants/stages.py` — `PIPELINE_COMPLETED_STAGE_CODES`, `RECRUITMENT_SUCCESS_STAGE_CODES`

@@ -389,16 +389,18 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 ### Process Engine
 
-**Normative:** [`../platform/process-engine.md`](../platform/process-engine.md)
+**Normative:** [`../platform/process-engine.md`](../platform/process-engine.md) · stage existence [`ADR-037`](ADR-037-lifecycle-identity-canon.md)
 
 **Purpose.** Stages, profiles, pipelines, transition/handoff rules, runtime evaluator.
+
+**Lifecycle identity:** stage **existence** is the Module Stage Registry ([`ADR-037`](ADR-037-lifecycle-identity-canon.md)) — not this capability’s SoT. PE evaluates transitions/handoffs on registered keys.
 
 | | |
 |--|--|
 | **Owns** | Process definitions / profiles; transition rules / evaluator; handoff rule engine (engine-owned) |
 | **Configures** | Process profile defaults (engine-level) |
 | **Exposes** | Process contracts (**Stable**) |
-| **Non-Goals** | Domain entity SoT; Notification delivery; Form Builder |
+| **Non-Goals** | Domain entity SoT; **module stage existence / lifecycle identity** ([ADR-037](ADR-037-lifecycle-identity-canon.md)); Notification delivery; Form Builder |
 | **Consumes** | Module domain objects as subjects |
 | **Requires** | — |
 | **Optional** | — |

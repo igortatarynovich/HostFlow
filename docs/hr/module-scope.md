@@ -44,7 +44,7 @@ HR-модуль в целом должен давать тенанту отве�
 
 ## Порядок внедрения и пул настроек
 
-**Employee pipeline (P0, shipped):** company-scoped воронки `module_key=hr`, `type=employee` — bootstrap, `resolve_hr_employee_funnel`, runtime binding на `WorkforceEmployee.meta.employee_pipeline`, `/meta/stages?pipeline_type=employee`. Gate: [`hr-employee-pipeline-p0.md`](../specs/architecture/hr-employee-pipeline-p0.md) (**CLOSED**). Recruitment не обязателен для HR-only tenant.
+**Employee pipeline (P0, shipped):** company-scoped воронки `module_key=hr`, `type=employee` — bootstrap, `resolve_hr_employee_funnel`, runtime binding на `WorkforceEmployee.meta.employee_pipeline`, `/meta/stages?pipeline_type=employee`. Gate: [`hr-employee-pipeline-p0.md`](../specs/architecture/hr-employee-pipeline-p0.md) (**CLOSED**). Recruitment не обязателен для HR-only tenant. **Existence** of `hr.employee.*` identities: [`ADR-037`](../specs/architecture/ADR-037-lifecycle-identity-canon.md); funnel rows are configuration. Candidate.stage is not the HR lifecycle SoT.
 
 Публичный сбор данных (анкеты сотрудника, ZUS, согласия и т.д.) — контур **Forms** как платформенной capability, см. [`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md) и [`../forms/module-scope.md`](../forms/module-scope.md). Кадровые документы и reuse файлов из Recruitment — **Document Hub** ([`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md), [`../document-hub/module-scope.md`](../document-hub/module-scope.md)).
 

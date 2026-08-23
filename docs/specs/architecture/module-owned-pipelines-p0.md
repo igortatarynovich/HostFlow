@@ -12,6 +12,7 @@
 - [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md) — product keys, settings hierarchy
 - [`invariants-recruitment-hr-document-hub.md`](invariants-recruitment-hr-document-hub.md) — HR never owns recruitment pipeline
 - [`recruitment-domain-model.md`](recruitment-domain-model.md) — candidate / lead / vacancy ownership
+- [`ADR-037-lifecycle-identity-canon.md`](ADR-037-lifecycle-identity-canon.md) — stage **existence** is Module Stage Registry; this P0 owns company funnel **configuration** only
 
 ---
 
@@ -29,6 +30,8 @@ HostFlow split **product modules** (Recruitment, HR, Fleet, …) in code and ADR
 Until funnels are **company-scoped** and **module-owned**, HostFlow remains a **CRM with separated screens**, not a modular platform. **Module independence starts with process ownership**, not UI.
 
 **P0 scope:** Recruitment pipelines only (`module_key=recruitment`, funnel `type` ∈ `candidate` | `lead`). HR employee pipeline, Fleet operational statuses, and module-settings UI forms are **explicitly after P0** (§9).
+
+**Post-P0 (ADR-037):** `funnel.type` is the **entity_kind** of a company funnel instance. `FunnelStage.code` is **not** stage identity SoT — rows must reference the Module Stage Registry. Do not treat this P0 gate as “funnels own what stages exist.”
 
 ---
 

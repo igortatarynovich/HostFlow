@@ -5,6 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](../gates/goal-completion-gate.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
+> **2026-08-23:** **ADR-037** Lifecycle Identity Canon sealed (docs). Runtime **queued after CL0** — [brief](lifecycle-identity-l0-contract-seal.md). Does **not** steal Product Track.  
 > **2026-08-22:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** vs original D ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276)). **Workspace Capability Platform Completion** [COMPLETE](../gates/workspace-capability-platform-complete.md) (**PASS**) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); G4 PASS (Recruitment Application) — **not** the Documents proof. Intermediate #273: [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). **Product Track:** [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) — brief; feat locked; Page Type + two builder modes + Profile as role manifest. E7 ✅ ([#287](https://github.com/igortatarynovich/HostFlow/pull/287); named Document Requests Gate). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285); named Document Expiry Gate). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282); named Candidate Storage Bridge Gate). E4 ✅. Catalog unlock ≠ mass bind. Not mass D3–D9 bind. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Entity Workspace ≠ Application Workspace. Documents Foundation stays 🔄. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
 > Communication **C2.4 frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
@@ -29,7 +30,7 @@
 | Track | Active work | Rule |
 |-------|-------------|------|
 | **Product** | **Entity Field Composition CL0** Contract seal — [brief](entity-field-composition-cl0-contract-seal.md); feat locked; docs only; not E8 / not D10 / not Forms P3 | Almost all capacity |
-| **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
+| **Engineering** | **Platform Reference Identity SoT R1** — [brief](platform-reference-identity-sot.md); country registry completeness; parallel CL0; no runtime/UI cutover | Active engineering slice; [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest baseline deferred; Catalog Notifications↔Communication RFC background |
 
 **Open product GAPs:**
 
@@ -72,7 +73,9 @@
 - **Documents Platform E6 — Document Expiry / Validity** ← ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) — [brief](documents-platform-e6-document-expiry.md); Hub validity SoT; named Document Expiry Gate  
 - **Documents Platform E7 — Document Requests** ← ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) — [brief](documents-platform-e7-document-requests.md); Hub outstanding-ask SoT; named Document Requests Gate  
 - **Entity Field Composition CL0 — Contract Seal** ← **active** (brief; feat locked) — [brief](entity-field-composition-cl0-contract-seal.md); Page Type + two builder modes; Profile = role manifest; four requirement kinds; Engine not boolean; `transition`/`handoff` off Profile field  
-- **Documents Platform E8+** Remaining consumers / later lifecycle ← **locked** (E7 feat ✅; Product Track = CL0; do not start E8 in this slice)  
+- **Platform Reference Identity SoT R1–R5** ← **R1 next** (Engineering; parallel CL0) — [brief](platform-reference-identity-sot.md); country + document identity + policy overlay; E8 locked until R3+  
+- **Lifecycle Identity — Contract Seal** ← **queued after CL0** (docs sealed; feat locked) — [brief](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md); Funnel ≠ existence SoT; not Product Track  
+- **Documents Platform E8+** Remaining consumers / later lifecycle ← **locked** (E7 feat ✅; Product Track = CL0; E8 locked until R3+; do not start E8 in CL0 slice)  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -130,11 +133,14 @@
 | **34** | **Documents Platform E6** Document expiry / validity | `docs/…` ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284) · `feat/…` ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285) | ✅ named Document Expiry Gate · merge `79e638c3` |
 | **35** | **Documents Platform E7** Document requests | `docs/…` ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286) · `feat/…` ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287) | ✅ named Document Requests Gate · merge `ceafbd48` |
 | **36** | **Entity Field Composition CL0** Contract seal | `docs/…` | **active** (brief; feat locked) — Page Type + two builder modes; Profile = role manifest |
-| **37** | **Documents Platform E8+** Remaining consumers / later lifecycle | locked | Product Track = CL0; do not start E8 |
+| **37** | **Platform Reference Identity SoT R1** Country registry | `feat/platform-reference-r1-country-registry` | **active** (Engineering; parallel CL0) — [brief](platform-reference-identity-sot.md) |
+| **38** | **Platform Reference Identity SoT R2–R5** Cutover / doc identity / aliases / policy | locked | after prior R gate; E8 locked until R3+ |
+| **39** | **Documents Platform E8+** Remaining consumers / later lifecycle | locked | Product Track = CL0; E8 locked until R3+ |
+| **40** | **Lifecycle Identity** Contract seal (ADR-037) | [brief](lifecycle-identity-l0-contract-seal.md) | **queued after CL0** — docs sealed; feat locked; not Product Track |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** Entity Field Composition CL0 — [contract seal](entity-field-composition-cl0-contract-seal.md) (brief; feat locked). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287) (named Document Requests Gate). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285). E5 ✅ [#282](https://github.com/igortatarynovich/HostFlow/pull/282). E4 ✅. E3 ✅. E2 ✅. WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E1 ✅. D4/D8 stay bound. D3 / D5–D7 / D9 stay unbound. G4 stays Recruitment Application. Foundation stays 🔄. E8+ locked.  
-**Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
+**Active (Product):** Entity Field Composition CL0 — [contract seal](entity-field-composition-cl0-contract-seal.md) (brief; feat locked). **Queued after CL0:** Lifecycle Identity — [brief](lifecycle-identity-l0-contract-seal.md) (ADR-037). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287) (named Document Requests Gate). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285). E5 ✅ [#282](https://github.com/igortatarynovich/HostFlow/pull/282). E4 ✅. E3 ✅. E2 ✅. WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E1 ✅. D4/D8 stay bound. D3 / D5–D7 / D9 stay unbound. G4 stays Recruitment Application. Foundation stays 🔄. E8+ locked until R3+.  
+**Active (Engineering):** Platform Reference Identity SoT **R1** — [brief](platform-reference-identity-sot.md) (parallel CL0; reference only). Legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
 
@@ -265,6 +271,10 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [entity-field-composition-cl0-contract-seal.md](entity-field-composition-cl0-contract-seal.md). Page Type + two builder modes. Entity Profile = role manifest. Four requirement kinds; Engine not boolean. `transition` / `handoff` off Profile field. Docs only. Not E8. Not D10. Not Forms P3. Proof later = D4 Information zone.
 
+### Lifecycle Identity — Contract Seal ← **queued after CL0** (docs sealed; feat locked)
+
+[lifecycle-identity-l0-contract-seal.md](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md). Module Stage Registry owns existence; Funnel = company overlay; PE = mechanism; Handoff ≠ FunnelTransition. **Not Product Track.** First feat (existence guard) only after CL0. Do not universalize `FunnelStage.code`. Do not cut over Candidate/Sales/Client UI in the docs slice.
+
 ---
 
 ## 4. Epic C0 — Communication Integrity
@@ -342,6 +352,7 @@ Next branch only after:
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
 **Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Documents.  
 **Do not** treat Shell/chrome or D1–D9 named gates as original Entity Platform done; **do not** mix E7 into an E6/E5/E4/E3/E2/WCP PR; **do not** multiply new entity/application screens, rails, or D10 cutovers; **do not** fold Application Workspace into Entity Workspace; **do not** treat E3 HR bind or E4 Candidate bind as mass D3–D9 `documents` bind; **do not** treat Shell `documents` nav, Vacancy docs section, HR dossier, CandidateCard, or Services billing tab as the D2 `documents` slot; **do not** treat Recruitment Application G4 as the Documents proof; **do not** start OCR / e-sign / packages / Forms P3–P5 / Billing / AI; **do not** put a request / reminder table in Document Hub; **do not** mint Catalog `document.requested`; **do not** leave `documents.candidate_id` as a nullable write target in E5; **do not** patch Recruitment RODO/comments as the platform fix; **do not** mix ListWorkspace into this close-out.  
+**Do not** start Lifecycle Identity **feat** while CL0 holds Product Track; **do not** treat `funnels` / `FunnelStage.code` as stage-existence SoT; **do not** union `stages.py` + Lead literals + client FE lists into a new canon.  
 **Do** apply [Goal Completion Gate](../gates/goal-completion-gate.md) before marking a future platform phase COMPLETE.  
 **Do** require `**Phase class:** platform` + [Original Goal → Completion Proof](../gates/goal-completion-gate.md) on every new platform phase brief (problem to permanently remove + named consumer — not a deliverables list).  
 **Do** amend this queue when switching Product Active (this revision: live = Entity Field Composition CL0 brief).
@@ -350,6 +361,8 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-08-23: **ADR-037** + Lifecycle Identity L2 + brief — canon sealed; **queued after CL0** ([brief](lifecycle-identity-l0-contract-seal.md)). Product Track **stays** [CL0](entity-field-composition-cl0-contract-seal.md). No feat. E8 stays locked.
+- 2026-08-23: Platform Reference Identity SoT brief — normative contract R1–R5. Engineering Track → **R1** next (parallel CL0). [brief](platform-reference-identity-sot.md). E8 locked until R3+. XK excluded from R1 ISO set.
 - 2026-08-23: CL0 brief opened — Entity Field Composition contract seal. Product Track → [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) (feat locked). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287) (`ceafbd48`). E8 stays locked. Foundation stays 🔄.
 - 2026-08-23: E7 feat opened — Hub outstanding-ask read on public contract. Product Track stays [Documents Platform E7](documents-platform-e7-document-requests.md). E8+ locked. Foundation stays 🔄.
 - 2026-08-23: E7 brief opened — Document requests. Product Track → [Documents Platform E7](documents-platform-e7-document-requests.md) (feat locked). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285) (`79e638c3`). D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.

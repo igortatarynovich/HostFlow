@@ -71,6 +71,7 @@ AI remains sequenced later; it appears in the matrix when it becomes a platform 
 - Workspace Capability Platform Completion: [workspace-capability-platform-completion.md](../tasks/workspace-capability-platform-completion.md)  
 - Documents Platform E7: [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md)
 - Entity Field Composition CL0: [entity-field-composition-cl0-contract-seal.md](../tasks/entity-field-composition-cl0-contract-seal.md)
+- Lifecycle Identity (queued after CL0): [lifecycle-identity-l0-contract-seal.md](../tasks/lifecycle-identity-l0-contract-seal.md) · [ADR-037](ADR-037-lifecycle-identity-canon.md)
 - Documents Platform E6: [documents-platform-e6-document-expiry.md](../tasks/documents-platform-e6-document-expiry.md)
 - Documents Platform E5: [documents-platform-e5-candidate-storage-bridge.md](../tasks/documents-platform-e5-candidate-storage-bridge.md)
 - Documents Platform E4: [documents-platform-e4-candidate-document-link.md](../tasks/documents-platform-e4-candidate-document-link.md)  
