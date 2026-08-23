@@ -917,6 +917,7 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 - [`field-registry-card-configuration.md`](field-registry-card-configuration.md) — canonical field semantics (layer below)
 - [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) — business requirements / readiness / gates (**v1 closed** §20); CL0: four kinds, structured result, not a boolean
 - [`entity-field-composition-cl0-contract-seal.md`](../tasks/entity-field-composition-cl0-contract-seal.md) — Profile = role manifest; `transition` / `handoff` off Profile field; `screening_pack_code` as ref
+- [`entity-field-composition-cl1-inventory.md`](../tasks/entity-field-composition-cl1-inventory.md) — live Candidate sources classified vs CL0 kinds
 - [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — document instance lifecycle runtime (**v1 closed** §20)
 - [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — expiry notification events (downstream of Document Runtime v1)
 - [`process-engine.md`](process-engine.md) — process behaviour (layer above)

@@ -125,7 +125,7 @@ E7 (this)
     → D4 + D8 stay bound; D3 / D5–D7 / D9 stay unbound
     → same adapter; no second Adapter
 E8+
-    → remaining consumers / later lifecycle (locked; Product Track = CL0)
+    → remaining consumers / later lifecycle (locked; Product Track = CL1)
 ```
 
 E7 **must not**:
@@ -192,7 +192,7 @@ E6 did not bind another consumer. **This slice does not either.**
 | **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) · merge `702b922c` |
 | **E6** | Document expiry / validity | ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) · merge `79e638c3` |
 | **E7** | Document requests | ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) · merge `ceafbd48` |
-| **E8+** | Remaining consumers / later lifecycle | locked (Product Track = CL0; do not start E8) |
+| **E8+** | Remaining consumers / later lifecycle | locked (Product Track = CL1; do not start E8) |
 
 Roadmap later themes (packages, OCR, approvals, automation, remaining D3 / D5–D7 / D9 bind) stay **horizon**. Documents Foundation stays 🔄.
 
@@ -293,7 +293,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 | Adapter | `document_hub_delivery_contract.py` — same façade; additive projection |
 | Activity | keep `document_request` in ADR-012; do not mint Hub table |
 | Gate | `backend/tests/platform/test_documents_e7_document_requests_gate.py` |
-| Pointers | queue / roadmap / AGENTS / maturity point at [CL0](entity-field-composition-cl0-contract-seal.md); this brief stays COMPLETE |
+| Pointers | queue / roadmap / AGENTS / maturity point at [CL1](entity-field-composition-cl1-inventory.md); this brief stays COMPLETE |
 
 ---
 
