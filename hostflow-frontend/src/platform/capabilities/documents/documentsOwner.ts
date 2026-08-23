@@ -32,6 +32,8 @@ export type DocumentHubView = {
   doc_type: string
   status: string
   expires_at?: string | null
+  expiry_state?: string | null
+  days_left?: number | null
   link: DocumentLinkView
 }
 
