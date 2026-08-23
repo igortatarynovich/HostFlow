@@ -1,0 +1,1 @@
+# rule|relative_path — frozen competing existence APIs (empty at LI-1 open).
