@@ -24,6 +24,8 @@ on:
       - "docs/specs/tasks/platform-reference*"
       - "docs/specs/tasks/workspace-capability*"
       - "docs/specs/tasks/entity-field-composition*"
+      - "docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json"
+      - "docs/specs/tasks/lifecycle-identity-li1*"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/actions/backend-pytest/**"
@@ -44,6 +46,8 @@ on:
       - "docs/specs/tasks/platform-reference*"
       - "docs/specs/tasks/workspace-capability*"
       - "docs/specs/tasks/entity-field-composition*"
+      - "docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json"
+      - "docs/specs/tasks/lifecycle-identity-li1*"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/actions/backend-pytest/**"
@@ -76,6 +80,7 @@ jobs:
       workspace: ${{ github.event_name != 'pull_request' || steps.filter.outputs.workspace == 'true' }}
       reference: ${{ github.event_name != 'pull_request' || steps.filter.outputs.reference == 'true' }}
       cl1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl1 == 'true' }}
+      li1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.li1 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -143,6 +148,13 @@ jobs:
               - 'scripts/entity_field_composition/**'
               - 'backend/tests/entity_field_composition/**'
               - 'docs/specs/tasks/entity-field-composition-cl1*'
+            li1:
+              - 'backend/app/platform/module_stage_registry/**'
+              - 'backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py'
+              - 'scripts/architecture/check_stage_existence_boundary.py'
+              - 'scripts/architecture/stage_existence_boundary_*'
+              - 'docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json'
+              - 'docs/specs/tasks/lifecycle-identity-li1*'
 
   guards:
     name: guards
@@ -398,6 +410,21 @@ jobs:
         with:
           tests: tests/entity_field_composition/test_cl1_inventory_gate.py
 
+  li1-existence-gate:
+    name: Lifecycle Identity LI-1 Existence Guard Gate
+    needs: changes
+    if: needs.changes.outputs.li1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when LI-1 gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py') == ''
+        run: echo "LI-1 existence guard gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py') != ''
+        with:
+          tests: tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py
+
   tests:
     name: tests
     if: always() && !cancelled()
@@ -413,6 +440,7 @@ jobs:
       - workspace-capability-gates
       - reference-gates
       - cl1-inventory-gate
+      - li1-existence-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed
