@@ -61,10 +61,16 @@ jobs:
       - name: Install deps
         run: npm ci
       - name: Foundation tokens (deprecated in diff)
+        # The standing integration → main PR is a backup snapshot, not a feature
+        # diff. Comparing it to main flags the whole product as "new" tokens.
+        if: >-
+          github.event_name != 'pull_request'
+          || github.head_ref != 'integration/release-product-a-b'
+          || github.base_ref != 'main'
         run: npm run foundation:check
         env:
-          # PR: compare vs target branch. Push: vs main. Override: FOUNDATION_DIFF_BASE.
-          FOUNDATION_DIFF_BASE: origin/${{ github.event.pull_request.base.ref || 'main' }}
+          # PR: vs target branch. Push: vs the pre-push SHA, not stale main.
+          FOUNDATION_DIFF_BASE: ${{ github.event.pull_request && format('origin/{0}', github.event.pull_request.base.ref) || github.event.before }}
       - name: Unit tests with coverage
         run: npm run test:coverage
       - name: Coverage gate (Phase 0 #7 — ratchet)

@@ -15,9 +15,22 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 
 
+_ALL_ZERO_SHA = re.compile(r"^0+$")
+
+
+def _usable_ref(ref: str) -> bool:
+    value = (ref or "").strip()
+    return bool(value) and _ALL_ZERO_SHA.fullmatch(value) is None
+
+
 def resolve_base() -> str:
-    base = os.environ.get("FOUNDATION_DIFF_BASE", "origin/main")
-    for candidate in (base, "origin/main", "main", "HEAD~1"):
+    preferred = os.environ.get("FOUNDATION_DIFF_BASE", "")
+    candidates = [
+        candidate
+        for candidate in (preferred, "HEAD~1", "origin/main", "main")
+        if _usable_ref(candidate)
+    ]
+    for candidate in candidates:
         try:
             subprocess.run(
                 ["git", "rev-parse", "--verify", candidate],
