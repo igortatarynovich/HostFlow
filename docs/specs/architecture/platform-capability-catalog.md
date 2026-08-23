@@ -67,8 +67,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 | Kind | Capabilities |
 |------|----------------|
-| **Infrastructure** | Endpoint, Submission, Notifications, Activity, Search |
-| **Platform** | Forms, Documents, Automations, AI, Integrations / Marketplace, Acquisition / Campaigns, Process Engine |
+| **Infrastructure** | Endpoint, Submission, Notifications, Activity, Search, Observability |
+| **Platform** | Forms, Documents, Automations, AI, Integrations / Marketplace, Acquisition / Campaigns, Process Engine, Shell Diagnostics |
 | **Business** | Recruitment, Sales, HR, Fleet, Services / Orders, Finance |
 
 ---
@@ -107,6 +107,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | Notifications | Infrastructure | Platform | — | [§](#notifications) |
 | Activity | Infrastructure | Platform | — | [§](#activity) |
 | Search | Infrastructure | Platform | — | [§](#search) |
+| Observability | Infrastructure | Always Available | — | [§](#observability) |
 | Forms | Platform | Platform | Endpoint, Submission | [§](#forms) |
 | Documents | Platform | Platform | — | [§](#documents) |
 | Automations | Platform | Licensed | Notifications | [§](#automations) |
@@ -114,6 +115,7 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | Integrations / Marketplace | Platform | Platform | — | [§](#integrations--marketplace) |
 | Acquisition / Campaigns | Platform | Platform | Endpoint, Submission | [§](#acquisition--campaigns) |
 | Process Engine | Platform | Platform | — | [§](#process-engine) |
+| Shell Diagnostics | Platform | Platform | Observability | [§](#shell-diagnostics) |
 | Recruitment | Business | Licensed | Forms, Documents, Notifications | [§](#recruitment) |
 | Sales | Business | Licensed | Forms, Documents, Notifications | [§](#sales) |
 | HR | Business | Licensed | Documents, Notifications | [§](#hr) |
@@ -122,7 +124,8 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | Finance | Business | Licensed | — | [§](#finance) |
 
 **Forms vs Submission:** Forms Owns form surface + consent pin; universal Submission / routing envelope — Shared Intake.  
-**Notifications vs Activity:** одна Operating Layer ([`ADR-012`](ADR-012-activity-notification-operating-layer.md)); два паспорта; не два ADR-004 модуля.
+**Notifications vs Activity:** одна Operating Layer ([`ADR-012`](ADR-012-activity-notification-operating-layer.md)); два паспорта; не два ADR-004 модуля.  
+**Observability vs Shell Diagnostics:** Observability Owns telemetry store/search/redaction; Shell Diagnostics Owns operator access (Collect diagnostics). Emit остаётся у каждого сервиса. [`ADR-038`](ADR-038-shell-observability-diagnostics.md).
 
 ---
 
@@ -238,6 +241,31 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 | **Events** | Consumes domain create/update/delete; publishes reindex signals |
 | **Forbidden** | Модульный полнотекст как замена Search SoT |
 | **Data Ownership** | Search index documents (derived); query API SoT |
+
+---
+
+### Observability
+
+**Normative:** [`ADR-038`](ADR-038-shell-observability-diagnostics.md) · [`../platform/observability.md`](../platform/observability.md)
+
+**Purpose.** Сбор, корреляция, хранение и поиск машинной телеметрии (logs, traces, errors). Не операторский UI и не Activity Timeline.
+
+| | |
+|--|--|
+| **Owns** | Structured log / trace / error pipelines; `trace_id` / `request_id` propagation; storage / export; search of Logs / Traces / Errors; redaction of secrets / PII in telemetry; retention of telemetry |
+| **Configures** | Retention; exporters; sampling; redaction policy knobs (policy canon = Security) |
+| **Exposes** | Observability Adapter — query / export-after-redaction (**Experimental** until Public Contract); emit SDK (**Internal**) |
+| **Non-Goals** | Operator UI; Collect diagnostics / download bundle; Activity / Task SoT; entity Search; domain operational diagnostics (delivery/source/marketing) |
+| **Consumes** | — (modules emit; Observability does not consume business Owns) |
+| **Requires** | — |
+| **Optional** | — |
+| **License class** | Always Available |
+| **Lifecycle defaults** | Install+Enable on platform; emit on by default |
+| **Events** | Consumes runtime log/span/error streams; publishes export/collect audit via security events (when runtime lands) |
+| **Forbidden** | Operator Collect/Download SoT (that is Shell Diagnostics); business-module log stores; unredacted export; merging with Activity SoT |
+| **Data Ownership** | Telemetry streams and derived indexes (not business entities) |
+
+Emit of logs/spans is a platform duty of every runtime, not a Catalog `Consumes` / `Requires` on business passports.
 
 ---
 
@@ -412,9 +440,32 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 
 ---
 
+### Shell Diagnostics
+
+**Normative:** [`ADR-038`](ADR-038-shell-observability-diagnostics.md) · Application Shell host [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) §3.7
+
+**Purpose.** Единый операторский доступ к Logs / Traces / Errors / Diagnostics на Application Shell (`hostflow.cc`). Не владелец телеметрии.
+
+| | |
+|--|--|
+| **Owns** | Diagnostics operator UI; **Collect diagnostics**; **Download diagnostic bundle**; correlation context presentation (`trace_id`, `request_id`, tenant, company, module, entity) |
+| **Configures** | Bundle window limits; which operator roles see the surface (gates compose ADR-036; not a second RBAC SoT) |
+| **Exposes** | Collect diagnostics / bundle download ops (**Experimental** until Public Contract) |
+| **Non-Goals** | Log/trace storage; redaction engine; Resource List Shell; Settings Shell; Entity Workspace; domain operational diagnostics SoT |
+| **Consumes** | Observability (search / export-after-redaction) |
+| **Requires** | Observability |
+| **Optional** | — |
+| **License class** | Platform |
+| **Lifecycle defaults** | Install+Enable with platform; access gated by RBAC |
+| **Events** | Publishes collect/download/deny (security telemetry at runtime) |
+| **Forbidden** | Storing logs/traces as SoT; generating all telemetry; module-local «download log»; unredacted bundles; business workspaces on the shell host |
+| **Data Ownership** | Diagnostic bundle *requests* / audit of collect (not the telemetry store) |
+
+---
+
 ## Business capabilities
 
-**Общее Forbidden для Business:** Forms / Documents / Notifications / AI / Search / Automations / Endpoint stacks; infrastructure **Configures** (SMTP, OCR Engine, LLM Provider, Meta App, …).
+**Общее Forbidden для Business:** Forms / Documents / Notifications / AI / Search / Automations / Endpoint stacks; Observability stores; Shell Diagnostics / Collect diagnostics; infrastructure **Configures** (SMTP, OCR Engine, LLM Provider, Meta App, …).
 
 ### Recruitment
 
@@ -573,3 +624,4 @@ SMTP в Recruitment → нет в Manifest Notifications write path → нару
 - **2026-07-18** — v3: Passport vs **Settings Manifest**; **P-05** Settings Contract; capability-scoped admin IA.
 - **2026-07-18** — v4: License / Requires / Optional / Lifecycle defaults; **L0 CLOSED** ([`ADR-030`](ADR-030-l0-platform-architecture-closure.md)).
 - **2026-07-18** — v5 final: **Non-Goals** · Exposes stability · Invariants; L0 **FROZEN**.
+- **2026-08-23** — Observability (Infrastructure) + Shell Diagnostics (Platform); emit vs access; [`ADR-038`](ADR-038-shell-observability-diagnostics.md).

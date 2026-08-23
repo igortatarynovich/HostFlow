@@ -32,6 +32,7 @@
 - Webhooks и внешние сервисы документированы в `docs/specs/platform/webhooks.md`.
 
 ### Observability
+- Ownership (emit vs access, Collect diagnostics): [`architecture/ADR-038-shell-observability-diagnostics.md`](architecture/ADR-038-shell-observability-diagnostics.md).
 - Prometheus-метрики (`hf_documents_*`, `hf_api_request_duration_seconds` и т.д.) и audit log описаны в `docs/specs/platform/observability.md`.
 - Каждый tenant видит свои метрики, суперадмин — агрегированные дашборды.
 
@@ -171,6 +172,6 @@ RLS и middleware блокируют любые запросы вне текущ
 - Multitenancy: `docs/specs/architecture/multi_tenant_model.md`
 - RBAC Matrix: `docs/specs/architecture/rbac_matrix.md`
 - Documents: `docs/spec-documents.md`
-- Observability: `docs/specs/platform/observability.md`
+- Observability: `docs/specs/platform/observability.md` · ADR-038 `docs/specs/architecture/ADR-038-shell-observability-diagnostics.md`
 - i18n Registry: `docs/specs/i18n/index.md`
 - Roadmap: `docs/specs/roadmap.md`

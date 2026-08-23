@@ -41,6 +41,8 @@ HostFlow проектируется не как «набор хороших мо
 | **AI** | AI platform capability (через AI Adapter, P-01) | Все модули |
 | **Search** | Global Search capability | Все модули |
 | **Activity** | Activity & Notification layer (ADR-012) | Все модули |
+| **Observability** | Platform observability ([`ADR-038`](ADR-038-shell-observability-diagnostics.md)) | Все рантаймы (emit); Shell Diagnostics (search/export) |
+| **Shell Diagnostics** | Application Shell (ADR-038) | Operators; не бизнес-модули |
 | **Acquisition / Campaigns** | Acquisition ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)) | Growth / demand flow; не владеет Result objects |
 
 **Каталог границ (SoT):** [`platform-capability-catalog.md`](platform-capability-catalog.md) — passport 1–8 на capability.  
@@ -72,6 +74,8 @@ HostFlow проектируется не как «набор хороших мо
 | Notifications (delivery) | Notifications / Operating Layer | Прямой SMTP/SMS из Recruitment |
 | Search (index & query) | Search | Модульный полнотекст вместо платформенного |
 | Activity (audit / operational history surface) | Activity layer | Параллельные «истории» без контракта |
+| Observability (logs / traces / errors store + search) | Observability ([`ADR-038`](ADR-038-shell-observability-diagnostics.md)) | Модульный «скачать лог» / свой trace store |
+| Collect diagnostics / diagnostic bundle | Shell Diagnostics (ADR-038) | Collect внутри Recruitment / HR / CRM / Communications |
 | AI (LLM interaction) | AI capability | Прямой SDK в бизнес-коде |
 | Endpoint (точка входа) | Endpoint / Intake model | Второй intake pipeline в модуле |
 | Campaign / Attribution / Routing Context | Acquisition | Campaign SoT внутри Recruitment |
@@ -81,7 +85,7 @@ HostFlow проектируется не как «набор хороших мо
 | # | Нарушение |
 |---|-----------|
 | 1 | Вторая реализация capability, у которой уже есть владелец |
-| 2 | Модуль объявляет «локальный SoT» для Documents / Forms / Notifications / Search / AI / Endpoint |
+| 2 | Модуль объявляет «локальный SoT» для Documents / Forms / Notifications / Search / AI / Endpoint / Observability / Collect diagnostics |
 | 3 | Потребление capability в обход владельца (даже через «свой» адаптер — см. P-01 § локальный vs канонический) |
 | 4 | ADR / feature без явного Ownership для затрагиваемой capability |
 | 5 | Бизнес-модуль хранит канонические данные чужой capability «для удобства» как второй SoT |
@@ -126,3 +130,4 @@ P-02 **не** запрещает кэш / проекции / read models **яв�
 - 2026-07-18: P-02 Capability Ownership accepted; HostFlow as platform of capabilities; pairs with P-01.
 - 2026-07-18: Capability Boundary + Platform Capability Catalog (passports) — P-02 operationalized.
 - 2026-07-18: Four boundaries Owns/Configures/Exposes/Consumes; link to P-04.
+- 2026-08-23: Observability + Shell Diagnostics examples ([`ADR-038`](ADR-038-shell-observability-diagnostics.md)).

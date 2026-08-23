@@ -116,6 +116,29 @@ CAPTCHA provider / branding themes remain **Advanced** backlog — not Sprint 1 
 | Defaults | Default templates locale |
 | License Gates | Channel packs |
 
+### Observability
+
+**Normative:** [`ADR-038`](ADR-038-shell-observability-diagnostics.md)
+
+| Section | Keys (illustrative) |
+|---------|---------------------|
+| Integrations | Log/trace exporters (ELK, Sentry, …) |
+| Policies | Retention; redaction profile |
+| Defaults | Sampling rates |
+| Feature Flags | Collect diagnostics enablement (compose Shell Diagnostics) |
+
+### Shell Diagnostics
+
+**Normative:** [`ADR-038`](ADR-038-shell-observability-diagnostics.md)
+
+| Section | Keys (illustrative) |
+|---------|---------------------|
+| Policies | Max bundle window; max entities in one collect |
+| License Gates | Which plans expose operator Diagnostics |
+| Feature Flags | Collect diagnostics |
+
+RBAC who may Collect is **ADR-036**, not a second role matrix in this Manifest.
+
 ### AI
 
 | Section | Keys (illustrative) |
@@ -162,3 +185,4 @@ Configures ───────────────►  Validation Rules (+
 
 - **2026-07-18** — introduced with **P-05** ([`ADR-029`](ADR-029-settings-contract.md)); operational half of capability configuration model.
 - **2026-07-18** — Forms Sprint 1: concrete Manifest keys (builder default `false`; adapter contract ids).
+- **2026-08-23** — Observability + Shell Diagnostics outlines ([`ADR-038`](ADR-038-shell-observability-diagnostics.md)).
