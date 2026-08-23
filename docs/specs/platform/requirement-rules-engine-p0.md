@@ -12,6 +12,7 @@
 |----------|--------------|
 | [`entity-profile-definition-registry.md`](entity-profile-definition-registry.md) | Entity Profile defines *which* fields/documents/process profile apply; Requirement Engine evaluates *what is still required* |
 | [`entity-field-composition-cl0-contract-seal.md`](../tasks/entity-field-composition-cl0-contract-seal.md) | **CL0:** four requirement kinds; Engine returns structured `ready`/`not_ready` + `blockers[]`; screening ≠ `required=true`; `transition`/`handoff` off Profile field |
+| [`entity-field-composition-cl1-inventory.md`](../tasks/entity-field-composition-cl1-inventory.md) | **CL1:** live Candidate sources vs four kinds; dual document path; `transition_level` still in code |
 | [`field-registry-card-configuration.md`](field-registry-card-configuration.md) | Canonical field codes; requirement rules reference `qualified_code` only |
 | [`process-engine.md`](process-engine.md) | Transition / handoff evaluation consumes requirement results; Field & Document Requirement Registries migrate here |
 | [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) | Document lifecycle runtime (**v1 closed** §20); feeds back into requirement satisfaction |

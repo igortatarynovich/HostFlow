@@ -1,6 +1,7 @@
 # Entity Field Composition CL0 — Contract Seal
 
-**Status:** **IN PROGRESS** (brief; feat locked)  
+**Status:** **COMPLETE** ([#289](https://github.com/igortatarynovich/HostFlow/pull/289) · merge `209cc949`)  
+**Next:** [Entity Field Composition CL1](entity-field-composition-cl1-inventory.md) (brief; feat locked)  
 **Phase class:** platform  
 **Branch (docs):** `docs/entity-field-composition-cl0-contract-seal`  
 **Branch (code):** none this slice — docs only; later CL slices use `feat/entity-field-composition-clN-…`  
@@ -105,8 +106,8 @@ E7 already matches Document kind: request lives on `document_type_code`. Engine 
 
 | Slice | Focus | Status |
 |-------|--------|--------|
-| **CL0** | Contract seal (this) | ← **active** (brief; feat locked — docs only) |
-| **CL1** | Inventory current Candidate: fields, `document_configs`, screening-as-required, extra/UI holes | locked until CL0 brief |
+| **CL0** | Contract seal | ✅ [#289](https://github.com/igortatarynovich/HostFlow/pull/289) · merge `209cc949` |
+| **CL1** | Inventory current Candidate: fields, `document_configs`, screening-as-required, extra/UI holes | ← **active** (brief; feat locked — docs only) |
 | **CL2** | Membership runtime | locked until CL1 |
 | **CL3** | Layout runtime (proof = D4 Information zone) | locked until CL2 |
 | **CL4** | Builder (two modes) | locked until CL3 |
@@ -179,4 +180,5 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-23: CL0 brief COMPLETE — [#289](https://github.com/igortatarynovich/HostFlow/pull/289) (`209cc949`). Product Track → [CL1](entity-field-composition-cl1-inventory.md). E8 stays locked. Foundation stays 🔄.
 - 2026-08-23: CL0 brief opened — Entity Field Composition contract seal. Product Track → this brief (feat locked, docs only). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287) (`ceafbd48`). E8 stays locked. Foundation stays 🔄.
