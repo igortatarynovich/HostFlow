@@ -1,6 +1,6 @@
 # Platform Reference Identity SoT (R1–R5)
 
-**Status:** **IN PROGRESS** (normative brief; **R1** feat next)  
+**Status:** **IN PROGRESS** (R1 feat: Country Registry completeness; no runtime cutover)  
 **Phase class:** platform  
 **Branch (docs):** `docs/platform-reference-identity-sot`  
 **Branch (code):** `feat/platform-reference-r1-country-registry` (R1 only)  
@@ -357,7 +357,7 @@ Does **not** amend L0. Does **not** rewrite Catalog Passport.
 
 ## Acceptance (program close)
 
-- [ ] R1 gate PASS — Country Registry authoritative definition exists  
+- [ ] R1 gate PASS — Country Registry authoritative definition exists ([`country-registry-v1.json`](../platform/country-registry-v1.json); facade snapshot `identity` / `classifications` / `labels`)  
 - [ ] R2 gate PASS — no parallel country/dial runtime lists  
 - [ ] R3 gate PASS — document type existence = registry JSON only  
 - [ ] R4 gate PASS — scanner/UI use alias registry only  
@@ -369,5 +369,6 @@ Does **not** amend L0. Does **not** rewrite Catalog Passport.
 
 ## History
 
+- 2026-08-23: R1 feat — full ISO 3166-1 Country Registry JSON + facade snapshot + seed checksum; `catalogs.py` remains runtime SoT; XK/OTHER/UK excluded from canon.
 - 2026-08-23: Sequence sealed with queue — Engineering `R1 → {R2 ∥ R3} → R4 → (R2 ∧ R4) → R5 → Program Exit`. E8-bind / E8-eval split. DR1-runtime (not CL7) joins R5. REF-4 Phase 2 = R2, not R1. Always **Reference Rn**.
 - 2026-08-23: Normative brief opened — Platform Reference Identity SoT R1–R5. R1 may run parallel CL0. XK excluded from R1 ISO set.

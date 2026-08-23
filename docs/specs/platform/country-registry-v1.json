@@ -1,0 +1,3249 @@
+{
+  "registry_version": "1.0.0",
+  "catalog_version": "ref-id-r1-country-registry-v1",
+  "iso_standard": "ISO 3166-1",
+  "label_locales": [
+    "en",
+    "pl",
+    "ru"
+  ],
+  "countries": [
+    {
+      "alpha2": "AD",
+      "alpha3": "AND",
+      "numeric": "020",
+      "labels": {
+        "en": "Andorra",
+        "pl": "Andora",
+        "ru": "Андорра"
+      },
+      "dial_code": "+376",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AE",
+      "alpha3": "ARE",
+      "numeric": "784",
+      "labels": {
+        "en": "United Arab Emirates",
+        "pl": "Zjednoczone Emiraty Arabskie",
+        "ru": "ОАЭ"
+      },
+      "dial_code": "+971",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AF",
+      "alpha3": "AFG",
+      "numeric": "004",
+      "labels": {
+        "en": "Afghanistan",
+        "pl": "Afganistan",
+        "ru": "Афганистан"
+      },
+      "dial_code": "+93",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AG",
+      "alpha3": "ATG",
+      "numeric": "028",
+      "labels": {
+        "en": "Antigua & Barbuda",
+        "pl": "Antigua i Barbuda",
+        "ru": "Антигуа и Барбуда"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AI",
+      "alpha3": "AIA",
+      "numeric": "660",
+      "labels": {
+        "en": "Anguilla",
+        "pl": "Anguilla",
+        "ru": "Ангилья"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AL",
+      "alpha3": "ALB",
+      "numeric": "008",
+      "labels": {
+        "en": "Albania",
+        "pl": "Albania",
+        "ru": "Албания"
+      },
+      "dial_code": "+355",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AM",
+      "alpha3": "ARM",
+      "numeric": "051",
+      "labels": {
+        "en": "Armenia",
+        "pl": "Armenia",
+        "ru": "Армения"
+      },
+      "dial_code": "+374",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AO",
+      "alpha3": "AGO",
+      "numeric": "024",
+      "labels": {
+        "en": "Angola",
+        "pl": "Angola",
+        "ru": "Ангола"
+      },
+      "dial_code": "+244",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AQ",
+      "alpha3": "ATA",
+      "numeric": "010",
+      "labels": {
+        "en": "Antarctica",
+        "pl": "Antarktyda",
+        "ru": "Антарктида"
+      },
+      "dial_code": "+672",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AR",
+      "alpha3": "ARG",
+      "numeric": "032",
+      "labels": {
+        "en": "Argentina",
+        "pl": "Argentyna",
+        "ru": "Аргентина"
+      },
+      "dial_code": "+54",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AS",
+      "alpha3": "ASM",
+      "numeric": "016",
+      "labels": {
+        "en": "American Samoa",
+        "pl": "Samoa Amerykańskie",
+        "ru": "Американское Самоа"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AT",
+      "alpha3": "AUT",
+      "numeric": "040",
+      "labels": {
+        "en": "Austria",
+        "pl": "Austria",
+        "ru": "Австрия"
+      },
+      "dial_code": "+43",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "AU",
+      "alpha3": "AUS",
+      "numeric": "036",
+      "labels": {
+        "en": "Australia",
+        "pl": "Australia",
+        "ru": "Австралия"
+      },
+      "dial_code": "+61",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AW",
+      "alpha3": "ABW",
+      "numeric": "533",
+      "labels": {
+        "en": "Aruba",
+        "pl": "Aruba",
+        "ru": "Аруба"
+      },
+      "dial_code": "+297",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AX",
+      "alpha3": "ALA",
+      "numeric": "248",
+      "labels": {
+        "en": "Åland Islands",
+        "pl": "Wyspy Alandzkie",
+        "ru": "Аландские о-ва"
+      },
+      "dial_code": "+358",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "AZ",
+      "alpha3": "AZE",
+      "numeric": "031",
+      "labels": {
+        "en": "Azerbaijan",
+        "pl": "Azerbejdżan",
+        "ru": "Азербайджан"
+      },
+      "dial_code": "+994",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BA",
+      "alpha3": "BIH",
+      "numeric": "070",
+      "labels": {
+        "en": "Bosnia & Herzegovina",
+        "pl": "Bośnia i Hercegowina",
+        "ru": "Босния и Герцеговина"
+      },
+      "dial_code": "+387",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BB",
+      "alpha3": "BRB",
+      "numeric": "052",
+      "labels": {
+        "en": "Barbados",
+        "pl": "Barbados",
+        "ru": "Барбадос"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BD",
+      "alpha3": "BGD",
+      "numeric": "050",
+      "labels": {
+        "en": "Bangladesh",
+        "pl": "Bangladesz",
+        "ru": "Бангладеш"
+      },
+      "dial_code": "+880",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BE",
+      "alpha3": "BEL",
+      "numeric": "056",
+      "labels": {
+        "en": "Belgium",
+        "pl": "Belgia",
+        "ru": "Бельгия"
+      },
+      "dial_code": "+32",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "BF",
+      "alpha3": "BFA",
+      "numeric": "854",
+      "labels": {
+        "en": "Burkina Faso",
+        "pl": "Burkina Faso",
+        "ru": "Буркина-Фасо"
+      },
+      "dial_code": "+226",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BG",
+      "alpha3": "BGR",
+      "numeric": "100",
+      "labels": {
+        "en": "Bulgaria",
+        "pl": "Bułgaria",
+        "ru": "Болгария"
+      },
+      "dial_code": "+359",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "BH",
+      "alpha3": "BHR",
+      "numeric": "048",
+      "labels": {
+        "en": "Bahrain",
+        "pl": "Bahrajn",
+        "ru": "Бахрейн"
+      },
+      "dial_code": "+973",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BI",
+      "alpha3": "BDI",
+      "numeric": "108",
+      "labels": {
+        "en": "Burundi",
+        "pl": "Burundi",
+        "ru": "Бурунди"
+      },
+      "dial_code": "+257",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BJ",
+      "alpha3": "BEN",
+      "numeric": "204",
+      "labels": {
+        "en": "Benin",
+        "pl": "Benin",
+        "ru": "Бенин"
+      },
+      "dial_code": "+229",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BL",
+      "alpha3": "BLM",
+      "numeric": "652",
+      "labels": {
+        "en": "St. Barthélemy",
+        "pl": "Saint-Barthélemy",
+        "ru": "Сен-Бартелеми"
+      },
+      "dial_code": "+590",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BM",
+      "alpha3": "BMU",
+      "numeric": "060",
+      "labels": {
+        "en": "Bermuda",
+        "pl": "Bermudy",
+        "ru": "Бермудские о-ва"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BN",
+      "alpha3": "BRN",
+      "numeric": "096",
+      "labels": {
+        "en": "Brunei",
+        "pl": "Brunei",
+        "ru": "Бруней"
+      },
+      "dial_code": "+673",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BO",
+      "alpha3": "BOL",
+      "numeric": "068",
+      "labels": {
+        "en": "Bolivia",
+        "pl": "Boliwia",
+        "ru": "Боливия"
+      },
+      "dial_code": "+591",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BQ",
+      "alpha3": "BES",
+      "numeric": "535",
+      "labels": {
+        "en": "Caribbean Netherlands",
+        "pl": "Niderlandy Karaibskie",
+        "ru": "Бонэйр, Синт-Эстатиус и Саба"
+      },
+      "dial_code": "+599",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BR",
+      "alpha3": "BRA",
+      "numeric": "076",
+      "labels": {
+        "en": "Brazil",
+        "pl": "Brazylia",
+        "ru": "Бразилия"
+      },
+      "dial_code": "+55",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BS",
+      "alpha3": "BHS",
+      "numeric": "044",
+      "labels": {
+        "en": "Bahamas",
+        "pl": "Bahamy",
+        "ru": "Багамы"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BT",
+      "alpha3": "BTN",
+      "numeric": "064",
+      "labels": {
+        "en": "Bhutan",
+        "pl": "Bhutan",
+        "ru": "Бутан"
+      },
+      "dial_code": "+975",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BV",
+      "alpha3": "BVT",
+      "numeric": "074",
+      "labels": {
+        "en": "Bouvet Island",
+        "pl": "Wyspa Bouveta",
+        "ru": "о-в Буве"
+      },
+      "dial_code": "+47",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BW",
+      "alpha3": "BWA",
+      "numeric": "072",
+      "labels": {
+        "en": "Botswana",
+        "pl": "Botswana",
+        "ru": "Ботсвана"
+      },
+      "dial_code": "+267",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BY",
+      "alpha3": "BLR",
+      "numeric": "112",
+      "labels": {
+        "en": "Belarus",
+        "pl": "Białoruś",
+        "ru": "Беларусь"
+      },
+      "dial_code": "+375",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "BZ",
+      "alpha3": "BLZ",
+      "numeric": "084",
+      "labels": {
+        "en": "Belize",
+        "pl": "Belize",
+        "ru": "Белиз"
+      },
+      "dial_code": "+501",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CA",
+      "alpha3": "CAN",
+      "numeric": "124",
+      "labels": {
+        "en": "Canada",
+        "pl": "Kanada",
+        "ru": "Канада"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CC",
+      "alpha3": "CCK",
+      "numeric": "166",
+      "labels": {
+        "en": "Cocos (Keeling) Islands",
+        "pl": "Wyspy Kokosowe",
+        "ru": "Кокосовые о-ва"
+      },
+      "dial_code": "+61",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CD",
+      "alpha3": "COD",
+      "numeric": "180",
+      "labels": {
+        "en": "Congo - Kinshasa",
+        "pl": "Demokratyczna Republika Konga",
+        "ru": "Конго - Киншаса"
+      },
+      "dial_code": "+243",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CF",
+      "alpha3": "CAF",
+      "numeric": "140",
+      "labels": {
+        "en": "Central African Republic",
+        "pl": "Republika Środkowoafrykańska",
+        "ru": "Центрально-Африканская Республика"
+      },
+      "dial_code": "+236",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CG",
+      "alpha3": "COG",
+      "numeric": "178",
+      "labels": {
+        "en": "Congo - Brazzaville",
+        "pl": "Kongo",
+        "ru": "Конго - Браззавиль"
+      },
+      "dial_code": "+242",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CH",
+      "alpha3": "CHE",
+      "numeric": "756",
+      "labels": {
+        "en": "Switzerland",
+        "pl": "Szwajcaria",
+        "ru": "Швейцария"
+      },
+      "dial_code": "+41",
+      "eu_member": false,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "CI",
+      "alpha3": "CIV",
+      "numeric": "384",
+      "labels": {
+        "en": "Côte d’Ivoire",
+        "pl": "Côte d’Ivoire",
+        "ru": "Кот-д’Ивуар"
+      },
+      "dial_code": "+225",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CK",
+      "alpha3": "COK",
+      "numeric": "184",
+      "labels": {
+        "en": "Cook Islands",
+        "pl": "Wyspy Cooka",
+        "ru": "о-ва Кука"
+      },
+      "dial_code": "+682",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CL",
+      "alpha3": "CHL",
+      "numeric": "152",
+      "labels": {
+        "en": "Chile",
+        "pl": "Chile",
+        "ru": "Чили"
+      },
+      "dial_code": "+56",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CM",
+      "alpha3": "CMR",
+      "numeric": "120",
+      "labels": {
+        "en": "Cameroon",
+        "pl": "Kamerun",
+        "ru": "Камерун"
+      },
+      "dial_code": "+237",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CN",
+      "alpha3": "CHN",
+      "numeric": "156",
+      "labels": {
+        "en": "China",
+        "pl": "Chiny",
+        "ru": "Китай"
+      },
+      "dial_code": "+86",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CO",
+      "alpha3": "COL",
+      "numeric": "170",
+      "labels": {
+        "en": "Colombia",
+        "pl": "Kolumbia",
+        "ru": "Колумбия"
+      },
+      "dial_code": "+57",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CR",
+      "alpha3": "CRI",
+      "numeric": "188",
+      "labels": {
+        "en": "Costa Rica",
+        "pl": "Kostaryka",
+        "ru": "Коста-Рика"
+      },
+      "dial_code": "+506",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CU",
+      "alpha3": "CUB",
+      "numeric": "192",
+      "labels": {
+        "en": "Cuba",
+        "pl": "Kuba",
+        "ru": "Куба"
+      },
+      "dial_code": "+53",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CV",
+      "alpha3": "CPV",
+      "numeric": "132",
+      "labels": {
+        "en": "Cape Verde",
+        "pl": "Republika Zielonego Przylądka",
+        "ru": "Кабо-Верде"
+      },
+      "dial_code": "+238",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CW",
+      "alpha3": "CUW",
+      "numeric": "531",
+      "labels": {
+        "en": "Curaçao",
+        "pl": "Curaçao",
+        "ru": "Кюрасао"
+      },
+      "dial_code": "+599",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CX",
+      "alpha3": "CXR",
+      "numeric": "162",
+      "labels": {
+        "en": "Christmas Island",
+        "pl": "Wyspa Bożego Narodzenia",
+        "ru": "о-в Рождества"
+      },
+      "dial_code": "+61",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CY",
+      "alpha3": "CYP",
+      "numeric": "196",
+      "labels": {
+        "en": "Cyprus",
+        "pl": "Cypr",
+        "ru": "Кипр"
+      },
+      "dial_code": "+357",
+      "eu_member": true,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "CZ",
+      "alpha3": "CZE",
+      "numeric": "203",
+      "labels": {
+        "en": "Czechia",
+        "pl": "Czechy",
+        "ru": "Чехия"
+      },
+      "dial_code": "+420",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "DE",
+      "alpha3": "DEU",
+      "numeric": "276",
+      "labels": {
+        "en": "Germany",
+        "pl": "Niemcy",
+        "ru": "Германия"
+      },
+      "dial_code": "+49",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "DJ",
+      "alpha3": "DJI",
+      "numeric": "262",
+      "labels": {
+        "en": "Djibouti",
+        "pl": "Dżibuti",
+        "ru": "Джибути"
+      },
+      "dial_code": "+253",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "DK",
+      "alpha3": "DNK",
+      "numeric": "208",
+      "labels": {
+        "en": "Denmark",
+        "pl": "Dania",
+        "ru": "Дания"
+      },
+      "dial_code": "+45",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "DM",
+      "alpha3": "DMA",
+      "numeric": "212",
+      "labels": {
+        "en": "Dominica",
+        "pl": "Dominika",
+        "ru": "Доминика"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "DO",
+      "alpha3": "DOM",
+      "numeric": "214",
+      "labels": {
+        "en": "Dominican Republic",
+        "pl": "Dominikana",
+        "ru": "Доминиканская Республика"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "DZ",
+      "alpha3": "DZA",
+      "numeric": "012",
+      "labels": {
+        "en": "Algeria",
+        "pl": "Algieria",
+        "ru": "Алжир"
+      },
+      "dial_code": "+213",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "EC",
+      "alpha3": "ECU",
+      "numeric": "218",
+      "labels": {
+        "en": "Ecuador",
+        "pl": "Ekwador",
+        "ru": "Эквадор"
+      },
+      "dial_code": "+593",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "EE",
+      "alpha3": "EST",
+      "numeric": "233",
+      "labels": {
+        "en": "Estonia",
+        "pl": "Estonia",
+        "ru": "Эстония"
+      },
+      "dial_code": "+372",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "EG",
+      "alpha3": "EGY",
+      "numeric": "818",
+      "labels": {
+        "en": "Egypt",
+        "pl": "Egipt",
+        "ru": "Египет"
+      },
+      "dial_code": "+20",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "EH",
+      "alpha3": "ESH",
+      "numeric": "732",
+      "labels": {
+        "en": "Western Sahara",
+        "pl": "Sahara Zachodnia",
+        "ru": "Западная Сахара"
+      },
+      "dial_code": "+212",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "ER",
+      "alpha3": "ERI",
+      "numeric": "232",
+      "labels": {
+        "en": "Eritrea",
+        "pl": "Erytrea",
+        "ru": "Эритрея"
+      },
+      "dial_code": "+291",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "ES",
+      "alpha3": "ESP",
+      "numeric": "724",
+      "labels": {
+        "en": "Spain",
+        "pl": "Hiszpania",
+        "ru": "Испания"
+      },
+      "dial_code": "+34",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "ET",
+      "alpha3": "ETH",
+      "numeric": "231",
+      "labels": {
+        "en": "Ethiopia",
+        "pl": "Etiopia",
+        "ru": "Эфиопия"
+      },
+      "dial_code": "+251",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "FI",
+      "alpha3": "FIN",
+      "numeric": "246",
+      "labels": {
+        "en": "Finland",
+        "pl": "Finlandia",
+        "ru": "Финляндия"
+      },
+      "dial_code": "+358",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "FJ",
+      "alpha3": "FJI",
+      "numeric": "242",
+      "labels": {
+        "en": "Fiji",
+        "pl": "Fidżi",
+        "ru": "Фиджи"
+      },
+      "dial_code": "+679",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "FK",
+      "alpha3": "FLK",
+      "numeric": "238",
+      "labels": {
+        "en": "Falkland Islands",
+        "pl": "Falklandy",
+        "ru": "Фолклендские о-ва"
+      },
+      "dial_code": "+500",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "FM",
+      "alpha3": "FSM",
+      "numeric": "583",
+      "labels": {
+        "en": "Micronesia",
+        "pl": "Mikronezja",
+        "ru": "Федеративные Штаты Микронезии"
+      },
+      "dial_code": "+691",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "FO",
+      "alpha3": "FRO",
+      "numeric": "234",
+      "labels": {
+        "en": "Faroe Islands",
+        "pl": "Wyspy Owcze",
+        "ru": "Фарерские о-ва"
+      },
+      "dial_code": "+298",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "FR",
+      "alpha3": "FRA",
+      "numeric": "250",
+      "labels": {
+        "en": "France",
+        "pl": "Francja",
+        "ru": "Франция"
+      },
+      "dial_code": "+33",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "GA",
+      "alpha3": "GAB",
+      "numeric": "266",
+      "labels": {
+        "en": "Gabon",
+        "pl": "Gabon",
+        "ru": "Габон"
+      },
+      "dial_code": "+241",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GB",
+      "alpha3": "GBR",
+      "numeric": "826",
+      "labels": {
+        "en": "United Kingdom",
+        "pl": "Wielka Brytania",
+        "ru": "Великобритания"
+      },
+      "dial_code": "+44",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GD",
+      "alpha3": "GRD",
+      "numeric": "308",
+      "labels": {
+        "en": "Grenada",
+        "pl": "Grenada",
+        "ru": "Гренада"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GE",
+      "alpha3": "GEO",
+      "numeric": "268",
+      "labels": {
+        "en": "Georgia",
+        "pl": "Gruzja",
+        "ru": "Грузия"
+      },
+      "dial_code": "+995",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GF",
+      "alpha3": "GUF",
+      "numeric": "254",
+      "labels": {
+        "en": "French Guiana",
+        "pl": "Gujana Francuska",
+        "ru": "Французская Гвиана"
+      },
+      "dial_code": "+594",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GG",
+      "alpha3": "GGY",
+      "numeric": "831",
+      "labels": {
+        "en": "Guernsey",
+        "pl": "Guernsey",
+        "ru": "Гернси"
+      },
+      "dial_code": "+44",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GH",
+      "alpha3": "GHA",
+      "numeric": "288",
+      "labels": {
+        "en": "Ghana",
+        "pl": "Ghana",
+        "ru": "Гана"
+      },
+      "dial_code": "+233",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GI",
+      "alpha3": "GIB",
+      "numeric": "292",
+      "labels": {
+        "en": "Gibraltar",
+        "pl": "Gibraltar",
+        "ru": "Гибралтар"
+      },
+      "dial_code": "+350",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GL",
+      "alpha3": "GRL",
+      "numeric": "304",
+      "labels": {
+        "en": "Greenland",
+        "pl": "Grenlandia",
+        "ru": "Гренландия"
+      },
+      "dial_code": "+299",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GM",
+      "alpha3": "GMB",
+      "numeric": "270",
+      "labels": {
+        "en": "Gambia",
+        "pl": "Gambia",
+        "ru": "Гамбия"
+      },
+      "dial_code": "+220",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GN",
+      "alpha3": "GIN",
+      "numeric": "324",
+      "labels": {
+        "en": "Guinea",
+        "pl": "Gwinea",
+        "ru": "Гвинея"
+      },
+      "dial_code": "+224",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GP",
+      "alpha3": "GLP",
+      "numeric": "312",
+      "labels": {
+        "en": "Guadeloupe",
+        "pl": "Gwadelupa",
+        "ru": "Гваделупа"
+      },
+      "dial_code": "+590",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GQ",
+      "alpha3": "GNQ",
+      "numeric": "226",
+      "labels": {
+        "en": "Equatorial Guinea",
+        "pl": "Gwinea Równikowa",
+        "ru": "Экваториальная Гвинея"
+      },
+      "dial_code": "+240",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GR",
+      "alpha3": "GRC",
+      "numeric": "300",
+      "labels": {
+        "en": "Greece",
+        "pl": "Grecja",
+        "ru": "Греция"
+      },
+      "dial_code": "+30",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "GS",
+      "alpha3": "SGS",
+      "numeric": "239",
+      "labels": {
+        "en": "South Georgia & South Sandwich Islands",
+        "pl": "Georgia Południowa i Sandwich Południowy",
+        "ru": "Южная Георгия и Южные Сандвичевы о-ва"
+      },
+      "dial_code": "+500",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GT",
+      "alpha3": "GTM",
+      "numeric": "320",
+      "labels": {
+        "en": "Guatemala",
+        "pl": "Gwatemala",
+        "ru": "Гватемала"
+      },
+      "dial_code": "+502",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GU",
+      "alpha3": "GUM",
+      "numeric": "316",
+      "labels": {
+        "en": "Guam",
+        "pl": "Guam",
+        "ru": "Гуам"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GW",
+      "alpha3": "GNB",
+      "numeric": "624",
+      "labels": {
+        "en": "Guinea-Bissau",
+        "pl": "Gwinea Bissau",
+        "ru": "Гвинея-Бисау"
+      },
+      "dial_code": "+245",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "GY",
+      "alpha3": "GUY",
+      "numeric": "328",
+      "labels": {
+        "en": "Guyana",
+        "pl": "Gujana",
+        "ru": "Гайана"
+      },
+      "dial_code": "+592",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "HK",
+      "alpha3": "HKG",
+      "numeric": "344",
+      "labels": {
+        "en": "Hong Kong SAR China",
+        "pl": "SRA Hongkong (Chiny)",
+        "ru": "Гонконг (САР)"
+      },
+      "dial_code": "+852",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "HM",
+      "alpha3": "HMD",
+      "numeric": "334",
+      "labels": {
+        "en": "Heard & McDonald Islands",
+        "pl": "Wyspy Heard i McDonalda",
+        "ru": "о-ва Херд и Макдональд"
+      },
+      "dial_code": "+672",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "HN",
+      "alpha3": "HND",
+      "numeric": "340",
+      "labels": {
+        "en": "Honduras",
+        "pl": "Honduras",
+        "ru": "Гондурас"
+      },
+      "dial_code": "+504",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "HR",
+      "alpha3": "HRV",
+      "numeric": "191",
+      "labels": {
+        "en": "Croatia",
+        "pl": "Chorwacja",
+        "ru": "Хорватия"
+      },
+      "dial_code": "+385",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "HT",
+      "alpha3": "HTI",
+      "numeric": "332",
+      "labels": {
+        "en": "Haiti",
+        "pl": "Haiti",
+        "ru": "Гаити"
+      },
+      "dial_code": "+509",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "HU",
+      "alpha3": "HUN",
+      "numeric": "348",
+      "labels": {
+        "en": "Hungary",
+        "pl": "Węgry",
+        "ru": "Венгрия"
+      },
+      "dial_code": "+36",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "ID",
+      "alpha3": "IDN",
+      "numeric": "360",
+      "labels": {
+        "en": "Indonesia",
+        "pl": "Indonezja",
+        "ru": "Индонезия"
+      },
+      "dial_code": "+62",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "IE",
+      "alpha3": "IRL",
+      "numeric": "372",
+      "labels": {
+        "en": "Ireland",
+        "pl": "Irlandia",
+        "ru": "Ирландия"
+      },
+      "dial_code": "+353",
+      "eu_member": true,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "IL",
+      "alpha3": "ISR",
+      "numeric": "376",
+      "labels": {
+        "en": "Israel",
+        "pl": "Izrael",
+        "ru": "Израиль"
+      },
+      "dial_code": "+972",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "IM",
+      "alpha3": "IMN",
+      "numeric": "833",
+      "labels": {
+        "en": "Isle of Man",
+        "pl": "Wyspa Man",
+        "ru": "о-в Мэн"
+      },
+      "dial_code": "+44",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "IN",
+      "alpha3": "IND",
+      "numeric": "356",
+      "labels": {
+        "en": "India",
+        "pl": "Indie",
+        "ru": "Индия"
+      },
+      "dial_code": "+91",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "IO",
+      "alpha3": "IOT",
+      "numeric": "086",
+      "labels": {
+        "en": "British Indian Ocean Territory",
+        "pl": "Brytyjskie Terytorium Oceanu Indyjskiego",
+        "ru": "Британская территория в Индийском океане"
+      },
+      "dial_code": "+246",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "IQ",
+      "alpha3": "IRQ",
+      "numeric": "368",
+      "labels": {
+        "en": "Iraq",
+        "pl": "Irak",
+        "ru": "Ирак"
+      },
+      "dial_code": "+964",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "IR",
+      "alpha3": "IRN",
+      "numeric": "364",
+      "labels": {
+        "en": "Iran",
+        "pl": "Iran",
+        "ru": "Иран"
+      },
+      "dial_code": "+98",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "IS",
+      "alpha3": "ISL",
+      "numeric": "352",
+      "labels": {
+        "en": "Iceland",
+        "pl": "Islandia",
+        "ru": "Исландия"
+      },
+      "dial_code": "+354",
+      "eu_member": false,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "IT",
+      "alpha3": "ITA",
+      "numeric": "380",
+      "labels": {
+        "en": "Italy",
+        "pl": "Włochy",
+        "ru": "Италия"
+      },
+      "dial_code": "+39",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "JE",
+      "alpha3": "JEY",
+      "numeric": "832",
+      "labels": {
+        "en": "Jersey",
+        "pl": "Jersey",
+        "ru": "Джерси"
+      },
+      "dial_code": "+44",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "JM",
+      "alpha3": "JAM",
+      "numeric": "388",
+      "labels": {
+        "en": "Jamaica",
+        "pl": "Jamajka",
+        "ru": "Ямайка"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "JO",
+      "alpha3": "JOR",
+      "numeric": "400",
+      "labels": {
+        "en": "Jordan",
+        "pl": "Jordania",
+        "ru": "Иордания"
+      },
+      "dial_code": "+962",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "JP",
+      "alpha3": "JPN",
+      "numeric": "392",
+      "labels": {
+        "en": "Japan",
+        "pl": "Japonia",
+        "ru": "Япония"
+      },
+      "dial_code": "+81",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KE",
+      "alpha3": "KEN",
+      "numeric": "404",
+      "labels": {
+        "en": "Kenya",
+        "pl": "Kenia",
+        "ru": "Кения"
+      },
+      "dial_code": "+254",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KG",
+      "alpha3": "KGZ",
+      "numeric": "417",
+      "labels": {
+        "en": "Kyrgyzstan",
+        "pl": "Kirgistan",
+        "ru": "Киргизия"
+      },
+      "dial_code": "+996",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KH",
+      "alpha3": "KHM",
+      "numeric": "116",
+      "labels": {
+        "en": "Cambodia",
+        "pl": "Kambodża",
+        "ru": "Камбоджа"
+      },
+      "dial_code": "+855",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KI",
+      "alpha3": "KIR",
+      "numeric": "296",
+      "labels": {
+        "en": "Kiribati",
+        "pl": "Kiribati",
+        "ru": "Кирибати"
+      },
+      "dial_code": "+686",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KM",
+      "alpha3": "COM",
+      "numeric": "174",
+      "labels": {
+        "en": "Comoros",
+        "pl": "Komory",
+        "ru": "Коморы"
+      },
+      "dial_code": "+269",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KN",
+      "alpha3": "KNA",
+      "numeric": "659",
+      "labels": {
+        "en": "St. Kitts & Nevis",
+        "pl": "Saint Kitts i Nevis",
+        "ru": "Сент-Китс и Невис"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KP",
+      "alpha3": "PRK",
+      "numeric": "408",
+      "labels": {
+        "en": "North Korea",
+        "pl": "Korea Północna",
+        "ru": "КНДР"
+      },
+      "dial_code": "+850",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KR",
+      "alpha3": "KOR",
+      "numeric": "410",
+      "labels": {
+        "en": "South Korea",
+        "pl": "Korea Południowa",
+        "ru": "Республика Корея"
+      },
+      "dial_code": "+82",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KW",
+      "alpha3": "KWT",
+      "numeric": "414",
+      "labels": {
+        "en": "Kuwait",
+        "pl": "Kuwejt",
+        "ru": "Кувейт"
+      },
+      "dial_code": "+965",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KY",
+      "alpha3": "CYM",
+      "numeric": "136",
+      "labels": {
+        "en": "Cayman Islands",
+        "pl": "Kajmany",
+        "ru": "о-ва Кайман"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "KZ",
+      "alpha3": "KAZ",
+      "numeric": "398",
+      "labels": {
+        "en": "Kazakhstan",
+        "pl": "Kazachstan",
+        "ru": "Казахстан"
+      },
+      "dial_code": "+7",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "LA",
+      "alpha3": "LAO",
+      "numeric": "418",
+      "labels": {
+        "en": "Laos",
+        "pl": "Laos",
+        "ru": "Лаос"
+      },
+      "dial_code": "+856",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "LB",
+      "alpha3": "LBN",
+      "numeric": "422",
+      "labels": {
+        "en": "Lebanon",
+        "pl": "Liban",
+        "ru": "Ливан"
+      },
+      "dial_code": "+961",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "LC",
+      "alpha3": "LCA",
+      "numeric": "662",
+      "labels": {
+        "en": "St. Lucia",
+        "pl": "Saint Lucia",
+        "ru": "Сент-Люсия"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "LI",
+      "alpha3": "LIE",
+      "numeric": "438",
+      "labels": {
+        "en": "Liechtenstein",
+        "pl": "Liechtenstein",
+        "ru": "Лихтенштейн"
+      },
+      "dial_code": "+423",
+      "eu_member": false,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "LK",
+      "alpha3": "LKA",
+      "numeric": "144",
+      "labels": {
+        "en": "Sri Lanka",
+        "pl": "Sri Lanka",
+        "ru": "Шри-Ланка"
+      },
+      "dial_code": "+94",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "LR",
+      "alpha3": "LBR",
+      "numeric": "430",
+      "labels": {
+        "en": "Liberia",
+        "pl": "Liberia",
+        "ru": "Либерия"
+      },
+      "dial_code": "+231",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "LS",
+      "alpha3": "LSO",
+      "numeric": "426",
+      "labels": {
+        "en": "Lesotho",
+        "pl": "Lesotho",
+        "ru": "Лесото"
+      },
+      "dial_code": "+266",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "LT",
+      "alpha3": "LTU",
+      "numeric": "440",
+      "labels": {
+        "en": "Lithuania",
+        "pl": "Litwa",
+        "ru": "Литва"
+      },
+      "dial_code": "+370",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "LU",
+      "alpha3": "LUX",
+      "numeric": "442",
+      "labels": {
+        "en": "Luxembourg",
+        "pl": "Luksemburg",
+        "ru": "Люксембург"
+      },
+      "dial_code": "+352",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "LV",
+      "alpha3": "LVA",
+      "numeric": "428",
+      "labels": {
+        "en": "Latvia",
+        "pl": "Łotwa",
+        "ru": "Латвия"
+      },
+      "dial_code": "+371",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "LY",
+      "alpha3": "LBY",
+      "numeric": "434",
+      "labels": {
+        "en": "Libya",
+        "pl": "Libia",
+        "ru": "Ливия"
+      },
+      "dial_code": "+218",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MA",
+      "alpha3": "MAR",
+      "numeric": "504",
+      "labels": {
+        "en": "Morocco",
+        "pl": "Maroko",
+        "ru": "Марокко"
+      },
+      "dial_code": "+212",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MC",
+      "alpha3": "MCO",
+      "numeric": "492",
+      "labels": {
+        "en": "Monaco",
+        "pl": "Monako",
+        "ru": "Монако"
+      },
+      "dial_code": "+377",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MD",
+      "alpha3": "MDA",
+      "numeric": "498",
+      "labels": {
+        "en": "Moldova",
+        "pl": "Mołdawia",
+        "ru": "Молдова"
+      },
+      "dial_code": "+373",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "ME",
+      "alpha3": "MNE",
+      "numeric": "499",
+      "labels": {
+        "en": "Montenegro",
+        "pl": "Czarnogóra",
+        "ru": "Черногория"
+      },
+      "dial_code": "+382",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MF",
+      "alpha3": "MAF",
+      "numeric": "663",
+      "labels": {
+        "en": "St. Martin",
+        "pl": "Saint-Martin",
+        "ru": "Сен-Мартен"
+      },
+      "dial_code": "+590",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MG",
+      "alpha3": "MDG",
+      "numeric": "450",
+      "labels": {
+        "en": "Madagascar",
+        "pl": "Madagaskar",
+        "ru": "Мадагаскар"
+      },
+      "dial_code": "+261",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MH",
+      "alpha3": "MHL",
+      "numeric": "584",
+      "labels": {
+        "en": "Marshall Islands",
+        "pl": "Wyspy Marshalla",
+        "ru": "Маршалловы о-ва"
+      },
+      "dial_code": "+692",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MK",
+      "alpha3": "MKD",
+      "numeric": "807",
+      "labels": {
+        "en": "North Macedonia",
+        "pl": "Macedonia Północna",
+        "ru": "Северная Македония"
+      },
+      "dial_code": "+389",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "ML",
+      "alpha3": "MLI",
+      "numeric": "466",
+      "labels": {
+        "en": "Mali",
+        "pl": "Mali",
+        "ru": "Мали"
+      },
+      "dial_code": "+223",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MM",
+      "alpha3": "MMR",
+      "numeric": "104",
+      "labels": {
+        "en": "Myanmar (Burma)",
+        "pl": "Mjanma (Birma)",
+        "ru": "Мьянма (Бирма)"
+      },
+      "dial_code": "+95",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MN",
+      "alpha3": "MNG",
+      "numeric": "496",
+      "labels": {
+        "en": "Mongolia",
+        "pl": "Mongolia",
+        "ru": "Монголия"
+      },
+      "dial_code": "+976",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MO",
+      "alpha3": "MAC",
+      "numeric": "446",
+      "labels": {
+        "en": "Macao SAR China",
+        "pl": "SRA Makau (Chiny)",
+        "ru": "Макао (САР)"
+      },
+      "dial_code": "+853",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MP",
+      "alpha3": "MNP",
+      "numeric": "580",
+      "labels": {
+        "en": "Northern Mariana Islands",
+        "pl": "Mariany Północne",
+        "ru": "Северные Марианские о-ва"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MQ",
+      "alpha3": "MTQ",
+      "numeric": "474",
+      "labels": {
+        "en": "Martinique",
+        "pl": "Martynika",
+        "ru": "Мартиника"
+      },
+      "dial_code": "+596",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MR",
+      "alpha3": "MRT",
+      "numeric": "478",
+      "labels": {
+        "en": "Mauritania",
+        "pl": "Mauretania",
+        "ru": "Мавритания"
+      },
+      "dial_code": "+222",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MS",
+      "alpha3": "MSR",
+      "numeric": "500",
+      "labels": {
+        "en": "Montserrat",
+        "pl": "Montserrat",
+        "ru": "Монтсеррат"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MT",
+      "alpha3": "MLT",
+      "numeric": "470",
+      "labels": {
+        "en": "Malta",
+        "pl": "Malta",
+        "ru": "Мальта"
+      },
+      "dial_code": "+356",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "MU",
+      "alpha3": "MUS",
+      "numeric": "480",
+      "labels": {
+        "en": "Mauritius",
+        "pl": "Mauritius",
+        "ru": "Маврикий"
+      },
+      "dial_code": "+230",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MV",
+      "alpha3": "MDV",
+      "numeric": "462",
+      "labels": {
+        "en": "Maldives",
+        "pl": "Malediwy",
+        "ru": "Мальдивы"
+      },
+      "dial_code": "+960",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MW",
+      "alpha3": "MWI",
+      "numeric": "454",
+      "labels": {
+        "en": "Malawi",
+        "pl": "Malawi",
+        "ru": "Малави"
+      },
+      "dial_code": "+265",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MX",
+      "alpha3": "MEX",
+      "numeric": "484",
+      "labels": {
+        "en": "Mexico",
+        "pl": "Meksyk",
+        "ru": "Мексика"
+      },
+      "dial_code": "+52",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MY",
+      "alpha3": "MYS",
+      "numeric": "458",
+      "labels": {
+        "en": "Malaysia",
+        "pl": "Malezja",
+        "ru": "Малайзия"
+      },
+      "dial_code": "+60",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "MZ",
+      "alpha3": "MOZ",
+      "numeric": "508",
+      "labels": {
+        "en": "Mozambique",
+        "pl": "Mozambik",
+        "ru": "Мозамбик"
+      },
+      "dial_code": "+258",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "NA",
+      "alpha3": "NAM",
+      "numeric": "516",
+      "labels": {
+        "en": "Namibia",
+        "pl": "Namibia",
+        "ru": "Намибия"
+      },
+      "dial_code": "+264",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "NC",
+      "alpha3": "NCL",
+      "numeric": "540",
+      "labels": {
+        "en": "New Caledonia",
+        "pl": "Nowa Kaledonia",
+        "ru": "Новая Каледония"
+      },
+      "dial_code": "+687",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "NE",
+      "alpha3": "NER",
+      "numeric": "562",
+      "labels": {
+        "en": "Niger",
+        "pl": "Niger",
+        "ru": "Нигер"
+      },
+      "dial_code": "+227",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "NF",
+      "alpha3": "NFK",
+      "numeric": "574",
+      "labels": {
+        "en": "Norfolk Island",
+        "pl": "Norfolk",
+        "ru": "о-в Норфолк"
+      },
+      "dial_code": "+672",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "NG",
+      "alpha3": "NGA",
+      "numeric": "566",
+      "labels": {
+        "en": "Nigeria",
+        "pl": "Nigeria",
+        "ru": "Нигерия"
+      },
+      "dial_code": "+234",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "NI",
+      "alpha3": "NIC",
+      "numeric": "558",
+      "labels": {
+        "en": "Nicaragua",
+        "pl": "Nikaragua",
+        "ru": "Никарагуа"
+      },
+      "dial_code": "+505",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "NL",
+      "alpha3": "NLD",
+      "numeric": "528",
+      "labels": {
+        "en": "Netherlands",
+        "pl": "Holandia",
+        "ru": "Нидерланды"
+      },
+      "dial_code": "+31",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "NO",
+      "alpha3": "NOR",
+      "numeric": "578",
+      "labels": {
+        "en": "Norway",
+        "pl": "Norwegia",
+        "ru": "Норвегия"
+      },
+      "dial_code": "+47",
+      "eu_member": false,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "NP",
+      "alpha3": "NPL",
+      "numeric": "524",
+      "labels": {
+        "en": "Nepal",
+        "pl": "Nepal",
+        "ru": "Непал"
+      },
+      "dial_code": "+977",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "NR",
+      "alpha3": "NRU",
+      "numeric": "520",
+      "labels": {
+        "en": "Nauru",
+        "pl": "Nauru",
+        "ru": "Науру"
+      },
+      "dial_code": "+674",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "NU",
+      "alpha3": "NIU",
+      "numeric": "570",
+      "labels": {
+        "en": "Niue",
+        "pl": "Niue",
+        "ru": "Ниуэ"
+      },
+      "dial_code": "+683",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "NZ",
+      "alpha3": "NZL",
+      "numeric": "554",
+      "labels": {
+        "en": "New Zealand",
+        "pl": "Nowa Zelandia",
+        "ru": "Новая Зеландия"
+      },
+      "dial_code": "+64",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "OM",
+      "alpha3": "OMN",
+      "numeric": "512",
+      "labels": {
+        "en": "Oman",
+        "pl": "Oman",
+        "ru": "Оман"
+      },
+      "dial_code": "+968",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PA",
+      "alpha3": "PAN",
+      "numeric": "591",
+      "labels": {
+        "en": "Panama",
+        "pl": "Panama",
+        "ru": "Панама"
+      },
+      "dial_code": "+507",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PE",
+      "alpha3": "PER",
+      "numeric": "604",
+      "labels": {
+        "en": "Peru",
+        "pl": "Peru",
+        "ru": "Перу"
+      },
+      "dial_code": "+51",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PF",
+      "alpha3": "PYF",
+      "numeric": "258",
+      "labels": {
+        "en": "French Polynesia",
+        "pl": "Polinezja Francuska",
+        "ru": "Французская Полинезия"
+      },
+      "dial_code": "+689",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PG",
+      "alpha3": "PNG",
+      "numeric": "598",
+      "labels": {
+        "en": "Papua New Guinea",
+        "pl": "Papua-Nowa Gwinea",
+        "ru": "Папуа — Новая Гвинея"
+      },
+      "dial_code": "+675",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PH",
+      "alpha3": "PHL",
+      "numeric": "608",
+      "labels": {
+        "en": "Philippines",
+        "pl": "Filipiny",
+        "ru": "Филиппины"
+      },
+      "dial_code": "+63",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PK",
+      "alpha3": "PAK",
+      "numeric": "586",
+      "labels": {
+        "en": "Pakistan",
+        "pl": "Pakistan",
+        "ru": "Пакистан"
+      },
+      "dial_code": "+92",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PL",
+      "alpha3": "POL",
+      "numeric": "616",
+      "labels": {
+        "en": "Poland",
+        "pl": "Polska",
+        "ru": "Польша"
+      },
+      "dial_code": "+48",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "PM",
+      "alpha3": "SPM",
+      "numeric": "666",
+      "labels": {
+        "en": "St. Pierre & Miquelon",
+        "pl": "Saint-Pierre i Miquelon",
+        "ru": "Сен-Пьер и Микелон"
+      },
+      "dial_code": "+508",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PN",
+      "alpha3": "PCN",
+      "numeric": "612",
+      "labels": {
+        "en": "Pitcairn Islands",
+        "pl": "Pitcairn",
+        "ru": "о-ва Питкэрн"
+      },
+      "dial_code": "+64",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PR",
+      "alpha3": "PRI",
+      "numeric": "630",
+      "labels": {
+        "en": "Puerto Rico",
+        "pl": "Portoryko",
+        "ru": "Пуэрто-Рико"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PS",
+      "alpha3": "PSE",
+      "numeric": "275",
+      "labels": {
+        "en": "Palestinian Territories",
+        "pl": "Terytoria Palestyńskie",
+        "ru": "Палестинские территории"
+      },
+      "dial_code": "+970",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PT",
+      "alpha3": "PRT",
+      "numeric": "620",
+      "labels": {
+        "en": "Portugal",
+        "pl": "Portugalia",
+        "ru": "Португалия"
+      },
+      "dial_code": "+351",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "PW",
+      "alpha3": "PLW",
+      "numeric": "585",
+      "labels": {
+        "en": "Palau",
+        "pl": "Palau",
+        "ru": "Палау"
+      },
+      "dial_code": "+680",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "PY",
+      "alpha3": "PRY",
+      "numeric": "600",
+      "labels": {
+        "en": "Paraguay",
+        "pl": "Paragwaj",
+        "ru": "Парагвай"
+      },
+      "dial_code": "+595",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "QA",
+      "alpha3": "QAT",
+      "numeric": "634",
+      "labels": {
+        "en": "Qatar",
+        "pl": "Katar",
+        "ru": "Катар"
+      },
+      "dial_code": "+974",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "RE",
+      "alpha3": "REU",
+      "numeric": "638",
+      "labels": {
+        "en": "Réunion",
+        "pl": "Reunion",
+        "ru": "Реюньон"
+      },
+      "dial_code": "+262",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "RO",
+      "alpha3": "ROU",
+      "numeric": "642",
+      "labels": {
+        "en": "Romania",
+        "pl": "Rumunia",
+        "ru": "Румыния"
+      },
+      "dial_code": "+40",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "RS",
+      "alpha3": "SRB",
+      "numeric": "688",
+      "labels": {
+        "en": "Serbia",
+        "pl": "Serbia",
+        "ru": "Сербия"
+      },
+      "dial_code": "+381",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "RU",
+      "alpha3": "RUS",
+      "numeric": "643",
+      "labels": {
+        "en": "Russia",
+        "pl": "Rosja",
+        "ru": "Россия"
+      },
+      "dial_code": "+7",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "RW",
+      "alpha3": "RWA",
+      "numeric": "646",
+      "labels": {
+        "en": "Rwanda",
+        "pl": "Rwanda",
+        "ru": "Руанда"
+      },
+      "dial_code": "+250",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SA",
+      "alpha3": "SAU",
+      "numeric": "682",
+      "labels": {
+        "en": "Saudi Arabia",
+        "pl": "Arabia Saudyjska",
+        "ru": "Саудовская Аравия"
+      },
+      "dial_code": "+966",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SB",
+      "alpha3": "SLB",
+      "numeric": "090",
+      "labels": {
+        "en": "Solomon Islands",
+        "pl": "Wyspy Salomona",
+        "ru": "Соломоновы о-ва"
+      },
+      "dial_code": "+677",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SC",
+      "alpha3": "SYC",
+      "numeric": "690",
+      "labels": {
+        "en": "Seychelles",
+        "pl": "Seszele",
+        "ru": "Сейшельские о-ва"
+      },
+      "dial_code": "+248",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SD",
+      "alpha3": "SDN",
+      "numeric": "729",
+      "labels": {
+        "en": "Sudan",
+        "pl": "Sudan",
+        "ru": "Судан"
+      },
+      "dial_code": "+249",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SE",
+      "alpha3": "SWE",
+      "numeric": "752",
+      "labels": {
+        "en": "Sweden",
+        "pl": "Szwecja",
+        "ru": "Швеция"
+      },
+      "dial_code": "+46",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "SG",
+      "alpha3": "SGP",
+      "numeric": "702",
+      "labels": {
+        "en": "Singapore",
+        "pl": "Singapur",
+        "ru": "Сингапур"
+      },
+      "dial_code": "+65",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SH",
+      "alpha3": "SHN",
+      "numeric": "654",
+      "labels": {
+        "en": "St. Helena",
+        "pl": "Wyspa Świętej Heleny",
+        "ru": "о-в Св. Елены"
+      },
+      "dial_code": "+290",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SI",
+      "alpha3": "SVN",
+      "numeric": "705",
+      "labels": {
+        "en": "Slovenia",
+        "pl": "Słowenia",
+        "ru": "Словения"
+      },
+      "dial_code": "+386",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "SJ",
+      "alpha3": "SJM",
+      "numeric": "744",
+      "labels": {
+        "en": "Svalbard & Jan Mayen",
+        "pl": "Svalbard i Jan Mayen",
+        "ru": "Шпицберген и Ян-Майен"
+      },
+      "dial_code": "+47",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SK",
+      "alpha3": "SVK",
+      "numeric": "703",
+      "labels": {
+        "en": "Slovakia",
+        "pl": "Słowacja",
+        "ru": "Словакия"
+      },
+      "dial_code": "+421",
+      "eu_member": true,
+      "schengen_member": true
+    },
+    {
+      "alpha2": "SL",
+      "alpha3": "SLE",
+      "numeric": "694",
+      "labels": {
+        "en": "Sierra Leone",
+        "pl": "Sierra Leone",
+        "ru": "Сьерра-Леоне"
+      },
+      "dial_code": "+232",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SM",
+      "alpha3": "SMR",
+      "numeric": "674",
+      "labels": {
+        "en": "San Marino",
+        "pl": "San Marino",
+        "ru": "Сан-Марино"
+      },
+      "dial_code": "+378",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SN",
+      "alpha3": "SEN",
+      "numeric": "686",
+      "labels": {
+        "en": "Senegal",
+        "pl": "Senegal",
+        "ru": "Сенегал"
+      },
+      "dial_code": "+221",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SO",
+      "alpha3": "SOM",
+      "numeric": "706",
+      "labels": {
+        "en": "Somalia",
+        "pl": "Somalia",
+        "ru": "Сомали"
+      },
+      "dial_code": "+252",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SR",
+      "alpha3": "SUR",
+      "numeric": "740",
+      "labels": {
+        "en": "Suriname",
+        "pl": "Surinam",
+        "ru": "Суринам"
+      },
+      "dial_code": "+597",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SS",
+      "alpha3": "SSD",
+      "numeric": "728",
+      "labels": {
+        "en": "South Sudan",
+        "pl": "Sudan Południowy",
+        "ru": "Южный Судан"
+      },
+      "dial_code": "+211",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "ST",
+      "alpha3": "STP",
+      "numeric": "678",
+      "labels": {
+        "en": "São Tomé & Príncipe",
+        "pl": "Wyspy Świętego Tomasza i Książęca",
+        "ru": "Сан-Томе и Принсипи"
+      },
+      "dial_code": "+239",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SV",
+      "alpha3": "SLV",
+      "numeric": "222",
+      "labels": {
+        "en": "El Salvador",
+        "pl": "Salwador",
+        "ru": "Сальвадор"
+      },
+      "dial_code": "+503",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SX",
+      "alpha3": "SXM",
+      "numeric": "534",
+      "labels": {
+        "en": "Sint Maarten",
+        "pl": "Sint Maarten",
+        "ru": "Синт-Мартен"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SY",
+      "alpha3": "SYR",
+      "numeric": "760",
+      "labels": {
+        "en": "Syria",
+        "pl": "Syria",
+        "ru": "Сирия"
+      },
+      "dial_code": "+963",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "SZ",
+      "alpha3": "SWZ",
+      "numeric": "748",
+      "labels": {
+        "en": "Eswatini",
+        "pl": "Eswatini",
+        "ru": "Эсватини"
+      },
+      "dial_code": "+268",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TC",
+      "alpha3": "TCA",
+      "numeric": "796",
+      "labels": {
+        "en": "Turks & Caicos Islands",
+        "pl": "Turks i Caicos",
+        "ru": "Тёркс и Кайкос"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TD",
+      "alpha3": "TCD",
+      "numeric": "148",
+      "labels": {
+        "en": "Chad",
+        "pl": "Czad",
+        "ru": "Чад"
+      },
+      "dial_code": "+235",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TF",
+      "alpha3": "ATF",
+      "numeric": "260",
+      "labels": {
+        "en": "French Southern Territories",
+        "pl": "Francuskie Terytoria Południowe i Antarktyczne",
+        "ru": "Французские Южные территории"
+      },
+      "dial_code": "+262",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TG",
+      "alpha3": "TGO",
+      "numeric": "768",
+      "labels": {
+        "en": "Togo",
+        "pl": "Togo",
+        "ru": "Того"
+      },
+      "dial_code": "+228",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TH",
+      "alpha3": "THA",
+      "numeric": "764",
+      "labels": {
+        "en": "Thailand",
+        "pl": "Tajlandia",
+        "ru": "Таиланд"
+      },
+      "dial_code": "+66",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TJ",
+      "alpha3": "TJK",
+      "numeric": "762",
+      "labels": {
+        "en": "Tajikistan",
+        "pl": "Tadżykistan",
+        "ru": "Таджикистан"
+      },
+      "dial_code": "+992",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TK",
+      "alpha3": "TKL",
+      "numeric": "772",
+      "labels": {
+        "en": "Tokelau",
+        "pl": "Tokelau",
+        "ru": "Токелау"
+      },
+      "dial_code": "+690",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TL",
+      "alpha3": "TLS",
+      "numeric": "626",
+      "labels": {
+        "en": "Timor-Leste",
+        "pl": "Timor Wschodni",
+        "ru": "Восточный Тимор"
+      },
+      "dial_code": "+670",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TM",
+      "alpha3": "TKM",
+      "numeric": "795",
+      "labels": {
+        "en": "Turkmenistan",
+        "pl": "Turkmenistan",
+        "ru": "Туркменистан"
+      },
+      "dial_code": "+993",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TN",
+      "alpha3": "TUN",
+      "numeric": "788",
+      "labels": {
+        "en": "Tunisia",
+        "pl": "Tunezja",
+        "ru": "Тунис"
+      },
+      "dial_code": "+216",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TO",
+      "alpha3": "TON",
+      "numeric": "776",
+      "labels": {
+        "en": "Tonga",
+        "pl": "Tonga",
+        "ru": "Тонга"
+      },
+      "dial_code": "+676",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TR",
+      "alpha3": "TUR",
+      "numeric": "792",
+      "labels": {
+        "en": "Türkiye",
+        "pl": "Turcja",
+        "ru": "Турция"
+      },
+      "dial_code": "+90",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TT",
+      "alpha3": "TTO",
+      "numeric": "780",
+      "labels": {
+        "en": "Trinidad & Tobago",
+        "pl": "Trynidad i Tobago",
+        "ru": "Тринидад и Тобаго"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TV",
+      "alpha3": "TUV",
+      "numeric": "798",
+      "labels": {
+        "en": "Tuvalu",
+        "pl": "Tuvalu",
+        "ru": "Тувалу"
+      },
+      "dial_code": "+688",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TW",
+      "alpha3": "TWN",
+      "numeric": "158",
+      "labels": {
+        "en": "Taiwan",
+        "pl": "Tajwan",
+        "ru": "Тайвань"
+      },
+      "dial_code": "+886",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "TZ",
+      "alpha3": "TZA",
+      "numeric": "834",
+      "labels": {
+        "en": "Tanzania",
+        "pl": "Tanzania",
+        "ru": "Танзания"
+      },
+      "dial_code": "+255",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "UA",
+      "alpha3": "UKR",
+      "numeric": "804",
+      "labels": {
+        "en": "Ukraine",
+        "pl": "Ukraina",
+        "ru": "Украина"
+      },
+      "dial_code": "+380",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "UG",
+      "alpha3": "UGA",
+      "numeric": "800",
+      "labels": {
+        "en": "Uganda",
+        "pl": "Uganda",
+        "ru": "Уганда"
+      },
+      "dial_code": "+256",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "UM",
+      "alpha3": "UMI",
+      "numeric": "581",
+      "labels": {
+        "en": "U.S. Outlying Islands",
+        "pl": "Dalekie Wyspy Mniejsze Stanów Zjednoczonych",
+        "ru": "Внешние малые о-ва (США)"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "US",
+      "alpha3": "USA",
+      "numeric": "840",
+      "labels": {
+        "en": "United States",
+        "pl": "Stany Zjednoczone",
+        "ru": "Соединенные Штаты"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "UY",
+      "alpha3": "URY",
+      "numeric": "858",
+      "labels": {
+        "en": "Uruguay",
+        "pl": "Urugwaj",
+        "ru": "Уругвай"
+      },
+      "dial_code": "+598",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "UZ",
+      "alpha3": "UZB",
+      "numeric": "860",
+      "labels": {
+        "en": "Uzbekistan",
+        "pl": "Uzbekistan",
+        "ru": "Узбекистан"
+      },
+      "dial_code": "+998",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "VA",
+      "alpha3": "VAT",
+      "numeric": "336",
+      "labels": {
+        "en": "Vatican City",
+        "pl": "Watykan",
+        "ru": "Ватикан"
+      },
+      "dial_code": "+39",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "VC",
+      "alpha3": "VCT",
+      "numeric": "670",
+      "labels": {
+        "en": "St. Vincent & Grenadines",
+        "pl": "Saint Vincent i Grenadyny",
+        "ru": "Сент-Винсент и Гренадины"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "VE",
+      "alpha3": "VEN",
+      "numeric": "862",
+      "labels": {
+        "en": "Venezuela",
+        "pl": "Wenezuela",
+        "ru": "Венесуэла"
+      },
+      "dial_code": "+58",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "VG",
+      "alpha3": "VGB",
+      "numeric": "092",
+      "labels": {
+        "en": "British Virgin Islands",
+        "pl": "Brytyjskie Wyspy Dziewicze",
+        "ru": "Виргинские о-ва (Великобритания)"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "VI",
+      "alpha3": "VIR",
+      "numeric": "850",
+      "labels": {
+        "en": "U.S. Virgin Islands",
+        "pl": "Wyspy Dziewicze Stanów Zjednoczonych",
+        "ru": "Виргинские о-ва (США)"
+      },
+      "dial_code": "+1",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "VN",
+      "alpha3": "VNM",
+      "numeric": "704",
+      "labels": {
+        "en": "Vietnam",
+        "pl": "Wietnam",
+        "ru": "Вьетнам"
+      },
+      "dial_code": "+84",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "VU",
+      "alpha3": "VUT",
+      "numeric": "548",
+      "labels": {
+        "en": "Vanuatu",
+        "pl": "Vanuatu",
+        "ru": "Вануату"
+      },
+      "dial_code": "+678",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "WF",
+      "alpha3": "WLF",
+      "numeric": "876",
+      "labels": {
+        "en": "Wallis & Futuna",
+        "pl": "Wallis i Futuna",
+        "ru": "Уоллис и Футуна"
+      },
+      "dial_code": "+681",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "WS",
+      "alpha3": "WSM",
+      "numeric": "882",
+      "labels": {
+        "en": "Samoa",
+        "pl": "Samoa",
+        "ru": "Самоа"
+      },
+      "dial_code": "+685",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "YE",
+      "alpha3": "YEM",
+      "numeric": "887",
+      "labels": {
+        "en": "Yemen",
+        "pl": "Jemen",
+        "ru": "Йемен"
+      },
+      "dial_code": "+967",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "YT",
+      "alpha3": "MYT",
+      "numeric": "175",
+      "labels": {
+        "en": "Mayotte",
+        "pl": "Majotta",
+        "ru": "Майотта"
+      },
+      "dial_code": "+262",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "ZA",
+      "alpha3": "ZAF",
+      "numeric": "710",
+      "labels": {
+        "en": "South Africa",
+        "pl": "Republika Południowej Afryki",
+        "ru": "Южно-Африканская Республика"
+      },
+      "dial_code": "+27",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "ZM",
+      "alpha3": "ZMB",
+      "numeric": "894",
+      "labels": {
+        "en": "Zambia",
+        "pl": "Zambia",
+        "ru": "Замбия"
+      },
+      "dial_code": "+260",
+      "eu_member": false,
+      "schengen_member": false
+    },
+    {
+      "alpha2": "ZW",
+      "alpha3": "ZWE",
+      "numeric": "716",
+      "labels": {
+        "en": "Zimbabwe",
+        "pl": "Zimbabwe",
+        "ru": "Зимбабве"
+      },
+      "dial_code": "+263",
+      "eu_member": false,
+      "schengen_member": false
+    }
+  ]
+}
