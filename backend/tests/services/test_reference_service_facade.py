@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 
 import pytest
@@ -8,6 +9,7 @@ from backend.app.db.session import async_session_maker
 from backend.app.models import Candidate, Tenant
 from backend.app.reference.core_immutable_catalogs import CATALOG_VERSION
 from backend.app.schemas.reference_core_immutable import CoreImmutableSnapshotOut
+from backend.app.schemas.reference_country_registry import CountryRegistrySnapshotOut
 from backend.app.schemas.reference_field_schema import ReferenceFieldSchemaSnapshotOut
 from backend.app.schemas.reference_legal_document import LegalDocumentSnapshotOut
 from backend.app.schemas.reference_rule_pack import ReferenceRulePackFoundationSnapshotOut
@@ -252,6 +254,38 @@ def test_reference_facade_seed_manifest_snapshot_contract() -> None:
 
 def test_reference_facade_seed_manifest_snapshot_compatibility_check() -> None:
     out = ReferenceServiceFacade.compatibility_check_reference_seed_manifest_snapshot()
+    assert set(out.keys()) == {
+        "valid",
+        "errors",
+        "warnings",
+        "contract_version",
+        "reference_version",
+    }
+    assert out["valid"] is True
+    assert out["errors"] == []
+
+
+def test_reference_facade_country_registry_snapshot_contract() -> None:
+    snap = ReferenceServiceFacade.get_country_registry_snapshot()
+    assert set(snap.keys()) == {
+        "contract_version",
+        "reference_version",
+        "catalog_version",
+        "countries",
+    }
+    assert len(snap["countries"]) == 249
+    typed = CountryRegistrySnapshotOut.model_validate(snap)
+    assert typed.catalog_version.startswith("ref-id-r1-country-registry-")
+    countries_blob = json.dumps(snap["countries"])
+    assert "immutable" not in countries_blob
+    poland = next(row for row in typed.countries if row.identity.alpha2 == "PL")
+    assert poland.identity.alpha3 == "POL"
+    assert poland.classifications.dial_code == "+48"
+    assert poland.labels.en and poland.labels.pl and poland.labels.ru
+
+
+def test_reference_facade_country_registry_snapshot_compatibility_check() -> None:
+    out = ReferenceServiceFacade.compatibility_check_country_registry_snapshot()
     assert set(out.keys()) == {
         "valid",
         "errors",
