@@ -1,7 +1,7 @@
 # Documents Platform E3 — First Consumer Bind + Document Link SoT (Phase E)
 
 **Status:** **COMPLETE** ([#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) · merge `cc106a38`)  
-**Next:** [Documents Platform E4 — Candidate Document Link](documents-platform-e4-candidate-document-link.md) ✅ → [Documents Platform E5 — Candidate Storage Bridge Retirement](documents-platform-e5-candidate-storage-bridge.md) (brief; feat locked)  
+**Next:** [Documents Platform E4](documents-platform-e4-candidate-document-link.md) ✅ → [Documents Platform E5](documents-platform-e5-candidate-storage-bridge.md) ✅ → [Documents Platform E6 — Document Expiry / Validity](documents-platform-e6-document-expiry.md) (brief; feat locked)  
 **Phase class:** platform  
 **Branch (docs):** `docs/documents-platform-e3-first-consumer-bind` ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)  
 **Branch (code):** `feat/documents-platform-e3-first-consumer-bind` ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278)  
@@ -126,9 +126,11 @@ E3 (this)
 E4
     → Candidate Document Link bind (D4) — [brief](documents-platform-e4-candidate-document-link.md) ✅
 E5
-    → Candidate storage-bridge retirement (`candidate_id` drop) — [brief](documents-platform-e5-candidate-storage-bridge.md)
-E6+
-    → remaining consumers / lifecycle (locked until E5 feat)
+    → Candidate storage-bridge retirement (`candidate_id` drop) — [brief](documents-platform-e5-candidate-storage-bridge.md) ✅
+E6
+    → Document expiry / validity — [brief](documents-platform-e6-document-expiry.md)
+E7+
+    → remaining consumers / later lifecycle (locked until E6 feat)
 ```
 
 E3 **must not**:
@@ -194,8 +196,9 @@ E2 already enabled the catalog slot. **This slice binds it once.**
 | **E2** | Public contract / D2 `documents` catalog enable | ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276) · merge `826877b5` |
 | **E3** | First consumer bind (HR employee) + Document Link SoT | ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) · merge `cc106a38` |
 | **E4** | Candidate Document Link bind (D4) | ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) · merge `0af74913` |
-| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | [brief](documents-platform-e5-candidate-storage-bridge.md) (feat locked) |
-| **E6+** | Remaining consumers / lifecycle | locked until E5 feat |
+| **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) · merge `702b922c` |
+| **E6** | Document expiry / validity | [brief](documents-platform-e6-document-expiry.md) (feat locked) |
+| **E7+** | Remaining consumers / later lifecycle | locked until E6 feat |
 
 Roadmap lifecycle themes (expiry, requests, packages, OCR, approvals, automation) stay **horizon**. Documents Foundation stays 🔄.
 
