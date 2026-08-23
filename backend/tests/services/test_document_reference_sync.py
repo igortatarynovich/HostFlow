@@ -9,6 +9,7 @@ from backend.app.db.session import async_session_maker
 from backend.app.models import Candidate, Document, DocumentType, RefDocumentType, RefDocumentTypeVersion, Tenant
 from backend.app.models.document_policy import DocumentPolicy, DocumentPolicyScope
 from backend.app.models.enums import DocumentKind, DocumentProcessType, DocumentRequestedFrom, DocumentStatus
+from backend.app.document_types.registry import canonical_codes
 from backend.app.services.document_reference_sync import seed_and_sync_document_references
 
 
@@ -25,24 +26,7 @@ async def test_seed_creates_canonical_types_and_is_idempotent() -> None:
     await _seed_once()
     await _seed_once()
 
-    required_codes = {
-        "passport",
-        "id_card",
-        "residence_card",
-        "visa",
-        "work_permit",
-        "driver_license",
-        "code_95",
-        "tachograph_card",
-        "medical_certificate",
-        "psychotest",
-        "employment_contract",
-        "civil_contract",
-        "zus_zua",
-        "zus_zza",
-        "tax_declaration",
-        "other",
-    }
+    required_codes = set(canonical_codes())
 
     async with async_session_maker() as session:
         rows = (await session.execute(select(RefDocumentType.code, RefDocumentType.origin))).all()

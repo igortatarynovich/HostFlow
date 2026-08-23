@@ -15,9 +15,9 @@ from backend.app.document_types.definitions import DOCUMENT_TYPE_DEFINITIONS
 
 # Legacy doc_type strings that are not module catalog codes but still appear in DB/API.
 SUPPLEMENTAL_LEGACY_TO_REF: dict[str, str] = {
-    "id": "id_card",
+    "id": "national_identity_card",
     "medical": "medical_certificate",
-    "psycho_test": "psychotest",
+    "psycho_test": "psychological_certificate",
     "contract": "employment_contract",
     "employment_contract": "employment_contract",
     "civil_contract": "civil_contract",
@@ -50,7 +50,10 @@ def build_legacy_to_ref_canonical_map() -> dict[str, str]:
             out[_norm(alias)] = ref_code
 
     for legacy, ref in SUPPLEMENTAL_LEGACY_TO_REF.items():
-        out[_norm(legacy)] = _norm(ref)
+        target = _norm(ref)
+        if target not in SYSTEM_CODES:
+            target = "other"
+        out[_norm(legacy)] = target
 
     return out
 
