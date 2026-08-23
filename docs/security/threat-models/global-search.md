@@ -24,6 +24,7 @@
 - Role gate `GLOBAL_SEARCH_ROLES` / admin|owner for link company search.
 - Audit: `search.retrieval.requested|completed|denied` via `emit_retrieval_security_event_v1` (no raw query in `extra`).
 - CI: `scripts/security/check_retrieval_call_sites.py`.
+- Document FTS trigger does not depend on `documents.candidate_id` (dropped E5; trigger recreated in #288 without that column).
 
 ## Тесты
 
