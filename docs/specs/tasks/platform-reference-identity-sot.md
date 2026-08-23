@@ -1,15 +1,14 @@
 # Platform Reference Identity SoT (R1–R5)
 
-**Status:** **IN PROGRESS** (R1 feat: Country Registry completeness; no runtime cutover)  
+**Status:** **IN PROGRESS** (R1–R4 Gates PASS; Active Engineering = **Reference R5**; Product = CL0)  
 **Phase class:** platform  
-**Branch (docs):** `docs/platform-reference-identity-sot`  
-**Branch (code):** `feat/platform-reference-r1-country-registry` (R1 only)  
+**Branch (docs):** `docs/platform-reference-r1-gate-seal`  
+**Branch (code):** R1–R4 merged; next `feat/platform-reference-r5-policy-merge`  
 **Track:** **Engineering** (parallel to Product Track **CL0** — no CL0 feat overlap)  
 **Parents:** [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) (parallel Product) · [REF-4 Phase 1 closeout](../gates/ref4_phase1_final_closeout.md) · [REF-4 Phase 2 start gate](../gates/ref4_phase2_start_gate.md) · [Reference delivery contract](../reference_delivery_contract_standard.md) · [Reference layer architecture](../architecture/reference-layer-and-applicability-packs.md) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [`document-type-registry-v1.json`](../platform/document-type-registry-v1.json) · [`document-type-legacy-aliases-v1.json`](../platform/document-type-legacy-aliases-v1.json) · [Document type model standard](../architecture/document-type-model-standard.md) · [AGENTS.md](../../../AGENTS.md) (Architecture Rule 1)
 
-> HostFlow currently has **multiple authoritative-looking catalogs** for countries, dial codes, document types, and document policy. This program converges them to **one authoritative definition per domain** with explicit projections, overlays, and alias boundaries.  
-> **R1** is reference completeness only — **no runtime/UI adoption**. It may run **in parallel with CL0** because scope is isolated.  
-> **E8-bind** unlocks after **Reference R3 ∧ R4** (not auto-scheduled). **E8-eval** unlocks after **Reference R5 ∧ E8-bind**. **CL0** stays the active **Product** slice. Unlock ≠ schedule.
+> **R1–R4 Gates PASS** — Country Registry, runtime cutover (R2), document identity (R3), alias consolidation (R4). Active Engineering = **Reference R5**.  
+> **E8-bind unlocked** after **Reference R3 ∧ R4** (not auto-scheduled). **E8-eval** unlocks after **Reference R5 ∧ E8-bind**. **CL0** stays the active **Product** slice. Unlock ≠ schedule.
 
 **Naming (do not collapse):** this program is **Reference R1–R5**. It is **not** Documents E8, not Entity Field Composition CL0, not **Epic C residual R1** (C2.4 freeze), not Acquisition R6, not a second document-type catalog in `definitions.py`, not REF-4 Phase 1 re-open, not REF-4 Phase 2 (that is **Reference R2**), not tenant-owned document type lists, not a monolithic “catalog of everything”, not L0 Catalog rewrite, not Billing / AI / Forms P3–P5.
 
