@@ -3,30 +3,19 @@ import type { ComboboxOption } from '../components/ui/comboboxShared'
 export type Option = ComboboxOption
 
 const COUNTRY_CODES: string[] = [
-  'AE','AF','AL','AM','AO','AR','AT','AU','AZ','BA','BD','BE','BF','BG','BH','BI','BJ','BO','BR','BT','BW','BY',
-  'CA','CD','CF','CG','CH','CI','CL','CM','CN','CO','CV','CY','CZ',
-  'DE','DJ','DK','DZ',
-  'EC','EE','EG','EH','ER','ES','ET',
-  'FI','FR',
-  'GA','GB','GE','GH','GM','GN','GQ','GR','GW','GY',
-  'HR','HU',
-  'ID','IE','IL','IN','IQ','IR','IS','IT',
-  'JO','JP',
-  'KE','KG','KM','KR','KZ','KW',
-  'LK','LR','LS','LT','LU','LV','LY',
-  'MA','MD','ME','MG','MK','ML','MR','MT','MU','MV','MW','MX','MZ',
-  'NA','NE','NG','NL','NO','NP','NZ',
-  'OM',
-  'PE','PH','PK','PL','PT','PY','QA',
-  'RO','RS','RU','RW',
-  'SA','SC','SD','SE','SI','SK','SL','SN','SO','SR','SS','ST','SZ',
-  'TD','TG','TH','TJ','TM','TN','TR','TZ',
-  'UA','UG','US','UY','UZ',
-  'VE','VN',
-  'XK','YE',
-  'ZA','ZM','ZW',
+  'AD','AE','AF','AG','AI','AL','AM','AO','AQ','AR','AS','AT','AU','AW','AX','AZ','BA','BB','BD','BE','BF','BG',
+  'BH','BI','BJ','BL','BM','BN','BO','BQ','BR','BS','BT','BV','BW','BY','BZ','CA','CC','CD','CF','CG','CH','CI',
+  'CK','CL','CM','CN','CO','CR','CU','CV','CW','CX','CY','CZ','DE','DJ','DK','DM','DO','DZ','EC','EE','EG','EH',
+  'ER','ES','ET','FI','FJ','FK','FM','FO','FR','GA','GB','GD','GE','GF','GG','GH','GI','GL','GM','GN','GP','GQ',
+  'GR','GS','GT','GU','GW','GY','HK','HM','HN','HR','HT','HU','ID','IE','IL','IM','IN','IO','IQ','IR','IS','IT',
+  'JE','JM','JO','JP','KE','KG','KH','KI','KM','KN','KP','KR','KW','KY','KZ','LA','LB','LC','LI','LK','LR','LS',
+  'LT','LU','LV','LY','MA','MC','MD','ME','MF','MG','MH','MK','ML','MM','MN','MO','MP','MQ','MR','MS','MT','MU',
+  'MV','MW','MX','MY','MZ','NA','NC','NE','NF','NG','NI','NL','NO','NP','NR','NU','NZ','OM','PA','PE','PF','PG',
+  'PH','PK','PL','PM','PN','PR','PS','PT','PW','PY','QA','RE','RO','RS','RU','RW','SA','SB','SC','SD','SE','SG',
+  'SH','SI','SJ','SK','SL','SM','SN','SO','SR','SS','ST','SV','SX','SY','SZ','TC','TD','TF','TG','TH','TJ','TK',
+  'TL','TM','TN','TO','TR','TT','TV','TW','TZ','UA','UG','UM','US','UY','UZ','VA','VC','VE','VG','VI','VN','VU',
+  'WF','WS','YE','YT','ZA','ZM','ZW',
 ]
-
 function createDisplayNames(locale?: string): Intl.DisplayNames | null {
   if (typeof Intl === 'undefined' || typeof Intl.DisplayNames === 'undefined') {
     return null
