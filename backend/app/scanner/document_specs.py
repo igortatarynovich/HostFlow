@@ -10,6 +10,8 @@ from typing import Dict, Optional
 import json
 import logging
 
+from backend.app.document_types.registry import normalize_input_doc_type
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,6 +77,17 @@ DOCUMENT_SPECS: Dict[str, Dict] = {
 }
 
 
+CANONICAL_TO_SPEC_KEY: Dict[str, str] = {
+    "national_identity_card": "id_card",
+    "adr_certificate": "adr_card",
+}
+
+
+def _resolve_spec_key(doc_type: str) -> str:
+    canonical = normalize_input_doc_type(doc_type)
+    return CANONICAL_TO_SPEC_KEY.get(canonical, canonical)
+
+
 def mm_to_pixels(mm: float, dpi: int = 300) -> int:
     """Convert millimeters to pixels at given DPI."""
     return int(mm * dpi / 25.4)
@@ -82,10 +95,11 @@ def mm_to_pixels(mm: float, dpi: int = 300) -> int:
 
 def get_document_spec(doc_type: str, dpi: int = 300) -> Optional[Dict]:
     """Get document specification for given type."""
-    if doc_type not in DOCUMENT_SPECS:
+    spec_key = _resolve_spec_key(doc_type)
+    if spec_key not in DOCUMENT_SPECS:
         return None
     
-    spec = DOCUMENT_SPECS[doc_type].copy()
+    spec = DOCUMENT_SPECS[spec_key].copy()
     spec["pixel_dimensions"] = {
         "width": mm_to_pixels(spec["standard_size_mm"]["width"], dpi),
         "height": mm_to_pixels(spec["standard_size_mm"]["height"], dpi)
@@ -113,10 +127,11 @@ def load_custom_specs(specs_file: Path = Path("/app/document_specs.json")) -> Di
 
 def get_document_spec_with_custom(doc_type: str, dpi: int = 300) -> Optional[Dict]:
     """Get document specification, using custom specs if available."""
+    spec_key = _resolve_spec_key(doc_type)
     # Try custom specs first (from analyzed samples)
     custom_specs = load_custom_specs()
-    if doc_type in custom_specs:
-        custom = custom_specs[doc_type]
+    if spec_key in custom_specs:
+        custom = custom_specs[spec_key]
         # Convert custom specs to standard format
         avg_dims = custom.get("average_dimensions", {})
         if avg_dims:

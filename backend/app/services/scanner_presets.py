@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List
 
+from backend.app.document_types.registry import normalize_input_doc_type
+
 
 @dataclass(frozen=True)
 class ScannerPreset:
@@ -498,6 +500,17 @@ PRESETS: Dict[str, ScannerPreset] = {
 }
 
 
+# Canonical registry codes → scanner preset keys (physical layout), not alias taxonomy.
+CANONICAL_TO_PRESET: Dict[str, str] = {
+    "national_identity_card": "id_card",
+    "driver_qualification_card": "code95",
+    "psychological_certificate": "psych_tests",
+    "adr_certificate": "adr",
+    "driver_attestation": "driver_certificate",
+    "unclassified": "additional_document",
+}
+
+
 def get_preset(code: str) -> ScannerPreset:
     preset = PRESETS.get(code)
     if not preset:
@@ -510,126 +523,27 @@ def list_presets() -> List[ScannerPreset]:
 
 
 def get_preset_for_doc_type(doc_type: str) -> ScannerPreset:
-    """
-    Map document type (doc_type) to scanner preset.
-    Returns the most appropriate preset for the given document type.
-    """
-    # Normalize doc_type
-    doc_type_lower = doc_type.lower().strip()
-    
-    # Direct mapping
-    mapping = {
-        # Identity documents
-        "identity_document": "identity_document",
-        "id_card": "id_card",
-        "national_id": "national_id",
-        "residence_permit": "residence_permit",
-        "residence_card": "residence_card",
-        "karta_pobytu": "residence_card",
-        # Driver licenses
-        "driver_license": "driver_license",
-        "driver_license_exchange": "driver_license_exchange",
-        "driver_license_code95": "driver_license",  # Combined type maps to driver_license preset
-        "prawo_jazdy": "driver_license",
-        "drivers_license": "driver_license",
-        # Passports
-        "passport": "passport",
-        "passport_main": "passport_main",
-        "passport_all": "passport_all",
-        "travel_document": "passport",
-        # Visas
-        "visa": "visa",
-        "visa_d": "visa",
-        "visa_c": "visa",
-        "entry_permit": "visa",
-        "entry_permit_or_visa": "visa",
-        # Tachograph
-        "tachograph_card": "tachograph_card",
-        "tacho_card": "tacho_card",
-        "karta_tachografu": "tachograph_card",
-        # Certificates
-        "qualification_code95": "qualification_code95",
-        "code95": "code95",
-        "code_95": "code95",
-        "qualification_card": "qualification_code95",
-        "adr": "adr",
-        "adr_certificate": "adr_certificate",
-        "adr_card": "adr",
-        "swiadectwo_kierowcy": "swiadectwo_kierowcy",
-        "driver_certificate": "driver_certificate",
-        "driver_attestation": "swiadectwo_kierowcy",
-        # Medical and tests
-        "medical_certificate": "medical_certificate",
-        "medical_cert": "medical_certificate",
-        "badania_lekarskie": "medical_certificate",
-        "criminal_record": "criminal_record",
-        "no_criminal_history": "criminal_record",
-        "psychology_test": "psychology_test",
-        "psych_tests": "psych_tests",
-        "psychotest": "psychology_test",
-        "psychotests": "psychology_test",
-        "psychological_certificate": "psychology_test",
-        # Work permits
-        "work_permit": "work_permit",
-        "zezwolenie_na_prace": "work_permit",
-        "oswiadczenie": "work_permit",
-        "zezwolenie_a": "work_permit",
-        "decision": "decision",
-        "decyzja": "decision",
-        "voivodeship_decision": "decision",
-        # A4 documents
-        "contract": "contract",
-        "employment_contract": "employment_contract",
-        "insurance": "insurance",
-        "ubezpieczenie": "insurance",
-        "bhp": "bhp",
-        "safety_training": "bhp",
-        "assignment": "assignment",
-        "delegation": "assignment",
-        "accommodation": "accommodation",
-        "housing": "accommodation",
-        # Bank
-        "bank_account_confirmation": "bank_account_confirmation",
-        "bank_statement": "bank_account_confirmation",
-        "pesel": "pesel",
-        "national_number": "pesel",
-        # Photo
-        "photo": "photo",
-        "photo_35x45": "photo_35x45",
-        # Fallback
-        "additional_document": "additional_document",
-        "other": "other",
-        "custom": "additional_document",
-    }
-    
-    # Try direct match
-    if doc_type_lower in mapping:
-        preset_code = mapping[doc_type_lower]
-        if preset_code in PRESETS:
-            return PRESETS[preset_code]
-    
-    # Try partial match (e.g., "driver_license_code95" -> "driver_license")
-    # Priority: longer matches first, then shorter
-    sorted_keys = sorted(mapping.keys(), key=len, reverse=True)
+    """Map document type (doc_type) to scanner preset via alias registry normalization."""
+    canonical = normalize_input_doc_type(doc_type)
+    preset_code = CANONICAL_TO_PRESET.get(canonical, canonical)
+
+    if preset_code in PRESETS:
+        return PRESETS[preset_code]
+
+    if canonical in PRESETS:
+        return PRESETS[canonical]
+
+    sorted_keys = sorted(CANONICAL_TO_PRESET.keys(), key=len, reverse=True)
     for key in sorted_keys:
-        if key in doc_type_lower:
-            preset_code = mapping[key]
-            if preset_code in PRESETS:
-                return PRESETS[preset_code]
-    
-    # Try reverse partial match (doc_type contains key)
-    for key in sorted_keys:
-        if doc_type_lower in key:
-            preset_code = mapping[key]
-            if preset_code in PRESETS:
-                return PRESETS[preset_code]
-    
-    # Default fallback - ensure we always return a valid preset
+        if key in canonical or canonical in key:
+            mapped = CANONICAL_TO_PRESET[key]
+            if mapped in PRESETS:
+                return PRESETS[mapped]
+
     if "additional_document" in PRESETS:
         return PRESETS["additional_document"]
     if "other" in PRESETS:
         return PRESETS["other"]
-    # Last resort: return first available preset
     if PRESETS:
         return list(PRESETS.values())[0]
     raise ValueError(f"No scanner preset available for document type: {doc_type}")
