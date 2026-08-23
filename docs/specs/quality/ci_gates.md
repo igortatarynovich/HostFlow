@@ -1,14 +1,35 @@
 # CI Gates (Phase 0 #7)
 
-HostFlow's CI enforces three quality floors on every PR:
+HostFlow splits backend CI so a product slice is not blocked by the full
+historical pytest suite ([stabilize-integration-pytest-baseline.md](../tasks/stabilize-integration-pytest-baseline.md)).
 
-1. **Backend test coverage** — ratchet baseline (target 60%).
-2. **Frontend test coverage** — ratchet baseline (target 40%).
-3. **Frontend bundle-size budget** — total + per-chunk budget (no target; just
+**PR path (`backend-ci.yml`):** parallel jobs + path filters.
+
+- lint, guards (codegen / SPA literals / ADR-014 / REF-3.1), alembic
+- named gate families only when their write set (or shared `backend/app`)
+  changed: Forms C1–C6, Entity Workspace D1–D9, Documents E1–E7,
+  Workspace Capability, Reference R1–R5, Entity Field Composition CL1
+- aggregator job `tests` fails if any selected job failed
+- full `pytest --cov` is **not** on this path
+
+**Regression (`backend-regression.yml`):** nightly + `integration` push +
+`workflow_dispatch`. Full suite, tenant isolation, security package, coverage
+ratchet. Allowed to stay red as base-known debt. Not a PR merge gate.
+
+Frontend PR path is unchanged (`frontend-static-qa.yml`):
+
+1. **Frontend test coverage** — ratchet baseline (target 40%).
+2. **Frontend bundle-size budget** — total + per-chunk budget (no target; just
    no regressions without explicit review).
 
-All three use the same philosophy: **never silently regress**. Each gate reads
+Backend coverage still ratchets, but only on `backend-regression`. All
+ratchets use the same philosophy: **never silently regress**. Each gate reads
 a committed baseline; the baseline can only be bumped via a reviewable PR.
+
+Adding a named gate: add the pytest file to the matching family job in
+`.github/workflows/backend-ci.yml` and keep the human gate title as a
+substring in that file (contract tests grep it). Do not append another
+sequential step onto a single mega-job.
 
 ## Backend coverage
 
@@ -17,7 +38,7 @@ a committed baseline; the baseline can only be bumped via a reviewable PR.
 *Tool chain*: `pytest-cov` → `coverage.xml` (Cobertura) → custom gate.
 
 ```
-# CI step (see .github/workflows/backend-ci.yml)
+# CI step (see .github/workflows/backend-regression.yml)
 pytest -q \
   --cov=backend/app \
   --cov-config=.coveragerc \

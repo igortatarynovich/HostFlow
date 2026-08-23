@@ -9,4 +9,4 @@
 - **Retrieval audit (governance + helper, без call sites):** `test_retrieval_security_telemetry.py` — см. [`docs/security/retrieval-audit-governance.md`](../../../docs/security/retrieval-audit-governance.md).
 - **Tenant A/B matrix (API + Postgres):** `tests/api/test_tenant_isolation.py` (маркер `postgres_integration`; в CI — отдельный job + общий `tests/security`)
 
-Полный A/B API по-прежнему в `tests/api/test_tenant_isolation.py`; маркер и CI см. `pytest.ini` и `.github/workflows/backend-ci.yml`.
+Полный A/B API по-прежнему в `tests/api/test_tenant_isolation.py`; маркер и CI см. `pytest.ini` и `.github/workflows/backend-regression.yml`.
