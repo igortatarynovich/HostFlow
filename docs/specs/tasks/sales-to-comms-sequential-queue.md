@@ -5,7 +5,7 @@
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
 **Parents:** [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](../gates/goal-completion-gate.md) · [ADR-024](../architecture/ADR-024-acquisition-campaigns-intake-routing.md) · [C0.0 Communication Canon](c0-0-communication-canon.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md)
 
-> **2026-08-22:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** vs original D ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276)). **Workspace Capability Platform Completion** [COMPLETE](../gates/workspace-capability-platform-complete.md) (**PASS**) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); G4 PASS (Recruitment Application) — **not** the Documents proof. Intermediate #273: [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). **Product Track:** [Documents Platform E6](documents-platform-e6-document-expiry.md) — feat; Document expiry / validity. E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282); named Candidate Storage Bridge Gate). E4 ✅. Catalog unlock ≠ mass bind. Not mass D3–D9 bind. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Entity Workspace ≠ Application Workspace. Documents Foundation stays 🔄. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
+> **2026-08-22:** Epic C + A2 **PASS_WITH_CONSTRAINTS**. Forms C1–C6 ✅ / Foundation ✅ ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Entity Workspace D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)) and **goal-incomplete** vs original D ([audit](../gates/platform-scope-completeness-audit.md)). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270)). E2 ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)/[#276](https://github.com/igortatarynovich/HostFlow/pull/276)). **Workspace Capability Platform Completion** [COMPLETE](../gates/workspace-capability-platform-complete.md) (**PASS**) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); G4 PASS (Recruitment Application) — **not** the Documents proof. Intermediate #273: [PASS_WITH_CONSTRAINTS](../gates/workspace-capability-platform-g1-g5-closeout.md). **Product Track:** [Documents Platform E7](documents-platform-e7-document-requests.md) — brief; feat locked; Document requests. E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285); named Document Expiry Gate). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282); named Candidate Storage Bridge Gate). E4 ✅. Catalog unlock ≠ mass bind. Not mass D3–D9 bind. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Entity Workspace ≠ Application Workspace. Documents Foundation stays 🔄. **Engineering Track** = legacy pytest / Catalog Notifications↔Communication RFC / Kit Baseline chrome sync.  
 > Communication **C2.4 frozen** (gate residual R1).  
 > Base-known CI: same class as [acquisition-epic-p-base-known-ci-failures.md](acquisition-epic-p-base-known-ci-failures.md).
 
@@ -28,7 +28,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Documents Platform E6** Document expiry / validity — [brief](documents-platform-e6-document-expiry.md); feat; Hub validity SoT; D4/D8 stay; D3 / D5–D7 / D9 stay unbound | Almost all capacity |
+| **Product** | **Documents Platform E7** Document requests — [brief](documents-platform-e7-document-requests.md); feat locked; Hub outstanding-ask SoT; D4/D8 stay; D3 / D5–D7 / D9 stay unbound | Almost all capacity |
 | **Engineering** | [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / [pytest baseline](stabilize-integration-pytest-baseline.md) (deferred); Catalog Notifications↔Communication RFC | Background; full-suite red is base debt — does not block Acquisition merges when Stage suites/gates are green |
 
 **Open product GAPs:**
@@ -69,8 +69,9 @@
 - **Documents Platform E3 — First Consumer Bind + Document Link SoT** ← ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277)/[#278](https://github.com/igortatarynovich/HostFlow/pull/278) — [brief](documents-platform-e3-first-consumer-bind.md); first consumer = HR employee; named First Consumer Bind Gate  
 - **Documents Platform E4 — Candidate Document Link** ← ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279)/[#280](https://github.com/igortatarynovich/HostFlow/pull/280) — [brief](documents-platform-e4-candidate-document-link.md); D4 consume path = Document Link; named Candidate Document Link Gate  
 - **Documents Platform E5 — Candidate Storage Bridge Retirement** ← ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) — [brief](documents-platform-e5-candidate-storage-bridge.md); drop `candidate_id`; named Candidate Storage Bridge Gate  
-- **Documents Platform E6 — Document Expiry / Validity** ← **active** (feat) — [brief](documents-platform-e6-document-expiry.md); Hub validity SoT; D4/D8 stay; D3 / D5–D7 / D9 stay unbound; not mass bind / not OCR / not Foundation ✅  
-- **Documents Platform E7+** Remaining consumers / later lifecycle ← **locked until E6 feat**  
+- **Documents Platform E6 — Document Expiry / Validity** ← ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) — [brief](documents-platform-e6-document-expiry.md); Hub validity SoT; named Document Expiry Gate  
+- **Documents Platform E7 — Document Requests** ← **active** (brief; feat locked) — [brief](documents-platform-e7-document-requests.md); Hub outstanding-ask SoT; D4/D8 stay; D3 / D5–D7 / D9 stay unbound; not mass bind / not packages / not OCR / not Foundation ✅  
+- **Documents Platform E8+** Remaining consumers / later lifecycle ← **locked until E7 feat**  
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -125,11 +126,12 @@
 | **31** | **Documents Platform E3** First consumer bind + Document Link SoT | `docs/…` ✅ [#277](https://github.com/igortatarynovich/HostFlow/pull/277) · `feat/…` ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278) | ✅ named First Consumer Bind Gate · merge `cc106a38` |
 | **32** | **Documents Platform E4** Candidate Document Link | `docs/…` ✅ [#279](https://github.com/igortatarynovich/HostFlow/pull/279) · `feat/…` ✅ [#280](https://github.com/igortatarynovich/HostFlow/pull/280) | ✅ named Candidate Document Link Gate · merge `0af74913` |
 | **33** | **Documents Platform E5** Candidate storage-bridge retirement | `docs/…` ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281) · `feat/…` ✅ [#282](https://github.com/igortatarynovich/HostFlow/pull/282) | ✅ named Candidate Storage Bridge Gate · merge `702b922c` |
-| **34** | **Documents Platform E6** Document expiry / validity | `docs/…` ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284) · `feat/…` | **active** (feat) — Hub `expires_at` / `expiry_state`; not mass D3–D9 |
-| **35** | **Documents Platform E7+** Remaining consumers / later lifecycle | locked | until E6 feat |
+| **34** | **Documents Platform E6** Document expiry / validity | `docs/…` ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284) · `feat/…` ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285) | ✅ named Document Expiry Gate · merge `79e638c3` |
+| **35** | **Documents Platform E7** Document requests | `docs/…` | **active** (brief; feat locked) — Hub outstanding ask; not mass D3–D9 |
+| **36** | **Documents Platform E8+** Remaining consumers / later lifecycle | locked | until E7 feat |
 
 **C0–C2.3** ✅. **C2.4 frozen.** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** Documents Platform E6 — [Document Expiry / Validity](documents-platform-e6-document-expiry.md) (feat). Hub validity SoT. E5 ✅ [#282](https://github.com/igortatarynovich/HostFlow/pull/282) (named Candidate Storage Bridge Gate). E4 ✅. E3 ✅. E2 ✅. WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E1 ✅. D4/D8 stay bound. D3 / D5–D7 / D9 stay unbound. G4 stays Recruitment Application. Foundation stays 🔄. E7+ locked until this feat.  
+**Active (Product):** Documents Platform E7 — [Document Requests](documents-platform-e7-document-requests.md) (brief; feat locked). Hub outstanding-ask SoT. E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285) (named Document Expiry Gate). E5 ✅ [#282](https://github.com/igortatarynovich/HostFlow/pull/282) (named Candidate Storage Bridge Gate). E4 ✅. E3 ✅. E2 ✅. WCP [COMPLETE](../gates/workspace-capability-platform-complete.md). E1 ✅. D4/D8 stay bound. D3 / D5–D7 / D9 stay unbound. G4 stays Recruitment Application. Foundation stays 🔄. E8+ locked until this feat.  
 **Engineering:** legacy full-repo pytest does **not** stop Product Track unless Product PR breaks deploy/Alembic/new-module bootstrap.
 
 ---
@@ -249,9 +251,13 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 [documents-platform-e5-candidate-storage-bridge.md](documents-platform-e5-candidate-storage-bridge.md) [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282). Drop `documents.candidate_id`. Writers persist Hub links. Merge `702b922c`. Foundation stayed 🔄.
 
-### Documents Platform E6 — Document Expiry / Validity ← **active** (feat)
+### Documents Platform E6 — Document Expiry / Validity ← **DONE** (#284 / #285)
 
-[documents-platform-e6-document-expiry.md](documents-platform-e6-document-expiry.md). Hub validity SoT. D4/D8 stay bound. D3 / D5–D7 / D9 stay unbound. Not mass bind. Not OCR. Foundation stays 🔄.
+[documents-platform-e6-document-expiry.md](documents-platform-e6-document-expiry.md) [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285). Hub `expires_at` / `expiry_state`. Merge `79e638c3`. Foundation stayed 🔄.
+
+### Documents Platform E7 — Document Requests ← **active** (brief; feat locked)
+
+[documents-platform-e7-document-requests.md](documents-platform-e7-document-requests.md). Hub outstanding-ask SoT. D4/D8 stay bound. D3 / D5–D7 / D9 stay unbound. Not mass bind. Not packages / OCR. Foundation stays 🔄.
 
 ---
 
@@ -329,15 +335,16 @@ Next branch only after:
 **Do not** start C2.4 (frozen; gate residual R1).  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
 **Do not** mix Stage 5 settings/enable-disable or R6 table-cutover into Documents.  
-**Do not** treat Shell/chrome or D1–D9 named gates as original Entity Platform done; **do not** mix E6 into an E5/E4/E3/E2/WCP PR; **do not** multiply new entity/application screens, rails, or D10 cutovers; **do not** fold Application Workspace into Entity Workspace; **do not** treat E3 HR bind or E4 Candidate bind as mass D3–D9 `documents` bind; **do not** treat Shell `documents` nav, Vacancy docs section, HR dossier, CandidateCard, or Services billing tab as the D2 `documents` slot; **do not** treat Recruitment Application G4 as the Documents proof; **do not** start OCR / e-sign / packages / Forms P3–P5 / Billing / AI; **do not** leave `documents.candidate_id` as a nullable write target in E5; **do not** patch Recruitment RODO/comments as the platform fix; **do not** mix ListWorkspace into this close-out.  
+**Do not** treat Shell/chrome or D1–D9 named gates as original Entity Platform done; **do not** mix E7 into an E6/E5/E4/E3/E2/WCP PR; **do not** multiply new entity/application screens, rails, or D10 cutovers; **do not** fold Application Workspace into Entity Workspace; **do not** treat E3 HR bind or E4 Candidate bind as mass D3–D9 `documents` bind; **do not** treat Shell `documents` nav, Vacancy docs section, HR dossier, CandidateCard, or Services billing tab as the D2 `documents` slot; **do not** treat Recruitment Application G4 as the Documents proof; **do not** start OCR / e-sign / packages / Forms P3–P5 / Billing / AI; **do not** put a request / reminder table in Document Hub; **do not** mint Catalog `document.requested`; **do not** leave `documents.candidate_id` as a nullable write target in E5; **do not** patch Recruitment RODO/comments as the platform fix; **do not** mix ListWorkspace into this close-out.  
 **Do** apply [Goal Completion Gate](../gates/goal-completion-gate.md) before marking a future platform phase COMPLETE.  
 **Do** require `**Phase class:** platform` + [Original Goal → Completion Proof](../gates/goal-completion-gate.md) on every new platform phase brief (problem to permanently remove + named consumer — not a deliverables list).  
-**Do** amend this queue when switching Product Active (this revision: live = Documents Platform E6 feat).
+**Do** amend this queue when switching Product Active (this revision: live = Documents Platform E7 brief; feat locked).
 
 ---
 
 ## 8. History
 
+- 2026-08-23: E7 brief opened — Document requests. Product Track → [Documents Platform E7](documents-platform-e7-document-requests.md) (feat locked). E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285) (`79e638c3`). D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.
 - 2026-08-23: E6 feat opened — Hub expiry read on public contract; workflow SoT leaves Candidate FK. Product Track stays [Documents Platform E6](documents-platform-e6-document-expiry.md). E7+ locked. Foundation stays 🔄.
 - 2026-08-23: E6 brief opened — Document expiry / validity. Product Track → [Documents Platform E6](documents-platform-e6-document-expiry.md) (feat locked). E5 ✅ [#282](https://github.com/igortatarynovich/HostFlow/pull/282) (`702b922c`). D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.
 - 2026-08-22: E5 feat opened — drop `documents.candidate_id`; Hub-only Candidate relationship. Product Track stays [Documents Platform E5](documents-platform-e5-candidate-storage-bridge.md). E6+ locked. Foundation stays 🔄.
