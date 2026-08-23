@@ -1,8 +1,8 @@
 """Platform Country Registry — Reference R1 authoritative definition.
 
 JSON at ``docs/specs/platform/country-registry-v1.json`` is the identity SoT.
-This module is the in-process loader and contract surface. It does **not**
-replace ``constants/catalogs.py`` as runtime SoT (that cutover is Reference R2).
+This module is the in-process loader and contract surface. Reference R2
+projects runtime ``COUNTRIES`` / ``DIAL_CODES`` from this registry.
 
 Public vocabulary: ``identity`` | ``classifications`` | ``labels``.
 Do not expose ``immutable`` on this contract.
