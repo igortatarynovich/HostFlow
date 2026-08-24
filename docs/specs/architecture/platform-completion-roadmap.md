@@ -305,7 +305,8 @@ Not standalone AI features. A **service layer over existing platforms**:
 | [documents-platform-e6-document-expiry.md](../tasks/documents-platform-e6-document-expiry.md) | E6 COMPLETE — Document expiry / validity |
 | [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md) | E7 COMPLETE — Document requests |
 | [entity-field-composition-cl0-contract-seal.md](../tasks/entity-field-composition-cl0-contract-seal.md) | CL0 contract seal ✅ (treated PASS) |
-| [entity-field-composition-cl2-membership.md](../tasks/entity-field-composition-cl2-membership.md) | **Active Product Track** — Entity Field Composition CL2 membership runtime |
+| [entity-field-composition-cl2-membership.md](../tasks/entity-field-composition-cl2-membership.md) | CL2 membership runtime ✅ (#303) |
+| [entity-field-composition-cl3-layout.md](../tasks/entity-field-composition-cl3-layout.md) | **Active Product Track** — Entity Field Composition CL3 layout runtime |
 | [platform-reference-identity-sot.md](../tasks/platform-reference-identity-sot.md) | **Active Engineering Track** — Reference R1 now; then {R2 ∥ R3}; not Epic C residual R1 |
 | [lifecycle-identity-l0-contract-seal.md](../tasks/lifecycle-identity-l0-contract-seal.md) | **LI-1 after CL1** — existence/identity guard (ADR-037); docs sealed; LI-2+ do not block CL2+ |
 | [documents-platform-e3-first-consumer-bind.md](../tasks/documents-platform-e3-first-consumer-bind.md) | E3 first consumer bind ✅ |
