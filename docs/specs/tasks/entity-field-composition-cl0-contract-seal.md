@@ -105,9 +105,9 @@ E7 already matches Document kind: request lives on `document_type_code`. Engine 
 
 | Slice | Focus | Status |
 |-------|--------|--------|
-| **CL0** | Contract seal (this) | ← **active** (brief; feat locked — docs only) |
-| **CL1** | Inventory current Candidate: fields, `document_configs`, screening-as-required, extra/UI holes | **next Product** after CL0 Gate; observes codes, does **not** canonize country/document-type existence |
-| **CL2** | Membership runtime | locked until CL1 |
+| **CL0** | Contract seal | ✅ PASS (brief; treated PASS via #289) |
+| **CL1** | Inventory current Candidate | ✅ PASS [#299](https://github.com/igortatarynovich/HostFlow/pull/299) — [brief](entity-field-composition-cl1-candidate-inventory.md) |
+| **CL2** | Membership runtime | ← **active** — [brief](entity-field-composition-cl2-membership.md) |
 | **CL3** | Layout runtime (proof = D4 Information zone) | locked until CL2 |
 | **CL4** | Builder (two modes) | locked until CL3 |
 | **CL5** | Q&A | locked until CL4 |

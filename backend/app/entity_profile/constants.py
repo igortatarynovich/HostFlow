@@ -19,9 +19,13 @@ TARGETED_ADVERTISING_PRESENTATION_CODE = "service_sales.targeted_advertising.pub
 
 DRIVER_CE_PROFILE_CODE = "recruitment.candidate.driver_ce"
 DRIVER_CE_INTAKE_PRESENTATION_CODE = "recruitment.candidate.driver_ce.meta_short"
+DRIVER_CE_SCREENING_PACK_CODE = "recruitment.driver_ce_screening"
+DRIVER_CE_DOCUMENT_PACK_CODE = "recruitment.driver_ce_documents"
 
 WAREHOUSE_WORKER_PROFILE_CODE = "recruitment.candidate.warehouse_worker"
 WAREHOUSE_WORKER_INTAKE_PRESENTATION_CODE = "recruitment.candidate.warehouse_worker.public_short"
+WAREHOUSE_WORKER_SCREENING_PACK_CODE = "recruitment.warehouse_worker_screening"
+WAREHOUSE_WORKER_DOCUMENT_PACK_CODE = "recruitment.warehouse_worker_documents"
 
 DRIVER_CE_UA_PROFILE_CODE = "recruitment.candidate.driver_ce_ua"
 DRIVER_CE_UA_INTAKE_PRESENTATION_CODE = "recruitment.candidate.driver_ce_ua.meta_short"
