@@ -1,24 +1,23 @@
 /**
  * Backend `GET /settings/communications` enforces `assert_comm_feature_access(..., communicationsAdmin)`.
- * Default allowed roles (unless overridden in tenant settings): administrator, supervisor (+ employee team_lead).
+ * Allowed: administrator and team-lead lane (legacy supervisor/manager/lead, or employee + team_lead).
+ * Do not use JOB_PROXY allowlists that expand to canonical `employee` — that would make every recruiter hit a 403.
  * Platform superadmin bypass exists only on the server.
  */
-import { actorSatisfiesRoleAllowlist, canUseTeamOverviewLane } from '../auth/trustRoles'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 
 export const ROLES_CAN_LOAD_FULL_COMMUNICATIONS_SETTINGS = new Set([
   'administrator',
   'supervisor',
-  'employee',
+  'manager',
+  'lead',
 ])
 
 export function roleMayLoadFullCommunicationsSettings(
   role: string | undefined,
   opts?: { accessContext?: string | null; presetId?: string | null },
 ): boolean {
-  if (canUseTeamOverviewLane({ role, presetId: opts?.presetId })) return true
-  return actorSatisfiesRoleAllowlist({
-    role,
-    allowed: ROLES_CAN_LOAD_FULL_COMMUNICATIONS_SETTINGS,
-    accessContext: opts?.accessContext,
-  })
+  const ur = String(role || '').trim().toLowerCase()
+  if (ROLES_CAN_LOAD_FULL_COMMUNICATIONS_SETTINGS.has(ur)) return true
+  return canUseTeamOverviewLane({ role, presetId: opts?.presetId })
 }

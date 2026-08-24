@@ -18,6 +18,8 @@ import { useAuth } from '../store/useAuth'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { useCommunicationsSetupStatus } from '../hooks/useCommunicationsSetupStatus'
 import { useEmailInboundSync } from '../hooks/useEmailInboundSync'
+import { usePermissions } from '../hooks/usePermissions'
+import { roleMayLoadFullCommunicationsSettings } from '../constants/communicationsSettingsAccess'
 import InboxUnifiedThreadList, {
   inboxHubFilterToQueue,
   type InboxHubFilter,
@@ -161,6 +163,11 @@ export default function CommunicationsInboxHubPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const listQuery = useMemo(() => readInboxListQuery(searchParams), [searchParams])
   const { canUseCommunicationsFeature, loading: accessLoading } = useCommunicationsAccess()
+  const { rawRole, role, accessContext, presetId } = usePermissions()
+  const canLoadAdminSettings = roleMayLoadFullCommunicationsSettings(rawRole || role, {
+    accessContext,
+    presetId,
+  })
   const commSetup = useCommunicationsSetupStatus()
   const hasMessages = canUseCommunicationsFeature('messages')
   const hasEmail = canUseCommunicationsFeature('email')
@@ -234,7 +241,7 @@ export default function CommunicationsInboxHubPage() {
         queue: inboxHubFilterToQueue(hubFilter),
       })
       setThreads(items)
-      const cfg = await getCommunicationsSettings().catch(() => null)
+      const cfg = canLoadAdminSettings ? await getCommunicationsSettings().catch(() => null) : null
       const commandItems = Array.isArray(cfg?.commands?.items) ? cfg.commands.items : []
       setCommandTemplates(commandItems.filter((x) => x && x.enabled !== false))
       if (effectiveChannel === 'email' && hasEmail) {
@@ -253,7 +260,7 @@ export default function CommunicationsInboxHubPage() {
     } finally {
       setLoading(false)
     }
-  }, [effectiveChannel, hasEmail, hasMessages, hubFilter, listQuery.q, planLimitModal, t])
+  }, [canLoadAdminSettings, effectiveChannel, hasEmail, hasMessages, hubFilter, listQuery.q, planLimitModal, t])
 
   useEffect(() => {
     void load()

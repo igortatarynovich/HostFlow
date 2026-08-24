@@ -81,6 +81,52 @@ async def test_settings_get_requires_communications_admin_access(
 
 
 @pytest.mark.anyio
+async def test_recruiter_can_list_threads_by_default(
+    client: AsyncClient,
+    recruiter_headers: dict[str, str],
+) -> None:
+    """ADR-036 remaps recruiter JWT to employee; default messages access must still allow inbox."""
+    resp = await client.get("/api/v1/communications/threads", headers=recruiter_headers, params={"limit": 20})
+    assert resp.status_code == 200, resp.text
+
+
+@pytest.mark.anyio
+async def test_canonical_employee_jwt_can_list_threads(
+    client: AsyncClient,
+    recruiter_token: str,
+    tenant_id: str,
+) -> None:
+    from backend.app.auth.jwt_tools import decode as decode_jwt
+    from backend.app.auth.jwt_tools import encode as encode_jwt
+
+    data = decode_jwt(recruiter_token)
+    data["role"] = "employee"
+    data["preset_id"] = "recruiter"
+    token = encode_jwt(data)
+    headers = {"Authorization": f"Bearer {token}", "X-Tenant-Id": tenant_id}
+    resp = await client.get("/api/v1/communications/threads", headers=headers, params={"limit": 20})
+    assert resp.status_code == 200, resp.text
+
+
+@pytest.mark.anyio
+async def test_canonical_employee_cannot_load_communications_admin_settings(
+    client: AsyncClient,
+    recruiter_token: str,
+    tenant_id: str,
+) -> None:
+    from backend.app.auth.jwt_tools import decode as decode_jwt
+    from backend.app.auth.jwt_tools import encode as encode_jwt
+
+    data = decode_jwt(recruiter_token)
+    data["role"] = "employee"
+    data["preset_id"] = "recruiter"
+    token = encode_jwt(data)
+    headers = {"Authorization": f"Bearer {token}", "X-Tenant-Id": tenant_id}
+    resp = await client.get("/api/v1/settings/communications", headers=headers)
+    assert resp.status_code == 403
+
+
+@pytest.mark.anyio
 async def test_email_entitlement_blocks_email_channel_endpoints(
     client: AsyncClient,
     manager_headers: dict[str, str],
