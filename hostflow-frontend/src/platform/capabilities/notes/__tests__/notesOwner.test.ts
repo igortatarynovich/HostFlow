@@ -29,7 +29,13 @@ describe('notesOwner', () => {
     post.mockReset()
   })
 
-  it('pre-convert application has no candidate transport', async () => {
+  it('pre-convert recruitment application uses application comments transport', async () => {
+    get.mockResolvedValue({
+      data: {
+        id: 'app-1',
+        extensions: { application_comments_v1: [{ id: 'c1', text: 'call back' }] },
+      },
+    })
     const subject = ctx({
       application: {
         id: 'app-1',
@@ -40,13 +46,23 @@ describe('notesOwner', () => {
         tab_bucket: 'new',
       },
     })
-    expect(notesSubjectKey(subject)).toBe('')
-    await expect(listNotes(subject)).resolves.toEqual({ available: false, items: [] })
-    expect(get).not.toHaveBeenCalled()
+    expect(notesSubjectKey(subject)).toBe('application:app-1')
+    await expect(listNotes(subject)).resolves.toEqual({
+      available: true,
+      items: [{ id: 'c1', text: 'call back', created_at: undefined, author_name: null }],
+    })
+    expect(get).toHaveBeenCalledWith('/recruitment/applications/app-1')
+    await addNote(subject, '  next  ')
+    expect(post).toHaveBeenCalledWith('/recruitment/applications/app-1/comments', { note: 'next' })
   })
 
   it('hides candidate notes transport behind the owner', async () => {
-    get.mockResolvedValue({ data: [{ id: 'n1', text: 'hello' }] })
+    get.mockImplementation(async (url: string) => {
+      if (String(url).includes('/candidates/')) {
+        return { data: [{ id: 'n1', text: 'hello' }] }
+      }
+      return { data: { id: 'app-1', extensions: { application_comments_v1: [] } } }
+    })
     const subject = ctx({
       application: {
         id: 'app-1',

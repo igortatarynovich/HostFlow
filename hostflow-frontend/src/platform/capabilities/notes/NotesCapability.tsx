@@ -70,7 +70,7 @@ export function NotesCapability(ctx: WorkspaceCapabilityRenderContext) {
       {loading ? <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p> : null}
       {!loading && !available ? (
         <p className="text-sm text-slate-500">
-          Заметки появятся после создания кандидата. Shared Notes widget размещён хостом — локальная секция комментариев запрещена.
+          Нет субъекта для заметок на этом экране. Shared Notes widget размещён хостом — локальная секция комментариев запрещена.
         </p>
       ) : null}
       {!loading && available

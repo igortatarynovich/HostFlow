@@ -37,7 +37,7 @@ G3 Next consumer without new primitive? **Yes for a new Application proof path**
 
 G4 End-to-end proof (path + what it does not fork): Recruitment Application — `ApplicationRecruitmentDetailPanel` → `ApplicationWorkspaceCapabilityHost` + `RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS`. Parent JSX does not own vacancy/assignee/notes/consent/stage composition. Named gate forbids return of local Notes/Consent/rail blocks. Candidate is not the proof.
 
-G5 Remaining allowed workarounds (owner / until): dual-host typed-only until [host runtime-equivalence](../tasks/workspace-capability-host-runtime-equivalence.md); Notes pre-convert stub + candidate notes storage until Notes owner boundary; Consent Lead API transport leakage until Compliance owner hides transport; D2 `documents` reserved; Sales/Candidate inventory migrate-on-touch; Action Canon / Event registry remain referenced.
+G5 Remaining allowed workarounds (owner / until): dual-host typed-only until [host runtime-equivalence](../tasks/workspace-capability-host-runtime-equivalence.md); Consent Lead API stays inside consentOwner; D2 `documents` reserved; Sales/Candidate inventory migrate-on-touch; Action Canon / Event registry remain referenced.
 
 Outcome: **PASS_WITH_CONSTRAINTS**
 

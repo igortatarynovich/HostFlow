@@ -39,7 +39,7 @@ G3 Next consumer without new primitive? **Yes.** Documents E2 enables D2 `docume
 
 G4 End-to-end proof (path + what it does not fork): Recruitment Application — `ApplicationRecruitmentDetailPanel` → `ApplicationWorkspaceCapabilityHost` + `RECRUITMENT_APPLICATION_PROOF_CONTRIBUTIONS`. Candidate Entity Workspace is the `entity_workspace` runtime-equivalence bind, **not** this proof.
 
-G5 Remaining allowed workarounds (owner / until): Sales/Client/Vacancy/HR/Order stay on `EntityWorkspaceCompositionHost` until migrate-on-touch (inventory owner); D2 `documents` reserved until E2 feat; Notes pre-convert stub when no candidate subject (Notes owner); Action Canon / Event registry remain referenced; `input_runtime` named hardening; ListWorkspace is a separate previous slice.
+G5 Remaining allowed workarounds (owner / until): Sales/Client/Vacancy/HR/Order stay on `EntityWorkspaceCompositionHost` until migrate-on-touch (inventory owner); D2 `documents` reserved until E2 feat; Action Canon / Event registry remain referenced; `input_runtime` named hardening; ListWorkspace is a separate previous slice.
 
 Outcome: **PASS**
 

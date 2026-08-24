@@ -24,7 +24,16 @@ export function consentSubjectKey(ctx: WorkspaceCapabilityRenderContext): string
 }
 
 function resolveLeadId(ctx: WorkspaceCapabilityRenderContext): string {
-  return String(ctx.application?.transport_lead_id || '').trim()
+  const application = ctx.application
+  if (!application) return ''
+  const extensions = application.extensions || {}
+  const explicit = String(
+    application.transport_lead_id || extensions.transport_lead_id || '',
+  ).trim()
+  if (explicit) return explicit
+  // Recruitment ApplicationOut.id is the transport Lead id until R6.
+  if (application.module === 'recruitment') return String(application.id || '').trim()
+  return ''
 }
 
 export async function loadConsent(ctx: WorkspaceCapabilityRenderContext): Promise<ConsentView> {

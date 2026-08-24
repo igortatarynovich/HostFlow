@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from backend.app.models import Lead
 from backend.app.modules.leads.normalizer import resolve_b2b_inquiry_company_name
@@ -264,6 +264,28 @@ def _sales_questionnaire_summary(normalized: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _application_comments(normalized: Dict[str, Any]) -> List[Dict[str, Any]]:
+    raw = normalized.get("application_comments_v1")
+    if not isinstance(raw, list):
+        return []
+    items: List[Dict[str, Any]] = []
+    for row in raw:
+        if not isinstance(row, dict):
+            continue
+        text = _text(row.get("text") or row.get("note"))
+        if not text:
+            continue
+        items.append(
+            {
+                "id": _text(row.get("id")) or None,
+                "text": text,
+                "created_at": row.get("created_at") or row.get("at"),
+                "author_name": row.get("author_name") or row.get("author") or None,
+            }
+        )
+    return items
+
+
 def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
     """LEGACY PROJECTION (Runtime Split R4 — deprecate for R6).
 
@@ -309,9 +331,12 @@ def lead_to_recruitment_application(lead: Lead) -> ApplicationOut:
             "vacancy_id": vacancy_id,
             "vacancy_title": _text(getattr(lead, "vacancy_title", None)) or _text(normalized.get("vacancy_title")) or None,
             "fit_status": _text(getattr(lead, "fit_status", None)) or None,
+            "transport_lead_id": str(lead.id),
+            "application_comments_v1": _application_comments(normalized),
         },
         outcome_entity_id=candidate_id,
         outcome_entity_type="candidate" if candidate_id else None,
+        transport_lead_id=str(lead.id),
     )
 
 

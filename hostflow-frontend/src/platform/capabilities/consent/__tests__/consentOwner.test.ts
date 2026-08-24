@@ -35,13 +35,30 @@ describe('consentOwner', () => {
     markLeadRodoSourceProvided.mockReset()
   })
 
-  it('hides Lead transport when there is no intake id', async () => {
+  it('uses recruitment application id as Lead transport when transport_lead_id is absent', async () => {
+    getLead.mockResolvedValue({ candidate_id: null, normalized: {} })
     const subject = ctx({
       application: {
-        id: 'app-1',
+        id: 'lead-app-1',
         module: 'recruitment',
         contact: { name: 'Ada' },
         title: 'Ada',
+        status: 'new',
+        tab_bucket: 'new',
+      },
+    })
+    expect(consentSubjectKey(subject)).toBe('lead-app-1')
+    await loadConsent(subject)
+    expect(getLead).toHaveBeenCalledWith('lead-app-1')
+  })
+
+  it('does not treat sales application id as Lead transport', async () => {
+    const subject = ctx({
+      application: {
+        id: 'si-1',
+        module: 'sales',
+        contact: { name: 'Acme' },
+        title: 'Acme',
         status: 'new',
         tab_bucket: 'new',
       },
