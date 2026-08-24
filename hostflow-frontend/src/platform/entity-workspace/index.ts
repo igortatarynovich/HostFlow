@@ -63,6 +63,7 @@ export type { ServicesOrderCompositionSlotId } from './servicesOrderConsumer'
 
 export { EntityWorkspaceCompositionHost } from './compositionHost'
 export { CandidateEntityWorkspacePanel } from './CandidateEntityWorkspacePanel'
+export { CandidateInformationLayout } from './CandidateInformationLayout'
 
 export type {
   ContextRailBlockId,

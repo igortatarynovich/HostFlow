@@ -5,7 +5,8 @@
 **Owner:** Architecture canon + platform core team.
 
 > **CL0 (2026-08-23):** Entity Profile is a **role manifest** ([brief](../tasks/entity-field-composition-cl0-contract-seal.md)). Baseline presence on a Profile field is `member` / `intake` / `card_save` only. `transition` / `handoff` / `transition_level` are **not** Profile-field properties — they belong to Process Profile / Transfer Policy. `screening_pack_code` is a **ref** (same class as `document_pack_code` / `default_layout_code` / `process_profile_code`). Runtime schema columns may remain until a later CL migration; new code must not treat transition/handoff as Profile-field required.  
-> **CL2 (2026-08-24):** Membership runtime is `entity_profile_membership.v1` ([brief](../tasks/entity-field-composition-cl2-membership.md)). Producer: `is_field_member` / `resolve_membership` / `presence_level`. Layout remains CL3. Do **not** drop `transition_level` columns in this slice.
+> **CL2 (2026-08-24):** Membership runtime is `entity_profile_membership.v1` ([brief](../tasks/entity-field-composition-cl2-membership.md)). Producer: `is_field_member` / `resolve_membership` / `presence_level`.  
+> **CL3 (2026-08-24):** Layout runtime is `entity_profile_layout.v1` ([brief](../tasks/entity-field-composition-cl3-layout.md)). D4 Information zone places `candidate.card` filtered through CL2 membership. Builder remains CL4. Do **not** drop `transition_level` columns in this slice.
 
 ### P1 implementation status (2026-06-22)
 
@@ -919,6 +920,7 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 - [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) — business requirements / readiness / gates (**v1 closed** §20); CL0: four kinds, structured result, not a boolean
 - [`entity-field-composition-cl0-contract-seal.md`](../tasks/entity-field-composition-cl0-contract-seal.md) — Profile = role manifest; `transition` / `handoff` off Profile field; `screening_pack_code` as ref
 - [`entity-field-composition-cl2-membership.md`](../tasks/entity-field-composition-cl2-membership.md) — CL2 membership runtime (`entity_profile_membership.v1`)
+- [`entity-field-composition-cl3-layout.md`](../tasks/entity-field-composition-cl3-layout.md) — CL3 layout runtime (`entity_profile_layout.v1`; D4 Information zone)
 - [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — document instance lifecycle runtime (**v1 closed** §20)
 - [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — expiry notification events (downstream of Document Runtime v1)
 - [`process-engine.md`](process-engine.md) — process behaviour (layer above)

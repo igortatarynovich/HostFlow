@@ -35,6 +35,10 @@ from backend.app.entity_profile.presentation_runtime import (
     resolve_form_presentation,
     resolve_form_presentation_for_intake_source,
 )
+from backend.app.entity_profile.layout_runtime import (
+    CONTRACT_ID as ENTITY_PROFILE_LAYOUT_V1,
+    resolve_layout,
+)
 from backend.app.entity_profile.membership_runtime import (
     CONTRACT_ID as ENTITY_PROFILE_MEMBERSHIP_V1,
     is_field_member,
@@ -54,6 +58,7 @@ __all__ = [
     "DecisionResult",
     "FORM_PRESENTATION_RUNTIME_V1",
     "FormPresentationNotFoundError",
+    "ENTITY_PROFILE_LAYOUT_V1",
     "ENTITY_PROFILE_MEMBERSHIP_V1",
     "EntityProfileRegistry",
     "OutcomeDecisionContext",
@@ -78,6 +83,7 @@ __all__ = [
     "resolve_effective_entity_profile",
     "resolve_entity_profile_facade",
     "resolve_entity_profile_for_intake_source",
+    "resolve_layout",
     "resolve_membership",
     "resolve_form_presentation",
     "resolve_form_presentation_for_intake_source",
