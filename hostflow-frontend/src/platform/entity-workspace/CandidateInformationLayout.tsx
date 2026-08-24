@@ -1,7 +1,8 @@
 /**
  * CL3 — D4 Information zone places Entity Profile card layout.
  *
- * Page type `candidate.card` only. Not a form template. Builder is CL4.
+ * Page type `candidate.card` only. Not a form template.
+ * CL4 builder compiles card into this zone; form is a separate artifact.
  * Membership (CL2) owns which fields exist; this zone places presentation.
  */
 
@@ -18,8 +19,8 @@ export function CandidateInformationLayout() {
     >
       <p className="font-medium text-slate-800">Information</p>
       <p>
-        Card layout from Entity Profile membership. Not an intake form. Builder
-        stays CL4.
+        Card layout from Entity Profile membership. Not an intake form. CL4
+        builder compiles card here.
       </p>
     </section>
   )

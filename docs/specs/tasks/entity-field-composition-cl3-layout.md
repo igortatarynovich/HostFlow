@@ -1,6 +1,6 @@
 # Entity Field Composition CL3 — Layout runtime
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **PASS** [#304](https://github.com/igortatarynovich/HostFlow/pull/304) / `8c04d696`  
 **Phase class:** platform  
 **Branch:** `feat/entity-field-composition-cl3-layout`  
 **Parents:** [CL0 contract seal](entity-field-composition-cl0-contract-seal.md) · [CL2 membership](entity-field-composition-cl2-membership.md) · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Field Registry card configuration](../platform/field-registry-card-configuration.md)
@@ -91,3 +91,4 @@ Unlocks: **CL4** (builder, two modes). Does **not** unlock DR1-runtime or E8.
 ## History
 
 - 2026-08-24: CL3 layout runtime opened — `entity_profile_layout.v1`; D4 Information zone proof; membership-filtered `candidate.card`; no builder / no form template.
+- 2026-08-24: CL3 Gate **PASS** [#304](https://github.com/igortatarynovich/HostFlow/pull/304) / `8c04d696`. Unlocks CL4.

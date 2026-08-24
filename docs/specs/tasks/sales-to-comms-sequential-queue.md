@@ -29,7 +29,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **Entity Field Composition CL3** Layout runtime — [brief](entity-field-composition-cl3-layout.md); D4 Information zone; not builder / not E8 / not DR1-runtime | Almost all capacity |
+| **Product** | **Entity Field Composition CL4** Builder (two modes) — [brief](entity-field-composition-cl4-builder.md); D4 places card, not form; not Q&A / not E8 / not DR1-runtime | Almost all capacity |
 | **Engineering** | **Reference R5** Policy merge — [brief](platform-reference-identity-sot.md); after R2∧R4 Gates PASS | Active Engineering slice. Parallel CL0 only. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background |
 
 ---
@@ -42,8 +42,8 @@ This section is the **only** “what starts next” SoT. Horizon A–G stays in 
 
 | Role | Value |
 |------|--------|
-| **Active Product** | **CL3** — [Entity Field Composition layout runtime](entity-field-composition-cl3-layout.md) |
-| **Queued Product successor** | **CL4** (builder, two modes). Not DR1-runtime. Not E8. |
+| **Active Product** | **CL4** — [Entity Field Composition builder (two modes)](entity-field-composition-cl4-builder.md) |
+| **Queued Product successor** | **CL5** (Q&A). Not DR1-runtime. Not E8. |
 | **Active Engineering** | **Reference R5** (`ref-id-r5`) |
 | **Queued Engineering after R5** | Reference Program Exit Gate |
 | **Phase E** | **E7 = DONE**. **E8-bind = unlocked** (not auto-scheduled). **E8-eval = locked** |
@@ -94,7 +94,7 @@ Fan-out is **only** `{R2, R3}`. Reference R5 is **not** a third concurrent Engin
 ### Product ladder
 
 ```text
-CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → …
+CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → …
 DR1-runtime  waits on  DR1-contract ∧ Reference R5   (does not block CL2+)
 ```
 
@@ -106,12 +106,12 @@ DR1-runtime  waits on  DR1-contract ∧ Reference R5   (does not block CL2+)
 | **P3** | [DR1-contract](engine-document-request-dr1-contract.md) Engine → Document Request contract | **DR1 Contract Gate** — Engine→Hub outstanding-ask contract sealed; no mass generation | **CL1 Gate ∧ LI-1 Gate**. If the contract already names canonical type ids: also **Reference R3 Gate ∧ Reference R4 Gate** | CL2; DR1-runtime (join R5) |
 | **P4** | [CL2](entity-field-composition-cl2-membership.md) Membership runtime | **CL2 Gate** — `entity_profile_membership.v1`; driver_ce members + intake/card_save; screening pack as ref; no layout | **DR1-contract Gate** | CL3 |
 | **P5** | [CL3](entity-field-composition-cl3-layout.md) Layout runtime | **CL3 Gate** — D4 Information zone places `entity_profile_layout.v1` / `candidate.card`; membership-filtered; no builder | **CL2 Gate** | CL4 |
-| **P6** | CL4 Builder (two modes) | **CL4 Gate** | CL3 | CL5 |
+| **P6** | [CL4](entity-field-composition-cl4-builder.md) Builder (two modes) | **CL4 Gate** — card vs form compile over closed page types; D4 places card, not form | **CL3 Gate** | CL5 |
 | **P7** | CL5 Q&A | **CL5 Gate** | CL4 | CL6 |
 | **P8** | CL6 Flight mapping | **CL6 Gate** | CL5 | later CL via queue amendment |
 | **P-DR** | **DR1-runtime** Engine generation | **DR1 Runtime Gate** — Engine may create Hub outstanding asks; evaluation consumers may run | **DR1-contract Gate ∧ Reference R5 Gate** | does **not** block CL2+ |
 
-**Now:** P5 (CL3 layout runtime). **Next Product after CL3 Gate:** CL4 builder. **Not** DR1-runtime. **Not** E8.
+**Now:** P6 (CL4 builder, two modes). **Next Product after CL4 Gate:** CL5 Q&A. **Not** DR1-runtime. **Not** E8.
 
 LI-1 is the **only** Lifecycle slice between CL1 and CL2. LI-2…LI-4 stay in [the Lifecycle brief](lifecycle-identity-l0-contract-seal.md) and do not stall Field Composition.
 
@@ -132,7 +132,7 @@ Engineering:
             → (r2 ∧ r4) → ref-id-r5 → ref-id-exit
 
 Product:
-  CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → …
+  CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → …
   DR1-runtime: DR1-contract ∧ ref-id-r5
 
 Documents:
@@ -157,7 +157,7 @@ Program horizon of this amendment: Reference Program Exit Gate **or** CL6 (which
 
 A reader who has only this section can answer every item **yes**:
 
-1. Exactly one **Active Product** slice (now: CL0).  
+1. Exactly one **Active Product** slice (now: CL4).  
 2. Exactly one **Active Engineering** slice, **or** the named fan-out `{Reference R2, Reference R3}` after Reference R1 Gate — never a third concurrent Engineering slice. After that window, Engineering collapses to one Active slice.  
 3. Every queued slice has a named predecessor.  
 4. Every slice has an owner track. Unlocked work is not a third track.  
@@ -213,7 +213,7 @@ A reader who has only this section can answer every item **yes**:
 - **Documents Platform E7 — Document Requests** ← ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) — [brief](documents-platform-e7-document-requests.md); Hub outstanding-ask SoT; named Document Requests Gate  
 - **Entity Field Composition CL0 — Contract Seal** ← **PASS** (brief; treated PASS via #289) — [brief](entity-field-composition-cl0-contract-seal.md); Page Type + two builder modes; Profile = role manifest; four requirement kinds; Engine not boolean; `transition`/`handoff` off Profile field  
 - **Reference R1–R5** ← **R1 now** (Engineering; parallel CL0 only) — [brief](platform-reference-identity-sot.md); after R1: **{R2 ∥ R3}** then R3→R4 then (R2 ∧ R4)→R5 → **Reference Program Exit Gate**. E8-bind unlock after R3∧R4 (not auto-scheduled). E8-eval after R5 ∧ E8-bind
-- **CL3** Entity Field Composition layout runtime ← **active** — [brief](entity-field-composition-cl3-layout.md); `entity_profile_layout.v1`; D4 Information zone. CL4+ locked until CL3 Gate. Product ladder = **CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4…**
+- **CL4** Entity Field Composition builder (two modes) ← **active** — [brief](entity-field-composition-cl4-builder.md); `entity_profile_builder.v1`; D4 places card, not form. CL5+ locked until CL4 Gate. Product ladder = **CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → CL5…**
 - **Lifecycle Identity** ← docs sealed; **LI-1 feat after CL1** (existence/identity guard only) — [brief](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md); LI-2+ do **not** block CL2+; Funnel ≠ existence SoT
 - **DR1-contract** ← **PASS** [#302](https://github.com/igortatarynovich/HostFlow/pull/302) — [brief](engine-document-request-dr1-contract.md). **DR1-runtime** locked until Reference R5; does **not** block CL2+
 - **Documents E8-bind / E8-eval** ← **locked** (briefs not opened). Bind unlock = R3∧R4. Eval unlock = R5 ∧ E8-bind. Unlock ≠ schedule
@@ -283,7 +283,8 @@ A reader who has only this section can answer every item **yes**:
 | **42** | **CL1** Field composition inventory | locked | after **CL0 Gate**; observes codes; does not canonize identity |
 | **42b** | **LI-1** Existence guard (ADR-037) | [brief](lifecycle-identity-l0-contract-seal.md) | after **CL1 Gate**; docs sealed; not full Lifecycle; does not block CL2+ after it PASSes |
 | **43** | **DR1-contract** Engine → Document Request contract | locked | after CL1 ∧ LI-1; also R3∧R4 if the contract already names canonical type ids |
-| **43b** | **CL3** Layout runtime | [brief](entity-field-composition-cl3-layout.md) | after **CL2 Gate**; D4 Information zone; CL4–CL6 remain locked; not parked on R5 |
+| **43b** | **CL3** Layout runtime | ✅ [#304](https://github.com/igortatarynovich/HostFlow/pull/304) `8c04d696` | after **CL2 Gate**; D4 Information zone |
+| **43c** | **CL4** Builder (two modes) | [brief](entity-field-composition-cl4-builder.md) | after **CL3 Gate**; card vs form; closed page types; not Q&A; not parked on R5 |
 | **44** | **DR1-runtime** Engine generation | locked | after **DR1-contract Gate ∧ Reference R5 Gate**; does **not** block CL2+ |
 | **45** | **E8-bind** Canonical type bind | locked | unlock = R3∧R4; schedule = Product only; not auto-start |
 | **45b** | **E8-eval** Required-doc evaluation | locked | unlock = R5 ∧ E8-bind; not auto-start |

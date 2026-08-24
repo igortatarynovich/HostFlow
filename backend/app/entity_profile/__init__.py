@@ -35,6 +35,12 @@ from backend.app.entity_profile.presentation_runtime import (
     resolve_form_presentation,
     resolve_form_presentation_for_intake_source,
 )
+from backend.app.entity_profile.builder_runtime import (
+    CONTRACT_ID as ENTITY_PROFILE_BUILDER_V1,
+    compile_draft,
+    list_builder_modes,
+    palette,
+)
 from backend.app.entity_profile.layout_runtime import (
     CONTRACT_ID as ENTITY_PROFILE_LAYOUT_V1,
     resolve_layout,
@@ -58,6 +64,7 @@ __all__ = [
     "DecisionResult",
     "FORM_PRESENTATION_RUNTIME_V1",
     "FormPresentationNotFoundError",
+    "ENTITY_PROFILE_BUILDER_V1",
     "ENTITY_PROFILE_LAYOUT_V1",
     "ENTITY_PROFILE_MEMBERSHIP_V1",
     "EntityProfileRegistry",
@@ -67,8 +74,11 @@ __all__ = [
     "UnknownCanonicalFieldError",
     "apply_blocked_duplicate_outcome",
     "ensure_platform_entity_profile_catalog",
+    "compile_draft",
     "ensure_tenant_entity_profile_defaults",
     "IngestDisposition",
+    "list_builder_modes",
+    "palette",
     "evaluate_ingest_decision",
     "evaluate_outcome_event_decision",
     "execute_create_candidate_outcome",
