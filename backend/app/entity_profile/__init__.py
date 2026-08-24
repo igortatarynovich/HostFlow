@@ -35,6 +35,12 @@ from backend.app.entity_profile.presentation_runtime import (
     resolve_form_presentation,
     resolve_form_presentation_for_intake_source,
 )
+from backend.app.entity_profile.membership_runtime import (
+    CONTRACT_ID as ENTITY_PROFILE_MEMBERSHIP_V1,
+    is_field_member,
+    presence_level,
+    resolve_membership,
+)
 from backend.app.entity_profile.registry import EntityProfileRegistry, UnknownCanonicalFieldError
 from backend.app.entity_profile.resolver import resolve_effective_entity_profile
 from backend.app.entity_profile.reverse_map import find_entity_profile_code_by_legacy_candidate_code
@@ -48,6 +54,7 @@ __all__ = [
     "DecisionResult",
     "FORM_PRESENTATION_RUNTIME_V1",
     "FormPresentationNotFoundError",
+    "ENTITY_PROFILE_MEMBERSHIP_V1",
     "EntityProfileRegistry",
     "OutcomeDecisionContext",
     "OutcomeExecutionResult",
@@ -64,11 +71,14 @@ __all__ = [
     "execute_create_service_order_outcome",
     "execute_outcome_decision",
     "find_entity_profile_code_by_legacy_candidate_code",
+    "is_field_member",
     "prepare_meta_ingest_runtime",
+    "presence_level",
     "prepare_public_intake_runtime",
     "resolve_effective_entity_profile",
     "resolve_entity_profile_facade",
     "resolve_entity_profile_for_intake_source",
+    "resolve_membership",
     "resolve_form_presentation",
     "resolve_form_presentation_for_intake_source",
     "resolve_public_intake_source_profile_id",

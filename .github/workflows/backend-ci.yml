@@ -82,6 +82,7 @@ jobs:
       workspace: ${{ github.event_name != 'pull_request' || steps.filter.outputs.workspace == 'true' }}
       reference: ${{ github.event_name != 'pull_request' || steps.filter.outputs.reference == 'true' }}
       cl1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl1 == 'true' }}
+      cl2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl2 == 'true' }}
       li1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.li1 == 'true' }}
       dr1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1 == 'true' }}
     steps:
@@ -149,8 +150,15 @@ jobs:
               - 'docs/specs/tasks/platform-reference*'
             cl1:
               - 'scripts/entity_field_composition/**'
-              - 'backend/tests/entity_field_composition/**'
+              - 'backend/tests/entity_field_composition/test_cl1_inventory_gate.py'
               - 'docs/specs/tasks/entity-field-composition-cl1*'
+            cl2:
+              - 'backend/app/entity_profile/membership_runtime.py'
+              - 'backend/app/entity_profile/manifests/**'
+              - 'backend/tests/entity_field_composition/test_cl2_membership_gate.py'
+              - 'scripts/architecture/check_entity_profile_membership_boundary.py'
+              - 'scripts/architecture/entity_profile_membership_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl2*'
             li1:
               - 'backend/app/platform/module_stage_registry/**'
               - 'backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py'
@@ -449,6 +457,21 @@ jobs:
         with:
           tests: tests/requirement_rules/test_dr1_contract_gate.py
 
+  cl2-membership-gate:
+    name: CL2 Membership Gate
+    needs: changes
+    if: needs.changes.outputs.cl2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL2 membership gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl2_membership_gate.py') == ''
+        run: echo "CL2 membership gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl2_membership_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl2_membership_gate.py
+
   tests:
     name: tests
     if: always() && !cancelled()
@@ -466,6 +489,7 @@ jobs:
       - cl1-inventory-gate
       - li1-existence-gate
       - dr1-contract-gate
+      - cl2-membership-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed
