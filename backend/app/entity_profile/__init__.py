@@ -41,6 +41,11 @@ from backend.app.entity_profile.builder_runtime import (
     list_builder_modes,
     palette,
 )
+from backend.app.entity_profile.qa_runtime import (
+    CONTRACT_ID as ENTITY_PROFILE_QA_V1,
+    list_qa_dispositions,
+    resolve_qa,
+)
 from backend.app.entity_profile.layout_runtime import (
     CONTRACT_ID as ENTITY_PROFILE_LAYOUT_V1,
     resolve_layout,
@@ -67,6 +72,7 @@ __all__ = [
     "ENTITY_PROFILE_BUILDER_V1",
     "ENTITY_PROFILE_LAYOUT_V1",
     "ENTITY_PROFILE_MEMBERSHIP_V1",
+    "ENTITY_PROFILE_QA_V1",
     "EntityProfileRegistry",
     "OutcomeDecisionContext",
     "OutcomeExecutionResult",
@@ -78,6 +84,7 @@ __all__ = [
     "ensure_tenant_entity_profile_defaults",
     "IngestDisposition",
     "list_builder_modes",
+    "list_qa_dispositions",
     "palette",
     "evaluate_ingest_decision",
     "evaluate_outcome_event_decision",
@@ -95,6 +102,7 @@ __all__ = [
     "resolve_entity_profile_for_intake_source",
     "resolve_layout",
     "resolve_membership",
+    "resolve_qa",
     "resolve_form_presentation",
     "resolve_form_presentation_for_intake_source",
     "resolve_public_intake_source_profile_id",
