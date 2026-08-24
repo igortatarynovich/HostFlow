@@ -26,6 +26,7 @@ on:
       - "docs/specs/tasks/entity-field-composition*"
       - "docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json"
       - "docs/specs/tasks/lifecycle-identity-li1*"
+      - "docs/specs/tasks/engine-document-request-dr1*"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/actions/backend-pytest/**"
@@ -48,6 +49,7 @@ on:
       - "docs/specs/tasks/entity-field-composition*"
       - "docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json"
       - "docs/specs/tasks/lifecycle-identity-li1*"
+      - "docs/specs/tasks/engine-document-request-dr1*"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/actions/backend-pytest/**"
@@ -81,6 +83,7 @@ jobs:
       reference: ${{ github.event_name != 'pull_request' || steps.filter.outputs.reference == 'true' }}
       cl1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl1 == 'true' }}
       li1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.li1 == 'true' }}
+      dr1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -155,6 +158,12 @@ jobs:
               - 'scripts/architecture/stage_existence_boundary_*'
               - 'docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json'
               - 'docs/specs/tasks/lifecycle-identity-li1*'
+            dr1:
+              - 'backend/app/requirement_rules/engine_to_hub_outstanding_ask_contract.py'
+              - 'backend/tests/requirement_rules/test_dr1_contract_gate.py'
+              - 'scripts/architecture/check_engine_outstanding_ask_boundary.py'
+              - 'scripts/architecture/engine_outstanding_ask_boundary_*'
+              - 'docs/specs/tasks/engine-document-request-dr1*'
 
   guards:
     name: guards
@@ -425,6 +434,21 @@ jobs:
         with:
           tests: tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py
 
+  dr1-contract-gate:
+    name: DR1 Contract Gate
+    needs: changes
+    if: needs.changes.outputs.dr1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when DR1 contract gate is not in this tree
+        if: hashFiles('backend/tests/requirement_rules/test_dr1_contract_gate.py') == ''
+        run: echo "DR1 contract gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/requirement_rules/test_dr1_contract_gate.py') != ''
+        with:
+          tests: tests/requirement_rules/test_dr1_contract_gate.py
+
   tests:
     name: tests
     if: always() && !cancelled()
@@ -441,6 +465,7 @@ jobs:
       - reference-gates
       - cl1-inventory-gate
       - li1-existence-gate
+      - dr1-contract-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed
