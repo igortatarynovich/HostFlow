@@ -84,6 +84,7 @@ jobs:
       cl1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl1 == 'true' }}
       cl2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl2 == 'true' }}
       cl3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl3 == 'true' }}
+      cl4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl4 == 'true' }}
       li1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.li1 == 'true' }}
       dr1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1 == 'true' }}
     steps:
@@ -167,6 +168,14 @@ jobs:
               - 'scripts/architecture/entity_profile_layout_boundary_*'
               - 'docs/specs/tasks/entity-field-composition-cl3*'
               - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+            cl4:
+              - 'backend/app/entity_profile/builder_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl4_builder_gate.py'
+              - 'scripts/architecture/check_entity_profile_builder_boundary.py'
+              - 'scripts/architecture/entity_profile_builder_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl4*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateCompositionBuilder.tsx'
               - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
             li1:
               - 'backend/app/platform/module_stage_registry/**'
@@ -496,6 +505,21 @@ jobs:
         with:
           tests: tests/entity_field_composition/test_cl3_layout_gate.py
 
+  cl4-builder-gate:
+    name: CL4 Builder Gate
+    needs: changes
+    if: needs.changes.outputs.cl4 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL4 builder gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl4_builder_gate.py') == ''
+        run: echo "CL4 builder gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl4_builder_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl4_builder_gate.py
+
   tests:
     name: tests
     if: always() && !cancelled()
@@ -515,6 +539,7 @@ jobs:
       - dr1-contract-gate
       - cl2-membership-gate
       - cl3-layout-gate
+      - cl4-builder-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed

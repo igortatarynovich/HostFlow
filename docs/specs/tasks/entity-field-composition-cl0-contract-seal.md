@@ -108,8 +108,8 @@ E7 already matches Document kind: request lives on `document_type_code`. Engine 
 | **CL0** | Contract seal | ✅ PASS (brief; treated PASS via #289) |
 | **CL1** | Inventory current Candidate | ✅ PASS [#299](https://github.com/igortatarynovich/HostFlow/pull/299) — [brief](entity-field-composition-cl1-candidate-inventory.md) |
 | **CL2** | Membership runtime | ✅ PASS [#303](https://github.com/igortatarynovich/HostFlow/pull/303) — [brief](entity-field-composition-cl2-membership.md) |
-| **CL3** | Layout runtime (proof = D4 Information zone) | ← **active** — [brief](entity-field-composition-cl3-layout.md) |
-| **CL4** | Builder (two modes) | locked until CL3 |
+| **CL3** | Layout runtime (proof = D4 Information zone) | ✅ PASS [#304](https://github.com/igortatarynovich/HostFlow/pull/304) — [brief](entity-field-composition-cl3-layout.md) |
+| **CL4** | Builder (two modes) | ← **active** — [brief](entity-field-composition-cl4-builder.md) |
 | **CL5** | Q&A | locked until CL4 |
 | **CL6** | Flight mapping | locked until CL5 |
 
