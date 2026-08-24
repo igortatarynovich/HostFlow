@@ -109,8 +109,8 @@ E7 already matches Document kind: request lives on `document_type_code`. Engine 
 | **CL1** | Inventory current Candidate | ✅ PASS [#299](https://github.com/igortatarynovich/HostFlow/pull/299) — [brief](entity-field-composition-cl1-candidate-inventory.md) |
 | **CL2** | Membership runtime | ✅ PASS [#303](https://github.com/igortatarynovich/HostFlow/pull/303) — [brief](entity-field-composition-cl2-membership.md) |
 | **CL3** | Layout runtime (proof = D4 Information zone) | ✅ PASS [#304](https://github.com/igortatarynovich/HostFlow/pull/304) — [brief](entity-field-composition-cl3-layout.md) |
-| **CL4** | Builder (two modes) | ← **active** — [brief](entity-field-composition-cl4-builder.md) |
-| **CL5** | Q&A | locked until CL4 |
+| **CL4** | Builder (two modes) | ✅ PASS [#305](https://github.com/igortatarynovich/HostFlow/pull/305) — [brief](entity-field-composition-cl4-builder.md) |
+| **CL5** | Q&A | ← **active** — [brief](entity-field-composition-cl5-qa.md) |
 | **CL6** | Flight mapping | locked until CL5 |
 
 CL1 is classification, **not** runtime. Do not skip to CL3 because “the card already renders”.  

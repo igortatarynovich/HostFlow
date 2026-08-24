@@ -85,6 +85,7 @@ jobs:
       cl2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl2 == 'true' }}
       cl3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl3 == 'true' }}
       cl4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl4 == 'true' }}
+      cl5: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl5 == 'true' }}
       li1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.li1 == 'true' }}
       dr1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1 == 'true' }}
     steps:
@@ -177,6 +178,15 @@ jobs:
               - 'docs/specs/tasks/entity-field-composition-cl4*'
               - 'hostflow-frontend/src/platform/entity-workspace/CandidateCompositionBuilder.tsx'
               - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+            cl5:
+              - 'backend/app/entity_profile/qa_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl5_qa_gate.py'
+              - 'scripts/architecture/check_entity_profile_qa_boundary.py'
+              - 'scripts/architecture/entity_profile_qa_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl5*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateQaPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
             li1:
               - 'backend/app/platform/module_stage_registry/**'
               - 'backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py'
@@ -520,6 +530,21 @@ jobs:
         with:
           tests: tests/entity_field_composition/test_cl4_builder_gate.py
 
+  cl5-qa-gate:
+    name: CL5 Q&A Gate
+    needs: changes
+    if: needs.changes.outputs.cl5 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL5 Q&A gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl5_qa_gate.py') == ''
+        run: echo "CL5 Q&A gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl5_qa_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl5_qa_gate.py
+
   tests:
     name: tests
     if: always() && !cancelled()
@@ -540,6 +565,7 @@ jobs:
       - cl2-membership-gate
       - cl3-layout-gate
       - cl4-builder-gate
+      - cl5-qa-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed

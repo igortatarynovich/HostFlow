@@ -1,0 +1,2 @@
+# CL5 — sole producer for Entity Profile Q&A runtime.
+entity_profile_qa|backend/app/entity_profile/qa_runtime.py

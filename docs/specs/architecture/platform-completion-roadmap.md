@@ -307,7 +307,8 @@ Not standalone AI features. A **service layer over existing platforms**:
 | [entity-field-composition-cl0-contract-seal.md](../tasks/entity-field-composition-cl0-contract-seal.md) | CL0 contract seal ✅ (treated PASS) |
 | [entity-field-composition-cl2-membership.md](../tasks/entity-field-composition-cl2-membership.md) | CL2 membership runtime ✅ (#303) |
 | [entity-field-composition-cl3-layout.md](../tasks/entity-field-composition-cl3-layout.md) | CL3 layout runtime ✅ (#304) |
-| [entity-field-composition-cl4-builder.md](../tasks/entity-field-composition-cl4-builder.md) | **Active Product Track** — Entity Field Composition CL4 builder (two modes) |
+| [entity-field-composition-cl4-builder.md](../tasks/entity-field-composition-cl4-builder.md) | CL4 builder runtime ✅ (#305) |
+| [entity-field-composition-cl5-qa.md](../tasks/entity-field-composition-cl5-qa.md) | **Active Product Track** — Entity Field Composition CL5 Recruiter Q&A |
 | [platform-reference-identity-sot.md](../tasks/platform-reference-identity-sot.md) | **Active Engineering Track** — Reference R1 now; then {R2 ∥ R3}; not Epic C residual R1 |
 | [lifecycle-identity-l0-contract-seal.md](../tasks/lifecycle-identity-l0-contract-seal.md) | **LI-1 after CL1** — existence/identity guard (ADR-037); docs sealed; LI-2+ do not block CL2+ |
 | [documents-platform-e3-first-consumer-bind.md](../tasks/documents-platform-e3-first-consumer-bind.md) | E3 first consumer bind ✅ |
@@ -321,6 +322,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-24: Active Product Track = [CL5 Recruiter Q&A](../tasks/entity-field-composition-cl5-qa.md) after CL4 Gate PASS [#305](https://github.com/igortatarynovich/HostFlow/pull/305).
 - 2026-08-24: Active Product Track = [CL4 builder](../tasks/entity-field-composition-cl4-builder.md) after CL3 Gate PASS [#304](https://github.com/igortatarynovich/HostFlow/pull/304).
 - 2026-08-23: Execution canon sealed — Product `CL0 → CL1 → LI-1 → DR1-contract → CL2…`; Engineering `R1 → {R2 ∥ R3} → R4 → (R2 ∧ R4) → R5 → Program Exit`; E8-bind / E8-eval split; unlock ≠ schedule. Phase E E7 is **not** the active Product slice.
 - 2026-08-23: *(superseded same day)* Linear Engineering ladder / CL7 / E8=R5+LI-1 — replaced by execution canon above.

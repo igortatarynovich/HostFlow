@@ -1,6 +1,6 @@
 # Entity Field Composition CL4 — Builder (two modes)
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **PASS** [#305](https://github.com/igortatarynovich/HostFlow/pull/305) / `c49716e3`  
 **Phase class:** platform  
 **Branch:** `feat/entity-field-composition-cl4-builder`  
 **Parents:** [CL0 contract seal](entity-field-composition-cl0-contract-seal.md) · [CL2 membership](entity-field-composition-cl2-membership.md) · [CL3 layout](entity-field-composition-cl3-layout.md) · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md)
@@ -95,3 +95,4 @@ Unlocks: **CL5** (Q&A). Does **not** unlock DR1-runtime or E8.
 ## History
 
 - 2026-08-24: CL4 builder runtime opened — `entity_profile_builder.v1`; two modes; closed page types; D4 places card, not form.
+- 2026-08-24: CL4 Gate **PASS** [#305](https://github.com/igortatarynovich/HostFlow/pull/305) / `c49716e3`. Unlocks CL5.

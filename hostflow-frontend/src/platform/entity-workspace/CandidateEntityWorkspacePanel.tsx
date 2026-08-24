@@ -9,6 +9,7 @@ import { CANDIDATE_ENTITY_HOST_CONTRIBUTIONS } from '../workspace-capability/can
 import { EntityWorkspaceCapabilityHost } from '../workspace-capability/EntityWorkspaceCapabilityHost'
 import { CandidateCompositionBuilder } from './CandidateCompositionBuilder'
 import { CandidateInformationLayout } from './CandidateInformationLayout'
+import { CandidateQaPanel } from './CandidateQaPanel'
 
 type Props = EntityWorkspaceShellProps & {
   entityId: string
@@ -22,6 +23,7 @@ type Props = EntityWorkspaceShellProps & {
  * Shell is chrome adapter only. Shell `documents` nav ≠ this slot.
  * CL3: overview Information zone places `entity_profile_layout.v1` / `candidate.card`.
  * CL4: composition builder compiles card into that zone; form is a separate artifact.
+ * CL5: Q&A zone reads Lead / Application (`entity_profile_qa.v1`); not extra; not a layout widget.
  */
 export function CandidateEntityWorkspacePanel({
   entityId,
@@ -48,6 +50,7 @@ export function CandidateEntityWorkspacePanel({
               <div data-entity-workspace-slot="overview" className="space-y-4">
                 <CandidateInformationLayout />
                 <CandidateCompositionBuilder />
+                <CandidateQaPanel />
                 {sectionRenderers?.overview?.()}
                 <div data-host-region="platform_slot">{placed.platform_slot}</div>
                 <div data-host-region="overview">{placed.overview}</div>
