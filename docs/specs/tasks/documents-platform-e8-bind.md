@@ -1,9 +1,9 @@
 # Documents Platform E8-bind — Canonical Type Bind
 
-**Status:** **IN PROGRESS** (brief; feat locked)  
+**Status:** **IN PROGRESS** (feat)  
 **Phase class:** platform  
-**Branch (docs):** `docs/queue-post-dr1-runtime-amendment`  
-**Branch (code):** none this slice — docs only; later feat uses `feat/documents-platform-e8-bind`  
+**Branch (docs):** `docs/queue-post-dr1-runtime-amendment` ✅ [#319](https://github.com/igortatarynovich/HostFlow/pull/319)  
+**Branch (code):** `feat/documents-platform-e8-bind`  
 **Parents:** [Documents Platform E7](documents-platform-e7-document-requests.md) · [DR1-runtime](engine-document-request-dr1-runtime.md) · [Platform Reference Identity SoT](platform-reference-identity-sot.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [Documents Public Contract](../architecture/documents-public-contract.md) · [`document-type-registry-v1.json`](../platform/document-type-registry-v1.json) · [`document-type-legacy-aliases-v1.json`](../platform/document-type-legacy-aliases-v1.json)
 
 > E8-bind is the **identity** half of remaining Documents consumers. Reference R3 is existence SoT; R4 is the alias registry; DR1-runtime already **writes** Hub outstanding asks with canonical `document_type_code`. This slice makes remaining **display / select / stored identity** bind to canonical registry codes. **Not** E8-eval. **Not** CL8. **Not** mass D3–D9 `documents` bind. **Not** a Hub request table. **Not** Catalog `document.requested`. **Not** required/optional, applicability, packages, or OCR matching.
@@ -16,13 +16,13 @@
 After R3/R4, type existence and aliases are SoT, and DR1-runtime persists canonical ask codes, but remaining type consumers may still **display, select, or persist** alias / legacy / ORM-default codes as if they were identity. Without E8-bind the next slice will treat alias display as canonical bind, mass-bind D3–D9, start E8-eval (required/optional / packages / OCR), invent CL8, or mint a second type catalog.
 
 **Completion proof (named consumer):**  
-**Candidate Entity Workspace — D4 Documents surface** (`CandidateEntityWorkspacePanel` / `/app/candidates/:id` documents zone). Display, select, and stored Hub `document_type_code` (including Engine-written outstanding asks already on the adapter) use **canonical registry codes** only. Aliases resolve through R4 `document-type-legacy-aliases-v1.json` — they are not stored identity. D4 **places**; Document Hub owns type identity. Proof is a later feat — this PR is docs only.
+**Candidate Entity Workspace — D4 Documents surface** (`CandidateEntityWorkspacePanel` / `/app/candidates/:id` documents zone). Display, select, and stored Hub `document_type_code` (including Engine-written outstanding asks already on the adapter) use **canonical registry codes** only. Aliases resolve through R4 `document-type-legacy-aliases-v1.json` — they are not stored identity. D4 **places**; Document Hub owns type identity.
 
-**False close:** numbering this as CL8; collapsing into one E8 with E8-eval; mass D3–D9 D2 `documents` bind; E8-eval required/optional / packages / OCR matching; Hub request / reminder table; Catalog `document.requested`; treating R4 alias use as the bind; treating `DocumentTypeDefinition.canonical_ref_code` default `"other"` as existence SoT; Foundation ✅.
+**False close:** numbering this as CL8; collapsing into one E8 with E8-eval; mass D3–D9 D2 `documents` bind; E8-eval required/optional / packages / OCR matching / e-sign; Hub request / reminder table; Catalog `document.requested`; treating R4 alias use as the bind; treating `DocumentTypeDefinition.canonical_ref_code` default `"other"` as existence SoT; Foundation ✅.
 
 ---
 
-## Scope (contract only this PR)
+## Scope
 
 | In scope | Out of scope |
 |----------|--------------|
@@ -54,16 +54,16 @@ This slice **does not** evaluate required/optional applicability (E8-eval), **do
 
 | Artifact | Path |
 |----------|------|
-| Brief | this file (this docs PR) |
-| Identity bind | later feat — not this PR |
+| Brief | this file |
+| Identity bind | `persist_canonical_type_identity_via_contract` on `documents.hub_adapter_v1` |
 | D4 bind | existing Documents surface; this slice binds **type identity**, not a new slot |
-| Named CI | later feat — **Documents Platform E8 Canonical Type Bind Gate** |
+| Named CI | **Documents Platform E8 Canonical Type Bind Gate** (`tests/platform/test_documents_e8_canonical_type_bind_gate.py`) |
 
 ---
 
 ## Documents Platform E8 Canonical Type Bind Gate (named)
 
-PASS when (later feat — **not** this docs PR):
+PASS when:
 
 1. Brief + identity bind committed.  
 2. D4 Documents surface displays and selects canonical registry types only.  
@@ -87,4 +87,5 @@ Unlocks: **E8-eval** (unlock ≠ schedule). Later Product via **queue amendment*
 
 ## History
 
+- 2026-08-25: E8-bind feat opened — D4 Documents display / select / persist canonical registry codes; R4 aliases resolve-only. Named Documents Platform E8 Canonical Type Bind Gate. Not E8-eval. Not CL8. Not mass D3–D9 bind.
 - 2026-08-25: E8-bind opened (feat locked) after DR1 Runtime Gate PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313) / `e6978fe2`. Remaining consumers bind to canonical document types. Not E8-eval. Not CL8. Not mass D3–D9 bind.

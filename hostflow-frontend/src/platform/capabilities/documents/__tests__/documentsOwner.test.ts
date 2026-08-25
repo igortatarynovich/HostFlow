@@ -9,6 +9,7 @@ import {
   E4_RELATION_TYPE,
   documentsEntityKey,
   listLinkedDocuments,
+  persistCanonicalDocumentType,
 } from '../documentsOwner'
 
 const get = vi.fn()
@@ -40,7 +41,7 @@ describe('documentsOwner', () => {
       data: {
         contract_id: DOCUMENTS_PUBLIC_CONTRACT_ID,
         adapter_id: DOCUMENTS_HUB_ADAPTER_ID,
-        items: [{ id: 'doc-c', title: 'CV', doc_type: 'cv', status: 'uploaded', link: {} }],
+        items: [{ id: 'doc-c', title: 'Passport', doc_type: 'passport', status: 'uploaded', link: {} }],
       },
     })
     const subject = ctx({ entity: { resourceType: E4_LINKED_ENTITY_TYPE, resourceId: 'cand-1' } })
@@ -65,12 +66,38 @@ describe('documentsOwner', () => {
         adapter_id: DOCUMENTS_HUB_ADAPTER_ID,
         items: [],
         outstanding_asks: [{ doc_type: 'passport', state: 'missing' }],
+        canonical_types: ['passport', 'driver_license'],
       },
     })
     const subject = ctx({ entity: { resourceType: E4_LINKED_ENTITY_TYPE, resourceId: 'cand-1' } })
     const result = await listLinkedDocuments(subject)
     expect(result.available).toBe(true)
     expect(result.outstandingAsks).toEqual([{ doc_type: 'passport', state: 'missing' }])
+    expect(result.canonicalTypes).toEqual(['passport', 'driver_license'])
+  })
+
+  it('persists alias codes as canonical registry identity', () => {
+    expect(persistCanonicalDocumentType('code95')).toBe('driver_qualification_card')
+    expect(persistCanonicalDocumentType('tacho_card')).toBe('tachograph_card')
+    expect(persistCanonicalDocumentType('residence_permit')).toBe('residence_card')
+    expect(persistCanonicalDocumentType('passport')).toBe('passport')
+  })
+
+  it('migrates stored alias identity on Candidate resolve', async () => {
+    get.mockResolvedValue({
+      data: {
+        contract_id: DOCUMENTS_PUBLIC_CONTRACT_ID,
+        adapter_id: DOCUMENTS_HUB_ADAPTER_ID,
+        items: [{ id: 'doc-c', title: 'Code 95', doc_type: 'code95', status: 'uploaded', link: {} }],
+        outstanding_asks: [{ doc_type: 'tacho_card', state: 'missing' }],
+        canonical_types: ['driver_qualification_card', 'tachograph_card'],
+      },
+    })
+    const result = await listLinkedDocuments(
+      ctx({ entity: { resourceType: E4_LINKED_ENTITY_TYPE, resourceId: 'cand-1' } }),
+    )
+    expect(result.items[0].doc_type).toBe('driver_qualification_card')
+    expect(result.outstandingAsks).toEqual([{ doc_type: 'tachograph_card', state: 'missing' }])
   })
 
   it('resolves HR employee via public contract entity-link, not workforce documents', async () => {
@@ -106,6 +133,7 @@ describe('documentsOwner', () => {
       adapterId: DOCUMENTS_HUB_ADAPTER_ID,
       items: [],
       outstandingAsks: [],
+      canonicalTypes: [],
     })
     expect(get).not.toHaveBeenCalled()
   })

@@ -1,10 +1,12 @@
-"""Documents public contract v1 — entity-link resolve (E3 + E4 + E5 + E6 + E7).
+"""Documents public contract v1 — entity-link resolve (E3 + E4 + E5 + E6 + E7 + E8-bind).
 
 Same adapter id as E2. Not a second Adapter. Not a candidate_id column list.
 E6 projects Hub expiry (`expires_at` / `expiry_state`) on the resolve view.
 E7 projects Hub outstanding asks (`outstanding_asks`) on the same resolve.
 DR1-runtime may persist Engine-projected asks on this adapter; resolve
-prefers those rows when present. Not a Hub request table.
+prefers those rows when present. E8-bind projects canonical registry type
+identity (display / select / persist). Aliases resolve via R4 only.
+Not a Hub request table. Not E8-eval. Not mass D3–D9 bind.
 """
 
 from __future__ import annotations
@@ -22,8 +24,10 @@ from backend.app.services.document_hub_delivery_contract import (
     ALLOWED_ENTITY_LINK_RESOLVE,
     E3_RELATION_TYPE,
     PUBLIC_CONTRACT_ID,
+    list_canonical_types_for_select_via_contract,
     list_entity_link_documents_via_contract,
     load_outstanding_asks_via_contract,
+    persist_canonical_type_identity_via_contract,
     project_outstanding_asks_via_contract,
 )
 
@@ -62,6 +66,7 @@ class DocumentsResolveOut(BaseModel):
     adapter_id: str = ADAPTER_ID
     items: list[DocumentHubViewOut] = Field(default_factory=list)
     outstanding_asks: list[OutstandingAskOut] = Field(default_factory=list)
+    canonical_types: list[str] = Field(default_factory=list)
 
 
 def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
@@ -102,12 +107,17 @@ async def resolve_documents_via_public_contract(
         linked_entity_type=etype,
         linked_entity_id=linked_entity_id.strip(),
     )
-    asks = (
-        persisted
-        if persisted is not None
-        else project_outstanding_asks_via_contract(items)
-    )
+    if persisted is not None:
+        asks = []
+        for row in persisted:
+            code = persist_canonical_type_identity_via_contract(row.get("doc_type"))
+            state = str(row.get("state") or "").strip()
+            if code and state:
+                asks.append({"doc_type": code, "state": state})
+    else:
+        asks = project_outstanding_asks_via_contract(items)
     return DocumentsResolveOut(
         items=[DocumentHubViewOut.model_validate(row) for row in items],
         outstanding_asks=[OutstandingAskOut.model_validate(row) for row in asks],
+        canonical_types=list_canonical_types_for_select_via_contract(),
     )

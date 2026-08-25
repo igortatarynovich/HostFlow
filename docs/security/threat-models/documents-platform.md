@@ -1,4 +1,4 @@
-# Threat Model — Documents Platform (E3–E7 public resolve)
+# Threat Model — Documents Platform (E3–E8 public resolve)
 
 ## Assets
 
@@ -7,9 +7,9 @@
 - Document Hub rows (`documents`) scoped by tenant — **no** `candidate_id` column  
 - Public contract / adapter ids: `documents.public_contract.v1` / `documents.hub_adapter_v1`
 
-This model covers the **platform capability** consume path sealed in E3–E7: HR employee (D8) reads reused documents via Document Link (`workforce_employee` / `reused_for_hr`); Candidate (D4) reads via Document Link (`candidate` / `primary`). E6 adds Hub expiry fields on the same DTO. E7 adds Hub outstanding-ask projection (required type vs linked docs). Neither consumer uses a page-local widget as the D2 path. Candidate relationship storage is Hub links only — **not** `documents.candidate_id`. Validity is on the Document, not on a Candidate status machine. The outstanding ask is Hub required type + entity, not Candidate stage / HR JSON / Activity `document_request`. File bytes, signed URLs, and upload remain [`document-uploads.md`](./document-uploads.md). Candidate portal uploads remain [`candidate-portal.md`](./candidate-portal.md). Handoff copy-vs-link remains [`handoff.md`](./handoff.md) — E3–E7 do not add a file-copy path.
+This model covers the **platform capability** consume path sealed in E3–E8: HR employee (D8) reads reused documents via Document Link (`workforce_employee` / `reused_for_hr`); Candidate (D4) reads via Document Link (`candidate` / `primary`). E6 adds Hub expiry fields on the same DTO. E7 adds Hub outstanding-ask projection (required type vs linked docs). E8-bind canonicalizes type identity (display / select / persist). Neither consumer uses a page-local widget as the D2 path. Candidate relationship storage is Hub links only — **not** `documents.candidate_id`. Validity is on the Document, not on a Candidate status machine. The outstanding ask is Hub required type + entity, not Candidate stage / HR JSON / Activity `document_request`. File bytes, signed URLs, and upload remain [`document-uploads.md`](./document-uploads.md). Candidate portal uploads remain [`candidate-portal.md`](./candidate-portal.md). Handoff copy-vs-link remains [`handoff.md`](./handoff.md) — E3–E8 do not add a file-copy path.
 
-Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation close, anonymous public links, Hub-owned reminder / request table, Catalog `document.requested`.
+Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation close, anonymous public links, Hub-owned reminder / request table, Catalog `document.requested`, E8-eval required/optional / packages / OCR matching.
 
 ## Trust boundaries
 
@@ -35,6 +35,7 @@ Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation cl
 | DP-9 | Nullable FK leftover | Leaving `documents.candidate_id` as a write target after E5 |
 | DP-10 | Candidate-status as expiry SoT | Treating pipeline auto-flip / `next_action` / a Hub reminder table as the Documents validity contract |
 | DP-11 | Module silo as request SoT | Treating Candidate stage / HR JSON / Activity `document_request` / a Hub request table as the Documents outstanding-ask contract |
+| DP-12 | Alias as stored type identity | Displaying, selecting, or persisting R4 alias / module codes as Hub `document_type_code` identity |
 
 ## Митигации
 
@@ -44,10 +45,12 @@ Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation cl
 - Response schema is Hub view + link ids + Hub expiry fields only. Upload, download, and signed URL stay on existing document routes.  
 - Same adapter id as E2. Named **Documents Platform E6 Document Expiry Gate** fails if expiry is not on the Hub view, if D4/D8 unbind, if D3 / D5–D7 / D9 bind `documents`, or if a Hub reminder table appears.  
 - Named **Documents Platform E7 Document Requests Gate** fails if `outstanding_asks` is missing from the Hub resolve, if a Hub request table appears, if Catalog `document.requested` is minted, or if D3 / D5–D7 / D9 bind `documents`.  
+- Named **Documents Platform E8 Canonical Type Bind Gate** fails if D4 display / select / persist uses alias identity, if R4 aliases are stored as Hub `document_type_code`, if E8-eval / CL8 / mass D3–D9 bind appear, or if a Hub request table / Catalog `document.requested` is minted.  
 - No new security events. Catalog events stay `document.created` / `linked` / `verified` / `expired`.
 
 ## Тесты
 
+- `backend/tests/platform/test_documents_e8_canonical_type_bind_gate.py`  
 - `backend/tests/platform/test_documents_e7_document_requests_gate.py`  
 - `backend/tests/platform/test_documents_e6_document_expiry_gate.py`  
 - `backend/tests/platform/test_documents_e5_candidate_storage_bridge_gate.py`  
@@ -61,6 +64,7 @@ Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation cl
 
 - `docs/specs/architecture/documents-public-contract.md`  
 - `docs/specs/workflows/document_expiry.md`  
+- `docs/specs/tasks/documents-platform-e8-bind.md`  
 - `docs/specs/tasks/documents-platform-e7-document-requests.md`  
 - `docs/specs/tasks/documents-platform-e6-document-expiry.md`  
 - `docs/specs/tasks/documents-platform-e5-candidate-storage-bridge.md`  

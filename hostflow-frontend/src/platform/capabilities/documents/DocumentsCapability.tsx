@@ -5,6 +5,7 @@ import {
   DOCUMENTS_HUB_ADAPTER_ID,
   DOCUMENTS_PUBLIC_CONTRACT_ID,
   listLinkedDocuments,
+  persistCanonicalDocumentType,
   type DocumentHubView,
   type OutstandingAskView,
 } from './documentsOwner'
@@ -19,12 +20,16 @@ export const ENGINE_TO_HUB_OUTSTANDING_ASK_V1 = 'engine_to_hub_outstanding_ask.v
  * Validity is Hub `expires_at` / `expiry_state` on the same adapter (E6).
  * Outstanding ask is Hub `outstanding_asks` on the same adapter (E7).
  * DR1-runtime: Engine may persist those asks; this surface reads them.
- * Not a Hub request table. Not Catalog `document.requested`. Not mass generate.
+ * E8-bind: display / select / persist canonical registry types only.
+ * Aliases are R4 resolve-only. Not E8-eval. Not CL8. Not mass D3–D9 bind.
+ * Not a Hub request table. Not Catalog `document.requested`.
  */
 export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()
   const [items, setItems] = useState<DocumentHubView[]>([])
   const [outstandingAsks, setOutstandingAsks] = useState<OutstandingAskView[]>([])
+  const [canonicalTypes, setCanonicalTypes] = useState<string[]>([])
+  const [selectedType, setSelectedType] = useState('')
   const [loading, setLoading] = useState(false)
   const [available, setAvailable] = useState(false)
 
@@ -38,11 +43,13 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
         setAvailable(result.available)
         setItems(result.items)
         setOutstandingAsks(result.outstandingAsks)
+        setCanonicalTypes(result.canonicalTypes)
       } catch {
         if (mounted) {
           setAvailable(false)
           setItems([])
           setOutstandingAsks([])
+          setCanonicalTypes([])
         }
       } finally {
         if (mounted) setLoading(false)
@@ -66,7 +73,10 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
       data-hub-request-table="false"
       data-catalog-document-requested="false"
       data-cl8="false"
-      data-e8="false"
+      data-e8-bind="true"
+      data-e8-eval="false"
+      data-canonical-type-bind="true"
+      data-alias-stored-identity="false"
     >
       <p className="text-sm font-semibold text-slate-900">
         {t('app.entity_workspace.slot.documents', { defaultValue: 'Документы' })}
@@ -87,10 +97,42 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
                   defaultValue: 'Нет связанных документов Document Hub',
                 })}
       </p>
+      {!loading && available && canonicalTypes.length > 0 ? (
+        <label className="block text-sm text-slate-700">
+          <span className="mb-1 block text-slate-600">
+            {t('app.entity_workspace.documents.canonical_type', {
+              defaultValue: 'Тип документа',
+            })}
+          </span>
+          <select
+            className="input"
+            data-canonical-type-select="true"
+            value={selectedType}
+            onChange={(event) => {
+              setSelectedType(persistCanonicalDocumentType(event.target.value))
+            }}
+          >
+            <option value="">
+              {t('app.entity_workspace.documents.canonical_type_placeholder', {
+                defaultValue: 'Выберите канонический тип',
+              })}
+            </option>
+            {canonicalTypes.map((code) => (
+              <option key={code} value={code} data-canonical-type={code}>
+                {code}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       {!loading && items.length > 0 ? (
         <ul className="space-y-1 text-sm text-slate-700">
           {items.slice(0, 8).map((row) => (
-            <li key={row.id} data-expiry-state={row.expiry_state || undefined}>
+            <li
+              key={row.id}
+              data-expiry-state={row.expiry_state || undefined}
+              data-canonical-type={row.doc_type || undefined}
+            >
               <span className="font-medium text-slate-900">{row.title || row.doc_type}</span>
               {row.status ? <span className="text-slate-500"> · {row.status}</span> : null}
               {row.expires_at ? <span className="text-slate-500"> · {row.expires_at}</span> : null}
@@ -106,6 +148,7 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
               key={`${ask.doc_type}:${ask.state}`}
               data-outstanding-ask={ask.doc_type}
               data-ask-state={ask.state}
+              data-canonical-type={ask.doc_type}
             >
               <span className="font-medium text-slate-900">{ask.doc_type}</span>
               {ask.state ? <span className="text-slate-500"> · {ask.state}</span> : null}

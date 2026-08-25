@@ -8,7 +8,9 @@ validity as Hub `expires_at` + engine evaluation on the same adapter.
 E7 seals outstanding ask (required type + entity via Document Link) as
 additive `outstanding_asks` on resolve / owner_summary. DR1-runtime may
 persist Engine-projected asks on this same adapter, keyed by entity-link
-identity. Not a second Adapter. Not a Hub request / reminder table.
+identity. E8-bind: display / select / persist canonical registry codes;
+R4 aliases are resolve-only, not stored identity. Not a second Adapter.
+Not a Hub request / reminder table. Not E8-eval. Not mass D3–D9 bind.
 """
 from __future__ import annotations
 
@@ -17,6 +19,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.document_types.registry import (
+    canonical_codes,
+    is_canonical_code,
+    normalize_input_doc_type,
+)
 from backend.app.models.document import Document
 from backend.app.models.document_entity_link import DocumentEntityLink
 from backend.app.modules.documents.crud import ensure_ruleset_seed, list_candidate_documents
@@ -29,7 +36,6 @@ from backend.app.modules.documents.reminder_work_queue_projection import project
 from backend.app.modules.documents.rules_engine import compute_candidate_checklist
 from backend.app.modules.documents.router import _build_synthetic_documents
 from backend.app.modules.documents.storage import get_uploads_root, sanitize_filename
-from backend.app.services.document_catalog import DOCUMENT_TYPE_DEFAULTS
 from backend.app.services.document_expiry_engine import evaluate_expiry
 from backend.app.services.document_ruleset import load_default_ruleset
 
@@ -68,13 +74,29 @@ def _enum_value(value: Any) -> str:
     return str(getattr(value, "value", value) or "")
 
 
+def persist_canonical_type_identity_via_contract(raw: Any) -> str:
+    """Stored Hub type identity is a registry code. Aliases resolve via R4 only."""
+    text = str(raw or "").strip()
+    if not text:
+        return ""
+    code = normalize_input_doc_type(text)
+    return code if is_canonical_code(code) else ""
+
+
+def list_canonical_types_for_select_via_contract() -> list[str]:
+    """Canonical registry codes offered for D4 display / select. Not aliases."""
+    return sorted(canonical_codes())
+
+
 def _hub_document_view(doc: Document, link: DocumentEntityLink) -> dict[str, Any]:
     expires = getattr(doc, "expires_at", None) or getattr(doc, "expire_date", None)
     evaluation = evaluate_expiry(expires_on=expires)
+    stored = str(getattr(doc, "doc_type", "") or "")
+    canonical = persist_canonical_type_identity_via_contract(stored)
     return {
         "id": str(doc.id),
-        "title": str(getattr(doc, "custom_name", None) or getattr(doc, "doc_type", "") or ""),
-        "doc_type": str(getattr(doc, "doc_type", "") or ""),
+        "title": str(getattr(doc, "custom_name", None) or canonical or stored),
+        "doc_type": canonical,
         "status": _enum_value(getattr(doc, "status", None)),
         "expires_at": expires.isoformat() if expires is not None else None,
         "expiry_state": None if evaluation is None else evaluation.state,
@@ -227,7 +249,7 @@ def persist_outstanding_asks_via_contract(
     for raw in asks or []:
         if not isinstance(raw, dict):
             continue
-        doc_type = str(raw.get("doc_type") or "").strip()
+        doc_type = persist_canonical_type_identity_via_contract(raw.get("doc_type"))
         state = str(raw.get("state") or "").strip()
         if not doc_type or not state:
             continue
@@ -251,12 +273,22 @@ def load_outstanding_asks_via_contract(
 def _outstanding_asks_from_required(required: dict[str, Any] | None) -> list[dict[str, Any]]:
     payload = required or {}
     asks: list[dict[str, Any]] = []
-    for code in payload.get("missing") or []:
-        asks.append({"doc_type": str(code), "state": "missing"})
-    for code in payload.get("in_progress_types") or []:
-        asks.append({"doc_type": str(code), "state": "requested"})
-    for code in payload.get("problematic") or []:
-        asks.append({"doc_type": str(code), "state": "problem"})
+    seen: set[tuple[str, str]] = set()
+    buckets = (
+        ("missing", "missing"),
+        ("in_progress_types", "requested"),
+        ("problematic", "problem"),
+    )
+    for key, state in buckets:
+        for code in payload.get(key) or []:
+            canonical = persist_canonical_type_identity_via_contract(code)
+            if not canonical:
+                continue
+            item = (canonical, state)
+            if item in seen:
+                continue
+            seen.add(item)
+            asks.append({"doc_type": canonical, "state": state})
     return asks
 
 
@@ -271,12 +303,15 @@ def project_outstanding_asks_via_contract(
     """
     docs = [
         {
-            "doc_type": row.get("doc_type") or row.get("type"),
+            "doc_type": persist_canonical_type_identity_via_contract(
+                row.get("doc_type") or row.get("type")
+            ),
             "status": row.get("status"),
             "expires_at": row.get("expires_at"),
         }
         for row in (items or [])
     ]
+    docs = [row for row in docs if row["doc_type"]]
     summary = compute_owner_summary({}, load_default_ruleset(), docs)
     return _outstanding_asks_from_required(summary.get("required") if isinstance(summary, dict) else None)
 
@@ -334,8 +369,12 @@ def project_reminder_work_queue_via_contract(
 
 
 def list_canonical_document_type_codes_via_contract() -> set[str]:
-    """Canonical document type codes exposed via delivery contract."""
-    return set(DOCUMENT_TYPE_DEFAULTS.keys())
+    """Canonical document type codes exposed via delivery contract.
+
+    Existence SoT is ``document-type-registry-v1.json`` (R3). Aliases are
+    R4 resolve-only and are not select / persist identity.
+    """
+    return set(canonical_codes())
 
 
 async def list_document_types_via_contract(
