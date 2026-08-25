@@ -1,6 +1,6 @@
 # Engine → Document Request DR1-runtime
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313)  
 **Phase class:** platform  
 **Branch (docs):** `docs/queue-post-overlay-amendment`  
 **Branch (code):** `feat/engine-document-request-dr1-runtime`  
@@ -89,5 +89,6 @@ Unlocks: later Product via **queue amendment**. Does **not** auto-start E8-bind 
 
 ## History
 
+- 2026-08-25: DR1-runtime feat **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313) — Engine may create Hub outstanding asks on `documents.hub_adapter_v1`. Not CL8. Not E8. Not mass generation.
 - 2026-08-25: DR1-runtime feat opened — Engine may create Hub outstanding asks on `documents.hub_adapter_v1`. Not CL8. Not E8. Not mass generation.
 - 2026-08-25: DR1-runtime opened (feat locked) after Vacancy Overlay Gate PASS [#311](https://github.com/igortatarynovich/HostFlow/pull/311) / `7649544d` and Reference Program Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. Engine may create Hub outstanding asks. Not CL8. Not E8. Not mass generation.
