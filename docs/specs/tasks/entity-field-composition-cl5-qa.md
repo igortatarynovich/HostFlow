@@ -1,6 +1,6 @@
 # Entity Field Composition CL5 — Recruiter Q&A
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **PASS** [#306](https://github.com/igortatarynovich/HostFlow/pull/306) / `5d8e1ae3`  
 **Phase class:** platform  
 **Branch:** `feat/entity-field-composition-cl5-qa`  
 **Parents:** [CL0 contract seal](entity-field-composition-cl0-contract-seal.md) · [CL2 membership](entity-field-composition-cl2-membership.md) · [CL4 builder](entity-field-composition-cl4-builder.md) · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
@@ -92,3 +92,4 @@ Unlocks: **CL6** (Flight mapping). Does **not** unlock DR1-runtime or E8.
 ## History
 
 - 2026-08-24: CL5 Recruiter Q&A opened — `entity_profile_qa.v1`; qa_only from Lead / Application; D4 places Q&A zone, not extra / not a layout widget.
+- 2026-08-24: CL5 Gate **PASS** [#306](https://github.com/igortatarynovich/HostFlow/pull/306) / `5d8e1ae3`. Unlocks CL6.
