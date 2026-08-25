@@ -110,8 +110,8 @@ E7 already matches Document kind: request lives on `document_type_code`. Engine 
 | **CL2** | Membership runtime | ✅ PASS [#303](https://github.com/igortatarynovich/HostFlow/pull/303) — [brief](entity-field-composition-cl2-membership.md) |
 | **CL3** | Layout runtime (proof = D4 Information zone) | ✅ PASS [#304](https://github.com/igortatarynovich/HostFlow/pull/304) — [brief](entity-field-composition-cl3-layout.md) |
 | **CL4** | Builder (two modes) | ✅ PASS [#305](https://github.com/igortatarynovich/HostFlow/pull/305) — [brief](entity-field-composition-cl4-builder.md) |
-| **CL5** | Q&A | ← **active** — [brief](entity-field-composition-cl5-qa.md) |
-| **CL6** | Flight mapping | locked until CL5 |
+| **CL5** | Q&A | ✅ PASS [#306](https://github.com/igortatarynovich/HostFlow/pull/306) — [brief](entity-field-composition-cl5-qa.md) |
+| **CL6** | Flight mapping | ← **active** — [brief](entity-field-composition-cl6-flight-map.md) |
 
 CL1 is classification, **not** runtime. Do not skip to CL3 because “the card already renders”.  
 **Product after CL0 Gate:** CL1 → LI-1 → DR1-contract → CL2…. **DR1-runtime** is not a CL slice; it waits on DR1-contract ∧ Reference R5 and does **not** park CL2+. **E8-bind / E8-eval** are Documents slices (unlock ≠ schedule). Do not name Engine→Request as CL7.
