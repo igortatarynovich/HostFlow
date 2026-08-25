@@ -328,6 +328,7 @@ export const ownCompanySettings = {
 
 // --- helper to attach headers
 let _refreshInFlight: Promise<string | null> | null = null;
+let _syncInFlight: Promise<boolean> | null = null;
 
 export function getStoredAccessToken(): string | null {
   for (const key of TOKEN_STORAGE_KEYS) {
@@ -432,30 +433,53 @@ async function refreshAccessTokenViaCookie(): Promise<string | null> {
  * (module hosts start with empty localStorage).
  */
 export async function ensureSharedSessionCookies(): Promise<boolean> {
-  const syncOnce = async (): Promise<boolean> => {
-    const { data } = await apiInstance.post("/auth/session/sync", {});
-    const token = typeof data?.access_token === "string" ? data.access_token : null;
-    if (token) {
-      setToken(token);
-    }
-    // Module hosts authenticate from Domain cookie only — verify before cross-host nav.
-    const { data: who } = await apiInstance.get("/auth/whoami-verify", {
-      __hfSkipBearer: true,
-    } as any);
-    return Boolean(who && (who.sub || who.email));
-  };
+  if (_syncInFlight) return _syncInFlight;
+  _syncInFlight = (async () => {
+    const cookieAlreadyMatchesBearer = async (): Promise<boolean> => {
+      const localToken = getStoredAccessToken();
+      const localSub = localToken ? String(decodeJwtPayload(localToken)?.sub || "").trim() : "";
+      try {
+        const { data: who } = await apiInstance.get("/auth/whoami-verify", {
+          __hfSkipBearer: true,
+        } as any);
+        const cookieSub = String(who?.sub || "").trim();
+        return Boolean(cookieSub && (!localSub || localSub === cookieSub));
+      } catch {
+        return false;
+      }
+    };
 
-  try {
-    return await syncOnce();
-  } catch {
-    const refreshed = await refreshAccessTokenViaCookie();
-    if (!refreshed) return false;
+    const syncOnce = async (): Promise<boolean> => {
+      const { data } = await apiInstance.post("/auth/session/sync", {});
+      const token = typeof data?.access_token === "string" ? data.access_token : null;
+      if (token) {
+        setToken(token);
+      }
+      // Module hosts authenticate from Domain cookie only — verify before cross-host nav.
+      const { data: who } = await apiInstance.get("/auth/whoami-verify", {
+        __hfSkipBearer: true,
+      } as any);
+      return Boolean(who && (who.sub || who.email));
+    };
+
+    if (await cookieAlreadyMatchesBearer()) {
+      return true;
+    }
     try {
       return await syncOnce();
     } catch {
-      return false;
+      const refreshed = await refreshAccessTokenViaCookie();
+      if (!refreshed) return false;
+      try {
+        return await syncOnce();
+      } catch {
+        return false;
+      }
     }
-  }
+  })().finally(() => {
+    _syncInFlight = null;
+  });
+  return _syncInFlight;
 }
 
 /** Same-origin module emulation when Domain cookies cannot be proven. */

@@ -13,6 +13,7 @@ import {
   deployHostPublicOrigin,
   isAllowedHandoffNext,
   resolveDeployHost,
+  SESSION_COOKIE_NAMES,
   type ModuleDeployHost,
 } from './deployHosts'
 
@@ -50,9 +51,29 @@ export function clearSessionRevoked(): void {
   }
 }
 
+/**
+ * Readable CSRF cookie is set on Domain=.hostflow.cc at login.
+ * HttpOnly hf_access cannot be inspected from JS; CSRF is the shared-session hint.
+ */
+export function hasSharedSessionCookieHint(): boolean {
+  if (typeof document === 'undefined') return false
+  const name = `${SESSION_COOKIE_NAMES.csrf || 'hf_csrf'}=`
+  try {
+    return document.cookie.split(';').some((part) => part.trim().startsWith(name))
+  } catch {
+    return false
+  }
+}
+
 export function isSessionRevoked(): boolean {
   if (typeof window === 'undefined') return false
   try {
+    // Re-login on shell mints Domain cookies; a stale per-origin logout flag on
+    // recruitment.hostflow.cc must not block cookie rehydrate (login↔module bounce).
+    if (hasSharedSessionCookieHint()) {
+      window.sessionStorage.removeItem(SESSION_REVOKED_KEY)
+      return false
+    }
     return window.sessionStorage.getItem(SESSION_REVOKED_KEY) === '1'
   } catch {
     return false

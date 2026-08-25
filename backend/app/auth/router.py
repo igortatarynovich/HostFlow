@@ -17,6 +17,7 @@ from backend.app.auth.jwt_tools import encode as encode_jwt
 from backend.app.auth.session_cookies import (
     clear_session_cookies,
     new_csrf_token,
+    read_csrf_cookie,
     read_refresh_token,
     resolve_access_token,
     set_session_cookies,
@@ -490,7 +491,9 @@ async def auth_session_sync(request: Request, response: Response) -> TokenOut:
     Needed when the SPA still has a shell-only localStorage token from before shared
     cookies, or host-only cookies — otherwise module hosts bounce back to /login.
     """
-    await enforce_rate_limit(request, rate_limits().login, scope="auth:session_sync")
+    # Cookie mint is called on every shell/module mount; 10/min login bucket 429s
+    # a recruiter who just signed in and is being handed across hosts.
+    await enforce_rate_limit(request, "60/minute", scope="auth:session_sync")
     raw = resolve_access_token(request)
     if not raw:
         raise HTTPException(status_code=401, detail="Missing session")
@@ -503,6 +506,10 @@ async def auth_session_sync(request: Request, response: Response) -> TokenOut:
     tenant_id = str(claims.get("tenant_id") or "").strip()
     if not user_id or not tenant_id:
         raise HTTPException(status_code=401, detail="Invalid session claims")
+
+    existing_refresh_raw = read_refresh_token(request)
+    reused_refresh = False
+    session_entry_id: str | None = None
 
     async with async_session_maker() as session:
         user_row = await session.execute(select(User).where(User.id == user_id))
@@ -541,32 +548,48 @@ async def auth_session_sync(request: Request, response: Response) -> TokenOut:
         }
         token = encode_jwt(token_payload)
 
-        # Keep one active refresh family for this user+tenant (same as login).
-        await revoke_refresh_tokens(
-            session,
-            user_id=user.id,
-            tenant_id=tenant_id,
-            actor_id=user.id,
-        )
-        refresh_raw = await issue_refresh_token(
-            session,
-            user_id=user.id,
-            tenant_id=tenant_id,
-            expires_at=refresh_exp,
-            payload={"session_kind": "web", "synced": True},
-        )
-        session_entry = await users_service.register_user_session(
-            session,
-            tenant_id=tenant_id,
-            user_id=user.id,
-            ip_address=request.client.host if request.client else None,
-            user_agent=request.headers.get("User-Agent"),
-            device_label=request.headers.get("X-Device-Name"),
-            expires_at=exp,
-        )
-        await session.commit()
+        active_refresh = None
+        if existing_refresh_raw:
+            active_refresh = await lookup_active_refresh_token(
+                session, raw_token=existing_refresh_raw
+            )
+            if (
+                active_refresh is None
+                or str(active_refresh.user_id) != str(user.id)
+                or str(active_refresh.tenant_id) != str(tenant_id)
+            ):
+                active_refresh = None
 
-    csrf = new_csrf_token()
+        if active_refresh is not None and existing_refresh_raw:
+            # Reuse the login refresh family. Revoking here races concurrent
+            # POST /login + POST /session/sync and leaves the browser with a
+            # revoked hf_refresh (user bounces back to /login with a valid password).
+            refresh_raw = existing_refresh_raw
+            reused_refresh = True
+        else:
+            # Bearer-only mint: do not revoke other families — login owns rotation.
+            # Concurrent syncs must not invalidate a refresh cookie login just set.
+            refresh_raw = await issue_refresh_token(
+                session,
+                user_id=user.id,
+                tenant_id=tenant_id,
+                expires_at=refresh_exp,
+                payload={"session_kind": "web", "synced": True},
+            )
+            session_entry = await users_service.register_user_session(
+                session,
+                tenant_id=tenant_id,
+                user_id=user.id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("User-Agent"),
+                device_label=request.headers.get("X-Device-Name"),
+                expires_at=exp,
+            )
+            session_entry_id = session_entry.id
+            await session.commit()
+
+    existing_csrf = read_csrf_cookie(request)
+    csrf = existing_csrf if reused_refresh and existing_csrf else new_csrf_token()
     set_session_cookies(
         response,
         request,
@@ -579,7 +602,7 @@ async def auth_session_sync(request: Request, response: Response) -> TokenOut:
     return TokenOut(
         access_token=token,
         user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id, "preset_id": _preset_id_for_user(user, role_value), "access_context": _access_context_for_user(user, role_value)},
-        session_id=session_entry.id,
+        session_id=session_entry_id,
     )
 
 

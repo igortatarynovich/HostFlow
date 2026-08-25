@@ -18,6 +18,7 @@ import { bindUserContext } from '../lib/observability'
 import { useI18n, type LocaleCode } from '../i18n'
 import {
   clearSessionRevoked,
+  hasSharedSessionCookieHint,
   isSessionRevoked,
   markSessionRevoked,
   startCrossOriginLogoutBounce,
@@ -128,7 +129,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const refresh = useCallback(async (opts?: { force?: boolean }) => {
     // В публичных страницах не тянем auth/whoami, чтобы не ловить 401
     const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
-    if (!opts?.force && isPublicAuthPath(path)) {
+    const loginWithLiveCookie =
+      (path === '/login' || path.startsWith('/login/')) && hasSharedSessionCookieHint()
+    if (!opts?.force && isPublicAuthPath(path) && !loginWithLiveCookie) {
       setLoading(false)
       return
     }
@@ -348,7 +351,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const path = location.pathname || ''
-    if (isPublicAuthPath(path)) {
+    const loginWithLiveCookie =
+      (path === '/login' || path.startsWith('/login/')) && hasSharedSessionCookieHint()
+    if (isPublicAuthPath(path) && !loginWithLiveCookie) {
       setLoading(false)
       return
     }

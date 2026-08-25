@@ -110,6 +110,13 @@ describe('sessionLogout wipe chain', () => {
   beforeEach(() => {
     localStorage.clear()
     sessionStorage.clear()
+    document.cookie.split(';').forEach((part) => {
+      const name = part.split('=')[0]?.trim()
+      if (name) {
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+        document.cookie = `${name}=; max-age=0; path=/`
+      }
+    })
     vi.unstubAllGlobals()
   })
 
@@ -120,6 +127,15 @@ describe('sessionLogout wipe chain', () => {
     expect(isSessionRevoked()).toBe(true)
     clearSessionRevoked()
     expect(isSessionRevoked()).toBe(false)
+  })
+
+  it('clears stale per-origin revoked flag when Domain csrf cookie is present', () => {
+    markSessionRevoked()
+    expect(sessionStorage.getItem(SESSION_REVOKED_KEY)).toBe('1')
+    document.cookie = 'hf_csrf=live-session; path=/'
+    expect(isSessionRevoked()).toBe(false)
+    expect(sessionStorage.getItem(SESSION_REVOKED_KEY)).toBeNull()
+    document.cookie = 'hf_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
   })
 
   it('remainingLogoutWipeHosts excludes the current host', () => {
