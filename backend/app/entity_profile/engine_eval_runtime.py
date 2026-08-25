@@ -17,16 +17,17 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 
-from backend.app.entity_profile.constants import (
-    DRIVER_CE_DOCUMENT_PACK_CODE,
-    DRIVER_CE_PROFILE_CODE,
-    DRIVER_CE_SCREENING_PACK_CODE,
-)
+from backend.app.entity_profile.constants import DRIVER_CE_PROFILE_CODE
 from backend.app.entity_profile.membership_runtime import (
     MEMBERSHIP_CONTEXTS,
     is_field_member,
     presence_level,
     resolve_membership,
+)
+from backend.app.entity_profile.vacancy_overlay_runtime import (
+    CONTRACT_ID as OVERLAY_CONTRACT_ID,
+    merge as merge_overlay,
+    resolve_overlay,
 )
 
 CONTRACT_ID = "entity_profile_engine_eval.v1"
@@ -51,17 +52,6 @@ ERROR_WRITE_TO_EXTRA = "write_to_extra"
 _YEARS_CE = "recruitment.candidate.experience.years_ce"
 _CITIZENSHIP = "platform.identity.citizenship"
 _LICENSE_DOC = "driver_license"
-_SCREENING_YEARS_CE_MIN = {
-    DRIVER_CE_SCREENING_PACK_CODE: 2,
-}
-_PACK_DOCUMENTS = {
-    DRIVER_CE_DOCUMENT_PACK_CODE: (
-        "passport",
-        "driver_license",
-        "code95",
-        "tacho_card",
-    ),
-}
 _HANDOFF_POINTS = frozenset(
     {"handoff", "ready_for_handoff", "transition"}
 )
@@ -110,11 +100,15 @@ def evaluate(
     """Evaluate ready | not_ready with structured blockers.
 
     Profile may only ref Engine. Screening is a pack predicate, not
-    ``required=true``. Vacancy overlay, if passed, is an input — this
-    producer does not mint overlay SoT. Does not write Hub asks.
+    ``required=true``. Vacancy overlay is a defined input via
+    ``entity_profile_vacancy_overlay.v1`` — this producer does not mint
+    overlay SoT and does not read ad-hoc ``years_ce_min``. Does not write
+    Hub asks.
     """
     entity_payload = entity if isinstance(entity, Mapping) else {}
     vacancy_payload = vacancy if isinstance(vacancy, Mapping) else {}
+    if isinstance(vacancy, str) and vacancy.strip():
+        vacancy_payload = {"vacancy_ref": vacancy.strip()}
     point = _process_point_code(process_point)
 
     policy_error = _policy_error(entity_payload, vacancy_payload, process_point)
@@ -130,17 +124,22 @@ def evaluate(
     if not isinstance(refs, Mapping):
         refs = {}
 
+    overlay = resolve_overlay(code, vacancy_payload)
+    if overlay.get("ok") is False:
+        return overlay
+    effective = merge_overlay(code, refs.get("screening_pack_code"), overlay)
+    if effective.get("ok") is False:
+        return effective
+
     values = _entity_values(entity_payload)
     documents = _entity_documents(entity_payload)
     presence_ctx = point if point in MEMBERSHIP_CONTEXTS else "card_save"
 
     blockers: list[dict[str, Any]] = []
-    blockers.extend(_presence_blockers(code, values, presence_ctx))
-    blockers.extend(
-        _value_blockers(code, values, refs, vacancy_payload, entity_payload)
-    )
-    blockers.extend(_document_blockers(refs, documents, entity_payload))
-    blockers.extend(_process_blockers(point, values, documents, refs))
+    blockers.extend(_presence_blockers(code, values, presence_ctx, effective))
+    blockers.extend(_value_blockers(code, values, effective))
+    blockers.extend(_document_blockers(documents, entity_payload, effective))
+    blockers.extend(_process_blockers(point, values, documents, refs, effective))
 
     status = STATUS_READY if not blockers else STATUS_NOT_READY
     return {
@@ -149,6 +148,10 @@ def evaluate(
         "profile_code": code,
         "status": status,
         "blockers": blockers,
+        "overlay": {
+            "contract_id": OVERLAY_CONTRACT_ID,
+            "vacancy_ref": overlay.get("vacancy_ref"),
+        },
     }
 
 
@@ -327,11 +330,13 @@ def _presence_blockers(
     profile_code: str,
     values: Mapping[str, Any],
     context: str,
+    effective: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
     membership = resolve_membership(profile_code)
     if membership is None:
         return []
     out: list[dict[str, Any]] = []
+    seen: set[str] = set()
     for row in membership.get("fields") or []:
         qualified = str(row.get("qualified_code") or "").strip()
         if not qualified:
@@ -339,6 +344,7 @@ def _presence_blockers(
         level = presence_level(profile_code, qualified, context)
         if level != "required":
             continue
+        seen.add(qualified)
         if not _is_empty(_payload_value(values, qualified)):
             continue
         out.append(
@@ -354,31 +360,53 @@ def _presence_blockers(
                 },
             )
         )
+    extra = effective.get("presence_required") or []
+    if isinstance(extra, Sequence) and not isinstance(extra, (str, bytes)):
+        for row in extra:
+            if not isinstance(row, Mapping):
+                continue
+            qualified = str(row.get("qualified_code") or "").strip()
+            if not qualified or qualified in seen:
+                continue
+            if not is_field_member(profile_code, qualified):
+                continue
+            seen.add(qualified)
+            if not _is_empty(_payload_value(values, qualified)):
+                continue
+            overlay_context = str(row.get("context") or context)
+            out.append(
+                _blocker(
+                    KIND_PRESENCE,
+                    str(row.get("code") or f"presence.{qualified}"),
+                    str(row.get("owner") or "vacancy"),
+                    f"{qualified} must be present",
+                    {
+                        "qualified_code": qualified,
+                        "context": overlay_context,
+                        "presence": "required",
+                        "overlay": True,
+                    },
+                )
+            )
     return out
 
 
 def _value_blockers(
     profile_code: str,
     values: Mapping[str, Any],
-    refs: Mapping[str, Any],
-    vacancy: Mapping[str, Any],
-    entity: Mapping[str, Any],
+    effective: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
     if not is_field_member(profile_code, _YEARS_CE):
         return []
-    pack = str(refs.get("screening_pack_code") or "").strip()
+    pack = str(effective.get("screening_pack_code") or "").strip()
     if not pack:
         return []
-    minimum = _SCREENING_YEARS_CE_MIN.get(pack)
-    overlay_min = vacancy.get("years_ce_min")
-    if overlay_min is None:
-        overlay_min = entity.get("years_ce_min")
-    if overlay_min is not None:
-        try:
-            minimum = int(overlay_min)
-        except (TypeError, ValueError):
-            pass
+    minimum = effective.get("years_ce_min")
     if minimum is None:
+        return []
+    try:
+        minimum_int = int(minimum)
+    except (TypeError, ValueError):
         return []
     raw = _payload_value(values, _YEARS_CE)
     if _is_empty(raw):
@@ -387,20 +415,22 @@ def _value_blockers(
         years = int(raw)
     except (TypeError, ValueError):
         years = None
-    if years is not None and years >= minimum:
+    if years is not None and years >= minimum_int:
         return []
+    owner = str(effective.get("years_ce_owner") or "screening_pack")
     return [
         _blocker(
             KIND_VALUE,
             "screening.years_ce.min",
-            "screening_pack",
-            f"{_YEARS_CE} must be ≥ {minimum}",
+            owner,
+            f"{_YEARS_CE} must be ≥ {minimum_int}",
             {
                 "qualified_code": _YEARS_CE,
                 "value": raw,
-                "minimum": minimum,
+                "minimum": minimum_int,
                 "screening_pack_code": pack,
                 "required": False,
+                "overlay_contract_id": OVERLAY_CONTRACT_ID,
             },
         )
     ]
@@ -415,14 +445,14 @@ def _document_type_code(doc: Mapping[str, Any]) -> str:
 
 
 def _document_blockers(
-    refs: Mapping[str, Any],
     documents: Sequence[Mapping[str, Any]],
     entity: Mapping[str, Any],
+    effective: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
-    pack = str(refs.get("document_pack_code") or "").strip()
+    pack = str(effective.get("document_pack_code") or "").strip()
     if not pack:
         return []
-    required = _PACK_DOCUMENTS.get(pack, ())
+    required = tuple(effective.get("document_types") or ())
     present = {_document_type_code(row) for row in documents}
     present.discard("")
     extra_types = entity.get("document_types")
@@ -464,6 +494,7 @@ def _process_blockers(
     values: Mapping[str, Any],
     documents: Sequence[Mapping[str, Any]],
     refs: Mapping[str, Any],
+    effective: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
     if process_point not in _HANDOFF_POINTS:
         return []
@@ -497,7 +528,48 @@ def _process_blockers(
                 },
             )
         )
+    extra = effective.get("process_deltas") or []
+    if isinstance(extra, Sequence) and not isinstance(extra, (str, bytes)):
+        for row in extra:
+            if not isinstance(row, Mapping):
+                continue
+            predicate = row.get("predicate") if isinstance(row.get("predicate"), Mapping) else {}
+            doc_type = str(
+                predicate.get("document_type_code")
+                or predicate.get("type")
+                or ""
+            ).strip().lower()
+            if doc_type and not _document_verified(documents, doc_type):
+                out.append(
+                    _blocker(
+                        KIND_PROCESS,
+                        str(row.get("code") or f"process.handoff.{doc_type}_verified"),
+                        str(row.get("owner") or "vacancy"),
+                        str(row.get("message") or f"{doc_type} must be verified before handoff"),
+                        {
+                            "document_type_code": doc_type,
+                            "process_point": process_point,
+                            "process_profile_code": process_ref,
+                            "overlay": True,
+                        },
+                    )
+                )
     return out
+
+
+def _document_verified(documents: Sequence[Mapping[str, Any]], doc_type: str) -> bool:
+    needle = str(doc_type or "").strip().lower()
+    if not needle:
+        return False
+    for row in documents:
+        if _document_type_code(row) != needle:
+            continue
+        if _is_truthy(row.get("verified")) or _is_truthy(row.get("is_verified")):
+            return True
+        status = str(row.get("verification") or row.get("status") or "").strip().lower()
+        if status in {"verified", "valid"}:
+            return True
+    return False
 
 
 def _is_truthy(value: Any) -> bool:

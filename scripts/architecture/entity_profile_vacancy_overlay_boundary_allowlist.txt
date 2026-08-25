@@ -1,0 +1,2 @@
+# Overlay — sole producer for Entity Profile vacancy overlay runtime.
+entity_profile_vacancy_overlay|backend/app/entity_profile/vacancy_overlay_runtime.py
