@@ -1,12 +1,14 @@
-"""Documents Platform E8 Canonical Type Bind Gate.
+"""Documents Platform E8 Required-Doc Evaluation Gate.
 
-D4 Documents surface display / select / persist uses canonical registry
-codes only. R4 aliases are resolve-only, not stored identity.
+D4 Documents surface evaluates required / optional / blocked from R5
+``merge(pack, tenant_delta)`` using canonical registry types only.
+Overlay is an existing CL7 input (``document_types``), not rewritten.
 D4 + D8 stay bound. D3 / D5–D7 / D9 stay unbound.
-Not E8-eval. Not CL8. Not Engine v2. Not mass D3–D9 bind.
-No Hub request / reminder table. Same adapter; no new public-contract id.
-No Catalog `document.requested`. Shell nav ≠ D2 slot. G4 unchanged.
-Documents Foundation stays 🔄. No OCR / e-sign / packages product.
+Not OCR. Not a packages Hub table. Not CL8. Not Engine v2.
+Not mass D3–D9 bind. No Hub request / reminder table.
+Same adapter; no new public-contract id. No Catalog ``document.requested``.
+Does not rewrite CL7 evaluate / Overlay / DR1-runtime / E8-bind identity.
+Shell nav ≠ D2 slot. G4 unchanged. Documents Foundation stays 🔄.
 No Postgres required.
 """
 
@@ -14,29 +16,29 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from types import SimpleNamespace
 
-from backend.app.document_types.registry import canonical_codes, is_canonical_code
+from backend.app.document_types.registry import is_canonical_code
 from backend.app.services.document_hub_delivery_contract import (
-    E4_LINKED_ENTITY_TYPE,
-    _hub_document_view,
-    list_canonical_document_type_codes_via_contract,
-    list_canonical_types_for_select_via_contract,
+    APPLICABILITY_BLOCKED,
+    APPLICABILITY_OPTIONAL,
+    APPLICABILITY_REQUIRED,
+    ERROR_OCR_PRODUCT,
+    ERROR_PACKAGES_TABLE,
+    ERROR_SCREENING_AS_REQUIRED,
+    evaluate_required_doc_applicability_via_contract,
     persist_canonical_type_identity_via_contract,
-    persist_outstanding_asks_via_contract,
-    project_outstanding_asks_via_contract,
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 _BRIEF = (
+    _REPO_ROOT / "docs" / "specs" / "tasks" / "documents-platform-e8-eval.md"
+)
+_BIND_BRIEF = (
     _REPO_ROOT / "docs" / "specs" / "tasks" / "documents-platform-e8-bind.md"
 )
 _CONTRACT = (
     _REPO_ROOT / "docs" / "specs" / "architecture" / "documents-public-contract.md"
-)
-_E7_BRIEF = (
-    _REPO_ROOT / "docs" / "specs" / "tasks" / "documents-platform-e7-document-requests.md"
 )
 _HUB_SCOPE = _REPO_ROOT / "docs" / "document-hub" / "module-scope.md"
 _MATURITY = (
@@ -178,16 +180,6 @@ _D8_SLOTS = (
     "context-rail",
 )
 
-_ALIAS_IDENTITY = (
-    "code95",
-    "tacho_card",
-    "residence_permit",
-    "national_id",
-    "psych_tests",
-    "driver_certificate",
-    "additional_document",
-)
-
 
 def _ts_string_array(src: str, const_name: str) -> tuple[str, ...]:
     match = re.search(
@@ -199,20 +191,33 @@ def _ts_string_array(src: str, const_name: str) -> tuple[str, ...]:
     return tuple(re.findall(r"'([^']+)'", match.group(1)))
 
 
-def test_e8_bind_brief_locks_canonical_identity() -> None:
+def _by_state(result: dict) -> dict[str, set[str]]:
+    out: dict[str, set[str]] = {
+        APPLICABILITY_REQUIRED: set(),
+        APPLICABILITY_OPTIONAL: set(),
+        APPLICABILITY_BLOCKED: set(),
+    }
+    for row in result.get("applicability") or []:
+        out[str(row["applicability"])].add(str(row["doc_type"]))
+    return out
+
+
+def test_e8_eval_brief_locks_required_optional_blocked() -> None:
     text = _BRIEF.read_text(encoding="utf-8")
-    assert "Documents Platform E8-bind" in text
-    assert "Canonical Type Bind" in text
-    assert "canonical" in text.lower()
-    assert "document-type-legacy-aliases-v1.json" in text
-    assert "Documents Platform E8 Canonical Type Bind Gate" in text
-    assert "E8-eval" in text
+    assert "Documents Platform E8-eval" in text
+    assert "Required-Doc Evaluation" in text
+    assert "required" in text.lower()
+    assert "optional" in text.lower()
+    assert "blocked" in text.lower()
+    assert "merge(pack, tenant_delta)" in text
+    assert "Documents Platform E8 Required-Doc Evaluation Gate" in text
+    assert "OCR" in text
     assert "CL8" in text
     assert "document.requested" in text
-    assert "OCR" in text
+    assert "packages" in text.lower()
 
 
-def test_e8_bind_d4_and_d8_stay_bound_others_omit() -> None:
+def test_e8_eval_d4_and_d8_stay_bound_others_omit() -> None:
     src = _CONSUMER_TS.read_text(encoding="utf-8")
     slots = _ts_string_array(src, "CANDIDATE_COMPOSITION_SLOTS")
     assert slots == _D4_SLOTS
@@ -231,68 +236,65 @@ def test_e8_bind_d4_and_d8_stay_bound_others_omit() -> None:
         assert "not bind documents slot this slice" in other, filename
 
 
-def test_e8_bind_persists_canonical_not_alias() -> None:
+def test_e8_eval_r5_merge_emits_canonical_required_optional_blocked() -> None:
+    defaults = evaluate_required_doc_applicability_via_contract()
+    assert defaults["ok"] is True
+    by_state = _by_state(defaults)
+    assert "passport" in by_state[APPLICABILITY_REQUIRED]
+    assert "driver_license" in by_state[APPLICABILITY_REQUIRED]
+    assert "medical_certificate" in by_state[APPLICABILITY_OPTIONAL]
+    assert all(is_canonical_code(code) for rows in by_state.values() for code in rows)
     assert persist_canonical_type_identity_via_contract("code95") == (
         "driver_qualification_card"
     )
-    assert persist_canonical_type_identity_via_contract("tacho_card") == (
-        "tachograph_card"
+
+    eu = evaluate_required_doc_applicability_via_contract(
+        {"residency_status": "eu_citizen"}
     )
-    assert persist_canonical_type_identity_via_contract("residence_permit") == (
-        "residence_card"
-    )
-    assert persist_canonical_type_identity_via_contract("passport") == "passport"
-    assert persist_canonical_type_identity_via_contract("") == ""
-    persisted = persist_outstanding_asks_via_contract(
-        [
-            {"doc_type": "code95", "state": "missing"},
-            {"doc_type": "tacho_card", "state": "requested"},
-        ],
-        linked_entity_type=E4_LINKED_ENTITY_TYPE,
-        linked_entity_id="cand-e8-alias",
-    )
-    assert persisted == [
-        {"doc_type": "driver_qualification_card", "state": "missing"},
-        {"doc_type": "tachograph_card", "state": "requested"},
-    ]
-    assert all(is_canonical_code(row["doc_type"]) for row in persisted)
-    for alias in _ALIAS_IDENTITY:
-        assert alias not in {row["doc_type"] for row in persisted}
+    eu_state = _by_state(eu)
+    assert "national_identity_card" in eu_state[APPLICABILITY_REQUIRED]
+    assert "passport" in eu_state[APPLICABILITY_BLOCKED]
+    assert "visa" in eu_state[APPLICABILITY_BLOCKED]
+    assert "passport" not in eu_state[APPLICABILITY_REQUIRED]
+    assert all(is_canonical_code(code) for rows in eu_state.values() for code in rows)
 
 
-def test_e8_bind_display_and_select_are_registry_codes() -> None:
-    codes = list_canonical_document_type_codes_via_contract()
-    assert codes == set(canonical_codes())
-    selectable = list_canonical_types_for_select_via_contract()
-    assert selectable == sorted(canonical_codes())
-    for alias in _ALIAS_IDENTITY:
-        assert alias not in codes
-        assert alias not in selectable
-    view = _hub_document_view(
-        SimpleNamespace(
-            id="doc-e8",
-            custom_name="",
-            doc_type="code95",
-            status="approved",
-            expires_at=None,
-            expire_date=None,
-        ),
-        SimpleNamespace(
-            id="link-e8",
-            linked_entity_type=E4_LINKED_ENTITY_TYPE,
-            linked_entity_id="cand-e8",
-            relation_type="primary",
-        ),
+def test_e8_eval_overlay_input_adds_canonical_required() -> None:
+    result = evaluate_required_doc_applicability_via_contract(
+        overlay={"ok": True, "document_types": ["code95", "driver_attestation"]}
     )
-    assert view["doc_type"] == "driver_qualification_card"
-    asks = project_outstanding_asks_via_contract(
-        [{"doc_type": "residence_permit", "status": "missing"}]
+    by_state = _by_state(result)
+    assert "driver_qualification_card" in by_state[APPLICABILITY_REQUIRED]
+    assert "driver_attestation" in by_state[APPLICABILITY_REQUIRED]
+    assert "code95" not in by_state[APPLICABILITY_REQUIRED]
+    tenant = evaluate_required_doc_applicability_via_contract(
+        tenant_delta={
+            "vacancy": {
+                "additions": [{"when": {}, "require": ["adr_certificate"]}],
+            }
+        }
     )
-    assert all(is_canonical_code(row["doc_type"]) for row in asks)
-    assert all(row["doc_type"] != "residence_permit" for row in asks)
+    tenant_state = _by_state(tenant)
+    assert "adr_certificate" in tenant_state[APPLICABILITY_REQUIRED]
 
 
-def test_e8_bind_proof_surface_uses_canonical_select() -> None:
+def test_e8_eval_rejects_screening_ocr_packages() -> None:
+    screening = evaluate_required_doc_applicability_via_contract(
+        {"screening_as_required": True}
+    )
+    assert screening["ok"] is False
+    assert screening["error"] == ERROR_SCREENING_AS_REQUIRED
+    ocr = evaluate_required_doc_applicability_via_contract({"ocr_product": True})
+    assert ocr["ok"] is False
+    assert ocr["error"] == ERROR_OCR_PRODUCT
+    packages = evaluate_required_doc_applicability_via_contract(
+        {"hub_packages_table": True}
+    )
+    assert packages["ok"] is False
+    assert packages["error"] == ERROR_PACKAGES_TABLE
+
+
+def test_e8_eval_proof_surface_shows_applicability_vs_hub() -> None:
     page = _PAGE.read_text(encoding="utf-8")
     panel = _PANEL.read_text(encoding="utf-8")
     capability = _CAPABILITY.read_text(encoding="utf-8")
@@ -301,36 +303,34 @@ def test_e8_bind_proof_surface_uses_canonical_select() -> None:
     api = _PUBLIC_API.read_text(encoding="utf-8")
     assert "CandidateEntityWorkspacePanel" in page
     assert "EntityWorkspaceCapabilityHost" in panel
-    assert "persistCanonicalDocumentType" in owner
-    assert "canonicalTypes" in owner
-    assert "canonical_types" in owner
-    assert 'data-canonical-type-select="true"' in capability
-    assert 'data-canonical-type-bind="true"' in capability
-    assert 'data-alias-stored-identity="false"' in capability
-    assert 'data-e8-bind="true"' in capability
+    assert "applicability" in owner
+    assert "data-applicability=" in capability
+    assert "data-hub-linked=" in capability
     assert 'data-e8-eval="true"' in capability
+    assert 'data-e8-bind="true"' in capability
+    assert 'data-ocr="false"' in capability
+    assert 'data-packages-table="false"' in capability
     assert 'data-cl8="false"' in capability
-    assert "persist_canonical_type_identity_via_contract" in delivery
-    assert "list_canonical_types_for_select_via_contract" in delivery
-    assert "canonical_types" in api
+    assert "evaluate_required_doc_applicability_via_contract" in delivery
+    assert "project_required_doc_applicability_via_contract" in delivery
+    assert "merge_resolved_policy" in delivery
+    assert "ApplicabilityOut" in api
+    assert "applicability" in api
     assert "hub_adapter_v2" not in delivery
     assert "documents.public_contract.v2" not in delivery
     assert "documents.public_contract.v2" not in api
-    for alias in ("code95", "tacho_card", "residence_permit"):
-        assert f'value="{alias}"' not in capability
-        assert f"'{alias}'" not in capability
+    assert "from backend.app.entity_profile.engine_eval_runtime" not in delivery
+    assert "from backend.app.entity_profile.vacancy_overlay_runtime" not in delivery
 
 
-def test_e8_bind_no_request_table_no_eval_product() -> None:
+def test_e8_eval_no_request_table_no_ocr_product() -> None:
     delivery = _DELIVERY.read_text(encoding="utf-8")
     api = _PUBLIC_API.read_text(encoding="utf-8")
     capability = _CAPABILITY.read_text(encoding="utf-8")
     contract = _CONTRACT.read_text(encoding="utf-8")
     assert "pe_document_requirements" not in api
     assert "hr_document_requests" not in api
-    assert "applicability" not in delivery.lower() or "E8-eval" in delivery
-    assert "ocr_requirement_matching" not in delivery
-    assert "packages" not in capability.lower() or "Not" in capability
+    assert "ocr_requirement_matching" not in capability
     models_dir = _REPO_ROOT / "backend" / "app" / "models"
     hub_models = "\n".join(
         path.read_text(encoding="utf-8")
@@ -339,10 +339,12 @@ def test_e8_bind_no_request_table_no_eval_product() -> None:
     assert "class DocumentRequest" not in hub_models
     assert "class HubRequest" not in hub_models
     assert "class DocumentReminder" not in hub_models
+    assert "class DocumentPackage" not in hub_models
     assert "document.requested" in contract
+    assert "hub_adapter_v1" in delivery
 
 
-def test_e8_bind_shell_documents_nav_is_not_d2_slot() -> None:
+def test_e8_eval_shell_documents_nav_is_not_d2_slot() -> None:
     types_src = _TYPES_TS.read_text(encoding="utf-8")
     sections = _ts_string_array(types_src, "ENTITY_WORKSPACE_SECTION_ORDER")
     slots = _ts_string_array(
@@ -360,7 +362,7 @@ def test_e8_bind_shell_documents_nav_is_not_d2_slot() -> None:
     assert "contacts" not in consumer
 
 
-def test_e8_bind_g4_recruitment_application_unchanged() -> None:
+def test_e8_eval_g4_recruitment_application_unchanged() -> None:
     proof = _PROOF.read_text(encoding="utf-8")
     assert "PROOF_CONSUMER_ID = 'recruitment_application'" in proof
     assert "PROOF_HOST_ID = 'application_workspace'" in proof
@@ -370,7 +372,7 @@ def test_e8_bind_g4_recruitment_application_unchanged() -> None:
     assert "recruitment_application" not in contrib
 
 
-def test_e8_bind_maturity_documents_foundation_not_complete() -> None:
+def test_e8_eval_maturity_documents_foundation_not_complete() -> None:
     text = _MATURITY.read_text(encoding="utf-8")
     row = next(
         line for line in text.splitlines() if line.startswith("| **Documents**")
@@ -380,7 +382,7 @@ def test_e8_bind_maturity_documents_foundation_not_complete() -> None:
     assert "✅" not in foundation_cell
 
 
-def test_e8_bind_catalog_shape_unchanged_no_ocr_product() -> None:
+def test_e8_eval_catalog_shape_unchanged_no_ocr_product() -> None:
     catalog = _CATALOG.read_text(encoding="utf-8")
     assert re.search(r"(?im)^###\s+Documents\b", catalog)
     events_line = next(
@@ -397,28 +399,24 @@ def test_e8_bind_catalog_shape_unchanged_no_ocr_product() -> None:
     assert "packages" in brief.lower()
 
 
-def test_e8_bind_prior_gates_present() -> None:
-    e7 = _E7_BRIEF.read_text(encoding="utf-8")
-    assert "**COMPLETE**" in e7 or "#287" in e7
+def test_e8_eval_prior_gates_present() -> None:
+    bind = _BIND_BRIEF.read_text(encoding="utf-8")
+    assert "**PASS**" in bind or "#321" in bind
     ci = _CI.read_text(encoding="utf-8")
-    assert "Documents Platform E1 Contract Seal Gate" in ci
-    assert "Documents Platform E2 Public Contract Gate" in ci
-    assert "Documents Platform E3 First Consumer Bind Gate" in ci
-    assert "Documents Platform E4 Candidate Document Link Gate" in ci
-    assert "Documents Platform E5 Candidate Storage Bridge Gate" in ci
-    assert "Documents Platform E6 Document Expiry Gate" in ci
     assert "Documents Platform E7 Document Requests Gate" in ci
     assert "Documents Platform E8 Canonical Type Bind Gate" in ci
+    assert "Documents Platform E8 Required-Doc Evaluation Gate" in ci
     assert "test_documents_e8_canonical_type_bind_gate.py" in ci
+    assert "test_documents_e8_required_doc_eval_gate.py" in ci
     assert "Entity Workspace D4 Cutover Gate" in ci
     assert "Entity Workspace D8 Cutover Gate" in ci
     assert "Workspace Capability Host Runtime Equivalence Gate" in ci
     assert _HUB_SCOPE.is_file()
     hub = _HUB_SCOPE.read_text(encoding="utf-8")
-    assert "documents-platform-e8-bind.md" in hub
+    assert "documents-platform-e8-eval.md" in hub
 
 
-def test_e8_bind_product_track_points_at_e8_bind() -> None:
+def test_e8_eval_product_track_points_at_e8_eval() -> None:
     queue = (
         _REPO_ROOT
         / "docs"
@@ -427,10 +425,10 @@ def test_e8_bind_product_track_points_at_e8_bind() -> None:
         / "sales-to-comms-sequential-queue.md"
     ).read_text(encoding="utf-8")
     agents = (_REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    assert "documents-platform-e8-bind.md" in queue
-    assert "documents-platform-e8-bind.md" in agents
-    assert "canonical" in agents.lower()
+    assert "documents-platform-e8-eval.md" in queue
+    assert "documents-platform-e8-eval.md" in agents
+    assert "E8-eval" in agents
 
 
-def test_e8_bind_gate_filename() -> None:
-    assert Path(__file__).name == "test_documents_e8_canonical_type_bind_gate.py"
+def test_e8_eval_gate_filename() -> None:
+    assert Path(__file__).name == "test_documents_e8_required_doc_eval_gate.py"

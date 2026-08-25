@@ -6,6 +6,7 @@ import {
   DOCUMENTS_PUBLIC_CONTRACT_ID,
   listLinkedDocuments,
   persistCanonicalDocumentType,
+  type ApplicabilityView,
   type DocumentHubView,
   type OutstandingAskView,
 } from './documentsOwner'
@@ -21,14 +22,17 @@ export const ENGINE_TO_HUB_OUTSTANDING_ASK_V1 = 'engine_to_hub_outstanding_ask.v
  * Outstanding ask is Hub `outstanding_asks` on the same adapter (E7).
  * DR1-runtime: Engine may persist those asks; this surface reads them.
  * E8-bind: display / select / persist canonical registry types only.
- * Aliases are R4 resolve-only. Not E8-eval. Not CL8. Not mass D3–D9 bind.
- * Not a Hub request table. Not Catalog `document.requested`.
+ * Aliases are R4 resolve-only. E8-eval: required / optional / blocked from
+ * R5 merge. Overlay is an existing CL7 input. Not OCR. Not a packages table.
+ * Not CL8. Not mass D3–D9 bind. Not a Hub request table.
+ * Not Catalog `document.requested`.
  */
 export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()
   const [items, setItems] = useState<DocumentHubView[]>([])
   const [outstandingAsks, setOutstandingAsks] = useState<OutstandingAskView[]>([])
   const [canonicalTypes, setCanonicalTypes] = useState<string[]>([])
+  const [applicability, setApplicability] = useState<ApplicabilityView[]>([])
   const [selectedType, setSelectedType] = useState('')
   const [loading, setLoading] = useState(false)
   const [available, setAvailable] = useState(false)
@@ -44,12 +48,14 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
         setItems(result.items)
         setOutstandingAsks(result.outstandingAsks)
         setCanonicalTypes(result.canonicalTypes)
+        setApplicability(result.applicability)
       } catch {
         if (mounted) {
           setAvailable(false)
           setItems([])
           setOutstandingAsks([])
           setCanonicalTypes([])
+          setApplicability([])
         }
       } finally {
         if (mounted) setLoading(false)
@@ -74,7 +80,9 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
       data-catalog-document-requested="false"
       data-cl8="false"
       data-e8-bind="true"
-      data-e8-eval="false"
+      data-e8-eval="true"
+      data-ocr="false"
+      data-packages-table="false"
       data-canonical-type-bind="true"
       data-alias-stored-identity="false"
     >
@@ -124,6 +132,28 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
             ))}
           </select>
         </label>
+      ) : null}
+      {!loading && available && applicability.length > 0 ? (
+        <ul className="space-y-1 text-sm text-slate-700">
+          {applicability.slice(0, 12).map((row) => {
+            const linked = items.some((item) => item.doc_type === row.doc_type)
+            const ask = outstandingAsks.find((item) => item.doc_type === row.doc_type)
+            return (
+              <li
+                key={`${row.doc_type}:${row.applicability}`}
+                data-applicability={row.applicability}
+                data-canonical-type={row.doc_type}
+                data-hub-linked={linked ? 'true' : 'false'}
+                data-ask-state={ask?.state || undefined}
+              >
+                <span className="font-medium text-slate-900">{row.doc_type}</span>
+                <span className="text-slate-500"> · {row.applicability}</span>
+                {linked ? <span className="text-slate-500"> · linked</span> : null}
+                {ask?.state ? <span className="text-slate-500"> · {ask.state}</span> : null}
+              </li>
+            )
+          })}
+        </ul>
       ) : null}
       {!loading && items.length > 0 ? (
         <ul className="space-y-1 text-sm text-slate-700">
