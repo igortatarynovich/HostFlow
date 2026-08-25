@@ -1,7 +1,7 @@
 # Documents Platform E7 — Document Requests (Phase E)
 
 **Status:** **COMPLETE** ([#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) · merge `ceafbd48`)  
-**Next:** [E8-bind](documents-platform-e8-bind.md) (brief; feat locked)  
+**Next:** E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — later Product via queue amendment (not E8-eval auto-start)  
 **Phase class:** platform  
 **Branch (docs):** `docs/documents-platform-e7-document-requests` ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)  
 **Branch (code):** `feat/documents-platform-e7-document-requests`  
@@ -124,9 +124,9 @@ E7 (this)
     → no new Catalog event; no public-contract id bump
     → D4 + D8 stay bound; D3 / D5–D7 / D9 stay unbound
     → same adapter; no second Adapter
-E8-bind
+E8-bind ✅ [#321]
     → remaining consumers bind to canonical document types (display/select/stored identity)
-    → not E8-eval; not mass D3–D9 bind; Product Track after DR1-runtime
+    → not E8-eval; not mass D3–D9 bind
 ```
 
 E7 **must not**:
@@ -193,8 +193,8 @@ E6 did not bind another consumer. **This slice does not either.**
 | **E5** | Candidate storage-bridge retirement (`candidate_id` drop) | ✅ [#281](https://github.com/igortatarynovich/HostFlow/pull/281)/[#282](https://github.com/igortatarynovich/HostFlow/pull/282) · merge `702b922c` |
 | **E6** | Document expiry / validity | ✅ [#284](https://github.com/igortatarynovich/HostFlow/pull/284)/[#285](https://github.com/igortatarynovich/HostFlow/pull/285) · merge `79e638c3` |
 | **E7** | Document requests | ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) · merge `ceafbd48` |
-| **E8-bind** | Canonical type bind | **active** (brief; feat locked) — [brief](documents-platform-e8-bind.md) |
-| **E8-eval** | Required-doc evaluation | locked until E8-bind Gate; brief not opened |
+| **E8-bind** | Canonical type bind | ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — [brief](documents-platform-e8-bind.md) |
+| **E8-eval** | Required-doc evaluation | unlocked (not scheduled); brief not opened |
 
 Roadmap later themes (packages, OCR, approvals, automation, remaining D3 / D5–D7 / D9 bind) stay **horizon**. Documents Foundation stays 🔄.
 
@@ -310,6 +310,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-25: E8 Canonical Type Bind Gate **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. Product Track → **none this amendment**. Foundation stays 🔄.
 - 2026-08-25: E8-bind brief opened after DR1 Runtime Gate PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Product Track → [E8-bind](documents-platform-e8-bind.md). Foundation stays 🔄.
 - 2026-08-23: E7 feat COMPLETE — Hub `outstanding_asks` on `documents.hub_adapter_v1`. Product Track → [CL0](entity-field-composition-cl0-contract-seal.md). Merge `ceafbd48`. Foundation stays 🔄.
 - 2026-08-23: E7 feat opened — Hub `outstanding_asks` on `documents.hub_adapter_v1` resolve / owner_summary. Product Track stays this brief. E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285). Foundation stays 🔄.

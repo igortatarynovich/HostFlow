@@ -83,7 +83,7 @@ Unlocks: **Vacancy Overlay Contract** (named leftover of the original CL0 chain;
 ## Queue position
 
 **Depends on:** CL6 Gate ✅ (#307 / `8e2372db`)  
-**Unlocks:** [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md) ✅; Overlay unlocks [DR1-runtime](engine-document-request-dr1-runtime.md) ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313); DR1-runtime unlocks [E8-bind](documents-platform-e8-bind.md)  
+**Unlocks:** [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md) ✅; Overlay unlocks [DR1-runtime](engine-document-request-dr1-runtime.md) ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313); DR1-runtime unlocks [E8-bind](documents-platform-e8-bind.md) ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321)  
 **Does not:** start E8; invent CL8; mint Engine v2
 
 ---

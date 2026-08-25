@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS. **Host runtime-equivalence** ← ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)). **Phase E — Documents Platform** ← E7 ✅; DR1-runtime ✅; **Product Track = E8-bind** ([brief](../tasks/documents-platform-e8-bind.md); feat). **Engineering Track = DONE** ([brief](../tasks/platform-reference-identity-sot.md); Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)). Overlay ✅ ([#311](https://github.com/igortatarynovich/HostFlow/pull/311)). DR1-runtime ✅ ([#313](https://github.com/igortatarynovich/HostFlow/pull/313)). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285)). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282)). E8-eval locked (see [queue § Locked execution sequence](../tasks/sales-to-comms-sequential-queue.md)).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS. **Host runtime-equivalence** ← ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)). **Phase E — Documents Platform** ← E7 ✅; DR1-runtime ✅; **E8-bind ✅** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` ([brief](../tasks/documents-platform-e8-bind.md)); **no named Product successor this amendment**. **Engineering Track = DONE** ([brief](../tasks/platform-reference-identity-sot.md); Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)). Overlay ✅ ([#311](https://github.com/igortatarynovich/HostFlow/pull/311)). DR1-runtime ✅ ([#313](https://github.com/igortatarynovich/HostFlow/pull/313)). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285)). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282)). E8-eval unlocked (not scheduled; see [queue § Locked execution sequence](../tasks/sales-to-comms-sequential-queue.md)).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms ✅ → Phase D Entity Workspace (brief-complete) → Workspace Capability Platform Completion → Phase E Documents → …
@@ -197,7 +197,7 @@ D1–D9 closed chrome + D2 **surfaces** + named consumer binds. That was a **sub
 
 ---
 
-## Phase E — Documents Platform ← E7 ✅; Product Track = E8-bind
+## Phase E — Documents Platform ← E7 ✅; E8-bind ✅
 
 Evolve storage into a full document lifecycle platform (horizon):
 
@@ -210,7 +210,7 @@ Evolve storage into a full document lifecycle platform (horizon):
 
 Especially critical for transport-industry compliance flows.
 
-Ladder (E7 ✅; DR1-runtime ✅; Product Track = E8-bind):
+Ladder (E7 ✅; DR1-runtime ✅; E8-bind ✅):
 
 | Slice | Focus | Status |
 |-------|--------|--------|
@@ -227,12 +227,12 @@ Ladder (E7 ✅; DR1-runtime ✅; Product Track = E8-bind):
 | **Reference R4** | Alias consolidation | ✅ [#296](https://github.com/igortatarynovich/HostFlow/pull/296) |
 | **Reference R5** | Policy merge (Q5 only) | ✅ [#297](https://github.com/igortatarynovich/HostFlow/pull/297) |
 | **DR1-runtime** | Engine may create Hub outstanding asks | ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313) / `e6978fe2` |
-| **E8-bind** | Canonical type bind | **active** (feat) — [brief](../tasks/documents-platform-e8-bind.md) |
-| **E8-eval** | Required-doc evaluation | locked until E8-bind Gate; brief not opened |
+| **E8-bind** | Canonical type bind | ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — [brief](../tasks/documents-platform-e8-bind.md) |
+| **E8-eval** | Required-doc evaluation | unlocked (not scheduled); brief not opened |
 
 **Out of E7:** D3 / D5–D7 / D9 `documents` bind · OCR / e-sign / packages / Hub UI rebuild · Hub request table · Catalog `document.requested` · Forms P3–P5 · Billing Platform · AI · L0 Catalog rewrite · G4 reopen · unbind D8 / D4.
 
-**Result:** validity is Hub. Outstanding ask is Hub required type + entity (E7 ✅). Engine may create Hub asks (DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313)). Product Track = [E8-bind](../tasks/documents-platform-e8-bind.md). Engineering Track: [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) **DONE** (Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). Foundation stays 🔄. E8-eval locked (needs E8-bind Gate). Slice order: [queue § Locked execution sequence](../tasks/sales-to-comms-sequential-queue.md).
+**Result:** validity is Hub. Outstanding ask is Hub required type + entity (E7 ✅). Engine may create Hub asks (DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313)). E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. No named Product successor this amendment. Engineering Track: [Platform Reference Identity SoT](../tasks/platform-reference-identity-sot.md) **DONE** (Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). Foundation stays 🔄. E8-eval unlocked (not scheduled; brief not opened). Slice order: [queue § Locked execution sequence](../tasks/sales-to-comms-sequential-queue.md).
 
 **Ref:** [documents-platform-e8-bind.md](../tasks/documents-platform-e8-bind.md) · [engine-document-request-dr1-runtime.md](../tasks/engine-document-request-dr1-runtime.md) ✅ · [entity-field-composition-cl0-contract-seal.md](../tasks/entity-field-composition-cl0-contract-seal.md) · [documents-platform-e7-document-requests.md](../tasks/documents-platform-e7-document-requests.md) ✅ · [E6](../tasks/documents-platform-e6-document-expiry.md) ✅ · [E5](../tasks/documents-platform-e5-candidate-storage-bridge.md) ✅ · [E4](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [E3](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [E2](../tasks/documents-platform-e2-public-contract.md) ✅ · [E1](../tasks/documents-platform-e1-contract-seal.md) ✅ · [ADR-009](ADR-009-document-hub-platform-layer.md) · [ADR-012](ADR-012-activity-notification-operating-layer.md) · [A2-F8](../gates/platform-governance-review-a2.md).
 
@@ -271,7 +271,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | 5 | **D** Universal Entity Workspace | D1–D9 brief-complete ([D9](../tasks/entity-workspace-d9-services-order-cutover.md) [#268](https://github.com/igortatarynovich/HostFlow/pull/268)); goal-incomplete |
 | 5b | **Workspace Capability Platform Completion** | **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS |
 | 5c | **Host runtime-equivalence** | Second host + Notes/Consent owner boundaries ✅ [#274](https://github.com/igortatarynovich/HostFlow/pull/274) |
-| 6 | **E** Documents Platform | E7 ✅. DR1-runtime ✅. Product = E8-bind. Engineering = DONE. E8-eval locked |
+| 6 | **E** Documents Platform | E7 ✅. DR1-runtime ✅. E8-bind ✅. No named Product successor. Engineering = DONE. E8-eval unlocked (not scheduled) |
 | 7 | **F** Billing Platform | SaaS commercial layer |
 | 8 | **G** AI Platform | Assistants over existing canons |
 
@@ -283,7 +283,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
-5. Parallel product branches that compete across phases (one active product slice). **E8-bind** **is** the active Product slice (feat). Engineering is **DONE** (Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)). Do not start E8-eval in an E8-bind PR. Do not invent CL8. Do not mix E7 into an E6/E5/E4/E3/E2/WCP PR, mass-bind D3–D9, reopen G4, D10-on-weak-D2, Recruitment rail patches, reopen D9, Forms C6, Stage 5 settings, or Acquisition R6. Do not fold Application into Entity. Do not mix ListWorkspace into the WCP close-out. Closing a later phase as COMPLETE requires the [Goal Completion Gate](../gates/goal-completion-gate.md). New platform phase briefs require [Original Goal → Completion Proof](../gates/goal-completion-gate.md). Slice order is the [queue locked sequence](../tasks/sales-to-comms-sequential-queue.md).  
+5. Parallel product branches that compete across phases (one active product slice **or Product DONE with no successor until amendment**). **E8-bind** Gate **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. No named Product successor this amendment. Engineering is **DONE** (Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)). Do not auto-start E8-eval. Do not invent CL8. Do not mix E7 into an E6/E5/E4/E3/E2/WCP PR, mass-bind D3–D9, reopen G4, D10-on-weak-D2, Recruitment rail patches, reopen D9, Forms C6, Stage 5 settings, or Acquisition R6. Do not fold Application into Entity. Do not mix ListWorkspace into the WCP close-out. Closing a later phase as COMPLETE requires the [Goal Completion Gate](../gates/goal-completion-gate.md). New platform phase briefs require [Original Goal → Completion Proof](../gates/goal-completion-gate.md). Slice order is the [queue locked sequence](../tasks/sales-to-comms-sequential-queue.md).  
 6. Unfreezing C2.4 Scheduling without an explicit queue amendment.  
 7. Rewriting L0 Catalog Notifications↔Communication without Architecture RFC.  
 8. Minting Entity Catalog Passport, or binding D2 `documents` on D3 / D5–D7 / D9 in E5, without a later named E slice + Architecture checklist / RFC when Catalog shape changes.  
@@ -295,7 +295,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 
 | Doc | Role |
 |-----|------|
-| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (Product = E8-bind; Engineering = DONE; § Locked execution sequence) |
+| [sales-to-comms-sequential-queue.md](../tasks/sales-to-comms-sequential-queue.md) | **Near-term** slice order (Product = none this amendment; Engineering = DONE; § Locked execution sequence) |
 | [workspace-capability-platform-completion.md](../tasks/workspace-capability-platform-completion.md) | Corrective program — Capability Host Contract; **COMPLETE** |
 | [workspace-capability-host-runtime-equivalence.md](../tasks/workspace-capability-host-runtime-equivalence.md) | Equivalence slice — second host + owner boundaries ✅ |
 | [workspace-capability-platform-complete.md](../gates/workspace-capability-platform-complete.md) | Final Goal Completion — program COMPLETE |
@@ -315,7 +315,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | [entity-field-composition-cl7-engine-eval.md](../tasks/entity-field-composition-cl7-engine-eval.md) | CL7 Requirement Engine evaluation ✅ (#309) |
 | [entity-profile-vacancy-overlay-contract.md](../tasks/entity-profile-vacancy-overlay-contract.md) | Vacancy Overlay Contract ✅ (#311) |
 | [engine-document-request-dr1-runtime.md](../tasks/engine-document-request-dr1-runtime.md) | DR1-runtime ✅ (#313) — Engine may create Hub outstanding asks |
-| [documents-platform-e8-bind.md](../tasks/documents-platform-e8-bind.md) | **Active Product Track** — E8-bind (feat; remaining consumers bind to canonical document types) |
+| [documents-platform-e8-bind.md](../tasks/documents-platform-e8-bind.md) | E8-bind **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — remaining consumers bind to canonical document types |
 | [platform-reference-identity-sot.md](../tasks/platform-reference-identity-sot.md) | **Engineering Track DONE** — Reference Program Exit Gate PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298); not Epic C residual R1 |
 | [lifecycle-identity-l0-contract-seal.md](../tasks/lifecycle-identity-l0-contract-seal.md) | **LI-1 after CL1** — existence/identity guard (ADR-037); docs sealed; LI-2+ do not block CL2+ |
 | [documents-platform-e3-first-consumer-bind.md](../tasks/documents-platform-e3-first-consumer-bind.md) | E3 first consumer bind ✅ |
@@ -329,6 +329,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-25: E8 Canonical Type Bind Gate **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. No named Product successor this amendment. Engineering Track DONE. E8-eval unlocked (not scheduled). Not CL8.
 - 2026-08-25: E8-bind feat — D4 canonical type identity on `documents.hub_adapter_v1`. Named Documents Platform E8 Canonical Type Bind Gate. Engineering Track DONE. Not E8-eval. Not CL8.
 - 2026-08-25: Active Product Track = [E8-bind](../tasks/documents-platform-e8-bind.md) (brief; feat locked) after DR1 Runtime Gate PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Engineering Track DONE (Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)). Not E8-eval auto-start. Not CL8.
 - 2026-08-25: Active Product Track = [DR1-runtime](../tasks/engine-document-request-dr1-runtime.md) (brief; feat locked) after Overlay Gate PASS [#311](https://github.com/igortatarynovich/HostFlow/pull/311). Engineering Track DONE (Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)).
