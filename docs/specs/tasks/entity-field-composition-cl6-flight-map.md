@@ -1,6 +1,6 @@
 # Entity Field Composition CL6 — Flight mapping
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **PASS** [#307](https://github.com/igortatarynovich/HostFlow/pull/307) / `8e2372db`  
 **Phase class:** platform  
 **Branch:** `feat/entity-field-composition-cl6-flight-map`  
 **Parents:** [CL0 contract seal](entity-field-composition-cl0-contract-seal.md) · [CL2 membership](entity-field-composition-cl2-membership.md) · [CL5 Recruiter Q&A](entity-field-composition-cl5-qa.md) · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
@@ -74,14 +74,14 @@ PASS when:
 7. Boundary guard reports exactly one `apply_map` producer.  
 8. Named CI job runs `test_cl6_flight_map_gate.py`.
 
-Unlocks: later CL via **queue amendment** (do not invent CL7). Does **not** unlock DR1-runtime or E8.
+Unlocks: **CL7** (Requirement Engine evaluation). Does **not** unlock DR1-runtime or E8.
 
 ---
 
 ## Queue position
 
 **Depends on:** CL5 Gate ✅ (#306 / `5d8e1ae3`)  
-**Unlocks:** later CL via queue amendment  
+**Unlocks:** CL7  
 **Does not:** park on Reference R5 / #298; start E8; start DR1-runtime; reopen Stage 4; promote P9
 
 ---
@@ -89,3 +89,4 @@ Unlocks: later CL via **queue amendment** (do not invent CL7). Does **not** unlo
 ## History
 
 - 2026-08-25: CL6 Flight mapping opened — `entity_profile_flight_map.v1`; Map executes onto Binding; dest = Profile members; D4 places Flight-map zone, not Zapier / not Flight entity / not extra.
+- 2026-08-25: CL6 Gate **PASS** [#307](https://github.com/igortatarynovich/HostFlow/pull/307) / `8e2372db`. Unlocks CL7.
