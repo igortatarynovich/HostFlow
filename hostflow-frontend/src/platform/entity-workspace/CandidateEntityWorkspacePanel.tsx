@@ -29,6 +29,7 @@ type Props = EntityWorkspaceShellProps & {
  * CL6: Flight-map zone places Binding snapshot (`entity_profile_flight_map.v1`); dest = Profile.
  * CL7: Engine-eval zone places `entity_profile_engine_eval.v1` (ready | not_ready + blockers).
  * Overlay: that zone consumes `entity_profile_vacancy_overlay.v1` as a defined input (not vacancy UI).
+ * DR1-runtime: Engine may persist Hub outstanding asks; D4 Documents surface reads them (E7).
  */
 export function CandidateEntityWorkspacePanel({
   entityId,
