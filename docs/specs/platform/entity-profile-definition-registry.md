@@ -4,6 +4,16 @@
 **Hierarchy:** L2 operating canon — platform layer. **Composition layer** between Field Registry and Intake / Process runtime.  
 **Owner:** Architecture canon + platform core team.
 
+> **CL0 (2026-08-23):** Entity Profile is a **role manifest** ([brief](../tasks/entity-field-composition-cl0-contract-seal.md)). Baseline presence on a Profile field is `member` / `intake` / `card_save` only. `transition` / `handoff` / `transition_level` are **not** Profile-field properties — they belong to Process Profile / Transfer Policy. `screening_pack_code` is a **ref** (same class as `document_pack_code` / `default_layout_code` / `process_profile_code`). Runtime schema columns may remain until a later CL migration; new code must not treat transition/handoff as Profile-field required.  
+> **CL2 (2026-08-24):** Membership runtime is `entity_profile_membership.v1` ([brief](../tasks/entity-field-composition-cl2-membership.md)). Producer: `is_field_member` / `resolve_membership` / `presence_level`.  
+> **CL3 (2026-08-24):** Layout runtime is `entity_profile_layout.v1` ([brief](../tasks/entity-field-composition-cl3-layout.md)). D4 Information zone places `candidate.card` filtered through CL2 membership.  
+> **CL4 (2026-08-24):** Builder runtime is `entity_profile_builder.v1` ([brief](../tasks/entity-field-composition-cl4-builder.md)). Two modes; card → layout registry; form → Forms platform. Do **not** drop `transition_level` columns in this slice.  
+> **CL5 (2026-08-24):** Q&A runtime is `entity_profile_qa.v1` ([brief](../tasks/entity-field-composition-cl5-qa.md)). Recruiter Q&A is a consumer artifact (Lead / Application), not Profile membership, not `extra`, not a layout widget. Map is CL6.  
+> **CL6 (2026-08-25):** Flight map runtime is `entity_profile_flight_map.v1` ([brief](../tasks/entity-field-composition-cl6-flight-map.md)). Map executes onto Binding. Dest = Profile member fields. Profile may only ref.  
+> **CL7 (2026-08-25):** Engine eval runtime is `entity_profile_engine_eval.v1` ([brief](../tasks/entity-field-composition-cl7-engine-eval.md)). Structured `ready`/`not_ready` + `blockers[]`. Profile may only ref. Not Hub asks. Not Engine v2.  
+> **Vacancy Overlay (2026-08-25):** Overlay contract is `entity_profile_vacancy_overlay.v1` ([brief](../tasks/entity-profile-vacancy-overlay-contract.md)) ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). Vacancy-specific requirement delta over Profile / Screening Pack. Profile may only ref. Not CL8. Not R5 pack merge.  
+> **DR1-runtime (2026-08-25):** next named Product slice is [DR1-runtime](../tasks/engine-document-request-dr1-runtime.md) (brief; feat locked). Engine may create Hub outstanding asks. Not CL8. Not E8. Not mass generation.
+
 ### P1 implementation status (2026-06-22)
 
 | Deliverable | Status | Location |
@@ -369,9 +379,10 @@ Examples:
 | `profile_code` | Stable qualified identifier | Unique per tenant or platform seed; `{module}.{entity}.{variant}` |
 | `module_owner` | Registering business module | `recruitment`, `hr`, `crm`, `services`, `fleet`, … |
 | `fields[]` | Canonical field membership | List of `qualified_code` from Field Registry |
-| `requirement_contexts` | When fields are required | Per-field overrides for `intake`, `card_save`, `transition`, `handoff` |
+| `requirement_contexts` | When fields are required | Per-field overrides for baseline presence: `intake`, `card_save` only. `transition` / `handoff` live on Process Profile / Transfer Policy ([CL0](../tasks/entity-field-composition-cl0-contract-seal.md)) |
 | `default_layout_code` | Card presentation default | Field Registry layout profile code |
 | `document_pack_code` | Related documents | Document Hub pack / requirement set |
+| `screening_pack_code` | Screening / qualification pack | Screening pack ref — **not** `required=true` on a field ([CL0](../tasks/entity-field-composition-cl0-contract-seal.md)) |
 | `process_profile_code` | Default process binding | Process Engine `pe_process_profiles.code` |
 | `name`, `description` | Operator-facing labels | i18n-ready display metadata |
 | `is_active`, `version` | Lifecycle | Soft disable; version for migration |
@@ -398,6 +409,7 @@ fields:
   - qualified_code: recruitment.candidate.driver_card
 default_layout_code: recruitment.candidate.driver_ce
 document_pack_code: recruitment.driver_ce_documents
+screening_pack_code: recruitment.driver_ce_screening
 process_profile_code: recruitment.driver_ce_default
 ```
 
@@ -431,7 +443,7 @@ The Entity Profile still defines all 50 fields for the full candidate card. The 
 
 - Entity Profile **`fields[]`** entries **must** reference existing `qualified_code` values in Field Registry.
 - Entity Profile **does not duplicate** field semantics (type, normalization, storage, PII class).
-- Field Registry **`requirement_contexts`** provide defaults; Entity Profile may override per profile variant.
+- Field Registry **`requirement_contexts`** provide defaults for `intake` / `card_save`; Entity Profile may override those two. `transition` / `handoff` defaults belong to Process Profile ([CL0](../tasks/entity-field-composition-cl0-contract-seal.md)).
 - Resolver: `resolve_entity_profile(profile_code) → { fields with effective requirements }`.
 
 ### 5.2 Entity Profile → Intake Sources
@@ -564,6 +576,7 @@ flowchart TB
 | `description` | text? | |
 | `default_layout_code` | string(128)? | FK ref → Field Registry layout |
 | `document_pack_code` | string(128)? | FK ref → Document Hub pack |
+| `screening_pack_code` | string(128)? | FK ref → screening pack (CL0; docs only — column may be added in a later CL migration) |
 | `process_profile_code` | string(128)? | FK ref → `pe_process_profiles.code` |
 | `is_active` | bool | |
 | `version` | int | Monotonic profile version |
@@ -581,7 +594,7 @@ flowchart TB
 | `sort_order` | int | Default field order |
 | `intake_level` | enum? | `required` / `optional` / `hidden` |
 | `card_save_level` | enum? | Override for card save context |
-| `transition_level` | enum? | Override for transition context |
+| `transition_level` | enum? | **Deprecated (CL0).** Must not be used as Profile-field required. Canon owner = Process Profile / Transfer Policy. Column may remain until a later CL migration — **do not DROP in CL0**. |
 | `is_active` | bool | |
 
 **Unique:** `(entity_profile_id, qualified_code)`
@@ -741,7 +754,23 @@ Two rule types must **never** be mixed in one engine or UI:
 
 **Not changed in P9 (by design):** Meta admin page replacement, TikTok/CSV adapters, conditional presentation fields.
 
-### P8 implementation status (2026-06-22)
+### C1 — Form Constructor Lead-first closure (2026-07-02)
+
+| Deliverable | Status | Location |
+|-------------|--------|----------|
+| Bound form create → Lead draft only | Done | `create_public_intake` skips legacy candidate reuse when `TenantLeadForm` bound |
+| Admin submit_destination contract | Done | `intake_form_admin_context._submit_destination` |
+| Smoke / P6–P9 tests | Done | `test_intake_forms_settings*.py`, `test_public_intake_c1.py` |
+| Legacy candidate path | Deprecated | Unbound public intake only; `create_public_intake_draft_via_service` |
+
+**C1 acceptance:** Manager-configured public form (`lead_form_slug`) → `POST /public/intake` returns `lead_id` even if matching Candidate exists; smoke test creates Lead draft; `submit_destination.creates_candidate_on_create === false`.
+
+**Canonical chain (Form Constructor):**
+
+```
+Settings form (P8) → Public render (P7) → POST /intake → Lead draft (P5C) → Submit → Decision → Outcome
+```
+
 
 | Deliverable | Status | Location |
 |-------------|--------|----------|
@@ -843,7 +872,7 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 | Change | Detail |
 |--------|--------|
 | Tables | `ep_entity_profiles`, `ep_entity_profile_fields`, `ep_intake_presentations` |
-| Seed profile | `recruitment.candidate.driver_ce` — 10 canonical fields + Meta short intake presentation |
+| Seed profiles | `recruitment.candidate.driver_ce`, `recruitment.candidate.warehouse_worker` (role), `recruitment.candidate.driver_ce_ua` (country/market) — intake presentations + mapping/smoke (C3) |
 | Validation | `UnknownCanonicalFieldError` when profile references codes absent from Field Registry |
 | Read API | `GET /api/v1/platform/entity-profiles/{profile_code}?include_presentations=` |
 | Resolver | `resolve_effective_entity_profile()` — joins `fr_canonical_fields` per profile field row |
@@ -894,7 +923,16 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 **Must stay consistent:**
 
 - [`field-registry-card-configuration.md`](field-registry-card-configuration.md) — canonical field semantics (layer below)
-- [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) — business requirements / readiness / gates (**v1 closed** §20)
+- [`requirement-rules-engine-p0.md`](requirement-rules-engine-p0.md) — business requirements / readiness / gates (**v1 closed** §20); CL0: four kinds, structured result, not a boolean
+- [`entity-field-composition-cl0-contract-seal.md`](../tasks/entity-field-composition-cl0-contract-seal.md) — Profile = role manifest; `transition` / `handoff` off Profile field; `screening_pack_code` as ref
+- [`entity-field-composition-cl2-membership.md`](../tasks/entity-field-composition-cl2-membership.md) — CL2 membership runtime (`entity_profile_membership.v1`)
+- [`entity-field-composition-cl3-layout.md`](../tasks/entity-field-composition-cl3-layout.md) — CL3 layout runtime (`entity_profile_layout.v1`; D4 Information zone)
+- [`entity-field-composition-cl4-builder.md`](../tasks/entity-field-composition-cl4-builder.md) — CL4 builder runtime (`entity_profile_builder.v1`; two modes)
+- [`entity-field-composition-cl5-qa.md`](../tasks/entity-field-composition-cl5-qa.md) — CL5 Recruiter Q&A (`entity_profile_qa.v1`; Lead / Application, not extra)
+- [`entity-field-composition-cl6-flight-map.md`](../tasks/entity-field-composition-cl6-flight-map.md) — CL6 Flight mapping (`entity_profile_flight_map.v1`; snapshot on Binding)
+- [`entity-field-composition-cl7-engine-eval.md`](../tasks/entity-field-composition-cl7-engine-eval.md) — CL7 Engine evaluation (`entity_profile_engine_eval.v1`; ready | not_ready + blockers)
+- [`entity-profile-vacancy-overlay-contract.md`](../tasks/entity-profile-vacancy-overlay-contract.md) — Vacancy Overlay Contract ✅ (#311); Profile may only ref
+- [`engine-document-request-dr1-runtime.md`](../tasks/engine-document-request-dr1-runtime.md) — DR1-runtime (named next; feat locked; Engine may create Hub outstanding asks)
 - [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — document instance lifecycle runtime (**v1 closed** §20)
 - [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — expiry notification events (downstream of Document Runtime v1)
 - [`process-engine.md`](process-engine.md) — process behaviour (layer above)

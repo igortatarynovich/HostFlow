@@ -47,7 +47,7 @@ export function requirementStatusBadgeClass(status: RequirementRowStatus): strin
     case 'pending_review':
       return 'border-amber-200 bg-amber-50 text-amber-950'
     case 'selected':
-      return 'border-sky-200 bg-sky-50 text-sky-900'
+      return 'border-blue-200 bg-blue-50 text-blue-900'
     case 'rejected':
       return 'border-rose-200 bg-rose-50 text-rose-900'
     case 'superseded':

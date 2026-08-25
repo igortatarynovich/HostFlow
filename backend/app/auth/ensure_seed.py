@@ -242,13 +242,13 @@ async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.
             params["tenant_id"] = DEFAULT_TENANT_ID
             assignments.append("tenant_id = :tenant_id")
         if "role" in cols:
-            params["role"] = "hr_officer"
+            params["role"] = "employee"
             assignments.append("role = :role")
         if "full_name" in cols:
             params["full_name"] = "HostFlow HR Officer (dev)"
             assignments.append("full_name = :full_name")
         if "preferences" in cols:
-            params["preferences"] = json.dumps({})
+            params["preferences"] = json.dumps({"preset_id": "hr"})
             if IS_SQLITE:
                 assignments.append("preferences = :preferences")
             else:
@@ -271,7 +271,7 @@ async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.
             db,
             user_id=hr_user_id,
             tenant_id=DEFAULT_TENANT_ID,
-            membership_role="hr_officer",
+            membership_role="employee",
             now=now,
         )
         return
@@ -281,22 +281,25 @@ async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.
     insert_vals: list[object] = []
 
     if not await _user_exists(db, HR_OFFICER_EMAIL):
+        # Avoid duplicate HR lane seeds: look for employee + preferences.preset_id=hr
         try:
             if IS_SQLITE:
                 cnt_row = await db.execute(
                     text(
                         "SELECT COUNT(*) FROM users WHERE tenant_id = :tid "
-                        "AND lower(role) = lower(:role) AND is_active IS TRUE"
+                        "AND lower(role) = lower(:role) AND is_active IS TRUE "
+                        "AND lower(coalesce(json_extract(preferences, '$.preset_id'), '')) = 'hr'"
                     ),
-                    {"tid": DEFAULT_TENANT_ID, "role": "hr_officer"},
+                    {"tid": DEFAULT_TENANT_ID, "role": "employee"},
                 )
             else:
                 cnt_row = await db.execute(
                     text(
                         "SELECT COUNT(*) FROM users WHERE tenant_id = :tid "
-                        "AND lower(role::text) = lower(:role) AND is_active IS TRUE"
+                        "AND lower(role::text) = lower(:role) AND is_active IS TRUE "
+                        "AND lower(coalesce(preferences->>'preset_id', '')) = 'hr'"
                     ),
-                    {"tid": DEFAULT_TENANT_ID, "role": "hr_officer"},
+                    {"tid": DEFAULT_TENANT_ID, "role": "employee"},
                 )
             cnt = int(cnt_row.scalar_one() or 0)
         except Exception:
@@ -312,13 +315,13 @@ async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.
     add("id", new_id)
     add("email", HR_OFFICER_EMAIL)
     add("password_hash", pwd_context.hash(HR_OFFICER_PASSWORD))
-    add("role", "hr_officer")
+    add("role", "employee")
     add("is_active", True)
     add("tenant_id", DEFAULT_TENANT_ID)
     add("created_at", now)
     add("updated_at", now)
     add("full_name", "HostFlow HR Officer (dev)")
-    add("preferences", json.dumps({}))
+    add("preferences", json.dumps({"preset_id": "hr"}))
 
     if not insert_cols:
         print("[seed] HR officer: нет подходящих колонок users — пропускаю")
@@ -354,9 +357,26 @@ async def _ensure_hr_officer_dev_user(db: AsyncSession, cols: Set[str], now: dt.
         db,
         user_id=user_id_value,
         tenant_id=DEFAULT_TENANT_ID,
-        membership_role="hr_officer",
+        membership_role="employee",
         now=now,
     )
+
+
+def auth_seed_enabled() -> bool:
+    """Dev-бутстрап выключен по умолчанию — включается только явно.
+
+    Раньше эта функция вызывалась из startup безусловно, и в проде это означало:
+      * пароль ADMIN_EMAIL сбрасывался на константу из репозитория при КАЖДОМ рестарте
+        (ветка «пользователь уже существует» перезаписывает password_hash),
+        вместе с принудительными is_active=true и role=superadmin;
+      * заново создавался dev-аккаунт hr.officer@hostflow.dev — его удаление
+        отменялось следующим перезапуском;
+      * лишняя работа на старте.
+    Для локальной разработки поставьте HOSTFLOW_AUTH_SEED_ENABLED=1.
+    """
+    return str(os.getenv("HOSTFLOW_AUTH_SEED_ENABLED", "")).strip().lower() in {
+        "1", "true", "yes", "on",
+    }
 
 
 async def ensure_auth_seed() -> None:
@@ -364,6 +384,9 @@ async def ensure_auth_seed() -> None:
     Создаёт дефолтного администратора, если пользователей с этим email ещё нет.
     Работает на SQLite и PostgreSQL. Явно задаёт id (uuid4), если колонка существует.
     """
+    if not auth_seed_enabled():
+        print("[seed] dev-сидинг выключен (HOSTFLOW_AUTH_SEED_ENABLED не задан) — пропускаю")
+        return
     if pwd_context is None:
         print("[seed] passlib не установлен — пропускаю сидинг")
         return

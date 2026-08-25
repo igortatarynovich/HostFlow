@@ -44,6 +44,24 @@
     @apply input min-h-[96px];
   }
 
+  /* Boolean — CHECKBOX_V1. Native input lives only inside <Checkbox>. */
+  .checkbox-field {
+    @apply inline-flex max-w-full items-start gap-2;
+  }
+  .checkbox-field-disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+  .checkbox {
+    @apply mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-slate-300 text-brand-600
+           accent-brand-500 focus:ring-2 focus:ring-brand-200;
+  }
+  .checkbox-label {
+    @apply block text-sm font-medium text-slate-800;
+  }
+  .checkbox-description {
+    @apply mt-0.5 block text-xs leading-relaxed text-slate-500;
+  }
+
   /* Кнопки */
   .btn {
     @apply inline-flex items-center gap-2 rounded-xl
@@ -274,5 +292,34 @@
   .cv-auto {
     content-visibility: auto;
     contain-intrinsic-size: 900px;
+  }
+
+  /* ===== Entity list shell (ADR-010 / Phase 2A) ===== */
+  .entity-list-shell {
+    @apply min-h-0 w-full;
+  }
+  .entity-list-zone-toolbar {
+    @apply flex min-w-0 flex-wrap items-center gap-2;
+  }
+  .entity-list-body {
+    @apply min-h-0 min-w-0 flex-1 flex-col;
+  }
+  .entity-list-table-scroll {
+    @apply overflow-auto;
+  }
+  .entity-list-zone-bulk {
+    @apply z-10 border-t border-slate-200 bg-slate-50;
+  }
+  .entity-list-table-frame {
+    min-height: 12rem;
+  }
+  .entity-list-bulk-bar-inner {
+    @apply min-h-12 px-4 py-2;
+  }
+  .entity-list-pagination {
+    @apply border-t border-slate-100 px-1 pt-3;
+  }
+  .entity-list-filter-chip {
+    @apply inline-flex items-center;
   }
 }

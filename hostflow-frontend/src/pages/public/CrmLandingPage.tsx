@@ -105,11 +105,29 @@ export default function CrmLandingPage() {
   const solutionSee = useMemo(() => [0, 1, 2].map((i) => t(`public.crm_landing.solution.see_items.${i}`)), [t])
   const howSteps = useMemo(
     () =>
-      [0, 1, 2, 3].map((i) => ({
+      [0, 1, 2, 3, 4].map((i) => ({
         title: t(`public.crm_landing.how.steps.${i}.title`),
         caption: t(`public.crm_landing.how.steps.${i}.caption`),
         imageSrc: t(`public.crm_landing.how.steps.${i}.screenshot_src`, { defaultValue: '' }),
       })),
+    [t],
+  )
+  const heroAnswers = useMemo(
+    () =>
+      (['what', 'who', 'get', 'why'] as const).map((key) => ({
+        key,
+        label: t(`public.crm_landing.hero.answers.${key}.label`),
+        body: t(`public.crm_landing.hero.answers.${key}.body`),
+      })),
+    [t],
+  )
+  const pricingClarity = useMemo(
+    () => ({
+      includes: [0, 1, 2, 3].map((i) => t(`public.crm_landing.pricing.clarity.includes.${i}`)),
+      excludes: [0, 1, 2].map((i) => t(`public.crm_landing.pricing.clarity.excludes.${i}`)),
+      limits: [0, 1, 2].map((i) => t(`public.crm_landing.pricing.clarity.limits.${i}`)),
+      afterTrial: t('public.crm_landing.pricing.clarity.after_trial'),
+    }),
     [t],
   )
 
@@ -339,20 +357,26 @@ export default function CrmLandingPage() {
         <section className="card cv-auto overflow-hidden p-6 sm:p-8 lg:p-10">
           <div className="grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:items-center">
             <div className="space-y-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
+                {t('public.crm_landing.hero.badge')}
+              </p>
               <h1 className="text-balance text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
                 {t('public.crm_landing.hero.title')}
               </h1>
               <p className="text-pretty text-base leading-relaxed text-slate-600 lg:text-lg">
                 {t('public.crm_landing.hero.subtitle')}
               </p>
-              <ul className="space-y-2.5 text-sm font-medium text-slate-800">
-                {[0, 1, 2, 3].map((i) => (
-                  <li key={i} className="flex gap-2">
-                    <span className="text-brand-600">—</span>
-                    <span>{t(`public.crm_landing.hero.bullets.${i}`)}</span>
-                  </li>
+              <dl className="grid gap-3 sm:grid-cols-2">
+                {heroAnswers.map((item) => (
+                  <div
+                    key={item.key}
+                    className="rounded-xl border border-slate-200/90 bg-slate-50/80 px-3.5 py-3"
+                  >
+                    <dt className="text-[11px] font-bold uppercase tracking-wide text-brand-700">{item.label}</dt>
+                    <dd className="mt-1 text-sm font-medium leading-snug text-slate-800">{item.body}</dd>
+                  </div>
                 ))}
-              </ul>
+              </dl>
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <Link
                   to="/signup"
@@ -465,20 +489,30 @@ export default function CrmLandingPage() {
         </section>
 
         {/* HOW */}
-        <section className="cv-auto space-y-8">
+        <section id="how-it-works" className="cv-auto space-y-8 scroll-mt-8">
           {sectionTitle('how')}
           <h2 className="text-2xl font-semibold text-slate-900 sm:text-3xl">{t('public.crm_landing.how.title')}</h2>
-          <div className="grid gap-8 md:grid-cols-2">
+          <p className="max-w-2xl text-base text-slate-600">{t('public.crm_landing.how.lead')}</p>
+          <ol className="grid gap-6 md:grid-cols-2 xl:grid-cols-5 xl:gap-4">
             {howSteps.map((step, idx) => (
-              <article key={step.title} className="space-y-3">
+              <li key={step.title} className="relative space-y-3">
+                {idx < howSteps.length - 1 ? (
+                  <span
+                    className="pointer-events-none absolute -right-3 top-5 hidden text-brand-400 xl:block"
+                    aria-hidden
+                  >
+                    →
+                  </span>
+                ) : null}
                 <p className="text-xs font-bold uppercase tracking-widest text-brand-600">
                   {t('public.crm_landing.how.step_label', { values: { n: idx + 1 } })}
                 </p>
-                <h3 className="text-lg font-semibold text-slate-900">{step.title}</h3>
+                <h3 className="text-base font-semibold text-slate-900 xl:text-sm xl:leading-snug">{step.title}</h3>
+                <p className="text-sm text-slate-600">{step.caption}</p>
                 <ProductShot badge={shotBadge} caption={step.caption} imageSrc={step.imageSrc} />
-              </article>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
 
         {/* BENEFITS */}
@@ -540,6 +574,44 @@ export default function CrmLandingPage() {
               <h2 className="mt-2 text-2xl font-semibold text-slate-900">{t('public.crm_landing.pricing.title')}</h2>
             </div>
             <p className="max-w-md text-sm text-slate-600">{t('public.crm_landing.pricing.note')}</p>
+          </div>
+          <div className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                {t('public.crm_landing.pricing.clarity.includes_title')}
+              </p>
+              <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                {pricingClarity.includes.map((line) => (
+                  <li key={line}>• {line}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                {t('public.crm_landing.pricing.clarity.excludes_title')}
+              </p>
+              <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                {pricingClarity.excludes.map((line) => (
+                  <li key={line}>• {line}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                {t('public.crm_landing.pricing.clarity.limits_title')}
+              </p>
+              <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                {pricingClarity.limits.map((line) => (
+                  <li key={line}>• {line}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                {t('public.crm_landing.pricing.clarity.after_trial_title')}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">{pricingClarity.afterTrial}</p>
+            </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {plans.map((plan) => {
@@ -673,6 +745,18 @@ export default function CrmLandingPage() {
           <h2 className="text-xl font-semibold text-slate-900">{t('public.crm_landing.guides.title')}</h2>
           <p className="mt-2 text-sm text-slate-600">{t('public.crm_landing.guides.subtitle')}</p>
           <div className="mt-4 flex flex-wrap gap-2">
+            <Link to="/faq" className="btn-secondary btn-sm" onClick={() => trackCta('guide_faq', '/faq')}>
+              {t('public.marketing.common.related.faq', { defaultValue: 'FAQ' })}
+            </Link>
+            <Link to="/docs" className="btn-secondary btn-sm" onClick={() => trackCta('guide_docs', '/docs')}>
+              {t('public.marketing.common.related.docs', { defaultValue: 'Docs' })}
+            </Link>
+            <Link to="/academy" className="btn-secondary btn-sm" onClick={() => trackCta('guide_academy', '/academy')}>
+              {t('public.marketing.common.related.academy', { defaultValue: 'Academy' })}
+            </Link>
+            <Link to="/demo" className="btn-secondary btn-sm" onClick={() => trackCta('guide_demo', '/demo')}>
+              {t('public.marketing.common.related.demo', { defaultValue: 'Interactive demo' })}
+            </Link>
             <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm" onClick={() => trackCta('guide_pipeline', '/features/candidate-pipeline')}>
               {t('public.marketing.common.related.candidate_pipeline', { defaultValue: 'Candidate pipeline' })}
             </Link>
@@ -690,6 +774,21 @@ export default function CrmLandingPage() {
             </Link>
             <Link to="/comparison/recruitment-crm-vs-ats" className="btn-secondary btn-sm" onClick={() => trackCta('guide_crm_vs_ats', '/comparison/recruitment-crm-vs-ats')}>
               {t('public.marketing.common.related.crm_vs_ats', { defaultValue: 'Recruitment CRM vs ATS' })}
+            </Link>
+            <Link to="/use-cases/recruitment-agencies" className="btn-secondary btn-sm" onClick={() => trackCta('guide_recruitment_agencies', '/use-cases/recruitment-agencies')}>
+              {t('public.marketing.common.related.recruitment_agencies', { defaultValue: 'Recruitment agencies' })}
+            </Link>
+            <Link to="/use-cases/transport-companies" className="btn-secondary btn-sm" onClick={() => trackCta('guide_transport_companies', '/use-cases/transport-companies')}>
+              {t('public.marketing.common.related.transport_companies', { defaultValue: 'Transport companies' })}
+            </Link>
+            <Link to="/features/meta-ads-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_meta_ads', '/features/meta-ads-recruitment')}>
+              {t('public.marketing.common.related.meta_ads_recruitment', { defaultValue: 'Meta ads recruitment' })}
+            </Link>
+            <Link to="/features/whatsapp-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_whatsapp', '/features/whatsapp-recruitment')}>
+              {t('public.marketing.common.related.whatsapp_recruitment', { defaultValue: 'WhatsApp recruitment' })}
+            </Link>
+            <Link to="/use-cases/ats-for-drivers" className="btn-secondary btn-sm" onClick={() => trackCta('guide_ats_drivers', '/use-cases/ats-for-drivers')}>
+              {t('public.marketing.common.related.ats_for_drivers', { defaultValue: 'ATS for drivers' })}
             </Link>
           </div>
         </section>

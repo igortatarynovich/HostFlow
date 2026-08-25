@@ -11,7 +11,6 @@ silent attach, even when match is exact.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal, Optional
@@ -45,14 +44,7 @@ class LeadDuplicateMatch:
         return False
 
 
-def _digits_only(value: Optional[str]) -> str:
-    return re.sub(r"\D", "", str(value or ""))
-
-
-def _norm_email(value: Optional[str]) -> Optional[str]:
-    if not value or not str(value).strip():
-        return None
-    return str(value).strip().lower()
+from backend.app.services.contact_identifiers import digits_only, normalize_email
 
 
 def duplicate_ignored_candidate_ids(normalized: dict[str, Any]) -> set[str]:
@@ -97,7 +89,7 @@ def _passport_digits_from_normalized(normalized: dict[str, Any]) -> Optional[str
         raw = normalized.get(key)
         if raw is None:
             continue
-        d = _digits_only(str(raw))
+        d = digits_only(str(raw))
         if len(d) >= 4:
             return d
     return None
@@ -108,7 +100,7 @@ def _tachograph_digits_from_normalized(normalized: dict[str, Any]) -> Optional[s
         raw = normalized.get(key)
         if raw is None:
             continue
-        d = _digits_only(str(raw))
+        d = digits_only(str(raw))
         if len(d) >= 4:
             return d
     return None
@@ -119,7 +111,7 @@ def _candidate_personal_digits(candidate: Candidate, *keys: str) -> str:
     if not isinstance(pd, dict):
         return ""
     for k in keys:
-        d = _digits_only(str(pd.get(k) or ""))
+        d = digits_only(str(pd.get(k) or ""))
         if d:
             return d
     return ""
@@ -131,18 +123,18 @@ def _phones_operational_match(lead_phone_digits: str, candidate: Candidate) -> b
         return False
     variants: set[str] = set()
     if candidate.phone:
-        variants.add(_digits_only(candidate.phone.strip()))
+        variants.add(digits_only(candidate.phone.strip()))
     cc = (candidate.phone_country_code or "").strip()
     pn = (candidate.phone or "").strip()
-    combined = _digits_only(f"{cc}{pn}")
+    combined = digits_only(f"{cc}{pn}")
     if combined:
         variants.add(combined)
     contacts = candidate._get_contacts() if hasattr(candidate, "_get_contacts") else {}
     if isinstance(contacts, dict):
         ccp = (contacts.get("phone_country_code") or "").strip()
         cp = (contacts.get("phone") or "").strip()
-        variants.add(_digits_only(cp))
-        variants.add(_digits_only(f"{ccp}{cp}"))
+        variants.add(digits_only(cp))
+        variants.add(digits_only(f"{ccp}{cp}"))
     variants = {v for v in variants if v}
     if not variants:
         return False
@@ -163,18 +155,18 @@ def _phones_operational_match(lead_phone_digits: str, candidate: Candidate) -> b
 def _candidate_phone_digit_variants(candidate: Candidate) -> set[str]:
     variants: set[str] = set()
     if candidate.phone:
-        variants.add(_digits_only(candidate.phone.strip()))
+        variants.add(digits_only(candidate.phone.strip()))
     cc = (candidate.phone_country_code or "").strip()
     pn = (candidate.phone or "").strip()
-    combined = _digits_only(f"{cc}{pn}")
+    combined = digits_only(f"{cc}{pn}")
     if combined:
         variants.add(combined)
     contacts = candidate._get_contacts() if hasattr(candidate, "_get_contacts") else {}
     if isinstance(contacts, dict):
         ccp = (contacts.get("phone_country_code") or "").strip()
         cp = (contacts.get("phone") or "").strip()
-        variants.add(_digits_only(cp))
-        variants.add(_digits_only(f"{ccp}{cp}"))
+        variants.add(digits_only(cp))
+        variants.add(digits_only(f"{ccp}{cp}"))
     return {v for v in variants if v}
 
 
@@ -340,8 +332,8 @@ async def resolve_lead_duplicate_match(
 ) -> LeadDuplicateMatch:
     """Classify duplicate match for a normalized lead payload."""
     ignored = duplicate_ignored_candidate_ids(normalized)
-    em = _norm_email(email)
-    phone_digits = _digits_only(str(phone or "").strip())
+    em = normalize_email(email)
+    phone_digits = digits_only(str(phone or "").strip())
 
     passport_d = _passport_digits_from_normalized(normalized)
     if passport_d:
@@ -510,7 +502,7 @@ async def record_exact_duplicate_lead_intake(
         "match_reasons": list(match_reasons),
     }
     recruiter_id = getattr(candidate, "recruiter_id", None)
-    audience_roles = [UserRole.administrator, UserRole.supervisor]
+    audience_roles = [UserRole.administrator, UserRole.employee]
     user_ids = [str(recruiter_id)] if recruiter_id else []
     await events.emit_event(
         db,

@@ -34,7 +34,8 @@ import { getAnalyticsProfileSummary, getServicesAnalyticsOverview, type Services
 import { createInvoiceFromServiceOrder, createPayment, listInvoices, listInvoicesByServiceOrders, sendInvoice } from '../api/client'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar, DataTable, DataTableFrame, type DataTableColumn } from '../components/layout'
 import {
   OPEN_SERVICE_ORDER_STATUSES,
   ORDER_STATUSES,
@@ -54,6 +55,14 @@ import {
 import { CatalogTab } from '../modules/services/ServicesCatalogTab'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
+import { ServicesOrderCommunicationSlot } from './ServicesOrderCommunicationSlot'
+import { ServicesOrderFormsSlot } from './ServicesOrderFormsSlot'
+import {
+  EntityWorkspaceCompositionHost,
+  SERVICES_ORDER_COMPOSITION_CONSUMER_ID,
+  SERVICES_ORDER_COMPOSITION_SLOTS,
+  assertServicesOrderCompositionSlots,
+} from '../platform/entity-workspace'
 
 const initialServiceState: NewServiceFormState = {
   code: '',
@@ -439,39 +448,33 @@ export function ServicesPage() {
     }
   }, [searchParams])
 
-  useEffect(() => {
-    let active = true
-    if (tab !== 'billing') return
+  const refreshBillingInvoices = useCallback(async () => {
     setBillingLoading(true)
     setBillingError(null)
-    ;(async () => {
-      try {
-        const unpaid = billingStatusFilter === 'unpaid'
-        const status =
-          billingStatusFilter === 'all' || unpaid
-            ? undefined
-            : billingStatusFilter
-        const data = await listInvoices({
-          service_order_id: selectedOrderId || undefined,
-          status,
-          unpaid: unpaid ? true : undefined,
-          limit: 50,
-          offset: 0,
-        } as any)
-        if (!active) return
-        setBillingInvoices(Array.isArray(data) ? data : [])
-      } catch (e: any) {
-        if (!active) return
-        setBillingInvoices([])
-        setBillingError(e?.response?.data?.detail || e?.message || 'Failed to load invoices')
-      } finally {
-        if (active) setBillingLoading(false)
-      }
-    })()
-    return () => {
-      active = false
+    try {
+      const unpaid = billingStatusFilter === 'unpaid'
+      const status =
+        billingStatusFilter === 'all' || unpaid ? undefined : billingStatusFilter
+      const data = await listInvoices({
+        service_order_id: selectedOrderId || undefined,
+        status,
+        unpaid: unpaid ? true : undefined,
+        limit: 50,
+        offset: 0,
+      } as any)
+      setBillingInvoices(Array.isArray(data) ? data : [])
+    } catch (e: any) {
+      setBillingInvoices([])
+      setBillingError(e?.response?.data?.detail || e?.message || 'Failed to load invoices')
+    } finally {
+      setBillingLoading(false)
     }
-  }, [tab, selectedOrderId, billingStatusFilter])
+  }, [billingStatusFilter, selectedOrderId])
+
+  useEffect(() => {
+    if (tab !== 'billing') return
+    void refreshBillingInvoices()
+  }, [tab, refreshBillingInvoices])
 
   useEffect(() => {
     if (ordersHook.orders.length === 0) return
@@ -767,13 +770,160 @@ export function ServicesPage() {
     }
   }, [ordersHook.orders, catalogHook.services])
 
+  const billingColumns = useMemo((): DataTableColumn<any>[] => {
+    const runRowAction = async (key: string, action: () => Promise<void>) => {
+      setBillingError(null)
+      setBillingRowAction(key)
+      try {
+        await action()
+        await refreshBillingInvoices()
+      } catch (e: any) {
+        setBillingError(e?.response?.data?.detail || e?.message || 'Action failed')
+      } finally {
+        setBillingRowAction(null)
+      }
+    }
+
+    return [
+      {
+        key: 'number',
+        header: t('app.invoices.fields.number', { defaultValue: 'Number' }),
+        render: (inv) => (
+          <button
+            type="button"
+            className="font-medium text-slate-900 hover:underline"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate(`${CRM_APP_PATHS.invoices}/${inv.id}`)
+            }}
+          >
+            {inv.invoice_number}
+          </button>
+        ),
+      },
+      {
+        key: 'service_order',
+        header: t('app.services.billing.table.service_order', { defaultValue: 'Service order' }),
+        render: (inv) => {
+          const soId = String(inv.service_order_id || '').trim()
+          return soId ? (
+            <button
+              type="button"
+              className="font-mono text-xs font-semibold text-brand-700 hover:underline"
+              onClick={(e) => {
+                e.stopPropagation()
+                navigateToServicesOrder(soId)
+              }}
+            >
+              {soId.slice(0, 8)}…
+            </button>
+          ) : (
+            <span className="text-slate-400">—</span>
+          )
+        },
+      },
+      {
+        key: 'status',
+        header: t('app.invoices.fields.status', { defaultValue: 'Status' }),
+        render: (inv) => <span className="text-slate-700">{inv.status}</span>,
+      },
+      {
+        key: 'total',
+        header: t('app.invoices.fields.total', { defaultValue: 'Total' }),
+        render: (inv) => formatAmount(Number(inv.total_amount || 0)),
+        tabularNums: true,
+      },
+      {
+        key: 'paid',
+        header: t('app.invoices.fields.paid', { defaultValue: 'Paid' }),
+        render: (inv) => formatAmount(Number(inv.paid_amount || 0)),
+        tabularNums: true,
+      },
+      {
+        key: 'outstanding',
+        header: t('app.invoices.fields.outstanding', { defaultValue: 'Outstanding' }),
+        render: (inv) => {
+          const total = Number(inv.total_amount || 0)
+          const paid = Number(inv.paid_amount || 0)
+          return formatAmount(Math.max(0, total - paid))
+        },
+        tabularNums: true,
+      },
+      {
+        key: 'due',
+        header: t('app.invoices.fields.due', { defaultValue: 'Due' }),
+        render: (inv) => <span className="text-slate-700">{String(inv.due_date || '')}</span>,
+      },
+      {
+        key: 'actions',
+        header: t('common.actions.actions', { defaultValue: 'Actions' }),
+        align: 'right',
+        render: (inv) => {
+          const total = Number(inv.total_amount || 0)
+          const paid = Number(inv.paid_amount || 0)
+          const outstanding = Math.max(0, total - paid)
+          const isPaid = String(inv.status || '').toLowerCase() === 'paid' || outstanding <= 0
+          return (
+            <div className="inline-flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${inv.id}`)}
+              >
+                {t('common.actions.open', { defaultValue: 'Open' })}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                disabled={billingRowAction === `send:${inv.id}`}
+                onClick={() =>
+                  void runRowAction(`send:${inv.id}`, () => sendInvoice(String(inv.id)))
+                }
+              >
+                {billingRowAction === `send:${inv.id}`
+                  ? t('common.loading')
+                  : t('app.services.billing.row.send', { defaultValue: 'Send' })}
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                disabled={billingRowAction === `paid:${inv.id}` || isPaid}
+                onClick={() =>
+                  void runRowAction(`paid:${inv.id}`, async () => {
+                    const amount = outstanding > 0 ? outstanding : total
+                    const today = new Date().toISOString().slice(0, 10)
+                    await createPayment(String(inv.id), {
+                      amount,
+                      payment_date: today,
+                      method: 'bank_transfer',
+                    })
+                  })
+                }
+              >
+                {billingRowAction === `paid:${inv.id}`
+                  ? t('common.loading')
+                  : t('app.services.billing.row.mark_paid', { defaultValue: 'Mark paid' })}
+              </button>
+            </div>
+          )
+        },
+      },
+    ]
+  }, [
+    billingRowAction,
+    navigate,
+    navigateToServicesOrder,
+    refreshBillingInvoices,
+    t,
+  ])
+
   const tabs = (
     <div className="flex flex-wrap gap-2">
       {(['overview', 'orders', 'catalog', 'analytics', 'billing'] as const).map((key) => (
         <button
           key={key}
           type="button"
-          className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+          className={`rounded-lg px-3 py-2 text-sm font-medium ${
             tab === key ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'
           }`}
           onClick={() => setTabAndUrl(key)}
@@ -784,181 +934,93 @@ export function ServicesPage() {
     </div>
   )
 
-  const heroSection = (
-    <section className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white p-3 shadow-none">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            <h1 className="truncate text-base font-semibold text-slate-900">{t('app.services.title')}</h1>
-            <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700 md:inline">
-              {t('app.services.hero.subtitle')}
-            </span>
-          </div>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {tabs}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-            onClick={() => {
-              setTabAndUrl('orders')
-              const el = document.getElementById('services-new-order')
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }}
-          >
-            {t('app.services.actions.new_order', { defaultValue: 'New order' })}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-            onClick={() => {
-              setTabAndUrl('catalog')
-              const el = document.getElementById('services-new-service')
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }}
-          >
-            {t('app.services.actions.new_service', { defaultValue: 'New service' })}
-          </button>
-          <button
-            type="button"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-            onClick={async () => {
-              if (!selectedOrderId) {
-                setTabAndUrl('orders')
-                setOrdersMessage(t('app.services.billing.create_invoice.select_order', { defaultValue: 'Select an order first to create invoice.' }))
-                return
-              }
-              try {
-                const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
-                navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
-              } catch (e: any) {
-                setBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
-                setTabAndUrl('billing')
-              }
-            }}
-          >
-            {t('app.services.actions.create_invoice', { defaultValue: 'Create invoice' })}
-          </button>
-        </div>
-      </div>
-      <div className="mt-2 grid gap-2 md:grid-cols-5">
-        <button
-          type="button"
-          className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
-          onClick={() => {
-            setTabAndUrl('orders')
-            setStatusFilterAndUrl('all')
-            setOrdersDrilldown(null)
-          }}
-        >
-          <div className="text-[11px] font-medium text-slate-600">{t('app.services.hero.orders_active')}</div>
-          <div className="mt-0.5 text-lg font-semibold text-slate-900">{serviceInsights.activeOrders}</div>
-        </button>
-        <button
-          type="button"
-          className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
-          onClick={() => {
-            setTabAndUrl('billing')
-            setBillingStatusFilterAndUrl('unpaid')
-          }}
-        >
-          <div className="text-[11px] font-medium text-slate-600">{t('app.services.overview.kpi.outstanding', { defaultValue: 'Outstanding' })}</div>
-          <div className="mt-0.5 text-lg font-semibold text-slate-900">
-            {formatAmount(Number((analyticsOverview as any)?.totals?.invoices_outstanding || 0))}
-          </div>
-        </button>
-        <button
-          type="button"
-          className="rounded-xl border border-red-200 bg-red-50/40 p-2.5 text-left hover:bg-red-50"
-          onClick={() => {
-            setTabAndUrl('billing')
-            setBillingStatusFilterAndUrl('overdue')
-          }}
-        >
-          <div className="text-[11px] font-medium text-red-700">{t('app.services.overview.kpi.overdue', { defaultValue: 'Overdue' })}</div>
-          <div className="mt-0.5 text-lg font-semibold text-red-800">
-            {Number((analyticsOverview as any)?.totals?.invoices_overdue_count || 0)}
-          </div>
-        </button>
-        <button
-          type="button"
-          className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
-          onClick={() => setTabAndUrl('analytics')}
-        >
-          <div className="text-[11px] font-medium text-slate-600">{t('app.services.overview.kpi.invoiced', { defaultValue: 'Invoiced' })}</div>
-          <div className="mt-0.5 text-lg font-semibold text-slate-900">
-            {formatAmount(Number((analyticsOverview as any)?.totals?.invoices_invoiced || 0))}
-          </div>
-        </button>
-        <button
-          type="button"
-          className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
-          onClick={() => setTabAndUrl('analytics')}
-        >
-          <div className="text-[11px] font-medium text-slate-600">{t('app.services.overview.kpi.paid', { defaultValue: 'Paid' })}</div>
-          <div className="mt-0.5 text-lg font-semibold text-slate-900">
-            {formatAmount(Number((analyticsOverview as any)?.totals?.invoices_paid || 0))}
-          </div>
-        </button>
-      </div>
-    </section>
-  )
-
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
-      {heroSection}
-
-      <div className="px-3 pt-2">
-        <PageBreadcrumb />
-      </div>
-
-      {tab === 'overview' && (
-        <div className="space-y-0 gap-0">
-          <div className="card p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-slate-900">
-                  {t('app.services.overview.title', { defaultValue: 'Overview' })}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {t('app.services.overview.subtitle', {
-                    defaultValue: 'Fast money + operations snapshot with drill-down.',
-                  })}
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                  onClick={() => {
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.services.title')}
+          subtitle={t('app.services.hero.subtitle')}
+          primaryAction={
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              onClick={() => {
+                setTabAndUrl('orders')
+                const el = document.getElementById('services-new-order')
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }}
+            >
+              {t('app.services.actions.new_order', { defaultValue: 'New order' })}
+            </button>
+          }
+          secondaryActions={
+            <>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => {
+                  setTabAndUrl('catalog')
+                  const el = document.getElementById('services-new-service')
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
+              >
+                {t('app.services.actions.new_service', { defaultValue: 'New service' })}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={async () => {
+                  if (!selectedOrderId) {
                     setTabAndUrl('orders')
-                    setStatusFilterAndUrl('all')
-                    setOrdersDrilldown(null)
-                  }}
-                >
-                  {t('app.services.overview.actions.open_orders', { defaultValue: 'Open orders' })}
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                  onClick={() => {
+                    setOrdersMessage(t('app.services.billing.create_invoice.select_order', { defaultValue: 'Select an order first to create invoice.' }))
+                    return
+                  }
+                  try {
+                    const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
+                    navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
+                  } catch (e: any) {
+                    setBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
                     setTabAndUrl('billing')
-                    setBillingStatusFilterAndUrl('unpaid')
-                  }}
-                >
-                  {t('app.services.overview.actions.open_unpaid', { defaultValue: 'Unpaid invoices' })}
-                </button>
-              </div>
-            </div>
+                  }
+                }}
+              >
+                {t('app.services.actions.create_invoice', { defaultValue: 'Create invoice' })}
+              </button>
+            </>
+          }
+        />
+      </PageShellHeader>
 
-            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-              {t('app.services.overview.kpi_strip_hint', {
-                defaultValue: 'Money KPIs moved to top strip for faster scan and one-click drill-down.',
-              })}
+      <Toolbar>{tabs}</Toolbar>
+
+      <div className="flex min-h-0 flex-1 flex-col">
+      {tab === 'overview' && (
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <Toolbar>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => {
+                  setTabAndUrl('orders')
+                  setStatusFilterAndUrl('all')
+                  setOrdersDrilldown(null)
+                }}
+              >
+                {t('app.services.overview.actions.open_orders', { defaultValue: 'Open orders' })}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => {
+                  setTabAndUrl('billing')
+                  setBillingStatusFilterAndUrl('unpaid')
+                }}
+              >
+                {t('app.services.overview.actions.open_unpaid', { defaultValue: 'Unpaid invoices' })}
+              </button>
             </div>
-          </div>
+          </Toolbar>
 
           <div className="card p-4">
             <div className="text-sm font-semibold text-slate-900">
@@ -1038,10 +1100,10 @@ export function ServicesPage() {
                   <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     {col.step} · {col.title}
                   </div>
-                  <p className="mt-1 flex-1 text-xs leading-snug text-slate-600">{col.desc}</p>
+                  <p className="mt-1 flex-1 text-xs leading-tight text-slate-600">{col.desc}</p>
                   <button
                     type="button"
-                    className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+                    className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50"
                     onClick={col.onClick}
                   >
                     {col.cta}
@@ -1096,7 +1158,7 @@ export function ServicesPage() {
                 {Number((analyticsOverview as any)?.totals?.invoices_overdue_count || 0) > 0 ? (
                   <button
                     type="button"
-                    className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-red-800 hover:bg-red-50/80"
+                    className="w-full rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-left text-rose-800 hover:bg-rose-50/80"
                     onClick={() => {
                       setTabAndUrl('billing')
                       setBillingStatusFilterAndUrl('overdue')
@@ -1175,6 +1237,7 @@ export function ServicesPage() {
         />
       )}
       {tab === 'orders' && (
+        <div className="flex min-h-0 flex-1 flex-col">
         <OrdersTab
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilterAndUrl}
@@ -1207,6 +1270,7 @@ export function ServicesPage() {
           onCandidateIdUrlSync={companyIdFromUrl ? undefined : setCandidateIdInUrl}
           onVacancyIdUrlSync={companyIdFromUrl ? undefined : setVacancyIdInUrl}
         />
+        </div>
       )}
       {tab === 'analytics' && (
         <ServicesAnalyticsTab
@@ -1252,25 +1316,20 @@ export function ServicesPage() {
       )}
 
       {tab === 'billing' && (
-        <div className="space-y-4">
-          <div className="card p-4">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <Toolbar>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-slate-900">
-                  {t('app.services.billing.title', { defaultValue: 'Billing' })}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {selectedOrderId
-                    ? t('app.services.billing.subtitle_scoped', { defaultValue: 'Invoices linked to selected order.' })
-                    : t('app.services.billing.subtitle', { defaultValue: 'Invoices and payments for service orders.' })}
-                </div>
-              </div>
+              <p className="text-xs text-slate-500">
+                {selectedOrderId
+                  ? t('app.services.billing.subtitle_scoped', { defaultValue: 'Invoices linked to selected order.' })
+                  : t('app.services.billing.subtitle', { defaultValue: 'Invoices and payments for service orders.' })}
+              </p>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
                     billingStatusFilter === 'overdue'
-                      ? 'border-red-200 bg-red-50 text-red-700'
+                      ? 'border-rose-200 bg-rose-50 text-rose-700'
                       : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
                   }`}
                   onClick={() => setBillingStatusFilterAndUrl('overdue')}
@@ -1280,7 +1339,7 @@ export function ServicesPage() {
                 <button
                   type="button"
                   className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
-                    billingStatusFilter === 'sent'
+                    billingStatusFilter === 'unpaid'
                       ? 'border-amber-200 bg-amber-50 text-amber-800'
                       : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
                   }`}
@@ -1332,14 +1391,23 @@ export function ServicesPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </Toolbar>
 
-          <div className="card p-4">
-            {billingLoading ? (
-              <div className="text-sm text-slate-500">{t('common.loading')}</div>
-            ) : billingError ? (
-              <div className="text-sm text-red-600">{String(billingError)}</div>
-            ) : billingInvoices.length === 0 ? (
+          {billingError && !billingLoading ? (
+            <div className="mx-4 mb-2 text-sm text-rose-600">{String(billingError)}</div>
+          ) : null}
+
+          <DataTable
+            columns={billingColumns}
+            rows={billingInvoices}
+            rowKey={(inv) => String(inv.id)}
+            loading={billingLoading}
+            rowClassName={(inv) =>
+              String(inv.status || '').toLowerCase() === 'overdue' ? 'bg-rose-50/40' : undefined
+            }
+            onRowClick={(inv) => navigate(`${CRM_APP_PATHS.invoices}/${inv.id}`)}
+            ariaLabel={t('app.services.billing.title', { defaultValue: 'Billing' })}
+            emptyState={
               <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
                 <div className="text-sm font-semibold text-slate-900">
                   {t('app.services.billing.empty_state.title', { defaultValue: 'No invoices in this view' })}
@@ -1366,158 +1434,12 @@ export function ServicesPage() {
                   </button>
                 </div>
               </div>
-            ) : (
-              <div className="overflow-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="text-xs text-slate-500">
-                    <tr>
-                      <th className="py-2 pr-3">{t('app.invoices.fields.number', { defaultValue: 'Number' })}</th>
-                      <th className="py-2 pr-3">{t('app.services.billing.table.service_order', { defaultValue: 'Service order' })}</th>
-                      <th className="py-2 pr-3">{t('app.invoices.fields.status', { defaultValue: 'Status' })}</th>
-                      <th className="py-2 pr-3">{t('app.invoices.fields.total', { defaultValue: 'Total' })}</th>
-                      <th className="py-2 pr-3">{t('app.invoices.fields.paid', { defaultValue: 'Paid' })}</th>
-                      <th className="py-2 pr-3">{t('app.invoices.fields.outstanding', { defaultValue: 'Outstanding' })}</th>
-                      <th className="py-2 pr-3">{t('app.invoices.fields.due', { defaultValue: 'Due' })}</th>
-                      <th className="py-2 pr-3 text-right">{t('common.actions.actions', { defaultValue: 'Actions' })}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {billingInvoices.map((inv) => (
-                      (() => {
-                        const total = Number(inv.total_amount || 0)
-                        const paid = Number(inv.paid_amount || 0)
-                        const outstanding = Math.max(0, total - paid)
-                        const isOverdue = String(inv.status || '').toLowerCase() === 'overdue'
-                        const isPaid = String(inv.status || '').toLowerCase() === 'paid' || outstanding <= 0
-                        const soId = String(inv.service_order_id || '').trim()
-                        return (
-                      <tr
-                        key={inv.id}
-                        className={[
-                          'hover:bg-slate-50',
-                          isOverdue ? 'bg-red-50/40' : '',
-                        ].join(' ')}
-                      >
-                        <td className="py-2 pr-3 font-medium text-slate-900">
-                          <button type="button" className="hover:underline" onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${inv.id}`)}>
-                            {inv.invoice_number}
-                          </button>
-                        </td>
-                        <td className="py-2 pr-3 text-slate-700">
-                          {soId ? (
-                            <button
-                              type="button"
-                              className="font-mono text-xs font-semibold text-brand-700 hover:underline"
-                              onClick={() => navigateToServicesOrder(soId)}
-                            >
-                              {soId.slice(0, 8)}…
-                            </button>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
-                        </td>
-                        <td className="py-2 pr-3 text-slate-700">{inv.status}</td>
-                        <td className="py-2 pr-3 text-slate-700">{formatAmount(total)}</td>
-                        <td className="py-2 pr-3 text-slate-700">{formatAmount(paid)}</td>
-                        <td className="py-2 pr-3 text-slate-700">{formatAmount(outstanding)}</td>
-                        <td className="py-2 pr-3 text-slate-700">{String(inv.due_date || '')}</td>
-                        <td className="py-2 pr-3 text-right">
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                              onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${inv.id}`)}
-                            >
-                              {t('common.actions.open', { defaultValue: 'Open' })}
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
-                              disabled={billingRowAction === `send:${inv.id}`}
-                              onClick={async () => {
-                                setBillingError(null)
-                                setBillingRowAction(`send:${inv.id}`)
-                                try {
-                                  await sendInvoice(String(inv.id))
-                                  // refresh list
-                                  setBillingLoading(true)
-                                  const unpaid = billingStatusFilter === 'unpaid'
-                                  const status =
-                                    billingStatusFilter === 'all' || unpaid
-                                      ? undefined
-                                      : billingStatusFilter
-                                  const data = await listInvoices({
-                                    service_order_id: selectedOrderId || undefined,
-                                    status,
-                                    unpaid: unpaid ? true : undefined,
-                                    limit: 50,
-                                    offset: 0,
-                                  } as any)
-                                  setBillingInvoices(Array.isArray(data) ? data : [])
-                                } catch (e: any) {
-                                  setBillingError(e?.response?.data?.detail || e?.message || 'Failed to send invoice')
-                                } finally {
-                                  setBillingLoading(false)
-                                  setBillingRowAction(null)
-                                }
-                              }}
-                            >
-                              {billingRowAction === `send:${inv.id}`
-                                ? t('common.loading')
-                                : t('app.services.billing.row.send', { defaultValue: 'Send' })}
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                              disabled={billingRowAction === `paid:${inv.id}` || isPaid}
-                              onClick={async () => {
-                                setBillingError(null)
-                                setBillingRowAction(`paid:${inv.id}`)
-                                try {
-                                  const amount = outstanding > 0 ? outstanding : total
-                                  const today = new Date().toISOString().slice(0, 10)
-                                  await createPayment(String(inv.id), { amount, payment_date: today, method: 'bank_transfer' })
-                                  // refresh list
-                                  setBillingLoading(true)
-                                  const unpaid = billingStatusFilter === 'unpaid'
-                                  const status =
-                                    billingStatusFilter === 'all' || unpaid
-                                      ? undefined
-                                      : billingStatusFilter
-                                  const data = await listInvoices({
-                                    service_order_id: selectedOrderId || undefined,
-                                    status,
-                                    unpaid: unpaid ? true : undefined,
-                                    limit: 50,
-                                    offset: 0,
-                                  } as any)
-                                  setBillingInvoices(Array.isArray(data) ? data : [])
-                                } catch (e: any) {
-                                  setBillingError(e?.response?.data?.detail || e?.message || 'Failed to mark as paid')
-                                } finally {
-                                  setBillingLoading(false)
-                                  setBillingRowAction(null)
-                                }
-                              }}
-                            >
-                              {billingRowAction === `paid:${inv.id}`
-                                ? t('common.loading')
-                                : t('app.services.billing.row.mark_paid', { defaultValue: 'Mark paid' })}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                        )
-                      })()
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+            }
+          />
         </div>
       )}
-    </div>
+      </div>
+    </PageShell>
   )
 }
 
@@ -2116,9 +2038,17 @@ function OrdersTab({
     window.URL.revokeObjectURL(url)
   }
 
+  const isCutover = Boolean(selectedOrderId)
+  if (isCutover) {
+    assertServicesOrderCompositionSlots(SERVICES_ORDER_COMPOSITION_SLOTS)
+  }
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-      <div className="space-y-4">
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 px-4 pb-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+      <div
+        className="flex min-h-0 flex-col gap-4 overflow-hidden"
+        data-entity-workspace-slot="context-rail"
+      >
         {urlCompanyScopeId && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50/80 px-3 py-2 text-sm text-brand-900">
             <span className="min-w-0">
@@ -2140,7 +2070,7 @@ function OrdersTab({
           </div>
         )}
         {canManage && (
-          <form className="app-surface space-y-3 p-4" onSubmit={onCreateOrder}>
+          <form id="services-new-order" className="card shrink-0 space-y-3 p-4" onSubmit={onCreateOrder}>
             <h2 className="text-lg font-semibold">{t('app.services.orders.new.title')}</h2>
             <p className="text-sm text-slate-500">{t('app.services.orders.new.hint')}</p>
             <div className="space-y-4">
@@ -2470,196 +2400,217 @@ function OrdersTab({
           </form>
         )}
 
-        <div className="app-surface p-0 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
-            <h2 className="text-lg font-semibold">{t('app.services.orders.list.title')}</h2>
-            <div className="flex items-center gap-2">
-              {drilldown && (
-                <button type="button" className="btn-secondary btn-xs" onClick={() => onSetDrilldown(null)}>
-                  {t('app.services.analytics.drilldown.clear', { defaultValue: 'Clear drilldown' })}
-                </button>
-              )}
-              <select
-                className="input w-auto py-1 text-sm"
-                value={statusFilter}
-                onChange={(e) => onStatusFilterChange(e.target.value)}
-              >
-                <option value="all">{t('app.services.orders.filters.status_all')}</option>
-                <option value="open">{t('app.services.orders.filters.status_open')}</option>
-                {ORDER_STATUSES.map((status) => (
-                  <option key={status} value={status}>{orderStatusLabels[status] ?? status}</option>
-                ))}
-              </select>
-              <button type="button" className="btn-secondary btn-xs" onClick={exportVisibleOrdersCsv}>
-                {t('app.services.orders.actions.export_csv', { defaultValue: 'Export CSV' })}
-              </button>
-            </div>
-          </div>
-          <div className="border-b border-slate-200 bg-white px-4 py-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                className="input w-[220px] py-1 text-xs"
-                placeholder={t('app.services.orders.saved_filters.placeholder', { defaultValue: 'Saved filter name' })}
-                value={savedFilterName}
-                onChange={(e) => setSavedFilterName(e.target.value)}
-              />
-              <button type="button" className="btn-secondary btn-xs" onClick={handleSaveCurrentFilter}>
-                {t('app.services.orders.saved_filters.save', { defaultValue: 'Save filter' })}
-              </button>
-              {savedFilters.length > 0 && (
-                <select
-                  className="input w-auto py-1 text-xs"
-                  value=""
-                  onChange={(e) => {
-                    const id = e.target.value
-                    if (id) applySavedFilter(id)
-                  }}
-                >
-                  <option value="">{t('app.services.orders.saved_filters.apply', { defaultValue: 'Apply saved filter' })}</option>
-                  {savedFilters.map((view) => (
-                    <option key={view.id} value={view.id}>
-                      {view.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            {savedFilters.length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {savedFilters.slice(0, 6).map((view) => (
-                  <div key={view.id} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px]">
-                    <button type="button" className="text-slate-700 hover:text-slate-900" onClick={() => applySavedFilter(view.id)}>
-                      {view.name}
+        <DataTableFrame
+          className="min-h-0 flex-1"
+          header={
+            <>
+              <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 px-4 py-3">
+                <h2 className="text-sm font-semibold text-slate-900">{t('app.services.orders.list.title')}</h2>
+                <div className="flex items-center gap-2">
+                  {drilldown ? (
+                    <button type="button" className="btn-secondary btn-xs" onClick={() => onSetDrilldown(null)}>
+                      {t('app.services.analytics.drilldown.clear', { defaultValue: 'Clear drilldown' })}
                     </button>
-                    <button
-                      type="button"
-                      className="text-slate-400 hover:text-red-600"
-                      aria-label={t('common.actions.delete', { defaultValue: 'Delete' })}
-                      onClick={() => deleteSavedFilter(view.id)}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="border-b border-slate-200 bg-slate-50 px-4 py-2">
-            {!selectedOrderId ? (
-              <div className="text-xs text-slate-500">
-                {t('app.services.orders.billing_bar.select_order', { defaultValue: 'Select an order to access invoice actions.' })}
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-xs text-slate-600">
-                  {selectedInvoiceSummary?.invoice_id
-                    ? t('app.services.orders.billing_bar.linked', {
-                        defaultValue: 'Invoice {{number}} · {{status}} · Outstanding {{outstanding}}',
-                        values: {
-                          number: String(selectedInvoiceSummary.invoice_number || selectedInvoiceSummary.invoice_id).trim(),
-                          status: String(selectedInvoiceSummary.status || 'draft'),
-                          outstanding: formatAmount(selectedInvoiceOutstanding),
-                        },
-                      })
-                    : t('app.services.orders.billing_bar.none', { defaultValue: 'No invoice linked to selected order.' })}
+                  ) : null}
+                  <select
+                    className="input h-8 w-auto py-1 text-sm"
+                    value={statusFilter}
+                    onChange={(e) => onStatusFilterChange(e.target.value)}
+                  >
+                    <option value="all">{t('app.services.orders.filters.status_all')}</option>
+                    <option value="open">{t('app.services.orders.filters.status_open')}</option>
+                    {ORDER_STATUSES.map((status) => (
+                      <option key={status} value={status}>
+                        {orderStatusLabels[status] ?? status}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" className="btn-secondary btn-xs" onClick={exportVisibleOrdersCsv}>
+                    {t('app.services.orders.actions.export_csv', { defaultValue: 'Export CSV' })}
+                  </button>
                 </div>
+              </div>
+              <div className="border-b border-slate-200/80 bg-white px-4 py-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  {selectedInvoiceSummary?.invoice_id ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-xs"
-                        onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${selectedInvoiceSummary.invoice_id}`)}
-                      >
-                        {t('common.actions.open', { defaultValue: 'Open' })}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-xs"
-                        disabled={!canManage || orderBillingAction === 'send'}
-                        onClick={async () => {
-                          setOrderBillingError(null)
-                          setOrderBillingAction('send')
-                          try {
-                            await sendInvoice(String(selectedInvoiceSummary.invoice_id))
-                            onRefreshInvoices()
-                          } catch (e: any) {
-                            setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to send invoice')
-                          } finally {
-                            setOrderBillingAction(null)
-                          }
-                        }}
-                      >
-                        {orderBillingAction === 'send'
-                          ? t('common.loading')
-                          : t('app.services.orders.detail.invoice.send', { defaultValue: 'Send' })}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-primary btn-xs"
-                        disabled={!canManage || selectedInvoiceIsPaid || orderBillingAction === 'paid'}
-                        onClick={async () => {
-                          setOrderBillingError(null)
-                          setOrderBillingAction('paid')
-                          try {
-                            const amount = selectedInvoiceOutstanding > 0
-                              ? selectedInvoiceOutstanding
-                              : Number(selectedInvoiceSummary.total_amount || 0)
-                            const today = new Date().toISOString().slice(0, 10)
-                            await createPayment(String(selectedInvoiceSummary.invoice_id), {
-                              amount,
-                              payment_date: today,
-                              method: 'bank_transfer',
-                            })
-                            onRefreshInvoices()
-                          } catch (e: any) {
-                            setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to mark as paid')
-                          } finally {
-                            setOrderBillingAction(null)
-                          }
-                        }}
-                      >
-                        {orderBillingAction === 'paid'
-                          ? t('common.loading')
-                          : t('app.services.billing.row.mark_paid', { defaultValue: 'Mark paid' })}
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn-primary btn-xs"
-                      disabled={!canManage || orderBillingAction === 'create'}
-                      onClick={async () => {
-                        if (!selectedOrderId) return
-                        setOrderBillingError(null)
-                        setOrderBillingAction('create')
-                        try {
-                          const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
-                          onRefreshInvoices()
-                          navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
-                        } catch (e: any) {
-                          setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
-                        } finally {
-                          setOrderBillingAction(null)
-                        }
+                  <input
+                    className="input h-8 w-[220px] py-1 text-xs"
+                    placeholder={t('app.services.orders.saved_filters.placeholder', { defaultValue: 'Saved filter name' })}
+                    value={savedFilterName}
+                    onChange={(e) => setSavedFilterName(e.target.value)}
+                  />
+                  <button type="button" className="btn-secondary btn-xs" onClick={handleSaveCurrentFilter}>
+                    {t('app.services.orders.saved_filters.save', { defaultValue: 'Save filter' })}
+                  </button>
+                  {savedFilters.length > 0 ? (
+                    <select
+                      className="input h-8 w-auto py-1 text-xs"
+                      value=""
+                      onChange={(e) => {
+                        const id = e.target.value
+                        if (id) applySavedFilter(id)
                       }}
                     >
-                      {orderBillingAction === 'create'
-                        ? t('app.services.orders.detail.creating_invoice', { defaultValue: 'Creating…' })
-                        : t('app.services.orders.detail.create_invoice', { defaultValue: 'Create invoice' })}
-                    </button>
-                  )}
+                      <option value="">{t('app.services.orders.saved_filters.apply', { defaultValue: 'Apply saved filter' })}</option>
+                      {savedFilters.map((view) => (
+                        <option key={view.id} value={view.id}>
+                          {view.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                 </div>
+                {savedFilters.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {savedFilters.slice(0, 6).map((view) => (
+                      <div
+                        key={view.id}
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px]"
+                      >
+                        <button type="button" className="text-slate-700 hover:text-slate-900" onClick={() => applySavedFilter(view.id)}>
+                          {view.name}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-slate-400 hover:text-rose-600"
+                          aria-label={t('common.actions.delete', { defaultValue: 'Delete' })}
+                          onClick={() => deleteSavedFilter(view.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            )}
-            {orderBillingError && <div className="mt-1 text-xs text-red-600">{orderBillingError}</div>}
-          </div>
-          {drilldown && (
-            <div className="border-b border-slate-200 bg-brand-50 px-4 py-2 text-xs text-brand-800">
-              {t('app.services.analytics.drilldown.active', { defaultValue: 'Analytics drilldown is active. Orders list is scoped to the selected metric.' })}
-            </div>
-          )}
-          <div className="max-h-[420px] overflow-auto px-4 py-3">
+            </>
+          }
+          preScroll={
+            <>
+              <div className="border-b border-slate-200/80 bg-slate-50 px-4 py-2">
+                {!selectedOrderId ? (
+                  <div className="text-xs text-slate-500">
+                    {t('app.services.orders.billing_bar.select_order', { defaultValue: 'Select an order to access invoice actions.' })}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs text-slate-600">
+                      {selectedInvoiceSummary?.invoice_id
+                        ? t('app.services.orders.billing_bar.linked', {
+                            defaultValue: 'Invoice {{number}} · {{status}} · Outstanding {{outstanding}}',
+                            values: {
+                              number: String(selectedInvoiceSummary.invoice_number || selectedInvoiceSummary.invoice_id).trim(),
+                              status: String(selectedInvoiceSummary.status || 'draft'),
+                              outstanding: formatAmount(selectedInvoiceOutstanding),
+                            },
+                          })
+                        : t('app.services.orders.billing_bar.none', { defaultValue: 'No invoice linked to selected order.' })}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedInvoiceSummary?.invoice_id ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn-secondary btn-xs"
+                            onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${selectedInvoiceSummary.invoice_id}`)}
+                          >
+                            {t('common.actions.open', { defaultValue: 'Open' })}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary btn-xs"
+                            disabled={!canManage || orderBillingAction === 'send'}
+                            onClick={async () => {
+                              setOrderBillingError(null)
+                              setOrderBillingAction('send')
+                              try {
+                                await sendInvoice(String(selectedInvoiceSummary.invoice_id))
+                                onRefreshInvoices()
+                              } catch (e: any) {
+                                setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to send invoice')
+                              } finally {
+                                setOrderBillingAction(null)
+                              }
+                            }}
+                          >
+                            {orderBillingAction === 'send'
+                              ? t('common.loading')
+                              : t('app.services.orders.detail.invoice.send', { defaultValue: 'Send' })}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-primary btn-xs"
+                            disabled={!canManage || selectedInvoiceIsPaid || orderBillingAction === 'paid'}
+                            onClick={async () => {
+                              setOrderBillingError(null)
+                              setOrderBillingAction('paid')
+                              try {
+                                const amount =
+                                  selectedInvoiceOutstanding > 0
+                                    ? selectedInvoiceOutstanding
+                                    : Number(selectedInvoiceSummary.total_amount || 0)
+                                const today = new Date().toISOString().slice(0, 10)
+                                await createPayment(String(selectedInvoiceSummary.invoice_id), {
+                                  amount,
+                                  payment_date: today,
+                                  method: 'bank_transfer',
+                                })
+                                onRefreshInvoices()
+                              } catch (e: any) {
+                                setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to mark as paid')
+                              } finally {
+                                setOrderBillingAction(null)
+                              }
+                            }}
+                          >
+                            {orderBillingAction === 'paid'
+                              ? t('common.loading')
+                              : t('app.services.billing.row.mark_paid', { defaultValue: 'Mark paid' })}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn-primary btn-xs"
+                          disabled={!canManage || orderBillingAction === 'create'}
+                          onClick={async () => {
+                            if (!selectedOrderId) return
+                            setOrderBillingError(null)
+                            setOrderBillingAction('create')
+                            try {
+                              const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
+                              onRefreshInvoices()
+                              navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
+                            } catch (e: any) {
+                              setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                            } finally {
+                              setOrderBillingAction(null)
+                            }
+                          }}
+                        >
+                          {orderBillingAction === 'create'
+                            ? t('app.services.orders.detail.creating_invoice', { defaultValue: 'Creating…' })
+                            : t('app.services.orders.detail.create_invoice', { defaultValue: 'Create invoice' })}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {orderBillingError ? <div className="mt-1 text-xs text-rose-600">{orderBillingError}</div> : null}
+              </div>
+              {drilldown ? (
+                <div className="border-b border-slate-200/80 bg-brand-50 px-4 py-2 text-xs text-brand-800">
+                  {t('app.services.analytics.drilldown.active', {
+                    defaultValue: 'Analytics drilldown is active. Orders list is scoped to the selected metric.',
+                  })}
+                </div>
+              ) : null}
+            </>
+          }
+          footer={t('app.services.orders.list.count', {
+            defaultValue: '{{count}} orders',
+            values: { count: visibleOrders.length },
+          })}
+        >
             {loading ? (
               <div className="px-4 py-6 text-center text-sm text-slate-500">{t('app.services.orders.list.loading')}</div>
             ) : visibleOrders.length === 0 ? (
@@ -2703,7 +2654,7 @@ function OrdersTab({
                       type="button"
                       onClick={() => onSelectOrder(ord.id)}
                       className={[
-                        'w-full rounded-2xl border px-4 py-3 text-left transition',
+                        'w-full rounded-xl border px-4 py-3 text-left transition',
                         selectedOrderId === ord.id
                           ? 'border-brand-200 bg-brand-50'
                           : 'border-slate-100 bg-white hover:bg-brand-50/40',
@@ -2756,26 +2707,63 @@ function OrdersTab({
                ))}
               </ul>
             )}
-          </div>
-        </div>
+        </DataTableFrame>
       </div>
 
-      <div className="app-surface p-4 space-y-4">
+      <div
+        className="card flex min-h-0 flex-col overflow-y-auto p-4 space-y-4"
+        data-entity-workspace-consumer={isCutover ? SERVICES_ORDER_COMPOSITION_CONSUMER_ID : undefined}
+      >
         {!selectedOrderId || !order ? (
           <div className="text-sm text-slate-500">{t('app.services.orders.detail.placeholder')}</div>
         ) : (
-          <OrderDetail
-            order={order}
-            summary={summary}
-            invoiceSummary={invoiceMap[String(order.id)] || null}
-            canManage={canManage}
-            onInvoiceChanged={() => {
-              onRefreshInvoices()
-            }}
-            onStatusUpdate={onStatusUpdate}
-            onScheduleSubmit={onScheduleSubmit}
-            onDeliverItem={onDeliverItem}
-          />
+          <>
+            <div data-entity-workspace-slot="overview" className="space-y-4">
+              <OrderDetail
+                order={order}
+                summary={summary}
+                invoiceSummary={invoiceMap[String(order.id)] || null}
+                canManage={canManage}
+                onInvoiceChanged={() => {
+                  onRefreshInvoices()
+                }}
+                onStatusUpdate={onStatusUpdate}
+                onScheduleSubmit={onScheduleSubmit}
+                onDeliverItem={onDeliverItem}
+              />
+            </div>
+            <EntityWorkspaceCompositionHost
+              consumerId={SERVICES_ORDER_COMPOSITION_CONSUMER_ID}
+              enabledSlots={['communication', 'forms']}
+              renderers={{
+                communication: () => <ServicesOrderCommunicationSlot orderId={selectedOrderId} />,
+                forms: () => <ServicesOrderFormsSlot />,
+              }}
+            />
+            <div data-entity-workspace-slot="timeline">
+              <section className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-sm font-semibold text-slate-900">
+                  {t('app.entity_workspace.slot.timeline', { defaultValue: 'Timeline' })}
+                </p>
+                {order.items.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    {t('app.services.orders.timeline.empty', { defaultValue: 'No fulfillment events yet.' })}
+                  </p>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {order.items.slice(0, 8).map((item) => (
+                      <li key={item.id} className="text-slate-700">
+                        <span className="font-medium text-slate-900">
+                          {item.service?.name || item.service?.code || item.service_id.slice(0, 8)}
+                        </span>
+                        <span className="text-slate-500"> · {item.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+          </>
         )}
         {message && <div className="text-sm text-brand-700">{message}</div>}
       </div>
@@ -3338,7 +3326,7 @@ function OrderDetail({
           {canManage && (
             <button
               type="button"
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
               disabled={creatingInvoice}
               onClick={async () => {
                 setInvoiceError(null)
@@ -3374,15 +3362,15 @@ function OrderDetail({
           )}
         </div>
       </div>
-      {invoiceError && <div className="text-sm text-red-600">{invoiceError}</div>}
+      {invoiceError && <div className="text-sm text-rose-600">{invoiceError}</div>}
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs text-slate-700">
-        <span className="max-w-full rounded-full border border-brand-200 bg-white px-2.5 py-1 font-semibold text-brand-900">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-3 text-xs text-slate-700">
+        <span className="max-w-full rounded-full border border-brand-200 bg-white px-3 py-1 font-semibold text-brand-900">
           {t('app.services.orders.ops.next_label', { defaultValue: 'Next step' })}:{' '}
           {formatServiceOrderNextAction(resolveServiceOrderNextAction(order, invoiceSummary), t)}
         </span>
         {summary && summary.blocking_items.length > 0 ? (
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-medium text-amber-900">
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 font-medium text-amber-900">
             {t('app.services.orders.ops.blocking', {
               defaultValue: 'Blocking: {{count}}',
               values: { count: summary.blocking_items.length },
@@ -3390,7 +3378,7 @@ function OrderDetail({
           </span>
         ) : null}
         {missingDocCount > 0 ? (
-          <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 font-medium text-rose-900">
+          <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-medium text-rose-900">
             {t('app.services.orders.ops.missing_docs', {
               defaultValue: 'Missing docs: {{count}}',
               values: { count: missingDocCount },
@@ -3398,7 +3386,7 @@ function OrderDetail({
           </span>
         ) : null}
         {invoiceOverdueDays != null ? (
-          <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 font-medium text-red-900">
+          <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 font-medium text-rose-900">
             {t('app.services.orders.ops.invoice_overdue', {
               defaultValue: '{{days}}d past due',
               values: { days: invoiceOverdueDays },

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.trust_roles import is_recruiter_preset_actor, is_team_lead_org_actor
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.candidate_delete_request import (
     CandidateDeleteDecision,
@@ -19,7 +21,7 @@ router = APIRouter(prefix="/api/v1", tags=["candidate-delete"], redirect_slashes
     "/candidates/{candidate_id}/delete-request",
     response_model=CandidateDeleteRequestOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def request_delete(
     candidate_id: str,
@@ -29,7 +31,7 @@ async def request_delete(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    if ctx.role == Role.recruiter.value:
+    if is_recruiter_preset_actor(ctx.role, getattr(ctx, "preset_id", None)):
         await ensure_candidate_access(db, tenant_id, candidate_id, ctx)
     try:
         request = await deletion_service.create_delete_request(
@@ -49,7 +51,7 @@ async def request_delete(
 @router.get(
     "/delete-requests",
     response_model=list[CandidateDeleteRequestOut],
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_requests(
     status: str | None = Query(default=None),
@@ -58,7 +60,7 @@ async def list_requests(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
-    supervisor_filter = ctx.sub if ctx.role == Role.supervisor.value else None
+    supervisor_filter = ctx.sub if is_team_lead_org_actor(ctx.role, getattr(ctx, "preset_id", None)) else None
     requests = await deletion_service.list_requests(
         db,
         tenant_id=tenant_id,
@@ -96,7 +98,7 @@ async def _resolve(
 @router.post(
     "/delete-requests/{request_id}/approve",
     response_model=CandidateDeleteRequestOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def approve_request(
     request_id: str,
@@ -110,7 +112,7 @@ async def approve_request(
 @router.post(
     "/delete-requests/{request_id}/reject",
     response_model=CandidateDeleteRequestOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def reject_request(
     request_id: str,

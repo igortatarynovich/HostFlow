@@ -1,20 +1,19 @@
 """HTTP surface for the per-candidate "what to do next" service.
-
 Closes G-8 (stage 1a) — see `docs/specs/operations-loop.md`. The endpoint is
 mounted as `GET /api/v1/candidates/{candidate_id}/next-action` and returns a
 single primary CTA that the candidate detail page renders in its header.
-
 Role gating mirrors `GET /candidates/{candidate_id}`: anyone with candidate
 view access can ask "what should I do here?", but recruiter/supervisor/
 manager still go through `ensure_candidate_access` so an ACL-restricted user
 can't probe candidates they don't own.
-
 The endpoint flips `is_client_tenant` based on the viewer's tenant kind so
 the agency operator and the client operator see CTAs framed for their side
 of the handoff, even though the candidate row is identical.
 """
 
 from __future__ import annotations
+
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
 
 from typing import Tuple
 from uuid import UUID
@@ -23,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
-from backend.app.auth.deps import UserCtx, get_current_user, require_roles
+from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_VIEW_ROLES
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
@@ -33,11 +32,10 @@ from sqlalchemy import select
 
 router = APIRouter()
 
-
 @router.get(
     "/{candidate_id}/next-action",
     response_model=NextActionDTO,
-    dependencies=[Depends(require_roles(*HIRING_CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Resolve the single primary 'what to do next' CTA for a candidate",
     description=(
         "Returns one canonical NextActionDTO. The DTO shape is stable across "

@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import Dict, List
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
 # В твоём проекте get_db живёт здесь:
-from backend.app.db.deps import get_db, get_db_with_tenant
+from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.user import (
     NotificationsPreference,
     UserPasswordChange,
@@ -28,31 +26,27 @@ from backend.app.modules.documents.storage import get_uploads_root
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
-DEV_TENANT_ID = "11111111-1111-1111-1111-111111111111"
 UPLOAD_ROOT = get_uploads_root()
 AVATAR_ROOT = UPLOAD_ROOT / "avatars"
 UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 
 
-def _tenant_id_from_headers(request: Request) -> str:
-    # Если фронт ещё не шлёт заголовок — берём DEV-tenant
-    return request.headers.get("X-Tenant-Id", DEV_TENANT_ID)
-
-
 @router.get("/managers")
 async def list_managers(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant=Depends(get_db_with_tenant),
     roles: str | None = Query(
         default=None,
-        description="Comma-separated membership roles (default: owner, administrator, supervisor, recruiter).",
+        description="Comma-separated membership roles (default includes employee + legacy recruiter/supervisor).",
     ),
 ):
     """
     Семантически правильный эндпоинт пользователей-менеджеров.
     Возвращает список словарей: {id, short_id, full_name, email, label}
     """
-    tenant_id = _tenant_id_from_headers(request)
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await ensure_user_can_access_tenant(db, ctx, tenant_id)
     role_list = (
         [p.strip() for p in roles.split(",") if p.strip()] if roles and roles.strip() else None
     )

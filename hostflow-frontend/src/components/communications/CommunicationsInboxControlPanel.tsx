@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconExternalLink, IconListCheck, IconShield } from '@tabler/icons-react'
-import { patchCommunicationThread, type CommunicationThread } from '../../api/communications'
+import ThreadWorkspaceSlaChip from './ThreadWorkspaceSlaChip'
+import { type CommunicationThread } from '../../api/communications'
 import { createReminder } from '../../api/client'
 import { listTenantManagers } from '../../api/users'
 import type { ManagerOption } from '../../api/types'
@@ -66,7 +67,7 @@ export default function CommunicationsInboxControlPanel({
 }: Props) {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
-  const { busyAction, handleMarkRead, handleAutoAssign, load } = model
+  const { busyAction, handleMarkRead, handleAutoAssign, load, applyCommandResult, runCommand, threadContext } = model
   const unlinked = isCommunicationThreadUnlinked(thread)
   const cid = String(thread.linked_candidate_id || '').trim()
   const compId = String(thread.linked_company_id || '').trim()
@@ -131,8 +132,14 @@ export default function CommunicationsInboxControlPanel({
     setAssigneeOk(false)
     setAssigneeSaveError(null)
     try {
-      await patchCommunicationThread(thread.id, { assignee_id: assigneeDraft || null })
-      await load()
+      const draft = String(assigneeDraft || '').trim()
+      const result = draft
+        ? await model.runCommand(thread.assignee_id ? 'ReassignThread' : 'AssignThread', {
+            assignee_id: draft,
+            reason: 'manual',
+          })
+        : await model.runCommand('UnassignThread', { reason: 'manual' })
+      applyCommandResult?.(result)
       setAssigneeSaveError(null)
       setAssigneeOk(true)
       await onAfterThreadPatch?.()
@@ -147,12 +154,15 @@ export default function CommunicationsInboxControlPanel({
     }
   }
 
-  const applyThreadFolderPatch = async (payload: Record<string, unknown>, exitCenter: boolean) => {
+  const applyThreadFolderCommand = async (
+    command: 'CloseThread' | 'ReopenThread',
+    exitCenter: boolean,
+  ) => {
     setFolderBusy(true)
     setFolderError(null)
     try {
-      await patchCommunicationThread(thread.id, payload)
-      await load()
+      const result = await model.runCommand(command)
+      applyCommandResult?.(result)
       await onAfterThreadPatch?.()
       if (exitCenter) onAfterArchiveOrDelete?.()
     } catch (err: unknown) {
@@ -247,7 +257,12 @@ export default function CommunicationsInboxControlPanel({
             </div>
           )}
           <div className="card p-4">
-            <CommunicationsThreadEntityLinkForms thread={thread} compact={compact} onAfterPatch={afterEntityPatch} />
+            <CommunicationsThreadEntityLinkForms
+              thread={thread}
+              compact={compact}
+              onAfterPatch={afterEntityPatch}
+              runCommand={runCommand}
+            />
           </div>
         </>
       )}
@@ -316,7 +331,7 @@ export default function CommunicationsInboxControlPanel({
         </form>
       </div>
 
-      <CommunicationsInboxWorkflowCard thread={thread} onRefresh={load} />
+      <CommunicationsInboxWorkflowCard thread={thread} onRefresh={load} runCommand={runCommand} />
 
       <div className="card p-4">
         <h3 className="text-sm font-semibold text-slate-900">
@@ -338,15 +353,28 @@ export default function CommunicationsInboxControlPanel({
           </div>
           <div className="flex justify-between gap-2">
             <dt>{t('app.communications_inbox_center.sla_due')}</dt>
-            <dd className="text-right">{formatThreadDateTime(thread.sla_due_at)}</dd>
+            <dd className="text-right">
+              <ThreadWorkspaceSlaChip
+                workState={threadContext?.work_state}
+                runCommand={runCommand}
+                interactive
+              />
+              {!threadContext?.work_state?.sla && !threadContext?.work_state?.sla_due_at
+                ? formatThreadDateTime(thread.sla_due_at)
+                : null}
+            </dd>
           </div>
           <div className="flex justify-between gap-2">
             <dt>{t('app.communications.labels.unread')}</dt>
-            <dd className="text-right">{thread.unread_count ?? 0}</dd>
+            <dd className="text-right">
+              {threadContext?.work_state?.unread_count ?? thread.unread_count ?? 0}
+            </dd>
           </div>
           <div className="flex justify-between gap-2">
             <dt>{t('app.communications.email.preview.status')}</dt>
-            <dd className="text-right">{thread.status || '—'}</dd>
+            <dd className="text-right">
+              {threadContext?.identity?.thread?.status || thread.status || '—'}
+            </dd>
           </div>
         </dl>
         <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
@@ -428,7 +456,7 @@ export default function CommunicationsInboxControlPanel({
                   className="btn-secondary btn-sm w-full disabled:opacity-50"
                   disabled={folderBusy}
                   onClick={() =>
-                    void applyThreadFolderPatch({ is_archived: true, status: 'archived' }, Boolean(onAfterArchiveOrDelete))
+                    void applyThreadFolderCommand('CloseThread', Boolean(onAfterArchiveOrDelete))
                   }
                 >
                   {folderBusy
@@ -440,7 +468,7 @@ export default function CommunicationsInboxControlPanel({
                   className="btn-danger btn-sm w-full disabled:opacity-50"
                   disabled={folderBusy}
                   onClick={() =>
-                    void applyThreadFolderPatch({ is_archived: true, status: 'deleted' }, Boolean(onAfterArchiveOrDelete))
+                    void applyThreadFolderCommand('CloseThread', Boolean(onAfterArchiveOrDelete))
                   }
                 >
                   {folderBusy
@@ -454,7 +482,7 @@ export default function CommunicationsInboxControlPanel({
                 type="button"
                 className="btn-secondary btn-sm w-full disabled:opacity-50"
                 disabled={folderBusy}
-                onClick={() => void applyThreadFolderPatch({ is_archived: false, status: 'open' }, false)}
+                onClick={() => void applyThreadFolderCommand('ReopenThread', false)}
               >
                 {folderBusy
                   ? t('common.loading')

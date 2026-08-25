@@ -1,0 +1,2 @@
+# CL2 — sole producer for Entity Profile membership runtime.
+entity_profile_membership|backend/app/entity_profile/membership_runtime.py

@@ -14,12 +14,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.entity_profile.constants import ENTITY_LEAD, SERVICE_SALES_MODULE
 from backend.app.entity_profile.presentation_write import (
     PresentationWriteError,
     build_tenant_form_presentation_code,
     upsert_tenant_intake_presentation,
     validate_presentation_fields_for_profile,
 )
+from backend.app.models.entity_profile import EpEntityProfile
 from backend.app.models.intake_routing import IntakeSourceBinding, IntakeSourceProfile
 from backend.app.models.intake_routing_enums import IntakeChannel, IntakeProvider, RouteIntent
 from backend.app.models.mixins import now_utc
@@ -32,6 +34,14 @@ from backend.app.services.lead_forms_quota import (
     ensure_tenant_lead_form_active_count_allows_transition,
     normalize_and_validate_public_slug,
 )
+from backend.app.intake_platform.entity_profile_gate import validate_form_definition_triple
+from backend.app.intake_platform.constants import FormLifecycleStatus
+from backend.app.intake_platform.form_definition import (
+    apply_form_definition_fields,
+    default_submission_policy_for_entity_profile,
+    format_supported_languages,
+    read_form_definition,
+)
 from backend.app.services.plan_feature_gates import count_tenant_lead_sources, ensure_lead_source_limit
 
 
@@ -39,6 +49,57 @@ def _public_form_profile_code(public_slug: str) -> str:
     slug = str(public_slug or "").strip().lower()
     safe = re.sub(r"[^a-z0-9-]+", "-", slug).strip("-") or "form"
     return f"public-form-{safe}"
+
+
+async def _intake_routing_for_entity_profile(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    entity_profile_code: str,
+) -> dict[str, str]:
+    """Map Entity Profile to intake routing (sales lead vs candidate application)."""
+    from backend.app.entity_profile.constants import PLATFORM_TENANT_SCOPE
+
+    code = str(entity_profile_code or "").strip()
+    entity_type = ""
+    row = await db.scalar(
+        select(EpEntityProfile.entity_type)
+        .where(
+            EpEntityProfile.profile_code == code,
+            EpEntityProfile.status == "active",
+            EpEntityProfile.tenant_id.in_([str(tenant_id), PLATFORM_TENANT_SCOPE]),
+        )
+        .order_by(EpEntityProfile.tenant_id.desc())
+        .limit(1)
+    )
+    if row is not None:
+        entity_type = str(row or "").strip()
+
+    is_sales_lead = entity_type == ENTITY_LEAD or code.startswith(f"{SERVICE_SALES_MODULE}.")
+    if is_sales_lead:
+        return {
+            "route_intent": RouteIntent.sales_inquiry.value,
+            "form_type": "sales_questionnaire",
+            "lead_type": "client",
+            "lead_target_type": "client_lead",
+            "source": "public_intake",
+        }
+    return {
+        "route_intent": RouteIntent.candidate_application.value,
+        "form_type": "candidate_intake",
+        "lead_type": "candidate",
+        "lead_target_type": "candidate",
+        "source": "public_intake",
+    }
+
+
+def _apply_intake_routing(profile: IntakeSourceProfile, routing: dict[str, str]) -> None:
+    profile.route_intent = routing["route_intent"]
+    profile.form_type = routing["form_type"]
+    profile.lead_type = routing["lead_type"]
+    profile.lead_target_type = routing["lead_target_type"]
+    if routing.get("source"):
+        profile.source = routing["source"]
 
 
 async def _default_own_company_id(db: AsyncSession, tenant_id: str) -> str:
@@ -160,12 +221,19 @@ async def _ensure_intake_source_for_form(
         public_slug=public_slug,
     )
 
+    routing = await _intake_routing_for_entity_profile(
+        db,
+        tenant_id=str(tenant_id),
+        entity_profile_code=entity_profile_code,
+    )
+
     if existing is not None:
         existing.entity_profile_code = str(entity_profile_code).strip()
         existing.presentation_code = presentation_code
         existing.public_slug = public_slug
         existing.name = lead_form.title or existing.name
         existing.is_active = bool(lead_form.is_active)
+        _apply_intake_routing(existing, routing)
         await db.flush()
         await _sync_public_slug_bindings(
             db,
@@ -185,13 +253,13 @@ async def _ensure_intake_source_for_form(
             own_company_id=own_company_id,
             provider=IntakeProvider.public_intake.value,
             channel=IntakeChannel.direct.value,
-            route_intent=RouteIntent.candidate_application.value,
+            route_intent=routing["route_intent"],
             public_slug=public_slug,
-            form_type="candidate_intake",
-            lead_type="candidate",
-            lead_target_type="candidate",
+            form_type=routing["form_type"],
+            lead_type=routing["lead_type"],
+            lead_target_type=routing["lead_target_type"],
             entity_profile_code=str(entity_profile_code).strip(),
-            source="public_intake",
+            source=routing["source"],
             default_language="pl",
             supported_languages="pl,en,ru",
             is_active=bool(lead_form.is_active),
@@ -278,6 +346,19 @@ async def create_public_intake_form(
         public_slug=slug,
         is_active=bool(is_active),
     )
+    apply_form_definition_fields(
+        lead_form,
+        target_entity_profile_code=entity_profile_code,
+        published_version=1,
+        supported_languages=format_supported_languages(["pl", "en", "ru"]),
+    )
+    policy = default_submission_policy_for_entity_profile(entity_profile_code)
+    validate_form_definition_triple(
+        purpose=str(lead_form.purpose),
+        target_entity_profile_code=entity_profile_code,
+        submission_policy=policy,
+    )
+    lead_form.submission_policy = policy
     db.add(lead_form)
     try:
         await db.flush()
@@ -316,6 +397,7 @@ async def update_public_intake_form(
     public_slug: Optional[str] = None,
     is_active: Optional[bool] = None,
     entity_profile_code: Optional[str] = None,
+    lifecycle_status: Optional[str] = None,
 ) -> dict[str, Any]:
     lead_form = await _load_form(db, tenant_id=str(tenant_id), form_id=str(form_id))
     old_slug = str(getattr(lead_form, "public_slug", None) or "").strip() or None
@@ -330,6 +412,18 @@ async def update_public_intake_form(
             will_be_active=bool(is_active),
         )
         lead_form.is_active = bool(is_active)
+
+    if lifecycle_status is not None:
+        status = str(lifecycle_status).strip()
+        if status not in {
+            FormLifecycleStatus.draft.value,
+            FormLifecycleStatus.active.value,
+            FormLifecycleStatus.archived.value,
+        }:
+            raise HTTPException(status_code=422, detail="Invalid lifecycle_status")
+        lead_form.lifecycle_status = status
+        if status == FormLifecycleStatus.archived.value:
+            lead_form.is_active = False
 
     new_slug = old_slug
     if public_slug is not None:
@@ -367,8 +461,16 @@ async def update_public_intake_form(
     elif intake_profile is not None:
         if ep_code:
             intake_profile.entity_profile_code = ep_code
+            routing = await _intake_routing_for_entity_profile(
+                db,
+                tenant_id=str(tenant_id),
+                entity_profile_code=ep_code,
+            )
+            _apply_intake_routing(intake_profile, routing)
         intake_profile.name = lead_form.title or intake_profile.name
         intake_profile.is_active = bool(lead_form.is_active)
+        if lifecycle_status == FormLifecycleStatus.archived.value:
+            intake_profile.is_active = False
         if new_slug:
             intake_profile.public_slug = new_slug
             if ep_code or intake_profile.entity_profile_code:
@@ -444,8 +546,85 @@ async def upsert_public_intake_form_presentation(
 
     intake_profile.entity_profile_code = str(entity_profile_code).strip()
     intake_profile.presentation_code = presentation_code
+    lead_form.published_version = int(getattr(lead_form, "published_version", None) or 0) + 1
     await db.commit()
     return await build_intake_form_admin_context(db, tenant_id=str(tenant_id), form_id=str(form_id))
+
+
+async def load_entity_profile_presentation_preset(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    entity_profile_code: str,
+    presentation_code: str | None = None,
+) -> dict[str, Any]:
+    """Load platform intake presentation as constructor-ready field rows."""
+    from backend.app.entity_profile.exceptions import EntityProfileNotFoundError
+    from backend.app.entity_profile.facade import resolve_entity_profile_facade
+    from backend.app.entity_profile.presentation_runtime import (
+        FormPresentationNotFoundError,
+        resolve_form_presentation,
+    )
+
+    code = str(entity_profile_code or "").strip()
+    try:
+        profile_view = await resolve_entity_profile_facade(
+            db,
+            tenant_id=str(tenant_id),
+            entity_profile_code=code,
+            include_presentations=True,
+        )
+    except EntityProfileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    presentations = list(profile_view.get("presentations") or [])
+    pres_code = str(presentation_code or "").strip()
+    if not pres_code:
+        if not presentations:
+            raise HTTPException(status_code=404, detail="No platform presentation presets for this profile")
+        pres_code = str(presentations[0].get("presentation_code") or "").strip()
+    if not pres_code:
+        raise HTTPException(status_code=404, detail="presentation_code is required")
+
+    try:
+        runtime = await resolve_form_presentation(
+            db,
+            tenant_id=str(tenant_id),
+            entity_profile_code=code,
+            presentation_code=pres_code,
+        )
+    except FormPresentationNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    fields_out: list[dict[str, Any]] = []
+    for row in runtime.get("fields") or []:
+        if not isinstance(row, dict):
+            continue
+        qcode = str(row.get("qualified_code") or "").strip()
+        if not qcode:
+            continue
+        overrides = row.get("presentation_overrides") if isinstance(row.get("presentation_overrides"), dict) else {}
+        payload: dict[str, Any] = {
+            "qualified_code": qcode,
+            "label_override": str(row.get("label") or "").strip() or None,
+            "intake_level": str(row.get("intake_level") or "optional"),
+            "sort_order": int(row.get("sort_order") or 0),
+        }
+        widget_hint = str(overrides.get("widget_hint") or row.get("widget_hint") or "").strip()
+        if widget_hint:
+            payload["widget_hint"] = widget_hint
+        rules = overrides.get("presentation_rules") or row.get("presentation_rules")
+        if isinstance(rules, dict) and rules:
+            payload["presentation_rules"] = dict(rules)
+        fields_out.append({k: v for k, v in payload.items() if v is not None})
+
+    profile_meta = profile_view.get("profile") or {}
+    return {
+        "entity_profile_code": code,
+        "presentation_code": pres_code,
+        "profile_name": profile_meta.get("name"),
+        "fields": fields_out,
+    }
 
 
 async def list_selectable_entity_profiles(db: AsyncSession, *, tenant_id: str) -> list[dict[str, Any]]:

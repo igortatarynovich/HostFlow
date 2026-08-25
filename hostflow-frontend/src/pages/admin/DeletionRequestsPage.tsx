@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { approveDeleteRequest, listDeleteRequests, rejectDeleteRequest } from '../../api/deletionRequests'
 import type { DeletionRequest } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
@@ -10,7 +11,11 @@ import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected'
 
-export default function DeletionRequestsPage() {
+type DeletionRequestsPageProps = {
+  embedded?: boolean
+}
+
+export default function DeletionRequestsPage({ embedded = false }: DeletionRequestsPageProps) {
   const { t } = useI18n()
   const { can } = usePermissions()
   const canViewQueue = can('admin.deletionQueue') || can('candidates.deleteQueue')
@@ -34,7 +39,7 @@ export default function DeletionRequestsPage() {
     } finally {
       setLoading(false)
     }
-  }, [filter])
+  }, [filter, t])
 
   useEffect(() => {
     if (!canViewQueue) return
@@ -91,29 +96,29 @@ export default function DeletionRequestsPage() {
       }
     : null
 
-  return (
-    <div className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('app.admin.deletion_requests.title')}</h1>
-          <p className="text-sm text-slate-500">{t('app.admin.deletion_requests.subtitle')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <select
-            className="input"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value as FilterStatus)}
-          >
-            <option value="pending">{t('app.admin.deletion_requests.filters.pending')}</option>
-            <option value="approved">{t('app.admin.deletion_requests.filters.approved')}</option>
-            <option value="rejected">{t('app.admin.deletion_requests.filters.rejected')}</option>
-            <option value="all">{t('app.admin.deletion_requests.filters.all')}</option>
-          </select>
-          <button className="btn-secondary" onClick={() => void loadRequests()} disabled={loading}>
-            {loading ? t('common.loading') : t('common.actions.refresh')}
-          </button>
-        </div>
-      </header>
+  const filterControls = (
+    <div className="flex items-center gap-2">
+      <select
+        className="input"
+        value={filter}
+        onChange={(event) => setFilter(event.target.value as FilterStatus)}
+      >
+        <option value="pending">{t('app.admin.deletion_requests.filters.pending')}</option>
+        <option value="approved">{t('app.admin.deletion_requests.filters.approved')}</option>
+        <option value="rejected">{t('app.admin.deletion_requests.filters.rejected')}</option>
+        <option value="all">{t('app.admin.deletion_requests.filters.all')}</option>
+      </select>
+      <button className="btn-secondary" onClick={() => void loadRequests()} disabled={loading}>
+        {loading ? t('common.loading') : t('common.actions.refresh')}
+      </button>
+    </div>
+  )
+
+  const body = (
+    <>
+      {embedded ? (
+        <div className="flex flex-wrap items-center justify-end gap-4">{filterControls}</div>
+      ) : null}
 
       {deletionQueueErrorBanner && (
         <ErrorRecoveryBanner
@@ -143,33 +148,46 @@ export default function DeletionRequestsPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="font-semibold text-slate-900">
-                      {t('app.admin.deletion_requests.labels.candidate')}: {request.candidate?.first_name} {request.candidate?.last_name}
+                      {t('app.admin.deletion_requests.labels.candidate')}: {request.candidate?.first_name}{' '}
+                      {request.candidate?.last_name}
                     </div>
-                    <div className="text-xs text-slate-500">{t('common.labels.id')}: {request.candidate_id}</div>
+                    <div className="text-xs text-slate-500">
+                      {t('common.labels.id')}: {request.candidate_id}
+                    </div>
                   </div>
                   <div className="text-xs text-slate-500">
-                    {t('common.labels.status')}: <span className="font-medium text-slate-900">{t(`app.admin.deletion_requests.status.${request.status}`, { defaultValue: request.status })}</span>
+                    {t('common.labels.status')}:{' '}
+                    <span className="font-medium text-slate-900">
+                      {t(`app.admin.deletion_requests.status.${request.status}`, { defaultValue: request.status })}
+                    </span>
                   </div>
                 </div>
 
                 <div className="mt-2 grid gap-2 md:grid-cols-2">
                   <div>
-                    <div className="text-xs uppercase text-slate-400">{t('app.admin.deletion_requests.labels.recruiter')}</div>
+                    <div className="text-xs uppercase text-slate-400">
+                      {t('app.admin.deletion_requests.labels.recruiter')}
+                    </div>
                     <div>{request.requested_by_user?.email || request.requested_by}</div>
                   </div>
                   <div>
-                    <div className="text-xs uppercase text-slate-400">{t('app.admin.deletion_requests.labels.supervisor')}</div>
+                    <div className="text-xs uppercase text-slate-400">
+                      {t('app.admin.deletion_requests.labels.supervisor')}
+                    </div>
                     <div>{request.supervisor_user?.email || request.supervisor_id}</div>
                   </div>
                 </div>
 
                 {request.reason && (
-                  <div className="mt-2 text-xs text-slate-500">{t('app.admin.deletion_requests.labels.reason')}: {request.reason}</div>
+                  <div className="mt-2 text-xs text-slate-500">
+                    {t('app.admin.deletion_requests.labels.reason')}: {request.reason}
+                  </div>
                 )}
 
                 {request.status !== 'pending' && request.resolved_by && (
                   <div className="mt-2 text-xs text-slate-500">
-                    {t('app.admin.deletion_requests.labels.resolution')}: {t(`app.admin.deletion_requests.status.${request.status}`, { defaultValue: request.status })} ·{' '}
+                    {t('app.admin.deletion_requests.labels.resolution')}:{' '}
+                    {t(`app.admin.deletion_requests.status.${request.status}`, { defaultValue: request.status })} ·{' '}
                     {request.resolved_at ? new Date(request.resolved_at).toLocaleString() : ''}
                   </div>
                 )}
@@ -205,6 +223,21 @@ export default function DeletionRequestsPage() {
           {t('app.admin.deletion_requests.messages.pending_hint', { values: { count: pendingRequests.length } })}
         </div>
       )}
-    </div>
+    </>
+  )
+
+  if (embedded) {
+    return <div className="space-y-4">{body}</div>
+  }
+
+  return (
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      title={t('app.admin.deletion_requests.title')}
+      subtitle={t('app.admin.deletion_requests.subtitle')}
+      actions={filterControls}
+    >
+      {body}
+    </SettingsSubpageHeader>
   )
 }

@@ -6,11 +6,12 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, select, text
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
-from backend.app.db.deps import get_db_with_tenant
+from backend.app.db.deps import bind_tenant_context_to_session, get_db
 from backend.app.db.candidate_operational_sql import sql_candidate_active_operational_pipeline
 from backend.app.models import Candidate, Reminder, Tenant
 from backend.app.services.reminder_ops_counts import count_overdue_reminders_ops_scoped
@@ -53,6 +54,38 @@ def _ensure_share_token(settings: dict[str, Any]) -> tuple[dict[str, Any], str, 
         settings["goals_share_token"] = token
         rotated = True
     return settings, token, rotated
+
+
+async def _resolve_goals_share_token_tenant_id(db: AsyncSession, share_token: str) -> Optional[str]:
+    """Resolve tenant from goals share token (ignore X-Tenant-Id)."""
+    token = str(share_token or "").strip()
+    if not token:
+        return None
+    bind = db.get_bind()
+    dialect = str(getattr(getattr(bind, "dialect", None), "name", "") or "")
+    if dialect == "postgresql":
+        try:
+            row = (
+                await db.execute(
+                    text(
+                        "SELECT id FROM tenants WHERE settings->>'goals_share_token' = :t LIMIT 1"
+                    ),
+                    {"t": token},
+                )
+            ).first()
+            if row and row[0]:
+                return str(row[0])
+            return None
+        except ProgrammingError:
+            await db.rollback()
+    rows = (await db.execute(select(Tenant.id, Tenant.settings))).all()
+    for tid, settings in rows:
+        if not isinstance(settings, dict):
+            continue
+        expected = str(settings.get("goals_share_token") or "").strip()
+        if expected and expected == token:
+            return str(tid)
+    return None
 
 
 async def _compute_metrics(db: AsyncSession, tenant_id: str, assignee_id: Optional[str] = None) -> dict[str, Any]:
@@ -127,10 +160,14 @@ async def _compute_metrics(db: AsyncSession, tenant_id: str, assignee_id: Option
 @router.get("/public/goals/{share_token}", response_model=PublicGoalsOut)
 async def public_goals(
     share_token: str,
-    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db: AsyncSession = Depends(get_db),
     assignee_id: Optional[str] = Query(default=None),
 ):
-    db, tenant_uuid = db_tenant
+    tid_str = await _resolve_goals_share_token_tenant_id(db, share_token)
+    if not tid_str:
+        raise HTTPException(status_code=404, detail="not_found")
+    tenant_uuid = UUID(tid_str)
+    await bind_tenant_context_to_session(db, tenant_uuid)
     tenant_id = str(tenant_uuid)
     tenant = (
         await db.execute(select(Tenant).where(Tenant.id == tenant_id))
@@ -142,7 +179,12 @@ async def public_goals(
 
     settings = _safe_settings(tenant)
     expected = str(settings.get("goals_share_token") or "").strip()
-    if not expected or secrets.compare_digest(expected, str(share_token or "").strip()) is False:
+    provided = str(share_token or "").strip()
+    if (
+        not expected
+        or len(expected) != len(provided)
+        or secrets.compare_digest(expected, provided) is False
+    ):
         raise HTTPException(status_code=404, detail="not_found")
 
     now = datetime.now(timezone.utc)

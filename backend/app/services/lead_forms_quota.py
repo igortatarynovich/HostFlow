@@ -250,4 +250,6 @@ def lead_form_meta_for_intake_state(row: TenantLeadForm) -> dict[str, Any]:
         "id": row.id,
         "title": row.title or "",
         "public_slug": row.public_slug or None,
+        "purpose": str(getattr(row, "purpose", None) or "").strip() or None,
+        "target_entity_profile_code": str(getattr(row, "target_entity_profile_code", None) or "").strip() or None,
     }

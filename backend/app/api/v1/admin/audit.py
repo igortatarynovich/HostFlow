@@ -9,7 +9,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import users as users_service
 
@@ -67,7 +68,7 @@ def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
 @router.get(
     "",
     response_model=AuditListOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.superadmin))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def list_audit(
     user_id: Optional[str] = Query(None, description="Filter by user (subject)"),

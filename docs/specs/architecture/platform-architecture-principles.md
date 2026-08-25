@@ -1,12 +1,40 @@
 # Принципы архитектуры HostFlow: модульная multi-company SaaS-платформа
 
-**Позиционирование:** HostFlow — **modular multi-company SaaS platform** и **workforce operating ecosystem** для транспортной отрасли Европы: инфраструктура полного жизненного цикла транспортного персонала, документов, рекрутинга, HR, fleet operations, операционной коммуникации и **trusted workforce identity**, а не «ещё одна большая CRM». **Цель продукта** — **trusted workforce ecosystem**: работодатели, рекрутеры, HR, fleet managers и водители в одной операционной инфраструктуре с прозрачными процессами, проверяемыми данными и непрерывной профессиональной историей. Типичные боли рынка, на которые опирается продукт: дефицит кадров, хаос в документах, отсутствие единой истории водителя, операционный шум, слабая прозрачность работодателей, медленный onboarding, недостаток доверия между сторонами, разрозненная коммуникация, отсутствие сквозного lifecycle workforce management. **Стратегическая цель** — сделать HostFlow основной **профессиональной цифровой инфраструктурой** отрасли (workforce OS, compliance layer, operational data network). **Инженерная форма:** **modular monolith** со **strict bounded contexts** и жёсткими границами модулей.
+**Позиционирование:** HostFlow — **modular multi-company SaaS platform** и **workforce operating ecosystem** для транспортной отрасли Европы: инфраструктура полного жизненного цикла транспортного персонала, документов, рекрутинга, HR, fleet operations, операционной коммуникации и **trusted workforce identity**, а также **система управления ростом** (Growth → Intake → Operations → Intelligence — [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)), а не «ещё одна большая CRM». **Цель продукта** — **trusted workforce ecosystem**: работодатели, рекрутеры, HR, fleet managers и водители в одной операционной инфраструктуре с прозрачными процессами, проверяемыми данными и непрерывной профессиональной историей. Типичные боли рынка, на которые опирается продукт: дефицит кадров, хаос в документах, отсутствие единой истории водителя, операционный шум, слабая прозрачность работодателей, медленный onboarding, недостаток доверия между сторонами, разрозненная коммуникация, отсутствие сквозного lifecycle workforce management. **Стратегическая цель** — сделать HostFlow основной **профессиональной цифровой инфраструктурой** отрасли (workforce OS, compliance layer, operational data network). **Инженерная форма:** **modular monolith** со **strict bounded contexts** и жёсткими границами модулей.
 
 **Единая каноническая карта домена (v1):** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md) — цепочка Platform Core → Tenant → Company → тип → доступ к модулям → роли → scope → cross-company; таблицы GLOBAL / TENANT / COMPANY / MODULE; ownership matrix; bounded contexts и потоки событий.
 
 Документ фиксирует **главную архитектурную логику** продукта: HostFlow — **modular multi-company SaaS platform**, а не одна монолитная CRM. Детали по подсистемам — в ADR и scope-файлах; здесь — **согласованная картина** и **формула** для принятия решений.
 
-**Связанные нормативные документы:** [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
+**Связанные нормативные документы:** [`L0-platform-architecture.md`](L0-platform-architecture.md), [`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md), [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md), [`ADR-005`](ADR-005-three-level-settings-hierarchy.md), [`ADR-006`](ADR-006-marketplace-and-integration-platform.md), [`ADR-007`](ADR-007-forms-platform-capability.md), [`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`ADR-010`](ADR-010-unified-resource-list-shell.md), [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md), [`ADR-012`](ADR-012-activity-notification-operating-layer.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md), [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`ADR-025`](ADR-025-standard-adapter-boundary.md), [`ADR-026`](ADR-026-capability-ownership.md), [`ADR-027`](ADR-027-capability-composition.md), [`ADR-028`](ADR-028-configuration-ownership.md), [`ADR-029`](ADR-029-settings-contract.md), [`ADR-030`](ADR-030-l0-platform-architecture-closure.md), [`ADR-038`](ADR-038-shell-observability-diagnostics.md), [`platform-capability-catalog.md`](platform-capability-catalog.md), [`capability-settings-manifest.md`](capability-settings-manifest.md), [`architecture-review-checklist.md`](architecture-review-checklist.md), [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md), [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md), [`module-catalog-and-routing-map.md`](module-catalog-and-routing-map.md).
+
+---
+
+## 0. Platform Rules (P-01…P-05) — **L0 CLOSED**
+
+**Конституция:** [`L0-platform-architecture.md`](L0-platform-architecture.md) (**FROZEN**) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) · [`architecture-invariants.md`](architecture-invariants.md).  
+Изменения фундамента — только **Architecture RFC** / `l0-errata`.
+
+HostFlow — **платформа capabilities**. Поведение и конфигурация имеют владельцев; настройки публикуются контрактом; admin UI — пространства capability.
+
+| Правило | ADR | Вопрос | Ответ |
+|---------|-----|--------|--------|
+| **P-01** Standard Adapter Boundary | [`ADR-025`](ADR-025-standard-adapter-boundary.md) | Как вызывать поведение? | Standard Adapter (**Exposes**) |
+| **P-02** Capability Ownership | [`ADR-026`](ADR-026-capability-ownership.md) | Кто владеет функциональностью? | Owner (**Owns**) |
+| **P-03** Capability Composition | [`ADR-027`](ADR-027-capability-composition.md) | Как строить новое? | Композиция (**Consumes**) |
+| **P-04** Configuration Ownership | [`ADR-028`](ADR-028-configuration-ownership.md) | Кто владеет конфигурацией? | Одна capability (**Configures**) |
+| **P-05** Settings Contract | [`ADR-029`](ADR-029-settings-contract.md) | Как конфигурация публикуется? | **Settings Manifest** |
+
+**Также L0 (ADR-030):** Lifecycle · Contract Versioning · Licensing class · Dependency graph.
+
+**Поток:** `Endpoint → Submission → Routing → Decision → Business Entity`  
+**Граница:** `Module A → Standard Adapter → Module B`  
+**Admin IA:** `Capability → Settings Manifest → Settings Shell`
+
+**Catalog:** [`platform-capability-catalog.md`](platform-capability-catalog.md)  
+**Settings Manifest:** [`capability-settings-manifest.md`](capability-settings-manifest.md)  
+**Checklist (обязателен):** [`architecture-review-checklist.md`](architecture-review-checklist.md)  
+**Guide:** [`architecture-guide.md`](architecture-guide.md)
 
 ---
 
@@ -17,7 +45,7 @@
 | **Tenant** | **Workspace**, граница **subscription** и **billing**; не владелец рабочих операционных данных. |
 | **Company** | **Владелец данных, процессов**, включённых модулей и политик для своего контура; главная **operational / data boundary**. |
 | **Module** | **Независимый продуктовый блок** (лицензируется отдельно или в bundle). |
-| **Shared Platform Layer** | Общие возможности, которыми пользуются модули (Forms, Document Hub, Process Engine, …). |
+| **Shared Platform Layer** | Общие возможности, которыми пользуются модули (Forms, Acquisition/Campaigns, Document Hub, Process Engine, …). |
 | **User** | Доступ через **role + company scope + module scope**; не через «уникальные роли под каждого клиента». |
 
 **Cross-company доступ** возможен **только** явно: **handoff**, **shared access**, **relationship** между компаниями — никакой неявной видимости «всех данных tenant».
@@ -127,13 +155,14 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 
 ## 6. Shared platform capabilities
 
-Общий слой; **не** пять ключей `enabled_modules` ADR-004 (лицензирование features — отдельно).
+Общий слой; **не** пять ключей `enabled_modules` ADR-004 (лицензирование features — отдельно).  
+Каждая строка — **platform capability** с единственным владельцем (**P-02**, [`ADR-026`](ADR-026-capability-ownership.md)); потребители ходят только через канонические адаптеры (**P-01**, [`ADR-025`](ADR-025-standard-adapter-boundary.md)).
 
 | # | Capability | Назначение |
 |---|------------|------------|
-| 1 | **Forms / Public Forms** | Input layer для платформы ([`ADR-007`](ADR-007-forms-platform-capability.md)); Basic core / Advanced addon. |
+| 1 | **Forms / Public Forms** | Input layer ([`ADR-007`](ADR-007-forms-platform-capability.md)); consumers via **Endpoint Adapter** ([`ADR-025`](ADR-025-standard-adapter-boundary.md) / [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md)). Basic core / Advanced addon. |
 | 2 | **Document Hub** | Единый слой документов ([`ADR-009`](ADR-009-document-hub-platform-layer.md)). |
-| 3 | **Process Engine** | Единый движок процессов: system stages, profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)). |
+| 3 | **Process Engine** | Единый движок процессов: profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)). Stage **existence** = Module Stage Registry ([`ADR-037`](ADR-037-lifecycle-identity-canon.md)); PE does not own identity. |
 | 3a | **Field Registry & Card Configuration** | Канон полей, layouts, requirements ([`field-registry-card-configuration.md`](../platform/field-registry-card-configuration.md)). |
 | 3b | **Entity Profile Definition Registry** | Композиция canonical fields в типы бизнес-объектов; слой между Field Registry и Intake/Process ([`entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md)). |
 | 4 | **Integrations / Marketplace** | Core integrations + apps ([`ADR-006`](ADR-006-marketplace-and-integration-platform.md)). |
@@ -145,12 +174,16 @@ Billing Events могут приходить из: Recruitment, Fleet, Services,
 | 9 | **Trust & Reputation Layer** | Проверенная операционная история и сигналы доверия (не «публичные blacklist» и не сырые эмоциональные отзывы); см. §6.1. |
 | 10 | **Resource List Shell (SPA)** | Единая оболочка всех рабочих списков: таблица, поиск, фильтры, сортировка, колонки, rail/modal ([`ADR-010`](ADR-010-unified-resource-list-shell.md)). |
 | 11 | **UI Platform Standard** | Единые токены и компоненты для всего SPA: сетка, типографика, кнопки, формы, таблицы, модалки, даты, i18n ([`ADR-011`](ADR-011-hostflow-ui-platform-standard.md)); **ревью:** чеклист и политика против дрейфа — ADR-011 §12; визуальное направление — [`pipedesign.md`](../../pipedesign.md). |
+| 12 | **Observability** | Logs, traces, errors: сбор, корреляция, хранение, поиск, redaction. Emit у каждого сервиса. Не Activity. [`ADR-038`](ADR-038-shell-observability-diagnostics.md). |
+| 13 | **Shell Diagnostics** | Операторский доступ на Application Shell (`hostflow.cc`): Collect diagnostics / diagnostic bundle. Не SoT логов. ADR-038. |
 
 **Forms** создают/обновляют через handlers: Lead, Candidate, Employee, Client, Service Order, Fleet report, Document, Billing Profile и др. (см. ADR-007). Forms **не создают семантику полей** — только presentation/intake subset над Entity Profile ([`entity-profile-definition-registry.md`](../platform/entity-profile-definition-registry.md)).
 
+**Observability vs Shell:** #12 хранит и ищет телеметрию; #13 даёт оператору Collect diagnostics на Application Shell (`hostflow.cc`). Это **не** Resource List Shell (#10) и **не** Activity (#8). Модули пишут логи; не владеют download-log. [`ADR-038`](ADR-038-shell-observability-diagnostics.md).
+
 **Document Hub** — детальная модель Document / Link / Requirement / Review — ADR-009; модули **запрашивают** required sets из Hub, не дублируют канонические списки.
 
-**Process Engine** — system stages, process profiles, transition/handoff rules, runtime evaluator — [`process-engine.md`](../platform/process-engine.md); модули **регистрируют** свои stages и rules, не строят отдельные pipeline engines.
+**Process Engine** — process profiles, transition/handoff rules, runtime evaluator — [`process-engine.md`](../platform/process-engine.md); модули **регистрируют** stage identities in the Module Stage Registry ([`ADR-037`](ADR-037-lifecycle-identity-canon.md)) and rules in PE; they do not own existence via `funnel_stages` and do not build parallel pipeline engines.
 
 ### 6.1 Trust & Reputation Layer, Driver App, порталы
 
@@ -249,3 +282,13 @@ Integration Hub развивается в **HostFlow Marketplace** ([`ADR-006`](
 - 2026-05: [`ADR-010`](ADR-010-unified-resource-list-shell.md) — единая оболочка списков (SPA), field kinds, rail/modal; capability #10 в §6 (после консолидации Activity/Notification — было #11).
 - 2026-05: [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) — платформенный UI-стандарт (всё стандартизируемое в приложении); capability #11 в §6; §12 — политика ревью против дрейфа.
 - 2026-05: [`ADR-012`](ADR-012-activity-notification-operating-layer.md) — Activity & Notification Operating Layer (единая capability вместо двух старых строк «Notifications» + «Activity / Tasks»); canon [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md). Уточнение: «Reminder», «Todo», «Planner», «Today», «Calendar» — **представления** Activity, не отдельные модули.
+- 2026-07-18: [`ADR-025`](ADR-025-standard-adapter-boundary.md) — **Platform Rule P-01 Standard Adapter Boundary** (Standard Adapters Only); §0 в этом документе.  
+- 2026-07-18: P-01 strengthened — canonical contracts (not ad-hoc wrappers); blockers; module contract template; governs all future ADRs.  
+- 2026-07-18: [`ADR-026`](ADR-026-capability-ownership.md) — **Platform Rule P-02 Capability Ownership**; HostFlow as platform of capabilities; §0 = P-01 + P-02.  
+- 2026-07-18: [`ADR-027`](ADR-027-capability-composition.md) — **P-03 Capability Composition**; checklist + capability catalog §0.1; platform canon milestone.
+- 2026-07-18: [`platform-capability-catalog.md`](platform-capability-catalog.md) — **Capability Boundary** + Module/Capability Passport; P-02 operationalized.
+- 2026-07-18: [`ADR-028`](ADR-028-configuration-ownership.md) — **P-04 Configuration Ownership**; catalog v2 Owns/Configures/Exposes/Consumes; kinds Infrastructure/Platform/Business.
+- 2026-07-18: [`ADR-029`](ADR-029-settings-contract.md) — **P-05 Settings Contract**; Passport vs Settings Manifest; capability-scoped admin IA.
+- 2026-07-18: [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) + [`L0-platform-architecture.md`](L0-platform-architecture.md) — **L0 CLOSED / FROZEN**; lifecycle, versioning, licensing, dependencies.
+- 2026-07-18: Final seal — Non-Goals · Contract Stability · [`architecture-invariants.md`](architecture-invariants.md).
+- 2026-08-23: [`ADR-038`](ADR-038-shell-observability-diagnostics.md) — Observability vs Shell Diagnostics; Collect diagnostics; §6 capabilities #12–#13.

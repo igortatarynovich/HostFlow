@@ -52,6 +52,9 @@ async def _admin_headers(tenant_id: str) -> Dict[str, str]:
 
 async def _seed_driver_ce_form(tenant_id: str) -> str:
     async with async_session_maker() as session:
+        from backend.tests.api.test_public_intake import _ensure_recruitment_funnels
+
+        await _ensure_recruitment_funnels(session, tenant_id)
         await ensure_tenant_entity_profile_defaults(session, tenant_id)
         await ensure_tenant_default_driver_ce_intake_form(session, tenant_id)
         await session.commit()

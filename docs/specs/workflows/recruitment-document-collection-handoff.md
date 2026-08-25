@@ -6,6 +6,8 @@
 
 **Architecture:** [ADR-016](../architecture/ADR-016-requirement-evidence-document-separation.md) · Platform: [`requirement-evidence-model-p0.md`](../platform/requirement-evidence-model-p0.md)
 
+**Порядок в цепочке:** этот документ описывает **этап 2→3** (Candidate requirements → Handoff). Полный порядок этапов: [recruitment-operational-goals-and-order.md](recruitment-operational-goals-and-order.md).
+
 ---
 
 ## 1. Цель

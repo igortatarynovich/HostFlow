@@ -27,6 +27,7 @@ import type {
 import { getNotificationAttentionTier } from '../utils/notificationUos'
 import { resolveNotificationOpenPath } from '../utils/resolveNotificationOpenPath'
 import { useAuth } from '../store/useAuth'
+import { canUseTeamAssigneeScope as teamAssigneeScopeAllowed } from '../auth/trustRoles'
 import { useI18n } from '../i18n'
 import { activateClickOnSpaceEnter, runActionOnSpaceEnter } from '../utils/a11yClick'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
@@ -36,7 +37,8 @@ import ReminderExplainabilityPopover from '../components/explainability/Reminder
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar, DataTableFrame } from '../components/layout'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
 
 const DATE_LOCALES = { en: enUS, ru: ruLocale, pl: plLocale }
@@ -497,20 +499,20 @@ function ReminderTaskRow({
         )}
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={clsx('rounded-md px-2.5 py-1 text-[11px] font-semibold', statusPill)}>
+            <span className={clsx('rounded-lg px-3 py-1 text-[11px] font-semibold', statusPill)}>
               {reminderStatusLabel(item.status)}
             </span>
-            <span className={clsx('rounded-md px-2 py-0.5 text-[11px] font-medium', priorityPill)}>
+            <span className={clsx('rounded-lg px-2 py-0.5 text-[11px] font-medium', priorityPill)}>
               {t(`app.reminders.priority.${item.priority || 'normal'}`, { defaultValue: item.priority || 'normal' })}
             </span>
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{entityTypeLabel}</span>
+            <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{entityTypeLabel}</span>
             {item._source === 'planner' && (
               // G-7 stage 2: small visual differentiator for planner-derived
               // rows. Operators need to know this row mutates the planner
               // table (so it'll also appear on the calendar) — without the
               // badge it would feel like a phantom row.
               <span
-                className="rounded-md bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-700"
+                className="rounded-lg bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700"
                 title={t('app.reminders.source.planner_hint', {
                   defaultValue: 'From Calendar planner ({kind})',
                   values: { kind: item._plannerKind || 'task' },
@@ -520,7 +522,7 @@ function ReminderTaskRow({
               </span>
             )}
             {item.sla_due_at && item.sla_status && slaPill && (
-              <span className={clsx('rounded-md px-2 py-0.5 text-[11px] font-semibold', slaPill)} title={formatTs(item.slaDate)}>
+              <span className={clsx('rounded-lg px-2 py-0.5 text-[11px] font-semibold', slaPill)} title={formatTs(item.slaDate)}>
                 {t(`app.reminders.sla.status.${slaSt}`, { defaultValue: item.sla_status })} · {formatTs(item.slaDate)}
               </span>
             )}
@@ -618,8 +620,6 @@ function notificationRank(item: NotificationItem): number {
   return score
 }
 
-const TEAM_ASSIGNEE_ROLES = new Set(['administrator', 'supervisor', 'superadmin', 'admin', 'manager'])
-
 export default function RemindersPage() {
   const { t, locale } = useI18n()
   const planLimitModal = usePlanLimitModal()
@@ -629,8 +629,7 @@ export default function RemindersPage() {
   const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null)
   const { me } = useAuth()
   const canUseTeamAssigneeScope = useMemo(() => {
-    const r = String(me?.role || '').trim().toLowerCase()
-    return TEAM_ASSIGNEE_ROLES.has(r)
+    return teamAssigneeScopeAllowed({ role: me?.role })
   }, [me?.role])
   const dateLocale = DATE_LOCALES[locale as keyof typeof DATE_LOCALES] || enUS
   const tenantId = (me as any)?.tenant_id || 'default'
@@ -1668,81 +1667,65 @@ export default function RemindersPage() {
     return format(date, 'dd MMM yyyy, HH:mm', { locale: dateLocale })
   }
 
+  const tasksTabSubtitle =
+    activeTab === 'tasks'
+      ? t('app.reminders.subtitle', {
+          values: { total: taskCounts.total, unread: taskCounts.active, scope: t('app.reminders.scope_labels.direct') },
+        })
+      : t('app.reminders.subtitle', {
+          values: {
+            total: notificationCounts.total,
+            unread: notificationCounts.unread,
+            scope: t('app.reminders.scope_labels.all'),
+          },
+        })
+
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
+    <PageShell>
       <WorkspaceTopNav active="tasks" />
-      <header className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.tasks.hub_eyebrow')}
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-              {t('app.tasks.hub_title')}
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {activeTab === 'tasks'
-                ? t('app.reminders.subtitle', {
-                    values: { total: taskCounts.total, unread: taskCounts.active, scope: t('app.reminders.scope_labels.direct') },
-                  })
-                : t('app.reminders.subtitle', {
-                    values: {
-                      total: notificationCounts.total,
-                      unread: notificationCounts.unread,
-                      scope: t('app.reminders.scope_labels.all'),
-                    },
-                  })}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {activeTab === 'tasks' && (
-              <button type="button" className="btn-primary text-sm" onClick={openQuickReminderComposer}>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.tasks.hub_title')}
+          subtitle={tasksTabSubtitle}
+          kind="browse"
+          primaryAction={
+            activeTab === 'tasks' ? (
+              <button type="button" className="btn-primary btn-sm" onClick={openQuickReminderComposer}>
                 {t('app.reminders.header.create_task', { defaultValue: 'Create task' })}
               </button>
-            )}
-            <button
-              type="button"
-              className={clsx(
-                'btn rounded-lg border px-4 py-2 text-sm font-medium transition',
-                activeTab === 'tasks' ? 'border-brand-600 bg-brand-600 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-              )}
-              onClick={() => setActiveTab('tasks')}
-            >
-              {t('app.reminders.tab.tasks')} ({taskCounts.active})
-            </button>
-            <button
-              type="button"
-              className={clsx(
-                'btn rounded-lg border px-4 py-2 text-sm font-medium transition',
-                activeTab === 'events' ? 'border-brand-600 bg-brand-600 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-              )}
-              onClick={() => setActiveTab('events')}
-            >
-              {t('app.reminders.tab.events')} ({notificationCounts.unread})
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <PageBreadcrumb className="max-w-5xl" />
-
-      {activeTab === 'tasks' && (
-        <>
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-base font-semibold text-slate-900">
-                {t('app.reminders.quick_create')}
-              </h2>
+            ) : undefined
+          }
+          secondaryActions={
+            <>
               <button
                 type="button"
-                className="btn-secondary btn-xs"
-                onClick={() => setComposerOpen((v) => !v)}
+                className={clsx('btn btn-sm rounded-lg border px-3 py-2 text-sm font-medium transition', activeTab === 'tasks' ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50')}
+                onClick={() => setActiveTab('tasks')}
               >
-                {composerOpen ? t('common.actions.collapse') : t('common.actions.expand')}
+                {t('app.reminders.tab.tasks')} ({taskCounts.active})
               </button>
-            </div>
-            {composerOpen && (
-              <form onSubmit={submitQuickReminder} className="mt-3 grid gap-3 lg:grid-cols-12">
+              <button
+                type="button"
+                className={clsx('btn btn-sm rounded-lg border px-3 py-2 text-sm font-medium transition', activeTab === 'events' ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50')}
+                onClick={() => setActiveTab('events')}
+              >
+                {t('app.reminders.tab.events')} ({notificationCounts.unread})
+              </button>
+            </>
+          }
+        />
+      </PageShellHeader>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pb-4">
+      {activeTab === 'tasks' && (
+        <>
+          <details className="group shrink-0 rounded-xl border border-slate-200/90 bg-white shadow-sm">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              {t('app.reminders.quick_create')}
+              <span className="text-xs font-normal text-slate-500">{composerOpen ? t('common.actions.collapse') : t('common.actions.expand')}</span>
+            </summary>
+            <div className="border-t border-slate-200/80 p-4">
+              <form onSubmit={submitQuickReminder} className="grid gap-3 lg:grid-cols-12">
                 <div className="lg:col-span-4">
                   <label className="block text-xs font-medium text-slate-600">
                     {t('app.reminders.form.title')}
@@ -1808,10 +1791,10 @@ export default function RemindersPage() {
                   />
                 </div>
               </form>
-            )}
-          </section>
+            </div>
+          </details>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+          <Toolbar>
             <div className="flex flex-wrap items-center gap-2">
               <div className="min-w-hf-220 flex-1">
                 <input
@@ -1875,7 +1858,7 @@ export default function RemindersPage() {
                   <option value="normal">{t('app.reminders.priority.normal')}</option>
                   <option value="high">{t('app.reminders.priority.high')}</option>
                 </select>
-                <label className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700">
+                <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
                   <input
                     type="checkbox"
                     className="h-3.5 w-3.5"
@@ -1901,7 +1884,7 @@ export default function RemindersPage() {
                   type="button"
                   onClick={() => setTaskFilters((prev) => ({ ...prev, status }))}
                   className={clsx(
-                    'btn rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                    'btn rounded-lg border px-3 py-2 text-xs font-medium transition',
                     taskFilters.status === status
                       ? 'border-brand-600 bg-brand-600 text-white'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -1922,7 +1905,7 @@ export default function RemindersPage() {
                     }))
                   }
                   className={clsx(
-                    'btn rounded-md border px-3 py-1.5 text-xs font-semibold transition',
+                    'btn rounded-lg border px-3 py-2 text-xs font-semibold transition',
                     taskFilters.dueBucket === 'overdue'
                       ? 'border-rose-600 bg-rose-600 text-white shadow-sm'
                       : 'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100'
@@ -1946,7 +1929,7 @@ export default function RemindersPage() {
                     }))
                   }
                   className={clsx(
-                    'btn rounded-md border px-3 py-1.5 text-xs font-semibold transition',
+                    'btn rounded-lg border px-3 py-2 text-xs font-semibold transition',
                     taskFilters.unlinkedOnly
                       ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
                       : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100',
@@ -1967,7 +1950,7 @@ export default function RemindersPage() {
                     type="button"
                     onClick={() => setAssigneeScope('mine')}
                     className={clsx(
-                      'btn rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                      'btn rounded-lg border px-3 py-2 text-xs font-medium transition',
                       assigneeScope === 'mine'
                         ? 'border-brand-600 bg-brand-600 text-white'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -1979,7 +1962,7 @@ export default function RemindersPage() {
                     type="button"
                     onClick={() => setAssigneeScope('team')}
                     className={clsx(
-                      'btn rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                      'btn rounded-lg border px-3 py-2 text-xs font-medium transition',
                       assigneeScope === 'team'
                         ? 'border-brand-600 bg-brand-600 text-white'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -2000,7 +1983,7 @@ export default function RemindersPage() {
                 </label>
                 <select
                   id="hf-task-list-mode"
-                  className="input max-w-xs py-1.5 text-sm"
+                  className="input max-w-xs py-2 text-sm"
                   value={taskListMode}
                   onChange={(e) => setTaskListMode(e.target.value as TaskListMode)}
                 >
@@ -2023,89 +2006,105 @@ export default function RemindersPage() {
                         : t('app.reminders.sla_sort_hint')}
               </p>
             </details>
-            {filteredReminderRows.length > 0 && (
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <label className="inline-flex items-center gap-2 text-xs text-slate-700">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                      checked={filteredReminderRows.length > 0 && selectedTaskRows.length === filteredReminderRows.length}
-                      onChange={(e) => toggleSelectAllVisibleTasks(e.target.checked)}
-                    />
-                    {t('app.reminders.bulk.select_visible', { defaultValue: 'Select visible ({count})', values: { count: filteredReminderRows.length } })}
-                  </label>
-                  <span className="text-xs text-slate-500">
-                    {t('app.reminders.bulk.selected', { defaultValue: 'Selected: {count}', values: { count: selectedTaskRows.length } })}
-                  </span>
-                  <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkSnooze(15)} disabled={bulkBusy || selectedTaskRows.length === 0}>
-                    {t('app.reminders.bulk.snooze_15', { defaultValue: 'Snooze +15m' })}
-                  </button>
-                  <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkSnooze(60)} disabled={bulkBusy || selectedTaskRows.length === 0}>
-                    {t('app.reminders.bulk.snooze_60', { defaultValue: 'Snooze +1h' })}
-                  </button>
-                  <input
-                    type="datetime-local"
-                    className="input py-1 text-xs"
-                    value={bulkRescheduleLocal}
-                    onChange={(e) => setBulkRescheduleLocal(e.target.value)}
-                  />
-                  <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkReschedule()} disabled={bulkBusy || selectedTaskRows.length === 0 || !bulkRescheduleLocal}>
-                    {t('app.reminders.bulk.reschedule', { defaultValue: 'Re-schedule' })}
-                  </button>
-                  <input
-                    className="input max-w-[11rem] py-1 text-xs"
-                    placeholder={t('app.reminders.bulk.assignee_placeholder', { defaultValue: 'Assignee user id' })}
-                    value={bulkAssigneeId}
-                    onChange={(e) => setBulkAssigneeId(e.target.value)}
-                  />
-                  <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkReassign()} disabled={bulkBusy || selectedTaskRows.length === 0}>
-                    {t('app.reminders.bulk.reassign', { defaultValue: 'Bulk reassign' })}
-                  </button>
-                  {selectedTaskRows.length > 0 && (
-                    <button type="button" className="btn-secondary btn-xs" onClick={() => setSelectedTaskIds([])}>
-                      {t('app.reminders.bulk.clear', { defaultValue: 'Clear selection' })}
+          </Toolbar>
+
+          <DataTableFrame
+            className="min-h-0 flex-1"
+            header={
+              filteredReminderRows.length > 0 ? (
+                <div className="border-b border-slate-200/80 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                        checked={filteredReminderRows.length > 0 && selectedTaskRows.length === filteredReminderRows.length}
+                        onChange={(e) => toggleSelectAllVisibleTasks(e.target.checked)}
+                      />
+                      {t('app.reminders.bulk.select_visible', { defaultValue: 'Select visible ({count})', values: { count: filteredReminderRows.length } })}
+                    </label>
+                    <span className="text-xs text-slate-500">
+                      {t('app.reminders.bulk.selected', { defaultValue: 'Selected: {count}', values: { count: selectedTaskRows.length } })}
+                    </span>
+                    <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkSnooze(15)} disabled={bulkBusy || selectedTaskRows.length === 0}>
+                      {t('app.reminders.bulk.snooze_15', { defaultValue: 'Snooze +15m' })}
                     </button>
-                  )}
+                    <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkSnooze(60)} disabled={bulkBusy || selectedTaskRows.length === 0}>
+                      {t('app.reminders.bulk.snooze_60', { defaultValue: 'Snooze +1h' })}
+                    </button>
+                    <input
+                      type="datetime-local"
+                      className="input py-1 text-xs"
+                      value={bulkRescheduleLocal}
+                      onChange={(e) => setBulkRescheduleLocal(e.target.value)}
+                    />
+                    <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkReschedule()} disabled={bulkBusy || selectedTaskRows.length === 0 || !bulkRescheduleLocal}>
+                      {t('app.reminders.bulk.reschedule', { defaultValue: 'Re-schedule' })}
+                    </button>
+                    <input
+                      className="input max-w-[11rem] py-1 text-xs"
+                      placeholder={t('app.reminders.bulk.assignee_placeholder', { defaultValue: 'Assignee user id' })}
+                      value={bulkAssigneeId}
+                      onChange={(e) => setBulkAssigneeId(e.target.value)}
+                    />
+                    <button type="button" className="btn-secondary btn-xs" onClick={() => void bulkReassign()} disabled={bulkBusy || selectedTaskRows.length === 0}>
+                      {t('app.reminders.bulk.reassign', { defaultValue: 'Bulk reassign' })}
+                    </button>
+                    {selectedTaskRows.length > 0 ? (
+                      <button type="button" className="btn-secondary btn-xs" onClick={() => setSelectedTaskIds([])}>
+                        {t('app.reminders.bulk.clear', { defaultValue: 'Clear selection' })}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : undefined
+            }
+            preScroll={
+              remindersState === 'error' && remindersError ? (
+                <div className="border-b border-slate-200/80 px-4 py-3">
+                  <ErrorRecoveryBanner
+                    compact
+                    info={remindersError}
+                    onRetry={() => void loadReminders()}
+                    retryLabel={t('common.retry')}
+                    {...friendlyErrorBannerSecondary(remindersError, CRM_APP_PATHS.leads, t('app.reminders.states.empty_cta_leads'))}
+                  />
+                </div>
+              ) : undefined
+            }
+            footer={t('app.reminders.list.count', {
+              defaultValue: '{{count}} tasks',
+              values: { count: filteredReminderRows.length },
+            })}
+          >
+            {remindersState === 'loading' ? (
+              <div className="px-4 py-6 text-sm text-slate-500">{t('common.loading')}</div>
+            ) : null}
 
-            {remindersState === 'loading' && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
-            {remindersState === 'error' && remindersError && (
-              <ErrorRecoveryBanner
-                compact
-                info={remindersError}
-                onRetry={() => void loadReminders()}
-                retryLabel={t('common.retry')}
-                {...friendlyErrorBannerSecondary(remindersError, CRM_APP_PATHS.leads, t('app.reminders.states.empty_cta_leads'))}
-              />
-            )}
-
-            {remindersState !== 'loading' && filteredReminderRows.length === 0 && (
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
+            {remindersState !== 'loading' && filteredReminderRows.length === 0 ? (
+              <div className="p-4">
                 <EmptyStatePanel
                   compact
                   title={t('app.reminders.states.empty_title')}
                   description={t('app.reminders.states.empty_desc')}
                   whyHint={t('app.reminders.states.empty_why', {
                     defaultValue:
-                      'Tasks bring SLA, follow-ups and «next-best-actions» into one queue. Each lead, candidate and document creates tasks here automatically — your daily plan in one screen.',
+                      'After you contact a lead, the next follow-up appears here — so nothing sits untouched.',
                   })}
                   primaryAction={{
-                    label: t('app.reminders.states.empty_cta_create'),
-                    onClick: openQuickReminderComposer,
-                  }}
-                  secondaryAction={{
                     label: t('app.reminders.states.empty_cta_leads'),
                     to: CRM_APP_PATHS.leads,
                   }}
+                  secondaryAction={{
+                    label: t('app.reminders.states.empty_cta_create'),
+                    onClick: openQuickReminderComposer,
+                  }}
                 />
               </div>
-            )}
+            ) : null}
 
-            {filteredReminderRows.length > 0 && (
-              <div className="space-y-5">
+            {remindersState !== 'loading' && filteredReminderRows.length > 0 ? (
+              <div className="space-y-5 p-4">
                 {taskSections.map((section) => (
                   <section key={section.key} className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
@@ -2119,7 +2118,7 @@ export default function RemindersPage() {
                             <span className="truncate">{section.label}</span>
                             {section.key === '__unlinked' ? (
                               <span
-                                className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800"
+                                className="shrink-0 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800"
                                 title={t('app.reminders.layout.groups_unlinked_entities_hint')}
                               >
                                 {t('app.reminders.layout.unlinked_badge')}
@@ -2132,7 +2131,7 @@ export default function RemindersPage() {
                         {section.key === '__unlinked' ? (
                           <button
                             type="button"
-                            className="btn rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+                            className="btn rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
                             onClick={() => void copyTaskIds(section.items.map((i) => i.id), section.key)}
                           >
                             {copiedSectionKey === section.key
@@ -2166,14 +2165,15 @@ export default function RemindersPage() {
                   </section>
                 ))}
               </div>
-            )}
-          </section>
+            ) : null}
+          </DataTableFrame>
         </>
       )}
 
       {activeTab === 'events' && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
+        <>
+          <Toolbar>
+            <div className="flex flex-wrap items-center gap-2">
             <div className="min-w-hf-220 flex-1">
               <input
                 className="input w-full"
@@ -2199,31 +2199,45 @@ export default function RemindersPage() {
             <button type="button" className="btn-secondary btn-sm" onClick={markAllRead} disabled={markAllBusy || notificationCounts.unread === 0}>
               {markAllBusy ? t('common.loading') : t('app.reminders.actions.notifications_mark_all_read')}
             </button>
-          </div>
-
-          {notificationsState === 'loading' && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
-          {notificationsState === 'error' && notificationsError && (
-            <ErrorRecoveryBanner
-              compact
-              info={notificationsError}
-              onRetry={() => void reconcileAndReloadNotificationsFeed()}
-              retryLabel={t('common.retry')}
-              {...friendlyErrorBannerSecondary(
-                notificationsError,
-                CRM_APP_PATHS.inbox,
-                t('app.reminders.actions.open_comm'),
-              )}
-            />
-          )}
-
-          {notificationsState !== 'loading' && visibleNotifications.length === 0 && (
-            <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-              {t('app.reminders.states.events_empty')}
             </div>
-          )}
+          </Toolbar>
 
-          {visibleNotifications.length > 0 && (
-            <div className="space-y-2">
+          <DataTableFrame
+            className="min-h-0 flex-1"
+            preScroll={
+              notificationsState === 'error' && notificationsError ? (
+                <div className="border-b border-slate-200/80 px-4 py-3">
+                  <ErrorRecoveryBanner
+                    compact
+                    info={notificationsError}
+                    onRetry={() => void reconcileAndReloadNotificationsFeed()}
+                    retryLabel={t('common.retry')}
+                    {...friendlyErrorBannerSecondary(
+                      notificationsError,
+                      CRM_APP_PATHS.inbox,
+                      t('app.reminders.actions.open_comm'),
+                    )}
+                  />
+                </div>
+              ) : undefined
+            }
+            footer={t('app.reminders.events.count', {
+              defaultValue: '{{count}} events',
+              values: { count: visibleNotifications.length },
+            })}
+          >
+            {notificationsState === 'loading' ? (
+              <div className="px-4 py-6 text-sm text-slate-500">{t('common.loading')}</div>
+            ) : null}
+
+            {notificationsState !== 'loading' && visibleNotifications.length === 0 ? (
+              <div className="p-8 text-center text-sm text-slate-500">
+                {t('app.reminders.states.events_empty')}
+              </div>
+            ) : null}
+
+            {visibleNotifications.length > 0 ? (
+              <div className="space-y-2 p-4">
               {visibleNotifications.map((item) => {
                 const createdAt = parseDate(item.created_at)
                 const href = notificationEntityHref(item)
@@ -2241,11 +2255,11 @@ export default function RemindersPage() {
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           {!item.is_read && (
-                            <span className="rounded-md bg-brand-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                            <span className="rounded-lg bg-brand-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                               {t('app.reminders.states.badge_new')}
                             </span>
                           )}
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                          <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                             {item.event_type}
                           </span>
                         </div>
@@ -2283,9 +2297,11 @@ export default function RemindersPage() {
                 )
               })}
             </div>
-          )}
-        </section>
+            ) : null}
+          </DataTableFrame>
+        </>
       )}
+      </div>
 
       {editState && (() => {
         // G-7 stage 2: planner rows have no `remind_at` analogue.
@@ -2305,7 +2321,7 @@ export default function RemindersPage() {
           }
         >
           <div
-            className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+            className="w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
             role="presentation"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => activateClickOnSpaceEnter(e, (ev) => ev.stopPropagation())}
@@ -2361,6 +2377,6 @@ export default function RemindersPage() {
         </div>
         )
       })()}
-    </div>
+    </PageShell>
   )
 }

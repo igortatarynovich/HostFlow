@@ -1,0 +1,22 @@
+# Allowlist: FastAPI routes that may declare Header X-Tenant-Id without CRM JWT auth.
+#
+# Prefer token-first / signature verification. Each entry is either:
+#   backend/app/.../file.py              (whole file)
+#   backend/app/.../file.py:handler_name (single route function)
+#
+# New entries require a security note in the PR (why anonymous tenant header is safe).
+
+# Public legal HTML by tenant (marketing / compliance pages; no CRM data dump).
+backend/app/api/public/legal_pages.py:public_legal_page
+
+# Public intake: list published lead-form slugs for a workspace (no CRM secrets).
+backend/app/api/public/intake.py:list_public_intake_lead_forms
+
+# Anonymous /meta/stages ignores X-Tenant-Id unless authenticated + membership.
+backend/app/api/v1/meta.py:stages_meta
+
+# Calendar provider webhooks (enqueue only; tenant header is advisory / job routing).
+backend/app/api/v1/calendar.py:google_calendar_webhook
+backend/app/api/v1/calendar.py:microsoft_calendar_webhook
+backend/app/api/v1/calendar.py:slack_events_webhook
+backend/app/api/v1/calendar.py:teams_events_webhook

@@ -37,7 +37,7 @@ def ensure_candidate_own_company_scope(cand: Candidate, own_company_id: Optional
 
 
 def documents_scope_clause(own_company_id: Optional[str]) -> Optional[ColumnElement[Any]]:
-    """Filter documents visible under active own-company (join Candidate on Document.candidate_id)."""
+    """Filter documents visible under active own-company (join Candidate via Hub candidate/primary links)."""
     if not own_company_id:
         return None
     oc = str(own_company_id).strip()

@@ -23,6 +23,7 @@ from backend.app.entity_profile.presentation_runtime import (
 )
 from backend.app.models.intake_routing import IntakeSourceProfile
 from backend.app.models.tenant_lead_form import TenantLeadForm
+from backend.app.intake_platform.form_definition import read_form_definition
 
 
 def _record(value: Any) -> dict[str, Any]:
@@ -72,6 +73,7 @@ def _submit_destination(*, entity_profile_code: str, route_intent: Optional[str]
         "entity_profile_code": entity_profile_code,
         "creates_candidate_on_create": False,
         "creates_lead_draft_on_create": True,
+        "canon": "ADR-013 Decision 2 — Lead-first public form (C1)",
     }
 
 
@@ -187,7 +189,7 @@ async def build_intake_form_admin_context(
             "is_active": bool(intake_source.is_active),
         }
 
-    return {
+    payload = {
         "form": {
             "id": str(lead_form.id),
             "title": lead_form.title or "",
@@ -210,7 +212,16 @@ async def build_intake_form_admin_context(
             entity_profile_code=entity_profile_code,
             route_intent=route_intent,
         ),
+        "form_definition": read_form_definition(lead_form),
     }
+    from backend.app.forms_platform.publication_bridge import build_forms_platform_admin_block
+
+    payload["forms_platform"] = await build_forms_platform_admin_block(
+        db,
+        tenant_id=str(tenant_id),
+        form_id=str(form_id),
+    )
+    return payload
 
 
 async def run_intake_form_smoke_test(

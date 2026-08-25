@@ -7,9 +7,18 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from backend.app.constants.spa_paths import LEADS as SPA_LEADS
+from backend.app.constants.spa_paths import SETTINGS_EMAIL
 
 
-LeadStatus = Literal["new", "processed", "duplicated", "failed", "needs_routing", "rejected"]
+LeadStatus = Literal[
+    "new",
+    "processed",
+    "duplicated",
+    "failed",
+    "needs_routing",
+    "duplicate_review",
+    "rejected",
+]
 LeadType = Literal["candidate", "client"]
 LeadTargetType = Literal["candidate", "client_lead", "service_order_lead", "partner_lead"]
 LeadStage = Literal["new", "contacted", "qualified", "converted", "lost"]
@@ -110,6 +119,113 @@ class LeadDuplicateDecisionRequest(BaseModel):
     note: Optional[str] = Field(default=None, max_length=2000)
 
 
+class LeadQuestionnaireInviteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mark_sent: bool = Field(
+        default=False,
+        description="When true, marks the invite as sent (Wyślij ankietę).",
+    )
+    lead_form_id: Optional[UUID] = Field(
+        default=None,
+        description="Optional B2B questionnaire form; defaults to tenant targeted-advertising form.",
+    )
+    form_locale: Optional[str] = Field(
+        default=None,
+        description="Questionnaire locale (pl, en, ru). Fixed on the public apply link.",
+        max_length=8,
+    )
+
+
+class LeadQuestionnaireFormOptionOut(BaseModel):
+    id: UUID
+    title: str
+    public_slug: Optional[str] = None
+    is_system_preset: bool = False
+    lifecycle_status: Optional[str] = None
+    supported_languages: list[str] = Field(default_factory=list)
+    presentation_code: Optional[str] = None
+
+
+class SalesQuestionnaireContextOut(BaseModel):
+    primary_form: Optional[LeadQuestionnaireFormOptionOut] = None
+    alternate_forms: list[LeadQuestionnaireFormOptionOut] = Field(default_factory=list)
+    archived_forms: list[LeadQuestionnaireFormOptionOut] = Field(default_factory=list)
+    readiness: str
+    supported_languages: list[str] = Field(default_factory=list)
+    config_error: Optional[str] = None
+
+
+class LeadQuestionnaireInviteOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    lead_id: UUID
+    lead_form_id: Optional[UUID] = None
+    token: str
+    apply_url: str
+    status: str
+    entity_profile_code: Optional[str] = None
+    presentation_code: Optional[str] = None
+    form_locale: Optional[str] = None
+    sent_at: Optional[datetime] = None
+    opened_at: Optional[datetime] = None
+    submitted_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+
+
+class QuestionnaireInviteEmailPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    form_locale: Optional[str] = Field(default="pl", max_length=8)
+    lead_form_id: Optional[UUID] = None
+    force_new_invite: bool = False
+    recipient_email: Optional[str] = Field(default=None, max_length=320)
+
+
+class QuestionnaireInviteEmailPreviewOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    invite: LeadQuestionnaireInviteOut
+    recipient_email: Optional[str] = None
+    subject: str
+    body: str
+    questionnaire_url: str
+    email_configured: bool
+    clarification_required: bool
+    invite_reused: bool
+    form_locale: str
+    settings_email_path: str = SETTINGS_EMAIL
+
+
+class QuestionnaireInviteEmailSendRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    form_locale: Optional[str] = Field(default="pl", max_length=8)
+    lead_form_id: Optional[UUID] = None
+    force_new_invite: bool = False
+    recipient_email: str = Field(..., min_length=3, max_length=320)
+    subject: str = Field(..., min_length=1, max_length=500)
+    body: str = Field(..., min_length=1, max_length=20000)
+    save_email_to_lead: bool = True
+    # C5 — Communication Pipeline (required for outbound send).
+    thread_id: Optional[str] = Field(default=None, max_length=64)
+    communication_purpose: Optional[str] = Field(default=None, max_length=128)
+    template_metadata: Optional[Dict[str, Any]] = None
+    locale: Optional[str] = Field(default=None, max_length=16)
+
+
+class QuestionnaireInviteEmailSendOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    invite: LeadQuestionnaireInviteOut
+    delivery_id: UUID
+    recipient_email: str
+    questionnaire_url: str
+    subject: str
+    status: str
+
+
 class LeadOut(BaseModel):
     id: UUID
     tenant_id: UUID
@@ -133,6 +249,7 @@ class LeadOut(BaseModel):
     candidate_id: Optional[UUID] = None
     candidate_name: Optional[str] = None
     converted_client_id: Optional[UUID] = None
+    client_account_id: Optional[UUID] = None
     outcome_entity_type: Optional[str] = None
     outcome_entity_id: Optional[UUID] = None
     outcome_entity_name: Optional[str] = None
@@ -158,6 +275,45 @@ class LeadOut(BaseModel):
     )
 
     model_config = ConfigDict(from_attributes=True)
+
+
+LeadCallResult = Literal[
+    "no_answer",
+    "answered",
+    "callback_requested",
+    "interested",
+    "not_interested",
+    "wrong_number",
+    "unavailable",
+]
+
+
+class LeadCallResultIn(BaseModel):
+    """Operator disposition after a call on a B2B appeal / client lead."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    result: LeadCallResult = Field(
+        ...,
+        description="Call outcome (callback_requested = перезвонить).",
+    )
+    note: Optional[str] = Field(
+        default=None,
+        max_length=2000,
+        description="Free-text: what they want / think, when to call back, conditions.",
+    )
+    bump_stage: bool = Field(
+        default=True,
+        description="When true, contact-reached results move CRM stage to contacted (if not already later).",
+    )
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def _strip_call_note(cls, v: Any) -> Any:
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
 
 
 class LeadStageUpdate(BaseModel):
@@ -264,6 +420,42 @@ class BulkAutoProcessQueueResponse(BaseModel):
     attempted: int
     succeeded: int
     failed: int
+
+
+class BulkLeadRodoRetryRequest(BaseModel):
+    """ADR-031 ops: re-send art.14 for leads stuck after Pipeline cutover."""
+
+    lead_ids: Optional[List[str]] = Field(
+        default=None,
+        description="If set, only these leads (still filtered by statuses / terminal).",
+    )
+    statuses: Optional[List[str]] = Field(
+        default=None,
+        description="RODO statuses to retry: failed | pending_channel | manual_required | unsatisfied. Default: failed.",
+    )
+    max_items: int = Field(default=50, ge=1, le=200)
+    include_terminal: bool = Field(
+        default=False,
+        description="Include processed/rejected/lost/archived leads.",
+    )
+    dry_run: bool = Field(default=False, description="List candidates without sending.")
+
+
+class BulkLeadRodoRetryItemOut(BaseModel):
+    lead_id: str
+    outcome: str
+    rodo_status_before: str
+    rodo_status_after: Optional[str] = None
+    message: str
+
+
+class BulkLeadRodoRetryResponse(BaseModel):
+    results: List[BulkLeadRodoRetryItemOut]
+    attempted: int
+    sent: int
+    skipped: int
+    failed: int
+    dry_run: bool
 
 
 class LeadListResponse(BaseModel):

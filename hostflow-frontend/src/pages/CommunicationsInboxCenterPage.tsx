@@ -8,7 +8,10 @@ import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { useEmailInboundSync } from '../hooks/useEmailInboundSync'
-import InboxUnifiedThreadList, { type InboxHubFilter } from '../components/communications/InboxUnifiedThreadList'
+import InboxUnifiedThreadList, {
+  inboxHubFilterToQueue,
+  type InboxHubFilter,
+} from '../components/communications/InboxUnifiedThreadList'
 import InboxEmailFolderRail from '../components/communications/InboxEmailFolderRail'
 import CommunicationsThreadWorkArea from '../components/communications/CommunicationsThreadWorkArea'
 import CommunicationsInboxControlPanel from '../components/communications/CommunicationsInboxControlPanel'
@@ -24,7 +27,8 @@ import {
   type InboxListQuery,
 } from '../utils/inboxUrlQuery'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 
@@ -77,6 +81,7 @@ export default function CommunicationsInboxCenterPage() {
         hasEmail,
         hasMessages,
         q: listQuery.q,
+        queue: inboxHubFilterToQueue(hubFilter),
       })
       setThreads(items)
     } catch (err: unknown) {
@@ -87,7 +92,7 @@ export default function CommunicationsInboxCenterPage() {
     } finally {
       setListLoading(false)
     }
-  }, [effectiveChannel, hasEmail, hasMessages, listQuery.q, planLimitModal, t])
+  }, [effectiveChannel, hasEmail, hasMessages, hubFilter, listQuery.q, planLimitModal, t])
 
   useEffect(() => {
     void loadList()
@@ -149,16 +154,33 @@ export default function CommunicationsInboxCenterPage() {
   }, [thread, threadLoading, threadError, t])
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-slate-50">
+    <PageShell className="bg-slate-50">
       <Link
         to={backToHubPath}
-        className="border-b border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-700 hover:bg-slate-50 xl:hidden"
+        className="border-b border-slate-200 bg-white px-4 py-3 text-sm font-medium text-brand-700 hover:bg-slate-50 xl:hidden"
       >
         {t('app.communications_inbox_center.back_all_threads')}
       </Link>
-      <div className="shrink-0 border-b border-slate-200 bg-slate-50/90 px-4 py-2">
-        <PageBreadcrumb />
-      </div>
+      <PageShellHeader className="border-b border-slate-200 bg-slate-50/90 py-2">
+        <PageHeader
+          kind="browse"
+          breadcrumbCurrentLabel={thread?.subject?.trim() || undefined}
+          secondaryActions={
+            effectiveChannel === 'email' && hasEmail ? (
+              <button
+                type="button"
+                onClick={() => void fetchInboundNow()}
+                disabled={pollBusy}
+                className="btn-secondary btn-sm inline-flex items-center gap-1"
+                title={t('app.communications.email.sync.title')}
+              >
+                <IconRefresh size={16} stroke={1.75} className={pollBusy ? 'animate-spin' : ''} />
+                {t('app.communications.email.sync.title')}
+              </button>
+            ) : undefined
+          }
+        />
+      </PageShellHeader>
       <CommunicationsInboxWorkspaceGrid variant="inbox_center" className="min-h-0 flex-1">
         <aside
           className={clsx(
@@ -172,7 +194,7 @@ export default function CommunicationsInboxCenterPage() {
                   type="button"
                   onClick={() => void fetchInboundNow()}
                   disabled={pollBusy}
-                  className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                  className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                   title={t('app.communications.email.sync.title')}
                   aria-label={t('app.communications.email.sync.title')}
                 >
@@ -200,7 +222,7 @@ export default function CommunicationsInboxCenterPage() {
             {!showListLoading && !listError && (hasMessages || hasEmail) && (
               <>
                 {listQuery.candidateId ? (
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2 text-xs text-sky-950">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50/90 px-3 py-2 text-xs text-blue-950">
                     <span>{t('app.communications_inbox_hub.scoped_candidate_hint')}</span>
                     <button
                       type="button"
@@ -287,6 +309,6 @@ export default function CommunicationsInboxCenterPage() {
           )}
         </aside>
       </CommunicationsInboxWorkspaceGrid>
-    </div>
+    </PageShell>
   )
 }

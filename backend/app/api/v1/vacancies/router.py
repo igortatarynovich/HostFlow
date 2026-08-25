@@ -5,7 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from pydantic import BaseModel
 
-from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, get_current_user, UserCtx
 from backend.app.api.v1.utils.access import resolve_restricted_acl
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
@@ -31,7 +32,8 @@ from backend.app.api.v1.utils.own_company import (
 )
 
 router = APIRouter(prefix="/vacancies", tags=["vacancies"], redirect_slashes=False)
-PIPELINE_ROLES = (Role.manager, Role.admin, Role.recruiter)
+from backend.app.auth.trust_role_deps import TRUST_WRITE_ROLES, require_trust_write
+PIPELINE_ROLES = TRUST_WRITE_ROLES
 
 # G-8 stage 2.1: per-vacancy "what to do next" CTA. Mounted as a sub-router
 # so the implementation lives in a small, single-purpose file. Must be
@@ -42,6 +44,14 @@ PIPELINE_ROLES = (Role.manager, Role.admin, Role.recruiter)
 from backend.app.api.v1.vacancies import next_action_api as _next_action_api  # noqa: E402
 
 router.include_router(_next_action_api.router)
+
+from backend.app.api.v1.vacancies import launch_search_setup_api as _launch_search_setup_api  # noqa: E402
+from backend.app.api.v1.vacancies import workspace_api as _workspace_api  # noqa: E402
+from backend.app.api.v1.vacancies import acquisition_api as _acquisition_api  # noqa: E402
+
+router.include_router(_launch_search_setup_api.router)
+router.include_router(_workspace_api.router)
+router.include_router(_acquisition_api.router)
 
 
 def _as_bool(value: Optional[str]) -> bool:
@@ -261,8 +271,8 @@ async def get_vacancy(
         raise HTTPException(status_code=403, detail="Forbidden")
     return vacancy
 
-@router.post("/", response_model=VacancyOut, dependencies=[Depends(require_roles(Role.manager, Role.admin))])
-@router.post("", response_model=VacancyOut, dependencies=[Depends(require_roles(Role.manager, Role.admin))], include_in_schema=False)
+@router.post("/", response_model=VacancyOut, dependencies=[Depends(require_trust_write())])
+@router.post("", response_model=VacancyOut, dependencies=[Depends(require_trust_write())], include_in_schema=False)
 async def create_vacancy(
     payload: VacancyIn,
     db_tenant=Depends(get_db_with_tenant),
@@ -281,7 +291,7 @@ async def create_vacancy(
 
 @router.post(
     "/{vacancy_id}/candidates",
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def attach_candidate(
     vacancy_id: UUID,
@@ -353,7 +363,7 @@ async def attach_candidate(
 
 @router.get(
     "/{vacancy_id}/pipeline",
-    dependencies=[Depends(require_roles(*PIPELINE_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_vacancy_pipeline(
     vacancy_id: UUID,
@@ -501,7 +511,7 @@ async def get_vacancy_pipeline(
         result["profile_stages"] = profile_stages
     return result
 
-@router.patch("/{vacancy_id}", response_model=VacancyOut, dependencies=[Depends(require_roles(Role.manager, Role.admin))])
+@router.patch("/{vacancy_id}", response_model=VacancyOut, dependencies=[Depends(require_trust_write())])
 async def update_vacancy(
     vacancy_id: UUID,
     payload: VacancyPatch,
@@ -521,7 +531,7 @@ async def update_vacancy(
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
-@router.delete("/{vacancy_id}", dependencies=[Depends(require_roles(Role.manager, Role.admin))])
+@router.delete("/{vacancy_id}", dependencies=[Depends(require_trust_write())])
 async def delete_vacancy(
     vacancy_id: UUID,
     db_tenant=Depends(get_db_with_tenant),

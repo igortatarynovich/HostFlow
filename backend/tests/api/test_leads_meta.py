@@ -63,17 +63,23 @@ async def _ensure_company(session, tenant_id: str) -> str:
     await session.execute(
         sa.text(
             """
-            INSERT INTO companies (id, tenant_id, name)
-            VALUES (:id, :tenant_id, :name)
+            INSERT INTO companies (id, tenant_id, name, party_entity_type)
+            VALUES (:id, :tenant_id, :name, :party_entity_type)
             """
         ),
-        {"id": company_id, "tenant_id": tenant_id, "name": "Meta Logistics"},
+        {"id": company_id, "tenant_id": tenant_id, "name": "Meta Logistics", "party_entity_type": "company"},
     )
     await session.commit()
     return company_id
 
 
 async def _ensure_meta_settings(session, tenant_id: str, verify_token: str) -> None:
+    # Isolation: drop leftover app secrets from admin Meta credential tests so
+    # ingest helpers that sign with settings.meta_webhook_secret stay valid.
+    await session.execute(
+        sa.text("DELETE FROM meta_lead_credentials WHERE tenant_id = :tenant_id"),
+        {"tenant_id": tenant_id},
+    )
     await session.execute(
         sa.text(
             """

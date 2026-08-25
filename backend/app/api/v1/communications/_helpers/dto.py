@@ -19,7 +19,9 @@ from ..schemas import (
     CommunicationAllocationAuditOut,
     CommunicationCommandAuditOut,
     CommunicationMessageOut,
+    CommunicationThreadEntityLinkOut,
     CommunicationThreadOut,
+    CommunicationThreadResultLinkOut,
     TimeOffRequestOut,
 )
 from .utils import _as_dict, _as_list
@@ -30,10 +32,53 @@ __all__ = [
     "_timeoff_out",
     "_allocation_audit_out",
     "_command_audit_out",
+    "_result_link_out",
+    "_entity_links_out",
 ]
 
 
-def _thread_out(thread: CommunicationThread) -> CommunicationThreadOut:
+def _result_link_out(link: object | None) -> CommunicationThreadResultLinkOut | None:
+    if link is None:
+        return None
+    to_dict = getattr(link, "to_dict", None)
+    data = to_dict() if callable(to_dict) else dict(link)  # type: ignore[arg-type]
+    return CommunicationThreadResultLinkOut(
+        link_id=str(data.get("link_id") or ""),
+        thread_id=str(data.get("thread_id") or ""),
+        module_owner=str(data.get("module_owner") or ""),
+        result_type=str(data.get("result_type") or ""),
+        result_id=str(data.get("result_id") or ""),
+        ledger_id=(str(data["ledger_id"]) if data.get("ledger_id") else None),
+        status=str(data.get("status") or ""),
+        provenance_ref=(str(data["provenance_ref"]) if data.get("provenance_ref") else None),
+    )
+
+
+def _entity_links_out(links: object | None) -> list[CommunicationThreadEntityLinkOut]:
+    if not links:
+        return []
+    out: list[CommunicationThreadEntityLinkOut] = []
+    for link in links:  # type: ignore[assignment]
+        to_dict = getattr(link, "to_dict", None)
+        data = to_dict() if callable(to_dict) else dict(link)  # type: ignore[arg-type]
+        out.append(
+            CommunicationThreadEntityLinkOut(
+                link_id=str(data.get("link_id") or data.get("id") or ""),
+                thread_id=str(data.get("thread_id") or ""),
+                entity_type=str(data.get("entity_type") or ""),
+                entity_id=str(data.get("entity_id") or ""),
+                is_immutable=bool(data.get("is_immutable")),
+            )
+        )
+    return out
+
+
+def _thread_out(
+    thread: CommunicationThread,
+    *,
+    result_link: object | None = None,
+    entity_links: object | None = None,
+) -> CommunicationThreadOut:
     return CommunicationThreadOut(
         id=str(thread.id),
         channel=thread.channel,
@@ -48,6 +93,7 @@ def _thread_out(thread: CommunicationThread) -> CommunicationThreadOut:
         linked_candidate_id=thread.linked_candidate_id,
         owner_id=thread.owner_id,
         assignee_id=thread.assignee_id,
+
         queue_assigned_by=thread.queue_assigned_by,
         priority=thread.priority,
         sla_due_at=thread.sla_due_at,
@@ -62,6 +108,8 @@ def _thread_out(thread: CommunicationThread) -> CommunicationThreadOut:
         is_archived=bool(thread.is_archived),
         created_at=thread.created_at,
         updated_at=thread.updated_at,
+        result_link=_result_link_out(result_link),
+        entity_links=_entity_links_out(entity_links),
     )
 
 

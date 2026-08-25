@@ -27,6 +27,20 @@ EMAIL_LEGACY = "/app/email"
 INBOX_MESSAGES_SCOPED = "/app/inbox?channel=messages"
 INBOX_EMAIL_SCOPED = "/app/inbox?channel=email"
 INBOX_THREADS_BASE = "/app/inbox/threads"
+ONBOARDING_COMPANY = "/app/onboarding/company"
+SETUP_CLIENT = "/app/setup/client"
+SETUP_VACANCY = "/app/setup/vacancy"
+SETUP_PROCESS = "/app/setup/process"
+SETUP_INTAKE = "/app/setup/intake"
+SETTINGS_USERS = "/app/settings/users"
+RECRUITMENT_SEARCHES = "/app/recruitment/searches"
+RECRUITMENT_INBOX = "/app/recruitment/inbox"
+MARKETING = "/app/marketing"
+MARKETING_NEW = "/app/marketing/new"
+MARKETING_SOURCES = "/app/marketing/sources"
+MARKETING_FORMS = "/app/marketing/forms"
+MARKETING_DIAGNOSTICS = "/app/marketing/diagnostics"
+SETTINGS_LEAD_FORMS = "/app/settings/lead-forms"
 
 def spa_candidate(candidate_id: str) -> str:
     return f"{CANDIDATES}/{candidate_id}"
@@ -46,6 +60,10 @@ def spa_lead(lead_id: str) -> str:
 
 def spa_vacancy(vacancy_id: str) -> str:
     return f"{VACANCIES}/{vacancy_id}"
+
+
+def spa_marketing_connect_source(campaign_id: str) -> str:
+    return f"{MARKETING}/{campaign_id}/sources/new"
 
 
 def spa_inbox_thread(thread_id: str) -> str:

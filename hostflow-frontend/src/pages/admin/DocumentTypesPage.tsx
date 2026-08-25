@@ -57,17 +57,12 @@ export default function DocumentTypesPage() {
   )
 
   return (
-    <div className="space-y-4">
-      <section className="settings-panel">
-        <div className="mb-2">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('admin.documents.types.header_kicker')}
-            title={t('admin.documents.types.title')}
-            subtitle={t('admin.documents.types.description')}
-          />
-        </div>
-
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.documents.types.header_kicker')}
+      title={t('admin.documents.types.title')}
+      subtitle={t('admin.documents.types.description')}
+    >
         {error ? (
           <ErrorRecoveryBanner
             info={error}
@@ -116,11 +111,11 @@ export default function DocumentTypesPage() {
                     <td className="px-3 py-2">{summary.processDocs}</td>
                   <td className="px-3 py-2">
                     {template.is_active ? (
-                      <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+                      <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
                         {t('common.active')}
                       </span>
                     ) : (
-                      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                      <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
                         {t('common.inactive')}
                       </span>
                     )}
@@ -131,7 +126,6 @@ export default function DocumentTypesPage() {
             </tbody>
           </table>
         </div>
-      </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

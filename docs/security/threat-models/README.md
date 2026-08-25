@@ -11,6 +11,18 @@
 | [handoff.md](./handoff.md) | Cross-tenant visibility, ACCESS CONTEXT, IDOR |
 | [client-portal.md](./client-portal.md) | Фильтрация данных, company scope, комментарии |
 | [automations.md](./automations.md) | Исходящие HTTP, права сервисных аккаунтов, side effects |
+| [communication-campaign-orchestrator.md](./communication-campaign-orchestrator.md) | C2.3 Campaign Orchestrator: tenant scope, Intent-only egress, no provider/Thread, audience snapshot |
 | [exports.md](./exports.md) | Insider, bulk CSV, скрытые поля, rate limits |
+| [global-search.md](./global-search.md) | CRM global search + tenant link company directory retrieval audit |
+| [client-account-manual-creation.md](./client-account-manual-creation.md) | Manual `ClientAccount` create: tenant/company bind, duplicates, idempotency, origin forgery |
+| [acquisition-activity-timeline.md](./acquisition-activity-timeline.md) | Stage 3E Activity Timeline: append-only audit, RLS, tenant-scoped idempotency, no Ops FKs |
+| [acquisition-flight-runtime.md](./acquisition-flight-runtime.md) | Stage 4 Flight Runtime: platform campaign/flight APIs, RBAC/company-scope, lifecycle commands, delivery-error activity |
+| [acquisition-optimization-signals.md](./acquisition-optimization-signals.md) | Stage 5 PR-1: read-only optimization signals / `suggest_pause` (no auto-pause, no GET side effects) |
+| [acquisition-stage-6-analytics.md](./acquisition-stage-6-analytics.md) | Stage 6 PR-1…PR-6: compare, cohorts, portfolio, Outcome commercial value, declared-value ROI |
+| [acquisition-marketing-sources.md](./acquisition-marketing-sources.md) | C-3 Marketing Sources: read-only inventory GET, tenant isolation, no write/reprocess side effects |
+| [acquisition-source-diagnostics.md](./acquisition-source-diagnostics.md) | Source Diagnostics PR1–PR9: read-only Lead + Activity casework, filters, duplicate, Mapping Health, drift alerts/summary, export, Replay via Leads process; SPA-only drift notify |
+| [rbac-trust-roles.md](./rbac-trust-roles.md) | ADR-036 four trust roles: ceilings, matrix PATCH, `access_context`, legacy job-title/portal aliases, inventory lint |
+| [forms-platform.md](./forms-platform.md) | Forms Platform C2–C5: frozen identity; Builder Draft only; Runtime Model; Execution via Shared Intake; no draft-as-publication; no second submit engine |
+| [documents-platform.md](./documents-platform.md) | Documents Platform E3–E6 resolve: authenticated Hub metadata + Document Link + Hub expiry; `candidate_id` column dropped; tenant bind; closed entity/relation types (`workforce_employee` / `reused_for_hr` and `candidate` / `primary`); no file bytes / signed URL / second Adapter / Hub reminder table |
 
 Родительский документ: [../security-ssot.md](../security-ssot.md).

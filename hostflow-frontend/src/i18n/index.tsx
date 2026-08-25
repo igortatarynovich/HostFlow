@@ -74,6 +74,40 @@ function format(template: string, values?: Record<string, string | number>): str
   }, template)
 }
 
+export function lookupScopedTranslation(
+  locale: LocaleCode,
+  basePath: string,
+  leafKey: string,
+): string | undefined {
+  const tried = new Set<LocaleCode>()
+  const chain = [locale, ...FALLBACK_ORDER].filter((code): code is LocaleCode => {
+    if (tried.has(code)) return false
+    tried.add(code)
+    return Boolean(RESOURCES[code])
+  })
+  for (const code of chain) {
+    let cursor: unknown = RESOURCES[code]
+    for (const segment of basePath.split('.')) {
+      if (!cursor || typeof cursor !== 'object') {
+        cursor = undefined
+        break
+      }
+      cursor = (cursor as Record<string, unknown>)[segment]
+    }
+    if (cursor && typeof cursor === 'object') {
+      const raw = (cursor as Record<string, unknown>)[leafKey]
+      if (typeof raw === 'string' || typeof raw === 'number') {
+        return String(raw)
+      }
+    }
+  }
+  return undefined
+}
+
+export function detectStoredLocale(): LocaleCode {
+  return detectLocale()
+}
+
 export function I18nProvider({
   children,
   initialLocale,

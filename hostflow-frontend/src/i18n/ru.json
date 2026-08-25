@@ -203,7 +203,8 @@
         "doc_col_expires": "Истекает",
         "doc_col_days_left": "Дней",
         "doc_col_file": "Файл",
-        "doc_open": "Открыть"
+        "doc_open": "Открыть",
+        "doc_open_error": "Could not open document file"
       },
       "work_eligibility": {
         "section_title": "Право на работу и обязательные сборы",
@@ -356,7 +357,22 @@
           "expiring": "Истекает",
           "rejected": "Отклонён",
           "needs_data": "Нужны данные"
-        }
+        },
+        "request_doc_correction": "Request correction",
+        "replace_doc": "Replace",
+        "status": {
+          "hr_review_in_progress": "HR review in progress",
+          "waiting_documents": "Awaiting documents",
+          "waiting_payments": "Awaiting payments",
+          "waiting_work_permit": "Awaiting work permit",
+          "waiting_red_paper": "Awaiting red paper",
+          "approved_for_employment": "Approved for employment",
+          "returned_to_recruitment": "Returned to recruitment",
+          "rejected_by_hr": "Rejected by HR"
+        },
+        "rail_open": "Open HR review",
+        "rail_blockers": "Resolve HR review blockers",
+        "rail_continue": "Continue HR review"
       },
       "review_case": {
         "badge": "Дело HR",
@@ -369,14 +385,59 @@
         "approve_yes": "Утверждение разрешено",
         "approve_no": "Утверждение заблокировано",
         "back_to_inbox": "← Назад в inbox HR",
-        "handoff_summary_hint": "Контекст из рекрутинга только для чтения. Проверяйте документы выше."
+        "handoff_summary_hint": "Контекст из рекрутинга только для чтения. Проверяйте документы выше.",
+        "profile_badge": "Employee profile",
+        "untitled": "HR case",
+        "handoff": "Handoff",
+        "transferred": "Transferred",
+        "quick_actions": "Quick actions",
+        "open_eligibility": "Open work eligibility",
+        "recent_history": "Recent history",
+        "no_events": "No events yet.",
+        "full_history": "Open full history",
+        "docs_required": "Documents required for approval",
+        "current_step": "Current step",
+        "step_status": "Status",
+        "blockers": "Blockers",
+        "eligibility_after_employee": "Full eligibility journey is available after workforce employee is linked.",
+        "show_journey": "Show full eligibility journey",
+        "hide_journey": "Hide full eligibility journey",
+        "after_approval": "After employment approval",
+        "open_employee_profile": "Open employee profile",
+        "current_task_kicker": "What to do now",
+        "why_this_task": "Why this task",
+        "task_closes": "This step closes",
+        "after_completion": "After this",
+        "blocks_approval": "Blocks approval",
+        "ready_step": "Ready",
+        "task_take_title": "Take case into HR review",
+        "task_take_desc": "Accept the recruitment handoff to unlock the HR checklist, document verification, and eligibility workflow.",
+        "task_take_why": "Until HR accepts the handoff, this case stays in the transfer queue and cannot progress toward employment approval.",
+        "task_take_done": "Handoff status becomes accepted and the HR review checklist is active.",
+        "view_handoff": "View handoff summary",
+        "priority_step": "Step {{step}} of {{total}}",
+        "priority_ladder_toggle": "System priority order (v1)"
       },
       "doc_verify": {
         "needs_manual": "Требуется ручное подтверждение",
         "request_correction": "Запросить исправление",
         "reject": "Отклонить документ",
         "correction_placeholder": "Что нужно исправить?",
-        "reject_placeholder": "Причина отклонения"
+        "reject_placeholder": "Причина отклонения",
+        "section_hint": "Verify each document against profile data. Checklist items update when all required cards are verified.",
+        "checklist_item": "Checklist",
+        "col_field": "Field",
+        "col_profile": "Profile / snapshot",
+        "col_downstream": "Used for",
+        "col_confirm": "HR confirmation",
+        "confirmed_value": "Confirmed value",
+        "comment": "Comment",
+        "confirmed": "Confirmed",
+        "save_review": "Save field review",
+        "verify": "Verify document",
+        "reject_verification": "Reject verification",
+        "upload_new": "Upload new",
+        "upload_new_note": "Please upload a new version of this document."
       },
       "doc_flow": {
         "title": "Проверка документов",
@@ -427,7 +488,10 @@
           "in_review": "На проверке",
           "missing_file": "Нет файла",
           "awaiting": "Ожидает подтверждения"
-        }
+        },
+        "section_title": "Documents verification workspace",
+        "dossier_hint": "One document at a time: compare file to fields, then confirm/correct/replace.",
+        "no_review_context": "HR review context is not available for this employee yet."
       },
       "decisions": {
         "request_correction": "Запросить доработку",
@@ -622,6 +686,56 @@
         "ctx_verified": "Пров.",
         "ctx_expires": "Истекает",
         "no_ctx_items": "Строк контекста HR-документов пока нет."
+      },
+      "document_packs": {
+        "section_title": "Document packs",
+        "hub_preview_title": "Document packs for filtered employee",
+        "empty": "No document packs for this profile yet.",
+        "no_candidate_link": "This employee has no linked candidate — document packs are unavailable.",
+        "skeleton_hint": "Client-specific requirements will appear here later.",
+        "blockers": "Blockers",
+        "warnings": "Warnings",
+        "gaps": "Gaps",
+        "count": {
+          "missing": "Missing",
+          "expired": "Expired",
+          "expiring": "Expiring",
+          "missing_expiry": "No expiry date"
+        },
+        "status": {
+          "valid": "Valid",
+          "warnings": "Warnings",
+          "gaps": "Gaps",
+          "skeleton": "Skeleton"
+        }
+      },
+      "document_actions": {
+        "section_title": "Document actions",
+        "empty": "No document actions",
+        "no_candidate_link": "This employee has no linked candidate — document actions are unavailable.",
+        "document": "Document",
+        "pack": "Pack",
+        "due": "Due",
+        "action": {
+          "upload_document": "Upload document",
+          "request_update": "Request update",
+          "renew_document": "Renew document",
+          "capture_expiry_date": "Capture expiry date"
+        }
+      },
+      "readiness": {
+        "status_label": "Readiness status",
+        "next_action": "Next action",
+        "reason": "Reason",
+        "blocks": "Blocks",
+        "owner": "Responsible",
+        "due": "Due",
+        "missing": "Missing / affected",
+        "open_documents": "Open documents",
+        "ready_hint": "No document blockers detected. Employment readiness looks clear from current packs.",
+        "ready_next": "Next step: {step}",
+        "remaining": "{count} documents remaining",
+        "verification_progress": "Verified {verified} of {total} uploaded documents"
       }
     },
     "api_errors": {
@@ -769,6 +883,10 @@
         "my_availability": "Моя доступность",
         "time_off": "Отпуска и отсутствия",
         "reminders": "Напоминания",
+        "recruitment_inbox": "Отклики",
+        "recruitment_searches": "Подборы",
+        "sales": "Обращения",
+        "marketing": "Маркетинг",
         "leads": "Лиды",
         "leads_distribution": "Распределение лидов",
         "leads_distribution_rules": "Правила распределения лидов",
@@ -791,6 +909,8 @@
         "settings_communications_messengers": "Мессенджеры",
         "settings_communications_queue": "Очередь и маршрутизация",
         "settings_communications_sla": "SLA коммуникаций",
+        "settings_communications_templates": "Шаблоны коммуникаций",
+        "settings_communications_automation": "Автоматизация коммуникаций",
         "settings_ttv": "Отчёт TTV",
         "profile": "Профиль",
         "logout": "Выйти",
@@ -800,9 +920,14 @@
         "no_next_action": "Без следующего действия",
         "automations": "Автоматизации",
         "automation_log": "Журнал автоматизаций",
+        "acquisition_activity": "Активность Acquisition",
+        "marketing_sources": "Sources",
+        "marketing_forms": "Forms",
+        "marketing_diagnostics": "Diagnostics",
         "automation_rules": "Правила автоматизаций",
         "settings_hiring_gates": "Барьеры воронки найма",
-        "settings_risk_intel": "Операционный риск"
+        "settings_risk_intel": "Операционный риск",
+        "hr_inbox": "HR Inbox"
       },
       "hr": {
         "workspace": {
@@ -840,7 +965,34 @@
           "total": "Всего: {{n}}",
           "handoff_row": "Handoff {{id}}",
           "view_snapshot": "Снимок",
-          "empty": "В этой очереди нет handoff."
+          "empty": "В этой очереди нет handoff.",
+          "tab_all": "All active",
+          "view_review": "HR review",
+          "open_employee": "Employee profile",
+          "col_queue": "Queue",
+          "col_status": "Status",
+          "col_candidate": "Candidate",
+          "col_handoff": "Handoff",
+          "col_employee": "Workforce",
+          "col_actions": "Actions",
+          "accept_pickup": "Take into HR review",
+          "stat_pending": "Awaiting pickup: {n}",
+          "stat_accepted": "In review: {n}",
+          "stat_tab": "This tab: {n}",
+          "quick_hub": "Documents hub",
+          "tabs_aria": "Inbox queues",
+          "queue_awaiting_hr_pickup": "Awaiting HR pickup",
+          "queue_hr_review_in_progress": "HR review in progress",
+          "queue_awaiting_documents": "Awaiting documents",
+          "queue_awaiting_payments": "Awaiting payments",
+          "queue_awaiting_work_permit": "Awaiting work permit",
+          "queue_awaiting_red_paper": "Awaiting red paper",
+          "queue_approved_for_employment": "Approved for employment",
+          "queue_returned_to_recruitment": "Returned to recruitment",
+          "queue_rejected_by_hr": "Rejected by HR",
+          "filter_queue": "Filter by queue",
+          "delayed_hint": "Workforce is created only after employment approval.",
+          "accepted_unavailable": "Accepted handoff queue is unavailable (backend version mismatch). Pending pickup still loads below."
         },
         "tasks": {
           "heading": "HR задачи",
@@ -1168,7 +1320,8 @@
       "not_found_dynamic": "{entity} не найден",
       "quick_defaults": "Базовые настройки применяются автоматически. Расширенные — по необходимости.",
       "subtitle_dynamic": "Управление {entityPlural} и настройками доступа.",
-      "title_dynamic": "{entityPlural}"
+      "title_dynamic": "{entityPlural}",
+      "see_reduced_profiles_label": "Reduced profiles"
     },
     "vacancies": {
       "list": {
@@ -1224,7 +1377,12 @@
         "errors": {
           "unauthorized": "Неавторизовано: войдите в систему и повторите.",
           "load_failed": "Не удалось загрузить вакансии"
-        }
+        },
+        "empty_title": "У вас пока нет вакансий",
+        "empty_description": "Создайте первую вакансию примерно за 30 секунд — чтобы принимать и обрабатывать кандидатов.",
+        "empty_why": "Вакансия — роль, на которую вы нанимаете. К ней привязываются лиды и кандидаты.",
+        "empty_cta": "Создать вакансию",
+        "empty_cta_setup": "Открыть старт"
       },
       "form": {
         "save_failed": "Не удалось сохранить вакансию"
@@ -1442,6 +1600,8 @@
       "communications_thread_escalated_title": "Тред эскалирован — нужны действия",
       "lead_public_intake_client_title": "Новый клиентский лид из публичного intake",
       "lead_public_intake_client_desc": "Запрос от {name}. Откройте лид для дальнейших действий.",
+      "intake_questionnaire_submitted_title": "Клиент заполнил анкету",
+      "intake_questionnaire_submitted_desc": "{contact} — {company}",
       "intake_client_lead_skipped_no_company_title": "Клиентский intake: лид не создан",
       "intake_client_lead_skipped_no_company_desc": "{name} отправил(а) клиентский запрос, но компанию-клиента определить не удалось. Задайте компанию по умолчанию (Meta leads) или привяжите вакансию/клиента.",
       "reminder_popup": {
@@ -1560,7 +1720,14 @@
       "scoped_candidate_clear": "Показать все треды"
     },
     "communications_api": {
-      "thread_unlinked_outbound_blocked": "Привяжите тред к кандидату, компании-клиенту или заказу UOS перед отправкой (операционная политика)."
+      "thread_unlinked_outbound_blocked": "Привяжите тред к кандидату, компании-клиенту или заказу UOS перед отправкой (операционная политика).",
+      "pipeline": {
+        "communication_pipeline_required": "Чтобы отправить сообщение, привяжите тред к записи Sales или Recruitment.",
+        "missing_result_link": "Перед отправкой привяжите тред к Sales inquiry или заявке Recruitment.",
+        "communication_pipeline_denied": "Отправка заблокирована политикой коммуникаций для этого треда.",
+        "unknown_purpose": "Этот тип ответа не разрешён для связанной записи.",
+        "result_link_missing": "Перед отправкой привяжите тред к Sales inquiry или заявке Recruitment."
+      }
     },
     "communications_messages": {
       "reply_required": "Требуется ответ",
@@ -1694,7 +1861,13 @@
         "communications_workspace": "Рабочее пространство для связи",
         "more": "Подробнее",
         "operations": "Операции",
-        "system": "Система"
+        "system": "Система",
+        "section_communications": "Коммуникации",
+        "section_recruitment": "Рекрутинг",
+        "section_marketing": "Маркетинг",
+        "section_sales": "Продажи",
+        "section_hr": "HR / Кадры",
+        "section_services": "Услуги"
       },
       "actions": {
         "logout": "Выйти",
@@ -1711,6 +1884,7 @@
         "return_to_platform": "Вернуться к суперадмину",
         "language": "Язык"
       },
+      "impersonation_banner": "SUPERADMIN ACCESS ACTIVE — вход в тенант клиента",
       "notifications": {
         "title": "Уведомления",
         "panel_subtitle": "Непрочитанных: {count}",
@@ -1769,8 +1943,8 @@
     },
     "seo": {
       "landing": {
-        "title": "CRM для рекрутинговых команд",
-        "description": "HostFlow помогает рекрутинговым командам вести лиды, кандидатов, документы и операции в одной CRM."
+        "title": "Закрывайте вакансии быстрее — HostFlow",
+        "description": "HostFlow собирает кандидатов из Meta, WhatsApp и форм, распределяет между рекрутерами и контролирует найм — от лида до выхода на работу."
       },
       "pricing": {
         "title": "Тарифы CRM для рекрутинга",
@@ -1823,6 +1997,10 @@
         "sessions": {
           "title": "Активные сессии",
           "description": "Проверьте устройства с активным входом и завершайте сессии при необходимости."
+        },
+        "signature": {
+          "title": "Подпись для исходящих сообщений",
+          "description": "Автоматически добавляется к письмам и другим исходящим сообщениям. Шаблоны подпись не содержат."
         }
       },
       "avatar": {
@@ -1839,7 +2017,13 @@
         "birth_date": "Дата рождения",
         "country": "Страна",
         "city": "Город",
-        "preferred_contact": "Предпочтительный канал связи"
+        "preferred_contact": "Предпочтительный канал связи",
+        "company": "Компания",
+        "website": "Сайт",
+        "logo_url": "Логотип (URL)",
+        "show_phone": "Показывать телефон",
+        "show_email": "Показывать email",
+        "show_website": "Показывать сайт"
       },
       "preferences": {
         "hints": {
@@ -1971,6 +2155,11 @@
       "labels": {
         "timezone": "Часовой пояс",
         "user": "Пользователь"
+      },
+      "signature": {
+        "preview_label": "Превью подписи",
+        "company_fallback_hint": "Компания, сайт и контакты для подписи берутся только из этого блока. Own company / SMTP не подставляются.",
+        "html_hint": "В письме: имя и компания жирным фирменным цветом, иконки одного стиля, лого ~180px."
       }
     },
     "signup": {
@@ -2106,18 +2295,21 @@
           "title": "Использование слотов",
           "limit": "Использовано {used} из {limit}",
           "unlimited": "Использовано {used}",
-          "recruiters": "Рекрутеры",
-          "supervisors": "Супервайзеры",
-          "client_managers": "Менеджеры клиента",
+          "administrators": "Администраторы",
+          "employees": "Сотрудники",
+          "portal_guests": "Гости портала (не биллятся)",
+          "recruiters": "Сотрудники",
+          "supervisors": "Администраторы",
+          "client_managers": "Гости портала (не биллятся)",
           "viewers": "Наблюдатели"
         },
         "license": {
           "title": "Лицензия и лимиты",
           "plan": "Тариф",
           "expires_at": "Истекает",
-          "max_recruiters": "Макс. рекрутеров",
-          "max_supervisors": "Макс. супервайзеров",
-          "max_client_managers": "Макс. менеджеров клиента",
+          "max_recruiters": "Макс. сотрудников",
+          "max_supervisors": "Макс. администраторов",
+          "max_client_managers": "Макс. гостей портала (не используется)",
           "max_viewers": "Макс. наблюдателей",
           "max_storage_gb": "Макс. хранилище (ГБ)",
           "max_companies": "Макс. компаний",
@@ -2183,6 +2375,7 @@
           "impersonate": "Войти от имени тенанта",
           "impersonating": "Переключаемся…",
           "impersonate_confirm": "Перейти в тенант «{name}»? Текущая сессия будет заменена.",
+          "impersonate_reason_prompt": "Причина импёрсонации (обязательно, мин. 3 символа):",
           "manage_team": "Управлять командой",
           "suspend": "Заблокировать",
           "activate": "Активировать",
@@ -2236,7 +2429,8 @@
             "documents": "Документы",
             "leads": "Лиды",
             "services": "Сервисы",
-            "client_portal": "Клиентский портал"
+            "client_portal": "Клиентский портал",
+            "hr": "HR"
           },
           "empty": "Настройки модулей недоступны для этого тенанта.",
           "errors": {
@@ -2286,6 +2480,7 @@
           "logo_upload_failed": "Ошибка при загрузке логотипа.",
           "status_change_failed": "Ошибка при смене статуса.",
           "impersonate_failed": "Не удалось выполнить импёрсонацию.",
+          "impersonate_reason_required": "Нужно обоснование не короче 3 символов.",
           "required_fields": "Название и слаг обязательны.",
           "initial_admin_password_required": "Укажите пароль администратора.",
           "create_failed": "Не удалось создать тенант.",
@@ -2322,9 +2517,12 @@
         "subtitle": "Следите за использованием слотов, включайте/выключайте модули и отправляйте запросы на расширение.",
         "usage": {
           "title": "Использование слотов",
-          "recruiters": "Рекрутеры",
-          "supervisors": "Супервайзеры",
-          "client_managers": "Менеджеры клиента",
+          "administrators": "Администраторы",
+          "employees": "Сотрудники",
+          "portal_guests": "Гости портала (не биллятся)",
+          "recruiters": "Сотрудники",
+          "supervisors": "Администраторы",
+          "client_managers": "Гости портала (не биллятся)",
           "viewers": "Наблюдатели"
         },
         "modules": {
@@ -2349,6 +2547,7 @@
           "submit": "Отправить запрос",
           "roles": {
             "administrator": "Администраторы",
+            "employee": "Сотрудники",
             "supervisor": "Супервайзеры",
             "recruiter": "Рекрутеры",
             "client_manager": "Менеджеры клиента",
@@ -2559,9 +2758,12 @@
           "title": "Юридические документы"
         },
         "usage": {
-          "recruiters": "Рекрутеры: {used} / {limit}",
-          "supervisors": "Супервайзеры: {used} / {limit}",
-          "client_managers": "Менеджеры клиента: {used} / {limit}",
+          "administrators": "Администраторы: {used} / {limit}",
+          "employees": "Сотрудники: {used} / {limit}",
+          "portal_guests": "Гости портала (не биллятся): {used}",
+          "recruiters": "Сотрудники: {used} / {limit}",
+          "supervisors": "Администраторы: {used} / {limit}",
+          "client_managers": "Гости портала (не биллятся): {used} / {limit}",
           "viewers": "Наблюдатели: {used} / {limit}",
           "leads_month": "Лиды за месяц (UTC): {used} / {limit}",
           "candidates": "Активные кандидаты: {used} / {limit}",
@@ -2836,7 +3038,8 @@
           "recruiter": "Рекрутер",
           "client_manager": "Менеджер клиента",
           "client_processor": "Процессор кандидатов",
-          "viewer": "Наблюдатель"
+          "viewer": "Наблюдатель",
+          "employee": "Сотрудник"
         },
         "form": {
           "email_label": "Email",
@@ -2853,7 +3056,10 @@
           "password_label": "Пароль (опционально)",
           "password_placeholder": "Оставьте пустым — сгенерируем",
           "submit": "Создать пользователя",
-          "submitting": "Создаём…"
+          "submitting": "Создаём…",
+          "preset_label": "Пресет прав",
+          "preset_none": "Нет (дефолт роли)",
+          "preset_help": "Заполняет права модулей пользователя — не создаёт системную роль."
         },
         "errors": {
           "list_missing_endpoint": "Endpoint /api/v1/admin/users не найден. Перезапустите backend после обновлений.",
@@ -3048,6 +3254,13 @@
             "token": "Токен",
             "valid_until": "Действительно до"
           }
+        },
+        "presets": {
+          "recruiter": "Рекрутер",
+          "team_lead": "Тимлид",
+          "hr": "HR",
+          "compliance": "Compliance",
+          "portal_guest": "Гость портала"
         }
       },
       "ruleset": {
@@ -4200,7 +4413,7 @@
     },
     "dashboard": {
       "title": "Аналитика",
-      "page_subtitle": "Ответы на вопросы бизнеса: где теряем людей, что тормозит, какие источники окупаются, что сделать сегодня. Фильтры действуют на все блоки; пресеты сохраняются на этом устройстве.",
+      "page_subtitle": "Системный модуль: срезы по купленным модулям.",
       "sections": {
         "shortcuts": {
           "title": "Быстрые ссылки",
@@ -4351,12 +4564,14 @@
         "blacklist": "Чёрный список",
         "wrong_phone": "Неверно указан номер",
         "double_crew": "Двойной экипаж",
-        "no_response": "Не отвечает"
+        "no_response": "Не отвечает",
+        "recruitment_completed": "Набор завершён"
       },
       "labels": {
         "no_reason": "Без причины",
         "no_title": "Без названия",
-        "no_subgroup": "Без подгруппы"
+        "no_subgroup": "Без подгруппы",
+        "untitled": "Без названия"
       },
       "filters": {
         "title": "Фильтры",
@@ -4492,7 +4707,8 @@
       },
       "errors": {
         "range_invalid": "Дата начала не может быть позже даты окончания.",
-        "load_failed": "Ошибка загрузки данных"
+        "load_failed": "Ошибка загрузки данных",
+        "temporarily_unavailable": "Сервис аналитики временно недоступен. Повторите через несколько секунд."
       },
       "stats": {
         "candidates_total": "Кандидаты (всего)",
@@ -4758,6 +4974,222 @@
         "validation_title": "Валидация shadow-когорты",
         "validation_samples": "Выборка когорты",
         "validation_rate": "Доля продвижения по этапу"
+      },
+      "efficiency": {
+        "title": "Эффективность работы",
+        "subtitle": "Этапы пайплайна, причины отказов и статус документов. Фильтры: клиент, период, вакансия.",
+        "empty": "Нет данных по выбранному срезу.",
+        "insight": "{closedPct} кандидатов уже закрыты (отклонён / отказался). В ранних стадиях — {early}, в документах — {docs}.",
+        "filters": {
+          "client": "Клиент",
+          "all_clients": "Все клиенты"
+        },
+        "stats": {
+          "total": "Всего кандидатов",
+          "in_progress": "В работе",
+          "closed": "Закрыто (reject + decline)",
+          "docs_pipeline": "Документы: wait + got"
+        },
+        "stages": {
+          "title": "Распределение по этапам",
+          "subtitle": "Текущий этап кандидата в выбранном срезе.",
+          "col_stage": "Этап",
+          "col_count": "Кол-во",
+          "col_share": "Доля",
+          "terminal": "финал"
+        },
+        "reasons": {
+          "rejected_title": "Отклонён компанией ({count})",
+          "declined_title": "Отказался кандидат ({count})",
+          "hint": "Сумма причин может быть больше числа кандидатов — у части несколько кодов.",
+          "empty": "Нет причин в этом срезе."
+        },
+        "docs": {
+          "title": "Документы",
+          "subtitle": "Операционные этапы docs_wait / docs_got и статусы загруженных файлов.",
+          "wait": "Ожидаем документы",
+          "got": "Документы получены",
+          "complete": "С полным пакетом",
+          "col_status": "Статус файла",
+          "col_count": "Кол-во",
+          "files_total": "Всего файлов: {count}",
+          "empty_files": "Файлов документов в срезе нет.",
+          "statuses": {
+            "approved": "Одобрен",
+            "received": "Получен",
+            "submitted": "На проверке",
+            "requested": "Запрошен",
+            "rejected": "Отклонён",
+            "verified": "Проверен",
+            "overdue": "Просрочен",
+            "expired": "Истёк",
+            "missing": "Отсутствует",
+            "uploaded": "Загружен",
+            "completed": "Завершён",
+            "delivered": "Доставлен"
+          }
+        },
+        "charts": {
+          "outcomes_title": "Структура исходов",
+          "outcomes_hint": "Отклонён компанией · отказался кандидат · ещё в работе",
+          "outcome_rejected": "Отклонён",
+          "outcome_declined": "Отказался",
+          "outcome_in_progress": "В работе"
+        },
+        "contact": {
+          "title": "Контактная метрика",
+          "subtitle": "Получено → попытки связи → дозвонились → итог. По попыткам контакта в CRM (те же фильтры).",
+          "received": "Получено",
+          "attempted": "Была попытка",
+          "reached": "Дозвонились",
+          "untouched": "Без попыток",
+          "attempts_total": "Всего попыток",
+          "funnel_received": "Получено",
+          "funnel_attempted": "Попытка",
+          "funnel_reached": "Дозвон",
+          "funnel_closed": "Закрыто",
+          "funnel_hint": "Среднее попыток на кандидата: {avg} · лимит (≥3): {limit}",
+          "empty": "Попыток контакта в срезе нет.",
+          "stage_now": "Сейчас на этапах: контакт {contacted} · не отвечает {noAnswer}",
+          "results": {
+            "answered": "Ответил",
+            "no_answer": "Не отвечает",
+            "wrong_number": "Неверный номер",
+            "unavailable": "Недоступен",
+            "callback_requested": "Перезвонить",
+            "interested": "Заинтересован",
+            "not_interested": "Не заинтересован"
+          }
+        }
+      },
+      "tabs": {
+        "aria": "Модули аналитики",
+        "summary": "Сводка",
+        "general": "Сводка",
+        "recruitment": "Рекрутинг",
+        "sales": "Продажи",
+        "hr": "HR",
+        "finance": "Финансы",
+        "fleet": "Флот"
+      },
+      "summary": {
+        "title": "Сводка",
+        "subtitle": "Системная аналитика HostFlow. Откройте вкладку модуля для детальных срезов.",
+        "body": "Этот хост собирает данные из подключённых модулей и показывает их в человекочитаемом виде. Каждый таб — свой модуль со своими метриками, не копией соседнего.",
+        "bullets": {
+          "modules": "Вкладки появляются только для купленных и доступных модулей.",
+          "filters": "В каждом модуле — свои диапазоны и срезы (период, клиент, вакансия где нужно).",
+          "owned": "Рекрутинг ≠ продажи ≠ HR: воронки и KPI принадлежат модулю."
+        },
+        "pulse_title": "Операционный пульс",
+        "window_30d": "окно 30 дней",
+        "business_type": {
+          "agency": "Агентство",
+          "employer": "Работодатель",
+          "services": "Услуги"
+        },
+        "modules": {
+          "recruitment": "Рекрутинг",
+          "sales": "Продажи",
+          "hr_finance": "HR / Финансы"
+        },
+        "kpis": {
+          "pipeline": "В пайплайне",
+          "stuck": "Застряли",
+          "active_today": "Активны сегодня",
+          "open_vacancies": "Открытые вакансии",
+          "candidates": "Кандидаты",
+          "vacancies_active": "Активные вакансии",
+          "on_open_vacancies": "На открытых вакансиях",
+          "leads": "Лиды / обращения",
+          "leads_overdue": "Лиды просрочены",
+          "open_orders": "Открытые заказы",
+          "handoff_requested": "Handoff запрошено",
+          "handoff_accepted": "Handoff принято",
+          "orders_30d": "Заказы (30д)"
+        }
+      },
+      "sales": {
+        "title": "Эффективность продаж",
+        "subtitle": "Обращения → квалификация → win/lost и коммерческие заказы. Не воронка кандидатов.",
+        "stats": {
+          "inquiries": "Обращения (когорта)",
+          "win_path": "На win-path",
+          "lost": "Lost",
+          "new_untouched": "Новые / не тронуты"
+        },
+        "funnel_title": "Воронка обращений",
+        "funnel_subtitle": "Корни конверсии lead → qualified → active → final (+ lost).",
+        "funnel_stages": {
+          "lead": "Lead",
+          "qualified": "Qualified",
+          "active": "Active",
+          "final": "Final",
+          "lost": "Lost"
+        },
+        "lost_title": "Причины lost",
+        "lost_subtitle": "Почему обращения закрылись без win.",
+        "lost_empty": "Нет lost-причин в срезе.",
+        "lost_reasons": {},
+        "orders_title": "Заказы / услуги",
+        "orders_subtitle": "Коммерческий срез за выбранный период.",
+        "orders_total": "Заказов",
+        "orders_delivered": "Доставлено",
+        "orders_cancelled": "Отменено",
+        "orders_revenue": "Выручка",
+        "orders_status_title": "Статусы заказов",
+        "order_status": {},
+        "filters": {
+          "source": "Источник",
+          "source_placeholder": "meta, csv…",
+          "vacancy": "Вакансия",
+          "vacancy_all": "Все вакансии"
+        }
+      },
+      "hr": {
+        "title": "Эффективность HR",
+        "subtitle": "Handoff: запрошено → принято / возвращено / отклонено.",
+        "flow_title": "Поток handoff",
+        "flow_subtitle": "Только HR-передача, не этапы рекрутинга.",
+        "by_client_title": "По клиентам",
+        "by_client_subtitle": "Принято / запрошено (топ).",
+        "flow": {
+          "requested": "Запрошено",
+          "accepted": "Принято",
+          "returned": "Возвращено",
+          "rejected": "Отклонено"
+        }
+      },
+      "finance": {
+        "title": "Эффективность финансов",
+        "subtitle": "Счета и маржа за период — не sales-воронка.",
+        "margin_title": "Выручка и маржа",
+        "margin_subtitle": "По связанным заказам/услугам в периоде.",
+        "stats": {
+          "invoiced": "Выставлено",
+          "paid": "Оплачено",
+          "outstanding": "К оплате",
+          "overdue": "Просрочено",
+          "revenue": "Выручка",
+          "cost": "Себестоимость",
+          "profit": "Валовая прибыль",
+          "margin": "Маржа"
+        }
+      },
+      "fleet": {
+        "title": "Флот",
+        "subtitle": "Парк, линии и назначения. Полный модуль — в разделе Флот.",
+        "open_module": "Открыть Флот",
+        "module_hint": "Модуль флота отвечает, но статус не подтверждён.",
+        "kpis": {
+          "vehicles": "ТС",
+          "trailers": "Прицепы",
+          "drivers": "Водители",
+          "lines": "Линии",
+          "assignments": "Назначения",
+          "assignments_today": "Назначения сегодня (UTC)",
+          "assignments_month": "Назначения в месяце (UTC)"
+        }
       }
     },
     "candidate_card": {
@@ -5274,7 +5706,9 @@
         "ok": "Хорошо",
         "open": "Открыть",
         "problematic": "Проблемный",
-        "title": "Чеклист документов"
+        "title": "Чеклист документов",
+        "blockers": "Blockers",
+        "warnings": "Warnings"
       },
       "docs_panel": {
         "kpi": "КПЭ",
@@ -5283,7 +5717,8 @@
           "blockers": "Блокаторы",
           "workspace": "Рабочая область"
         },
-        "title": "Документы"
+        "title": "Документы",
+        "runtime_kpi": "{ready}/{total} satisfied · {problem} blockers · {percent}%"
       },
       "docs_readiness": {
         "counts": "имеет значение",
@@ -5292,7 +5727,8 @@
         "open": "Открыть",
         "problem": "Проблема",
         "ready": "Готовый",
-        "title": "Готовность документов"
+        "title": "Готовность документов",
+        "required": "Required"
       },
       "docs_workspace": {
         "hint": "Намекать",
@@ -5313,7 +5749,8 @@
         },
         "title": "Документы",
         "upload_btn": "Загрузить",
-        "what_blocks_title": "Что блокирует этого кандидата"
+        "what_blocks_title": "Что блокирует этого кандидата",
+        "runtime_kpi": "{ready}/{total} satisfied · {percent}%"
       },
       "stage_blocked_by_docs": {
         "description": "Чтобы перейти дальше, закройте обязательные отсутствующие или проблемные документы.",
@@ -5469,7 +5906,8 @@
         "vacancy_required_chip": "Вакансия / клиент",
         "no_blockers": "Нет блокеров",
         "required": "Обязательно",
-        "title": "Этап"
+        "title": "Этап",
+        "blocked_title_requirements": "Blocked by unconfirmed requirements"
       },
       "stage_journey": {
         "change_to": "Изменить на",
@@ -5498,6 +5936,10 @@
         "open_inbox": "Открыть входящие сообщений",
         "loading_dialogs": "Загрузка диалогов...",
         "empty_dialogs": "Связанных диалогов пока нет. Откройте Messages и привяжите кандидата в заголовке диалога."
+      },
+      "stage_blocked_by_requirements": {
+        "title": "Blocked by requirements",
+        "description_generic": "Confirm all requirements before moving forward."
       }
     },
     "fleet": {
@@ -5792,13 +6234,13 @@
         "click_to_sort": "Нажмите, чтобы отсортировать",
         "deselect": "Отменить выбор",
         "deselect_all": "Отменить выбор всех",
-        "empty_cta_leads": "Пустые лиды с призывом к действию",
-        "empty_cta_pipeline": "Пустой конвейер CTA",
-        "empty_cta_reset": "Пустой сброс призыва к действию",
-        "empty_no_data_desc": "Пусто, нет описания данных",
+        "empty_cta_leads": "Открыть лиды",
+        "empty_cta_pipeline": "Открыть пайплайн",
+        "empty_cta_reset": "Сбросить фильтры",
+        "empty_no_data_desc": "Кандидаты появляются после квалификации лида. Откройте лиды, свяжитесь и переведите сюда.",
         "empty_partial": "Пустой частичный",
-        "empty_title": "Пустой заголовок",
-        "empty_with_filters_desc": "Пустой с описанием фильтров",
+        "empty_title": "Кандидатов пока нет",
+        "empty_with_filters_desc": "По фильтрам никого нет. Сбросьте фильтры, чтобы увидеть всех.",
         "loading_hint": "Подсказка по загрузке",
         "masked_label": "Маскированная этикетка",
         "masked_label_short_id": "Короткий идентификатор маскируемой метки",
@@ -5814,7 +6256,9 @@
         "select_all": "Выбрать все",
         "select_candidate": "Выберите кандидата",
         "sort_by": "Сортировать по",
-        "updating": "Обновление"
+        "updating": "Обновление",
+        "empty_why": "Это ваш список найма — люди, с которыми вы работаете до выхода.",
+        "empty_cta_vacancy": "Создать вакансию"
       },
       "bulk": {
         "selected": "Выбрано: {count}",
@@ -5912,14 +6356,16 @@
         "error_load": "Не удалось загрузить пайплайн",
         "error_update_stage": "Не удалось обновить этап кандидата",
         "error_update_stages": "Не удалось обновить этапы для части кандидатов",
-        "column_empty_cta_candidates": "Пустой столбец кандидатов с призывом к действию",
-        "column_empty_desc": "Столбец пустое описание",
-        "column_empty_title": "Пустой заголовок столбца",
-        "empty_cta_candidates": "Пустые кандидаты CTA",
-        "empty_cta_leads": "Пустые лиды с призывом к действию",
-        "empty_desc": "Пустое описание",
-        "empty_title": "Пустой заголовок",
-        "view_in_list": "Посмотреть в списке"
+        "column_empty_cta_candidates": "Открыть список",
+        "column_empty_desc": "Перенесите кандидата сюда, когда дойдёт до шага — или откройте список.",
+        "column_empty_title": "На этом этапе никого",
+        "empty_cta_candidates": "Открыть кандидатов",
+        "empty_cta_leads": "Открыть лиды",
+        "empty_desc": "Переведите лид в кандидата — затем двигайте по этапам, пока вакансия не закроется.",
+        "empty_title": "В пайплайне пока никого",
+        "view_in_list": "Посмотреть в списке",
+        "empty_why": "Пайплайн показывает, кто застрял и что делать дальше. Начните с лидов.",
+        "empty_cta_vacancy": "Создать вакансию"
       },
       "menu": {
         "open": "Открыть меню",
@@ -6214,12 +6660,13 @@
         "empty": "Пока нет напоминаний.",
         "badge_direct": "вам",
         "badge_new": "новое",
-        "empty_cta_create": "Создать напоминание",
+        "empty_cta_create": "Добавить follow-up",
         "empty_cta_leads": "Открыть лиды",
-        "empty_desc": "Создайте первое напоминание, чтобы не терять follow-up по лидам.",
-        "empty_title": "Пока нет напоминаний",
+        "empty_desc": "Свяжитесь с лидом — следующий шаг появится здесь, чтобы заявка не зависла.",
+        "empty_title": "Пока нет follow-up",
         "events_empty": "Пока нет событий.",
-        "unread": "Непрочитано"
+        "unread": "Непрочитано",
+        "empty_why": "Это ваша очередь контактов после первой заявки."
       },
       "errors": {
         "load": "Не удалось загрузить напоминания",
@@ -6403,6 +6850,31 @@
           "hint": "Создать задачу по этому лиду (например, перезвонить завтра).",
           "default_title": "Связаться с лидом"
         },
+        "call_result": {
+          "kicker": "Обращение",
+          "title": "Результат звонка",
+          "subtitle": "Перезвонить или что ещё хотят / думают — зафиксируйте после разговора.",
+          "save": "Сохранить результат звонка",
+          "saved": "Результат звонка сохранён",
+          "save_failed": "Не удалось сохранить результат звонка",
+          "history_title": "История звонков",
+          "results": {
+            "no_answer": "Не ответил",
+            "answered": "Ответил",
+            "callback_requested": "Перезвонить",
+            "interested": "Заинтересован",
+            "not_interested": "Не заинтересован",
+            "wrong_number": "Неверный номер",
+            "unavailable": "Недоступен"
+          },
+          "fields": {
+            "result": "Результат",
+            "note": "Комментарий к результату",
+            "note_recommended": "желательно",
+            "note_placeholder": "Например: перезвонить завтра в 15:00, спрашивает про ставку, думает…",
+            "note_hint": "Что хотят или думают: перезвонить, условия, сомнения, следующий шаг."
+          }
+        },
         "lost_reason_title": "Причина потери",
         "qualification_summary": {
           "title": "Сводка квалификации",
@@ -6499,11 +6971,14 @@
       "states": {
         "empty": "Лиды не найдены.",
         "empty_cta_clients": "Открыть клиентов",
-        "empty_cta_connect": "Подключить источники",
-        "empty_desc": "Подключите рекламные источники или импортируйте лиды, чтобы начать маршрутизацию и назначение.",
-        "empty_desc_services": "Подключите источники лидов или добавьте первого клиента, чтобы вести продажи услуг и follow-up.",
-        "empty_title": "Пока нет лидов",
-        "empty_title_services": "Пока нет клиентских лидов"
+        "empty_cta_connect": "Подключить рекламу",
+        "empty_desc": "Создайте вакансию и подключите рекламу Facebook / Meta — заявки появятся здесь сами.",
+        "empty_desc_services": "Подключите источник или добавьте клиента — обращения попадут сюда.",
+        "empty_title": "Заявок пока нет",
+        "empty_title_services": "Обращений пока нет",
+        "empty_why": "Отсюда начинается найм. Дальше — связаться с человеком и перевести в кандидаты.",
+        "empty_cta_vacancy": "Создать вакансию",
+        "empty_cta_setup": "К старту"
       },
       "messages": {
         "load_failed": "Не удалось загрузить лиды.",
@@ -6781,7 +7256,7 @@
           "needs_routing": "Выбор вакансии",
           "new": "Новый",
           "awaiting_convert": "К обработке",
-          "client_lead": "Анкета клиента",
+          "client_lead": "Обращение",
           "client_converted": "Клиент создан",
           "duplicated": "Дубликат",
           "other": "—"
@@ -7002,7 +7477,7 @@
         "lost_from_filter_banner": "Потеря с CRM-стадии: {stage}",
         "lost_from_stage_unknown": "Предыдущая стадия неизвестна"
       },
-      "title_services": "Клиентские лиды",
+      "title_services": "Обращения",
       "workspace": {
         "distribution_cta": "Автораспределение",
         "view_table": "Таблица",
@@ -7537,6 +8012,7 @@
       },
       "email": {
         "dispatch_failed": "Письмо в очереди, но отправка не удалась.",
+        "dispatch_failed_reason": "Отправка заблокирована: {reason}",
         "incoming_disabled_title": "Серверная синхронизация входящей почты выключена",
         "incoming_disabled_body_inbox": "Новая почта подтягивается при открытии входящих (область email) или по кнопке «Синхронизировать», если не включена фоновая синхронизация.",
         "incoming_enable_cta": "Включить фоновую синхронизацию",
@@ -8270,6 +8746,68 @@
         "title": "Три шага к работе",
         "wayfinding_title": "Где работать в CRM",
         "wayfinding_nav_label": "Переход к дашборду, рабочему центру, inbox, спискам и настройкам"
+      },
+      "success_path": {
+        "loading": "Готовим следующий шаг…",
+        "badge": "Результат",
+        "title": "Закрывайте вакансии быстрее — начните здесь",
+        "subtitle": "Один шаг за раз — до первой заявки и первого контакта с кандидатом.",
+        "progress": "Готово {done} из {total}",
+        "list_aria": "Чек-лист Success Path",
+        "optional": "необязательно",
+        "deferred": "позже",
+        "open": "Открыть",
+        "continue": "Продолжить",
+        "next_title": "Сделайте сейчас",
+        "defer_meta": "Пока пропустить",
+        "complete": "База готова — продолжайте найм из Launchpad.",
+        "page_title": "Начать найм",
+        "page_subtitle": "Сделайте следующий шаг. Дойдите до первого кандидата без поддержки.",
+        "hub_badge": "Success path",
+        "hub_footer": "Закройте шаг выше — сейчас больше ничего не нужно.",
+        "items": {
+          "company": {
+            "label": "Создать компанию",
+            "hint": "Укажите название и профиль — рабочая идентичность workspace.",
+            "cta": "Создать компанию"
+          },
+          "invite": {
+            "label": "Пригласить коллег",
+            "hint": "Пригласите рекрутеров, когда будете готовы — можно позже.",
+            "cta": "Пригласить коллег"
+          },
+          "meta": {
+            "label": "Подключить рекламу Facebook / Meta",
+            "hint": "Чтобы заявки с объявлений попадали в HostFlow автоматически.",
+            "cta": "Подключить рекламу"
+          },
+          "vacancy": {
+            "label": "Создать первую вакансию",
+            "hint": "Откройте роль, на которую нанимаете — около 30 секунд.",
+            "cta": "Создать вакансию"
+          },
+          "lead": {
+            "label": "Получить первую заявку",
+            "hint": "Первая заявка в inbox из Meta, формы или вручную.",
+            "cta": "Открыть лиды"
+          },
+          "contact": {
+            "label": "Связаться с кандидатом",
+            "hint": "Сделайте следующий шаг по лиду — чтобы заявка не зависла.",
+            "cta": "Открыть лиды"
+          }
+        },
+        "title_done": "Можно закрывать вакансии из системы",
+        "subtitle_done": "База готова. Двигайте кандидатов по пайплайну.",
+        "checklist_title": "Прогресс",
+        "result_ready_title": "Можно нанимать",
+        "result_ready_body": "Компания, вакансия и процесс на месте. Откройте Launchpad и ведите кандидатов.",
+        "go_work": "К работе",
+        "go_vacancies": "Открыть вакансии"
+      },
+      "setup_status": {
+        "technical_gates_summary": "Технические gates Recruitment (advanced)",
+        "technical_gates_hint": "Операционный health check G0–G8 — опционально для админов."
       }
     },
     "reset_password": {
@@ -8293,6 +8831,186 @@
         "docs_base": "Docs Base (только чтение)",
         "tenant_id": "Tenant ID",
         "tenant_placeholder": "UUID тенанта"
+      }
+    },
+    "surfaces": {
+      "blocker": {
+        "title": "What is blocking progress",
+        "hr_review_title": "HR review blockers"
+      },
+      "readiness": {
+        "title": "Readiness",
+        "decision_title": "Before approval"
+      },
+      "document_status": {
+        "missing": "Missing",
+        "pending": "Pending",
+        "verified": "Verified",
+        "expiring": "Expiring",
+        "rejected": "Rejected",
+        "in_review": "In review"
+      }
+    },
+    "notification_alerts": {
+      "title": "Notification Center",
+      "subtitle": "Open document expiry alerts from the platform event registry. Read-only — no outbound messages.",
+      "list_title": "Open alerts ({count})",
+      "empty": "No alerts match the current filters.",
+      "detail_empty": "Select an alert to view details.",
+      "expires_on": "Expires on {{date}}",
+      "errors": {
+        "load": "Failed to load notification alerts",
+        "status": "Failed to update alert status",
+        "sync": "Failed to sync document expiry alerts"
+      },
+      "sync": {
+        "success": "Expiry alerts synced",
+        "summary": "Sync complete — created {{created}}, updated {{updated}}, skipped {{skipped}}"
+      },
+      "toast": {
+        "resolved": "Alert marked as resolved",
+        "ignored": "Alert marked as ignored"
+      },
+      "filters": {
+        "event_type": "Event type",
+        "event_type_all": "All expiry events",
+        "event_type_expired": "Expired documents",
+        "event_type_expiring_soon": "Expiring soon",
+        "source_layer": "Source",
+        "source_document_expiry": "Document expiry notifications",
+        "source_all": "All sources",
+        "status": {
+          "open": "Open",
+          "resolved": "Resolved",
+          "ignored": "Ignored"
+        }
+      },
+      "event_code": {
+        "document_expired": "Document expired",
+        "document_expiring_soon": "Document expiring soon"
+      },
+      "severity": {
+        "critical": "Critical",
+        "warning": "Warning"
+      },
+      "detail": {
+        "document_type": "Document type",
+        "owner": "Owner",
+        "expires_on": "Expires on",
+        "source_layer": "Source layer"
+      },
+      "actions": {
+        "mark_resolved": "Mark resolved",
+        "mark_ignored": "Mark ignored",
+        "open_owner": "Open owner profile",
+        "sync_now": "Sync now"
+      }
+    },
+    "sales_questionnaire": {
+      "attribution_title": "Атрибуция ответа",
+      "attribution_hint": "Откуда пришёл ответ и как он был прикреплён.",
+      "attribution": {
+        "form": "Форма",
+        "version": "Опубликованная версия",
+        "source": "Источник",
+        "publication": "Публикация",
+        "submitted_at": "Отправлено",
+        "submission": "Ответ",
+        "attach_mode": "Режим прикрепления",
+        "profile": "Профиль сущности",
+        "purpose": "Назначение",
+        "presentation": "Презентация",
+        "invite": "Приглашение",
+        "behavior": "Маршрутизация ответа",
+        "entry": {
+          "questionnaire_invite": "Персональное приглашение к анкете",
+          "public_form": "Публичная форма"
+        },
+        "policy": {
+          "attach": "Добавлено к этой заявке",
+          "create": "Создана новая заявка",
+          "match_or_create": "Найдена или создана заявка",
+          "review": "Отправлено в очередь проверки"
+        }
+      }
+    },
+    "marketing": {
+      "sources": {
+        "title": "Sources",
+        "subtitle": "Подключённые источники, Mapping Health, ожидающие заявки и последние события.",
+        "none": "—",
+        "empty_title": "Пока нет источников",
+        "empty_body": "Подключите Meta в Integrations или привяжите intake source — они появятся здесь.",
+        "columns": {
+          "source": "Source",
+          "provider": "Provider",
+          "connection": "Connection",
+          "mapping_health": "Mapping Health",
+          "last_lead": "Последняя заявка",
+          "waiting": "Ожидают",
+          "routing_issue": "Проблема маршрута",
+          "last_error": "Последняя ошибка",
+          "campaigns_flights": "Campaigns / Flights",
+          "actions": "Действия"
+        },
+        "connection": {
+          "connected": "Connected",
+          "attention": "Attention",
+          "disconnected": "Disconnected"
+        },
+        "health": {
+          "ready": "Ready",
+          "needs_review": "Needs review",
+          "broken": "Broken"
+        },
+        "routing_issue": {
+          "missing_campaign_flight": "Campaign/Flight для этого Ad ID не настроены."
+        },
+        "actions": {
+          "integrations": "Integrations",
+          "connect": "Открыть Integrations",
+          "mapping": "Mapping",
+          "test_lead": "Test lead",
+          "connection": "Connection",
+          "setup_campaign_flight": "Настроить Campaign/Flight"
+        },
+        "errors": {
+          "load": "Не удалось загрузить источники"
+        }
+      }
+    },
+    "context_help": {
+      "open_aria": "Что такое {term}?",
+      "more_faq": "Ещё в FAQ",
+      "terms": {
+        "vacancy": {
+          "title": "Вакансия",
+          "body": "Роль, на которую нанимаете. К ней крепятся лиды и кандидаты — ответственность и документы."
+        },
+        "lead": {
+          "title": "Лид",
+          "body": "Входящая заявка до перевода в кандидата, с которым вы активно работаете."
+        },
+        "candidate": {
+          "title": "Кандидат",
+          "body": "Человек в пайплайне найма — этапы, документы, владелец и следующий шаг до выхода."
+        },
+        "order": {
+          "title": "Заказ",
+          "body": "Коммерческий запрос клиента (кого нанять). Вакансии могут идти от строк заказа."
+        },
+        "flight": {
+          "title": "Flight",
+          "body": "Временной срез выполнения acquisition-кампании (запуск рекламы) под спрос найма."
+        },
+        "campaign": {
+          "title": "Кампания",
+          "body": "План привлечения: группирует flights и источники, откуда лиды попадают в HostFlow."
+        },
+        "meta": {
+          "title": "Реклама Meta",
+          "body": "Формы и объявления Facebook/Instagram — заявки автоматически попадают в inbox."
+        }
       }
     }
   },
@@ -8318,7 +9036,8 @@
           "document_control": "Контроль документов",
           "high_volume_onboarding": "Массовый онбординг",
           "hostflow_vs_spreadsheets": "HostFlow vs таблицы",
-          "trucking_recruitment_use_case": "Кейс: рекрутинг водителей"
+          "trucking_recruitment_use_case": "Кейс: рекрутинг водителей",
+          "faq": "FAQ"
         }
       },
       "comparison_hostflow_vs_spreadsheets": {
@@ -9476,6 +10195,14 @@
         "next_step": "Следующий шаг",
         "next_step_hint": "Мы подсказали, куда перейти в первую очередь.",
         "start_step": "Перейти"
+      },
+      "presentation": {
+        "fields": {
+          "recruitment.candidate.first_name": "Имя"
+        },
+        "profiles": {
+          "recruitment.candidate.office_worker": "Офисный сотрудник"
+        }
       }
     },
     "status_page": {
@@ -9621,12 +10348,12 @@
         "q2": "Можно ли пригласить команду позже?",
         "q3": "Что если выбрали не тот план?",
         "title": "FAQ",
-        "launch_q": "Сколько времени нужно на запуск?",
-        "launch_a": "10–30 минут: пространство, компания, первый кандидат или лид.",
-        "training_q": "Нужно ли обучение?",
-        "training_a": "Нет — интерфейс заточен под ежедневную работу рекрутера; подсказки встроены в поток.",
-        "processes_q": "Подходит ли для разных процессов?",
-        "processes_a": "Да: этапы, роли и воронки настраиваются под ваш найм."
+        "launch_q": "Как начать без поддержки?",
+        "launch_a": "Регистрация → мастер компании → Meta (или отложить) → первая вакансия. Чек-лист показывает следующий шаг.",
+        "training_q": "Нужно ли обучение или онбординг-звонок?",
+        "training_a": "Для основного пути — нет. Мастер и чек-лист доводят до первой ценности; FAQ и документация — углубление позже.",
+        "processes_q": "Что будет с данными при смене тарифа?",
+        "processes_a": "Workspace остаётся. Лимиты и модули следуют матрице тарифов — апгрейд открывает места, автоматизацию и порталы."
       },
       "final_cta": {
         "button": "Создать рабочее пространство",
@@ -9682,31 +10409,37 @@
         "closing": "Результат появляется уже в первые дни."
       },
       "how": {
-        "badge": "Процесс",
-        "title": "Как выглядит работа в системе",
+        "badge": "Как это работает",
+        "title": "Понятная система за одну минуту",
         "step_label": "Шаг {n}",
         "steps": {
           "0": {
-            "title": "Добавляете кандидата или получаете лид",
-            "caption": "Добавление кандидата / лид-форма — единая точка входа.",
+            "title": "Создали компанию",
+            "caption": "Название, страна и модель найма — ваш рабочий профиль.",
             "screenshot_src": "/landing/step-lead.svg"
           },
           "1": {
-            "title": "Назначаете статус и следующий шаг",
-            "caption": "Pipeline и этапы: что сделано и что дальше.",
+            "title": "Подключили Meta",
+            "caption": "Связали рекламу и формы — заявки приходят сами.",
             "screenshot_src": "/landing/step-pipeline.svg"
           },
           "2": {
-            "title": "Система фиксирует процесс и напоминает",
-            "caption": "Задачи и напоминания — ничего не «выпадает» из головы.",
+            "title": "Создали вакансию",
+            "caption": "Открыли роль и настроили путь кандидата.",
             "screenshot_src": "/landing/step-tasks.svg"
           },
           "3": {
-            "title": "Вы видите, кто застрял и где проблема",
-            "caption": "Обзор и аналитика: узкие места на виду.",
+            "title": "Получаете заявки",
+            "caption": "Лиды в пайплайне с владельцем — не в общем чате.",
             "screenshot_src": "/landing/step-analytics.svg"
+          },
+          "4": {
+            "title": "Обрабатываете кандидатов",
+            "caption": "Этапы, документы и следующие шаги — до закрытия вакансии.",
+            "screenshot_src": "/landing/hero.svg"
           }
-        }
+        },
+        "lead": "Пять шагов от пустого кабинета до обработки реальных заявок."
       },
       "pain": {
         "badge": "Боль",
@@ -9773,20 +10506,38 @@
         "footer": "Система не даёт процессу развалиться."
       },
       "hero": {
-        "badge": "CRM для операций найма",
-        "primary_cta": "Создать рабочее пространство",
-        "secondary_cta": "Уже есть аккаунт? Войти",
-        "subtitle": "Без потерь кандидатов, хаоса и ручного контроля. Вся команда, процессы и документы — в одной системе.",
-        "title": "Контролируйте найм от первого лида до выхода сотрудника",
+        "badge": "Платформа операционного найма",
+        "primary_cta": "Начать настройку",
+        "secondary_cta": "Войти",
+        "subtitle": "HostFlow автоматически собирает кандидатов из Meta, WhatsApp и форм, распределяет их между рекрутерами и контролирует процесс найма.",
+        "title": "Закройте вакансии быстрее",
         "bullets": {
-          "0": "Ни один кандидат не теряется",
-          "1": "Понятно, кто за что отвечает",
-          "2": "Вы видите, где застревает процесс",
-          "3": "Документы и этапы под контролем"
+          "0": "Заявки попадают в один управляемый пайплайн",
+          "1": "У каждого кандидата есть ответственный",
+          "2": "Документы и этапы всегда видны",
+          "3": "Меньше хаоса между рекламой, чатами и таблицами"
         },
-        "cta_subline": "Первый кандидат в системе — через 2 минуты",
-        "screenshot_caption": "Основной экран: pipeline и кандидаты — сразу ощущение контроля.",
-        "screenshot_src": "/landing/hero.svg"
+        "cta_subline": "Самостоятельный старт — первая вакансия за минуты, без звонка в поддержку",
+        "screenshot_caption": "Пайплайн и кандидаты — контроль найма на одном экране.",
+        "screenshot_src": "/landing/hero.svg",
+        "answers": {
+          "what": {
+            "label": "Что это",
+            "body": "Операционная система найма от лида до выхода — не «ещё одна CRM со списком функций»."
+          },
+          "who": {
+            "label": "Для кого",
+            "body": "Агентства и работодатели с реальным потоком кандидатов из рекламы, WhatsApp и форм."
+          },
+          "get": {
+            "label": "Что получите",
+            "body": "Управляемый пайплайн, авто-сбор заявок, контроль документов и видимые узкие места."
+          },
+          "why": {
+            "label": "Почему HostFlow",
+            "body": "Собран под Meta → вакансия → работа рекрутера — чтобы кандидаты не терялись между инструментами."
+          }
+        }
       },
       "objections": {
         "0": "Слишком много настроек до начала работы.",
@@ -9797,7 +10548,7 @@
       "pricing": {
         "badge": "Тарифы",
         "contact_sales_cta": "Связаться с отделом продаж",
-        "note": "Цены в EUR. Пробный период до оплаты; оплата подключается к запуску (см. Условия / Биллинг).",
+        "note": "Цены в EUR. Лимиты и модули — по актуальной матрице тарифов. Trial при регистрации; после Trial — выбранный платный план.",
         "featured_badge": "Основной",
         "enterprise": {
           "name": "Enterprise",
@@ -9844,7 +10595,30 @@
           "price": "€129/мес · €109/мес при годовой оплате",
           "seats": "До 3 пользователей · 1 пространство"
         },
-        "title": "Выберите план под команду"
+        "title": "Выберите план под команду",
+        "clarity": {
+          "includes_title": "Что входит",
+          "excludes_title": "Что не входит / ограничено",
+          "limits_title": "Лимиты",
+          "after_trial_title": "После Trial",
+          "includes": {
+            "0": "Пайплайн лидов/кандидатов и ответственность",
+            "1": "Вакансии и статусы документов",
+            "2": "Meta / формы на подходящих тарифах",
+            "3": "Места в команде по тарифу (Solo → Business)"
+          },
+          "excludes": {
+            "0": "SSO / кастомный SLA (только Enterprise)",
+            "1": "Счета и multi-workspace глубина (Business+)",
+            "2": "Полная автоматизация на Solo (только assisted)"
+          },
+          "limits": {
+            "0": "Solo: 1 пользователь, 1 workspace, ~200 лидов/мес, 5 открытых вакансий",
+            "1": "Team: до 3 пользователей, 1 workspace, выше квоты лидов",
+            "2": "Business: до 10 пользователей, до 3 workspace"
+          },
+          "after_trial": "На Trial действуют сниженные капы. После окончания выбираете Solo / Team / Business или Enterprise через sales. Данные workspace сохраняются; доступные функции — по тарифу."
+        }
       }
     },
     "documents_upload": {
@@ -9930,6 +10704,23 @@
     },
     "locale_switcher": {
       "label": "Язык"
+    },
+    "faq": {
+      "badge": "Справка",
+      "title": "Частые вопросы",
+      "subtitle": "От регистрации до первого найма — ответы, чтобы двигаться без ожидания поддержки.",
+      "cta_signup": "Начать настройку",
+      "cta_pricing": "Тарифы",
+      "search_label": "Поиск по FAQ",
+      "search_placeholder": "Найти вопрос…",
+      "sections_aria": "Разделы FAQ",
+      "no_results": "Ничего не найдено по запросу.",
+      "still_title": "Готовы попробовать?",
+      "still_body": "Создайте workspace и сделайте один следующий шаг на экране.",
+      "seo": {
+        "title": "FAQ HostFlow — старт, Meta, рекрутинг, биллинг",
+        "description": "Ответы по старту, Meta, WhatsApp, вакансиям, документам, биллингу, безопасности и API — без ожидания поддержки."
+      }
     }
   },
   "admin": {
@@ -10357,6 +11148,18 @@
       },
       "template": {
         "select": "Выбирать"
+      },
+      "runtime_badges": {
+        "expiring_soon": "Expiring soon",
+        "satisfies_requirement": "Satisfies requirement"
+      },
+      "runtime_filters": {
+        "expired": "Expired",
+        "expiring_soon": "Expiring soon",
+        "missing": "Missing",
+        "pending_review": "Pending review",
+        "rejected": "Rejected",
+        "satisfied": "Satisfied"
       }
     },
     "integrations_hub": {
@@ -11037,6 +11840,14 @@
           "label": "SLA коммуникаций",
           "description": "Эскалация, если на диалоги долго нет ответа."
         },
+        "communications_templates": {
+          "label": "Шаблоны коммуникаций",
+          "description": "Версионированные тексты, привязанные к Intent (publish/preview/история). Не сниппеты мессенджеров и не письма лидов."
+        },
+        "communications_automation": {
+          "label": "Автоматизация коммуникаций",
+          "description": "Event → Rules → Intent. Не legacy-напоминания и не путь отправки."
+        },
         "audit": {
           "label": "Аудит-лог",
           "description": "Очередь удалений и события аудита."
@@ -11052,6 +11863,10 @@
         "profile": {
           "description": "Личный профиль, язык, безопасность и локальные настройки.",
           "label": "Мой профиль"
+        },
+        "roles_access": {
+          "label": "Роли и доступы",
+          "description": "Trust-роли, матрица модулей и пресеты прав для Employee и Viewer."
         }
       },
       "audit": {
@@ -11118,6 +11933,18 @@
           "description": "Профиль компании, идентичность воркспейса и общий контур доступа.",
           "label": "Рабочее пространство"
         }
+      },
+      "roles_access": {
+        "title": "Роли и доступы",
+        "description": "Trust-роли и видимость модулей. Должности — пресеты, не отдельные security-роли (ADR-036).",
+        "matrix_heading": "Матрица роль × модуль",
+        "matrix_help": "V = видно, E = редактирование. Колонка Administrator заблокирована (trust ceiling).",
+        "show_legacy": "Показать legacy-колонки ролей",
+        "ceiling_locked": "(заблокировано)",
+        "presets_title": "Пресеты (не роли)",
+        "presets_body": "Recruiter, Team lead, HR, Compliance — стартовые пакеты для Employee. Гости портала — Viewer + portal context, не client_manager.",
+        "load_failed": "Не удалось загрузить матрицу",
+        "save_failed": "Не удалось сохранить"
       }
     },
     "communications_settings": {
@@ -11131,7 +11958,9 @@
       "messengers_templates_cta": "Шаблоны и все аккаунты",
       "open_email": "Исходящий SMTP",
       "open_queue": "Очередь inbox и маршрутизация",
-      "open_sla": "SLA коммуникаций"
+      "open_sla": "SLA коммуникаций",
+      "open_templates": "Шаблоны коммуникаций",
+      "open_automation": "Автоматизация коммуникаций"
     },
     "communications_messengers": {
       "title": "Каналы мессенджеров",
@@ -11336,6 +12165,78 @@
         "assignee": "Исполнитель"
       }
     },
+    "communications_automation": {
+      "title": "Автоматизация коммуникаций",
+      "subtitle": "Event → Rules → Intent. Не legacy-напоминания и не путь отправки.",
+      "header_kicker": "автоматизация",
+      "include_archived": "Показать архивные",
+      "list_title": "Правила",
+      "empty": "Правил автоматизации пока нет.",
+      "select_prompt": "Выберите или создайте правило.",
+      "create": {
+        "submit": "Создать draft"
+      },
+      "actions": {
+        "back": "← Админка коммуникаций",
+        "templates": "Шаблоны коммуникаций"
+      },
+      "notices": {
+        "created": "Правило создано",
+        "draft_saved": "Draft сохранён",
+        "published": "Опубликовано",
+        "archived": "Архивировано"
+      },
+      "errors": {
+        "load": "Не удалось загрузить правила автоматизации",
+        "history": "Не удалось загрузить историю",
+        "create": "Не удалось создать правило",
+        "save_draft": "Не удалось сохранить draft",
+        "publish": "Не удалось опубликовать",
+        "enable": "Не удалось изменить флаг enabled",
+        "archive": "Не удалось архивировать",
+        "dry_run": "Dry-run не удалось"
+      }
+    },
+    "communications_templates": {
+      "title": "Шаблоны коммуникаций",
+      "subtitle": "Версионированные тексты, привязанные к Intent. Только презентация — не сниппеты мессенджеров и не шаблоны писем лидов.",
+      "header_kicker": "шаблоны",
+      "include_archived": "Показать архивные",
+      "list_title": "Шаблоны",
+      "empty": "Шаблонов пока нет.",
+      "select_prompt": "Выберите или создайте шаблон.",
+      "preview_title": "Превью",
+      "history_title": "История версий",
+      "create": {
+        "key": "Ключ",
+        "name": "Название",
+        "submit": "Создать draft"
+      },
+      "actions": {
+        "back": "← Админка коммуникаций",
+        "messenger_snippets": "Сниппеты мессенджеров",
+        "save_draft": "Сохранить draft",
+        "publish": "Опубликовать",
+        "archive": "Архивировать",
+        "preview": "Превью draft"
+      },
+      "notices": {
+        "created": "Шаблон создан",
+        "draft_saved": "Draft сохранён",
+        "published": "Опубликовано",
+        "archived": "Архивировано"
+      },
+      "errors": {
+        "load": "Не удалось загрузить шаблоны коммуникаций",
+        "versions": "Не удалось загрузить версии",
+        "create": "Не удалось создать шаблон",
+        "save_draft": "Не удалось сохранить draft",
+        "publish": "Не удалось опубликовать",
+        "archive": "Не удалось архивировать",
+        "preview": "Превью не удалось",
+        "diff": "Diff не удалось"
+      }
+    },
     "communications_sla": {
       "title": "SLA коммуникаций",
       "subtitle": "Эскалации, если на треды в inbox долго нет ответа — не путать с напоминаниями по задачам на экране «Задачи».",
@@ -11440,7 +12341,8 @@
         "create": "Не удалось создать форму",
         "save": "Не удалось сохранить форму",
         "copy": "Не удалось скопировать"
-      }
+      },
+      "configure": "Configure"
     },
     "tenant_links": {
       "header_kicker": "Связь вашего воркспейса с организациями клиентов и правила передачи.",
@@ -11620,6 +12522,33 @@
         "from_email": "info@hostflow.cc",
         "from_name": "HostFlow",
         "test_to": "test@example.com"
+      },
+      "gmail_oauth": {
+        "title": "Gmail OAuth (входящая почта)",
+        "subtitle": "Подключение Gmail для Communications inbox. SMTP выше — только для исходящих уведомлений CRM.",
+        "default_label": "Gmail inbox",
+        "account": "Почтовый аккаунт",
+        "client_id": "OAuth Client ID",
+        "client_secret": "OAuth Client Secret",
+        "client_secret_placeholder_saved": "Оставьте пустым, чтобы сохранить уже записанный секрет",
+        "client_secret_required": "Введите Google Client Secret и нажмите Save mailbox",
+        "client_id_required": "Укажите OAuth Client ID",
+        "redirect_uri": "Redirect URI",
+        "save_mailbox": "Save mailbox",
+        "save_ok": "Mailbox сохранён",
+        "save_failed": "Не удалось сохранить mailbox",
+        "secret_saved": "Client secret сохранён",
+        "secret_missing": "Client secret ещё не сохранён",
+        "start_failed": "Не удалось начать OAuth",
+        "complete_failed": "Не удалось завершить OAuth",
+        "complete_ok": "Gmail подключён",
+        "code_required": "Нет кода авторизации",
+        "state_required": "Нет OAuth state — сначала нажмите «Подключить Gmail»",
+        "refresh_ok": "Токен обновлён",
+        "refresh_failed": "Не удалось обновить токен",
+        "refresh_token": "Обновить токен",
+        "no_refresh_token": "Refresh token отсутствует",
+        "flow_hint": "1) Вставьте Client ID и Secret из Google Cloud → Save mailbox. 2) Connect email → войдите. 3) OAuth complete."
       }
     },
     "ttv": {
@@ -11713,6 +12642,62 @@
         "saving": "Сохранение…",
         "key_placeholder": "custom_field_key",
         "option_placeholder": "Введите вариант и нажмите Enter"
+      }
+    },
+    "intake_forms": {
+      "header_kicker": "Intake sources",
+      "detail_title": "Intake form",
+      "detail_subtitle": "Read-only view of Entity Profile, presentation fields, public link, and submit pipeline. UI does not create canon.",
+      "back_list": "All intake forms",
+      "copy": "Copy",
+      "open_public": "Open",
+      "open_lead": "Open lead",
+      "preview_empty": "No fields",
+      "preview_hint": "Display-only fields returned by Form Presentation Runtime — not editable in P6.",
+      "inactive_hint": "Activate the form in list settings before sharing or smoke testing.",
+      "smoke_hint": "Creates a test Lead draft using the same pipeline as public intake. Verifies no direct Candidate INSERT.",
+      "smoke_run": "Send test lead draft",
+      "sections": {
+        "form": "Lead form slot",
+        "entity_profile": "Entity Profile",
+        "intake_source": "Intake Source profile",
+        "preview": "Field preview (P5A runtime)",
+        "submit": "Submit destination",
+        "public_link": "Public link",
+        "smoke": "Smoke test submit"
+      },
+      "fields": {
+        "status": "Status",
+        "slug": "Public slug",
+        "profile_code": "Profile code",
+        "profile_name": "Name",
+        "presentation": "Presentation",
+        "route_intent": "Route intent",
+        "provider": "Provider",
+        "assignee": "Default assignee"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "columns": {
+        "label": "Label",
+        "field": "Field code",
+        "level": "Intake level",
+        "widget": "Widget"
+      },
+      "submit": {
+        "lead_draft": "Create: Lead draft only (no Candidate on POST /public/intake)",
+        "outcome": "Submit: Decision Layer → Outcome Executor (Candidate only on create_candidate)"
+      },
+      "toast": {
+        "copied": "Copied",
+        "smoke_ok": "Smoke test lead draft created"
+      },
+      "errors": {
+        "load_detail": "Failed to load intake form",
+        "copy": "Could not copy",
+        "smoke": "Smoke test failed"
       }
     }
   }

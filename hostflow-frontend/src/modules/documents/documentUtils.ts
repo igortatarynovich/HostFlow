@@ -143,7 +143,8 @@ export const computeTodayIso = (): string => new Date().toISOString().slice(0, 1
 export const normalizeDocTypeCode = (value?: string | null): string => {
   const raw = String(value || "").trim();
   if (!raw) return "";
-  return DOC_TYPE_CODE_ALIASES[raw] || raw;
+  const key = raw.toLowerCase().replace(/-/g, "_");
+  return DOC_TYPE_CODE_ALIASES[key] || key;
 };
 
 export const resolveDocTypeLabel = (

@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.api.v1.utils.access import resolve_restricted_acl
-from backend.app.auth.deps import UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_profile import CandidateProfile
@@ -27,6 +28,7 @@ from backend.app.services.company_module_access import company_allows_module
 from backend.app.constants.funnel_types import (
     FUNNEL_TYPE_PATTERN,
     HR_EMPLOYEE_FUNNEL_TYPE,
+    HR_MODULE_KEY,
     PLATFORM_SEED_TENANT_ID,
     RECRUITMENT_MODULE_KEY,
     is_hr_employee_funnel_type,
@@ -583,7 +585,7 @@ async def get_funnel(
 async def create_funnel(
     payload: FunnelIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin, Role.hr_officer)),
+    current_user: UserCtx = Depends(require_trust_write()),
 ) -> FunnelOut:
     """Create a company-scoped operational funnel (recruitment or HR employee)."""
     import uuid
@@ -666,7 +668,7 @@ async def update_funnel(
     funnel_id: str,
     payload: FunnelPatchIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(require_trust_write()),
 ) -> FunnelOut:
     """Update a company-scoped funnel."""
     db, tenant_id = db_tenant
@@ -727,7 +729,7 @@ async def add_funnel_stage(
     funnel_id: str,
     payload: FunnelStageIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(require_trust_write()),
 ) -> FunnelStageOut:
     """Add stage to funnel."""
     import uuid
@@ -793,7 +795,7 @@ async def update_funnel_stage(
     stage_id: str,
     payload: FunnelStageIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(require_trust_write()),
 ) -> FunnelStageOut:
     """Update funnel stage."""
     db, tenant_id = db_tenant
@@ -865,7 +867,7 @@ async def delete_funnel_stage(
     funnel_id: str,
     stage_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.admin)),
+    current_user: UserCtx = Depends(require_trust_admin()),
 ) -> None:
     """Delete funnel stage."""
     db, tenant_id = db_tenant
@@ -921,7 +923,7 @@ async def delete_funnel_stage(
 async def delete_funnel(
     funnel_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(require_trust_write()),
 ) -> None:
     """Delete a custom funnel when it is not default and not referenced anywhere."""
     db, tenant_id = db_tenant

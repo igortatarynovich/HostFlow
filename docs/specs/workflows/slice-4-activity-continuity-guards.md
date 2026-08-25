@@ -1,6 +1,6 @@
 # Slice 4 — Activity Continuity Guards (spec skeleton)
 
-**Status:** Guard 1 **implemented** (UOS “Call candidate” suppression + `activity_log` marker); further guards incremental.  
+**Status:** Guard 1 **Done (2026-07-02)** — UOS “Call candidate” suppression + continuity marker; lead note / activity / intake signals; conversion integration tests. Guard 2 **Done (2026-07-02)** — lead note + intake snapshot carried to candidate (`lead_continuity_v1`), audit marker, candidate card panel. Guard 3 **Done (2026-07-01)** — suppress `uos_candidate_call` when lead has active open reminder (SLA/follow-up) or pooled intake; integration tests §7.1/§7.4. Guard 4 **Done (2026-07-01)** — `request_info` conversion: no cold call, intake snapshot on candidate, lead↔candidate link, `first_contact_completed` via lead continuity. Guard 5 **Done (2026-07-01)** — duplicate attach / active dossier: no second `uos_candidate_call`; lead context carried on attach + idempotent replay.  
 **Depends on:** intake routing & decisions (Slice 2), qualification summary read-layer (Slice 3).  
 **Intent:** tighten **Lead → Candidate** handoff so the system does not invent duplicate work or “day zero” contact semantics when the lead already has real activity.
 
@@ -154,6 +154,58 @@ Operational slice: **one guard**, **one contradiction resolved** — no jump int
    - **duplicate attach** to existing candidate → **no** fake first-contact;
    - **request_info** (or other non-greenfield intake) → suppression + **continuity preserved** (marker + no wrong “cold first call” default).
 
+### 8.5 Guard 2 — context carry (note + intake snapshot) — **Done (2026-07-02)**
+
+**Goal:** After Lead → Candidate conversion, recruiter sees **carried** lead context (note, intake decision), not an empty narrative.
+
+**Implementation:**
+
+- `backend/app/services/lead_context_carry.py` — `carry_lead_context_on_conversion`, `build_lead_continuity_snapshot`
+- Hook in `create_candidate_full(..., source_lead=...)` before UOS auto-activity
+- Candidate `extra.lead_continuity_v1` + `extra.source_lead_id`; lead note copied to `candidate.note` when empty
+- ActivityLog action `lead_to_candidate.context_carried`
+- FE: `CandidateLeadOriginPanel` on candidate card
+- Tests: `backend/tests/modules/leads/test_lead_context_carry_guard.py`
+
+**Done when:** scenario 7 (§7) — lead note visible on candidate + link to source lead. ✅
+
+### 8.6 Guard 3 — no duplicate SLA / follow-up stack — **Done (2026-07-01)**
+
+**Goal:** On Lead → Candidate conversion, do not create default `uos_candidate_call` when the lead already has an **active open reminder** (next-action / follow-up SLA) or **pooled** intake resolution.
+
+**Implementation:**
+
+- `lead_first_contact_continuity.py` — `_lead_has_active_open_reminder`, reason `lead_reminder:active_next_action`
+- Existing pooled intake signal (`intake_resolution:pooled`) retained
+- Tests: `test_uos_skips_when_lead_has_active_followup_reminder`, `test_conversion_from_pooled_lead_skips_uos_call`
+
+**Done when:** scenarios §7.1 (call/follow-up on lead) and §7.4 (pool) — no duplicate candidate first-contact reminder. ✅
+
+### 8.7 Guard 4 — request_info playbook alignment — **Done (2026-07-01)**
+
+**Goal:** Lead in **info_requested** intake → convert → no cold `uos_candidate_call`; intake context visible on candidate; operational `first_contact_completed` satisfied via lead continuity (not a fake “call candidate” playbook).
+
+**Implementation:**
+
+- Existing Guard 1 suppression for `intake_resolution:info_requested`
+- `create_candidate_from_lead_conversion` links `lead.candidate_id` after create (parity with processing path)
+- Guard 2 carries `intake_resolution_v1` in `lead_continuity_v1`
+- Tests: `test_conversion_from_request_info_lead_skips_uos_and_carries_intake`, `test_request_info_lead_continuity_auto_satisfies_first_contact`
+
+**Done when:** scenario §7.2 — request_info path does not fire cold first-call; follow-up context carried. ✅
+
+### 8.8 Guard 5 — duplicate attach / active dossier — **Done (2026-07-01)**
+
+**Goal:** Merge to **existing** candidate (manual `attach_existing`, auto `blocked_duplicate`, or idempotent conversion replay) must not spawn a second cold `uos_candidate_call`; lead narrative carried where applicable.
+
+**Implementation:**
+
+- `lead_first_contact_continuity.candidate_past_cold_first_contact_sync` + gate in `ensure_candidate_created_call_task` (reason `candidate:existing_active_stage`)
+- `carry_lead_context_on_conversion` on `attach_existing`, `apply_blocked_duplicate_outcome`, and idempotent `create_candidate_from_lead_conversion` replay
+- Tests: `test_uos_skips_when_candidate_already_past_cold_stage`, `test_duplicate_attach_carries_context_without_uos_call`
+
+**Done when:** scenario §7.5 — duplicate attach does not fake first-contact. ✅
+
 ---
 
 ## References
@@ -163,4 +215,5 @@ Operational slice: **one guard**, **one contradiction resolved** — no jump int
 - Slice 3 (read-only qualification context): `docs/specs/workflows/slice-3-qualification-summary-data-audit.md`
 - Intake / routing: `docs/specs/workflows/lead-intake-resolution-and-activity-continuity.md`
 - **Guard 1 code:** `backend/app/services/lead_first_contact_continuity.py`, gate in `backend/app/services/uos_auto_activities.py` (`ensure_candidate_created_call_task`, optional `source_lead`). Lead conversion passes `source_lead` via `create_candidate_full(..., source_lead=lead)` from `lead_candidate_conversion.py`, `service/_processing.py`, `service/_reroute.py`.
-- **Tests:** `backend/tests/modules/leads/test_first_contact_continuity_guard.py`
+- **Guard 2 code:** `backend/app/services/lead_context_carry.py`, hook in `create_candidate_full`; FE `CandidateLeadOriginPanel.tsx`
+- **Tests:** `backend/tests/modules/leads/test_first_contact_continuity_guard.py`, `backend/tests/modules/leads/test_lead_context_carry_guard.py`

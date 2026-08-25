@@ -7,6 +7,7 @@ import {
   IconBolt,
   IconBriefcase,
   IconBuilding,
+  IconBuildingStore,
   IconChartBar,
   IconCalendarEvent,
   IconCalendarOff,
@@ -24,6 +25,7 @@ import {
   IconMessageCircle,
   IconPlugConnected,
   IconRoute,
+  IconSearch,
   IconSettings,
   IconShield,
   IconUsers,
@@ -43,8 +45,8 @@ import { getTenantModules } from '../../api/tenants'
 import type { TenantModuleSettings } from '../../api/types'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 import { useTeamOverviewNav } from '../../contexts/TeamOverviewNavContext'
-import { resolveNavPlanFromTeamOverview, shouldShowFinanceNavSection } from '../../nav/financeNavVisibility'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { navigateToModuleHost } from '../../api/client'
 import { APP_SHELL_SIDEBAR_HIDDEN_ITEM_KEYS } from '../../nav/appShellNav'
 import {
   SIDEBAR_AGENCY_ANALYTICS_ORDER,
@@ -54,15 +56,19 @@ import {
   SIDEBAR_AGENCY_INBOX_ORDER,
   SIDEBAR_AGENCY_INTEGRATIONS_ORDER,
   SIDEBAR_AGENCY_ORGANIZATION_ORDER,
-  SIDEBAR_AGENCY_PIPELINE_ORDER,
   SIDEBAR_AGENCY_PROCESSING_ORDER,
   SIDEBAR_AGENCY_PROFILE_ORDER,
+  SIDEBAR_AGENCY_FINANCE_ORDER,
+  SIDEBAR_AGENCY_HR_ORDER,
+  SIDEBAR_AGENCY_MARKETING_ORDER,
+  SIDEBAR_AGENCY_RECRUITMENT_ORDER,
+  SIDEBAR_AGENCY_SALES_ORDER,
+  SIDEBAR_AGENCY_SERVICES_ORDER,
   SIDEBAR_AGENCY_SETTINGS_HUB_ORDER,
   SIDEBAR_AGENCY_TASKS_ORDER,
   SIDEBAR_AGENCY_TEAM_ORDER,
   SIDEBAR_AGENCY_WORK_HUB_ORDER,
   SIDEBAR_CLIENT_FLAT_ORDER,
-  financeSidebarOrder,
 } from '../../nav/sidebarRailBuckets'
 import { SidebarOwnCompanySection } from './SidebarOwnCompanySection'
 
@@ -84,7 +90,10 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   overview: IconDashboard,
   analytics: IconChartBar,
   'work-hub': IconBriefcase,
+  'recruitment-searches': IconSearch,
+  'recruitment-inbox': IconInbox,
   'hr-workspace': IconUsersGroup,
+  sales: IconBuildingStore,
   candidates: IconUsers,
   'candidates-no-next-action': IconUserQuestion,
   clients: IconBuilding,
@@ -104,6 +113,9 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   'leads-distribution-rules': IconRoute,
   'automation-rules': IconBolt,
   'automation-log': IconChecklist,
+  'acquisition-activity': IconChecklist,
+  'marketing-sources': IconChecklist,
+  'marketing-diagnostics': IconChecklist,
   automations: IconBolt,
   'integrations-meta': IconBrandMeta,
   'integrations-google': IconBrandGoogle,
@@ -188,20 +200,8 @@ export function Sidebar({
     }
   }, [tenant?.id])
 
-  const resolvedNavPlan = useMemo(
-    () => resolveNavPlanFromTeamOverview(canLoadTeamOverviewCtx, teamOverview),
-    [canLoadTeamOverviewCtx, teamOverview],
-  )
-
-  const showFinanceSidebarSection = useMemo(
-    () =>
-      shouldShowFinanceNavSection({
-        isClientTenant,
-        businessType,
-        resolvedNavPlan,
-      }),
-    [businessType, isClientTenant, resolvedNavPlan],
-  )
+  void businessType
+  void canLoadTeamOverviewCtx
 
   const isSoloWorkspace = useMemo(() => {
     const membersCount = Array.isArray(teamOverview?.members) ? teamOverview!.members.length : null
@@ -209,18 +209,24 @@ export function Sidebar({
     const usage = teamOverview?.usage
     if (!usage) return false
     const total =
-      Number(usage.recruiter_count || 0) +
-      Number(usage.supervisor_count || 0) +
-      Number(usage.client_manager_count || 0) +
+      Number(usage.administrator_count ?? usage.supervisor_count ?? 0) +
+      Number(usage.employee_count ?? usage.recruiter_count ?? 0) +
       Number(usage.viewer_count || 0)
+    // Portal guests are non-billable and do not count toward workspace team size.
     return total <= 1
   }, [teamOverview])
 
   const visibleItems = useMemo(() => {
     const moduleByItemKey: Partial<Record<string, keyof TenantModuleSettings>> = {
+      'recruitment-searches': 'vacancies',
+      'recruitment-inbox': 'leads',
       candidates: 'candidates',
       'candidates-no-next-action': 'candidates',
       'hr-workspace': 'hr',
+      /** Growth / Campaigns share vacancy module gate until a dedicated Acquisition entitlement exists. */
+      marketing: 'vacancies',
+      'acquisition-activity': 'vacancies',
+      sales: 'companies',
       clients: 'companies',
       vacancies: 'vacancies',
       documents: 'documents',
@@ -295,7 +301,6 @@ export function Sidebar({
       'overview',
       'work-hub',
       'candidates',
-      'do-procesowania',
       'tasks',
       'inbox',
       'settings-integrations',
@@ -304,16 +309,20 @@ export function Sidebar({
     return moduleFiltered.filter((item) => allowed.has(item.key))
   }, [can, canUseCommunicationsFeature, isClientTenant, isSoloWorkspace, items, modules])
 
-  /** §2.13 ТЗ: дашборд → Работа → Входящие → воронка сущностей → задачи → процессинг → команда → финансы → документы → автоматизации / интеграции → аналитика. */
+  /** ADR-023 + Acquisition UI Cutover C-1: … → HR → Marketing → Sales → Services → Finance → … */
   const {
     dashboardNavItems,
     workHubNavItems,
     inboxNavItems,
-    pipelineNavItems,
+    recruitmentNavItems,
+    hrNavItems,
+    marketingNavItems,
+    salesNavItems,
+    servicesNavItems,
+    financeNavItems,
     tasksNavItems,
     processingNavItems,
     teamNavItems,
-    financeNavItems,
     documentsNavItems,
     automationsNavItems,
     integrationsNavItems,
@@ -337,11 +346,15 @@ export function Sidebar({
         dashboardNavItems: [] as NavItem[],
         workHubNavItems: [] as NavItem[],
         inboxNavItems: [] as NavItem[],
-        pipelineNavItems: [] as NavItem[],
+        recruitmentNavItems: [] as NavItem[],
+        hrNavItems: [] as NavItem[],
+        marketingNavItems: [] as NavItem[],
+        salesNavItems: [] as NavItem[],
+        servicesNavItems: [] as NavItem[],
+        financeNavItems: [] as NavItem[],
         tasksNavItems: [] as NavItem[],
         processingNavItems: [] as NavItem[],
         teamNavItems: [] as NavItem[],
-        financeNavItems: [] as NavItem[],
         documentsNavItems: [] as NavItem[],
         automationsNavItems: [] as NavItem[],
         integrationsNavItems: [] as NavItem[],
@@ -357,11 +370,15 @@ export function Sidebar({
     const dashboardNavItems = pickOrdered([...SIDEBAR_AGENCY_DASHBOARD_ORDER])
     const workHubNavItems = pickOrdered([...SIDEBAR_AGENCY_WORK_HUB_ORDER])
     const inboxNavItems = pickOrdered([...SIDEBAR_AGENCY_INBOX_ORDER])
-    const pipelineNavItems = pickOrdered([...SIDEBAR_AGENCY_PIPELINE_ORDER])
+    const recruitmentNavItems = pickOrdered([...SIDEBAR_AGENCY_RECRUITMENT_ORDER])
+    const hrNavItems = pickOrdered([...SIDEBAR_AGENCY_HR_ORDER])
+    const marketingNavItems = pickOrdered([...SIDEBAR_AGENCY_MARKETING_ORDER])
+    const salesNavItems = pickOrdered([...SIDEBAR_AGENCY_SALES_ORDER])
+    const servicesNavItems = pickOrdered([...SIDEBAR_AGENCY_SERVICES_ORDER])
+    const financeNavItems = pickOrdered([...SIDEBAR_AGENCY_FINANCE_ORDER])
     const tasksNavItems = pickOrdered([...SIDEBAR_AGENCY_TASKS_ORDER])
     const processingNavItems = pickOrdered([...SIDEBAR_AGENCY_PROCESSING_ORDER])
     const teamNavItems = pickOrdered([...SIDEBAR_AGENCY_TEAM_ORDER])
-    const financeNavItems = pickOrdered([...financeSidebarOrder(showFinanceSidebarSection)])
     const documentsNavItems = pickOrdered([...SIDEBAR_AGENCY_DOCUMENTS_ORDER])
     const automationsNavItems = pickOrdered([...SIDEBAR_AGENCY_AUTOMATIONS_ORDER])
     const integrationsNavItems = pickOrdered([...SIDEBAR_AGENCY_INTEGRATIONS_ORDER])
@@ -374,11 +391,15 @@ export function Sidebar({
       dashboardNavItems,
       workHubNavItems,
       inboxNavItems,
-      pipelineNavItems,
+      recruitmentNavItems,
+      hrNavItems,
+      marketingNavItems,
+      salesNavItems,
+      servicesNavItems,
+      financeNavItems,
       tasksNavItems,
       processingNavItems,
       teamNavItems,
-      financeNavItems,
       documentsNavItems,
       automationsNavItems,
       integrationsNavItems,
@@ -389,7 +410,7 @@ export function Sidebar({
       profileNavItems,
       sidebarBucketed: true,
     }
-  }, [isClientTenant, showFinanceSidebarSection, visibleItems])
+  }, [isClientTenant, visibleItems])
 
   const automationsRailActive = useMemo(() => {
     const path = location.pathname
@@ -400,6 +421,16 @@ export function Sidebar({
       path === p.leadsDistribution ||
       path.startsWith(`${p.leadsDistribution}/`)
     )
+  }, [location.pathname, p])
+
+  const marketingRailActive = useMemo(() => {
+    const path = location.pathname
+    return path === p.marketing || path.startsWith(`${p.marketing}/`)
+  }, [location.pathname, p])
+
+  const acquisitionActivityRailActive = useMemo(() => {
+    const path = location.pathname
+    return path === p.acquisitionActivity || path.startsWith(`${p.acquisitionActivity}/`)
   }, [location.pathname, p])
 
   const integrationsRailActive = useMemo(() => {
@@ -413,6 +444,11 @@ export function Sidebar({
 
   const navItemActive = (item: NavItem, isActive: boolean): boolean => {
     if (item.key === 'clients') return clientsNavActive
+    if (item.key === 'marketing') return marketingRailActive
+    if (item.key === 'acquisition-activity') return acquisitionActivityRailActive
+    if (item.key === 'recruitment-searches') {
+      return location.pathname.startsWith(p.recruitmentSearches)
+    }
     if (item.key === 'work-hub') return location.pathname.startsWith(p.work) || location.pathname.startsWith(`${p.work}/`)
     if (item.key === 'hr-workspace') return location.pathname === p.hr || location.pathname.startsWith(`${p.hr}/`)
     if (
@@ -464,6 +500,14 @@ export function Sidebar({
   }
 
   const renderPrimaryNavItem = (item: NavItem) => {
+    const itemPath = String(item.path || '')
+    const crossHost = /^https?:\/\//i.test(itemPath)
+    const navClass = (active: boolean) =>
+      clsx(
+        'block rounded-lg px-3 py-3 text-sm font-medium transition',
+        active ? 'bg-white text-brand-900 shadow-sm' : 'text-white hover:bg-white/15 hover:text-white',
+      )
+
     if (item.key === 'inbox') {
       const ItemIcon = ITEM_ICONS.inbox || DEFAULT_ICON
       const showMessagesChild = canUseCommunicationsFeature('messages')
@@ -474,14 +518,7 @@ export function Sidebar({
             to={item.path!}
             title={getItemLabel(item)}
             onClick={handleNavigate}
-            className={() =>
-              clsx(
-                'block rounded-md px-3 py-2.5 text-sm font-medium transition',
-                inboxNavActive
-                  ? 'bg-white text-brand-900 shadow-sm'
-                  : 'text-white hover:bg-white/15 hover:text-white',
-              )
-            }
+            className={() => navClass(inboxNavActive)}
           >
             <span className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-2">
@@ -499,7 +536,7 @@ export function Sidebar({
                   onClick={handleNavigate}
                   className={() =>
                     clsx(
-                      'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
+                      'inline-flex items-center gap-2 rounded-lg px-2 py-1 text-[11px] font-medium transition',
                       location.pathname.startsWith(p.messages) ||
                         (location.pathname.startsWith(p.inbox) && inboxChannelParam === 'messages')
                         ? 'bg-white/20 text-white'
@@ -518,7 +555,7 @@ export function Sidebar({
                   onClick={handleNavigate}
                   className={() =>
                     clsx(
-                      'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
+                      'inline-flex items-center gap-2 rounded-lg px-2 py-1 text-[11px] font-medium transition',
                       location.pathname.startsWith(p.email) ||
                         (location.pathname.startsWith(p.inbox) && inboxChannelParam === 'email')
                         ? 'bg-white/20 text-white'
@@ -535,40 +572,47 @@ export function Sidebar({
         </div>
       )
     }
+
+    const label = item.key === 'clients' ? clientsNavLabel : getItemLabel(item)
+    const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
+    const inner = (
+      <span className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-2">
+          <ItemIcon size={16} stroke={1.8} />
+          <span>{label}</span>
+        </span>
+      </span>
+    )
+
+    // Foreign modules are absolute https://sales.hostflow.cc/... — must be <a>, not React Router.
+    // Sync Domain cookies before leaving the shell, otherwise the module host has no session → /login.
+    if (crossHost) {
+      return (
+        <a
+          key={item.key}
+          href={itemPath}
+          title={getItemLabel(item)}
+          onClick={(event) => {
+            event.preventDefault()
+            handleNavigate()
+            void navigateToModuleHost(itemPath)
+          }}
+          className={navClass(false)}
+        >
+          {inner}
+        </a>
+      )
+    }
+
     return (
       <NavLink
         key={item.key}
         to={item.path!}
         title={getItemLabel(item)}
         onClick={handleNavigate}
-        className={({ isActive }) =>
-          clsx(
-            'block rounded-md px-3 py-2.5 text-sm font-medium transition',
-            navItemActive(item, isActive)
-              ? 'bg-white text-brand-900 shadow-sm'
-              : 'text-white hover:bg-white/15 hover:text-white',
-          )
-        }
+        className={({ isActive }) => navClass(navItemActive(item, isActive))}
       >
-        {(() => {
-          const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
-          return (
-            <span className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-2">
-                <ItemIcon size={16} stroke={1.8} />
-                <span>{item.key === 'clients' ? clientsNavLabel : getItemLabel(item)}</span>
-              </span>
-              {item.key === 'do-procesowania' && pendingHandoffsCount > 0 && (
-                <span
-                  className="inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-semibold text-white"
-                  aria-label={t('app.handoff.badge_new', { count: pendingHandoffsCount })}
-                >
-                  {pendingHandoffsCount}
-                </span>
-              )}
-            </span>
-          )
-        })()}
+        {inner}
       </NavLink>
     )
   }
@@ -594,7 +638,7 @@ export function Sidebar({
               <div className="text-xs font-medium text-white/65" title={t('app.shell.sidebar.workspace')}>
                 {t('app.shell.sidebar.workspace')}
               </div>
-              <div className="truncate text-base font-semibold leading-snug text-white" title={tenantLabel}>
+              <div className="truncate text-base font-semibold leading-tight text-white" title={tenantLabel}>
                 {tenantLabel}
               </div>
             </div>
@@ -607,7 +651,7 @@ export function Sidebar({
               <>
                 {dashboardNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_dashboard')}
                     </div>
                     <div className="space-y-1">{dashboardNavItems.map(renderPrimaryNavItem)}</div>
@@ -615,7 +659,7 @@ export function Sidebar({
                 )}
                 {workHubNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.work')}
                     </div>
                     <div className="space-y-1">{workHubNavItems.map(renderPrimaryNavItem)}</div>
@@ -623,20 +667,75 @@ export function Sidebar({
                 )}
                 {inboxNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
-                      {t('app.shell.sidebar.section_inbox')}
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      {t('app.shell.sidebar.section_communications')}
                     </div>
                     <div className="space-y-1">{inboxNavItems.map(renderPrimaryNavItem)}</div>
                   </div>
                 )}
-                {pipelineNavItems.length > 0 && (
+                {recruitmentNavItems.length > 0 && (
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
-                        {t('app.shell.sidebar.section_pipeline')}
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_recruitment')}
                       </div>
-                      <div className="space-y-1">{pipelineNavItems.map(renderPrimaryNavItem)}</div>
+                      <div className="space-y-1">{recruitmentNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
+                )}
+                {hrNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_hr')}
+                      </div>
+                      <div className="space-y-1">{hrNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
+                )}
+                {marketingNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3" data-testid="sidebar-section-marketing">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_marketing')}
+                      </div>
+                      <div className="space-y-1">{marketingNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
+                )}
+                {salesNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3" data-testid="sidebar-section-sales">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_sales')}
+                      </div>
+                      <div className="space-y-1">{salesNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
+                )}
+                {servicesNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_services')}
+                      </div>
+                      <div className="space-y-1">{servicesNavItems.map(renderPrimaryNavItem)}</div>
+                    </div>
+                  </>
+                )}
+                {financeNavItems.length > 0 && (
+                  <>
+                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
+                    <div className="mb-3">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                        {t('app.shell.sidebar.section_finance')}
+                      </div>
+                      <div className="space-y-1">{financeNavItems.map(renderPrimaryNavItem)}</div>
                     </div>
                   </>
                 )}
@@ -644,7 +743,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_tasks_calendar')}
                       </div>
                       <div className="space-y-1">{tasksNavItems.map(renderPrimaryNavItem)}</div>
@@ -655,7 +754,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_processing')}
                       </div>
                       <div className="space-y-1">{processingNavItems.map(renderPrimaryNavItem)}</div>
@@ -666,21 +765,10 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_team')}
                       </div>
                       <div className="space-y-1">{teamNavItems.map(renderPrimaryNavItem)}</div>
-                    </div>
-                  </>
-                )}
-                {financeNavItems.length > 0 && (
-                  <>
-                    <div className="mx-3 my-2 border-t border-white/10" role="separator" />
-                    <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
-                        {t('app.shell.sidebar.section_finance')}
-                      </div>
-                      <div className="space-y-1">{financeNavItems.map(renderPrimaryNavItem)}</div>
                     </div>
                   </>
                 )}
@@ -688,7 +776,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_documents')}
                       </div>
                       <div className="space-y-1">{documentsNavItems.map(renderPrimaryNavItem)}</div>
@@ -699,7 +787,7 @@ export function Sidebar({
                   <>
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
                     <div className="mb-3">
-                      <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                      <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                         {t('app.shell.sidebar.section_automations')}
                       </div>
                       <div className="space-y-1">{automationsNavItems.map(renderPrimaryNavItem)}</div>
@@ -708,7 +796,7 @@ export function Sidebar({
                 )}
                 {integrationsNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_integrations')}
                     </div>
                     <div className="space-y-1">{integrationsNavItems.map(renderPrimaryNavItem)}</div>
@@ -717,7 +805,7 @@ export function Sidebar({
                 {analyticsNavItems.length > 0 && (
                   <div className="mb-4">
                     <div className="mx-3 my-2 border-t border-white/10" role="separator" />
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_analytics')}
                     </div>
                     <div className="space-y-1">{analyticsNavItems.map(renderPrimaryNavItem)}</div>
@@ -728,7 +816,7 @@ export function Sidebar({
                 )}
                 {organizationNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_organization')}
                     </div>
                     <div className="space-y-1">{organizationNavItems.map(renderPrimaryNavItem)}</div>
@@ -736,7 +824,7 @@ export function Sidebar({
                 )}
                 {settingsHubNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_settings')}
                     </div>
                     <div className="space-y-1">{settingsHubNavItems.map(renderPrimaryNavItem)}</div>
@@ -744,7 +832,7 @@ export function Sidebar({
                 )}
                 {profileNavItems.length > 0 && (
                   <div className="mb-3">
-                    <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                    <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                       {t('app.shell.sidebar.section_personal')}
                     </div>
                     <div className="space-y-1">{profileNavItems.map(renderPrimaryNavItem)}</div>
@@ -753,7 +841,7 @@ export function Sidebar({
               </>
             ) : (
               <div className="mb-4">
-                <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">
                   {t('app.shell.sidebar.section_menu')}
                 </div>
                 <div className="space-y-1">{coreNavItems.map(renderPrimaryNavItem)}</div>

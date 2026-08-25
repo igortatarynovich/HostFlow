@@ -189,37 +189,36 @@ export default function CompanyAccessPage() {
     : null
 
   return (
-    <div className="space-y-4">
-      <SettingsSubpageHeader
-        backHref={CRM_APP_PATHS.settings}
-        backLabel={t('admin.settings.subpage.back_all', { defaultValue: '← All settings' })}
-        kicker={t('admin.settings.subpage.kicker_workspace_setup', { defaultValue: 'Team & access' })}
-        title={t('admin.company_access.title', { defaultValue: 'Доступ к компаниям' })}
-        subtitle={
-          selectedCompany
-            ? t('admin.company_access.subtitle_with_company', {
-                defaultValue: `Компания: ${selectedCompany.name}`,
-                values: { name: selectedCompany.name },
-              })
-            : t('admin.company_access.subtitle', {
-                defaultValue: 'Управляйте доступом сотрудников к карточкам клиентов и кандидатов внутри выбранной компании.',
-              })
-        }
-        actions={
-          <select
-            className="input w-full max-w-sm"
-            value={selectedCompanyId}
-            onChange={(event) => setSelectedCompanyId(event.target.value)}
-            aria-label={t('admin.company_access.company_select_label', { defaultValue: 'Выбор компании' })}
-          >
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-        }
-      />
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settings}
+      backLabel={t('admin.settings.subpage.back_all', { defaultValue: '← All settings' })}
+      kicker={t('admin.settings.subpage.kicker_workspace_setup', { defaultValue: 'Team & access' })}
+      title={t('admin.company_access.title', { defaultValue: 'Доступ к компаниям' })}
+      subtitle={
+        selectedCompany
+          ? t('admin.company_access.subtitle_with_company', {
+              defaultValue: `Компания: ${selectedCompany.name}`,
+              values: { name: selectedCompany.name },
+            })
+          : t('admin.company_access.subtitle', {
+              defaultValue: 'Управляйте доступом сотрудников к карточкам клиентов и кандидатов внутри выбранной компании.',
+            })
+      }
+      actions={
+        <select
+          className="input w-full max-w-sm"
+          value={selectedCompanyId}
+          onChange={(event) => setSelectedCompanyId(event.target.value)}
+          aria-label={t('admin.company_access.company_select_label', { defaultValue: 'Выбор компании' })}
+        >
+          {companies.map((company) => (
+            <option key={company.id} value={company.id}>
+              {company.name}
+            </option>
+          ))}
+        </select>
+      }
+    >
 
       {accessPageErrorBanner && (
         <ErrorRecoveryBanner
@@ -309,6 +308,6 @@ export default function CompanyAccessPage() {
           </button>
         </form>
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

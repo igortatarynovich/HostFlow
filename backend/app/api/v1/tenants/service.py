@@ -63,32 +63,61 @@ async def ensure_slug_unique(db: AsyncSession, slug: str, exclude_id: str | None
 
 
 def _usage_subquery():
+    """Seat usage by ADR-036 trust buckets (portal guests excluded from viewer)."""
+    from backend.app.auth.trust_roles import (
+        ADMINISTRATOR_SEAT_ROLES,
+        EMPLOYEE_SEAT_ROLES,
+        PORTAL_LEGACY_ROLES,
+        TENANT_VIEWER_SEAT_ROLES,
+    )
+
     membership = user_memberships.alias("membership")
     users = User.__table__
     role_lower = sa.func.lower(membership.c.role)
+    access_ctx = sa.func.lower(
+        sa.func.coalesce(users.c.preferences.op("->>")("access_context"), "")
+    )
+    preset_pref = sa.func.lower(
+        sa.func.coalesce(users.c.preferences.op("->>")("preset_id"), "")
+    )
+    is_portal = sa.or_(
+        role_lower.in_(tuple(PORTAL_LEGACY_ROLES)),
+        access_ctx == "portal",
+        preset_pref == "portal_guest",
+    )
 
-    def _count(*roles: str):
-        normalized = [str(role or "").strip().lower() for role in roles if role]
+    def _count_roles(roles: frozenset[str], *, exclude_portal: bool = True):
+        normalized = sorted(str(r).strip().lower() for r in roles if r)
         if not normalized:
             return sa.literal(0)
-        condition = role_lower.in_(normalized) if len(normalized) > 1 else role_lower == normalized[0]
+        condition = role_lower.in_(normalized)
+        if exclude_portal:
+            condition = sa.and_(condition, sa.not_(is_portal))
         return sa.func.coalesce(
-            sa.func.sum(
-                sa.case(
-                    (condition, 1),
-                    else_=0,
-                )
-            ),
+            sa.func.sum(sa.case((condition, 1), else_=0)),
             0,
         )
+
+    admin_count = _count_roles(ADMINISTRATOR_SEAT_ROLES)
+    employee_count = _count_roles(EMPLOYEE_SEAT_ROLES)
+    viewer_count = _count_roles(TENANT_VIEWER_SEAT_ROLES)
+    portal_count = sa.func.coalesce(
+        sa.func.sum(sa.case((is_portal, 1), else_=0)),
+        0,
+    )
 
     return (
         sa.select(
             membership.c.tenant_id.label("tenant_id"),
-            _count("recruiter").label("recruiter_count"),
-            _count("supervisor", "administrator").label("supervisor_count"),
-            _count("client_manager").label("client_manager_count"),
-            _count("viewer").label("viewer_count"),
+            # Canonical ADR-036 seat counters
+            admin_count.label("administrator_count"),
+            employee_count.label("employee_count"),
+            viewer_count.label("viewer_count"),
+            portal_count.label("portal_guest_count"),
+            # Legacy aliases (same values) for older FE/API consumers
+            employee_count.label("recruiter_count"),
+            admin_count.label("supervisor_count"),
+            portal_count.label("client_manager_count"),
             sa.literal(0).label("storage_used_gb"),
         )
         .select_from(membership)
@@ -107,17 +136,25 @@ def _usage_subquery():
 
 
 def _usage_from_row(
-    recruiter: int | None,
-    supervisor: int | None,
-    client_manager: int | None,
+    administrator: int | None,
+    employee: int | None,
     viewer: int | None,
+    portal_guest: int | None,
     storage: int | float | None,
 ) -> Dict[str, float]:
+    admin_n = int(administrator or 0)
+    employee_n = int(employee or 0)
+    viewer_n = int(viewer or 0)
+    portal_n = int(portal_guest or 0)
     return {
-        "recruiter_count": int(recruiter or 0),
-        "supervisor_count": int(supervisor or 0),
-        "client_manager_count": int(client_manager or 0),
-        "viewer_count": int(viewer or 0),
+        "administrator_count": admin_n,
+        "employee_count": employee_n,
+        "viewer_count": viewer_n,
+        "portal_guest_count": portal_n,
+        # Legacy aliases
+        "recruiter_count": employee_n,
+        "supervisor_count": admin_n,
+        "client_manager_count": portal_n,
         "storage_used_gb": float(storage or 0),
     }
 
@@ -188,12 +225,13 @@ _MODULE_DEFAULTS: Dict[str, bool] = {
 
 _ROLE_MATRIX_ROLES: tuple[str, ...] = (
     UserRole.administrator.value,
-    UserRole.supervisor.value,
-    UserRole.recruiter.value,
-    UserRole.client_manager.value,
-    UserRole.client_processor.value,
-    UserRole.compliance_officer.value,
-    UserRole.hr_officer.value,
+    "employee",  # ADR-036 canonical
+    "supervisor",  # legacy matrix column (preset team_lead)
+    "recruiter",  # legacy matrix column (preset recruiter)
+    "client_manager",  # legacy portal column
+    "client_processor",  # legacy portal column
+    "compliance_officer",  # legacy matrix column
+    "hr_officer",  # legacy matrix column (preset hr)
     UserRole.viewer.value,
 )
 
@@ -201,7 +239,18 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
     UserRole.administrator.value: {
         module: {"visible": True, "editable": True} for module in _MODULE_DEFAULTS
     },
-    UserRole.supervisor.value: {
+    "employee": {
+        # Default operational pack ≈ recruiter; presets refine further
+        "candidates": {"visible": True, "editable": True},
+        "companies": {"visible": True, "editable": False},
+        "vacancies": {"visible": True, "editable": False},
+        "documents": {"visible": True, "editable": True},
+        "leads": {"visible": True, "editable": False},
+        "services": {"visible": True, "editable": True},
+        "client_portal": {"visible": False, "editable": False},
+        "hr": {"visible": False, "editable": False},
+    },
+    "supervisor": {
         "candidates": {"visible": True, "editable": True},
         "companies": {"visible": True, "editable": True},
         "vacancies": {"visible": True, "editable": True},
@@ -211,7 +260,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": True, "editable": False},
         "hr": {"visible": True, "editable": True},
     },
-    UserRole.recruiter.value: {
+    "recruiter": {
         "candidates": {"visible": True, "editable": True},
         "companies": {"visible": True, "editable": False},
         "vacancies": {"visible": True, "editable": False},
@@ -221,7 +270,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": False, "editable": False},
         "hr": {"visible": False, "editable": False},
     },
-    UserRole.client_manager.value: {
+    "client_manager": {
         "candidates": {"visible": True, "editable": True},
         "companies": {"visible": True, "editable": False},
         "vacancies": {"visible": True, "editable": False},
@@ -231,7 +280,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": True, "editable": False},
         "hr": {"visible": False, "editable": False},
     },
-    UserRole.client_processor.value: {
+    "client_processor": {
         "candidates": {"visible": True, "editable": True},
         "companies": {"visible": True, "editable": False},
         "vacancies": {"visible": True, "editable": False},
@@ -241,7 +290,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": True, "editable": False},
         "hr": {"visible": False, "editable": False},
     },
-    UserRole.compliance_officer.value: {
+    "compliance_officer": {
         "candidates": {"visible": True, "editable": True},
         "companies": {"visible": True, "editable": False},
         "vacancies": {"visible": True, "editable": False},
@@ -251,7 +300,7 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
         "client_portal": {"visible": False, "editable": False},
         "hr": {"visible": False, "editable": False},
     },
-    UserRole.hr_officer.value: {
+    "hr_officer": {
         "candidates": {"visible": False, "editable": False},
         "companies": {"visible": False, "editable": False},
         "vacancies": {"visible": False, "editable": False},
@@ -273,14 +322,16 @@ _ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
     },
 }
 
+# Seat requests may still name legacy job titles; they map to trust buckets in users service.
 _ALLOWED_SEAT_ROLES = {
     UserRole.administrator.value,
-    UserRole.supervisor.value,
-    UserRole.recruiter.value,
-    UserRole.compliance_officer.value,
-    UserRole.hr_officer.value,
-    UserRole.client_manager.value,
+    UserRole.employee.value,
     UserRole.viewer.value,
+    "supervisor",
+    "recruiter",
+    "compliance_officer",
+    "hr_officer",
+    "client_manager",
 }
 
 
@@ -303,18 +354,18 @@ def _role_defaults_for_tenant(tenant: Tenant) -> Dict[str, Dict[str, Dict[str, b
     if business_type == "employer":
         # Employer teams usually run vacancy+candidate loop directly.
         # Recruiter should be able to operate vacancies, not only view them.
-        defaults[UserRole.recruiter.value]["vacancies"] = {"visible": True, "editable": True}
+        defaults["recruiter"]["vacancies"] = {"visible": True, "editable": True}
     elif business_type == "services":
         # Services mode shifts recruiter-like role to leads/services operations.
-        defaults[UserRole.recruiter.value]["companies"] = {"visible": True, "editable": True}
-        defaults[UserRole.recruiter.value]["leads"] = {"visible": True, "editable": True}
-        defaults[UserRole.recruiter.value]["services"] = {"visible": True, "editable": True}
-        defaults[UserRole.recruiter.value]["candidates"] = {"visible": False, "editable": False}
-        defaults[UserRole.recruiter.value]["vacancies"] = {"visible": False, "editable": False}
-        defaults[UserRole.client_manager.value]["leads"] = {"visible": True, "editable": True}
-        defaults[UserRole.client_manager.value]["services"] = {"visible": True, "editable": True}
-        defaults[UserRole.client_processor.value]["leads"] = {"visible": True, "editable": True}
-        defaults[UserRole.client_processor.value]["services"] = {"visible": True, "editable": True}
+        defaults["recruiter"]["companies"] = {"visible": True, "editable": True}
+        defaults["recruiter"]["leads"] = {"visible": True, "editable": True}
+        defaults["recruiter"]["services"] = {"visible": True, "editable": True}
+        defaults["recruiter"]["candidates"] = {"visible": False, "editable": False}
+        defaults["recruiter"]["vacancies"] = {"visible": False, "editable": False}
+        defaults["client_manager"]["leads"] = {"visible": True, "editable": True}
+        defaults["client_manager"]["services"] = {"visible": True, "editable": True}
+        defaults["client_processor"]["leads"] = {"visible": True, "editable": True}
+        defaults["client_processor"]["services"] = {"visible": True, "editable": True}
 
     return defaults
 
@@ -385,10 +436,10 @@ async def get_tenant_with_details(
         sa.select(
             Tenant,
             TenantLicense,
-            usage_subq.c.recruiter_count,
-            usage_subq.c.supervisor_count,
-            usage_subq.c.client_manager_count,
+            usage_subq.c.administrator_count,
+            usage_subq.c.employee_count,
             usage_subq.c.viewer_count,
+            usage_subq.c.portal_guest_count,
             usage_subq.c.storage_used_gb,
         )
         .outerjoin(TenantLicense, TenantLicense.tenant_id == Tenant.id)
@@ -399,8 +450,8 @@ async def get_tenant_with_details(
     row = (await db.execute(stmt)).first()
     if not row:
         return None
-    tenant, license_entry, recruiter, supervisor, client_manager, viewer, storage = row
-    usage = _usage_from_row(recruiter, supervisor, client_manager, viewer, storage)
+    tenant, license_entry, admin, employee, viewer, portal, storage = row
+    usage = _usage_from_row(admin, employee, viewer, portal, storage)
     return tenant, license_entry, usage
 
 
@@ -419,10 +470,10 @@ async def list_tenants_with_licenses(
         sa.select(
             Tenant,
             TenantLicense,
-            usage_subq.c.recruiter_count,
-            usage_subq.c.supervisor_count,
-            usage_subq.c.client_manager_count,
+            usage_subq.c.administrator_count,
+            usage_subq.c.employee_count,
             usage_subq.c.viewer_count,
+            usage_subq.c.portal_guest_count,
             usage_subq.c.storage_used_gb,
         )
         .outerjoin(TenantLicense, TenantLicense.tenant_id == Tenant.id)
@@ -467,8 +518,8 @@ async def list_tenants_with_licenses(
     total = (await db.execute(count_stmt)).scalar_one()
     rows = await db.execute(stmt)
     items: list[Tuple[Tenant, Optional[TenantLicense], Dict[str, float]]] = []
-    for tenant, license_entry, recruiter, supervisor, client_manager, viewer, storage in rows:
-        usage = _usage_from_row(recruiter, supervisor, client_manager, viewer, storage)
+    for tenant, license_entry, admin, employee, viewer, portal, storage in rows:
+        usage = _usage_from_row(admin, employee, viewer, portal, storage)
         items.append((tenant, license_entry, usage))
     return items, int(total)
 
@@ -587,6 +638,13 @@ async def create_tenant_with_license(
     license_values["tenant_id"] = tenant.id
     license_entry = TenantLicense(**license_values)
     db.add(license_entry)
+
+    from backend.app.entity_profile.provision_targeted_advertising import (
+        provision_targeted_advertising_on_tenant_create,
+    )
+
+    await provision_targeted_advertising_on_tenant_create(db, tenant)
+
     try:
         await db.commit()
     except IntegrityError as exc:
@@ -646,10 +704,10 @@ async def get_usage_snapshot(db: AsyncSession, tenant_id: str) -> Dict[str, floa
     usage_subq = _usage_subquery()
     stmt = (
         sa.select(
-            usage_subq.c.recruiter_count,
-            usage_subq.c.supervisor_count,
-            usage_subq.c.client_manager_count,
+            usage_subq.c.administrator_count,
+            usage_subq.c.employee_count,
             usage_subq.c.viewer_count,
+            usage_subq.c.portal_guest_count,
             usage_subq.c.storage_used_gb,
         )
         .where(usage_subq.c.tenant_id == tenant_id)
@@ -659,8 +717,8 @@ async def get_usage_snapshot(db: AsyncSession, tenant_id: str) -> Dict[str, floa
     if not row:
         base = _usage_from_row(0, 0, 0, 0, 0)
     else:
-        recruiter, supervisor, client_manager, viewer, storage = row
-        base = _usage_from_row(recruiter, supervisor, client_manager, viewer, storage)
+        admin, employee, viewer, portal, storage = row
+        base = _usage_from_row(admin, employee, viewer, portal, storage)
     leads_m, cand, docs, vac_open, portals = await asyncio.gather(
         _count_leads_created_this_month(db, tenant_id),
         _count_candidates_active(db, tenant_id),
@@ -751,10 +809,42 @@ def get_effective_role_module_permissions(
     *,
     role: str,
     user_id: str | None = None,
+    preset_id: str | None = None,
+    access_context: str | None = None,
 ) -> Dict[str, Dict[str, bool]]:
-    normalized_role = str(role or UserRole.viewer.value).strip().lower()
+    from backend.app.auth.trust_roles import (
+        infer_access_context,
+        normalize_trust_role,
+        resolve_preset_id,
+    )
+
+    raw_role = str(role or UserRole.viewer.value).strip().lower()
+    trust = normalize_trust_role(raw_role)
+    pid = resolve_preset_id(raw_role, explicit=preset_id)
+    ctx = infer_access_context(raw_role, access_context)
+
+    # Prefer legacy matrix columns when preset/context still maps to them (migration window).
+    matrix_role = trust
+    if pid == "hr":
+        matrix_role = "hr_officer"
+    elif pid == "team_lead":
+        matrix_role = "supervisor"
+    elif pid == "recruiter":
+        matrix_role = "recruiter"
+    elif pid == "compliance":
+        matrix_role = "compliance_officer"
+    elif pid == "portal_guest" or ctx == "portal":
+        matrix_role = "client_processor"
+    elif trust == UserRole.employee.value:
+        matrix_role = "employee"
+
     matrix = get_role_module_matrix_snapshot(tenant)
-    role_matrix = matrix.get(normalized_role) or matrix.get(UserRole.viewer.value) or {}
+    role_matrix = (
+        matrix.get(matrix_role)
+        or matrix.get(trust)
+        or matrix.get(UserRole.viewer.value)
+        or {}
+    )
     effective = {
         key: {"visible": bool(val.get("visible")), "editable": bool(val.get("editable"))}
         for key, val in role_matrix.items()
@@ -939,9 +1029,12 @@ async def update_role_module_matrix(
     updates: Dict[str, Dict[str, Dict[str, bool]]],
     *,
     actor_id: str | None = None,
+    actor_is_superadmin: bool = False,
 ) -> Dict[str, Dict[str, Dict[str, bool]]]:
     if not updates:
         return get_role_module_matrix_snapshot(tenant)
+
+    from backend.app.auth.trust_roles import assert_matrix_role_editable
 
     modules = get_module_settings_snapshot(tenant)
     current = get_role_module_matrix_snapshot(tenant)
@@ -951,6 +1044,7 @@ async def update_role_module_matrix(
         role = str(role_key or "").strip().lower()
         if role not in _ROLE_MATRIX_ROLES:
             raise ValueError(f"unknown_role:{role}")
+        assert_matrix_role_editable(role, actor_is_superadmin=actor_is_superadmin)
         if not isinstance(role_payload, dict):
             raise ValueError(f"invalid_role_payload:{role}")
         for module_key, cell_payload in role_payload.items():
@@ -970,6 +1064,9 @@ async def update_role_module_matrix(
                 next_editable = False
             if not next_visible:
                 next_editable = False
+            # Viewer trust ceiling: editable stays off unless portal docs exception via portal columns
+            if role == UserRole.viewer.value and next_editable and module not in {"documents", "client_portal"}:
+                raise ValueError(f"trust_ceiling:viewer_mutable:{module}")
             if (
                 current[role][module]["visible"] != next_visible
                 or current[role][module]["editable"] != next_editable
@@ -998,6 +1095,55 @@ async def update_role_module_matrix(
         payload={"role_matrix": current},
     )
     return current
+
+
+async def apply_permission_preset_to_user(
+    db: AsyncSession,
+    tenant: Tenant,
+    *,
+    user_id: str,
+    preset_id: str,
+    actor_id: str | None = None,
+) -> Dict[str, Dict[str, Dict[str, bool]]]:
+    """Fill user_overrides from ADR-036 PERMISSION_PRESETS (does not change trust role)."""
+    from backend.app.auth.trust_roles import get_permission_preset
+    from backend.app.models.user import User
+    from backend.app.services.users import _apply_preset_access_context
+
+    modules = get_permission_preset(preset_id)
+    user = (
+        await db.execute(sa.select(User).where(User.id == str(user_id)).limit(1))
+    ).scalar_one_or_none()
+    if user is not None:
+        _apply_preset_access_context(user, preset_id)
+        await db.flush()
+    return await update_user_module_overrides(
+        db,
+        tenant,
+        {str(user_id): modules},
+        actor_id=actor_id,
+    )
+
+
+async def apply_permission_preset_to_employee_matrix(
+    db: AsyncSession,
+    tenant: Tenant,
+    *,
+    preset_id: str,
+    actor_id: str | None = None,
+    actor_is_superadmin: bool = False,
+) -> Dict[str, Dict[str, Dict[str, bool]]]:
+    """Apply preset cells onto the Employee trust column of the role matrix."""
+    from backend.app.auth.trust_roles import get_permission_preset
+
+    modules = get_permission_preset(preset_id)
+    return await update_role_module_matrix(
+        db,
+        tenant,
+        {"employee": modules},
+        actor_id=actor_id,
+        actor_is_superadmin=actor_is_superadmin,
+    )
 
 
 async def update_user_module_overrides(

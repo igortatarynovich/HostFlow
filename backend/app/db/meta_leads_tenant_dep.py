@@ -18,8 +18,11 @@ from backend.app.modules.leads.meta_tenant_resolve import resolve_meta_leads_eff
 
 
 def ensure_token_matches_header_tenant(ctx: UserCtx, header_tenant_id: str) -> None:
+    """Fail-closed: empty JWT tenant is not an allow-all for arbitrary X-Tenant-Id."""
     token_tenant = (ctx.tenant_id or "").strip()
-    if token_tenant and token_tenant != header_tenant_id:
+    if not token_tenant:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden for tenant")
+    if token_tenant != header_tenant_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden for tenant")
 
 
@@ -53,6 +56,7 @@ async def get_db_with_meta_leads_effective_tenant(
             detail="META_LEADS_OPERATIONAL_TENANT_ID must be a valid UUID when set",
         )
 
+    from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
     from backend.app.security.api_tenant_context import require_elevated_reason_or_raise
     from backend.app.security.constants import (
         ALLOWED_ELEVATED_SCOPES,
@@ -108,6 +112,8 @@ async def get_db_with_meta_leads_effective_tenant(
         db.info["security_elevated_reason"] = er
         db.info["security_elevated_scope"] = scope
     else:
+        # Non-remap: JWT match or membership required before RLS bind.
+        await ensure_user_can_access_tenant(db, ctx, raw)
         db.info["security_access_kind"] = "tenant_bound"
         db.info["security_elevated_reason"] = None
         db.info["security_elevated_scope"] = None

@@ -188,6 +188,13 @@ const REASON_LABEL_ALIASES: Record<string, string> = {
   неверный_номер_телефона: 'wrong_phone',
   nieprawidlowy_numer: 'wrong_phone',
   nieprawidlowy_numer_telefonu: 'wrong_phone',
+  recruitment_completed: 'recruitment_completed',
+  recruitment_closed: 'recruitment_completed',
+  hiring_completed: 'recruitment_completed',
+  набор_завершён: 'recruitment_completed',
+  набор_завершен: 'recruitment_completed',
+  rekrutacja_zakończona: 'recruitment_completed',
+  rekrutacja_zakonczona: 'recruitment_completed',
   bez_przyczyny: 'no_reason',
   без_причины: 'no_reason',
 }

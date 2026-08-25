@@ -3,6 +3,8 @@
 Author: Planning document  
 Purpose: Define landing page structure, SEO architecture, UX logic and design system before product visuals are added.
 
+**Canon (runtime IA):** public funnels and Success Path are governed by [`ADR-034`](specs/architecture/ADR-034-self-service-public-funnels.md) and [`self-service-success-path.md`](specs/journeys/self-service-success-path.md). This file remains visual / IA planning context; shipped routes win over aspirational `/product/*` / `/guides/*` names until those routes exist under Growth.
+
 --------------------------------------------------
 
 # 1. RESEARCH SUMMARY (PIPE DRIVE ANALYSIS)

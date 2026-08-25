@@ -39,7 +39,8 @@ except ImportError:  # pragma: no cover - Pydantic v1 fallback
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate_employment import CandidateEmployment
 from backend.app.services import candidate_employments as employment_service
@@ -238,7 +239,7 @@ async def _get_employment_or_404(
 @router.get(
     "/{candidate_id}/employments",
     response_model=list[EmploymentOut],
-    dependencies=[Depends(require_roles(Role.manager, Role.recruiter, Role.admin, Role.viewer))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def list_employments(
     candidate_id: UUID,
@@ -253,7 +254,7 @@ async def list_employments(
     "/{candidate_id}/employments",
     status_code=status.HTTP_201_CREATED,
     response_model=EmploymentOut,
-    dependencies=[Depends(require_roles(Role.manager, Role.recruiter, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_employment(
     candidate_id: UUID,
@@ -284,7 +285,7 @@ async def create_employment(
 @router.put(
     "/{candidate_id}/employments/{employment_id}",
     response_model=EmploymentOut,
-    dependencies=[Depends(require_roles(Role.manager, Role.recruiter, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def update_employment(
     candidate_id: UUID,
@@ -312,7 +313,7 @@ async def update_employment(
 @router.delete(
     "/{candidate_id}/employments/{employment_id}",
     status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
-    dependencies=[Depends(require_roles(Role.manager, Role.recruiter, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def delete_employment(
     candidate_id: UUID,

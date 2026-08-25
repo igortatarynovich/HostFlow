@@ -3,7 +3,7 @@
 **Status:** architecture / product spec — **guardrails before implementation**.  
 **Purpose:** separate **intake triage** from **routing**, **recruitment workflow**, and **candidate operations** so the Lead screen becomes an **Intake Decision Workspace**, not a mini Candidate card.
 
-**Related:** [ingestion-contract-template.md](ingestion-contract-template.md) (mandatory lightweight contract per ingestion channel), [lead-intake-conversion-flow-audit.md](lead-intake-conversion-flow-audit.md) (implementation snapshot: stable vs gaps vs slices), [recruitment-domain-model.md](../architecture/recruitment-domain-model.md) (canonical story: Lead / Candidate / Application / conversion), [lead-to-candidate-operating-model.md](lead-to-candidate-operating-model.md) (entity boundaries), [activity-notification-operating-layer.md](../architecture/activity-notification-operating-layer.md), [phase-1-3-activity-layer-v1-migration-plan.md](../architecture/phase-1-3-activity-layer-v1-migration-plan.md), [application-creation-mvp.md](application-creation-mvp.md) (Applications MVP closed separately), [modules/leads.md](../modules/leads.md).
+**Related:** [**recruitment-operational-goals-and-order.md**](recruitment-operational-goals-and-order.md) (цели и порядок: Lead first → Candidate requirements → Handoff), [ingestion-contract-template.md](ingestion-contract-template.md) (mandatory lightweight contract per ingestion channel), [lead-intake-conversion-flow-audit.md](lead-intake-conversion-flow-audit.md) (implementation snapshot: stable vs gaps vs slices), [recruitment-domain-model.md](../architecture/recruitment-domain-model.md) (canonical story: Lead / Candidate / Application / conversion), [lead-to-candidate-operating-model.md](lead-to-candidate-operating-model.md) (entity boundaries), [activity-notification-operating-layer.md](../architecture/activity-notification-operating-layer.md), [phase-1-3-activity-layer-v1-migration-plan.md](../architecture/phase-1-3-activity-layer-v1-migration-plan.md), [application-creation-mvp.md](application-creation-mvp.md) (Applications MVP closed separately), [modules/leads.md](../modules/leads.md).
 
 ### Phase discipline: semantic foundation → operational consolidation
 
@@ -286,7 +286,7 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 
 **Practical delivery track:** **Intake Resolution MVP** — шесть срезов ниже (в этом порядке). Не путать с «только Lead UI cleanup»: срез 6 — последний, после семантики и guards.
 
-**Параллельно (архитектура):** публичный Candidate-first vs CRM Lead-first — [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md) (**Proposed**); правило **не расширять новый канал без записанного ingestion contract** — см. ADR § «Ingestion governance».
+**Параллельно (архитектура):** публичный candidate intake — [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md) (**Accepted 2026-07-02**); contract [ingestion-contract-public-intake.md](ingestion-contract-public-intake.md). Telegram — отдельный contract при расширении.
 
 Порядок срезов совпадает с [lead-intake-conversion-flow-audit.md](lead-intake-conversion-flow-audit.md) §4.
 
@@ -297,7 +297,7 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 | **3** | **Reject reasons + intake taxonomy** | Foundation для source/campaign/recruiter KPI и automation; CRM `lost` недостаточно. §5 коды — опора аналитики. |
 | **4** | **Qualification summary** | Один компактный блок (опыт, документы, язык, fit, route, source) **без** гигантских виджетов — поддержка решения по intake, не дублирование candidate card. |
 | **5** | **Activity continuity guards** | Enforcement: нет дублирующего first-call/SLA после convert; перенос контекста (§7). Doctrine без слоя проверки ≠ «проблема решена». |
-| **6** | **Lead workspace cleanup** | Demote stage/fit/automation/playbook до вторичного; **intake decision first** в layout и mental model. |
+| **6** | **Lead workspace cleanup** | Demote stage/fit/automation/playbook до вторичного; **intake decision first** в layout и mental model. | **Done (2026-07-02)** — recruitment detail + inbox workspace; CRM chrome under More. |
 
 **Порядок намеренный:** сначала семантика, действия, таксономия, qualification data, continuity guards — **затем** чистка UI. Рисовать «красивый Lead» до стабилизации смыслов почти всегда даёт **operationally inconsistent** интерфейс.
 
@@ -352,13 +352,19 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 
 **Boundary:** RODO / GDPR art. 14 notice is satisfied **on the Lead** before gated intake actions. After conversion, candidate-level compliance may apply separately; lead audit is copied read-only into `Candidate.extra['rodo_lead_audit']` — not re-sent by default.
 
-**Tenant policy** (`Tenant.settings.lead_rodo_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings`):
+**Delivery (ADR-031):** compliance **gates and audit** stay on Lead (`normalized.rodo`). When outbound email is required, **send** must use Communication Pipeline with opaque result (`sales_inquiry` \| `application`) via module binders — not business-module SMTP. Permanent path: [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) · [task](../tasks/compliance-outbound-pipeline-early-result.md). Legacy `lead_rodo` SMTP is migration debt (C0.1b allowlist) until removed.
+
+**Company policy (ADR-033, target SoT):** operational RODO/ops email policy resolves via [lead-lifecycle-email-policy.md](lead-lifecycle-email-policy.md) — Vacancy override → Company `lead_lifecycle_email_v1` → tenant preset. Control Center: **Настройки → Коммуникации → Lead lifecycle email**. Tenant JSON below remains preset/cutover adapter.
+
+**Tenant policy** (`Tenant.settings.lead_rodo_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings` — **preset / migration**):
 
 | `lead_rodo_send_mode` | Behaviour |
 |-------------------------|-----------|
 | `manual` (default) | Recruiter sends from intake rail / API; no outbound on ingest. |
 | `auto_on_lead_created` | After **new** lead row + custom-field sync: auto-send for eligible ingest sources when email channel exists (MVP: Meta, generic webhook, `csv_import`, import, Telegram*, public form). |
-| `auto_on_first_action` | Outbound attempt immediately before first gated action (process, request_info, stage `contacted`). |
+| `auto_on_first_action` | Outbound attempt immediately before first gated action (process, request_info, stage `contacted`, `communication_call`). |
+
+**Policy SoT (ADR-033):** firm **OwnCompany** `lead_lifecycle_email_v1`; optional client + vacancy override — [lead-lifecycle-email-policy.md](lead-lifecycle-email-policy.md).
 
 Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_id` (active `rodo_clause` version override).
 
@@ -380,8 +386,9 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 
 - `POST /api/v1/leads/{id}/compliance/rodo/send` — manual / retry (always available when auto is on).
 - `POST /api/v1/leads/{id}/compliance/rodo/source-provided` — mark covered at source.
+- `POST /api/v1/leads/bulk/compliance/rodo/retry` — bulk re-send after Pipeline cutover (default `rodo.status=failed`; `dry_run` supported). CLI: `backend/scripts/retry_lead_rodo.py`.
 
-**UI:** Meta Leads settings — mode select; **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / manual hint; Send RODO + “covered at source” buttons retained for retry.
+**UI:** Meta Leads settings — mode select; **Intake Decision rail** — status copy for `sent` / `failed` / `pending_channel` / manual hint; Send RODO + “covered at source” buttons retained for retry. **Sales inquiry rail / client lead call-result** — same Send / source-provided unlock (ADR-033 slice C) before `call-result` / stage `contacted`.
 
 **Tests:** `backend/tests/api/test_lead_rodo_gate.py`, `backend/tests/api/test_lead_rodo_auto.py`.
 
@@ -391,12 +398,14 @@ Also: `lead_rodo_channels` (default `["email"]`), optional `lead_rodo_template_i
 
 **Boundary:** Candidate-facing **operational** status email on the Lead lifecycle. **Not** RODO / art. 14 — separate settings, persistence, audit, and UI block.
 
+**Delivery (ADR-031 / C5):** hooks remain on Lead lifecycle; send requires Pipeline inputs (thread + purpose + template metadata) from destination binders. Fail-closed `communication_pipeline_required` without binder is intentional until [compliance-outbound-pipeline-early-result](../tasks/compliance-outbound-pipeline-early-result.md) PR-4 lands.
+
 **Tenant policy** (`Tenant.settings.lead_communication_v1`, exposed on `GET/PATCH /api/v1/settings/leads/settings`):
 
 | Flag | Behaviour |
 |------|-----------|
 | `lead_communication_enabled` | Master switch; when off, no operational sends. |
-| `send_application_received` | After **new** lead ingest (post contact check) when email exists. |
+| `send_application_received` | After **new** **recruitment** lead ingest (post contact check) when email exists. **Not** for B2B / `client` + `client_lead` inquiries. |
 | `send_rejection_notice` | After intake decision **reject**. |
 | `send_moving_forward_notice` | After successful Lead → Candidate conversion (production path: `create_candidate_full` in `process_normalized_lead`). |
 

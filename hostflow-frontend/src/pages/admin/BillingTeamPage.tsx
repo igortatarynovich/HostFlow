@@ -27,12 +27,7 @@ import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 
 const ROLE_OPTIONS: { value: SeatRequest['role']; labelKey: string }[] = [
   { value: 'administrator', labelKey: 'app.settings.team.form.roles.administrator' },
-  { value: 'supervisor', labelKey: 'app.settings.team.form.roles.supervisor' },
-  { value: 'recruiter', labelKey: 'app.settings.team.form.roles.recruiter' },
-  { value: 'compliance_officer', labelKey: 'app.settings.team.form.roles.compliance_officer' },
-  { value: 'hr_officer', labelKey: 'app.settings.team.form.roles.hr_officer' },
-  { value: 'client_manager', labelKey: 'app.settings.team.form.roles.client_manager' },
-  { value: 'client_processor', labelKey: 'app.admin.users.roles.client_processor' },
+  { value: 'employee', labelKey: 'app.settings.team.form.roles.employee' },
   { value: 'viewer', labelKey: 'app.settings.team.form.roles.viewer' },
 ]
 
@@ -43,7 +38,7 @@ type SeatFormState = {
 }
 
 const DEFAULT_FORM: SeatFormState = {
-  role: 'recruiter',
+  role: 'employee',
   requested_count: '1',
   message: '',
 }
@@ -143,30 +138,33 @@ export function TeamManagementPanel({
     const usage = overview?.usage ?? platformSummary?.usage
     const license = overview?.license ?? platformSummary?.license ?? null
     if (!usage) return []
+    const adminUsed = usage.administrator_count ?? usage.supervisor_count
+    const employeeUsed = usage.employee_count ?? usage.recruiter_count
+    const portalUsed = usage.portal_guest_count ?? usage.client_manager_count
     return [
       {
-        id: 'recruiters',
-        label: t('app.settings.team.usage.recruiters'),
-        used: usage.recruiter_count,
-        limit: license?.max_recruiters ?? 0,
-      },
-      {
-        id: 'supervisors',
-        label: t('app.settings.team.usage.supervisors'),
-        used: usage.supervisor_count,
+        id: 'administrators',
+        label: t('app.settings.team.usage.administrators'),
+        used: adminUsed,
         limit: license?.max_supervisors ?? 0,
       },
       {
-        id: 'client_managers',
-        label: t('app.settings.team.usage.client_managers'),
-        used: usage.client_manager_count,
-        limit: license?.max_client_managers ?? 0,
+        id: 'employees',
+        label: t('app.settings.team.usage.employees'),
+        used: employeeUsed,
+        limit: license?.max_recruiters ?? 0,
       },
       {
         id: 'viewers',
         label: t('app.settings.team.usage.viewers'),
         used: usage.viewer_count,
         limit: license?.max_viewers ?? 0,
+      },
+      {
+        id: 'portal_guests',
+        label: t('app.settings.team.usage.portal_guests'),
+        used: portalUsed,
+        limit: 0,
       },
     ]
   }, [overview, platformSummary, t])
@@ -509,16 +507,15 @@ export function TeamManagementPanel({
 export default function BillingTeamPage() {
   const { t } = useI18n()
   return (
-    <div className="space-y-4">
+    
       <SettingsSubpageHeader
         backHref={CRM_APP_PATHS.settings}
         backLabel={t('admin.settings.subpage.back_all')}
         kicker={t('admin.settings.subpage.kicker_workspace_setup')}
         title={t('app.settings.team.title')}
-        subtitle={t('app.settings.team.subtitle')}
-      />
+        subtitle={t('app.settings.team.subtitle')}>
       <TeamManagementPanel showHeader={false} />
-    </div>
+    </SettingsSubpageHeader>
   )
 }
 

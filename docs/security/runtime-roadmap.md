@@ -93,11 +93,16 @@ Observability для HF трактуется как **часть security archit
 
 - **Статус фазы:** MVP (session guard) **+ hardening** — superadmin/support elevated bind, `actor_id` в runtime, worker `tenant_enforced_session`, CI для tenant isolation.
 - `TenantEnforcingAsyncSession` (`backend/app/db/tenant_session.py`) + `async_sessionmaker(..., class_=...)` в `backend/app/db/session.py`: при `tenant_rls_enforcement=True` на Postgres блокируется `execute`/`stream`, пока не завершён `bind_tenant_context_to_session` (флаги `rls_tenant_bound`, `_binding_tenant_context` на время bind).
-- `get_db_with_tenant` / `get_db_with_meta_leads_effective_tenant` выставляют `tenant_rls_enforcement=True` до bind; `bind_tenant_context_to_session` проверяет `set_config` через `current_setting` (без silent pass на Postgres). **Hardening:** superadmin с `X-Tenant-Id` ≠ JWT tenant — обязателен `X-HostFlow-Elevated-Reason` (+ опциональный `X-HostFlow-Elevated-Scope` из allowlist), `emit_security_event_v1`; meta leads remap (`effective` ≠ header) — тот же контракт; `db.info["security_access_kind"]` / `security_elevated_*`.
+- `get_db_with_tenant` / `get_db_with_meta_leads_effective_tenant` выставляют `tenant_rls_enforcement=True` до bind; `bind_tenant_context_to_session` проверяет `set_config` через `current_setting` (без silent pass на Postgres). **Hardening:** superadmin с `X-Tenant-Id` ≠ JWT tenant — обязателен `X-HostFlow-Elevated-Reason` (+ опциональный `X-HostFlow-Elevated-Scope` из allowlist), `emit_security_event_v1`; meta leads remap (`effective` ≠ header) — тот же контракт; `db.info["security_access_kind"]` / `security_elevated_*`. **P0:** для authenticated non-superadmin `get_db_with_tenant` вызывает `ensure_user_can_access_tenant` до RLS bind (JWT match **или** `user_memberships`) — чужой `X-Tenant-Id` без membership → 403.
+- **Residual (auth on tenant-bound CRM routes + public token-first):** calendar list/connections/refresh/delete/cursors/reconcile/renew + `token_meta` redaction; `/users/managers` + `/catalogs/managers`; analytics router `dependencies=[get_current_user]`; `/meta/stages` ignores `X-Tenant-Id` when anonymous (membership required when header used); candidate-links GET; public goals/notifications/scanner create resolve tenant from share/intake token (ignore header); FE VacancyList + impersonation backup use `getStoredAccessToken`. Tests: `tests/security/test_residual_auth_isolation.py`.
+- **Residual batch 2:** `/documents/templates`, `/legal-documents/active`, `/notifications/templates`, and `/db/*` documents module require auth (`get_current_user`); closes anonymous tenant catalog/template reads via `X-Tenant-Id` alone.
+- **Fail-closed tenant bind:** `get_db_with_tenant` requires authenticated user (401 anonymous). Signed webhooks use `get_db_with_tenant_public` (explicit `X-Tenant-Id`, no silent default). Public scan session routes require matching intake `token` (closes UUID IDOR).
+- **Enforcement:** CI job `tenant-bind-auth` (`scripts/security/check_tenant_bind_auth.py`) — fail-closed `get_db_with_tenant` + meta-leads dep; `get_db_with_tenant_public` allowlist; AST scan of FastAPI routes that declare `X-Tenant-Id` without auth (`tenant_header_public_allowlist.txt`). FE `applyAuthIsolationWipeOnce` clears stale per-origin Bearer/tenant once after isolation deploy (cookie session rehydrates).
 - Webhooks Meta / generic inbound: `security_job_context` + bind + enforcement (`webhook.py`, `inbound_public.py`).
-- Worker helper: `tenant_enforced_session(..., actor_id=..., correlation_id=...)` — используется в `communications_scheduler` (per-tenant tick), ARQ `job_automation_evaluate_trigger`, sweep / risk_intel passes.
+- Worker helper: `tenant_enforced_session(..., actor_id=..., correlation_id=...)` — используется в `communications_scheduler` (per-tenant tick), ARQ `job_automation_evaluate_trigger`, `job_calendar_sync_ingest`, sweep / risk_intel / HR alerts passes.
+- **ARQ SSOT §0b (2026-07-29):** `parse_required_job_tenant_id` fail-closed; calendar enqueue передаёт `tenant_id`; stripe/comms jobs ставят `security_job_context`. CI: `check_arq_worker_tenant.py` / job `arq-worker-tenant`.
 - Security event v1: `emit_security_event_v1` — всегда непустые `actor_id` (или `system:unknown`) и `correlation_id`; JWT deps и middleware сбрасывают contextvars через token reset.
-- Тесты: `tests/security/test_tenant_rls_session_guard.py`, `test_api_tenant_context_unit.py`, `test_superadmin_elevated_bind.py`; A/B API — `tests/api/test_tenant_isolation.py` (`@pytest.mark.postgres_integration`, Lifespan timeouts увеличены в `conftest`).
+- Тесты: `tests/security/test_tenant_rls_session_guard.py`, `test_api_tenant_context_unit.py`, `test_superadmin_elevated_bind.py`, `test_tenant_header_membership_guard.py`; A/B API — `tests/api/test_tenant_isolation.py` (`@pytest.mark.postgres_integration`, Lifespan timeouts увеличены в `conftest`).
 
 ---
 
@@ -108,11 +113,20 @@ Observability для HF трактуется как **часть security archit
 **Spike (реализовано, узкий scope — не «platform»):**
 
 - **Canonical schema v1** (enforced): `emit_security_event_v1` в `backend/app/security/canonical_emit.py` — поля `schema_version`, `event_id`, `event_type`, `category`, `severity`, `timestamp`, `tenant_id`, `actor_id`, `correlation_id`, `access_kind`, `action`, `entity_type`, `entity_id`, `result`, `source`, `extra`. Transport остаётся только structured log (`hostflow.security.events`); продьюсеры не знают SIEM/queue.
-- **Taxonomy:** `backend/app/security/event_taxonomy.py` — allowlist префиксов (`auth.`, `rls.`, `superadmin.`, …), константы spike-событий, `validate_event_type`.
+- **Taxonomy:** `backend/app/security/event_taxonomy.py` — allowlist префиксов (`auth.`, `rls.`, `access.`, `superadmin.`, …), константы spike-событий, `validate_event_type`.
 - **Redaction:** `backend/app/security/event_redaction.py` — запрещённые/чувствительные ключи, allowlist для `extra`, лимит размера JSON.
 - **Legacy shim:** `emit_security_event` в `backend/app/security/events.py` — маппинг старых `action` на v1 + fallback старый payload для неизвестных строк.
 - **Call sites (canonical):** `get_db_with_tenant` (superadmin elevated + auth impersonation), `get_db_with_meta_leads_effective_tenant` (operational remap), `TenantEnforcingAsyncSession` (RLS deny).
 - **Governance (process):** [`security-events-governance.md`](./security-events-governance.md) — как добавлять `event_type`/prefixes, bump `schema_version`, запрет raw events, rollout без drift; **CI gate** на raw `emit_security_event(` (см. раздел *CI enforcement* там и job `no-raw-emit-security-event` в `security-gates.yml`).
+
+**Golden path list + export (код, 2026-07-29):**
+
+- **List:** prefix `access.*` + helper `access_events.emit_access_security_event_v1` (`query_class`, `route`, `row_count`, `duration_ms`, …). Call site: `GET /api/v1/candidates` (`access.list.completed`).
+- **Export:** уже Phase 4 v1 (`export.*` на documents/analytics/org_units export).
+- **Search (Phase 6 first call site):** `GET /api/v1/search` → `search.retrieval.completed` via `retrieval_events` (без сырого `q` в `extra`).
+- **Runbook (correlation):** HTTP middleware / deps выставляют `correlation_id` в contextvar; ищите цепочку в structured log `hostflow.security.events` по `correlation_id` + `tenant_id` + `actor_id` (list → export / search на том же запросе-сессии).
+
+**Статус фазы:** spike + golden path list/export **started** (list wired; export уже был; dashboards / Prometheus — backlog).
 
 **Направления работ**
 
@@ -155,46 +169,70 @@ Observability для HF трактуется как **часть security archit
 
 ## Phase 4 — Export anomaly detection
 
-**Статус (код):** **started — export telemetry v1** (`emit_security_event_v1` на синхронных export-путях; детекторы / пороги / bulk — по-прежнему backlog этой фазы).
+**Статус (код):** **started — export telemetry v1 + anomaly detector v1** (per-request thresholds; sliding-window / Slack alerts → Phase 7).
 
 **Цель:** снизить **insider risk** и массовые выгрузки без блокировки легитимной работы.
 
 **Реализовано (v1 telemetry, узкий scope):**
 
-- Таксономия `export.*`: `export.requested`, `export.generated`, `export.downloaded`, `export.denied`, плейсхолдер `export.expired` (на будущее для TTL/async).
-- `export_events.py`: `emit_export_security_event_v1` + allowlist `extra` с полями `export_type`, `row_count`, `byte_size`, `filter_scope`, `async_job_id`, **`export_scope`**, **`contains_class3`**, **`bulk_operation`**, `reason`, `response_mode`.
-- Call sites: `modules/documents/router` (export.json / export.csv / export.zip bundle), `api/v1/analytics` (`/analytics/export`), `api/v1/admin/org_units` (`/export` snapshot).
+- Таксономия `export.*`: `export.requested`, `export.generated`, `export.downloaded`, `export.denied`, `export.anomaly.detected`, плейсхолдер `export.expired` (на будущее для TTL/async).
+- `export_events.py`: `emit_export_security_event_v1` + allowlist `extra` с полями `export_type`, `row_count`, `byte_size`, `filter_scope`, `async_job_id`, **`export_scope`**, **`contains_class3`**, **`bulk_operation`**, `reason`, `response_mode`, **`anomaly_codes`**, **`threshold_*`**.
+- Call sites: `modules/documents/router` (export.json / export.csv / export.zip bundle), `api/v1/admin/org_units` (`/export` snapshot). Detector runs automatically on every successful `export.generated`.
 - Redaction: доп. запрет ключей `rows`, `records`, `archive_path`, `export_path`, `attachment_filename` в security `extra`.
 - **Stabilization (Phase 3+4):** таблица обязательных событий и анти-drift gates — [`telemetry-phase3-4-mandatory-events.md`](./telemetry-phase3-4-mandatory-events.md), job `telemetry-phase34-stability` в `security-gates.yml`.
 
-**Сигналы (примеры)**
+**Пороги anomaly v1 (per-request, не блокируют):**
 
-- Резкий рост `row_count` или числа экспортов на пользователя / tenant / сутки.
-- Много скачиваний CLASS 3 за короткий интервал.
-- Нетипичное время (after-hours) + большой объём (политика по юрисдикции и культуре компании).
+| Код | Условие | Значение |
+|-----|---------|----------|
+| `row_count_threshold` | `row_count >= N` | **500** |
+| `byte_size_threshold` | `byte_size >= N` | **5_000_000** (≈5 MiB) |
+| `class3_bulk` | `contains_class3` и `bulk_operation` | boolean |
+| `class3_row_count` | CLASS 3 и `row_count >= N` | **50** |
+
+Ложноположительные: крупные org-structure snapshots, легитимные bulk CSV. Triage по `export_type` + `anomaly_codes`; auto-block — **не** в v1.
+
+**Сигналы (ещё backlog / Phase 7)**
+
+- Резкий рост числа экспортов на пользователя / tenant / сутки (sliding window).
+- Нетипичное время (after-hours) + большой объём.
+- Алерт в Slack / admin center на `export.anomaly.detected`.
 
 **Критерии готовности фазы (пример)**
 
-- Пороги v1 задокументированы; ложноположительные сценарии известны.
-- Связка с audit trail export (SSOT): каждый экспорт уже имеет запись → детектор читает те же данные.
+- ~~Пороги v1 задокументированы; ложноположительные сценарии известны.~~ **done (таблица выше).**
+- Связка с audit trail export (SSOT): каждый экспорт уже имеет запись → детектор читает те же поля `export.generated`.
+- Sliding-window + paging alerts — Phase 7.
 
 ---
 
 ## Phase 5 — SUPERADMIN operational controls
 
+**Статус (код):** **started — MVP** (mandatory reason + audit on impersonation start, 30m JWT TTL, UI banner; WORM store backlog).
+
 **Цель:** перевести описанные в SSOT требования в **операционные** контроли, а не только в архитектуру.
 
-**Направления работ**
+**Реализовано (MVP, 2026-07-29):**
 
-- Обязательное поле **reason** (и при необходимости ссылка на ticket/incident) при impersonation / elevated session.
-- Time-bound elevation (например 30 мин) в продукте, не только в тексте спеки.
-- Audit trail: **append-only** или эквивалент (WORM / immutable store / crypto-hashing цепочки событий) для superadmin-действий — выбор реализации в backlog.
-- UI banner «SUPERADMIN ACCESS ACTIVE» (или эквивалент) для снижения социального риска.
+- `POST /platform/tenants/{id}/impersonate` требует body `{ "reason": "…" }` (min 3 chars); без reason → 422.
+- Time-bound elevation: JWT `exp` = now + `IMPERSONATION_TTL_MINUTES` (**30**); константа в `security/constants.py`.
+- Audit: `superadmin.impersonation.started` via `emit_security_event_v1` (`elevated_reason`, `ttl_minutes`, `expires_at`, `platform_tenant_id`).
+- `whoami` / `whoami-verify` → `session_kind=impersonation` (+ `impersonated_by`).
+- FE: reason prompt before impersonate; `ImpersonationBanner` («SUPERADMIN ACCESS ACTIVE») in AppShell.
+- Elevated cross-tenant DB bind reason (`X-HostFlow-Elevated-Reason`) — уже Phase 1 hardening.
+
+**Направления работ (остаток)**
+
+- Audit trail: **append-only** / WORM store для superadmin-действий — backlog.
+- Dual authorization для enterprise — backlog.
+- Dedicated admin query API «superadmin events за период» — пока triage по structured log `event_type` prefix `superadmin.`.
 
 **Критерии готовности фазы (пример)**
 
-- Невозможно начать impersonation без reason в production-конфигурации.
-- Выборка superadmin-событий за период — один запрос / один отчёт.
+- ~~Невозможно начать impersonation без reason~~ — enforced API + FE.
+- ~~Time-limited elevation в claims~~ — 30m JWT.
+- ~~UI banner~~ — `ImpersonationBanner`.
+- Выборка superadmin-событий из SIEM/логов по `superadmin.*` — operational; WORM API — backlog.
 
 ---
 
@@ -210,58 +248,90 @@ Observability для HF трактуется как **часть security archit
 2. **RBAC-scoped** — тот же policy layer, что и для API; никаких «admin search sees all fields».
 3. **Audit-scoped** — логируемые запросы контекста (что включили в prompt / retrieval, какой индекс, какой фильтр), без утечки CLASS 3 в логах.
 
-**Нормативный контракт (начало Phase 6, без call sites):** [`retrieval-audit-governance.md`](./retrieval-audit-governance.md) + `retrieval_events.py` (taxonomy + helper + redaction keys).
+**Нормативный контракт:** [`retrieval-audit-governance.md`](./retrieval-audit-governance.md) + `retrieval_events.py` (taxonomy + helper + redaction keys).
 
-**Направления работ**
+**Реализовано (call sites, 2026-07-29):**
+
+- `GET /api/v1/search` — `search.retrieval.requested` / `.completed` / `.denied` (scope membership fail); counters `returned_count` / `filtered_count`; без сырого `q`.
+- `GET /api/v1/tenants/{id}/links/search-companies` — тот же triad; `retrieval_scope=cross_tenant_company_directory`.
+- Threat model: [`threat-models/global-search.md`](./threat-models/global-search.md).
+- CI: `scripts/security/check_retrieval_call_sites.py` (job в `security-gates`).
+
+**Направления работ (остаток Phase 6)**
 
 - Контракт на «retrieval»: максимальный scope, redaction, запрет на склейку несвязанных кандидатов.
 - Запрет неявного «global search» по всем tenant’ам без platform-only режима с отдельным audit и rate limit.
 - Оценка RAG/vector: кто может писать в индекс, как удаляются вектора при delete/anonymize (GDPR).
+- Analytics drill-down как retrieval — только если появится отдельный слой (не агрегаты).
 
 **Критерии готовности фазы (пример)**
 
-- Threat model обновлён под конкретную AI/search фичу (отдельный файл в `threat-models/` при появлении продукта).
-- Негативные тесты: запрос контекста с чужим `tenant_id` / чужим кандидатом → отказ.
+- ~~Threat model обновлён под search~~ — `threat-models/global-search.md`.
+- ~~Негативные тесты: чужой scope → denied event~~ — unit `test_retrieval_global_search_audit.py`.
+- AI context assembly call sites — backlog до появления продукта.
 
 ---
 
 ## Phase 7 — Detection & alerting
 
-**Цель:** превратить сигналы фаз 2–4 в **реакцию** (Slack, email, admin center, PagerDuty по критичности).
+**Статус (код):** **started — detection engine v1** (in-process rules + `detection.alert.raised` + optional webhook).
 
-**Примеры правил**
+**Цель:** превратить сигналы фаз 2–4 (и Phase 6 retrieval denies) в **реакцию** (Slack webhook / log), с обязательным runbook.
 
-- Brute force / всплеск 401/403.
-- Массовые экспорты / скачивания документов (см. Phase 4).
-- Аномалии signed URL (см. Phase 3).
-- Tenant enumeration (паттерны запросов к публичным endpoint).
+**Реализовано (v1):**
+
+- Taxonomy prefix `detection.` · `detection.alert.raised`.
+- Rules registry: `backend/app/security/detection_rules.py` (owner + runbook required).
+- Engine hook from `emit_security_event_v1` → `maybe_raise_detection_alerts` (skips `detection.*` recursion).
+- Rules: `export_anomaly_v1` (immediate), `retrieval_denied_burst_v1` (5/10m), `document_signed_url_denied_burst_v1` (10/10m). Burst counters are **process-local** (multi-replica → shared store backlog).
+- Optional sink: `SECURITY_ALERT_WEBHOOK_URL` / `settings.security_alert_webhook_url`.
+- Runbooks: [`detection-runbooks.md`](./detection-runbooks.md).
+- CI: `scripts/security/check_detection_rules.py`.
+
+**Примеры правил (ещё backlog)**
+
+- Brute force / всплеск 401/403 (auth path metrics).
+- Sliding-window export count per actor/day (needs shared store).
+- Tenant enumeration on public endpoints.
 
 **Критерии готовности фазы (пример)**
 
-- Каждое правило имеет owner, порог и процедуру triage.
-- Нет «алерта без runbook» (ссылка на IR в SSOT / security-review-checklist).
+- ~~Каждое правило имеет owner, порог и процедуру triage.~~ **v1 done.**
+- ~~Нет «алерта без runbook».~~ **enforced by CI.**
+- Shared-store burst + PagerDuty — backlog.
 
 ---
 
 ## Phase 8 — Security scorecard
 
+**Статус (код):** **started — scorecard v1** (repo-derived markdown + CI drift check).
+
 **Цель:** сделать security **измеримой системой** для leadership и ретроспектив, без превращения в SOC2-theater.
+
+**Реализовано (v1):**
+
+- Generator: `scripts/security/generate_security_scorecard.py` (`--write` / `--check`).
+- Artifact: [`security-scorecard.md`](./security-scorecard.md) — единый источник цифр из репо (tests, gates, threat models, detection rules, RLS static hint + runtime guard).
+- `make security-scorecard` / `make security-scorecard-check`; CI job `security-scorecard`.
+- MFA / vuln counts remain **n/a** in-repo (fill in monthly review log + paste CI URLs).
 
 **Примеры строк scorecard**
 
 | Area | Metric | Target / note |
 |------|--------|-----------------|
-| RLS | % tenant-таблиц с политикой | 100% |
-| CI gates | security-gates workflow | green on main |
-| Security tests | `backend/tests/security/` + tenant API tests | pass |
-| Threat models | актуальность при изменении surface | по gate |
-| MFA | adoption superadmin + owners | > 90% (цель SSOT) |
-| Vulns | critical / high (sensitive deps) | 0 / по политике |
+| RLS | static coverage hint + runtime guard | guard present; live 100% via DB audit |
+| CI gates | security gate scripts + workflow jobs | inventory green |
+| Security tests | `backend/tests/security/` | ≥ 10 modules |
+| Threat models | `docs/security/threat-models/` | ≥ 10 |
+| Detection | Phase 7 rules | ≥ 3 + runbooks |
+| MFA | adoption superadmin + owners | > 90% (SSOT) — manual |
+| Vulns | critical / high (sensitive deps) | CI jobs |
 
 **Критерии готовности фазы (пример)**
 
-- Единый источник цифр (дашборд + ссылка из этого файла).
-- Ежемесячный или квартальный review с фиксацией в changelog roadmap.
+- ~~Единый источник цифр~~ — `docs/security/security-scorecard.md`.
+- ~~Ежемесячный review log~~ — секция в scorecard (дополнять вручную).
+- Dashboard UI — backlog.
 
 ---
 
@@ -278,5 +348,6 @@ Observability для HF трактуется как **часть security archit
 
 - [`security-ssot.md`](./security-ssot.md) — принципы, классификация данных, invariants.  
 - [`security-review-checklist.md`](./security-review-checklist.md) — PR gate.  
+- [`security-scorecard.md`](./security-scorecard.md) — Phase 8 living metrics.  
 - [`threat-models/`](./threat-models/) — уточнение по поверхностям.  
 - CI: `.github/workflows/security-gates.yml`.

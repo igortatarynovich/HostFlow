@@ -20,6 +20,12 @@ def recruitment_driver_ce_document_pack() -> dict[str, Any]:
                 "reason_code": "driver_ce_pack_identity",
             },
             {
+                "slot_code": "legal_stay_confirmation",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "driver_ce_pack_legal_stay",
+            },
+            {
                 "slot_code": "driver_license_with_code95",
                 "level": "blocking",
                 "verification": "optional",
@@ -30,6 +36,24 @@ def recruitment_driver_ce_document_pack() -> dict[str, Any]:
                 "level": "blocking",
                 "verification": "optional",
                 "reason_code": "driver_ce_pack_tacho",
+            },
+            {
+                "slot_code": "medical_fitness",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "driver_ce_pack_medical",
+            },
+            {
+                "slot_code": "psychological_tests",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "driver_ce_pack_psychological",
+            },
+            {
+                "slot_code": "voivodeship_decision",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "driver_ce_pack_voivodeship_decision",
             },
         ],
         "required_documents": [
@@ -61,6 +85,39 @@ def recruitment_driver_ce_document_pack() -> dict[str, Any]:
     }
 
 
+def recruitment_warehouse_worker_document_pack() -> dict[str, Any]:
+    """Minimal warehouse worker document requirements — identity + legal stay."""
+    return {
+        "pack_code": "recruitment.warehouse_worker_documents",
+        "entity_type": "candidate",
+        "module_owner": "recruitment",
+        "name": "Warehouse worker documents",
+        "required_slots": [
+            {
+                "slot_code": "identity_document",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "warehouse_pack_identity",
+            },
+            {
+                "slot_code": "legal_stay_confirmation",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "warehouse_pack_legal_stay",
+            },
+        ],
+        "required_documents": [
+            {
+                "document_type_code": "passport",
+                "level": "blocking",
+                "verification": "optional",
+                "reason_code": "warehouse_pack_passport",
+            },
+        ],
+    }
+
+
 DOCUMENT_PACK_MANIFESTS: dict[str, dict[str, Any]] = {
     "recruitment.driver_ce_documents": recruitment_driver_ce_document_pack(),
+    "recruitment.warehouse_worker_documents": recruitment_warehouse_worker_document_pack(),
 }

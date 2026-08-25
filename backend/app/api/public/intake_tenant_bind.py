@@ -90,7 +90,14 @@ async def resolve_status_share_token_tenant_id(db: AsyncSession, share_token: st
         tid = await _pg_hf_status_token_tenant_id(db, share_token)
         if tid:
             return tid
-    return await _orm_status_share_token_tenant_id(db, share_token)
+    tid = await _orm_status_share_token_tenant_id(db, share_token)
+    if tid:
+        return tid
+    from backend.app.entity_profile.public_intake_draft_session import (
+        resolve_public_intake_lead_draft_status_tenant_id,
+    )
+
+    return await resolve_public_intake_lead_draft_status_tenant_id(db, share_token)
 
 
 async def _orm_magic_link_token_tenant_id(db: AsyncSession, token: str) -> Optional[str]:
@@ -282,6 +289,19 @@ async def resolve_tenant_uuid_for_public_intake_create(
                 ),
             },
         )
+    return tid
+
+
+async def bind_session_for_intake_token(db: AsyncSession, token: str) -> UUID:
+    """Bind RLS from intake token (ignore X-Tenant-Id). Used by public notifications/scanner."""
+    tid_str = await resolve_intake_token_tenant_id(db, (token or "").strip())
+    if not tid_str:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid token or candidate not found",
+        )
+    tid = UUID(tid_str)
+    await bind_tenant_context_to_session(db, tid)
     return tid
 
 

@@ -127,7 +127,7 @@
 - `POST /api/v1/platform/tenants/{id}/logo` — загрузка логотипа (PNG, ограничение по высоте)
 - `PATCH /api/v1/platform/tenants/{id}/license` (изменение лимитов)
 - `POST /api/v1/platform/tenants/{id}/suspend`
-- `POST /api/v1/platform/tenants/{id}/impersonate`
+- `POST /api/v1/platform/tenants/{id}/impersonate` — body `{ "reason": "…" }` required (Phase 5 / SSOT §6); returns time-bound JWT (`type=impersonation`, TTL 30m) + emits `superadmin.impersonation.started`.
 - `GET /api/v1/platform/tenants/{id}/modules` — просмотр текущих ACL‑тогглов модулей
 - `PATCH /api/v1/platform/tenants/{id}/modules` — включение/выключение модулей без входа в тенант
 - `GET /api/v1/platform/tenants/{id}/seat-requests` — список self-service запросов на дополнительные места

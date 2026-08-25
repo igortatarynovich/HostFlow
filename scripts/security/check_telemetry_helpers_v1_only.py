@@ -17,6 +17,7 @@ FILES = [
     REPO_ROOT / "backend" / "app" / "security" / "document_events.py",
     REPO_ROOT / "backend" / "app" / "security" / "export_events.py",
     REPO_ROOT / "backend" / "app" / "security" / "retrieval_events.py",
+    REPO_ROOT / "backend" / "app" / "security" / "access_events.py",
 ]
 
 IMPORT_V1 = re.compile(

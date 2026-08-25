@@ -122,12 +122,22 @@ async def create_candidate_from_lead_conversion(
 
     Idempotency (no extra migration): (1) if ``lead.candidate_id`` already points
     to a live tenant-scoped row, return it and emit audit with
-    ``idempotent_replay=True`` instead of inserting again; (2) deduplication of
-    lead rows for the same webhook is handled in ``process_normalized_lead`` via
-    ``get_lead_by_external_id`` and DB partial unique index on
-    ``(tenant_id, source, external_id)``.
+    ``idempotent_replay=True`` instead of inserting again; (1b) ADR-031 early
+    compliance shell: Application.lead_id → Candidate is attached to the Lead
+    before INSERT; (2) deduplication of lead rows for the same webhook is handled
+    in ``process_normalized_lead`` via ``get_lead_by_external_id`` and DB partial
+    unique index on ``(tenant_id, source, external_id)``.
     """
     duplicate_result = _duplicate_result_label(duplicate_match_level)
+
+    if not getattr(lead, "candidate_id", None):
+        from backend.app.modules.recruitment.services.compliance_outbound_ensure import (
+            attach_compliance_shell_candidate_on_process,
+        )
+
+        await attach_compliance_shell_candidate_on_process(
+            db, tenant_id=tenant_id, lead=lead
+        )
 
     linked_id = getattr(lead, "candidate_id", None)
     if linked_id:
@@ -140,6 +150,15 @@ async def create_candidate_from_lead_conversion(
         )
         existing = res.scalar_one_or_none()
         if existing is not None:
+            from backend.app.services.lead_context_carry import carry_lead_context_on_conversion
+
+            await carry_lead_context_on_conversion(
+                db,
+                tenant_id=tenant_id,
+                lead=lead,
+                candidate=existing,
+                actor_id=None,
+            )
             oc = getattr(existing, "own_company_id", None) or getattr(lead, "own_company_id", None)
             await _emit_candidate_created_audit(
                 db,
@@ -161,6 +180,20 @@ async def create_candidate_from_lead_conversion(
         actor_id=None,
         acl=None,
         source_lead=lead,
+    )
+    if str(getattr(lead, "candidate_id", None) or "") != str(candidate.id):
+        lead.candidate_id = str(candidate.id)
+    await db.flush()
+    # Stage 3E PR-2: Activity only after link flush; silent without Acq stamp+submission.
+    from backend.app.acquisition.candidate_activity import (
+        maybe_record_candidate_created_from_conversion,
+    )
+
+    await maybe_record_candidate_created_from_conversion(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        candidate=candidate,
     )
     oc = getattr(candidate, "own_company_id", None) or getattr(lead, "own_company_id", None)
     await _emit_candidate_created_audit(

@@ -64,6 +64,12 @@ HTTP-запросы часто безопасны, а **фоновые джоб�
 
 Детализация по поверхностям: `docs/security/threat-models/`.
 
+Interactive Growth demo (per-tenant sample pack, no shared guest tenant in Wave-1): [`threat-models/interactive-demo.md`](threat-models/interactive-demo.md).
+
+Forms Platform C2+C3 (frozen publication Contract Identity; Builder FormDefinition ↔ Draft only, no Adapter publish): [`threat-models/forms-platform.md`](threat-models/forms-platform.md). Public intake tokens remain [`threat-models/public-links.md`](threat-models/public-links.md).
+
+Documents Platform E3–E5 (authenticated Hub metadata resolve via Document Link, not file download; `candidate_id` column dropped): [`threat-models/documents-platform.md`](threat-models/documents-platform.md). Uploads / MIME / storage ACL remain [`threat-models/document-uploads.md`](threat-models/document-uploads.md).
+
 ---
 
 ## 2. Классификация данных (Data Classification)
@@ -187,7 +193,7 @@ Handoff — **контролируемая** видимость между те�
 - MIME/extension validation, лимиты размера, antivirus — по политике upload (§9).
 - PDF/image sanitization — по мере внедрения; до этого — минимизация поверхности (запрет SVG/HTML как «документ»).
 
-Детали: `docs/specs/architecture/object_storage.md`, `threat-models/document-uploads.md`, `threat-models/public-links.md`.
+Детали: `docs/specs/architecture/object_storage.md`, `threat-models/document-uploads.md`, `threat-models/public-links.md`, `threat-models/documents-platform.md` (E3–E5 metadata resolve, not bytes).
 
 ---
 
@@ -340,6 +346,16 @@ Handoff — **контролируемая** видимость между те�
 - **Python:** pin dependencies; `pip-audit` (или аналог) в CI; критические CVE → блок merge.
 - **Docker:** минимальные образы; сканирование (Trivy и т.п.).
 - **Frontend:** `npm audit` / dependency review в CI.
+
+### 18.1 Known constraint — Starlette vs FastAPI pin
+
+Runtime pin: `fastapi==0.115.6` + `prometheus-fastapi-instrumentator==7.0.0` (see `AGENTS.md`).
+That FastAPI release resolves `starlette` into the `0.41.x` band. Several advisory fix versions require
+`starlette>=0.47` / `1.x`, which is incompatible without a coordinated FastAPI + instrumentator upgrade.
+
+Until that upgrade lands as its own dependency PR, `security-gates` pip-audit may ignore the listed
+Starlette advisory IDs in `.github/workflows/security-gates.yml` (commented next to `--ignore-vuln`).
+New **critical** findings outside that allowlist remain merge-blocking.
 
 Детали внедрения — в `.github/workflows/*` (отдельные PR).
 

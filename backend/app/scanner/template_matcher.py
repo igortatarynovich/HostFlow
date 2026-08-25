@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Optional, List, Tuple, Dict
 import pickle
 
+from backend.app.document_types.registry import normalize_input_doc_type
+
 logger = logging.getLogger(__name__)
 
 
@@ -114,25 +116,28 @@ class DocumentTemplateMatcher:
         logger.info(f"Loaded {sum(len(templates) for templates in self.templates.values())} templates")
     
     def _infer_document_type(self, path: Path) -> str:
-        """Infer document type from file path."""
+        """Infer document type from file path and normalize via alias registry."""
         path_str = str(path).lower()
-        
+
         if "passport" in path_str or "paszport" in path_str:
-            return "passport"
+            raw = "passport"
         elif "licence" in path_str or "prawo jazdy" in path_str or "pj" in path_str:
-            return "driver_license"
+            raw = "driver_license"
         elif "op" in path_str or "dowod" in path_str or "identity" in path_str:
-            return "id_card"
+            raw = "id_card"
         elif "karta pobytu" in path_str or "kp" in path_str:
-            return "residence_card"
+            raw = "residence_card"
         elif "tacho" in path_str:
-            return "tachograph_card"
+            raw = "tachograph_card"
         elif "adr" in path_str:
-            return "adr_card"
+            raw = "adr_card"
         elif "decyzja" in path_str or "decision" in path_str:
-            return "decision"
+            raw = "decision"
         else:
             return "unknown"
+
+        canonical = normalize_input_doc_type(raw)
+        return canonical if canonical != "other" else raw
     
     def _normalize_template(self, template: np.ndarray) -> np.ndarray:
         """Normalize template to standard size for matching."""
@@ -192,7 +197,13 @@ class DocumentTemplateMatcher:
         best_confidence = 0.0
         
         # Try matching with templates
-        doc_types_to_try = [doc_type_hint] if doc_type_hint and doc_type_hint in self.templates else list(self.templates.keys())
+        doc_types_to_try = list(self.templates.keys())
+        if doc_type_hint:
+            normalized_hint = normalize_input_doc_type(doc_type_hint)
+            if normalized_hint in self.templates:
+                doc_types_to_try = [normalized_hint]
+            elif doc_type_hint in self.templates:
+                doc_types_to_try = [doc_type_hint]
         
         for doc_type in doc_types_to_try:
             if doc_type not in self.templates:
@@ -252,7 +263,13 @@ class DocumentTemplateMatcher:
         best_match = None
         best_confidence = 0.0
         
-        doc_types_to_try = [doc_type_hint] if doc_type_hint and doc_type_hint in self.templates else list(self.templates.keys())
+        doc_types_to_try = list(self.templates.keys())
+        if doc_type_hint:
+            normalized_hint = normalize_input_doc_type(doc_type_hint)
+            if normalized_hint in self.templates:
+                doc_types_to_try = [normalized_hint]
+            elif doc_type_hint in self.templates:
+                doc_types_to_try = [doc_type_hint]
         
         for doc_type in doc_types_to_try:
             if doc_type not in self.templates:

@@ -1,104 +1,69 @@
-# Модуль Forms / Public Forms: охват и роль на платформе
+# Модуль Forms: Core Platform Module
 
-Документ описывает **целевой** продуктовый модуль **Forms** как **платформенную capability** (input layer), а не как подсистему только Recruitment. Нормативное архитектурное решение — **[`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md)**.
+Норматив: **[`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md)**.  
+Intake spine / Endpoint: **[`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)**.  
+**Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#forms).
 
 ## Суть
 
-- **Forms** — отдельный контур: шаблоны, публикация, приём **submissions**, файлы, согласия, маппинг, триггеры автоматизаций.  
-- **Recruitment, HR, Fleet, Services, Finance** — **потребители** Forms; доменные сущности и бизнес-правила остаются в соответствующих модулях.  
-- **Главное правило:** Forms — это **не** синоним «анкеты кандидата». Анкета кандидата — **один** из сценариев.
-- **Канон данных:** Forms **не определяют смысл полей**. Формы — поверхность ввода над **Entity Profile**, основанным на **Field Registry** — см. [`entity-profile-definition-registry.md`](../specs/platform/entity-profile-definition-registry.md).
+```text
+Endpoint → Submission → Routing → Decision → Business Entity
+```
 
-## Режимы
+- **Endpoint** — главная абстракция входа (Meta, HostFlow Form, API, Webhook, …).  
+- **Forms** — Core Platform Module: SoT **HostFlow Form** (builder, versions, publish, submission surface, consents).  
+- HostFlow Public Form **is-a** Endpoint; Campaign использует Endpoint, не Form.  
+- Forms **не** часть Recruitment/Acquisition; **не** продукт ADR-004 (Basic — всем тенантам).
 
-| Режим | Описание |
-|-------|----------|
-| **Standalone** | Форма создана пользователем, выдана **публичная ссылка**; обработчик submission определяет целевую сущность по конфигурации. |
-| **Linked** | Форма привязана к **модулю**, **процессу** или **конкретной сущности** (вакансия, employee, vehicle, order, client…). |
+## Responsibilities (SoT)
 
-## Состав (целевая архитектура)
+Form Builder; Templates; Versioning; Publishing; Public/Internal Form Endpoints; Submission Engine; Consent (GDPR/RODO/Terms/Privacy) + version pinning; Multi-language; Form Logic; Themes; CAPTCHA; webhooks; post-submit events.
 
-- **Form templates** — схема полей, версии, валидация.  
-- **Public links** — slug, политика доступа, срок действия (Advanced).  
-- **Submissions** — сохранённые ответы, статусы, аудит.  
-- **File uploads** — вложения; регистрация в **Document Hub** как **Document** + links ([`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)).  
-- **Consent capture** — RODO, oświadczenia, явные согласия (по политике продукта).  
-- **Field mapping** — отображение полей формы на поля сущностей / custom fields.  
-- **Automation triggers** — события для правил и сценариев платформы.
+## Routing
 
-## Целевые результаты submission (handlers)
+- First entry → Universal Routing (один раз на новый Lead).  
+- Continuation → наследование Routing/Attribution context Lead.
 
-Один и тот же движок Forms должен поддерживать настройку исхода данных в сторону (не исчерпывающе):
+## Platform epic (после Epic P DoD)
 
-- **Lead**, **Candidate**  
-- **Employee** (workforce)  
-- **Client** / company / party (по канону B2B)  
-- **Service Order**  
-- Записи **Fleet** (damage, inspection, handover, return, trip issue, fuel/card confirmation — уточнение в доменном API)  
-- **Document** (файл + метаданные)  
-- **Billing profile** / реквизиты для счетов  
+**Forms Sprint 1–6 — ✅ COMPLETE** (backend platform contour · PR #41 · `7e259f22`).
 
-## Примеры по модулям-потребителям
+Submission Envelope / Immutable Storage / Idempotent Processing / Audit API — **ACTIVE**.
 
-### Recruitment
+**Next:** [Forms Platform C6 — Optimization](../specs/tasks/forms-platform-c6-optimization.md) ← **COMPLETE** ([#249](https://github.com/igortatarynovich/HostFlow/pull/249)/[#250](https://github.com/igortatarynovich/HostFlow/pull/250)). Forms **Foundation ✅**. Product Track → [Documents Platform E7](../specs/tasks/documents-platform-e7-document-requests.md) (feat). P3 Publish UI / P4 Themes / P5 Analytics remain **LOCKED**. Forms is a **platform capability** (peer of EntityWorkspace / ListWorkspace / Analytics Kit / RBAC / Automations) — not a product module.
 
-- Анкета кандидата  
-- Форма отклика на вакансию (**связана с Job Post** в контуре Job Publishing — [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md))  
-- Обновление данных кандидата  
-- Загрузка документов  
-- Предварительная квалификация  
-- RODO consent  
-- Форма для клиента: оценка кандидата  
+**Rule:** P1 Foundation **CLOSED**; Catalog v1 **FROZEN**. **Builder MVP COMPLETE** (P2.1–P2.5). C3 ✅ = editor of FormDefinition (draft save ≠ publish). C4 ✅ = **Runtime Model** from frozen publication (not an Engine). C5 ✅ = Execution against Runtime Model. C6 ✅ = Foundation Optimization (production serve→execute). P3 Publish UI / P4 Themes / P5 Analytics **LOCKED**.  
+**Matrix:** [`Intake Canonical Input Matrix`](../specs/architecture/intake-canonical-input-matrix.md) **ACCEPTED / FROZEN** · epic [`COMPLETE`](../specs/tasks/intake-canonical-input-matrix.md).  
+**Runtime:** [`Intake Runtime Split V1`](../specs/tasks/intake-runtime-split-v1.md) (**ACTIVE** · R1+R2 ✅ · R3) — Flights / Intake Routing runtime **UNLOCKED**.  
+**Communications:** [`Intake Domain Separation & Communication Context V1`](../specs/tasks/intake-domain-separation-communication-context-v1.md) (**READY**) · Stage 1 audit [`ACTIVE`](../specs/architecture/intake-communication-context-audit-v1.md).  
+**Forms P3–P5** remain **LOCKED**.
 
-### HR
+Compose Acquisition (не копировать): Endpoint binding · Universal Routing · Result attribution · Outcome · KPI.
 
-- Анкета сотрудника  
-- Сбор данных для ZUS  
-- PIT-2 / налоговые данные  
-- Банковские реквизиты  
-- Согласия и oświadczenia  
-- Обновление данных сотрудника  
-- Onboarding form  
-
-### Fleet
-
-- Vehicle handover checklist  
-- Damage report  
-- Vehicle return  
-- Inspection  
-- Driver trip issue report  
-- Fuel / card / equipment confirmation  
-
-### Services
-
-- Service request  
-- Client order  
-- Intake  
-- Document submission  
-
-### Finance
-
-- Billing details  
-- Данные для счёта / обновление  
-- Payment confirmation  
-
-## Basic vs Advanced (продукт)
-
-| Tier | Содержание |
-|------|------------|
-| **Basic** | Создание формы, публичная ссылка, сбор submissions, загрузка файлов — **включено в платформу** / baseline. |
-| **Advanced** | Условные поля, маппинг на сущности, автоматизации, e-signature / consent tracking, интеграция с чек-листами документов, брендирование, мультиязычность, истечение ссылок, связка с порталами кандидата/клиента — **платный addon** и/или часть пакетов модулей. |
-
-## Текущий код (наблюдение)
-
-- **Lead forms:** `tenant_lead_forms`, квоты, UI настроек лид-форм, публичный intake — исторически ориентированы на лиды/кандидатов. Эволюция к универсальной модели Forms описана в **ADR-007** (миграция схемы и API — поэтапно).  
-- См. также [`../specs/lead-types.md`](../specs/lead-types.md), [`../SSOT.md`](../SSOT.md).
-
-## Сопровождение
-
-- При добавлении нового **публичного** сценария сбора данных проверять: не дублировать «ещё один специальный intake», а расширять **Forms** + handler модуля.  
-- Обновлять этот файл и **ADR-007** в одном изменении с продуктовыми решениями по маппингу и биллингу Advanced.
+Gate evidence: Epic P [`../specs/tasks/acquisition-epic-p-stage-3d.md`](../specs/tasks/acquisition-epic-p-stage-3d.md) · Forms E2E `backend/tests/forms_platform/test_forms_sprint1_contract.py`.
 
 ## История
 
-- 2026-05: первичная фиксация scope Forms как платформенного модуля и матрица примеров по потребителям.
+- 2026-05: платформенная capability.  
+- 2026-07-18: Core Platform Module + Endpoint spine.  
+- 2026-07-18: Forms Sprint 1 gated on Epic P; Capability Contract sequence.  
+- 2026-07-18: Epic P COMPLETE — Sprint 1 **UNLOCKED**; Builder **LOCKED**.  
+- 2026-07-18: Sprint 1 infra started — Public Contract + Adapter + contract tests.  
+- 2026-07-18: Sprint 1 **COMPLETE** (PR #36); Sprint 2 runtime hardening opened.  
+- 2026-07-18: Sprint 6 **COMPLETE**; Product Layer epic opened (Field Catalog first).  
+- 2026-07-19: P2.1 Read Model COMPLETE; P2.2 Composition READY.  
+- 2026-07-19: P2.2 Composition COMPLETE; P2.3 Commands READY.  
+- 2026-07-19: P2.3 Commands COMPLETE; P2.4 Persistence READY.  
+- 2026-07-19: P2.4 Persistence COMPLETE; P2.5 UI READY.  
+- 2026-07-19: P2.5 Builder UI COMPLETE — MVP closed; next Flights / Intake Routing.  
+- 2026-08-20: Product Track → [Entity Platform Completion](../specs/tasks/workspace-capability-platform-completion.md) (feat locked). D1–D9 brief-complete / goal-incomplete.  
+- 2026-08-14: C6 ✅ [#249](https://github.com/igortatarynovich/HostFlow/pull/249)/[#250](https://github.com/igortatarynovich/HostFlow/pull/250); Forms Foundation ✅; Product Track → [Entity Workspace D1](../specs/tasks/entity-workspace-d1-contract-seal.md).
+- 2026-08-14: C4 ✅ [#245](https://github.com/igortatarynovich/HostFlow/pull/245)/[#246](https://github.com/igortatarynovich/HostFlow/pull/246); C5 ✅ [#247](https://github.com/igortatarynovich/HostFlow/pull/247)/[#248](https://github.com/igortatarynovich/HostFlow/pull/248); Product Track → [C6 Optimization](../specs/tasks/forms-platform-c6-optimization.md) (brief; feat locked).
+- 2026-08-14: C4 brief [#245](https://github.com/igortatarynovich/HostFlow/pull/245); feat = Runtime Model.
+- 2026-08-14: C3 ✅ [#244](https://github.com/igortatarynovich/HostFlow/pull/244); Product Track → [C4 Form Runtime](../specs/tasks/forms-platform-c4-form-runtime.md) (brief; feat locked).
+- 2026-08-14: C1+C2 merged; Product Track → [C3 Builder Runtime](../specs/tasks/forms-platform-c3-builder-runtime.md).  
+- 2026-08-13: Product Track → [Forms Platform C1](../specs/tasks/forms-platform-c1-contract-seal.md); P3–P5 remain LOCKED.  
+- 2026-08-13: Next after C1 = [C2 Runtime Contract](../specs/tasks/forms-platform-c2-runtime-contract.md); Builder locked until C2 feat.  
+- 2026-07-19: Intake Canonical Input Matrix epic ACTIVE; matrix READY (docs-only gate).  
+- 2026-07-19: Matrix ACCEPTED / FROZEN; Runtime Split V1 READY; Flights / Intake Routing runtime UNLOCKED.  
+- 2026-07-19: Runtime Split R1+R2 merged; R3 handlers + Communication Context epic / Stage 1 audit opened.

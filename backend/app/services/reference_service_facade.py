@@ -8,12 +8,21 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.constants.reference_foundation import validate_reference_code
-from backend.app.models.ref_document_type import RefDocumentType, RefDocumentTypeVersion
+from backend.app.models.ref_document_type import (
+    RefDocumentType,
+    RefDocumentTypeVersion,
+    RefPack,
+    TenantDocumentPackEnablement,
+)
 from backend.app.reference.core_immutable_catalogs import (
     CATALOG_VERSION as CORE_IMMUTABLE_CATALOG_VERSION,
     get_country_by_alpha2,
     list_countries_immutable,
     list_languages_immutable,
+)
+from backend.app.reference.country_registry import (
+    CATALOG_VERSION as COUNTRY_REGISTRY_CATALOG_VERSION,
+    list_country_registry_entries,
 )
 from backend.app.reference.legal_document_catalogs import (
     CATALOG_VERSION as LEGAL_DOCUMENT_CATALOG_VERSION,
@@ -237,6 +246,98 @@ class ReferenceServiceFacade:
             warnings.append({"code": "countries_empty", "detail": "No immutable countries in snapshot"})
         if not languages:
             warnings.append({"code": "languages_empty", "detail": "No immutable languages in snapshot"})
+
+        return {
+            "valid": not errors,
+            "errors": errors,
+            "warnings": warnings,
+            "contract_version": cls.CONTRACT_VERSION,
+            "reference_version": cls.REFERENCE_VERSION,
+        }
+
+    @classmethod
+    def get_country_registry_snapshot(cls) -> dict[str, Any]:
+        """Reference R1 Country Registry snapshot.
+
+        Contract blocks: ``identity`` | ``classifications`` | ``labels``.
+        Runtime catalogs are unchanged — this is definition, not cutover.
+        """
+        return {
+            "contract_version": cls.CONTRACT_VERSION,
+            "reference_version": cls.REFERENCE_VERSION,
+            "catalog_version": COUNTRY_REGISTRY_CATALOG_VERSION,
+            "countries": [
+                {
+                    "identity": {
+                        "alpha2": item.identity.alpha2,
+                        "alpha3": item.identity.alpha3,
+                        "numeric": item.identity.numeric,
+                    },
+                    "classifications": {
+                        "dial_code": item.classifications.dial_code,
+                        "eu_member": item.classifications.eu_member,
+                        "schengen_member": item.classifications.schengen_member,
+                    },
+                    "labels": {
+                        "en": item.labels.en,
+                        "pl": item.labels.pl,
+                        "ru": item.labels.ru,
+                    },
+                }
+                for item in list_country_registry_entries()
+            ],
+        }
+
+    @classmethod
+    def compatibility_check_country_registry_snapshot(cls) -> dict[str, Any]:
+        snapshot = cls.get_country_registry_snapshot()
+        errors: list[dict[str, str]] = []
+        warnings: list[dict[str, str]] = []
+
+        countries = snapshot.get("countries") or []
+        seen_alpha2: set[str] = set()
+        dial_codes: list[str] = []
+
+        for row in countries:
+            identity = row.get("identity") or {}
+            classifications = row.get("classifications") or {}
+            labels = row.get("labels") or {}
+            alpha2 = str(identity.get("alpha2") or "").strip().upper()
+            alpha3 = str(identity.get("alpha3") or "").strip().upper()
+            numeric = str(identity.get("numeric") or "").strip()
+            dial = str(classifications.get("dial_code") or "").strip()
+            if not alpha2 or not alpha3 or not numeric:
+                errors.append({"code": "country_identity_incomplete", "detail": str(row)})
+                continue
+            if alpha2 in seen_alpha2:
+                errors.append({"code": "country_alpha2_duplicate", "detail": alpha2})
+            seen_alpha2.add(alpha2)
+            if alpha2 in {"XK", "UK", "OTHER"}:
+                errors.append({"code": "forbidden_identity_code", "detail": alpha2})
+            for locale in ("en", "pl", "ru"):
+                if not str(labels.get(locale) or "").strip():
+                    errors.append({"code": "country_label_missing", "detail": f"{alpha2}:{locale}"})
+            if "immutable" in row or "immutable" in identity or "immutable" in classifications:
+                errors.append({"code": "immutable_in_public_contract", "detail": alpha2})
+            if dial:
+                dial_codes.append(dial)
+
+        if len(countries) < 249:
+            errors.append(
+                {
+                    "code": "iso_set_incomplete",
+                    "detail": f"expected ISO 3166-1 assigned set (249), got {len(countries)}",
+                }
+            )
+        if dial_codes and len(dial_codes) == len(set(dial_codes)):
+            errors.append(
+                {
+                    "code": "dial_code_uniqueness_forbidden",
+                    "detail": "dial_code must not be a unique identity key",
+                }
+            )
+        if not countries:
+            warnings.append({"code": "countries_empty", "detail": "No country registry rows in snapshot"})
 
         return {
             "valid": not errors,
@@ -658,6 +759,29 @@ class ReferenceServiceFacade:
             },
             "errors": [],
         }
+
+    @classmethod
+    async def list_enabled_document_pack_codes(
+        cls,
+        db: AsyncSession,
+        *,
+        tenant_id: str,
+    ) -> list[str]:
+        tid = str(tenant_id).strip()
+        rows = (
+            await db.execute(
+                select(RefPack.code)
+                .join(
+                    TenantDocumentPackEnablement,
+                    TenantDocumentPackEnablement.pack_id == RefPack.id,
+                )
+                .where(TenantDocumentPackEnablement.tenant_id == tid)
+                .where(TenantDocumentPackEnablement.enabled.is_(True))
+                .where(RefPack.status == "active")
+                .order_by(RefPack.code.asc())
+            )
+        ).all()
+        return [str(row[0]) for row in rows]
 
     @classmethod
     async def get_document_runtime_profile(

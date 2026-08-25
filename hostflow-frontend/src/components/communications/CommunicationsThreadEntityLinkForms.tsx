@@ -3,7 +3,12 @@ import clsx from 'clsx'
 import { Link } from 'react-router-dom'
 import { searchCandidates } from '../../api/candidates'
 import { getServiceOrder, listServiceOrders } from '../../api/additionalServices'
-import { patchCommunicationThread, type CommunicationThread } from '../../api/communications'
+import {
+  executeWorkspaceCommand,
+  type CommunicationThread,
+  type WorkspaceCommandName,
+  type WorkspaceCommandResult,
+} from '../../api/communications'
 import { api, listCompanies } from '../../api/client'
 import type { AdditionalServiceOrder, Candidate } from '../../api/types'
 import { useI18n } from '../../i18n'
@@ -45,16 +50,30 @@ async function resolveCandidateDisplayName(candidateId: string, selected: Candid
 
 type Props = {
   thread: CommunicationThread
-  /** After successful PATCH that changes links or meta */
+  /** After successful link/meta Command */
   onAfterPatch: () => void | Promise<void>
   compact?: boolean
   /** Tighter layout for slide-down header panel (Messages). */
   dense?: boolean
+  runCommand?: (
+    command: WorkspaceCommandName,
+    body?: Record<string, unknown>,
+  ) => Promise<WorkspaceCommandResult>
 }
 
-export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPatch, compact, dense }: Props) {
+export default function CommunicationsThreadEntityLinkForms({
+  thread,
+  onAfterPatch,
+  compact,
+  dense,
+  runCommand,
+}: Props) {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
+  const exec = async (command: WorkspaceCommandName, body?: Record<string, unknown>) => {
+    if (runCommand) return runCommand(command, body)
+    return executeWorkspaceCommand(thread.id, command, body)
+  }
   const unlinked = isCommunicationThreadUnlinked(thread)
   const cid = String(thread.linked_candidate_id || '').trim()
   const compId = String(thread.linked_company_id || '').trim()
@@ -161,7 +180,7 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
         ...(thread.thread_meta || {}),
         linked_candidate_name: candidateId ? linkedName || undefined : null,
       }
-      await patchCommunicationThread(thread.id, {
+      await exec( 'SetThreadLinks', {
         linked_candidate_id: candidateId,
         thread_meta: nextMeta,
       })
@@ -238,7 +257,7 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
         ...(thread.thread_meta || {}),
         linked_company_name: companyId ? linkedName || undefined : null,
       }
-      await patchCommunicationThread(thread.id, {
+      await exec( 'SetThreadLinks', {
         linked_company_id: companyId,
         thread_meta: nextMeta,
       })
@@ -291,7 +310,7 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
         delete prevUos.linked_service_order_label
       }
       meta.uos = prevUos
-      await patchCommunicationThread(thread.id, { thread_meta: meta })
+      await exec( 'SetThreadLinks', { thread_meta: meta })
       setOrderPickId(orderId || '')
       setLinkOk(
         orderId
@@ -334,7 +353,7 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
       prevUos.linked_service_order_id = id
       prevUos.linked_service_order_label = `${id.slice(0, 8)}…`
       meta.uos = prevUos
-      await patchCommunicationThread(thread.id, { thread_meta: meta })
+      await exec( 'SetThreadLinks', { thread_meta: meta })
       setOrderIdManual('')
       setLinkOk(t('app.communications_inbox_center.link_ok_order', { defaultValue: 'Заказ привязан.' }))
       await onAfterPatch()

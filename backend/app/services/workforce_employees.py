@@ -785,6 +785,27 @@ async def find_employee_by_candidate(
     return res.scalar_one_or_none()
 
 
+async def _apply_recruitment_handoff_pipeline_meta(
+    db: AsyncSession,
+    tenant_id: str,
+    candidate: Candidate,
+    employee_meta: dict[str, Any],
+) -> dict[str, Any]:
+    company_id = str(candidate.company_id or candidate.own_company_id or "").strip()
+    if not company_id:
+        return employee_meta
+    from backend.app.services.hr_employee_funnel_assignment import (
+        merge_recruitment_handoff_pipeline_meta,
+    )
+
+    return await merge_recruitment_handoff_pipeline_meta(
+        db,
+        tenant_id=tenant_id,
+        company_id=company_id,
+        employee_meta=employee_meta,
+    )
+
+
 async def handoff_from_candidate(
     db: AsyncSession,
     tenant_id: str,
@@ -794,6 +815,14 @@ async def handoff_from_candidate(
     actor_user_id: str,
     seed_hr_bundle: bool = True,
 ) -> WorkforceEmployee:
+    from backend.app.services.company_module_enforcement import (
+        assert_hr_for_candidate,
+        assert_recruitment_for_candidate,
+    )
+
+    await assert_recruitment_for_candidate(db, tenant_id, candidate)
+    await assert_hr_for_candidate(db, tenant_id, candidate)
+
     existing = await find_employee_by_candidate(db, tenant_id, str(candidate.id))
     if existing:
         status_l = str(getattr(existing, "status", "") or "").strip().lower()
@@ -806,7 +835,9 @@ async def handoff_from_candidate(
             existing.candidate_snapshot = snap
             md = dict(existing.meta or {})
             md.update(_handoff_meta_from_snapshot(candidate, snap))
-            existing.meta = md
+            existing.meta = await _apply_recruitment_handoff_pipeline_meta(
+                db, tenant_id, candidate, md
+            )
             if not (existing.notes or "").strip():
                 existing.notes = str(candidate.note or "").strip() or None
             await db.flush()
@@ -816,12 +847,20 @@ async def handoff_from_candidate(
             from backend.app.services.workforce_zus_task_autocreate import sync_auto_tasks_after_employee_created
 
             await sync_auto_tasks_after_employee_created(db, tenant_id, existing.id)
+        elif not ((existing.meta or {}).get("employee_pipeline") or {}).get("stage_code"):
+            md = dict(existing.meta or {})
+            existing.meta = await _apply_recruitment_handoff_pipeline_meta(
+                db, tenant_id, candidate, md
+            )
+            await db.flush()
         return existing
 
     parts = [candidate.first_name or "", candidate.last_name or ""]
     display_name = " ".join(p for p in parts if p).strip() or (candidate.email or "Employee")
     now = _now()
     snap = await _candidate_snapshot_with_experience(db, tenant_id, candidate)
+    meta = _handoff_meta_from_snapshot(candidate, snap)
+    meta = await _apply_recruitment_handoff_pipeline_meta(db, tenant_id, candidate, meta)
     row = WorkforceEmployee(
         id=str(uuid4()),
         tenant_id=tenant_id,
@@ -837,7 +876,7 @@ async def handoff_from_candidate(
         handoff_by_user_id=actor_user_id,
         notes=str(candidate.note or "").strip() or None,
         candidate_snapshot=snap,
-        meta=_handoff_meta_from_snapshot(candidate, snap),
+        meta=meta,
     )
     db.add(row)
     await db.flush()

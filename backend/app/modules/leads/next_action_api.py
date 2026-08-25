@@ -18,7 +18,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.lead import Lead
 from backend.app.services.next_action import NextActionDTO, compute_lead_next_action
@@ -30,7 +31,7 @@ router = APIRouter()
     "/{lead_id}/next-action",
     response_model=NextActionDTO,
     dependencies=[
-        Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer))
+        Depends(require_trust_read())
     ],
     summary="Resolve the single primary 'what to do next' CTA for a lead",
     description=(

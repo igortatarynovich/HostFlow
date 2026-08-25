@@ -50,8 +50,9 @@ async def test_action_audit_written_for_blocked_and_allowed_attempts() -> None:
                 tenant_id=tenant_id,
                 email=f"actor-{actor_id[:8]}@example.com",
                 password_hash="x",
-                role=Role.hr_officer,
+                role=Role.employee,
                 is_active=True,
+                preferences={"preset_id": "hr"},
             )
         )
         cand = Candidate(

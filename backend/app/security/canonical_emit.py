@@ -90,4 +90,10 @@ def emit_security_event_v1(
         "extra": extra_out,
     }
     logger.info("security_event", extra={"security_event": payload})
+    try:
+        from backend.app.security.detection_engine import maybe_raise_detection_alerts
+
+        maybe_raise_detection_alerts(payload)
+    except Exception:
+        logger.exception("detection_engine hook failed")
     return payload

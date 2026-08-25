@@ -331,7 +331,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         },
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
-        canonical_ref_code="code_95",
+        canonical_ref_code="driver_qualification_card",
         metadata_schema=_object_schema(
             ("number", "issued_by", "issued_at", "expires_at", "country"),
             {
@@ -377,7 +377,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         title={"ru": "Национальный ID", "en": "National ID"},
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
-        canonical_ref_code="id_card",
+        canonical_ref_code="national_identity_card",
         metadata_schema=_object_schema(
             ("number", "country", "issued_at", "expires_at"),
             {
@@ -516,7 +516,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         title={"ru": "Психологические тесты", "en": "Psychological tests"},
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
-        canonical_ref_code="psychotest",
+        canonical_ref_code="psychological_certificate",
         metadata_schema=_object_schema(
             ("issued_at", "expires_at", "center"),
             {

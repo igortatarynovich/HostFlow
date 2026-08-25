@@ -49,7 +49,7 @@ async def test_invite_accept_assigns_role_and_acl(client: AsyncClient) -> None:
     )
     assert invite_resp.status_code == 201, invite_resp.text
     invite_data = invite_resp.json()
-    assert invite_data["role"] == "recruiter"
+    assert invite_data["role"] == "employee"
     token = invite_data["token"]
 
     new_password = "Recruiter123!"
@@ -64,7 +64,7 @@ async def test_invite_accept_assigns_role_and_acl(client: AsyncClient) -> None:
     )
     assert accept_resp.status_code == 200, accept_resp.text
     accepted = accept_resp.json()
-    assert accepted["role"] == "recruiter"
+    assert accepted["role"] == "employee"
     assert accepted["supervisor_id"] == data["supervisor_id"]
     assert accepted["status"] == "active"
     company_ids = {entry["company_id"] for entry in accepted.get("companies", [])}
@@ -75,7 +75,7 @@ async def test_invite_accept_assigns_role_and_acl(client: AsyncClient) -> None:
         json={"email": invite_payload["email"], "password": new_password},
     )
     assert login_resp.status_code == 200, login_resp.text
-    assert login_resp.json()["user"]["role"] == "recruiter"
+    assert login_resp.json()["user"]["role"] == "employee"
 
 
 @pytest.mark.anyio
@@ -115,9 +115,10 @@ async def test_supervisor_company_access_scope(client: AsyncClient) -> None:
             id=str(uuid.uuid4()),
             email=f"sup+{uuid.uuid4().hex[:5]}@hostflow.dev",
             password_hash=hash_password("Sup12345!"),
-            role=UserRole.supervisor,
+            role=UserRole.employee,
             tenant_id=data["tenant_id"],
             is_active=True,
+            preferences={"preset_id": "team_lead"},
         )
         session.add(other_supervisor)
 
@@ -125,10 +126,11 @@ async def test_supervisor_company_access_scope(client: AsyncClient) -> None:
             id=str(uuid.uuid4()),
             email=f"rec+{uuid.uuid4().hex[:5]}@hostflow.dev",
             password_hash=hash_password("Rec12345!"),
-            role=UserRole.recruiter,
+            role=UserRole.employee,
             supervisor_id=other_supervisor.id,
             tenant_id=data["tenant_id"],
             is_active=True,
+            preferences={"preset_id": "recruiter"},
         )
         session.add(other_recruiter)
         await session.flush()
@@ -144,7 +146,7 @@ async def test_supervisor_company_access_scope(client: AsyncClient) -> None:
                 "id": str(uuid.uuid4()),
                 "user_id": other_supervisor.id,
                 "tenant_id": data["tenant_id"],
-                "role": "supervisor",
+                "role": "employee",
             },
         )
         await session.execute(
@@ -159,7 +161,7 @@ async def test_supervisor_company_access_scope(client: AsyncClient) -> None:
                 "id": str(uuid.uuid4()),
                 "user_id": other_recruiter.id,
                 "tenant_id": data["tenant_id"],
-                "role": "recruiter",
+                "role": "employee",
             },
         )
         other_recruiter_id = other_recruiter.id

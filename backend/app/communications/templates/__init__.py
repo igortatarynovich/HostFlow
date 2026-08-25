@@ -1,0 +1,87 @@
+"""C2.1 Template Platform — domain + pure renderer (Intent-only; no module imports)."""
+
+from backend.app.communications.templates.errors import TemplateDomainError
+from backend.app.communications.templates.lifecycle import (
+    archive_template,
+    create_template_with_draft,
+    get_draft_version,
+    get_latest_published_version,
+    get_template,
+    get_version,
+    list_templates,
+    list_versions,
+    publish_draft,
+    replace_draft_bindings,
+    replace_draft_variables,
+    update_draft_content,
+)
+from backend.app.communications.templates.payload import (
+    build_payload,
+    template_version_to_payload,
+)
+from backend.app.communications.templates.registry import (
+    CAPABILITY_CHANNELS,
+    TemplateAllowDecision,
+    TemplateRegistryEntry,
+    get_published_entry_by_key,
+    is_template_allowed,
+    list_templates_for_capability,
+    list_templates_for_channel,
+    list_templates_for_intent,
+)
+from backend.app.communications.templates.renderer import (
+    Diagnostic,
+    RenderResult,
+    TemplateVariableSpec,
+    TemplateVersionPayload,
+    diagnostics,
+    preview,
+    render,
+    validate,
+)
+from backend.app.models.communication_template import (
+    Template,
+    TemplateChannelBinding,
+    TemplateIntentBinding,
+    TemplateVariable,
+    TemplateVersion,
+)
+
+__all__ = [
+    "Template",
+    "TemplateVersion",
+    "TemplateVariable",
+    "TemplateChannelBinding",
+    "TemplateIntentBinding",
+    "TemplateDomainError",
+    "create_template_with_draft",
+    "get_draft_version",
+    "get_template",
+    "list_templates",
+    "list_versions",
+    "get_version",
+    "get_latest_published_version",
+    "update_draft_content",
+    "replace_draft_variables",
+    "replace_draft_bindings",
+    "publish_draft",
+    "archive_template",
+    "build_payload",
+    "template_version_to_payload",
+    "TemplateVariableSpec",
+    "TemplateVersionPayload",
+    "Diagnostic",
+    "RenderResult",
+    "validate",
+    "preview",
+    "render",
+    "diagnostics",
+    "CAPABILITY_CHANNELS",
+    "TemplateRegistryEntry",
+    "TemplateAllowDecision",
+    "list_templates_for_intent",
+    "list_templates_for_channel",
+    "list_templates_for_capability",
+    "get_published_entry_by_key",
+    "is_template_allowed",
+]

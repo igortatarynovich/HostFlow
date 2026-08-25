@@ -31,7 +31,7 @@
   - `declined` — «Отказался», финальный статус, отличающийся от `rejected` («Отклонён» работодателем).  
 - Для статусов `declined` и `rejected` обязателен массив кодов причин (`status_reason`, JSON array):  
   - `declined`: `schedule`, `salary`, `location`, `trailer_type`, `night_driving`, `bonus_scheme`, `cab_overnight`, `company_reviews`.  
-  - `rejected`: `eu_exp_lt_1y`, `eu_exp_lt_6m`, `awaiting_residence`, `language`, `no_visa`, `no_ce_experience`, `no_code95`, `no_chip`, `age`, `blacklist`, `wrong_phone`.  
+  - `rejected`: `eu_exp_lt_1y`, `eu_exp_lt_6m`, `awaiting_residence`, `language`, `no_visa`, `no_ce_experience`, `no_code95`, `no_chip`, `age`, `blacklist`, `wrong_phone`, `double_crew`, `no_response`, `recruitment_completed`.  
   Эти коды используются в аналитике и фильтрации; API возвращает и принимает их как список строк.
 
 ---

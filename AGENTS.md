@@ -37,6 +37,8 @@ The FastAPI backend lives in `backend/app` with API routes under `backend/app/ap
 - `make docs-lint` — documentation governance lint.
 - `make docs-lint-strict` — same as `docs-lint` but ignores baseline (zero tolerance).
 - `make docs-lint-baseline` — rewrite `scripts/docs/governance_baseline.txt` with current violations (use sparingly).
+- `make repo-health` — Repository Health Gate (clean tree, FF integration, alembic head, import integrity, worktrees).
+- `make check-ts-imports` — GIT-IMPORT-INTEGRITY only.
 
 Для клиента: установите зависимости в `hostflow-frontend` и используйте `npm run dev` для локальной разработки, `npm run build` для сборки, и `npm run preview` для проверки production-версии.
 
@@ -58,7 +60,11 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
  - [ ] Проверены миграции Alembic и сиды
  - [ ] Обновлены связанные спеки и README при необходимости
 - [ ] Если PR в security perimeter (см. `docs/security/security-review-checklist.md`) — отмечены все пункты чеклиста в описании PR
+- [ ] Если PR затрагивает модули / shared capabilities / integrations / settings / contracts — пройден [`docs/specs/architecture/architecture-review-checklist.md`](docs/specs/architecture/architecture-review-checklist.md) (**10 вопросов L0**; обязателен также перед новым ADR)
+- [ ] Если PR меняет L0 (P-rules, Passport/Manifest **shape**, freeze docs) — есть **Architecture RFC** (`architecture-rfc` / `l0-change`) или `l0-errata` + аппрув Architecture canon owner — [`L0-platform-architecture.md`](docs/specs/architecture/L0-platform-architecture.md)
 - [ ] Если PR трогает `*.md` — пройден `make docs-lint` и контрибьютор-чеклист (`docs/governance/documentation-rules.md` §9)
+- [ ] Перед стартом Product PR — `make repo-health` зелёный (`docs/governance/repository-operational-canon.md`)
+- [ ] PR не смешанный (один concern); base = `integration/release-product-a-b` для integration line
 
 ---
 
@@ -79,17 +85,54 @@ Commit messages follow a short `scope: summary` convention (for example `API: mo
 - **Авто-метки:** `.github/workflows/pull-request-labeler.yml` + `.github/labeler.yml` (метки создать один раз: `docs/security/github-labels.md`).
 - Threat models по поверхностям: `docs/security/threat-models/`.
 
+## Repository operational canon (mandatory)
+
+Перед **любой** новой продуктовой работой прочитайте [`docs/governance/repository-operational-canon.md`](docs/governance/repository-operational-canon.md) и прогоните:
+
+```bash
+make repo-health
+```
+
+Кратко: единственный trusted base — `integration/release-product-a-b` (FF only); работа через worktree; один concern — один PR; `/tmp` и `recovery/*` не SoT; GIT-IMPORT-INTEGRITY + Repository Health обязательны. Нарушение = process fail.
+
+## Platform completion sequencing (mandatory)
+
+Horizon order of platform epics (does **not** amend frozen L0 constitution):
+
+[`docs/specs/architecture/platform-completion-roadmap.md`](docs/specs/architecture/platform-completion-roadmap.md)
+
+Platform maturity (Foundation / Workspace / Automation / Complete):  
+[`docs/specs/architecture/platform-capability-maturity.md`](docs/specs/architecture/platform-capability-maturity.md)
+
+Near-term slices: [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](docs/specs/tasks/sales-to-comms-sequential-queue.md) — **Product Track** = [DR1-runtime](docs/specs/tasks/engine-document-request-dr1-runtime.md) (brief; feat locked; Engine may create Hub outstanding asks). **Engineering Track** = **DONE** — Reference Program Exit Gate PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` ([platform-reference-identity-sot.md](docs/specs/tasks/platform-reference-identity-sot.md); R1 **named Country Registry Gate** PASS [#292](https://github.com/igortatarynovich/HostFlow/pull/292); R5 **named Policy Merge Gate** PASS [#297](https://github.com/igortatarynovich/HostFlow/pull/297)). Sequence: [queue § Locked execution sequence](docs/specs/tasks/sales-to-comms-sequential-queue.md) — Product `CL0 → CL1 → LI-1 → DR1-contract → CL2… → Overlay → DR1-runtime`; Engineering `R1 → {R2 ∥ R3} → R4 → (R2 ∧ R4) → R5 → Program Exit` (**DONE**; no successor this amendment). E8-bind / E8-eval split (unlock ≠ schedule). Always write **Reference R1** (not Epic C residual R1 / C2.4). **Queued (docs only):** [Lifecycle Identity](docs/specs/tasks/lifecycle-identity-l0-contract-seal.md) ([ADR-037](docs/specs/architecture/ADR-037-lifecycle-identity-canon.md); Funnel ≠ existence SoT). E7 ✅ ([#287](https://github.com/igortatarynovich/HostFlow/pull/287); [documents-platform-e7-document-requests.md](docs/specs/tasks/documents-platform-e7-document-requests.md); named Document Requests Gate). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285); [documents-platform-e6-document-expiry.md](docs/specs/tasks/documents-platform-e6-document-expiry.md); named Document Expiry Gate; expiry / validity). E3 ✅ ([#278](https://github.com/igortatarynovich/HostFlow/pull/278); [documents-platform-e3-first-consumer-bind.md](docs/specs/tasks/documents-platform-e3-first-consumer-bind.md); named First Consumer Bind Gate; first consumer = HR employee + Document Link SoT). E2 ✅ ([#276](https://github.com/igortatarynovich/HostFlow/pull/276); [documents-platform-e2-public-contract.md](docs/specs/tasks/documents-platform-e2-public-contract.md); named Public Contract Gate). [Workspace Capability Platform Completion](docs/specs/tasks/workspace-capability-platform-completion.md) is [COMPLETE](docs/specs/gates/workspace-capability-platform-complete.md) on [#274](https://github.com/igortatarynovich/HostFlow/pull/274); intermediate [G1–G5 PASS_WITH_CONSTRAINTS](docs/specs/gates/workspace-capability-platform-g1-g5-closeout.md) on [#273](https://github.com/igortatarynovich/HostFlow/pull/273). G4 PASS (Recruitment Application) — **not** the E3 proof. D1–D9 are brief-complete / **goal-incomplete** vs original D chrome ([audit](docs/specs/gates/platform-scope-completeness-audit.md)): [D1](docs/specs/tasks/entity-workspace-d1-contract-seal.md) · [D2](docs/specs/tasks/entity-workspace-d2-composition-contract.md) · [D3](docs/specs/tasks/entity-workspace-d3-consumer-cutover.md) · [D4](docs/specs/tasks/entity-workspace-d4-candidate-cutover.md) · [D5](docs/specs/tasks/entity-workspace-d5-client-cutover.md) · [D6](docs/specs/tasks/entity-workspace-d6-sales-order-cutover.md) · [D7](docs/specs/tasks/entity-workspace-d7-vacancy-cutover.md) · [D8](docs/specs/tasks/entity-workspace-d8-hr-employee-cutover.md) · [D9](docs/specs/tasks/entity-workspace-d9-services-order-cutover.md) (named Cutover Gate). E1 ✅ ([#270](https://github.com/igortatarynovich/HostFlow/pull/270); [documents-platform-e1-contract-seal.md](docs/specs/tasks/documents-platform-e1-contract-seal.md); named Contract Seal Gate). Close-out gate: [`goal-completion-gate.md`](docs/specs/gates/goal-completion-gate.md). E2 brief ✅ ([#271](https://github.com/igortatarynovich/HostFlow/pull/271)). Catalog unlock ≠ consumer bind. E3 ✅ binds **one** consumer (HR employee). E4 ✅ binds Candidate via [Document Link](docs/specs/tasks/documents-platform-e4-candidate-document-link.md). E5 drops `candidate_id` ([documents-platform-e5-candidate-storage-bridge.md](docs/specs/tasks/documents-platform-e5-candidate-storage-bridge.md)). E6 seals Hub expiry / validity. D3 / D5–D7 / D9 stay unbound. Not D10. Not a Recruitment rail patch. Not ListWorkspace. Stage 5 settings, R6, Forms P3–P5, OCR, packages, and mass D3–D9 `documents` bind are **not** this slice.
+
+**Communication Platform Foundation — complete** (C0.0–C0.3 / PR #104):  
+[`docs/specs/architecture/communication-platform-foundation.md`](docs/specs/architecture/communication-platform-foundation.md).  
+
+**Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/epic-c-complete-gate.md`](docs/specs/gates/epic-c-complete-gate.md). C2.4 Scheduling remains frozen.
+
+**A2 Platform Governance Review** (`PASS_WITH_CONSTRAINTS`, 2026-08-03): [`docs/specs/gates/platform-governance-review-a2.md`](docs/specs/gates/platform-governance-review-a2.md).
+
+**Active close-out:** [Workspace Capability Platform Completion](docs/specs/tasks/workspace-capability-platform-completion.md) [COMPLETE](docs/specs/gates/workspace-capability-platform-complete.md) → [host runtime-equivalence](docs/specs/tasks/workspace-capability-host-runtime-equivalence.md) ✅ → … → Documents E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287) → Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311) → [DR1-runtime](docs/specs/tasks/engine-document-request-dr1-runtime.md) (brief; feat locked) ← **Product active** ∥ **Reference program DONE** (Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`)
+
+**Locked:** Acquisition/Stage 3 (Phase B) ✅ → Forms Platform ✅ → Entity Workspace D1–D9 (brief-complete) → Workspace Capability Platform Completion (**COMPLETE** / G4 PASS) → [host runtime-equivalence](docs/specs/tasks/workspace-capability-host-runtime-equivalence.md) ✅ → Documents E2…E7 ✅ → Entity Field Composition CL0–CL7 / LI-1 / DR1-contract / Overlay ✅ → [DR1-runtime](docs/specs/tasks/engine-document-request-dr1-runtime.md) ← **Product active** ∥ **Reference program DONE** → later Product via queue amendment; Engineering `R1 → {R2 ∥ R3} → R4 → (R2 ∧ R4) → R5 → Program Exit` (**DONE**); E8-bind unlocked / E8-eval split → Billing → AI.  
+
+Catalog Notifications↔Communication naming requires Architecture RFC (A2-F1) — do not rewrite L0 Catalog without RFC. This COMPLETE close-out does not mint Catalog Passport. E5 retires the Candidate **storage bridge** (`documents.candidate_id`); it does not bind D3 / D5–D7 / D9, reopen G4, or mark Documents Foundation ✅. E6 seals Hub expiry / validity; it does not mint a Hub reminder table. E7 seals document **requests** as Hub outstanding requirements; it does not mint a Hub request table, a Catalog `document.requested` event, or bind remaining consumers. E4 Candidate Document Link stays closed. Future phase COMPLETE requires [Goal Completion Gate](docs/specs/gates/goal-completion-gate.md). New **platform phase briefs** must include `Original Goal → Completion Proof` ([documentation-rules.md](docs/governance/documentation-rules.md) §3.1). Workspace Capability Platform is **capability-based**: host places, owners own semantics; Entity ≠ Application; G4 is Recruitment Application; both hosts exist at runtime; owner facades hide transport.
+
 ## Documentation governance
 
-Перед созданием или изменением любого `.md` файла прочитайте `docs/governance/` (три файла, читать все три):
+Перед созданием или изменением любого `.md` файла прочитайте `docs/governance/` (читать все):
 
 - **`docs/governance/hierarchy-of-truth.md`** — три уровня источников истины (L1 canon / L2 operating canon / L3 implementation context). При конфликте выигрывает более высокий уровень. L1 не может ссылаться на L3 как на «канон».
 - **`docs/governance/documentation-rules.md`** — куда класть новый ADR / workflow / module spec / runbook, что запрещено (`*-draft.md`, `*-final-v2.md`, и т.д.), как архивировать с canon replacement, контрибьютор-checklist (§9).
 - **`docs/governance/ownership.md`** — владельцы канона по слою (security / architecture / module / workflows / operational SSOT). Без явного owner-а новый канонический слой не создаётся.
+- **`docs/governance/repository-operational-canon.md`** — операционный канон репозитория (worktree, gates, PR split, recovery).
 
 **Жёсткие правила (выдержка из rules):**
-- Новое architecture decision — только через ADR (`docs/specs/architecture/ADR-NNN-<slug>.md` + linkage из domain map / module catalog).
+- Новое architecture decision — только через ADR (`docs/specs/architecture/ADR-NNN-<slug>.md` + linkage). ADR **ссылается** на L0 (P-01…P-05 / INV / Catalog), **не** переписывает конституцию. Сначала checklist + Catalog.
+- Platform architecture **L0 FROZEN · Phase 0 complete** — [`L0-platform-architecture.md`](docs/specs/architecture/L0-platform-architecture.md). Дальше **Phase 1** (platform capabilities). L0 changes only via Architecture RFC. Design path: Catalog → Passport → Manifest → code.
 - Новый workflow — обязательная запись в `docs/specs/workflows/index.md`.
+- Новый **platform phase brief** — `**Phase class:** platform` + раздел `Original Goal → Completion Proof` ([documentation-rules.md](docs/governance/documentation-rules.md) §3.1).
 - Изменение поведения модуля — обновление `docs/<module>/module-scope.md` + `docs/specs/modules/<module>.md` в одном PR.
 - Запрещено создавать спеки в корне репо (кроме `AGENTS.md`, `README.md` и т.п.) или в `docs/_drafts/**`.
 - Любой архивированный документ должен иметь явный canon replacement в `archive/legacy/YYYY-MM-DD/README.md`.

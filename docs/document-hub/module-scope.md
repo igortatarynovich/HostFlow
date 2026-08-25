@@ -1,6 +1,9 @@
 # Document Hub: охват платформенного слоя документов
 
-**Document Hub** — общий слой для HostFlow: документ как **самостоятельная сущность**, а не только вложение в одной карточке. Нормативное решение — **[`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)**. В **§0** каталога модулей Hub стоит в **Core / Platform** рядом с Companies, Users/Roles, Forms, Integrations.
+**Document Hub** — общий слой для HostFlow: документ как **самостоятельная сущность**, а не только вложение в одной карточке. Нормативное решение — **[`ADR-009`](../specs/architecture/ADR-009-document-hub-platform-layer.md)**.  
+**Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#documents).  
+**Product Track (live):** [Entity Field Composition CL0](../specs/tasks/entity-field-composition-cl0-contract-seal.md) (brief; feat locked). E7 ✅ ([#287](https://github.com/igortatarynovich/HostFlow/pull/287); [documents-platform-e7-document-requests.md](../specs/tasks/documents-platform-e7-document-requests.md); named Document Requests Gate). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285); [documents-platform-e6-document-expiry.md](../specs/tasks/documents-platform-e6-document-expiry.md); named Document Expiry Gate). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282); [documents-platform-e5-candidate-storage-bridge.md](../specs/tasks/documents-platform-e5-candidate-storage-bridge.md); named Candidate Storage Bridge Gate). E4 ✅ ([#280](https://github.com/igortatarynovich/HostFlow/pull/280); [documents-platform-e4-candidate-document-link.md](../specs/tasks/documents-platform-e4-candidate-document-link.md); named Candidate Document Link Gate). E3 ✅ ([#278](https://github.com/igortatarynovich/HostFlow/pull/278); [documents-platform-e3-first-consumer-bind.md](../specs/tasks/documents-platform-e3-first-consumer-bind.md); named First Consumer Bind Gate). E2 ✅ ([#276](https://github.com/igortatarynovich/HostFlow/pull/276); [documents-platform-e2-public-contract.md](../specs/tasks/documents-platform-e2-public-contract.md)). Public contract: [`documents-public-contract.md`](../specs/architecture/documents-public-contract.md). WCP [COMPLETE](../specs/gates/workspace-capability-platform-complete.md). E1 ✅. D2 `documents` catalog unlock is E2; first consumer bind is E3 (HR employee). Candidate Document Link is E4. Storage-bridge retirement is E5. Expiry / validity is E6. Document requests is E7. D3 / D5–D7 / D9 stay unbound. Foundation stays 🔄.  
+В **§0** каталога модулей Hub стоит в **Core / Platform** рядом с Companies, Users/Roles, Forms, Integrations.
 
 ## Назначение
 
@@ -79,4 +82,12 @@
 
 ## История
 
+- 2026-08-23: Product Track → [Documents Platform E7](../specs/tasks/documents-platform-e7-document-requests.md) (feat); Hub outstanding-ask read. E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285). Foundation stays 🔄.
+- 2026-08-23: Product Track → [Documents Platform E7](../specs/tasks/documents-platform-e7-document-requests.md) (feat); document requests. E6 ✅ [#285](https://github.com/igortatarynovich/HostFlow/pull/285). Foundation stays 🔄.
+- 2026-08-23: Product Track → [Documents Platform E6](../specs/tasks/documents-platform-e6-document-expiry.md) (feat); Hub expiry read. E5 ✅ [#282](https://github.com/igortatarynovich/HostFlow/pull/282). Foundation stays 🔄.
+- 2026-08-23: Product Track → [Documents Platform E6](../specs/tasks/documents-platform-e6-document-expiry.md) (feat locked); expiry / validity. E5 ✅ [#282](https://github.com/igortatarynovich/HostFlow/pull/282). Foundation stays 🔄.
+- 2026-08-22: Product Track → [Documents Platform E5](../specs/tasks/documents-platform-e5-candidate-storage-bridge.md) (feat locked); `candidate_id` drop. E4 ✅ [#280](https://github.com/igortatarynovich/HostFlow/pull/280). Foundation stays 🔄.
+- 2026-08-22: Product Track → [Documents Platform E4](../specs/tasks/documents-platform-e4-candidate-document-link.md) (feat); Candidate Document Link on D4. E3 ✅ [#278](https://github.com/igortatarynovich/HostFlow/pull/278). Foundation stays 🔄.
+- 2026-08-20: Product Track → [Entity Platform Completion](../specs/tasks/workspace-capability-platform-completion.md); E2 brief ✅ [#271](https://github.com/igortatarynovich/HostFlow/pull/271) (feat locked).  
+- 2026-08-18: Product Track → Documents Platform E1 ([brief](../specs/tasks/documents-platform-e1-contract-seal.md)); D9 ✅ [#268](https://github.com/igortatarynovich/HostFlow/pull/268). D2 slot not enabled.
 - 2026-05: первичная фиксация scope Document Hub и таблица примеров по модулям.

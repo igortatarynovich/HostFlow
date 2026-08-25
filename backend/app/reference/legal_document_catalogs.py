@@ -75,13 +75,21 @@ DOCUMENT_CATEGORIES_CANONICAL: Final[tuple[DocumentCategoryCatalogItem, ...]] = 
     DocumentCategoryCatalogItem("work_authorization", "Work Authorization"),
 )
 
-DOCUMENT_TYPES_CANONICAL: Final[tuple[DocumentTypeCatalogItem, ...]] = (
-    DocumentTypeCatalogItem("passport", "Passport", "identity", expiry_track_required=True),
-    DocumentTypeCatalogItem("id_card", "ID Card", "identity", expiry_track_required=True),
-    DocumentTypeCatalogItem("residence_card", "Residence Card", "immigration", expiry_track_required=True),
-    DocumentTypeCatalogItem("visa", "Visa", "immigration", expiry_track_required=True),
-    DocumentTypeCatalogItem("work_permit", "Work Permit", "work_authorization", expiry_track_required=True),
-)
+def _document_types_from_registry() -> tuple[DocumentTypeCatalogItem, ...]:
+    from backend.app.document_types.registry import registry_entries
+
+    return tuple(
+        DocumentTypeCatalogItem(
+            entry.code,
+            entry.public_name,
+            entry.category_code,
+            expiry_track_required=entry.criticality in {"compliance_critical", "work_blocking", "required"},
+        )
+        for entry in registry_entries()
+    )
+
+
+DOCUMENT_TYPES_CANONICAL: Final[tuple[DocumentTypeCatalogItem, ...]] = _document_types_from_registry()
 
 
 def _normalize_code(value: str | None) -> str | None:

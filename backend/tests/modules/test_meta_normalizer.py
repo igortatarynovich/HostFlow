@@ -127,3 +127,31 @@ def test_case_insensitive_keys_are_supported():
     assert data["phone"] == "+491512345678"
     assert data["country"] == "DE"
     assert data["full_name"] == "Anna Schmidt"
+
+
+def test_normalize_meta_payload_maps_nazwa_firmy_and_preserves_field_answers():
+    payload = _make_payload(
+        [
+            {"name": "full_name", "values": ["Dina Kurt"]},
+            {"name": "email", "values": ["di555@o2.pl"]},
+            {"name": "phone_number", "values": ["+48789186757"]},
+            {"name": "nazwa_firmy", "values": ["Synergia Kadry"]},
+            {"name": "kogo_obecnie_poszukujesz?", "values": ["kierowcy"]},
+            {
+                "name": "czy_prowadzisz_obecnie_płatne_kampanie_reklamowe?",
+                "values": ["nie"],
+            },
+        ]
+    )
+
+    data = normalizer.normalize_meta_payload(payload)
+
+    assert data["company_name_hint"] == "Synergia Kadry"
+    assert data["company_name"] == "Synergia Kadry"
+    assert data["company_profile"]["name"] == "Synergia Kadry"
+    assert data["need"]["what_needed"] == "kierowcy"
+    assert data["marketing"]["runs_paid_ads"] == "nie"
+    assert data["contact_person"]["email"] == "di555@o2.pl"
+    names = [row["name"] for row in data["field_answers"]]
+    assert "nazwa_firmy" in names
+    assert "kogo_obecnie_poszukujesz?" in names

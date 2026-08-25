@@ -187,8 +187,10 @@ export async function updatePlatformTenantLegalHostSettings(
   return data
 }
 
-export async function impersonatePlatformTenant(tenantId: string) {
-  const { data } = await http.post<TenantImpersonationToken>(`/platform/tenants/${tenantId}/impersonate`)
+export async function impersonatePlatformTenant(tenantId: string, reason: string) {
+  const { data } = await http.post<TenantImpersonationToken>(`/platform/tenants/${tenantId}/impersonate`, {
+    reason,
+  })
   return data
 }
 
@@ -346,6 +348,41 @@ export async function updateTenantModules(
 export async function getTenantEffectiveRoleModules(opts?: { tenantId?: string }) {
   const client = resolveTenantClient(opts?.tenantId)
   const { data } = await client.get<EffectiveRoleModules>('/settings/team/module-matrix/effective')
+  return data
+}
+
+export async function getTenantRoleModuleMatrix(opts?: { tenantId?: string }) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.get<TenantRoleModuleMatrix>('/settings/team/module-matrix')
+  return data
+}
+
+export async function updateTenantRoleModuleMatrix(
+  payload: TenantRoleModuleMatrixPatch,
+  opts?: { tenantId?: string },
+) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.patch<TenantRoleModuleMatrix>('/settings/team/module-matrix', payload)
+  return data
+}
+
+export async function listPermissionPresets(opts?: { tenantId?: string }) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.get<{ items: Array<{ id: string; trust_role: string; modules: Record<string, { visible: boolean; editable: boolean }> }> }>(
+    '/settings/team/permission-presets',
+  )
+  return data.items
+}
+
+export async function applyPermissionPresetToEmployeeMatrix(
+  presetId: string,
+  opts?: { tenantId?: string },
+) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.post<TenantRoleModuleMatrix>(
+    `/settings/team/permission-presets/${encodeURIComponent(presetId)}/apply-matrix`,
+    { target: 'employee' },
+  )
   return data
 }
 

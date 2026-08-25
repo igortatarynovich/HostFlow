@@ -800,8 +800,7 @@ async def compute_document_next_action(
     if doc is None:
         return _idle_dto(entity_id=doc_id_str, reason="document_not_found", entity_type="document")
 
-    # `Document.candidate_id` is non-null on the model, but defensive read
-    # in case migration history or a fixture left it blank.
+    # Candidate relationship is Hub primary link (E5); projection may be empty.
     candidate_id = (getattr(doc, "candidate_id", None) or "").strip()
     href_detail = spa_candidate(candidate_id) if candidate_id else None
 

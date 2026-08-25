@@ -1,11 +1,16 @@
 # Модуль Recruitment: цель и границы
 
-Документ фиксирует **продуктовый модуль Recruitment** в смысле [`ADR-004`](../specs/architecture/ADR-004-five-product-modules-and-billing-events.md). Детальные фичи CRM (кандидаты, воронки, документы) распределены по существующим спекам в `docs/specs/modules/*`; здесь — **охват и anti-scope**.
+Документ фиксирует **продуктовый модуль Recruitment** в смысле [`ADR-004`](../specs/architecture/ADR-004-five-product-modules-and-billing-events.md).  
+**Capability Boundary / passport:** [`platform-capability-catalog.md`](../specs/architecture/platform-capability-catalog.md#recruitment).  
+Детальные фичи CRM (кандидаты, воронки, документы) распределены по существующим спекам в `docs/specs/modules/*`; здесь — **охват и anti-scope**.
 
 ## Суть
 
-- **Входит:** лиды, кандидаты, вакансии, клиенты рекрутинга, пайплайн подбора, документы и правила стадий в контексте найма, handoff к HR/Fleet по продуктовым сценариям; **публикация вакансий и распространение** (Job Publishing) как capability модуля — см. [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md).
-- **Не входит:** каталог операционных заказов услуг как отдельный контур (→ **Services**), выставление счетов и агрегированный биллинг (→ **Finance** через **Billing Events**), кадровый жизненный цикл сотрудника (→ **HR**), операции автопарка (→ **Fleet**).
+- **Входит:** Applications (отклики), кандидаты, вакансии / подборы, пайплайн подбора, документы и правила стадий в контексте найма, handoff к HR/Fleet по продуктовым сценариям; **Job Post / vacancy-facing publishing** как recruitment-specific surface — см. [`ADR-008`](../specs/architecture/ADR-008-job-publishing-and-distribution.md). **Кампании / рекламные кабинеты / универсальный intake routing** — Shared **Acquisition** ([`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)); Подбор остаётся SoT потребности, не кампании. **Vacancy под Sales Order Line** — исполнитель одной линии заказа ([`ADR-032`](../specs/architecture/ADR-032-client-order-vacancy-flight-chain.md)); коммерция и headcount SoT — Sales Order Line, не Vacancy.
+- **Не входит:** Sales Inquiry / ClientAccount / Service Order / Order Line / Billable Item (→ **Sales** / **Finance**); Service Order каталога услуг (→ **Services**); Invoice / Payment (→ **Finance**); **Employee Workspace** и кадровый lifecycle (→ **HR** — Recruitment только handoff + ссылка); операции автопарка (→ **Fleet**); владение Campaign/Ad как SoT (→ **Acquisition**). См. [`ADR-023`](../specs/architecture/ADR-023-recruitment-sales-module-separation.md).
+- **`Lead`** — только внутренний transport intake; в UI модуля — **Отклик (Application)** / **Кандидат**, никогда «лид» как рабочий объект ([`ui-constitution-v1.md`](../specs/architecture/ui-constitution-v1.md)).
+- **Nav:** Employees **не** живут в секции Recruitment.
+- **Stage 2A product API:** `/api/v1/recruitment/applications/*`, `/api/v1/recruitment/candidates/*` (legacy `/api/v1/candidates` remains compat).
 
 ## Job Publishing / Job Distribution (ADR-008)
 
@@ -13,12 +18,14 @@
 
 | Сущность | Роль |
 |----------|------|
-| **Vacancy** | Внутренняя потребность: кого ищем, для какой company, условия, headcount, `owner_company_id`, статус. **Не** кандидат и **не** pipeline кандидата. |
+| Vacancy | Внутренняя потребность: кого ищем, для какой company, условия, headcount, `owner_company_id`, статус. При связи с Sales **Order Line** (`order_line_id`, ADR-032) headcount/role/location — **проекция линии**, не второй SoT. **Не** кандидат и **не** pipeline кандидата. |
 | **Job Post** | Публичная версия вакансии (title, description, язык, зарплата, локация, статус публикации, привязка к **application form**). Одна vacancy → **много** posts (языки, порталы, кампании). |
 | **Publishing Channel** | Куда публикуем: career page, HostFlow job page, Pracuj, Indeed, Meta, LinkedIn, OLX и т.д. |
 | **Application Form** | Контур [**Forms**](../forms/module-scope.md) / [`ADR-007`](../specs/architecture/ADR-007-forms-platform-capability.md): отклик, файлы, RODO, предквалификация. |
 
-**Flow:** `Vacancy → Job Post → Publishing Channel → Application Form → Lead/Candidate` с атрибуцией **source / channel / campaign** и метриками конверсии **channel → candidate**.
+**Flow:** `Vacancy → Job Post → Publishing Channel → Application Form → Application → Candidate` с атрибуцией **source / channel / campaign**. Долгосрочно **Campaign / ads / multi-module placement** живут в Shared **Acquisition** ([`ADR-024`](../specs/architecture/ADR-024-acquisition-campaigns-intake-routing.md)); Job Post не становится владельцем Sales Inquiry.
+
+**Подбор ≠ Campaign:** Подбор = внутренняя потребность Recruitment; Campaign = объект Acquisition (канал, бюджет, креатив). Один Подбор → много кампаний.
 
 **Зависимость:** при выключенном **Recruitment** Job Publishing **недоступен**. При включённом — basic в составе Recruitment, advanced — addon; интеграции отдельных порталов — через Marketplace ([`ADR-006`](../specs/architecture/ADR-006-marketplace-and-integration-platform.md)).
 
@@ -49,6 +56,8 @@ Recruitment **owns** candidate and lead pipeline definitions. Canonical scope:
 | Resolution | Single chain — [`module-owned-pipelines-p0.md`](../specs/architecture/module-owned-pipelines-p0.md) §5 |
 
 **Runtime entry points** use `recruitment_funnel_assignment` helpers → `resolve_recruitment_funnel`. **Forbidden after P0 gate:** new tenant-wide operational funnels; cross-module funnel rows; gates on legacy `system_stage` alone.
+
+**Stage existence (ADR-037):** company funnels configure **which registered `recruitment.lead.*` / `recruitment.candidate.*` keys** are used. They do not mint stage identity. Candidate HR/client tail on `Candidate.stage` is strangler — [`lifecycle-identity-canon.md`](../specs/architecture/lifecycle-identity-canon.md). Runtime of that split is **queued after CL0**, not this file’s job.
 
 **Temporary strangler:** pre-migration tenant funnels (`company_id IS NULL`) remain readable via resolver step 4 and analytics `legacy_tenant=true` until backfill + dashboard migration. See spec §7.3.
 

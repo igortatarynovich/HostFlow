@@ -33,3 +33,4 @@
 ## Связанные спеки
 
 - `docs/specs/architecture/ADR-013-public-intake-strategy.md`
+- Authenticated Forms Platform resolve / frozen publication identity: [`forms-platform.md`](./forms-platform.md) (not this surface)

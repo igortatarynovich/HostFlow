@@ -1,17 +1,27 @@
-import { type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+import type { LeadCallResultCode } from '../../api/client'
 import type { Lead } from '../../api/types'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import { leadIntakeResolutionRejected } from '../../utils/intakeResolution'
+import { useI18n } from '../../i18n'
+import SalesInquiryRodoSection from '../sales/SalesInquiryRodoSection'
+import { leadIntakeResolutionRejected, leadRodoSatisfied } from '../../utils/intakeResolution'
+import {
+  LEAD_CALL_RESULT_CODES,
+  leadCallResultHistory,
+  type LeadCallResultEntry,
+} from '../../utils/leadCallResult'
 
 type ClientLeadDetailViewProps = {
   lead: Lead
   formatDate: (iso: string | null | undefined) => string
   converting: boolean
   patching: boolean
+  savingCallResult?: boolean
   onConvert: () => void | Promise<void>
   onStage: (stage: 'contacted' | 'qualified' | 'lost') => void | Promise<void>
+  onCallResult?: (payload: { result: LeadCallResultCode; note: string }) => void | Promise<void>
   moreSection?: ReactNode
 }
 
@@ -60,17 +70,55 @@ function Section({
   )
 }
 
+function CallResultHistoryItem({
+  entry,
+  formatDate,
+  resultLabel,
+  noteLabel,
+}: {
+  entry: LeadCallResultEntry
+  formatDate: (iso: string | null | undefined) => string
+  resultLabel: (code: string) => string
+  noteLabel: string
+}) {
+  return (
+    <li className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="font-medium text-slate-800">{resultLabel(entry.result)}</span>
+        {entry.at ? <span className="text-xs text-slate-500">{formatDate(entry.at)}</span> : null}
+      </div>
+      {entry.note?.trim() ? (
+        <p className="mt-1.5 whitespace-pre-wrap border-t border-slate-100 pt-1.5 text-slate-700">
+          <span className="text-xs font-medium text-slate-500">{noteLabel}: </span>
+          {entry.note.trim()}
+        </p>
+      ) : null}
+    </li>
+  )
+}
+
 export default function ClientLeadDetailView({
   lead,
   formatDate,
   converting,
   patching,
+  savingCallResult = false,
   onConvert,
   onStage,
+  onCallResult,
   moreSection,
 }: ClientLeadDetailViewProps) {
-  const normalized = record(lead.normalized)
-  const payload = record(lead.payload)
+  const { t } = useI18n()
+  const [callResult, setCallResult] = useState<LeadCallResultCode>('callback_requested')
+  const [callNote, setCallNote] = useState('')
+  const [leadState, setLeadState] = useState(lead)
+  useEffect(() => {
+    setLeadState(lead)
+  }, [lead])
+  const rodoOk = leadRodoSatisfied(leadState)
+
+  const normalized = record(leadState.normalized)
+  const payload = record(leadState.payload)
   const company = record(normalized.company_profile)
   const payloadCompany = record(payload.company)
   const contact = record(normalized.contact_person)
@@ -84,18 +132,40 @@ export default function ClientLeadDetailView({
   const meta = record(normalized.meta)
   const consent = record(normalized.consent)
   const sourceProfile = record(meta.source_profile)
-  const companyName = text(company.name) || text(normalized.company_name) || text(payloadCompany.name) || lead.company_name || 'Client Lead'
-  const convertedId = text(lead.converted_client_id)
-  const terminal = leadIntakeResolutionRejected(lead)
+  const fieldAnswers = Array.isArray(normalized.field_answers)
+    ? (normalized.field_answers as Array<{ name?: unknown; values?: unknown }>)
+    : []
+  const companyName =
+    text(company.name) ||
+    text(normalized.company_name) ||
+    text(normalized.company_name_hint) ||
+    text(payloadCompany.name) ||
+    leadState.company_name ||
+    'Client Lead'
+  const convertedId = text(leadState.converted_client_id)
+  const terminal = leadIntakeResolutionRejected(leadState)
   const statusLabel = terminal
     ? 'Отклонён'
     : convertedId
       ? 'Клиент создан'
-      : lead.status === 'processed'
+      : leadState.status === 'processed'
         ? 'Новая анкета'
-        : lead.status === 'rejected'
+        : leadState.status === 'rejected'
           ? 'Отклонён'
-          : lead.status
+          : leadState.status
+
+  const history = useMemo(() => leadCallResultHistory(leadState), [leadState])
+
+  const resultLabel = (code: string) =>
+    t(`app.leads.detail.call_result.results.${code}`, { defaultValue: code })
+
+  const noteRecommended =
+    callResult === 'answered' ||
+    callResult === 'callback_requested' ||
+    callResult === 'interested' ||
+    callResult === 'not_interested'
+
+  const busy = patching || converting || savingCallResult
 
   return (
     <div className="space-y-5">
@@ -103,7 +173,9 @@ export default function ClientLeadDetailView({
         <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-600/90" aria-hidden />
         <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Client Lead</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+              {t('app.leads.detail.call_result.kicker', { defaultValue: 'Обращение' })}
+            </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{companyName}</h1>
             <p className="mt-2 text-sm text-slate-600">
               {text(need.summary) || [text(need.people_count), text(need.what_needed)].filter(Boolean).join(' ') || 'Анкета транспортной компании'}
@@ -139,7 +211,7 @@ export default function ClientLeadDetailView({
               <button
                 type="button"
                 className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold"
-                disabled={converting || patching}
+                disabled={busy}
                 onClick={() => void onConvert()}
               >
                 {converting ? 'Создаём...' : 'Создать клиента'}
@@ -147,13 +219,13 @@ export default function ClientLeadDetailView({
             )}
             {!terminal ? (
               <>
-                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={patching || converting} onClick={() => void onStage('contacted')}>
+                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={busy || !rodoOk} onClick={() => void onStage('contacted')} title={!rodoOk ? t('app.leads.messages.process_blocked.LEAD_RODO_REQUIRED', { defaultValue: 'RODO required first' }) : undefined}>
                   Контакт установлен
                 </button>
-                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={patching || converting} onClick={() => void onStage('qualified')}>
+                <button type="button" className="btn-secondary rounded-lg px-3 py-2 text-sm" disabled={busy} onClick={() => void onStage('qualified')}>
                   Квалифицировать
                 </button>
-                <button type="button" className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60" disabled={patching || converting} onClick={() => void onStage('lost')}>
+                <button type="button" className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60" disabled={busy} onClick={() => void onStage('lost')}>
                   Отклонить
                 </button>
               </>
@@ -162,8 +234,128 @@ export default function ClientLeadDetailView({
         </div>
       </header>
 
+      {!terminal && onCallResult ? (
+        <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <SalesInquiryRodoSection
+            leadId={String(leadState.id)}
+            lead={leadState}
+            disabled={busy}
+            onUpdated={setLeadState}
+          />
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {t('app.leads.detail.call_result.title', { defaultValue: 'Результат звонка' })}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {t('app.leads.detail.call_result.subtitle', {
+                defaultValue: 'Перезвонить или что ещё хотят / думают — зафиксируйте после разговора.',
+              })}
+            </p>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs font-medium text-slate-600">
+                {t('app.leads.detail.call_result.fields.result', { defaultValue: 'Результат' })}
+              </span>
+              <select
+                className="input w-full"
+                value={callResult}
+                disabled={busy || !rodoOk}
+                onChange={(e) => setCallResult(e.target.value as LeadCallResultCode)}
+              >
+                {LEAD_CALL_RESULT_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {resultLabel(code)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="sm:col-span-2">
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-medium text-slate-600">
+                  {t('app.leads.detail.call_result.fields.note', {
+                    defaultValue: 'Комментарий к результату',
+                  })}
+                  {noteRecommended ? (
+                    <span className="ml-1 font-normal text-slate-500">
+                      (
+                      {t('app.leads.detail.call_result.fields.note_recommended', {
+                        defaultValue: 'желательно',
+                      })}
+                      )
+                    </span>
+                  ) : null}
+                </span>
+                <textarea
+                  className="textarea mt-0 w-full"
+                  rows={3}
+                  maxLength={2000}
+                  disabled={busy || !rodoOk}
+                  value={callNote}
+                  onChange={(e) => setCallNote(e.target.value)}
+                  placeholder={t('app.leads.detail.call_result.fields.note_placeholder', {
+                    defaultValue: 'Например: перезвонить завтра в 15:00, спрашивает про ставку, думает…',
+                  })}
+                />
+              </label>
+              <p className="mt-1 text-xs text-slate-500">
+                {t('app.leads.detail.call_result.fields.note_hint', {
+                  defaultValue: 'Что хотят или думают: перезвонить, условия, сомнения, следующий шаг.',
+                })}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              className="btn-primary rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60"
+              disabled={busy || !rodoOk}
+              title={
+                !rodoOk
+                  ? t('app.leads.messages.process_blocked.LEAD_RODO_REQUIRED', {
+                      defaultValue: 'Send RODO or mark covered at source before saving a call result.',
+                    })
+                  : undefined
+              }
+              onClick={() => {
+                void Promise.resolve(
+                  onCallResult({ result: callResult, note: callNote.trim() }),
+                ).then(() => setCallNote(''))
+              }}
+            >
+              {savingCallResult
+                ? t('common.saving', { defaultValue: 'Сохранение…' })
+                : t('app.leads.detail.call_result.save', { defaultValue: 'Сохранить результат звонка' })}
+            </button>
+          </div>
+          {history.length > 0 ? (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.leads.detail.call_result.history_title', { defaultValue: 'История звонков' })}
+              </h3>
+              <ul className="mt-2 space-y-2">
+                {history.map((entry, idx) => (
+                  <CallResultHistoryItem
+                    key={`${entry.at || 'x'}-${entry.result}-${idx}`}
+                    entry={entry}
+                    formatDate={formatDate}
+                    resultLabel={resultLabel}
+                    noteLabel={t('app.leads.detail.call_result.fields.note', {
+                      defaultValue: 'Комментарий',
+                    })}
+                  />
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       <Section title="Компания">
-        <Field label="Название" value={company.name || payloadCompany.name || lead.company_name} />
+        <Field
+          label="Название"
+          value={company.name || normalized.company_name || normalized.company_name_hint || payloadCompany.name || lead.company_name}
+        />
         <Field label="Юр. название" value={company.legal_name || payloadCompany.legal_name} />
         <Field label="NIP / VAT" value={company.tax_id || company.nip || company.vat || payloadCompany.tax_id} />
         <Field label="Страна" value={company.country || payloadCompany.country} />
@@ -174,20 +366,34 @@ export default function ClientLeadDetailView({
       </Section>
 
       <Section title="Контактное лицо">
-        <Field label="Имя" value={contact.full_name || payloadContact.full_name} />
+        <Field label="Имя" value={contact.full_name || payloadContact.full_name || normalized.full_name} />
         <Field label="Должность" value={contact.role || payloadContact.role} />
-        <Field label="Email" value={contact.email || payloadContact.email} />
-        <Field label="Телефон" value={contact.phone || payloadContact.phone} />
+        <Field label="Email" value={contact.email || payloadContact.email || normalized.email} />
+        <Field label="Телефон" value={contact.phone || payloadContact.phone || normalized.phone} />
         <Field label="WhatsApp" value={contact.whatsapp ?? payloadContact.whatsapp} />
       </Section>
 
       <Section title="Потребность">
         <Field label="Что нужно" value={need.what_needed || payloadNeed.what_needed} />
+        <Field label="Сводка" value={need.summary || payloadNeed.summary} />
         <Field label="Сколько людей" value={need.people_count || payloadNeed.people_count} />
         <Field label="Тип сотрудничества" value={need.cooperation_type || payloadNeed.cooperation_type} />
         <Field label="Когда нужны" value={need.start_date || need.when_needed || payloadNeed.start_date || payloadNeed.when_needed} />
         <Field label="Требования" value={need.requirements || payloadNeed.requirements} />
+        <Field label="Платные кампании" value={marketing.runs_paid_ads} />
       </Section>
+
+      {fieldAnswers.length > 0 ? (
+        <Section title="Ответы из формы Meta">
+          {fieldAnswers.map((item, idx) => (
+            <Field
+              key={`${text(item.name) || 'field'}-${idx}`}
+              label={text(item.name) || `Field ${idx + 1}`}
+              value={item.values}
+            />
+          ))}
+        </Section>
+      ) : null}
 
       <Section title="Условия работы">
         <Field label="Ставка" value={terms.rate || normalized.rate} />

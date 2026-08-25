@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,7 +16,7 @@ from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import billing_restrictions
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
 from backend.app.services.handoff_snapshot_acl import assert_handoff_snapshot_readable
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.deps import Role
 from backend.app.schemas.workforce_hr_core import (
     HrDocumentCorrectionIn,
     HrAdditionalDocumentRequestIn,
@@ -44,9 +44,29 @@ from backend.app.services.handoff import (
     get_accepted_handoff_for_agency,
 )
 
-HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)
+from backend.app.auth.trust_role_deps import TRUST_WRITE_ROLES, require_trust_write
+from backend.app.auth.module_gate import require_hr_workforce_module_access
+HR_WORKSPACE_ROLES = TRUST_WRITE_ROLES
 
 router = APIRouter(prefix="/handoffs", tags=["handoffs"])
+
+
+def _handoff_create_http_exception(err: str | dict[str, Any]) -> HTTPException:
+    if isinstance(err, dict) and str(err.get("code") or "") == "handoff_docs_incomplete":
+        return HTTPException(status_code=409, detail=err)
+    if isinstance(err, dict):
+        return HTTPException(status_code=400, detail=err)
+    return HTTPException(status_code=400, detail=err)
+
+
+def _bulk_handoff_error_item(candidate_id: str, err: str | dict[str, Any]) -> dict[str, Any]:
+    if isinstance(err, dict):
+        return {
+            "candidate_id": candidate_id,
+            "error": str(err.get("message") or err.get("code") or "handoff_failed"),
+            "detail": err,
+        }
+    return {"candidate_id": candidate_id, "error": err}
 
 
 class HandoffCreate(BaseModel):
@@ -161,7 +181,7 @@ async def create_handoff_bulk(
                 destination="client_portal",
             )
             if err:
-                errors.append({"candidate_id": str(candidate_id), "error": err})
+                errors.append(_bulk_handoff_error_item(str(candidate_id), err))
             else:
                 created += 1
         except HTTPException as e:
@@ -200,7 +220,7 @@ async def create_handoff_route(
         application_id=app_id,
     )
     if err:
-        raise HTTPException(status_code=400, detail=err)
+        raise _handoff_create_http_exception(err)
     await db.commit()
     await db.refresh(handoff)
     return HandoffOut.model_validate(handoff)
@@ -643,7 +663,7 @@ async def _handoff_hr_review_row(db, tenant_id: str, handoff_id: str):
 @router.post(
     "/{handoff_id}/hr-review/document-verifications/{document_key:path}/opened",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def post_handoff_document_opened(
@@ -676,7 +696,7 @@ async def post_handoff_document_opened(
 @router.post(
     "/{handoff_id}/hr-review/document-verifications/{document_key:path}/reviewed",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def post_handoff_document_reviewed(
@@ -712,7 +732,7 @@ async def post_handoff_document_reviewed(
 @router.post(
     "/{handoff_id}/hr-review/document-verifications/{document_key:path}/verify",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def post_handoff_document_verify(
@@ -747,7 +767,7 @@ async def post_handoff_document_verify(
 @router.post(
     "/{handoff_id}/hr-review/document-verifications/{document_key:path}/reject",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def post_handoff_document_reject(
@@ -782,7 +802,7 @@ async def post_handoff_document_reject(
 @router.post(
     "/{handoff_id}/hr-review/document-verifications/{document_key:path}/request-correction",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def post_handoff_document_request_correction(
@@ -817,7 +837,7 @@ async def post_handoff_document_request_correction(
 @router.post(
     "/{handoff_id}/hr-review/document-verifications/{document_key:path}/waive-requirement",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def post_handoff_document_waive_requirement(
@@ -853,7 +873,7 @@ async def post_handoff_document_waive_requirement(
 @router.post(
     "/{handoff_id}/hr-review/additional-document-request",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def post_handoff_hr_additional_document_request(
@@ -888,7 +908,7 @@ async def post_handoff_hr_additional_document_request(
 @router.get(
     "/{handoff_id}/hr-review/verified-fields",
     response_model=list[HrVerifiedFieldOut],
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def list_handoff_verified_fields(
@@ -908,7 +928,7 @@ async def list_handoff_verified_fields(
 @router.post(
     "/{handoff_id}/hr-review/verified-fields/{field_code}/override",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def post_handoff_verified_field_override(
@@ -945,7 +965,7 @@ async def post_handoff_verified_field_override(
 @router.get(
     "/{handoff_id}/hr-review",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def get_handoff_hr_review(
@@ -965,7 +985,7 @@ async def get_handoff_hr_review(
 @router.patch(
     "/{handoff_id}/hr-review/checklist/{item_code}",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def patch_handoff_hr_review_checklist(
@@ -999,7 +1019,7 @@ async def patch_handoff_hr_review_checklist(
 @router.post(
     "/{handoff_id}/hr-review/approve",
     response_model=HrReviewPanelOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def post_handoff_hr_review_approve(
@@ -1030,7 +1050,7 @@ async def post_handoff_hr_review_approve(
 
 @router.get(
     "/{handoff_id}/documents/{document_id}/file",
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
     tags=["handoffs", "workforce"],
 )
 async def get_handoff_document_file(

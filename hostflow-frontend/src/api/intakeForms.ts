@@ -81,6 +81,16 @@ export type IntakeFormDetail = {
     creates_candidate_on_create: boolean
     creates_lead_draft_on_create: boolean
   }
+  form_definition?: {
+    purpose?: string
+    target_entity_profile_code?: string
+    submission_policy?: {
+      mode?: string
+      match_policy?: Record<string, unknown>
+    }
+    published_version?: number
+    is_system_preset?: boolean
+  } | null
 }
 
 export type IntakeFormCreateInput = {
@@ -119,6 +129,49 @@ export async function getEntityProfileFields(profileCode: string): Promise<{
   fields: EntityProfileFieldOption[]
 }> {
   const { data } = await api.get(`/settings/intake-forms/entity-profiles/${encodeURIComponent(profileCode)}/fields`)
+  return data
+}
+
+export async function getEntityProfilePresentationPreset(
+  profileCode: string,
+  presentationCode?: string,
+): Promise<{
+  entity_profile_code: string
+  presentation_code: string
+  profile_name?: string | null
+  fields: PresentationFieldInput[]
+}> {
+  const params = presentationCode ? { presentation_code: presentationCode } : undefined
+  const { data } = await api.get(
+    `/settings/intake-forms/entity-profiles/${encodeURIComponent(profileCode)}/presentation-preset`,
+    { params },
+  )
+  return data
+}
+
+/** Published presentation runtime (readable by CRM roles that view leads). */
+export async function resolveEntityProfilePresentation(
+  profileCode: string,
+  presentationCode: string,
+): Promise<{
+  entity_profile_code: string
+  presentation_code: string
+  profile_name?: string | null
+  fields: Array<{
+    qualified_code: string
+    sort_order: number
+    intake_level: string
+    label: string
+    field_type?: string | null
+    widget_hint?: string | null
+    field?: Record<string, unknown> | null
+    presentation_overrides?: Record<string, unknown> | null
+    presentation_rules?: PresentationFieldInput['presentation_rules']
+  }>
+}> {
+  const { data } = await api.get(
+    `/platform/entity-profiles/${encodeURIComponent(profileCode)}/presentations/${encodeURIComponent(presentationCode)}`,
+  )
   return data
 }
 

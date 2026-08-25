@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import List, Tuple
 from uuid import UUID
 from datetime import date, datetime, timezone
@@ -92,8 +93,15 @@ class CreateCandidateIn(BaseModel):
     vacancy_id: Optional[UUID] = None
 
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.auth.trust_roles import is_hr_workspace_actor, is_recruiter_preset_actor, is_team_lead_org_actor
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
-from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
+from backend.app.auth.trust_role_deps import require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, get_current_user, UserCtx
+from backend.app.security.access_events import (
+    clip_access_filter_scope,
+    emit_access_security_event_v1,
+)
+from backend.app.security.event_taxonomy import EVENT_ACCESS_LIST_COMPLETED
 
 from backend.app.api.v1.candidates import service as cand_service
 from backend.app.api.v1.tenants import service as tenant_service
@@ -119,6 +127,8 @@ from backend.app.api.v1.candidates.acl import (
 from backend.app.api.v1.candidates.scope_utils import (
     bind_candidate_scope_rls,
     candidate_scope_tenant_str,
+    ensure_candidate_scope_access,
+    resolve_and_bind_candidate_scope,
     resolve_optional_scope_tenant_uuid,
 )
 from backend.app.auth.hiring_workspace_roles import (
@@ -151,12 +161,24 @@ from backend.app.api.v1.candidates.schemas import (
     CandidateChangeLogResponse,
     CandidateWorkPanelResponse,
     RecruitmentApplicationOut,
+    RecruitmentApplicationStatusPatch,
+    RecruitmentApplicationVacancySwitchRequest,
 )
-from backend.app.services.recruitment_application_lifecycle import normalize_application_status
-from backend.app.services.recruitment_application_service import list_recruitment_applications_for_candidate
+from backend.app.services.recruitment_application_lifecycle import (
+    InvalidRecruitmentApplicationStatus,
+    InvalidRecruitmentApplicationTransition,
+    normalize_application_status,
+)
+from backend.app.services.recruitment_application_service import (
+    RecruitmentApplicationNotFound,
+    list_recruitment_applications_for_candidate,
+    patch_recruitment_application_status,
+    switch_recruitment_application_vacancy,
+)
 from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    can_override_recruitment_handoff_lock,
     RECRUITMENT_TERMINAL_CLOSE_OVERRIDE,
     AgencyRecruitmentWriteBypass,
     is_recruitment_recruiter_write_locked_by_handoff,
@@ -629,8 +651,8 @@ def _format_actor_label(user: _Any | None, raw_actor: Optional[str]) -> Optional
 
 
 # Compatibility GET list endpoint for frontend
-@router.get("", dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))])
-@router.get("/", include_in_schema=False, dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))])
+@router.get("", dependencies=[Depends(require_trust_read())])
+@router.get("/", include_in_schema=False, dependencies=[Depends(require_trust_read())])
 async def list_candidates(
     response: Response,
     order_by: str = "created_at",
@@ -743,10 +765,40 @@ async def list_candidates(
     List endpoint с фильтрами и пагинацией. Возвращает: {"total": int, "items": [ ... ]}
     """
     db, tenant_id = db_tenant
+    _list_started = time.perf_counter()
     # Scope list by: query param > X-Tenant-Id header > JWT. So when UI sends X-Tenant-Id (e.g. Citronex), we use it even if user's JWT tenant is agency.
     scope_tenant = (
         str(scope_tenant_id) if scope_tenant_id
         else (str(tenant_id).strip() or str(current_user.tenant_id).strip() or str(tenant_id))
+    )
+
+    def _emit_candidates_list_access(*, row_count: int, filter_scope: str | None = None) -> None:
+        ak = db.info.get("security_access_kind")
+        emit_access_security_event_v1(
+            event_type=EVENT_ACCESS_LIST_COMPLETED,
+            result="success",
+            severity="info",
+            source="http:GET /api/v1/candidates",
+            tenant_id=str(scope_tenant),
+            access_kind=str(ak).strip() if ak else "tenant_bound",
+            entity_type="tenant",
+            entity_id=str(scope_tenant),
+            query_class="list",
+            route="GET /api/v1/candidates",
+            actor_id=str(getattr(current_user, "sub", "") or "") or None,
+            row_count=int(row_count),
+            limit=int(limit),
+            offset=int(offset),
+            duration_ms=int((time.perf_counter() - _list_started) * 1000),
+            filter_scope=clip_access_filter_scope(filter_scope),
+            response_mode="json_list",
+        )
+
+    await ensure_candidate_scope_access(
+        db,
+        header_tenant=tenant_id,
+        scope_tenant=scope_tenant,
+        current_user=current_user,
     )
     # Debug: log who и с каким scope_tenant запрашивает список
     logging.getLogger(__name__).info(
@@ -809,6 +861,7 @@ async def list_candidates(
     response.headers["X-User-Role"] = user_role_lower
 
     if not await apply_agency_acl_filters(db, scope_tenant, current_user, client_tenant, filters):
+        _emit_candidates_list_access(row_count=0, filter_scope="acl=empty")
         return {"total": 0, "items": []}
 
     # Funnel position: ``Candidate.stage`` only (``?stage`` / ``?stages``).
@@ -944,9 +997,9 @@ async def list_candidates(
             filters["intake_application_kind"] = ak
 
     if created_from:
-        filters["dt_from"] = datetime.combine(created_from, datetime.min.time())
+        filters["dt_from"] = datetime.combine(created_from, datetime.min.time(), tzinfo=timezone.utc)
     if created_to:
-        filters["dt_to"] = datetime.combine(created_to, datetime.max.time())
+        filters["dt_to"] = datetime.combine(created_to, datetime.max.time(), tzinfo=timezone.utc)
     insights_payload: dict[str, int] | None = None
     if include_insights:
         try:
@@ -1439,13 +1492,20 @@ async def list_candidates(
     out: dict[str, Any] = {"total": total, "items": processed_items}
     if include_insights and insights_payload is not None:
         out["insights"] = insights_payload
+    _emit_candidates_list_access(
+        row_count=int(total) if total is not None else len(processed_items),
+        filter_scope=(
+            f"client={1 if client_tenant else 0};compact={1 if compact else 0}"
+            f";q={'1' if (q or '').strip() else '0'}"
+        ),
+    )
     return out
 
 
 @router.get(
     "/available-statuses",
     response_model=CandidateListAvailableStatusesOut,
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def candidates_available_statuses(
     scope_tenant_id: UUID | None = Query(
@@ -1464,6 +1524,12 @@ async def candidates_available_statuses(
     scope_tenant = (
         str(scope_tenant_id) if scope_tenant_id
         else (str(tenant_id).strip() or str(current_user.tenant_id).strip() or str(tenant_id))
+    )
+    await ensure_candidate_scope_access(
+        db,
+        header_tenant=tenant_id,
+        scope_tenant=scope_tenant,
+        current_user=current_user,
     )
     try:
         await db.execute(
@@ -1497,7 +1563,7 @@ async def candidates_available_statuses(
 @router.get(
     "/no-next-action",
     summary="Operational view: candidates without an active next action (reminder).",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def list_candidates_no_next_action(
     response: Response,
@@ -1540,6 +1606,12 @@ async def list_candidates_no_next_action(
     db, tenant_id = db_tenant
     scope_tenant = (
         str(scope_tenant_id) if scope_tenant_id else (str(tenant_id).strip() or str(current_user.tenant_id).strip() or str(tenant_id))
+    )
+    await ensure_candidate_scope_access(
+        db,
+        header_tenant=tenant_id,
+        scope_tenant=scope_tenant,
+        current_user=current_user,
     )
     try:
         await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": scope_tenant})
@@ -1634,7 +1706,7 @@ async def list_candidates_no_next_action(
 @router.get(
     "/debug-client-view",
     summary="[Debug] Client view: accepted handoffs to current tenant (same DB as list).",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def debug_client_view(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -1661,7 +1733,7 @@ async def debug_client_view(
 @router.post(
     "/debug-client-view/force-two",
     summary="[Debug] Force only 2 accepted handoffs to current tenant (same as migration 011).",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def debug_force_two_handoffs(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -1709,7 +1781,7 @@ async def debug_force_two_handoffs(
 @router.post(
     "/bulk-stage",
     response_model=List[BulkStageItemOut],
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def bulk_update_stage(
     payload: BulkStageIn,
@@ -1738,7 +1810,7 @@ async def bulk_update_stage(
 @router.post(
     "/bulk-manager",
     response_model=List[BulkManagerItemOut],
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def bulk_update_manager(
     payload: BulkManagerIn,
@@ -1765,7 +1837,7 @@ async def bulk_update_manager(
 @router.post(
     "/bulk-delete",
     response_model=List[BulkDeleteItemOut],
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def bulk_delete_candidates(
     payload: BulkDeleteIn,
@@ -1777,16 +1849,15 @@ async def bulk_delete_candidates(
         return []
 
     # Check permissions - same as single delete
-    if current_user.role == Role.recruiter.value:
+    if is_recruiter_preset_actor(current_user.role, getattr(current_user, "preset_id", None)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Recruiter cannot delete candidates. Create a delete-request instead.",
         )
     if current_user.role not in (
         Role.administrator.value,
-        Role.supervisor.value,
         Role.superadmin.value,
-    ):
+    ) and not is_team_lead_org_actor(current_user.role, getattr(current_user, "preset_id", None)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     acl_raw = await resolve_candidate_acl(db, str(tenant_id), current_user)
@@ -1813,14 +1884,14 @@ async def bulk_delete_candidates(
 @router.post(
     "",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Create candidate",
 )
 @router.post(
     "/",
     status_code=status.HTTP_200_OK,
     include_in_schema=False,
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_candidate(
     payload: CreateCandidateIn,
@@ -1911,7 +1982,7 @@ async def create_candidate(
 # Get candidate by id
 @router.get(
     "/{candidate_id}",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Get candidate by id",
 )
 async def get_candidate(
@@ -1922,8 +1993,12 @@ async def get_candidate(
     current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id = db_tenant
-    scope_tenant = candidate_scope_tenant_str(tenant_id, scope_tenant_id, current_user)
-    await bind_candidate_scope_rls(db, scope_tenant)
+    scope_tenant = await resolve_and_bind_candidate_scope(
+        db,
+        header_tenant=tenant_id,
+        scope_tenant_id=scope_tenant_id,
+        current_user=current_user,
+    )
     tenant_id_str = str(scope_tenant)
     visibility = get_tenant_visibility(db, tenant_id_str)
     await ensure_candidate_access(
@@ -1975,7 +2050,7 @@ async def get_candidate(
         agency_can = await can_agency_edit(db, str(candidate_id), tenant_id_str)
         if agency_can:
             out["can_edit"] = True
-        elif user_role_lower == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+        elif is_hr_workspace_actor(user_role_lower) and await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
         ):
             out["can_edit"] = True
@@ -2041,11 +2116,15 @@ async def get_candidate(
 
 @router.get(
     "/{candidate_id}/transfer-readiness",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Transfer Policy readiness report (canonical handoff decision)",
 )
 async def get_candidate_transfer_readiness(
     candidate_id: UUID,
+    target_stage: Optional[str] = Query(
+        None,
+        description="Evaluate readiness for transition to this stage (e.g. ready_for_handoff)",
+    ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> dict:
@@ -2061,13 +2140,14 @@ async def get_candidate_transfer_readiness(
         module=RECRUITMENT_MODULE,
         entity_type="candidate",
         entity_id=str(candidate_id),
+        target_system_stage=target_stage,
         include_engine_metadata=False,
     )
 
 
 @router.get(
     "/{candidate_id}/recruitment-package",
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="PR16 dossier-aligned recruitment package readiness",
 )
 async def get_candidate_recruitment_package(
@@ -2112,7 +2192,7 @@ async def get_candidate_recruitment_package(
 @router.get(
     "/{candidate_id}/work-panel",
     response_model=CandidateWorkPanelResponse,
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Work panel bundle (ops profile + reminders + timeline + comms links)",
 )
 async def get_candidate_work_panel(
@@ -2155,7 +2235,7 @@ async def get_candidate_work_panel(
 @router.get(
     "/{candidate_id}/timeline",
     response_model=CandidateTimelineResponse,
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Get candidate unified timeline",
 )
 async def get_candidate_timeline(
@@ -2188,7 +2268,7 @@ async def get_candidate_timeline(
 @router.get(
     "/{candidate_id}/change-log",
     response_model=CandidateChangeLogResponse,
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="Get candidate change log (all updates)",
 )
 async def get_candidate_change_log(
@@ -2288,6 +2368,7 @@ def _recruitment_application_to_out(row: RecruitmentApplication) -> RecruitmentA
         applied_at=applied,
         status=normalize_application_status(getattr(row, "status", None)),
         application_cycle=application_cycle,
+        external_id=_opt_id(getattr(row, "external_id", None)),
         meta=meta,
     )
 
@@ -2295,7 +2376,7 @@ def _recruitment_application_to_out(row: RecruitmentApplication) -> RecruitmentA
 @router.get(
     "/{candidate_id}/applications",
     response_model=List[RecruitmentApplicationOut],
-    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    dependencies=[Depends(require_trust_read())],
     summary="List recruitment applications (intent) for this candidate",
 )
 async def list_candidate_recruitment_applications(
@@ -2327,10 +2408,104 @@ async def list_candidate_recruitment_applications(
     return [_recruitment_application_to_out(a) for a in apps]
 
 
+@router.patch(
+    "/{candidate_id}/applications/{application_id}",
+    response_model=RecruitmentApplicationOut,
+    dependencies=[Depends(require_trust_write())],
+    summary="Update recruitment application status (lifecycle §4)",
+)
+async def patch_candidate_recruitment_application_status(
+    candidate_id: UUID,
+    application_id: UUID,
+    body: RecruitmentApplicationStatusPatch,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> RecruitmentApplicationOut:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+
+    client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
+    row = await cand_repo.get_candidate_with_labels(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        visibility=visibility,
+        is_client_tenant=client_tenant,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    try:
+        app = await patch_recruitment_application_status(
+            db,
+            tenant_id=tenant_id_str,
+            candidate_id=str(candidate_id),
+            application_id=str(application_id),
+            new_status=body.status,
+        )
+        await db.commit()
+    except RecruitmentApplicationNotFound:
+        raise HTTPException(status_code=404, detail="Application not found") from None
+    except (InvalidRecruitmentApplicationStatus, InvalidRecruitmentApplicationTransition) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    return _recruitment_application_to_out(app)
+
+
+@router.post(
+    "/{candidate_id}/applications/{application_id}/switch-vacancy",
+    response_model=RecruitmentApplicationOut,
+    dependencies=[Depends(require_trust_write())],
+    summary="Switch evaluation to another vacancy (lifecycle §7 — new Application row)",
+)
+async def switch_candidate_recruitment_application_vacancy(
+    candidate_id: UUID,
+    application_id: UUID,
+    body: RecruitmentApplicationVacancySwitchRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> RecruitmentApplicationOut:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+
+    client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
+    row = await cand_repo.get_candidate_with_labels(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        visibility=visibility,
+        is_client_tenant=client_tenant,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    try:
+        _prev, new_app = await switch_recruitment_application_vacancy(
+            db,
+            tenant_id=tenant_id_str,
+            candidate_id=str(candidate_id),
+            application_id=str(application_id),
+            to_vacancy_id=body.to_vacancy_id,
+            actor_sub=current_user.sub,
+            close_previous=body.close_previous,
+        )
+        await db.commit()
+    except RecruitmentApplicationNotFound:
+        raise HTTPException(status_code=404, detail="Application not found") from None
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return _recruitment_application_to_out(new_app)
+
+
 @router.post(
     "/{candidate_id}/upload-link",
     response_model=CandidateUploadLinkOut,
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Create or refresh public upload link for candidate",
 )
 async def create_candidate_upload_link(
@@ -2398,7 +2573,7 @@ class NotifyCandidateOut(BaseModel):
 @router.post(
     "/{candidate_id}/notify",
     response_model=NotifyCandidateOut,
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Notify candidate to upload documents",
 )
 async def notify_candidate(
@@ -2472,7 +2647,7 @@ async def notify_candidate(
 # Stage history
 @router.get(
     "/{candidate_id}/stage-history",
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Get candidate stage history",
 )
 async def get_candidate_stage_history(
@@ -2521,7 +2696,7 @@ async def get_candidate_stage_history(
 # Partially update candidate
 @router.patch(
     "/{candidate_id}",
-    dependencies=[Depends(require_roles(*ALLOW_MANAGER_ROLES))],
+    dependencies=[Depends(require_trust_write())],
     summary="Partially update candidate",
 )
 async def patch_candidate(
@@ -2541,7 +2716,7 @@ async def patch_candidate(
     )
     acl_raw = await resolve_candidate_acl(db, tenant_id_str, current_user)
     acl: CandidateACL | None = None if acl_raw.unrestricted else acl_raw
-    if acl and str(getattr(current_user, "role", "") or "").strip().lower() == "hr_officer":
+    if acl and is_hr_workspace_actor(str(getattr(current_user, "role", "") or ""), preset_id=getattr(current_user, "preset_id", None)):
         if await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
         ):
@@ -2587,9 +2762,9 @@ async def patch_candidate(
         if operational_locked:
             role_l = str(getattr(current_user, "role", "") or "").strip().lower()
             or_raw = (payload or {}).get("override_reason")
-            if role_l in RECRUITMENT_LOCK_OVERRIDE_ROLES and str(or_raw or "").strip():
+            if can_override_recruitment_handoff_lock(role_l) and str(or_raw or "").strip():
                 recruitment_lock_override_used = True
-            elif role_l == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+            elif is_hr_workspace_actor(role_l) and await agency_candidate_has_internal_hr_handoff_lane(
                 db, agency_tenant_id=tenant_id_str, candidate_id=str(candidate_id)
             ):
                 recruitment_lock_override_used = True
@@ -2702,7 +2877,7 @@ async def patch_candidate(
     if (
         not client_tenant
         and recruitment_lock_override_used
-        and str(getattr(current_user, "role", "") or "").strip().lower() == "hr_officer"
+        and is_hr_workspace_actor(str(getattr(current_user, "role", "") or ""), preset_id=getattr(current_user, "preset_id", None))
         and not override_reason
     ):
         override_reason = "internal_hr_handoff_lane"
@@ -2712,7 +2887,9 @@ async def patch_candidate(
 
     if "stage" in data:
         role_lane = str(getattr(current_user, "role", "") or "").strip().lower()
-        if role_lane != "hr_officer":
+        if not is_hr_workspace_actor(
+            role_lane, preset_id=getattr(current_user, "preset_id", None)
+        ):
             from backend.app.services.stage_meta_recruitment_filter import (
                 enforce_agency_handoff_stage_change_allowed,
             )
@@ -2773,7 +2950,7 @@ async def patch_candidate(
         requires_override_reason = (
             recruitment_locked
             or workforce_locked
-            or role_l_owned in RECRUITMENT_LOCK_OVERRIDE_ROLES
+            or can_override_recruitment_handoff_lock(role_l_owned)
         )
         if requires_override_reason:
             raise HTTPException(
@@ -2868,16 +3045,15 @@ async def delete_candidate(
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ) -> Response:
-    if ctx.role == Role.recruiter.value:
+    if is_recruiter_preset_actor(ctx.role, getattr(ctx, "preset_id", None)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Recruiter cannot delete candidates. Create a delete-request instead.",
         )
     if ctx.role not in (
         Role.administrator.value,
-        Role.supervisor.value,
         Role.superadmin.value,
-    ):
+    ) and not is_team_lead_org_actor(ctx.role, getattr(ctx, "preset_id", None)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)

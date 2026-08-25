@@ -2,9 +2,10 @@
 
 **Канон домена и границ (v1):** **[`hostflow-core-domain-map-v1.md`](hostflow-core-domain-map-v1.md)** — владение, скоупы, cross-company, взаимодействие модулей.
 
-**Обзор архитектуры платформы** (multi-company SaaS, Tenant vs Company, модули vs shared layer, RBAC, cross-company) — **[`platform-architecture-principles.md`](platform-architecture-principles.md)**.
+**Обзор архитектуры платформы** (multi-company SaaS, Tenant vs Company, модули vs shared layer, RBAC, cross-company) — **[`platform-architecture-principles.md`](platform-architecture-principles.md)**.  
+**Platform Rules P-01…P-05 · L0 FROZEN** — [`L0-platform-architecture.md`](L0-platform-architecture.md) · [`architecture-invariants.md`](architecture-invariants.md) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md); P-ADRs [`ADR-025`](ADR-025-standard-adapter-boundary.md)…[`ADR-029`](ADR-029-settings-contract.md); **Catalog** — [`platform-capability-catalog.md`](platform-capability-catalog.md); **Settings Manifest** — [`capability-settings-manifest.md`](capability-settings-manifest.md); **Capability Contract** — [`capability-contract.md`](capability-contract.md); **обязательный** checklist — [`architecture-review-checklist.md`](architecture-review-checklist.md); guide — [`architecture-guide.md`](architecture-guide.md); **compliance outbound** — [`ADR-031`](ADR-031-compliance-outbound-requires-opaque-result.md) (**Accepted**); **Sales Order → Order Line → Vacancy → Billable** — [`ADR-032`](ADR-032-client-order-vacancy-flight-chain.md) (**Accepted**); **Lead lifecycle email company policy** — [`ADR-033`](ADR-033-lead-lifecycle-email-company-policy.md) (**Accepted**); **Four trust roles RBAC** — [`ADR-036`](ADR-036-four-trust-roles-rbac.md) (**Accepted**); **Shell Observability / Collect diagnostics** — [`ADR-038`](ADR-038-shell-observability-diagnostics.md) (**Accepted**; runtime not started).
 
-Документ — **нормативная карта** для разработки: какие ключи модулей существуют, как они связаны с API и настройками тенанта/компании, и что уже имплементировано vs запланировано. Детали биллинга и владения данными — [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md). **Иерархия настроек** (Tenant → Company → Module Settings per company) — [`ADR-005`](ADR-005-three-level-settings-hierarchy.md). **Интеграции, витрина Marketplace и слои платформы** (core integrations vs модули vs apps) — [`ADR-006`](ADR-006-marketplace-and-integration-platform.md). **Публичные формы как платформенный input layer** — [`ADR-007`](ADR-007-forms-platform-capability.md), scope — [`../../forms/module-scope.md`](../../forms/module-scope.md). **Публикация вакансий (Vacancy / Job Post / каналы)** внутри Recruitment — [`ADR-008`](ADR-008-job-publishing-and-distribution.md). **Document Hub** — общий слой документов для всех модулей — [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md). **Единые списки сущностей в SPA** (таблицы, фильтры, колонки, rail/modal) — [`ADR-010`](ADR-010-unified-resource-list-shell.md). **Полный стандарт UI приложения** (кнопки, сетка, шрифты, формы, даты, языки, настройки) — [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md). **Activity & Notification Operating Layer** — единая capability для задач/напоминаний/уведомлений/планировщика/календаря — [`ADR-012`](ADR-012-activity-notification-operating-layer.md), canon — [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md). Граница Recruitment ↔ HR — [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md).
+Документ — **нормативная карта** для разработки: какие ключи модулей существуют, как они связаны с API и настройками тенанта/компании, и что уже имплементировано vs запланировано. Детали биллинга и владения данными — [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md), [`ADR-004`](ADR-004-five-product-modules-and-billing-events.md). **Иерархия настроек** (Tenant → Company → Module Settings per company) — [`ADR-005`](ADR-005-three-level-settings-hierarchy.md). **Интеграции, витрина Marketplace и слои платформы** (core integrations vs модули vs apps) — [`ADR-006`](ADR-006-marketplace-and-integration-platform.md). **Публичные формы как платформенный input layer** — [`ADR-007`](ADR-007-forms-platform-capability.md), scope — [`../../forms/module-scope.md`](../../forms/module-scope.md). **Acquisition / Campaigns and Intake Routing** — [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md). **Публикация вакансий (Vacancy / Job Post / каналы)** внутри Recruitment — [`ADR-008`](ADR-008-job-publishing-and-distribution.md). **Document Hub** — общий слой документов для всех модулей — [`ADR-009`](ADR-009-document-hub-platform-layer.md), [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md). **Единые списки сущностей в SPA** (таблицы, фильтры, колонки, rail/modal) — [`ADR-010`](ADR-010-unified-resource-list-shell.md). **Полный стандарт UI приложения** (кнопки, сетка, шрифты, формы, даты, языки, настройки) — [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md). **Activity & Notification Operating Layer** — единая capability для задач/напоминаний/уведомлений/планировщика/календаря — [`ADR-012`](ADR-012-activity-notification-operating-layer.md), canon — [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md). Граница Recruitment ↔ HR — [`ADR-002`](ADR-002-modular-recruitment-hr-boundary.md). **Разделение Recruitment ↔ Sales (продуктовая поверхность)** и **Deployment / URL Boundaries** (поддомены модулей) — [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) §3.7.
 
 ---
 
@@ -19,19 +20,52 @@
 | Область | Назначение |
 |---------|------------|
 | **Companies** | Операционная / data boundary: `Company`, `enabled_modules`, ACL, party (ADR-003) |
-| **Users / Roles / Permissions** | Membership, роли, **scope по company и модулю** (одна роль — разный scope, не «роль под каждого клиента») |
+| **Users / Roles / Permissions** | Trust roles (**ADR-036**: `superadmin` / `administrator` / `employee` / `viewer`), permissions, presets, org, scope, `access_context` (`tenant`\|`portal`); матрица — [`rbac_matrix.md`](rbac_matrix.md) |
 | **Settings** | Три уровня: Tenant → Company → Company Module Settings ([`ADR-005`](ADR-005-three-level-settings-hierarchy.md)) |
 | **Forms** | **Input layer** ([`ADR-007`](ADR-007-forms-platform-capability.md), [`../../forms/module-scope.md`](../../forms/module-scope.md)) |
+| **Acquisition / Campaigns** | Demand flow + intake routing ([`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md)); **не** Marketing-продукт |
 | **Document Hub** | Единый registry документов ([`ADR-009`](ADR-009-document-hub-platform-layer.md), [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md)) |
-| **Process Engine** | Единый движок процессов: stages, profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)) |
+| **Process Engine** | Единый движок процессов: profiles, pipelines, transition/handoff rules, runtime evaluator ([`process-engine.md`](../platform/process-engine.md)). Stage existence: [`ADR-037`](ADR-037-lifecycle-identity-canon.md). |
 | **Integrations / Marketplace** | Core integrations + apps ([`ADR-006`](ADR-006-marketplace-and-integration-platform.md)); module installation audit/canon: [`module-registry-marketplace-installation.md`](../platform/module-registry-marketplace-installation.md) |
 | **Automations** | Правила, триггеры, сценарии между сущностями |
 | **Activity & Notification Operating Layer** | Единый слой задач, напоминаний, уведомлений, планировщика и календарных представлений; **не** разные модули, см. [`ADR-012`](ADR-012-activity-notification-operating-layer.md) и canon [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md) |
 | **Trust & Reputation Layer** | Проверенная операционная история и сигналы доверия (политика продукта); см. [`platform-architecture-principles.md`](platform-architecture-principles.md) §6.1 |
 | **Resource List Shell** | Единая оболочка списков в SPA (таблица, фильтры, колонки, сортировка); [`ADR-010`](ADR-010-unified-resource-list-shell.md) |
 | **UI Platform Standard** | Токены и компоненты для всего SPA; [`ADR-011`](ADR-011-hostflow-ui-platform-standard.md) (чеклист PR и **политика против дрейфа §12**), реализация — `tailwind.config.cjs`, `components.css` |
+| **Observability** | Logs, traces, errors, correlation, storage/search, redaction; emit у сервисов; [`ADR-038`](ADR-038-shell-observability-diagnostics.md) |
+| **Shell Diagnostics** | Операторский доступ на Application Shell: Collect diagnostics / diagnostic bundle; не SoT логов |
 
 *Дополнительно на уровне tenant: subscription, billing, security, audit — см. [`platform-architecture-principles.md`](platform-architecture-principles.md) §2.*
+
+### 0.1 Platform Capability Catalog (owners index)
+
+**Полный SoT границ (Owns / Configures / Exposes / Consumes / Forbidden / passport):**  
+→ [`platform-capability-catalog.md`](platform-capability-catalog.md)
+
+Ниже — **краткий индекс владельцев** (**P-02**). Потребление — через канонические адаптеры (**P-01**). Новое — композиция (**P-03**). Конфигурация — **P-04** / **Configures**. Споры о границах — только по полному каталогу.
+
+| Capability | Owner (SoT) | Normative ADR / docs | Typical consumers | Canonical contract family |
+|------------|-------------|----------------------|-------------------|---------------------------|
+| **Endpoint** | Intake / Acquisition boundary | [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md) | Acquisition, Forms (HostFlow Form is-a), API, Mobile, Meta, … | Endpoint Adapter |
+| **Submission** (universal intake record) | Shared Intake | ADR-021 / ADR-022 / ADR-024 | Recruitment, Sales, HR, Services, … | Submission / Intake contracts |
+| **Forms** (builder, version, consent, form surface) | Forms | [`ADR-007`](ADR-007-forms-platform-capability.md), [`../../forms/module-scope.md`](../../forms/module-scope.md) | All modules | Endpoint Adapter (HostFlow Form) + Forms public APIs |
+| **Acquisition / Campaigns** | Acquisition | [`ADR-024`](ADR-024-acquisition-campaigns-intake-routing.md), [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md) | Growth / demand; not Result SoT | Campaign / Flight / routing APIs |
+| **Documents** | Document Hub | [`ADR-009`](ADR-009-document-hub-platform-layer.md) | Recruitment, HR, Fleet, Finance, … | Document Adapter |
+| **Notifications** | Activity & Notification Operating Layer | [`ADR-012`](ADR-012-activity-notification-operating-layer.md) | All modules | Notification Adapter |
+| **Activity** | Activity & Notification Operating Layer | ADR-012 | All modules | Activity contracts |
+| **Automations** | Automations | [`ADR-019`](ADR-019-automation-capability-entitlement-control-plane.md) | All modules | Automation Adapter |
+| **AI** | AI platform capability | ADR-025 (AI Adapter); future AI ADR | All modules | AI Adapter |
+| **Search** | Global Search | Search services / future Search ADR | All modules | Search Adapter |
+| **Integrations / Marketplace** | Integrations | [`ADR-006`](ADR-006-marketplace-and-integration-platform.md) | All modules | Integration Adapters |
+| **Process Engine** | Process Engine | [`process-engine.md`](../platform/process-engine.md) | Business modules | Process contracts |
+| **Field Registry / Entity Profile** | Platform Reference | platform specs | Forms, Intake, modules | Reference / profile contracts |
+| **Resource List Shell / UI Standard** | Frontend platform | ADR-010 / ADR-011 | SPA | UI contracts |
+| **Observability** | Platform observability | [`ADR-038`](ADR-038-shell-observability-diagnostics.md), [`../platform/observability.md`](../platform/observability.md) | All runtimes (emit); Shell Diagnostics (search/export) | Observability Adapter |
+| **Shell Diagnostics** | Application Shell (`hostflow.cc`) | ADR-038 · ADR-023 §3.7 | Operators | Collect diagnostics / bundle |
+
+**Уточнение Submission vs Forms:** Forms владеет **form surface + consent version pin** для HostFlow Form. Универсальный **Submission** как intake object и routing envelope — Shared Intake (ADR-024 spine). Не два Form Builder; не два Document Hub.
+
+**Business modules** (Recruitment, Sales/Services, HR, Fleet, Finance) владеют **только** своими domain entities и **композируют** platform capabilities — границы в [`platform-capability-catalog.md`](platform-capability-catalog.md).
 
 ### Business modules (пять продуктов ADR-004)
 
@@ -39,13 +73,18 @@
 
 | # | Модуль | Состав (логический; не исчерпывает все сущности) |
 |---|--------|--------------------------------------------------|
-| **1** | **Recruitment** | **Leads**, **Candidates**, **Vacancies**, **job posts**, **job publishing**, applications, подбор, handoff; pipeline только по Lead/Candidate ([`ADR-008`](ADR-008-job-publishing-and-distribution.md)); **не** employees / HR cases / fleet / services / invoices |
+| **1** | **Recruitment** | **Applications**, **Candidates**, **Vacancies**, **job posts**, **job publishing**, подбор, handoff; pipeline только по Application/Candidate ([`ADR-008`](ADR-008-job-publishing-and-distribution.md), [`ADR-023`](ADR-023-recruitment-sales-module-separation.md)); **не** Sales Inquiry / ClientAccount / employees lifecycle / fleet / services / invoices |
 | **2** | **HR / Kadry** | Employee profile, HR cases, lifecycle, contracts, ZUS, work permits, employee docs, payroll data, onboarding/termination; **автономен** без Recruitment |
 | **3** | **Fleet Management** | **Не воронка** — модуль **назначений и операций**: ТС, водители, assignments, handover, документы ТС, damage, inspections, readiness, return; автономен без Recruitment/HR |
-| **4** | **Services / Orders** | Каталог, заказы, статусы, **Billing Events** — не invoices ([`ADR-004`](ADR-004-five-product-modules-and-billing-events.md)) |
+| **4** | **Services / Orders** | Каталог, заказы, статусы, **Billing Events** — не invoices ([`ADR-004`](ADR-004-five-product-modules-and-billing-events.md)); **не** отдельный deploy-host — UI entry через Sales commercial surface ([`ADR-023`](ADR-023-recruitment-sales-module-separation.md) §3.7) |
 | **5** | **Finance / Billing** | **Invoices** из **Billing Events**; платежи, НДС, правила; модули **не** создают invoice напрямую |
 
-**Правило:** Leads / Candidates / Vacancies / Job Publishing — **не** выносятся в отдельные «модули ADR-004»; они входят в **Recruitment** как подсистемы. Столбцы Core / Platform (**Settings**, **Forms**, **Document Hub**, **Integrations**, **Automations**, **Activity & Notification Operating Layer**, **Trust & Reputation**, **Resource List Shell**, **UI Platform Standard**, **Users**, **Companies**) **не** являются шестым+ ключом `enabled_modules` ADR-004 — это **shared capabilities**; лицензирование features (Basic/Advanced) — отдельно ([`platform-architecture-principles.md`](platform-architecture-principles.md)).
+### Deployment hosts (пять бизнес-модулей + shell) — ADR-023 §3.7
+
+Канон URL (production): `hostflow.cc` (shell) + `recruitment` \| `hr` \| `sales` \| `fleet` \| `finance` `.hostflow.cc`.  
+**Sales** — deployable commercial host; ADR-004 key `services` остаётся лицензией capability, не шестым поддоменом.
+
+**Правило:** Leads / Candidates / Vacancies / Job Publishing — **не** выносятся в отдельные «модули ADR-004»; они входят в **Recruitment** как подсистемы. Столбцы Core / Platform (**Settings**, **Forms**, **Acquisition / Campaigns**, **Document Hub**, **Integrations**, **Automations**, **Activity & Notification Operating Layer**, **Trust & Reputation**, **Resource List Shell**, **UI Platform Standard**, **Users**, **Companies**) **не** являются шестым+ ключом `enabled_modules` ADR-004 — это **shared capabilities**; лицензирование features (Basic/Advanced) — отдельно ([`platform-architecture-principles.md`](platform-architecture-principles.md)).
 
 **Правило для Activity & Notification:** «Notifications» и «Activity / Tasks» — **не два отдельных модуля**, а **одна capability** (`ADR-012`). Никаких «модулей уведомлений», «модулей задач», «модулей планировщика» или «модулей todo» в каталоге HostFlow быть не должно. Реализация — `Activity` + `Notification` (две таблицы), всё остальное — представления.
 
@@ -57,6 +96,7 @@
 |------|------------|-----------|
 | **Пять продуктовых модулей (ADR-004)** | Лицензирование, продуктовые границы, company scope | Ключи: `recruitment`, `hr`, `fleet`, `services`, `finance`; внутри **recruitment** — capability **Job Publishing** ([`ADR-008`](ADR-008-job-publishing-and-distribution.md)), не отдельный модуль ADR-004 |
 | **Forms / Public Forms (ADR-007)** | Платформенный **input layer**: шаблоны, публичные ссылки, submissions, маппинг в сущности модулей | **Не** шестой ключ ADR-004; Basic = core capability, Advanced = addon; см. [`../../forms/module-scope.md`](../../forms/module-scope.md) |
+| **Acquisition / Campaigns (ADR-024)** | Кампании, источники, атрибуция, `route_intent` → module object | **Не** Marketing-продукт; shell UI; см. [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md); матрица входов [`intake-canonical-input-matrix.md`](intake-canonical-input-matrix.md) |
 | **Document Hub (ADR-009)** | Платформенный **document layer**: типы, шаблоны, наборы требований, links, multi-module review | **Не** ключ ADR-004; Basic / Advanced document management; см. [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md) |
 | **Legacy / гранулярные флаги тенанта** | Матрица ролей, постепенный перенос UI | `candidates`, `leads`, `vacancies`, `documents`, `companies`, `client_portal`, плюс те же пять где применимо |
 
@@ -95,7 +135,7 @@
 
 **Текущий код** частично кладёт всё в `tenant.settings`; новые фичи — с company scope и ADR-005.
 
-**Architecture gate (P0, блокирует модульную независимость):** [`module-owned-pipelines-p0.md`](module-owned-pipelines-p0.md) — company-scoped funnels, module ownership, Recruitment resolver, strangler для legacy `system_stage`. **HR manifest / employee pipeline / typed module-settings UI — только после закрытия P0 gate.**
+**Architecture gate (P0, блокирует модульную независимость):** [`module-owned-pipelines-p0.md`](module-owned-pipelines-p0.md) — company-scoped funnels, module ownership, Recruitment resolver, strangler для legacy `system_stage`. **HR manifest / employee pipeline / typed module-settings UI — только после закрытия P0 gate.** **Stage existence** after P0: [`ADR-037`](ADR-037-lifecycle-identity-canon.md) — Funnel = configuration; Module Stage Registry = identities.
 
 ---
 
@@ -105,13 +145,15 @@
 
 | Продукт | Ключ(и) | Префиксы `/api/v1/...` | Tenant gate (код) |
 |---------|---------|-------------------------|-------------------|
-| **Recruitment** | triad + `recruitment` | `candidates`, `leads`, `vacancies`, `documents`, `companies`, `funnels`, `handoffs`, `stages`, `recruiters`, `next-actions`, … | Нет единого deps; видимость через матрицу модулей / роли |
+| **Recruitment** | triad + `recruitment` | **facade** `recruitment/applications`; `candidates`, `vacancies`, `documents`, `funnels`, `handoffs`, `stages`, `recruiters`, `next-actions`, …; `leads` = transport/admin only ([`ADR-023`](ADR-023-recruitment-sales-module-separation.md)) | Нет единого deps; видимость через матрицу модулей / роли |
+| **Sales** (commercial) | commercial surface; not Finance owner | **product** `sales/inquiries`, `sales/clients` (legacy `client-accounts` compat); later opportunities | [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) Stage 2A; Invoice/Payment → Finance |
 | **HR** | `hr` | `workforce`, `admin/...` (оргструктура) | `hr_workforce_access` на `workforce` |
 | **Fleet** | `fleet` | `fleet` | `fleet_access` |
-| **Services** | `services` | `additional-services`, часть `catalogs`, сценарии услуг в кандидате | Нет выделенного gate |
-| **Finance** | `finance` | `invoices`, `settings/billing` (настройки), связанные отчёты | Нет выделенного gate; **Billing Events** — не реализованы (ADR-004) |
+| **Services** | `services` | **product** `services/catalog`, `services/orders` (+ legacy `/services`, `/service-orders`); **owns** Service Order lifecycle | Нет выделенного gate (Stage 2B) |
+| **Finance** | `finance` | **product** `finance/invoices`, `finance/payments` (+ legacy `/invoices`); **owns** Invoice/Payment model | Нет выделенного gate (Stage 2B); Cash Loop gated — ADR-023 §3.6 |
+| **HR** | `hr` | **product** `hr/employees` (+ legacy `workforce/*`); inbox under `/hr/*` | `hr_workforce_access` на workforce; Stage 2B expands gates |
 
-Порталы: `client`, `candidate`, публичные intake — отдельные контуры RBAC (см. `rbac_matrix.md`).
+Порталы: `client`, `candidate`, публичные intake — RBAC: portal guest = `viewer` + `access_context=portal` ([`ADR-036`](ADR-036-four-trust-roles-rbac.md), [`rbac_matrix.md`](rbac_matrix.md)); candidate/magic-link — вне CRM trust roles.
 
 ---
 
@@ -126,11 +168,13 @@
 | Модуль | Документ scope |
 |--------|----------------|
 | Recruitment | [`docs/recruitment/module-scope.md`](../../recruitment/module-scope.md) |
+| Sales (Product B surface) | [`ADR-020`](ADR-020-sales-to-engagement-commercial-model.md) · [`ADR-023`](ADR-023-recruitment-sales-module-separation.md) — umbrella над Inquiry + Services + Finance cash path (separate `docs/sales/module-scope.md` not yet present) |
 | HR | [`docs/hr/module-scope.md`](../../hr/module-scope.md) |
 | Fleet | [`docs/fleet/module-scope.md`](../../fleet/module-scope.md) |
 | Services / Orders | [`docs/services/module-scope.md`](../../services/module-scope.md) |
 | Finance / Billing | [`docs/finance/module-scope.md`](../../finance/module-scope.md) |
 | Forms / Public Forms (платформа) | [`docs/forms/module-scope.md`](../../forms/module-scope.md) |
+| Acquisition / Campaigns (платформа) | [`docs/acquisition/module-scope.md`](../../acquisition/module-scope.md) |
 | Document Hub (платформа) | [`docs/document-hub/module-scope.md`](../../document-hub/module-scope.md) |
 
 ---
@@ -142,6 +186,7 @@
 - [x] Зафиксированы ADR-002, ADR-003, ADR-004 и настоящий каталог.
 - [x] **[`platform-architecture-principles.md`](platform-architecture-principles.md)** — modular multi-company SaaS, shared platform capabilities (вкл. Settings, Automations, Notifications, Activity), формула Tenant/Company/Module/User scope.
 - [x] **ADR-007** — Forms / Public Forms как платформенный input layer (не шестой продуктовый модуль ADR-004); см. §8 и [`../../forms/module-scope.md`](../../forms/module-scope.md).
+- [x] **ADR-024** — Acquisition / Campaigns and Intake Routing (не Marketing-продукт); [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md); Stage 3 после cutover.
 - [x] **ADR-008** — Job Publishing / Distribution внутри Recruitment (Vacancy ≠ Job Post ≠ Channel; форма отклика через Forms); см. §9 и [`../../recruitment/module-scope.md`](../../recruitment/module-scope.md).
 - [x] **ADR-009** — Document Hub как shared platform layer (Document / Link / Requirement / Review; без копирования между модулями); см. §10 и [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md).
 - [x] Tenant defaults и snapshot `recruitment`/triad в коде.
@@ -215,14 +260,25 @@
 
 ## История
 
+- 2026-08-23: **ADR-038** (Accepted) — Observability (Infrastructure) vs Shell Diagnostics (Platform); Collect diagnostics; emit ≠ access; runtime not started — [`ADR-038-shell-observability-diagnostics.md`](ADR-038-shell-observability-diagnostics.md).
+- 2026-08-23: **ADR-037** (Accepted) — Lifecycle Identity Canon; Module Stage Registry owns stage existence; Funnel = company configuration; PE = mechanism; Handoff ≠ FunnelTransition; runtime queued after CL0 — [`ADR-037-lifecycle-identity-canon.md`](ADR-037-lifecycle-identity-canon.md) · [`lifecycle-identity-canon.md`](lifecycle-identity-canon.md).
+- 2026-08-07: **ADR-036** (Accepted) — four trust roles invariant; ceilings; presets ≠ roles; `access_context` tenant\|portal; inventory gate [`rbac-role-usage-inventory.md`](rbac-role-usage-inventory.md); [`ADR-036-four-trust-roles-rbac.md`](ADR-036-four-trust-roles-rbac.md).
+- 2026-07-30: **ADR-034** (Accepted) — three canonical public funnels (Growth / Auth / Candidate); Success Path via guided readiness UI [`self-service-success-path.md`](../journeys/self-service-success-path.md); no parallel product landings.
+- 2026-07-29: **ADR-033** (Accepted) — Company-owned lead lifecycle email policy + sparse Vacancy override; Control Center under Communications; [`lead-lifecycle-email-policy.md`](../workflows/lead-lifecycle-email-policy.md).
+- 2026-07-31: **ADR-033 errata** — SoT = OwnCompany (firm); client company + vacancy = optional override; resolver slice A.
+- 2026-07-28: **ADR-032** (Accepted) — Sales Service Order → Order Line → Vacancy → Billable Item; tables `sales_*`; Flight executor only.
+- 2026-07-26: **ADR-031** (Proposed) — compliance/ops outbound requires opaque module result; task [`compliance-outbound-pipeline-early-result.md`](../tasks/compliance-outbound-pipeline-early-result.md).
 - 2026-05: первичная фиксация каталога ключей, карты API и ссылок на scope-документы пяти продуктов.
 - 2026-05: зафиксирован **пул настроек по модулям** (`settings.hr`, …); приоритет волны — HR **без** отдельных воронок вне CRM на этом шаге.
 - 2026-05: выравнивание с **ADR-005** — целевое хранение модульных настроек на уровне **company** (`company_module_settings`), tenant — только крышка и presets.
 - 2026-05: добавлен **ADR-006** (Marketplace / Integration Platform) и §7 плана в этом каталоге.
 - 2026-05: MVP таблицы `tenant_integration_installations` / `company_integration_enablements`, спека [`marketplace-catalog-keys.md`](../marketplace-catalog-keys.md).
 - 2026-05: **ADR-007** (Forms как platform capability), §8 плана, [`../../forms/module-scope.md`](../../forms/module-scope.md).
+- 2026-07: **ADR-024** (Acquisition / Campaigns), [`../../acquisition/module-scope.md`](../../acquisition/module-scope.md); Stage 3 после production cutover.
+- 2026-07-18: **Epic P / Stage 3D** active; [`capability-contract.md`](capability-contract.md); Forms Sprint 1 gated on 3D DoD.
 - 2026-05: **ADR-008** (Job Publishing внутри Recruitment), §9 плана.
 - 2026-05: **§0** — карта Core / Platform vs Business modules (Companies, Users/Roles, Forms, Document Hub, Integrations; пять продуктов с подсистемами Recruitment).
 - 2026-05: [`platform-architecture-principles.md`](platform-architecture-principles.md) — консолидация modular multi-company SaaS; §0 расширен (Settings, Automations, Notifications, Activity/Tasks, уточнение модулей).
 - 2026-05: **ADR-009** (Document Hub), §10 плана, [`../../document-hub/module-scope.md`](../../document-hub/module-scope.md).
 - 2026-05: **ADR-012** (Activity & Notification Operating Layer) — две строки §0 «Notifications» + «Activity / Tasks» сведены в одну capability; canon [`activity-notification-operating-layer.md`](activity-notification-operating-layer.md).
+- 2026-07-18: **§0.1 Platform Capability Catalog** + P-01/P-02/P-03 (ADR-025…027); Endpoint/Forms/Submission ownership clarified.

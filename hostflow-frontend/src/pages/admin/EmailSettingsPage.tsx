@@ -9,6 +9,7 @@ import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorI
 import { recordTtvStepCompleted } from '../../api/analytics'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
+import { EmailGmailOAuthSection } from '../../components/admin/EmailGmailOAuthSection'
 
 export default function EmailSettingsPage() {
   const { t } = useI18n()
@@ -200,7 +201,15 @@ export default function EmailSettingsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsIntegrations}
+      backLabel={t('admin.integrations_hub.back_to_hub')}
+      kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
+      title={t('admin.email.title', { defaultValue: 'Email (SMTP)' })}
+      subtitle={t('admin.email.description_short', {
+        defaultValue: 'Outbound SMTP for CRM notifications. Google Workspace: smtp.gmail.com, port 587, App Password.',
+      })}
+    >
       {pageError && (
         <ErrorRecoveryBanner
           info={pageError}
@@ -214,18 +223,9 @@ export default function EmailSettingsPage() {
         />
       )}
 
-      <section className="settings-panel">
-        <SettingsSubpageHeader
-          className="mb-4"
-          backHref={CRM_APP_PATHS.settingsIntegrations}
-          backLabel={t('admin.integrations_hub.back_to_hub')}
-          kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
-          title={t('admin.email.title', { defaultValue: 'Email (SMTP)' })}
-          subtitle={t('admin.email.description_short', {
-            defaultValue: 'Outbound SMTP for CRM notifications. Google Workspace: smtp.gmail.com, port 587, App Password.',
-          })}
-        />
+      <EmailGmailOAuthSection />
 
+      <section className="settings-panel">
         <div className="mt-4 flex justify-end">
           <button type="button" className="btn-secondary btn-sm" onClick={() => setShowAdvanced((v) => !v)}>
             {showAdvanced
@@ -414,6 +414,6 @@ export default function EmailSettingsPage() {
           </>
         ) : null}
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

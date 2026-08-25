@@ -1,0 +1,73 @@
+{
+  "$schema_comment": "ADR-024 Stage 3A — Campaign registries (Goal Type, Primary KPI, Promotion Target). SSOT for FE+BE.",
+  "version": "campaign_registries_v1",
+  "goal_types": [
+    { "code": "hiring", "label": "Hiring" },
+    { "code": "lead_generation", "label": "Lead Generation" },
+    { "code": "sales", "label": "Sales" },
+    { "code": "awareness", "label": "Awareness" }
+  ],
+  "primary_kpis": [
+    { "code": "hires", "label": "Hires" },
+    { "code": "cost_per_hire", "label": "Cost per Hire" },
+    { "code": "applications", "label": "Applications" },
+    { "code": "qualified_leads", "label": "Qualified Leads" },
+    { "code": "cost_per_lead", "label": "Cost per Lead" },
+    { "code": "revenue", "label": "Revenue" },
+    { "code": "cac", "label": "CAC" },
+    { "code": "roi", "label": "ROI" },
+    { "code": "reach", "label": "Reach" }
+  ],
+  "goal_kpi_pairs": [
+    { "goal_type": "hiring", "primary_kpi": "hires" },
+    { "goal_type": "hiring", "primary_kpi": "cost_per_hire" },
+    { "goal_type": "hiring", "primary_kpi": "applications" },
+    { "goal_type": "lead_generation", "primary_kpi": "qualified_leads" },
+    { "goal_type": "lead_generation", "primary_kpi": "cost_per_lead" },
+    { "goal_type": "lead_generation", "primary_kpi": "applications" },
+    { "goal_type": "sales", "primary_kpi": "revenue" },
+    { "goal_type": "sales", "primary_kpi": "cac" },
+    { "goal_type": "sales", "primary_kpi": "roi" },
+    { "goal_type": "sales", "primary_kpi": "qualified_leads" },
+    { "goal_type": "awareness", "primary_kpi": "reach" },
+    { "goal_type": "awareness", "primary_kpi": "roi" }
+  ],
+  "promotion_targets": [
+    {
+      "target_type": "vacancy",
+      "target_module": "recruitment",
+      "allowed_route_intents": ["candidate_application"],
+      "label": "Vacancy"
+    },
+    {
+      "target_type": "search",
+      "target_module": "recruitment",
+      "allowed_route_intents": ["candidate_application"],
+      "label": "Recruitment Search"
+    },
+    {
+      "target_type": "service",
+      "target_module": "sales",
+      "allowed_route_intents": ["sales_inquiry", "service_request"],
+      "label": "Service"
+    },
+    {
+      "target_type": "client_account",
+      "target_module": "sales",
+      "allowed_route_intents": ["sales_inquiry"],
+      "label": "Client Account"
+    },
+    {
+      "target_type": "vehicle",
+      "target_module": "fleet",
+      "allowed_route_intents": ["sales_inquiry", "service_request"],
+      "label": "Vehicle"
+    },
+    {
+      "target_type": "employee_role",
+      "target_module": "hr",
+      "allowed_route_intents": ["candidate_application", "partner_inquiry"],
+      "label": "Employee Role Opening"
+    }
+  ]
+}

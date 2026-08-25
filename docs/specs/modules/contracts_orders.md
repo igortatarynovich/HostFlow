@@ -50,11 +50,15 @@
 - `company_order` ↔ `vacancies` — один ко многим.
 - `vacancy` ↔ `candidates` — один ко многим.
 
+> **Canon update (ADR-032, 2026-07-28):** fulfillment SoT is **Sales** `sales_orders` → `sales_order_lines` → Vacancy (`order_line_id`, 1 line = 1 vacancy). Legacy JSON `companies.extra.company_orders` is **not** billing SoT. Invoice comes from **Billable Items**, not from vacancy filled alone. See [`ADR-032`](../architecture/ADR-032-client-order-vacancy-flight-chain.md) and [`sales_orders.md`](sales_orders.md).
+
 ## Логика и бизнес-правила
 - Контракт определяет тариф и условия оплаты для заказов.
 - Заказ может быть создан только для активного контракта.
 - Закрытие контракта автоматически завершает все открытые заказы.
 - При выполнении заказа (`drivers_needed` достигнут `drivers_hired`) → `status = completed`.
+
+> **Superseded for billing (ADR-032):** do not treat headcount-complete as the sole invoice trigger. Use Order Line `billing_trigger` → Billable Item → Invoice.
 - `progress` хранит сводные данные: `{requested, in_process, hired, rejected}`.
 - Взаимодействие с модулем **Invoicing** — генерация счета после закрытия заказа.
 

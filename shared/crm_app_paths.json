@@ -34,6 +34,11 @@
     "leads": "/app/leads",
     "leadsDistribution": "/app/leads/distribution",
     "leadsDistributionRules": "/app/leads/distribution/rules",
+    "sales": "/app/sales",
+    "salesOrders": "/app/sales/orders",
+    "launchpad": "/app/launchpad",
+    "clientAcquisitionChannels": "/app/client-acquisition/channels",
+    "clientAcquisitionChannelsNew": "/app/client-acquisition/channels/new",
     "services": "/app/services",
     "invoices": "/app/invoices",
     "invoiceNew": "/app/invoices/new",
@@ -46,6 +51,11 @@
     "automationAreaPrefix": "/app/automation",
     "automationRules": "/app/automation-rules",
     "automationLog": "/app/automation-log",
+    "acquisitionActivity": "/app/acquisition/activity",
+    "marketing": "/app/marketing",
+    "marketingNew": "/app/marketing/new",
+    "marketingSources": "/app/marketing/sources",
+    "marketingForms": "/app/marketing/forms",
     "inbox": "/app/inbox",
     "inboxMessagesScoped": "/app/inbox?channel=messages",
     "inboxEmailScoped": "/app/inbox?channel=email",
@@ -106,6 +116,10 @@
     "settingsCommunicationsMessengers": "/app/settings/communications/messengers",
     "settingsCommunicationsQueue": "/app/settings/communications/queue",
     "settingsCommunicationsSla": "/app/settings/communications/sla",
+    "settingsCommunicationsTemplates": "/app/settings/communications/templates",
+    "settingsCommunicationsAutomation": "/app/settings/communications/automation",
+    "settingsCommunicationsLeadLifecycleEmail": "/app/settings/communications/lead-lifecycle-email",
+    "settingsCommunicationsCampaigns": "/app/settings/communications/campaigns",
     "settingsTeam": "/app/settings/team",
     "settingsRiskIntel": "/app/settings/risk-intel",
     "settingsHiringPipelineGates": "/app/settings/hiring-pipeline-gates",
@@ -124,13 +138,31 @@
     "doProcesowaniaLegacy": "/app/do-procesowania",
     "plannerLegacy": "/app/planner",
     "remindersLegacy": "/app/reminders",
-    "activitiesLegacy": "/app/activities"
+    "activitiesLegacy": "/app/activities",
+    "recruitmentSearches": "/app/recruitment/searches",
+    "recruitmentSearchesNew": "/app/recruitment/searches/new",
+    "recruitmentInbox": "/app/recruitment/inbox",
+    "setup": "/app/setup",
+    "setupClient": "/app/setup/client",
+    "setupVacancy": "/app/setup/vacancy",
+    "setupProcess": "/app/setup/process",
+    "setupIntake": "/app/setup/intake",
+    "platformSetup": "/app/platform/setup",
+    "marketingDiagnostics": "/app/marketing/diagnostics"
   },
   "path_comments": {
     "inboxMessagesScoped": "Inbox with messages channel selected (legacy top-level /app/messages redirects here).",
     "messages": "Legacy: top-level /app/messages — redirects into Inbox with channel=messages.",
     "communicationsLegacyHub": "Legacy aggregate URL kept for redirects/bookmarks.",
     "settingsLeads": "Legacy aliased Meta / lead-source admin (canonical: settingsIntegrationsMeta).",
+    "sales": "Operational sales workspace for services tenants (inquiries, work session, conversion).",
+    "salesOrders": "Sales Service Orders (ADR-032 commercial deal + order lines). Not Services-module /app/orders.",
+    "clientAcquisitionChannels": "Client acquisition channel list and per-channel inquiry workspace.",
+    "acquisitionActivity": "Stage 3E read-only Acquisition Activity Timeline (platform campaigns).",
+    "marketing": "Marketing Workspace — campaign list and Flight operator surface (Acquisition capability UI).",
+    "marketingNew": "Create Campaign only (goal + Primary Target + optional context). Sources connect separately via spa_marketing_connect_source.",
+    "marketingSources": "Marketing Sources foundation — intake inventory, connection, Mapping Health (C-3).",
+    "marketingForms": "Marketing Forms — HostFlow Form Builder remount (C-6); SoT remains ADR-007 / settings APIs.",
     "companiesLegacy": "Legacy URLs kept for redirects / bookmarks.",
     "plannerLegacy": "Legacy planner shell — redirects to /app/calendar (Phase 2.1 absorbed planner into Activity).",
     "settingsIntegrationsMessengerFacebook": "Facebook Messenger channel under Integration hub (URL segment repeats API channel key “messenger”).",
@@ -138,7 +170,8 @@
     "hrTasks": "HR lane reminder tasks; uses /api/v1/hr/tasks.",
     "hrCompliance": "HR compliance document queues; uses /api/v1/hr/documents/*.",
     "hrZusWorkspace": "ZUS operational workspace; uses /api/v1/workforce/zus-workspace/*.",
-    "hrHandoffs": "Handoff detail + snapshot under HR workspace shell."
+    "hrHandoffs": "Handoff detail + snapshot under HR workspace shell.",
+    "marketingDiagnostics": "Marketing Source Diagnostics — ops console for recent submissions (post Ad-ID bind UI)."
   },
   "drilldown_hrefs": {
     "vacanciesOpen": "/app/vacancies?status=open",
@@ -240,6 +273,62 @@
       {
         "name": "INBOX_THREADS_BASE",
         "path_key": "inboxThreadsBase"
+      },
+      {
+        "name": "ONBOARDING_COMPANY",
+        "path_key": "onboardingCompany"
+      },
+      {
+        "name": "SETUP_CLIENT",
+        "path_key": "setupClient"
+      },
+      {
+        "name": "SETUP_VACANCY",
+        "path_key": "setupVacancy"
+      },
+      {
+        "name": "SETUP_PROCESS",
+        "path_key": "setupProcess"
+      },
+      {
+        "name": "SETUP_INTAKE",
+        "path_key": "setupIntake"
+      },
+      {
+        "name": "SETTINGS_USERS",
+        "path_key": "settingsUsers"
+      },
+      {
+        "name": "RECRUITMENT_SEARCHES",
+        "path_key": "recruitmentSearches"
+      },
+      {
+        "name": "RECRUITMENT_INBOX",
+        "path_key": "recruitmentInbox"
+      },
+      {
+        "name": "MARKETING",
+        "path_key": "marketing"
+      },
+      {
+        "name": "MARKETING_NEW",
+        "path_key": "marketingNew"
+      },
+      {
+        "name": "MARKETING_SOURCES",
+        "path_key": "marketingSources"
+      },
+      {
+        "name": "MARKETING_FORMS",
+        "path_key": "marketingForms"
+      },
+      {
+        "name": "MARKETING_DIAGNOSTICS",
+        "path_key": "marketingDiagnostics"
+      },
+      {
+        "name": "SETTINGS_LEAD_FORMS",
+        "path_key": "settingsLeadForms"
       }
     ],
     "functions": [
@@ -277,6 +366,13 @@
           "vacancy_id: str"
         ],
         "body": "return f\"{VACANCIES}/{vacancy_id}\""
+      },
+      {
+        "name": "spa_marketing_connect_source",
+        "params": [
+          "campaign_id: str"
+        ],
+        "body": "return f\"{MARKETING}/{campaign_id}/sources/new\""
       },
       {
         "name": "spa_inbox_thread",

@@ -16,6 +16,7 @@
 - [`ADR-005-three-level-settings-hierarchy.md`](ADR-005-three-level-settings-hierarchy.md) — `HrModuleSettingsV1`
 - [`invariants-recruitment-hr-document-hub.md`](invariants-recruitment-hr-document-hub.md) — HR must not depend on recruitment pipeline
 - [`hr-acceptance-workflow-state-machine.md`](../workflows/hr-acceptance-workflow-state-machine.md) — logical lifecycle → `hr.*` codes
+- [`ADR-037-lifecycle-identity-canon.md`](ADR-037-lifecycle-identity-canon.md) — `hr.employee.*` existence; funnel rows are configuration; Candidate.stage is not HR SoT
 
 ---
 

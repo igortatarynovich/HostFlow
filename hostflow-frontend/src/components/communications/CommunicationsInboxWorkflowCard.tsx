@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { getCommunicationsSettings, patchCommunicationThread, type CommunicationThread } from '../../api/communications'
+import {
+  executeWorkspaceCommand,
+  getCommunicationsSettings,
+  type CommunicationThread,
+  type WorkspaceCommandName,
+  type WorkspaceCommandResult,
+} from '../../api/communications'
 import type { ManagerOption } from '../../api/types'
 import { listTenantManagers } from '../../api/users'
 import { useI18n } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
+import { usePermissions } from '../../hooks/usePermissions'
+import { roleMayLoadFullCommunicationsSettings } from '../../constants/communicationsSettingsAccess'
 import {
   noReplyNeededFromThread,
   opsModeFromThread,
@@ -17,18 +25,31 @@ import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyFormHintError, getFriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 
-const DEFAULT_ESCALATION_ROLE_OPTIONS = ['supervisor', 'admin', 'manager'] as const
+const DEFAULT_ESCALATION_ROLE_OPTIONS = ['administrator', 'employee', 'supervisor', 'admin', 'manager'] as const
 const DEFAULT_ESCALATION_QUEUE_OPTIONS = ['priority', 'manual_review', 'supervisor_desk'] as const
 
 type Props = {
   thread: CommunicationThread
   onRefresh: () => Promise<void>
+  runCommand?: (
+    command: WorkspaceCommandName,
+    body?: Record<string, unknown>,
+  ) => Promise<WorkspaceCommandResult>
 }
 
-export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: Props) {
+export default function CommunicationsInboxWorkflowCard({ thread, onRefresh, runCommand }: Props) {
+  const exec = async (command: WorkspaceCommandName, body?: Record<string, unknown>) => {
+    if (runCommand) return runCommand(command, body)
+    return executeWorkspaceCommand(thread.id, command, body)
+  }
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
+  const { rawRole, role, accessContext, presetId } = usePermissions()
+  const canLoadAdminSettings = roleMayLoadFullCommunicationsSettings(rawRole || role, {
+    accessContext,
+    presetId,
+  })
   const [busy, setBusy] = useState(false)
   const [workflowError, setWorkflowError] = useState<FriendlyErrorInfo | null>(null)
   const [pauseModalOpen, setPauseModalOpen] = useState(false)
@@ -57,6 +78,11 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
   }, [])
 
   useEffect(() => {
+    if (!canLoadAdminSettings) {
+      setEscalationRoleOptions([...DEFAULT_ESCALATION_ROLE_OPTIONS])
+      setEscalationQueueOptions([...DEFAULT_ESCALATION_QUEUE_OPTIONS])
+      return
+    }
     let mounted = true
     void (async () => {
       try {
@@ -76,8 +102,8 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
         ]
         for (const k of keys) {
           const arr = Array.isArray(roles?.[k]) ? roles?.[k] : []
-          for (const role of arr || []) {
-            const normalized = String(role || '').trim().toLowerCase()
+          for (const item of arr || []) {
+            const normalized = String(item || '').trim().toLowerCase()
             if (normalized) roleBag.add(normalized)
           }
         }
@@ -97,7 +123,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
     return () => {
       mounted = false
     }
-  }, [])
+  }, [canLoadAdminSettings])
 
   useEffect(() => {
     if (escalationTargetTypeDraft === 'role') {
@@ -182,7 +208,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       const current = noReplyNeededFromThread(thread)
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
       const slaPolicy = (threadMeta.sla_policy || {}) as Record<string, unknown>
-      await patchCommunicationThread(thread.id, {
+      await exec( 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           no_reply_needed: !current,
@@ -215,7 +241,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       const current = slaMutedFromThread(thread)
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
       const slaPolicy = (threadMeta.sla_policy || {}) as Record<string, unknown>
-      await patchCommunicationThread(thread.id, {
+      await exec( 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           sla_muted: !current,
@@ -254,7 +280,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       const until = new Date(Date.now() + Math.max(1, hours) * 60 * 60 * 1000).toISOString()
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
       const slaPolicy = (threadMeta.sla_policy || {}) as Record<string, unknown>
-      await patchCommunicationThread(thread.id, {
+      await exec( 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           no_reply_needed: false,
@@ -326,8 +352,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
           escalated_at: nowIso,
         }
       }
-      await patchCommunicationThread(thread.id, {
-        priority: mode === 'escalated' ? 'high' : thread.priority,
+      await exec( 'UpdateThreadWorkflow', {
         thread_meta: {
           ...threadMeta,
           no_reply_needed: noReply,
@@ -340,6 +365,9 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
           },
         },
       })
+      if (mode === 'escalated' && String(thread.priority || '').toLowerCase() !== 'high') {
+        await exec( 'SetThreadPriority', { priority: 'high' })
+      }
       await onRefresh()
     } catch (err: unknown) {
       if (

@@ -37,7 +37,7 @@ function emptyState(): SetupState {
 
 export function useCommunicationsSetupStatus() {
   const { me } = useAuth()
-  const { role } = usePermissions()
+  const { role, rawRole, accessContext, presetId } = usePermissions()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [settings, setSettings] = useState<any | null>(null)
@@ -48,12 +48,14 @@ export function useCommunicationsSetupStatus() {
     setLoading(true)
     setError(null)
     try {
-      const canLoadSettings = Boolean(me?.tenant_id) && roleMayLoadFullCommunicationsSettings(role)
+      const canLoadSettings =
+        Boolean(me?.tenant_id) &&
+        roleMayLoadFullCommunicationsSettings(rawRole || role, { accessContext, presetId })
       const [cfg, acc, th] = await Promise.all([
         canLoadSettings
           ? getCommunicationsSettings()
           : Promise.resolve(null as Awaited<ReturnType<typeof getCommunicationsSettings>> | null),
-        listCommunicationAccounts(),
+        listCommunicationAccounts().catch(() => ({ items: [] as CommunicationChannelAccount[] })),
         listCommunicationThreads({ limit: 300 }).catch(() => ({ items: [] as CommunicationThread[] })),
       ])
       setSettings(cfg)
@@ -64,7 +66,7 @@ export function useCommunicationsSetupStatus() {
     } finally {
       setLoading(false)
     }
-  }, [me?.tenant_id, role])
+  }, [accessContext, me?.tenant_id, presetId, rawRole, role])
 
   useEffect(() => {
     void reload()
@@ -96,6 +98,11 @@ export function useCommunicationsSetupStatus() {
     }
   }, [accounts, settings, threads])
 
+  const emailPathReady = state.emailConnected && state.emailInboundSeen
+  const messengerPathReady = state.messengerConnected && state.messengerInboundSeen
+  // One working channel path is enough — do not block email-only tenants on messenger.
+  const isComplete = state.channelsEnabled && (emailPathReady || messengerPathReady)
+
   const doneCount = useMemo(
     () =>
       [
@@ -109,14 +116,20 @@ export function useCommunicationsSetupStatus() {
   )
 
   const missingStepKeys = useMemo<CommunicationsSetupStepKey[]>(() => {
+    if (isComplete) return []
     const out: CommunicationsSetupStepKey[] = []
     if (!state.channelsEnabled) out.push('channels')
-    if (!state.emailConnected) out.push('email_connected')
-    if (!state.messengerConnected) out.push('messenger_connected')
-    if (!state.emailInboundSeen) out.push('email_inbound')
-    if (!state.messengerInboundSeen) out.push('messenger_inbound')
+    // Prefer finishing the email path when email is already connected or nothing is ready yet.
+    if (!emailPathReady) {
+      if (!state.emailConnected) out.push('email_connected')
+      else if (!state.emailInboundSeen) out.push('email_inbound')
+    }
+    if (!messengerPathReady && !state.emailConnected) {
+      if (!state.messengerConnected) out.push('messenger_connected')
+      else if (!state.messengerInboundSeen) out.push('messenger_inbound')
+    }
     return out
-  }, [state])
+  }, [emailPathReady, isComplete, messengerPathReady, state])
 
   const nextStepKey = missingStepKeys[0] ?? null
 
@@ -125,7 +138,7 @@ export function useCommunicationsSetupStatus() {
     error,
     state,
     doneCount,
-    isComplete: doneCount === 5,
+    isComplete,
     missingStepKeys,
     nextStepKey,
     reload,

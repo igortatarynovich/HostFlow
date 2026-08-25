@@ -72,6 +72,18 @@ def is_sales_route_intent(route_intent: str) -> bool:
     return normalize_route_intent(route_intent) in SALES_ROUTE_INTENTS
 
 
+def is_sales_intake_target(lead_target_type: str) -> bool:
+    return is_sales_route_intent(lead_target_type_to_route_intent(lead_target_type))
+
+
+def lead_type_for_target(lead_target_type: str) -> str:
+    return "client" if is_sales_intake_target(lead_target_type) else "candidate"
+
+
+def lead_type_for_route_intent(route_intent: str) -> str:
+    return "client" if is_sales_route_intent(route_intent) else "candidate"
+
+
 def meta_profile_code(form_id: str) -> str:
     fid = str(form_id or "").strip()
     return f"meta-form-{fid}" if fid else "meta-form-unknown"

@@ -112,6 +112,13 @@ def _merge_lead_normalized_fallback(normalized: Dict[str, Any], prior: Any) -> N
         "intake_vacancy_confirm_v1",
         "intake_resolution_v1",
         "recruitment_pool_intent_v1",
+        "field_answers",
+        "additional_answers",
+        "raw_field_names",
+        "company_name",
+        "company_name_hint",
+        "company_profile",
+        "company_hints",
     ):
         if preserve_key not in prior:
             continue
@@ -123,8 +130,12 @@ def _merge_lead_normalized_fallback(normalized: Dict[str, Any], prior: Any) -> N
             normalized[preserve_key] = pv
         elif isinstance(pv, dict) and isinstance(cur, dict) and not cur and pv:
             normalized[preserve_key] = pv
+        elif isinstance(pv, list) and (not cur) and pv:
+            normalized[preserve_key] = pv
         elif preserve_key == "recruitment_pool_intent_v1" and pv is True and cur is not True:
             normalized[preserve_key] = True
+        elif preserve_key in {"company_name", "company_name_hint"} and _empty(cur) and not _empty(pv):
+            normalized[preserve_key] = pv
 
 
 async def refresh_meta_lead_normalized_from_stored_payload(
@@ -503,7 +514,11 @@ async def reprocess_stored_lead_payload(
         if _payload_needs_flat_field_data_coercion(payload_dict)
         else payload_dict
     )
-    from backend.app.entity_profile.ingest_runtime import prepare_meta_ingest_runtime, stamp_ingest_envelope_v1
+    from backend.app.entity_profile.ingest_runtime import (
+        prepare_meta_ingest_runtime,
+        stamp_ingest_envelope_v1,
+        stamp_mapping_applied_from_envelope,
+    )
 
     validated_mapping, ingest_envelope, intake_route, _profile_view = await prepare_meta_ingest_runtime(
         db,
@@ -520,6 +535,15 @@ async def reprocess_stored_lead_payload(
     )
     ingest_envelope.normalized_payload = dict(normalized)
     stamp_ingest_envelope_v1(normalized, ingest_envelope)
+    stamp_mapping_applied_from_envelope(
+        normalized,
+        rules=list(validated_mapping or []),
+        envelope=ingest_envelope,
+        profile_updated_at=str(
+            (ingest_envelope.mapping_result or {}).get("profile_updated_at") or ""
+        ).strip()
+        or None,
+    )
     normalized["intake_routing_v1"] = intake_route.to_intake_routing_v1()
     normalized["intake_route_v1"] = intake_route.to_normalized_block()
     if intake_route.entity_profile_code:
@@ -585,7 +609,11 @@ async def process_generic_inbound_webhook_lead(
     """
     settings_row = await _load_settings(db, tenant_id)
     coerced = normalizer.coerce_generic_json_to_meta_normalizer_payload(body)
-    from backend.app.entity_profile.ingest_runtime import prepare_meta_ingest_runtime, stamp_ingest_envelope_v1
+    from backend.app.entity_profile.ingest_runtime import (
+        prepare_meta_ingest_runtime,
+        stamp_ingest_envelope_v1,
+        stamp_mapping_applied_from_envelope,
+    )
 
     validated_mapping, ingest_envelope, intake_route, _profile_view = await prepare_meta_ingest_runtime(
         db,
@@ -601,6 +629,15 @@ async def process_generic_inbound_webhook_lead(
     )
     ingest_envelope.normalized_payload = dict(normalized)
     stamp_ingest_envelope_v1(normalized, ingest_envelope)
+    stamp_mapping_applied_from_envelope(
+        normalized,
+        rules=list(validated_mapping or []),
+        envelope=ingest_envelope,
+        profile_updated_at=str(
+            (ingest_envelope.mapping_result or {}).get("profile_updated_at") or ""
+        ).strip()
+        or None,
+    )
     normalized["intake_routing_v1"] = intake_route.to_intake_routing_v1()
     normalized["intake_route_v1"] = intake_route.to_normalized_block()
     raw_lead_id = normalized.get("raw_lead_id")

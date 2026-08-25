@@ -205,21 +205,20 @@ async def ensure_zus_registration_task(
         ins_early = await get_insurance_profile(db, tenant_id, employee_id)
         if ins_early:
             fk_guess = pick_registration_form_kind(ins_early)
-        existing_id = await _get_registration_task_row(db, tenant_id, eid, fk_guess)
+        existing_row = await _get_registration_task_row(db, tenant_id, eid, fk_guess)
         blocked_by = [f"trusted_identity:{identity_prep.block_code}"]
-        if existing_id:
-            row = await db.get(WorkforceZusWorkspaceTask, existing_id)
-            if row:
-                row.status = "blocked"
-                ch = dict(row.checklist_json) if isinstance(row.checklist_json, dict) else {}
-                ch["auto"] = True
-                ch["source"] = source
-                ch["blocked_by"] = blocked_by
-                ch["identity_block_code"] = identity_prep.block_code
-                ch["identity_projection_status"] = identity_prep.projection_status
-                row.checklist_json = ch
-                await db.flush()
-                return row.id
+        if existing_row:
+            row = existing_row
+            row.status = "blocked"
+            ch = dict(row.checklist_json) if isinstance(row.checklist_json, dict) else {}
+            ch["auto"] = True
+            ch["source"] = source
+            ch["blocked_by"] = blocked_by
+            ch["identity_block_code"] = identity_prep.block_code
+            ch["identity_projection_status"] = identity_prep.projection_status
+            row.checklist_json = ch
+            await db.flush()
+            return row.id
         row = await zus_svc.create_zus_workspace_task(
             db,
             tenant_id,

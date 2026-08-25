@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { IconClipboardList, IconCopy, IconSettings } from '@tabler/icons-react'
+import { IconClipboardList, IconCopy, IconPlus } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
@@ -12,24 +12,28 @@ import {
   listIntakeFormEntityProfiles,
   type PresentationFieldInput,
 } from '../../api/intakeForms'
+import { listLeadForms, patchLeadForm, type TenantLeadForm } from '../../api/leadForms'
+import IntakeFormAnswersRoutingCard from '../../components/admin/IntakeFormAnswersRoutingCard'
 import { IntakeFormPresentationEditor } from '../../components/admin/IntakeFormPresentationEditor'
-import {
-  createLeadForm,
-  listLeadForms,
-  patchLeadForm,
-  type TenantLeadForm,
-} from '../../api/leadForms'
 import {
   friendlyErrorBannerSecondary,
   getFriendlyErrorInfo,
   type FriendlyErrorInfo,
 } from '../../utils/friendlyError'
+import {
+  defaultProfileForPurpose,
+  filterProfilesForPurpose,
+  PURPOSE_WIZARD_OPTIONS,
+  slugifyFormTitle,
+  type FormPurposeKey,
+} from '../../utils/intakeFormRoutingSummary'
 
 type Draft = { title: string; public_slug: string; is_active: boolean }
 
-function publicIntakeUrlForSlug(slug: string): string {
-  if (typeof window === 'undefined') return `/public/intake?lead_form_slug=${encodeURIComponent(slug)}`
+function publicIntakeUrlForSlug(slug: string, opts?: { applicationKind?: 'client' | 'candidate' }): string {
   const q = new URLSearchParams({ lead_form_slug: slug })
+  if (opts?.applicationKind) q.set('application_kind', opts.applicationKind)
+  if (typeof window === 'undefined') return `/public/intake?${q.toString()}`
   return `${window.location.origin}/public/intake?${q.toString()}`
 }
 
@@ -37,22 +41,23 @@ export default function LeadFormsSettingsPage() {
   const { t } = useI18n()
   const { role } = usePermissions()
   const { notify } = useToast()
+  const navigate = useNavigate()
   const canMutate = role === 'administrator'
 
   const [forms, setForms] = useState<TenantLeadForm[]>([])
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState<FriendlyErrorInfo | null>(null)
-  const [newTitle, setNewTitle] = useState('')
-  const navigate = useNavigate()
-  const [creating, setCreating] = useState(false)
   const [savingId, setSavingId] = useState<string | null>(null)
-  const [showProfileCreate, setShowProfileCreate] = useState(false)
-  const [profileCreateTitle, setProfileCreateTitle] = useState('')
-  const [profileCreateSlug, setProfileCreateSlug] = useState('')
-  const [profileCreateCode, setProfileCreateCode] = useState('')
-  const [profileCreateFields, setProfileCreateFields] = useState<PresentationFieldInput[]>([])
-  const [profileCreating, setProfileCreating] = useState(false)
+
+  const [showCreate, setShowCreate] = useState(false)
+  const [createPurpose, setCreatePurpose] = useState<FormPurposeKey>('inquiry')
+  const [profileOptions, setProfileOptions] = useState<Array<{ code: string; name: string }>>([])
+  const [createTitle, setCreateTitle] = useState('')
+  const [createSlug, setCreateSlug] = useState('')
+  const [createProfileCode, setCreateProfileCode] = useState('service_sales.targeted_advertising')
+  const [createFields, setCreateFields] = useState<PresentationFieldInput[]>([])
+  const [creating, setCreating] = useState(false)
 
   const syncDraftsFromRows = useCallback((rows: TenantLeadForm[]) => {
     setDrafts(
@@ -95,37 +100,70 @@ export default function LeadFormsSettingsPage() {
     if (!canMutate) return
     void listIntakeFormEntityProfiles()
       .then((items) => {
-        if (items.length > 0 && !profileCreateCode) setProfileCreateCode(items[0].code)
+        const mapped = items.map((item) => ({ code: item.code, name: item.name }))
+        setProfileOptions(mapped)
+        setCreateProfileCode((current) => current || defaultProfileForPurpose(mapped, createPurpose))
       })
       .catch(() => undefined)
-  }, [canMutate, profileCreateCode])
+  }, [canMutate, createPurpose])
 
-  const handleCreateWithProfile = async () => {
+  const filteredProfiles = useMemo(
+    () => filterProfilesForPurpose(profileOptions, createPurpose),
+    [profileOptions, createPurpose],
+  )
+
+  useEffect(() => {
+    if (filteredProfiles.length === 0) return
+    if (!filteredProfiles.some((row) => row.code === createProfileCode)) {
+      setCreateProfileCode(defaultProfileForPurpose(filteredProfiles, createPurpose))
+    }
+  }, [createProfileCode, createPurpose, filteredProfiles])
+
+  useEffect(() => {
+    if (!createSlug.trim() && createTitle.trim()) {
+      const next = slugifyFormTitle(createTitle)
+      if (next.length >= 2) setCreateSlug(next)
+    }
+  }, [createSlug, createTitle])
+
+  const handleCreateForm = async () => {
     if (!canMutate) return
+    if (createFields.length < 1) {
+      notify({
+        title: t('admin.intake_forms.errors.no_fields', { defaultValue: 'Select at least one question' }),
+        variant: 'error',
+      })
+      return
+    }
     setPageError(null)
-    setProfileCreating(true)
+    setCreating(true)
     try {
       const created = await createIntakeForm({
-        title: profileCreateTitle.trim() || 'Public form',
-        public_slug: profileCreateSlug.trim(),
-        entity_profile_code: profileCreateCode,
-        fields: profileCreateFields,
+        title: createTitle.trim() || 'New form',
+        public_slug: createSlug.trim(),
+        entity_profile_code: createProfileCode,
+        fields: createFields,
+        is_active: true,
       })
       notify({
-        title: t('admin.intake_forms.toast.created', { defaultValue: 'Public form created' }),
+        title: t('admin.intake_forms.toast.created', { defaultValue: 'Form created and activated' }),
         variant: 'success',
       })
+      setShowCreate(false)
+      setCreateTitle('')
+      setCreateSlug('')
+      setCreateFields([])
       navigate(settingsLeadFormDetailPath(created.form.id))
     } catch (err: unknown) {
       setPageError(
         getFriendlyErrorInfo(
           err,
-          t('admin.intake_forms.errors.create', { defaultValue: 'Failed to create public form' }),
+          t('admin.intake_forms.errors.create', { defaultValue: 'Failed to create form' }),
           t,
         ),
       )
     } finally {
-      setProfileCreating(false)
+      setCreating(false)
     }
   }
 
@@ -135,35 +173,6 @@ export default function LeadFormsSettingsPage() {
       if (!cur) return prev
       return { ...prev, [id]: { ...cur, ...patch } }
     })
-  }
-
-  const handleCreate = async () => {
-    if (!canMutate) return
-    setPageError(null)
-    setCreating(true)
-    try {
-      const created = await createLeadForm({ title: newTitle.trim() || undefined })
-      setForms((prev) => [...prev, created])
-      setDrafts((prev) => ({
-        ...prev,
-        [created.id]: {
-          title: created.title || '',
-          public_slug: (created.public_slug || '').trim(),
-          is_active: created.is_active,
-        },
-      }))
-      setNewTitle('')
-      notify({
-        title: t('admin.lead_forms.toast.created', { defaultValue: 'Lead form created' }),
-        variant: 'success',
-      })
-    } catch (err: unknown) {
-      setPageError(
-        getFriendlyErrorInfo(err, t('admin.lead_forms.errors.create', { defaultValue: 'Failed to create form' }), t),
-      )
-    } finally {
-      setCreating(false)
-    }
   }
 
   const handleSaveRow = async (row: TenantLeadForm) => {
@@ -231,31 +240,36 @@ export default function LeadFormsSettingsPage() {
 
   const sortedForms = useMemo(() => [...forms].sort((a, b) => a.created_at.localeCompare(b.created_at)), [forms])
 
-  return (
-    <div className="space-y-4">
-      <section className="settings-panel">
-        <div className="mb-4">
-          <SettingsSubpageHeader
-            backLabel={t('admin.settings.subpage.back_all')}
-            kicker={t('admin.lead_forms.header_kicker')}
-            title={
-              <span className="inline-flex items-center gap-2">
-                <IconClipboardList size={22} stroke={1.9} className="text-brand-600" />
-                {t('admin.lead_forms.title', { defaultValue: 'Lead forms' })}
-              </span>
-            }
-            subtitle={t('admin.lead_forms.subtitle', {
-              defaultValue:
-                'Intake entry points for the public portal. Configure Entity Profile binding, preview fields, and smoke-test submit.',
-            })}
-            actions={
-              <Link className="text-sm font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
-                {t('admin.lead_forms.link_billing', { defaultValue: 'Billing & limits' })}
-              </Link>
-            }
-          />
-        </div>
+  const wizardDefinition = useMemo(
+    () => ({
+      purpose: createPurpose,
+      target_entity_profile_code: createProfileCode,
+      submission_policy: { mode: 'match_or_create' },
+    }),
+    [createProfileCode, createPurpose],
+  )
 
+  return (
+    <SettingsSubpageHeader
+      backLabel={t('admin.settings.subpage.back_all')}
+      kicker={t('admin.lead_forms.header_kicker')}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <IconClipboardList size={22} stroke={1.9} className="text-brand-600" />
+          {t('admin.lead_forms.title', { defaultValue: 'Lead forms' })}
+        </span>
+      }
+      subtitle={t('admin.lead_forms.subtitle_b1', {
+        defaultValue:
+          'Create and configure questionnaires. Pick a purpose, add questions, then send from Sales inquiries.',
+      })}
+      actions={
+        <Link className="text-sm font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
+          {t('admin.lead_forms.link_billing', { defaultValue: 'Billing & limits' })}
+        </Link>
+      }
+    >
+      <section className="settings-panel">
         {pageError && (
           <div className="mb-4">
             <ErrorRecoveryBanner
@@ -274,75 +288,126 @@ export default function LeadFormsSettingsPage() {
         )}
 
         {canMutate && (
-          <div className="settings-toolbar mb-6 border-brand-100 bg-brand-50/20">
-            <label className="min-w-[220px] flex-1">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t('admin.lead_forms.new_title', { defaultValue: 'New form title' })}
-              </span>
-              <input
-                type="text"
-                className="input w-full"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder={t('admin.lead_forms.placeholders.title', { defaultValue: 'e.g. Facebook campaigns' })}
-                disabled={creating}
-              />
-            </label>
-            <button type="button" className="btn-primary" disabled={creating} onClick={() => void handleCreate()}>
-              {creating ? t('common.saving', { defaultValue: 'Saving…' }) : t('admin.lead_forms.create', { defaultValue: 'Create form' })}
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setShowProfileCreate((value) => !value)}
-            >
-              {showProfileCreate
-                ? t('admin.intake_forms.hide_profile_create', { defaultValue: 'Hide profile builder' })
-                : t('admin.intake_forms.show_profile_create', { defaultValue: 'Create with Entity Profile' })}
-            </button>
-          </div>
-        )}
+          <div className="mb-6">
+            {!showCreate ? (
+              <button type="button" className="btn-primary inline-flex items-center gap-2" onClick={() => setShowCreate(true)}>
+                <IconPlus size={16} />
+                {t('admin.lead_forms.create_form', { defaultValue: 'Create form' })}
+              </button>
+            ) : (
+              <div className="space-y-4 rounded-xl border border-brand-100 bg-white p-4 shadow-sm" data-testid="lead-form-create-wizard">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {t('admin.lead_forms.wizard_title', { defaultValue: 'New form' })}
+                  </h3>
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setShowCreate(false)}>
+                    {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                  </button>
+                </div>
 
-        {canMutate && showProfileCreate && (
-          <div className="mb-6 rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900">
-              {t('admin.intake_forms.create_with_profile', { defaultValue: 'New public form (Entity Profile)' })}
-            </h3>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm">
-                <span className="text-slate-500">{t('admin.lead_forms.fields.title', { defaultValue: 'Title' })}</span>
-                <input
-                  className="input mt-1 w-full"
-                  value={profileCreateTitle}
-                  onChange={(event) => setProfileCreateTitle(event.target.value)}
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="text-slate-500">{t('admin.intake_forms.fields.slug', { defaultValue: 'Public slug' })}</span>
-                <input
-                  className="input mt-1 w-full font-mono text-sm"
-                  value={profileCreateSlug}
-                  onChange={(event) => setProfileCreateSlug(event.target.value)}
-                />
-              </label>
-            </div>
-            <div className="mt-4">
-              <IntakeFormPresentationEditor
-                entityProfileCode={profileCreateCode}
-                onEntityProfileChange={setProfileCreateCode}
-                onChange={setProfileCreateFields}
-              />
-            </div>
-            <button
-              type="button"
-              className="btn-primary mt-4"
-              disabled={profileCreating || profileCreateFields.length === 0}
-              onClick={() => void handleCreateWithProfile()}
-            >
-              {profileCreating
-                ? t('common.loading')
-                : t('admin.intake_forms.create_public_form', { defaultValue: 'Create public form' })}
-            </button>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t('admin.lead_forms.wizard.purpose', { defaultValue: '1. Purpose' })}
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {PURPOSE_WIZARD_OPTIONS.map((option) => (
+                      <label
+                        key={option.purpose}
+                        className={`cursor-pointer rounded-xl border p-3 text-sm ${
+                          createPurpose === option.purpose
+                            ? 'border-brand-300 bg-brand-50/60'
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          className="sr-only"
+                          name="form-purpose"
+                          checked={createPurpose === option.purpose}
+                          onChange={() => setCreatePurpose(option.purpose)}
+                        />
+                        <span className="font-semibold text-slate-900">{option.label}</span>
+                        <p className="mt-1 text-xs text-slate-600">{option.hint}</p>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block text-sm sm:col-span-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t('admin.lead_forms.wizard.profile', { defaultValue: '2. Entity profile' })}
+                    </span>
+                    <select
+                      className="input mt-1 w-full"
+                      value={createProfileCode}
+                      onChange={(event) => setCreateProfileCode(event.target.value)}
+                    >
+                      {filteredProfiles.map((profile) => (
+                        <option key={profile.code} value={profile.code}>
+                          {profile.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-sm">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t('admin.lead_forms.fields.title', { defaultValue: '3. Form title' })}
+                    </span>
+                    <input
+                      className="input mt-1 w-full"
+                      value={createTitle}
+                      onChange={(event) => setCreateTitle(event.target.value)}
+                      placeholder={t('admin.lead_forms.placeholders.b2b_title', {
+                        defaultValue: 'e.g. B2B advertising questionnaire',
+                      })}
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {t('admin.intake_forms.fields.slug', { defaultValue: 'Public slug' })}
+                    </span>
+                    <input
+                      className="input mt-1 w-full font-mono text-sm"
+                      value={createSlug}
+                      onChange={(event) => setCreateSlug(event.target.value)}
+                      placeholder="my-b2b-form"
+                    />
+                  </label>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t('admin.lead_forms.wizard.questions', { defaultValue: '4. Questions' })}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {t('admin.lead_forms.wizard.questions_hint', {
+                      defaultValue: 'Select fields, edit labels, order, required level, and show-if rules.',
+                    })}
+                  </p>
+                  <div className="mt-3">
+                    <IntakeFormPresentationEditor
+                      entityProfileCode={createProfileCode}
+                      onEntityProfileChange={setCreateProfileCode}
+                      onChange={setCreateFields}
+                    />
+                  </div>
+                </div>
+
+                <IntakeFormAnswersRoutingCard definition={wizardDefinition} entityProfileCode={createProfileCode} />
+
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={creating || createFields.length === 0 || createSlug.trim().length < 2}
+                  onClick={() => void handleCreateForm()}
+                >
+                  {creating
+                    ? t('common.saving', { defaultValue: 'Saving…' })
+                    : t('admin.lead_forms.wizard.save_activate', { defaultValue: 'Save and activate form' })}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -361,7 +426,7 @@ export default function LeadFormsSettingsPage() {
               const shareUrl = slugOk ? publicIntakeUrlForSlug(d.public_slug.trim()) : ''
               const dirty = isDirty(row)
               return (
-                <li key={row.id} className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
+                <li key={row.id} className="rounded-xl border border-brand-100 bg-white p-4 shadow-sm">
                   <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
                     <label className="block">
                       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -384,17 +449,11 @@ export default function LeadFormsSettingsPage() {
                         className="input w-full font-mono text-sm"
                         value={d.public_slug}
                         onChange={(e) => updateDraft(row.id, { public_slug: e.target.value })}
-                        placeholder={t('admin.lead_forms.placeholders.slug', { defaultValue: 'my-campaign' })}
                         disabled={!canMutate}
                       />
-                      <p className="mt-1 text-xs text-slate-500">
-                        {t('admin.lead_forms.slug_hint', {
-                          defaultValue: 'Lowercase letters, digits, hyphens; 2–64 characters. Leave empty to unpublish.',
-                        })}
-                      </p>
                     </label>
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-4">
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
                     <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -404,7 +463,7 @@ export default function LeadFormsSettingsPage() {
                         disabled={!canMutate}
                       />
                       <span className="text-sm text-slate-700">
-                        {t('admin.lead_forms.fields.active', { defaultValue: 'Active (counts toward plan limit)' })}
+                        {t('admin.lead_forms.fields.active', { defaultValue: 'Active' })}
                       </span>
                     </label>
                     {canMutate && (
@@ -421,14 +480,13 @@ export default function LeadFormsSettingsPage() {
                       to={settingsLeadFormDetailPath(row.id)}
                       className="btn-secondary btn-sm inline-flex items-center gap-1"
                     >
-                      <IconSettings size={14} />
-                      {t('admin.lead_forms.configure', { defaultValue: 'Configure' })}
+                      {t('admin.lead_forms.configure', { defaultValue: 'Configure questions & routing' })}
                     </Link>
                   </div>
                   {slugOk && (
                     <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
                       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        {t('admin.lead_forms.share_url', { defaultValue: 'Public intake URL (this host)' })}
+                        {t('admin.lead_forms.share_url', { defaultValue: 'Public intake URL' })}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2 break-all font-mono text-xs text-slate-800">
                         <span className="flex-1">{shareUrl}</span>
@@ -449,6 +507,6 @@ export default function LeadFormsSettingsPage() {
           </ul>
         )}
       </section>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

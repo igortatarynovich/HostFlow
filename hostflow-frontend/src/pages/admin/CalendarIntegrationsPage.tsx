@@ -735,21 +735,21 @@ export default function CalendarIntegrationsPage() {
   }, [boardDay, boardMode, calendarItems])
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 py-6 sm:py-8">
-      <SettingsSubpageHeader
-        backHref={CRM_APP_PATHS.settingsIntegrations}
-        backLabel={t('admin.calendar_integrations.header.back_to_hub')}
-        kicker={t('admin.calendar_integrations.header.kicker')}
-        title={t('admin.calendar_integrations.header.title')}
-        subtitle={t('admin.calendar_integrations.header.subtitle')}
-      />
+    <SettingsSubpageHeader
+      backHref={CRM_APP_PATHS.settingsIntegrations}
+      backLabel={t('admin.calendar_integrations.header.back_to_hub')}
+      kicker={t('admin.calendar_integrations.header.kicker')}
+      title={t('admin.calendar_integrations.header.title')}
+      subtitle={t('admin.calendar_integrations.header.subtitle')}
+      contentClassName="mx-auto w-full max-w-5xl"
+    >
 
-      {error ? <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">{error}</div> : null}
+      {error ? <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">{error}</div> : null}
       {success ? (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{success}</div>
       ) : null}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">{t('admin.calendar_integrations.connect.title')}</h2>
         <p className="mt-1 text-sm text-slate-600">
           {t('admin.calendar_integrations.connect.subtitle')}
@@ -890,7 +890,7 @@ export default function CalendarIntegrationsPage() {
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <button
           type="button"
-          className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
           onClick={() => setShowAdvanced((v) => !v)}
         >
           {showAdvanced
@@ -899,7 +899,7 @@ export default function CalendarIntegrationsPage() {
         </button>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">{t('admin.calendar_integrations.refresh.title')}</h2>
         <p className="mt-1 text-sm text-slate-600">
           {t('admin.calendar_integrations.refresh.subtitle')}
@@ -926,14 +926,14 @@ export default function CalendarIntegrationsPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-900">{t('admin.calendar_integrations.connections.title')}</h2>
           <button
             type="button"
             onClick={() => void load()}
             disabled={loading}
-            className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
             {t('admin.calendar_integrations.actions.refresh_list')}
           </button>
@@ -966,14 +966,14 @@ export default function CalendarIntegrationsPage() {
                       )
                     })()}
                     {it.last_error ? (
-                      <p className="text-xs text-red-700">{t('admin.calendar_integrations.connections.error', { error: it.last_error })}</p>
+                      <p className="text-xs text-rose-700">{t('admin.calendar_integrations.connections.error', { error: it.last_error })}</p>
                     ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {!showAdvanced ? (
                       <button
                         type="button"
-                        className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                        className="rounded border border-slate-300 px-3 py-1 text-xs"
                         onClick={() => void onStartQuickConnect(it.provider)}
                         disabled={busyId === `quick-start:${it.provider}` || busyId === 'connect-quick'}
                       >
@@ -983,7 +983,7 @@ export default function CalendarIntegrationsPage() {
                       <>
                         <button
                           type="button"
-                          className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                          className="rounded border border-slate-300 px-3 py-1 text-xs"
                           onClick={() => void onReconcile(it.id)}
                           disabled={busyId === `reconcile:${it.id}`}
                         >
@@ -993,7 +993,7 @@ export default function CalendarIntegrationsPage() {
                         </button>
                         <button
                           type="button"
-                          className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                          className="rounded border border-slate-300 px-3 py-1 text-xs"
                           onClick={() => void onRenew(it.id)}
                           disabled={busyId === `renew:${it.id}`}
                         >
@@ -1003,7 +1003,7 @@ export default function CalendarIntegrationsPage() {
                         </button>
                         <button
                           type="button"
-                          className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                          className="rounded border border-slate-300 px-3 py-1 text-xs"
                           onClick={() => void onRefresh(it.id)}
                           disabled={busyId === `refresh:${it.id}` || !canRefresh}
                           title={canRefresh ? '' : t('admin.calendar_integrations.hints.fill_client_id_first')}
@@ -1014,7 +1014,7 @@ export default function CalendarIntegrationsPage() {
                         </button>
                         <button
                           type="button"
-                          className="rounded border border-red-300 px-2.5 py-1 text-xs text-red-700"
+                          className="rounded border border-rose-300 px-3 py-1 text-xs text-rose-700"
                           onClick={() => void onDelete(it.id)}
                           disabled={busyId === `delete:${it.id}`}
                         >
@@ -1033,14 +1033,14 @@ export default function CalendarIntegrationsPage() {
       </section>
 
       {showAdvanced ? (
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-900">
             {t('admin.calendar_integrations.events.title', { defaultValue: 'Calendar events and reminders' })}
           </h2>
           <button
             type="button"
-            className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="rounded border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             onClick={() => void loadCalendarItems()}
             disabled={calendarItemsLoading}
           >
@@ -1132,18 +1132,18 @@ export default function CalendarIntegrationsPage() {
             : t('admin.calendar_integrations.events.create_event', { defaultValue: 'Create event' })}
         </button>
 
-        <div className="mt-5">
+        <div className="mt-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className={`rounded border px-3 py-1.5 text-xs ${boardMode === 'day' ? 'border-brand-600 text-brand-700' : 'border-slate-300 text-slate-700'}`}
+              className={`rounded border px-3 py-2 text-xs ${boardMode === 'day' ? 'border-brand-600 text-brand-700' : 'border-slate-300 text-slate-700'}`}
               onClick={() => setBoardMode('day')}
             >
               {t('admin.calendar_integrations.events.day_mode', { defaultValue: 'Day' })}
             </button>
             <button
               type="button"
-              className={`rounded border px-3 py-1.5 text-xs ${boardMode === 'week' ? 'border-brand-600 text-brand-700' : 'border-slate-300 text-slate-700'}`}
+              className={`rounded border px-3 py-2 text-xs ${boardMode === 'week' ? 'border-brand-600 text-brand-700' : 'border-slate-300 text-slate-700'}`}
               onClick={() => setBoardMode('week')}
             >
               {t('admin.calendar_integrations.events.week_mode', { defaultValue: 'Week' })}
@@ -1156,7 +1156,7 @@ export default function CalendarIntegrationsPage() {
             />
             <button
               type="button"
-              className="rounded border border-slate-300 px-2.5 py-1 text-xs text-slate-700"
+              className="rounded border border-slate-300 px-3 py-1 text-xs text-slate-700"
               onClick={() => setBoardDay(dateKeyLocal(new Date()))}
             >
               {t('admin.calendar_integrations.events.today', { defaultValue: 'Today' })}
@@ -1219,7 +1219,7 @@ export default function CalendarIntegrationsPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                        className="rounded border border-slate-300 px-3 py-1 text-xs"
                         onClick={() => void onRemindCalendarEvent(it.id)}
                         disabled={busyId === `remind-event:${it.id}`}
                       >
@@ -1229,7 +1229,7 @@ export default function CalendarIntegrationsPage() {
                       </button>
                       <button
                         type="button"
-                        className="rounded border border-red-300 px-2.5 py-1 text-xs text-red-700"
+                        className="rounded border border-rose-300 px-3 py-1 text-xs text-rose-700"
                         onClick={() => void onCancelCalendarEvent(it.id)}
                         disabled={busyId === `cancel-event:${it.id}` || it.status === 'cancelled'}
                       >
@@ -1239,7 +1239,7 @@ export default function CalendarIntegrationsPage() {
                       </button>
                       <button
                         type="button"
-                        className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                        className="rounded border border-slate-300 px-3 py-1 text-xs"
                         onClick={() => void onRetrySyncForEvent(it)}
                         disabled={busyId === `sync-event:${it.id}`}
                       >
@@ -1250,7 +1250,7 @@ export default function CalendarIntegrationsPage() {
                       {extractSyncMeta(it).conflict ? (
                         <button
                           type="button"
-                          className="rounded border border-amber-300 px-2.5 py-1 text-xs text-amber-800"
+                          className="rounded border border-amber-300 px-3 py-1 text-xs text-amber-800"
                           onClick={() => setConflictEvent(it)}
                         >
                           {t('admin.calendar_integrations.events.view_conflict', { defaultValue: 'View conflict' })}
@@ -1273,7 +1273,7 @@ export default function CalendarIntegrationsPage() {
                     </select>
                     <button
                       type="button"
-                      className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                      className="rounded border border-slate-300 px-3 py-1 text-xs"
                       onClick={() => void onAssignCalendarEvent(it.id)}
                       disabled={busyId === `assign-event:${it.id}` || !(assignByItem[it.id] ?? it.assignee_id)}
                     >
@@ -1283,7 +1283,7 @@ export default function CalendarIntegrationsPage() {
                     </button>
                     <button
                       type="button"
-                      className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                      className="rounded border border-slate-300 px-3 py-1 text-xs"
                       onClick={() => void onMoveCalendarEvent(it, 15)}
                       disabled={busyId === `move-event:${it.id}:15`}
                     >
@@ -1291,7 +1291,7 @@ export default function CalendarIntegrationsPage() {
                     </button>
                     <button
                       type="button"
-                      className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                      className="rounded border border-slate-300 px-3 py-1 text-xs"
                       onClick={() => void onMoveCalendarEvent(it, 60)}
                       disabled={busyId === `move-event:${it.id}:60`}
                     >
@@ -1299,7 +1299,7 @@ export default function CalendarIntegrationsPage() {
                     </button>
                     <button
                       type="button"
-                      className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                      className="rounded border border-slate-300 px-3 py-1 text-xs"
                       onClick={() => void onMoveCalendarEvent(it, 24 * 60)}
                       disabled={busyId === `move-event:${it.id}:1440`}
                     >
@@ -1315,7 +1315,7 @@ export default function CalendarIntegrationsPage() {
       ) : null}
 
       {showAdvanced && conflictEvent ? (
-        <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-5 shadow-sm">
+        <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-amber-900">
               {t('admin.calendar_integrations.events.conflict_details', { defaultValue: 'Sync conflict details' })}
@@ -1351,6 +1351,6 @@ export default function CalendarIntegrationsPage() {
           </pre>
         </section>
       ) : null}
-    </div>
+    </SettingsSubpageHeader>
   )
 }

@@ -7,6 +7,9 @@ from uuid import uuid4
 from enum import Enum
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.db.base import Base
@@ -19,6 +22,8 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+JSONType = MutableDict.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql"))
 
 
 class EmploymentType(str, Enum):
@@ -168,10 +173,29 @@ class Vacancy(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String, nullable=False, default="open")
 
     # Planned number of positions to fill (recruitment container target); optional.
+    # When ``order_line_id`` is set, MUST mirror SalesOrderLine.quantity_needed (ADR-032).
     headcount_target: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Sales Order Line (1:1). Null = freeform vacancy.
+    order_line_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("sales_order_lines.id", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+        index=True,
+        comment="ADR-032: Vacancy executes exactly one Order Line when set",
+    )
 
     # free-form JSON stored as string for now
     extra: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # ADR-033: sparse module overrides (e.g. lead_lifecycle_email_override_v1)
+    settings_json: Mapped[dict] = mapped_column(
+        JSONType,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
 
     # Привязка к профилю кандидата
     candidate_profile_id: Mapped[Optional[str]] = mapped_column(

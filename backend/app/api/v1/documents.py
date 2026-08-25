@@ -21,7 +21,8 @@ except Exception:  # pragma: no cover - pydantic<2 fallback
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
@@ -764,7 +765,7 @@ async def list_documents(
     "/order",
     response_model=DocumentOut,
     status_code=201,
-    dependencies=[Depends(require_roles(Role.recruiter, Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def order_document(
     payload: DocumentOrderPayload,
@@ -890,7 +891,7 @@ async def order_document(
 @router.post(
     "/",
     response_model=DocumentOut,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_document(
     payload: DocumentIn,
@@ -1071,7 +1072,7 @@ else:
 @router.patch(
     "/{doc_id}",
     response_model=DocumentOut,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def update_document(
     doc_id: UUID,
@@ -1308,7 +1309,7 @@ async def update_document(
 @router.delete(
     "/{doc_id}",
     status_code=200,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def delete_document(
     doc_id: UUID,
@@ -1395,6 +1396,7 @@ async def list_expiring(
 async def list_document_templates(
     include_inactive: bool = Query(False),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> List[DocumentTemplateOut]:
     db, tenant_id = db_tenant
     stmt = select(DocumentTemplate).where(DocumentTemplate.tenant_id == str(tenant_id))
@@ -1409,6 +1411,7 @@ async def list_document_templates(
 async def get_document_template(
     template_id: UUID,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _current_user: UserCtx = Depends(get_current_user),
 ) -> DocumentTemplateOut:
     db, tenant_id = db_tenant
     res = await db.execute(
@@ -1426,7 +1429,7 @@ async def get_document_template(
 @router.get(
     "/{doc_id}",
     response_model=DocumentOut,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_document_detail(
     doc_id: UUID,

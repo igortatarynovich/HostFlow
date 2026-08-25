@@ -10,35 +10,47 @@ import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { PlanLimitModalProvider } from './contexts/PlanLimitModalContext'
 import { installStaleChunkReloadRecovery } from './utils/staleChunkReload'
 import { initSentry } from './lib/observability'
+import { consumeLogoutWipeAndContinue } from './platform/sessionLogout'
+import { DeployHostBoundary } from './platform/DeployHostBoundary'
+import { applyAuthIsolationWipeOnce } from './api/client'
 
 import './styles/components.css'
 import './index.css'
 
-initSentry()
-installStaleChunkReloadRecovery()
+// Cross-origin logout wipe must run before AuthProvider can rehydrate from leftover Bearer.
+if (consumeLogoutWipeAndContinue()) {
+  // Redirect scheduled — do not mount the app on this origin.
+} else {
+  // One-time clear of stale per-origin Bearer/tenant left from dual-session bug.
+  applyAuthIsolationWipeOnce()
+  initSentry()
+  installStaleChunkReloadRecovery()
 
-const hash = window.location.hash || ''
-if (hash.startsWith('#/')) {
-  const target = `${CRM_APP_PATHS.appShellPrefix}${hash.slice(1)}`
-  if (window.location.pathname + window.location.search !== target) {
-    window.location.replace(target)
+  const hash = window.location.hash || ''
+  if (hash.startsWith('#/')) {
+    const target = `${CRM_APP_PATHS.appShellPrefix}${hash.slice(1)}`
+    if (window.location.pathname + window.location.search !== target) {
+      window.location.replace(target)
+    }
   }
-}
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <AppErrorBoundary>
-      <BrowserRouter>
-        <I18nProvider>
-          <PlanLimitModalProvider>
-            <AuthProvider>
-              <ToastProvider>
-                <App />
-              </ToastProvider>
-            </AuthProvider>
-          </PlanLimitModalProvider>
-        </I18nProvider>
-      </BrowserRouter>
-    </AppErrorBoundary>
-  </StrictMode>
-)
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <AppErrorBoundary>
+        <BrowserRouter>
+          <I18nProvider>
+            <PlanLimitModalProvider>
+              <AuthProvider>
+                <ToastProvider>
+                  <DeployHostBoundary>
+                    <App />
+                  </DeployHostBoundary>
+                </ToastProvider>
+              </AuthProvider>
+            </PlanLimitModalProvider>
+          </I18nProvider>
+        </BrowserRouter>
+      </AppErrorBoundary>
+    </StrictMode>,
+  )
+}

@@ -167,7 +167,11 @@ async def test_superadmin_impersonation_lists_target_tenant_candidates(
     sa_token = _build_token(data["admin_id"], data["admin_email"], "superadmin", data["tenant_id"])
     h = {"Authorization": f"Bearer {sa_token}", "Content-Type": "application/json"}
 
-    resp = await client.post(f"{PLATFORM_TENANTS}/{TENANT_2_ID}/impersonate", headers=h)
+    resp = await client.post(
+        f"{PLATFORM_TENANTS}/{TENANT_2_ID}/impersonate",
+        headers=h,
+        json={"reason": "rbac-handoff-isolation-test"},
+    )
     assert resp.status_code == 200, resp.text
     imp = resp.json()["token"]
 

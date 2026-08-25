@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_read, require_trust_write
+from backend.app.auth.deps import get_current_user
 from backend.app.auth.hiring_workspace_roles import (
     HIRING_CANDIDATE_PROFILE_READ_ROLES,
     HIRING_CANDIDATE_PROFILE_WRITE_ROLES,
@@ -169,10 +170,19 @@ class CandidateProfileOut(BaseModel):
     created_at: str
     updated_at: str
     usage_count: Optional[int] = Field(None, description="Number of vacancies using this profile")
+    deprecation_warnings: list[str] = Field(
+        default_factory=list,
+        description="C2: warnings when legacy CandidateProfile.config fragments are written",
+    )
 
     @classmethod
     async def from_model_with_usage(
-        cls, profile: CandidateProfile, db: AsyncSession, tenant_id: str
+        cls,
+        profile: CandidateProfile,
+        db: AsyncSession,
+        tenant_id: str,
+        *,
+        deprecation_warnings: list[str] | None = None,
     ) -> "CandidateProfileOut":
         """Create from ORM model with usage count."""
         # Count vacancies using this profile
@@ -198,6 +208,7 @@ class CandidateProfileOut(BaseModel):
             created_at=profile.created_at.isoformat() if profile.created_at else "",
             updated_at=profile.updated_at.isoformat() if profile.updated_at else "",
             usage_count=usage_count,
+            deprecation_warnings=list(deprecation_warnings or []),
         )
     
     @classmethod
@@ -494,7 +505,7 @@ async def _resolve_profile_for_read(
     profile_any = (await db.execute(stmt_any)).scalar_one_or_none()
     if profile_any:
         role = (current_user.role or "").lower()
-        if role in (Role.client_processor.value, Role.client_manager.value):
+        if role in (Role.viewer.value, Role.viewer.value):
             link_stmt = (
                 select(TenantLink)
                 .where(TenantLink.client_tenant_id == tenant_id_str)
@@ -518,7 +529,7 @@ async def list_candidate_profiles(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
 ) -> List[CandidateProfileOut]:
     """List candidate profiles for the tenant.
     
@@ -548,7 +559,7 @@ async def create_candidate_profile(
     payload: CandidateProfileIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
+    _: None = Depends(require_trust_write()),
 ) -> CandidateProfileOut:
     """Create a new candidate profile."""
     db, tenant_id = db_tenant
@@ -595,6 +606,16 @@ async def create_candidate_profile(
         client_id=payload.client_id,
     )
 
+    from backend.app.entity_profile.config_deprecation import enforce_candidate_profile_config_write
+
+    deprecation_warnings = await enforce_candidate_profile_config_write(
+        db,
+        tenant_id=str(tenant_id),
+        profile_code=payload.code,
+        previous_config={},
+        next_config=payload.config or {},
+    )
+
     from uuid import uuid4
 
     profile = CandidateProfile(
@@ -614,7 +635,12 @@ async def create_candidate_profile(
     db.add(profile)
     await db.commit()
     await db.refresh(profile)
-    return await CandidateProfileOut.from_model_with_usage(profile, db, str(tenant_id))
+    return await CandidateProfileOut.from_model_with_usage(
+        profile,
+        db,
+        str(tenant_id),
+        deprecation_warnings=deprecation_warnings,
+    )
 
 
 DRIVER_CE_DEFAULT_CODE = "driver_ce_default"
@@ -624,7 +650,7 @@ DRIVER_CE_DEFAULT_CODE = "driver_ce_default"
 async def fix_orphaned_vacancies(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
+    _: None = Depends(require_trust_write()),
 ) -> Dict[str, Any]:
     """Set candidate_profile_id to driver_ce_default for vacancies that have none or reference a missing/inactive profile. Runs for all tenants that have driver_ce_default."""
     db, _tenant_id = db_tenant
@@ -698,7 +724,7 @@ async def fix_orphaned_vacancies(
 async def get_profile_limits(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
+    _: None = Depends(require_trust_write()),
 ) -> Dict[str, Any]:
     """Get profile field limits for the tenant."""
     from backend.app.services.profile_limits import (
@@ -743,7 +769,7 @@ async def get_candidate_profile_field_contract(
     profile_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
 ) -> CandidateProfileFieldContractOut:
     """Get normalized field ownership contract for intake/card deduplication."""
     db, tenant_id = db_tenant
@@ -763,7 +789,7 @@ async def get_candidate_profile(
     profile_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
 ) -> CandidateProfileOut:
     """Get a single candidate profile by ID (includes inactive, so vacancy references keep working).
     Same-tenant profile is returned; for client tenants, agency profile is allowed when linked via TenantLink.
@@ -781,7 +807,7 @@ async def update_candidate_profile(
     payload: CandidateProfileIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
+    _: None = Depends(require_trust_write()),
 ) -> CandidateProfileOut:
     """Update an existing candidate profile."""
     db, tenant_id = db_tenant
@@ -850,6 +876,16 @@ async def update_candidate_profile(
         client_id=payload.client_id,
     )
 
+    from backend.app.entity_profile.config_deprecation import enforce_candidate_profile_config_write
+
+    deprecation_warnings = await enforce_candidate_profile_config_write(
+        db,
+        tenant_id=str(tenant_id),
+        profile_code=str(profile.code),
+        previous_config=profile.config or {},
+        next_config=payload.config or {},
+    )
+
     # Save old data for history
     old_data = _profile_to_dict(profile)
     
@@ -879,7 +915,12 @@ async def update_candidate_profile(
     db.add(history_entry)
     await db.commit()
     
-    return await CandidateProfileOut.from_model_with_usage(profile, db, str(tenant_id))
+    return await CandidateProfileOut.from_model_with_usage(
+        profile,
+        db,
+        str(tenant_id),
+        deprecation_warnings=deprecation_warnings,
+    )
 
 
 @router.delete("/{profile_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
@@ -887,7 +928,7 @@ async def delete_candidate_profile(
     profile_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
+    _: None = Depends(require_trust_write()),
 ) -> Response:
     """Delete (deactivate) a candidate profile."""
     db, tenant_id = db_tenant
@@ -964,7 +1005,7 @@ async def get_profile_history(
     limit: int = Query(100, ge=1, le=500, description="Maximum number of history entries to return"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_WRITE_ROLES)),
+    _: None = Depends(require_trust_write()),
 ) -> List[Dict[str, Any]]:
     """Get history of changes for a candidate profile."""
     db, tenant_id = db_tenant

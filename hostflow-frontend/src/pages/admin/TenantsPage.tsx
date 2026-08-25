@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormE
 import { useNavigate } from 'react-router-dom'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { Modal } from '../../components/Modal'
-import { settings as tenantSettings, setToken } from '../../api/client'
+import { settings as tenantSettings, setToken, ensureSharedSessionCookies } from '../../api/client'
 import {
   changePlatformTenantStatus,
   createPlatformTenant,
@@ -67,6 +67,7 @@ import {
 } from '../../modules/tenants/utils'
 import { SeatProgress } from '../../modules/tenants/components/SeatProgress'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
+import { RoleModuleMatrixPanel } from '../../components/admin/RoleModuleMatrixPanel'
 
 const DEFAULT_CREATE_FORM: CreateTenantForm = {
   name: '',
@@ -168,6 +169,7 @@ export default function TenantsPage() {
   const roleOrder: RoleModuleMatrixRole[] = useMemo(
     () => [
       'administrator',
+      'employee',
       'supervisor',
       'recruiter',
       'client_manager',
@@ -181,6 +183,7 @@ export default function TenantsPage() {
   const normalizeRoleKey = useCallback((roleValue?: string | null): RoleModuleMatrixRole => {
     const normalized = String(roleValue || '').trim().toLowerCase()
     if (normalized === 'administrator') return 'administrator'
+    if (normalized === 'employee') return 'employee'
     if (normalized === 'supervisor') return 'supervisor'
     if (normalized === 'recruiter') return 'recruiter'
     if (normalized === 'client_manager') return 'client_manager'
@@ -499,13 +502,28 @@ export default function TenantsPage() {
     if (!selected) return
     const confirmText = t('app.platform.tenants.actions.impersonate_confirm', formatValues({ name: selected.name }))
     if (!window.confirm(confirmText)) return
+    const reasonPrompt = t('app.platform.tenants.actions.impersonate_reason_prompt', {
+      defaultValue: 'Reason for impersonation (required, min 3 characters):',
+    })
+    const reasonRaw = window.prompt(reasonPrompt, '')
+    const reason = (reasonRaw || '').trim()
+    if (reason.length < 3) {
+      setActionError(
+        t('app.platform.tenants.errors.impersonate_reason_required', {
+          defaultValue: 'A justification of at least 3 characters is required.',
+        }),
+      )
+      return
+    }
     setImpersonating(true)
     setActionError(null)
     try {
-      const token = await impersonatePlatformTenant(selected.id)
+      const token = await impersonatePlatformTenant(selected.id, reason)
       beginImpersonation()
       setToken(token.token)
       tenantSettings.set(selected.id)
+      // Keep Domain=.hostflow.cc cookies aligned with the impersonation Bearer.
+      await ensureSharedSessionCookies()
       await refreshSession()
       window.location.assign(CRM_APP_PATHS.overview)
     } catch (err) {
@@ -860,30 +878,31 @@ export default function TenantsPage() {
   const seatCards = useMemo(() => {
     if (!selected) return []
     const license = selected.license
+    const usage = selected.usage
     return [
       {
-        key: 'recruiters',
-        label: t('app.platform.tenants.usage.recruiters'),
-        used: selected.usage.recruiter_count,
-        limit: license?.max_recruiters ?? 0,
-      },
-      {
-        key: 'supervisors',
-        label: t('app.platform.tenants.usage.supervisors'),
-        used: selected.usage.supervisor_count,
+        key: 'administrators',
+        label: t('app.platform.tenants.usage.administrators'),
+        used: usage.administrator_count ?? usage.supervisor_count,
         limit: license?.max_supervisors ?? 0,
       },
       {
-        key: 'client_managers',
-        label: t('app.platform.tenants.usage.client_managers'),
-        used: selected.usage.client_manager_count,
-        limit: license?.max_client_managers ?? 0,
+        key: 'employees',
+        label: t('app.platform.tenants.usage.employees'),
+        used: usage.employee_count ?? usage.recruiter_count,
+        limit: license?.max_recruiters ?? 0,
       },
       {
         key: 'viewers',
         label: t('app.platform.tenants.usage.viewers'),
-        used: selected.usage.viewer_count,
+        used: usage.viewer_count,
         limit: license?.max_viewers ?? 0,
+      },
+      {
+        key: 'portal_guests',
+        label: t('app.platform.tenants.usage.portal_guests'),
+        used: usage.portal_guest_count ?? usage.client_manager_count,
+        limit: 0,
       },
     ]
   }, [selected, t])
@@ -992,13 +1011,12 @@ export default function TenantsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    
       <SettingsSubpageHeader
         backLabel={t('admin.settings.subpage.back_all')}
         kicker={t('app.platform.tenants.header_kicker')}
         title={t('app.platform.tenants.title')}
-        subtitle={t('app.platform.tenants.subtitle')}
-      />
+        subtitle={t('app.platform.tenants.subtitle')}>
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <input
@@ -1079,7 +1097,7 @@ export default function TenantsPage() {
                       <div className="text-xs text-slate-500">{tenant.slug}</div>
                       <span
                         className={[
-                          'mt-2 inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold',
+                          'mt-2 inline-flex rounded-lg px-2 py-0.5 text-[11px] font-semibold',
                           TYPE_BADGE[tenant.type],
                         ].join(' ')}
                       >
@@ -1088,7 +1106,7 @@ export default function TenantsPage() {
                     </div>
                     <span
                       className={[
-                        'inline-flex rounded-md px-2 py-0.5 text-xs font-semibold',
+                        'inline-flex rounded-lg px-2 py-0.5 text-xs font-semibold',
                         STATUS_BADGE[tenant.status],
                       ].join(' ')}
                     >
@@ -1096,7 +1114,7 @@ export default function TenantsPage() {
                     </span>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                    <span className="inline-flex items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                       {tenant.license?.plan || '—'}
                     </span>
                     <span>
@@ -1140,7 +1158,7 @@ export default function TenantsPage() {
                     </p>
                   )}
                 </div>
-                <span className={['inline-flex rounded-md px-2 py-0.5 text-xs font-semibold', STATUS_BADGE[selected.status]].join(' ')}>
+                <span className={['inline-flex rounded-lg px-2 py-0.5 text-xs font-semibold', STATUS_BADGE[selected.status]].join(' ')}>
                   {t(`app.platform.tenants.status.${selected.status}`)}
                 </span>
               </div>
@@ -1150,7 +1168,7 @@ export default function TenantsPage() {
                     key={tab.key}
                     type="button"
                     className={[
-                      'rounded-md border px-3 py-1 transition',
+                      'rounded-lg border px-3 py-1 transition',
                       detailTab === tab.key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 hover:border-brand-300 hover:text-brand-700',
                     ].join(' ')}
                     onClick={() => setDetailTab(tab.key)}
@@ -1467,7 +1485,7 @@ export default function TenantsPage() {
                     <p className="mt-1 text-xs text-slate-500">{t('app.platform.tenants.founder.subtitle')}</p>
                     {founderBanner && (
                       <p
-                        className={`mt-2 text-xs ${founderBanner.kind === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}
+                        className={`mt-2 text-xs ${founderBanner.kind === 'ok' ? 'text-emerald-700' : 'text-rose-600'}`}
                       >
                         {founderBanner.text}
                       </p>
@@ -1516,7 +1534,7 @@ export default function TenantsPage() {
                             <div key={request.id} className="rounded border border-slate-100 p-3 text-sm text-slate-700">
                               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                                 <span>{new Date(request.created_at).toLocaleString()}</span>
-                                <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${SEAT_STATUS_BADGE[request.status]}`}>
+                                <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[11px] font-semibold ${SEAT_STATUS_BADGE[request.status]}`}>
                                   {t(`app.platform.tenants.seat_requests.status.${request.status}`)}
                                 </span>
                               </div>
@@ -1572,7 +1590,7 @@ export default function TenantsPage() {
                         <p className="text-xs text-slate-500">{t('app.platform.tenants.access.subtitle')}</p>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                        <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                           {t('app.platform.tenants.access.counter', formatValues({ count: vacancyAccess.length }))}
                         </span>
                         <button
@@ -1755,58 +1773,15 @@ export default function TenantsPage() {
                       {roleMatrixLoading ? (
                         <div className="mt-3 text-xs text-slate-500">{t('common.loading')}</div>
                       ) : roleModuleMatrix && moduleSettings ? (
-                        <div className="mt-3 overflow-x-auto">
-                          <table className="min-w-full divide-y divide-slate-200 text-xs">
-                            <thead>
-                              <tr className="bg-slate-50 text-left text-slate-600">
-                                <th className="px-2 py-2">{t('app.platform.tenants.modules.matrix_module')}</th>
-                                {roleOrder.map((roleKey) => (
-                                  <th key={roleKey} className="px-2 py-2">{t(`app.admin.users.roles.${roleKey}`)}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                              {(Object.keys(moduleSettings) as Array<keyof TenantModuleSettings>).map((moduleKey) => (
-                                <tr key={moduleKey}>
-                                  <td className="px-2 py-2 font-medium text-slate-700">{t(MODULE_LABELS[moduleKey])}</td>
-                                  {roleOrder.map((roleKey) => {
-                                    const cell = roleModuleMatrix[roleKey]?.[moduleKey]
-                                    const moduleEnabled = moduleSettings[moduleKey]
-                                    return (
-                                      <td key={`${roleKey}:${moduleKey}`} className="px-2 py-2">
-                                        <div className="flex items-center gap-2">
-                                          <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-                                            <input
-                                              type="checkbox"
-                                              className="h-3.5 w-3.5 accent-brand-600"
-                                              checked={Boolean(cell?.visible)}
-                                              disabled={roleMatrixSaving || !moduleEnabled}
-                                              onChange={() => handleRoleMatrixToggle(roleKey, moduleKey, 'visible')}
-                                            />
-                                            V
-                                          </label>
-                                          <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-                                            <input
-                                              type="checkbox"
-                                              className="h-3.5 w-3.5 accent-brand-600"
-                                              checked={Boolean(cell?.editable)}
-                                              disabled={roleMatrixSaving || !moduleEnabled || !cell?.visible}
-                                              onChange={() => handleRoleMatrixToggle(roleKey, moduleKey, 'editable')}
-                                            />
-                                            E
-                                          </label>
-                                        </div>
-                                      </td>
-                                    )
-                                  })}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          <div className="mt-2 text-[11px] text-slate-500">
-                            {t('app.platform.tenants.modules.matrix_hint')}
-                          </div>
-                        </div>
+                        <RoleModuleMatrixPanel
+                          matrix={roleModuleMatrix}
+                          moduleSettings={moduleSettings}
+                          roleOrder={roleOrder}
+                          saving={roleMatrixSaving}
+                          t={t}
+                          onToggle={handleRoleMatrixToggle}
+                          actorIsSuperadmin
+                        />
                       ) : (
                         <div className="mt-3 text-xs text-slate-500">{t('app.platform.tenants.modules.empty')}</div>
                       )}
@@ -2127,6 +2102,6 @@ export default function TenantsPage() {
           </div>
         </form>
       </Modal>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

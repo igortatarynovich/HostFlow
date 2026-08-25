@@ -60,6 +60,7 @@ import subprocess
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Dict
+from urllib.parse import urlsplit
 
 import pytest
 import pytest_asyncio
@@ -149,8 +150,37 @@ def _env_with_local_db_host(base: dict[str, str]) -> dict[str, str]:
     return out
 
 
+_PROD_DB_NAMES = {"hostflow"}
+
+
+def _assert_not_production_db(url: str) -> None:
+    """Refuse to run the suite against a database that is not clearly a test database.
+
+    The suite seeds fixtures and (below) runs `alembic upgrade head` against whatever
+    DATABASE_URL resolves to. With the repo's default env that is **production**
+    (`localhost:5432/hostflow`), and a stray `pytest` has in the past filled prod with
+    836 `@hostflow.test` users, 63 non-UUID tenants and a migration-revision drift.
+    Fail loudly instead.
+    """
+    if not url:
+        return
+    db_name = urlsplit(url).path.lstrip("/").split("?")[0]
+    if not db_name or db_name.startswith(":memory:"):
+        return
+    if db_name in _PROD_DB_NAMES or "test" not in db_name.lower():
+        raise RuntimeError(
+            f"Refusing to run tests against database {db_name!r}: it does not look like a "
+            "test database. Point DATABASE_URL / ASYNC_DATABASE_URL / SYNC_DATABASE_URL at a "
+            "scratch DB (name must contain 'test'), or set HOSTFLOW_ALLOW_NON_TEST_DB=1 if you "
+            "genuinely mean it."
+        )
+
+
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Apply Alembic migrations so ORM columns (e.g. FTS tsvector) exist on the test DB."""
+    if os.environ.get("HOSTFLOW_ALLOW_NON_TEST_DB", "").strip().lower() not in ("1", "true", "yes"):
+        for var in ("ALEMBIC_DATABASE_URL", "SYNC_DATABASE_URL", "ASYNC_DATABASE_URL", "DATABASE_URL"):
+            _assert_not_production_db(os.environ.get(var, "").strip())
     if os.environ.get("HOSTFLOW_SKIP_ALEMBIC_UPGRADE", "").strip().lower() in ("1", "true", "yes"):
         return
     backend_root = Path(__file__).resolve().parents[1]
@@ -227,15 +257,29 @@ def _pytest_block_real_email_delivery(monkeypatch: pytest.MonkeyPatch) -> None:
         raising=False,
     )
     monkeypatch.setattr(
-        "backend.app.services.lead_rodo.send_email_for_tenant",
-        _noop_send_email_for_tenant,
-        raising=False,
-    )
-    monkeypatch.setattr(
         "backend.app.services.system_email.send_system_email",
         _noop_send_system_email,
         raising=False,
     )
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _clear_meta_lead_credentials_between_tests() -> None:
+    """Admin Meta tests leave active ``meta_lead_credentials``; later ingest helpers
+    that sign with ``settings.meta_webhook_secret`` (often empty) then get 401
+    Signature mismatch. Clear default-tenant credentials every test.
+    """
+    try:
+        async with async_session_maker() as session:
+            await session.execute(
+                sa.text("DELETE FROM meta_lead_credentials WHERE tenant_id = :tenant_id"),
+                {"tenant_id": DEFAULT_TENANT_ID},
+            )
+            await session.commit()
+    except Exception:
+        # Table may be missing before migrations in some unit-only paths.
+        pass
+    yield
 
 
 @pytest.fixture
@@ -372,20 +416,24 @@ async def _init_data() -> Dict[str, str]:
                     id=str(uuid.uuid4()),
                     email=supervisor_email,
                     password_hash=hash_password(supervisor_password),
-                    role=UserRole.supervisor,
+                    role=UserRole.employee,
                     short_id="SUPV001",
                     full_name="HostFlow Supervisor",
                     tenant_id=DEFAULT_TENANT_ID,
                     is_active=True,
+                    preferences={"preset_id": "team_lead"},
                 )
                 session.add(supervisor)
             else:
                 supervisor.password_hash = hash_password(supervisor_password)
-                supervisor.role = UserRole.supervisor
+                supervisor.role = UserRole.employee
                 supervisor.short_id = supervisor.short_id or "SUPV001"
                 supervisor.full_name = supervisor.full_name or "HostFlow Supervisor"
                 supervisor.tenant_id = supervisor.tenant_id or DEFAULT_TENANT_ID
                 supervisor.is_active = True
+                prefs = dict(supervisor.preferences or {})
+                prefs["preset_id"] = "team_lead"
+                supervisor.preferences = prefs
 
             recruiter = await session.scalar(
                 select(User).where(func.lower(User.email) == recruiter_email.lower())
@@ -395,22 +443,26 @@ async def _init_data() -> Dict[str, str]:
                     id=str(uuid.uuid4()),
                     email=recruiter_email,
                     password_hash=hash_password(recruiter_password),
-                    role=UserRole.recruiter,
+                    role=UserRole.employee,
                     short_id="REC001",
                     full_name="HostFlow Recruiter",
                     tenant_id=DEFAULT_TENANT_ID,
                     supervisor_id=supervisor.id,
                     is_active=True,
+                    preferences={"preset_id": "recruiter"},
                 )
                 session.add(recruiter)
             else:
                 recruiter.password_hash = hash_password(recruiter_password)
-                recruiter.role = UserRole.recruiter
+                recruiter.role = UserRole.employee
                 recruiter.short_id = recruiter.short_id or "REC001"
                 recruiter.full_name = recruiter.full_name or "HostFlow Recruiter"
                 recruiter.tenant_id = recruiter.tenant_id or DEFAULT_TENANT_ID
                 recruiter.is_active = True
                 recruiter.supervisor_id = supervisor.id
+                prefs = dict(recruiter.preferences or {})
+                prefs["preset_id"] = "recruiter"
+                recruiter.preferences = prefs
 
             hr_officer = await session.scalar(
                 select(User).where(func.lower(User.email) == hr_officer_email.lower())
@@ -420,20 +472,24 @@ async def _init_data() -> Dict[str, str]:
                     id=str(uuid.uuid4()),
                     email=hr_officer_email,
                     password_hash=hash_password(hr_officer_password),
-                    role=UserRole.hr_officer,
+                    role=UserRole.employee,
                     short_id="HROFF001",
                     full_name="HostFlow HR Officer",
                     tenant_id=DEFAULT_TENANT_ID,
                     is_active=True,
+                    preferences={"preset_id": "hr"},
                 )
                 session.add(hr_officer)
             else:
                 hr_officer.password_hash = hash_password(hr_officer_password)
-                hr_officer.role = UserRole.hr_officer
+                hr_officer.role = UserRole.employee
                 hr_officer.short_id = hr_officer.short_id or "HROFF001"
                 hr_officer.full_name = hr_officer.full_name or "HostFlow HR Officer"
                 hr_officer.tenant_id = hr_officer.tenant_id or DEFAULT_TENANT_ID
                 hr_officer.is_active = True
+                prefs = dict(hr_officer.preferences or {})
+                prefs["preset_id"] = "hr"
+                hr_officer.preferences = prefs
 
             await session.flush()
 
@@ -457,9 +513,28 @@ async def _init_data() -> Dict[str, str]:
 
             await ensure_membership(admin.id, "administrator")
             await ensure_membership(viewer.id, "viewer")
-            await ensure_membership(supervisor.id, "supervisor")
-            await ensure_membership(recruiter.id, "recruiter")
-            await ensure_membership(hr_officer.id, "hr_officer")
+            await ensure_membership(supervisor.id, "employee")
+            await ensure_membership(recruiter.id, "employee")
+            await ensure_membership(hr_officer.id, "employee")
+
+            own_company_row = await session.execute(
+                sa.text("SELECT id FROM own_companies WHERE tenant_id = :tenant LIMIT 1"),
+                {"tenant": DEFAULT_TENANT_ID},
+            )
+            if own_company_row.scalar_one_or_none() is None:
+                await session.execute(
+                    sa.text(
+                        """
+                        INSERT INTO own_companies (id, tenant_id, name)
+                        VALUES (:id, :tenant_id, :name)
+                        """
+                    ),
+                    {
+                        "id": str(uuid.uuid4()),
+                        "tenant_id": DEFAULT_TENANT_ID,
+                        "name": "HostFlow Operating Co",
+                    },
+                )
 
             result = await session.execute(
                 sa.text(
@@ -472,12 +547,14 @@ async def _init_data() -> Dict[str, str]:
                 company_id = str(uuid.uuid4())
                 await session.execute(
                     sa.text(
-                        "INSERT INTO companies (id, tenant_id, name) VALUES (:id, :tenant_id, :name)"
+                        "INSERT INTO companies (id, tenant_id, name, party_entity_type) "
+                        "VALUES (:id, :tenant_id, :name, :party_entity_type)"
                     ),
                     {
                         "id": company_id,
                         "tenant_id": DEFAULT_TENANT_ID,
                         "name": "Test Logistics Sp. z o.o.",
+                        "party_entity_type": "company",
                     },
                 )
 
@@ -506,7 +583,8 @@ async def _init_data() -> Dict[str, str]:
                 {"tenant": DEFAULT_TENANT_ID},
             )
             candidate_id = candidate_row.scalar_one_or_none()
-            now = datetime.now(timezone.utc)
+            # Candidate.created_at/updated_at are naive UTC columns.
+            now = datetime.now(timezone.utc).replace(tzinfo=None).replace(tzinfo=None)
             if candidate_id is None:
                 candidate_id = str(uuid.uuid4())
                 await session.execute(
@@ -536,11 +614,40 @@ async def _init_data() -> Dict[str, str]:
                 )
 
             # Shared dev DB may seed tenant_licenses with finite caps; vacancy API then returns 402.
+            tenant_exists = await session.scalar(
+                sa.text("SELECT 1 FROM tenants WHERE id = :id"),
+                {"id": DEFAULT_TENANT_ID},
+            )
+            if tenant_exists is None:
+                await session.execute(
+                    sa.text(
+                        """
+                        INSERT INTO tenants (id, name, slug, api_key, is_active, type, status)
+                        VALUES (:id, :name, :slug, :api_key, TRUE, 'agency', 'active')
+                        ON CONFLICT (id) DO NOTHING
+                        """
+                    ),
+                    {
+                        "id": DEFAULT_TENANT_ID,
+                        "name": "HostFlow Test Tenant",
+                        "slug": "hostflow-test",
+                        "api_key": uuid.uuid4().hex[:32],
+                    },
+                )
+
             lic_row = await session.execute(
                 select(TenantLicense).where(TenantLicense.tenant_id == DEFAULT_TENANT_ID).limit(1)
             )
             lic = lic_row.scalar_one_or_none()
-            if lic is not None:
+            if lic is None:
+                session.add(
+                    TenantLicense(
+                        id=str(uuid.uuid4()),
+                        tenant_id=DEFAULT_TENANT_ID,
+                        plan="team",
+                    )
+                )
+            else:
                 lic.max_vacancies_active = 0
                 lic.max_candidates_active = 0
                 # Shared dev DB often exceeds finite document caps; access-policy tests must not flake on 402.

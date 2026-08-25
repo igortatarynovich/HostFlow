@@ -9,7 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.zus_workspace import (
     ZusWorkspaceTaskCreate,
@@ -22,13 +22,15 @@ from backend.app.services import workforce_zus_workspace as zus_svc
 
 router = APIRouter()
 
-HR_WORKSPACE_ROLES = (Role.hr_officer, Role.administrator, Role.supervisor)
+from backend.app.auth.trust_role_deps import TRUST_WRITE_ROLES, require_trust_write
+from backend.app.auth.module_gate import require_hr_workforce_module_access
+HR_WORKSPACE_ROLES = TRUST_WRITE_ROLES
 
 
 @router.get(
     "/tasks",
     response_model=ZusWorkspaceTaskPageOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def list_zus_workspace_tasks(
     status: Optional[str] = Query(None, max_length=32),
@@ -70,7 +72,7 @@ async def list_zus_workspace_tasks(
     "/tasks",
     response_model=ZusWorkspaceTaskOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def create_zus_workspace_task(
     payload: ZusWorkspaceTaskCreate,
@@ -103,7 +105,7 @@ async def create_zus_workspace_task(
 @router.patch(
     "/tasks/{task_id}",
     response_model=ZusWorkspaceTaskOut,
-    dependencies=[Depends(require_roles(*HR_WORKSPACE_ROLES))],
+    dependencies=[Depends(require_trust_write()), Depends(require_hr_workforce_module_access)],
 )
 async def patch_zus_workspace_task(
     task_id: str,

@@ -23,13 +23,14 @@ import {
   resolveNotificationOpenPath,
 } from '../../utils/resolveNotificationOpenPath'
 import {
+  executeWorkspaceCommand,
   listCommunicationThreads,
-  markCommunicationThreadRead,
   reconcileCommunicationThreadUnread,
   type CommunicationThread,
 } from '../../api/communications'
 import { useToast } from '../Toast'
 import { useCommunicationsAccess } from '../../hooks/useCommunicationsAccess'
+import { canUseTeamAssigneeScope } from '../../auth/trustRoles'
 import { usePermissions } from '../../hooks/usePermissions'
 import { searchGlobal, type GlobalSearchResult } from '../../api/search'
 import { useI18n } from '../../i18n'
@@ -111,6 +112,11 @@ function filterUnreadThreadsForUser(
     if (isEmailThread(th)) return canUseCommunicationsFeature('email')
     return canUseCommunicationsFeature('messages')
   })
+}
+
+function isHttpForbidden(err: unknown): boolean {
+  const status = (err as { response?: { status?: number } } | null)?.response?.status
+  return status === 403
 }
 
 function computeBellAttentionCount(items: NotificationItem[], pendingHandoffsCount: number): number {
@@ -203,8 +209,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const pendingHandoffsRef = useRef(pendingHandoffsCount)
   pendingHandoffsRef.current = pendingHandoffsCount
   const canSearchTeamReminders = useMemo(() => {
-    const r = String(me?.role || '').trim().toLowerCase()
-    return ['administrator', 'supervisor', 'superadmin', 'admin', 'manager'].includes(r)
+    return canUseTeamAssigneeScope({ role: me?.role })
   }, [me?.role])
   const canInboxDeepLink = useMemo(
     () => canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email'),
@@ -212,6 +217,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   )
   const [commPollKey, setCommPollKey] = useState(0)
   const [reminderDuePopup, setReminderDuePopup] = useState<NotificationItem | null>(null)
+  const commsForbiddenRef = useRef(false)
 
   // Severity / SLA / requires-action ranking used to sort drawer rows; that policy now lives
   // on the Notification Center page (ADR-012). Drawer renders newest-first only — see
@@ -257,6 +263,11 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     if (eventType === 'intake_client_lead_skipped_no_company') {
       return t('app.notifications.intake_client_lead_skipped_no_company_title')
     }
+    if (eventType === 'intake.questionnaire.submitted') {
+      return t('app.notifications.intake_questionnaire_submitted_title', {
+        defaultValue: 'Клиент заполнил анкету',
+      })
+    }
     if (typeof item.payload?.title === 'string' && item.payload.title.trim()) {
       return maybeTranslateKey(item.payload.title)
     }
@@ -280,7 +291,17 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
         values: { name: String(payload.candidate_name || '').trim() || '—' },
       })
     }
-    const raw = String(payload.description || '').trim()
+    if (eventType === 'intake.questionnaire.submitted') {
+      const line = String(payload.description || payload.body || '').trim()
+      if (line) return line
+      const contact = String(payload.contact_name || '').trim() || '—'
+      const company = String(payload.company_name || '').trim() || '—'
+      return t('app.notifications.intake_questionnaire_submitted_desc', {
+        defaultValue: '{contact} — {company}',
+        values: { contact, company },
+      })
+    }
+    const raw = String(payload.description || payload.body || '').trim()
     if (!raw) return ''
     if (/^(app|common)\./.test(raw)) {
       const localized = t(raw as any, { defaultValue: '' })
@@ -388,14 +409,22 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
 
     const fetchCount = async () => {
       try {
-        try {
-          await reconcileCommunicationThreadUnread({ limit: 5000 })
-        } catch {
-          // keep polling even when reconcile is temporarily unavailable
+        const canPollComms = canInboxDeepLink && !commsForbiddenRef.current
+        if (canPollComms) {
+          try {
+            await reconcileCommunicationThreadUnread({ limit: 5000 })
+          } catch (err) {
+            if (isHttpForbidden(err)) commsForbiddenRef.current = true
+          }
         }
         const [notifData, commData] = await Promise.all([
           listNotifications({ includeRead: false, limit: 100, scope: 'direct' }) as Promise<NotificationListResponse>,
-          listCommunicationThreads({ limit: 500 }).catch(() => ({ items: [], total: 0 })),
+          canPollComms && !commsForbiddenRef.current
+            ? listCommunicationThreads({ limit: 500 }).catch((err) => {
+                if (isHttpForbidden(err)) commsForbiddenRef.current = true
+                return { items: [], total: 0 }
+              })
+            : Promise.resolve({ items: [], total: 0 }),
         ])
         const data = notifData
         if (!cancelled) {
@@ -452,7 +481,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [can, canUseCommunicationsFeature, commPollKey, notify, t])
+  }, [can, canInboxDeepLink, canUseCommunicationsFeature, commPollKey, notify, t])
 
   useEffect(() => {
     setBellAttentionCount(
@@ -498,9 +527,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     if (can('services.view')) {
       items.push({ key: 'orders', labelKey: 'app.nav.items.orders', path: CRM_APP_PATHS.orders })
       items.push({ key: 'invoices', labelKey: 'app.nav.items.invoices', path: CRM_APP_PATHS.invoices })
-    }
-    if (can('leads.view')) {
-      items.push({ key: 'leads', labelKey: 'app.nav.items.leads', path: CRM_APP_PATHS.leads })
     }
     if (can('documents.manage')) {
       items.push({ key: 'documents', labelKey: 'app.nav.items.documents', path: CRM_APP_PATHS.documents })
@@ -597,7 +623,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
 
   const dismissThread = async (threadId: string) => {
     try {
-      await markCommunicationThreadRead(threadId)
+      await executeWorkspaceCommand(threadId, 'MarkThreadRead')
       setPanelThreads((prev) => prev.filter((t) => t.id !== threadId))
       setCommPollKey((k) => k + 1)
     } catch {
@@ -609,7 +635,9 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     const threadsSnap = [...panelThreads]
     try {
       await markNotificationsRead({ markAll: true })
-      await Promise.all(threadsSnap.map((th) => markCommunicationThreadRead(th.id).catch(() => {})))
+      await Promise.all(
+        threadsSnap.map((th) => executeWorkspaceCommand(th.id, 'MarkThreadRead').catch(() => {})),
+      )
       setPanelThreads([])
       setNotifItems([])
       lastUnreadNotificationsRef.current = []

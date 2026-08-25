@@ -2,9 +2,8 @@
 //
 // The full filters toolbar shown above the Candidates table:
 //   1. Free-text search input
-//   2. Quick-views bar (saved views, favourite, doc-status pills)
-//   3. Three quick-filter dropdowns (stage / manager / vacancy)
-//   4. <FilterBadges /> strip (only when at least one filter is active)
+//   2. Quick-views bar (hidden when work-panel rail is open — rail owns those controls)
+//   3. <FilterBadges /> strip (only when at least one filter is active)
 //
 // Extracted from `src/pages/Candidates.tsx` (Phase 1 #4 god-component
 // split) — about 150 LOC of JSX moved here behind a single `ctx` prop
@@ -55,6 +54,9 @@ export interface CandidatesFiltersToolbarProps {
   savedViews: UserSavedView[]
   applyView: (view: UserSavedView) => void
   deleteView: (id: string) => void | Promise<void>
+
+  /** Hide quick-view chips / saved views (shown in the work-panel rail instead). */
+  hideQuickViews?: boolean
 
   // ---- quick-filter selects ------------------------------------------
   stageOptions: string[]
@@ -133,6 +135,7 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
     quickDocFilters, quickFiltersExpanded,
     toggleQuickDocFilter, setQuickFiltersExpanded,
     operationalChips,
+    hideQuickViews = false,
     savedViews, applyView, deleteView,
     stageOptions: _stageOptions,
     stageLabelMap,
@@ -167,7 +170,7 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
   } = props
 
   return (
-    <div className="mx-4 mb-1.5 shrink-0 rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-2.5 shadow-sm">
+    <div className="mx-4 mb-2 shrink-0 rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-3 shadow-sm">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <input
           id="candidates-search"
@@ -179,27 +182,29 @@ export function CandidatesFiltersToolbar(props: CandidatesFiltersToolbarProps) {
           autoComplete="off"
           aria-label={t('app.candidates.search.label')}
         />
-        <CandidatesQuickViewsBar
-          variant="tableToolbar"
-          t={t}
-          quickViewParam={quickViewParam}
-          onApplyQuickViewFilters={(key) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            void applyQuickViewFilters(key as any, { syncUrl: true })
-          }}
-          isFavoriteFilter={isFavoriteFilter}
-          onFavoriteFilterToggle={() => setIsFavoriteFilter((prev) => (prev === true ? null : true))}
-          quickDocFilters={quickDocFilters}
-          quickFiltersExpanded={quickFiltersExpanded}
-          onToggleQuickDocFilter={toggleQuickDocFilter}
-          onQuickFiltersExpandedChange={setQuickFiltersExpanded}
-          operationalChips={operationalChips}
-          savedViews={savedViews}
-          onApplySavedView={applyView}
-          onDeleteSavedView={(id) => {
-            void deleteView(id)
-          }}
-        />
+        {!hideQuickViews ? (
+          <CandidatesQuickViewsBar
+            variant="tableToolbar"
+            t={t}
+            quickViewParam={quickViewParam}
+            onApplyQuickViewFilters={(key) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              void applyQuickViewFilters(key as any, { syncUrl: true })
+            }}
+            isFavoriteFilter={isFavoriteFilter}
+            onFavoriteFilterToggle={() => setIsFavoriteFilter((prev) => (prev === true ? null : true))}
+            quickDocFilters={quickDocFilters}
+            quickFiltersExpanded={quickFiltersExpanded}
+            onToggleQuickDocFilter={toggleQuickDocFilter}
+            onQuickFiltersExpandedChange={setQuickFiltersExpanded}
+            operationalChips={operationalChips}
+            savedViews={savedViews}
+            onApplySavedView={applyView}
+            onDeleteSavedView={(id) => {
+              void deleteView(id)
+            }}
+          />
+        ) : null}
       </div>
       {hasFilterBadges ? (
         <div className="mt-2 border-t border-slate-200/90 pt-2">

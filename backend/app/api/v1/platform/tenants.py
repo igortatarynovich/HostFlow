@@ -376,6 +376,7 @@ async def update_platform_tenant_module_matrix(
             tenant,
             updates,  # type: ignore[arg-type]
             actor_id=ctx.sub,
+            actor_is_superadmin=True,
         )
     return platform_schemas.TenantRoleModuleMatrix.model_validate(matrix)
 
@@ -806,14 +807,25 @@ async def change_status(
 )
 async def impersonate_tenant(
     tenant_id: UUID,
+    payload: platform_schemas.TenantImpersonationIn,
     ctx: UserCtx = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> platform_schemas.TenantImpersonationOut:
+    from backend.app.security.canonical_emit import emit_security_event_v1
+    from backend.app.security.constants import IMPERSONATION_TTL_MINUTES
+    from backend.app.security.event_taxonomy import EVENT_SUPERADMIN_IMPERSONATION_STARTED
+
     tenant = await tenant_service.get_tenant(db, str(tenant_id))
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
+    reason = (payload.reason or "").strip()
+    if len(reason) < 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="reason is required for impersonation (min 3 characters)",
+        )
     now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(minutes=30)
+    expires_at = now + timedelta(minutes=IMPERSONATION_TTL_MINUTES)
     token_payload = {
         "sub": ctx.sub,
         "email": ctx.email,
@@ -825,4 +837,29 @@ async def impersonate_tenant(
         "exp": int(expires_at.timestamp()),
     }
     token = encode_jwt(token_payload)
+    emit_security_event_v1(
+        event_type=EVENT_SUPERADMIN_IMPERSONATION_STARTED,
+        result="success",
+        severity="medium",
+        source="http:platform.tenants.impersonate",
+        tenant_id=str(tenant_id),
+        actor_id=str(ctx.sub),
+        access_kind="superadmin_elevated",
+        entity_type="tenant",
+        entity_id=str(tenant_id),
+        extra={
+            "elevated_reason": reason,
+            "ttl_minutes": IMPERSONATION_TTL_MINUTES,
+            "expires_at": expires_at.isoformat(),
+            "platform_tenant_id": str(ctx.tenant_id) if ctx.tenant_id else None,
+        },
+        extra_allowlist=frozenset(
+            {
+                "elevated_reason",
+                "ttl_minutes",
+                "expires_at",
+                "platform_tenant_id",
+            }
+        ),
+    )
     return platform_schemas.TenantImpersonationOut(token=token, expires_at=expires_at)

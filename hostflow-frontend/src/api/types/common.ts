@@ -12,6 +12,12 @@ export interface WhoAmI {
   role: 'admin' | 'manager' | 'user' | string;
   tenant_id: string;
   sub?: string;
+  /** ADR-036: tenant | portal (orthogonal to role). May also live under preferences. */
+  access_context?: 'tenant' | 'portal' | string | null;
+  /** Phase 5 — `impersonation` when JWT type=impersonation; else `normal`. */
+  session_kind?: 'normal' | 'impersonation' | string;
+  impersonated_by?: string | null;
+  exp?: number | null;
   first_name?: string | null;
   last_name?: string | null;
   full_name?: string | null;
@@ -23,6 +29,8 @@ export interface WhoAmI {
   avatar_url?: string | null;
   preferences?: Record<string, any> | null;
   security?: Record<string, any> | null;
+  memberships?: Array<{ tenant_id?: string; role?: string }> | null;
+  is_solo_admin?: boolean;
 }
 
 /** Структурный адрес */

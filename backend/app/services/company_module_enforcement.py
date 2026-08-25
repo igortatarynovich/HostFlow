@@ -30,6 +30,51 @@ async def _load_company(db: AsyncSession, tenant_id: str, company_id: str) -> Op
     return r.scalar_one_or_none()
 
 
+async def assert_hr_for_company_scope(
+    db: AsyncSession,
+    tenant_id: str,
+    company_id: Optional[str],
+) -> None:
+    """HR workforce/handoff operations require HR module on tenant + company scope."""
+    tenant = await _load_tenant(db, tenant_id)
+    company: Optional[Company] = None
+    if company_id:
+        company = await _load_company(db, tenant_id, str(company_id).strip())
+        if company is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+    if not company_allows_module(tenant, company, "hr"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "HR module is disabled for this company"
+                if company_id
+                else "HR module is not enabled for this workspace"
+            ),
+        )
+
+
+async def assert_hr_for_candidate(
+    db: AsyncSession,
+    tenant_id: str,
+    candidate: Candidate,
+) -> None:
+    """Resolve owning company from candidate (direct or via vacancy) and enforce HR access."""
+    cid = candidate.company_id
+    if cid:
+        await assert_hr_for_company_scope(db, tenant_id, str(cid))
+        return
+    vid = candidate.vacancy_id
+    if vid:
+        r = await db.execute(
+            select(Vacancy.company_id).where(Vacancy.id == vid, Vacancy.tenant_id == tenant_id).limit(1)
+        )
+        vc = r.scalar_one_or_none()
+        if vc:
+            await assert_hr_for_company_scope(db, tenant_id, str(vc))
+            return
+    await assert_hr_for_company_scope(db, tenant_id, None)
+
+
 async def assert_recruitment_for_company_scope(
     db: AsyncSession,
     tenant_id: str,

@@ -2,10 +2,20 @@ import type { ComponentType } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import type { Permission } from '../hooks/usePermissions'
 import CommunicationsFeatureGate from '../components/communications/CommunicationsFeatureGate'
+import { LeadWorkspaceRedirect, LeadsIndexRedirect } from '../pages/LeadProductRedirectPages'
 import {
   AuditLogPage,
   AutomationsHubPage,
   AutomationLogPage,
+  AcquisitionActivityTimelinePage,
+  MarketingCampaignsPage,
+  MarketingCampaignSetupPage,
+  MarketingConnectSourcePage,
+  MarketingCampaignDetailPage,
+  MarketingSourcesPage,
+  MarketingSourceTestLeadPage,
+  MarketingSourceMappingPage,
+  MarketingDiagnosticsPage,
   AutomationRulesPage,
   BillingWorkspacePage,
   CandidateCard,
@@ -24,6 +34,10 @@ import {
   CommunicationsSlaIncidentsPage,
   NotificationAlertsPage,
   CommunicationsSlaSettingsPage,
+  CommunicationTemplatesPage,
+  CommunicationAutomationRulesPage,
+  LeadLifecycleEmailSettingsPage,
+  CommunicationCampaignsPage,
   CommunicationsThreadPage,
   Companies,
   CompanyAccessPage,
@@ -32,7 +46,6 @@ import {
   DeletionRequestsPage,
   DocumentTypesPage,
   DocumentsHubPage,
-  DoProcesowaniaPage,
   EmailSettingsPage,
   FleetModulePage,
   FunnelsPage,
@@ -51,13 +64,12 @@ import {
   InvoiceCreatePage,
   InvoiceDetailPage,
   InvoicesPage,
-  LeadDetailPage,
-  LeadsPage,
   LeadsDistributionPage,
   LeadsDistributionRulesPage,
   LegalDocumentsPage,
   LeadFormsSettingsPage,
   IntakeFormDetailPage,
+  FormsBuilderPage,
   LeadMessageTemplatesPage,
   IntegrationsHubPage,
   IntegrationsSourcePlaceholderPage,
@@ -76,11 +88,18 @@ import {
   TimeOffRequestsPage,
   TtvReportPage,
   UsersPage,
+  RolesAccessPage,
   Vacancies,
   VacancyDetailRoute,
   WorkHubPage,
 } from './appRoutePages'
 import { CRM_APP_PATHS, crmAppRouteSegment } from './crmAppPaths'
+import { SALES_HOME_PATH } from './salesPaths'
+import { RECRUITMENT_INBOX_PATH } from './recruitmentInboxPaths'
+import EntityListShellDemoPage from '../pages/dev/EntityListShellDemoPage'
+import LaunchpadPage from '../pages/LaunchpadPage'
+import SearchesListPage from '../pages/recruitment/SearchesListPage'
+import ClientChannelsListPage from '../pages/client-acquisition/ClientChannelsListPage'
 
 const seg = crmAppRouteSegment
 const CRM = CRM_APP_PATHS
@@ -100,6 +119,25 @@ function RedirectLeadConversionFunnelToInsights() {
 /** §2.17.14 SSOT: `settingsLeads` is an alias; canonical Meta / lead-source admin is `settingsIntegrationsMeta`. */
 function LegacySettingsLeadsToMetaRedirect() {
   return <Navigate to={CRM.settingsIntegrationsMeta} replace />
+}
+
+function SettingsLeadFormsListRedirect() {
+  return <Navigate to={CRM.marketingForms} replace />
+}
+
+function SettingsLeadFormDetailRedirect() {
+  const { formId } = useParams()
+  return <Navigate to={`${CRM.marketingForms}/${encodeURIComponent(String(formId || ''))}`} replace />
+}
+
+function SettingsLeadFormBuilderRedirect() {
+  const { formId } = useParams()
+  return (
+    <Navigate
+      to={`${CRM.marketingForms}/${encodeURIComponent(String(formId || ''))}/builder`}
+      replace
+    />
+  )
 }
 
 function ClientsRootRedirect() {
@@ -144,6 +182,7 @@ export type NavItem = {
 }
 
 export const NAV_ITEMS: NavItem[] = [
+  { key: 'launchpad', labelKey: 'app.nav.items.launchpad', path: CRM.launchpad, group: 'overview' },
   { key: 'overview', labelKey: 'app.nav.items.overview', path: CRM.overview, group: 'overview' },
   { key: 'work-hub', labelKey: 'app.nav.items.work', path: CRM.work, group: 'people' },
   {
@@ -152,6 +191,62 @@ export const NAV_ITEMS: NavItem[] = [
     path: CRM.hr,
     group: 'people',
     permission: 'workforce.view',
+  },
+  {
+    key: 'recruitment-searches',
+    labelKey: 'app.nav.items.recruitment_searches',
+    path: CRM.recruitmentSearches,
+    group: 'people',
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'recruitment-inbox',
+    labelKey: 'app.nav.items.recruitment_inbox',
+    path: RECRUITMENT_INBOX_PATH,
+    group: 'people',
+    permission: 'leads.view',
+  },
+  {
+    key: 'sales',
+    labelKey: 'app.nav.items.sales',
+    path: SALES_HOME_PATH,
+    group: 'people',
+    permission: 'companies.view',
+  },
+  {
+    key: 'marketing',
+    labelKey: 'app.nav.items.marketing',
+    path: CRM.marketing,
+    group: 'people',
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-sources',
+    labelKey: 'app.nav.items.marketing_sources',
+    path: CRM.marketingSources,
+    group: 'people',
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-forms',
+    labelKey: 'app.nav.items.marketing_forms',
+    path: CRM.marketingForms,
+    group: 'people',
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-diagnostics',
+    labelKey: 'app.nav.items.marketing_diagnostics',
+    path: CRM.marketingDiagnostics,
+    group: 'people',
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'client-acquisition-channels',
+    labelKey: 'app.nav.items.client_acquisition',
+    path: CRM.clientAcquisitionChannels,
+    group: 'people',
+    permission: 'companies.view',
   },
   {
     key: 'candidates',
@@ -178,13 +273,6 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'clients',
     labelKey: 'app.nav.items.clients',
     path: CRM.clientsDirectory,
-    group: 'people',
-    permission: 'companies.view',
-  },
-  {
-    key: 'do-procesowania',
-    labelKey: 'app.nav.items.do_procesowania',
-    path: CRM.procesowani,
     group: 'people',
     permission: 'companies.view',
   },
@@ -229,6 +317,14 @@ export const NAV_ITEMS: NavItem[] = [
     path: CRM.automationLog,
     group: 'workflows',
     permission: 'notifications.view',
+  },
+  {
+    key: 'acquisition-activity',
+    labelKey: 'app.nav.items.acquisition_activity',
+    path: CRM.acquisitionActivity,
+    group: 'workflows',
+    /** Aligns with Acquisition campaign/timeline read surface (API enforces Role set). */
+    permission: 'vacancies.view',
   },
   {
     key: 'service-orders',
@@ -491,6 +587,34 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'admin.users',
   },
   {
+    key: 'settings-communications-templates',
+    labelKey: 'app.nav.items.settings_communications_templates',
+    path: CRM.settingsCommunicationsTemplates,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
+    key: 'settings-communications-automation',
+    labelKey: 'app.nav.items.settings_communications_automation',
+    path: CRM.settingsCommunicationsAutomation,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
+    key: 'settings-communications-lead-lifecycle-email',
+    labelKey: 'app.nav.items.settings_communications_lead_lifecycle_email',
+    path: CRM.settingsCommunicationsLeadLifecycleEmail,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
+    key: 'settings-communications-campaigns',
+    labelKey: 'app.nav.items.settings_communications_campaigns',
+    path: CRM.settingsCommunicationsCampaigns,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
     key: 'settings-ruleset',
     labelKey: 'app.nav.items.settings_ruleset',
     path: CRM.settingsRuleset,
@@ -510,7 +634,7 @@ export const NAV_ITEMS: NavItem[] = [
 
 const PipelineRedirect = () => <Navigate to="candidates?view=kanban" replace />
 const NotFoundRedirect = () => <Navigate to="overview" replace />
-const LegacyDoProcesowaniaRedirect = () => <Navigate to="../procesowani" replace />
+const ProcesowaniRetiredRedirect = () => <Navigate to={CRM.candidates} replace />
 const LegacyCommunicationsRedirect = () => <Navigate to="../settings/communications" replace />
 const LegacyRemindersRedirect = () => <Navigate to="../tasks" replace />
 const LegacyActivitiesRedirect = () => <Navigate to="../tasks" replace />
@@ -561,6 +685,7 @@ export type AppRouteConfig = {
 }
 
 export const APP_ROUTES: AppRouteConfig[] = [
+  { key: 'launchpad', path: seg(CRM.launchpad), Component: LaunchpadPage },
   { key: 'overview', path: seg(CRM.overview), Component: Dashboard },
   {
     key: 'analytics',
@@ -576,6 +701,18 @@ export const APP_ROUTES: AppRouteConfig[] = [
   },
   /** Rendered under nested `path="work"` + index in `App.tsx` (`WorkAreaLayout` + `<Outlet />`). Kept here for nav/permission scripts. */
   { key: 'work', path: seg(CRM.work), Component: WorkHubPage },
+  {
+    key: 'recruitment-searches',
+    path: seg(CRM.recruitmentSearches),
+    Component: SearchesListPage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'client-acquisition-channels',
+    path: seg(CRM.clientAcquisitionChannels),
+    Component: ClientChannelsListPage,
+    permission: 'companies.view',
+  },
   { key: 'my-company', path: seg(CRM.myCompany), Component: MyCompanyPage, permission: 'companies.view' },
   { key: 'my-company-detail', path: `${seg(CRM.myCompany)}/:id`, Component: Companies, permission: 'companies.view' },
   { key: 'my-company-tab', path: `${seg(CRM.myCompany)}/:id/:tab`, Component: Companies, permission: 'companies.view' },
@@ -593,8 +730,8 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'clients-directory', path: seg(CRM.clientsDirectory), Component: Companies, permission: 'companies.view' },
   { key: 'clients', path: seg(CRM.agencyClients), Component: ClientsRootRedirect, permission: 'companies.view' },
   { key: 'client-link-detail', path: `${seg(CRM.clientsLinkBase)}/:linkId`, Component: ClientLinkDetailRedirect, permission: 'companies.view' },
-  { key: 'procesowani', path: seg(CRM.procesowani), Component: DoProcesowaniaPage, permission: 'companies.view' },
-  { key: 'do-procesowania-legacy', path: seg(CRM.doProcesowaniaLegacy), Component: LegacyDoProcesowaniaRedirect, permission: 'companies.view' },
+  { key: 'procesowani', path: seg(CRM.procesowani), Component: ProcesowaniRetiredRedirect, permission: 'companies.view' },
+  { key: 'do-procesowania-legacy', path: seg(CRM.doProcesowaniaLegacy), Component: ProcesowaniRetiredRedirect, permission: 'companies.view' },
   { key: 'client-detail', path: `${seg(CRM.agencyClients)}/:id`, Component: Companies, permission: 'companies.view' },
   { key: 'client-tab', path: `${seg(CRM.agencyClients)}/:id/:tab`, Component: Companies, permission: 'companies.view' },
   { key: 'company-detail-legacy', path: `${seg(CRM.companiesLegacy)}/:id`, Component: LegacyCompanyDetailRedirect, permission: 'companies.view' },
@@ -672,14 +809,93 @@ export const APP_ROUTES: AppRouteConfig[] = [
     Component: LeadsDistributionPage,
     permission: 'leads.view',
   },
-  { key: 'lead-detail', path: `${seg(CRM.leads)}/:leadId`, Component: LeadDetailPage, permission: 'leads.view' },
-  { key: 'leads', path: seg(CRM.leads), Component: LeadsPage, permission: 'leads.view' },
+  { key: 'lead-detail', path: `${seg(CRM.leads)}/:leadId`, Component: LeadWorkspaceRedirect, permission: 'leads.view' },
+  { key: 'leads', path: seg(CRM.leads), Component: LeadsIndexRedirect, permission: 'leads.view' },
   { key: 'automations', path: seg(CRM.automations), Component: AutomationsHubPage, permission: 'notifications.view' },
   { key: 'automation-log', path: seg(CRM.automationLog), Component: AutomationLogPage, permission: 'notifications.view' },
+  {
+    key: 'acquisition-activity',
+    path: seg(CRM.acquisitionActivity),
+    Component: AcquisitionActivityTimelinePage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-source-mapping',
+    path: `${seg(CRM.marketingSources)}/:sourceId/mapping`,
+    Component: MarketingSourceMappingPage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-source-test-lead',
+    path: `${seg(CRM.marketingSources)}/:sourceId/test-lead`,
+    Component: MarketingSourceTestLeadPage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-sources',
+    path: seg(CRM.marketingSources),
+    Component: MarketingSourcesPage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-diagnostics-case',
+    path: `${seg(CRM.marketingDiagnostics)}/:leadId`,
+    Component: MarketingDiagnosticsPage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-diagnostics',
+    path: seg(CRM.marketingDiagnostics),
+    Component: MarketingDiagnosticsPage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-forms',
+    path: seg(CRM.marketingForms),
+    Component: LeadFormsSettingsPage,
+    permission: ['admin.users', 'leads.view', 'vacancies.view'],
+  },
+  {
+    key: 'marketing-forms-builder',
+    path: `${seg(CRM.marketingForms)}/:formId/builder`,
+    Component: FormsBuilderPage,
+    permission: ['admin.users', 'leads.view', 'vacancies.view'],
+  },
+  {
+    key: 'marketing-form-detail',
+    path: `${seg(CRM.marketingForms)}/:formId`,
+    Component: IntakeFormDetailPage,
+    permission: ['admin.users', 'leads.view', 'vacancies.view'],
+  },
+  {
+    key: 'marketing-new',
+    path: seg(CRM.marketingNew),
+    Component: MarketingCampaignSetupPage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-connect-source',
+    path: `${seg(CRM.marketing)}/:campaignId/sources/new`,
+    Component: MarketingConnectSourcePage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing-detail',
+    path: `${seg(CRM.marketing)}/:campaignId`,
+    Component: MarketingCampaignDetailPage,
+    permission: 'vacancies.view',
+  },
+  {
+    key: 'marketing',
+    path: seg(CRM.marketing),
+    Component: MarketingCampaignsPage,
+    permission: 'vacancies.view',
+  },
   { key: 'automation-rules', path: seg(CRM.automationRules), Component: AutomationRulesPage, permission: 'notifications.view' },
   { key: 'pipeline', path: seg(CRM.pipeline), Component: PipelineRedirect, permission: 'candidates.pipeline' },
   { key: 'settings', path: seg(CRM.settings), Component: SettingsLandingPage, permission: 'settings.view' },
   { key: 'settings-users', path: seg(CRM.settingsUsers), Component: UsersPage, permission: ['admin.users', 'users.manage', 'users.view'] },
+  { key: 'settings-roles-access', path: seg(CRM.settingsTeam), Component: RolesAccessPage, permission: 'admin.users' },
   { key: 'settings-billing', path: seg(CRM.settingsBilling), Component: BillingWorkspacePage, permission: 'admin.users' },
   { key: 'settings-tenants', path: seg(CRM.settingsTenants), Component: TenantsPage, permission: 'admin.companyAcl' },
   { key: 'settings-docs', path: seg(CRM.settingsDocs), Component: DocumentTypesPage, permission: 'documents.manage' },
@@ -708,13 +924,19 @@ export const APP_ROUTES: AppRouteConfig[] = [
   {
     key: 'settings-lead-forms',
     path: seg(CRM.settingsLeadForms),
-    Component: LeadFormsSettingsPage,
+    Component: SettingsLeadFormsListRedirect,
+    permission: ['admin.users', 'leads.view'],
+  },
+  {
+    key: 'settings-forms-builder',
+    path: `${seg(CRM.settingsLeadForms)}/:formId/builder`,
+    Component: SettingsLeadFormBuilderRedirect,
     permission: ['admin.users', 'leads.view'],
   },
   {
     key: 'settings-intake-form-detail',
     path: `${seg(CRM.settingsLeadForms)}/:formId`,
-    Component: IntakeFormDetailPage,
+    Component: SettingsLeadFormDetailRedirect,
     permission: ['admin.users', 'leads.view'],
   },
   {
@@ -734,6 +956,10 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'settings-communications-messengers', path: seg(CRM.settingsCommunicationsMessengers), Component: withCommFeature(CommunicationsMessengerSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-communications-queue', path: seg(CRM.settingsCommunicationsQueue), Component: withCommFeature(CommunicationsQueueSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-communications-sla', path: seg(CRM.settingsCommunicationsSla), Component: withCommFeature(CommunicationsSlaSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
+  { key: 'settings-communications-templates', path: seg(CRM.settingsCommunicationsTemplates), Component: withCommFeature(CommunicationTemplatesPage, 'communicationsAdmin'), permission: 'admin.users' },
+  { key: 'settings-communications-automation', path: seg(CRM.settingsCommunicationsAutomation), Component: withCommFeature(CommunicationAutomationRulesPage, 'communicationsAdmin'), permission: 'admin.users' },
+  { key: 'settings-communications-lead-lifecycle-email', path: seg(CRM.settingsCommunicationsLeadLifecycleEmail), Component: withCommFeature(LeadLifecycleEmailSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
+  { key: 'settings-communications-campaigns', path: seg(CRM.settingsCommunicationsCampaigns), Component: withCommFeature(CommunicationCampaignsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-tenant-links', path: seg(CRM.settingsTenantLinks), Component: TenantLinksSettingsPage, permission: 'admin.users' },
   {
     key: 'settings-integrations',
@@ -819,5 +1045,14 @@ export const APP_ROUTES: AppRouteConfig[] = [
     Component: HrHandoffDetailPage,
     permission: 'workforce.view',
   },
+  ...(import.meta.env.DEV
+    ? [
+        {
+          key: 'dev-entity-list-shell',
+          path: 'dev/entity-list-shell',
+          Component: EntityListShellDemoPage,
+        },
+      ]
+    : []),
   { key: 'not-found', path: '*', Component: NotFoundRedirect },
 ]

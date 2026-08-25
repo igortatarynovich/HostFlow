@@ -7,6 +7,8 @@
 
 **Related:** [ADR-013-public-intake-strategy.md](../architecture/ADR-013-public-intake-strategy.md), [lead-intake-conversion-flow-audit.md](lead-intake-conversion-flow-audit.md), [lead-intake-resolution-and-activity-continuity.md](lead-intake-resolution-and-activity-continuity.md) §8 (incl. **§8.0.1 Lead-stage RODO**).
 
+**Filled example:** [ingestion-contract-public-intake.md](ingestion-contract-public-intake.md) (public candidate form, ADR-013 Decision 2).
+
 ---
 
 ## 1. Channel

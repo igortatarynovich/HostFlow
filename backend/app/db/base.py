@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys as _sys
+
 import sqlalchemy.orm as sa_orm
 
 if not hasattr(sa_orm, "Mapped"):  # pragma: no cover - SQLAlchemy < 1.4.30
@@ -26,6 +28,21 @@ except ImportError:  # pragma: no cover - SQLAlchemy < 2.0 compatibility
 
     Base = declarative_base()
 
+
+# Under the uvicorn /app/backend → /app symlink, `app.db.base` and
+# `backend.app.db.base` can otherwise become two module objects (two Bases).
+# Collapse them BEFORE any model import so FKs across absolute/relative imports
+# resolve (e.g. lead_questionnaire_invites.lead_id → leads).
+_this_base_module = _sys.modules[__name__]
+_db_pkg = _sys.modules.get(__name__.rsplit(".", 1)[0])  # app.db or backend.app.db
+if __name__ == "app.db.base":
+    if _db_pkg is not None:
+        _sys.modules.setdefault("backend.app.db", _db_pkg)
+    _sys.modules.setdefault("backend.app.db.base", _this_base_module)
+elif __name__ == "backend.app.db.base":
+    if _db_pkg is not None:
+        _sys.modules.setdefault("app.db", _db_pkg)
+    _sys.modules.setdefault("app.db.base", _this_base_module)
 
 
 # Подтягиваем модели, чтобы Alembic видел таблицы через Base.metadata

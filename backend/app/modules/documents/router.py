@@ -48,7 +48,8 @@ from backend.app.security.event_taxonomy import (
     EVENT_EXPORT_REQUESTED,
 )
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
@@ -149,7 +150,11 @@ from .document_visibility_and_locks import (
 )
 from .validators import validate_meta
 
-router = APIRouter(prefix="/db", tags=["documents"])
+router = APIRouter(
+    prefix="/db",
+    tags=["documents"],
+    dependencies=[Depends(get_current_user)],
+)
 logger = logging.getLogger(__name__)
 
 
@@ -2901,7 +2906,7 @@ async def api_get_ruleset_version(
 @router.post(
     "/ruleset/versions",
     response_model=RulesetVersionOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def api_create_ruleset_version(
     payload: Dict[str, Any] = Body(...),
@@ -2933,7 +2938,7 @@ async def api_create_ruleset_version(
 @router.post(
     "/ruleset/versions/{version_id}/activate",
     response_model=RulesetVersionOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def api_activate_ruleset_version(
     version_id: str = Path(..., description="Ruleset version identifier"),
@@ -2954,7 +2959,7 @@ async def api_activate_ruleset_version(
 @router.post(
     "/ruleset/versions/{version_id}/rollback",
     response_model=RulesetVersionOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def api_rollback_ruleset_version(
     version_id: str = Path(..., description="Ruleset version identifier"),
@@ -3078,7 +3083,7 @@ async def api_get_ruleset_diff(
 @router.get(
     "/ruleset/usage",
     response_model=RulesetUsageResponse,
-    dependencies=[Depends(require_roles(Role.supervisor, Role.administrator))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def api_list_ruleset_usage(
     used_in: Optional[str] = Query(
@@ -3129,7 +3134,7 @@ async def api_list_ruleset_usage(
 @router.patch(
     "/ruleset",
     response_model=RulesetVersionOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def api_update_ruleset(
     payload: Dict[str, Any] = Body(...),

@@ -89,8 +89,20 @@ COMPANY_ALIASES = (
     "компания - название",
     "компания—название",
     "компания — название",
+    "название_компании",
+    "название компании",
+    "название_фирмы",
+    "название фирмы",
     "работодатель",
     "employer",
+    # Meta Lead Ads (PL / common local labels)
+    "nazwa_firmy",
+    "nazwa firmy",
+    "nazwa_firmy?",
+    "firma",
+    "nazwa_przedsiębiorstwa",
+    "nazwa przedsiębiorstwa",
+    "nazwa_przedsiebiorstwa",
 )
 
 IN_POLAND_ALIASES = (
@@ -134,11 +146,109 @@ DRIVING_EXPERIENCE_ALIASES = (
     "опыт вождения",
 )
 
+# Meta Lead Ads custom questions that map into structured sales blocks.
+_SALES_CUSTOM_QUESTION_ALIASES = (
+    "kogo_obecnie_poszukujesz?",
+    "kogo_obecnie_poszukujesz",
+    "kogo obecnie poszukujesz?",
+    "kogo obecnie poszukujesz",
+    "whom_are_you_looking_for",
+    "who_are_you_looking_for",
+    "какая_цель_для_вас_сейчас_наиболее_актуальна?",
+    "какая_цель_для_вас_сейчас_наиболее_актуальна",
+    "czy_prowadzisz_obecnie_płatne_kampanie_reklamowe?",
+    "czy_prowadzisz_obecnie_płatne_kampanie_reklamowe",
+    "czy prowadzisz obecnie płatne kampanie reklamowe?",
+    "использовали_ли_вы_ранее_рекламу_у_блогеров?",
+    "использовали_ли_вы_ранее_рекламу_у_блогеров",
+    "чем_занимается_ваш_бизнес?",
+    "чем_занимается_ваш_бизнес",
+    "чем занимается ваш бизнес?",
+    "ссылка_на_instagram/сайт_вашего_бизнеса",
+    "ссылка_на_instagram/сайт_вашего_бизнеса?",
+    "website",
+    "site",
+    "instagram",
+)
+
+# B2B inquiry title fallback when no company name is present on the payload.
+B2B_INQUIRY_COMPANY_FALLBACK = "Компания"
+
 
 def _normalize_field_name(value: Any) -> str:
     if value is None:
         return ""
     return str(value).strip().lower()
+
+
+def _structured_field_alias_keys() -> Set[str]:
+    """Normalized Meta field names that map into structured lead fields."""
+    aliases: Iterable[str] = (
+        *PHONE_ALIASES,
+        *NAME_ALIASES,
+        *FIRST_NAME_ALIASES,
+        *LAST_NAME_ALIASES,
+        *COUNTRY_ALIASES,
+        *GEO_COUNTRY_ALIASES,
+        *CONTACT_ALIASES,
+        *COMPANY_ALIASES,
+        *IN_POLAND_ALIASES,
+        *POLAND_STAY_BASIS_ALIASES,
+        *DRIVING_EXPERIENCE_ALIASES,
+        *_SALES_CUSTOM_QUESTION_ALIASES,
+        "email",
+        "work_email",
+        "vacancy_id",
+        "vacancy",
+        "position_id",
+        "ad_id",
+        "adset_id",
+        "adgroup_id",
+    )
+    return {_normalize_field_name(item) for item in aliases if _normalize_field_name(item)}
+
+
+_STRUCTURED_FIELD_ALIAS_KEYS = _structured_field_alias_keys()
+
+
+def resolve_b2b_inquiry_company_name(
+    normalized: Optional[Dict[str, Any]] = None,
+    *,
+    lead_company_name: Optional[str] = None,
+    fallback: str = B2B_INQUIRY_COMPANY_FALLBACK,
+) -> str:
+    """B2B inquiry naming rules (Meta / Sales operator title).
+
+    Priority (first non-empty wins):
+    1. ``company_profile.name``
+    2. ``company_name``
+    3. ``company_name_hint``
+    4. Lead column ``company_name`` (caller-supplied)
+    5. Fallback literal (default ``Компания``)
+
+    Never invent a company title from contact first/last name alone.
+    """
+    data = normalized if isinstance(normalized, dict) else {}
+    profile = data.get("company_profile") if isinstance(data.get("company_profile"), dict) else {}
+    for candidate in (
+        profile.get("name"),
+        data.get("company_name"),
+        data.get("company_name_hint"),
+        lead_company_name,
+    ):
+        text = str(candidate or "").strip()
+        if text:
+            return text
+    return fallback
+
+
+def _is_additional_meta_answer(raw_name: str) -> bool:
+    key = _normalize_field_name(raw_name)
+    if not key:
+        return False
+    if key.startswith("utm"):
+        return False
+    return key not in _STRUCTURED_FIELD_ALIAS_KEYS
 
 
 def _set_nested_value(target: Dict[str, Any], path: str, value: Any) -> None:
@@ -649,12 +759,19 @@ def normalize_meta_payload(
     field_data = value.get("field_data") or []
     mapping: Dict[str, List[str]] = {}
     original_field_names: Set[str] = set()
+    field_answers: List[Dict[str, Any]] = []
     for item in field_data:
-        normalized_name = _normalize_field_name(item.get("name"))
+        if not isinstance(item, dict):
+            continue
+        raw_name = str(item.get("name") or "").strip()
+        values = _as_list(item.get("values"))
+        if raw_name:
+            field_answers.append({"name": raw_name, "values": values})
+        normalized_name = _normalize_field_name(raw_name)
         if not normalized_name:
             continue
-        mapping[normalized_name] = _as_list(item.get("values"))
-        original_field_names.add(str(item.get("name") or "").strip())
+        mapping[normalized_name] = values
+        original_field_names.add(raw_name)
 
     full_name = _first(mapping, *NAME_ALIASES) or ""
     first_name = _first(mapping, *FIRST_NAME_ALIASES)
@@ -727,6 +844,33 @@ def normalize_meta_payload(
     }
     if company_name_hint:
         normalized["company_name_hint"] = company_name_hint
+        # Surface for list/detail/convert paths that read company_name / company_profile.
+        normalized["company_name"] = company_name_hint
+        profile = normalized.get("company_profile")
+        if not isinstance(profile, dict):
+            profile = {}
+        if not str(profile.get("name") or "").strip():
+            profile = {**profile, "name": company_name_hint}
+            normalized["company_profile"] = profile
+    # Always retain every Meta form answer; unknown fields → additional_answers (never drop).
+    if field_data:
+        normalized["field_answers"] = field_answers
+        additional_answers = [
+            row for row in field_answers if isinstance(row, dict) and _is_additional_meta_answer(str(row.get("name") or ""))
+        ]
+        normalized["additional_answers"] = additional_answers
+    # Contact person for client-lead detail/convert (Meta often only has top-level name/email/phone).
+    if full_name or email or phone:
+        contact = normalized.get("contact_person") if isinstance(normalized.get("contact_person"), dict) else {}
+        contact_out = {**contact}
+        if full_name and not str(contact_out.get("full_name") or "").strip():
+            contact_out["full_name"] = full_name
+        if email and not str(contact_out.get("email") or "").strip():
+            contact_out["email"] = email
+        if phone and not str(contact_out.get("phone") or "").strip():
+            contact_out["phone"] = phone
+        if contact_out != contact:
+            normalized["contact_person"] = contact_out
     company_hints: List[str] = []
     for item in company_values:
         item = item.strip()
@@ -739,6 +883,59 @@ def normalize_meta_payload(
                 company_hints.append(candidate)
     if company_hints:
         normalized["company_hints"] = company_hints
+
+    # Common Meta Lead Ads custom questions → structured sales fields (when present).
+    what_needed = _first(
+        mapping,
+        "kogo_obecnie_poszukujesz?",
+        "kogo_obecnie_poszukujesz",
+        "kogo obecnie poszukujesz?",
+        "kogo obecnie poszukujesz",
+        "whom_are_you_looking_for",
+        "who_are_you_looking_for",
+        "какая_цель_для_вас_сейчас_наиболее_актуальна?",
+        "какая_цель_для_вас_сейчас_наиболее_актуальна",
+    )
+    if what_needed:
+        need = normalized.get("need") if isinstance(normalized.get("need"), dict) else {}
+        if not str(need.get("what_needed") or "").strip():
+            normalized["need"] = {**need, "what_needed": what_needed.strip()}
+    paid_ads = _first(
+        mapping,
+        "czy_prowadzisz_obecnie_płatne_kampanie_reklamowe?",
+        "czy_prowadzisz_obecnie_płatne_kampanie_reklamowe",
+        "czy prowadzisz obecnie płatne kampanie reklamowe?",
+        "использовали_ли_вы_ранее_рекламу_у_блогеров?",
+        "использовали_ли_вы_ранее_рекламу_у_блогеров",
+    )
+    if paid_ads:
+        marketing = normalized.get("marketing") if isinstance(normalized.get("marketing"), dict) else {}
+        if not str(marketing.get("runs_paid_ads") or "").strip():
+            normalized["marketing"] = {**marketing, "runs_paid_ads": paid_ads.strip()}
+    business_desc = _first(
+        mapping,
+        "чем_занимается_ваш_бизнес?",
+        "чем_занимается_ваш_бизнес",
+        "чем занимается ваш бизнес?",
+    )
+    if business_desc:
+        need = normalized.get("need") if isinstance(normalized.get("need"), dict) else {}
+        if not str(need.get("summary") or "").strip():
+            normalized["need"] = {**need, "summary": business_desc.strip()}
+    website = _first(
+        mapping,
+        "ссылка_на_instagram/сайт_вашего_бизнеса",
+        "ссылка_на_instagram/сайт_вашего_бизнеса?",
+        "website",
+        "site",
+        "instagram",
+    )
+    if website:
+        profile = normalized.get("company_profile") if isinstance(normalized.get("company_profile"), dict) else {}
+        if not str(profile.get("website") or "").strip():
+            normalized["company_profile"] = {**profile, "website": website.strip()}
+            if company_name_hint and not str(normalized["company_profile"].get("name") or "").strip():
+                normalized["company_profile"]["name"] = company_name_hint
     if country_hint:
         normalized["country_raw"] = country_hint
         normalized["country"] = normalize_inbound_country_alpha2(country_hint)

@@ -3,10 +3,21 @@ import { useState } from 'react'
 import type { Company, ManagerOption, UserRole } from '../../api/types'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
+import {
+  TRUST_ROLE_LABEL_KEYS,
+  TRUST_ROLE_OPTIONS,
+  PRESET_LABEL_KEYS,
+  asAssignableUserRole,
+  defaultPresetForTrustRole,
+  presetsForTrustRole,
+  type PermissionPresetId,
+  type TrustRoleOption,
+} from '../../modules/users/roleOptions'
 
 type InviteFormPayload = {
   email: string
   role: UserRole
+  preset_id?: string | null
   supervisor_id?: string | null
   company_ids?: string[]
   expires_in_hours?: number
@@ -19,38 +30,19 @@ interface UserFormInviteProps {
   companyOptions: Company[]
 }
 
-const ROLE_OPTIONS: UserRole[] = [
-  'administrator',
-  'supervisor',
-  'recruiter',
-  'client_manager',
-  'client_processor',
-  'compliance_officer',
-  'hr_officer',
-  'viewer',
-]
-const ROLE_LABELS: Record<UserRole, string> = {
-  administrator: 'app.admin.users.roles.administrator',
-  supervisor: 'app.admin.users.roles.supervisor',
-  recruiter: 'app.admin.users.roles.recruiter',
-  client_manager: 'app.admin.users.roles.client_manager',
-  client_processor: 'app.admin.users.roles.client_processor',
-  compliance_officer: 'app.admin.users.roles.compliance_officer',
-  hr_officer: 'app.admin.users.roles.hr_officer',
-  viewer: 'app.admin.users.roles.viewer',
-}
-
 export function UserFormInvite({ onSubmit, loading, managerOptions, companyOptions }: UserFormInviteProps) {
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<UserRole>('recruiter')
+  const [role, setRole] = useState<TrustRoleOption>('employee')
+  const [presetId, setPresetId] = useState<PermissionPresetId | ''>('recruiter')
   const [expiresIn, setExpiresIn] = useState(72)
   const [supervisorId, setSupervisorId] = useState('')
   const [companyIds, setCompanyIds] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const { t } = useI18n()
 
-  const showSupervisorSelect = role === 'recruiter' || role === 'supervisor'
-  const supervisorRequired = role === 'recruiter'
+  const presetChoices = presetsForTrustRole(role)
+  const showSupervisorSelect = role === 'employee' && (presetId === 'recruiter' || presetId === 'team_lead')
+  const supervisorRequired = presetId === 'recruiter'
   const showCompanySelect = role !== 'administrator'
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -68,13 +60,15 @@ export function UserFormInvite({ onSubmit, loading, managerOptions, companyOptio
     setError(null)
     await onSubmit({
       email: nextEmail,
-      role,
+      role: asAssignableUserRole(role),
+      preset_id: presetId || undefined,
       supervisor_id: supervisorId || undefined,
       company_ids: showCompanySelect ? companyIds : [],
       expires_in_hours: expiresIn || undefined,
     })
     setEmail('')
-    setRole('recruiter')
+    setRole('employee')
+    setPresetId('recruiter')
     setExpiresIn(72)
     setSupervisorId('')
     setCompanyIds([])
@@ -103,20 +97,46 @@ export function UserFormInvite({ onSubmit, loading, managerOptions, companyOptio
           className="input w-full"
           value={role}
           onChange={(ev) => {
-            const nextRole = ev.target.value as UserRole
+            const nextRole = ev.target.value as TrustRoleOption
             setRole(nextRole)
-            if (nextRole !== 'recruiter') {
-              setSupervisorId('')
-            }
+            setPresetId(defaultPresetForTrustRole(nextRole))
+            setSupervisorId('')
           }}
         >
-          {ROLE_OPTIONS.map((opt) => (
+          {TRUST_ROLE_OPTIONS.map((opt) => (
             <option key={opt} value={opt}>
-              {t(ROLE_LABELS[opt])}
+              {t(TRUST_ROLE_LABEL_KEYS[opt])}
             </option>
           ))}
         </select>
       </div>
+
+      {presetChoices.length > 0 && (
+        <div>
+          <label className="label" htmlFor="invite-preset">
+            {t('app.admin.users.form.preset_label', { defaultValue: 'Permission preset' })}
+          </label>
+          <select
+            id="invite-preset"
+            className="input w-full"
+            value={presetId}
+            onChange={(ev) => {
+              const next = ev.target.value as PermissionPresetId | ''
+              setPresetId(next)
+              if (next !== 'recruiter') setSupervisorId('')
+            }}
+          >
+            <option value="">
+              {t('app.admin.users.form.preset_none', { defaultValue: 'None (role defaults)' })}
+            </option>
+            {presetChoices.map((opt) => (
+              <option key={opt} value={opt}>
+                {t(PRESET_LABEL_KEYS[opt], { defaultValue: opt })}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {showSupervisorSelect && (
         <div>

@@ -20,6 +20,7 @@
 ## Митигации (baseline)
 
 - Audit: actor, report type, row count, time, channel.
+- **Anomaly v1:** `export.anomaly.detected` при порогах row_count / byte_size / CLASS3 (см. `runtime-roadmap.md` Phase 4); не блокирует ответ.
 - Rate limits + максимальный batch; watermarking — backlog post-MVP.
 - Проверка владельца export job = тот же пользователь/tenant.
 - Санитизация полей для CSV (префикс `'`, экранирование) для полей из пользовательского ввода.

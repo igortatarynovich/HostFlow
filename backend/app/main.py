@@ -48,12 +48,34 @@ if current_pkg is None:
 _sys.modules.setdefault("backend", current_pkg)
 _sys.modules.setdefault("backend.app", current_pkg)
 
+# Collapse dual SQLAlchemy Base before models load (see app.db.base). Required so
+# Lead (backend.app.db.base) and relative-Base models share one MetaData.
+_app_db = importlib.import_module("app.db")
+_app_db_base = importlib.import_module("app.db.base")
+_sys.modules["backend.app.db"] = _app_db
+_sys.modules["backend.app.db.base"] = _app_db_base
+
 from . import models as _models  # noqa: F401
 from backend.app.db.base import Base
 _sys.modules.setdefault("backend.app.models", _sys.modules.get("app.models", _models))
 for _name, _module in list(_sys.modules.items()):
     if _name.startswith("app.models.") and _module is not None:
         _sys.modules.setdefault(f"backend.{_name}", _module)
+
+# Campaign / questionnaire bindings import models via backend.app.models.*; without a
+# forced alias the /app/backend symlink can load a second copy on a second SQLAlchemy
+# Base and break FKs (e.g. lead_questionnaire_invites.lead_form_id → tenant_lead_forms).
+for _acq_model in (
+    "campaign",
+    "tenant_lead_form",
+    "intake_routing",
+    "acquisition_activity_event",
+    "lead_questionnaire_invite",
+    "communication_delivery",
+):
+    _app_mod_name = f"app.models.{_acq_model}"
+    importlib.import_module(_app_mod_name)
+    _sys.modules[f"backend.app.models.{_acq_model}"] = _sys.modules[_app_mod_name]
 
 _DOCUMENTS_DISABLED = bool(int(os.environ.get("DOCUMENTS_DISABLED", "0")))
 
@@ -132,10 +154,17 @@ try:
     from backend.app.api.v1.platform import tenants as platform_tenants_router
     from backend.app.api.v1.platform import field_registry as platform_field_registry_router
     from backend.app.api.v1.platform import entity_profiles as platform_entity_profiles_router
+    from backend.app.api.v1.platform import forms_publications as platform_forms_publications_router
+    from backend.app.api.v1.platform import forms_builder as platform_forms_builder_router
+    from backend.app.api.v1.platform import documents_public as platform_documents_public_router
     from backend.app.api.v1.platform import requirement_rules as platform_requirement_rules_router
     from backend.app.api.v1.platform import tenant_requirement_overrides as platform_tenant_requirement_overrides_router
     from backend.app.api.v1.platform import notification_events as platform_notification_events_router
     from backend.app.api.v1.platform import module_registry as platform_module_registry_router
+    from backend.app.api.v1.platform import campaigns as platform_campaigns_router
+    from backend.app.api.v1.platform import acquisition_activity as platform_acquisition_activity_router
+    from backend.app.api.v1.platform import marketing_sources as platform_marketing_sources_router
+    from backend.app.api.v1.platform import marketing_diagnostics as platform_marketing_diagnostics_router
     from backend.app.api.v1.settings import leads as settings_leads_router
     from backend.app.api.v1.settings import team as settings_team_router
     from backend.app.api.v1.settings import billing as settings_billing_router
@@ -143,12 +172,17 @@ try:
     from backend.app.api.v1.settings import intake_forms as settings_intake_forms_router
     from backend.app.api.v1.settings import email as settings_email_router
     from backend.app.api.v1.settings import communications as settings_communications_router
+    from backend.app.api.v1.settings import lead_lifecycle_email as settings_lead_lifecycle_email_router
     from backend.app.api.v1.admin import users as admin_users_router
     from backend.app.api.v1.admin import companies_access as admin_companies_access_router
     from backend.app.api.v1.admin import audit as admin_audit_router
     from backend.app.api.v1.admin import draft_reminders as admin_draft_reminders_router
+    from backend.app.api.v1.admin import org_units as admin_org_units_router
     from backend.app.api.v1.recruiters.router import router as recruiters_router
     from backend.app.api.v1.leads.router import router as leads_router
+    from backend.app.modules.client_accounts.router import router as client_accounts_router
+    from backend.app.modules.sales_orders.router import router as sales_orders_router
+    from backend.app.modules.applications.router import recruitment_router, sales_router
     from backend.app.api.v1.next_actions import router as next_actions_router
     from backend.app.api.v1.notifications import router as notifications_router
     from backend.app.api.v1.communications import router as communications_router
@@ -233,12 +267,17 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1.settings import intake_forms as settings_intake_forms_router  # type: ignore[no-redef]
     from .api.v1.settings import email as settings_email_router  # type: ignore[no-redef]
     from .api.v1.settings import communications as settings_communications_router  # type: ignore[no-redef]
+    from .api.v1.settings import lead_lifecycle_email as settings_lead_lifecycle_email_router  # type: ignore[no-redef]
     from .api.v1.admin import users as admin_users_router  # type: ignore[no-redef]
     from .api.v1.admin import companies_access as admin_companies_access_router  # type: ignore[no-redef]
     from .api.v1.admin import audit as admin_audit_router  # type: ignore[no-redef]
     from .api.v1.admin import draft_reminders as admin_draft_reminders_router  # type: ignore[no-redef]
+    from .api.v1.admin import org_units as admin_org_units_router  # type: ignore[no-redef]
     from .api.v1.recruiters.router import router as recruiters_router  # type: ignore[no-redef]
     from .api.v1.leads.router import router as leads_router  # type: ignore[no-redef]
+    from backend.app.modules.client_accounts.router import router as client_accounts_router  # type: ignore[no-redef]
+    from backend.app.modules.sales_orders.router import router as sales_orders_router  # type: ignore[no-redef]
+    from backend.app.modules.applications.router import recruitment_router, sales_router  # type: ignore[no-redef]
     from .api.v1.next_actions import router as next_actions_router  # type: ignore[no-redef]
     from .api.v1.notifications import router as notifications_router  # type: ignore[no-redef]
     from .api.v1.communications import router as communications_router  # type: ignore[no-redef]
@@ -331,7 +370,9 @@ os.environ.setdefault("CONFIG_DIR", _default_config_dir)
 _default_upload_dir = os.path.abspath(os.path.join(_backend_root, "uploads"))
 os.environ.setdefault("UPLOAD_DIR", _default_upload_dir)
 
-ALLOWED_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173"}
+from backend.app.auth.session_cookies import cors_allowed_origins, origin_is_allowed
+
+ALLOWED_ORIGINS = cors_allowed_origins()
 
 # Increase multipart upload limit to 10 MB (configurable via env override).
 MULTIPART_MAX_FILE_SIZE = int(os.environ.get("UPLOAD_MAX_FILE_SIZE", 10 * 1024 * 1024))
@@ -352,7 +393,7 @@ class ForceCORSHeadersMiddleware(BaseHTTPMiddleware):
             response = JSONResponse(
                 {"detail": err_msg}, status_code=500
             )
-        if origin in ALLOWED_ORIGINS:
+        if origin_is_allowed(origin, ALLOWED_ORIGINS):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
             vary = response.headers.get("Vary")
@@ -858,14 +899,34 @@ app.include_router(tenants_router, prefix="/api/v1", tags=["tenants"])
 app.include_router(platform_tenants_router.router, prefix="/api/v1", tags=["platform-tenants"])
 app.include_router(platform_field_registry_router.router, prefix="/api/v1", tags=["field-registry"])
 app.include_router(platform_entity_profiles_router.router, prefix="/api/v1", tags=["entity-profiles"])
+app.include_router(platform_forms_publications_router.router, prefix="/api/v1", tags=["forms-platform"])
+app.include_router(platform_forms_builder_router.router, prefix="/api/v1", tags=["forms-builder"])
+app.include_router(platform_documents_public_router.router, prefix="/api/v1", tags=["documents-platform"])
 app.include_router(platform_requirement_rules_router.router, prefix="/api/v1", tags=["requirement-rules"])
 app.include_router(platform_tenant_requirement_overrides_router.router, prefix="/api/v1", tags=["requirement-overrides"])
 app.include_router(platform_notification_events_router.router, prefix="/api/v1", tags=["notification-events"])
 app.include_router(platform_module_registry_router.router, prefix="/api/v1", tags=["module-registry"])
+app.include_router(platform_campaigns_router.router, prefix="/api/v1", tags=["campaigns"])
+app.include_router(
+    platform_acquisition_activity_router.router,
+    prefix="/api/v1",
+    tags=["acquisition-activity"],
+)
+app.include_router(
+    platform_marketing_sources_router.router,
+    prefix="/api/v1",
+    tags=["marketing-sources"],
+)
+app.include_router(
+    platform_marketing_diagnostics_router.router,
+    prefix="/api/v1",
+    tags=["marketing-diagnostics"],
+)
 app.include_router(admin_users_router.router, prefix="/api/v1")
 app.include_router(admin_companies_access_router.router, prefix="/api/v1")
 app.include_router(admin_audit_router.router, prefix="/api/v1")
 app.include_router(admin_draft_reminders_router.router, prefix="/api/v1")
+app.include_router(admin_org_units_router.router, prefix="/api/v1")
 app.include_router(settings_leads_router.router, prefix="/api/v1/settings")
 app.include_router(settings_team_router.router, prefix="/api/v1/settings")
 app.include_router(settings_billing_router.router, prefix="/api/v1/settings")
@@ -873,6 +934,7 @@ app.include_router(settings_lead_forms_router.router, prefix="/api/v1/settings")
 app.include_router(settings_intake_forms_router.router, prefix="/api/v1/settings")
 app.include_router(settings_email_router.router, prefix="/api/v1/settings")
 app.include_router(settings_communications_router.router, prefix="/api/v1/settings")
+app.include_router(settings_lead_lifecycle_email_router.router, prefix="/api/v1/settings")
 app.include_router(public_intake_router.router, prefix="/api/v1", tags=["public-intake"])
 app.include_router(public_notifications_router.router, prefix="/api/v1", tags=["public-notifications"])
 app.include_router(public_client_portal_router.router, prefix="/api/v1", tags=["public-client-portal"])
@@ -885,12 +947,16 @@ app.include_router(invoices_router, prefix="/api/v1", tags=["invoices"])
 
 # Домен
 app.include_router(companies_router, prefix="/api/v1", tags=["companies"])
+app.include_router(client_accounts_router, prefix="/api/v1")
+app.include_router(sales_orders_router, prefix="/api/v1")
 app.include_router(vacancies_router, prefix="/api/v1", tags=["vacancies"])
 app.include_router(fleet_router, prefix="/api/v1", tags=["fleet"])
 app.include_router(own_companies_router, prefix="/api/v1", tags=["own-companies"])
 app.include_router(own_companies_legacy_router, prefix="/api/v1", tags=["own-companies"])
 app.include_router(recruiters_router, prefix="/api/v1", tags=["recruiters"])
 app.include_router(leads_router, prefix="/api/v1", tags=["leads"])
+app.include_router(sales_router, prefix="/api/v1", tags=["sales-inquiries"])
+app.include_router(recruitment_router, prefix="/api/v1", tags=["recruitment-applications"])
 app.include_router(next_actions_router, prefix="/api/v1", tags=["next-actions"])
 app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
 app.include_router(communications_router, prefix="/api/v1", tags=["communications"])
@@ -962,6 +1028,12 @@ app.include_router(candidate_delete_router.router)
 # The issue is that with html=True, StaticFiles returns index.html for 404s
 # We need to raise a proper exception for /uploads so FastAPI tries the explicit route
 public_dir = Path("/app/public")
+# Compose mounts hostflow-frontend/dist here; if the mount is briefly empty/missing
+# during a rebuild, creating the directory keeps StaticFiles from crashing the app.
+try:
+    public_dir.mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass
 if public_dir.is_dir():
     class ExcludeUploadsStaticFiles(StaticFiles):
         def lookup_path(self, path: str) -> tuple[str, os.stat_result | None]:

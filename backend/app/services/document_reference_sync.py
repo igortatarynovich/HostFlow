@@ -26,24 +26,35 @@ class CanonicalDocSeed:
 
 
 def _seed_types() -> list[CanonicalDocSeed]:
-    return [
-        CanonicalDocSeed("passport", "Passport", "identity", "passport", "required", ["identification"], ["number", "expiry_date", "issuing_country"], True, [60, 30, 7], ["candidate", "employee"], {"check_personal_data_match": True, "check_expiry_validity": True}),
-        CanonicalDocSeed("id_card", "ID Card", "identity", "national_id", "required", ["identification"], ["number", "expiry_date", "issuing_country"], True, [60, 30, 7], ["candidate", "employee"], {"check_personal_data_match": True, "check_expiry_validity": True}),
-        CanonicalDocSeed("residence_card", "Residence Card", "immigration", "residence_permit", "compliance_critical", ["legal_stay", "right_to_work"], ["number", "expiry_date", "issuing_country"], True, [60, 30, 7], ["candidate", "employee"], {"check_right_to_work": True, "check_expiry_validity": True}),
-        CanonicalDocSeed("visa", "Visa", "immigration", "visa", "compliance_critical", ["legal_stay"], ["number", "expiry_date", "issuing_country"], True, [60, 30, 7], ["candidate", "employee"], {"check_right_to_work": True, "check_expiry_validity": True}),
-        CanonicalDocSeed("work_permit", "Work Permit", "work_authorization", "permit", "work_blocking", ["right_to_work"], ["permit_type", "expiry_date", "issuing_country"], True, [60, 30, 7], ["candidate", "employee"], {"check_right_to_work": True, "manual_review_required": True}),
-        CanonicalDocSeed("driver_license", "Driver License", "driver_qualification", "license", "work_blocking", ["driver_compliance"], ["number", "categories", "expiry_date", "issuing_country"], True, [90, 60, 30], ["candidate", "employee"], {"check_category_or_class": True, "check_expiry_validity": True}),
-        CanonicalDocSeed("code_95", "Code 95", "driver_qualification", "code95", "compliance_critical", ["driver_compliance"], ["number", "expiry_date"], True, [90, 60, 30], ["candidate", "employee"], {"check_category_or_class": True, "check_expiry_validity": True}),
-        CanonicalDocSeed("tachograph_card", "Tachograph Card", "driver_qualification", "tachograph", "compliance_critical", ["driver_compliance"], ["number", "expiry_date", "issuing_country"], True, [90, 60, 30], ["candidate", "employee"], {"check_expiry_validity": True}),
-        CanonicalDocSeed("medical_certificate", "Medical Certificate", "medical", "occupational_health", "work_blocking", ["driver_compliance"], ["issue_date", "expiry_date"], True, [60, 30, 7], ["candidate", "employee"], {"check_expiry_validity": True, "manual_review_required": True}),
-        CanonicalDocSeed("psychotest", "Psychotest", "medical", "psychological", "work_blocking", ["driver_compliance"], ["issue_date", "expiry_date"], True, [60, 30, 7], ["candidate", "employee"], {"check_expiry_validity": True, "manual_review_required": True}),
-        CanonicalDocSeed("employment_contract", "Employment Contract", "employment", "employment_contract", "required", ["employment_formalization"], ["contract_type", "start_date", "employer"], False, [30, 7], ["employee", "contract"], {"manual_review_required": True}),
-        CanonicalDocSeed("civil_contract", "Civil Contract", "employment", "civil_contract", "required", ["employment_formalization"], ["contract_type", "start_date", "employer"], False, [30, 7], ["employee", "contract"], {"manual_review_required": True}),
-        CanonicalDocSeed("zus_zua", "ZUS ZUA", "social_security", "zus", "required", ["payroll_setup"], ["submission_date", "registration_date", "reference_number"], False, [14, 7], ["employee", "payroll_profile"], {"manual_review_required": True}),
-        CanonicalDocSeed("zus_zza", "ZUS ZZA", "social_security", "zus", "required", ["payroll_setup"], ["submission_date", "registration_date", "reference_number"], False, [14, 7], ["employee", "payroll_profile"], {"manual_review_required": True}),
-        CanonicalDocSeed("tax_declaration", "Tax Declaration", "tax", "declaration", "required", ["payroll_setup"], ["submission_date"], False, [14, 7], ["employee", "payroll_profile"], {"manual_review_required": True}),
-        CanonicalDocSeed("other", "Other", "other", None, "informational", ["internal_record"], ["custom_name"], False, [30], ["candidate", "employee", "company", "client", "vehicle"], {"manual_review_required": True}),
-    ]
+    from backend.app.document_types.registry import registry_entries
+
+    seeds: list[CanonicalDocSeed] = []
+    for entry in registry_entries():
+        expiry = entry.criticality in {"compliance_critical", "work_blocking", "required"}
+        if entry.code == "other":
+            fields = ["custom_name"]
+            expiry = False
+        elif expiry:
+            fields = ["number", "expiry_date"]
+        else:
+            fields = ["number"]
+        reminders = [60, 30, 7] if expiry else [30]
+        seeds.append(
+            CanonicalDocSeed(
+                code=entry.code,
+                public_name=entry.public_name,
+                category_code=entry.category_code,
+                subcategory_code=entry.subcategory_code,
+                criticality=entry.criticality,
+                business_purposes=list(entry.business_purposes) or ["internal_record"],
+                required_fields=fields,
+                expiry_required=expiry,
+                reminder_days=reminders,
+                entity_applicability=list(entry.entity_applicability) or ["candidate", "employee"],
+                verification_profile={"check_expiry_validity": expiry},
+            )
+        )
+    return seeds
 
 
 SYSTEM_CODES = {item.code for item in _seed_types()}
@@ -316,7 +327,7 @@ def _seed_m4_packs(conn, code_to_ver_id: dict[str, str]) -> None:
             "country_code": "PL",
             "industry_code": "transport",
             "meta": {"name": "Poland Transport Driver"},
-            "items": [("driver_license", "required"), ("code_95", "required"), ("tachograph_card", "required"), ("medical_certificate", "required"), ("psychotest", "required")],
+            "items": [("driver_license", "required"), ("driver_qualification_card", "required"), ("tachograph_card", "required"), ("medical_certificate", "required"), ("psychological_certificate", "required")],
             "rules": [
                 {"priority": 60, "condition_expr": {"work_country": "pl", "position_category": "driver"}, "effect_type": "set_requirement", "effect_payload": {"required": True, "due_point": "before_first_route", "reason": "Driver compliance in Poland transport"}},
                 {"priority": 220, "condition_expr": {"position_category": ["office_worker", "warehouse_worker", "other", ""]}, "effect_type": "set_requirement", "effect_payload": {"required": False, "reason": "Non-driver role"}},
@@ -327,7 +338,7 @@ def _seed_m4_packs(conn, code_to_ver_id: dict[str, str]) -> None:
             "country_code": None,
             "industry_code": "transport",
             "meta": {"name": "EU Driver Compliance"},
-            "items": [("driver_license", "required"), ("code_95", "required"), ("tachograph_card", "required")],
+            "items": [("driver_license", "required"), ("driver_qualification_card", "required"), ("tachograph_card", "required")],
             "rules": [
                 {"priority": 80, "condition_expr": {"position_category": "driver", "citizenship_group": "eu"}, "effect_type": "set_requirement", "effect_payload": {"required": True, "due_point": "before_client_submission", "reason": "EU transport qualification baseline"}},
             ],

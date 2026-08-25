@@ -4,10 +4,10 @@ import clsx from 'clsx'
 import { IconBell, IconRefresh } from '@tabler/icons-react'
 import {
   createCommunicationCommandAuditBatch,
+  executeWorkspaceCommand,
   getCommunicationsSettings,
   listCommunicationCommandAudit,
-  markCommunicationThreadRead,
-  patchCommunicationThread,
+  mergeThreadFromContext,
   patchCommunicationsSettings,
   type CommunicationCommandAudit,
   type CommunicationCommandTemplate,
@@ -18,7 +18,12 @@ import { useAuth } from '../store/useAuth'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { useCommunicationsSetupStatus } from '../hooks/useCommunicationsSetupStatus'
 import { useEmailInboundSync } from '../hooks/useEmailInboundSync'
-import InboxUnifiedThreadList, { type InboxHubFilter } from '../components/communications/InboxUnifiedThreadList'
+import { usePermissions } from '../hooks/usePermissions'
+import { roleMayLoadFullCommunicationsSettings } from '../constants/communicationsSettingsAccess'
+import InboxUnifiedThreadList, {
+  inboxHubFilterToQueue,
+  type InboxHubFilter,
+} from '../components/communications/InboxUnifiedThreadList'
 import InboxEmailFolderRail from '../components/communications/InboxEmailFolderRail'
 import { emailThreadInFolder, type EmailFolderKey } from '../utils/emailInboxFolders'
 import { fetchInboxThreadPool } from '../utils/inboxThreadLoad'
@@ -30,20 +35,21 @@ import {
   type InboxListQuery,
 } from '../utils/inboxUrlQuery'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader, Toolbar } from '../components/layout'
 import { stashPendingGmailOAuthCode } from '../utils/oauthRedirectBridge'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { useToast } from '../components/Toast'
+import { canUseTeamOverviewLane } from '../auth/trustRoles'
 
 function isActiveThread(th: CommunicationThread): boolean {
   return !th.is_archived && String(th.status || '').toLowerCase() !== 'deleted'
 }
 
 function canPatchCommunicationsSettings(role: string | undefined): boolean {
-  const r = String(role || '').trim().toLowerCase()
-  return r === 'administrator' || r === 'supervisor' || r === 'admin' || r === 'superadmin'
+  return canUseTeamOverviewLane({ role })
 }
 
 function bulkActionPreviewLabel(type: string, value?: string | null): string {
@@ -157,6 +163,11 @@ export default function CommunicationsInboxHubPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const listQuery = useMemo(() => readInboxListQuery(searchParams), [searchParams])
   const { canUseCommunicationsFeature, loading: accessLoading } = useCommunicationsAccess()
+  const { rawRole, role, accessContext, presetId } = usePermissions()
+  const canLoadAdminSettings = roleMayLoadFullCommunicationsSettings(rawRole || role, {
+    accessContext,
+    presetId,
+  })
   const commSetup = useCommunicationsSetupStatus()
   const hasMessages = canUseCommunicationsFeature('messages')
   const hasEmail = canUseCommunicationsFeature('email')
@@ -227,9 +238,10 @@ export default function CommunicationsInboxHubPage() {
         hasEmail,
         hasMessages,
         q: listQuery.q,
+        queue: inboxHubFilterToQueue(hubFilter),
       })
       setThreads(items)
-      const cfg = await getCommunicationsSettings().catch(() => null)
+      const cfg = canLoadAdminSettings ? await getCommunicationsSettings().catch(() => null) : null
       const commandItems = Array.isArray(cfg?.commands?.items) ? cfg.commands.items : []
       setCommandTemplates(commandItems.filter((x) => x && x.enabled !== false))
       if (effectiveChannel === 'email' && hasEmail) {
@@ -248,13 +260,13 @@ export default function CommunicationsInboxHubPage() {
     } finally {
       setLoading(false)
     }
-  }, [effectiveChannel, hasEmail, hasMessages, listQuery.q, planLimitModal, t])
+  }, [canLoadAdminSettings, effectiveChannel, hasEmail, hasMessages, hubFilter, listQuery.q, planLimitModal, t])
 
   useEffect(() => {
     void load()
   }, [load])
 
-  const { pollBusy, fetchInboundNow } = useEmailInboundSync({
+  const { pollBusy, pollErrors, fetchInboundNow } = useEmailInboundSync({
     enabled: effectiveChannel === 'email' && hasEmail && !accessLoading,
     listLoading: loading,
     busy: false,
@@ -490,19 +502,31 @@ export default function CommunicationsInboxHubPage() {
           for (const action of Array.isArray(command.actions) ? command.actions : []) {
             const type = String(action?.type || '')
             if (type === 'mark_read') {
-              current = await markCommunicationThreadRead(current.id, { mark_thread: true })
+              const result = await executeWorkspaceCommand(current.id, 'MarkThreadRead')
+              current = mergeThreadFromContext(current, result.context)
               continue
             }
             if (type === 'archive' || type === 'unarchive') {
-              current = await patchCommunicationThread(current.id, { is_archived: type === 'archive' })
+              const result = await executeWorkspaceCommand(
+                current.id,
+                type === 'archive' ? 'CloseThread' : 'ReopenThread',
+              )
+              current = mergeThreadFromContext(current, result.context)
               continue
             }
             if (type === 'priority_high' || type === 'priority_normal') {
-              current = await patchCommunicationThread(current.id, { priority: type === 'priority_high' ? 'high' : 'normal' })
+              const result = await executeWorkspaceCommand(current.id, 'SetThreadPriority', {
+                priority: type === 'priority_high' ? 'high' : 'normal',
+              })
+              current = mergeThreadFromContext(current, result.context)
               continue
             }
             if (type === 'delete' || type === 'restore') {
-              current = await patchCommunicationThread(current.id, { status: type === 'delete' ? 'deleted' : 'open' })
+              const result = await executeWorkspaceCommand(
+                current.id,
+                type === 'delete' ? 'DeleteThread' : 'RestoreThread',
+              )
+              current = mergeThreadFromContext(current, result.context)
               continue
             }
             if (type === 'tag_add' || type === 'tag_remove' || type === 'move_folder') {
@@ -521,7 +545,8 @@ export default function CommunicationsInboxHubPage() {
                 nextTags = nextTags.filter((x) => !x.toLowerCase().startsWith('folder:'))
                 if (value) nextTags.push(`folder:${value}`)
               }
-              current = await patchCommunicationThread(current.id, { tags_json: nextTags })
+              const result = await executeWorkspaceCommand(current.id, 'SetThreadTags', { tags: nextTags })
+              current = mergeThreadFromContext(current, result.context)
               continue
             }
             skippedActions += 1
@@ -654,13 +679,49 @@ export default function CommunicationsInboxHubPage() {
       let failed = 0
       for (const snap of lastBulkUndo.snapshots) {
         try {
-          const row = await patchCommunicationThread(snap.id, {
+          let row: CommunicationThread = {
+            id: snap.id,
             status: snap.status,
             is_archived: snap.is_archived,
             priority: snap.priority,
             tags_json: snap.tags_json,
             unread_count: snap.unread_count,
-          })
+          } as CommunicationThread
+          if (String(snap.status || '').toLowerCase() === 'deleted') {
+            row = mergeThreadFromContext(
+              row,
+              (await executeWorkspaceCommand(snap.id, 'DeleteThread')).context,
+            )
+          } else if (snap.is_archived) {
+            row = mergeThreadFromContext(
+              row,
+              (await executeWorkspaceCommand(snap.id, 'CloseThread')).context,
+            )
+          } else {
+            // Idempotent: undo delete/close back to open inbox.
+            row = mergeThreadFromContext(
+              row,
+              (await executeWorkspaceCommand(snap.id, 'RestoreThread')).context,
+            )
+            row = mergeThreadFromContext(
+              row,
+              (await executeWorkspaceCommand(snap.id, 'ReopenThread')).context,
+            )
+          }
+          const readCmd = snap.unread_count > 0 ? 'MarkThreadUnread' : 'MarkThreadRead'
+          row = mergeThreadFromContext(
+            row,
+            (await executeWorkspaceCommand(snap.id, readCmd)).context,
+          )
+          row = mergeThreadFromContext(
+            row,
+            (await executeWorkspaceCommand(snap.id, 'SetThreadPriority', { priority: snap.priority || 'normal' }))
+              .context,
+          )
+          row = mergeThreadFromContext(
+            row,
+            (await executeWorkspaceCommand(snap.id, 'SetThreadTags', { tags: snap.tags_json || [] })).context,
+          )
           updated.set(String(row.id), row)
           ok += 1
         } catch {
@@ -724,12 +785,27 @@ export default function CommunicationsInboxHubPage() {
   const showLoading = accessLoading || loading
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50">
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-auto">
-        <h1 className="sr-only">{t('app.communications_inbox_hub.title')}</h1>
+    <PageShell className="bg-slate-50">
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.communications_inbox_hub.title')}
+          kind="browse"
+          secondaryActions={
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => void load()}
+              disabled={showLoading}
+            >
+              {showLoading ? t('app.communications_inbox_hub.loading') : t('app.communications_inbox_hub.retry')}
+            </button>
+          }
+        />
+      </PageShellHeader>
 
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
         {oauthRedirectNotice && (
-          <div className="max-w-4xl rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
             <div className="font-medium">
               {t('app.communications.email.oauth_redirect_title')}
             </div>
@@ -737,7 +813,7 @@ export default function CommunicationsInboxHubPage() {
               {t('app.communications.email.oauth_redirect_body')}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Link to={CRM_APP_PATHS.settingsIntegrations} className="btn-primary btn-xs">
+              <Link to={CRM_APP_PATHS.settingsEmail} className="btn-primary btn-xs">
                 {t('app.communications.email.oauth_redirect_open_setup')}
               </Link>
               <button type="button" className="btn-secondary btn-xs" onClick={() => setOauthRedirectNotice(false)}>
@@ -747,8 +823,25 @@ export default function CommunicationsInboxHubPage() {
           </div>
         )}
 
+        {pollErrors.length > 0 && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-950">
+            <div className="font-medium">
+              {t('app.communications.email.poll_error_title', { defaultValue: 'Не удалось обновить входящую почту' })}
+            </div>
+            <p className="mt-1 text-xs text-rose-900/90">{pollErrors[pollErrors.length - 1]}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Link to={CRM_APP_PATHS.settingsEmail} className="btn-primary btn-xs">
+                {t('app.communications.email.oauth_redirect_open_setup', { defaultValue: 'Открыть настройки почты' })}
+              </Link>
+              <button type="button" className="btn-secondary btn-xs" onClick={() => void fetchInboundNow()}>
+                {t('common.actions.retry', { defaultValue: 'Повторить' })}
+              </button>
+            </div>
+          </div>
+        )}
+
         {!commSetup.loading && !commSetup.isComplete && anyChannel && (
-          <div className="max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <div className="font-medium">{t('app.communications.setup.banner_incomplete')}</div>
             <div className="mt-2">
               <Link to={CRM_APP_PATHS.settingsIntegrations} className="btn-secondary btn-xs">
@@ -759,7 +852,7 @@ export default function CommunicationsInboxHubPage() {
         )}
 
         {!commSetup.loading && commSetup.isComplete && effectiveChannel === 'email' && serverIncomingEnabled === false && hasEmail && (
-          <div className="max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <div className="font-medium">
               {t('app.communications.email.incoming_disabled_title')}
             </div>
@@ -781,10 +874,9 @@ export default function CommunicationsInboxHubPage() {
           </div>
         )}
 
-        <PageBreadcrumb className="max-w-6xl" />
-
         {hasMessages && hasEmail && anyChannel && (
-          <div className="max-w-5xl flex flex-wrap gap-1">
+          <Toolbar>
+          <div className="flex flex-wrap gap-1">
             {(['all', 'messages', 'email'] as const).map((c) => (
               <button
                 key={c}
@@ -801,12 +893,13 @@ export default function CommunicationsInboxHubPage() {
               </button>
             ))}
           </div>
+          </Toolbar>
         )}
 
         {showLoading && <p className="text-sm text-slate-500">{t('app.communications_inbox_hub.loading')}</p>}
 
         {!showLoading && error && (
-          <div className="max-w-4xl rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-800">
+          <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-800">
             <p className="font-medium">{error.title}</p>
             {error.detail ? <p className="mt-1 text-xs text-rose-900/90">{error.detail}</p> : null}
             <p className="mt-2 text-xs text-rose-800/85">{error.hint}</p>
@@ -817,7 +910,7 @@ export default function CommunicationsInboxHubPage() {
         )}
 
         {!showLoading && !error && anyChannel && (
-          <div className={clsx('max-w-6xl', effectiveChannel === 'email' && hasEmail && 'flex flex-col gap-4 lg:flex-row lg:items-start')}>
+          <div className={clsx(effectiveChannel === 'email' && hasEmail && 'flex flex-col gap-4 lg:flex-row lg:items-start')}>
             {effectiveChannel === 'email' && hasEmail && (
               <div className="w-full shrink-0 lg:w-64">
                 <InboxEmailFolderRail threads={threads} activeFolder={listQuery.folder} onFolderChange={onEmailFolderChange} />
@@ -825,7 +918,7 @@ export default function CommunicationsInboxHubPage() {
             )}
             <div className="min-w-0 flex-1 space-y-3">
               {listQuery.candidateId ? (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2 text-sm text-sky-950">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50/90 px-3 py-2 text-sm text-blue-950">
                   <span>{t('app.communications_inbox_hub.scoped_candidate_hint')}</span>
                   <Link
                     to={`${CRM_APP_PATHS.inbox}${inboxContextQueryString({ ...listQueryForLinks, candidateId: '' })}`}
@@ -840,7 +933,7 @@ export default function CommunicationsInboxHubPage() {
                 <input
                   value={qDraft}
                   onChange={(e) => setQDraft(e.target.value)}
-                  className="input min-w-[12rem] flex-1 py-1.5 text-sm"
+                  className="input min-w-[12rem] flex-1 py-2 text-sm"
                   placeholder={t('app.communications_inbox_hub.search_placeholder')}
                 />
                 {effectiveChannel === 'email' && hasEmail && (
@@ -848,7 +941,7 @@ export default function CommunicationsInboxHubPage() {
                     type="button"
                     onClick={() => void fetchInboundNow()}
                     disabled={pollBusy}
-                    className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                    className="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                     title={t('app.communications.email.sync.title')}
                     aria-label={t('app.communications.email.sync.title')}
                   >
@@ -885,7 +978,7 @@ export default function CommunicationsInboxHubPage() {
 
               <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
                 <select
-                  className="input min-w-[12rem] py-1.5 text-sm"
+                  className="input min-w-[12rem] py-2 text-sm"
                   value={selectedCommandId}
                   onChange={(e) => setSelectedCommandId(e.target.value)}
                 >
@@ -955,7 +1048,7 @@ export default function CommunicationsInboxHubPage() {
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {(Array.isArray(selectedCommand.actions) ? selectedCommand.actions : []).map((action, idx) => (
-                      <span key={`${selectedCommand.id}_action_${idx}`} className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px]">
+                      <span key={`${selectedCommand.id}_action_${idx}`} className="rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-[11px]">
                         {bulkActionPreviewLabel(String(action?.type || ''), String(action?.value || '').trim() || null)}
                       </span>
                     ))}
@@ -1039,7 +1132,7 @@ export default function CommunicationsInboxHubPage() {
         )}
 
         {!showLoading && !error && anyChannel && (
-          <div className="max-w-5xl">
+          <div>
             <Link
               to={CRM_APP_PATHS.slaIncidents}
               className="text-xs font-medium text-rose-700 hover:text-rose-800"
@@ -1052,6 +1145,6 @@ export default function CommunicationsInboxHubPage() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   )
 }

@@ -197,6 +197,14 @@ export type CommunicationsWorkspaceSettings = {
 
 export type CommunicationsSettingsPatch = Partial<CommunicationsWorkspaceSettings>
 
+export type CommunicationThreadEntityLink = {
+  link_id: string
+  thread_id: string
+  entity_type: string
+  entity_id: string
+  is_immutable?: boolean
+}
+
 export type CommunicationThread = {
   id: string
   channel: string
@@ -209,6 +217,8 @@ export type CommunicationThread = {
   entity_id?: string | null
   linked_company_id?: string | null
   linked_candidate_id?: string | null
+  /** G13 SoT — prefer over legacy entity_type/entity_id. */
+  entity_links?: CommunicationThreadEntityLink[] | null
   owner_id?: string | null
   assignee_id?: string | null
   queue_assigned_by?: string | null
@@ -454,8 +464,8 @@ export const DEFAULT_COMMUNICATIONS_SETTINGS: CommunicationsWorkspaceSettings = 
     autoThreading: true,
     syncIntervalMinutes: 5,
     defaultMailbox: 'candidates',
-    signatureCandidates: 'Zespół rekrutacji',
-    signatureClients: 'Zespół HostFlow',
+    signatureCandidates: '',
+    signatureClients: '',
   },
   planner: {
     view: 'agenda',
@@ -500,13 +510,14 @@ export const DEFAULT_COMMUNICATIONS_SETTINGS: CommunicationsWorkspaceSettings = 
   },
   access: {
     roles: {
-      messages: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
-      email: ['administrator', 'supervisor', 'recruiter', 'client_manager'],
-      calendar: ['administrator', 'supervisor', 'recruiter', 'client_manager'],
-      planner: ['administrator', 'supervisor', 'recruiter', 'client_manager'],
-      teamAvailability: ['administrator', 'supervisor'],
-      myAvailability: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
-      timeOffRequests: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
+      // Legacy job/portal strings kept for stored tenant overrides; `employee`/`viewer` are canonical.
+      messages: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
+      email: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager'],
+      calendar: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager'],
+      planner: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager'],
+      teamAvailability: ['administrator', 'employee', 'supervisor'],
+      myAvailability: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
+      timeOffRequests: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
       communicationsAdmin: ['administrator', 'supervisor'],
     },
     usersOverrides: {},
@@ -802,6 +813,114 @@ export async function listCommunicationMessageTemplates(
   return { items, total: Number((data as any)?.total || items.length) }
 }
 
+/** C1 platform working queues — Thread is the work object. */
+export type CommunicationThreadQueue =
+  | 'requires_reply'
+  | 'new_inbound'
+  | 'delivery_errors'
+  | 'unresolved'
+  | 'assigned_to_me'
+  | 'unassigned'
+  | 'waiting_for_reply'
+  | 'closed'
+
+export type ThreadCapabilities = {
+  thread_id: string
+  origin: { entity_type: string; entity_id: string }
+  allowed_intents: string[]
+  allowed_channels: string[]
+  bulk_allowed: boolean
+  denial_reasons: Record<string, string>
+  source: string
+}
+
+/**
+ * C1.1 Workspace read model (not a domain SoT).
+ * Four blocks assembled from Thread / G13 / queues / capabilities / diagnostics / draft.
+ */
+export type ThreadContext = {
+  identity: {
+    thread: {
+      id: string
+      channel: string
+      status: string
+      subject?: string | null
+    }
+    linked_entities: Array<Record<string, unknown>>
+    participants: Array<Record<string, unknown>>
+    origin?: { entity_type: string; entity_id: string } | null
+  }
+  work_state: {
+    assignee_id?: string | null
+    owner_id?: string | null
+    unread_count: number
+    is_archived: boolean
+    work_version?: number
+    priority?: string
+    tags_json?: string[]
+    thread_meta?: Record<string, unknown>
+    linked_candidate_id?: string | null
+    linked_company_id?: string | null
+    active_queues: string[]
+    sla_due_at?: string | null
+    sla?: {
+      started_at?: string | null
+      target_due_at?: string | null
+      resolved_at?: string | null
+      paused?: boolean
+      paused_intervals?: Array<{ paused_at?: string | null; resumed_at?: string | null }>
+      breached?: boolean
+      status?: string
+    }
+    next_action?: Record<string, unknown> | null
+  }
+  capabilities: {
+    allowed_intents: string[]
+    allowed_channels: string[]
+    bulk_allowed: boolean
+    defaults: {
+      channel?: string | null
+      intent?: string | null
+      recipient_address?: string | null
+      subject?: string | null
+      send_immediately?: boolean
+      internal_note_allowed?: boolean
+    }
+    policy_denials: Record<string, string>
+  }
+  workspace: {
+    draft: Record<string, unknown>
+    delivery_summary?: {
+      message_id?: string
+      status?: string
+      reason_code?: string | null
+      retryable?: boolean | null
+      next_retry_at?: string | null
+      safe_message?: string | null
+    } | null
+    timeline_cursor?: { hint_messages_limit?: number; message_scan_limit?: number }
+    ui_hints?: {
+      can_compose?: boolean
+      compose_blocked_reason?: string | null
+    }
+  }
+  source: string
+  /** Schema/revision of the read model (not optimistic locking). */
+  context_version: number
+  /** UTC ISO timestamp when this snapshot was assembled. */
+  generated_at: string
+}
+
+export type DeliveryDiagnostics = {
+  message_id: string
+  delivery_id?: string | null
+  status: string
+  last_attempt?: Record<string, unknown>
+  next_retry_at?: string | null
+  provider_reference?: string | null
+  timeline?: Array<Record<string, unknown>>
+}
+
 export async function listCommunicationThreads(opts?: {
   limit?: number
   offset?: number
@@ -812,6 +931,8 @@ export async function listCommunicationThreads(opts?: {
   entityId?: string
   includeArchived?: boolean
   q?: string
+  /** C1 working queue (server-side Thread filter). */
+  queue?: CommunicationThreadQueue | string
   signal?: AbortSignal
 }): Promise<CommunicationThreadListResponse> {
   const params: Record<string, any> = {}
@@ -824,8 +945,98 @@ export async function listCommunicationThreads(opts?: {
   if (opts?.entityId) params.entity_id = opts.entityId
   if (opts?.includeArchived) params.include_archived = true
   if (opts?.q) params.q = opts.q
+  if (opts?.queue) params.queue = opts.queue
   const { data } = await api.get('/communications/threads', { params, signal: opts?.signal })
   return data as CommunicationThreadListResponse
+}
+
+export async function getThreadContext(threadId: string): Promise<ThreadContext> {
+  const { data } = await api.get(`/communications/threads/${threadId}/context`)
+  return data as ThreadContext
+}
+
+/** C1.2 Workspace Command result — apply `context` without a second refresh GET. */
+export type WorkspaceCommandResult = {
+  command: string
+  applied: boolean
+  audit_id?: string | null
+  context: ThreadContext
+}
+
+export type WorkspaceCommandName =
+  | 'AssignThread'
+  | 'ReassignThread'
+  | 'UnassignThread'
+  | 'MarkThreadRead'
+  | 'MarkThreadUnread'
+  | 'SetNextAction'
+  | 'CompleteNextAction'
+  | 'CancelNextAction'
+  | 'PauseSLA'
+  | 'ResumeSLA'
+  | 'CloseThread'
+  | 'ReopenThread'
+  | 'SetThreadPriority'
+  | 'SetThreadTags'
+  | 'DeleteThread'
+  | 'RestoreThread'
+  | 'UpdateThreadWorkflow'
+  | 'SetThreadLinks'
+
+export async function executeWorkspaceCommand(
+  threadId: string,
+  command: WorkspaceCommandName,
+  body?: Record<string, unknown>,
+): Promise<WorkspaceCommandResult> {
+  const { data } = await api.post(
+    `/communications/threads/${threadId}/commands/${command}`,
+    body ?? {},
+  )
+  return data as WorkspaceCommandResult
+}
+
+/** Merge Command/ThreadContext projection into a list/detail thread row (no extra GET). */
+export function mergeThreadFromContext(
+  thread: CommunicationThread,
+  ctx: ThreadContext,
+): CommunicationThread {
+  return {
+    ...thread,
+    assignee_id: ctx.work_state?.assignee_id ?? thread.assignee_id,
+    unread_count: ctx.work_state?.unread_count ?? thread.unread_count,
+    is_archived: ctx.work_state?.is_archived ?? thread.is_archived,
+    status: (ctx.identity?.thread?.status as CommunicationThread['status']) || thread.status,
+    subject: ctx.identity?.thread?.subject ?? thread.subject,
+    channel: (ctx.identity?.thread?.channel as CommunicationThread['channel']) || thread.channel,
+    sla_due_at: ctx.work_state?.sla_due_at ?? thread.sla_due_at,
+    priority: (ctx.work_state?.priority as CommunicationThread['priority']) || thread.priority,
+    tags_json: Array.isArray(ctx.work_state?.tags_json) ? ctx.work_state.tags_json : thread.tags_json,
+    thread_meta: (ctx.work_state?.thread_meta as CommunicationThread['thread_meta']) || thread.thread_meta,
+    linked_candidate_id: ctx.work_state?.linked_candidate_id ?? thread.linked_candidate_id,
+    linked_company_id: ctx.work_state?.linked_company_id ?? thread.linked_company_id,
+  }
+}
+
+/** Include expected_work_version when the client has a ThreadContext snapshot. */
+export function withExpectedWorkVersion(
+  body: Record<string, unknown> | undefined,
+  workVersion: number | null | undefined,
+): Record<string, unknown> {
+  const next = { ...(body || {}) }
+  if (workVersion != null && Number.isFinite(Number(workVersion))) {
+    next.expected_work_version = Number(workVersion)
+  }
+  return next
+}
+
+export async function getThreadCapabilities(threadId: string): Promise<ThreadCapabilities> {
+  const { data } = await api.get(`/communications/threads/${threadId}/capabilities`)
+  return data as ThreadCapabilities
+}
+
+export async function getMessageDeliveryDiagnostics(messageId: string): Promise<DeliveryDiagnostics> {
+  const { data } = await api.get(`/communications/messages/${messageId}/delivery-diagnostics`)
+  return data as DeliveryDiagnostics
 }
 
 export async function getCommunicationThread(
@@ -843,9 +1054,14 @@ export async function createCommunicationThread(payload: Record<string, any>): P
   return data as CommunicationThread
 }
 
-export async function patchCommunicationThread(threadId: string, payload: Record<string, any>): Promise<CommunicationThread> {
-  const { data } = await api.patch(`/communications/threads/${threadId}`, payload)
-  return data as CommunicationThread
+/** @deprecated C1.2 — removed. Use executeWorkspaceCommand. */
+export async function patchCommunicationThread(
+  _threadId: string,
+  _payload: Record<string, any>,
+): Promise<CommunicationThread> {
+  throw new Error(
+    'patchCommunicationThread removed in C1.2 — use executeWorkspaceCommand (SetThreadTags, UpdateThreadWorkflow, …)',
+  )
 }
 
 export async function listCommunicationMessages(
@@ -887,10 +1103,11 @@ export async function uploadCommunicationThreadMessageAttachment(
 
 export async function markCommunicationThreadRead(
   threadId: string,
-  payload?: { message_ids?: string[]; mark_thread?: boolean }
+  _payload?: { message_ids?: string[]; mark_thread?: boolean }
 ): Promise<CommunicationThread> {
-  const { data } = await api.post(`/communications/threads/${threadId}/read`, payload || { mark_thread: true })
-  return data as CommunicationThread
+  await executeWorkspaceCommand(threadId, 'MarkThreadRead')
+  const detail = await getCommunicationThread(threadId)
+  return detail.thread
 }
 
 export async function reconcileCommunicationThreadUnread(payload?: {
@@ -904,6 +1121,43 @@ export async function reconcileCommunicationThreadUnread(payload?: {
   if (payload?.limit != null) body.limit = payload.limit
   const { data } = await api.post('/communications/threads/reconcile-unread', body)
   return data as { processed: number; updated: number; total_unread: number }
+}
+
+
+export type CommunicationThreadRematchItem = {
+  thread_id: string
+  confidence: string
+  auto_linked: boolean
+  skipped?: boolean
+  skip_reason?: string | null
+  counterparty_email?: string | null
+  reasons?: string[]
+  hits?: Array<{ entity_type: string; entity_id: string; reason?: string }>
+}
+
+export type CommunicationThreadRematchResponse = {
+  processed: number
+  linked: number
+  ambiguous: number
+  none: number
+  skipped: number
+  dry_run: boolean
+  items: CommunicationThreadRematchItem[]
+  unavailable_reason?: string | null
+}
+
+/** Controlled G15 rematch for historically unlinked email threads (default dry_run). */
+export async function rematchUnlinkedCommunicationThreads(opts?: {
+  threadIds?: string[]
+  limit?: number
+  dryRun?: boolean
+}): Promise<CommunicationThreadRematchResponse> {
+  const { data } = await api.post('/communications/threads/rematch-unlinked', {
+    thread_ids: opts?.threadIds,
+    limit: opts?.limit ?? 100,
+    dry_run: opts?.dryRun ?? true,
+  })
+  return data as CommunicationThreadRematchResponse
 }
 
 export async function autoAssignCommunicationThread(

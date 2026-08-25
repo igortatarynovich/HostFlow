@@ -14,10 +14,17 @@ from backend.app.api.v1.settings.hiring_pipeline_gates_impl import (
     get_hiring_pipeline_gates_core,
     patch_hiring_pipeline_gates_core,
 )
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant, get_db
 from backend.app.api.v1.tenants import schemas
 from backend.app.api.v1.tenants import service
+from backend.app.security.event_taxonomy import (
+    EVENT_SEARCH_RETRIEVAL_COMPLETED,
+    EVENT_SEARCH_RETRIEVAL_DENIED,
+    EVENT_SEARCH_RETRIEVAL_REQUESTED,
+)
+from backend.app.security.retrieval_events import emit_retrieval_security_event_v1
 from backend.app.services import billing_restrictions
 from backend.app.services.portal_link_limits import ensure_portal_token_issue_allowed
 from backend.app.services.tenant_links import list_links_for_agency
@@ -56,7 +63,7 @@ async def get_me(
 @router.get(
     "/me/hiring-pipeline-gates",
     response_model=HiringPipelineGatesPublicOut,
-    dependencies=[Depends(require_roles(*HIRING_GATES_READ_ROLES))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def get_hiring_pipeline_gates_me(
     ctx: UserCtx = Depends(get_current_user),
@@ -69,7 +76,7 @@ async def get_hiring_pipeline_gates_me(
 @router.patch(
     "/me/hiring-pipeline-gates",
     response_model=HiringPipelineGatesPublicOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def patch_hiring_pipeline_gates_me(
     payload: HiringPipelineGatesPatch,
@@ -84,7 +91,7 @@ async def patch_hiring_pipeline_gates_me(
     "/",
     response_model=schemas.TenantOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_tenant(
     payload: schemas.TenantCreate,
@@ -108,7 +115,7 @@ async def create_tenant(
 @router.patch(
     "/{tenant_id}",
     response_model=schemas.TenantOut,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_tenant(
     tenant_id: UUID,
@@ -137,7 +144,7 @@ async def update_tenant(
 @router.get(
     "/{tenant_id}/users",
     response_model=List[schemas.TenantUsersOut],
-    dependencies=[Depends(require_roles(Role.admin, Role.owner, Role.manager))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_users(
     tenant_id: UUID,
@@ -163,7 +170,7 @@ async def list_users(
 @router.post(
     "/{tenant_id}/apikey/reset",
     response_model=schemas.ApiKeyResetOut,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def reset_api_key(
     tenant_id: UUID,
@@ -190,28 +197,85 @@ async def reset_api_key(
 @router.get(
     "/{tenant_id}/links/search-companies",
     response_model=List[schemas.CompanySearchOut],
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def search_companies_for_link(
     tenant_id: UUID,
     q: str = Query(..., min_length=1),
     db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
 ):
     """Search companies in other tenants (Tenant.type=company) by name or domain for linking as client."""
     db, current_tenant = db_tenant
-    if str(current_tenant) != str(tenant_id):
+    tid = str(tenant_id)
+    ak = str(db.info.get("security_access_kind") or "").strip() or "tenant_bound"
+    actor = str(getattr(current_user, "sub", "") or "") or None
+    _src = "http:GET /api/v1/tenants/{id}/links/search-companies"
+
+    emit_retrieval_security_event_v1(
+        event_type=EVENT_SEARCH_RETRIEVAL_REQUESTED,
+        result="success",
+        severity="info",
+        source=_src,
+        tenant_id=tid,
+        access_kind=ak,
+        entity_type="tenant",
+        entity_id=tid,
+        actor_id=actor,
+        retrieval_type="tenant_link_company_search",
+        retrieval_scope="cross_tenant_company_directory",
+        requested_entity_types=["company"],
+        contains_class3=False,
+        response_mode="json_list",
+    )
+
+    if str(current_tenant) != tid:
+        emit_retrieval_security_event_v1(
+            event_type=EVENT_SEARCH_RETRIEVAL_DENIED,
+            result="denied",
+            severity="low",
+            source=_src,
+            tenant_id=tid,
+            access_kind=ak,
+            entity_type="tenant",
+            entity_id=tid,
+            actor_id=actor,
+            retrieval_type="tenant_link_company_search",
+            retrieval_scope="cross_tenant_company_directory",
+            requested_entity_types=["company"],
+            reason="tenant_mismatch",
+            contains_class3=False,
+            response_mode="json_list",
+        )
         raise HTTPException(status_code=403, detail="Cannot access another tenant")
     search = f"%{q.strip()}%"
     stmt = (
         select(Company.id, Company.name, Company.tenant_id, Company.website)
         .join(Tenant, Tenant.id == Company.tenant_id)
         .where(Tenant.type == TenantType.company)
-        .where(Company.tenant_id != str(tenant_id))
+        .where(Company.tenant_id != tid)
         .where(or_(Company.name.ilike(search), (Company.website or "").ilike(search)))
         .limit(20)
     )
     result = await db.execute(stmt)
     rows = result.all()
+    emit_retrieval_security_event_v1(
+        event_type=EVENT_SEARCH_RETRIEVAL_COMPLETED,
+        result="success",
+        severity="info",
+        source=_src,
+        tenant_id=tid,
+        access_kind=ak,
+        entity_type="tenant",
+        entity_id=tid,
+        actor_id=actor,
+        retrieval_type="tenant_link_company_search",
+        retrieval_scope="cross_tenant_company_directory",
+        requested_entity_types=["company"],
+        returned_count=len(rows),
+        contains_class3=False,
+        response_mode="json_list",
+    )
     return [
         schemas.CompanySearchOut(id=r.id, name=r.name, tenant_id=str(r.tenant_id), website=r.website)
         for r in rows
@@ -222,7 +286,7 @@ async def search_companies_for_link(
     "/{tenant_id}/links",
     response_model=schemas.TenantLinkWithCompanyOut,
     status_code=201,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_tenant_link(
     tenant_id: UUID,
@@ -340,14 +404,7 @@ async def create_tenant_link(
     response_model=List[schemas.TenantLinkWithCompanyOut],
     dependencies=[
         Depends(
-            require_roles(
-                Role.admin,
-                Role.owner,
-                Role.manager,
-                Role.recruiter,
-                Role.hr_officer,
-                Role.compliance_officer,
-            )
+            require_trust_write()
         )
     ],
 )
@@ -390,7 +447,7 @@ async def list_tenant_links(
 @router.patch(
     "/{tenant_id}/links/{link_id}",
     response_model=schemas.TenantLinkWithCompanyOut,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_tenant_link(
     tenant_id: UUID,
@@ -463,7 +520,7 @@ async def update_tenant_link(
 @router.delete(
     "/{tenant_id}/links/{link_id}/portal-link",
     status_code=204,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def revoke_portal_link(
     tenant_id: UUID,
@@ -491,7 +548,7 @@ async def revoke_portal_link(
 @router.post(
     "/{tenant_id}/links/{link_id}/portal-link",
     response_model=schemas.PortalLinkOut,
-    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_or_update_portal_link(
     tenant_id: UUID,

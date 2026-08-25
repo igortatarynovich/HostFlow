@@ -203,7 +203,8 @@
         "doc_col_expires": "Wygasa",
         "doc_col_days_left": "Dni",
         "doc_col_file": "Plik",
-        "doc_open": "Otwórz"
+        "doc_open": "Otwórz",
+        "doc_open_error": "Could not open document file"
       },
       "work_eligibility": {
         "section_title": "Uprawnienia do pracy i opłaty ustawowe",
@@ -356,7 +357,22 @@
           "expiring": "Wygasa",
           "rejected": "Odrzucony",
           "needs_data": "Wymaga danych"
-        }
+        },
+        "request_doc_correction": "Request correction",
+        "replace_doc": "Replace",
+        "status": {
+          "hr_review_in_progress": "HR review in progress",
+          "waiting_documents": "Awaiting documents",
+          "waiting_payments": "Awaiting payments",
+          "waiting_work_permit": "Awaiting work permit",
+          "waiting_red_paper": "Awaiting red paper",
+          "approved_for_employment": "Approved for employment",
+          "returned_to_recruitment": "Returned to recruitment",
+          "rejected_by_hr": "Rejected by HR"
+        },
+        "rail_open": "Open HR review",
+        "rail_blockers": "Resolve HR review blockers",
+        "rail_continue": "Continue HR review"
       },
       "review_case": {
         "badge": "Sprawa HR",
@@ -369,14 +385,59 @@
         "approve_yes": "Zatwierdzenie dozwolone",
         "approve_no": "Zatwierdzenie zablokowane",
         "back_to_inbox": "← Wróć do skrzynki HR",
-        "handoff_summary_hint": "Kontekst tylko do odczytu z rekrutacji. Weryfikuj dokumenty powyżej."
+        "handoff_summary_hint": "Kontekst tylko do odczytu z rekrutacji. Weryfikuj dokumenty powyżej.",
+        "profile_badge": "Employee profile",
+        "untitled": "HR case",
+        "handoff": "Handoff",
+        "transferred": "Transferred",
+        "quick_actions": "Quick actions",
+        "open_eligibility": "Open work eligibility",
+        "recent_history": "Recent history",
+        "no_events": "No events yet.",
+        "full_history": "Open full history",
+        "docs_required": "Documents required for approval",
+        "current_step": "Current step",
+        "step_status": "Status",
+        "blockers": "Blockers",
+        "eligibility_after_employee": "Full eligibility journey is available after workforce employee is linked.",
+        "show_journey": "Show full eligibility journey",
+        "hide_journey": "Hide full eligibility journey",
+        "after_approval": "After employment approval",
+        "open_employee_profile": "Open employee profile",
+        "current_task_kicker": "What to do now",
+        "why_this_task": "Why this task",
+        "task_closes": "This step closes",
+        "after_completion": "After this",
+        "blocks_approval": "Blocks approval",
+        "ready_step": "Ready",
+        "task_take_title": "Take case into HR review",
+        "task_take_desc": "Accept the recruitment handoff to unlock the HR checklist, document verification, and eligibility workflow.",
+        "task_take_why": "Until HR accepts the handoff, this case stays in the transfer queue and cannot progress toward employment approval.",
+        "task_take_done": "Handoff status becomes accepted and the HR review checklist is active.",
+        "view_handoff": "View handoff summary",
+        "priority_step": "Step {{step}} of {{total}}",
+        "priority_ladder_toggle": "System priority order (v1)"
       },
       "doc_verify": {
         "needs_manual": "Wymaga ręcznego potwierdzenia",
         "request_correction": "Poproś o poprawkę",
         "reject": "Odrzuć dokument",
         "correction_placeholder": "Co należy poprawić?",
-        "reject_placeholder": "Powód odrzucenia"
+        "reject_placeholder": "Powód odrzucenia",
+        "section_hint": "Verify each document against profile data. Checklist items update when all required cards are verified.",
+        "checklist_item": "Checklist",
+        "col_field": "Field",
+        "col_profile": "Profile / snapshot",
+        "col_downstream": "Used for",
+        "col_confirm": "HR confirmation",
+        "confirmed_value": "Confirmed value",
+        "comment": "Comment",
+        "confirmed": "Confirmed",
+        "save_review": "Save field review",
+        "verify": "Verify document",
+        "reject_verification": "Reject verification",
+        "upload_new": "Upload new",
+        "upload_new_note": "Please upload a new version of this document."
       },
       "doc_flow": {
         "title": "Weryfikacja dokumentów",
@@ -427,7 +488,10 @@
           "in_review": "W trakcie",
           "missing_file": "Brak pliku",
           "awaiting": "Oczekuje potwierdzenia"
-        }
+        },
+        "section_title": "Documents verification workspace",
+        "dossier_hint": "One document at a time: compare file to fields, then confirm/correct/replace.",
+        "no_review_context": "HR review context is not available for this employee yet."
       },
       "decisions": {
         "request_correction": "Poproś o poprawkę",
@@ -622,6 +686,56 @@
         "ctx_verified": "Zw.",
         "ctx_expires": "Wygasa",
         "no_ctx_items": "Brak wierszy kontekstu dokumentów HR."
+      },
+      "document_packs": {
+        "section_title": "Document packs",
+        "hub_preview_title": "Document packs for filtered employee",
+        "empty": "No document packs for this profile yet.",
+        "no_candidate_link": "This employee has no linked candidate — document packs are unavailable.",
+        "skeleton_hint": "Client-specific requirements will appear here later.",
+        "blockers": "Blockers",
+        "warnings": "Warnings",
+        "gaps": "Gaps",
+        "count": {
+          "missing": "Missing",
+          "expired": "Expired",
+          "expiring": "Expiring",
+          "missing_expiry": "No expiry date"
+        },
+        "status": {
+          "valid": "Valid",
+          "warnings": "Warnings",
+          "gaps": "Gaps",
+          "skeleton": "Skeleton"
+        }
+      },
+      "document_actions": {
+        "section_title": "Document actions",
+        "empty": "No document actions",
+        "no_candidate_link": "This employee has no linked candidate — document actions are unavailable.",
+        "document": "Document",
+        "pack": "Pack",
+        "due": "Due",
+        "action": {
+          "upload_document": "Upload document",
+          "request_update": "Request update",
+          "renew_document": "Renew document",
+          "capture_expiry_date": "Capture expiry date"
+        }
+      },
+      "readiness": {
+        "status_label": "Readiness status",
+        "next_action": "Next action",
+        "reason": "Reason",
+        "blocks": "Blocks",
+        "owner": "Responsible",
+        "due": "Due",
+        "missing": "Missing / affected",
+        "open_documents": "Open documents",
+        "ready_hint": "No document blockers detected. Employment readiness looks clear from current packs.",
+        "ready_next": "Next step: {step}",
+        "remaining": "{count} documents remaining",
+        "verification_progress": "Verified {verified} of {total} uploaded documents"
       }
     },
     "api_errors": {
@@ -769,6 +883,10 @@
         "my_availability": "Moja dostępność",
         "time_off": "Urlopy i nieobecności",
         "reminders": "Przypomnienia",
+        "recruitment_inbox": "Odpowiedzi",
+        "recruitment_searches": "Rekrutacje",
+        "sales": "Zapytania",
+        "marketing": "Marketing",
         "leads": "Leady",
         "leads_distribution": "Routing leadów",
         "leads_distribution_rules": "Reguły routingu leadów",
@@ -791,6 +909,8 @@
         "settings_communications_messengers": "Komunikatory",
         "settings_communications_queue": "Kolejka i routing",
         "settings_communications_sla": "SLA komunikacji",
+        "settings_communications_templates": "Szablony komunikacji",
+        "settings_communications_automation": "Automatyzacja komunikacji",
         "settings_ttv": "Raport TTV",
         "profile": "Profil",
         "logout": "Wyloguj",
@@ -800,9 +920,14 @@
         "no_next_action": "Bez następnej akcji",
         "automations": "Automatyzacje",
         "automation_log": "Dziennik automatyzacji",
+        "acquisition_activity": "Aktywność Acquisition",
+        "marketing_sources": "Sources",
+        "marketing_forms": "Forms",
+        "marketing_diagnostics": "Diagnostics",
         "automation_rules": "Reguły automatyzacji",
         "settings_hiring_gates": "Bramki lejka rekrutacji",
-        "settings_risk_intel": "Ryzyko operacyjne"
+        "settings_risk_intel": "Ryzyko operacyjne",
+        "hr_inbox": "HR Inbox"
       },
       "hr": {
         "workspace": {
@@ -840,7 +965,34 @@
           "total": "Razem: {{n}}",
           "handoff_row": "Przekazanie {{id}}",
           "view_snapshot": "Migawka",
-          "empty": "Brak przekazań w tej kolejce."
+          "empty": "Brak przekazań w tej kolejce.",
+          "tab_all": "All active",
+          "view_review": "HR review",
+          "open_employee": "Employee profile",
+          "col_queue": "Queue",
+          "col_status": "Status",
+          "col_candidate": "Candidate",
+          "col_handoff": "Handoff",
+          "col_employee": "Workforce",
+          "col_actions": "Actions",
+          "accept_pickup": "Take into HR review",
+          "stat_pending": "Awaiting pickup: {n}",
+          "stat_accepted": "In review: {n}",
+          "stat_tab": "This tab: {n}",
+          "quick_hub": "Documents hub",
+          "tabs_aria": "Inbox queues",
+          "queue_awaiting_hr_pickup": "Awaiting HR pickup",
+          "queue_hr_review_in_progress": "HR review in progress",
+          "queue_awaiting_documents": "Awaiting documents",
+          "queue_awaiting_payments": "Awaiting payments",
+          "queue_awaiting_work_permit": "Awaiting work permit",
+          "queue_awaiting_red_paper": "Awaiting red paper",
+          "queue_approved_for_employment": "Approved for employment",
+          "queue_returned_to_recruitment": "Returned to recruitment",
+          "queue_rejected_by_hr": "Rejected by HR",
+          "filter_queue": "Filter by queue",
+          "delayed_hint": "Workforce is created only after employment approval.",
+          "accepted_unavailable": "Accepted handoff queue is unavailable (backend version mismatch). Pending pickup still loads below."
         },
         "tasks": {
           "heading": "Zadania HR",
@@ -1150,7 +1302,26 @@
       "not_found_dynamic": "Nie znaleziono dynamicznego",
       "quick_defaults": "Szybkie ustawienia domyślne",
       "subtitle_dynamic": "Dynamika napisów",
-      "title_dynamic": "Tytuł dynamiczny"
+      "title_dynamic": "Tytuł dynamiczny",
+      "see_reduced_profiles_label": "Reduced profiles",
+      "settings_desc": "Handoff, client portal, and contact attempt rules.",
+      "add_modal_hint": "Creates the client profile and access settings in one step.",
+      "access_column": "Access",
+      "access_needs_setup": "Needs setup",
+      "access_ready": "Configured",
+      "access_contact_on": "Contact tracking",
+      "access_not_configured": "Access settings are not linked yet. Configure them to enable handoff, portal, and contact attempts.",
+      "configure_access": "Configure access",
+      "access_link_created": "Client access configured.",
+      "contact_policy_active": "Enabled · max {count} attempts",
+      "contact_policy_inactive": "Disabled for this client",
+      "created_from_lead": "Client created from questionnaire",
+      "from_lead_badge": "Created from lead questionnaire",
+      "from_lead_hint": "Data was migrated from the submitted form. Review the profile, configure access, then continue working with this client.",
+      "from_lead_contact": "Contact",
+      "from_lead_reach": "Reach",
+      "open_source_lead": "Open lead",
+      "empty_why": "Clients are companies you place candidates with. Once linked they unlock handoff, portal access, and contact attempts."
     },
     "vacancies": {
       "list": {
@@ -1206,7 +1377,12 @@
         "errors": {
           "unauthorized": "Brak autoryzacji: zaloguj się i spróbuj ponownie.",
           "load_failed": "Nie udało się załadować wakatów"
-        }
+        },
+        "empty_title": "Nie masz jeszcze wakatów",
+        "empty_description": "Utwórz pierwszy wakat w ok. 30 sekund, aby przyjmować i obsługiwać kandydatów.",
+        "empty_why": "Wakat to rola, na którą rekrutujesz. Leady i kandydaci są do niego przypisani.",
+        "empty_cta": "Utwórz wakat",
+        "empty_cta_setup": "Otwórz start"
       },
       "form": {
         "save_failed": "Nie udało się zapisać oferty"
@@ -1424,6 +1600,8 @@
       "communications_thread_escalated_title": "Wątek eskalowany — wymagane działanie",
       "lead_public_intake_client_title": "Nowy lead klienta z publicznego intake",
       "lead_public_intake_client_desc": "Zapytanie od {name}. Otwórz lead, aby kontynuować.",
+      "intake_questionnaire_submitted_title": "Klient wypełnił ankietę",
+      "intake_questionnaire_submitted_desc": "{contact} — {company}",
       "intake_client_lead_skipped_no_company_title": "Intake klienta: lead nie utworzony",
       "intake_client_lead_skipped_no_company_desc": "{name} wysłał(a) zapytanie klienta, ale nie udało się przypisać firmy. Ustaw firmę domyślną (Meta leads) lub powiąż ofertę/klienta.",
       "reminder_popup": {
@@ -1542,7 +1720,14 @@
       "scoped_candidate_clear": "Pokaż wszystkie wątki"
     },
     "communications_api": {
-      "thread_unlinked_outbound_blocked": "Powiąż wątek z kandydatem, firmą klienta lub zamówieniem UOS przed wysłaniem (polityka operacji)."
+      "thread_unlinked_outbound_blocked": "Powiąż wątek z kandydatem, firmą klienta lub zamówieniem UOS przed wysłaniem (polityka operacji).",
+      "pipeline": {
+        "communication_pipeline_required": "Aby wysłać wiadomość, powiąż wątek z rekordem Sales lub Recruitment.",
+        "missing_result_link": "Przed wysyłką powiąż wątek z zapytaniem Sales lub aplikacją Recruitment.",
+        "communication_pipeline_denied": "Wysyłka zablokowana przez politykę komunikacji dla tego wątku.",
+        "unknown_purpose": "Ten typ odpowiedzi nie jest dozwolony dla powiązanego rekordu.",
+        "result_link_missing": "Przed wysyłką powiąż wątek z zapytaniem Sales lub aplikacją Recruitment."
+      }
     },
     "communications_messages": {
       "reply_required": "Wymagana odpowiedź",
@@ -1676,7 +1861,13 @@
         "communications_workspace": "Obszar roboczy komunikacji",
         "more": "Więcej",
         "operations": "Operacje",
-        "system": "System"
+        "system": "System",
+        "section_communications": "Komunikacja",
+        "section_recruitment": "Rekrutacja",
+        "section_marketing": "Marketing",
+        "section_sales": "Sprzedaż",
+        "section_hr": "HR / Kadry",
+        "section_services": "Usługi"
       },
       "actions": {
         "logout": "Wyloguj",
@@ -1693,6 +1884,7 @@
         "return_to_platform": "Wróć do panelu platformy",
         "language": "Język"
       },
+      "impersonation_banner": "SUPERADMIN ACCESS ACTIVE — impersonacja tenanta klienta",
       "notifications": {
         "title": "Powiadomienia",
         "panel_subtitle": "Nieprzeczytane: {count}",
@@ -1751,8 +1943,8 @@
     },
     "seo": {
       "landing": {
-        "title": "CRM dla zespołów rekrutacyjnych",
-        "description": "HostFlow pomaga zespołom rekrutacji prowadzić leady, kandydatów, dokumenty i operacje w jednym CRM."
+        "title": "Zamykaj wakaty szybciej — HostFlow",
+        "description": "HostFlow zbiera kandydatów z Meta, WhatsApp i formularzy, przypisuje ich rekruterom i kontroluje proces rekrutacji — od leada do zatrudnienia."
       },
       "pricing": {
         "title": "Cennik CRM dla rekrutacji",
@@ -1805,6 +1997,10 @@
         "sessions": {
           "title": "Aktywne sesje",
           "description": "Przeglądaj zalogowane urządzenia i w razie potrzeby zakończ je."
+        },
+        "signature": {
+          "title": "Podpis wiadomości wychodzących",
+          "description": "Dodawany automatycznie do e-maili i innych wiadomości wychodzących. Szablony nie powinny zawierać podpisu."
         }
       },
       "avatar": {
@@ -1821,7 +2017,13 @@
         "birth_date": "Data urodzenia",
         "country": "Kraj",
         "city": "Miasto",
-        "preferred_contact": "Preferowany kanał kontaktu"
+        "preferred_contact": "Preferowany kanał kontaktu",
+        "company": "Firma",
+        "website": "Strona WWW",
+        "logo_url": "Logo (URL)",
+        "show_phone": "Pokazuj telefon",
+        "show_email": "Pokazuj e-mail",
+        "show_website": "Pokazuj stronę WWW"
       },
       "preferences": {
         "hints": {
@@ -1953,6 +2155,11 @@
       "labels": {
         "timezone": "Strefa czasowa",
         "user": "Użytkownik"
+      },
+      "signature": {
+        "preview_label": "Podgląd podpisu",
+        "company_fallback_hint": "Firma, strona WWW i kontakty do podpisu pochodzą tylko z tego bloku. Own company / SMTP nie są używane.",
+        "html_hint": "W e-mailu: imię i firma pogrubione kolorem marki, spójne ikony, logo ~180px."
       }
     },
     "signup": {
@@ -2088,18 +2295,21 @@
           "title": "Wykorzystanie miejsc",
           "limit": "Wykorzystano {used} z {limit}",
           "unlimited": "Wykorzystano {used}",
-          "recruiters": "Rekruterzy",
-          "supervisors": "Koordynatorzy",
-          "client_managers": "Opiekunowie klienta",
+          "administrators": "Administratorzy",
+          "employees": "Pracownicy",
+          "portal_guests": "Goście portalu (bez opłat)",
+          "recruiters": "Pracownicy",
+          "supervisors": "Administratorzy",
+          "client_managers": "Goście portalu (bez opłat)",
           "viewers": "Podglądający"
         },
         "license": {
           "title": "Licencja i limity",
           "plan": "Plan",
           "expires_at": "Wygasa",
-          "max_recruiters": "Maks. rekruterów",
-          "max_supervisors": "Maks. koordynatorów",
-          "max_client_managers": "Maks. opiekunów klienta",
+          "max_recruiters": "Maks. pracowników",
+          "max_supervisors": "Maks. administratorów",
+          "max_client_managers": "Maks. gości portalu (nieużywane)",
           "max_viewers": "Maks. podglądających",
           "max_storage_gb": "Maks. magazyn (GB)",
           "max_companies": "Maks. firm",
@@ -2165,6 +2375,7 @@
           "impersonate": "Wejdź jako tenant",
           "impersonating": "Przełączanie…",
           "impersonate_confirm": "Przełączyć się na tenant „{name}”? Bieżąca sesja zostanie zastąpiona.",
+          "impersonate_reason_prompt": "Powód impersonacji (wymagany, min. 3 znaki):",
           "manage_team": "Zarządzaj zespołem",
           "suspend": "Zawieś",
           "activate": "Aktywuj",
@@ -2218,7 +2429,8 @@
             "documents": "Dokumenty",
             "leads": "Leady",
             "services": "Usługi",
-            "client_portal": "Portal klienta"
+            "client_portal": "Portal klienta",
+            "hr": "HR"
           },
           "empty": "Brak danych o modułach dla tego tenanta.",
           "errors": {
@@ -2268,6 +2480,7 @@
           "logo_upload_failed": "Przesyłanie logo nie powiodło się.",
           "status_change_failed": "Nie udało się zmienić statusu.",
           "impersonate_failed": "Impersonacja nie powiodła się.",
+          "impersonate_reason_required": "Wymagane uzasadnienie (min. 3 znaki).",
           "required_fields": "Nazwa i slug są wymagane.",
           "initial_admin_password_required": "Podaj hasło administratora.",
           "create_failed": "Nie udało się utworzyć tenanta.",
@@ -2304,9 +2517,12 @@
         "subtitle": "Kontroluj liczbę wykorzystanych miejsc, zarządzaj modułami i zgłaszaj potrzebę dodatkowych licencji.",
         "usage": {
           "title": "Zużycie miejsc",
-          "recruiters": "Rekruterzy",
-          "supervisors": "Koordynatorzy",
-          "client_managers": "Opiekunowie klienta",
+          "administrators": "Administratorzy",
+          "employees": "Pracownicy",
+          "portal_guests": "Goście portalu (bez opłat)",
+          "recruiters": "Pracownicy",
+          "supervisors": "Administratorzy",
+          "client_managers": "Goście portalu (bez opłat)",
           "viewers": "Podglądający"
         },
         "modules": {
@@ -2331,6 +2547,7 @@
           "submit": "Wyślij prośbę",
           "roles": {
             "administrator": "Administratorzy",
+            "employee": "Pracownicy",
             "supervisor": "Koordynatorzy",
             "recruiter": "Rekruterzy",
             "client_manager": "Opiekunowie klienta",
@@ -2541,9 +2758,12 @@
           "title": "Dokumenty prawne"
         },
         "usage": {
-          "recruiters": "Rekruterzy: {used} / {limit}",
-          "supervisors": "Koordynatorzy: {used} / {limit}",
-          "client_managers": "Opiekunowie klienta: {used} / {limit}",
+          "administrators": "Administratorzy: {used} / {limit}",
+          "employees": "Pracownicy: {used} / {limit}",
+          "portal_guests": "Goście portalu (bez opłat): {used}",
+          "recruiters": "Pracownicy: {used} / {limit}",
+          "supervisors": "Administratorzy: {used} / {limit}",
+          "client_managers": "Goście portalu (bez opłat): {used} / {limit}",
           "viewers": "Podglądający: {used} / {limit}",
           "leads_month": "Leady w tym miesiącu (UTC): {used} / {limit}",
           "candidates": "Aktywni kandydaci: {used} / {limit}",
@@ -2818,7 +3038,8 @@
           "recruiter": "Rekruter",
           "client_manager": "Menedżer klienta",
           "client_processor": "Procesor kandydatów",
-          "viewer": "Podgląd"
+          "viewer": "Podgląd",
+          "employee": "Pracownik"
         },
         "form": {
           "email_label": "Email",
@@ -2835,7 +3056,10 @@
           "password_label": "Hasło (opcjonalnie)",
           "password_placeholder": "Zostaw puste — wygenerujemy",
           "submit": "Utwórz użytkownika",
-          "submitting": "Tworzymy…"
+          "submitting": "Tworzymy…",
+          "preset_label": "Preset uprawnień",
+          "preset_none": "Brak (domyślne dla roli)",
+          "preset_help": "Wypełnia uprawnienia modułów użytkownika — nie tworzy roli systemowej."
         },
         "errors": {
           "list_missing_endpoint": "Endpoint /api/v1/admin/users nie znaleziony. Zrestartuj backend po aktualizacjach.",
@@ -3030,6 +3254,13 @@
             "token": "Żeton",
             "valid_until": "Ważne do"
           }
+        },
+        "presets": {
+          "recruiter": "Rekruter",
+          "team_lead": "Team lead",
+          "hr": "HR",
+          "compliance": "Compliance",
+          "portal_guest": "Gość portalu"
         }
       },
       "ruleset": {
@@ -3661,7 +3892,7 @@
     },
     "dashboard": {
       "title": "Analityka",
-      "page_subtitle": "Odpowiedzi na pytania biznesowe: gdzie tracimy ludzi, co hamuje, które źródła się zwracają, co zrobić dziś. Filtry działają na całość; presety zapisują się na tym urządzeniu.",
+      "page_subtitle": "Moduł systemowy: przekroje dla licencjonowanych modułów.",
       "sections": {
         "shortcuts": {
           "title": "Szybkie linki",
@@ -3812,12 +4043,14 @@
         "blacklist": "Czarna lista",
         "wrong_phone": "Nieprawidłowy numer telefonu",
         "double_crew": "Podwójna załoga",
-        "no_response": "Brak odpowiedzi"
+        "no_response": "Brak odpowiedzi",
+        "recruitment_completed": "Rekrutacja zakończona"
       },
       "labels": {
         "no_reason": "Bez powodu",
         "no_title": "Bez nazwy",
-        "no_subgroup": "Bez podgrupy"
+        "no_subgroup": "Bez podgrupy",
+        "untitled": "Bez nazwy"
       },
       "filters": {
         "title": "Filtry",
@@ -3953,7 +4186,8 @@
       },
       "errors": {
         "range_invalid": "Data początkowa musi być wcześniejsza niż końcowa.",
-        "load_failed": "Nie udało się wczytać danych panelu"
+        "load_failed": "Nie udało się wczytać danych panelu",
+        "temporarily_unavailable": "Analityka jest tymczasowo niedostępna. Spróbuj ponownie za kilka sekund."
       },
       "stats": {
         "candidates_total": "Kandydaci (łącznie)",
@@ -4219,6 +4453,222 @@
         "validation_title": "Walidacja kohorty shadow",
         "validation_samples": "Próbki kohorty",
         "validation_rate": "Wskaźnik przejścia etapu"
+      },
+      "efficiency": {
+        "title": "Efektywność pracy",
+        "subtitle": "Etapy pipeline, powody odrzuceń i status dokumentów. Filtry: klient, okres, wakat.",
+        "empty": "Brak danych dla wybranego wycinka.",
+        "insight": "{closedPct} kandydatów jest już zamkniętych (odrzucony / zrezygnował). We wczesnych etapach — {early}, w dokumentach — {docs}.",
+        "filters": {
+          "client": "Klient",
+          "all_clients": "Wszyscy klienci"
+        },
+        "stats": {
+          "total": "Wszyscy kandydaci",
+          "in_progress": "W toku",
+          "closed": "Zamknięte (reject + decline)",
+          "docs_pipeline": "Dokumenty: wait + got"
+        },
+        "stages": {
+          "title": "Rozkład etapów",
+          "subtitle": "Bieżący etap kandydata w wybranym wycinku.",
+          "col_stage": "Etap",
+          "col_count": "Liczba",
+          "col_share": "Udział",
+          "terminal": "finał"
+        },
+        "reasons": {
+          "rejected_title": "Odrzucony przez firmę ({count})",
+          "declined_title": "Zrezygnował kandydat ({count})",
+          "hint": "Suma powodów może być większa niż liczba kandydatów — część ma kilka kodów.",
+          "empty": "Brak powodów w tym wycinku."
+        },
+        "docs": {
+          "title": "Dokumenty",
+          "subtitle": "Etapy docs_wait / docs_got oraz statusy wgranych plików.",
+          "wait": "Czekamy na dokumenty",
+          "got": "Dokumenty otrzymane",
+          "complete": "Pełny pakiet",
+          "col_status": "Status pliku",
+          "col_count": "Liczba",
+          "files_total": "Plików łącznie: {count}",
+          "empty_files": "Brak plików dokumentów w wycinku.",
+          "statuses": {
+            "approved": "Zatwierdzony",
+            "received": "Otrzymany",
+            "submitted": "Przesłany",
+            "requested": "Zażądany",
+            "rejected": "Odrzucony",
+            "verified": "Zweryfikowany",
+            "overdue": "Zaległy",
+            "expired": "Wygasły",
+            "missing": "Brakuje",
+            "uploaded": "Przesłany plik",
+            "completed": "Ukończony",
+            "delivered": "Dostarczony"
+          }
+        },
+        "charts": {
+          "outcomes_title": "Struktura wyników",
+          "outcomes_hint": "Odrzucony przez firmę · zrezygnował kandydat · w toku",
+          "outcome_rejected": "Odrzucony",
+          "outcome_declined": "Zrezygnował",
+          "outcome_in_progress": "W toku"
+        },
+        "contact": {
+          "title": "Metryka kontaktu",
+          "subtitle": "Otrzymano → próby kontaktu → dodzwoniono → wynik. Z prób kontaktu w CRM (te same filtry).",
+          "received": "Otrzymano",
+          "attempted": "Była próba",
+          "reached": "Dodzwoniono",
+          "untouched": "Bez prób",
+          "attempts_total": "Łącznie prób",
+          "funnel_received": "Otrzymano",
+          "funnel_attempted": "Próba",
+          "funnel_reached": "Dodzwoniono",
+          "funnel_closed": "Zamknięte",
+          "funnel_hint": "Śr. prób na kandydata: {avg} · limit (≥3): {limit}",
+          "empty": "Brak prób kontaktu w przekroju.",
+          "stage_now": "Teraz na etapach: kontakt {contacted} · brak odpowiedzi {noAnswer}",
+          "results": {
+            "answered": "Odebrał",
+            "no_answer": "Brak odpowiedzi",
+            "wrong_number": "Zły numer",
+            "unavailable": "Niedostępny",
+            "callback_requested": "Oddzwonić",
+            "interested": "Zainteresowany",
+            "not_interested": "Niezainteresowany"
+          }
+        }
+      },
+      "tabs": {
+        "aria": "Moduły analityki",
+        "summary": "Podsumowanie",
+        "general": "Podsumowanie",
+        "recruitment": "Rekrutacja",
+        "sales": "Sprzedaż",
+        "hr": "HR",
+        "finance": "Finanse",
+        "fleet": "Flota"
+      },
+      "summary": {
+        "title": "Podsumowanie",
+        "subtitle": "Systemowa analityka HostFlow. Otwórz zakładkę modułu, aby zobaczyć szczegóły.",
+        "body": "Ten host zbiera dane z podłączonych modułów i pokazuje je w czytelnej formie. Każda zakładka ma własne metryki — nie kopię innego modułu.",
+        "bullets": {
+          "modules": "Zakładki pojawiają się tylko dla kupionych i dostępnych modułów.",
+          "filters": "Każdy moduł ma własne zakresy i przekroje (okres, klient, wakat gdy potrzeba).",
+          "owned": "Rekrutacja ≠ sprzedaż ≠ HR: lejki i KPI należą do modułu."
+        },
+        "pulse_title": "Puls operacyjny",
+        "window_30d": "okno 30 dni",
+        "business_type": {
+          "agency": "Agencja",
+          "employer": "Pracodawca",
+          "services": "Usługi"
+        },
+        "modules": {
+          "recruitment": "Rekrutacja",
+          "sales": "Sprzedaż",
+          "hr_finance": "HR / Finanse"
+        },
+        "kpis": {
+          "pipeline": "W pipeline",
+          "stuck": "Utknięte",
+          "active_today": "Aktywne dziś",
+          "open_vacancies": "Otwarte wakaty",
+          "candidates": "Kandydaci",
+          "vacancies_active": "Aktywne wakaty",
+          "on_open_vacancies": "Na otwartych wakatach",
+          "leads": "Leady / zapytania",
+          "leads_overdue": "Leady przeterminowane",
+          "open_orders": "Otwarte zamówienia",
+          "handoff_requested": "Handoff zgłoszone",
+          "handoff_accepted": "Handoff przyjęte",
+          "orders_30d": "Zamówienia (30d)"
+        }
+      },
+      "sales": {
+        "title": "Efektywność sprzedaży",
+        "subtitle": "Zapytania → kwalifikacja → win/lost oraz zamówienia. Nie pipeline kandydatów.",
+        "stats": {
+          "inquiries": "Zapytania (kohorta)",
+          "win_path": "Na win-path",
+          "lost": "Lost",
+          "new_untouched": "Nowe / nietknięte"
+        },
+        "funnel_title": "Lejek zapytań",
+        "funnel_subtitle": "Korzenie konwersji lead → qualified → active → final (+ lost).",
+        "funnel_stages": {
+          "lead": "Lead",
+          "qualified": "Qualified",
+          "active": "Active",
+          "final": "Final",
+          "lost": "Lost"
+        },
+        "lost_title": "Powody lost",
+        "lost_subtitle": "Dlaczego zapytania zamknięto bez win.",
+        "lost_empty": "Brak powodów lost w przekroju.",
+        "lost_reasons": {},
+        "orders_title": "Zamówienia / usługi",
+        "orders_subtitle": "Przekrój komercyjny dla wybranego okresu.",
+        "orders_total": "Zamówienia",
+        "orders_delivered": "Dostarczone",
+        "orders_cancelled": "Anulowane",
+        "orders_revenue": "Przychód",
+        "orders_status_title": "Statusy zamówień",
+        "order_status": {},
+        "filters": {
+          "source": "Źródło",
+          "source_placeholder": "meta, csv…",
+          "vacancy": "Wakat",
+          "vacancy_all": "Wszystkie wakaty"
+        }
+      },
+      "hr": {
+        "title": "Efektywność HR",
+        "subtitle": "Handoff: złożono → przyjęto / zwrócono / odrzucono.",
+        "flow_title": "Przepływ handoff",
+        "flow_subtitle": "Tylko przekazanie HR — nie etapy rekrutacji.",
+        "by_client_title": "Wg klienta",
+        "by_client_subtitle": "Przyjęto / złożono (top).",
+        "flow": {
+          "requested": "Złożono",
+          "accepted": "Przyjęto",
+          "returned": "Zwrócono",
+          "rejected": "Odrzucono"
+        }
+      },
+      "finance": {
+        "title": "Efektywność finansów",
+        "subtitle": "Faktury i marża w okresie — nie lejek sprzedaży.",
+        "margin_title": "Przychód i marża",
+        "margin_subtitle": "Z powiązanych zamówień/usług w okresie.",
+        "stats": {
+          "invoiced": "Wystawione",
+          "paid": "Opłacone",
+          "outstanding": "Do zapłaty",
+          "overdue": "Przeterminowane",
+          "revenue": "Przychód",
+          "cost": "Koszt",
+          "profit": "Zysk brutto",
+          "margin": "Marża"
+        }
+      },
+      "fleet": {
+        "title": "Flota",
+        "subtitle": "Park, linie i przydziały. Pełny moduł — w Flocie.",
+        "open_module": "Otwórz Flotę",
+        "module_hint": "API floty odpowiada, ale status modułu niepotwierdzony.",
+        "kpis": {
+          "vehicles": "Pojazdy",
+          "trailers": "Naczepy",
+          "drivers": "Kierowcy",
+          "lines": "Linie",
+          "assignments": "Przydziały",
+          "assignments_today": "Przydziały dziś (UTC)",
+          "assignments_month": "Przydziały w miesiącu (UTC)"
+        }
       }
     },
     "candidate_card": {
@@ -4735,7 +5185,9 @@
         "ok": "OK",
         "open": "Otwarte",
         "problematic": "Problematyczny",
-        "title": "Lista dokumentów"
+        "title": "Lista dokumentów",
+        "blockers": "Blockers",
+        "warnings": "Warnings"
       },
       "docs_panel": {
         "kpi": "KPI",
@@ -4744,7 +5196,8 @@
           "blockers": "Blokery",
           "workspace": "Obszar roboczy"
         },
-        "title": "Dokumenty"
+        "title": "Dokumenty",
+        "runtime_kpi": "{ready}/{total} satisfied · {problem} blockers · {percent}%"
       },
       "docs_readiness": {
         "counts": "Liczy się",
@@ -4753,7 +5206,8 @@
         "open": "Otwarte",
         "problem": "Problem",
         "ready": "Gotowy",
-        "title": "Gotowość dokumentów"
+        "title": "Gotowość dokumentów",
+        "required": "Required"
       },
       "docs_workspace": {
         "hint": "Wskazówka",
@@ -4774,7 +5228,8 @@
         },
         "title": "Dokumenty",
         "upload_btn": "Prześlij",
-        "what_blocks_title": "Co blokuje tego kandydata"
+        "what_blocks_title": "Co blokuje tego kandydata",
+        "runtime_kpi": "{ready}/{total} satisfied · {percent}%"
       },
       "stage_blocked_by_docs": {
         "description": "Aby przejść dalej, uzupełnij brakujące lub problematyczne wymagane dokumenty.",
@@ -4930,7 +5385,8 @@
         "vacancy_required_chip": "Wakatu / klient",
         "no_blockers": "Brak blokad",
         "required": "Wymagane",
-        "title": "Etap"
+        "title": "Etap",
+        "blocked_title_requirements": "Blocked by unconfirmed requirements"
       },
       "stage_journey": {
         "change_to": "Zmień na",
@@ -4959,6 +5415,10 @@
         "open_inbox": "Otwórz skrzynkę wiadomości",
         "loading_dialogs": "Ładowanie dialogów...",
         "empty_dialogs": "Brak powiązanych dialogów. Otwórz Messages i podłącz tego kandydata w nagłówku dialogu."
+      },
+      "stage_blocked_by_requirements": {
+        "title": "Blocked by requirements",
+        "description_generic": "Confirm all requirements before moving forward."
       }
     },
     "fleet": {
@@ -5774,13 +6234,13 @@
         "click_to_sort": "Kliknij, aby posortować",
         "deselect": "Odznacz",
         "deselect_all": "Odznacz wszystko",
-        "empty_cta_leads": "Puste leady CTA",
-        "empty_cta_pipeline": "Pusty potok CTA",
-        "empty_cta_reset": "Pusty reset CTA",
-        "empty_no_data_desc": "Puste, brak opisu danych",
+        "empty_cta_leads": "Otwórz leady",
+        "empty_cta_pipeline": "Otwórz pipeline",
+        "empty_cta_reset": "Resetuj filtry",
+        "empty_no_data_desc": "Kandydaci pojawiają się po kwalifikacji leada. Otwórz leady, skontaktuj się i przenieś tutaj.",
         "empty_partial": "Pusta częściowa",
-        "empty_title": "Pusty tytuł",
-        "empty_with_filters_desc": "Pusty z filtrami opis",
+        "empty_title": "Brak kandydatów",
+        "empty_with_filters_desc": "Filtry nic nie zwróciły. Zresetuj je, aby zobaczyć wszystkich.",
         "loading_hint": "Ładowanie podpowiedzi",
         "masked_label": "Zamaskowana etykieta",
         "masked_label_short_id": "Krótki identyfikator zamaskowanej etykiety",
@@ -5796,7 +6256,9 @@
         "select_all": "Zaznacz wszystko",
         "select_candidate": "Wybierz kandydata",
         "sort_by": "Sortuj według",
-        "updating": "Aktualizowanie"
+        "updating": "Aktualizowanie",
+        "empty_why": "To Twoja lista rekrutacji — osoby, z którymi pracujesz do zatrudnienia.",
+        "empty_cta_vacancy": "Utwórz wakat"
       },
       "bulk": {
         "selected": "Wybrano: {count}",
@@ -5894,14 +6356,16 @@
         "error_load": "Nie udało się wczytać lejka",
         "error_update_stage": "Nie udało się zaktualizować etapu kandydata",
         "error_update_stages": "Nie udało się zaktualizować etapów dla części kandydatów",
-        "column_empty_cta_candidates": "Kolumna pusta, kandydaci do CTA",
-        "column_empty_desc": "Kolumna pusta opis",
-        "column_empty_title": "Tytuł kolumny pusty",
-        "empty_cta_candidates": "Puści kandydaci do CTA",
-        "empty_cta_leads": "Puste leady CTA",
-        "empty_desc": "Pusty opis",
-        "empty_title": "Pusty tytuł",
-        "view_in_list": "Zobacz na liście"
+        "column_empty_cta_candidates": "Otwórz listę",
+        "column_empty_desc": "Przenieś kandydata tutaj, gdy dojdzie do kroku — lub otwórz listę.",
+        "column_empty_title": "Nikt na tym etapie",
+        "empty_cta_candidates": "Otwórz kandydatów",
+        "empty_cta_leads": "Otwórz leady",
+        "empty_desc": "Przenieś leada do kandydata — potem prowadź go przez etapy aż do zamknięcia wakatu.",
+        "empty_title": "Pipeline jest pusty",
+        "view_in_list": "Zobacz na liście",
+        "empty_why": "Pipeline pokazuje, kto utknął i co dalej. Zacznij od leadów.",
+        "empty_cta_vacancy": "Utwórz wakat"
       },
       "menu": {
         "open": "Otwórz menu",
@@ -6196,12 +6660,13 @@
         "empty": "Brak przypomnień.",
         "badge_direct": "dla Ciebie",
         "badge_new": "nowe",
-        "empty_cta_create": "Utwórz przypomnienie",
+        "empty_cta_create": "Dodaj follow-up",
         "empty_cta_leads": "Otwórz leady",
-        "empty_desc": "Utwórz pierwsze przypomnienie, żeby nie gubić follow-upów.",
-        "empty_title": "Brak przypomnień",
+        "empty_desc": "Skontaktuj się z leadem — kolejny krok pojawi się tutaj, żeby nic nie wisiało.",
+        "empty_title": "Brak follow-upów",
         "events_empty": "Brak zdarzeń.",
-        "unread": "Niewykształcony"
+        "unread": "Niewykształcony",
+        "empty_why": "To Twoja kolejka kontaktów po pierwszym zgłoszeniu."
       },
       "errors": {
         "load": "Nie udało się wczytać przypomnień",
@@ -6385,6 +6850,31 @@
           "hint": "Utwórz działanie follow-up dla tego leada (np. oddzwonić jutro).",
           "default_title": "Kontakt z leadem"
         },
+        "call_result": {
+          "kicker": "Zapytanie B2B",
+          "title": "Wynik rozmowy",
+          "subtitle": "Oddzwonić albo co jeszcze chcą / myślą — zapisz po rozmowie.",
+          "save": "Zapisz wynik rozmowy",
+          "saved": "Wynik rozmowy zapisany",
+          "save_failed": "Nie udało się zapisać wyniku rozmowy",
+          "history_title": "Historia rozmów",
+          "results": {
+            "no_answer": "Brak odpowiedzi",
+            "answered": "Odebrał",
+            "callback_requested": "Oddzwonić",
+            "interested": "Zainteresowany",
+            "not_interested": "Niezainteresowany",
+            "wrong_number": "Zły numer",
+            "unavailable": "Niedostępny"
+          },
+          "fields": {
+            "result": "Wynik",
+            "note": "Komentarz do wyniku",
+            "note_recommended": "zalecane",
+            "note_placeholder": "Np. oddzwonić jutro o 15:00, pyta o stawkę, zastanawia się…",
+            "note_hint": "Co chcą lub myślą: oddzwonić, warunki, wątpliwości, kolejny krok."
+          }
+        },
         "lost_reason_title": "Powód utraty",
         "qualification_summary": {
           "title": "Podsumowanie kwalifikacji",
@@ -6481,11 +6971,14 @@
       "states": {
         "empty": "Brak leadów.",
         "empty_cta_clients": "Otwórz klientów",
-        "empty_cta_connect": "Podłącz źródła",
-        "empty_desc": "Podłącz źródła reklam lub zaimportuj leady, aby uruchomić routing i przypisywanie.",
-        "empty_desc_services": "Podłącz źródła leadów lub dodaj pierwszego klienta, aby prowadzić sprzedaż usług i follow-up.",
-        "empty_title": "Brak leadów",
-        "empty_title_services": "Brak leadów klientów"
+        "empty_cta_connect": "Podłącz reklamy",
+        "empty_desc": "Utwórz wakat i podłącz reklamy Facebook / Meta — zgłoszenia pojawią się tutaj same.",
+        "empty_desc_services": "Podłącz źródło lub dodaj klienta — zapytania trafią tutaj.",
+        "empty_title": "Brak zgłoszeń",
+        "empty_title_services": "Brak zapytań",
+        "empty_why": "Stąd zaczyna się rekrutacja. Dalej: kontakt i przeniesienie do kandydatów.",
+        "empty_cta_vacancy": "Utwórz wakat",
+        "empty_cta_setup": "Start"
       },
       "messages": {
         "load_failed": "Nie udało się załadować leadów.",
@@ -6984,7 +7477,7 @@
         "lost_from_filter_banner": "Utrata z etapu CRM: {stage}",
         "lost_from_stage_unknown": "Nieznany poprzedni etap"
       },
-      "title_services": "Leady klientów",
+      "title_services": "Zapytania",
       "workspace": {
         "distribution_cta": "Autodystrybucja",
         "view_table": "Tabela",
@@ -7519,6 +8012,7 @@
       },
       "email": {
         "dispatch_failed": "E-mail jest w kolejce, ale wysyłka nie powiodła się.",
+        "dispatch_failed_reason": "Wysyłka zablokowana: {reason}",
         "incoming_disabled_title": "Serwerowa synchronizacja poczty przychodzącej jest wyłączona",
         "incoming_disabled_body_inbox": "Nowa poczta jest pobierana po otwarciu skrzynki (zakres e-mail) lub po kliknięciu Synchronizuj, chyba że włączono synchronizację w tle.",
         "incoming_enable_cta": "Włącz synchronizację w tle",
@@ -8252,6 +8746,68 @@
         "title": "Trzy kroki do pracy",
         "wayfinding_title": "Gdzie pracować w CRM",
         "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, rekordów i ustawień"
+      },
+      "success_path": {
+        "loading": "Przygotowujemy kolejny krok…",
+        "badge": "Wynik",
+        "title": "Zamykaj wakaty szybciej — zacznij tutaj",
+        "subtitle": "Jeden krok naraz — do pierwszego zgłoszenia i kontaktu z kandydatem.",
+        "progress": "Gotowe {done} z {total}",
+        "list_aria": "Checklist Success Path",
+        "optional": "opcjonalne",
+        "deferred": "później",
+        "open": "Otwórz",
+        "continue": "Kontynuuj",
+        "next_title": "Zrób to teraz",
+        "defer_meta": "Pomiń na razie",
+        "complete": "Podstawy gotowe — kontynuuj rekrutację z Launchpad.",
+        "page_title": "Zacznij rekrutację",
+        "page_subtitle": "Zrób kolejny krok. Dojdź do pierwszego kandydata bez wsparcia.",
+        "hub_badge": "Success path",
+        "hub_footer": "Dokończ krok powyżej — nic więcej teraz nie trzeba.",
+        "items": {
+          "company": {
+            "label": "Utwórz firmę",
+            "hint": "Podaj nazwę i profil — tożsamość operacyjna workspace.",
+            "cta": "Utwórz firmę"
+          },
+          "invite": {
+            "label": "Zaproś zespół",
+            "hint": "Zaproś rekruterów, gdy będziesz gotowy — możesz później.",
+            "cta": "Zaproś zespół"
+          },
+          "meta": {
+            "label": "Podłącz reklamy Facebook / Meta",
+            "hint": "Aby zgłoszenia z reklam trafiały do HostFlow automatycznie.",
+            "cta": "Podłącz reklamy"
+          },
+          "vacancy": {
+            "label": "Utwórz pierwszy wakat",
+            "hint": "Otwórz rolę, na którą rekrutujesz — ok. 30 sekund.",
+            "cta": "Utwórz wakat"
+          },
+          "lead": {
+            "label": "Odbierz pierwszy lead",
+            "hint": "Pierwsze zgłoszenie w inbox z Meta, formularza lub ręcznie.",
+            "cta": "Otwórz leady"
+          },
+          "contact": {
+            "label": "Skontaktuj się z kandydatem",
+            "hint": "Wykonaj kolejny krok przy leadzie — żeby nic nie wisiało.",
+            "cta": "Otwórz leady"
+          }
+        },
+        "title_done": "Możesz zamykać wakaty w systemie",
+        "subtitle_done": "Podstawy gotowe. Prowadź kandydatów w pipeline.",
+        "checklist_title": "Postęp",
+        "result_ready_title": "Możesz rekrutować",
+        "result_ready_body": "Firma, wakat i proces są gotowe. Otwórz Launchpad i prowadź kandydatów.",
+        "go_work": "Do pracy",
+        "go_vacancies": "Otwórz wakaty"
+      },
+      "setup_status": {
+        "technical_gates_summary": "Techniczne bramy Recruitment (advanced)",
+        "technical_gates_hint": "Operacyjny health check G0–G8 — opcjonalnie dla adminów."
       }
     },
     "reset_password": {
@@ -8275,6 +8831,186 @@
         "docs_base": "Docs Base (tylko odczyt)",
         "tenant_id": "Tenant ID",
         "tenant_placeholder": "UUID tenanta"
+      }
+    },
+    "surfaces": {
+      "blocker": {
+        "title": "What is blocking progress",
+        "hr_review_title": "HR review blockers"
+      },
+      "readiness": {
+        "title": "Readiness",
+        "decision_title": "Before approval"
+      },
+      "document_status": {
+        "missing": "Missing",
+        "pending": "Pending",
+        "verified": "Verified",
+        "expiring": "Expiring",
+        "rejected": "Rejected",
+        "in_review": "In review"
+      }
+    },
+    "notification_alerts": {
+      "title": "Notification Center",
+      "subtitle": "Open document expiry alerts from the platform event registry. Read-only — no outbound messages.",
+      "list_title": "Open alerts ({count})",
+      "empty": "No alerts match the current filters.",
+      "detail_empty": "Select an alert to view details.",
+      "expires_on": "Expires on {{date}}",
+      "errors": {
+        "load": "Failed to load notification alerts",
+        "status": "Failed to update alert status",
+        "sync": "Failed to sync document expiry alerts"
+      },
+      "sync": {
+        "success": "Expiry alerts synced",
+        "summary": "Sync complete — created {{created}}, updated {{updated}}, skipped {{skipped}}"
+      },
+      "toast": {
+        "resolved": "Alert marked as resolved",
+        "ignored": "Alert marked as ignored"
+      },
+      "filters": {
+        "event_type": "Event type",
+        "event_type_all": "All expiry events",
+        "event_type_expired": "Expired documents",
+        "event_type_expiring_soon": "Expiring soon",
+        "source_layer": "Source",
+        "source_document_expiry": "Document expiry notifications",
+        "source_all": "All sources",
+        "status": {
+          "open": "Open",
+          "resolved": "Resolved",
+          "ignored": "Ignored"
+        }
+      },
+      "event_code": {
+        "document_expired": "Document expired",
+        "document_expiring_soon": "Document expiring soon"
+      },
+      "severity": {
+        "critical": "Critical",
+        "warning": "Warning"
+      },
+      "detail": {
+        "document_type": "Document type",
+        "owner": "Owner",
+        "expires_on": "Expires on",
+        "source_layer": "Source layer"
+      },
+      "actions": {
+        "mark_resolved": "Mark resolved",
+        "mark_ignored": "Mark ignored",
+        "open_owner": "Open owner profile",
+        "sync_now": "Sync now"
+      }
+    },
+    "sales_questionnaire": {
+      "attribution_title": "Atrybucja odpowiedzi",
+      "attribution_hint": "Skąd pochodzi ta odpowiedź i jak została dołączona.",
+      "attribution": {
+        "form": "Formularz",
+        "version": "Opublikowana wersja",
+        "source": "Źródło",
+        "publication": "Publikacja",
+        "submitted_at": "Wysłano",
+        "submission": "Zgłoszenie",
+        "attach_mode": "Tryb dołączenia",
+        "profile": "Profil encji",
+        "purpose": "Cel",
+        "presentation": "Prezentacja",
+        "invite": "Zaproszenie",
+        "behavior": "Routing odpowiedzi",
+        "entry": {
+          "questionnaire_invite": "Osobiste zaproszenie do ankiety",
+          "public_form": "Formularz publiczny"
+        },
+        "policy": {
+          "attach": "Dodano do tego zapytania",
+          "create": "Utworzono nowe zapytanie",
+          "match_or_create": "Dopasowano lub utworzono zapytanie",
+          "review": "Wysłano do kolejki weryfikacji"
+        }
+      }
+    },
+    "marketing": {
+      "sources": {
+        "title": "Sources",
+        "subtitle": "Podłączone źródła, Mapping Health, oczekujące zgłoszenia i ostatnie zdarzenia.",
+        "none": "—",
+        "empty_title": "Brak źródeł",
+        "empty_body": "Podłącz Meta w Integrations lub powiąż intake source — pojawią się tutaj.",
+        "columns": {
+          "source": "Source",
+          "provider": "Provider",
+          "connection": "Connection",
+          "mapping_health": "Mapping Health",
+          "last_lead": "Ostatni lead",
+          "waiting": "Oczekujące",
+          "routing_issue": "Problem routingu",
+          "last_error": "Ostatni błąd",
+          "campaigns_flights": "Campaigns / Flights",
+          "actions": "Akcje"
+        },
+        "connection": {
+          "connected": "Connected",
+          "attention": "Attention",
+          "disconnected": "Disconnected"
+        },
+        "health": {
+          "ready": "Ready",
+          "needs_review": "Needs review",
+          "broken": "Broken"
+        },
+        "routing_issue": {
+          "missing_campaign_flight": "Campaign/Flight dla tego Ad ID nie są skonfigurowane."
+        },
+        "actions": {
+          "integrations": "Integrations",
+          "connect": "Otwórz Integrations",
+          "mapping": "Mapping",
+          "test_lead": "Test lead",
+          "connection": "Connection",
+          "setup_campaign_flight": "Skonfiguruj Campaign/Flight"
+        },
+        "errors": {
+          "load": "Nie udało się załadować źródeł"
+        }
+      }
+    },
+    "context_help": {
+      "open_aria": "Czym jest {term}?",
+      "more_faq": "Więcej w FAQ",
+      "terms": {
+        "vacancy": {
+          "title": "Wakat",
+          "body": "Rola, na którą rekrutujesz. Leady i kandydaci są przypisani — ownership i dokumenty."
+        },
+        "lead": {
+          "title": "Lead",
+          "body": "Zgłoszenie przed przeniesieniem do kandydata, którego aktywnie prowadzisz."
+        },
+        "candidate": {
+          "title": "Kandydat",
+          "body": "Osoba w pipeline rekrutacji — etapy, dokumenty, właściciel i kolejny krok do zatrudnienia."
+        },
+        "order": {
+          "title": "Zamówienie",
+          "body": "Komercyjne żądanie klienta (kogo zatrudnić). Wakaty mogą wynikać z linii zamówienia."
+        },
+        "flight": {
+          "title": "Flight",
+          "body": "Czasowy wycinek kampanii acquisition (emisja reklam) powiązany z popytem rekrutacji."
+        },
+        "campaign": {
+          "title": "Kampania",
+          "body": "Plan pozyskania: grupuje flighty i źródła, z których leady trafiają do HostFlow."
+        },
+        "meta": {
+          "title": "Reklamy Meta",
+          "body": "Formularze i reklamy Facebook/Instagram — zgłoszenia automatycznie trafiają do inbox."
+        }
       }
     }
   },
@@ -8300,7 +9036,8 @@
           "document_control": "Kontrola dokumentów",
           "high_volume_onboarding": "Onboarding masowy",
           "hostflow_vs_spreadsheets": "HostFlow vs arkusze",
-          "trucking_recruitment_use_case": "Use-case: rekrutacja trucking"
+          "trucking_recruitment_use_case": "Use-case: rekrutacja trucking",
+          "faq": "FAQ"
         }
       },
       "comparison_hostflow_vs_spreadsheets": {
@@ -9458,6 +10195,14 @@
         "in_progress": "W trakcie rozwoju",
         "loading": "Ładowanie danych...",
         "saving": "Zapisywanie..."
+      },
+      "presentation": {
+        "fields": {
+          "recruitment.candidate.first_name": "Imię"
+        },
+        "profiles": {
+          "recruitment.candidate.office_worker": "Pracownik biurowy"
+        }
       }
     },
     "status_page": {
@@ -9603,12 +10348,12 @@
         "q2": "Czy zespół dołączymy później?",
         "q3": "Co jeśli wybierzemy zły plan?",
         "title": "FAQ",
-        "launch_q": "Ile czasu zajmuje start?",
-        "launch_a": "10–30 minut: przestrzeń, firma, pierwszy kandydat lub lead.",
+        "launch_q": "Jak zacząć bez wsparcia?",
+        "launch_a": "Rejestracja → kreator firmy → Meta (lub odłóż) → pierwszy wakat. Checklist pokazuje kolejny krok.",
         "training_q": "Czy potrzebne jest szkolenie?",
-        "training_a": "Nie — interfejs jest pod codzienną pracę rekrutera; wskazówki są w przepływie.",
-        "processes_q": "Czy pasuje do różnych procesów?",
-        "processes_a": "Tak — etapy, role i lejki dostosujesz do swojej rekrutacji."
+        "training_a": "Dla głównej ścieżki — nie. Kreator i checklist prowadzą do pierwszej wartości; FAQ i docs — później.",
+        "processes_q": "Co z danymi przy zmianie planu?",
+        "processes_a": "Workspace zostaje. Limity i moduły idą za matrycą planów — upgrade odblokowuje miejsca, automatykę i portale."
       },
       "final_cta": {
         "button": "Utwórz przestrzeń roboczą",
@@ -9664,31 +10409,37 @@
         "closing": "Efekt widać już w pierwszych dniach."
       },
       "how": {
-        "badge": "Przepływ",
-        "title": "Jak wygląda praca w systemie",
+        "badge": "Jak to działa",
+        "title": "Zrozum system w minutę",
         "step_label": "Krok {n}",
         "steps": {
           "0": {
-            "title": "Dodajesz kandydata lub zbierasz lead",
-            "caption": "Tworzenie kandydata / formularz leada — jedno wejście.",
+            "title": "Utwórz firmę",
+            "caption": "Nazwa, kraj i model rekrutacji — profil operacyjny.",
             "screenshot_src": "/landing/step-lead.svg"
           },
           "1": {
-            "title": "Ustawiasz status i następny krok",
-            "caption": "Etap lejka: co zrobione, co dalej.",
+            "title": "Podłącz Meta",
+            "caption": "Połącz reklamy i formularze — zgłoszenia przychodzą same.",
             "screenshot_src": "/landing/step-pipeline.svg"
           },
           "2": {
-            "title": "System utrwala proces i przypomina",
-            "caption": "Zadania i przypomnienia — nic nie „wypada”.",
+            "title": "Utwórz wakat",
+            "caption": "Otwórz rolę i ustaw ścieżkę kandydata.",
             "screenshot_src": "/landing/step-tasks.svg"
           },
           "3": {
-            "title": "Widzisz, kto utknął i gdzie jest problem",
-            "caption": "Przegląd i analityka: wąskie gardła na widoku.",
+            "title": "Odbieraj zgłoszenia",
+            "caption": "Leady w pipeline z właścicielem — nie we wspólnej skrzynce.",
             "screenshot_src": "/landing/step-analytics.svg"
+          },
+          "4": {
+            "title": "Obsługuj kandydatów",
+            "caption": "Etapy, dokumenty i kolejne kroki — aż do zamknięcia wakatu.",
+            "screenshot_src": "/landing/hero.svg"
           }
-        }
+        },
+        "lead": "Pięć kroków od pustego workspace do obsługi prawdziwych zgłoszeń."
       },
       "pain": {
         "badge": "Prawda",
@@ -9755,20 +10506,38 @@
         "footer": "Proces nie rozsypie się po cichu."
       },
       "hero": {
-        "badge": "CRM operacji rekrutacji",
-        "primary_cta": "Utwórz przestrzeń roboczą",
-        "secondary_cta": "Masz konto? Zaloguj się",
-        "subtitle": "Bez gubienia kandydatów, chaosu i ręcznego gaszenia pożarów. Zespół, proces i dokumenty — w jednym systemie.",
-        "title": "Kontroluj rekrutację od pierwszego leada do pierwszego dnia kandydata",
+        "badge": "Platforma operacji rekrutacyjnych",
+        "primary_cta": "Rozpocznij konfigurację",
+        "secondary_cta": "Zaloguj się",
+        "subtitle": "HostFlow automatycznie zbiera kandydatów z Meta, WhatsApp i formularzy, rozdziela ich między rekruterów i kontroluje proces zatrudnienia.",
+        "title": "Zamykaj wakaty szybciej",
         "bullets": {
-          "0": "Żaden kandydat nie ginie",
-          "1": "Jasne, kto za co odpowiada",
-          "2": "Widzisz, gdzie proces staje",
-          "3": "Dokumenty i etapy pod kontrolą"
+          "0": "Leady wpływają do jednego zarządzanego pipeline’u",
+          "1": "Każdy kandydat ma właściciela",
+          "2": "Dokumenty i etapy są zawsze widoczne",
+          "3": "Mniej chaosu między reklamami, czatami i arkuszami"
         },
-        "cta_subline": "Pierwszy kandydat w systemie — w 2 minuty",
-        "screenshot_caption": "Główny widok: lejek i kandydaci — poczucie kontroli od razu.",
-        "screenshot_src": "/landing/hero.svg"
+        "cta_subline": "Self-service — pierwsza wakat w kilka minut, bez rozmowy z supportem",
+        "screenshot_caption": "Pipeline i kandydaci — kontrola rekrutacji na jednym ekranie.",
+        "screenshot_src": "/landing/hero.svg",
+        "answers": {
+          "what": {
+            "label": "Co to jest",
+            "body": "System operacyjny rekrutacji od leada do startu pracy — nie generyczny CRM z listą funkcji."
+          },
+          "who": {
+            "label": "Dla kogo",
+            "body": "Agencje i pracodawcy z realnym wolumenem kandydatów z reklam, WhatsApp i formularzy."
+          },
+          "get": {
+            "label": "Co zyskujesz",
+            "body": "Zarządzany pipeline, automatyczny intake, kontrolę dokumentów i widoczne wąskie gardła."
+          },
+          "why": {
+            "label": "Dlaczego HostFlow",
+            "body": "Zbudowany pod Meta → wakat → pracę rekrutera — żeby kandydaci nie ginęli między narzędziami."
+          }
+        }
       },
       "objections": {
         "0": "Za dużo ustawień zanim zacznie się praca.",
@@ -9779,7 +10548,7 @@
       "pricing": {
         "badge": "Cennik",
         "contact_sales_cta": "Kontakt sprzedaży",
-        "note": "Ceny w EUR. Okres próbny przed płatnością; płatność przy starcie produkcyjnym (Regulamin / Billing).",
+        "note": "Ceny w EUR. Limity i moduły zgodne z matrycą planów. Trial przy rejestracji; po Trial — wybrany plan płatny.",
         "featured_badge": "Polecany",
         "enterprise": {
           "name": "Enterprise",
@@ -9826,7 +10595,30 @@
           "price": "€129/mies. · €109/mies. przy rocznej opłacie",
           "seats": "Do 3 użytkowników · 1 przestrzeń"
         },
-        "title": "Wybierz plan dopasowany do zespołu"
+        "title": "Wybierz plan dopasowany do zespołu",
+        "clarity": {
+          "includes_title": "W cenie",
+          "excludes_title": "Poza zakresem / ograniczone",
+          "limits_title": "Limity",
+          "after_trial_title": "Po Trial",
+          "includes": {
+            "0": "Pipeline leadów/kandydatów i ownership",
+            "1": "Wakaty i statusy dokumentów",
+            "2": "Meta / formularze na odpowiednich planach",
+            "3": "Miejsca w zespole wg planu (Solo → Business)"
+          },
+          "excludes": {
+            "0": "SSO / SLA (tylko Enterprise)",
+            "1": "Fakturowanie i głębszy multi-workspace (Business+)",
+            "2": "Pełna automatyka na Solo (tylko assisted)"
+          },
+          "limits": {
+            "0": "Solo: 1 użytkownik, 1 workspace, ~200 leadów/mies., 5 otwartych wakatów",
+            "1": "Team: do 3 użytkowników, 1 workspace, wyższe limity leadów",
+            "2": "Business: do 10 użytkowników, do 3 workspace"
+          },
+          "after_trial": "Trial ma obniżone limity. Po zakończeniu wybierasz Solo / Team / Business albo Enterprise przez sales. Dane workspace zostają; funkcje zależą od planu."
+        }
       }
     },
     "documents_upload": {
@@ -9912,6 +10704,23 @@
     },
     "locale_switcher": {
       "label": "Język"
+    },
+    "faq": {
+      "badge": "Pomoc",
+      "title": "Najczęstsze pytania",
+      "subtitle": "Od rejestracji do pierwszej rekrutacji — odpowiedzi bez czekania na support.",
+      "cta_signup": "Zacznij konfigurację",
+      "cta_pricing": "Cennik",
+      "search_label": "Szukaj w FAQ",
+      "search_placeholder": "Szukaj pytań…",
+      "sections_aria": "Sekcje FAQ",
+      "no_results": "Brak pytań dla tego wyszukiwania.",
+      "still_title": "Gotowy spróbować?",
+      "still_body": "Utwórz workspace i wykonaj jeden kolejny krok na ekranie.",
+      "seo": {
+        "title": "FAQ HostFlow — start, Meta, rekrutacja, billing",
+        "description": "Odpowiedzi o starcie, Meta, WhatsApp, wakatach, dokumentach, billingu, bezpieczeństwie i API — bez czekania na support."
+      }
     }
   },
   "admin": {
@@ -10339,6 +11148,18 @@
       },
       "template": {
         "select": "Wybierać"
+      },
+      "runtime_badges": {
+        "expiring_soon": "Expiring soon",
+        "satisfies_requirement": "Satisfies requirement"
+      },
+      "runtime_filters": {
+        "expired": "Expired",
+        "expiring_soon": "Expiring soon",
+        "missing": "Missing",
+        "pending_review": "Pending review",
+        "rejected": "Rejected",
+        "satisfied": "Satisfied"
       }
     },
     "integrations_hub": {
@@ -11019,6 +11840,14 @@
           "label": "SLA komunikacji",
           "description": "Eskalacja, gdy na wątki zbyt długo nie ma odpowiedzi."
         },
+        "communications_templates": {
+          "label": "Szablony komunikacji",
+          "description": "Wersjonowane treści powiązane z Intent (publish/preview/historia). To nie snippety messengerów ani maile leadów."
+        },
+        "communications_automation": {
+          "label": "Automatyzacja komunikacji",
+          "description": "Event → Rules → Intent. To nie legacy przypomnienia i nie ścieżka wysyłki."
+        },
         "audit": {
           "label": "Dziennik audytu",
           "description": "Przeglądaj działania administratorów."
@@ -11034,6 +11863,10 @@
         "profile": {
           "description": "Profil osobisty, język, bezpieczeństwo i preferencje lokalne.",
           "label": "Mój profil"
+        },
+        "roles_access": {
+          "label": "Role i dostępy",
+          "description": "Role zaufania, macierz modułów i presety uprawnień dla Employee i Viewer."
         }
       },
       "audit": {
@@ -11100,6 +11933,18 @@
           "description": "Profil firmy, tożsamość workspace i zakres dostępu na wysokim poziomie.",
           "label": "Przestrzeń robocza"
         }
+      },
+      "roles_access": {
+        "title": "Role i dostępy",
+        "description": "Role zaufania i widoczność modułów. Stanowiska to presety, nie osobne role security (ADR-036).",
+        "matrix_heading": "Macierz rola × moduł",
+        "matrix_help": "V = widoczne, E = edycja. Kolumna Administrator zablokowana (trust ceiling).",
+        "show_legacy": "Pokaż legacy kolumny ról",
+        "ceiling_locked": "(zablokowane)",
+        "presets_title": "Presety (nie role)",
+        "presets_body": "Recruiter, Team lead, HR, Compliance to pakiety startowe dla Employee. Goście portalu: Viewer + portal context, nie client_manager.",
+        "load_failed": "Nie udało się wczytać macierzy",
+        "save_failed": "Nie udało się zapisać"
       }
     },
     "communications_settings": {
@@ -11113,7 +11958,9 @@
       "messengers_templates_cta": "Szablony i wszystkie konta",
       "open_email": "Wychodzący SMTP",
       "open_queue": "Kolejka inbox i routing",
-      "open_sla": "SLA komunikacji"
+      "open_sla": "SLA komunikacji",
+      "open_templates": "Szablony komunikacji",
+      "open_automation": "Automatyzacja komunikacji"
     },
     "communications_messengers": {
       "title": "Kanały komunikatorów",
@@ -11318,6 +12165,78 @@
         "assignee": "Osoba"
       }
     },
+    "communications_automation": {
+      "title": "Automatyzacja komunikacji",
+      "subtitle": "Event → Rules → Intent. To nie legacy przypomnienia i nie ścieżka wysyłki.",
+      "header_kicker": "automatyzacja",
+      "include_archived": "Pokaż zarchiwizowane",
+      "list_title": "Reguły",
+      "empty": "Brak reguł automatyzacji.",
+      "select_prompt": "Wybierz lub utwórz regułę.",
+      "create": {
+        "submit": "Utwórz draft"
+      },
+      "actions": {
+        "back": "← Administracja komunikacji",
+        "templates": "Szablony komunikacji"
+      },
+      "notices": {
+        "created": "Reguła utworzona",
+        "draft_saved": "Draft zapisany",
+        "published": "Opublikowano",
+        "archived": "Zarchiwizowano"
+      },
+      "errors": {
+        "load": "Nie udało się wczytać reguł automatyzacji",
+        "history": "Nie udało się wczytać historii",
+        "create": "Nie udało się utworzyć reguły",
+        "save_draft": "Nie udało się zapisać draftu",
+        "publish": "Nie udało się opublikować",
+        "enable": "Nie udało się zmienić flagi enabled",
+        "archive": "Nie udało się zarchiwizować",
+        "dry_run": "Dry-run nie powiódł się"
+      }
+    },
+    "communications_templates": {
+      "title": "Szablony komunikacji",
+      "subtitle": "Wersjonowane treści powiązane z Intent. Tylko prezentacja — nie snippety messengerów ani szablony wiadomości leadów.",
+      "header_kicker": "szablony",
+      "include_archived": "Pokaż zarchiwizowane",
+      "list_title": "Szablony",
+      "empty": "Brak szablonów.",
+      "select_prompt": "Wybierz lub utwórz szablon.",
+      "preview_title": "Podgląd",
+      "history_title": "Historia wersji",
+      "create": {
+        "key": "Klucz",
+        "name": "Nazwa",
+        "submit": "Utwórz draft"
+      },
+      "actions": {
+        "back": "← Administracja komunikacji",
+        "messenger_snippets": "Snippety messengerów",
+        "save_draft": "Zapisz draft",
+        "publish": "Opublikuj",
+        "archive": "Archiwizuj",
+        "preview": "Podgląd draftu"
+      },
+      "notices": {
+        "created": "Szablon utworzony",
+        "draft_saved": "Draft zapisany",
+        "published": "Opublikowano",
+        "archived": "Zarchiwizowano"
+      },
+      "errors": {
+        "load": "Nie udało się wczytać szablonów komunikacji",
+        "versions": "Nie udało się wczytać wersji",
+        "create": "Nie udało się utworzyć szablonu",
+        "save_draft": "Nie udało się zapisać draftu",
+        "publish": "Nie udało się opublikować",
+        "archive": "Nie udało się zarchiwizować",
+        "preview": "Podgląd nie powiódł się",
+        "diff": "Diff nie powiódł się"
+      }
+    },
     "communications_sla": {
       "title": "SLA komunikacji",
       "subtitle": "Eskalacje, gdy na wątki w inboxie zbyt długo nie ma odpowiedzi — to nie przypomnienia zadań z ekranu Zadań.",
@@ -11422,7 +12341,8 @@
         "create": "Nie udało się utworzyć formularza",
         "save": "Nie udało się zapisać formularza",
         "copy": "Nie udało się skopiować"
-      }
+      },
+      "configure": "Configure"
     },
     "tenant_links": {
       "header_kicker": "Powiązanie workspace z organizacjami klientów i zasady przekazania.",
@@ -11450,7 +12370,8 @@
       "type_org": "Własny portal klienta",
       "placeholders": {
         "tenant_uuid": "517319d0-b53e-493d-9ac8-40f23091a35d"
-      }
+      },
+      "contact_policy_title": "Contact attempts"
     },
     "candidate_profiles_page": {
       "header_kicker": "Szablony pól, etapów lejka i dokumentów używane przez wakaty.",
@@ -11601,6 +12522,33 @@
         "from_email": "info@hostflow.cc",
         "from_name": "HostFlow",
         "test_to": "test@example.com"
+      },
+      "gmail_oauth": {
+        "title": "Gmail OAuth (skrzynka przychodząca)",
+        "subtitle": "Połączenie Gmail z Communications inbox. SMTP powyżej — tylko dla wychodzących powiadomień CRM.",
+        "default_label": "Skrzynka Gmail",
+        "account": "Skrzynka",
+        "client_id": "OAuth Client ID",
+        "client_secret": "OAuth Client Secret",
+        "client_secret_placeholder_saved": "Pozostaw puste, aby zachować zapisany sekret",
+        "client_secret_required": "Wpisz Google Client Secret, potem Save mailbox",
+        "client_id_required": "Podaj OAuth Client ID",
+        "redirect_uri": "Redirect URI",
+        "save_mailbox": "Save mailbox",
+        "save_ok": "Skrzynka zapisana",
+        "save_failed": "Nie udało się zapisać skrzynki",
+        "secret_saved": "Client secret zapisany",
+        "secret_missing": "Client secret jeszcze nie zapisany",
+        "start_failed": "Nie udało się rozpocząć OAuth",
+        "complete_failed": "Nie udało się zakończyć OAuth",
+        "complete_ok": "Gmail połączony",
+        "code_required": "Brak kodu autoryzacji",
+        "state_required": "Brak OAuth state — najpierw Connect email",
+        "refresh_ok": "Token odświeżony",
+        "refresh_failed": "Nie udało się odświeżyć tokenu",
+        "refresh_token": "Odśwież token",
+        "no_refresh_token": "Brak refresh token",
+        "flow_hint": "1) Wklej Client ID + Secret z Google Cloud → Save mailbox. 2) Connect email → zaloguj się. 3) OAuth complete."
       }
     },
     "ttv": {
@@ -11694,6 +12642,62 @@
         "saving": "Zapisywanie…",
         "key_placeholder": "custom_field_key",
         "option_placeholder": "Wpisz opcję i naciśnij Enter"
+      }
+    },
+    "intake_forms": {
+      "header_kicker": "Intake sources",
+      "detail_title": "Intake form",
+      "detail_subtitle": "Read-only view of Entity Profile, presentation fields, public link, and submit pipeline. UI does not create canon.",
+      "back_list": "All intake forms",
+      "copy": "Copy",
+      "open_public": "Open",
+      "open_lead": "Open lead",
+      "preview_empty": "No fields",
+      "preview_hint": "Display-only fields returned by Form Presentation Runtime — not editable in P6.",
+      "inactive_hint": "Activate the form in list settings before sharing or smoke testing.",
+      "smoke_hint": "Creates a test Lead draft using the same pipeline as public intake. Verifies no direct Candidate INSERT.",
+      "smoke_run": "Send test lead draft",
+      "sections": {
+        "form": "Lead form slot",
+        "entity_profile": "Entity Profile",
+        "intake_source": "Intake Source profile",
+        "preview": "Field preview (P5A runtime)",
+        "submit": "Submit destination",
+        "public_link": "Public link",
+        "smoke": "Smoke test submit"
+      },
+      "fields": {
+        "status": "Status",
+        "slug": "Public slug",
+        "profile_code": "Profile code",
+        "profile_name": "Name",
+        "presentation": "Presentation",
+        "route_intent": "Route intent",
+        "provider": "Provider",
+        "assignee": "Default assignee"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "columns": {
+        "label": "Label",
+        "field": "Field code",
+        "level": "Intake level",
+        "widget": "Widget"
+      },
+      "submit": {
+        "lead_draft": "Create: Lead draft only (no Candidate on POST /public/intake)",
+        "outcome": "Submit: Decision Layer → Outcome Executor (Candidate only on create_candidate)"
+      },
+      "toast": {
+        "copied": "Copied",
+        "smoke_ok": "Smoke test lead draft created"
+      },
+      "errors": {
+        "load_detail": "Failed to load intake form",
+        "copy": "Could not copy",
+        "smoke": "Smoke test failed"
       }
     }
   }

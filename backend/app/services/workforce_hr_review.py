@@ -1007,9 +1007,37 @@ async def approve_hr_review_record(
     review.decided_by_user_id = actor_user_id
     review.decided_at = now
     review.blockers_json = []
+    became_active = False
     if employee.status == "onboarding":
         employee.status = "active"
+        became_active = True
     await db.flush()
+    if became_active:
+        # ADR-032: billable when Order Line trigger is candidate_started_work.
+        try:
+            from backend.app.modules.sales_orders.contracts import notify_candidate_started_work
+
+            cand_id = (
+                str(getattr(review, "candidate_id", None) or "").strip()
+                or str(getattr(employee, "candidate_id", None) or "").strip()
+                or None
+            )
+            vac_id = str(getattr(employee, "vacancy_id", None) or "").strip() or None
+            if cand_id:
+                await notify_candidate_started_work(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate_id=cand_id,
+                    vacancy_id=vac_id,
+                )
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "sales notify_candidate_started_work failed tenant=%s employee=%s",
+                tenant_id,
+                getattr(employee, "id", None),
+            )
     return review
 
 

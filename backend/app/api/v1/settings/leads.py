@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.db.meta_leads_tenant_dep import (
     ensure_token_matches_header_tenant as _ensure_tenant,
@@ -284,7 +285,7 @@ def _company_intake_source_out(
 @router.get(
     "/company-intake-source-profiles",
     response_model=list[CompanyIntakeSourceProfileOut],
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_company_intake_source_profiles_endpoint(
     ctx: UserCtx = Depends(get_current_user),
@@ -313,7 +314,7 @@ async def list_company_intake_source_profiles_endpoint(
     "/company-intake-source-profiles",
     response_model=CompanyIntakeSourceProfileOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def create_company_intake_source_profile_endpoint(
     payload: CompanyIntakeSourceProfileCreateIn,
@@ -357,7 +358,7 @@ async def create_company_intake_source_profile_endpoint(
 @router.patch(
     "/company-intake-source-profiles/{profile_id}",
     response_model=CompanyIntakeSourceProfileOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def patch_company_intake_source_profile_endpoint(
     profile_id: str,
@@ -418,7 +419,7 @@ async def patch_company_intake_source_profile_endpoint(
 @router.get(
     "/settings",
     response_model=MetaLeadSettingsOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_settings_endpoint(
     ctx: UserCtx = Depends(get_current_user),
@@ -434,7 +435,7 @@ async def get_settings_endpoint(
 @router.get(
     "/meta/self-serve-onboarding",
     response_model=MetaLeadSelfServeOnboardingOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def meta_self_serve_onboarding_endpoint(
     ctx: UserCtx = Depends(get_current_user),
@@ -454,7 +455,7 @@ async def meta_self_serve_onboarding_endpoint(
 @router.post(
     "/meta/oauth/start",
     response_model=MetaOAuthStartOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def meta_oauth_start_endpoint(
     ctx: UserCtx = Depends(get_current_user),
@@ -469,7 +470,7 @@ async def meta_oauth_start_endpoint(
 @router.post(
     "/meta/oauth/complete",
     response_model=MetaOAuthCompleteOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def meta_oauth_complete_endpoint(
     payload: MetaOAuthCompleteIn,
@@ -487,7 +488,7 @@ async def meta_oauth_complete_endpoint(
 @router.post(
     "/meta/oauth/finalize",
     response_model=MetaOAuthFinalizeOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def meta_oauth_finalize_endpoint(
     payload: MetaOAuthFinalizeIn,
@@ -505,7 +506,7 @@ async def meta_oauth_finalize_endpoint(
 @router.patch(
     "/settings",
     response_model=MetaLeadSettingsOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_settings_endpoint(
     payload: MetaLeadSettingsUpdate,
@@ -523,7 +524,7 @@ async def update_settings_endpoint(
 @router.get(
     "/message-templates",
     response_model=list[LeadMessageTemplateOut],
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_lead_message_templates_endpoint(
     ctx: UserCtx = Depends(get_current_user),
@@ -538,7 +539,7 @@ async def list_lead_message_templates_endpoint(
     "/message-templates",
     response_model=LeadMessageTemplateOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_lead_message_template_endpoint(
     payload: LeadMessageTemplateCreateUpdate,
@@ -555,7 +556,7 @@ async def create_lead_message_template_endpoint(
 @router.patch(
     "/message-templates/{template_id}",
     response_model=LeadMessageTemplateOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_lead_message_template_endpoint(
     template_id: str,
@@ -574,7 +575,7 @@ async def update_lead_message_template_endpoint(
     "/message-templates/{template_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response, response_model=None,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def delete_lead_message_template_endpoint(
     template_id: str,
@@ -593,7 +594,7 @@ async def delete_lead_message_template_endpoint(
 @router.post(
     "/inbound-webhook/rotate",
     response_model=GenericInboundWebhookRotateResponse,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def rotate_generic_inbound_webhook_endpoint(
     ctx: UserCtx = Depends(get_current_user),
@@ -610,7 +611,7 @@ async def rotate_generic_inbound_webhook_endpoint(
 @router.get(
     "/meta/incoming-preview",
     response_model=MetaIncomingLeadsPreviewResponse,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def meta_incoming_preview_endpoint(
     limit: int = Query(default=25, ge=1, le=50, description="Max recent leads to return"),
@@ -630,7 +631,7 @@ async def meta_incoming_preview_endpoint(
 @router.get(
     "/meta/forms",
     response_model=MetaLeadFormListResponse,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def meta_lead_forms_list_endpoint(
     source: Literal["meta", "webhook"] = Query("meta"),
@@ -646,7 +647,7 @@ async def meta_lead_forms_list_endpoint(
 @router.get(
     "/meta/forms/{form_id}/mapping",
     response_model=MetaLeadFormMappingOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def meta_lead_form_mapping_get_endpoint(
     form_id: str,
@@ -666,7 +667,7 @@ async def meta_lead_form_mapping_get_endpoint(
 @router.put(
     "/meta/forms/{form_id}/mapping",
     response_model=MetaLeadFormMappingOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def meta_lead_form_mapping_put_endpoint(
     form_id: str,
@@ -687,7 +688,7 @@ async def meta_lead_form_mapping_put_endpoint(
 @router.get(
     "/meta/forms/{form_id}/route",
     response_model=MetaFormRouteOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def meta_form_route_get_endpoint(
     form_id: str,
@@ -707,7 +708,7 @@ async def meta_form_route_get_endpoint(
 @router.put(
     "/meta/forms/{form_id}/route",
     response_model=MetaFormRouteOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def meta_form_route_put_endpoint(
     form_id: str,
@@ -728,7 +729,7 @@ async def meta_form_route_put_endpoint(
 @router.post(
     "/meta/graph-field-preview",
     response_model=MetaGraphFieldDataPreviewResponse,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def meta_graph_field_preview_endpoint(
     payload: MetaGraphFieldDataPreviewRequest,
@@ -745,7 +746,7 @@ async def meta_graph_field_preview_endpoint(
 @router.get(
     "/credentials",
     response_model=list[MetaCredentialOut],
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_credentials_endpoint(
     ctx: UserCtx = Depends(get_current_user),
@@ -761,7 +762,7 @@ async def list_credentials_endpoint(
     "/credentials",
     response_model=MetaCredentialOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_credential_endpoint(
     payload: MetaCredentialCreate,
@@ -779,7 +780,7 @@ async def create_credential_endpoint(
 @router.patch(
     "/credentials/{credential_id}",
     response_model=MetaCredentialOut,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_credential_endpoint(
     credential_id: UUID,
@@ -798,7 +799,7 @@ async def update_credential_endpoint(
 @router.delete(
     "/credentials/{credential_id}",
     status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def delete_credential_endpoint(
     credential_id: UUID,
@@ -816,7 +817,7 @@ async def delete_credential_endpoint(
 @router.post(
     "/credentials/{credential_id}/rotate",
     response_model=MetaCredentialRotateResponse,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def rotate_credential_endpoint(
     credential_id: UUID,
@@ -834,7 +835,7 @@ async def rotate_credential_endpoint(
 @router.get(
     "/mapping",
     response_model=list[MetaAdsMapEntry],
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_mapping_endpoint(
     search: str | None = Query(default=None),
@@ -852,7 +853,7 @@ async def list_mapping_endpoint(
     "/mapping",
     response_model=MetaAdsMapEntry,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def create_mapping_endpoint(
     payload: MetaAdsMapCreate,
@@ -870,7 +871,7 @@ async def create_mapping_endpoint(
 @router.patch(
     "/mapping/{ad_id}",
     response_model=MetaAdsMapEntry,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def update_mapping_endpoint(
     ad_id: int,
@@ -889,7 +890,7 @@ async def update_mapping_endpoint(
 @router.delete(
     "/mapping/{ad_id}",
     status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def delete_mapping_endpoint(
     ad_id: int,
@@ -907,7 +908,7 @@ async def delete_mapping_endpoint(
 @router.get(
     "/unmapped-leads",
     response_model=UnmappedLeadsResponse,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_unmapped_leads_endpoint(
     status: str = Query(default="needs_routing", description="Lead status to filter"),
@@ -929,7 +930,7 @@ async def list_unmapped_leads_endpoint(
 @router.post(
     "/leads/{lead_id}/reroute",
     response_model=MetaLeadResponse,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def reroute_lead_endpoint(
     lead_id: UUID,
@@ -947,7 +948,7 @@ async def reroute_lead_endpoint(
 @router.post(
     "/leads/retry",
     response_model=MetaLeadRetryResponse,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def retry_leads_endpoint(
     payload: MetaLeadRetryRequest,
@@ -970,7 +971,7 @@ async def retry_leads_endpoint(
     "/import",
     response_model=LeadImportJobOut,
     status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def import_leads_csv(
     file: UploadFile = File(...),
@@ -1019,7 +1020,7 @@ async def import_leads_csv(
 @router.get(
     "/import/{job_id}",
     response_model=LeadImportJobOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_import_job(
     job_id: UUID,
@@ -1039,7 +1040,7 @@ async def get_import_job(
 @router.get(
     "/import",
     response_model=LeadImportJobListResponse,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def list_import_jobs_endpoint(
     limit: int = Query(20, ge=1, le=100),

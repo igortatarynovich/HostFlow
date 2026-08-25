@@ -18,6 +18,7 @@ import uuid as _uuid
 from types import SimpleNamespace
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.candidate import Candidate
+from backend.app.auth.trust_roles import is_hr_workspace_actor
 from backend.app.models.candidate_assignee_history import CandidateAssigneeHistory
 from backend.app.models.candidate_stage_history import CandidateStageHistory
 from backend.app.api.v1.candidates import repo
@@ -658,6 +659,20 @@ async def create_candidate_full(
     )
     db.add(history_entry)
 
+    await db.flush()
+    row = await db.execute(
+        select(Candidate).where(Candidate.id == cand_id, Candidate.tenant_id == tenant_id)
+    )
+    c = row.scalar_one()
+    from backend.app.services.candidate_creation_service import finalize_new_candidate_record
+
+    await finalize_new_candidate_record(
+        db,
+        tenant_id=tenant_id,
+        candidate=c,
+        source="create_candidate_full",
+    )
+
     await db.commit()
 
     row = await db.execute(
@@ -793,6 +808,16 @@ async def create_candidate_full(
         await db.rollback()
     # UOS: default “call candidate” activity (deduped; tenant may disable via settings.uos_auto_activities_v1).
     try:
+        if source_lead is not None:
+            from backend.app.services.lead_context_carry import carry_lead_context_on_conversion
+
+            await carry_lead_context_on_conversion(
+                db,
+                tenant_id=tenant_id,
+                lead=source_lead,
+                candidate=c,
+                actor_id=actor_id,
+            )
         from backend.app.services import uos_auto_activities
 
         await uos_auto_activities.ensure_candidate_created_call_task(
@@ -850,7 +875,7 @@ async def update_candidate_full(
     payload = dict(payload or {})
 
     role_lane = str(actor_role or "").strip().lower()
-    if role_lane == "hr_officer" and candidate_home_tenant and not await _is_client_tenant(db, candidate_home_tenant):
+    if is_hr_workspace_actor(role_lane) and candidate_home_tenant and not await _is_client_tenant(db, candidate_home_tenant):
         if await agency_candidate_has_internal_hr_handoff_lane(
             db, agency_tenant_id=candidate_home_tenant, candidate_id=str(candidate_id)
         ):
@@ -1552,6 +1577,24 @@ async def update_candidate_full(
                     candidate_id,
                 )
 
+            # ADR-032: Sales billable accrual (hired / headcount) — never breaks PATCH.
+            try:
+                from backend.app.modules.sales_orders.contracts import notify_candidate_hired
+
+                await notify_candidate_hired(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate_id=str(candidate_id),
+                    vacancy_id=vacancy_after,
+                    stage_code=stage_after,
+                )
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "sales notify_candidate_hired failed tenant=%s candidate=%s",
+                    tenant_id,
+                    candidate_id,
+                )
+
             try:
                 from backend.app.services import uos_auto_activities
 
@@ -1936,6 +1979,23 @@ async def bulk_update_stage(
                 old_stage=getattr(c, "stage", None),
                 new_stage=normalized,
             )
+
+            try:
+                from backend.app.modules.sales_orders.contracts import notify_candidate_hired
+
+                await notify_candidate_hired(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate_id=str(cid),
+                    vacancy_id=str(getattr(c, "vacancy_id", None) or "").strip() or None,
+                    stage_code=normalized,
+                )
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "sales notify_candidate_hired bulk failed tenant=%s candidate=%s",
+                    tenant_id,
+                    cid,
+                )
 
             try:
                 from backend.app.services import uos_auto_activities

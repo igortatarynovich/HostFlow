@@ -1,0 +1,94 @@
+name: backend-regression
+
+# Full pytest + coverage ratchet. Not a PR merge gate.
+# Base-known red suite: docs/specs/tasks/stabilize-integration-pytest-baseline.md
+# Named gates / lint / alembic stay in backend-ci.yml.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  push:
+    branches:
+      - integration/release-product-a-b
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-regression.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: backend-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  full-suite:
+    name: Tests with coverage
+    runs-on: ubuntu-latest
+    env:
+      HOSTFLOW_ALLOW_NON_TEST_DB: "1"
+    services:
+      db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install deps
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pytest-asyncio pytest-cov
+      - name: Alembic upgrade
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+        run: alembic upgrade head
+      - name: Tests with coverage
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          # Before any import of backend.app.db.session (incl. pytest-cov early import):
+          # QueuePool keeps asyncpg conns tied to a closed loop across pytest-asyncio
+          # loop boundaries. conftest also setdefault's this; workflow makes it process-wide.
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+        run: |
+          pytest -q \
+            --cov=backend/app \
+            --cov-config=.coveragerc \
+            --cov-report=term \
+            --cov-report=xml:coverage.xml
+      - name: Tenant isolation (Postgres, integration)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+        run: pytest -q tests/api/test_tenant_isolation.py -m postgres_integration
+      - name: Security regression package
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+          HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+        run: pytest -q tests/security
+      - name: Coverage gate (Phase 0 #7 — ratchet)
+        run: python backend/scripts/check_coverage.py
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: warn
+          retention-days: 14

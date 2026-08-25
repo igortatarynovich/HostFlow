@@ -1,0 +1,38 @@
+name: backend-pytest
+description: Install backend deps and run pytest on the given files (repo root checkout required).
+inputs:
+  tests:
+    description: Pytest targets relative to backend/ (space-separated).
+    required: true
+  skip-alembic:
+    description: Set HOSTFLOW_SKIP_ALEMBIC_UPGRADE (named gates do not need a migrated DB).
+    required: false
+    default: "1"
+  extra-pip:
+    description: Extra pip packages after requirements.txt.
+    required: false
+    default: "pytest pytest-asyncio"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install deps
+      shell: bash
+      working-directory: backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt ${{ inputs.extra-pip }}
+    - name: Pytest
+      shell: bash
+      working-directory: backend
+      env:
+        HOSTFLOW_ALLOW_NON_TEST_DB: "1"
+        HOSTFLOW_SKIP_ALEMBIC_UPGRADE: ${{ inputs.skip-alembic }}
+        HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+        DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+      run: pytest -q ${{ inputs.tests }}

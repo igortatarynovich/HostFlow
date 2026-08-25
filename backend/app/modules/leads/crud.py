@@ -175,8 +175,8 @@ async def last_resort_first_open_vacancy_for_tenant(
     scoped_own_company_id: Optional[str] = None,
 ) -> Optional[Vacancy]:
     """
-    When ad_map / rules / ordered routing find nothing, pick the oldest active open vacancy
-    so ingest can still attach company + create a candidate (audited via ``vacancy_routing_fallback_v1``).
+    Legacy helper — **not** used by automatic lead ingest anymore.
+    Ingest without explicit routing stays in ``needs_routing`` (``AD_NOT_MAPPED`` / ``VACANCY_NOT_RESOLVED``).
     """
     oc = str(scoped_own_company_id or "").strip() or None
     base = (

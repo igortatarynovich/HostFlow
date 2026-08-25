@@ -79,6 +79,37 @@ async def get_lead_timeline(
             from_stage = (payload or {}).get("from_stage") if isinstance(payload, dict) else None
             to_stage = (payload or {}).get("to_stage") if isinstance(payload, dict) else None
             descr = f"{from_stage or '—'} → {to_stage or '—'}"
+        elif action == "lead.questionnaire_email_sent":
+            kind = "questionnaire_email"
+            if isinstance(payload, dict):
+                recipient = payload.get("recipient") or "—"
+                channel = payload.get("channel") or "email"
+                link = payload.get("questionnaire_url") or ""
+                descr = f"{channel} → {recipient}" + (f" · {link}" if link else "")
+        elif action == "lead.questionnaire_email_failed":
+            kind = "questionnaire_email"
+            if isinstance(payload, dict):
+                descr = str(payload.get("error") or payload.get("error_code") or "send failed")
+        elif action == "lead.questionnaire_submitted":
+            kind = "questionnaire_submitted"
+            if isinstance(payload, dict):
+                contact = payload.get("contact_name") or "—"
+                company = payload.get("company_name") or "—"
+                descr = f"{contact} — {company}"
+        elif action == "lead.call_result":
+            kind = "call_result"
+            result = (payload or {}).get("result") if isinstance(payload, dict) else None
+            note = (payload or {}).get("note") if isinstance(payload, dict) else None
+            parts = [str(result)] if result else []
+            if note:
+                parts.append(str(note))
+            descr = " — ".join(parts) if parts else None
+        elif action in {"lead.created", "lead.received", "lead.ingested", "lead.imported"}:
+            kind = "lead_received"
+            if isinstance(payload, dict) and payload.get("source"):
+                descr = str(payload.get("source"))
+            else:
+                descr = str(getattr(lead, "source", None) or "") or None
         elif str(action or "").startswith("analytics.next_action."):
             kind = "next_action_warning"
         elif str(action or "").startswith("analytics.perf."):
@@ -136,6 +167,34 @@ async def get_lead_timeline(
             )
 
     # Sort all events by time desc and trim.
+    # Always surface lead arrival: Meta/webhook ingest often never writes ActivityLog,
+    # so a brand-new lead would otherwise show an empty timeline.
+    created_at = getattr(lead, "created_at", None)
+    if isinstance(created_at, datetime):
+        has_ingest = any(
+            str(action or "").strip().lower()
+            in {"lead.created", "lead.received", "lead.ingested", "lead.imported"}
+            for action, _, _ in log_rows
+        )
+        if not has_ingest:
+            source = str(getattr(lead, "source", None) or "").strip() or None
+            lead_type = str(getattr(lead, "lead_type", None) or "").strip() or None
+            events.append(
+                LeadTimelineEventOut(
+                    at=created_at,
+                    kind="lead_received",
+                    source="lead",
+                    title="lead.received",
+                    description=source,
+                    payload={
+                        "source": source,
+                        "lead_type": lead_type,
+                        "lead_target_type": str(getattr(lead, "lead_target_type", None) or "") or None,
+                        "synthetic": True,
+                    },
+                )
+            )
+
     events.sort(key=lambda e: e.at, reverse=True)
     if len(events) > limit:
         events = events[:limit]

@@ -24,7 +24,77 @@ export function communicationsThreadPath(threadId: string): string {
 }
 
 export function settingsLeadFormDetailPath(formId: string): string {
-  return `${P.settingsLeadForms}/${encodeURIComponent(formId)}`
+  return marketingFormDetailPath(formId)
+}
+
+export function marketingCampaignPath(campaignId: string): string {
+  return `${P.marketing}/${encodeURIComponent(campaignId)}`
+}
+
+/** C-4: Marketing-native test lead / field discovery for a Source. */
+export function marketingSourceTestLeadPath(sourceId: string): string {
+  return `${P.marketingSources}/${encodeURIComponent(sourceId)}/test-lead`
+}
+
+/** C-5: Marketing-native mapping workspace for a Source. */
+export function marketingSourceMappingPath(sourceId: string): string {
+  return `${P.marketingSources}/${encodeURIComponent(sourceId)}/mapping`
+}
+
+/** Connect Source wizard for an existing Campaign (Flight association). */
+export function marketingConnectSourcePath(campaignId: string): string {
+  return `${marketingCampaignPath(campaignId)}/sources/new`
+}
+
+/** C-6: Marketing-native HostFlow form detail / builder (Forms SoT unchanged). */
+export function marketingFormDetailPath(formId: string): string {
+  return `${P.marketingForms}/${encodeURIComponent(formId)}`
+}
+
+export function marketingFormBuilderPath(formId: string): string {
+  return `${marketingFormDetailPath(formId)}/builder`
+}
+
+export function settingsLeadFormBuilderPath(formId: string): string {
+  return marketingFormBuilderPath(formId)
+}
+
+export function recruitmentSearchPath(searchId: string): string {
+  return `${P.recruitmentSearches}/${encodeURIComponent(searchId)}`
+}
+
+export function recruitmentSearchAcquisitionPath(searchId: string): string {
+  return `${recruitmentSearchPath(searchId)}/acquisition`
+}
+
+export function recruitmentSearchAcquisitionActivitiesPath(searchId: string): string {
+  return `${recruitmentSearchAcquisitionPath(searchId)}/activities`
+}
+
+export function recruitmentSearchAcquisitionNewPath(searchId: string): string {
+  return `${recruitmentSearchPath(searchId)}/acquisition/new`
+}
+
+/** C-2: canonical create path — Marketing setup with vacancy target prefilled. */
+export function marketingSetupWithVacancyTargetPath(
+  vacancyId: string,
+  opts?: { name?: string },
+): string {
+  const params = new URLSearchParams({
+    target_type: 'vacancy',
+    target_id: vacancyId,
+    flow: 'candidates',
+  })
+  if (opts?.name?.trim()) params.set('name', opts.name.trim().slice(0, 160))
+  return `${P.marketingNew}?${params.toString()}`
+}
+
+export function recruitmentSearchMetaSourcePath(searchId: string): string {
+  return `${recruitmentSearchPath(searchId)}/acquisition/meta`
+}
+
+export function fleetOperatingLineSeasonalityPath(lineId: string): string {
+  return `${P.fleetOperatingLinesSeasonality}/${encodeURIComponent(lineId)}`
 }
 
 /**

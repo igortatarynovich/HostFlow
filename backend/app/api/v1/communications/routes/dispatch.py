@@ -26,10 +26,21 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.communications.send_pipeline import (
+    CommunicationSendRequest,
+    authorize_outbound_communication,
+    template_metadata_from_mapping,
+)
+from backend.app.communications.context_resolver import (
+    CommunicationContextResolveError,
+    resolve_communication_context,
+)
+from backend.app.communications.manual_thread_reply import manual_thread_reply_binding
 from backend.app.api.v1.utils.own_company import (
     resolve_active_own_company_id_optional,
 )
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.communication import (
     CommunicationMessage,
@@ -96,6 +107,86 @@ __all__ = [
 router = APIRouter(tags=["communications"])
 
 
+def _payload_dict(msg: CommunicationMessage) -> dict:
+    raw = getattr(msg, "payload", None)
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+async def _authorize_outbound_or_reason(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    msg: CommunicationMessage,
+    body: CommunicationDispatchRequest,
+) -> str | None:
+    """C5: outbound non-notes must pass the Communication Pipeline. Returns deny reason or None."""
+    if bool(getattr(msg, "is_internal_note", False)):
+        return None
+    if str(getattr(msg, "direction", "") or "") != "outbound":
+        return None
+    if body.simulate_failure:
+        # Still require authorization before simulated failure (no domain guess).
+        pass
+
+    payload = _payload_dict(msg)
+    purpose = (
+        str(body.communication_purpose or "").strip()
+        or str(payload.get("communication_purpose") or "").strip()
+    )
+    template_raw = body.template_metadata
+    if not isinstance(template_raw, dict):
+        template_raw = payload.get("template_metadata_v1")
+    template = template_metadata_from_mapping(
+        template_raw if isinstance(template_raw, dict) else None
+    )
+    locale = str(body.locale or payload.get("locale") or "").strip() or None
+    channel = str(thread.channel or msg.channel or "")
+
+    # Operator freeform inbox reply: when purpose/template omitted, fill from
+    # confirmed Thread Result Link module (never from host / legacy entity_type).
+    if not purpose or template is None:
+        try:
+            context = await resolve_communication_context(
+                db,
+                tenant_id=tenant_id,
+                thread_id=str(thread.id),
+            )
+        except CommunicationContextResolveError as exc:
+            return str(exc.details.get("reason") or "communication_pipeline_required")
+        binding = manual_thread_reply_binding(
+            module_owner=str(context.module_owner or ""),
+            channel=channel,
+        )
+        if binding is None:
+            return "communication_pipeline_required"
+        if not purpose:
+            purpose = binding.communication_purpose
+        if template is None:
+            template = binding.template
+        # Stamp audit fields onto the message for retries / queued dispatch.
+        payload["communication_purpose"] = purpose
+        payload["template_metadata_v1"] = template.to_dict()
+        if locale:
+            payload["locale"] = locale
+        msg.payload = payload
+
+    auth = await authorize_outbound_communication(
+        db,
+        CommunicationSendRequest(
+            tenant_id=tenant_id,
+            thread_id=str(thread.id),
+            channel=channel,
+            communication_purpose=purpose,
+            template=template,
+            locale=locale,
+        ),
+    )
+    if not auth.allowed:
+        return str(auth.reason_code or "communication_pipeline_denied")
+    return None
+
+
 @router.post(
     "/messages/{message_id}/dispatch",
     response_model=CommunicationDispatchResponse,
@@ -129,6 +220,24 @@ async def dispatch_message(
     ):
         _require_outbound_comms_not_billing_blocked(tenant, license_row)
     actor_id = str(current_user.sub) if getattr(current_user, "sub", None) else None
+
+    pipeline_reason = await _authorize_outbound_or_reason(
+        db, tenant_id=tenant_id, thread=thread, msg=msg, body=body
+    )
+    if pipeline_reason is not None:
+        msg.delivery_status = "failed"
+        msg.error_message = pipeline_reason[:500]
+        thread.updated_at = _now_utc()
+        await db.commit()
+        await db.refresh(msg)
+        await db.refresh(thread)
+        return CommunicationDispatchResponse(
+            dispatched=False,
+            message=_message_out(msg),
+            thread=_thread_out(thread),
+            reason=pipeline_reason,
+        )
+
     if thread.channel == "email" and not body.simulate_failure:
         reason = await _dispatch_email_message_via_tenant_smtp(
             db,
@@ -330,6 +439,27 @@ async def dispatch_queued_messages(
                 continue
         attempted_count += 1
         attempt_before = _dispatch_attempt_count(msg)
+        # C5: queued retries must re-enter the same Communication Pipeline.
+        queue_body = CommunicationDispatchRequest(
+            mark_delivered=bool(body.mark_delivered),
+            simulate_failure=bool(body.simulate_failure),
+        )
+        pipeline_reason = await _authorize_outbound_or_reason(
+            db, tenant_id=tenant_id, thread=thread, msg=msg, body=queue_body
+        )
+        if pipeline_reason is not None:
+            msg.delivery_status = "failed"
+            msg.error_message = pipeline_reason[:500]
+            failed_count += 1
+            items.append(
+                CommunicationDispatchResponse(
+                    dispatched=False,
+                    message=_message_out(msg),
+                    thread=_thread_out(thread),
+                    reason=pipeline_reason,
+                )
+            )
+            continue
         if thread.channel == "email" and not body.simulate_failure:
             reason = await _dispatch_email_message_via_tenant_smtp(
                 db,
@@ -453,6 +583,9 @@ async def patch_message_delivery_status(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> CommunicationMessageOut:
+    """Legacy status patch — provider receipts must use delivery diagnostics path."""
+    from backend.app.communications.delivery_diagnostics import apply_delivery_callback
+
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     msg = await db.get(CommunicationMessage, message_id)
@@ -467,6 +600,30 @@ async def patch_message_delivery_status(
     )
     if body.external_message_ref:
         msg.external_message_ref = body.external_message_ref
+
+    # C0.3: when a provider payload is present, route through the unified
+    # diagnostics callback path (idempotency + no delivered downgrade).
+    if body.provider_payload:
+        payload = {
+            **_as_dict(body.provider_payload),
+            "canonical_status": body.delivery_status,
+            "message": body.error_message,
+        }
+        await apply_delivery_callback(
+            db,
+            tenant_id=tenant_id,
+            provider=str(_as_dict(body.provider_payload).get("provider") or msg.channel),
+            payload=payload,
+            message_id=message_id,
+        )
+        if body.delivery_status == "read":
+            msg.read_at = body.read_at or msg.read_at or _now_utc()
+            if msg.delivery_status not in {"failed"}:
+                msg.delivery_status = "read"
+        await db.commit()
+        await db.refresh(msg)
+        return _message_out(msg)
+
     msg.delivery_status = body.delivery_status
     msg.error_message = body.error_message
     if body.delivery_status in {"sent", "delivered", "read"} and msg.sent_at is None:
@@ -475,11 +632,6 @@ async def patch_message_delivery_status(
         msg.delivered_at = body.delivered_at or msg.delivered_at or _now_utc()
     if body.delivery_status == "read":
         msg.read_at = body.read_at or msg.read_at or _now_utc()
-    if body.provider_payload:
-        msg.payload = {
-            **_as_dict(msg.payload),
-            "provider_callback": body.provider_payload,
-        }
     await db.commit()
     await db.refresh(msg)
     return _message_out(msg)
@@ -488,7 +640,7 @@ async def patch_message_delivery_status(
 @router.get(
     "/scheduler/status",
     response_model=CommunicationSchedulerStatusOut,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def get_communications_scheduler_status(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -509,7 +661,7 @@ async def get_communications_scheduler_status(
 @router.post(
     "/scheduler/run-now",
     response_model=CommunicationSchedulerRunNowResponse,
-    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def run_communications_scheduler_now(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),

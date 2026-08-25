@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role
 from backend.app.db.deps import get_db_with_tenant as get_db_with_tenant
 from backend.app.services.handoff import is_client_tenant, can_agency_edit, can_client_edit
 from backend.app.models.candidate import Candidate
@@ -333,7 +334,7 @@ async def get_profile(
 @router.patch(
     "/{candidate_id}",
     response_model=CandidateProfile,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin, Role.client_manager, Role.client_processor))],
+    dependencies=[Depends(require_trust_read())],
 )
 async def patch_profile(
     candidate_id: UUID,
@@ -420,7 +421,7 @@ async def get_questionnaire(
 @router.patch(
     "/{candidate_id}/questionnaire",
     response_model=QuestionnaireAnswers,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def patch_questionnaire(
     candidate_id: UUID,
@@ -462,7 +463,7 @@ async def patch_questionnaire(
 @router.post(
     "/{candidate_id}/autofill-from-docs",
     response_model=CandidateProfile,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def autofill_from_docs(
     candidate_id: UUID,

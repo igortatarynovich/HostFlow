@@ -160,10 +160,11 @@ async def test_claim_forbidden_recruiter_outside_company_scope(
             id=str(uuid.uuid4()),
             email=f"outscope-{uuid.uuid4().hex[:8]}@hostflow.test",
             password_hash="x",
-            role=UserRole.recruiter,
+            role=UserRole.employee,
             tenant_id=tenant_id,
             is_active=True,
             full_name="Out of scope",
+            preferences={"preset_id": "recruiter"},
         )
         session.add(outsider)
         await session.flush()

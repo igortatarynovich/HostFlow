@@ -3,11 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Index, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db.base import Base
 from .mixins import now_utc
+
+JSONAnyType = SQLiteJSON().with_variant(JSONB, "postgresql")
 
 
 class TenantLeadForm(Base):
@@ -24,6 +28,15 @@ class TenantLeadForm(Base):
     title: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     public_slug: Mapped[str | None] = mapped_column(String(64), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False, default="inquiry")
+    target_entity_profile_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    submission_policy: Mapped[dict] = mapped_column(JSONAnyType, nullable=False, default=dict)
+    published_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    published_snapshot_v1: Mapped[dict | None] = mapped_column(JSONAnyType, nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_system_preset: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    lifecycle_status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    supported_languages: Mapped[str] = mapped_column(String(32), nullable=False, default="pl,en,ru")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
 

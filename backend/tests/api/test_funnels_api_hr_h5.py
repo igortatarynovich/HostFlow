@@ -5,6 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 
+def test_funnels_api_imports_hr_module_key() -> None:
+    import backend.app.api.v1.funnels as funnels
+    from backend.app.constants.funnel_types import HR_MODULE_KEY
+
+    assert getattr(funnels, "HR_MODULE_KEY", None) is HR_MODULE_KEY
+
+
 def test_funnels_api_list_supports_hr_module_key() -> None:
     source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
     assert "HR_MODULE_KEY" in source

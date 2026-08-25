@@ -37,23 +37,65 @@ export default function CommunicationsSettingsPage() {
       to: P.settingsCommunicationsSla,
       cta: t('admin.communications_settings.open_sla'),
     },
+    {
+      key: 'templates',
+      title: t('admin.settings.cards.communications_templates.label'),
+      description: t('admin.settings.cards.communications_templates.description'),
+      to: P.settingsCommunicationsTemplates,
+      cta: t('admin.communications_settings.open_templates', {
+        defaultValue: 'Open templates',
+      }),
+    },
+    {
+      key: 'automation',
+      title: t('admin.settings.cards.communications_automation.label'),
+      description: t('admin.settings.cards.communications_automation.description'),
+      to: P.settingsCommunicationsAutomation,
+      cta: t('admin.communications_settings.open_automation', {
+        defaultValue: 'Open automation',
+      }),
+    },
+    {
+      key: 'lead-lifecycle-email',
+      title: t('admin.settings.cards.lead_lifecycle_email.label', {
+        defaultValue: 'Lead lifecycle email',
+      }),
+      description: t('admin.settings.cards.lead_lifecycle_email.description', {
+        defaultValue: 'RODO and ops emails per company, with vacancy overrides and effective preview.',
+      }),
+      to: P.settingsCommunicationsLeadLifecycleEmail,
+      cta: t('admin.communications_settings.open_lead_lifecycle_email', {
+        defaultValue: 'Open Control Center',
+      }),
+    },
+    {
+      key: 'campaigns',
+      title: t('admin.settings.cards.communications_campaigns.label', {
+        defaultValue: 'Campaigns',
+      }),
+      description: t('admin.settings.cards.communications_campaigns.description', {
+        defaultValue: 'Audience + plan → Intent per recipient (operator tools).',
+      }),
+      to: P.settingsCommunicationsCampaigns,
+      cta: t('admin.communications_settings.open_campaigns', {
+        defaultValue: 'Open campaigns',
+      }),
+    },
   ]
 
   return (
-    <div className="space-y-6">
-      <SettingsSubpageHeader
-        backHref={P.settings}
-        backLabel={t('admin.communications_settings.back_all_settings')}
-        kicker={t('admin.communications_settings.header_kicker')}
-        title={t('admin.communications_settings.page_title')}
-        subtitle={t('admin.communications_settings.subtitle')}
-        actions={
-          <Link to={P.settingsIntegrations} className="btn-secondary">
-            {t('admin.communications_settings.open_integrations_hub')}
-          </Link>
-        }
-      />
-
+    <SettingsSubpageHeader
+      backHref={P.settings}
+      backLabel={t('admin.communications_settings.back_all_settings')}
+      kicker={t('admin.communications_settings.header_kicker')}
+      title={t('admin.communications_settings.page_title')}
+      subtitle={t('admin.communications_settings.subtitle')}
+      actions={
+        <Link to={P.settingsIntegrations} className="btn-secondary">
+          {t('admin.communications_settings.open_integrations_hub')}
+        </Link>
+      }
+    >
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <section className="rounded-lg border border-slate-200 bg-white p-4">
           <h2 className="text-base font-semibold text-slate-900">{t('admin.settings.cards.communications_messengers.label')}</h2>
@@ -79,6 +121,6 @@ export default function CommunicationsSettingsPage() {
           </section>
         ))}
       </div>
-    </div>
+    </SettingsSubpageHeader>
   )
 }

@@ -25,6 +25,9 @@ __all__ = [
     "NotificationSettingsIn",
     "NotificationSettingsOut",
     "CommunicationThreadOut",
+    "CommunicationThreadResultLinkOut",
+    "CommunicationThreadEntityLinkOut",
+    "CommunicationThreadResultLinkAttach",
     "CommunicationMessageOut",
     "CommunicationThreadListResponse",
     "CommunicationMessageListResponse",
@@ -38,6 +41,9 @@ __all__ = [
     "CommunicationMarkReadRequest",
     "CommunicationUnreadReconcileRequest",
     "CommunicationUnreadReconcileResponse",
+    "CommunicationThreadRematchRequest",
+    "CommunicationThreadRematchItemOut",
+    "CommunicationThreadRematchResponse",
     "CommunicationAutoAssignResponse",
     "CommunicationAllocatorPreviewRequest",
     "CommunicationAllocatorPreviewResponse",
@@ -141,6 +147,27 @@ class NotificationSettingsOut(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class CommunicationThreadResultLinkOut(BaseModel):
+    """C1 opaque Thread → destination result pointer (no domain ORM)."""
+
+    link_id: str
+    thread_id: str
+    module_owner: str
+    result_type: str
+    result_id: str
+    ledger_id: str | None = None
+    status: str
+    provenance_ref: str | None = None
+
+
+class CommunicationThreadEntityLinkOut(BaseModel):
+    link_id: str
+    thread_id: str
+    entity_type: str
+    entity_id: str
+    is_immutable: bool = False
+
+
 class CommunicationThreadOut(BaseModel):
     id: str
     channel: str
@@ -169,6 +196,9 @@ class CommunicationThreadOut(BaseModel):
     is_archived: bool
     created_at: datetime
     updated_at: datetime
+    result_link: CommunicationThreadResultLinkOut | None = None
+    # G13 SoT for thread ↔ origin entity (legacy entity_* remain for fallback).
+    entity_links: List[CommunicationThreadEntityLinkOut] = Field(default_factory=list)
 
 
 class CommunicationMessageOut(BaseModel):
@@ -248,6 +278,20 @@ class CommunicationThreadCreate(BaseModel):
     channel_account_id: str | None = Field(default=None, max_length=36)
     channel_thread_ref: str | None = Field(default=None, max_length=255)
     auto_assign: bool = False
+    # C1 — opaque result link (SoT). Do not infer from entity_type / Lead / form.
+    result_module_owner: str | None = Field(default=None, max_length=32)
+    result_type: str | None = Field(default=None, max_length=64)
+    result_id: str | None = Field(default=None, max_length=64)
+    provenance_ledger_id: str | None = Field(default=None, max_length=36)
+
+
+class CommunicationThreadResultLinkAttach(BaseModel):
+    """Attach opaque result (or copy from confirmed Flights ledger)."""
+
+    module_owner: str | None = Field(default=None, max_length=32)
+    result_type: str | None = Field(default=None, max_length=64)
+    result_id: str | None = Field(default=None, max_length=64)
+    provenance_ledger_id: str | None = Field(default=None, max_length=36)
 
 
 class CommunicationThreadPatch(BaseModel):
@@ -292,6 +336,8 @@ class CommunicationMessageCreate(BaseModel):
     external_message_ref: str | None = Field(default=None, max_length=255)
     delivery_status: str = Field(default="queued", max_length=32)
     is_internal_note: bool = False
+    # C1.1: Composer selection — backend re-validates; never trust FE allow-list alone.
+    intent: str | None = Field(default=None, max_length=64)
     sent_at: datetime | None = None
     delivered_at: datetime | None = None
     read_at: datetime | None = None
@@ -312,6 +358,34 @@ class CommunicationUnreadReconcileResponse(BaseModel):
     processed: int
     updated: int
     total_unread: int
+
+
+class CommunicationThreadRematchRequest(BaseModel):
+    thread_ids: list[str] | None = None
+    limit: int = Field(default=100, ge=1, le=500)
+    dry_run: bool = True
+
+
+class CommunicationThreadRematchItemOut(BaseModel):
+    thread_id: str
+    confidence: str
+    auto_linked: bool
+    skipped: bool = False
+    skip_reason: str | None = None
+    counterparty_email: str | None = None
+    reasons: list[str] = Field(default_factory=list)
+    hits: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class CommunicationThreadRematchResponse(BaseModel):
+    processed: int
+    linked: int
+    ambiguous: int
+    none: int
+    skipped: int
+    dry_run: bool
+    items: list[CommunicationThreadRematchItemOut] = Field(default_factory=list)
+    unavailable_reason: str | None = None
 
 
 class CommunicationAutoAssignResponse(BaseModel):
@@ -515,6 +589,10 @@ class CommunicationDispatchRequest(BaseModel):
     simulate_failure: bool = False
     provider_message_ref: str | None = Field(default=None, max_length=255)
     provider_payload: Dict[str, Any] = Field(default_factory=dict)
+    # C5 — required for outbound (except internal notes): purpose + template metadata.
+    communication_purpose: str | None = Field(default=None, max_length=128)
+    template_metadata: Dict[str, Any] | None = None
+    locale: str | None = Field(default=None, max_length=16)
 
 
 class CommunicationDispatchResponse(BaseModel):

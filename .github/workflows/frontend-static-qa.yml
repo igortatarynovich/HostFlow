@@ -11,6 +11,8 @@ on:
       - "hostflow-frontend/scripts/foundation_tokens_lib.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
+      - "hostflow-frontend/scripts/check_ts_import_integrity.py"
+      - "scripts/repo_health_gate.py"
       - ".github/workflows/frontend-static-qa.yml"
       - ".github/workflows/security-gates.yml"
       - ".github/pull_request_template.md"
@@ -24,6 +26,8 @@ on:
       - "hostflow-frontend/scripts/foundation_tokens_lib.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
+      - "hostflow-frontend/scripts/check_ts_import_integrity.py"
+      - "scripts/repo_health_gate.py"
       - ".github/workflows/frontend-static-qa.yml"
       - ".github/workflows/security-gates.yml"
       - ".github/pull_request_template.md"
@@ -46,6 +50,9 @@ jobs:
       - name: SPA path literals (backend/app mirror)
         working-directory: .
         run: python3 backend/scripts/check_spa_path_literals.py
+      - name: GIT-IMPORT-INTEGRITY (TS/TSX local imports)
+        working-directory: .
+        run: python3 hostflow-frontend/scripts/check_ts_import_integrity.py
       - uses: actions/setup-node@v4
         with:
           node-version: "20"

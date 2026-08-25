@@ -9,13 +9,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select
 
 from backend.app.models.tenant import Tenant, TenantLicense
 from backend.app.services import billing_restrictions
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
-from backend.app.db.deps import get_db_with_tenant
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user
+from backend.app.db.deps import get_db_with_tenant, get_db_with_tenant_public
 from backend.app.schemas.additional_services import ServiceOrderOut
 from backend.app.modules.companies import schemas as company_schemas
 from backend.app.modules.companies.service import create_company_service
@@ -32,8 +33,12 @@ from backend.app.modules.leads.schemas import (
     BulkAutoProcessQueueItemOut,
     BulkAutoProcessQueueRequest,
     BulkAutoProcessQueueResponse,
+    BulkLeadRodoRetryItemOut,
+    BulkLeadRodoRetryRequest,
+    BulkLeadRodoRetryResponse,
     BulkLeadUpdateRequest,
     BulkLeadUpdateResponse,
+    LeadCallResultIn,
     LeadDistributionOut,
     LeadDistributionPatch,
     LeadDistributionAlert,
@@ -46,6 +51,14 @@ from backend.app.modules.leads.schemas import (
     LeadIntakeDecisionIn,
     LeadListResponse,
     LeadOut,
+    LeadQuestionnaireInviteOut,
+    LeadQuestionnaireInviteRequest,
+    LeadQuestionnaireFormOptionOut,
+    QuestionnaireInviteEmailPreviewOut,
+    QuestionnaireInviteEmailPreviewRequest,
+    QuestionnaireInviteEmailSendOut,
+    QuestionnaireInviteEmailSendRequest,
+    SalesQuestionnaireContextOut,
     LeadStageHealthResponse,
     LeadStageUpdate,
     LeadTimelineResponse,
@@ -139,7 +152,7 @@ async def list_leads_endpoint(
     offset: int = Query(0, ge=0),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadListResponse:
     db, tenant_id = db_tenant
     tid = str(tenant_id)
@@ -257,7 +270,7 @@ def _distribution_response(snap: dict) -> LeadDistributionOut:
 @router.get("/distribution", response_model=LeadDistributionOut)
 async def get_lead_distribution(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ):
     db, tenant_uuid = db_tenant
     snap = await build_distribution_snapshot(db, tenant_id=str(tenant_uuid))
@@ -269,7 +282,7 @@ async def patch_lead_distribution(
     payload: LeadDistributionPatch,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ):
     db, tenant_uuid = db_tenant
     tid = str(tenant_uuid)
@@ -297,7 +310,7 @@ async def patch_lead_distribution(
 async def lead_stage_health_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadStageHealthResponse:
     db, tenant_uuid = db_tenant
     return await service.lead_stage_health_snapshot(
@@ -334,7 +347,7 @@ async def lead_conversion_funnel_endpoint(
     ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadConversionFunnelResponse:
     db, tenant_uuid = db_tenant
     tid = str(tenant_uuid)
@@ -409,12 +422,38 @@ async def lead_conversion_funnel_endpoint(
     )
 
 
+
+@router.get("/questionnaire-context", response_model=SalesQuestionnaireContextOut)
+async def get_lead_questionnaire_context_endpoint(
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _role: str = Depends(require_trust_write()),
+) -> SalesQuestionnaireContextOut:
+    from backend.app.services.questionnaire_sales_resolver import resolve_sales_questionnaire_context
+
+    db, tenant_id = db_tenant
+    context = await resolve_sales_questionnaire_context(db, tenant_id=str(tenant_id), auto_repair=True)
+    await db.commit()
+    return SalesQuestionnaireContextOut.model_validate(context)
+
+
+@router.get("/questionnaire-forms", response_model=list[LeadQuestionnaireFormOptionOut])
+async def list_lead_questionnaire_forms_endpoint(
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _role: str = Depends(require_trust_write()),
+) -> list[LeadQuestionnaireFormOptionOut]:
+    from backend.app.modules.leads.lead_questionnaire_invite import list_questionnaire_forms_for_targeted_advertising
+
+    db, tenant_id = db_tenant
+    rows = await list_questionnaire_forms_for_targeted_advertising(db, tenant_id=str(tenant_id))
+    return [LeadQuestionnaireFormOptionOut.model_validate(row) for row in rows]
+
+
 @router.get("/{lead_id}", response_model=LeadOut)
 async def get_lead_detail_endpoint(
     lead_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadOut:
     """Full lead row (same shape as GET /leads items) for workspace / deep links."""
     db, tenant_uuid = db_tenant
@@ -432,9 +471,91 @@ async def get_lead_detail_endpoint(
 
 
 @router.post(
+    "/{lead_id}/call-result",
+    response_model=LeadOut,
+    dependencies=[Depends(require_trust_write())],
+)
+async def log_lead_call_result_endpoint(
+    lead_id: str,
+    payload: LeadCallResultIn,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+) -> LeadOut:
+    """Log call outcome + comment on a lead (B2B appeals / client leads).
+
+    Stores ``normalized.call_result_v1`` (latest) and appends to
+    ``normalized.call_results_v1``. Contact-reached results may bump CRM stage
+    to ``contacted``.
+    """
+    from backend.app.modules.leads import crud
+    from backend.app.modules.leads.service.call_result import log_lead_call_result
+    from backend.app.modules.leads.service.intake_decision import client_lead_is_terminal, is_client_lead
+    from backend.app.services.lead_rodo import (
+        LEAD_RODO_ACTION_COMMUNICATION_CALL,
+        ensure_lead_rodo_allows_action,
+    )
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    if is_client_lead(lead) and client_lead_is_terminal(lead):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "INTAKE_REJECTED"},
+        )
+
+    if await ensure_lead_rodo_allows_action(
+        db,
+        tenant_id=tenant_id_str,
+        lead=lead,
+        action=LEAD_RODO_ACTION_COMMUNICATION_CALL,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "LEAD_RODO_REQUIRED"},
+        )
+
+    tenant_row = await db.get(Tenant, tenant_id_str)
+    lic_row = (
+        await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id_str).limit(1))
+    ).scalar_one_or_none()
+    billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
+
+    await log_lead_call_result(
+        db,
+        tenant_id=tenant_id_str,
+        lead=lead,
+        result=payload.result,
+        note=payload.note,
+        actor_id=str(current_user.sub or "").strip() or None,
+        bump_stage=bool(payload.bump_stage),
+    )
+    await db.commit()
+
+    res = await service.list_leads(
+        db,
+        tenant_id=tenant_id_str,
+        own_company_id=own_company_id,
+        only_lead_id=lead_id,
+        limit=1,
+        offset=0,
+    )
+    if not res.items:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    return res.items[0]
+
+
+@router.post(
     "/{lead_id}/compliance/rodo/send",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_roles(Role.admin, Role.manager, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def send_lead_rodo_compliance_endpoint(
     lead_id: str,
@@ -443,23 +564,44 @@ async def send_lead_rodo_compliance_endpoint(
 ) -> Dict[str, Any]:
     """Send art.14 RODO notice to the lead contact email; audit lives on ``lead.normalized['rodo']``."""
     from backend.app.modules.leads import crud
-    from backend.app.services.lead_rodo import send_lead_rodo_email
-    from backend.app.services.lead_rodo_settings import get_lead_rodo_settings
+    from backend.app.services.lead_lifecycle_email_policy import (
+        PURPOSE_GDPR_NOTICE,
+        resolve_lifecycle_email_policy_for_lead,
+    )
+    from backend.app.services.lead_rodo import (
+        LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
+        mark_lead_rodo_pending_policy,
+        send_lead_rodo_email,
+    )
+    from backend.app.services.lead_rodo_settings import DEFAULT_LEAD_RODO_CHANNELS
 
     db, tenant_uuid = db_tenant
     tenant_id_str = str(tenant_uuid)
     lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
-    rodo_cfg = await get_lead_rodo_settings(db, tenant_id_str)
+    decision = await resolve_lifecycle_email_policy_for_lead(
+        db, tenant_id=tenant_id_str, lead=lead, purpose=PURPOSE_GDPR_NOTICE
+    )
+    if decision.block_code in ("policy_template_missing", "policy_misconfigured") or not decision.template_ref:
+        mark_lead_rodo_pending_policy(
+            lead,
+            reason=decision.reason or "RODO template_ref is missing; configure Lead lifecycle email policy.",
+            reason_code=str(decision.block_code or LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING),
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=decision.reason or "RODO email policy blocked send (template missing).",
+        )
     ok, msg = await send_lead_rodo_email(
         db,
         lead=lead,
         tenant_id=tenant_id_str,
         actor_id=str(current_user.sub or "").strip() or None,
-        channels=rodo_cfg.channels,
-        template_id=rodo_cfg.template_id,
-        message_template_id=rodo_cfg.message_template_id,
+        channels=DEFAULT_LEAD_RODO_CHANNELS,
+        template_id=None,
+        message_template_id=decision.template_ref,
     )
     if not ok:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
@@ -468,9 +610,59 @@ async def send_lead_rodo_compliance_endpoint(
 
 
 @router.post(
+    "/bulk/compliance/rodo/retry",
+    response_model=BulkLeadRodoRetryResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_trust_write())],
+)
+async def bulk_retry_lead_rodo_endpoint(
+    body: BulkLeadRodoRetryRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> BulkLeadRodoRetryResponse:
+    """Re-send art.14 RODO for leads stuck after Communication Pipeline cutover (ADR-031)."""
+    from backend.app.services.lead_rodo_bulk_retry import bulk_retry_lead_rodo
+
+    db, tenant_uuid = db_tenant
+    tenant_id_str = str(tenant_uuid)
+    try:
+        result = await bulk_retry_lead_rodo(
+            db,
+            tenant_id=tenant_id_str,
+            actor_id=str(current_user.sub or "").strip() or None,
+            lead_ids=body.lead_ids,
+            statuses=body.statuses,
+            max_items=body.max_items,
+            include_terminal=body.include_terminal,
+            dry_run=body.dry_run,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    if not body.dry_run:
+        await db.commit()
+    return BulkLeadRodoRetryResponse(
+        results=[
+            BulkLeadRodoRetryItemOut(
+                lead_id=i.lead_id,
+                outcome=i.outcome,
+                rodo_status_before=i.rodo_status_before,
+                rodo_status_after=i.rodo_status_after,
+                message=i.message,
+            )
+            for i in result.items
+        ],
+        attempted=result.attempted,
+        sent=result.sent,
+        skipped=result.skipped,
+        failed=result.failed,
+        dry_run=result.dry_run,
+    )
+
+
+@router.post(
     "/{lead_id}/compliance/rodo/source-provided",
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_roles(Role.admin, Role.manager, Role.recruiter))],
+    dependencies=[Depends(require_trust_write())],
 )
 async def mark_lead_rodo_source_provided_endpoint(
     lead_id: str,
@@ -502,7 +694,7 @@ async def update_lead_stage_endpoint(
     payload: LeadStageUpdate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadOut:
     """Update lead CRM stage (new, contacted, qualified, converted, lost)."""
     from backend.app.modules.leads import crud
@@ -709,7 +901,7 @@ async def update_lead_stage_endpoint(
             tenant_id=tenant_id_str,
             lead=lead,
             event_type="lead.status_changed.telegram",
-            roles=[Role.administrator, Role.supervisor],
+            roles=[Role.administrator, Role.employee],
             business_type=business_type,
             outcome_entity_type=outcome_entity_type,
             outcome_entity_id=outcome_entity_id,
@@ -748,6 +940,7 @@ async def update_lead_stage_endpoint(
         candidate_id=PyUUID(lead.candidate_id) if lead.candidate_id else None,
         candidate_name=None,
         converted_client_id=PyUUID(lead.converted_client_id) if getattr(lead, "converted_client_id", None) else None,
+        client_account_id=PyUUID(lead.client_account_id) if getattr(lead, "client_account_id", None) else None,
         outcome_entity_type=outcome_entity_type,
         outcome_entity_id=PyUUID(outcome_entity_id) if outcome_entity_id else None,
         outcome_entity_name=outcome_entity_name,
@@ -773,7 +966,7 @@ async def delete_lead_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> Response:
     """Permanently remove a lead (e.g. test / mistaken ingest). Does not delete linked candidates."""
     from backend.app.modules.leads import crud
@@ -827,7 +1020,7 @@ async def bulk_auto_process_meta_queue_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> BulkAutoProcessQueueResponse:
     """
     §2.3 Auto-fix: re-run lead processing for Meta **and csv_import** leads stuck in needs_routing / failed
@@ -875,7 +1068,7 @@ async def bulk_process_new_meta_queue_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> BulkAutoProcessQueueResponse:
     """
     §2.10 NBA: batch-run Meta pipeline for leads still in status=new (up to max_items, FIFO by created_at).
@@ -922,7 +1115,7 @@ async def bulk_update_leads_endpoint(
     payload: BulkLeadUpdateRequest,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> BulkLeadUpdateResponse:
     from backend.app.modules.leads import crud
 
@@ -1104,7 +1297,7 @@ async def create_service_order_from_lead(
     lead_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ):
     from backend.app.modules.leads import crud
 
@@ -1172,19 +1365,339 @@ async def create_service_order_from_lead(
     return ServiceOrderOut.model_validate(order, from_attributes=True)
 
 
+@router.get("/{lead_id}/questionnaire-invite", response_model=LeadQuestionnaireInviteOut)
+async def get_lead_questionnaire_invite_endpoint(
+    lead_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_trust_read()),
+) -> LeadQuestionnaireInviteOut:
+    from backend.app.modules.leads import crud
+    from backend.app.modules.leads.lead_questionnaire_invite import (
+        find_active_questionnaire_invite_for_lead,
+        questionnaire_invite_out_payload,
+    )
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    invite = await find_active_questionnaire_invite_for_lead(
+        db,
+        tenant_id=tenant_id_str,
+        lead_id=str(lead.id),
+    )
+    if invite is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active questionnaire invite")
+    payload = questionnaire_invite_out_payload(invite)
+    return LeadQuestionnaireInviteOut(
+        id=UUID(str(payload["id"])),
+        lead_id=UUID(str(payload["lead_id"])),
+        lead_form_id=UUID(str(payload["lead_form_id"])) if payload.get("lead_form_id") else None,
+        token=str(payload["token"]),
+        apply_url=str(payload["apply_url"]),
+        status=str(payload["status"]),
+        entity_profile_code=payload.get("entity_profile_code"),
+        presentation_code=payload.get("presentation_code"),
+        form_locale=payload.get("form_locale"),
+        sent_at=payload.get("sent_at"),
+        opened_at=payload.get("opened_at"),
+        submitted_at=payload.get("submitted_at"),
+        expires_at=payload.get("expires_at"),
+    )
+
+
+@router.post("/{lead_id}/questionnaire-invite", response_model=LeadQuestionnaireInviteOut)
+async def create_lead_questionnaire_invite_endpoint(
+    lead_id: str,
+    payload: LeadQuestionnaireInviteRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_trust_write()),
+) -> LeadQuestionnaireInviteOut:
+    from backend.app.modules.leads import crud
+    from backend.app.modules.leads.lead_questionnaire_invite import attach_questionnaire_invite_to_lead
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if str(getattr(lead, "lead_type", "") or "").lower() != "client":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Questionnaire invite is only available for client leads",
+        )
+
+    try:
+        invite = await attach_questionnaire_invite_to_lead(
+            db,
+            tenant_id=tenant_id_str,
+            lead=lead,
+            mark_sent=payload.mark_sent,
+            lead_form_id=str(payload.lead_form_id) if payload.lead_form_id else None,
+            form_locale=payload.form_locale,
+        )
+    except LookupError as exc:
+        detail = str(exc)
+        if "No questionnaire invite exists" in detail:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail) from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail) from exc
+
+    await db.commit()
+    await db.refresh(invite)
+    from backend.app.modules.leads.lead_questionnaire_invite import questionnaire_invite_out_payload
+
+    out = questionnaire_invite_out_payload(invite)
+    return LeadQuestionnaireInviteOut(
+        id=UUID(str(out["id"])),
+        lead_id=UUID(str(out["lead_id"])),
+        lead_form_id=UUID(str(out["lead_form_id"])) if out.get("lead_form_id") else None,
+        token=str(out["token"]),
+        apply_url=str(out["apply_url"]),
+        status=str(out["status"]),
+        entity_profile_code=out.get("entity_profile_code"),
+        presentation_code=out.get("presentation_code"),
+        form_locale=out.get("form_locale"),
+        sent_at=out.get("sent_at"),
+        opened_at=out.get("opened_at"),
+        submitted_at=out.get("submitted_at"),
+        expires_at=out.get("expires_at"),
+    )
+
+
+def _invite_out_from_payload(out: dict) -> LeadQuestionnaireInviteOut:
+    return LeadQuestionnaireInviteOut(
+        id=UUID(str(out["id"])),
+        lead_id=UUID(str(out["lead_id"])),
+        lead_form_id=UUID(str(out["lead_form_id"])) if out.get("lead_form_id") else None,
+        token=str(out["token"]),
+        apply_url=str(out["apply_url"]),
+        status=str(out["status"]),
+        entity_profile_code=out.get("entity_profile_code"),
+        presentation_code=out.get("presentation_code"),
+        form_locale=out.get("form_locale"),
+        sent_at=out.get("sent_at"),
+        opened_at=out.get("opened_at"),
+        submitted_at=out.get("submitted_at"),
+        expires_at=out.get("expires_at"),
+    )
+
+
+def _questionnaire_email_http_error(exc: Exception) -> HTTPException:
+    # ImportError (circular send_communication ↔ inbound) must map to structured JSON
+    # without re-entering the broken import graph.
+    if isinstance(exc, ImportError):
+        return HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "questionnaire_email_import_error",
+                "message": str(exc) or "questionnaire email module import failed",
+            },
+        )
+
+    code = getattr(exc, "code", None)
+    message = getattr(exc, "message", None)
+    extra = getattr(exc, "extra", None)
+    is_typed = (
+        type(exc).__name__ == "QuestionnaireEmailError"
+        and isinstance(code, str)
+        and isinstance(message, str)
+    )
+    if is_typed:
+        detail: dict = {"code": code, "message": message, **(extra if isinstance(extra, dict) else {})}
+        if code in {"email_not_configured"}:
+            return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+        if code in {"clarification_required"}:
+            return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+        if code in {
+            "invalid_email",
+            "empty_message",
+            "not_client_lead",
+            "invite_error",
+            "compose_failed",
+            "template_resolution_failed",
+            "link_resolution_failed",
+            "capability_intent_denied",
+        }:
+            return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+        if code in {
+            "communication_pipeline_required",
+            "sales_questionnaire_pipeline_error",
+            "recruitment_result_bound",
+            "sales_inquiry_transport_conflict",
+            "thread_result_link_error",
+        } or (isinstance(extra, dict) and "authorization" in extra):
+            return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail)
+        return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail={"code": "questionnaire_email_internal_error", "message": str(exc) or type(exc).__name__},
+    )
+
+
+@router.post(
+    "/{lead_id}/questionnaire-invite/email/preview",
+    response_model=QuestionnaireInviteEmailPreviewOut,
+)
+async def preview_lead_questionnaire_invite_email(
+    lead_id: str,
+    payload: QuestionnaireInviteEmailPreviewRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_trust_write()),
+) -> QuestionnaireInviteEmailPreviewOut:
+    from backend.app.modules.leads import crud
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    # Import inside try: circular ImportError on questionnaire_email must not become
+    # an opaque FastAPI 500 before compose() runs (prod symptom on appeals email).
+    try:
+        from backend.app.services.communication_deliveries.questionnaire_email import (
+            compose_questionnaire_invite_email,
+        )
+
+        compose = await compose_questionnaire_invite_email(
+            db,
+            tenant_id=tenant_id_str,
+            lead=lead,
+            form_locale=payload.form_locale,
+            lead_form_id=str(payload.lead_form_id) if payload.lead_form_id else None,
+            force_new_invite=payload.force_new_invite,
+            recipient_email=payload.recipient_email,
+            actor_user_id=str(current_user.sub or "").strip() or None,
+        )
+    except Exception as exc:  # noqa: BLE001 — typed QuestionnaireEmailError + ImportError
+        raise _questionnaire_email_http_error(exc) from exc
+
+    await db.commit()
+    try:
+        return QuestionnaireInviteEmailPreviewOut(
+            invite=_invite_out_from_payload(compose.invite_payload),
+            recipient_email=compose.recipient_email or None,
+            subject=compose.subject,
+            body=compose.body,
+            questionnaire_url=compose.questionnaire_url,
+            email_configured=compose.email_configured,
+            clarification_required=compose.clarification_required,
+            invite_reused=compose.invite_reused,
+            form_locale=compose.locale,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "questionnaire_email_response_error",
+                "message": str(exc) or type(exc).__name__,
+            },
+        ) from exc
+
+
+@router.post(
+    "/{lead_id}/questionnaire-invite/email/send",
+    response_model=QuestionnaireInviteEmailSendOut,
+)
+async def send_lead_questionnaire_invite_email(
+    lead_id: str,
+    payload: QuestionnaireInviteEmailSendRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_trust_write()),
+) -> QuestionnaireInviteEmailSendOut:
+    from backend.app.api.v1.communications._helpers.billing import (
+        _load_tenant_license_row,
+        _require_outbound_comms_not_billing_blocked,
+    )
+    from backend.app.modules.leads import crud
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    if own_company_id and str(getattr(lead, "own_company_id", "") or "") != str(own_company_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    tenant = await db.scalar(select(Tenant).where(Tenant.id == tenant_id_str).limit(1))
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    license_row = await _load_tenant_license_row(db, tenant_id_str)
+    _require_outbound_comms_not_billing_blocked(tenant, license_row)
+
+    try:
+        from backend.app.services.communication_deliveries.questionnaire_email import (
+            QuestionnaireEmailError,
+            send_questionnaire_invite_email,
+        )
+
+        result = await send_questionnaire_invite_email(
+            db,
+            tenant_id=tenant_id_str,
+            lead=lead,
+            form_locale=payload.form_locale,
+            lead_form_id=str(payload.lead_form_id) if payload.lead_form_id else None,
+            force_new_invite=payload.force_new_invite,
+            recipient_email=payload.recipient_email,
+            subject=payload.subject,
+            body=payload.body,
+            actor_user_id=str(current_user.sub or "").strip() or None,
+            save_email_to_lead=payload.save_email_to_lead,
+            thread_id=payload.thread_id,
+            communication_purpose=payload.communication_purpose,
+            template_metadata=payload.template_metadata,
+            locale=payload.locale,
+        )
+    except Exception as exc:  # noqa: BLE001 — QuestionnaireEmailError + ImportError
+        if type(exc).__name__ == "QuestionnaireEmailError":
+            await db.commit()  # persist failed delivery journal row
+        raise _questionnaire_email_http_error(exc) from exc
+
+    await db.commit()
+    return QuestionnaireInviteEmailSendOut(
+        invite=_invite_out_from_payload(result["invite"]),
+        delivery_id=UUID(str(result["delivery_id"])),
+        recipient_email=str(result["recipient_email"]),
+        questionnaire_url=str(result["questionnaire_url"]),
+        subject=str(result["subject"]),
+        status=str(result["status"]),
+    )
+
+
 @router.post("/{lead_id}/convert-client", response_model=LeadOut)
 async def convert_client_lead_to_client_endpoint(
     lead_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadOut:
+    """Compatibility facade — same engine as ``POST /sales/inquiries/{id}/convert-client``.
+
+    Resolves SalesInquiry by transport Lead id and runs ``convert_sales_inquiry_mapping``.
+    Does not call ``convert_client_lead`` directly and adds no separate transaction boundary.
+    """
+    from backend.app.modules.applications.mutations import run_product_convert_via_mapping
     from backend.app.modules.leads import crud
+    from backend.app.modules.leads.service.intake_decision import client_lead_is_terminal
 
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
-    actor_id = str(current_user.sub or "").strip() or None
+
     lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
@@ -1198,7 +1711,6 @@ async def convert_client_lead_to_client_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Only Client Leads can be converted to Client",
         )
-    from backend.app.modules.leads.service.intake_decision import client_lead_is_terminal
 
     if client_lead_is_terminal(lead):
         raise HTTPException(
@@ -1210,132 +1722,15 @@ async def convert_client_lead_to_client_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Client Lead has no owner company",
         )
-    if getattr(lead, "converted_client_id", None):
-        res = await service.list_leads(
-            db,
-            tenant_id=tenant_id_str,
-            own_company_id=own_company_id,
-            only_lead_id=lead_id,
-            limit=1,
-            offset=0,
-        )
-        if not res.items:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
-        return res.items[0]
 
-    normalized = _record_or_empty(lead.normalized)
-    payload = _record_or_empty(lead.payload)
-    company_profile = _record_or_empty(normalized.get("company_profile")) or _record_or_empty(payload.get("company"))
-    contact_person = _record_or_empty(normalized.get("contact_person")) or _record_or_empty(payload.get("contact"))
-    need = _record_or_empty(normalized.get("need")) or _record_or_empty(payload.get("need"))
-    marketing = _record_or_empty(normalized.get("marketing"))
-    meta = _record_or_empty(normalized.get("meta"))
-
-    company_name = (
-        _trim_or_none(company_profile.get("name"))
-        or _trim_or_none(normalized.get("company_name"))
-        or _trim_or_none(payload.get("company_name"))
-    )
-    if not company_name:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Company name is required before converting Client Lead",
-        )
-
-    contacts_payload: Dict[str, Any] = {}
-    primary_contact = {
-        "full_name": _trim_or_none(contact_person.get("full_name")),
-        "role": _trim_or_none(contact_person.get("role")),
-        "email": _trim_or_none(contact_person.get("email")),
-        "phone": _trim_or_none(contact_person.get("phone")),
-        "whatsapp": bool(contact_person.get("whatsapp")) if contact_person.get("whatsapp") is not None else None,
-        "source": "client_lead",
-        "source_lead_id": str(lead.id),
-    }
-    primary_contact = {k: v for k, v in primary_contact.items() if v is not None and v != ""}
-    if primary_contact:
-        contacts_payload = {"primary": primary_contact, "items": [primary_contact]}
-
-    assigned_manager_id = _trim_or_none(meta.get("assigned_manager_id"))
-    assigned_manager_uuid: UUID | None = None
-    if assigned_manager_id:
-        try:
-            assigned_manager_uuid = UUID(assigned_manager_id)
-        except ValueError:
-            assigned_manager_uuid = None
-    company_in = company_schemas.CompanyCreate(
-        name=company_name,
-        legal_name=_trim_or_none(company_profile.get("legal_name")) or company_name,
-        tax_id=_trim_or_none(company_profile.get("tax_id")) or _trim_or_none(company_profile.get("nip")) or _trim_or_none(company_profile.get("vat")),
-        phone=_trim_or_none(contact_person.get("phone")),
-        email=_trim_or_none(contact_person.get("email")),
-        website=_trim_or_none(company_profile.get("website")),
-        country_code=_trim_or_none(company_profile.get("country_code")),
-        country=_trim_or_none(company_profile.get("country")),
-        city=_trim_or_none(company_profile.get("city")),
-        address=_trim_or_none(company_profile.get("address")),
-        company_role="client",
-        party_business_roles="service_client",
-        client_stage="lead_converted",
-        client_source=_trim_or_none(lead.source),
-        manager_user_id=assigned_manager_uuid,
-        contacts=contacts_payload or None,
-        extra={
-            "company_role": "client",
-            "company_kind": "client",
-            "source": lead.source,
-            "source_lead_id": str(lead.id),
-            "source_profile": meta.get("source_profile"),
-            "intake": {
-                "company_profile": company_profile,
-                "contact_person": contact_person,
-                "need": need,
-                "marketing": marketing,
-                "meta": meta,
-            },
-            "needs": [need] if need else [],
-        },
-    )
-
-    client = await create_company_service(db=db, data=company_in, actor_user_id=actor_id)
-
-    from backend.app.services.tenant_links import ensure_client_company_tenant_link
-
-    await ensure_client_company_tenant_link(
+    await run_product_convert_via_mapping(
         db,
-        agency_tenant_id=tenant_id_str,
-        client_company_id=str(client.id),
-        handoff_enabled=True,
+        tenant_id=tenant_id_str,
+        own_company_id=own_company_id,
+        application_id=lead_id,
+        current_user=current_user,
+        missing_detail="Lead not found",
     )
-
-    normalized_updated = dict(normalized)
-    normalized_updated["converted_client_id"] = str(client.id)
-    normalized_updated["converted_client_at"] = datetime.now(timezone.utc).isoformat()
-    normalized_updated["converted_client_by"] = actor_id
-    lead.normalized = normalized_updated
-    lead.converted_client_id = str(client.id)
-    lead.status = "processed"
-    lead.stage = "converted"
-    lead.error = None
-    await db.flush()
-    try:
-        await log_activity(
-            db,
-            tenant_id=tenant_id_str,
-            actor_id=actor_id,
-            action="client_lead.converted_to_client",
-            target_type="lead",
-            target_id=str(lead.id),
-            payload={
-                "client_id": str(client.id),
-                "company_name": company_name,
-                "source": lead.source,
-                "own_company_id": str(getattr(lead, "own_company_id", "") or ""),
-            },
-        )
-    except Exception:
-        pass
-    await db.commit()
 
     res = await service.list_leads(
         db,
@@ -1357,7 +1752,7 @@ async def lead_duplicate_decision_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadOut:
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -1397,7 +1792,7 @@ async def confirm_lead_vacancy_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadOut:
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -1433,7 +1828,7 @@ async def lead_intake_decision_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> LeadOut:
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -1471,7 +1866,7 @@ async def process_lead_endpoint(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+    _role: str = Depends(require_trust_write()),
 ) -> MetaLeadResponse:
     """
     Manually process (route/convert) a stored lead.
@@ -1578,7 +1973,7 @@ async def process_lead_endpoint(
 @router.post("/meta", response_model=MetaLeadResponse)
 async def ingest_meta_lead(
     request: Request,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant_public),
 ) -> MetaLeadResponse:
     body = await request.body()
     db, tenant_uuid = db_tenant
@@ -1636,7 +2031,7 @@ async def ingest_meta_lead(
 async def get_lead_timeline_endpoint(
     lead_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+    _role: str = Depends(require_trust_read()),
 ) -> LeadTimelineResponse:
     """Unified lead timeline for side-panel History tab."""
     db, tenant_id = db_tenant

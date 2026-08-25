@@ -360,9 +360,13 @@ async def _search_companies_slice(
 
 
 def _user_can_global_search_leads(user: UserCtx) -> bool:
-    """Align with GET /leads list roles (no client handoff roles)."""
-    r = (user.role or "").strip().lower()
-    return r not in (Role.client_manager.value, Role.client_processor.value)
+    """Align with GET /leads list roles (no portal guests)."""
+    from backend.app.auth.trust_roles import is_portal_actor
+
+    return not is_portal_actor(
+        user.role,
+        getattr(user, "access_context", None),
+    )
 
 
 async def _search_leads_slice(
@@ -872,6 +876,9 @@ async def run_global_search_v1(
 
     saved: _SavedTenantCtx | None = None
     if scope_override:
+        from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
+
+        await ensure_user_can_access_tenant(db, current_user, scope_tenant)
         saved = await _push_scope_tenant_context(db, scope_tenant)
 
     candidates: list[dict[str, Any]] = []
@@ -971,4 +978,18 @@ async def run_global_search_v1(
         *tasks,
     ]
     ranked = merge_and_rank_items(merged, q.strip(), max_out=max_results)
-    return {"q": q.strip(), "items": ranked}
+    return {
+        "q": q.strip(),
+        "items": ranked,
+        "_retrieval_stats": {
+            "merged_count": len(merged),
+            "returned_count": len(ranked),
+            "entity_types": sorted(
+                {
+                    str(it.get("type") or "").strip()
+                    for it in merged
+                    if isinstance(it, dict) and str(it.get("type") or "").strip()
+                }
+            ),
+        },
+    }

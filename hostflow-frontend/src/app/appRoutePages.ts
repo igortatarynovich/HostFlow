@@ -40,6 +40,33 @@ export const DocumentsRegistryPage = lazy(() => loadCrmMore().then((m) => ({ def
 export const DocumentsHubPage = lazy(() => loadCrmMore().then((m) => ({ default: m.DocumentsHubPage })))
 export const AutomationsHubPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationsHubPage })))
 export const AutomationLogPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationLogPage })))
+export const AcquisitionActivityTimelinePage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.AcquisitionActivityTimelinePage })),
+)
+export const MarketingCampaignsPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingCampaignsPage })),
+)
+export const MarketingCampaignSetupPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingCampaignSetupPage })),
+)
+export const MarketingConnectSourcePage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingConnectSourcePage })),
+)
+export const MarketingCampaignDetailPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingCampaignDetailPage })),
+)
+export const MarketingSourcesPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingSourcesPage })),
+)
+export const MarketingSourceTestLeadPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingSourceTestLeadPage })),
+)
+export const MarketingSourceMappingPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingSourceMappingPage })),
+)
+export const MarketingDiagnosticsPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.MarketingDiagnosticsPage })),
+)
 export const AutomationRulesPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationRulesPage })))
 export const FleetModulePage = lazy(() => loadCrmMore().then((m) => ({ default: m.FleetModulePage })))
 
@@ -95,8 +122,21 @@ export const CommunicationsQueueSettingsPage = lazy(() =>
 export const CommunicationsSlaSettingsPage = lazy(() =>
   loadComms().then((m) => ({ default: m.CommunicationsSlaSettingsPage })),
 )
+export const CommunicationTemplatesPage = lazy(() =>
+  loadComms().then((m) => ({ default: m.CommunicationTemplatesPage })),
+)
+export const CommunicationAutomationRulesPage = lazy(() =>
+  loadComms().then((m) => ({ default: m.CommunicationAutomationRulesPage })),
+)
+export const LeadLifecycleEmailSettingsPage = lazy(() =>
+  loadComms().then((m) => ({ default: m.LeadLifecycleEmailSettingsPage })),
+)
+export const CommunicationCampaignsPage = lazy(() =>
+  loadComms().then((m) => ({ default: m.CommunicationCampaignsPage })),
+)
 
 export const UsersPage = lazy(() => loadAdmin().then((m) => ({ default: m.UsersPage })))
+export const RolesAccessPage = lazy(() => loadAdmin().then((m) => ({ default: m.RolesAccessPage })))
 export const TenantsPage = lazy(() => loadAdmin().then((m) => ({ default: m.TenantsPage })))
 export const RulesetVersionsPage = lazy(() => loadAdmin().then((m) => ({ default: m.RulesetVersionsPage })))
 export const IntegrationsHubPage = lazy(() => loadAdmin().then((m) => ({ default: m.IntegrationsHubPage })))
@@ -141,5 +181,6 @@ export const HrEmployeeDetailPage = lazy(() => loadHrWorkspace().then((m) => ({ 
 export const HrHandoffDetailPage = lazy(() => loadHrWorkspace().then((m) => ({ default: m.HrHandoffDetailPage })))
 export const LeadFormsSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.LeadFormsSettingsPage })))
 export const IntakeFormDetailPage = lazy(() => loadAdmin().then((m) => ({ default: m.IntakeFormDetailPage })))
+export const FormsBuilderPage = lazy(() => loadAdmin().then((m) => ({ default: m.FormsBuilderPage })))
 export const LegalDocumentsPage = lazy(() => loadAdmin().then((m) => ({ default: m.LegalDocumentsPage })))
 export const LeadMessageTemplatesPage = lazy(() => loadAdmin().then((m) => ({ default: m.LeadMessageTemplatesPage })))

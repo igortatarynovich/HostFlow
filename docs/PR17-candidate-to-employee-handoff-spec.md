@@ -152,13 +152,13 @@ PR17: ensure plan sees linked candidate docs after handoff, not empty legacy row
 
 ## 7. Acceptance criteria
 
-- [ ] After accept (non-delayed tenant): open `/app/hr/employees/:id` — name, recruitment snapshot, **linked documents** visible without manual re-upload.
-- [ ] After accept (delayed): open handoff/inbox — see verify task; after approve, same document visibility on employee card.
-- [ ] `personal_data` / key eligibility fields pre-filled on work eligibility profile where candidate had them.
-- [ ] HR inbox “HR review” opens employee card (or handoff only when no employee yet), not a parallel case universe.
-- [ ] Employee card: verification block is primary; legacy operational sections not duplicated above it on same page.
-- [ ] PR15 hybrid approve regression still passes.
-- [ ] Mapping doc in repo lists every field/doc path (this spec §4 filled in implementation PR).
+- [x] After accept (non-delayed tenant): open `/app/hr/employees/:id` — name, recruitment snapshot, **linked documents** visible without manual re-upload.
+- [x] After accept (delayed): open handoff/inbox — see verify task; after approve, same document visibility on employee card.
+- [x] `personal_data` / key eligibility fields pre-filled on work eligibility profile where candidate had them.
+- [x] HR inbox “HR review” opens employee card (or handoff only when no employee yet), not a parallel case universe.
+- [x] Employee card: verification block is primary; legacy operational sections not duplicated above it on same page.
+- [x] PR15 hybrid approve regression still passes.
+- [x] Mapping doc in repo lists every field/doc path (this spec §4 filled in implementation PR).
 
 ---
 

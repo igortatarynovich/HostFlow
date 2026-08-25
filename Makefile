@@ -51,6 +51,8 @@ help:
 	@echo "  make docs-lint - documentation governance lint (forbidden filenames, broken md links, archive contract, ADR superseded chain, workflow linkage)"
 	@echo "  make docs-lint-strict - same as docs-lint but ignores baseline (zero tolerance)"
 	@echo "  make docs-lint-baseline - rewrite scripts/docs/governance_baseline.txt with current violations (use sparingly)"
+	@echo "  make security-scorecard - regenerate docs/security/security-scorecard.md (Phase 8)"
+	@echo "  make security-scorecard-check - fail on scorecard drift or RED metrics"
 	@echo ""
 
 # ---- Tests (need: make install, DB reachable) ----
@@ -62,6 +64,14 @@ test:
 .PHONY: test-search
 test-search:
 	@$(MAKE) test ARGS=tests/api/test_global_search.py
+
+.PHONY: rbac-role-lint
+rbac-role-lint:
+	@python3 scripts/rbac/check_no_new_job_title_roles.py
+
+.PHONY: rbac-role-scan
+rbac-role-scan:
+	@python3 scripts/rbac/scan_role_usage.py
 
 # ---- Deps ----
 .PHONY: install
@@ -152,6 +162,22 @@ docs-lint-strict:
 .PHONY: docs-lint-baseline
 docs-lint-baseline:
 	python3 scripts/docs/check_doc_governance.py --init-baseline
+
+.PHONY: security-scorecard
+security-scorecard:
+	python3 scripts/security/generate_security_scorecard.py --write
+
+.PHONY: security-scorecard-check
+security-scorecard-check:
+	python3 scripts/security/generate_security_scorecard.py --check
+
+.PHONY: repo-health
+repo-health:
+	python3 scripts/repo_health_gate.py --strict-worktrees
+
+.PHONY: check-ts-imports
+check-ts-imports:
+	python3 hostflow-frontend/scripts/check_ts_import_integrity.py
 
 # ---- Utils ----
 .PHONY: env-print

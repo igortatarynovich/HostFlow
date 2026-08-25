@@ -12,10 +12,12 @@
 
 Do **not** create Application:
 
-- for a **Lead** that has **no** `candidate_id` yet;
+- for a **Lead** that has **no** Candidate (no shell and no `candidate_id`);
 - while the Lead is in **`duplicate_review`** (no decision yet).
 
 This prevents the main failure mode: **Application must not become a second Lead.**
+
+**ADR-031 (compliance outbound):** when Recruitment destination + vacancy/pool intent + required Pipeline outbound (art.14 / ops mail) hold **before** Process, Recruitment may create an idempotent **Candidate shell** + Application so Communication Pipeline has opaque `application` — see [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) §2.4 and [task](../tasks/compliance-outbound-pipeline-early-result.md). Process remains intake decision, not the sole create moment.
 
 ---
 

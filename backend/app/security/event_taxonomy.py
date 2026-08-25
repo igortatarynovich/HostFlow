@@ -12,6 +12,7 @@ ALLOWED_EVENT_PREFIXES: tuple[str, ...] = (
     "auth.",
     "rls.",
     "db.",
+    "access.",
     "export.",
     "upload.",
     "document.",
@@ -20,6 +21,7 @@ ALLOWED_EVENT_PREFIXES: tuple[str, ...] = (
     "superadmin.",
     "search.",
     "ai.",
+    "detection.",
 )
 
 _EVENT_TYPE_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$")
@@ -27,8 +29,13 @@ _EVENT_TYPE_RE = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$")
 # Spike canonical types (use these at call sites).
 EVENT_SUPERADMIN_ELEVATED_DB_BIND = "superadmin.elevated.db_bind"
 EVENT_AUTH_IMPERSONATION_DB_BIND = "auth.impersonation.db_bind"
+EVENT_SUPERADMIN_IMPERSONATION_STARTED = "superadmin.impersonation.started"
 EVENT_RLS_TENANT_CONTEXT_EXECUTE_DENIED = "rls.tenant_context.execute_denied"
 EVENT_SUPERADMIN_META_LEADS_OPERATIONAL_REMAP = "superadmin.meta_leads.operational_remap"
+
+# Mass list / CRM read surfaces (Phase 2 golden path — list half; export uses export.*)
+EVENT_ACCESS_LIST_COMPLETED = "access.list.completed"
+EVENT_ACCESS_LIST_DENIED = "access.list.denied"
 
 # Document / signed URL access (Phase 3 — v1 telemetry)
 EVENT_DOCUMENT_METADATA_READ = "document.metadata.read"
@@ -45,6 +52,7 @@ EVENT_EXPORT_GENERATED = "export.generated"
 EVENT_EXPORT_DOWNLOADED = "export.downloaded"
 EVENT_EXPORT_DENIED = "export.denied"
 EVENT_EXPORT_EXPIRED = "export.expired"
+EVENT_EXPORT_ANOMALY_DETECTED = "export.anomaly.detected"
 
 # Search / AI retrieval audit (governance PR — call sites follow separately)
 EVENT_SEARCH_RETRIEVAL_REQUESTED = "search.retrieval.requested"
@@ -53,6 +61,9 @@ EVENT_SEARCH_RETRIEVAL_DENIED = "search.retrieval.denied"
 EVENT_AI_RETRIEVAL_REQUESTED = "ai.retrieval.requested"
 EVENT_AI_RETRIEVAL_COMPLETED = "ai.retrieval.completed"
 EVENT_AI_RETRIEVAL_DENIED = "ai.retrieval.denied"
+
+# Phase 7 — detection / alerting (reaction layer on top of telemetry)
+EVENT_DETECTION_ALERT_RAISED = "detection.alert.raised"
 
 
 def validate_event_type(event_type: str) -> str:

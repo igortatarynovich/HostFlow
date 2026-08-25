@@ -5,10 +5,11 @@ from enum import Enum
 from typing import Any, Dict, Iterable, Iterator, Optional
 
 import jwt  # PyJWT
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.app.core.settings import settings
+from backend.app.auth.session_cookies import extract_bearer_token, read_access_token
 
 # TODO: add FastAPI router for /api/v1/ping that returns {"ok": true}
 
@@ -17,43 +18,42 @@ bearer = HTTPBearer(auto_error=False)
 
 
 class Role(str, Enum):
+    """JWT / require_roles storage values. Canonical trust = ADR-036 (see trust_roles).
+
+    Job-title and portal strings are aliases normalized via ROLE_ALIASES / trust_roles;
+    they are not distinct enum members after Phase 3 remap.
+    """
+
     superadmin = "superadmin"
     administrator = "administrator"
-    supervisor = "supervisor"
-    recruiter = "recruiter"
-    client_manager = "client_manager"
-    client_processor = "client_processor"  # Handoff: accepts/processes candidates from agency
-    compliance_officer = "compliance_officer"  # Process documents (work permit, residence card, tacho, etc.)
-    hr_officer = "hr_officer"  # HR / people workspace (employees, isolated from recruitment)
+    employee = "employee"
     viewer = "viewer"
     admin = administrator
     owner = administrator
-    manager = supervisor
-    hr = recruiter
-    user = viewer
-    client = client_manager
 
 
 ROLE_VALUES = {r.value for r in Role}
 ROLE_ALIASES = {
     "admin": Role.administrator.value,
     "owner": Role.administrator.value,
-    "manager": Role.supervisor.value,
-    "supervisor": Role.supervisor.value,
-    "recruiter": Role.recruiter.value,
-    "hr": Role.recruiter.value,
+    "employee": Role.employee.value,
+    "manager": Role.employee.value,
+    "supervisor": Role.employee.value,
+    "recruiter": Role.employee.value,
+    "hr": Role.employee.value,
     "user": Role.viewer.value,
     "viewer": Role.viewer.value,
-    "client": Role.client_manager.value,
-    "client_manager": Role.client_manager.value,
-    "client_processor": Role.client_processor.value,
-    "processor": Role.client_processor.value,
-    "compliance_officer": Role.compliance_officer.value,
-    "compliance": Role.compliance_officer.value,
-    "docs_officer": Role.compliance_officer.value,
-    "hr_officer": Role.hr_officer.value,
-    "people_ops": Role.hr_officer.value,
+    "client": Role.viewer.value,
+    "client_manager": Role.viewer.value,
+    "client_processor": Role.viewer.value,
+    "processor": Role.viewer.value,
+    "compliance_officer": Role.employee.value,
+    "compliance": Role.employee.value,
+    "docs_officer": Role.employee.value,
+    "hr_officer": Role.employee.value,
+    "people_ops": Role.employee.value,
     "superadmin": Role.superadmin.value,
+    "lead": Role.employee.value,
 }
 
 
@@ -66,10 +66,12 @@ def _secret() -> str:
 class UserCtx:
     sub: str
     email: str
-    role: str  # payload может прийти строкой
+    role: str  # payload может прийти строкой (legacy or canonical)
     tenant_id: str
     supervisor_id: str | None
     raw: Dict[str, Any]
+    access_context: str = "tenant"  # ADR-036: tenant | portal (orthogonal to role)
+    preset_id: str | None = None  # ADR-036 permission preset (orthogonal to trust role)
 
 
 def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
@@ -82,9 +84,13 @@ def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
     elif isinstance(data.get("roles"), (list, tuple)) and data.get("roles"):
         raw_role = str(data["roles"][0])
 
-    role = (raw_role or Role.viewer.value).strip().lower()
-    if role not in ROLE_VALUES:
-        role = ROLE_ALIASES.get(role, Role.viewer.value)
+    from backend.app.auth.trust_roles import infer_access_context, normalize_trust_role, resolve_preset_id
+
+    role_raw = (raw_role or Role.viewer.value).strip().lower()
+    if role_raw in ROLE_VALUES:
+        role = role_raw
+    else:
+        role = ROLE_ALIASES.get(role_raw, normalize_trust_role(role_raw))
 
     tenant_id = str(data.get("tenant_id") or "").strip()
 
@@ -97,6 +103,17 @@ def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
     else:
         supervisor_id = None
 
+    explicit_ctx = data.get("access_context")
+    access_context = infer_access_context(
+        role_raw,
+        str(explicit_ctx).strip().lower() if explicit_ctx is not None else None,
+    )
+    jwt_preset = data.get("preset_id")
+    preset_id = resolve_preset_id(
+        role_raw,
+        explicit=str(jwt_preset).strip().lower() if jwt_preset is not None else None,
+    )
+
     return UserCtx(
         sub=sub,
         email=email,
@@ -104,20 +121,62 @@ def _user_ctx_from_decoded_jwt(data: Dict[str, Any]) -> UserCtx:
         tenant_id=tenant_id,
         supervisor_id=supervisor_id,
         raw=data,
+        access_context=access_context,
+        preset_id=preset_id,
     )
 
 
-async def get_current_user(
-    cred: HTTPAuthorizationCredentials | None = Depends(bearer),
-) -> UserCtx:
-    if not cred or not cred.scheme or cred.scheme.lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Missing Authorization header")
+def _decode_access_token(token: str) -> Dict[str, Any]:
+    try:
+        return jwt.decode(token, key=_secret(), algorithms=[ALGO])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-    token = cred.credentials
+
+def _token_sub(token: str) -> str | None:
     try:
         data = jwt.decode(token, key=_secret(), algorithms=[ALGO])
     except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        return None
+    sub = str(data.get("sub") or "").strip()
+    return sub or None
+
+
+def _resolve_request_access_token(
+    request: Request,
+    cred: HTTPAuthorizationCredentials | None,
+) -> str | None:
+    """
+    Prefer Authorization Bearer when present, else Domain cookie.
+    If both exist and ``sub`` differs, prefer the shared cookie (stale per-origin Bearer).
+    """
+    authorization = None
+    if cred and cred.scheme and cred.scheme.lower() == "bearer" and cred.credentials:
+        authorization = f"Bearer {cred.credentials}"
+    bearer_tok = extract_bearer_token(authorization)
+    cookie_tok = read_access_token(request)
+    if bearer_tok and cookie_tok:
+        b_sub = _token_sub(bearer_tok)
+        c_sub = _token_sub(cookie_tok)
+        if b_sub and c_sub and b_sub != c_sub:
+            return cookie_tok
+        if b_sub:
+            return bearer_tok
+        if c_sub:
+            return cookie_tok
+        return bearer_tok
+    return bearer_tok or cookie_tok
+
+
+async def get_current_user(
+    request: Request,
+    cred: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> UserCtx:
+    token = _resolve_request_access_token(request, cred)
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+
+    data = _decode_access_token(token)
 
     try:
         user = _user_ctx_from_decoded_jwt(data)
@@ -134,15 +193,14 @@ async def get_current_user(
 
 
 async def get_current_user_optional(
+    request: Request,
     cred: HTTPAuthorizationCredentials | None = Depends(bearer),
 ) -> Optional[UserCtx]:
-    """Same JWT validation as get_current_user, but missing Authorization yields None (no 401)."""
-    if not cred or not cred.scheme or cred.scheme.lower() != "bearer":
+    """Same JWT validation as get_current_user, but missing session yields None (no 401)."""
+    token = _resolve_request_access_token(request, cred)
+    if not token:
         return None
-    try:
-        data = jwt.decode(cred.credentials, key=_secret(), algorithms=[ALGO])
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    data = _decode_access_token(token)
     try:
         user = _user_ctx_from_decoded_jwt(data)
     except ValueError:
@@ -193,6 +251,8 @@ def _to_values(allowed: Iterable[object]) -> set[str]:
 
 
 def require_roles(*allowed: object):
+    from backend.app.auth.trust_roles import actor_satisfies_role_allowlist
+
     allowed_values = _to_values(allowed)
 
     async def _checker(u: UserCtx = Depends(get_current_user)) -> str:
@@ -201,8 +261,12 @@ def require_roles(*allowed: object):
         if ur in {Role.superadmin.value, Role.administrator.value}:
             return ur
 
-        # If a role list is provided, enforce it for non-admins
-        if allowed_values and ur not in allowed_values:
+        # If a role list is provided, enforce it for non-admins (ADR-036 bridges)
+        if allowed_values and not actor_satisfies_role_allowlist(
+            role=ur,
+            allowed=allowed_values,
+            access_context=getattr(u, "access_context", None),
+        ):
             raise HTTPException(status_code=403, detail="Forbidden")
         return ur
 

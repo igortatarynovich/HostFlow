@@ -83,6 +83,14 @@ export const BREADCRUMB_REGISTRY: Record<string, BreadcrumbEntry> = {
   [P.automations]: { labelKey: 'app.nav.items.automations' },
   [P.automationRules]: { labelKey: 'app.nav.items.automation_rules', parentPath: P.automations },
   [P.automationLog]: { labelKey: 'app.nav.items.automation_log', parentPath: P.automations },
+  [P.acquisitionActivity]: { labelKey: 'app.nav.items.acquisition_activity' },
+  [P.marketing]: { labelKey: 'app.nav.items.marketing' },
+  [P.marketingSources]: { labelKey: 'app.nav.items.marketing_sources', parentPath: P.marketing },
+  [P.marketingDiagnostics]: {
+    labelKey: 'app.nav.items.marketing_diagnostics',
+    parentPath: P.marketing,
+  },
+  [P.marketingNew]: { labelKey: 'app.nav.items.marketing', parentPath: P.marketing },
 
   [P.inbox]: { labelKey: 'app.nav.items.inbox', permission: 'notifications.view' },
   [P.inboxThreadsBase]: { labelKey: 'app.nav.items.inbox', parentPath: P.inbox },

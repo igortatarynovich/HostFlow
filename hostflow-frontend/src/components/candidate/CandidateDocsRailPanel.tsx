@@ -545,7 +545,7 @@ export default function CandidateDocsRailPanel({
   return (
     <section
       className={clsx(
-        'rounded-2xl border border-slate-200 bg-white p-3 transition-shadow duration-200',
+        'rounded-xl border border-slate-200 bg-white p-3 transition duration-200',
         primary && 'ring-2 ring-amber-400/95 ring-offset-2 ring-offset-white shadow-sm shadow-amber-500/10',
       )}
       data-rail-primary-step={primary ? 'true' : undefined}
@@ -609,21 +609,21 @@ export default function CandidateDocsRailPanel({
       </div>
 
       {waiverSectionVisible ? (
-        <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-indigo-900">
+        <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-900">
             {t('app.candidate_card.pipeline_override.section_title', {
               defaultValue:
                 waiverMode === 'requirement' ? 'Requirement waivers' : 'Document waivers',
             })}
           </div>
-          <div className="mt-1 text-[11px] text-indigo-800/90">
+          <div className="mt-1 text-[11px] text-blue-800/90">
             {t('app.candidate_card.pipeline_override.section_hint', {
               defaultValue: 'Recruiter requests → manager approves. Pipeline-only or including handoff gate.',
             })}
           </div>
 
           {pipelineWaiverReadOnlyCard ? (
-            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 px-2 py-1.5 text-[11px] text-amber-950">
+            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 px-2 py-2 text-[11px] text-amber-950">
               {t('app.candidate_card.pipeline_override.read_only_card', {
                 defaultValue:
                   'This candidate card is read-only (e.g. declined). New waiver requests are disabled; pending items can still be approved by a manager.',
@@ -636,7 +636,7 @@ export default function CandidateDocsRailPanel({
               {pipelineOverrides
                 .filter((o) => String(o.status).toLowerCase() === 'pending')
                 .map((o) => (
-                  <div key={o.id} className="rounded-lg border border-indigo-200 bg-white p-2 text-xs">
+                  <div key={o.id} className="rounded-lg border border-blue-200 bg-white p-2 text-xs">
                     <div className="font-semibold text-slate-900">{labelForOverrideTarget(o)}</div>
                     <div className="mt-0.5 text-[11px] text-slate-600">
                       {t('app.candidate_card.pipeline_override.requested_scope', {
@@ -718,7 +718,7 @@ export default function CandidateDocsRailPanel({
               })}
             </button>
           ) : loading && docsPipelineBlocking === true && canRequestPipelineOverride && onCreatePipelineOverride ? (
-            <div className="mt-2 text-[11px] text-indigo-800">
+            <div className="mt-2 text-[11px] text-blue-800">
               {t('app.candidate_card.pipeline_override.loading_blockers', {
                 defaultValue: 'Loading document list for waiver…',
               })}
@@ -738,7 +738,7 @@ export default function CandidateDocsRailPanel({
             !pipelineOverrides.some((o) => String(o.status).toLowerCase() === 'approved') &&
             !canOpenWaiverRequestModal &&
             !(loading && canRequestPipelineOverride && onCreatePipelineOverride) ? (
-            <div className="mt-2 text-[11px] text-indigo-900/85">
+            <div className="mt-2 text-[11px] text-blue-900/85">
               {t('app.candidate_card.pipeline_override.empty_state_blocking', {
                 defaultValue:
                   'When documents block the pipeline, you can request a waiver here (opens a form). Supervisors approve pending items below.',
@@ -796,7 +796,7 @@ export default function CandidateDocsRailPanel({
                       key={`${r.type}-${r.status}-${idx}`}
                       type="button"
                       className={clsx(
-                        'w-full rounded-xl border px-2 py-1.5 text-left transition hover:shadow-sm',
+                        'w-full rounded-xl border px-2 py-2 text-left transition hover:shadow-sm',
                         statusPill(r.status, { softChecklist: !pipelineBlockingEffective }),
                       )}
                       onClick={() => {
@@ -982,7 +982,7 @@ export default function CandidateDocsRailPanel({
               <div
                 role="dialog"
                 aria-modal="true"
-                className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+                className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="text-sm font-semibold text-slate-900">
@@ -1005,7 +1005,7 @@ export default function CandidateDocsRailPanel({
                       },
                     )}
                     <select
-                      className="mt-1 w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+                      className="mt-1 w-full rounded-lg border border-slate-200 px-2 py-2 text-sm"
                       value={waiverTargetCode}
                       onChange={(e) => setWaiverTargetCode(e.target.value)}
                     >
@@ -1023,7 +1023,7 @@ export default function CandidateDocsRailPanel({
                     {t('app.candidate_card.pipeline_override.reason', { defaultValue: 'Reason (min. 8 characters)' })}
                     <textarea
                       className={clsx(
-                        'mt-1 w-full rounded-md border px-2 py-1.5 text-sm',
+                        'mt-1 w-full rounded-lg border px-2 py-2 text-sm',
                         waiverReason.trim().length > 0 && waiverReason.trim().length < 8
                           ? 'border-amber-300 bg-amber-50/50'
                           : 'border-slate-200',

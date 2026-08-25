@@ -87,7 +87,13 @@ async def create_public_intake_draft_via_service(
     intake_token_expires_at: datetime,
     intake_state: Dict[str, Any],
 ) -> Candidate:
-    """INSERT draft dossier for public apply flow using ``create_candidate_full`` + intake columns."""
+    """INSERT draft dossier for public apply flow using ``create_candidate_full`` + intake columns.
+
+    .. deprecated::
+        Pre-P5C Candidate-first path. New public form traffic must use
+        ``create_or_reuse_public_intake_lead_draft`` (ADR-013 Decision 2). Kept for
+        legacy in-flight candidate tokens only — do not call from new Form Constructor flows.
+    """
     cand_id = str(uuid4())
     contacts: Dict[str, Any] = {}
     if phone:

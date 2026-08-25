@@ -46,23 +46,30 @@ export interface WhoAmI {
   city?: string | null;
   birth_date?: string | null;
   avatar_url?: string | null;
+  signature?: UserOutgoingSignature | null;
   preferences?: UserPreferences;
   security?: UserSecuritySummary;
   /** G-6 Stage 2e — true when owner-class role and tenant has one active member (from GET /users/me). */
   is_solo_admin?: boolean;
 }
 
-export type UserRole = 'administrator' | 'supervisor' | 'recruiter' | 'client_manager' | 'client_processor' | 'compliance_officer' | 'hr_officer' | 'viewer';
+export type UserRole = 'superadmin' | 'administrator' | 'employee' | 'viewer';
 export type TenantUserRole = UserRole;
 
 export type TenantType = 'agency' | 'company' | 'platform';
 export type TenantStatus = 'active' | 'suspended' | 'trial';
 
 export interface TenantUsage {
-  recruiter_count: number;
-  supervisor_count: number;
-  client_manager_count: number;
+  administrator_count?: number;
+  employee_count?: number;
   viewer_count: number;
+  portal_guest_count?: number;
+  /** @deprecated alias of employee_count */
+  recruiter_count: number;
+  /** @deprecated alias of administrator_count */
+  supervisor_count: number;
+  /** @deprecated alias of portal_guest_count */
+  client_manager_count: number;
   storage_used_gb: number;
 }
 
@@ -81,6 +88,7 @@ export type TenantModuleSettingsPatch = Partial<TenantModuleSettings>;
 
 export type RoleModuleMatrixRole =
   | 'administrator'
+  | 'employee'
   | 'supervisor'
   | 'recruiter'
   | 'client_manager'
@@ -287,6 +295,20 @@ export interface AdminUserDetail extends AdminUser {
   recruiters: RecruiterSummary[];
 }
 
+export interface UserOutgoingSignature {
+  first_name?: string | null
+  last_name?: string | null
+  position?: string | null
+  phone?: string | null
+  email?: string | null
+  company?: string | null
+  website?: string | null
+  logo_url?: string | null
+  show_phone?: boolean
+  show_email?: boolean
+  show_website?: boolean
+}
+
 export interface UserProfile {
   user_id: string;
   email: string;
@@ -300,6 +322,7 @@ export interface UserProfile {
   tenant_id?: string | null;
   role?: string | null;
   avatar_url?: string | null;
+  signature?: UserOutgoingSignature | null;
 }
 
 export type UserProfileUpdate = Partial<Omit<UserProfile, 'user_id'>>;

@@ -8,13 +8,20 @@ from typing import Any, Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.lead import Lead
+from backend.app.services.lead_lifecycle_email_policy import (
+    PURPOSE_GDPR_NOTICE,
+    resolve_lifecycle_email_policy_for_lead,
+)
 from backend.app.services.lead_rodo import (
+    LEAD_RODO_REASON_POLICY_MISCONFIGURED,
+    LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
     lead_rodo_sent_from_normalized,
     lead_rodo_satisfied,
+    mark_lead_rodo_pending_policy,
     mark_lead_rodo_source_provided,
     send_lead_rodo_email,
 )
-from backend.app.services.lead_rodo_settings import LeadRodoSettings, get_lead_rodo_settings
+from backend.app.services.lead_rodo_settings import DEFAULT_LEAD_RODO_CHANNELS
 
 logger = logging.getLogger(__name__)
 
@@ -72,12 +79,16 @@ async def apply_lead_rodo_on_ingest(
     is_new_lead: bool,
 ) -> None:
     """
-    After a new ``Lead`` row is persisted: stamp source-provided or run auto-send per tenant settings.
+    After a new ``Lead`` row is persisted: stamp source-provided or run auto-send per policy.
     Idempotent for webhook replay (existing lead / already sent).
+
+    ADR-031 PR-2: when Recruitment §2.4 holds and auto RODO would fire, ensure early
+    Candidate shell + Application **before** send (Lead.candidate_id stays unset).
     """
     if not is_new_lead:
         return
-    if getattr(lead, "candidate_id", None):
+    # Early compliance shell must not block Lead-stage art.14 (gates stay on Lead.rodo).
+    if getattr(lead, "candidate_id", None) and lead_rodo_satisfied(lead):
         return
 
     norm = dict(normalized or {}) if isinstance(normalized, dict) else {}
@@ -86,17 +97,26 @@ async def apply_lead_rodo_on_ingest(
         await db.flush()
         return
 
-    cfg = await get_lead_rodo_settings(db, tenant_id)
-    if not cfg.auto_on_lead_created():
+    decision = await resolve_lifecycle_email_policy_for_lead(
+        db, tenant_id=tenant_id, lead=lead, purpose=PURPOSE_GDPR_NOTICE
+    )
+    if decision.send_mode != "auto_on_lead_created":
         return
     if not _source_eligible_for_auto_on_created(source):
         return
+
+    await _maybe_ensure_recruitment_result_before_outbound(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        source=source,
+    )
 
     await _auto_send_once(
         db,
         tenant_id=tenant_id,
         lead=lead,
-        cfg=cfg,
+        decision=decision,
         trigger="lead_created",
         ingest_source=source,
     )
@@ -111,17 +131,68 @@ async def maybe_auto_send_before_gated_action(
     """When mode is auto_on_first_action, attempt outbound RODO before blocking the action."""
     if lead_rodo_satisfied(lead):
         return
-    cfg = await get_lead_rodo_settings(db, tenant_id)
-    if not cfg.auto_on_first_action():
+    decision = await resolve_lifecycle_email_policy_for_lead(
+        db, tenant_id=tenant_id, lead=lead, purpose=PURPOSE_GDPR_NOTICE
+    )
+    if decision.send_mode != "auto_on_first_action":
         return
+    await _maybe_ensure_recruitment_result_before_outbound(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        source=str(getattr(lead, "source", "") or "first_action"),
+    )
     await _auto_send_once(
         db,
         tenant_id=tenant_id,
         lead=lead,
-        cfg=cfg,
+        decision=decision,
         trigger="first_action",
         ingest_source=str(getattr(lead, "source", "") or ""),
     )
+
+
+async def _maybe_ensure_recruitment_result_before_outbound(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    source: str,
+) -> None:
+    from backend.app.modules.recruitment.services.application_result_service import (
+        ApplicationTransportConflictError,
+    )
+    from backend.app.modules.recruitment.services.compliance_outbound_ensure import (
+        ComplianceOutboundEnsureError,
+        maybe_ensure_compliance_outbound_for_recruitment_lead,
+    )
+
+    try:
+        await maybe_ensure_compliance_outbound_for_recruitment_lead(
+            db,
+            tenant_id=str(tenant_id),
+            lead=lead,
+            source=str(source or "lead_rodo"),
+        )
+    except ApplicationTransportConflictError:
+        # Sales-bound — leave to Sales Pipeline path (PR-1); no Recruitment Application.
+        return
+    except ComplianceOutboundEnsureError as exc:
+        if str((exc.details or {}).get("reason") or "") == "duplicate_review":
+            logger.info(
+                "lead_rodo_compliance_ensure_skipped_duplicate_review",
+                extra={"tenant_id": tenant_id, "lead_id": str(lead.id)},
+            )
+            return
+        logger.info(
+            "lead_rodo_compliance_ensure_skipped",
+            extra={
+                "tenant_id": tenant_id,
+                "lead_id": str(lead.id),
+                "reason": exc.message,
+                "details": dict(exc.details or {}),
+            },
+        )
 
 
 async def _auto_send_once(
@@ -129,12 +200,42 @@ async def _auto_send_once(
     *,
     tenant_id: str,
     lead: Lead,
-    cfg: LeadRodoSettings,
+    decision: Any,
     trigger: str,
     ingest_source: str,
 ) -> None:
+    from backend.app.services.lead_lifecycle_email_policy import PolicyDecision
+
+    assert isinstance(decision, PolicyDecision)
     norm = lead.normalized if isinstance(lead.normalized, dict) else {}
     if lead_rodo_sent_from_normalized(norm) or lead_rodo_satisfied(lead):
+        return
+
+    if decision.block_code == "disabled":
+        return
+
+    if decision.block_code in (
+        LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
+        LEAD_RODO_REASON_POLICY_MISCONFIGURED,
+        "policy_template_missing",
+        "policy_misconfigured",
+    ):
+        mark_lead_rodo_pending_policy(
+            lead,
+            reason=decision.reason or "RODO lifecycle email policy blocked send.",
+            reason_code=str(decision.block_code or LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING),
+        )
+        await db.flush()
+        return
+
+    if not decision.send or not decision.template_ref:
+        if decision.send_mode in ("auto_on_lead_created", "auto_on_first_action") and not decision.template_ref:
+            mark_lead_rodo_pending_policy(
+                lead,
+                reason=decision.reason or "RODO auto-send enabled but template_ref is missing.",
+                reason_code=LEAD_RODO_REASON_POLICY_TEMPLATE_MISSING,
+            )
+            await db.flush()
         return
 
     ok, msg = await send_lead_rodo_email(
@@ -142,9 +243,9 @@ async def _auto_send_once(
         lead=lead,
         tenant_id=tenant_id,
         actor_id=None,
-        channels=cfg.channels,
-        template_id=cfg.template_id,
-        message_template_id=cfg.message_template_id,
+        channels=DEFAULT_LEAD_RODO_CHANNELS,
+        template_id=None,
+        message_template_id=decision.template_ref,
         auto_trigger=trigger,
         ingest_source=ingest_source,
     )

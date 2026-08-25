@@ -45,6 +45,8 @@ interface CandidateHeaderProps {
   onCancel: () => void
   backPath?: string
   backLabel?: string
+  /** When true, hides the legacy back link (use PageHeader breadcrumb instead). */
+  hideBackLink?: boolean
   onFavoriteToggle?: () => void
   candidateProfile?: import('../../api/candidate_profiles').CandidateProfile | null
   profileLoading?: boolean
@@ -88,6 +90,7 @@ function CandidateHeader({
   onCancel,
   backPath = CRM_APP_PATHS.candidates,
   backLabel,
+  hideBackLink = false,
   onFavoriteToggle,
   candidateProfile,
   profileLoading,
@@ -106,14 +109,16 @@ function CandidateHeader({
   return (
     <>
       {/* Header */}
-      <div className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-lg">
+      <div className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-md">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
-            <div className="text-[11px] text-white/80">
-              <Link className="hover:underline text-white" to={backPath}>
-                {backLabel || t('app.candidate_card.header.back')}
-              </Link>
-            </div>
+            {!hideBackLink && backPath ? (
+              <div className="text-[11px] text-white/80">
+                <Link className="hover:underline text-white" to={backPath}>
+                  {backLabel || t('app.candidate_card.header.back')}
+                </Link>
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-2">
               {candidate && <StageTag code={candidate.stage || 'new'} />}
               {!isNew && candidate?.id ? (
@@ -126,7 +131,7 @@ function CandidateHeader({
               ) : null}
               {!isMasked && candidate?.intake_application_kind === 'client' && (
                 <span
-                  className="text-[11px] inline-flex items-center rounded-md border border-sky-200/80 bg-sky-500/20 px-2 py-0.5 font-semibold text-white"
+                  className="text-[11px] inline-flex items-center rounded-lg border border-blue-200/80 bg-blue-500/20 px-2 py-0.5 font-semibold text-white"
                   title={t('app.candidate_card.labels.client_intake_badge_hint')}
                 >
                   {t('app.candidate_card.labels.client_intake_badge')}
@@ -134,7 +139,7 @@ function CandidateHeader({
               )}
               {!isMasked && pipelineWaiverPendingCount > 0 ? (
                 <span
-                  className="text-[11px] inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-400/90 px-2 py-0.5 font-semibold text-amber-950 shadow-sm"
+                  className="text-[11px] inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-400/90 px-2 py-0.5 font-semibold text-amber-950 shadow-sm"
                   title={t('app.candidate_card.pipeline_override.badge_pending_hint', {
                     defaultValue: 'Document waiver waiting for manager approval',
                   })}
@@ -148,7 +153,7 @@ function CandidateHeader({
               ) : null}
               {!isMasked && pipelineWaiverApprovedCount > 0 ? (
                 <span
-                  className="text-[11px] inline-flex items-center rounded-md border border-emerald-200 bg-emerald-500/90 px-2 py-0.5 font-semibold text-emerald-950 shadow-sm"
+                  className="text-[11px] inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-500/90 px-2 py-0.5 font-semibold text-emerald-950 shadow-sm"
                   title={t('app.candidate_card.pipeline_override.badge_active_hint', {
                     defaultValue: 'Approved document waiver(s) relax pipeline / handoff gates for listed types',
                   })}
@@ -160,14 +165,14 @@ function CandidateHeader({
                 </span>
               ) : null}
               {profileLoading && (
-                <span className="text-[11px] rounded-md border border-white/30 px-2 py-0.5 text-white/70">
+                <span className="text-[11px] rounded-lg border border-white/30 px-2 py-0.5 text-white/70">
                   {t('common.loading')}
                 </span>
               )}
               {!profileLoading && candidateProfile && (
                 <Link
                   to={CRM_APP_PATHS.settingsCandidateProfiles}
-                  className="text-[11px] inline-flex items-center gap-1 rounded-md border border-white/30 bg-white/20 px-2 py-0.5 transition-colors hover:bg-white/30"
+                  className="text-[11px] inline-flex items-center gap-1 rounded-lg border border-white/30 bg-white/20 px-2 py-0.5 transition-colors hover:bg-white/30"
                   title={candidateProfile.description || candidateProfile.name}
                   onClick={(e) => {
                     // Можно добавить логику для скролла к нужному профилю
@@ -179,7 +184,7 @@ function CandidateHeader({
                 </Link>
               )}
               {!profileLoading && !candidateProfile && candidate?.vacancy_id && (
-                <span className="text-[11px] rounded-md border border-white/30 px-2 py-0.5 text-white/70" title={t('app.candidate_card.labels.no_profile')}>
+                <span className="text-[11px] rounded-lg border border-white/30 px-2 py-0.5 text-white/70" title={t('app.candidate_card.labels.no_profile')}>
                   <span className="inline-flex items-center gap-1">
                     <IconAlertTriangle size={12} />
                     {t('app.candidate_card.labels.no_profile_short')}
@@ -189,7 +194,7 @@ function CandidateHeader({
               {!isNew && onFavoriteToggle && (
                 <button
                   type="button"
-                  className="text-[11px] inline-flex items-center gap-1 rounded-md border border-white/30 px-2 py-1 transition-colors hover:bg-white/10"
+                  className="text-[11px] inline-flex items-center gap-1 rounded-lg border border-white/30 px-2 py-1 transition-colors hover:bg-white/10"
                   onClick={(e) => {
                     e.stopPropagation()
                     onFavoriteToggle()
@@ -206,13 +211,13 @@ function CandidateHeader({
             {isNew && (
               <>
                 <button
-                  className="rounded-lg border border-white/30 bg-white/10 px-3 py-1.5 font-medium text-white transition hover:bg-white/20"
+                  className="rounded-lg border border-white/30 bg-white/10 px-3 py-2 font-medium text-white transition hover:bg-white/20"
                   onClick={onCancel}
                 >
                   {t('common.actions.cancel')}
                 </button>
                 <button
-                  className="rounded-lg border border-white bg-white px-3 py-1.5 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
+                  className="rounded-lg border border-white bg-white px-3 py-2 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
                   disabled={saving || !canEdit}
                   onClick={onSave}
                 >
@@ -224,7 +229,7 @@ function CandidateHeader({
               <>
                 {handoffReadonlyText ? (
                   <div
-                    className="max-w-md rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-left text-xs font-medium leading-snug text-white"
+                    className="max-w-md rounded-lg border border-white/40 bg-white/15 px-3 py-2 text-left text-xs font-medium leading-tight text-white"
                     role="status"
                   >
                     {handoffReadonlyText}
@@ -232,7 +237,7 @@ function CandidateHeader({
                 ) : onOpenHandoff ? (
                   <button
                     type="button"
-                    className="rounded-lg border border-white bg-white px-3 py-1.5 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
+                    className="rounded-lg border border-white bg-white px-3 py-2 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
                     onClick={onOpenHandoff}
                     disabled={handoffDisabled}
                     title={handoffDisabled && handoffDisabledTitle ? handoffDisabledTitle : undefined}
@@ -243,7 +248,7 @@ function CandidateHeader({
                 {onOpenActivity ? (
                   <button
                     type="button"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-3 py-1.5 font-medium text-white transition hover:bg-white/20"
+                    className="inline-flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-3 py-2 font-medium text-white transition hover:bg-white/20"
                     onClick={onOpenActivity}
                     title={t('app.candidate_card.activity_feed.title', { defaultValue: 'Activity' })}
                   >
@@ -254,7 +259,7 @@ function CandidateHeader({
                 <button
                   type="button"
                   className={clsx(
-                    "rounded-lg border border-white/30 bg-white/10 px-3 py-1.5 font-medium text-white transition hover:bg-white/20",
+                    "rounded-lg border border-white/30 bg-white/10 px-3 py-2 font-medium text-white transition hover:bg-white/20",
                     editMode && "bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100",
                   )}
                   onClick={onEditToggle}
@@ -267,7 +272,7 @@ function CandidateHeader({
                 <span className="mx-1 hidden h-6 w-px bg-white/30 md:inline-block" />
                 {canDeleteDirect ? (
                   <button
-                    className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 font-semibold text-rose-700 transition hover:bg-rose-100"
+                    className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 font-semibold text-rose-700 transition hover:bg-rose-100"
                     onClick={onDelete}
                   >
                     {t('common.actions.delete')}
@@ -278,7 +283,7 @@ function CandidateHeader({
             {!isNew && !canDeleteDirect && canRequestDelete && (
               <button
                 type="button"
-                className="rounded-lg border border-white/30 bg-white/10 px-3 py-1.5 font-medium text-white transition hover:bg-white/20"
+                className="rounded-lg border border-white/30 bg-white/10 px-3 py-2 font-medium text-white transition hover:bg-white/20"
                 disabled={deleteRequestLoading}
                 onClick={onDeleteRequest}
               >
@@ -294,7 +299,7 @@ function CandidateHeader({
 
       {/* Status Messages */}
       {deleteRequestMessage && (
-        <div className="p-3 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+        <div className="p-3 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
           {deleteRequestMessage}
         </div>
       )}
@@ -310,7 +315,7 @@ function CandidateHeader({
         />
       )}
       {savedOk && (
-        <div className="p-3 rounded-lg bg-green-50 text-green-800 border border-green-200">
+        <div className="p-3 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
           {t('app.candidate_card.messages.saved')}
         </div>
       )}

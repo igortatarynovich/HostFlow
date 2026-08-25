@@ -384,6 +384,7 @@ async def _run_calendar_maintenance_for_tenant(db, *, tenant: Tenant, now: datet
                     await enqueue_job(
                         "calendar_sync_ingest",
                         sync_job_id=renew_job.id,
+                        tenant_id=tenant_id,
                         job_id=f"calendar_sync_ingest:{renew_job.id}",
                     )
                     stats["renew_queued"] += 1
@@ -453,6 +454,7 @@ async def _run_calendar_maintenance_for_tenant(db, *, tenant: Tenant, now: datet
                     await enqueue_job(
                         "calendar_sync_ingest",
                         sync_job_id=reconcile_job.id,
+                        tenant_id=tenant_id,
                         job_id=f"calendar_sync_ingest:{reconcile_job.id}",
                     )
                     stats["reconcile_queued"] += 1
@@ -514,7 +516,7 @@ async def _pick_ops_assignee_id(db, *, tenant_id: str) -> str | None:
             User.is_active.is_(True),
             sa.or_(User.tenant_id == tenant_id, User.tenant_id.is_(None)),
             # IMPORTANT: keep only real DB enum values (no aliases like "owner").
-            User.role.in_([Role.superadmin.value, Role.administrator.value, Role.supervisor.value]),
+            User.role.in_([Role.superadmin.value, Role.administrator.value, Role.employee.value]),
         )
         .order_by(sa.asc(User.created_at))
         .limit(1)
@@ -1643,7 +1645,77 @@ async def _run_scheduler_tick(state: Dict[str, Any]) -> None:
 
     await _run_converted_lead_sweep_pass(state, tenants, now, tick_summary)
 
+    await _run_notification_retention_pass(state, tenants, now, tick_summary)
+
     _RUNTIME_STATUS["last_tick_summary"] = tick_summary
+
+
+async def _run_notification_retention_pass(
+    state: Dict[str, Any],
+    tenants: List[Any],
+    now: datetime,
+    tick_summary: Dict[str, Any],
+) -> None:
+    """Age out notifications past their retention class (hourly, batched per tenant)."""
+    from backend.app.services.notification_retention import (
+        purge_expired_notifications,
+        retention_enabled,
+        retention_interval_seconds,
+    )
+
+    if not retention_enabled():
+        return
+    interval = retention_interval_seconds()
+    last = state.setdefault("notification_retention_last", {})
+    tick_summary.setdefault("notification_retention_runs", 0)
+    tick_summary.setdefault("notification_retention_deleted", 0)
+    tick_summary.setdefault("notification_retention_errors", 0)
+
+    for tenant in tenants:
+        tid = str(getattr(tenant, "id", "") or "")
+        if not tid:
+            continue
+        # Some legacy/test tenants carry non-UUID ids; tenant_enforced_session needs
+        # a real UUID. Skip them quietly instead of warning once per tenant per run.
+        try:
+            tenant_uuid = UUID(tid)
+        except (ValueError, AttributeError, TypeError):
+            continue
+        prev = last.get(tid)
+        if prev is not None and (now - prev).total_seconds() < interval:
+            continue
+        try:
+            from backend.app.db.deps import tenant_enforced_session
+
+            async with tenant_enforced_session(
+                tenant_uuid,
+                actor_id="system:notification-retention",
+            ) as db:
+                stats = await purge_expired_notifications(db, tenant_id=tid, now=now)
+                await db.commit()
+            last[tid] = now
+            tick_summary["notification_retention_runs"] = int(
+                tick_summary.get("notification_retention_runs") or 0
+            ) + 1
+            tick_summary["notification_retention_deleted"] = int(
+                tick_summary.get("notification_retention_deleted") or 0
+            ) + int(stats.get("total", 0) or 0)
+        except OperationalError as exc:
+            tick_summary["notification_retention_errors"] = int(
+                tick_summary.get("notification_retention_errors") or 0
+            ) + 1
+            logger.warning(
+                "[communications-scheduler] notification retention skipped tenant=%s (schema/db: %s)",
+                tid,
+                exc,
+            )
+        except Exception as exc:
+            tick_summary["notification_retention_errors"] = int(
+                tick_summary.get("notification_retention_errors") or 0
+            ) + 1
+            logger.warning(
+                "[communications-scheduler] notification retention failed tenant=%s (%s)", tid, exc
+            )
 
 
 async def _run_converted_lead_sweep_pass(

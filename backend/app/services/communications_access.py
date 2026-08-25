@@ -5,6 +5,12 @@ from typing import Any, Dict, Iterable, Literal, Set
 from fastapi import HTTPException, status
 
 from backend.app.auth.deps import Role, UserCtx
+from backend.app.auth.trust_roles import (
+    TrustRole,
+    actor_satisfies_role_allowlist,
+    is_team_lead_org_actor,
+    normalize_trust_role,
+)
 from backend.app.models.tenant import Tenant
 
 CommFeature = Literal[
@@ -52,13 +58,14 @@ _FEATURE_TO_ROLE_KEY: Dict[CommFeature, str] = {
 }
 
 _DEFAULT_ROLE_ACCESS: Dict[str, list[str]] = {
-    "messages": ["administrator", "supervisor", "recruiter", "client_manager", "client_processor"],
-    "email": ["administrator", "supervisor", "recruiter", "client_manager"],
-    "calendar": ["administrator", "supervisor", "recruiter", "client_manager"],
-    "planner": ["administrator", "supervisor", "recruiter", "client_manager"],
-    "teamAvailability": ["administrator", "supervisor"],
-    "myAvailability": ["administrator", "supervisor", "recruiter", "client_manager", "client_processor"],
-    "timeOffRequests": ["administrator", "supervisor", "recruiter", "client_manager", "client_processor"],
+    # Canonical trust `employee` plus legacy job/portal strings still stored in tenant overrides.
+    "messages": ["administrator", "employee", "supervisor", "recruiter", "client_manager", "client_processor"],
+    "email": ["administrator", "employee", "supervisor", "recruiter", "client_manager"],
+    "calendar": ["administrator", "employee", "supervisor", "recruiter", "client_manager"],
+    "planner": ["administrator", "employee", "supervisor", "recruiter", "client_manager"],
+    "teamAvailability": ["administrator", "employee", "supervisor"],
+    "myAvailability": ["administrator", "employee", "supervisor", "recruiter", "client_manager", "client_processor"],
+    "timeOffRequests": ["administrator", "employee", "supervisor", "recruiter", "client_manager", "client_processor"],
     "communicationsAdmin": ["administrator", "supervisor"],
 }
 
@@ -100,6 +107,29 @@ def _extract_comm_settings(tenant: Tenant | None) -> Dict[str, Any]:
     return comm if isinstance(comm, dict) else {}
 
 
+def _jwt_role(current_user: UserCtx) -> str:
+    raw_payload = getattr(current_user, "raw", None)
+    raw_payload = raw_payload if isinstance(raw_payload, dict) else {}
+    return str(raw_payload.get("role") or getattr(current_user, "role", "") or "").strip().lower()
+
+
+def _is_communications_admin_actor(current_user: UserCtx, *, allowed: list[str]) -> bool:
+    """communicationsAdmin must NOT use JOB_PROXY→employee expansion (that would grant all employees)."""
+    role = _norm_role(getattr(current_user, "role", None))
+    jwt_role = _jwt_role(current_user)
+    preset_id = getattr(current_user, "preset_id", None)
+    if role == Role.superadmin.value or jwt_role == Role.superadmin.value:
+        return True
+    if normalize_trust_role(jwt_role or role) == TrustRole.administrator.value:
+        return True
+    if is_team_lead_org_actor(jwt_role or role, preset_id=preset_id):
+        return True
+    allowed_norm = {_norm_role(x) for x in allowed if x}
+    return bool(allowed_norm) and (
+        _norm_role(jwt_role) in allowed_norm or role in allowed_norm
+    )
+
+
 def assert_comm_feature_access(
     *,
     tenant: Tenant | None,
@@ -108,8 +138,11 @@ def assert_comm_feature_access(
     tenant_id: str | None = None,
 ) -> None:
     role = _norm_role(getattr(current_user, "role", None))
+    jwt_role = _jwt_role(current_user)
     # Platform superadmin bypass.
-    if role == Role.superadmin.value:
+    if role == Role.superadmin.value or jwt_role == Role.superadmin.value:
+        return
+    if normalize_trust_role(jwt_role or role) == TrustRole.superadmin.value:
         return
 
     # Enforce tenant context consistency for non-superadmin users.
@@ -142,5 +175,25 @@ def assert_comm_feature_access(
     allowed = list(_iter_allowed_roles(roles.get(role_key))) if isinstance(roles, dict) else []
     if not allowed:
         allowed = list(_iter_allowed_roles(_DEFAULT_ROLE_ACCESS.get(role_key, [])))
-    if allowed and role not in set(allowed):
+    if not allowed:
+        return
+
+    if feature == "communicationsAdmin":
+        if _is_communications_admin_actor(current_user, allowed=allowed):
+            return
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Access denied for role: {role_key}")
+
+    access_context = getattr(current_user, "access_context", None)
+    if actor_satisfies_role_allowlist(
+        role=jwt_role or role,
+        allowed=set(allowed),
+        access_context=access_context,
+    ):
+        return
+    if jwt_role and jwt_role != role and actor_satisfies_role_allowlist(
+        role=role,
+        allowed=set(allowed),
+        access_context=access_context,
+    ):
+        return
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Access denied for role: {role_key}")

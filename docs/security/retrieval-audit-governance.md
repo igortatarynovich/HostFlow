@@ -1,6 +1,8 @@
 # Search / analytics / AI retrieval — audit governance
 
-**Статус:** нормативный контракт (Phase «retrieval audit»). Реализация telemetry — отдельными PR после этого документа и helper `retrieval_events.py`; **не** смешивать с массовым подключением AI или изменением поведения поиска в одном changeset.
+**Статус:** нормативный контракт (Phase «retrieval audit»). Helper `retrieval_events.py` + call sites:
+`GET /api/v1/search` (requested/completed/denied) и `GET /api/v1/tenants/{id}/links/search-companies`.
+Threat model: [`threat-models/global-search.md`](./threat-models/global-search.md). AI context surfaces — отдельными PR.
 
 **Аудитория:** platform, backend, security champion, владельцы search / AI features.
 

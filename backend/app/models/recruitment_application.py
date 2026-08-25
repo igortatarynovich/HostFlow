@@ -67,4 +67,5 @@ class RecruitmentApplication(Base, TimestampMixin):
         index=True,
     )
     application_cycle: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    external_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
     meta: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONType, nullable=True, default=dict)

@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.org_structure import (
     OrgUnitCreate,
@@ -23,14 +23,15 @@ from backend.app.security.event_taxonomy import EVENT_EXPORT_GENERATED, EVENT_EX
 router = APIRouter(prefix="/admin/org-units", tags=["admin-org-units"])
 
 # Tenant administrators and supervisors may maintain org tree and unit membership.
-_ORG_UNIT_MANAGER_ROLES = (Role.administrator, Role.supervisor)
+from backend.app.auth.trust_role_deps import TRUST_WRITE_ROLES, require_trust_write
+_ORG_UNIT_MANAGER_ROLES = TRUST_WRITE_ROLES
 
 
 def _handle(exc: OrgStructureError) -> None:
     raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
 
-@router.get("/tree", response_model=List[Dict[str, Any]], dependencies=[Depends(require_roles(*_ORG_UNIT_MANAGER_ROLES))])
+@router.get("/tree", response_model=List[Dict[str, Any]], dependencies=[Depends(require_trust_write())])
 async def org_tree(
     ctx: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
@@ -40,7 +41,7 @@ async def org_tree(
     return await org_svc.get_tree(db, tenant_id)
 
 
-@router.get("/export", response_model=Dict[str, Any], dependencies=[Depends(require_roles(*_ORG_UNIT_MANAGER_ROLES))])
+@router.get("/export", response_model=Dict[str, Any], dependencies=[Depends(require_trust_write())])
 async def org_export(
     ctx: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
@@ -92,7 +93,7 @@ async def org_export(
     return snapshot
 
 
-@router.post("/import", response_model=Dict[str, Any], dependencies=[Depends(require_roles(*_ORG_UNIT_MANAGER_ROLES))])
+@router.post("/import", response_model=Dict[str, Any], dependencies=[Depends(require_trust_write())])
 async def org_import(
     payload: OrgStructureImport,
     ctx: UserCtx = Depends(get_current_user),
@@ -131,7 +132,7 @@ async def org_create(
     payload: OrgUnitCreate,
     ctx: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
-    _: str = Depends(require_roles(*_ORG_UNIT_MANAGER_ROLES)),
+    _: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     tenant_id = str(tid)
@@ -189,7 +190,7 @@ async def org_create(
     }
 
 
-@router.patch("/{unit_id}", response_model=Dict[str, Any], dependencies=[Depends(require_roles(*_ORG_UNIT_MANAGER_ROLES))])
+@router.patch("/{unit_id}", response_model=Dict[str, Any], dependencies=[Depends(require_trust_write())])
 async def org_patch(
     unit_id: str,
     payload: OrgUnitPatch,
@@ -241,7 +242,7 @@ async def org_delete(
     unit_id: str,
     ctx: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
-    _: str = Depends(require_roles(*_ORG_UNIT_MANAGER_ROLES)),
+    _: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     tenant_id = str(tid)
@@ -287,7 +288,7 @@ async def org_members_list(
     unit_id: str,
     ctx: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
-    _: str = Depends(require_roles(*_ORG_UNIT_MANAGER_ROLES)),
+    _: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     tenant_id = str(tid)
@@ -303,7 +304,7 @@ async def org_members_add(
     payload: OrgUnitMemberAdd,
     ctx: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
-    _: str = Depends(require_roles(*_ORG_UNIT_MANAGER_ROLES)),
+    _: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     tenant_id = str(tid)
@@ -346,7 +347,7 @@ async def org_members_remove(
     user_id: str,
     ctx: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
-    _: str = Depends(require_roles(*_ORG_UNIT_MANAGER_ROLES)),
+    _: str = Depends(require_trust_write()),
 ):
     db, tid = db_tenant
     tenant_id = str(tid)

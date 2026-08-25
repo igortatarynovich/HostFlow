@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../../i18n'
 import {
+  getHrOperationalContext,
   listWorkforceEmployeeDocuments,
   patchWorkforceDocumentControlTask,
+  type HrOperationalContext,
   type WorkforceDocumentControlTask,
   type WorkforceEmployeeDocumentRow,
 } from '../../api/workforce'
@@ -11,6 +13,10 @@ import { HrEmployeeDocumentVerifyActions } from '../../components/hr/HrEmployeeD
 import { findReviewDocumentForEmployeeDoc } from '../../components/hr/hrDocumentVerificationFields'
 import type { HrReviewPanel } from '../../api/workforce'
 
+/**
+ * Local HR documents matrix. Not the D2 `documents` consume path (E3).
+ * Proof surface is DocumentsCapability via Document Link + hub adapter.
+ */
 type Props = {
   employeeId: string
   manage?: boolean
@@ -64,6 +70,7 @@ export function HrEmployeeDocumentsSection({
 }: Props) {
   const { t } = useI18n()
   const [rows, setRows] = useState<WorkforceEmployeeDocumentRow[] | null>(null)
+  const [operationalContext, setOperationalContext] = useState<HrOperationalContext | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [taskSavingKey, setTaskSavingKey] = useState<string | null>(null)
@@ -103,6 +110,30 @@ export function HrEmployeeDocumentsSection({
       cancelled = true
     }
   }, [employeeId, prefetchedRows, t])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const ctx = await getHrOperationalContext(employeeId)
+        if (!cancelled) setOperationalContext(ctx)
+      } catch {
+        if (!cancelled) setOperationalContext(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [employeeId])
+
+  const linkedDocumentIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const link of operationalContext?.document_links || []) {
+      const did = String(link.document_id || '').trim()
+      if (did) ids.add(did)
+    }
+    return ids
+  }, [operationalContext])
 
   if (prefetchedRows === undefined && !candidateId) {
     return (
@@ -197,6 +228,19 @@ export function HrEmployeeDocumentsSection({
         {t('app.hr.employee_detail.section_documents', { defaultValue: 'HR documents' })}
       </summary>
       <div className="p-3 space-y-4">
+        {operationalContext?.hr_case ? (
+          <p className="text-xs text-slate-600">
+            {t('app.hr.employee_operational.hr_context_status', {
+              defaultValue: 'Operational record: {status}',
+              values: { status: operationalContext.hr_case.status || 'open' },
+            })}
+            {' · '}
+            {t('app.hr.employee_operational.hr_context_links', {
+              defaultValue: '{count} document(s) linked from recruitment',
+              values: { count: operationalContext.document_links?.length ?? 0 },
+            })}
+          </p>
+        ) : null}
         {missing.length > 0 ? (
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">
@@ -249,6 +293,13 @@ export function HrEmployeeDocumentsSection({
                     return (
                     <div key={r.document.id} className="rounded border border-slate-200 bg-slate-50 p-3">
                       <div className="text-sm font-semibold text-slate-900">{r.document.title || r.document.doc_type || 'Document'}</div>
+                      {linkedDocumentIds.has(String(r.document.id)) ? (
+                        <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-brand-700">
+                          {t('app.hr.employee_operational.reused_from_recruitment', {
+                            defaultValue: 'Reused from recruitment',
+                          })}
+                        </div>
+                      ) : null}
                       <div className="mt-1 text-xs text-slate-600">Type: {r.document.doc_type || '—'}</div>
                       <div className="text-xs text-slate-600">
                         Expiry: {r.document.expires_at || r.document.expire_date || '—'}

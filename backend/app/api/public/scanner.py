@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import json
+import secrets
 from datetime import datetime, timezone
 from typing import Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.public.intake import _load_candidate_by_token, _save_public_document_upload  # type: ignore
-from backend.app.db.deps import get_db_with_tenant
+from backend.app.api.public.intake_tenant_bind import bind_session_for_intake_token
+from backend.app.db.deps import bind_tenant_context_to_session, get_db
 from backend.app.db.session import async_session_maker
 from backend.app.models.candidate import Candidate
-from backend.app.models.scan import ScanSession
+from backend.app.models.scan_session import ScanSession
 from backend.app.schemas.scanner import (
     ScanSessionCreatePublic,
     ScanSessionSchema,
@@ -21,7 +23,6 @@ from backend.app.schemas.scanner import (
 )
 from backend.app.services.scanner import (
     create_scan_session,
-    get_scan_session as load_scan_session,
     get_scan_session_by_id,
     process_scan_session,
     serialize_scan_session,
@@ -42,12 +43,57 @@ async def list_public_presets() -> list[ScanPresetSchema]:
     return [ScanPresetSchema(**preset.__dict__) for preset in list_presets()]
 
 
+async def _load_scan_session_authorized(
+    db: AsyncSession,
+    *,
+    session_id: str,
+    token: str,
+    for_update: bool = False,
+) -> tuple[UUID, ScanSession, Candidate]:
+    """Resolve tenant from session id, bind RLS, require matching intake token."""
+    tok = (token or "").strip()
+    if not tok:
+        raise HTTPException(status_code=401, detail="intake_token_required")
+
+    result = await db.execute(
+        text("SELECT tenant_id FROM scan_sessions WHERE id = :session_id"),
+        {"session_id": session_id},
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="scan_session_not_found")
+    tenant_id = UUID(row[0])
+    await bind_tenant_context_to_session(db, tenant_id)
+
+    session = await get_scan_session_by_id(db, session_id=session_id, for_update=for_update)
+    candidate = await db.scalar(
+        select(Candidate)
+        .where(
+            Candidate.id == session.candidate_id,
+            Candidate.tenant_id == str(tenant_id),
+            Candidate.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
+    if not candidate:
+        raise HTTPException(status_code=404, detail="candidate_not_found")
+
+    expected = str(getattr(candidate, "intake_token", None) or "").strip()
+    if (
+        not expected
+        or len(expected) != len(tok)
+        or secrets.compare_digest(expected, tok) is False
+    ):
+        raise HTTPException(status_code=403, detail="invalid_intake_token")
+    return tenant_id, session, candidate
+
+
 @router.post("", response_model=ScanSessionSchema)
 async def create_public_scan_session(
     payload: ScanSessionCreatePublic,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db: AsyncSession = Depends(get_db),
 ) -> ScanSessionSchema:
-    db, tenant_id = db_tenant
+    tenant_id = await bind_session_for_intake_token(db, payload.token)
     candidate = await _load_candidate_by_token(db, tenant_id, payload.token)
     preset_code = payload.preset_code or payload.document_type
     session = await create_scan_session(
@@ -76,30 +122,12 @@ async def get_public_scan_sessions_root():
 @router.get("/{session_id}", response_model=ScanSessionSchema)
 async def get_public_scan_session(
     session_id: str,
+    token: str = Query(..., description="Candidate intake token"),
 ) -> ScanSessionSchema:
-    # For public endpoints, load session first to get tenant_id, then use it
     async with async_session_maker() as db:
-        # Load session without RLS by using direct query
-        from sqlalchemy import text
-        # First, get tenant_id from session without RLS
-        result = await db.execute(
-            text("SELECT tenant_id FROM scan_sessions WHERE id = :session_id"),
-            {"session_id": session_id}
+        _tenant_id, session, _candidate = await _load_scan_session_authorized(
+            db, session_id=session_id, token=token
         )
-        row = result.first()
-        if not row:
-            raise HTTPException(status_code=404, detail="scan_session_not_found")
-        tenant_id = UUID(row[0])
-        # Set tenant context for RLS
-        try:
-            await db.execute(
-                text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
-                {"tenant_id": str(tenant_id)},
-            )
-        except Exception:
-            pass
-        # Now load session with RLS
-        session = await get_scan_session_by_id(db, session_id=session_id)
         return ScanSessionSchema(**serialize_scan_session(session))
 
 
@@ -108,30 +136,15 @@ async def upload_public_scan_page(
     session_id: str,
     file: UploadFile = File(...),
     page_code: str = Form(...),
+    token: str = Form(..., description="Candidate intake token"),
     rotation: int = Form(0),
     filter_name: str | None = Form(None),
     meta: str | None = Form(None),
 ) -> ScanSessionSchema:
     async with async_session_maker() as db:
-        # Load tenant_id first without RLS
-        from sqlalchemy import text
-        result = await db.execute(
-            text("SELECT tenant_id FROM scan_sessions WHERE id = :session_id"),
-            {"session_id": session_id}
+        tenant_id, _session, _candidate = await _load_scan_session_authorized(
+            db, session_id=session_id, token=token
         )
-        row = result.first()
-        if not row:
-            raise HTTPException(status_code=404, detail="scan_session_not_found")
-        tenant_id = UUID(row[0])
-        # Set tenant context for RLS
-        try:
-            await db.execute(
-                text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
-                {"tenant_id": str(tenant_id)},
-            )
-        except Exception:
-            pass
-        
         meta_payload = None
         if meta:
             try:
@@ -155,26 +168,12 @@ async def upload_public_scan_page(
 @router.post("/{session_id}/process", response_model=ScanSessionSchema)
 async def process_public_scan_session(
     session_id: str,
+    token: str = Query(..., description="Candidate intake token"),
 ) -> ScanSessionSchema:
     async with async_session_maker() as db:
-        # Load tenant_id first without RLS
-        from sqlalchemy import text
-        result = await db.execute(
-            text("SELECT tenant_id FROM scan_sessions WHERE id = :session_id"),
-            {"session_id": session_id}
+        tenant_id, _session, _candidate = await _load_scan_session_authorized(
+            db, session_id=session_id, token=token
         )
-        row = result.first()
-        if not row:
-            raise HTTPException(status_code=404, detail="scan_session_not_found")
-        tenant_id = UUID(row[0])
-        # Set tenant context for RLS
-        try:
-            await db.execute(
-                text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
-                {"tenant_id": str(tenant_id)},
-            )
-        except Exception:
-            pass
         session = await process_scan_session(db, tenant_id=tenant_id, session_id=session_id)
         await db.commit()
         return ScanSessionSchema(**serialize_scan_session(session))
@@ -184,40 +183,15 @@ async def process_public_scan_session(
 async def upload_public_scan_pdf(
     session_id: str,
     file: UploadFile = File(...),
+    token: str = Form(..., description="Candidate intake token"),
     meta: str | None = Form(None),
 ) -> ScanSessionSchema:
     async with async_session_maker() as db:
-        from sqlalchemy import text
-        result = await db.execute(
-            text("SELECT tenant_id FROM scan_sessions WHERE id = :session_id"),
-            {"session_id": session_id},
+        tenant_id, session, candidate = await _load_scan_session_authorized(
+            db, session_id=session_id, token=token, for_update=True
         )
-        row = result.first()
-        if not row:
-            raise HTTPException(status_code=404, detail="scan_session_not_found")
-        tenant_id = UUID(row[0])
-        try:
-            await db.execute(
-                text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
-                {"tenant_id": str(tenant_id)},
-            )
-        except Exception:
-            pass
-
-        session = await get_scan_session_by_id(db, session_id=session_id, for_update=True)
         if session.attached_at:
             raise HTTPException(status_code=409, detail="session_already_attached")
-        candidate = await db.scalar(
-            select(Candidate)
-            .where(
-                Candidate.id == session.candidate_id,
-                Candidate.tenant_id == str(tenant_id),
-                Candidate.deleted_at.is_(None),
-            )
-            .limit(1)
-        )
-        if not candidate:
-            raise HTTPException(status_code=404, detail="candidate_not_found")
 
         meta_payload = {}
         if meta:

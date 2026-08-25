@@ -42,6 +42,14 @@ export const CRM_APP_PATHS = {
   leads: "/app/leads",
   leadsDistribution: "/app/leads/distribution",
   leadsDistributionRules: "/app/leads/distribution/rules",
+  /** Operational sales workspace for services tenants (inquiries, work session, conversion). */
+  sales: "/app/sales",
+  /** Sales Service Orders (ADR-032 commercial deal + order lines). Not Services-module /app/orders. */
+  salesOrders: "/app/sales/orders",
+  launchpad: "/app/launchpad",
+  /** Client acquisition channel list and per-channel inquiry workspace. */
+  clientAcquisitionChannels: "/app/client-acquisition/channels",
+  clientAcquisitionChannelsNew: "/app/client-acquisition/channels/new",
   services: "/app/services",
   invoices: "/app/invoices",
   invoiceNew: "/app/invoices/new",
@@ -54,6 +62,16 @@ export const CRM_APP_PATHS = {
   automationAreaPrefix: "/app/automation",
   automationRules: "/app/automation-rules",
   automationLog: "/app/automation-log",
+  /** Stage 3E read-only Acquisition Activity Timeline (platform campaigns). */
+  acquisitionActivity: "/app/acquisition/activity",
+  /** Marketing Workspace — campaign list and Flight operator surface (Acquisition capability UI). */
+  marketing: "/app/marketing",
+  /** Create Campaign only (goal + Primary Target + optional context). Sources connect separately via spa_marketing_connect_source. */
+  marketingNew: "/app/marketing/new",
+  /** Marketing Sources foundation — intake inventory, connection, Mapping Health (C-3). */
+  marketingSources: "/app/marketing/sources",
+  /** Marketing Forms — HostFlow Form Builder remount (C-6); SoT remains ADR-007 / settings APIs. */
+  marketingForms: "/app/marketing/forms",
   inbox: "/app/inbox",
   /** Inbox with messages channel selected (legacy top-level /app/messages redirects here). */
   inboxMessagesScoped: "/app/inbox?channel=messages",
@@ -118,6 +136,10 @@ export const CRM_APP_PATHS = {
   settingsCommunicationsMessengers: "/app/settings/communications/messengers",
   settingsCommunicationsQueue: "/app/settings/communications/queue",
   settingsCommunicationsSla: "/app/settings/communications/sla",
+  settingsCommunicationsTemplates: "/app/settings/communications/templates",
+  settingsCommunicationsAutomation: "/app/settings/communications/automation",
+  settingsCommunicationsLeadLifecycleEmail: "/app/settings/communications/lead-lifecycle-email",
+  settingsCommunicationsCampaigns: "/app/settings/communications/campaigns",
   settingsTeam: "/app/settings/team",
   settingsRiskIntel: "/app/settings/risk-intel",
   settingsHiringPipelineGates: "/app/settings/hiring-pipeline-gates",
@@ -140,6 +162,17 @@ export const CRM_APP_PATHS = {
   plannerLegacy: "/app/planner",
   remindersLegacy: "/app/reminders",
   activitiesLegacy: "/app/activities",
+  recruitmentSearches: "/app/recruitment/searches",
+  recruitmentSearchesNew: "/app/recruitment/searches/new",
+  recruitmentInbox: "/app/recruitment/inbox",
+  setup: "/app/setup",
+  setupClient: "/app/setup/client",
+  setupVacancy: "/app/setup/vacancy",
+  setupProcess: "/app/setup/process",
+  setupIntake: "/app/setup/intake",
+  platformSetup: "/app/platform/setup",
+  /** Marketing Source Diagnostics — ops console for recent submissions (post Ad-ID bind UI). */
+  marketingDiagnostics: "/app/marketing/diagnostics",
 } as const
 
 export const CRM_APP_DRILLDOWN_HREFS = {

@@ -9,7 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 
 from backend.app.db.session import async_session_maker
-from backend.app.entity_profile.constants import DRIVER_CE_PROFILE_CODE
+from backend.app.entity_profile.constants import DRIVER_CE_PROFILE_CODE, TARGETED_ADVERTISING_PROFILE_CODE
 from backend.app.entity_profile.presentation_runtime import FORM_PRESENTATION_RUNTIME_V1
 from backend.app.entity_profile.seed import ensure_tenant_entity_profile_defaults
 from backend.app.models.candidate import Candidate
@@ -50,6 +50,9 @@ def _headers(tenant_id: str) -> dict[str, str]:
 
 async def _seed_entity_profiles(tenant_id: str) -> None:
     async with async_session_maker() as session:
+        from backend.tests.api.test_public_intake import _ensure_recruitment_funnels
+
+        await _ensure_recruitment_funnels(session, tenant_id)
         await ensure_tenant_entity_profile_defaults(session, tenant_id)
         await session.commit()
 
@@ -267,3 +270,36 @@ async def test_p8_smoke_test_lead_draft_not_candidate(client: AsyncClient, tenan
             )
         )
         assert count is None
+
+
+@pytest.mark.asyncio
+async def test_p8_sales_profile_form_uses_sales_inquiry_routing(
+    client: AsyncClient,
+    tenant_id: str,
+) -> None:
+    await _seed_entity_profiles(tenant_id)
+    headers = await _admin_headers(tenant_id)
+    slug = f"p8-b2b-{uuid.uuid4().hex[:8]}"
+    preset_resp = await client.get(
+        f"/api/v1/settings/intake-forms/entity-profiles/{TARGETED_ADVERTISING_PROFILE_CODE}/presentation-preset",
+        headers=headers,
+    )
+    assert preset_resp.status_code == 200, preset_resp.text
+    fields = preset_resp.json()["fields"][:5]
+
+    resp = await client.post(
+        "/api/v1/settings/intake-forms",
+        headers=headers,
+        json={
+            "title": "B2B Sales Form",
+            "public_slug": slug,
+            "entity_profile_code": TARGETED_ADVERTISING_PROFILE_CODE,
+            "fields": fields,
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    intake = resp.json()["intake_source_profile"]
+    assert intake is not None
+    assert intake["route_intent"] == "sales_inquiry"
+    assert intake["entity_profile_code"] == TARGETED_ADVERTISING_PROFILE_CODE
+    assert resp.json()["submit_destination"]["route_intent"] == "sales_inquiry"

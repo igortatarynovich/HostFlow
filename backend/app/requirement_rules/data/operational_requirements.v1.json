@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "schema_version": "2026-07",
+    "description": "Operational (activity-type) requirements for Requirements Workspace A3-B4"
+  },
+  "requirements": [
+    {
+      "requirement_code": "first_contact_completed",
+      "type": "activity",
+      "public_name": "First contact completed",
+      "level": "blocking",
+      "entity_profile_codes": [
+        "recruitment.candidate.driver_ce",
+        "recruitment.candidate.warehouse_worker",
+        "recruitment.candidate.driver_ce_ua"
+      ],
+      "activity_types": [
+        "uos_candidate_call",
+        "call",
+        "phone",
+        "contact",
+        "task"
+      ],
+      "completion_statuses": ["done"],
+      "cta": {
+        "action": "call",
+        "default_activity_type": "call"
+      }
+    }
+  ]
+}

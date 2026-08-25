@@ -902,6 +902,10 @@
         "my_availability": "My availability",
         "time_off": "Time-off",
         "reminders": "Reminders",
+        "recruitment_inbox": "Applications",
+        "recruitment_searches": "Searches",
+        "sales": "Inquiries",
+        "marketing": "Marketing",
         "leads": "Leads",
         "leads_distribution": "Lead routing",
         "leads_distribution_rules": "Lead routing rules",
@@ -924,6 +928,8 @@
         "settings_communications_messengers": "Messengers",
         "settings_communications_queue": "Queue & routing",
         "settings_communications_sla": "Communications SLA",
+        "settings_communications_templates": "Communication templates",
+        "settings_communications_automation": "Communication automation",
         "settings_ttv": "TTV report",
         "profile": "Profile",
         "logout": "Sign out",
@@ -933,6 +939,10 @@
         "no_next_action": "No next action",
         "automations": "Automations",
         "automation_log": "Automation log",
+        "acquisition_activity": "Acquisition activity",
+        "marketing_sources": "Sources",
+        "marketing_forms": "Forms",
+        "marketing_diagnostics": "Diagnostics",
         "automation_rules": "Automation rules",
         "settings_hiring_gates": "Hiring pipeline gates",
         "settings_risk_intel": "Risk intelligence"
@@ -1004,10 +1014,8 @@
         },
         "handoff": {
           "back_inbox": "Back to inbox",
-          "title": "Internal HR handoff",
-          "hint": "Review transfer data, take the case into HR review, then approve for employment when ready.",
-          "accept_pickup": "Take into HR review",
-          "accepted_notice": "Case is in HR review. Complete the checklist below, then approve for employment."
+          "title": "Handoff snapshot",
+          "hint": "Read-only payload from GET /api/v1/handoffs/{id}/snapshot. No Candidates list API."
         },
         "tasks": {
           "heading": "HR tasks",
@@ -1053,11 +1061,6 @@
           "lane_checklist_deregister": "Deregistration checklist",
           "lane_monthly_settlement": "Monthly settlement",
           "lane_export_queue": "Export (placeholder)"
-        },
-        "handoff": {
-          "back_inbox": "Back to inbox",
-          "title": "Handoff snapshot",
-          "hint": "Read-only payload from GET /api/v1/handoffs/{id}/snapshot. No Candidates list API."
         },
         "employees": {
           "heading": "Employees",
@@ -1392,7 +1395,12 @@
         "errors": {
           "unauthorized": "Unauthorized: sign in and try again.",
           "load_failed": "Failed to load vacancies"
-        }
+        },
+        "empty_title": "You have no vacancies yet",
+        "empty_description": "Create your first vacancy in about 30 seconds to start receiving and processing candidates.",
+        "empty_why": "A vacancy is the role you hire for. Leads and candidates attach to it so ownership and documents stay clear.",
+        "empty_cta": "Create vacancy",
+        "empty_cta_setup": "Open getting started"
       },
       "form": {
         "save_failed": "Could not save vacancy"
@@ -1610,6 +1618,8 @@
       "communications_thread_escalated_title": "Thread escalated — action needed",
       "lead_public_intake_client_title": "New client lead from public intake",
       "lead_public_intake_client_desc": "Inquiry from {name}. Open the lead to follow up.",
+      "intake_questionnaire_submitted_title": "Client submitted questionnaire",
+      "intake_questionnaire_submitted_desc": "{contact} — {company}",
       "intake_client_lead_skipped_no_company_title": "Client intake: lead not created",
       "intake_client_lead_skipped_no_company_desc": "{name} sent a client inquiry, but no client company could be resolved. Set a default company (Meta leads) or link vacancy/client.",
       "reminder_popup": {
@@ -1783,7 +1793,14 @@
       "scoped_candidate_clear": "Show all threads"
     },
     "communications_api": {
-      "thread_unlinked_outbound_blocked": "Link this thread to a candidate, client company, or UOS service order before sending (operations policy)."
+      "thread_unlinked_outbound_blocked": "Link this thread to a candidate, client company, or UOS service order before sending (operations policy).",
+      "pipeline": {
+        "communication_pipeline_required": "This message needs a linked Sales or Recruitment record before it can be sent.",
+        "missing_result_link": "Link this thread to a Sales inquiry or Recruitment application before sending.",
+        "communication_pipeline_denied": "Send was blocked by the communication policy for this thread.",
+        "unknown_purpose": "This reply type is not allowed for the linked record.",
+        "result_link_missing": "Link this thread to a Sales inquiry or Recruitment application before sending."
+      }
     },
     "communications_messages": {
       "reply_required": "Reply required",
@@ -1917,7 +1934,13 @@
         "communications_workspace": "Communications workspace",
         "more": "More",
         "operations": "Operations",
-        "system": "System"
+        "system": "System",
+        "section_communications": "Communications",
+        "section_recruitment": "Recruitment",
+        "section_marketing": "Marketing",
+        "section_sales": "Sales",
+        "section_hr": "HR",
+        "section_services": "Services"
       },
       "actions": {
         "logout": "Sign out",
@@ -1934,6 +1957,7 @@
         "return_to_platform": "Return to platform admin",
         "language": "Language"
       },
+      "impersonation_banner": "SUPERADMIN ACCESS ACTIVE — impersonating customer tenant",
       "notifications": {
         "title": "Notifications",
         "panel_subtitle": "{count} unread",
@@ -1992,8 +2016,8 @@
     },
     "seo": {
       "landing": {
-        "title": "CRM for Recruitment Teams",
-        "description": "HostFlow helps recruitment teams run leads, candidates, documents, and operations in one CRM."
+        "title": "Close vacancies faster — HostFlow recruitment operations",
+        "description": "HostFlow collects candidates from Meta, WhatsApp and forms, assigns them to recruiters, and keeps hiring under control — from first lead to hire."
       },
       "pricing": {
         "title": "Pricing for Recruitment CRM",
@@ -2046,6 +2070,10 @@
         "sessions": {
           "title": "Active sessions",
           "description": "Review signed-in devices and revoke sessions if needed."
+        },
+        "signature": {
+          "title": "Outgoing message signature",
+          "description": "Appended automatically to emails and other outbound messages. Templates must not include a signature."
         }
       },
       "avatar": {
@@ -2062,7 +2090,13 @@
         "birth_date": "Date of birth",
         "country": "Country",
         "city": "City",
-        "preferred_contact": "Preferred contact channel"
+        "preferred_contact": "Preferred contact channel",
+        "company": "Company",
+        "website": "Website",
+        "logo_url": "Logo (URL)",
+        "show_phone": "Show phone",
+        "show_email": "Show email",
+        "show_website": "Show website"
       },
       "preferences": {
         "hints": {
@@ -2194,6 +2228,11 @@
       "labels": {
         "timezone": "Timezone",
         "user": "User"
+      },
+      "signature": {
+        "preview_label": "Signature preview",
+        "company_fallback_hint": "Company, website and contacts for the signature come only from this block. Own company / SMTP are not used.",
+        "html_hint": "In email: name and company in bold brand color, consistent icons, logo ~180px wide."
       }
     },
     "signup": {
@@ -2329,18 +2368,21 @@
           "title": "Seat usage",
           "limit": "{used}/{limit} seats used",
           "unlimited": "{used} seats used",
-          "recruiters": "Recruiters",
-          "supervisors": "Supervisors",
-          "client_managers": "Client managers",
+          "administrators": "Administrators",
+          "employees": "Employees",
+          "portal_guests": "Portal guests (not billed)",
+          "recruiters": "Employees",
+          "supervisors": "Administrators",
+          "client_managers": "Portal guests (not billed)",
           "viewers": "Viewers"
         },
         "license": {
           "title": "License & limits",
           "plan": "Plan",
           "expires_at": "Expires at",
-          "max_recruiters": "Max recruiters",
-          "max_supervisors": "Max supervisors",
-          "max_client_managers": "Max client managers",
+          "max_recruiters": "Max employees",
+          "max_supervisors": "Max administrators",
+          "max_client_managers": "Max portal guests (unused)",
           "max_viewers": "Max viewers",
           "max_storage_gb": "Max storage (GB)",
           "max_companies": "Max companies",
@@ -2382,7 +2424,8 @@
             "documents": "Documents",
             "leads": "Leads",
             "services": "Services",
-            "client_portal": "Client portal"
+            "client_portal": "Client portal",
+            "hr": "HR"
           },
           "empty": "Module settings are unavailable for this tenant.",
           "errors": {
@@ -2469,6 +2512,7 @@
           "impersonate": "Impersonate",
           "impersonating": "Switching…",
           "impersonate_confirm": "Switch to tenant “{name}”? Your current session will be replaced.",
+          "impersonate_reason_prompt": "Reason for impersonation (required, min 3 characters):",
           "manage_team": "Manage team",
           "suspend": "Suspend",
           "activate": "Reactivate",
@@ -2509,6 +2553,7 @@
           "logo_upload_failed": "Logo upload failed.",
           "status_change_failed": "Failed to update tenant status.",
           "impersonate_failed": "Impersonation failed.",
+          "impersonate_reason_required": "A justification of at least 3 characters is required.",
           "required_fields": "Name and slug are required.",
           "initial_admin_password_required": "Initial admin password is required.",
           "create_failed": "Failed to create tenant.",
@@ -2545,9 +2590,12 @@
         "subtitle": "Track how many seats are used, toggle modules, and request additional capacity.",
         "usage": {
           "title": "Seat usage",
-          "recruiters": "Recruiters",
-          "supervisors": "Supervisors",
-          "client_managers": "Client managers",
+          "administrators": "Administrators",
+          "employees": "Employees",
+          "portal_guests": "Portal guests (not billed)",
+          "recruiters": "Employees",
+          "supervisors": "Administrators",
+          "client_managers": "Portal guests (not billed)",
           "viewers": "Viewers"
         },
         "modules": {
@@ -2572,6 +2620,7 @@
           "submit": "Send request",
           "roles": {
             "administrator": "Administrators",
+            "employee": "Employees",
             "supervisor": "Supervisors",
             "recruiter": "Recruiters",
             "client_manager": "Client managers",
@@ -2782,9 +2831,12 @@
           "title": "Legal"
         },
         "usage": {
-          "recruiters": "Recruiters: {used} / {limit}",
-          "supervisors": "Supervisors: {used} / {limit}",
-          "client_managers": "Client managers: {used} / {limit}",
+          "administrators": "Administrators: {used} / {limit}",
+          "employees": "Employees: {used} / {limit}",
+          "portal_guests": "Portal guests (not billed): {used}",
+          "recruiters": "Employees: {used} / {limit}",
+          "supervisors": "Administrators: {used} / {limit}",
+          "client_managers": "Portal guests (not billed): {used} / {limit}",
           "viewers": "Viewers: {used} / {limit}",
           "leads_month": "Leads this month (UTC): {used} / {limit}",
           "candidates": "Active candidates: {used} / {limit}",
@@ -3059,7 +3111,8 @@
           "recruiter": "Recruiter",
           "client_manager": "Client manager",
           "client_processor": "Candidate processor",
-          "viewer": "Viewer"
+          "viewer": "Viewer",
+          "employee": "Employee"
         },
         "form": {
           "email_label": "Email",
@@ -3076,7 +3129,10 @@
           "password_label": "Password (optional)",
           "password_placeholder": "Leave blank — we will generate it",
           "submit": "Create user",
-          "submitting": "Creating…"
+          "submitting": "Creating…",
+          "preset_label": "Permission preset",
+          "preset_none": "None (role defaults)",
+          "preset_help": "Fills module permissions for this user — does not create a system role."
         },
         "errors": {
           "list_missing_endpoint": "Endpoint /api/v1/admin/users not found. Restart backend after updates.",
@@ -3271,6 +3327,13 @@
             "token": "Token",
             "valid_until": "Valid until"
           }
+        },
+        "presets": {
+          "recruiter": "Recruiter",
+          "team_lead": "Team lead",
+          "hr": "HR",
+          "compliance": "Compliance",
+          "portal_guest": "Portal guest"
         }
       },
       "ruleset": {
@@ -4422,8 +4485,8 @@
       }
     },
     "dashboard": {
-      "title": "Insights",
-      "page_subtitle": "Answer business questions: where you lose people, what is slow, which sources pay off, and what to fix today. Filters apply to every block; presets are saved on this device.",
+      "title": "Analytics",
+      "page_subtitle": "System module: slices for licensed modules.",
       "sections": {
         "shortcuts": {
           "title": "Quick links",
@@ -4574,12 +4637,14 @@
         "blacklist": "Blacklisted",
         "wrong_phone": "Incorrect phone number",
         "double_crew": "Double crew",
-        "no_response": "No response"
+        "no_response": "No response",
+        "recruitment_completed": "Recruitment completed"
       },
       "labels": {
         "no_reason": "No reason",
         "no_title": "Untitled",
-        "no_subgroup": "No subgroup"
+        "no_subgroup": "No subgroup",
+        "untitled": "Untitled"
       },
       "filters": {
         "title": "Filters",
@@ -4715,7 +4780,8 @@
       },
       "errors": {
         "range_invalid": "Start date must be before end date.",
-        "load_failed": "Failed to load dashboard data"
+        "load_failed": "Failed to load dashboard data",
+        "temporarily_unavailable": "Analytics is temporarily unavailable. Try again in a few seconds."
       },
       "stats": {
         "candidates_total": "Candidates (total)",
@@ -4981,6 +5047,222 @@
         "validation_title": "Shadow cohort validation",
         "validation_samples": "Cohort samples",
         "validation_rate": "Stage forward rate"
+      },
+      "efficiency": {
+        "title": "Work efficiency",
+        "subtitle": "Pipeline stages, rejection reasons, and document status. Filters: client, period, vacancy.",
+        "empty": "No data for the selected slice.",
+        "insight": "{closedPct} of candidates are already closed (rejected / declined). Early stages — {early}, documents — {docs}.",
+        "filters": {
+          "client": "Client",
+          "all_clients": "All clients"
+        },
+        "stats": {
+          "total": "Total candidates",
+          "in_progress": "In progress",
+          "closed": "Closed (reject + decline)",
+          "docs_pipeline": "Documents: wait + got"
+        },
+        "stages": {
+          "title": "Stage distribution",
+          "subtitle": "Current candidate stage in the selected slice.",
+          "col_stage": "Stage",
+          "col_count": "Count",
+          "col_share": "Share",
+          "terminal": "final"
+        },
+        "reasons": {
+          "rejected_title": "Rejected by company ({count})",
+          "declined_title": "Declined by candidate ({count})",
+          "hint": "Reason totals may exceed candidate counts when multiple codes apply.",
+          "empty": "No reasons in this slice."
+        },
+        "docs": {
+          "title": "Documents",
+          "subtitle": "Operational docs_wait / docs_got stages and uploaded file statuses.",
+          "wait": "Waiting for documents",
+          "got": "Documents received",
+          "complete": "Complete package",
+          "col_status": "File status",
+          "col_count": "Count",
+          "files_total": "Total files: {count}",
+          "empty_files": "No document files in this slice.",
+          "statuses": {
+            "approved": "Approved",
+            "received": "Received",
+            "submitted": "Submitted",
+            "requested": "Requested",
+            "rejected": "Rejected",
+            "verified": "Verified",
+            "overdue": "Overdue",
+            "expired": "Expired",
+            "missing": "Missing",
+            "uploaded": "Uploaded",
+            "completed": "Completed",
+            "delivered": "Delivered"
+          }
+        },
+        "charts": {
+          "outcomes_title": "Outcome mix",
+          "outcomes_hint": "Rejected by company · declined by candidate · still in progress",
+          "outcome_rejected": "Rejected",
+          "outcome_declined": "Declined",
+          "outcome_in_progress": "In progress"
+        },
+        "contact": {
+          "title": "Contact metric",
+          "subtitle": "Received → contact attempts → reached → outcome. From CRM contact attempts (same filters).",
+          "received": "Received",
+          "attempted": "Attempted",
+          "reached": "Reached",
+          "untouched": "No attempts",
+          "attempts_total": "Total attempts",
+          "funnel_received": "Received",
+          "funnel_attempted": "Attempted",
+          "funnel_reached": "Reached",
+          "funnel_closed": "Closed",
+          "funnel_hint": "Avg attempts per candidate: {avg} · limit (≥3): {limit}",
+          "empty": "No contact attempts in this slice.",
+          "stage_now": "Now on stages: contacted {contacted} · no answer {noAnswer}",
+          "results": {
+            "answered": "Answered",
+            "no_answer": "No answer",
+            "wrong_number": "Wrong number",
+            "unavailable": "Unavailable",
+            "callback_requested": "Callback requested",
+            "interested": "Interested",
+            "not_interested": "Not interested"
+          }
+        }
+      },
+      "tabs": {
+        "aria": "Analytics modules",
+        "summary": "Summary",
+        "general": "Summary",
+        "recruitment": "Recruitment",
+        "sales": "Sales",
+        "hr": "HR",
+        "finance": "Finance",
+        "fleet": "Fleet"
+      },
+      "summary": {
+        "title": "Summary",
+        "subtitle": "HostFlow system analytics. Open a module tab for detailed slices.",
+        "body": "This host collects data from connected modules and turns it into human-readable analytics. Each tab owns its metrics — not a copy of another module.",
+        "bullets": {
+          "modules": "Tabs appear only for purchased and available modules.",
+          "filters": "Each module has its own ranges and slices (period, client, vacancy where needed).",
+          "owned": "Recruitment ≠ sales ≠ HR: funnels and KPIs stay module-owned."
+        },
+        "pulse_title": "Ops pulse",
+        "window_30d": "30-day window",
+        "business_type": {
+          "agency": "Agency",
+          "employer": "Employer",
+          "services": "Services"
+        },
+        "modules": {
+          "recruitment": "Recruitment",
+          "sales": "Sales",
+          "hr_finance": "HR / Finance"
+        },
+        "kpis": {
+          "pipeline": "In pipeline",
+          "stuck": "Stuck",
+          "active_today": "Active today",
+          "open_vacancies": "Open vacancies",
+          "candidates": "Candidates",
+          "vacancies_active": "Active vacancies",
+          "on_open_vacancies": "On open vacancies",
+          "leads": "Leads / inquiries",
+          "leads_overdue": "Leads overdue",
+          "open_orders": "Open orders",
+          "handoff_requested": "Handoff requested",
+          "handoff_accepted": "Handoff accepted",
+          "orders_30d": "Orders (30d)"
+        }
+      },
+      "sales": {
+        "title": "Sales efficiency",
+        "subtitle": "Inquiries → qualification → win/lost and commercial orders. Not the candidate pipeline.",
+        "stats": {
+          "inquiries": "Inquiries (cohort)",
+          "win_path": "On win-path",
+          "lost": "Lost",
+          "new_untouched": "New / untouched"
+        },
+        "funnel_title": "Inquiry funnel",
+        "funnel_subtitle": "Conversion roots lead → qualified → active → final (+ lost).",
+        "funnel_stages": {
+          "lead": "Lead",
+          "qualified": "Qualified",
+          "active": "Active",
+          "final": "Final",
+          "lost": "Lost"
+        },
+        "lost_title": "Lost reasons",
+        "lost_subtitle": "Why inquiries closed without a win.",
+        "lost_empty": "No lost reasons in this slice.",
+        "lost_reasons": {},
+        "orders_title": "Orders / services",
+        "orders_subtitle": "Commercial slice for the selected period.",
+        "orders_total": "Orders",
+        "orders_delivered": "Delivered",
+        "orders_cancelled": "Cancelled",
+        "orders_revenue": "Revenue",
+        "orders_status_title": "Order statuses",
+        "order_status": {},
+        "filters": {
+          "source": "Source",
+          "source_placeholder": "meta, csv…",
+          "vacancy": "Vacancy",
+          "vacancy_all": "All vacancies"
+        }
+      },
+      "hr": {
+        "title": "HR efficiency",
+        "subtitle": "Handoff: requested → accepted / returned / rejected.",
+        "flow_title": "Handoff flow",
+        "flow_subtitle": "HR transfer only — not recruitment stages.",
+        "by_client_title": "By client",
+        "by_client_subtitle": "Accepted / requested (top).",
+        "flow": {
+          "requested": "Requested",
+          "accepted": "Accepted",
+          "returned": "Returned",
+          "rejected": "Rejected"
+        }
+      },
+      "finance": {
+        "title": "Finance efficiency",
+        "subtitle": "Invoices and margin for the period — not the sales funnel.",
+        "margin_title": "Revenue and margin",
+        "margin_subtitle": "From related orders/services in the period.",
+        "stats": {
+          "invoiced": "Invoiced",
+          "paid": "Paid",
+          "outstanding": "Outstanding",
+          "overdue": "Overdue",
+          "revenue": "Revenue",
+          "cost": "Cost",
+          "profit": "Gross profit",
+          "margin": "Margin"
+        }
+      },
+      "fleet": {
+        "title": "Fleet",
+        "subtitle": "Park, lines and assignments. Full ops live under Fleet.",
+        "open_module": "Open Fleet",
+        "module_hint": "Fleet API responded but module status is not confirmed.",
+        "kpis": {
+          "vehicles": "Vehicles",
+          "trailers": "Trailers",
+          "drivers": "Drivers",
+          "lines": "Lines",
+          "assignments": "Assignments",
+          "assignments_today": "Assignments today (UTC)",
+          "assignments_month": "Assignments this month (UTC)"
+        }
       }
     },
     "candidate_card": {
@@ -6025,13 +6307,13 @@
         "click_to_sort": "Click to sort",
         "deselect": "Deselect",
         "deselect_all": "Deselect all",
-        "empty_cta_leads": "Empty CTA leads",
-        "empty_cta_pipeline": "Empty CTA pipeline",
-        "empty_cta_reset": "Empty CTA reset",
-        "empty_no_data_desc": "Empty no data desc",
+        "empty_cta_leads": "Open leads",
+        "empty_cta_pipeline": "Open pipeline",
+        "empty_cta_reset": "Reset filters",
+        "empty_no_data_desc": "Candidates appear after you qualify a lead. Open leads, contact someone, then convert them here.",
         "empty_partial": "Empty partial",
-        "empty_title": "Empty title",
-        "empty_with_filters_desc": "Empty with filters desc",
+        "empty_title": "No candidates yet",
+        "empty_with_filters_desc": "Nothing matches these filters. Reset them to see everyone.",
         "loading_hint": "Loading hint",
         "masked_label": "Masked label",
         "masked_label_short_id": "Masked label short id",
@@ -6047,7 +6329,9 @@
         "select_all": "Select all",
         "select_candidate": "Select candidate",
         "sort_by": "Sort by",
-        "updating": "Updating"
+        "updating": "Updating",
+        "empty_why": "This is your hiring list — people you actively work with until hire.",
+        "empty_cta_vacancy": "Create vacancy"
       },
       "bulk": {
         "selected": "Selected: {count}",
@@ -6145,14 +6429,16 @@
         "error_load": "Failed to load pipeline",
         "error_update_stage": "Failed to update candidate stage",
         "error_update_stages": "Failed to update stages for some candidates",
-        "column_empty_cta_candidates": "Column empty CTA candidates",
-        "column_empty_desc": "Column empty desc",
-        "column_empty_title": "Column empty title",
-        "empty_cta_candidates": "Empty CTA candidates",
-        "empty_cta_leads": "Empty CTA leads",
-        "empty_desc": "Empty desc",
-        "empty_title": "Empty title",
-        "view_in_list": "View in list"
+        "column_empty_cta_candidates": "Open list",
+        "column_empty_desc": "Move a candidate here when they reach this step — or open the list.",
+        "column_empty_title": "No one in this stage",
+        "empty_cta_candidates": "Open candidates",
+        "empty_cta_leads": "Open leads",
+        "empty_desc": "Process a lead into a candidate — then move them across stages until the vacancy is closed.",
+        "empty_title": "Nobody in the pipeline yet",
+        "view_in_list": "View in list",
+        "empty_why": "Pipeline shows who is stuck and what to do next. Start from leads.",
+        "empty_cta_vacancy": "Create vacancy"
       },
       "menu": {
         "open": "Open menu",
@@ -6447,12 +6733,13 @@
         "empty": "No reminders yet.",
         "badge_direct": "for you",
         "badge_new": "new",
-        "empty_cta_create": "Create reminder",
+        "empty_cta_create": "Add a follow-up",
         "empty_cta_leads": "Open leads",
-        "empty_desc": "Create your first reminder to track follow-ups and never lose a lead.",
-        "empty_title": "No reminders yet",
+        "empty_desc": "Contact a lead — the next step will show up here so nothing sits untouched.",
+        "empty_title": "No follow-ups yet",
         "events_empty": "No events yet.",
-        "unread": "Unread"
+        "unread": "Unread",
+        "empty_why": "This is your daily contact queue after the first application arrives."
       },
       "errors": {
         "load": "Failed to load reminders",
@@ -6636,6 +6923,31 @@
           "hint": "Create a follow-up activity on this lead (for example, call back tomorrow).",
           "default_title": "Follow up with lead"
         },
+        "call_result": {
+          "kicker": "B2B inquiry",
+          "title": "Call result",
+          "subtitle": "Callback or what else they want / think — capture it after the call.",
+          "save": "Save call result",
+          "saved": "Call result saved",
+          "save_failed": "Could not save call result",
+          "history_title": "Call history",
+          "results": {
+            "no_answer": "No answer",
+            "answered": "Answered",
+            "callback_requested": "Call back",
+            "interested": "Interested",
+            "not_interested": "Not interested",
+            "wrong_number": "Wrong number",
+            "unavailable": "Unavailable"
+          },
+          "fields": {
+            "result": "Result",
+            "note": "Comment on result",
+            "note_recommended": "recommended",
+            "note_placeholder": "e.g. call back tomorrow 15:00, asks about rate, thinking it over…",
+            "note_hint": "What they want or think: callback, conditions, doubts, next step."
+          }
+        },
         "lost_reason_title": "Lost reason",
         "qualification_summary": {
           "title": "Qualification summary",
@@ -6732,11 +7044,14 @@
       "states": {
         "empty": "No leads found.",
         "empty_cta_clients": "Open clients",
-        "empty_cta_connect": "Connect sources",
-        "empty_desc": "Connect ad sources or import leads to start routing and assignment.",
-        "empty_desc_services": "Connect lead sources or add your first client to start service sales and follow-up.",
-        "empty_title": "No leads yet",
-        "empty_title_services": "No client leads yet"
+        "empty_cta_connect": "Connect ads",
+        "empty_desc": "Create a vacancy, then connect Facebook / Meta ads — applications will land here automatically.",
+        "empty_desc_services": "Connect a source or add a client so inquiries land here for follow-up.",
+        "empty_title": "No applications yet",
+        "empty_title_services": "No inquiries yet",
+        "empty_why": "This inbox is where hiring starts. Next: contact the person and move them to candidates.",
+        "empty_cta_vacancy": "Create vacancy",
+        "empty_cta_setup": "Getting started"
       },
       "messages": {
         "load_failed": "Failed to load leads.",
@@ -7235,7 +7550,7 @@
         "lost_from_filter_banner": "Lost from prior CRM stage: {stage}",
         "lost_from_stage_unknown": "Unknown prior stage"
       },
-      "title_services": "Client Leads",
+      "title_services": "Inquiries",
       "workspace": {
         "distribution_cta": "Auto distribution",
         "view_table": "Table",
@@ -7770,6 +8085,7 @@
       },
       "email": {
         "dispatch_failed": "Email is queued but dispatch failed.",
+        "dispatch_failed_reason": "Send blocked: {reason}",
         "incoming_disabled_title": "Server-side incoming email sync is off",
         "incoming_disabled_body_inbox": "New mail is fetched when you open the Inbox (email scope) or tap Sync unless background sync is enabled.",
         "incoming_enable_cta": "Enable background sync",
@@ -8503,6 +8819,68 @@
         "title": "Start working in 3 steps",
         "wayfinding_title": "Where to work in CRM",
         "wayfinding_nav_label": "Jump to dashboard, work hub, inbox, records, and settings"
+      },
+      "success_path": {
+        "loading": "Preparing your next step…",
+        "badge": "Result",
+        "title": "Close vacancies faster — start here",
+        "subtitle": "One action at a time until applications land and you contact the first candidate.",
+        "progress": "{done} of {total} done",
+        "list_aria": "Success path checklist",
+        "optional": "optional",
+        "deferred": "later",
+        "open": "Open",
+        "continue": "Continue",
+        "next_title": "Do this now",
+        "defer_meta": "Skip for now",
+        "complete": "Basics done — keep hiring from Launchpad.",
+        "page_title": "Start hiring",
+        "page_subtitle": "Do the next step. Get to your first candidate without support.",
+        "hub_badge": "Success path",
+        "hub_footer": "Finish the step above — that is all you need right now.",
+        "items": {
+          "company": {
+            "label": "Create company",
+            "hint": "Add your company name and profile so the workspace has an operating identity.",
+            "cta": "Create company"
+          },
+          "invite": {
+            "label": "Invite teammates",
+            "hint": "Invite recruiters when you are ready — you can do this later.",
+            "cta": "Invite teammates"
+          },
+          "meta": {
+            "label": "Connect Facebook / Meta ads",
+            "hint": "So applications from your ads arrive in HostFlow automatically.",
+            "cta": "Connect ads"
+          },
+          "vacancy": {
+            "label": "Create first vacancy",
+            "hint": "Open the role you need to fill — about 30 seconds.",
+            "cta": "Create vacancy"
+          },
+          "lead": {
+            "label": "Receive first lead",
+            "hint": "Get the first application into your inbox from Meta, a form, or a manual lead.",
+            "cta": "Open leads"
+          },
+          "contact": {
+            "label": "Contact a candidate",
+            "hint": "Take the next action on a lead so nothing sits untouched.",
+            "cta": "Open leads"
+          }
+        },
+        "title_done": "You can close vacancies from here",
+        "subtitle_done": "The basics are done. Keep candidates moving in the pipeline.",
+        "checklist_title": "Progress",
+        "result_ready_title": "You are ready to hire",
+        "result_ready_body": "Company, vacancy, and pipeline are in place. Open Launchpad and keep processing candidates.",
+        "go_work": "Go to work",
+        "go_vacancies": "Open vacancies"
+      },
+      "setup_status": {
+        "technical_gates_summary": "Technical Recruitment gates (advanced)",
+        "technical_gates_hint": "Operational G0–G8 health check — optional detail for admins."
       }
     },
     "reset_password": {
@@ -8526,6 +8904,113 @@
         "docs_base": "Docs Base (read-only)",
         "tenant_id": "Tenant ID",
         "tenant_placeholder": "Tenant UUID"
+      }
+    },
+    "sales_questionnaire": {
+      "attribution_title": "Submission attribution",
+      "attribution_hint": "Where this response came from and how it was attached.",
+      "attribution": {
+        "form": "Form",
+        "version": "Published version",
+        "source": "Source",
+        "publication": "Publication",
+        "submitted_at": "Submitted at",
+        "submission": "Submission",
+        "attach_mode": "Attach mode",
+        "profile": "Entity profile",
+        "purpose": "Purpose",
+        "presentation": "Presentation",
+        "invite": "Invite",
+        "behavior": "Routing behavior",
+        "entry": {
+          "questionnaire_invite": "Personal questionnaire invite",
+          "public_form": "Public form"
+        },
+        "policy": {
+          "attach": "Added to this inquiry",
+          "create": "Created a new inquiry",
+          "match_or_create": "Matched or created inquiry",
+          "review": "Sent to review queue"
+        }
+      }
+    },
+    "marketing": {
+      "sources": {
+        "title": "Sources",
+        "subtitle": "Connected sources, Mapping Health, waiting submissions, and last events.",
+        "none": "—",
+        "empty_title": "No sources yet",
+        "empty_body": "Connect Meta in Integrations or bind an intake source — they will appear here.",
+        "columns": {
+          "source": "Source",
+          "provider": "Provider",
+          "connection": "Connection",
+          "mapping_health": "Mapping Health",
+          "last_lead": "Last lead",
+          "waiting": "Waiting",
+          "routing_issue": "Routing issue",
+          "last_error": "Last error",
+          "campaigns_flights": "Campaigns / Flights",
+          "actions": "Actions"
+        },
+        "connection": {
+          "connected": "Connected",
+          "attention": "Attention",
+          "disconnected": "Disconnected"
+        },
+        "health": {
+          "ready": "Ready",
+          "needs_review": "Needs review",
+          "broken": "Broken"
+        },
+        "routing_issue": {
+          "missing_campaign_flight": "Campaign/Flight for this Ad ID are not configured."
+        },
+        "actions": {
+          "integrations": "Integrations",
+          "connect": "Open Integrations",
+          "mapping": "Mapping",
+          "test_lead": "Test lead",
+          "connection": "Connection",
+          "setup_campaign_flight": "Configure Campaign/Flight"
+        },
+        "errors": {
+          "load": "Failed to load sources"
+        }
+      }
+    },
+    "context_help": {
+      "open_aria": "What is {term}?",
+      "more_faq": "More in FAQ",
+      "terms": {
+        "vacancy": {
+          "title": "Vacancy",
+          "body": "The role you hire for. Leads and candidates attach here so ownership and documents stay clear."
+        },
+        "lead": {
+          "title": "Lead",
+          "body": "An inbound application or inquiry before it becomes a candidate you actively process."
+        },
+        "candidate": {
+          "title": "Candidate",
+          "body": "A person in your hiring pipeline — stages, documents, owner, and next actions until hire."
+        },
+        "order": {
+          "title": "Order",
+          "body": "A commercial client request (who to hire). Vacancies can hang off order lines when Sales is on."
+        },
+        "flight": {
+          "title": "Flight",
+          "body": "A time-bound execution slice of an acquisition campaign (ads run) tied to hiring demand."
+        },
+        "campaign": {
+          "title": "Campaign",
+          "body": "An acquisition plan that groups flights and sources bringing leads into HostFlow."
+        },
+        "meta": {
+          "title": "Meta ads",
+          "body": "Facebook/Instagram lead forms and ads connected so applications land in your inbox automatically."
+        }
       }
     }
   },
@@ -8551,7 +9036,8 @@
           "document_control": "Document control",
           "high_volume_onboarding": "High-volume onboarding",
           "hostflow_vs_spreadsheets": "HostFlow vs spreadsheets",
-          "trucking_recruitment_use_case": "Trucking recruitment use-case"
+          "trucking_recruitment_use_case": "Trucking recruitment use-case",
+          "faq": "FAQ"
         }
       },
       "comparison_hostflow_vs_spreadsheets": {
@@ -9709,6 +10195,14 @@
         "in_progress": "In development",
         "loading": "Loading data...",
         "saving": "Saving..."
+      },
+      "presentation": {
+        "fields": {
+          "recruitment.candidate.first_name": "First name"
+        },
+        "profiles": {
+          "recruitment.candidate.office_worker": "Office worker"
+        }
       }
     },
     "status_page": {
@@ -9854,12 +10348,12 @@
         "q2": "Can we invite team later?",
         "q3": "What if we choose wrong plan?",
         "title": "FAQ",
-        "launch_q": "How long to get started?",
-        "launch_a": "10–30 minutes: workspace, company, first candidate or lead.",
-        "training_q": "Do we need training?",
-        "training_a": "No — the UI is built for daily recruiter work; guidance is embedded in the flow.",
-        "processes_q": "Does it fit different processes?",
-        "processes_a": "Yes — stages, roles, and funnels adapt to how you hire."
+        "launch_q": "How do I start without support?",
+        "launch_a": "Sign up → create company in the setup wizard → connect Meta (or skip) → create your first vacancy. The checklist keeps the next step visible.",
+        "training_q": "Do we need training or an onboarding call?",
+        "training_a": "No for the core path. Guided setup and in-product checklist cover first value; deeper docs and FAQ expand later.",
+        "processes_q": "What happens to my data if I change plan?",
+        "processes_a": "Your workspace stays. Limits and modules follow the plan matrix — upgrade unlocks more seats, automation, and portals."
       },
       "final_cta": {
         "button": "Create workspace",
@@ -9915,31 +10409,37 @@
         "closing": "You see impact within the first days."
       },
       "how": {
-        "badge": "Flow",
-        "title": "What working in the system looks like",
+        "badge": "How it works",
+        "title": "Understand the system in one minute",
         "step_label": "Step {n}",
         "steps": {
           "0": {
-            "title": "Add a candidate or capture a lead",
-            "caption": "Candidate create / lead form — a single intake.",
+            "title": "Create your company",
+            "caption": "Name, country, and how you hire — your operating profile.",
             "screenshot_src": "/landing/step-lead.svg"
           },
           "1": {
-            "title": "Set status and the next step",
-            "caption": "Pipeline stages: what's done and what's next.",
+            "title": "Connect Meta",
+            "caption": "Link ads and lead forms so applications arrive automatically.",
             "screenshot_src": "/landing/step-pipeline.svg"
           },
           "2": {
-            "title": "The system tracks the process and reminds you",
-            "caption": "Tasks & reminders — nothing slips through.",
+            "title": "Create a vacancy",
+            "caption": "Open the role you need to fill and set the hiring path.",
             "screenshot_src": "/landing/step-tasks.svg"
           },
           "3": {
-            "title": "See who is stuck and where it hurts",
-            "caption": "Overview & analytics: bottlenecks visible.",
+            "title": "Receive applications",
+            "caption": "Leads land in the pipeline with ownership — not in a shared inbox.",
             "screenshot_src": "/landing/step-analytics.svg"
+          },
+          "4": {
+            "title": "Process candidates",
+            "caption": "Stages, documents, and next actions stay in one place until hire.",
+            "screenshot_src": "/landing/hero.svg"
           }
-        }
+        },
+        "lead": "Five steps from empty workspace to processing real applications."
       },
       "pain": {
         "badge": "Reality check",
@@ -10006,20 +10506,38 @@
         "footer": "The process can't silently fall apart."
       },
       "hero": {
-        "badge": "CRM for hiring operations",
-        "primary_cta": "Create workspace",
-        "secondary_cta": "Already have an account? Sign in",
-        "subtitle": "No lost candidates, chaos, or manual firefighting. Team, process, and documents — in one system.",
-        "title": "Control hiring from first lead to the new hire's start",
+        "badge": "Recruitment operations platform",
+        "primary_cta": "Start free setup",
+        "secondary_cta": "Sign in",
+        "subtitle": "HostFlow automatically collects candidates from Meta, WhatsApp and forms, assigns them to recruiters, and controls the hiring process end to end.",
+        "title": "Close vacancies faster",
         "bullets": {
-          "0": "No candidate gets dropped",
-          "1": "Clear ownership",
-          "2": "You see where the process stalls",
-          "3": "Documents and stages under control"
+          "0": "Inbound leads land in one owned pipeline",
+          "1": "Clear recruiter ownership on every candidate",
+          "2": "Documents and stages stay visible",
+          "3": "Less chaos between ads, chats, and spreadsheets"
         },
-        "cta_subline": "First candidate in the system — within 2 minutes",
-        "screenshot_caption": "Main screen: pipeline and candidates — control at a glance.",
-        "screenshot_src": "/landing/hero.svg"
+        "cta_subline": "Self-serve setup — first vacancy in minutes, without a sales call",
+        "screenshot_caption": "Pipeline and candidates — hiring control at a glance.",
+        "screenshot_src": "/landing/hero.svg",
+        "answers": {
+          "what": {
+            "label": "What it is",
+            "body": "An operations system that runs hiring from lead to hire — not a generic CRM checklist."
+          },
+          "who": {
+            "label": "Who it is for",
+            "body": "Agencies and employers with real candidate volume from ads, WhatsApp, and forms."
+          },
+          "get": {
+            "label": "What you get",
+            "body": "Owned pipeline, automatic intake, document control, and visible bottlenecks."
+          },
+          "why": {
+            "label": "Why HostFlow",
+            "body": "Built for Meta → vacancy → recruiter work — so candidates stop disappearing between tools."
+          }
+        }
       },
       "objections": {
         "0": "Too many settings before work starts.",
@@ -10030,7 +10548,7 @@
       "pricing": {
         "badge": "Pricing",
         "contact_sales_cta": "Contact sales",
-        "note": "Prices in EUR. Trial before purchase; checkout connects at go-live (see Terms / Billing).",
+        "note": "Prices in EUR. Limits and modules follow the live plan matrix. Trial starts on signup; paid plan applies when trial ends or you upgrade.",
         "featured_badge": "Most popular",
         "enterprise": {
           "name": "Enterprise",
@@ -10077,7 +10595,30 @@
           "price": "€129/mo · €109/mo billed yearly",
           "seats": "Up to 3 users · 1 workspace"
         },
-        "title": "Choose a plan that fits your team"
+        "title": "Choose a plan that fits your team",
+        "clarity": {
+          "includes_title": "Included",
+          "excludes_title": "Not included / limited",
+          "limits_title": "Typical limits",
+          "after_trial_title": "After trial",
+          "includes": {
+            "0": "Candidate / lead pipeline and ownership",
+            "1": "Vacancy workflow and document statuses",
+            "2": "Meta / forms intake on eligible plans",
+            "3": "Team seats per plan (Solo → Business)"
+          },
+          "excludes": {
+            "0": "Enterprise SSO / custom SLAs (Enterprise only)",
+            "1": "Invoicing & multi-workspace depth (Business+)",
+            "2": "Unlimited automation on Solo (assisted only)"
+          },
+          "limits": {
+            "0": "Solo: 1 user, 1 workspace, ~200 leads/mo, 5 open vacancies",
+            "1": "Team: up to 3 users, 1 workspace, higher lead caps",
+            "2": "Business: up to 10 users, up to 3 workspaces"
+          },
+          "after_trial": "Trial uses reduced caps. When trial ends you choose a paid plan (Solo / Team / Business) or contact sales for Enterprise. Workspace data stays; features follow the selected plan."
+        }
       }
     },
     "documents_upload": {
@@ -10163,6 +10704,23 @@
     },
     "locale_switcher": {
       "label": "Lang"
+    },
+    "faq": {
+      "badge": "Help",
+      "title": "Frequently asked questions",
+      "subtitle": "From signup to first hire — clear answers so you can move without waiting on support.",
+      "cta_signup": "Start free setup",
+      "cta_pricing": "View pricing",
+      "search_label": "Search FAQ",
+      "search_placeholder": "Search questions…",
+      "sections_aria": "FAQ sections",
+      "no_results": "No questions match your search.",
+      "still_title": "Ready to try it?",
+      "still_body": "Create a workspace and follow the single next step on screen.",
+      "seo": {
+        "title": "HostFlow FAQ — setup, Meta, recruitment, billing",
+        "description": "Answers for getting started, Meta ads, WhatsApp, vacancies, documents, billing, security, and API — hire without waiting on support."
+      }
     }
   },
   "admin": {
@@ -11282,6 +11840,14 @@
           "label": "Communications SLA",
           "description": "Escalation when threads sit unanswered too long."
         },
+        "communications_templates": {
+          "label": "Communication templates",
+          "description": "Versioned Intent-bound message bodies (publish/preview/history). Not messenger canned replies or lead emails."
+        },
+        "communications_automation": {
+          "label": "Communication automation",
+          "description": "Event → Rules → Intent only. Not legacy reminder automations and not a send path."
+        },
         "audit": {
           "label": "Audit log",
           "description": "Review admin actions and sensitive activity."
@@ -11297,6 +11863,10 @@
         "profile": {
           "description": "Personal profile, language, security and local preferences.",
           "label": "My profile"
+        },
+        "roles_access": {
+          "label": "Roles & access",
+          "description": "Trust roles, module matrix, and permission presets for Employee and Viewer."
         }
       },
       "audit": {
@@ -11363,6 +11933,18 @@
           "description": "Company profile, workspace identity and high-level access scope.",
           "label": "Workspace"
         }
+      },
+      "roles_access": {
+        "title": "Roles & access",
+        "description": "Trust roles and module visibility. Job titles are presets — not separate security roles (ADR-036).",
+        "matrix_heading": "Role × module matrix",
+        "matrix_help": "V = visible, E = editable. Administrator column is locked (trust ceiling).",
+        "show_legacy": "Show legacy role columns",
+        "ceiling_locked": "(locked)",
+        "presets_title": "Presets (not roles)",
+        "presets_body": "Recruiter, Team lead, HR, Compliance are starter packs applied to Employee. Portal guests use Viewer + portal context — not client_manager.",
+        "load_failed": "Failed to load roles matrix",
+        "save_failed": "Failed to save"
       }
     },
     "communications_settings": {
@@ -11376,7 +11958,9 @@
       "messengers_templates_cta": "Shared templates & all accounts",
       "open_email": "Outbound SMTP",
       "open_queue": "Inbox queue & routing",
-      "open_sla": "Communications SLA"
+      "open_sla": "Communications SLA",
+      "open_templates": "Communication templates",
+      "open_automation": "Communication automation"
     },
     "communications_messengers": {
       "title": "Messenger channels",
@@ -11579,6 +12163,78 @@
         "channel": "Channel",
         "assigned": "Assigned",
         "assignee": "Assignee"
+      }
+    },
+    "communications_automation": {
+      "title": "Communication automation",
+      "subtitle": "Event → Rules → Intent only. Not legacy reminder automations and not a send path.",
+      "header_kicker": "automation",
+      "include_archived": "Include archived",
+      "list_title": "Rules",
+      "empty": "No automation rules yet.",
+      "select_prompt": "Select or create a rule.",
+      "create": {
+        "submit": "Create draft"
+      },
+      "actions": {
+        "back": "← Communications admin",
+        "templates": "Communication templates"
+      },
+      "notices": {
+        "created": "Rule created",
+        "draft_saved": "Draft saved",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "errors": {
+        "load": "Failed to load automation rules",
+        "history": "Failed to load history",
+        "create": "Failed to create rule",
+        "save_draft": "Failed to save draft",
+        "publish": "Failed to publish",
+        "enable": "Failed to update enabled flag",
+        "archive": "Failed to archive",
+        "dry_run": "Dry-run failed"
+      }
+    },
+    "communications_templates": {
+      "title": "Communication templates",
+      "subtitle": "Intent-bound, versioned message bodies. Presentation only — not messenger canned replies or lead message templates.",
+      "header_kicker": "templates",
+      "include_archived": "Include archived",
+      "list_title": "Templates",
+      "empty": "No templates yet.",
+      "select_prompt": "Select or create a template.",
+      "preview_title": "Preview",
+      "history_title": "Version history",
+      "create": {
+        "key": "Key",
+        "name": "Name",
+        "submit": "Create draft"
+      },
+      "actions": {
+        "back": "← Communications admin",
+        "messenger_snippets": "Messenger snippets",
+        "save_draft": "Save draft",
+        "publish": "Publish",
+        "archive": "Archive",
+        "preview": "Preview draft"
+      },
+      "notices": {
+        "created": "Template created",
+        "draft_saved": "Draft saved",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "errors": {
+        "load": "Failed to load communication templates",
+        "versions": "Failed to load versions",
+        "create": "Failed to create template",
+        "save_draft": "Failed to save draft",
+        "publish": "Failed to publish",
+        "archive": "Failed to archive",
+        "preview": "Preview failed",
+        "diff": "Diff failed"
       }
     },
     "communications_sla": {
@@ -11922,6 +12578,33 @@
         "from_email": "info@hostflow.cc",
         "from_name": "HostFlow",
         "test_to": "test@example.com"
+      },
+      "gmail_oauth": {
+        "title": "Gmail OAuth (inbound inbox)",
+        "subtitle": "Connect Gmail for the Communications inbox. SMTP above is only for outbound CRM notifications.",
+        "default_label": "Gmail inbox",
+        "account": "Mailbox",
+        "client_id": "OAuth Client ID",
+        "client_secret": "OAuth Client Secret",
+        "client_secret_placeholder_saved": "Leave blank to keep the saved secret",
+        "client_secret_required": "Enter the Google Client Secret, then Save mailbox",
+        "client_id_required": "Enter the OAuth Client ID",
+        "redirect_uri": "Redirect URI",
+        "save_mailbox": "Save mailbox",
+        "save_ok": "Mailbox saved",
+        "save_failed": "Could not save mailbox",
+        "secret_saved": "Client secret saved",
+        "secret_missing": "Client secret not saved yet",
+        "start_failed": "Could not start OAuth",
+        "complete_failed": "Could not complete OAuth",
+        "complete_ok": "Gmail connected",
+        "code_required": "No authorization code",
+        "state_required": "No OAuth state — click Connect email first",
+        "refresh_ok": "Token refreshed",
+        "refresh_failed": "Could not refresh token",
+        "refresh_token": "Refresh token",
+        "no_refresh_token": "Refresh token missing",
+        "flow_hint": "1) Paste Client ID + Secret from Google Cloud → Save mailbox. 2) Connect email → sign in. 3) OAuth complete."
       }
     },
     "ttv": {

@@ -18,7 +18,7 @@ from backend.app.modules.intake_routing.reference import (
     normalize_provider,
     normalize_route_intent,
 )
-from backend.app.modules.leads.service._helpers import _load_tenant_business_type
+from backend.app.modules.leads.tenant_business_type import load_tenant_business_type
 
 _log = logging.getLogger(__name__)
 
@@ -232,7 +232,7 @@ class IntakeRouter:
             )
             return _failed(warnings=("meta_missing_form_id",))
 
-        business_type = await _load_tenant_business_type(db, tid, oc_hint)
+        business_type = await load_tenant_business_type(db, tid, oc_hint)
         route_intent = _fallback_route_intent(business_type)
         if route_intent == RouteIntent.unknown.value:
             _log.warning(

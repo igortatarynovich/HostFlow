@@ -31,7 +31,7 @@
 
 - **Workflow:** `.github/workflows/security-gates.yml` — jobs `no-raw-emit-security-event`, `telemetry-phase34-stability`.
 - **Скрипт (raw shim):** `scripts/security/check_no_raw_emit_security_event.py` — сканирует `backend/app/**/*.py`; падает, если встречается `emit_security_event(` не на строке с `def emit_security_event(` и файл **не** в allowlist.
-- **Скрипт (telemetry helpers):** `scripts/security/check_telemetry_helpers_v1_only.py` — `document_events.py`, `export_events.py`, **`retrieval_events.py`** импортируют только `emit_security_event_v1` из `canonical_emit`, без вызовов legacy `emit_security_event(`.
+- **Скрипт (telemetry helpers):** `scripts/security/check_telemetry_helpers_v1_only.py` — `document_events.py`, `export_events.py`, `retrieval_events.py`, **`access_events.py`** импортируют только `emit_security_event_v1` из `canonical_emit`, без вызовов legacy `emit_security_event(`.
 - **Скрипт (logger bypass heuristic):** `scripts/security/check_no_sensitive_logger_bypass.py` — однострочный запрет `logger.*(` на той же строке, что и подстроки `signed_url`, `download_url`, `export_path`, `archive_path` в `backend/app/**/*.py`.
 - **Разрешено без allowlist:** только строки-определения `def emit_security_event(`; вызовы **`emit_security_event_v1(`** везде разрешены.
 - **Allowlist:** `scripts/security/emit_security_event_allowlist.txt` — repo-relative пути; в начале файла **burn-down** комментарий. Сейчас явно разрешён только модуль legacy shim: `backend/app/security/events.py`.
@@ -53,7 +53,8 @@
 
 1. ~~CI grep на raw `emit_security_event(`~~ — сделано (`security-gates` + скрипт выше).
 2. ~~Phase 3/4 stabilization~~ — таблица mandatory events, gate на `document_events`/`export_events`, тест редaction `extra`, эвристика на `logger` + чувствительные подстроки (`telemetry-phase34-stability`).
-3. Controlled rollout: **search / AI retrieval** — отдельный governance + helper PR, затем call sites (не «широкий» сразу telemetry-surface).
+3. Controlled rollout: **search / AI retrieval** — governance + helper готовы; первый call site: `GET /api/v1/search` → `search.retrieval.completed`. Дальше — остальные retrieval surfaces без «широкого» dump.
+4. Phase 2 list golden path: prefix `access.*` + `access_events.py`; call site `GET /api/v1/candidates`.
 
 ---
 

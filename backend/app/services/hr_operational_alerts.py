@@ -109,6 +109,39 @@ async def _user_ids_for_roles(
     return [str(x) for x in rows.scalars().all() if x]
 
 
+async def _user_ids_for_preset_lane(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    preset: str,
+) -> list[str]:
+    """Employees (and admins) whose preferences.preset_id or legacy role matches lane."""
+    from backend.app.auth.trust_roles import is_hr_workspace_actor, is_team_lead_org_actor
+
+    rows = await db.execute(
+        select(User).where(
+            User.tenant_id == str(tenant_id).strip(),
+            User.role.in_(
+                (
+                    UserRole.employee.value,
+                    UserRole.administrator.value,
+                    UserRole.superadmin.value,
+                )
+            ),
+            User.is_active.is_(True),
+        )
+    )
+    out: list[str] = []
+    for user in rows.scalars().all():
+        role = str(getattr(user.role, "value", user.role) or "")
+        prefs = user.preferences if isinstance(user.preferences, dict) else {}
+        if preset == "hr" and is_hr_workspace_actor(role, preferences=prefs):
+            out.append(str(user.id))
+        elif preset == "team_lead" and is_team_lead_org_actor(role, preferences=prefs):
+            out.append(str(user.id))
+    return out
+
+
 def _unique_user_ids(*parts: Iterable[str | None]) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
@@ -135,8 +168,13 @@ async def resolve_alert_recipients(
     assignee = risk.get("assignee_user_id")
     assignee_s = str(assignee).strip() if assignee else None
 
-    hr_ids = await _user_ids_for_roles(db, tenant_id=tid, roles=(UserRole.hr_officer,))
-    sup_ids = await _user_ids_for_roles(db, tenant_id=tid, roles=(UserRole.supervisor,))
+    hr_ids = await _user_ids_for_preset_lane(db, tenant_id=tid, preset="hr")
+    sup_ids = await _user_ids_for_preset_lane(db, tenant_id=tid, preset="team_lead")
+    if not sup_ids:
+        # Fall back to administrators when no team_lead preset is present.
+        sup_ids = await _user_ids_for_roles(
+            db, tenant_id=tid, roles=(UserRole.administrator,)
+        )
 
     if code in ("missing_high_risk_document", "document_expired"):
         return _unique_user_ids(hr_ids, sup_ids, [assignee_s])

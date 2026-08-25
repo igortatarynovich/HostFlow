@@ -48,6 +48,11 @@ def _load_model_module(module_name: str) -> ModuleType:
 Tenant = _load_model_module("tenant").Tenant  # type: ignore[attr-defined]
 TenantEmailConfig = _load_model_module("tenant_email_config").TenantEmailConfig  # type: ignore[attr-defined]
 Company = _load_model_module("company").Company  # type: ignore[attr-defined]
+ClientAccount = _load_model_module("client_account").ClientAccount  # type: ignore[attr-defined]
+sales_order_module = _load_model_module("sales_order")
+SalesOrder = sales_order_module.SalesOrder  # type: ignore[attr-defined]
+SalesOrderLine = sales_order_module.SalesOrderLine  # type: ignore[attr-defined]
+SalesBillableItem = sales_order_module.SalesBillableItem  # type: ignore[attr-defined]
 Vacancy = _load_model_module("vacancy").Vacancy  # type: ignore[attr-defined]
 VacancyRecruiter = _load_model_module("vacancy_recruiter").VacancyRecruiter  # type: ignore[attr-defined]
 lead_module = _load_model_module("lead")
@@ -64,8 +69,19 @@ IntakeSourceBinding = intake_routing_module.IntakeSourceBinding  # type: ignore[
 lead_import_module = _load_model_module("lead_import_job")
 LeadImportJob = lead_import_module.LeadImportJob  # type: ignore[attr-defined]
 LeadImportJobStatus = lead_import_module.LeadImportJobStatus  # type: ignore[attr-defined]
+TenantLeadForm = _load_model_module("tenant_lead_form").TenantLeadForm  # type: ignore[attr-defined]
+LeadQuestionnaireInvite = _load_model_module("lead_questionnaire_invite").LeadQuestionnaireInvite  # type: ignore[attr-defined]
+CommunicationDelivery = _load_model_module("communication_delivery").CommunicationDelivery  # type: ignore[attr-defined]
+CommunicationDeliveryAttempt = _load_model_module(
+    "communication_delivery_attempt"
+).CommunicationDeliveryAttempt  # type: ignore[attr-defined]
+CommunicationDeliveryCallbackUnresolved = _load_model_module(
+    "communication_delivery_callback_unresolved"
+).CommunicationDeliveryCallbackUnresolved  # type: ignore[attr-defined]
 Candidate = _load_model_module("candidate").Candidate  # type: ignore[attr-defined]
 RecruitmentApplication = _load_model_module("recruitment_application").RecruitmentApplication  # type: ignore[attr-defined]
+SalesInquiry = _load_model_module("sales_inquiry").SalesInquiry  # type: ignore[attr-defined]
+FlightDispatchLedger = _load_model_module("flight_dispatch_ledger").FlightDispatchLedger  # type: ignore[attr-defined]
 CandidateEmployment = _load_model_module("candidate_employment").CandidateEmployment  # type: ignore[attr-defined]
 CandidateConsent = _load_model_module("candidate_consent").CandidateConsent  # type: ignore[attr-defined]
 CandidateHandoff = _load_model_module("candidate_handoff").CandidateHandoff  # type: ignore[attr-defined]
@@ -77,10 +93,33 @@ Stage = _load_model_module("stage").Stage  # type: ignore[attr-defined]
 MagicLink = _load_model_module("magic_link").MagicLink  # type: ignore[attr-defined]
 OwnCompany = _load_model_module("own_company").OwnCompany  # type: ignore[attr-defined]
 WorkforceEmployee = _load_model_module("workforce_employee").WorkforceEmployee  # type: ignore[attr-defined]
+WorkforceTaxProfile = _load_model_module("workforce_tax_profile").WorkforceTaxProfile  # type: ignore[attr-defined]
+WorkforceInsuranceProfile = _load_model_module("workforce_insurance_profile").WorkforceInsuranceProfile  # type: ignore[attr-defined]
+WorkforceComplianceState = _load_model_module("workforce_compliance_state").WorkforceComplianceState  # type: ignore[attr-defined]
+WorkforceWorkEligibilityProfile = _load_model_module(
+    "workforce_work_eligibility_profile"
+).WorkforceWorkEligibilityProfile  # type: ignore[attr-defined]
+WorkforceHrDocumentContext = _load_model_module("workforce_hr_document_context").WorkforceHrDocumentContext  # type: ignore[attr-defined]
+WorkforceZusWorkspaceTask = _load_model_module("workforce_zus_workspace_task").WorkforceZusWorkspaceTask  # type: ignore[attr-defined]
 WorkforceHrDocumentControlTask = _load_model_module("workforce_hr_document_control_task").WorkforceHrDocumentControlTask  # type: ignore[attr-defined]
 WorkforceLifecycleEvent = _load_model_module("workforce_lifecycle_event").WorkforceLifecycleEvent  # type: ignore[attr-defined]
 WorkforceEmployment = _load_model_module("workforce_employment").WorkforceEmployment  # type: ignore[attr-defined]
 AutomationRule = _load_model_module("automation_rule").AutomationRule  # type: ignore[attr-defined]
+campaign_module = _load_model_module("campaign")
+Campaign = campaign_module.Campaign  # type: ignore[attr-defined]
+CampaignRun = campaign_module.CampaignRun  # type: ignore[attr-defined]
+CampaignTarget = campaign_module.CampaignTarget  # type: ignore[attr-defined]
+CampaignRunForm = campaign_module.CampaignRunForm  # type: ignore[attr-defined]
+CampaignRunIntakeSource = campaign_module.CampaignRunIntakeSource  # type: ignore[attr-defined]
+FlightAdBinding = campaign_module.FlightAdBinding  # type: ignore[attr-defined]
+CampaignResultAttribution = campaign_module.CampaignResultAttribution  # type: ignore[attr-defined]
+CampaignOutcome = campaign_module.CampaignOutcome  # type: ignore[attr-defined]
+CampaignOutcomeResultLink = campaign_module.CampaignOutcomeResultLink  # type: ignore[attr-defined]
+CampaignFlightSpendEntry = campaign_module.CampaignFlightSpendEntry  # type: ignore[attr-defined]
+CampaignResultQualification = campaign_module.CampaignResultQualification  # type: ignore[attr-defined]
+AcquisitionActivityEvent = _load_model_module(
+    "acquisition_activity_event"
+).AcquisitionActivityEvent  # type: ignore[attr-defined]
 funnel_module = _load_model_module("funnel")
 Funnel = funnel_module.Funnel  # type: ignore[attr-defined]
 FunnelStage = funnel_module.FunnelStage  # type: ignore[attr-defined]
@@ -114,6 +153,9 @@ MergeDocumentGenerationLog = _load_model_module("merge_document_generation_log")
 CandidateStageHistory = _load_model_module("candidate_stage_history").CandidateStageHistory  # type: ignore[attr-defined]
 CandidateAssigneeHistory = _load_model_module("candidate_assignee_history").CandidateAssigneeHistory  # type: ignore[attr-defined]
 
+CandidateProfile = _load_model_module("candidate_profile").CandidateProfile  # type: ignore[attr-defined]
+candidate_profile_history_module = _load_model_module("candidate_profile_history")
+CandidateProfileHistory = candidate_profile_history_module.CandidateProfileHistory  # type: ignore[attr-defined]
 
 
 # Документы (новые модели из модуля documents)
@@ -171,6 +213,60 @@ _register_aliases("document_reporting", _sys.modules[BulkOperation.__module__])
 _load_model_module("activity")
 Reminder = _load_model_module("reminder").Reminder  # type: ignore[attr-defined]
 UserNotification = _load_model_module("user_notification").UserNotification  # type: ignore[attr-defined]
+CandidateProfile = _load_model_module("candidate_profile").CandidateProfile  # type: ignore[attr-defined]
+CommunicationThread = _load_model_module("communication").CommunicationThread  # type: ignore[attr-defined]
+CommunicationThreadResultLink = _load_model_module(
+    "communication_thread_result_link"
+).CommunicationThreadResultLink  # type: ignore[attr-defined]
+CommunicationThreadEntityLink = _load_model_module(
+    "communication_thread_entity_link"
+).CommunicationThreadEntityLink  # type: ignore[attr-defined]
+CommunicationInboundUnresolved = _load_model_module(
+    "communication_inbound_unresolved"
+).CommunicationInboundUnresolved  # type: ignore[attr-defined]
+CommunicationThreadNextAction = _load_model_module(
+    "communication_thread_next_action"
+).CommunicationThreadNextAction  # type: ignore[attr-defined]
+CommunicationThreadSlaEvent = _load_model_module(
+    "communication_thread_sla_event"
+).CommunicationThreadSlaEvent  # type: ignore[attr-defined]
+_communication_template_module = _load_model_module("communication_template")
+CommunicationTemplate = _communication_template_module.CommunicationTemplate  # type: ignore[attr-defined]
+CommunicationTemplateVersion = _communication_template_module.CommunicationTemplateVersion  # type: ignore[attr-defined]
+CommunicationTemplateVariable = _communication_template_module.CommunicationTemplateVariable  # type: ignore[attr-defined]
+CommunicationTemplateChannelBinding = (
+    _communication_template_module.CommunicationTemplateChannelBinding
+)  # type: ignore[attr-defined]
+CommunicationTemplateIntentBinding = (
+    _communication_template_module.CommunicationTemplateIntentBinding
+)  # type: ignore[attr-defined]
+_communication_automation_module = _load_model_module("communication_automation")
+CommunicationAutomationRule = _communication_automation_module.CommunicationAutomationRule  # type: ignore[attr-defined]
+CommunicationAutomationRuleVersion = (
+    _communication_automation_module.CommunicationAutomationRuleVersion
+)  # type: ignore[attr-defined]
+CommunicationAutomationTrigger = (
+    _communication_automation_module.CommunicationAutomationTrigger
+)  # type: ignore[attr-defined]
+CommunicationAutomationDecision = (
+    _communication_automation_module.CommunicationAutomationDecision
+)  # type: ignore[attr-defined]
+_communication_campaign_module = _load_model_module("communication_campaign")
+CommunicationCampaign = _communication_campaign_module.CommunicationCampaign  # type: ignore[attr-defined]
+CommunicationCampaignVersion = (
+    _communication_campaign_module.CommunicationCampaignVersion
+)  # type: ignore[attr-defined]
+CommunicationCampaignAudienceDefinition = (
+    _communication_campaign_module.CommunicationCampaignAudienceDefinition
+)  # type: ignore[attr-defined]
+CommunicationCampaignRecipient = (
+    _communication_campaign_module.CommunicationCampaignRecipient
+)  # type: ignore[attr-defined]
+CommunicationCampaignRun = _communication_campaign_module.CommunicationCampaignRun  # type: ignore[attr-defined]
+CommunicationCampaignRunItem = (
+    _communication_campaign_module.CommunicationCampaignRunItem
+)  # type: ignore[attr-defined]
+DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
 CandidateService = _load_model_module("service").CandidateService  # type: ignore[attr-defined]
@@ -213,6 +309,8 @@ __all__ = [
     "Base",
     "Candidate",
     "RecruitmentApplication",
+    "SalesInquiry",
+    "FlightDispatchLedger",
     "CandidateHandoff",
     "CandidateEvidence",
     "CandidateEvidenceDocument",
@@ -244,6 +342,8 @@ __all__ = [
     "BulkOperationItem",
     "CandidateStageHistory",
     "CandidateAssigneeHistory",
+    "CandidateProfile",
+    "CandidateProfileHistory",
     "CandidateService",
     "CandidateEmployment",
     "CandidateConsent",
@@ -258,10 +358,28 @@ __all__ = [
     "User",
     "OwnCompany",
     "WorkforceEmployee",
+    "WorkforceTaxProfile",
+    "WorkforceInsuranceProfile",
+    "WorkforceComplianceState",
+    "WorkforceWorkEligibilityProfile",
+    "WorkforceHrDocumentContext",
+    "WorkforceZusWorkspaceTask",
     "WorkforceHrDocumentControlTask",
     "WorkforceLifecycleEvent",
     "WorkforceEmployment",
     "AutomationRule",
+    "Campaign",
+    "CampaignRun",
+    "CampaignTarget",
+    "CampaignRunForm",
+    "CampaignRunIntakeSource",
+    "FlightAdBinding",
+    "CampaignResultAttribution",
+    "CampaignOutcome",
+    "CampaignOutcomeResultLink",
+    "CampaignFlightSpendEntry",
+    "CampaignResultQualification",
+    "AcquisitionActivityEvent",
     "UserCompanyAccess",
     "VacancyRecruiter",
     "Lead",
@@ -273,6 +391,11 @@ __all__ = [
     "MetaOAuthPending",
     "LeadImportJob",
     "LeadImportJobStatus",
+    "TenantLeadForm",
+    "LeadQuestionnaireInvite",
+    "CommunicationDelivery",
+    "CommunicationDeliveryAttempt",
+    "CommunicationDeliveryCallbackUnresolved",
     "CandidateDeleteRequest",
     "UserInvite",
     "UserAuditLog",
@@ -282,6 +405,9 @@ __all__ = [
     "Tenant",
     "TenantEmailConfig",
     "Company",
+    "SalesOrder",
+    "SalesOrderLine",
+    "SalesBillableItem",
     "Vacancy",
     "Funnel",
     "FunnelStage",
@@ -304,6 +430,29 @@ __all__ = [
     "MergeDocumentGenerationLog",
     "Reminder",
     "UserNotification",
+    "CandidateProfile",
+    "CommunicationThread",
+    "CommunicationThreadResultLink",
+    "CommunicationThreadEntityLink",
+    "CommunicationInboundUnresolved",
+    "CommunicationThreadNextAction",
+    "CommunicationThreadSlaEvent",
+    "CommunicationTemplate",
+    "CommunicationTemplateVersion",
+    "CommunicationTemplateVariable",
+    "CommunicationTemplateChannelBinding",
+    "CommunicationTemplateIntentBinding",
+    "CommunicationAutomationRule",
+    "CommunicationAutomationRuleVersion",
+    "CommunicationAutomationTrigger",
+    "CommunicationAutomationDecision",
+    "CommunicationCampaign",
+    "CommunicationCampaignVersion",
+    "CommunicationCampaignAudienceDefinition",
+    "CommunicationCampaignRecipient",
+    "CommunicationCampaignRun",
+    "CommunicationCampaignRunItem",
+    "DocumentPolicy",
     "Stage",
     "MagicLink",
     "Invoice",

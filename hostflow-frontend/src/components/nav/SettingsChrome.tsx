@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import {
   type Icon as TablerIcon,
-  IconAdjustments,
+  IconBriefcase,
+  IconBuildingStore,
   IconCreditCard,
   IconLayoutGrid,
   IconPlugConnected,
@@ -53,10 +54,17 @@ export function SettingsChrome({ pathname, search, compactMode = false }: Settin
       visible: can('companies.view') || can('admin.companyAcl') || can('admin.users') || can('settings.view'),
     },
     {
-      key: 'crm_setup',
-      label: t('app.settings.chrome.crm_setup', { defaultValue: 'CRM setup' }),
-      to: settingsChromeTabHref('crm_setup'),
-      icon: IconAdjustments,
+      key: 'recruitment_setup',
+      label: t('app.settings.chrome.recruitment_setup', { defaultValue: 'Recruitment' }),
+      to: settingsChromeTabHref('recruitment_setup'),
+      icon: IconBriefcase,
+      visible: can('admin.users') || can('users.manage'),
+    },
+    {
+      key: 'sales_setup',
+      label: t('app.settings.chrome.sales_setup', { defaultValue: 'Sales' }),
+      to: settingsChromeTabHref('sales_setup'),
+      icon: IconBuildingStore,
       visible: can('admin.users') || can('users.manage'),
     },
     {

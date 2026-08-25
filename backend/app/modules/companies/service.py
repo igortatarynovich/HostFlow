@@ -123,14 +123,22 @@ async def create_company_service(
     data: schemas.CompanyCreate,
     *,
     actor_user_id: str | None = None,
+    commit: bool = True,
 ) -> Company:
     t, lic = await _tenant_license_for_billing_gate(db)
     _billing_require_full_access(t, lic)
     session = crud._extract_session(db)
     try:
-        company = await crud.create_company(session, data, actor_user_id=actor_user_id)
+        company = await crud.create_company(
+            session,
+            data,
+            actor_user_id=actor_user_id,
+            commit=commit,
+        )
     except ValueError as exc:
         raise _map_value_error(exc) from exc
+    if not commit:
+        return company
     try:
         from backend.app.services import uos_auto_activities
 

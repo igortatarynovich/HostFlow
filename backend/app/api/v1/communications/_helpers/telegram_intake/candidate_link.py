@@ -79,6 +79,14 @@ async def _create_candidate_from_telegram_intake(
     _ensure_candidate_intake_token(candidate)
     db.add(candidate)
     await db.flush()
+    from backend.app.services.candidate_creation_service import finalize_new_candidate_record
+
+    await finalize_new_candidate_record(
+        db,
+        tenant_id=tenant_id,
+        candidate=candidate,
+        source="telegram_intake",
+    )
     await _link_candidate_to_telegram_chat(
         db,
         tenant_id=tenant_id,

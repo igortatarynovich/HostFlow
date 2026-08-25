@@ -204,6 +204,14 @@ async def create_notification(
     dedupe_window_minutes: Optional[int] = None,
     priority: Optional[str] = None,
 ) -> Optional[UserNotification]:
+    """Add a notification, collapsing it onto an existing one when it repeats.
+
+    Dedupe (when ``dedupe_window_minutes`` is set) matches on
+    tenant/user/event_type/channel/entity plus, if supplied, ``payload["dedupe_key"]``.
+    The session runs with ``autoflush=False``, so the probe only sees rows already
+    flushed: callers emitting several findings inside one transaction must flush
+    between them for dedupe to hold.
+    """
     normalized_payload = _normalize_payload(
         event_type=event_type,
         payload=payload,
@@ -247,9 +255,24 @@ async def create_notification(
             UserNotification.created_at >= since,
             UserNotification.is_read.is_(False),
         ]
-        # Backward-compatible dedupe:
-        # 1) exact dedupe_key match (preferred),
-        # 2) fallback to entity-based match when no dedupe_key provided.
+        # Scope the probe to the target entity instead of "the 50 newest rows of
+        # this event_type". The old global window silently stopped matching once a
+        # tenant held more than 50 unread rows of one event_type: the row carrying
+        # the dedupe_key we were looking for fell outside the window, dedupe missed,
+        # and every scheduler tick inserted another duplicate. That is self-feeding —
+        # it produced ~3.6k copies per dedupe_key and 920k rows for 3 users before it
+        # was caught (2026-07). Entity scoping keeps the probe on the well-indexed
+        # (tenant_id, related_entity_type, related_entity_id) path and bounds it to
+        # the handful of rows that can legitimately match.
+        if entity_type is None:
+            base_filters.append(UserNotification.entity_type.is_(None))
+        else:
+            base_filters.append(UserNotification.entity_type == entity_type)
+        if entity_id is None:
+            base_filters.append(UserNotification.entity_id.is_(None))
+        else:
+            base_filters.append(UserNotification.entity_id == entity_id)
+
         recent = (
             await db.execute(
                 select(UserNotification)
@@ -259,21 +282,15 @@ async def create_notification(
             )
         ).scalars().all()
         for existing in recent:
+            # Entity identity is already enforced in SQL above; only the optional
+            # dedupe_key still has to be compared here (it lives inside the JSON
+            # payload and is not indexable on this table).
+            if not dedupe_key:
+                return existing
             existing_payload = existing.payload if isinstance(existing.payload, dict) else {}
             existing_key = str(existing_payload.get("dedupe_key") or "").strip() or None
-            if dedupe_key:
-                if existing_key and existing_key == dedupe_key:
-                    return existing
-                continue
-            if entity_type is None and existing.entity_type is not None:
-                continue
-            if entity_type is not None and existing.entity_type != entity_type:
-                continue
-            if entity_id is None and existing.entity_id is not None:
-                continue
-            if entity_id is not None and existing.entity_id != entity_id:
-                continue
-            return existing
+            if existing_key == dedupe_key:
+                return existing
 
     notification = UserNotification(
         id=str(uuid4()),

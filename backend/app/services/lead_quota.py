@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.intake_platform.operational_scope import OPERATIONAL_EXCLUDED_LEAD_STAGES
 from backend.app.models.lead import Lead
 from backend.app.models.tenant import Tenant, TenantLicense
 from backend.app.services.billing_pack_addons import MONTHLY_LEADS_CAP, pack_addon_int
@@ -65,6 +66,7 @@ async def count_leads_created_this_month_utc(db: AsyncSession, tenant_id: str) -
     stmt = select(func.count()).select_from(Lead).where(
         Lead.tenant_id == tenant_id,
         Lead.created_at >= month_start,
+        func.lower(func.coalesce(Lead.stage, "")).notin_(tuple(OPERATIONAL_EXCLUDED_LEAD_STAGES)),
     )
     return int((await db.execute(stmt)).scalar_one() or 0)
 

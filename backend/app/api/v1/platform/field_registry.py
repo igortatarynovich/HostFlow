@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+
 from typing import List, Optional
 from uuid import UUID
 
@@ -9,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import get_current_user, require_roles
+from backend.app.auth.deps import get_current_user
 from backend.app.auth.hiring_workspace_roles import HIRING_CANDIDATE_PROFILE_READ_ROLES
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.field_registry.candidate_layout_bridge import resolve_effective_candidate_card_layout
@@ -20,7 +22,6 @@ router = APIRouter(
     tags=["field-registry"],
     redirect_slashes=False,
 )
-
 
 class CanonicalFieldOut(BaseModel):
     id: str
@@ -38,7 +39,6 @@ class CanonicalFieldOut(BaseModel):
     registry_version: str
     status: str
 
-
 class LayoutFieldOut(CanonicalFieldOut):
     section_code: str
     sort_order: int
@@ -46,12 +46,10 @@ class LayoutFieldOut(CanonicalFieldOut):
     required: bool
     label_override: Optional[str] = None
 
-
 class LayoutSectionOut(BaseModel):
     code: str
     order: int
     fields: List[LayoutFieldOut]
-
 
 class EffectiveCardLayoutOut(BaseModel):
     entity_type: str
@@ -71,18 +69,16 @@ class EffectiveCardLayoutOut(BaseModel):
     process_profile_source: Optional[str] = None
     bridge_source: Optional[str] = None
 
-
 class CanonicalFieldListOut(BaseModel):
     items: List[CanonicalFieldOut]
     count: int
-
 
 @router.get("/fields", response_model=CanonicalFieldListOut)
 async def list_canonical_fields(
     entity_type: Optional[str] = Query(None, description="Filter by entity type (candidate, vacancy, client)"),
     module: Optional[str] = Query(None, description="Filter by owning module"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
     __user=Depends(get_current_user),
 ) -> CanonicalFieldListOut:
     """List canonical field definitions (tenant overrides merged over platform catalog)."""
@@ -98,14 +94,13 @@ async def list_canonical_fields(
         count=len(items),
     )
 
-
 @router.get("/layouts/{layout_code}", response_model=EffectiveCardLayoutOut)
 async def get_card_layout(
     layout_code: str,
     entity_type: str = Query(..., description="Entity type for validation/resolution"),
     module: Optional[str] = Query(None),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
     __user=Depends(get_current_user),
 ) -> EffectiveCardLayoutOut:
     """Get read-only card layout by code."""
@@ -121,7 +116,6 @@ async def get_card_layout(
         raise HTTPException(status_code=404, detail="Card layout not found")
     return EffectiveCardLayoutOut.model_validate(payload)
 
-
 @router.get("/effective-layout", response_model=EffectiveCardLayoutOut)
 async def get_effective_card_layout(
     entity_type: str = Query(..., description="Entity type (candidate, vacancy, client)"),
@@ -132,7 +126,7 @@ async def get_effective_card_layout(
         None, description="CandidateProfile id for layout bridge overlay (P3)"
     ),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    _: None = Depends(require_roles(*HIRING_CANDIDATE_PROFILE_READ_ROLES)),
+    _: None = Depends(require_trust_read()),
     __user=Depends(get_current_user),
 ) -> EffectiveCardLayoutOut:
     """Resolve effective read-only card layout for an entity type."""

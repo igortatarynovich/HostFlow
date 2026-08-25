@@ -13,9 +13,11 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.services.candidate_workforce_lock import is_candidate_locked_by_workforce
+from backend.app.auth.trust_roles import is_hr_workspace_actor
 from backend.app.services.handoff import is_client_tenant
 from backend.app.services.recruitment_handoff_write_guard import (
     RECRUITMENT_LOCK_OVERRIDE_ROLES,
+    can_override_recruitment_handoff_lock,
     agency_candidate_has_internal_hr_handoff_lane,
     is_recruitment_recruiter_write_locked_by_handoff,
 )
@@ -93,10 +95,10 @@ async def ensure_candidate_operational_write_allowed(
 
     role_l = str(role or "").strip().lower()
 
-    if role_l in RECRUITMENT_LOCK_OVERRIDE_ROLES:
+    if can_override_recruitment_handoff_lock(role_l):
         return
 
-    if role_l == "hr_officer" and await agency_candidate_has_internal_hr_handoff_lane(
+    if is_hr_workspace_actor(role_l) and await agency_candidate_has_internal_hr_handoff_lane(
         db, agency_tenant_id=tid, candidate_id=cid
     ):
         return

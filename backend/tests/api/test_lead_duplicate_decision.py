@@ -388,4 +388,4 @@ def test_pick_lead_assignee_fallback_roles_no_legacy_pg_aliases() -> None:
     assert '"owner"' not in src and "'owner'" not in src
     assert '"admin"' not in src and "'admin'" not in src
     assert '"manager"' not in src and "'manager'" not in src
-    assert "User.role.in_([Role.administrator, Role.supervisor])" in src
+    assert "User.role.in_([Role.administrator, Role.employee])" in src

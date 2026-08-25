@@ -1,9 +1,22 @@
 import axios, { AxiosHeaders } from "axios";
 import type { Lead } from "./types";
 import { isCandidateRecruiterIdCanonEnabled } from "../utils/featureFlags";
+import { CSRF_HEADER, readCsrfToken } from "./csrf";
 
 const API_BASE_STORAGE_KEY = "hf_api_base";
 export const OWN_COMPANY_STORAGE_KEY = "hf_own_company_id";
+export const IMPERSONATION_BACKUP_STORAGE_KEY = "hf:platform-session-backup";
+/** One-time LS wipe after dual-session / Bearer-vs-cookie isolation fix (v1). */
+export const AUTH_ISOLATION_WIPE_STORAGE_KEY = "hf:auth_isolation_wipe_v1";
+const TOKEN_STORAGE_KEYS = [
+  "access_token",
+  "token",
+  "accessToken",
+  "auth_token",
+  "jwt",
+  "Authorization",
+] as const;
+const TENANT_STORAGE_KEYS = ["tenant_id", "X-Tenant-Id", "x-tenant-id", "tenant"] as const;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -250,7 +263,7 @@ function sanitizeOwnCompanyId(raw: string | null | undefined): string | null {
 
 export const settings = {
   get(): string {
-    const keys = ["tenant_id", "X-Tenant-Id", "x-tenant-id"];
+    const keys = TENANT_STORAGE_KEYS;
     let value: string | null = null;
     for (const key of keys) {
       const raw = safeStorageGet(key);
@@ -267,11 +280,24 @@ export const settings = {
     }
     return value || DEFAULT_TENANT;
   },
+  /** Stored tenant only — does not fall back to DEFAULT_TENANT. */
+  getStored(): string | null {
+    for (const key of TENANT_STORAGE_KEYS) {
+      const sanitized = sanitizeTenantId(safeStorageGet(key));
+      if (sanitized) return sanitized;
+    }
+    return null;
+  },
   set(value: string) {
     const sanitized = sanitizeTenantId(value) ?? DEFAULT_TENANT;
     safeStorageSet("tenant_id", sanitized);
     safeStorageSet("X-Tenant-Id", sanitized);
     safeStorageSet("x-tenant-id", sanitized);
+  },
+  clear(): void {
+    for (const key of TENANT_STORAGE_KEYS) {
+      safeStorageRemove(key);
+    }
   },
 };
 
@@ -301,9 +327,244 @@ export const ownCompanySettings = {
 };
 
 // --- helper to attach headers
+let _refreshInFlight: Promise<string | null> | null = null;
+let _syncInFlight: Promise<boolean> | null = null;
+
+export function getStoredAccessToken(): string | null {
+  for (const key of TOKEN_STORAGE_KEYS) {
+    const raw = safeStorageGet(key);
+    if (!raw) continue;
+    const val = raw.replace(/^Bearer\s+/i, "").trim();
+    if (val) return val;
+  }
+  return null;
+}
+
+export type JwtIdentityClaims = {
+  sub?: string;
+  email?: string;
+  tenant_id?: string;
+  role?: string;
+};
+
+export function decodeJwtPayload(token: string): JwtIdentityClaims | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const json = typeof atob === "function" ? atob(padded) : "";
+    if (!json) return null;
+    const payload = JSON.parse(json) as JwtIdentityClaims;
+    return payload && typeof payload === "object" ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Drop every per-origin auth pointer (tokens, tenant header keys, impersonation backup).
+ * Shared Domain cookies must be cleared separately via POST /auth/logout.
+ */
+export function clearLocalAuthState(): void {
+  for (const key of TOKEN_STORAGE_KEYS) {
+    safeStorageRemove(key);
+  }
+  for (const key of TENANT_STORAGE_KEYS) {
+    safeStorageRemove(key);
+  }
+  safeStorageRemove(OWN_COMPANY_STORAGE_KEY);
+  safeStorageRemove(IMPERSONATION_BACKUP_STORAGE_KEY);
+}
+
+/**
+ * Once per browser origin: drop stale per-origin Bearer / tenant pointers left from
+ * the pre-isolation dual-session bug. Shared Domain cookies remain; AuthProvider
+ * rehydrates via cookie reconcile. Safe to call before React mount.
+ */
+export function applyAuthIsolationWipeOnce(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (safeStorageGet(AUTH_ISOLATION_WIPE_STORAGE_KEY) === "1") return false;
+    clearLocalAuthState();
+    safeStorageSet(AUTH_ISOLATION_WIPE_STORAGE_KEY, "1");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function refreshAccessTokenViaCookie(): Promise<string | null> {
+  try {
+    // Never revive a session the user just revoked (logout / wipe bounce).
+    try {
+      if (typeof sessionStorage !== "undefined" && sessionStorage.getItem("hf:session_revoked") === "1") {
+        return null;
+      }
+    } catch {
+      /* ignore */
+    }
+    const headers: Record<string, string> = {};
+    const csrf = readCsrfToken();
+    if (csrf) headers[CSRF_HEADER] = csrf;
+    const { data } = await apiInstance.post(
+      "/auth/refresh",
+      {},
+      { headers, __hfSkipBearer: true } as any,
+    );
+    const token = typeof data?.access_token === "string" ? data.access_token : null;
+    if (token) {
+      setToken(token);
+    }
+    return token;
+  } catch {
+    setToken(null);
+    return null;
+  }
+}
+
+/**
+ * Mint Domain=.hostflow.cc cookies from the current Bearer / access cookie.
+ * Required before hard-navigating shell → module host (Stage 6B).
+ *
+ * `/auth/session/sync` is excluded from the 401 refresh interceptor, so a stale
+ * Bearer alone would fail here while normal API calls still work via refresh.
+ * Retry once after cookie refresh, then prove the Domain cookie works without Bearer
+ * (module hosts start with empty localStorage).
+ */
+export async function ensureSharedSessionCookies(): Promise<boolean> {
+  if (_syncInFlight) return _syncInFlight;
+  _syncInFlight = (async () => {
+    const cookieAlreadyMatchesBearer = async (): Promise<boolean> => {
+      const localToken = getStoredAccessToken();
+      const localSub = localToken ? String(decodeJwtPayload(localToken)?.sub || "").trim() : "";
+      try {
+        const { data: who } = await apiInstance.get("/auth/whoami-verify", {
+          __hfSkipBearer: true,
+        } as any);
+        const cookieSub = String(who?.sub || "").trim();
+        return Boolean(cookieSub && (!localSub || localSub === cookieSub));
+      } catch {
+        return false;
+      }
+    };
+
+    const syncOnce = async (): Promise<boolean> => {
+      const { data } = await apiInstance.post("/auth/session/sync", {});
+      const token = typeof data?.access_token === "string" ? data.access_token : null;
+      if (token) {
+        setToken(token);
+      }
+      // Module hosts authenticate from Domain cookie only — verify before cross-host nav.
+      const { data: who } = await apiInstance.get("/auth/whoami-verify", {
+        __hfSkipBearer: true,
+      } as any);
+      return Boolean(who && (who.sub || who.email));
+    };
+
+    if (await cookieAlreadyMatchesBearer()) {
+      return true;
+    }
+    try {
+      return await syncOnce();
+    } catch {
+      const refreshed = await refreshAccessTokenViaCookie();
+      if (!refreshed) return false;
+      try {
+        return await syncOnce();
+      } catch {
+        return false;
+      }
+    }
+  })().finally(() => {
+    _syncInFlight = null;
+  });
+  return _syncInFlight;
+}
+
+/** Same-origin module emulation when Domain cookies cannot be proven. */
+export function buildSameOriginModuleHref(absoluteModuleUrl: string): string {
+  try {
+    const u = new URL(absoluteModuleUrl);
+    const local = new URL(`${u.pathname}${u.search}${u.hash}`, window.location.origin);
+    const labels = u.hostname.split(".");
+    const owner = labels[0] || "";
+    if (owner && owner !== "www" && owner !== "hostflow") {
+      local.searchParams.set("hf_module", owner);
+    }
+    return `${local.pathname}${local.search}${local.hash}`;
+  } catch {
+    return absoluteModuleUrl;
+  }
+}
+
+/**
+ * Hard-navigate to a module host only after Domain cookie session is proven.
+ * Falls back to same-origin ?hf_module= so the CRM stays usable.
+ */
+export async function navigateToModuleHost(absoluteModuleUrl: string): Promise<void> {
+  const synced = await ensureSharedSessionCookies();
+  if (!synced) {
+    window.location.assign(buildSameOriginModuleHref(absoluteModuleUrl));
+    return;
+  }
+  window.location.assign(absoluteModuleUrl);
+}
+
+/**
+ * If this origin's localStorage Bearer / tenant pointer disagrees with the shared
+ * Domain cookie session, drop stale LS state so cookie identity wins.
+ * Prevents module-host navigation from flipping tenants/accounts.
+ */
+export async function reconcileBearerWithSharedCookie(): Promise<void> {
+  const localToken = getStoredAccessToken();
+  if (!localToken) return;
+
+  try {
+    const { data: cookieWhoami } = await apiInstance.get("/auth/whoami-verify", {
+      __hfSkipBearer: true,
+    } as any);
+    const cookieSub = String(cookieWhoami?.sub || "").trim();
+    const cookieTenant = String(cookieWhoami?.tenant_id || "").trim();
+    const cookieRole = String(cookieWhoami?.role || "").trim().toLowerCase();
+    if (!cookieSub) return;
+
+    const localClaims = decodeJwtPayload(localToken);
+    const localSub = String(localClaims?.sub || "").trim();
+    const localTenant = String(localClaims?.tenant_id || "").trim();
+    const identityMismatch = Boolean(localSub && localSub !== cookieSub);
+    const jwtTenantMismatch = Boolean(
+      localTenant && cookieTenant && localTenant !== cookieTenant,
+    );
+
+    if (identityMismatch || jwtTenantMismatch) {
+      // Stale per-origin Bearer (or re-login into another membership tenant).
+      setToken(null);
+      settings.clear();
+      const synced = await ensureSharedSessionCookies();
+      if (!synced) {
+        setToken(null);
+      }
+      return;
+    }
+
+    // Same user/session: non-superadmin must not keep a stale X-Tenant-Id override.
+    const isSuperadmin = cookieRole === "superadmin" || cookieRole === "super_admin";
+    if (!isSuperadmin && cookieTenant) {
+      const stored = settings.getStored();
+      if (stored && stored !== cookieTenant) {
+        settings.set(cookieTenant);
+      }
+    }
+  } catch {
+    // No usable shared cookie — keep local Bearer (shell / single-origin).
+  }
+}
+
 function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: string) {
   inst.interceptors.request.use((config) => {
     const tid = tenantId ?? settings.get();
+    const skipBearer = Boolean((config as { __hfSkipBearer?: boolean }).__hfSkipBearer);
 
     // ensure default headers
     if (!config.headers) config.headers = new AxiosHeaders();
@@ -325,30 +586,78 @@ function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: st
 
     if (!config.headers) config.headers = new AxiosHeaders();
     if (config.headers instanceof AxiosHeaders) {
-      config.headers.set("X-Tenant-Id", tid);
+      if (tid) config.headers.set("X-Tenant-Id", tid);
       const ownId = ownCompanySettings.get();
       if (ownId) config.headers.set("X-Own-Company-Id", ownId);
     } else {
-      (config.headers as any)["X-Tenant-Id"] = tid;
+      if (tid) (config.headers as any)["X-Tenant-Id"] = tid;
       const ownId = ownCompanySettings.get();
       if (ownId) (config.headers as any)["X-Own-Company-Id"] = ownId;
     }
 
-    const token =
-      safeStorageGet("access_token") ||
-      safeStorageGet("accessToken") ||
-      safeStorageGet("token") ||
-      null;
-    if (token) {
+    if (skipBearer) {
       if (config.headers instanceof AxiosHeaders) {
-        config.headers.set("Authorization", `Bearer ${token}`);
+        config.headers.delete("Authorization");
       } else {
-        (config.headers as any).Authorization = `Bearer ${token}`;
+        delete (config.headers as any).Authorization;
+      }
+    } else {
+      const token = getStoredAccessToken();
+      if (token) {
+        if (config.headers instanceof AxiosHeaders) {
+          config.headers.set("Authorization", `Bearer ${token}`);
+        } else {
+          (config.headers as any).Authorization = `Bearer ${token}`;
+        }
+      }
+    }
+
+    // Stage 6B: double-submit CSRF for cookie session (and dual-write Bearer + cookie).
+    const isMutating =
+      method === "post" || method === "put" || method === "patch" || method === "delete";
+    if (isMutating) {
+      const csrf = readCsrfToken();
+      if (csrf) {
+        if (config.headers instanceof AxiosHeaders) {
+          config.headers.set(CSRF_HEADER, csrf);
+        } else {
+          (config.headers as any)[CSRF_HEADER] = csrf;
+        }
       }
     }
 
     return config;
   });
+
+  inst.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const status = error?.response?.status;
+      const original = error?.config as (typeof error.config & { __hfRetry?: boolean }) | undefined;
+      if (status !== 401 || !original || original.__hfRetry) {
+        return Promise.reject(error);
+      }
+      const url = String(original.url || "");
+      if (
+        url.includes("/auth/login") ||
+        url.includes("/auth/refresh") ||
+        url.includes("/auth/session/sync") ||
+        url.includes("/auth/logout") ||
+        url.includes("/auth/register")
+      ) {
+        return Promise.reject(error);
+      }
+      if (!_refreshInFlight) {
+        _refreshInFlight = refreshAccessTokenViaCookie().finally(() => {
+          _refreshInFlight = null;
+        });
+      }
+      const nextToken = await _refreshInFlight;
+      if (!nextToken) return Promise.reject(error);
+      original.__hfRetry = true;
+      return inst.request(original);
+    },
+  );
 }
 
 // --- base axios instances
@@ -365,8 +674,9 @@ export function setToken(token: string | null) {
     safeStorageSet("token", token);
     safeStorageSet("access_token", token);
   } else {
-    safeStorageRemove("token");
-    safeStorageRemove("access_token");
+    for (const key of TOKEN_STORAGE_KEYS) {
+      safeStorageRemove(key);
+    }
   }
 }
 
@@ -918,6 +1228,21 @@ export async function getLeadTimeline(leadId: string) {
   return data;
 }
 
+export async function getClientAccountTimeline(accountId: string) {
+  const { data } = await api.get(`/client-accounts/${accountId}/timeline`);
+  return data;
+}
+
+export async function getServiceOrderTimeline(orderId: string) {
+  const { data } = await api.get(`/service-orders/${orderId}/timeline`);
+  return data;
+}
+
+export async function getInvoiceTimeline(invoiceId: string) {
+  const { data } = await api.get(`/invoices/${invoiceId}/timeline`);
+  return data;
+}
+
 export async function updateLeadStage(leadId: string, payload: {
   stage?: string | null
   assignment_locked?: boolean
@@ -926,6 +1251,27 @@ export async function updateLeadStage(leadId: string, payload: {
 }) {
   const { data } = await api.patch(`/leads/${leadId}`, payload);
   return data;
+}
+
+export type LeadCallResultCode =
+  | 'no_answer'
+  | 'answered'
+  | 'callback_requested'
+  | 'interested'
+  | 'not_interested'
+  | 'wrong_number'
+  | 'unavailable'
+
+export type LeadCallResultPayload = {
+  result: LeadCallResultCode
+  note?: string | null
+  bump_stage?: boolean
+}
+
+/** POST /leads/:id/call-result — B2B appeal call disposition + comment. */
+export async function logLeadCallResult(leadId: string, payload: LeadCallResultPayload) {
+  const { data } = await api.post(`/leads/${leadId}/call-result`, payload)
+  return data
 }
 
 export async function bulkUpdateLeads(payload: {
@@ -970,9 +1316,123 @@ export async function createLeadServiceOrder(leadId: string) {
   return data;
 }
 
-export async function convertClientLeadToClient(leadId: string): Promise<Lead> {
-  const { data } = await api.post<Lead>(`/leads/${leadId}/convert-client`);
-  return data;
+export type LeadQuestionnaireInviteResult = {
+  id: string
+  lead_id: string
+  lead_form_id?: string | null
+  token: string
+  apply_url: string
+  status: string
+  entity_profile_code?: string | null
+  presentation_code?: string | null
+  form_locale?: string | null
+  sent_at?: string | null
+  opened_at?: string | null
+  submitted_at?: string | null
+  expires_at?: string | null
+}
+
+export type LeadQuestionnaireFormOption = {
+  id: string
+  title: string
+  public_slug?: string | null
+  is_system_preset?: boolean
+  lifecycle_status?: string | null
+  supported_languages?: string[]
+  presentation_code?: string | null
+}
+
+/** List B2B targeted-advertising questionnaire forms for send picker (F3-B-02). */
+export async function listLeadQuestionnaireForms(): Promise<LeadQuestionnaireFormOption[]> {
+  const { data } = await api.get<LeadQuestionnaireFormOption[]>('/leads/questionnaire-forms')
+  return data
+}
+
+/** Active questionnaire invite for a lead, if any (404 when none). */
+export async function getLeadQuestionnaireInvite(leadId: string): Promise<LeadQuestionnaireInviteResult | null> {
+  try {
+    const { data } = await api.get<LeadQuestionnaireInviteResult>(`/leads/${leadId}/questionnaire-invite`)
+    return data
+  } catch (err: unknown) {
+    const status = (err as { response?: { status?: number } })?.response?.status
+    if (status === 404) return null
+    throw err
+  }
+}
+
+/** Stage Sales Intake 1 — personal questionnaire link for client leads (targeted advertising). */
+export async function createLeadQuestionnaireInvite(
+  leadId: string,
+  payload?: {
+    mark_sent?: boolean
+    lead_form_id?: string
+    form_locale?: string
+    sent_channel?: 'whatsapp' | 'link' | 'email'
+    force_new?: boolean
+  },
+): Promise<LeadQuestionnaireInviteResult> {
+  const { data } = await api.post<LeadQuestionnaireInviteResult>(
+    `/leads/${leadId}/questionnaire-invite`,
+    payload ?? {},
+  )
+  return data
+}
+
+export type QuestionnaireInviteEmailPreview = {
+  invite: LeadQuestionnaireInviteResult
+  recipient_email?: string | null
+  subject: string
+  body: string
+  questionnaire_url: string
+  email_configured: boolean
+  clarification_required: boolean
+  invite_reused: boolean
+  form_locale: string
+  settings_email_path?: string
+}
+
+export type QuestionnaireInviteEmailSendResult = {
+  invite: LeadQuestionnaireInviteResult
+  delivery_id: string
+  recipient_email: string
+  questionnaire_url: string
+  subject: string
+  status: string
+}
+
+export async function previewLeadQuestionnaireInviteEmail(
+  leadId: string,
+  payload: {
+    form_locale?: string
+    lead_form_id?: string
+    force_new_invite?: boolean
+    recipient_email?: string
+  },
+): Promise<QuestionnaireInviteEmailPreview> {
+  const { data } = await api.post<QuestionnaireInviteEmailPreview>(
+    `/leads/${leadId}/questionnaire-invite/email/preview`,
+    payload,
+  )
+  return data
+}
+
+export async function sendLeadQuestionnaireInviteEmail(
+  leadId: string,
+  payload: {
+    form_locale?: string
+    lead_form_id?: string
+    force_new_invite?: boolean
+    recipient_email: string
+    subject: string
+    body: string
+    save_email_to_lead?: boolean
+  },
+): Promise<QuestionnaireInviteEmailSendResult> {
+  const { data } = await api.post<QuestionnaireInviteEmailSendResult>(
+    `/leads/${leadId}/questionnaire-invite/email/send`,
+    payload,
+  )
+  return data
 }
 
 export type LeadIntakeDecision =

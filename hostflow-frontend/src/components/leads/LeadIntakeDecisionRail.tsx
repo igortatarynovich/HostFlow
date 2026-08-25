@@ -18,6 +18,7 @@ import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import {
   INTAKE_REJECT_REASON_CODES,
   leadCommunicationRailLine,
+  leadEmailPolicyBlocked,
   leadRodoNoticeStatus,
   leadRodoSatisfied,
   leadRoutingTableAction,
@@ -83,6 +84,7 @@ export default function LeadIntakeDecisionRail({
 
   const rodoOk = useMemo(() => leadRodoSatisfied(lead), [lead])
   const rodoStatus = useMemo(() => leadRodoNoticeStatus(lead), [lead])
+  const policyBlocked = useMemo(() => leadEmailPolicyBlocked(lead), [lead])
   const commLine = useMemo(() => leadCommunicationRailLine(lead, t), [lead, t])
 
   const src = String(lead.source || '').toLowerCase()
@@ -313,7 +315,7 @@ export default function LeadIntakeDecisionRail({
         className={
           layout === 'embedded'
             ? 'text-sm leading-relaxed text-slate-600'
-            : 'rounded-2xl px-4 py-3 text-sm leading-relaxed text-slate-600 ring-1 ring-slate-900/[0.06]'
+            : 'rounded-xl px-4 py-3 text-sm leading-relaxed text-slate-600 ring-1 ring-slate-900/[0.06]'
         }
       >
         {t('app.leads.intake_workspace.decision_rail.unsupported')}
@@ -330,7 +332,7 @@ export default function LeadIntakeDecisionRail({
   const outerClass =
     layout === 'embedded'
       ? 'space-y-8'
-      : 'space-y-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.06] sm:p-7'
+      : 'space-y-8 rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-900/[0.06] sm:p-6'
 
   return (
     <div className={outerClass}>
@@ -350,10 +352,23 @@ export default function LeadIntakeDecisionRail({
               <p className="text-xs leading-relaxed text-amber-900/95">
                 {rodoStatus === 'pending_channel'
                   ? t('app.leads.intake_workspace.decision_rail.rodo_pending_channel')
-                  : rodoStatus === 'failed'
-                    ? t('app.leads.intake_workspace.decision_rail.rodo_failed')
-                    : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
+                  : rodoStatus === 'pending_policy'
+                    ? t('app.leads.intake_workspace.decision_rail.rodo_pending_policy', {
+                        defaultValue:
+                          'Email policy blocked RODO send (missing or invalid template). Configure Lead lifecycle email in Communications settings.',
+                      })
+                    : rodoStatus === 'failed'
+                      ? t('app.leads.intake_workspace.decision_rail.rodo_failed')
+                      : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
               </p>
+              {policyBlocked ? (
+                <p className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-900 ring-1 ring-rose-900/10">
+                  <IconAlertTriangle size={14} aria-hidden />
+                  {t('app.leads.intake_workspace.decision_rail.email_policy_blocked_badge', {
+                    defaultValue: 'Email policy blocked',
+                  })}
+                </p>
+              ) : null}
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <button
                   type="button"
@@ -426,7 +441,7 @@ export default function LeadIntakeDecisionRail({
             <div className="space-y-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t('app.leads.intake_workspace.vacancy.suggested_label')}</p>
-                <p className="mt-1 text-lg font-semibold leading-snug text-slate-900">{vacTitle || '—'}</p>
+                <p className="mt-1 text-lg font-semibold leading-tight text-slate-900">{vacTitle || '—'}</p>
               </div>
               <button
                 type="button"
@@ -438,7 +453,7 @@ export default function LeadIntakeDecisionRail({
               </button>
               <button
                 type="button"
-                className="w-full rounded-xl py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                className="w-full rounded-xl py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 disabled={busy}
                 onClick={() => {
                   setVacancyOverrideOpen(true)
@@ -478,7 +493,7 @@ export default function LeadIntakeDecisionRail({
                 </div>
               )}
               <label className="block text-xs font-medium text-slate-500">
-                <span className="mb-1.5 block">{t('app.leads.intake_workspace.decision_rail.all_vacancies')}</span>
+                <span className="mb-2 block">{t('app.leads.intake_workspace.decision_rail.all_vacancies')}</span>
                 <select
                   className="input h-11 w-full rounded-xl border-0 bg-slate-500/[0.06] px-3 text-sm font-medium ring-1 ring-slate-900/[0.06] focus:ring-2 focus:ring-brand-500/30"
                   value={selectedVacancyId}
@@ -525,12 +540,12 @@ export default function LeadIntakeDecisionRail({
             <h2 id="decision-rail-qual" className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
               {t('app.leads.intake_workspace.decision_rail.context_qualification')}
             </h2>
-            <p className="mt-1 text-[11px] leading-snug text-slate-500">{t('app.leads.intake_workspace.decision_rail.context_qualification_hint')}</p>
+            <p className="mt-1 text-[11px] leading-tight text-slate-500">{t('app.leads.intake_workspace.decision_rail.context_qualification_hint')}</p>
           </div>
           <p
             className={clsx(
               'text-sm leading-relaxed',
-              fitHighlight === 'critical' && 'font-semibold text-red-900',
+              fitHighlight === 'critical' && 'font-semibold text-rose-900',
               fitHighlight === 'risk' && 'font-semibold text-amber-900',
               fitHighlight === 'neutral' && 'font-medium text-slate-800',
               fitHighlight === 'clear' && 'text-slate-500',
@@ -574,7 +589,7 @@ export default function LeadIntakeDecisionRail({
         {showIntakeDecisions && !intakeRejected && !hideSecondaryWhileDuplicate ? (
           <div className="space-y-2">
             <label className="block text-xs font-medium text-slate-500">
-              <span className="mb-1.5 block">{t('app.leads.detail.intake_resolution.intake_actions.request_info_label')}</span>
+              <span className="mb-2 block">{t('app.leads.detail.intake_resolution.intake_actions.request_info_label')}</span>
               <textarea
                 className="input min-h-[4rem] w-full rounded-xl border-0 bg-slate-500/[0.06] px-3 py-2 text-sm ring-1 ring-slate-900/[0.06] focus:ring-2 focus:ring-brand-500/25"
                 value={requestInfoNote}
@@ -585,7 +600,7 @@ export default function LeadIntakeDecisionRail({
             </label>
             <button
               type="button"
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+              className="w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-50 disabled:opacity-50"
               disabled={acting || !rodoOk}
               onClick={() =>
                 void runIntakeDecision({
@@ -602,7 +617,7 @@ export default function LeadIntakeDecisionRail({
         {showIntakeDecisions && !intakeRejected && !hideSecondaryWhileDuplicate ? (
           <button
             type="button"
-            className="w-full rounded-lg py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-500/[0.06] disabled:opacity-50"
+            className="w-full rounded-lg py-3 text-sm font-medium text-slate-600 hover:bg-slate-500/[0.06] disabled:opacity-50"
             disabled={acting || poolBusy}
             onClick={() => void onPool()}
           >
@@ -611,7 +626,7 @@ export default function LeadIntakeDecisionRail({
         ) : null}
 
         {showIntakeDecisions && !intakeRejected && !hideSecondaryWhileDuplicate ? (
-          <button type="button" className="text-left text-sm font-medium text-red-700 underline-offset-2 hover:underline disabled:opacity-50" disabled={acting} onClick={() => setRejectExpanded((x) => !x)}>
+          <button type="button" className="text-left text-sm font-medium text-rose-700 underline-offset-2 hover:underline disabled:opacity-50" disabled={acting} onClick={() => setRejectExpanded((x) => !x)}>
             {rejectExpanded ? t('app.leads.intake_workspace.decision_rail.reject_cancel') : t('app.leads.intake_workspace.decision_rail.reject_open')}
           </button>
         ) : null}
@@ -620,8 +635,8 @@ export default function LeadIntakeDecisionRail({
       {rejectExpanded && showIntakeDecisions && !intakeRejected && !hideSecondaryWhileDuplicate ? (
         <>
           <StepDivider />
-          <section className="space-y-3 rounded-xl bg-red-500/[0.06] px-3 py-4 sm:px-4" aria-labelledby="decision-rail-reject">
-            <h2 id="decision-rail-reject" className="text-[11px] font-bold uppercase tracking-wide text-red-900">
+          <section className="space-y-3 rounded-xl bg-rose-500/[0.06] px-3 py-4 sm:px-4" aria-labelledby="decision-rail-reject">
+            <h2 id="decision-rail-reject" className="text-[11px] font-bold uppercase tracking-wide text-rose-900">
               {t('app.leads.detail.intake_resolution.intake_actions.reject_title')}
             </h2>
             <label className="block text-xs text-slate-700">
@@ -643,7 +658,7 @@ export default function LeadIntakeDecisionRail({
             <label className="block text-xs text-slate-700">
               <span className="mb-1 block">{t('app.leads.detail.intake_resolution.intake_actions.note_optional')}</span>
               <textarea
-                className="input min-h-[3rem] w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-slate-900/[0.08]"
+                className="input min-h-[3rem] w-full rounded-lg border-0 bg-white px-2 py-2 text-sm ring-1 ring-slate-900/[0.08]"
                 value={rejectNote}
                 disabled={acting}
                 placeholder={t('app.leads.detail.intake_resolution.intake_actions.note_placeholder')}
@@ -652,7 +667,7 @@ export default function LeadIntakeDecisionRail({
             </label>
             <button
               type="button"
-              className="w-full rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              className="w-full rounded-xl bg-rose-600 py-3 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
               disabled={acting || !rejectReason.trim()}
               onClick={() => void handleReject()}
             >

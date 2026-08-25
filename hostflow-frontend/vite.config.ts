@@ -33,10 +33,14 @@ export default defineConfig({
       "@hooks": path.resolve(__dirname, "./src/hooks"),
       "@store": path.resolve(__dirname, "./src/store"),
       "@i18n": path.resolve(__dirname, "./src/i18n"),
+      "@shared": path.resolve(__dirname, "../shared"),
     },
   },
   server: {
     port: 5173,
+    fs: {
+      allow: [path.resolve(__dirname, "..")],
+    },
     headers: crossOriginIsolationHeaders,
     proxy: {
       // Все запросы, начинающиеся с /db, пойдут на модуль документов

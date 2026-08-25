@@ -5,11 +5,22 @@ import { IconMail, IconMessageCircle } from '@tabler/icons-react'
 import type { CommunicationThread } from '../../api/communications'
 import { useI18n } from '../../i18n'
 import { isCommunicationThreadUnlinked } from '../../utils/communicationThreadUnlinked'
-import { opsModeFromThread } from '../../utils/communicationsOpsMode'
 import { threadDecisionTier, threadHoursWaitingForReply, threadNeedsOutboundReply, threadSlaOverdue } from '../../utils/communicationThreadDecision'
 import { inboxContextQueryString, type InboxListQuery } from '../../utils/inboxUrlQuery'
 
-export type InboxHubFilter = 'all' | 'unread' | 'unlinked' | 'sla' | 'in_work' | 'later'
+/** C1 working queues (+ all). Thread is the work object — filters are Thread queues. */
+export type InboxHubFilter =
+  | 'all'
+  | 'requires_reply'
+  | 'new_inbound'
+  | 'delivery_errors'
+  | 'unresolved'
+  | 'assigned_to_me'
+  | 'unassigned'
+  | 'waiting_for_reply'
+  | 'closed'
+  /** Legacy client-only (deep-link compat). Prefer platform queues. */
+  | 'unlinked'
 
 export type InboxHubSort = 'activity' | 'sla_due'
 
@@ -104,7 +115,23 @@ type Props = {
   onToggleAllVisibleSelection?: (threadIds: string[], nextChecked: boolean) => void
 }
 
-const FILTER_KEYS: InboxHubFilter[] = ['all', 'unread', 'unlinked', 'sla', 'in_work', 'later']
+const FILTER_KEYS: InboxHubFilter[] = [
+  'all',
+  'requires_reply',
+  'new_inbound',
+  'delivery_errors',
+  'unresolved',
+  'assigned_to_me',
+  'unassigned',
+  'waiting_for_reply',
+  'closed',
+]
+
+/** Maps hub UI filter → platform `queue=` param (undefined = no server queue). */
+export function inboxHubFilterToQueue(filter: InboxHubFilter): string | undefined {
+  if (filter === 'all' || filter === 'unlinked') return undefined
+  return filter
+}
 
 export default function InboxUnifiedThreadList({
   threads,
@@ -133,18 +160,9 @@ export default function InboxUnifiedThreadList({
     if (scopeCandidate) {
       base = base.filter((th) => String(th.linked_candidate_id || '').trim() === scopeCandidate)
     }
+    // Platform queues are applied server-side via `queue=`; only legacy unlinked stays client-side.
     const filtered =
-      hubFilter === 'unread'
-        ? base.filter((th) => Number(th.unread_count || 0) > 0)
-        : hubFilter === 'unlinked'
-          ? base.filter((th) => isCommunicationThreadUnlinked(th))
-          : hubFilter === 'sla'
-            ? base.filter((th) => threadSlaOverdue(th))
-            : hubFilter === 'in_work'
-              ? base.filter((th) => opsModeFromThread(th) === 'in_work')
-              : hubFilter === 'later'
-                ? base.filter((th) => opsModeFromThread(th) === 'later')
-                : base
+      hubFilter === 'unlinked' ? base.filter((th) => isCommunicationThreadUnlinked(th)) : base
 
     const pinThen = (a: CommunicationThread, b: CommunicationThread) => {
       const pa = isUiPinned(a) ? 1 : 0
@@ -196,12 +214,22 @@ export default function InboxUnifiedThreadList({
                 hubFilter === key && 'border-brand-600 bg-brand-50 text-brand-800',
               )}
             >
-              {key === 'all' && t('app.communications_inbox_hub.unified_filter_all')}
-              {key === 'unread' && t('app.communications_inbox_hub.unified_filter_unread')}
-              {key === 'unlinked' && t('app.communications_inbox_hub.unified_filter_unlinked')}
-              {key === 'sla' && t('app.communications_inbox_hub.unified_filter_sla')}
-              {key === 'in_work' && t('app.communications_inbox_hub.unified_filter_in_work')}
-              {key === 'later' && t('app.communications_inbox_hub.unified_filter_later')}
+              {key === 'all' && t('app.communications_inbox_hub.unified_filter_all', { defaultValue: 'All' })}
+              {key === 'requires_reply' &&
+                t('app.communications_inbox_hub.queue_requires_reply', { defaultValue: 'Requires reply' })}
+              {key === 'new_inbound' &&
+                t('app.communications_inbox_hub.queue_new_inbound', { defaultValue: 'New inbound' })}
+              {key === 'delivery_errors' &&
+                t('app.communications_inbox_hub.queue_delivery_errors', { defaultValue: 'Delivery errors' })}
+              {key === 'unresolved' &&
+                t('app.communications_inbox_hub.queue_unresolved', { defaultValue: 'Unresolved' })}
+              {key === 'assigned_to_me' &&
+                t('app.communications_inbox_hub.queue_assigned_to_me', { defaultValue: 'Assigned to me' })}
+              {key === 'unassigned' &&
+                t('app.communications_inbox_hub.queue_unassigned', { defaultValue: 'Unassigned' })}
+              {key === 'waiting_for_reply' &&
+                t('app.communications_inbox_hub.queue_waiting_for_reply', { defaultValue: 'Waiting for reply' })}
+              {key === 'closed' && t('app.communications_inbox_hub.queue_closed', { defaultValue: 'Closed' })}
             </button>
           ))}
         </div>

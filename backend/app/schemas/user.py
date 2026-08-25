@@ -8,19 +8,27 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserRole(str, Enum):
+    """API request roles. Persist trust only; legacy labels coerce via normalize_assignable_role."""
+
     administrator = "administrator"
+    employee = "employee"
+    viewer = "viewer"
+    # Legacy request aliases (not persisted as distinct system roles after ADR-036 Phase 3)
     supervisor = "supervisor"
     recruiter = "recruiter"
     client_manager = "client_manager"
     client_processor = "client_processor"
     compliance_officer = "compliance_officer"
     hr_officer = "hr_officer"
-    viewer = "viewer"
 
 
 class UserCreateInvite(BaseModel):
     email: EmailStr
     role: UserRole
+    preset_id: str | None = Field(
+        default=None,
+        description="ADR-036 permission preset (recruiter/team_lead/hr/compliance/portal_guest).",
+    )
     supervisor_id: str | None = Field(default=None)
     company_ids: Sequence[str] = Field(default_factory=list)
     expires_in_hours: int = Field(
@@ -33,6 +41,7 @@ class UserCreateInvite(BaseModel):
 
 class UserUpdateRole(BaseModel):
     role: UserRole
+    preset_id: str | None = Field(default=None)
 
 
 class UserOut(BaseModel):
@@ -114,11 +123,29 @@ class RefreshRevokeOut(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     role: UserRole
+    preset_id: str | None = Field(
+        default=None,
+        description="ADR-036 permission preset applied as user module overrides.",
+    )
     full_name: str | None = Field(default=None, max_length=255)
     short_id: str | None = Field(default=None, max_length=50)
     password: str | None = Field(default=None, min_length=8, max_length=128)
     supervisor_id: str | None = Field(default=None)
     company_ids: Sequence[str] = Field(default_factory=list)
+
+
+class UserOutgoingSignature(BaseModel):
+    first_name: str | None = Field(default=None, max_length=255)
+    last_name: str | None = Field(default=None, max_length=255)
+    position: str | None = Field(default=None, max_length=128)
+    phone: str | None = Field(default=None, max_length=64)
+    email: EmailStr | None = None
+    company: str | None = Field(default=None, max_length=255)
+    website: str | None = Field(default=None, max_length=255)
+    logo_url: str | None = Field(default=None, max_length=1024)
+    show_phone: bool = True
+    show_email: bool = True
+    show_website: bool = True
 
 
 class UserProfileOut(BaseModel):
@@ -133,6 +160,8 @@ class UserProfileOut(BaseModel):
     city: str | None = Field(default=None, max_length=128)
     position: str | None = Field(default=None, max_length=128)
     phone: str | None = Field(default=None, max_length=64)
+    avatar_url: str | None = Field(default=None, max_length=1024)
+    signature: UserOutgoingSignature = Field(default_factory=UserOutgoingSignature)
 
 
 class UserProfileUpdate(BaseModel):
@@ -144,6 +173,7 @@ class UserProfileUpdate(BaseModel):
     position: str | None = Field(default=None, max_length=128)
     phone: str | None = Field(default=None, max_length=64)
     email: EmailStr | None = None
+    signature: UserOutgoingSignature | None = None
 
 
 class UserPasswordChange(BaseModel):

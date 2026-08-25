@@ -89,6 +89,7 @@ def merge_candidate_profile_field_configs(
     merged["candidate_profile_id"] = profile.id
     merged["candidate_profile_code"] = profile.code
     merged["bridge_source"] = "candidate_profile"
+    merged["layout_bridge_source"] = "candidate_profile_deprecated_overlay"
     base_source = str(layout.get("resolution_source") or "registry")
     merged["resolution_source"] = f"{base_source}+candidate_profile"
     return merged

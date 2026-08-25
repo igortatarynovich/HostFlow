@@ -34,7 +34,8 @@ import { useI18n } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { useAuth } from '../store/useAuth'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -425,7 +426,7 @@ function sourceBadgeClass(source: UnifiedCalendarEvent['source']): string {
   if (source === 'timeoff') return 'bg-rose-100 text-rose-800'
   if (source === 'reminder') return 'bg-amber-100 text-amber-800'
   if (source === 'integrated') return 'bg-blue-100 text-blue-800'
-  return 'bg-violet-100 text-violet-800'
+  return 'bg-blue-100 text-blue-800'
 }
 
 function statusBadgeClass(status: UnifiedCalendarEvent['status']): string {
@@ -453,8 +454,8 @@ function timeOffTimeWindowText(row: CommunicationTimeOffRequest): string {
 
 function plannerKindTone(kind?: string | null): string {
   const k = String(kind || '').toLowerCase()
-  if (k === 'meeting') return 'bg-indigo-50 text-indigo-700 border-indigo-200'
-  if (k === 'call') return 'bg-sky-50 text-sky-700 border-sky-200'
+  if (k === 'meeting') return 'bg-blue-50 text-blue-700 border-blue-200'
+  if (k === 'call') return 'bg-blue-50 text-blue-700 border-blue-200'
   if (k === 'task' || k === 'followup') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
   return 'bg-slate-50 text-slate-700 border-slate-200'
 }
@@ -2310,22 +2311,30 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
   )
   const isDragActive = isCalendarEventDraggable(dragPlannerEvent)
 
-  return (
-    <div className="space-y-4">
-      {!embedded && <WorkspaceTopNav active="calendar" />}
-      {!embedded && <PageBreadcrumb className="max-w-4xl" />}
-      {!embedded && (
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.calendar_title', { defaultValue: 'Calendar' })}</h1>
-        </div>
-      )}
+  const calendarContent = (
+    <>
+      {!embedded ? (
+        <PageShellHeader>
+          <PageHeader
+            title={t('app.communications.ia.calendar_title', { defaultValue: 'Calendar' })}
+            kind="browse"
+            secondaryActions={
+              <button type="button" className="btn-secondary btn-sm" onClick={() => void load()}>
+                {t('common.actions.refresh')}
+              </button>
+            }
+          />
+        </PageShellHeader>
+      ) : null}
+
+      <div className={embedded ? 'space-y-4' : 'flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4'}>
 
       {showAdvancedTools && (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{t('app.communications.calendar.stats.time_off', { defaultValue: 'Time-off: {count}', values: { count: stats.timeOff } })}</div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.calendar.stats.activities', { defaultValue: 'Activities: {count}', values: { count: stats.reminders } })}</div>
-        <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-800">{t('app.communications.calendar.stats.planner_items', { defaultValue: 'Planner items: {count}', values: { count: stats.planner } })}</div>
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">{t('app.communications.calendar.stats.meetings', { defaultValue: 'Meetings: {count}', values: { count: stats.meetings } })}</div>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{t('app.communications.calendar.stats.planner_items', { defaultValue: 'Planner items: {count}', values: { count: stats.planner } })}</div>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">{t('app.communications.calendar.stats.meetings', { defaultValue: 'Meetings: {count}', values: { count: stats.meetings } })}</div>
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.calendar.stats.tasks', { defaultValue: 'Tasks: {count}', values: { count: stats.tasks } })}</div>
         <div className="rounded-lg border border-rose-200 bg-white p-3 text-sm text-rose-700">{t('app.communications.calendar.stats.overdue', { defaultValue: 'Overdue: {count}', values: { count: stats.overdue } })}</div>
         <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">{t('app.communications.calendar.stats.days', { defaultValue: 'Days: {count}', values: { count: stats.daysWithEvents } })}</div>
@@ -2493,7 +2502,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
                         {counts.overdue > 0 && <div className="badge max-w-full overflow-hidden bg-rose-100 text-rose-800">{t('app.communications.calendar.badges.overdue_count', { defaultValue: 'overdue {count}', values: { count: counts.overdue } })}</div>}
                         {counts.timeoff > 0 && <div className="badge max-w-full overflow-hidden bg-rose-50 text-rose-700">{t('app.communications.calendar.badges.timeoff_count', { defaultValue: 'time-off {count}', values: { count: counts.timeoff } })}</div>}
                         {counts.reminders > 0 && <div className="badge max-w-full overflow-hidden bg-amber-100 text-amber-800">{t('app.communications.calendar.badges.rem_count', { defaultValue: 'rem {count}', values: { count: counts.reminders } })}</div>}
-                        {counts.planner > 0 && <div className="badge max-w-full overflow-hidden bg-violet-100 text-violet-800">{t('app.communications.calendar.badges.planner_count', { defaultValue: 'planner {count}', values: { count: counts.planner } })}</div>}
+                        {counts.planner > 0 && <div className="badge max-w-full overflow-hidden bg-blue-100 text-blue-800">{t('app.communications.calendar.badges.planner_count', { defaultValue: 'planner {count}', values: { count: counts.planner } })}</div>}
                       </div>
                     </button>
                   )
@@ -2503,7 +2512,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 <span className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1"><span className="h-2 w-2 rounded-full bg-rose-500" />{t('app.communications.calendar.legend.timeoff', { defaultValue: 'Time-off' })}</span>
                 <span className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1"><span className="h-2 w-2 rounded-full bg-amber-500" />{t('app.communications.calendar.legend.reminders', { defaultValue: 'Reminders' })}</span>
-                <span className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1"><span className="h-2 w-2 rounded-full bg-violet-500" />{t('app.communications.calendar.legend.planner', { defaultValue: 'Planner' })}</span>
+                <span className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1"><span className="h-2 w-2 rounded-full bg-blue-500" />{t('app.communications.calendar.legend.planner', { defaultValue: 'Planner' })}</span>
               </div>
             </section>
           )}
@@ -3250,7 +3259,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
                       key={tmpl.key}
                       type="button"
                       className={clsx(
-                        'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                        'rounded-lg border px-3 py-2 text-xs font-medium transition',
                         reminderForm.type === tmpl.type
                           ? 'border-brand-500 bg-brand-100 text-brand-800'
                           : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
@@ -3271,7 +3280,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
                   <button
                     type="button"
                     className={clsx(
-                      'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                      'rounded-lg border px-3 py-2 text-xs font-medium transition',
                       reminderForm.type === 'custom'
                         ? 'border-brand-500 bg-brand-100 text-brand-800'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
@@ -3565,7 +3574,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
                             }}
                             onPaste={(e) => onParticipantEmailPaste(p.id, e)}
                             onKeyDown={(e) => onParticipantEmailKeyDown(p.id, e)}
-                            className={clsx('input', eventModalParticipantErrors[p.id] && 'border-red-500 ring-1 ring-red-200')}
+                            className={clsx('input', eventModalParticipantErrors[p.id] && 'border-rose-500 ring-1 ring-rose-200')}
                             placeholder={t('app.communications.calendar.forms.attendee_email', { defaultValue: 'Email' })}
                           />
                           <select
@@ -3599,7 +3608,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
                           </button>
                         </div>
                         {eventModalParticipantErrors[p.id] ? (
-                          <p className="text-xs text-red-600 sm:col-span-4">{eventModalParticipantErrors[p.id]}</p>
+                          <p className="text-xs text-rose-600 sm:col-span-4">{eventModalParticipantErrors[p.id]}</p>
                         ) : null}
                       </div>
                     ))}
@@ -3733,6 +3742,18 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
+  )
+
+  if (embedded) {
+    return calendarContent
+  }
+
+  return (
+    <PageShell>
+      <WorkspaceTopNav active="calendar" />
+      {calendarContent}
+    </PageShell>
   )
 }

@@ -78,7 +78,7 @@ async def user_id_eligible_as_available_recruiter_for_company(
         select(User).where(
             User.id == uid,
             User.is_active.is_(True),
-            User.role == UserRole.recruiter,
+            User.role == UserRole.employee,
             or_(User.tenant_id.is_(None), User.tenant_id == tenant_id),
         )
     )

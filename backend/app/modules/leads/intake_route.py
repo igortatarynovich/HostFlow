@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,9 @@ from backend.app.modules.intake_routing.meta_bridge import (
     route_intent_to_lead_target_type,
 )
 from backend.app.modules.leads.normalizer import extract_meta_lead_form_context
-from backend.app.services.intake_router import IntakeRouter, IntakeRoutingResult
+
+if TYPE_CHECKING:
+    from backend.app.services.intake_router import IntakeRoutingResult
 
 _log = logging.getLogger(__name__)
 
@@ -89,6 +91,9 @@ class IntakeRouteContext:
     entity_profile_code: Optional[str] = None
     warnings: tuple[str, ...] = field(default_factory=tuple)
     fallback_reason: Optional[str] = None
+    # Stage 3C — Acquisition routing stamp (not part of IntakeRouter).
+    acquisition_routing: Optional[Dict[str, Any]] = None
+    acquisition_unresolved: bool = False
 
     def to_intake_routing_v1(self) -> Dict[str, Any]:
         preset = default_pipeline_for_route_intent(self.route_intent, self.pipeline_preset)
@@ -127,12 +132,17 @@ class IntakeRouteContext:
 
 def _context_from_routing_result(
     *,
-    routing: IntakeRoutingResult,
+    routing: "IntakeRoutingResult",
     source: str,
     form_id: Optional[str],
     page_id: Optional[str],
+    acquisition_routing: Optional[Dict[str, Any]] = None,
+    acquisition_unresolved: bool = False,
+    route_intent_override: Optional[str] = None,
+    extra_warnings: tuple[str, ...] = (),
+    force_failed: Optional[bool] = None,
 ) -> IntakeRouteContext:
-    route_intent = routing.route_intent
+    route_intent = str(route_intent_override or routing.route_intent or RouteIntent.unknown.value)
     lead_target_type = route_intent_to_lead_target_type(route_intent)
     pipeline = default_pipeline_for_route_intent(route_intent, routing.pipeline_preset)
     fallback_reason = None
@@ -142,11 +152,15 @@ def _context_from_routing_result(
         fallback_reason = routing.warnings[0] if routing.warnings else "legacy_fallback"
     elif not routing.matched:
         fallback_reason = "tenant_default"
+    if acquisition_unresolved:
+        fallback_reason = str((acquisition_routing or {}).get("unresolved_reason") or "acquisition_unresolved")
 
+    warnings = tuple(routing.warnings) + tuple(extra_warnings)
+    failed = bool(force_failed) if force_failed is not None else (bool(routing.failed) or acquisition_unresolved)
     return IntakeRouteContext(
         matched=bool(routing.matched),
         fallback=bool(routing.fallback),
-        failed=bool(routing.failed),
+        failed=failed,
         route_intent=route_intent,
         lead_target_type=lead_target_type,
         own_company_id=routing.own_company_id,
@@ -157,8 +171,10 @@ def _context_from_routing_result(
         form_id=form_id,
         page_id=page_id,
         source=source,
-        warnings=tuple(routing.warnings),
+        warnings=warnings,
         fallback_reason=fallback_reason,
+        acquisition_routing=acquisition_routing,
+        acquisition_unresolved=acquisition_unresolved,
     )
 
 
@@ -171,7 +187,7 @@ async def resolve_intake_route_for_ingest(
     payload: Optional[Dict[str, Any]] = None,
     own_company_id_hint: Optional[str] = None,
 ) -> IntakeRouteContext:
-    """Resolve Meta ingest via ``IntakeRouter``; other sources get unknown route."""
+    """Resolve Meta ingest via IntakeRouter, then Stage 3C UniversalSubmissionRouter."""
     src = (source or "meta").strip().lower() or "meta"
     form_ctx = extract_meta_lead_form_context(payload or {}, source=src)
     form_id = str(normalized.get("form_id") or form_ctx.get("form_id") or "").strip() or None
@@ -199,6 +215,8 @@ async def resolve_intake_route_for_ingest(
     external_key = meta_external_key(form_id or "")
     external_key_secondary = meta_external_key_secondary(page_id)
 
+    from backend.app.services.intake_router import IntakeRouter
+
     routing = await IntakeRouter.resolve(
         db,
         tenant_id=tenant_id,
@@ -207,9 +225,37 @@ async def resolve_intake_route_for_ingest(
         external_key_secondary=external_key_secondary,
         own_company_hint=own_company_id_hint,
     )
+
+    from backend.app.acquisition.submission_routing import (
+        RoutingDecisionStatus,
+        resolve_universal_submission_routing,
+    )
+
+    uni = await resolve_universal_submission_routing(
+        db,
+        tenant_id=str(tenant_id),
+        intake_source_profile_id=routing.intake_source_profile_id,
+        form_id=form_id,
+        provider=src,
+        provider_ad_id=(
+            str(normalized.get("ad_id")).strip()
+            if normalized.get("ad_id") is not None and str(normalized.get("ad_id")).strip()
+            else None
+        ),
+    )
+    unresolved = uni.status != RoutingDecisionStatus.routed.value
+    effective_intent = (
+        RouteIntent.unknown.value if unresolved else uni.route_intent
+    )
     return _context_from_routing_result(
         routing=routing,
         source=src,
         form_id=form_id,
         page_id=page_id,
+        acquisition_routing=uni.to_dict(),
+        acquisition_unresolved=unresolved,
+        route_intent_override=effective_intent,
+        extra_warnings=tuple(uni.warnings),
+        # Stage 3C: UniversalSubmissionRouter is authoritative for proceed vs unresolved.
+        force_failed=unresolved,
     )

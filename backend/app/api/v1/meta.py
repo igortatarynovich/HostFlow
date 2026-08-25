@@ -7,7 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import Any, Optional, Union
 
-from backend.app.auth.deps import Role, UserCtx, get_current_user_optional, require_roles
+from backend.app.auth.trust_role_deps import require_trust_admin, require_trust_read, require_trust_write
+from backend.app.auth.deps import Role, UserCtx, get_current_user_optional
+from backend.app.auth.tenant_scope import ensure_user_can_access_tenant
 from backend.app.db.deps import get_db
 from backend.app.services.stage_meta_recruitment_filter import apply_handoff_stage_meta_for_user
 
@@ -84,6 +86,20 @@ async def stages_meta(
     - custom_stages: список пользовательских этапов (если есть tenant)
     - funnel_id: id воронки, если используется funnel-based stages
     """
+    # Anonymous callers may only see system defaults. Tenant funnel/custom stages
+    # require an authenticated principal with membership for X-Tenant-Id.
+    effective_tenant_header = (tenant_id_header or "").strip() or None
+    if effective_tenant_header:
+        if current_user is None or not getattr(current_user, "sub", None):
+            effective_tenant_header = None
+        else:
+            try:
+                _tid = UUID(effective_tenant_header)
+            except Exception as exc:
+                raise HTTPException(status_code=400, detail="X-Tenant-Id must be a valid UUID") from exc
+            await ensure_user_can_access_tenant(db, current_user, str(_tid))
+    tenant_id_header = effective_tenant_header
+
     # Start with system stages
     merged_labels = dict(LABELS)
     merged_order = list(ORDER)
@@ -303,7 +319,7 @@ async def stages_meta(
 
 @router.get(
     "/recruitment-funnel-metrics",
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[Depends(require_trust_admin())],
 )
 async def get_recruitment_funnel_metrics() -> dict[str, int | dict[str, int]]:
     """In-process resolver usage counters (legacy fallback deprecation telemetry)."""

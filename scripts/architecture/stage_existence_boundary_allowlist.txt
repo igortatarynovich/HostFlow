@@ -1,0 +1,2 @@
+# Paths allowed to define is_stage_registered (LI-1 single producer).
+backend/app/platform/module_stage_registry/existence.py

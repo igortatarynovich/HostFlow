@@ -11,17 +11,38 @@
 
 ---
 
-## Level 1 — Canon (constitutional)
+## Level 0 — Platform Architecture Constitution (**FROZEN**)
 
-Документы, которые **определяют форму системы**. Менять только через ADR-процесс (см. [`documentation-rules.md`](documentation-rules.md) § «Adding architecture decisions»).
+Документы, которые **задают форму платформы capabilities** (P-rules, Passport/Manifest shape, lifecycle/licensing/deps models, review checklist).
+
+| Документ | Чем владеет |
+|---|---|
+| `docs/specs/architecture/L0-platform-architecture.md` | Конституция L0; freeze / RFC rule; completeness |
+| `docs/specs/architecture/ADR-025`…`ADR-030` | P-01…P-05 + L0 closure norms |
+| `docs/specs/architecture/platform-capability-catalog.md` | Capability Passport template + index (заполнение строк = применение L0) |
+| `docs/specs/architecture/capability-settings-manifest.md` | Settings Contract schema (P-05) |
+| `docs/specs/architecture/architecture-review-checklist.md` | Обязательный gate перед ADR/PR |
+| `docs/specs/architecture/architecture-invariants.md` | Аксиомы INV-01…15 (не ADR) |
+| `docs/specs/architecture/architecture-guide.md` | Навигация по канону |
+| `docs/specs/architecture/platform-architecture-principles.md` §0 | Сводка P-01…P-05 |
+
+**Изменения L0:** только через **Architecture RFC** (`architecture-rfc` / `l0-change`) с аппрувом Architecture canon owner — см. L0 Freeze rule. Явные ошибки — `l0-errata`.
+
+**Жёсткое правило:** обычные feature ADR (L1) **не** переписывают P-rules и шаблоны границ L0.
+
+---
+
+## Level 1 — Canon (constitutional / domain)
+
+Документы, которые **определяют форму системы** на уровне домена и engineering. Менять через ADR-процесс (см. [`documentation-rules.md`](documentation-rules.md) § «Adding architecture decisions»), **не** ломая L0.
 
 | Документ | Чем владеет |
 |---|---|
 | `AGENTS.md` (root) | Engineering canon, security operating model, PR gates |
 | `docs/specs/architecture/hostflow-core-domain-map-v1.md` | Bounded contexts, ownership matrix, scopes (GLOBAL/TENANT/COMPANY/MODULE) |
-| `docs/specs/architecture/platform-architecture-principles.md` | Modular multi-company SaaS принципы |
+| `docs/specs/architecture/platform-architecture-principles.md` (кроме §0 L0) | Modular multi-company SaaS принципы |
 | `docs/specs/architecture/module-catalog-and-routing-map.md` | Каталог продуктовых модулей, ключи, маршруты |
-| `docs/specs/architecture/ADR-002…ADR-014` + `docs/hr/ADR-001` | Канонические architecture decisions |
+| `docs/specs/architecture/ADR-002`…`ADR-024` + domain ADRs; `docs/hr/ADR-001` | Канонические architecture decisions (**не** P-01…P-05 / ADR-025…030 — те в L0) |
 | `docs/security/security-ssot.md` | Security canon (классификация, RLS, handoff, IR) |
 | `docs/security/security-review-checklist.md` | PR security gate (контракт) |
 | `docs/security/threat-models/*.md` | Threat models по поверхностям |
@@ -43,7 +64,7 @@
 | **Workflows** | `docs/specs/workflows/*.md` (зарегистрированы в `workflows/index.md`) | Workflow owner + index maintainer |
 | **Architecture supplementary** | `docs/specs/architecture/*.md` (recruitment-domain-model, handoff-contract, multi_tenant_model, rbac_matrix, object_storage, job_queue, applications-operating-model, и т.д.) | Architecture canon owner |
 | **Operational SSOT** | `docs/SSOT.md`, `docs/HOSTFLOW_AUDIT_AND_PLAN.md`, `docs/specs/operations-loop.md`, `docs/specs/manager-assignment.md`, `docs/specs/vacancy-statuses.md`, `docs/specs/plans-matrix.md`, `docs/specs/personas.md`, `docs/specs/operational-metrics.md`, `docs/specs/lead-types.md`, `docs/specs/tenant-types.md`, `docs/specs/own-company-model.md` | Operational owner |
-| **Phase / roadmap** | `docs/specs/phase-8-roadmap.md`, `phases-2-8-engineering-closure.md`, `phase-1-3-…`, `phase-2-1-…`, `phase-3-cleanup-inventory.md`, `runbooks/phase-2-1-drop-runbook.md` | Engineering lead |
+| **Phase / roadmap** | [`platform-completion-roadmap.md`](../specs/architecture/platform-completion-roadmap.md) (**horizon SoT** Phases A–G), [`platform-capability-maturity.md`](../specs/architecture/platform-capability-maturity.md) (maturity SoT), `docs/specs/tasks/sales-to-comms-sequential-queue.md` (near-term slices), `docs/specs/phase-8-roadmap.md`, `phases-2-8-engineering-closure.md`, `phase-1-3-…`, `phase-2-1-…`, `phase-3-cleanup-inventory.md`, `runbooks/phase-2-1-drop-runbook.md` | Engineering lead + Architecture canon owner |
 | **Journeys** | `docs/specs/journeys/*.md` | UX / product owner |
 | **DB / Frontend / Platform / Integrations** | `docs/specs/db/`, `docs/specs/frontend/`, `docs/specs/platform/`, `docs/specs/integrations/` | Соответствующая команда |
 | **Glossary** | `docs/specs/glossary.md` | Cross-team |
@@ -86,6 +107,7 @@
 
 | Случай | Что делать |
 |---|---|
+| L0 vs L1/L2/L3 | **L0 выигрывает**. Изменение L0 только через Architecture RFC / `l0-errata`. |
 | L1 vs L2 | L1 выигрывает. L2 обновляется или архивируется. |
 | L2 vs L2 (одного слоя) | Один из них объявляется canon, второй — `archive` или `MERGE_INTO_CANON` (см. governance commit pattern). |
 | L1 vs L3 | L1 выигрывает. L3 обновляется или архивируется. |

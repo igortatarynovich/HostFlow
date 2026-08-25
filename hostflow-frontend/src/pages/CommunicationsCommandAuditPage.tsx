@@ -8,7 +8,8 @@ import {
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { PageHeader } from '../components/nav/PageHeader'
+import { PageShell, PageShellHeader } from '../components/layout'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -92,15 +93,22 @@ export default function CommunicationsCommandAuditPage() {
   const applyFilters = () => void load(0)
 
   return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-semibold text-slate-900">{t('app.nav.items.command_audit', { defaultValue: 'Command audit' })}</h1>
-        <p className="text-sm text-slate-500">
-          {t('app.communications.command_audit.subtitle', { defaultValue: 'Execution log for workspace command templates.' })}
-        </p>
-      </header>
-
-      <PageBreadcrumb className="max-w-4xl" />
+    <PageShell>
+      <PageShellHeader>
+        <PageHeader
+          title={t('app.nav.items.command_audit', { defaultValue: 'Command audit' })}
+          subtitle={t('app.communications.command_audit.subtitle', {
+            defaultValue: 'Execution log for workspace command templates.',
+          })}
+          kind="browse"
+          secondaryActions={
+            <button type="button" className="btn-secondary btn-sm" onClick={() => void load(0)} disabled={loading}>
+              {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          }
+        />
+      </PageShellHeader>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="grid gap-3 md:grid-cols-5">
@@ -210,5 +218,6 @@ export default function CommunicationsCommandAuditPage() {
         )}
       </section>
     </div>
+    </PageShell>
   )
 }

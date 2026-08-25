@@ -20,6 +20,7 @@
 - [ ] Права проверены на **API**, не только в UI.
 - [ ] Нет новой логики «`if role == ...`» без использования общего guard / permission service.
 - [ ] Скрытые поля (internal notes, payroll, CLASS 3) не попадают в ответы для client/candidate/viewer без явного allowlist.
+- [ ] Если меняются trust roles / matrix / invites: соблюдён инвариант **ADR-036** (4 trust-роли; ceilings; `access_context` ⊥ role); job titles = presets; см. `threat-models/rbac-trust-roles.md`.
 
 ### 3. Handoff и cross-tenant
 
@@ -31,6 +32,7 @@
 - [ ] Нет новых публичных прямых URL на файлы без подписи и короткого TTL.
 - [ ] Генерация signed URL только после проверки права.
 - [ ] CLASS 3: аудит + короткий TTL (см. SSOT §2, §7).
+- [ ] Documents Platform (E3–E5 public resolve): см. [`threat-models/documents-platform.md`](threat-models/documents-platform.md) (JWT + tenant bind; closed `workforce_employee` / `reused_for_hr` and `candidate` / `primary`; metadata only; no second Adapter; no file bytes; `candidate_id` column dropped).
 
 ### 5. Загрузки файлов
 
@@ -66,6 +68,13 @@
 
 - [ ] Обновлён `docs/security/threat-models/*` при новой attack surface.
 - [ ] При смене модели данных — `docs/specs/**` и при необходимости `security-ssot.md`.
+- [ ] Acquisition Activity Timeline / `acquisition_activity_events`: см. [`threat-models/acquisition-activity-timeline.md`](threat-models/acquisition-activity-timeline.md) (append-only, RLS, tenant-scoped idempotency, no Ops FKs).
+- [ ] Acquisition Optimization Signals (Stage 5): см. [`threat-models/acquisition-optimization-signals.md`](threat-models/acquisition-optimization-signals.md) (read-only, company-scope, no Activity on GET, no auto-pause).
+- [ ] Marketing Sources (C-3/C-4): см. [`threat-models/acquisition-marketing-sources.md`](threat-models/acquisition-marketing-sources.md) (C-3 inventory GET; C-4 sample/preview tenant isolation, masked PII, preview no production entity create).
+- [ ] Source Diagnostics (PR1–PR9): см. [`threat-models/acquisition-source-diagnostics.md`](threat-models/acquisition-source-diagnostics.md) (read-only Lead + Activity compose; filters; duplicate; Mapping Health; drift alerts/summary; export; Replay via Leads process; SPA-only drift notify; tenant scope; no Diagnostics write on GET).
+- [ ] Communication Campaign Orchestrator (C2.3): см. [`threat-models/communication-campaign-orchestrator.md`](threat-models/communication-campaign-orchestrator.md) (Intent-only, tenant scope, no provider/Thread, distinct from Acquisition campaigns).
+- [ ] Forms Platform (C2 identity + C3 Builder + C4 Runtime + C5 Execution + C6 Optimization): см. [`threat-models/forms-platform.md`](threat-models/forms-platform.md) (frozen publication identity; FormDefinition ↔ Draft only; Runtime Model read-only; Execution validates Runtime Model only; production apply-submit resolve→serve→execute; Shared Intake write path; no Builder↔Runtime/Execution import; tenant resolve; submit pin; fail-closed backfill).
+- [ ] Documents Platform (E3–E5 public resolve): см. [`threat-models/documents-platform.md`](threat-models/documents-platform.md) (authenticated Hub metadata + Document Link; tenant bind; closed entity/relation types; no file bytes / second Adapter; `candidate_id` column dropped).
 
 ---
 

@@ -4,7 +4,12 @@ Source: `src/app/routes.tsx` + explicit public/auth routes in `src/App.tsx`
 
 | page_id | route | module | layout_type | owner | status | canonical_match | notes |
 |---|---|---|---|---|---|---|---|
-| marketing_root | / | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | CrmLandingPage |
+| marketing_root | / | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | CrmLandingPage (ADR-034 Growth) |
+| marketing_faq | /faq | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | FaqPage (sectional FAQ + JSON-LD) |
+| marketing_docs | /docs | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | DocsHubPage (Phase 5) |
+| marketing_docs_slug | /docs/:slug | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | DocsArticlePage (Phase 5) |
+| marketing_academy | /academy | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | AcademyPage (Phase 5) |
+| marketing_demo | /demo | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | DemoPage (Demo Wave-1) |
 | not-found | /app/* | Platform | UTILITY_LAYOUT_V1 | Platform | Candidate | n/a | NotFoundRedirect |
 | activities-legacy | /app/activities | Platform | UTILITY_LAYOUT_V1 | Platform | Candidate | n/a | LegacyActivitiesRedirect |
 | analytics | /app/analytics | Overview | UTILITY_LAYOUT_V1 | Product | Candidate | n/a | RedirectLegacyAnalyticsToInsights |
@@ -116,7 +121,7 @@ Source: `src/app/routes.tsx` + explicit public/auth routes in `src/App.tsx`
 | auth_login | /login | Auth | AUTH_LAYOUT_V1 | Platform | Candidate | n/a | Login |
 | marketing_pricing | /pricing | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | CrmLandingPage |
 | public_public | /public | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | Navigate |
-| public_public_apply-old_token | /public/apply-old/:token | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | LazyRoute |
+| public_public_apply-old_token | /public/apply-old/:token | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | Navigate → /public/apply/:token (ADR-034) |
 | public_public_apply_token | /public/apply/:token | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | LazyRoute |
 | public_public_documents_token | /public/documents/:token | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | LazyRoute |
 | public_public_intake | /public/intake | Public | PUBLIC_PORTAL_LAYOUT_V1 | Platform | Candidate | n/a | PublicIntakeStart |
@@ -128,3 +133,11 @@ Source: `src/app/routes.tsx` + explicit public/auth routes in `src/App.tsx`
 | auth_signup | /signup | Auth | AUTH_LAYOUT_V1 | Platform | Candidate | n/a | SignupPage |
 | marketing_use-cases_high-volume-onboarding | /use-cases/high-volume-onboarding | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | UseCaseHighVolumeOnboardingPage |
 | marketing_use-cases_trucking-recruitment | /use-cases/trucking-recruitment | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | UseCaseTruckingRecruitmentPage |
+| marketing_use-cases_recruitment-agencies | /use-cases/recruitment-agencies | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_use-cases_transport-companies | /use-cases/transport-companies | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_use-cases_driver-recruitment | /use-cases/driver-recruitment | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_features_whatsapp-recruitment | /features/whatsapp-recruitment | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_features_meta-ads-recruitment | /features/meta-ads-recruitment | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_use-cases_ats-for-drivers | /use-cases/ats-for-drivers | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_use-cases_ats-for-transport | /use-cases/ats-for-transport | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |
+| marketing_use-cases_ats-europe | /use-cases/ats-europe | Marketing | MARKETING_LAYOUT_V1 | Growth | Candidate | n/a | SeoCatalogPage (Wave-2) |

@@ -148,9 +148,22 @@ test.describe('HR handoff full flow (API)', () => {
       candidate_snapshot?: Record<string, unknown>
     }
     const transfer = employee.meta?.recruitment_transfer as Record<string, unknown> | undefined
-    if (transfer) expect(transfer.candidate_id).toBe(candidateId)
-    const snap = employee.candidate_snapshot
-    if (snap) expect(snap.personal_data).toBeTruthy()
+    expect(transfer).toBeTruthy()
+    expect(transfer!.candidate_id).toBe(candidateId)
+    const snap = employee.candidate_snapshot as Record<string, unknown> | undefined
+    expect(snap).toBeTruthy()
+    expect(snap!.personal_data).toBeTruthy()
+
+    const hrDocs = await request.get(`${API_BASE}/workforce/employees/${empId}/documents`, { headers: hrH })
+    expect(hrDocs.ok(), await hrDocs.text()).toBeTruthy()
+    expect(((await hrDocs.json()) as unknown[]).length).toBeGreaterThan(0)
+
+    const bundle = await request.get(`${API_BASE}/workforce/employees/${empId}/hr-bundle`, { headers: hrH })
+    expect(bundle.ok(), await bundle.text()).toBeTruthy()
+    const wel = ((await bundle.json()) as { work_eligibility_profile?: Record<string, unknown> })
+      .work_eligibility_profile
+    expect(wel?.citizenship).toBe('UA')
+    expect(wel?.work_country).toBe('PL')
 
     const review = await request.get(`${API_BASE}/workforce/employees/${empId}/hr-review`, { headers: hrH })
     expect(review.ok(), await review.text()).toBeTruthy()
@@ -175,8 +188,8 @@ test.describe('HR handoff full flow (API)', () => {
       transfer_summary?: Record<string, unknown> | null
     }
     expect(inbox.workforce_employee_id).toBe(empId)
-    if (inbox.transfer_summary) {
-      expect(inbox.transfer_summary.citizenship || inbox.transfer_summary.work_country).toBeTruthy()
-    }
+    const transferSummary = inbox.transfer_summary as Record<string, unknown> | null | undefined
+    expect(transferSummary).toBeTruthy()
+    expect(transferSummary!.citizenship || transferSummary!.work_country).toBeTruthy()
   })
 })

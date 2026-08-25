@@ -6,13 +6,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.entity_profile.manifests.recruitment import recruitment_module_entity_profiles
+from backend.app.entity_profile.manifests.service_sales import service_sales_module_entity_profiles
 from backend.app.entity_profile.registry import EntityProfileRegistry
 from backend.app.field_registry.seed import ensure_platform_field_registry_catalog, ensure_tenant_field_registry_defaults
 from backend.app.models.entity_profile import EpEntityProfile, PLATFORM_TENANT_SCOPE
 
 
 def _entity_profile_manifests() -> list[dict]:
-    return recruitment_module_entity_profiles()
+    return [*recruitment_module_entity_profiles(), *service_sales_module_entity_profiles()]
 
 
 async def _has_all_manifest_profiles(db: AsyncSession, tenant_id: str, manifests: list[dict]) -> bool:

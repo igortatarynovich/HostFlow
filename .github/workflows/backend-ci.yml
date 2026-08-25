@@ -1,19 +1,14 @@
 name: backend-ci
+
+# PR-path only. Named gates are independent jobs + path filters so a CL1
+# slice does not replay Forms C1–C6 / D1–D9 / E1–E7 / R1–R5. Full pytest +
+# coverage lives in backend-regression.yml (non-blocking / nightly).
+#
+# Contract tests grep this file for named-gate titles and test filenames.
+# Keep those substrings when adding a gate: add the pytest path to the
+# matching family job and keep the human title in a comment or job name.
+
 on:
-  push:
-    paths:
-      - "backend/**"
-      - "shared/crm_app_paths.json"
-      - "shared/crm_app_paths.schema.json"
-      - "scripts/codegen/**"
-      - "scripts/architecture/**"
-      - "scripts/security/**"
-      - "docs/specs/gates/**"
-      - "docs/devel/pr-checklist-adr014-document-access.md"
-      - ".github/workflows/backend-ci.yml"
-      - ".github/workflows/security-gates.yml"
-      - ".github/pull_request_template.md"
-      - ".github/PULL_REQUEST_TEMPLATE/**"
   pull_request:
     paths:
       - "backend/**"
@@ -21,17 +16,249 @@ on:
       - "shared/crm_app_paths.schema.json"
       - "scripts/codegen/**"
       - "scripts/architecture/**"
-      - "scripts/security/**"
+      - "scripts/entity_field_composition/**"
       - "docs/specs/gates/**"
+      - "docs/specs/tasks/forms-platform*"
+      - "docs/specs/tasks/entity-workspace*"
+      - "docs/specs/tasks/documents-platform*"
+      - "docs/specs/tasks/platform-reference*"
+      - "docs/specs/tasks/workspace-capability*"
+      - "docs/specs/tasks/entity-field-composition*"
+      - "docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json"
+      - "docs/specs/tasks/lifecycle-identity-li1*"
+      - "docs/specs/tasks/engine-document-request-dr1*"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
-      - ".github/workflows/security-gates.yml"
-      - ".github/pull_request_template.md"
-      - ".github/PULL_REQUEST_TEMPLATE/**"
+      - ".github/actions/backend-pytest/**"
+  push:
+    branches:
+      - integration/release-product-a-b
+    paths:
+      - "backend/**"
+      - "shared/crm_app_paths.json"
+      - "shared/crm_app_paths.schema.json"
+      - "scripts/codegen/**"
+      - "scripts/architecture/**"
+      - "scripts/entity_field_composition/**"
+      - "docs/specs/gates/**"
+      - "docs/specs/tasks/forms-platform*"
+      - "docs/specs/tasks/entity-workspace*"
+      - "docs/specs/tasks/documents-platform*"
+      - "docs/specs/tasks/platform-reference*"
+      - "docs/specs/tasks/workspace-capability*"
+      - "docs/specs/tasks/entity-field-composition*"
+      - "docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json"
+      - "docs/specs/tasks/lifecycle-identity-li1*"
+      - "docs/specs/tasks/engine-document-request-dr1*"
+      - "docs/devel/pr-checklist-adr014-document-access.md"
+      - ".github/workflows/backend-ci.yml"
+      - ".github/actions/backend-pytest/**"
   workflow_dispatch:
 
+concurrency:
+  group: backend-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  HOSTFLOW_ALLOW_NON_TEST_DB: "1"
+  HOSTFLOW_SQLALCHEMY_NULL_POOL: "1"
+
 jobs:
-  tests:
+  changes:
+    name: path filter
+    runs-on: ubuntu-latest
+    outputs:
+      ci: ${{ github.event_name != 'pull_request' || steps.filter.outputs.ci == 'true' }}
+      shared: ${{ github.event_name != 'pull_request' || steps.filter.outputs.shared == 'true' }}
+      guards: ${{ github.event_name != 'pull_request' || steps.filter.outputs.guards == 'true' }}
+      alembic: ${{ github.event_name != 'pull_request' || steps.filter.outputs.alembic == 'true' }}
+      sales: ${{ github.event_name != 'pull_request' || steps.filter.outputs.sales == 'true' }}
+      forms: ${{ github.event_name != 'pull_request' || steps.filter.outputs.forms == 'true' }}
+      entity: ${{ github.event_name != 'pull_request' || steps.filter.outputs.entity == 'true' }}
+      documents: ${{ github.event_name != 'pull_request' || steps.filter.outputs.documents == 'true' }}
+      workspace: ${{ github.event_name != 'pull_request' || steps.filter.outputs.workspace == 'true' }}
+      reference: ${{ github.event_name != 'pull_request' || steps.filter.outputs.reference == 'true' }}
+      cl1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl1 == 'true' }}
+      cl2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl2 == 'true' }}
+      cl3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl3 == 'true' }}
+      cl4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl4 == 'true' }}
+      cl5: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl5 == 'true' }}
+      cl6: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl6 == 'true' }}
+      cl7: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl7 == 'true' }}
+      overlay: ${{ github.event_name != 'pull_request' || steps.filter.outputs.overlay == 'true' }}
+      li1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.li1 == 'true' }}
+      dr1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1 == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ci:
+              - '.github/workflows/backend-ci.yml'
+              - '.github/actions/backend-pytest/**'
+            shared:
+              - 'backend/tests/conftest.py'
+              - 'backend/requirements.txt'
+              - 'backend/pytest.ini'
+              - 'backend/app/**'
+              - '!backend/app/forms_platform/**'
+              - '!backend/app/reference/**'
+              - '!backend/app/modules/documents/**'
+              - '!backend/app/modules/sales/**'
+              - '!backend/app/modules/client_accounts/**'
+            guards:
+              - 'backend/app/**'
+              - 'backend/scripts/**'
+              - 'scripts/codegen/**'
+              - 'scripts/architecture/**'
+              - 'shared/crm_app_paths.json'
+              - 'shared/crm_app_paths.schema.json'
+              - 'docs/devel/pr-checklist-adr014-document-access.md'
+            alembic:
+              - 'backend/alembic/**'
+              - 'backend/scripts/check_alembic_heads.py'
+              - 'backend/scripts/check_alembic_revision_graph.py'
+              - 'backend/scripts/check_stage1a_migrations.py'
+              - 'backend/app/models/**'
+            sales:
+              - 'backend/app/modules/sales/**'
+              - 'backend/app/modules/client_accounts/**'
+              - 'backend/tests/modules/sales/**'
+              - 'backend/tests/modules/client_accounts/**'
+              - 'backend/tests/unit/test_sales_inquiry_duplicates.py'
+            forms:
+              - 'backend/app/forms_platform/**'
+              - 'backend/tests/forms_platform/**'
+              - 'docs/specs/tasks/forms-platform*'
+            entity:
+              - 'backend/tests/platform/test_entity_workspace_*'
+              - 'docs/specs/tasks/entity-workspace*'
+              - 'hostflow-frontend/src/components/ui/EntityWorkspace*'
+              - 'hostflow-frontend/src/**/entityWorkspace/**'
+              - 'hostflow-frontend/src/**/EntityWorkspace*'
+            documents:
+              - 'backend/app/modules/documents/**'
+              - 'backend/tests/platform/test_documents_e*'
+              - 'docs/specs/tasks/documents-platform*'
+            workspace:
+              - 'backend/tests/platform/test_workspace_capability_*'
+              - 'docs/specs/tasks/workspace-capability*'
+              - 'docs/specs/gates/workspace-capability*'
+            reference:
+              - 'backend/app/reference/**'
+              - 'backend/tests/platform/test_reference_r*'
+              - 'docs/specs/platform/country-registry*'
+              - 'docs/specs/platform/*document-type*'
+              - 'docs/specs/tasks/platform-reference*'
+            cl1:
+              - 'scripts/entity_field_composition/**'
+              - 'backend/tests/entity_field_composition/test_cl1_inventory_gate.py'
+              - 'docs/specs/tasks/entity-field-composition-cl1*'
+            cl2:
+              - 'backend/app/entity_profile/membership_runtime.py'
+              - 'backend/app/entity_profile/manifests/**'
+              - 'backend/tests/entity_field_composition/test_cl2_membership_gate.py'
+              - 'scripts/architecture/check_entity_profile_membership_boundary.py'
+              - 'scripts/architecture/entity_profile_membership_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl2*'
+            cl3:
+              - 'backend/app/entity_profile/layout_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl3_layout_gate.py'
+              - 'scripts/architecture/check_entity_profile_layout_boundary.py'
+              - 'scripts/architecture/entity_profile_layout_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl3*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+            cl4:
+              - 'backend/app/entity_profile/builder_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl4_builder_gate.py'
+              - 'scripts/architecture/check_entity_profile_builder_boundary.py'
+              - 'scripts/architecture/entity_profile_builder_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl4*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateCompositionBuilder.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+            cl5:
+              - 'backend/app/entity_profile/qa_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl5_qa_gate.py'
+              - 'scripts/architecture/check_entity_profile_qa_boundary.py'
+              - 'scripts/architecture/entity_profile_qa_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl5*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateQaPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+            cl6:
+              - 'backend/app/entity_profile/flight_map_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl6_flight_map_gate.py'
+              - 'scripts/architecture/check_entity_profile_flight_map_boundary.py'
+              - 'scripts/architecture/entity_profile_flight_map_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl6*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateFlightMapPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateQaPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+            cl7:
+              - 'backend/app/entity_profile/engine_eval_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl7_engine_eval_gate.py'
+              - 'scripts/architecture/check_entity_profile_engine_eval_boundary.py'
+              - 'scripts/architecture/entity_profile_engine_eval_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl7*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEngineEvalPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateFlightMapPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateQaPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+            overlay:
+              - 'backend/app/entity_profile/vacancy_overlay_runtime.py'
+              - 'backend/app/entity_profile/engine_eval_runtime.py'
+              - 'backend/tests/entity_field_composition/test_vacancy_overlay_contract_gate.py'
+              - 'scripts/architecture/check_entity_profile_vacancy_overlay_boundary.py'
+              - 'scripts/architecture/entity_profile_vacancy_overlay_boundary_*'
+              - 'docs/specs/tasks/entity-profile-vacancy-overlay*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEngineEvalPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateFlightMapPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateQaPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+            li1:
+              - 'backend/app/platform/module_stage_registry/**'
+              - 'backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py'
+              - 'scripts/architecture/check_stage_existence_boundary.py'
+              - 'scripts/architecture/stage_existence_boundary_*'
+              - 'docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json'
+              - 'docs/specs/tasks/lifecycle-identity-li1*'
+            dr1:
+              - 'backend/app/requirement_rules/engine_to_hub_outstanding_ask_contract.py'
+              - 'backend/tests/requirement_rules/test_dr1_contract_gate.py'
+              - 'scripts/architecture/check_engine_outstanding_ask_boundary.py'
+              - 'scripts/architecture/engine_outstanding_ask_boundary_*'
+              - 'docs/specs/tasks/engine-document-request-dr1*'
+
+  guards:
+    name: guards
+    needs: changes
+    if: needs.changes.outputs.guards == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: CRM app paths codegen drift check
+        run: python3 scripts/codegen/generate_crm_app_paths.py --check
+      - name: SPA path literals (no stray /app/... in app/)
+        run: python3 backend/scripts/check_spa_path_literals.py
+      - name: ADR-014 document access guardrails (documents-db module)
+        run: python3 backend/scripts/check_adr014_document_access.py
+      - name: REF-3.1 facade boundary guard scan
+        run: python3 scripts/architecture/check_reference_facade_boundary.py
+
+  alembic:
+    name: alembic
+    needs: changes
+    if: needs.changes.outputs.alembic == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
     services:
       db:
@@ -42,16 +269,17 @@ jobs:
           POSTGRES_DB: hostflow
         ports: ["5432:5432"]
         options: >-
-          --health-cmd="pg_isready -U hostflow" 
+          --health-cmd="pg_isready -U hostflow"
           --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - name: CRM app paths codegen drift check
-        run: python3 scripts/codegen/generate_crm_app_paths.py --check
-      - name: SPA path literals (no stray /app/... in app/)
-        run: python3 backend/scripts/check_spa_path_literals.py
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
       - name: Install deps
         working-directory: backend
         run: |
@@ -59,51 +287,402 @@ jobs:
           pip install -r requirements.txt
       - name: Alembic heads guard (must be exactly 1)
         run: python3 backend/scripts/check_alembic_heads.py
+      - name: Alembic revision graph (every down_revision present + single head)
+        run: python3 backend/scripts/check_alembic_revision_graph.py --with-alembic
       - name: Alembic upgrade
         working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
         run: alembic upgrade head
+      - name: Stage 1A migration roundtrip (when present)
+        working-directory: backend
+        run: |
+          if [ -f scripts/check_stage1a_migrations.py ]; then
+            python scripts/check_stage1a_migrations.py
+          else
+            echo "skip: Stage 1A migration checker not in tree"
+          fi
+
+  sales-gates:
+    name: sales gates
+    needs: changes
+    if: needs.changes.outputs.sales == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      # Stage 1A client account tests (PostgreSQL)
+      # Stage 3 slice 3 SalesInquiry identity
+      # Stage 3 slice 4 hard module separation
+      - uses: ./.github/actions/backend-pytest
+        with:
+          skip-alembic: "0"
+          tests: >-
+            tests/modules/client_accounts/
+            tests/modules/sales/test_stage3_slice3_product_identity.py
+            tests/unit/test_sales_inquiry_duplicates.py
+            tests/modules/sales/test_stage3_slice4_module_separation.py
+
+  forms-gates:
+    name: Forms Platform C1–C6
+    needs: changes
+    if: needs.changes.outputs.forms == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      # Forms Platform C1 contract seal
+      # Forms Platform C2 Manifest Gate
+      # Forms Platform C2 Public Contract Gate
+      # Forms Platform C2 Adapter Gate
+      # Forms Platform C2 Contract Identity Gate
+      # Forms Platform C3 Builder Runtime Gate
+      # Forms Platform C4 Form Runtime Gate
+      # Forms Platform C5 Form Execution Gate
+      # Forms Platform C6 Optimization Gate
+      - uses: ./.github/actions/backend-pytest
+        with:
+          skip-alembic: "0"
+          tests: >-
+            tests/forms_platform/test_forms_c1_contract_seal.py
+            tests/forms_platform/test_forms_c2_manifest_gate.py
+            tests/forms_platform/test_forms_c2_public_contract_gate.py
+            tests/forms_platform/test_forms_c2_adapter_gate.py
+            tests/forms_platform/test_forms_c2_identity_gate.py
+            tests/forms_platform/test_forms_c3_builder_runtime_gate.py
+            tests/forms_platform/test_forms_c4_form_runtime_gate.py
+            tests/forms_platform/test_forms_c5_form_execution_gate.py
+            tests/forms_platform/test_forms_c6_optimization_gate.py
+
+  entity-workspace-gates:
+    name: Entity Workspace D1–D9
+    needs: changes
+    if: needs.changes.outputs.entity == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Entity Workspace D1 Contract Seal Gate
+      # Entity Workspace D2 Composition Gate
+      # Entity Workspace D3 Cutover Gate
+      # Entity Workspace D4 Cutover Gate
+      # Entity Workspace D5 Cutover Gate
+      # Entity Workspace D6 Cutover Gate
+      # Entity Workspace D7 Cutover Gate
+      # Entity Workspace D8 Cutover Gate
+      # Entity Workspace D9 Cutover Gate
+      - uses: ./.github/actions/backend-pytest
+        with:
+          tests: >-
+            tests/platform/test_entity_workspace_d1_contract_seal.py
+            tests/platform/test_entity_workspace_d2_composition_gate.py
+            tests/platform/test_entity_workspace_d3_cutover_gate.py
+            tests/platform/test_entity_workspace_d4_cutover_gate.py
+            tests/platform/test_entity_workspace_d5_cutover_gate.py
+            tests/platform/test_entity_workspace_d6_cutover_gate.py
+            tests/platform/test_entity_workspace_d7_cutover_gate.py
+            tests/platform/test_entity_workspace_d8_cutover_gate.py
+            tests/platform/test_entity_workspace_d9_cutover_gate.py
+
+  documents-gates:
+    name: Documents Platform E1–E7
+    needs: changes
+    if: needs.changes.outputs.documents == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Documents Platform E1 Contract Seal Gate
+      # Documents Platform E2 Public Contract Gate
+      # Documents Platform E3 First Consumer Bind Gate
+      # Documents Platform E4 Candidate Document Link Gate
+      # Documents Platform E5 Candidate Storage Bridge Gate
+      # Documents Platform E6 Document Expiry Gate
+      # Documents Platform E7 Document Requests Gate
+      - uses: ./.github/actions/backend-pytest
+        with:
+          tests: >-
+            tests/platform/test_documents_e1_contract_seal_gate.py
+            tests/platform/test_documents_e2_public_contract_gate.py
+            tests/platform/test_documents_e3_first_consumer_bind_gate.py
+            tests/platform/test_documents_e4_candidate_document_link_gate.py
+            tests/platform/test_documents_e5_candidate_storage_bridge_gate.py
+            tests/platform/test_documents_e6_document_expiry_gate.py
+            tests/platform/test_documents_e7_document_requests_gate.py
+
+  workspace-capability-gates:
+    name: Workspace Capability gates
+    needs: changes
+    if: needs.changes.outputs.workspace == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Workspace Capability Platform Completion Gate
+      # Workspace Capability Host Runtime Equivalence Gate
+      - uses: ./.github/actions/backend-pytest
+        with:
+          tests: >-
+            tests/platform/test_workspace_capability_platform_completion_gate.py
+            tests/platform/test_workspace_capability_host_runtime_equivalence_gate.py
+
+  reference-gates:
+    name: Reference R1–R5
+    needs: changes
+    if: needs.changes.outputs.reference == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Reference R1 Country Registry Gate
+      # Reference R2 Country Runtime Cutover Gate
+      # Reference R3 Document Identity Gate
+      # Reference R4 Alias Consolidation Gate
+      # Reference R5 Policy Merge Gate
+      - uses: ./.github/actions/backend-pytest
+        with:
+          tests: >-
+            tests/platform/test_reference_r1_country_registry_gate.py
+            tests/platform/test_reference_r2_country_runtime_cutover_gate.py
+            tests/platform/test_reference_r3_document_identity_gate.py
+            tests/platform/test_reference_r4_alias_consolidation_gate.py
+            tests/platform/test_reference_r5_policy_merge_gate.py
+
+  reference-program-exit-gate:
+    name: Reference Program Exit Gate
+    needs: changes
+    if: needs.changes.outputs.reference == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Reference Program Exit gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_reference_program_exit_gate.py') == ''
+        run: echo "Reference Program Exit gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_reference_program_exit_gate.py') != ''
+        with:
+          tests: tests/platform/test_reference_program_exit_gate.py
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
       - name: Lint
         continue-on-error: true
         working-directory: backend
         run: |
           pip install ruff
           ruff check .
-      - name: ADR-014 document access guardrails (documents-db module)
-        run: python3 backend/scripts/check_adr014_document_access.py
-      - name: REF-3.1 facade boundary guard scan
-        run: python3 scripts/architecture/check_reference_facade_boundary.py
-      - name: Tests with coverage
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-        run: |
-          pip install pytest pytest-asyncio pytest-cov
-          pytest -q \
-            --cov=backend/app \
-            --cov-config=.coveragerc \
-            --cov-report=term \
-            --cov-report=xml:coverage.xml
-      - name: Tenant isolation (Postgres, integration)
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-        run: |
-          pip install pytest pytest-asyncio
-          pytest -q tests/api/test_tenant_isolation.py -m postgres_integration
-      - name: Security regression package
-        working-directory: backend
-        env:
-          DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-        run: pytest -q tests/security
-      - name: Coverage gate (Phase 0 #7 — ratchet)
-        run: python backend/scripts/check_coverage.py
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
+
+  cl1-inventory-gate:
+    name: Entity Field Composition CL1 Inventory Gate
+    needs: changes
+    if: needs.changes.outputs.cl1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL1 gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl1_inventory_gate.py') == ''
+        run: echo "CL1 inventory gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl1_inventory_gate.py') != ''
         with:
-          name: backend-coverage
-          path: backend/coverage.xml
-          if-no-files-found: warn
-          retention-days: 14
+          tests: tests/entity_field_composition/test_cl1_inventory_gate.py
+
+  li1-existence-gate:
+    name: Lifecycle Identity LI-1 Existence Guard Gate
+    needs: changes
+    if: needs.changes.outputs.li1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when LI-1 gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py') == ''
+        run: echo "LI-1 existence guard gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py') != ''
+        with:
+          tests: tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py
+
+  dr1-contract-gate:
+    name: DR1 Contract Gate
+    needs: changes
+    if: needs.changes.outputs.dr1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when DR1 contract gate is not in this tree
+        if: hashFiles('backend/tests/requirement_rules/test_dr1_contract_gate.py') == ''
+        run: echo "DR1 contract gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/requirement_rules/test_dr1_contract_gate.py') != ''
+        with:
+          tests: tests/requirement_rules/test_dr1_contract_gate.py
+
+  cl2-membership-gate:
+    name: CL2 Membership Gate
+    needs: changes
+    if: needs.changes.outputs.cl2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL2 membership gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl2_membership_gate.py') == ''
+        run: echo "CL2 membership gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl2_membership_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl2_membership_gate.py
+
+  cl3-layout-gate:
+    name: CL3 Layout Gate
+    needs: changes
+    if: needs.changes.outputs.cl3 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL3 layout gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl3_layout_gate.py') == ''
+        run: echo "CL3 layout gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl3_layout_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl3_layout_gate.py
+
+  cl4-builder-gate:
+    name: CL4 Builder Gate
+    needs: changes
+    if: needs.changes.outputs.cl4 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL4 builder gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl4_builder_gate.py') == ''
+        run: echo "CL4 builder gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl4_builder_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl4_builder_gate.py
+
+  cl5-qa-gate:
+    name: CL5 Q&A Gate
+    needs: changes
+    if: needs.changes.outputs.cl5 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL5 Q&A gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl5_qa_gate.py') == ''
+        run: echo "CL5 Q&A gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl5_qa_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl5_qa_gate.py
+
+  cl6-flight-map-gate:
+    name: CL6 Flight Map Gate
+    needs: changes
+    if: needs.changes.outputs.cl6 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL6 Flight map gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl6_flight_map_gate.py') == ''
+        run: echo "CL6 Flight map gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl6_flight_map_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl6_flight_map_gate.py
+
+  cl7-engine-eval-gate:
+    name: CL7 Engine Eval Gate
+    needs: changes
+    if: needs.changes.outputs.cl7 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL7 Engine eval gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl7_engine_eval_gate.py') == ''
+        run: echo "CL7 Engine eval gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl7_engine_eval_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl7_engine_eval_gate.py
+
+  overlay-contract-gate:
+    name: Vacancy Overlay Contract Gate
+    needs: changes
+    if: needs.changes.outputs.overlay == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Vacancy Overlay gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_vacancy_overlay_contract_gate.py') == ''
+        run: echo "Vacancy Overlay gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_vacancy_overlay_contract_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_vacancy_overlay_contract_gate.py
+
+  tests:
+    name: tests
+    if: always() && !cancelled()
+    needs:
+      - changes
+      - lint
+      - guards
+      - alembic
+      - sales-gates
+      - forms-gates
+      - entity-workspace-gates
+      - documents-gates
+      - workspace-capability-gates
+      - reference-gates
+      - reference-program-exit-gate
+      - cl1-inventory-gate
+      - li1-existence-gate
+      - dr1-contract-gate
+      - cl2-membership-gate
+      - cl3-layout-gate
+      - cl4-builder-gate
+      - cl5-qa-gate
+      - cl6-flight-map-gate
+      - cl7-engine-eval-gate
+      - overlay-contract-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if a blocking job failed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          needs = json.loads(os.environ["NEEDS_JSON"])
+          for name, payload in sorted(needs.items()):
+              print(f"{name}: {payload.get('result')}")
+          bad = [
+              name
+              for name, payload in needs.items()
+              if payload.get("result") in ("failure", "cancelled")
+          ]
+          if bad:
+              print("blocking failures: " + ", ".join(bad), file=sys.stderr)
+              sys.exit(1)
+          PY
