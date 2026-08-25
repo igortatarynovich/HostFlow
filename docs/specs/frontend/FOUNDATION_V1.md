@@ -274,7 +274,7 @@ Shadow
 
 | Mechanism | Command / location |
 |---|---|
-| PR diff check (blocking) | `npm run foundation:check` |
+| Change-range ratchet (blocking) | `npm run foundation:check` — comparison-base contract in `FOUNDATION_ENFORCEMENT_AND_MIGRATION_PLAN.md` §3.5 |
 | Backlog scan (non-blocking) | `npm run foundation:scan` |
 | CI | `.github/workflows/frontend-static-qa.yml` |
 | Migration plan | `FOUNDATION_ENFORCEMENT_AND_MIGRATION_PLAN.md` |
