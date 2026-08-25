@@ -2,6 +2,8 @@ import clsx from 'clsx'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+/** CI probe — do not merge. Forbidden spacing token: px-1.5 */
+
 export type ChipBehavior = 'static' | 'dismissible' | 'selectable' | 'action'
 
 export type ChipSize = 'sm' | 'md'
