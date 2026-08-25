@@ -291,14 +291,15 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 | **2f ✅** | [Documents Platform E6](../tasks/documents-platform-e6-document-expiry.md): Hub expiry / validity. |
 | **2g ✅** | [Documents Platform E7](../tasks/documents-platform-e7-document-requests.md): Hub document requests. Not mass D3–D9 bind. G4 stays Recruitment Application. |
 | **2h ✅** | [Entity Profile — Vacancy Overlay Contract](../tasks/entity-profile-vacancy-overlay-contract.md): vacancy-specific requirement delta over Profile / Screening Pack. Not CL8. Not Engine v2. Not vacancy UI. |
-| **2i ← active** | [DR1-runtime](../tasks/engine-document-request-dr1-runtime.md): Engine may create Hub outstanding asks. Not a new UI chrome slice. Not CL8. Not E8. Not mass generation. |
+| **2i ✅** | [DR1-runtime](../tasks/engine-document-request-dr1-runtime.md): Engine may create Hub outstanding asks. Not a new UI chrome slice. Not CL8. Not E8. Not mass generation. |
+| **2j ← active** | [Documents Platform E8-bind](../tasks/documents-platform-e8-bind.md): remaining consumers bind to canonical document types. Not E8-eval. Not CL8. Not mass D3–D9 bind. |
 | **3** | Application Workspace implements the **same** host contract — it does **not** become Entity Workspace |
 | 4–5 | Process + Collection completion |
 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
-Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`engine-document-request-dr1-runtime.md`](../tasks/engine-document-request-dr1-runtime.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
+Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`documents-platform-e8-bind.md`](../tasks/documents-platform-e8-bind.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
 
-**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E7 is **complete**. Entity Field Composition CL7 Engine evaluation is ✅. Vacancy Overlay Contract is ✅. DR1-runtime is **open** (brief; feat locked; Hub write, not UI chrome). CL6 Flight mapping is ✅. ListWorkspace is a separate collection slice.
+**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E7 is **complete**. Entity Field Composition CL7 Engine evaluation is ✅. Vacancy Overlay Contract is ✅. DR1-runtime is ✅ (#313). E8-bind is **open** (brief; feat locked; canonical type identity, not UI chrome). CL6 Flight mapping is ✅. ListWorkspace is a separate collection slice.
 
 ---
 
@@ -332,7 +333,8 @@ If any answer fails — stop and fix design before coding.
 | [`../tasks/entity-field-composition-cl6-flight-map.md`](../tasks/entity-field-composition-cl6-flight-map.md) | Entity Field Composition CL6 — Flight mapping ✅ |
 | [`../tasks/entity-field-composition-cl7-engine-eval.md`](../tasks/entity-field-composition-cl7-engine-eval.md) | Entity Field Composition CL7 — Requirement Engine evaluation ✅ (#309) |
 | [`../tasks/entity-profile-vacancy-overlay-contract.md`](../tasks/entity-profile-vacancy-overlay-contract.md) | Entity Profile — Vacancy Overlay Contract ✅ (#311) |
-| [`../tasks/engine-document-request-dr1-runtime.md`](../tasks/engine-document-request-dr1-runtime.md) | DR1-runtime (active; brief; feat locked; Hub write, not UI chrome) |
+| [`../tasks/engine-document-request-dr1-runtime.md`](../tasks/engine-document-request-dr1-runtime.md) | DR1-runtime ✅ (#313; Hub write, not UI chrome) |
+| [`../tasks/documents-platform-e8-bind.md`](../tasks/documents-platform-e8-bind.md) | E8-bind (active; brief; feat locked; canonical type identity, not UI chrome) |
 | [`../gates/workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md) | WCP program COMPLETE |
 | [`../gates/goal-completion-gate.md`](../gates/goal-completion-gate.md) | Phase close: original goal vs substituted brief |
 | [`../gates/platform-scope-completeness-audit.md`](../gates/platform-scope-completeness-audit.md) | Closed-phase completeness vs residual capability |
@@ -354,6 +356,7 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
+| 2026-08-25 | 2j = E8-bind (brief; feat locked); 2i DR1-runtime ✅ (#313); 2h Overlay ✅ (#311); CL0–CL7 ✅ |
 | 2026-08-25 | 2i = DR1-runtime (brief; feat locked; Hub write); 2h Overlay ✅ (#311); CL0–CL7 ✅ |
 | 2026-08-25 | 2h = Entity Profile Vacancy Overlay Contract (feat; not CL8); CL0–CL7 ✅ |
 | 2026-08-25 | 2h = Entity Field Composition CL7 Requirement Engine evaluation (feat); CL0–CL6 ✅ |
