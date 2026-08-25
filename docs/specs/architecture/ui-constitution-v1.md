@@ -293,13 +293,14 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 | **2h ✅** | [Entity Profile — Vacancy Overlay Contract](../tasks/entity-profile-vacancy-overlay-contract.md): vacancy-specific requirement delta over Profile / Screening Pack. Not CL8. Not Engine v2. Not vacancy UI. |
 | **2i ✅** | [DR1-runtime](../tasks/engine-document-request-dr1-runtime.md): Engine may create Hub outstanding asks. Not a new UI chrome slice. Not CL8. Not E8. Not mass generation. |
 | **2j ✅** | [Documents Platform E8-bind](../tasks/documents-platform-e8-bind.md): remaining consumers bind to canonical document types. **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. Not E8-eval. Not CL8. Not mass D3–D9 bind. |
+| **2k ← active** | [Documents Platform E8-eval](../tasks/documents-platform-e8-eval.md): required / optional / applicability from R5 merge. Brief; feat locked. Not OCR. Not CL8. Not mass D3–D9 bind. |
 | **3** | Application Workspace implements the **same** host contract — it does **not** become Entity Workspace |
 | 4–5 | Process + Collection completion |
 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
-Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`sales-to-comms-sequential-queue.md`](../tasks/sales-to-comms-sequential-queue.md) (none this amendment; E8-bind ✅). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
+Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`sales-to-comms-sequential-queue.md`](../tasks/sales-to-comms-sequential-queue.md) (E8-eval; feat locked; E8-bind ✅). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
 
-**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E7 is **complete**. Entity Field Composition CL7 Engine evaluation is ✅. Vacancy Overlay Contract is ✅. DR1-runtime is ✅ (#313). E8-bind is ✅ (#321; canonical type identity on D4 Documents). CL6 Flight mapping is ✅. ListWorkspace is a separate collection slice.
+**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E7 is **complete**. Entity Field Composition CL7 Engine evaluation is ✅. Vacancy Overlay Contract is ✅. DR1-runtime is ✅ (#313). E8-bind is ✅ (#321; canonical type identity on D4 Documents). E8-eval is **active** (brief; feat locked). CL6 Flight mapping is ✅. ListWorkspace is a separate collection slice.
 
 ---
 
@@ -335,6 +336,7 @@ If any answer fails — stop and fix design before coding.
 | [`../tasks/entity-profile-vacancy-overlay-contract.md`](../tasks/entity-profile-vacancy-overlay-contract.md) | Entity Profile — Vacancy Overlay Contract ✅ (#311) |
 | [`../tasks/engine-document-request-dr1-runtime.md`](../tasks/engine-document-request-dr1-runtime.md) | DR1-runtime ✅ (#313; Hub write, not UI chrome) |
 | [`../tasks/documents-platform-e8-bind.md`](../tasks/documents-platform-e8-bind.md) | E8-bind ✅ (#321; canonical type identity) |
+| [`../tasks/documents-platform-e8-eval.md`](../tasks/documents-platform-e8-eval.md) | E8-eval **active** (brief; feat locked; required/optional from R5 merge) |
 | [`../gates/workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md) | WCP program COMPLETE |
 | [`../gates/goal-completion-gate.md`](../gates/goal-completion-gate.md) | Phase close: original goal vs substituted brief |
 | [`../gates/platform-scope-completeness-audit.md`](../gates/platform-scope-completeness-audit.md) | Closed-phase completeness vs residual capability |
@@ -356,6 +358,7 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
+| 2026-08-25 | 2k = E8-eval (brief; feat locked); 2j ✅ E8-bind Gate PASS (#321 / `8246421f`); 2i DR1-runtime ✅ (#313); 2h Overlay ✅ (#311); CL0–CL7 ✅ |
 | 2026-08-25 | 2j ✅ E8-bind Gate PASS (#321 / `8246421f`); no named Product successor; 2i DR1-runtime ✅ (#313); 2h Overlay ✅ (#311); CL0–CL7 ✅ |
 | 2026-08-25 | 2j = E8-bind (feat; D4 canonical type identity); 2i DR1-runtime ✅ (#313); 2h Overlay ✅ (#311); CL0–CL7 ✅ |
 | 2026-08-25 | 2i = DR1-runtime (brief; feat locked; Hub write); 2h Overlay ✅ (#311); CL0–CL7 ✅ |

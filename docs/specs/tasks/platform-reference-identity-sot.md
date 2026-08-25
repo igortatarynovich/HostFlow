@@ -8,7 +8,7 @@
 **Parents:** [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) (parallel Product while R1 ran) · [REF-4 Phase 1 closeout](../gates/ref4_phase1_final_closeout.md) · [REF-4 Phase 2 start gate](../gates/ref4_phase2_start_gate.md) · [Reference delivery contract](../reference_delivery_contract_standard.md) · [Reference layer architecture](../architecture/reference-layer-and-applicability-packs.md) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [`document-type-registry-v1.json`](../platform/document-type-registry-v1.json) · [`document-type-legacy-aliases-v1.json`](../platform/document-type-legacy-aliases-v1.json) · [Document type model standard](../architecture/document-type-model-standard.md) · [AGENTS.md](../../../AGENTS.md) (Architecture Rule 1)
 
 > **R1–R5 Gates PASS** — Country Registry, runtime cutover (R2), document identity (R3), alias consolidation (R4), policy merge (R5). **Reference Program Exit Gate PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. Engineering = **DONE**.  
-> **E8-bind Gate PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` after **Reference R3 ∧ R4** and DR1 Runtime Gate PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-eval** unlock condition **satisfied** (R5 ∧ E8-bind Gate). Unlock ≠ schedule. No named Product successor this amendment.
+> **E8-eval scheduled** this amendment after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` and docs close-out [#322](https://github.com/igortatarynovich/HostFlow/pull/322). Unlock ≠ silent schedule. **E8-eval** is the active **Product** slice. OCR stays locked.
 
 **Naming (do not collapse):** this program is **Reference R1–R5**. It is **not** Documents E8, not Entity Field Composition CL0, not **Epic C residual R1** (C2.4 freeze), not Acquisition R6, not a second document-type catalog in `definitions.py`, not REF-4 Phase 1 re-open, not REF-4 Phase 2 (that is **Reference R2**), not tenant-owned document type lists, not a monolithic “catalog of everything”, not L0 Catalog rewrite, not Billing / AI / Forms P3–P5.
 
@@ -277,8 +277,8 @@ Fan-out is **only** `{R2, R3}`. R5 is **not** a third concurrent Engineering sli
 - **CL0** (Product) continues independently while R1 has **no** runtime cutover.  
 - **Reference R1** may run **now** (parallel CL0).  
 - After **Reference R1 Gate**: fan-out **{R2 ∥ R3}** only. Then collapse.  
-- **E8-bind** **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`; **does not** start E8-eval.  
-- **E8-eval** unlock condition **satisfied** (R5 ∧ E8-bind Gate); not scheduled; brief not opened.  
+- **E8-bind** **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`.  
+- **E8-eval** scheduled this amendment after E8-bind Gate; **does not** start OCR.  
 - **DR1-runtime** is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). It does **not** park later CL (CL2+ already PASS).
 
 ### R1 gate (named)
@@ -368,6 +368,7 @@ Does **not** amend L0. Does **not** rewrite Catalog Passport.
 
 ## History
 
+- 2026-08-25: Queue amendment after E8-bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` names **E8-eval** Active Product. Engineering stays **DONE**. OCR stays locked.
 - 2026-08-25: Queue amendment after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. Product = **none this amendment**. Engineering stays **DONE**. E8-eval unlocked (not scheduled).
 - 2026-08-25: Queue amendment after DR1 Runtime Gate PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313) names **E8-bind** Active Product. Engineering stays **DONE**. No named Engineering successor.
 - 2026-08-25: Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. Engineering = **DONE**. No named successor this amendment. DR1-runtime becomes Active Product after Overlay Gate.
