@@ -1,11 +1,11 @@
 # Engine → Document Request DR1-contract
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **PASS** [#302](https://github.com/igortatarynovich/HostFlow/pull/302)  
 **Phase class:** platform  
 **Branch:** `feat/engine-document-request-dr1-contract`  
 **Parents:** [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) · [CL1](entity-field-composition-cl1-candidate-inventory.md) · [LI-1](lifecycle-identity-li1-existence-guard.md) · [Documents Platform E7](documents-platform-e7-document-requests.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
 
-> DR1-contract seals the **read/projection** chain from Requirement Engine evaluation to Hub ``outstanding_asks`` on ``documents.hub_adapter_v1``. E7 owns Hub consume; this slice owns Engine→ask mapping. **No mass generation.** Runtime creation of asks is **DR1-runtime** (after Reference R5).
+> DR1-contract seals the **read/projection** chain from Requirement Engine evaluation to Hub ``outstanding_asks`` on ``documents.hub_adapter_v1``. E7 owns Hub consume; this slice owns Engine→ask mapping. **No mass generation.** Runtime creation of asks is **[DR1-runtime](engine-document-request-dr1-runtime.md)** (after Overlay Gate ∧ Reference R5).
 
 ---
 
@@ -23,7 +23,7 @@
 
 | In scope | Out of scope |
 |----------|--------------|
-| Contract module ``engine_to_hub_outstanding_ask_contract.py`` | Persisting / creating Hub asks (DR1-runtime) |
+| Contract module ``engine_to_hub_outstanding_ask_contract.py`` | Persisting / creating Hub asks ([DR1-runtime](engine-document-request-dr1-runtime.md)) |
 | Projection from ``document_hub_bridge`` → ``{doc_type, state}`` | CL2+ Field Composition runtime |
 | Canonical type ids via Document Type Registry (R3/R4) | E8-bind / E8-eval |
 | Gate test + boundary guard | Mass D3–D9 bind |
@@ -70,5 +70,5 @@ PASS when:
 ## Queue position
 
 **Depends on:** CL1 Gate ✅ · LI-1 Gate ✅ · Reference R3/R4 when contract names canonical type ids ✅  
-**Unlocks:** CL2; DR1-runtime (join Reference R5)  
-**Does not block:** CL2+ on Reference R5 (only DR1-runtime parks there)
+**Unlocks:** CL2; [DR1-runtime](engine-document-request-dr1-runtime.md) (join Reference R5 ∧ Overlay Gate)  
+**Does not block:** later Product on Reference R5 (only DR1-runtime parked there; now unblocked)

@@ -1,14 +1,14 @@
 # Platform Reference Identity SoT (R1–R5)
 
-**Status:** **IN PROGRESS** (R1–R4 Gates PASS; Active Engineering = **Reference R5**; Product = CL0)  
+**Status:** **PASS** (R1–R5 Gates PASS; Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`; Engineering = **DONE**)  
 **Phase class:** platform  
 **Branch (docs):** `docs/platform-reference-r1-gate-seal`  
-**Branch (code):** R1–R4 merged; next `feat/platform-reference-r5-policy-merge`  
-**Track:** **Engineering** (parallel to Product Track **CL0** — no CL0 feat overlap)  
-**Parents:** [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) (parallel Product) · [REF-4 Phase 1 closeout](../gates/ref4_phase1_final_closeout.md) · [REF-4 Phase 2 start gate](../gates/ref4_phase2_start_gate.md) · [Reference delivery contract](../reference_delivery_contract_standard.md) · [Reference layer architecture](../architecture/reference-layer-and-applicability-packs.md) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [`document-type-registry-v1.json`](../platform/document-type-registry-v1.json) · [`document-type-legacy-aliases-v1.json`](../platform/document-type-legacy-aliases-v1.json) · [Document type model standard](../architecture/document-type-model-standard.md) · [AGENTS.md](../../../AGENTS.md) (Architecture Rule 1)
+**Branch (code):** R1–R5 + Exit merged  
+**Track:** **Engineering DONE** (no named successor this amendment; pytest stays background)  
+**Parents:** [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) (parallel Product while R1 ran) · [REF-4 Phase 1 closeout](../gates/ref4_phase1_final_closeout.md) · [REF-4 Phase 2 start gate](../gates/ref4_phase2_start_gate.md) · [Reference delivery contract](../reference_delivery_contract_standard.md) · [Reference layer architecture](../architecture/reference-layer-and-applicability-packs.md) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [`document-type-registry-v1.json`](../platform/document-type-registry-v1.json) · [`document-type-legacy-aliases-v1.json`](../platform/document-type-legacy-aliases-v1.json) · [Document type model standard](../architecture/document-type-model-standard.md) · [AGENTS.md](../../../AGENTS.md) (Architecture Rule 1)
 
-> **R1–R4 Gates PASS** — Country Registry, runtime cutover (R2), document identity (R3), alias consolidation (R4). Active Engineering = **Reference R5**.  
-> **E8-bind unlocked** after **Reference R3 ∧ R4** (not auto-scheduled). **E8-eval** unlocks after **Reference R5 ∧ E8-bind**. **CL0** stays the active **Product** slice. Unlock ≠ schedule.
+> **R1–R5 Gates PASS** — Country Registry, runtime cutover (R2), document identity (R3), alias consolidation (R4), policy merge (R5). **Reference Program Exit Gate PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. Engineering = **DONE**.  
+> **E8-bind unlocked** after **Reference R3 ∧ R4** (not auto-scheduled). **E8-eval** unlocks after **Reference R5 ∧ E8-bind**. **DR1-runtime** is the active **Product** slice. Unlock ≠ schedule.
 
 **Naming (do not collapse):** this program is **Reference R1–R5**. It is **not** Documents E8, not Entity Field Composition CL0, not **Epic C residual R1** (C2.4 freeze), not Acquisition R6, not a second document-type catalog in `definitions.py`, not REF-4 Phase 1 re-open, not REF-4 Phase 2 (that is **Reference R2**), not tenant-owned document type lists, not a monolithic “catalog of everything”, not L0 Catalog rewrite, not Billing / AI / Forms P3–P5.
 
@@ -279,7 +279,7 @@ Fan-out is **only** `{R2, R3}`. R5 is **not** a third concurrent Engineering sli
 - After **Reference R1 Gate**: fan-out **{R2 ∥ R3}** only. Then collapse.  
 - **E8-bind** unlocks after R3∧R4; **does not auto-start**.  
 - **E8-eval** unlocks after R5 ∧ E8-bind.  
-- **DR1-runtime** (not CL7) waits on R5; it does **not** park CL2+.
+- **DR1-runtime** (not CL7) waited on R5; Overlay leftover closed first; DR1-runtime is now **Active Product**. It does **not** park later CL (CL2+ already PASS).
 
 ### R1 gate (named)
 
@@ -356,18 +356,19 @@ Does **not** amend L0. Does **not** rewrite Catalog Passport.
 
 ## Acceptance (program close)
 
-- [ ] R1 gate PASS — Country Registry authoritative definition exists ([`country-registry-v1.json`](../platform/country-registry-v1.json); facade snapshot `identity` / `classifications` / `labels`)  
-- [ ] R2 gate PASS — no parallel country/dial runtime lists  
-- [ ] R3 gate PASS — document type existence = registry JSON only  
-- [ ] R4 gate PASS — scanner/UI use alias registry only  
-- [ ] R5 gate PASS — policy merge semantics; tenant overlay ≠ fork  
-- [ ] Five architectural questions — single answer enforced at **Reference Program Exit Gate**  
-- [ ] E8-bind unlock after R3∧R4; E8-eval unlock after R5 ∧ E8-bind; unlock ≠ schedule; CL0/E7 unaffected  
+- [x] R1 gate PASS — Country Registry authoritative definition exists ([`country-registry-v1.json`](../platform/country-registry-v1.json); facade snapshot `identity` / `classifications` / `labels`)  
+- [x] R2 gate PASS — no parallel country/dial runtime lists  
+- [x] R3 gate PASS — document type existence = registry JSON only  
+- [x] R4 gate PASS — scanner/UI use alias registry only  
+- [x] R5 gate PASS — policy merge semantics; tenant overlay ≠ fork  
+- [x] Five architectural questions — single answer enforced at **Reference Program Exit Gate** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`  
+- [x] E8-bind unlock after R3∧R4; E8-eval unlock after R5 ∧ E8-bind; unlock ≠ schedule; CL0/E7 unaffected  
 
 ---
 
 ## History
 
+- 2026-08-25: Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. Engineering = **DONE**. No named successor this amendment. DR1-runtime becomes Active Product after Overlay Gate.
 - 2026-08-23: R1 feat — full ISO 3166-1 Country Registry JSON + facade snapshot + seed checksum; `catalogs.py` remains runtime SoT; XK/OTHER/UK excluded from canon.
 - 2026-08-23: Sequence sealed with queue — Engineering `R1 → {R2 ∥ R3} → R4 → (R2 ∧ R4) → R5 → Program Exit`. E8-bind / E8-eval split. DR1-runtime (not CL7) joins R5. REF-4 Phase 2 = R2, not R1. Always **Reference Rn**.
 - 2026-08-23: Normative brief opened — Platform Reference Identity SoT R1–R5. R1 may run parallel CL0. XK excluded from R1 ISO set.
