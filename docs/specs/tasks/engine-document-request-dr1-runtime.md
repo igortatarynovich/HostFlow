@@ -75,20 +75,21 @@ PASS when:
 7. Boundary guard reports exactly one Hub outstanding-ask **writer** for this contract.  
 8. Named CI job exists for the DR1 Runtime Gate.
 
-Unlocks: later Product via **queue amendment** — named **E8-bind** after this Gate (**PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`). E8-bind unlocks **E8-eval** (this amendment). Does **not** auto-start OCR. Do **not** invent CL8.
+Unlocks: later Product via **queue amendment** — named **E8-bind** after this Gate (**PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`). E8-bind unlocks **E8-eval** ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Does **not** auto-start OCR. Do **not** invent CL8.
 
 ---
 
 ## Queue position
 
 **Depends on:** DR1-contract Gate ✅ (#302) · Reference R5 Gate ✅ (#297) · Vacancy Overlay Gate ✅ (#311 / `7649544d`) · Reference Program Exit Gate ✅ (#298 / `ff0b914c`)  
-**Unlocks:** [E8-bind](documents-platform-e8-bind.md) ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` → [E8-eval](documents-platform-e8-eval.md)  
+**Unlocks:** [E8-bind](documents-platform-e8-bind.md) ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` → [E8-eval](documents-platform-e8-eval.md) ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324)  
 **Does not:** invent CL8; start OCR; mint a Hub request table; mass-generate asks; rewrite Overlay / CL7 evaluate
 
 ---
 
 ## History
 
+- 2026-08-25: E8 Required-Doc Evaluation Gate PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product = **none this amendment**. Not OCR auto-start. Not CL8.
 - 2026-08-25: Queue amendment after E8-bind Gate PASS names **E8-eval** as Active Product (brief; feat locked). Not OCR auto-start. Not CL8.
 - 2026-08-25: Queue amendment after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. No named Product successor. E8-eval unlocked (not scheduled).
 - 2026-08-25: Queue amendment after DR1 Runtime Gate PASS names **E8-bind** as Active Product (brief; feat locked). Not E8-eval auto-start. Not CL8.

@@ -1,9 +1,9 @@
 # Documents Platform E8-eval — Required-Doc Evaluation
 
-**Status:** **IN PROGRESS** (feat; evaluation bind)  
+**Status:** **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` (brief COMPLETE; feat `821adf33`)  
 **Phase class:** platform  
-**Branch (docs):** `docs/queue-schedule-e8-eval` ✅ [#322](https://github.com/igortatarynovich/HostFlow/pull/322) / `196aff39`  
-**Branch (code):** `feat/documents-platform-e8-eval`  
+**Branch (docs):** `docs/queue-schedule-e8-eval` ✅ [#323](https://github.com/igortatarynovich/HostFlow/pull/323) · `docs/queue-post-e8-eval-amendment` (this PR)  
+**Branch (code):** `feat/documents-platform-e8-eval` ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324)  
 **Parents:** [Documents Platform E8-bind](documents-platform-e8-bind.md) · [Documents Platform E7](documents-platform-e7-document-requests.md) · [DR1-runtime](engine-document-request-dr1-runtime.md) · [CL7 Engine evaluation](entity-field-composition-cl7-engine-eval.md) · [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md) · [Platform Reference Identity SoT](platform-reference-identity-sot.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [Documents Public Contract](../architecture/documents-public-contract.md)
 
 > E8-eval is the **evaluation** half of remaining Documents consumers. E8-bind already binds display / select / stored identity to canonical registry codes. Reference R5 already defines `merge(pack, tenant_delta)`. CL7 already returns structured `ready`/`not_ready` + blockers. This slice makes remaining **required / optional / applicability** evaluation bind to that merged policy with canonical type codes. **Not** OCR product. **Not** a packages Hub table. **Not** CL8. **Not** mass D3–D9 `documents` bind. **Not** a Hub request table. **Not** Catalog `document.requested`. **Not** Engine v2. **Not** rewriting CL7 / Overlay / DR1-runtime / E8-bind.
@@ -63,6 +63,8 @@ This slice **does not** rewrite CL7 `evaluate`, **does not** rewrite Overlay / D
 
 ## Documents Platform E8 Required-Doc Evaluation Gate (named)
 
+**Outcome:** **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` (feat `821adf33`). CI job Documents Platform E1–E8 green.
+
 PASS when:
 
 1. Brief + evaluation bind committed.  
@@ -73,7 +75,9 @@ PASS when:
 6. D4 still places Documents; D8 bind unchanged; D3 / D5–D7 / D9 still omit `documents`.  
 7. Named CI job exists for the E8 Required-Doc Evaluation Gate.
 
-Unlocks: later Product via **queue amendment**. Do **not** auto-start OCR / packages product / CL8. Do **not** mark Foundation ✅.
+Evidence: D4 Documents (`/app/candidates/:id`) required / optional / blocked from R5 `merge(pack, tenant_delta)`; Overlay = typed CL7 input `document_types`; canonical registry codes only. Adapter `documents.hub_adapter_v1`: `evaluate_required_doc_applicability_via_contract` / `project_required_doc_applicability_via_contract`; additive `applicability`; no contract id bump. D4 UI: `data-e8-eval="true"` `data-applicability`. D4 + D8 stay bound. D3 / D5–D7 / D9 stay unbound. Screening `required=true` is not Documents SoT.
+
+Unlocks: later Product via **queue amendment**. No named successor this amendment. Do **not** auto-start OCR / packages product / CL8. Do **not** mark Foundation ✅.
 
 ---
 
@@ -87,5 +91,6 @@ Unlocks: later Product via **queue amendment**. Do **not** auto-start OCR / pack
 
 ## History
 
+- 2026-08-25: Documents Platform E8 Required-Doc Evaluation Gate **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` (feat `821adf33`). Brief COMPLETE. No named Product successor this amendment. Not OCR auto-start. Not CL8. Not mass D3–D9 bind. Foundation stays 🔄.
 - 2026-08-25: E8-eval feat opened — D4 required / optional / blocked from R5 merge; Overlay as CL7 input; named Documents Platform E8 Required-Doc Evaluation Gate. Product Track stays [E8-eval](documents-platform-e8-eval.md). Engineering stays DONE. Not OCR. Not CL8. Not mass D3–D9 bind.
 - 2026-08-25: E8-eval opened (feat locked) after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` and queue amendment [#322](https://github.com/igortatarynovich/HostFlow/pull/322) / `196aff39`. Required / optional / applicability from R5 merge. Not OCR. Not CL8. Not mass D3–D9 bind.

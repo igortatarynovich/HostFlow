@@ -5,7 +5,7 @@
 **Contract id:** `documents.public_contract.v1`  
 **Adapter id:** `documents.hub_adapter_v1`  
 **Passport:** [`platform-capability-catalog.md`](platform-capability-catalog.md#documents)  
-**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [`documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) ✅ · [`documents-platform-e6-document-expiry.md`](../tasks/documents-platform-e6-document-expiry.md) ✅ · [`documents-platform-e7-document-requests.md`](../tasks/documents-platform-e7-document-requests.md) ✅ · [`documents-platform-e8-bind.md`](../tasks/documents-platform-e8-bind.md) ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) · [`documents-platform-e8-eval.md`](../tasks/documents-platform-e8-eval.md) (feat)  
+**Tasks:** [`documents-platform-e1-contract-seal.md`](../tasks/documents-platform-e1-contract-seal.md) ✅ · [`documents-platform-e2-public-contract.md`](../tasks/documents-platform-e2-public-contract.md) ✅ · [`documents-platform-e3-first-consumer-bind.md`](../tasks/documents-platform-e3-first-consumer-bind.md) ✅ · [`documents-platform-e4-candidate-document-link.md`](../tasks/documents-platform-e4-candidate-document-link.md) ✅ · [`documents-platform-e5-candidate-storage-bridge.md`](../tasks/documents-platform-e5-candidate-storage-bridge.md) ✅ · [`documents-platform-e6-document-expiry.md`](../tasks/documents-platform-e6-document-expiry.md) ✅ · [`documents-platform-e7-document-requests.md`](../tasks/documents-platform-e7-document-requests.md) ✅ · [`documents-platform-e8-bind.md`](../tasks/documents-platform-e8-bind.md) ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) · [`documents-platform-e8-eval.md`](../tasks/documents-platform-e8-eval.md) ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324)  
 **Normative:** [`ADR-009`](ADR-009-document-hub-platform-layer.md) · [`ADR-014`](ADR-014-document-hub-access-model.md) · [`ADR-025`](ADR-025-standard-adapter-boundary.md)
 
 ---
@@ -69,7 +69,7 @@ Catalog already publishes `document.created` / `linked` / `verified` / `expired`
 | **E7 requests** | Same adapter. Hub `outstanding_asks` on resolve / owner_summary. No Hub request table. No Catalog `document.requested`. No second Adapter |
 | **DR1-runtime** | Same adapter. Engine may persist outstanding asks keyed by Document Link identity. No Hub request table. No Catalog `document.requested`. No second Adapter |
 | **E8-bind** | Same adapter. Display / select / persist canonical registry `document_type_code`. R4 aliases resolve-only. Additive `canonical_types` on resolve. No second Adapter. **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. Not E8-eval. Not mass D3–D9 bind |
-| **E8-eval** | Same adapter. Required / optional / blocked applicability of canonical types from R5 `merge(pack, tenant_delta)` (+ Overlay as existing CL7 input). Additive `applicability` on resolve. No second Adapter. No Hub packages table. Not OCR. Not mass D3–D9 bind. Brief: [`documents-platform-e8-eval.md`](../tasks/documents-platform-e8-eval.md) (feat) |
+| **E8-eval** | Same adapter. Required / optional / blocked applicability of canonical types from R5 `merge(pack, tenant_delta)` (+ Overlay as existing CL7 input). Additive `applicability` on resolve. No second Adapter. No Hub packages table. Not OCR. Not mass D3–D9 bind. **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Brief: [`documents-platform-e8-eval.md`](../tasks/documents-platform-e8-eval.md) |
 | **Second Adapter** | Forbidden |
 | **Document Link SoT** | E3 HR employee + E4 Candidate via `document_entity_links`. E5 drops the Candidate storage FK. E6 / E7 do not add a consumer |
 
@@ -97,6 +97,7 @@ E1 / E2 / E3 / E4 / E5 / E6 / E7 / E8 / D1–D9 / WCP gates stay green.
 
 ## History
 
+- 2026-08-25: E8 Required-Doc Evaluation Gate **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Additive `applicability`; no contract id bump. Foundation stays 🔄. Product = **none this amendment**.
 - 2026-08-25: E8-eval feat — D4 required / optional / blocked from R5 merge on `documents.hub_adapter_v1` (additive `applicability`; no id bump). Foundation stays 🔄.
 - 2026-08-25: Queue amendment names **E8-eval** Active Product after E8-bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321). Same adapter. Not OCR. Not packages table. Foundation stays 🔄.
 - 2026-08-25: E8 Canonical Type Bind Gate **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. Additive `canonical_types`; no contract id bump. Foundation stays 🔄. E8-eval unlocked (not scheduled).
