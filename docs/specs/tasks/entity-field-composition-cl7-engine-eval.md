@@ -83,13 +83,14 @@ Unlocks: **Vacancy Overlay Contract** (named leftover of the original CL0 chain;
 ## Queue position
 
 **Depends on:** CL6 Gate ✅ (#307 / `8e2372db`)  
-**Unlocks:** [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md) ✅; Overlay unlocks [DR1-runtime](engine-document-request-dr1-runtime.md) ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313); DR1-runtime unlocks [E8-bind](documents-platform-e8-bind.md) ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321)  
+**Unlocks:** [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md) ✅; Overlay unlocks [DR1-runtime](engine-document-request-dr1-runtime.md) ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313); DR1-runtime unlocks [E8-bind](documents-platform-e8-bind.md) ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321); E8-bind unlocks [E8-eval](documents-platform-e8-eval.md)  
 **Does not:** start E8; invent CL8; mint Engine v2
 
 ---
 
 ## History
 
+- 2026-08-25: Queue amendment after E8-bind Gate PASS names E8-eval Active Product (not OCR auto-start).
 - 2026-08-25: CL7 Requirement Engine evaluation opened (feat locked) after CL6 Gate PASS [#307](https://github.com/igortatarynovich/HostFlow/pull/307) / `8e2372db`. Structured `ready`/`not_ready` + blockers. Not DR1-runtime. Not E8. Vacancy overlay leftover.
 - 2026-08-25: CL7 feat — `entity_profile_engine_eval.v1`; D4 places Engine-eval zone; named CL7 Engine Eval Gate.
 - 2026-08-25: CL7 Gate **PASS** [#309](https://github.com/igortatarynovich/HostFlow/pull/309) / `6f2289f1`. Unlocks Vacancy Overlay Contract (not CL8). Overlay later PASS [#311](https://github.com/igortatarynovich/HostFlow/pull/311) → DR1-runtime.
