@@ -293,7 +293,7 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 | **2h ✅** | [Entity Profile — Vacancy Overlay Contract](../tasks/entity-profile-vacancy-overlay-contract.md): vacancy-specific requirement delta over Profile / Screening Pack. Not CL8. Not Engine v2. Not vacancy UI. |
 | **2i ✅** | [DR1-runtime](../tasks/engine-document-request-dr1-runtime.md): Engine may create Hub outstanding asks. Not a new UI chrome slice. Not CL8. Not E8. Not mass generation. |
 | **2j ✅** | [Documents Platform E8-bind](../tasks/documents-platform-e8-bind.md): remaining consumers bind to canonical document types. **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. Not E8-eval. Not CL8. Not mass D3–D9 bind. |
-| **2k ← active** | [Documents Platform E8-eval](../tasks/documents-platform-e8-eval.md): required / optional / applicability from R5 merge. Brief; feat locked. Not OCR. Not CL8. Not mass D3–D9 bind. |
+| **2k ← active** | [Documents Platform E8-eval](../tasks/documents-platform-e8-eval.md): required / optional / applicability from R5 merge. Feat; D4 bind. Not OCR. Not CL8. Not mass D3–D9 bind. |
 | **3** | Application Workspace implements the **same** host contract — it does **not** become Entity Workspace |
 | 4–5 | Process + Collection completion |
 

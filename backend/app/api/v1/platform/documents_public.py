@@ -1,4 +1,4 @@
-"""Documents public contract v1 — entity-link resolve (E3 + E4 + E5 + E6 + E7 + E8-bind).
+"""Documents public contract v1 — entity-link resolve (E3 + E4 + E5 + E6 + E7 + E8-bind + E8-eval).
 
 Same adapter id as E2. Not a second Adapter. Not a candidate_id column list.
 E6 projects Hub expiry (`expires_at` / `expiry_state`) on the resolve view.
@@ -6,7 +6,9 @@ E7 projects Hub outstanding asks (`outstanding_asks`) on the same resolve.
 DR1-runtime may persist Engine-projected asks on this adapter; resolve
 prefers those rows when present. E8-bind projects canonical registry type
 identity (display / select / persist). Aliases resolve via R4 only.
-Not a Hub request table. Not E8-eval. Not mass D3–D9 bind.
+E8-eval projects required / optional / blocked applicability from R5
+``merge(pack, tenant_delta)`` (+ Overlay as existing CL7 input).
+Not a Hub request / packages table. Not OCR. Not CL8. Not mass D3–D9 bind.
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ from backend.app.services.document_hub_delivery_contract import (
     load_outstanding_asks_via_contract,
     persist_canonical_type_identity_via_contract,
     project_outstanding_asks_via_contract,
+    project_required_doc_applicability_via_contract,
 )
 
 router = APIRouter(
@@ -61,12 +64,18 @@ class OutstandingAskOut(BaseModel):
     state: str
 
 
+class ApplicabilityOut(BaseModel):
+    doc_type: str
+    applicability: str
+
+
 class DocumentsResolveOut(BaseModel):
     contract_id: str = PUBLIC_CONTRACT_ID
     adapter_id: str = ADAPTER_ID
     items: list[DocumentHubViewOut] = Field(default_factory=list)
     outstanding_asks: list[OutstandingAskOut] = Field(default_factory=list)
     canonical_types: list[str] = Field(default_factory=list)
+    applicability: list[ApplicabilityOut] = Field(default_factory=list)
 
 
 def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
@@ -120,4 +129,8 @@ async def resolve_documents_via_public_contract(
         items=[DocumentHubViewOut.model_validate(row) for row in items],
         outstanding_asks=[OutstandingAskOut.model_validate(row) for row in asks],
         canonical_types=list_canonical_types_for_select_via_contract(),
+        applicability=[
+            ApplicabilityOut.model_validate(row)
+            for row in project_required_doc_applicability_via_contract()
+        ],
     )

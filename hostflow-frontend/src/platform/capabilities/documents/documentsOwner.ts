@@ -43,6 +43,11 @@ export type OutstandingAskView = {
   state: string
 }
 
+export type ApplicabilityView = {
+  doc_type: string
+  applicability: 'required' | 'optional' | 'blocked' | string
+}
+
 export type DocumentsResolveResult = {
   available: boolean
   contractId: string
@@ -50,6 +55,7 @@ export type DocumentsResolveResult = {
   items: DocumentHubView[]
   outstandingAsks: OutstandingAskView[]
   canonicalTypes: string[]
+  applicability: ApplicabilityView[]
 }
 
 /**
@@ -58,7 +64,8 @@ export type DocumentsResolveResult = {
  * for the D2 `documents` surface. Outstanding ask is Hub `outstanding_asks`
  * (required type + entity via Document Link) — not Candidate stage / HR JSON.
  * E8-bind: display / select / persist canonical registry codes. R4 aliases
- * resolve only — they are not stored identity.
+ * resolve only — they are not stored identity. E8-eval: required / optional /
+ * blocked applicability from R5 merge. Overlay is an existing CL7 input.
  */
 export function persistCanonicalDocumentType(raw: string): string {
   const key = String(raw || '')
@@ -98,6 +105,7 @@ export async function listLinkedDocuments(
       items: [],
       outstandingAsks: [],
       canonicalTypes: [],
+      applicability: [],
     }
   }
   const { data } = await api.get<{
@@ -106,6 +114,7 @@ export async function listLinkedDocuments(
     items?: DocumentHubView[]
     outstanding_asks?: OutstandingAskView[]
     canonical_types?: string[]
+    applicability?: ApplicabilityView[]
   }>('/platform/documents/resolve', {
     params: {
       linked_entity_type: target.linkedEntityType,
@@ -132,5 +141,13 @@ export async function listLinkedDocuments(
           .filter((ask) => Boolean(ask.doc_type))
       : [],
     canonicalTypes: Array.isArray(data?.canonical_types) ? data.canonical_types : [],
+    applicability: Array.isArray(data?.applicability)
+      ? data.applicability
+          .map((row) => ({
+            ...row,
+            doc_type: persistCanonicalDocumentType(row.doc_type),
+          }))
+          .filter((row) => Boolean(row.doc_type))
+      : [],
   }
 }

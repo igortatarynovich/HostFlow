@@ -82,6 +82,7 @@
 
 ## История
 
+- 2026-08-25: E8-eval feat — D4 required / optional / blocked from R5 merge on `documents.hub_adapter_v1`. Named Documents Platform E8 Required-Doc Evaluation Gate. OCR stays locked. Foundation stays 🔄.
 - 2026-08-25: Product Track → [E8-eval](../specs/tasks/documents-platform-e8-eval.md) (brief; feat locked) after E8-bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. OCR stays locked. Foundation stays 🔄.
 - 2026-08-25: E8 Canonical Type Bind Gate **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. Product Track → **none this amendment**. E8-eval unlocked (not scheduled). Foundation stays 🔄.
 - 2026-08-25: Product Track → [E8-bind](../specs/tasks/documents-platform-e8-bind.md) (feat); D4 canonical type identity. E8-eval locked. Foundation stays 🔄.

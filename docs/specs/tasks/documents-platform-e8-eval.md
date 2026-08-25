@@ -1,9 +1,9 @@
 # Documents Platform E8-eval — Required-Doc Evaluation
 
-**Status:** **IN PROGRESS** (brief; feat locked)  
+**Status:** **IN PROGRESS** (feat; evaluation bind)  
 **Phase class:** platform  
-**Branch (docs):** `docs/queue-schedule-e8-eval`  
-**Branch (code):** none this slice — docs only; later feat uses `feat/documents-platform-e8-eval`  
+**Branch (docs):** `docs/queue-schedule-e8-eval` ✅ [#322](https://github.com/igortatarynovich/HostFlow/pull/322) / `196aff39`  
+**Branch (code):** `feat/documents-platform-e8-eval`  
 **Parents:** [Documents Platform E8-bind](documents-platform-e8-bind.md) · [Documents Platform E7](documents-platform-e7-document-requests.md) · [DR1-runtime](engine-document-request-dr1-runtime.md) · [CL7 Engine evaluation](entity-field-composition-cl7-engine-eval.md) · [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md) · [Platform Reference Identity SoT](platform-reference-identity-sot.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap § Phase E](../architecture/platform-completion-roadmap.md) · [ADR-009](../architecture/ADR-009-document-hub-platform-layer.md) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [Documents Public Contract](../architecture/documents-public-contract.md)
 
 > E8-eval is the **evaluation** half of remaining Documents consumers. E8-bind already binds display / select / stored identity to canonical registry codes. Reference R5 already defines `merge(pack, tenant_delta)`. CL7 already returns structured `ready`/`not_ready` + blockers. This slice makes remaining **required / optional / applicability** evaluation bind to that merged policy with canonical type codes. **Not** OCR product. **Not** a packages Hub table. **Not** CL8. **Not** mass D3–D9 `documents` bind. **Not** a Hub request table. **Not** Catalog `document.requested`. **Not** Engine v2. **Not** rewriting CL7 / Overlay / DR1-runtime / E8-bind.
@@ -16,13 +16,13 @@
 After E8-bind, type identity is canonical, and after R5 the pack/tenant merge exists, but remaining Documents consumers may still treat identity bind, screening `required=true` on a field, or Hub outstanding asks as **required/optional applicability**. Without E8-eval the next slice will treat canonical display as evaluation, mint OCR matching, invent a packages product, invent CL8, mass-bind D3–D9, or mark Foundation ✅.
 
 **Completion proof (named consumer):**  
-**Candidate Entity Workspace — D4 Documents surface** (`CandidateEntityWorkspacePanel` / `/app/candidates/:id` documents zone). Required / optional / blocked document types for the proof profile come from R5 `merge(pack, tenant_delta)` (Overlay as already-defined CL7 input) using **canonical registry codes** only. D4 **places**; Document Hub + Reference own evaluation. Proof is a later feat — this PR is docs only.
+**Candidate Entity Workspace — D4 Documents surface** (`CandidateEntityWorkspacePanel` / `/app/candidates/:id` documents zone). Required / optional / blocked document types for the proof profile come from R5 `merge(pack, tenant_delta)` (Overlay as already-defined CL7 input) using **canonical registry codes** only. D4 **places**; Document Hub + Reference own evaluation.
 
 **False close:** numbering this as CL8; collapsing into one E8 with E8-bind; treating E8-bind identity as evaluation; OCR product / OCR↔requirement matching; minting a Hub packages / request / reminder table; Catalog `document.requested`; mass D3–D9 D2 `documents` bind; rewriting CL7 evaluate / Overlay / DR1-runtime; screening as `required=true` on a field as Documents SoT; Foundation ✅.
 
 ---
 
-## Scope (contract only this PR)
+## Scope
 
 | In scope | Out of scope |
 |----------|--------------|
@@ -30,7 +30,7 @@ After E8-bind, type identity is canonical, and after R5 the pack/tenant merge ex
 | Candidate requirement evaluation from R5 `merge(pack, tenant_delta)` | Minting a Hub packages table / packages product |
 | Consume existing R5 packs as policy input | Mass D3–D9 D2 `documents` bind |
 | Named leftover of Documents after E8-bind | Hub request table; Catalog `document.requested` |
-| | CL8; Engine v2; Overlay rewrite; E8-bind rewrite; Forms P3; Billing; AI; Foundation ✅ |
+| Overlay as already-defined CL7 input (`document_types`) | CL8; Engine v2; Overlay rewrite; E8-bind rewrite; Forms P3; Billing; AI; Foundation ✅ |
 
 ---
 
@@ -54,16 +54,16 @@ This slice **does not** rewrite CL7 `evaluate`, **does not** rewrite Overlay / D
 
 | Artifact | Path |
 |----------|------|
-| Brief | this file (this docs PR) |
-| Evaluation bind | later feat — not this PR |
+| Brief | this file |
+| Evaluation bind | `evaluate_required_doc_applicability_via_contract` on `documents.hub_adapter_v1` |
 | D4 bind | existing Documents surface; this slice binds **applicability**, not a new slot |
-| Named CI | later feat — **Documents Platform E8 Required-Doc Evaluation Gate** |
+| Named CI | **Documents Platform E8 Required-Doc Evaluation Gate** (`tests/platform/test_documents_e8_required_doc_eval_gate.py`) |
 
 ---
 
 ## Documents Platform E8 Required-Doc Evaluation Gate (named)
 
-PASS when (later feat — **not** this docs PR):
+PASS when:
 
 1. Brief + evaluation bind committed.  
 2. D4 Documents surface evaluates required / optional / blocked from R5 merge using canonical registry types only.  
@@ -87,4 +87,5 @@ Unlocks: later Product via **queue amendment**. Do **not** auto-start OCR / pack
 
 ## History
 
+- 2026-08-25: E8-eval feat opened — D4 required / optional / blocked from R5 merge; Overlay as CL7 input; named Documents Platform E8 Required-Doc Evaluation Gate. Product Track stays [E8-eval](documents-platform-e8-eval.md). Engineering stays DONE. Not OCR. Not CL8. Not mass D3–D9 bind.
 - 2026-08-25: E8-eval opened (feat locked) after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` and queue amendment [#322](https://github.com/igortatarynovich/HostFlow/pull/322) / `196aff39`. Required / optional / applicability from R5 merge. Not OCR. Not CL8. Not mass D3–D9 bind.

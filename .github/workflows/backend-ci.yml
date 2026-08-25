@@ -432,6 +432,7 @@ jobs:
       # Documents Platform E6 Document Expiry Gate
       # Documents Platform E7 Document Requests Gate
       # Documents Platform E8 Canonical Type Bind Gate
+      # Documents Platform E8 Required-Doc Evaluation Gate
       - uses: ./.github/actions/backend-pytest
         with:
           tests: >-
@@ -443,6 +444,7 @@ jobs:
             tests/platform/test_documents_e6_document_expiry_gate.py
             tests/platform/test_documents_e7_document_requests_gate.py
             tests/platform/test_documents_e8_canonical_type_bind_gate.py
+            tests/platform/test_documents_e8_required_doc_eval_gate.py
 
   workspace-capability-gates:
     name: Workspace Capability gates
