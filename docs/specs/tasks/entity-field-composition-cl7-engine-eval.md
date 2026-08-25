@@ -1,6 +1,6 @@
 # Entity Field Composition CL7 — Requirement Engine evaluation
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **PASS** [#309](https://github.com/igortatarynovich/HostFlow/pull/309) / `6f2289f1`  
 **Phase class:** platform  
 **Branch (docs):** `docs/queue-post-cl6-amendment`  
 **Branch (code):** `feat/entity-field-composition-cl7-engine-eval`  
@@ -76,15 +76,15 @@ PASS when:
 7. Boundary guard reports exactly one `evaluate` producer for this contract.  
 8. Named CI job runs `test_cl7_engine_eval_gate.py`.
 
-Unlocks: later CL via **queue amendment** (do not invent CL8). Does **not** unlock DR1-runtime or E8. Vacancy overlay stays a named leftover.
+Unlocks: **Vacancy Overlay Contract** (named leftover of the original CL0 chain; not CL8). Does **not** unlock DR1-runtime or E8.
 
 ---
 
 ## Queue position
 
 **Depends on:** CL6 Gate ✅ (#307 / `8e2372db`)  
-**Unlocks:** later CL via queue amendment  
-**Does not:** park on Reference R5 / #298; start E8; start DR1-runtime; catch-up Vacancy overlay; mint Engine v2
+**Unlocks:** [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md)  
+**Does not:** park on Reference R5 / #298; start E8; start DR1-runtime; invent CL8; mint Engine v2
 
 ---
 
@@ -92,3 +92,4 @@ Unlocks: later CL via **queue amendment** (do not invent CL8). Does **not** unlo
 
 - 2026-08-25: CL7 Requirement Engine evaluation opened (feat locked) after CL6 Gate PASS [#307](https://github.com/igortatarynovich/HostFlow/pull/307) / `8e2372db`. Structured `ready`/`not_ready` + blockers. Not DR1-runtime. Not E8. Vacancy overlay leftover.
 - 2026-08-25: CL7 feat — `entity_profile_engine_eval.v1`; D4 places Engine-eval zone; named CL7 Engine Eval Gate.
+- 2026-08-25: CL7 Gate **PASS** [#309](https://github.com/igortatarynovich/HostFlow/pull/309) / `6f2289f1`. Unlocks Vacancy Overlay Contract (not CL8).
