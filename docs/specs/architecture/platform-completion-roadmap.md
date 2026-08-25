@@ -311,7 +311,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | [entity-field-composition-cl5-qa.md](../tasks/entity-field-composition-cl5-qa.md) | CL5 Recruiter Q&A ✅ (#306) |
 | [entity-field-composition-cl6-flight-map.md](../tasks/entity-field-composition-cl6-flight-map.md) | CL6 Flight mapping ✅ (#307) |
 | [entity-field-composition-cl7-engine-eval.md](../tasks/entity-field-composition-cl7-engine-eval.md) | CL7 Requirement Engine evaluation ✅ (#309) |
-| [entity-profile-vacancy-overlay-contract.md](../tasks/entity-profile-vacancy-overlay-contract.md) | **Active Product Track** — Entity Profile Vacancy Overlay Contract (brief; feat locked; not CL8) |
+| [entity-profile-vacancy-overlay-contract.md](../tasks/entity-profile-vacancy-overlay-contract.md) | **Active Product Track** — Entity Profile Vacancy Overlay Contract (feat; not CL8) |
 | [platform-reference-identity-sot.md](../tasks/platform-reference-identity-sot.md) | **Active Engineering Track** — Reference R1 now; then {R2 ∥ R3}; not Epic C residual R1 |
 | [lifecycle-identity-l0-contract-seal.md](../tasks/lifecycle-identity-l0-contract-seal.md) | **LI-1 after CL1** — existence/identity guard (ADR-037); docs sealed; LI-2+ do not block CL2+ |
 | [documents-platform-e3-first-consumer-bind.md](../tasks/documents-platform-e3-first-consumer-bind.md) | E3 first consumer bind ✅ |
@@ -325,6 +325,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-25: Vacancy Overlay Contract feat opened — `resolve_overlay` + `merge` as defined CL7 input (not CL8).
 - 2026-08-25: Active Product Track = [Vacancy Overlay Contract](../tasks/entity-profile-vacancy-overlay-contract.md) (brief; feat locked) after CL7 Gate PASS [#309](https://github.com/igortatarynovich/HostFlow/pull/309).
 - 2026-08-25: Active Product Track = [CL7 Requirement Engine evaluation](../tasks/entity-field-composition-cl7-engine-eval.md) (feat) after CL6 Gate PASS [#307](https://github.com/igortatarynovich/HostFlow/pull/307).
 - 2026-08-25: Active Product Track = [CL6 Flight mapping](../tasks/entity-field-composition-cl6-flight-map.md) after CL5 Gate PASS [#306](https://github.com/igortatarynovich/HostFlow/pull/306).

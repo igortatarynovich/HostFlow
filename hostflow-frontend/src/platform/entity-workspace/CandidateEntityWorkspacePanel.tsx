@@ -28,6 +28,7 @@ type Props = EntityWorkspaceShellProps & {
  * CL5: Q&A zone reads Lead / Application (`entity_profile_qa.v1`); not extra; not a layout widget.
  * CL6: Flight-map zone places Binding snapshot (`entity_profile_flight_map.v1`); dest = Profile.
  * CL7: Engine-eval zone places `entity_profile_engine_eval.v1` (ready | not_ready + blockers).
+ * Overlay: that zone consumes `entity_profile_vacancy_overlay.v1` as a defined input (not vacancy UI).
  */
 export function CandidateEntityWorkspacePanel({
   entityId,
