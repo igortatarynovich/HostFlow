@@ -112,7 +112,7 @@ E7 already matches Document kind: request lives on `document_type_code`. Engine 
 | **CL4** | Builder (two modes) | ✅ PASS [#305](https://github.com/igortatarynovich/HostFlow/pull/305) — [brief](entity-field-composition-cl4-builder.md) |
 | **CL5** | Q&A | ✅ PASS [#306](https://github.com/igortatarynovich/HostFlow/pull/306) — [brief](entity-field-composition-cl5-qa.md) |
 | **CL6** | Flight mapping | ✅ PASS [#307](https://github.com/igortatarynovich/HostFlow/pull/307) — [brief](entity-field-composition-cl6-flight-map.md) |
-| **CL7** | Requirement Engine evaluation | ← **active** (brief; feat locked) — [brief](entity-field-composition-cl7-engine-eval.md) |
+| **CL7** | Requirement Engine evaluation | ← **active** (feat) — [brief](entity-field-composition-cl7-engine-eval.md) |
 
 CL1 is classification, **not** runtime. Do not skip to CL3 because “the card already renders”.  
 **Product after CL0 Gate:** CL1 → LI-1 → DR1-contract → CL2…. **DR1-runtime** is not a CL slice; it waits on DR1-contract ∧ Reference R5 and does **not** park CL2+. **E8-bind / E8-eval** are Documents slices (unlock ≠ schedule). **CL7** is Engine **evaluation** (`ready`/`not_ready` + blockers). Do **not** name Engine→Request as CL7 — that remains DR1. Vacancy overlay is a named leftover, not a silent insert before CL7.

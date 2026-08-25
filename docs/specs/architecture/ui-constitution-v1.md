@@ -297,7 +297,7 @@ Recruitment Inbox uses **identical layout**; Action Panel and extension columns 
 Workspace types (§3) describe **composition targets** (Level 4), not build priority.  
 Full platform spec: [`ADR-011-hostflow-ui-platform-standard.md`](ADR-011-hostflow-ui-platform-standard.md). Build phases: [`ADR-010-unified-resource-list-shell.md`](ADR-010-unified-resource-list-shell.md). Near-term Product Track: [`entity-field-composition-cl7-engine-eval.md`](../tasks/entity-field-composition-cl7-engine-eval.md). Complete: [`workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md).
 
-**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E7 is **complete**. Entity Field Composition CL7 Engine evaluation is **open** (feat locked). CL6 Flight mapping is ✅. ListWorkspace is a separate collection slice.
+**Do not** invent module data types, fields, primitives, widgets, tables, rails, notes, or consent while assembling a new Entity or Application screen. Stage / vacancy / assignee stay **module contributions**. G4 proof = Recruitment Application assembled from the kit without page-local composition — **closed**; do not reopen it as the Documents proof. Shipping a Notes/Consent/RODO kit that modules still compose locally fails 2b. Do not fold Application into Entity. Documents E7 is **complete**. Entity Field Composition CL7 Engine evaluation is **open** (feat). CL6 Flight mapping is ✅. ListWorkspace is a separate collection slice.
 
 ---
 
@@ -329,7 +329,7 @@ If any answer fails — stop and fix design before coding.
 | [`../tasks/entity-field-composition-cl4-builder.md`](../tasks/entity-field-composition-cl4-builder.md) | Entity Field Composition CL4 — builder, two modes ✅ |
 | [`../tasks/entity-field-composition-cl5-qa.md`](../tasks/entity-field-composition-cl5-qa.md) | Entity Field Composition CL5 — Recruiter Q&A ✅ |
 | [`../tasks/entity-field-composition-cl6-flight-map.md`](../tasks/entity-field-composition-cl6-flight-map.md) | Entity Field Composition CL6 — Flight mapping ✅ |
-| [`../tasks/entity-field-composition-cl7-engine-eval.md`](../tasks/entity-field-composition-cl7-engine-eval.md) | Entity Field Composition CL7 — Requirement Engine evaluation (active; feat locked) |
+| [`../tasks/entity-field-composition-cl7-engine-eval.md`](../tasks/entity-field-composition-cl7-engine-eval.md) | Entity Field Composition CL7 — Requirement Engine evaluation (active; feat) |
 | [`../gates/workspace-capability-platform-complete.md`](../gates/workspace-capability-platform-complete.md) | WCP program COMPLETE |
 | [`../gates/goal-completion-gate.md`](../gates/goal-completion-gate.md) | Phase close: original goal vs substituted brief |
 | [`../gates/platform-scope-completeness-audit.md`](../gates/platform-scope-completeness-audit.md) | Closed-phase completeness vs residual capability |
@@ -351,7 +351,7 @@ If any answer fails — stop and fix design before coding.
 
 | Date | Change |
 |------|--------|
-| 2026-08-25 | 2h = Entity Field Composition CL7 Requirement Engine evaluation (feat locked); CL0–CL6 ✅ |
+| 2026-08-25 | 2h = Entity Field Composition CL7 Requirement Engine evaluation (feat); CL0–CL6 ✅ |
 | 2026-08-25 | 2h = Entity Field Composition CL6 Flight mapping; CL0–CL5 ✅ |
 | 2026-08-24 | 2h = Entity Field Composition CL5 Recruiter Q&A; CL0–CL4 ✅ |
 | 2026-08-24 | 2h = Entity Field Composition CL4 builder (two modes); CL0–CL3 ✅ |

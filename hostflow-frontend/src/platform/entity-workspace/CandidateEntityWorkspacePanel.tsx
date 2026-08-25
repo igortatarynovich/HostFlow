@@ -9,6 +9,7 @@ import { CANDIDATE_ENTITY_HOST_CONTRIBUTIONS } from '../workspace-capability/can
 import { EntityWorkspaceCapabilityHost } from '../workspace-capability/EntityWorkspaceCapabilityHost'
 import { CandidateCompositionBuilder } from './CandidateCompositionBuilder'
 import { CandidateInformationLayout } from './CandidateInformationLayout'
+import { CandidateEngineEvalPanel } from './CandidateEngineEvalPanel'
 import { CandidateFlightMapPanel } from './CandidateFlightMapPanel'
 import { CandidateQaPanel } from './CandidateQaPanel'
 
@@ -26,6 +27,7 @@ type Props = EntityWorkspaceShellProps & {
  * CL4: composition builder compiles card into that zone; form is a separate artifact.
  * CL5: Q&A zone reads Lead / Application (`entity_profile_qa.v1`); not extra; not a layout widget.
  * CL6: Flight-map zone places Binding snapshot (`entity_profile_flight_map.v1`); dest = Profile.
+ * CL7: Engine-eval zone places `entity_profile_engine_eval.v1` (ready | not_ready + blockers).
  */
 export function CandidateEntityWorkspacePanel({
   entityId,
@@ -54,6 +56,7 @@ export function CandidateEntityWorkspacePanel({
                 <CandidateCompositionBuilder />
                 <CandidateQaPanel />
                 <CandidateFlightMapPanel />
+                <CandidateEngineEvalPanel />
                 {sectionRenderers?.overview?.()}
                 <div data-host-region="platform_slot">{placed.platform_slot}</div>
                 <div data-host-region="overview">{placed.overview}</div>

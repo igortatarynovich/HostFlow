@@ -1,9 +1,9 @@
 # Entity Field Composition CL7 — Requirement Engine evaluation
 
-**Status:** **IN PROGRESS** (brief; feat locked)  
+**Status:** **IN PROGRESS** (feat)  
 **Phase class:** platform  
 **Branch (docs):** `docs/queue-post-cl6-amendment`  
-**Branch (code):** none this slice — docs only; later feat uses `feat/entity-field-composition-cl7-engine-eval`  
+**Branch (code):** `feat/entity-field-composition-cl7-engine-eval`  
 **Parents:** [CL0 contract seal](entity-field-composition-cl0-contract-seal.md) · [CL2 membership](entity-field-composition-cl2-membership.md) · [CL6 Flight mapping](entity-field-composition-cl6-flight-map.md) · [Requirement Rules Engine P0](../platform/requirement-rules-engine-p0.md) · [D4 Candidate Cutover](entity-workspace-d4-candidate-cutover.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
 
 > CL7 **evaluates** (`evaluate(entity, profile, vacancy, process_point)` → structured `ready` | `not_ready` + `blockers[]`). Engine is **not** an Entity Profile implementation — Profile may only ref. Four kinds stay: Presence / Value / Document / Process. Proof consumer = D4 Engine-eval zone (`CandidateEngineEvalPanel` next to Information / Q&A / Flight-map). **Not** a boolean. **Not** Hub ask generation (that is DR1-runtime). **Not** Vacancy overlay catch-up. **Not** Engine v2. **Not** E8.
@@ -55,11 +55,11 @@ This slice **does not** mint Requirement Engine v2 and **does not** implement `e
 
 | Artifact | Path |
 |----------|------|
-| Brief | this file (this docs PR) |
-| Runtime | `backend/app/entity_profile/engine_eval_runtime.py` (feat-locked) |
-| D4 bind | `hostflow-frontend/src/platform/entity-workspace/CandidateEngineEvalPanel.tsx` (feat-locked) |
-| Boundary guard | `scripts/architecture/check_entity_profile_engine_eval_boundary.py` (feat-locked) |
-| Gate test | `backend/tests/entity_field_composition/test_cl7_engine_eval_gate.py` (feat-locked) |
+| Brief | this file |
+| Runtime | `backend/app/entity_profile/engine_eval_runtime.py` |
+| D4 bind | `hostflow-frontend/src/platform/entity-workspace/CandidateEngineEvalPanel.tsx` |
+| Boundary guard | `scripts/architecture/check_entity_profile_engine_eval_boundary.py` |
+| Gate test | `backend/tests/entity_field_composition/test_cl7_engine_eval_gate.py` |
 
 ---
 
@@ -91,3 +91,4 @@ Unlocks: later CL via **queue amendment** (do not invent CL8). Does **not** unlo
 ## History
 
 - 2026-08-25: CL7 Requirement Engine evaluation opened (feat locked) after CL6 Gate PASS [#307](https://github.com/igortatarynovich/HostFlow/pull/307) / `8e2372db`. Structured `ready`/`not_ready` + blockers. Not DR1-runtime. Not E8. Vacancy overlay leftover.
+- 2026-08-25: CL7 feat — `entity_profile_engine_eval.v1`; D4 places Engine-eval zone; named CL7 Engine Eval Gate.

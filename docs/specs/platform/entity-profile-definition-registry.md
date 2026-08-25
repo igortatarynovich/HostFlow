@@ -9,7 +9,8 @@
 > **CL3 (2026-08-24):** Layout runtime is `entity_profile_layout.v1` ([brief](../tasks/entity-field-composition-cl3-layout.md)). D4 Information zone places `candidate.card` filtered through CL2 membership.  
 > **CL4 (2026-08-24):** Builder runtime is `entity_profile_builder.v1` ([brief](../tasks/entity-field-composition-cl4-builder.md)). Two modes; card → layout registry; form → Forms platform. Do **not** drop `transition_level` columns in this slice.  
 > **CL5 (2026-08-24):** Q&A runtime is `entity_profile_qa.v1` ([brief](../tasks/entity-field-composition-cl5-qa.md)). Recruiter Q&A is a consumer artifact (Lead / Application), not Profile membership, not `extra`, not a layout widget. Map is CL6.  
-> **CL6 (2026-08-25):** Flight map runtime is `entity_profile_flight_map.v1` ([brief](../tasks/entity-field-composition-cl6-flight-map.md)). Map executes onto Binding. Dest = Profile member fields. Profile may only ref.
+> **CL6 (2026-08-25):** Flight map runtime is `entity_profile_flight_map.v1` ([brief](../tasks/entity-field-composition-cl6-flight-map.md)). Map executes onto Binding. Dest = Profile member fields. Profile may only ref.  
+> **CL7 (2026-08-25):** Engine eval runtime is `entity_profile_engine_eval.v1` ([brief](../tasks/entity-field-composition-cl7-engine-eval.md)). Structured `ready`/`not_ready` + `blockers[]`. Profile may only ref. Not Hub asks. Not Engine v2.
 
 ### P1 implementation status (2026-06-22)
 
@@ -927,6 +928,7 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 - [`entity-field-composition-cl4-builder.md`](../tasks/entity-field-composition-cl4-builder.md) — CL4 builder runtime (`entity_profile_builder.v1`; two modes)
 - [`entity-field-composition-cl5-qa.md`](../tasks/entity-field-composition-cl5-qa.md) — CL5 Recruiter Q&A (`entity_profile_qa.v1`; Lead / Application, not extra)
 - [`entity-field-composition-cl6-flight-map.md`](../tasks/entity-field-composition-cl6-flight-map.md) — CL6 Flight mapping (`entity_profile_flight_map.v1`; snapshot on Binding)
+- [`entity-field-composition-cl7-engine-eval.md`](../tasks/entity-field-composition-cl7-engine-eval.md) — CL7 Engine evaluation (`entity_profile_engine_eval.v1`; ready | not_ready + blockers)
 - [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — document instance lifecycle runtime (**v1 closed** §20)
 - [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — expiry notification events (downstream of Document Runtime v1)
 - [`process-engine.md`](process-engine.md) — process behaviour (layer above)
