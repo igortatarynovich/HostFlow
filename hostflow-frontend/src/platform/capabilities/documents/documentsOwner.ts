@@ -1,4 +1,5 @@
 import { api } from '../../../api/client'
+import { DOC_TYPE_LEGACY_ALIASES } from '../../../data/documentTypeAliases'
 import type { WorkspaceCapabilityRenderContext } from '../../workspace-capability/renderContext'
 
 export const DOCUMENTS_PUBLIC_CONTRACT_ID = 'documents.public_contract.v1'
@@ -48,6 +49,7 @@ export type DocumentsResolveResult = {
   adapterId: string
   items: DocumentHubView[]
   outstandingAsks: OutstandingAskView[]
+  canonicalTypes: string[]
 }
 
 /**
@@ -55,7 +57,21 @@ export type DocumentsResolveResult = {
  * `documents.candidate_id` lists, a leftover FK, or local Candidate/HR documents panels
  * for the D2 `documents` surface. Outstanding ask is Hub `outstanding_asks`
  * (required type + entity via Document Link) — not Candidate stage / HR JSON.
+ * E8-bind: display / select / persist canonical registry codes. R4 aliases
+ * resolve only — they are not stored identity.
  */
+export function persistCanonicalDocumentType(raw: string): string {
+  const key = String(raw || '')
+    .trim()
+    .toLowerCase()
+    .replace(/-/g, '_')
+  if (!key) return ''
+  const mapped = DOC_TYPE_LEGACY_ALIASES[key]
+  if (mapped) return mapped
+  const canonical = new Set(Object.values(DOC_TYPE_LEGACY_ALIASES))
+  return canonical.has(key) ? key : ''
+}
+
 export function documentsResolveTarget(
   ctx: WorkspaceCapabilityRenderContext,
 ): { linkedEntityType: string; relationType: string; entityId: string } | null {
@@ -81,6 +97,7 @@ export async function listLinkedDocuments(
       adapterId: DOCUMENTS_HUB_ADAPTER_ID,
       items: [],
       outstandingAsks: [],
+      canonicalTypes: [],
     }
   }
   const { data } = await api.get<{
@@ -88,6 +105,7 @@ export async function listLinkedDocuments(
     adapter_id?: string
     items?: DocumentHubView[]
     outstanding_asks?: OutstandingAskView[]
+    canonical_types?: string[]
   }>('/platform/documents/resolve', {
     params: {
       linked_entity_type: target.linkedEntityType,
@@ -99,7 +117,20 @@ export async function listLinkedDocuments(
     available: true,
     contractId: String(data?.contract_id || DOCUMENTS_PUBLIC_CONTRACT_ID),
     adapterId: String(data?.adapter_id || DOCUMENTS_HUB_ADAPTER_ID),
-    items: Array.isArray(data?.items) ? data.items : [],
-    outstandingAsks: Array.isArray(data?.outstanding_asks) ? data.outstanding_asks : [],
+    items: Array.isArray(data?.items)
+      ? data.items.map((row) => ({
+          ...row,
+          doc_type: persistCanonicalDocumentType(row.doc_type),
+        }))
+      : [],
+    outstandingAsks: Array.isArray(data?.outstanding_asks)
+      ? data.outstanding_asks
+          .map((ask) => ({
+            ...ask,
+            doc_type: persistCanonicalDocumentType(ask.doc_type),
+          }))
+          .filter((ask) => Boolean(ask.doc_type))
+      : [],
+    canonicalTypes: Array.isArray(data?.canonical_types) ? data.canonical_types : [],
   }
 }

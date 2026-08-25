@@ -418,7 +418,7 @@ jobs:
             tests/platform/test_entity_workspace_d9_cutover_gate.py
 
   documents-gates:
-    name: Documents Platform E1–E7
+    name: Documents Platform E1–E8
     needs: changes
     if: needs.changes.outputs.documents == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
     runs-on: ubuntu-latest
@@ -431,6 +431,7 @@ jobs:
       # Documents Platform E5 Candidate Storage Bridge Gate
       # Documents Platform E6 Document Expiry Gate
       # Documents Platform E7 Document Requests Gate
+      # Documents Platform E8 Canonical Type Bind Gate
       - uses: ./.github/actions/backend-pytest
         with:
           tests: >-
@@ -441,6 +442,7 @@ jobs:
             tests/platform/test_documents_e5_candidate_storage_bridge_gate.py
             tests/platform/test_documents_e6_document_expiry_gate.py
             tests/platform/test_documents_e7_document_requests_gate.py
+            tests/platform/test_documents_e8_canonical_type_bind_gate.py
 
   workspace-capability-gates:
     name: Workspace Capability gates
