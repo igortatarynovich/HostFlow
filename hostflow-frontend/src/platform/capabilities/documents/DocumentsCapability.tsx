@@ -9,6 +9,8 @@ import {
   type OutstandingAskView,
 } from './documentsOwner'
 
+export const ENGINE_TO_HUB_OUTSTANDING_ASK_V1 = 'engine_to_hub_outstanding_ask.v1'
+
 /**
  * Platform surface `documents`. Owner = Documents.
  * Host places this contribution under `platform_slot`. Consume path is
@@ -16,6 +18,8 @@ import {
  * Not the local HR documents matrix. Not Shell nav. Not a `documents.candidate_id` column.
  * Validity is Hub `expires_at` / `expiry_state` on the same adapter (E6).
  * Outstanding ask is Hub `outstanding_asks` on the same adapter (E7).
+ * DR1-runtime: Engine may persist those asks; this surface reads them.
+ * Not a Hub request table. Not Catalog `document.requested`. Not mass generate.
  */
 export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
   const { t } = useI18n()
@@ -56,6 +60,13 @@ export function DocumentsCapability(ctx: WorkspaceCapabilityRenderContext) {
       data-capability-id="documents"
       data-public-contract={DOCUMENTS_PUBLIC_CONTRACT_ID}
       data-adapter-id={DOCUMENTS_HUB_ADAPTER_ID}
+      data-ask-contract={ENGINE_TO_HUB_OUTSTANDING_ASK_V1}
+      data-engine-ask-writer="true"
+      data-mass-generate="false"
+      data-hub-request-table="false"
+      data-catalog-document-requested="false"
+      data-cl8="false"
+      data-e8="false"
     >
       <p className="text-sm font-semibold text-slate-900">
         {t('app.entity_workspace.slot.documents', { defaultValue: 'Документы' })}

@@ -6,8 +6,9 @@ resolve on the same adapter. E5 drops `documents.candidate_id`; Candidate
 relationship SoT is Hub `document_entity_links` only. E6 seals expiry /
 validity as Hub `expires_at` + engine evaluation on the same adapter.
 E7 seals outstanding ask (required type + entity via Document Link) as
-additive `outstanding_asks` on resolve / owner_summary. Not a second
-Adapter. Not a Hub request / reminder table.
+additive `outstanding_asks` on resolve / owner_summary. DR1-runtime may
+persist Engine-projected asks on this same adapter, keyed by entity-link
+identity. Not a second Adapter. Not a Hub request / reminder table.
 """
 from __future__ import annotations
 
@@ -56,6 +57,11 @@ ALLOWED_ENTITY_LINK_RESOLVE = frozenset(
         (E4_LINKED_ENTITY_TYPE, E4_RELATION_TYPE),
     }
 )
+
+# Hub-owned outstanding-ask persist. Keyed by Document Link identity
+# (required type + entity). Not a request table. Not Catalog
+# ``document.requested``. Engine is the sole writer (DR1-runtime).
+_OUTSTANDING_ASK_STORE: dict[tuple[str, str], list[dict[str, str]]] = {}
 
 
 def _enum_value(value: Any) -> str:
@@ -193,6 +199,53 @@ async def ensure_ruleset_seed_via_contract(
         ruleset_payload,
         own_company_id=own_company_id,
     )
+
+
+def _ask_store_key(linked_entity_type: str, linked_entity_id: str) -> tuple[str, str] | None:
+    etype = str(linked_entity_type or "").strip()
+    eid = str(linked_entity_id or "").strip()
+    if not etype or not eid:
+        return None
+    return (etype, eid)
+
+
+def persist_outstanding_asks_via_contract(
+    asks: list[dict[str, Any]] | None,
+    *,
+    linked_entity_type: str,
+    linked_entity_id: str,
+) -> list[dict[str, str]]:
+    """Persist Engine outstanding asks on ``documents.hub_adapter_v1``.
+
+    SoT remains Hub required type + entity via Document Link — not a Hub
+    request table, not Catalog ``document.requested``.
+    """
+    key = _ask_store_key(linked_entity_type, linked_entity_id)
+    if key is None:
+        return []
+    rows: list[dict[str, str]] = []
+    for raw in asks or []:
+        if not isinstance(raw, dict):
+            continue
+        doc_type = str(raw.get("doc_type") or "").strip()
+        state = str(raw.get("state") or "").strip()
+        if not doc_type or not state:
+            continue
+        rows.append({"doc_type": doc_type, "state": state})
+    _OUTSTANDING_ASK_STORE[key] = rows
+    return list(rows)
+
+
+def load_outstanding_asks_via_contract(
+    *,
+    linked_entity_type: str,
+    linked_entity_id: str,
+) -> list[dict[str, str]] | None:
+    """Return Engine-persisted asks, or ``None`` when Engine has not written."""
+    key = _ask_store_key(linked_entity_type, linked_entity_id)
+    if key is None or key not in _OUTSTANDING_ASK_STORE:
+        return None
+    return list(_OUTSTANDING_ASK_STORE[key])
 
 
 def _outstanding_asks_from_required(required: dict[str, Any] | None) -> list[dict[str, Any]]:

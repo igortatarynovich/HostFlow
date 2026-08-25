@@ -25,7 +25,7 @@ Catalog Exposes already name Document Adapter / Verification Adapter / document 
 
 | Op | Stability | Maps from façade (today) | Description |
 |----|-----------|--------------------------|-------------|
-| `list` / `resolve` | **Stable** | `list_entity_link_documents_via_contract` · `project_outstanding_asks_via_contract` | Entity-scoped read. E3 D8 and E4 D4 consume paths are entity-link resolve. E5 dropped the Candidate FK list as public consume. E6 adds Hub validity fields on the same view: `expires_at` / `expiry_state` / `days_left` (from `document_expiry_engine`). E7 adds `outstanding_asks` (Hub required type vs linked docs). Output is Hub document view + outstanding-ask projection, not a module file row |
+| `list` / `resolve` | **Stable** | `list_entity_link_documents_via_contract` · `project_outstanding_asks_via_contract` · `load_outstanding_asks_via_contract` | Entity-scoped read. E3 D8 and E4 D4 consume paths are entity-link resolve. E5 dropped the Candidate FK list as public consume. E6 adds Hub validity fields on the same view: `expires_at` / `expiry_state` / `days_left` (from `document_expiry_engine`). E7 adds `outstanding_asks` (Hub required type vs linked docs). DR1-runtime may persist Engine-projected asks on the same adapter; resolve prefers those rows when present. Output is Hub document view + outstanding-ask projection, not a module file row |
 | `set_resolution` | **Stable** | `project_document_packs_via_contract` · `compute_candidate_checklist_via_contract` · `evaluate_document_hub_requirements_via_contract` | Document set / pack / checklist projection. Outstanding-ask SoT is Hub required type + entity — not Candidate stage / HR JSON |
 | `owner_summary` | **Stable** | `compute_owner_summary_via_contract` · `merge_document_hub_requirements_into_summary_via_contract` | Read model for compose. E7 adds `outstanding_asks` from Hub required buckets |
 | `verification_status` | **Stable** | Review fields on owner summary / list | Verification Adapter read — no new review engine |
@@ -67,6 +67,7 @@ Catalog already publishes `document.created` / `linked` / `verified` / `expired`
 | **E5 storage** | Same adapter. Drop `documents.candidate_id`. No second Adapter |
 | **E6 expiry** | Same adapter. Hub `expires_at` / `expiry_state` / `days_left` on resolve. `document_expiry_engine` is evaluation only — not a Hub reminder table. No second Adapter |
 | **E7 requests** | Same adapter. Hub `outstanding_asks` on resolve / owner_summary. No Hub request table. No Catalog `document.requested`. No second Adapter |
+| **DR1-runtime** | Same adapter. Engine may persist outstanding asks keyed by Document Link identity. No Hub request table. No Catalog `document.requested`. No second Adapter |
 | **Second Adapter** | Forbidden |
 | **Document Link SoT** | E3 HR employee + E4 Candidate via `document_entity_links`. E5 drops the Candidate storage FK. E6 / E7 do not add a consumer |
 
@@ -92,6 +93,7 @@ E1 / E2 / E3 / E4 / E5 / E6 / D1–D9 / WCP gates stay green.
 
 ## History
 
+- 2026-08-25: DR1-runtime feat — Engine may persist Hub `outstanding_asks` on `documents.hub_adapter_v1` (Document Link identity; no request table; no Catalog `document.requested`; no id bump). Foundation stays 🔄.
 - 2026-08-23: E7 feat — Hub `outstanding_asks` on `documents.hub_adapter_v1` resolve / owner_summary; no Catalog `document.requested`; no Hub request table; this contract stays v1 (no id bump). Foundation stays 🔄.
 - 2026-08-23: E6 feat — Hub expiry read (`expires_at` / `expiry_state`) on `documents.hub_adapter_v1`; workflow SoT leaves Candidate FK / Candidate-status; this contract stays v1 (no id bump). Foundation stays 🔄.
 - 2026-08-22: E5 feat — drop `documents.candidate_id`; writers persist Hub `candidate` / `primary` links; this contract stays v1 (no id bump). Foundation stays 🔄.
