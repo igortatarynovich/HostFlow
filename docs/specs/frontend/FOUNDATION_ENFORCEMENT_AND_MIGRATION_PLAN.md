@@ -179,14 +179,36 @@ These are **forbidden in all new code** from day one:
 ### 3.5 CI Check (Implemented)
 
 ```bash
-# Blocking (PR CI + local before push)
+# Blocking (PR CI + local before push) — ratchet on the change range
 cd hostflow-frontend && npm run foundation:check
 
-# Non-blocking backlog report
+# Non-blocking backlog report — migration debt, not a merge gate
 cd hostflow-frontend && npm run foundation:scan
 ```
 
 Workflow: `.github/workflows/frontend-static-qa.yml` (step: Foundation tokens).
+
+#### Comparison-base contract (ratchet)
+
+`foundation:check` answers: **did this change introduce new deprecated tokens?** It does **not** re-litigate already-accepted backlog. Mixing those two is how a promote-to-`main` PR goes red on tokens that already passed the gate at integration entry.
+
+That failure is a **ratchet base mismatch** (wrong comparison base for the event), not “token-drift”. Tokens did not drift; the checker compared the change against a ref it did not come from.
+
+| Event | Comparison | Notes |
+|---|---|---|
+| PR into `integration` (and any non-promote PR) | `merge-base(origin/<base>, HEAD)..HEAD` (`git diff origin/<base>...HEAD`) | Only the PR payload |
+| Push to `integration` or `main` | `github.event.before`..`github.event.after` | Squash/merge = previous tip vs new tip |
+| First push of a ref (`before` is the all-zero SHA) | `merge-base(origin/integration/release-product-a-b, tip)..tip` | Not `HEAD~1` (false green) and not `main` (false red) |
+| Force-push | same `before`..`after`; unresolved `before` → **fail-closed** | Never skip; never fall back to `main` |
+| Promote PR `integration/release-product-a-b` → `main` (same repo) | **already-ratcheted** (skip) | Promotion of code that already passed the ratchet at integration entry |
+| Missing payload / unresolvable range | **fail-closed** | `--admin` stays an emergency tool, not the promote path |
+| `foundation:scan` | full `src/` | Non-blocking migration debt |
+
+Local (no CI event): `merge-base(origin/integration/release-product-a-b, HEAD)..HEAD`. Explicit `FOUNDATION_DIFF_BASE` overrides the contract (escape hatch, including forcing a check on a promote PR).
+
+Do **not** default `FOUNDATION_DIFF_BASE` to `origin/main`. That is the mismatch.
+
+Migration of the ~2000 deprecated uses remains a separate Foundation phase. Do not “fix” backlog tokens to make a promote PR green.
 
 ---
 
@@ -217,7 +239,7 @@ Legacy targets are **non-increasing**, not zero. Legacy debt is paid down opport
 
 | Metric | Target | Done when |
 |---|---|---|
-| CI check active | Blocks Deprecated in PR diffs | ✅ `npm run foundation:check` in `frontend-static-qa.yml` |
+| CI check active | Blocks Deprecated in the **event change range** | ✅ `npm run foundation:check` in `frontend-static-qa.yml` |
 | PR checklist adopted | Reviewers check foundation tokens | ✅ PR template |
 | Semantic color aliases | Config layer exists | `tailwind.config.cjs` updated |
 | Re-scan delta | Deprecated count decreases each sprint | Tracked in sprint review |
@@ -261,7 +283,7 @@ Verified before `FOUNDATION_V1` lock:
 |---|---|---|
 | `foundation-allow` requires reason | ✅ | Format: `foundation-allow: <reason>` (min 8 chars). Bare marker does not suppress. Enforced in diff CI. |
 | `--scan` stays non-blocking | ✅ | Not in CI or `qa:static`. Always `exit 0`. Backlog only. |
-| Diff base for PRs | ✅ | CI uses `origin/${{ github.event.pull_request.base.ref \|\| 'main' }}`. Override: `FOUNDATION_DIFF_BASE`. |
+| Comparison-base contract | ✅ | PR vs merge-base(base, HEAD); push vs before..after; promote integration→main already-ratcheted; no `main` fallback; unresolved range fail-closed. Override: `FOUNDATION_DIFF_BASE`. |
 
 **Lock candidate:** enforcement is active; legacy backlog does not block features.
 
