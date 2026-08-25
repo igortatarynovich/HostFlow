@@ -91,6 +91,7 @@ jobs:
       overlay: ${{ github.event_name != 'pull_request' || steps.filter.outputs.overlay == 'true' }}
       li1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.li1 == 'true' }}
       dr1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1 == 'true' }}
+      dr1_runtime: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1_runtime == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -235,7 +236,22 @@ jobs:
               - 'backend/tests/requirement_rules/test_dr1_contract_gate.py'
               - 'scripts/architecture/check_engine_outstanding_ask_boundary.py'
               - 'scripts/architecture/engine_outstanding_ask_boundary_*'
-              - 'docs/specs/tasks/engine-document-request-dr1*'
+              - 'docs/specs/tasks/engine-document-request-dr1-contract.md'
+            dr1_runtime:
+              - 'backend/app/requirement_rules/engine_outstanding_ask_runtime.py'
+              - 'backend/app/requirement_rules/engine_to_hub_outstanding_ask_contract.py'
+              - 'backend/app/services/document_hub_delivery_contract.py'
+              - 'backend/app/api/v1/platform/documents_public.py'
+              - 'backend/tests/requirement_rules/test_dr1_runtime_gate.py'
+              - 'scripts/architecture/check_engine_outstanding_ask_writer_boundary.py'
+              - 'scripts/architecture/engine_outstanding_ask_writer_boundary_*'
+              - 'docs/specs/tasks/engine-document-request-dr1-runtime.md'
+              - 'hostflow-frontend/src/platform/capabilities/documents/DocumentsCapability.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEngineEvalPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateFlightMapPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateQaPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
 
   guards:
     name: guards
@@ -641,6 +657,21 @@ jobs:
         with:
           tests: tests/entity_field_composition/test_vacancy_overlay_contract_gate.py
 
+  dr1-runtime-gate:
+    name: DR1 Runtime Gate
+    needs: changes
+    if: needs.changes.outputs.dr1_runtime == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when DR1 runtime gate is not in this tree
+        if: hashFiles('backend/tests/requirement_rules/test_dr1_runtime_gate.py') == ''
+        run: echo "DR1 runtime gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/requirement_rules/test_dr1_runtime_gate.py') != ''
+        with:
+          tests: tests/requirement_rules/test_dr1_runtime_gate.py
+
   tests:
     name: tests
     if: always() && !cancelled()
@@ -666,6 +697,7 @@ jobs:
       - cl6-flight-map-gate
       - cl7-engine-eval-gate
       - overlay-contract-gate
+      - dr1-runtime-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed

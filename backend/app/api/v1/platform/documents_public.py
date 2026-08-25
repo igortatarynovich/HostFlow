@@ -3,6 +3,8 @@
 Same adapter id as E2. Not a second Adapter. Not a candidate_id column list.
 E6 projects Hub expiry (`expires_at` / `expiry_state`) on the resolve view.
 E7 projects Hub outstanding asks (`outstanding_asks`) on the same resolve.
+DR1-runtime may persist Engine-projected asks on this adapter; resolve
+prefers those rows when present. Not a Hub request table.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from backend.app.services.document_hub_delivery_contract import (
     E3_RELATION_TYPE,
     PUBLIC_CONTRACT_ID,
     list_entity_link_documents_via_contract,
+    load_outstanding_asks_via_contract,
     project_outstanding_asks_via_contract,
 )
 
@@ -95,7 +98,15 @@ async def resolve_documents_via_public_contract(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    asks = project_outstanding_asks_via_contract(items)
+    persisted = load_outstanding_asks_via_contract(
+        linked_entity_type=etype,
+        linked_entity_id=linked_entity_id.strip(),
+    )
+    asks = (
+        persisted
+        if persisted is not None
+        else project_outstanding_asks_via_contract(items)
+    )
     return DocumentsResolveOut(
         items=[DocumentHubViewOut.model_validate(row) for row in items],
         outstanding_asks=[OutstandingAskOut.model_validate(row) for row in asks],

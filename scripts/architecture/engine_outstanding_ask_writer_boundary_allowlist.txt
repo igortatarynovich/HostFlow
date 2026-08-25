@@ -1,0 +1,2 @@
+# DR1-runtime — sole Hub outstanding-ask writer for engine_to_hub_outstanding_ask.v1.
+engine_to_hub_outstanding_ask_writer|backend/app/requirement_rules/engine_outstanding_ask_runtime.py
