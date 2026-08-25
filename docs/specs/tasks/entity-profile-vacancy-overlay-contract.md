@@ -1,6 +1,6 @@
 # Entity Profile — Vacancy Overlay Contract
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **PASS** [#311](https://github.com/igortatarynovich/HostFlow/pull/311) / `7649544d`  
 **Phase class:** platform  
 **Branch (docs):** `docs/queue-post-cl7-amendment`  
 **Branch (code):** `feat/entity-profile-vacancy-overlay-contract`  
@@ -53,7 +53,7 @@ Overlay may **tighten or add** vacancy-specific predicates on top of Profile / S
 
 Reject: Overlay as CL8; Overlay on Profile membership; Overlay = R5 pack / `tenant_delta`; boolean Engine; screening as `required=true` on a field; writing Hub asks; vacancy UI as this producer; minting Engine v2.
 
-This slice **does not** mint Requirement Engine v2 and **does not** implement `engine_to_hub_outstanding_ask.v1` writes. Evaluation remains [CL7](entity-field-composition-cl7-engine-eval.md). Hub ask persistence remains [DR1-runtime](engine-document-request-dr1-contract.md) after Reference R5.
+This slice **does not** mint Requirement Engine v2 and **does not** implement `engine_to_hub_outstanding_ask.v1` writes. Evaluation remains [CL7](entity-field-composition-cl7-engine-eval.md). Hub ask persistence remains [DR1-runtime](engine-document-request-dr1-runtime.md).
 
 ---
 
@@ -82,19 +82,20 @@ PASS when:
 7. D4 still places Engine-eval zone; Information / Q&A / Flight-map zones unchanged.  
 8. Named CI job exists for the Overlay Gate.
 
-Unlocks: later Product via **queue amendment**. Does **not** unlock DR1-runtime or E8. Do **not** invent CL8.
+Unlocks: **DR1-runtime** (Engine may create Hub outstanding asks). Does **not** auto-start E8-bind / E8-eval. Do **not** invent CL8.
 
 ---
 
 ## Queue position
 
 **Depends on:** CL7 Gate ✅ (#309 / `6f2289f1`)  
-**Unlocks:** later Product via queue amendment  
-**Does not:** park on Reference R5 / #298; start E8; start DR1-runtime; invent CL8; mint Engine v2; write Hub asks; ship vacancy UI
+**Unlocks:** [DR1-runtime](engine-document-request-dr1-runtime.md)  
+**Does not:** invent CL8; auto-start E8-bind / E8-eval; mint Engine v2; write Hub asks in this producer; ship vacancy UI
 
 ---
 
 ## History
 
+- 2026-08-25: Vacancy Overlay Gate **PASS** [#311](https://github.com/igortatarynovich/HostFlow/pull/311) / `7649544d`. Unlocks DR1-runtime (not CL8; not E8 auto-start).
 - 2026-08-25: Vacancy Overlay Contract feat — `resolve_overlay` + `merge` as defined CL7 input; D4 Engine-eval zone consumes overlay; not CL8; not R5 pack merge; not vacancy UI.
 - 2026-08-25: Vacancy Overlay Contract opened (feat locked) after CL7 Gate PASS [#309](https://github.com/igortatarynovich/HostFlow/pull/309) / `6f2289f1`. Named leftover of the original CL0 chain (Vacancy = profile + overlay). Not CL8. Not DR1-runtime. Not E8.

@@ -11,7 +11,8 @@
 > **CL5 (2026-08-24):** Q&A runtime is `entity_profile_qa.v1` ([brief](../tasks/entity-field-composition-cl5-qa.md)). Recruiter Q&A is a consumer artifact (Lead / Application), not Profile membership, not `extra`, not a layout widget. Map is CL6.  
 > **CL6 (2026-08-25):** Flight map runtime is `entity_profile_flight_map.v1` ([brief](../tasks/entity-field-composition-cl6-flight-map.md)). Map executes onto Binding. Dest = Profile member fields. Profile may only ref.  
 > **CL7 (2026-08-25):** Engine eval runtime is `entity_profile_engine_eval.v1` ([brief](../tasks/entity-field-composition-cl7-engine-eval.md)). Structured `ready`/`not_ready` + `blockers[]`. Profile may only ref. Not Hub asks. Not Engine v2.  
-> **Vacancy Overlay (2026-08-25):** next named Product slice is [Vacancy Overlay Contract](../tasks/entity-profile-vacancy-overlay-contract.md) (brief; feat locked). Vacancy-specific requirement delta over Profile / Screening Pack. Profile may only ref. Not CL8. Not R5 pack merge. Not runtime in this amendment.
+> **Vacancy Overlay (2026-08-25):** Overlay contract is `entity_profile_vacancy_overlay.v1` ([brief](../tasks/entity-profile-vacancy-overlay-contract.md)) ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). Vacancy-specific requirement delta over Profile / Screening Pack. Profile may only ref. Not CL8. Not R5 pack merge.  
+> **DR1-runtime (2026-08-25):** next named Product slice is [DR1-runtime](../tasks/engine-document-request-dr1-runtime.md) (brief; feat locked). Engine may create Hub outstanding asks. Not CL8. Not E8. Not mass generation.
 
 ### P1 implementation status (2026-06-22)
 
@@ -930,7 +931,8 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 - [`entity-field-composition-cl5-qa.md`](../tasks/entity-field-composition-cl5-qa.md) — CL5 Recruiter Q&A (`entity_profile_qa.v1`; Lead / Application, not extra)
 - [`entity-field-composition-cl6-flight-map.md`](../tasks/entity-field-composition-cl6-flight-map.md) — CL6 Flight mapping (`entity_profile_flight_map.v1`; snapshot on Binding)
 - [`entity-field-composition-cl7-engine-eval.md`](../tasks/entity-field-composition-cl7-engine-eval.md) — CL7 Engine evaluation (`entity_profile_engine_eval.v1`; ready | not_ready + blockers)
-- [`entity-profile-vacancy-overlay-contract.md`](../tasks/entity-profile-vacancy-overlay-contract.md) — Vacancy Overlay Contract (named next; feat locked; not CL8; Profile may only ref)
+- [`entity-profile-vacancy-overlay-contract.md`](../tasks/entity-profile-vacancy-overlay-contract.md) — Vacancy Overlay Contract ✅ (#311); Profile may only ref
+- [`engine-document-request-dr1-runtime.md`](../tasks/engine-document-request-dr1-runtime.md) — DR1-runtime (named next; feat locked; Engine may create Hub outstanding asks)
 - [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — document instance lifecycle runtime (**v1 closed** §20)
 - [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — expiry notification events (downstream of Document Runtime v1)
 - [`process-engine.md`](process-engine.md) — process behaviour (layer above)
