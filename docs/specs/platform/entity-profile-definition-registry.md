@@ -14,7 +14,7 @@
 > **Vacancy Overlay (2026-08-25):** Overlay contract is `entity_profile_vacancy_overlay.v1` ([brief](../tasks/entity-profile-vacancy-overlay-contract.md)) ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). Vacancy-specific requirement delta over Profile / Screening Pack. Profile may only ref. Not CL8. Not R5 pack merge.  
 > **DR1-runtime (2026-08-25):** [DR1-runtime](../tasks/engine-document-request-dr1-runtime.md) ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Engine may create Hub outstanding asks.  
 > **E8-bind (2026-08-25):** [E8-bind](../tasks/documents-platform-e8-bind.md) **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. Remaining consumers bind to canonical document types. Not CL8. Not mass D3–D9 bind.  
-> **E8-eval (2026-08-25):** [E8-eval](../tasks/documents-platform-e8-eval.md) **active** (brief; feat locked). Required / optional / applicability from R5 merge. Named leftover of Documents after E8-bind. Not OCR. Not CL8. Not mass D3–D9 bind.
+> **E8-eval (2026-08-25):** [E8-eval](../tasks/documents-platform-e8-eval.md) **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Required / optional / applicability from R5 merge. Named leftover of Documents after E8-bind. Not OCR. Not CL8. Not mass D3–D9 bind. Product = **none this amendment**.
 
 ### P1 implementation status (2026-06-22)
 
@@ -936,7 +936,7 @@ Settings preview (P6) → Public form render (P7) → Submit → Lead Draft (P5C
 - [`entity-profile-vacancy-overlay-contract.md`](../tasks/entity-profile-vacancy-overlay-contract.md) — Vacancy Overlay Contract ✅ (#311); Profile may only ref
 - [`engine-document-request-dr1-runtime.md`](../tasks/engine-document-request-dr1-runtime.md) — DR1-runtime ✅ (#313; Engine may create Hub outstanding asks)
 - [`documents-platform-e8-bind.md`](../tasks/documents-platform-e8-bind.md) — E8-bind ✅ (#321; canonical type identity on D4 Documents)
-- [`documents-platform-e8-eval.md`](../tasks/documents-platform-e8-eval.md) — E8-eval **active** (brief; feat locked; required/optional from R5 merge)
+- [`documents-platform-e8-eval.md`](../tasks/documents-platform-e8-eval.md) — E8-eval ✅ (#324; required/optional from R5 merge)
 - [`document-runtime-engine-p0.md`](document-runtime-engine-p0.md) — document instance lifecycle runtime (**v1 closed** §20)
 - [`document-expiry-notifications-p0.md`](document-expiry-notifications-p0.md) — expiry notification events (downstream of Document Runtime v1)
 - [`process-engine.md`](process-engine.md) — process behaviour (layer above)

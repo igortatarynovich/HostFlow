@@ -77,20 +77,21 @@ PASS when:
 
 Evidence: D4 Documents (`/app/candidates/:id`) display / select / persist canonical registry codes. R4 aliases (`code95`, `tacho_card`, …) are resolve-only, not stored identity. Adapter `documents.hub_adapter_v1`: `persist_canonical_type_identity_via_contract`, `list_canonical_types_for_select_via_contract`; empty input does not become `"other"`. Public resolve: additive `canonical_types`, no contract id bump. D4 UI: native `<select className="input">`; `data-e8-bind="true"` `data-e8-eval="false"`.
 
-Unlocks: **E8-eval** (this queue amendment — [brief](documents-platform-e8-eval.md); feat locked). Later Product via **queue amendment**. Do **not** auto-start OCR. Do **not** invent CL8.
+Unlocks: **E8-eval** ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` ([brief](documents-platform-e8-eval.md)). Later Product via **queue amendment**. No named successor this amendment. Do **not** auto-start OCR. Do **not** invent CL8.
 
 ---
 
 ## Queue position
 
 **Depends on:** Reference R3 Gate ✅ (#295) · Reference R4 Gate ✅ (#296) · DR1 Runtime Gate ✅ (#313 / `e6978fe2`)  
-**Unlocks:** [E8-eval](documents-platform-e8-eval.md) (this queue amendment; feat locked)  
+**Unlocks:** [E8-eval](documents-platform-e8-eval.md) ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`  
 **Does not:** invent CL8; start OCR; mass-bind D3–D9; mint a Hub request table; rewrite Overlay / CL7 / DR1-runtime
 
 ---
 
 ## History
 
+- 2026-08-25: E8 Required-Doc Evaluation Gate **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product Track → **none this amendment**. Not OCR auto-start. Not CL8.
 - 2026-08-25: Queue amendment after E8-bind Gate PASS names **E8-eval** Active Product (brief; feat locked). Not OCR auto-start. Not CL8.
 - 2026-08-25: Documents Platform E8 Canonical Type Bind Gate **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` (feat `b0129565`). Brief COMPLETE. No named Product successor this amendment. E8-eval unlocked (not scheduled; brief not opened). Not CL8. Not mass D3–D9 bind. Foundation stays 🔄.
 - 2026-08-25: E8-bind feat opened — D4 Documents display / select / persist canonical registry codes; R4 aliases resolve-only. Named Documents Platform E8 Canonical Type Bind Gate. Not E8-eval. Not CL8. Not mass D3–D9 bind.

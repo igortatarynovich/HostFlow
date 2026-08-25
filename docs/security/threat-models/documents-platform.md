@@ -50,7 +50,7 @@ Not this surface: OCR / e-sign / packages product, D3 / D5–D7 / D9 bind, Found
 - Same adapter id as E2. Named **Documents Platform E6 Document Expiry Gate** fails if expiry is not on the Hub view, if D4/D8 unbind, if D3 / D5–D7 / D9 bind `documents`, or if a Hub reminder table appears.  
 - Named **Documents Platform E7 Document Requests Gate** fails if `outstanding_asks` is missing from the Hub resolve, if a Hub request table appears, if Catalog `document.requested` is minted, or if D3 / D5–D7 / D9 bind `documents`.  
 - Named **Documents Platform E8 Canonical Type Bind Gate** **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — fails if D4 display / select / persist uses alias identity, if R4 aliases are stored as Hub `document_type_code`, if CL8 / mass D3–D9 bind appear, or if a Hub request table / Catalog `document.requested` is minted.  
-- Named **Documents Platform E8 Required-Doc Evaluation Gate** — fails if D4 applicability is not from R5 merge with canonical types, if screening `required=true` is Documents SoT, if OCR / packages / Hub request table / Catalog `document.requested` appear, or if CL8 / mass D3–D9 bind / Foundation ✅ are claimed. Overlay is typed CL7 input; Documents does not import Overlay / CL7 runtimes.  
+- Named **Documents Platform E8 Required-Doc Evaluation Gate** **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — fails if D4 applicability is not from R5 merge with canonical types, if screening `required=true` is Documents SoT, if OCR / packages / Hub request table / Catalog `document.requested` appear, or if CL8 / mass D3–D9 bind / Foundation ✅ are claimed. Overlay is typed CL7 input; Documents does not import Overlay / CL7 runtimes.  
 - No new security events. Catalog events stay `document.created` / `linked` / `verified` / `expired`.
 
 ## Тесты
@@ -70,7 +70,7 @@ Not this surface: OCR / e-sign / packages product, D3 / D5–D7 / D9 bind, Found
 
 - `docs/specs/architecture/documents-public-contract.md`  
 - `docs/specs/workflows/document_expiry.md`  
-- `docs/specs/tasks/documents-platform-e8-eval.md` (feat; required / optional / blocked from R5 merge; not OCR)  
+- `docs/specs/tasks/documents-platform-e8-eval.md` ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) (required / optional / blocked from R5 merge; not OCR)  
 - `docs/specs/tasks/documents-platform-e8-bind.md`  
 - `docs/specs/tasks/documents-platform-e7-document-requests.md`  
 - `docs/specs/tasks/documents-platform-e6-document-expiry.md`  
