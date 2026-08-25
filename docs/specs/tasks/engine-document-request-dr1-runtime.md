@@ -75,20 +75,21 @@ PASS when:
 7. Boundary guard reports exactly one Hub outstanding-ask **writer** for this contract.  
 8. Named CI job exists for the DR1 Runtime Gate.
 
-Unlocks: later Product via **queue amendment**. Does **not** auto-start E8-bind / E8-eval. Do **not** invent CL8.
+Unlocks: later Product via **queue amendment** — named **E8-bind** after this Gate. Does **not** auto-start E8-eval. Do **not** invent CL8.
 
 ---
 
 ## Queue position
 
 **Depends on:** DR1-contract Gate ✅ (#302) · Reference R5 Gate ✅ (#297) · Vacancy Overlay Gate ✅ (#311 / `7649544d`) · Reference Program Exit Gate ✅ (#298 / `ff0b914c`)  
-**Unlocks:** later Product via queue amendment  
-**Does not:** invent CL8; start E8-bind / E8-eval; mint a Hub request table; mass-generate asks; rewrite Overlay / CL7 evaluate
+**Unlocks:** [E8-bind](documents-platform-e8-bind.md) (this queue amendment)  
+**Does not:** invent CL8; start E8-eval; mint a Hub request table; mass-generate asks; rewrite Overlay / CL7 evaluate
 
 ---
 
 ## History
 
+- 2026-08-25: Queue amendment after DR1 Runtime Gate PASS names **E8-bind** as Active Product (brief; feat locked). Not E8-eval auto-start. Not CL8.
 - 2026-08-25: DR1-runtime feat **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313) — Engine may create Hub outstanding asks on `documents.hub_adapter_v1`. Not CL8. Not E8. Not mass generation.
 - 2026-08-25: DR1-runtime feat opened — Engine may create Hub outstanding asks on `documents.hub_adapter_v1`. Not CL8. Not E8. Not mass generation.
 - 2026-08-25: DR1-runtime opened (feat locked) after Vacancy Overlay Gate PASS [#311](https://github.com/igortatarynovich/HostFlow/pull/311) / `7649544d` and Reference Program Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. Engine may create Hub outstanding asks. Not CL8. Not E8. Not mass generation.
