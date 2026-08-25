@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const DEFAULT_BASE_URL = 'https://hostflow.cc'
@@ -65,5 +65,10 @@ const xml = [
 ].join('\n')
 
 const outputPath = resolve(process.cwd(), 'public/sitemap.xml')
-writeFileSync(outputPath, xml, 'utf8')
-console.log(`[sitemap] generated ${outputPath} (${routes.length} urls)`)
+const stripLastmod = (payload) => payload.replace(/<lastmod>[^<]*<\/lastmod>/g, '<lastmod></lastmod>')
+if (existsSync(outputPath) && stripLastmod(readFileSync(outputPath, 'utf8')) === stripLastmod(xml)) {
+  console.log(`[sitemap] unchanged urlset, keep ${outputPath}`)
+} else {
+  writeFileSync(outputPath, xml, 'utf8')
+  console.log(`[sitemap] generated ${outputPath} (${routes.length} urls)`)
+}
