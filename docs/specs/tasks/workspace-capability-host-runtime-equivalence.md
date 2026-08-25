@@ -43,7 +43,7 @@ False close (reject): wrapping Entity chrome without the contract; unused host +
 
 1. `EntityWorkspaceCapabilityHost` — placement-only runtime for `entity_workspace`. Same contribution protocol. Must not import Notes/Consent/Recruitment/HR internals.  
 2. **Candidate Entity Workspace host-equivalence bind** — the real Entity screen enters through `EntityWorkspaceCapabilityHost`. `EntityWorkspaceShell` is chrome adapter. D2 `communication` / `forms` are host-placed contributions, not page-level `EntityWorkspaceCompositionHost`. Not a second G4.  
-3. Notes owner boundary — capability UI talks to a Notes facade/API owned by Notes, not `/candidates/:id/notes` from the widget and not a page stub that the host understands as candidate-only. Pre-convert Application notes remain an owner stub (no candidate subject yet).  
+3. Notes owner boundary — capability UI talks to a Notes facade/API owned by Notes, not `/candidates/:id/notes` from the widget. Pre-convert Recruitment Application notes go through notesOwner application comments transport.  
 4. Consent owner boundary — capability UI talks to Compliance (`consent` + policy `lead_rodo_v1`). No `getLead` / `sendLeadRodoCompliance` / `markLeadRodoSourceProvided` in `ConsentCapability`, host, or page.  
 5. Named-gate extensions: both host implementations exist; a real Entity consumer uses the host; capability UI files do not import Lead client modules.  
 6. Goal Completion template in the feat PR. Final G1–G5 review: [COMPLETE](../gates/workspace-capability-platform-complete.md).
@@ -91,7 +91,7 @@ G1 Original problem: After #273 a new Entity screen can still assemble without a
 G2 Now forbidden local implementations: Lead/candidate-notes imports in ConsentCapability / NotesCapability / host / G4 panel; wrapping Entity chrome without EntityWorkspaceCapabilityHost; Candidate-as-G4; ApplicationRodoSection as WCP; new proof-screen.
 G3 Next consumer without new primitive? Yes. Documents E2 and a second host consumer use the same contribution protocol. No new host primitive.
 G4 End-to-end proof (path + what it does not fork): Recruitment Application G4 bind remains. Candidate Entity Workspace is the entity_workspace runtime-equivalence bind (host + contribution contract), not a second proof-screen.
-G5 Remaining allowed workarounds (owner / until): mass Sales/Candidate inventory migrate-on-touch after COMPLETE; D2 documents reserved until E2 feat; ListWorkspace separate; pre-convert Notes stub when no candidate subject.
+G5 Remaining allowed workarounds (owner / until): mass Sales/Candidate inventory migrate-on-touch after COMPLETE; D2 documents reserved until E2 feat; ListWorkspace separate. Recruitment application notes before candidate conversion go through notesOwner application comments transport.
 Outcome: PASS
 ```
 

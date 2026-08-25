@@ -24,6 +24,9 @@ on:
       - "docs/specs/tasks/platform-reference*"
       - "docs/specs/tasks/workspace-capability*"
       - "docs/specs/tasks/entity-field-composition*"
+      - "docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json"
+      - "docs/specs/tasks/lifecycle-identity-li1*"
+      - "docs/specs/tasks/engine-document-request-dr1*"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/actions/backend-pytest/**"
@@ -44,6 +47,9 @@ on:
       - "docs/specs/tasks/platform-reference*"
       - "docs/specs/tasks/workspace-capability*"
       - "docs/specs/tasks/entity-field-composition*"
+      - "docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json"
+      - "docs/specs/tasks/lifecycle-identity-li1*"
+      - "docs/specs/tasks/engine-document-request-dr1*"
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/actions/backend-pytest/**"
@@ -76,6 +82,14 @@ jobs:
       workspace: ${{ github.event_name != 'pull_request' || steps.filter.outputs.workspace == 'true' }}
       reference: ${{ github.event_name != 'pull_request' || steps.filter.outputs.reference == 'true' }}
       cl1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl1 == 'true' }}
+      cl2: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl2 == 'true' }}
+      cl3: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl3 == 'true' }}
+      cl4: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl4 == 'true' }}
+      cl5: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl5 == 'true' }}
+      cl6: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl6 == 'true' }}
+      cl7: ${{ github.event_name != 'pull_request' || steps.filter.outputs.cl7 == 'true' }}
+      li1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.li1 == 'true' }}
+      dr1: ${{ github.event_name != 'pull_request' || steps.filter.outputs.dr1 == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -141,8 +155,74 @@ jobs:
               - 'docs/specs/tasks/platform-reference*'
             cl1:
               - 'scripts/entity_field_composition/**'
-              - 'backend/tests/entity_field_composition/**'
+              - 'backend/tests/entity_field_composition/test_cl1_inventory_gate.py'
               - 'docs/specs/tasks/entity-field-composition-cl1*'
+            cl2:
+              - 'backend/app/entity_profile/membership_runtime.py'
+              - 'backend/app/entity_profile/manifests/**'
+              - 'backend/tests/entity_field_composition/test_cl2_membership_gate.py'
+              - 'scripts/architecture/check_entity_profile_membership_boundary.py'
+              - 'scripts/architecture/entity_profile_membership_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl2*'
+            cl3:
+              - 'backend/app/entity_profile/layout_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl3_layout_gate.py'
+              - 'scripts/architecture/check_entity_profile_layout_boundary.py'
+              - 'scripts/architecture/entity_profile_layout_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl3*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+            cl4:
+              - 'backend/app/entity_profile/builder_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl4_builder_gate.py'
+              - 'scripts/architecture/check_entity_profile_builder_boundary.py'
+              - 'scripts/architecture/entity_profile_builder_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl4*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateCompositionBuilder.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+            cl5:
+              - 'backend/app/entity_profile/qa_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl5_qa_gate.py'
+              - 'scripts/architecture/check_entity_profile_qa_boundary.py'
+              - 'scripts/architecture/entity_profile_qa_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl5*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateQaPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+            cl6:
+              - 'backend/app/entity_profile/flight_map_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl6_flight_map_gate.py'
+              - 'scripts/architecture/check_entity_profile_flight_map_boundary.py'
+              - 'scripts/architecture/entity_profile_flight_map_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl6*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateFlightMapPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateQaPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+            cl7:
+              - 'backend/app/entity_profile/engine_eval_runtime.py'
+              - 'backend/tests/entity_field_composition/test_cl7_engine_eval_gate.py'
+              - 'scripts/architecture/check_entity_profile_engine_eval_boundary.py'
+              - 'scripts/architecture/entity_profile_engine_eval_boundary_*'
+              - 'docs/specs/tasks/entity-field-composition-cl7*'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEngineEvalPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateEntityWorkspacePanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateFlightMapPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateQaPanel.tsx'
+              - 'hostflow-frontend/src/platform/entity-workspace/CandidateInformationLayout.tsx'
+            li1:
+              - 'backend/app/platform/module_stage_registry/**'
+              - 'backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py'
+              - 'scripts/architecture/check_stage_existence_boundary.py'
+              - 'scripts/architecture/stage_existence_boundary_*'
+              - 'docs/specs/platform/module-stage-registry-recruitment-candidate-v0.json'
+              - 'docs/specs/tasks/lifecycle-identity-li1*'
+            dr1:
+              - 'backend/app/requirement_rules/engine_to_hub_outstanding_ask_contract.py'
+              - 'backend/tests/requirement_rules/test_dr1_contract_gate.py'
+              - 'scripts/architecture/check_engine_outstanding_ask_boundary.py'
+              - 'scripts/architecture/engine_outstanding_ask_boundary_*'
+              - 'docs/specs/tasks/engine-document-request-dr1*'
 
   guards:
     name: guards
@@ -413,6 +493,126 @@ jobs:
         with:
           tests: tests/entity_field_composition/test_cl1_inventory_gate.py
 
+  li1-existence-gate:
+    name: Lifecycle Identity LI-1 Existence Guard Gate
+    needs: changes
+    if: needs.changes.outputs.li1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when LI-1 gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py') == ''
+        run: echo "LI-1 existence guard gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py') != ''
+        with:
+          tests: tests/platform/test_lifecycle_identity_li1_existence_guard_gate.py
+
+  dr1-contract-gate:
+    name: DR1 Contract Gate
+    needs: changes
+    if: needs.changes.outputs.dr1 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when DR1 contract gate is not in this tree
+        if: hashFiles('backend/tests/requirement_rules/test_dr1_contract_gate.py') == ''
+        run: echo "DR1 contract gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/requirement_rules/test_dr1_contract_gate.py') != ''
+        with:
+          tests: tests/requirement_rules/test_dr1_contract_gate.py
+
+  cl2-membership-gate:
+    name: CL2 Membership Gate
+    needs: changes
+    if: needs.changes.outputs.cl2 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL2 membership gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl2_membership_gate.py') == ''
+        run: echo "CL2 membership gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl2_membership_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl2_membership_gate.py
+
+  cl3-layout-gate:
+    name: CL3 Layout Gate
+    needs: changes
+    if: needs.changes.outputs.cl3 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL3 layout gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl3_layout_gate.py') == ''
+        run: echo "CL3 layout gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl3_layout_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl3_layout_gate.py
+
+  cl4-builder-gate:
+    name: CL4 Builder Gate
+    needs: changes
+    if: needs.changes.outputs.cl4 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL4 builder gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl4_builder_gate.py') == ''
+        run: echo "CL4 builder gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl4_builder_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl4_builder_gate.py
+
+  cl5-qa-gate:
+    name: CL5 Q&A Gate
+    needs: changes
+    if: needs.changes.outputs.cl5 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL5 Q&A gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl5_qa_gate.py') == ''
+        run: echo "CL5 Q&A gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl5_qa_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl5_qa_gate.py
+
+  cl6-flight-map-gate:
+    name: CL6 Flight Map Gate
+    needs: changes
+    if: needs.changes.outputs.cl6 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL6 Flight map gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl6_flight_map_gate.py') == ''
+        run: echo "CL6 Flight map gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl6_flight_map_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl6_flight_map_gate.py
+
+  cl7-engine-eval-gate:
+    name: CL7 Engine Eval Gate
+    needs: changes
+    if: needs.changes.outputs.cl7 == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when CL7 Engine eval gate is not in this tree
+        if: hashFiles('backend/tests/entity_field_composition/test_cl7_engine_eval_gate.py') == ''
+        run: echo "CL7 Engine eval gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/entity_field_composition/test_cl7_engine_eval_gate.py') != ''
+        with:
+          tests: tests/entity_field_composition/test_cl7_engine_eval_gate.py
+
   tests:
     name: tests
     if: always() && !cancelled()
@@ -429,6 +629,14 @@ jobs:
       - reference-gates
       - reference-program-exit-gate
       - cl1-inventory-gate
+      - li1-existence-gate
+      - dr1-contract-gate
+      - cl2-membership-gate
+      - cl3-layout-gate
+      - cl4-builder-gate
+      - cl5-qa-gate
+      - cl6-flight-map-gate
+      - cl7-engine-eval-gate
     runs-on: ubuntu-latest
     steps:
       - name: Fail if a blocking job failed

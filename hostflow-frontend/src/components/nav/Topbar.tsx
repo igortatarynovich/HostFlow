@@ -114,6 +114,11 @@ function filterUnreadThreadsForUser(
   })
 }
 
+function isHttpForbidden(err: unknown): boolean {
+  const status = (err as { response?: { status?: number } } | null)?.response?.status
+  return status === 403
+}
+
 function computeBellAttentionCount(items: NotificationItem[], pendingHandoffsCount: number): number {
   const unreadHandoffNotifs = items.filter(
     (i) => !i.is_read && String(i.event_type || '').toLowerCase() === 'handoff_requested',
@@ -212,6 +217,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   )
   const [commPollKey, setCommPollKey] = useState(0)
   const [reminderDuePopup, setReminderDuePopup] = useState<NotificationItem | null>(null)
+  const commsForbiddenRef = useRef(false)
 
   // Severity / SLA / requires-action ranking used to sort drawer rows; that policy now lives
   // on the Notification Center page (ADR-012). Drawer renders newest-first only — see
@@ -403,14 +409,22 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
 
     const fetchCount = async () => {
       try {
-        try {
-          await reconcileCommunicationThreadUnread({ limit: 5000 })
-        } catch {
-          // keep polling even when reconcile is temporarily unavailable
+        const canPollComms = canInboxDeepLink && !commsForbiddenRef.current
+        if (canPollComms) {
+          try {
+            await reconcileCommunicationThreadUnread({ limit: 5000 })
+          } catch (err) {
+            if (isHttpForbidden(err)) commsForbiddenRef.current = true
+          }
         }
         const [notifData, commData] = await Promise.all([
           listNotifications({ includeRead: false, limit: 100, scope: 'direct' }) as Promise<NotificationListResponse>,
-          listCommunicationThreads({ limit: 500 }).catch(() => ({ items: [], total: 0 })),
+          canPollComms && !commsForbiddenRef.current
+            ? listCommunicationThreads({ limit: 500 }).catch((err) => {
+                if (isHttpForbidden(err)) commsForbiddenRef.current = true
+                return { items: [], total: 0 }
+              })
+            : Promise.resolve({ items: [], total: 0 }),
         ])
         const data = notifData
         if (!cancelled) {
@@ -467,7 +481,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [can, canUseCommunicationsFeature, commPollKey, notify, t])
+  }, [can, canInboxDeepLink, canUseCommunicationsFeature, commPollKey, notify, t])
 
   useEffect(() => {
     setBellAttentionCount(

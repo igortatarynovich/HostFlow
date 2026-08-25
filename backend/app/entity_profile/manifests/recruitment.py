@@ -5,16 +5,20 @@ from __future__ import annotations
 from typing import Any
 
 from backend.app.entity_profile.constants import (
+    DRIVER_CE_DOCUMENT_PACK_CODE,
     DRIVER_CE_INTAKE_PRESENTATION_CODE,
     DRIVER_CE_PROFILE_CODE,
+    DRIVER_CE_SCREENING_PACK_CODE,
     DRIVER_CE_UA_INTAKE_PRESENTATION_CODE,
     DRIVER_CE_UA_PROFILE_CODE,
     ENTITY_CANDIDATE,
     RECRUITMENT_MODULE,
     REQUIREMENT_OPTIONAL,
     REQUIREMENT_REQUIRED,
+    WAREHOUSE_WORKER_DOCUMENT_PACK_CODE,
     WAREHOUSE_WORKER_INTAKE_PRESENTATION_CODE,
     WAREHOUSE_WORKER_PROFILE_CODE,
+    WAREHOUSE_WORKER_SCREENING_PACK_CODE,
 )
 from backend.app.field_registry.constants import DEFAULT_CANDIDATE_LAYOUT_CODE
 from backend.app.process_engine.manifests.recruitment import DEFAULT_PROFILE_CODE as RECRUITMENT_DEFAULT_PROCESS_PROFILE
@@ -46,10 +50,12 @@ def recruitment_candidate_driver_ce_profile() -> dict[str, Any]:
         "name": "Driver Candidate (C+E)",
         "description": "Canonical field composition for driver C+E recruitment profile.",
         "default_layout_code": DEFAULT_CANDIDATE_LAYOUT_CODE,
-        "document_pack_code": "recruitment.driver_ce_documents",
+        "document_pack_code": DRIVER_CE_DOCUMENT_PACK_CODE,
+        "screening_pack_code": DRIVER_CE_SCREENING_PACK_CODE,
         "process_profile_code": RECRUITMENT_DEFAULT_PROCESS_PROFILE,
         "config": {
             "legacy_candidate_profile_code": "driver_ce_default",
+            "screening_pack_code": DRIVER_CE_SCREENING_PACK_CODE,
         },
         "fields": [
             _profile_field(
@@ -142,11 +148,13 @@ def recruitment_candidate_warehouse_worker_profile() -> dict[str, Any]:
         "name": "Warehouse Worker Candidate",
         "description": "Role profile for warehouse/logistics candidates (non-driver).",
         "default_layout_code": DEFAULT_CANDIDATE_LAYOUT_CODE,
-        "document_pack_code": "recruitment.warehouse_worker_documents",
+        "document_pack_code": WAREHOUSE_WORKER_DOCUMENT_PACK_CODE,
+        "screening_pack_code": WAREHOUSE_WORKER_SCREENING_PACK_CODE,
         "process_profile_code": RECRUITMENT_DEFAULT_PROCESS_PROFILE,
         "config": {
             "role_variant": "warehouse_worker",
             "market_country": "PL",
+            "screening_pack_code": WAREHOUSE_WORKER_SCREENING_PACK_CODE,
         },
         "fields": [
             _profile_field(
@@ -224,13 +232,15 @@ def recruitment_candidate_driver_ce_ua_profile() -> dict[str, Any]:
         "name": "Driver Candidate (C+E, UA)",
         "description": "Driver C+E profile for Ukrainian candidates in the PL recruitment market.",
         "default_layout_code": DEFAULT_CANDIDATE_LAYOUT_CODE,
-        "document_pack_code": "recruitment.driver_ce_documents",
+        "document_pack_code": DRIVER_CE_DOCUMENT_PACK_CODE,
+        "screening_pack_code": DRIVER_CE_SCREENING_PACK_CODE,
         "process_profile_code": RECRUITMENT_DEFAULT_PROCESS_PROFILE,
         "config": {
             "role_variant": "driver_ce",
             "market_country": "PL",
             "source_citizenship_default": "UA",
             "legacy_candidate_profile_code": "driver_ce_default",
+            "screening_pack_code": DRIVER_CE_SCREENING_PACK_CODE,
         },
         "fields": [
             _profile_field(

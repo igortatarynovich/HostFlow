@@ -518,7 +518,7 @@ export const DEFAULT_COMMUNICATIONS_SETTINGS: CommunicationsWorkspaceSettings = 
       teamAvailability: ['administrator', 'employee', 'supervisor'],
       myAvailability: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
       timeOffRequests: ['administrator', 'employee', 'viewer', 'supervisor', 'recruiter', 'client_manager', 'client_processor'],
-      communicationsAdmin: ['administrator', 'employee', 'supervisor'],
+      communicationsAdmin: ['administrator', 'supervisor'],
     },
     usersOverrides: {},
   },

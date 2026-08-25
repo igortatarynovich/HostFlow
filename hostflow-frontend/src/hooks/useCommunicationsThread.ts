@@ -5,7 +5,7 @@ import {
   dispatchCommunicationMessage,
   dispatchQueuedCommunicationMessages,
   getCommunicationThread,
-  getCommunicationsSettings,
+  listCommunicationMessageTemplates,
   executeWorkspaceCommand,
   getThreadContext,
   withExpectedWorkVersion,
@@ -182,19 +182,17 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
         })
         .catch(() => setThreadContext(null))
 
-      void getCommunicationsSettings()
-        .then((cfg) => {
-          const tplItems = Array.isArray((cfg as any)?.messageTemplates?.items)
-            ? (cfg as any).messageTemplates.items
-            : []
+      void listCommunicationMessageTemplates()
+        .then((res) => {
+          const tplItems = Array.isArray(res?.items) ? res.items : []
           const nextTemplates = tplItems
-            .filter((x: any) => x && x.enabled && (x.target === 'email' || x.target === 'both'))
-            .map((x: any) => ({
+            .filter((x) => x && x.enabled && (x.target === 'email' || x.target === 'both'))
+            .map((x) => ({
               id: String(x.id || ''),
               label: String(x.label || ''),
               body: String(x.body || ''),
             }))
-            .filter((x: any) => x.id && x.label)
+            .filter((x) => x.id && x.label)
           setTemplates(nextTemplates)
           setSelectedTemplateId((prev) => prev || (nextTemplates[0]?.id ?? ''))
         })

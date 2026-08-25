@@ -28,6 +28,7 @@ from backend.app.services.company_module_access import company_allows_module
 from backend.app.constants.funnel_types import (
     FUNNEL_TYPE_PATTERN,
     HR_EMPLOYEE_FUNNEL_TYPE,
+    HR_MODULE_KEY,
     PLATFORM_SEED_TENANT_ID,
     RECRUITMENT_MODULE_KEY,
     is_hr_employee_funnel_type,

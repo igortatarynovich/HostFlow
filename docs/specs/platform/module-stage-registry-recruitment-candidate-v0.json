@@ -1,0 +1,32 @@
+{
+  "catalog_version": "lifecycle-identity-li1-recruitment-candidate-v0",
+  "module_key": "recruitment",
+  "entity_kind": "candidate",
+  "stage_keys": [
+    "at_client",
+    "contacted",
+    "declined",
+    "docs_got",
+    "docs_submitted_permit",
+    "docs_wait",
+    "employed",
+    "employment_pending",
+    "handoff_returned",
+    "hired",
+    "new",
+    "no_answer",
+    "on_trip",
+    "permit_ordered",
+    "permit_received",
+    "probation_ok",
+    "processing_by_client",
+    "processing_by_hr",
+    "questionnaire_submitted",
+    "ready_for_handoff",
+    "ready_for_hr",
+    "red_paper",
+    "rejected",
+    "trip_plan",
+    "visa"
+  ]
+}

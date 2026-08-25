@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from backend.app.auth.deps import UserCtx
 from backend.app.models import Lead
@@ -18,6 +19,7 @@ from backend.app.modules.applications.mappers import (
 from backend.app.modules.applications.sales_resolve import resolve_sales_inquiry_and_lead
 from backend.app.modules.applications.schemas import (
     ApplicationAssignIn,
+    ApplicationCommentIn,
     ApplicationFollowUpIn,
     ApplicationIntakeDecisionIn,
     ApplicationOut,
@@ -474,5 +476,42 @@ async def recruitment_assign(
     meta["assigned_manager_id"] = payload.assignee_id.strip()
     norm["meta"] = meta
     lead.normalized = norm
+    await db.flush()
+    return await _reload_recruitment(db, tenant_id, application_id)
+
+
+async def _recruitment_lead_or_404(db: AsyncSession, tenant_id: str, application_id: str) -> Lead:
+    lead = await crud.get_lead(db, tenant_id=tenant_id, lead_id=application_id)
+    if not lead or (lead.lead_type == "client" and lead.lead_target_type == "client_lead"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+    return lead
+
+
+async def recruitment_add_comment(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    application_id: str,
+    payload: ApplicationCommentIn,
+    current_user: UserCtx,
+) -> ApplicationOut:
+    lead = await _recruitment_lead_or_404(db, tenant_id, application_id)
+    note = str(payload.note or "").strip()
+    if not note:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="note is required")
+    norm = dict(getattr(lead, "normalized", None) or {})
+    comments = list(norm.get("application_comments_v1") or [])
+    comments.append(
+        {
+            "id": str(uuid4()),
+            "text": note,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "author_id": str(current_user.sub or "").strip() or None,
+            "author_name": str(current_user.email or "").strip() or None,
+        }
+    )
+    norm["application_comments_v1"] = comments
+    lead.normalized = norm
+    flag_modified(lead, "normalized")
     await db.flush()
     return await _reload_recruitment(db, tenant_id, application_id)

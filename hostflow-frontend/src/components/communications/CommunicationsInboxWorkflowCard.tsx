@@ -11,6 +11,8 @@ import type { ManagerOption } from '../../api/types'
 import { listTenantManagers } from '../../api/users'
 import { useI18n } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
+import { usePermissions } from '../../hooks/usePermissions'
+import { roleMayLoadFullCommunicationsSettings } from '../../constants/communicationsSettingsAccess'
 import {
   noReplyNeededFromThread,
   opsModeFromThread,
@@ -43,6 +45,11 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh, run
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
+  const { rawRole, role, accessContext, presetId } = usePermissions()
+  const canLoadAdminSettings = roleMayLoadFullCommunicationsSettings(rawRole || role, {
+    accessContext,
+    presetId,
+  })
   const [busy, setBusy] = useState(false)
   const [workflowError, setWorkflowError] = useState<FriendlyErrorInfo | null>(null)
   const [pauseModalOpen, setPauseModalOpen] = useState(false)
@@ -71,6 +78,11 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh, run
   }, [])
 
   useEffect(() => {
+    if (!canLoadAdminSettings) {
+      setEscalationRoleOptions([...DEFAULT_ESCALATION_ROLE_OPTIONS])
+      setEscalationQueueOptions([...DEFAULT_ESCALATION_QUEUE_OPTIONS])
+      return
+    }
     let mounted = true
     void (async () => {
       try {
@@ -90,8 +102,8 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh, run
         ]
         for (const k of keys) {
           const arr = Array.isArray(roles?.[k]) ? roles?.[k] : []
-          for (const role of arr || []) {
-            const normalized = String(role || '').trim().toLowerCase()
+          for (const item of arr || []) {
+            const normalized = String(item || '').trim().toLowerCase()
             if (normalized) roleBag.add(normalized)
           }
         }
@@ -111,7 +123,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh, run
     return () => {
       mounted = false
     }
-  }, [])
+  }, [canLoadAdminSettings])
 
   useEffect(() => {
     if (escalationTargetTypeDraft === 'role') {

@@ -12,8 +12,9 @@ export function IdentityCapability({ application }: WorkspaceCapabilityRenderCon
   if (!application) return null
   const contactName = application.contact.name || application.title || 'Кандидат'
   const vacancyTitle = String(application.extensions?.vacancy_title || application.subtitle || '')
-  const candidateId =
-    application.outcome_entity_type === 'candidate' ? String(application.outcome_entity_id || '').trim() : ''
+  const outcomeType = String(application.outcome_entity_type || '').trim()
+  const outcomeId = String(application.outcome_entity_id || '').trim()
+  const candidateId = outcomeType === 'candidate' || (!outcomeType && outcomeId) ? outcomeId : ''
   const candidateHref = candidateId ? candidateDetailPath(candidateId) : undefined
   const meta = application.source
     ? `${application.source}${application.created_at ? ` · ${new Date(application.created_at).toLocaleString()}` : ''}`

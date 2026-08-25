@@ -113,6 +113,61 @@ async def test_refresh_rotates_access_cookie(client: AsyncClient) -> None:
 
 
 @pytest.mark.anyio
+async def test_session_sync_reuses_login_refresh_cookie(client: AsyncClient) -> None:
+    """Sync must not revoke the refresh family login just minted.
+
+    Concurrent POST /login + POST /session/sync used to rotate hf_refresh out
+    from under the browser, bouncing a valid password back to /login.
+    """
+    data = await _init_data()
+    names = session_cookie_names()
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": data["admin_email"], "password": "Host123!"},
+    )
+    assert login.status_code == 200, login.text
+    login_refresh = login.cookies.get(names["refresh"])
+    login_access = login.cookies.get(names["access"]) or login.json().get("access_token")
+    csrf = login.cookies.get(names["csrf"])
+    assert login_refresh and login_access and csrf
+
+    synced = await client.post(
+        "/api/v1/auth/session/sync",
+        cookies={
+            names["access"]: login_access,
+            names["refresh"]: login_refresh,
+            names["csrf"]: csrf,
+        },
+        headers={"Authorization": f"Bearer {login_access}"},
+    )
+    assert synced.status_code == 200, synced.text
+    assert synced.cookies.get(names["refresh"]) == login_refresh
+
+    again = await client.post(
+        "/api/v1/auth/session/sync",
+        cookies={
+            names["access"]: synced.cookies.get(names["access"]) or login_access,
+            names["refresh"]: login_refresh,
+            names["csrf"]: synced.cookies.get(names["csrf"]) or csrf,
+        },
+        headers={"Authorization": f"Bearer {login_access}"},
+    )
+    assert again.status_code == 200, again.text
+    assert again.cookies.get(names["refresh"]) == login_refresh
+
+    refreshed = await client.post(
+        "/api/v1/auth/refresh",
+        cookies={
+            names["refresh"]: login_refresh,
+            names["csrf"]: csrf,
+            names["access"]: login_access,
+        },
+        headers={CSRF_HEADER: csrf},
+    )
+    assert refreshed.status_code == 200, refreshed.text
+
+
+@pytest.mark.anyio
 async def test_csrf_blocks_mutating_cookie_session_without_header(client: AsyncClient) -> None:
     data = await _init_data()
     names = session_cookie_names()
