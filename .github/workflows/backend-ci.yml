@@ -449,6 +449,21 @@ jobs:
             tests/platform/test_reference_r4_alias_consolidation_gate.py
             tests/platform/test_reference_r5_policy_merge_gate.py
 
+  reference-program-exit-gate:
+    name: Reference Program Exit Gate
+    needs: changes
+    if: needs.changes.outputs.reference == 'true' || needs.changes.outputs.shared == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Reference Program Exit gate is not in this tree
+        if: hashFiles('backend/tests/platform/test_reference_program_exit_gate.py') == ''
+        run: echo "Reference Program Exit gate not present; skip"
+      - uses: ./.github/actions/backend-pytest
+        if: hashFiles('backend/tests/platform/test_reference_program_exit_gate.py') != ''
+        with:
+          tests: tests/platform/test_reference_program_exit_gate.py
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -612,6 +627,7 @@ jobs:
       - documents-gates
       - workspace-capability-gates
       - reference-gates
+      - reference-program-exit-gate
       - cl1-inventory-gate
       - li1-existence-gate
       - dr1-contract-gate
