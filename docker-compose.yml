@@ -52,6 +52,9 @@ services:
       # ADR-023 SSOT — cookie domain / module hosts (also at /app/shared via path fallback)
       - ./shared:/shared:ro
       - ./shared:/app/shared:ro
+      # Country / document registries resolve to /docs (parents[3] of /app/app/reference)
+      - ./docs:/docs:ro
+      - ./docs:/app/docs:ro
       # раздача собранного фронта Vite через FastAPI StaticFiles
       - ./hostflow-frontend/dist:/app/public:ro
       # Mount samples for template extraction
@@ -90,6 +93,8 @@ services:
       - ./backend:/app
       - ./shared:/shared:ro
       - ./shared:/app/shared:ro
+      - ./docs:/docs:ro
+      - ./docs:/app/docs:ro
       - ./samples:/opt/HostFlow/samples:ro
     profiles: ["arq", "full"]
 

@@ -50,3 +50,9 @@ hostflow-frontend/coverage/
 
 # Playwright / local e2e output (regenerated on each run)
 test-results/
+
+# Nested git worktrees must not live inside the primary checkout
+.worktrees/
+
+# Host-local compose overlay (ports, extra mounts). Canonical volumes stay in docker-compose.yml
+docker-compose.override.yml
