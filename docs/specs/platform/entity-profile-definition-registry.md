@@ -12,7 +12,8 @@
 > **CL6 (2026-08-25):** Flight map runtime is `entity_profile_flight_map.v1` ([brief](../tasks/entity-field-composition-cl6-flight-map.md)). Map executes onto Binding. Dest = Profile member fields. Profile may only ref.  
 > **CL7 (2026-08-25):** Engine eval runtime is `entity_profile_engine_eval.v1` ([brief](../tasks/entity-field-composition-cl7-engine-eval.md)). Structured `ready`/`not_ready` + `blockers[]`. Profile may only ref. Not Hub asks. Not Engine v2.  
 > **Vacancy Overlay (2026-08-25):** Overlay contract is `entity_profile_vacancy_overlay.v1` ([brief](../tasks/entity-profile-vacancy-overlay-contract.md)) ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). Vacancy-specific requirement delta over Profile / Screening Pack. Profile may only ref. Not CL8. Not R5 pack merge.  
-> **DR1-runtime (2026-08-25):** next named Product slice is [DR1-runtime](../tasks/engine-document-request-dr1-runtime.md) (brief; feat locked). Engine may create Hub outstanding asks. Not CL8. Not E8. Not mass generation.
+> **DR1-runtime (2026-08-25):** [DR1-runtime](../tasks/engine-document-request-dr1-runtime.md) ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Engine may create Hub outstanding asks.  
+> **E8-bind (2026-08-25):** next named Product slice is [E8-bind](../tasks/documents-platform-e8-bind.md) (brief; feat locked). Remaining consumers bind to canonical document types. Not E8-eval. Not CL8. Not mass D3–D9 bind.
 
 ### P1 implementation status (2026-06-22)
 

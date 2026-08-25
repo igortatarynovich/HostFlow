@@ -70,5 +70,5 @@ PASS when:
 ## Queue position
 
 **Depends on:** CL1 Gate ✅ · LI-1 Gate ✅ · Reference R3/R4 when contract names canonical type ids ✅  
-**Unlocks:** CL2; [DR1-runtime](engine-document-request-dr1-runtime.md) (join Reference R5 ∧ Overlay Gate)  
+**Unlocks:** CL2; [DR1-runtime](engine-document-request-dr1-runtime.md) ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313) (join Reference R5 ∧ Overlay Gate)  
 **Does not block:** later Product on Reference R5 (only DR1-runtime parked there; now unblocked)
