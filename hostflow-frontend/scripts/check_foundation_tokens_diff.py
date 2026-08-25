@@ -3,33 +3,65 @@
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
+from foundation_ratchet_base import RatchetDecision, context_from_env, decide_ratchet
 from foundation_tokens_lib import SRC_SUFFIXES, find_in_text, invalid_allow_lines, line_suppressed
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 
 
-def resolve_base() -> str:
-    base = os.environ.get("FOUNDATION_DIFF_BASE", "origin/main")
-    for candidate in (base, "origin/main", "main", "HEAD~1"):
-        try:
-            subprocess.run(
-                ["git", "rev-parse", "--verify", candidate],
-                cwd=ROOT,
-                check=True,
-                capture_output=True,
+def _git(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *args],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _rev_parse(ref: str) -> str | None:
+    result = _git("rev-parse", "--verify", ref)
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def materialize_decision(decision: RatchetDecision) -> RatchetDecision | int:
+    """Resolve refs. Return an int exit code on fail-closed / skip-handled by caller."""
+    if decision.action == "skip":
+        return decision
+    if decision.action == "fail":
+        return decision
+
+    from_sha = _rev_parse(decision.from_ref)
+    to_sha = _rev_parse(decision.to_ref)
+    if from_sha is None or to_sha is None:
+        missing = decision.from_ref if from_sha is None else decision.to_ref
+        print(
+            "check-foundation-tokens: cannot resolve "
+            f"{missing!r} (mode={decision.mode}). Fail-closed — no fallback to "
+            "main or HEAD~1.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if decision.mode.startswith("push-") and decision.to_ref != "HEAD":
+        head_sha = _rev_parse("HEAD")
+        if head_sha and to_sha != head_sha:
+            print(
+                "check-foundation-tokens: push after "
+                f"{decision.to_ref} does not match HEAD {head_sha[:12]}. "
+                "Fail-closed.",
+                file=sys.stderr,
             )
-            return candidate
-        except subprocess.CalledProcessError:
-            continue
-    print("check-foundation-tokens: no git diff base found; skipping.", file=sys.stderr)
-    sys.exit(0)
+            return 1
+
+    return decision
 
 
 def list_src_files() -> list[str]:
@@ -40,12 +72,12 @@ def list_src_files() -> list[str]:
     return paths
 
 
-def parse_diff(base: str) -> list[tuple[str, int, str, str]]:
+def parse_diff(spec: str) -> list[tuple[str, int, str, str]]:
     """Return (file, line, added_line, previous_line) tuples from unified diff."""
-    cmd = ["git", "diff", "--unified=0", f"{base}...HEAD", "--", *list_src_files()]
+    cmd = ["git", "diff", "--unified=0", spec, "--", *list_src_files()]
     result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     if result.returncode > 1:
-        cmd = ["git", "diff", "--unified=0", f"{base}...HEAD", "--", "src"]
+        cmd = ["git", "diff", "--unified=0", spec, "--", "src"]
         result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=True)
 
     entries: list[tuple[str, int, str, str]] = []
@@ -78,10 +110,21 @@ def parse_diff(base: str) -> list[tuple[str, int, str, str]]:
 
 
 def main() -> int:
-    base = resolve_base()
-    findings = []
+    decision = decide_ratchet(context_from_env())
+    materialized = materialize_decision(decision)
+    if isinstance(materialized, int):
+        return materialized
+    decision = materialized
 
-    for file, line_no, added, previous in parse_diff(base):
+    if decision.action == "skip":
+        print(f"check-foundation-tokens: skip ({decision.mode}). {decision.reason}")
+        return 0
+    if decision.action == "fail":
+        print(f"check-foundation-tokens: fail-closed ({decision.mode}). {decision.reason}", file=sys.stderr)
+        return 1
+
+    findings = []
+    for file, line_no, added, previous in parse_diff(decision.spec):
         if not file or not any(file.endswith(s) for s in SRC_SUFFIXES):
             continue
 
@@ -94,16 +137,23 @@ def main() -> int:
             findings.append((file, line_no, item.category, item.token, item.snippet))
 
     if not findings:
-        print(f"check-foundation-tokens: diff clean (base: {base}).")
+        print(
+            "check-foundation-tokens: diff clean "
+            f"(mode={decision.mode}, spec={decision.spec})."
+        )
         return 0
 
-    print(f"check-foundation-tokens: {len(findings)} deprecated foundation token(s) in diff (base: {base}).\n")
+    print(
+        f"check-foundation-tokens: {len(findings)} deprecated foundation "
+        f"token(s) in diff (mode={decision.mode}, spec={decision.spec}).\n"
+    )
     for file, line_no, category, token, snippet in findings:
         print(f"  {file}:{line_no} [{category}] {token}")
         print(f"    {snippet}")
 
     print(
         "\nNew deprecated foundation tokens are forbidden."
+        "\nThis is a ratchet on the change range, not a migration of backlog."
         "\nSuppress only with: foundation-allow: <reason, min 8 chars>"
         "\nSee docs/specs/frontend/FOUNDATION_V1.md",
         file=sys.stderr,

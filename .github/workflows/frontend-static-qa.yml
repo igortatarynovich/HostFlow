@@ -9,6 +9,8 @@ on:
       - "scripts/codegen/**"
       - "hostflow-frontend/scripts/check-foundation-tokens.sh"
       - "hostflow-frontend/scripts/foundation_tokens_lib.py"
+      - "hostflow-frontend/scripts/foundation_ratchet_base.py"
+      - "hostflow-frontend/scripts/test_foundation_ratchet_base.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
       - "hostflow-frontend/scripts/check_ts_import_integrity.py"
@@ -24,6 +26,8 @@ on:
       - "scripts/codegen/**"
       - "hostflow-frontend/scripts/check-foundation-tokens.sh"
       - "hostflow-frontend/scripts/foundation_tokens_lib.py"
+      - "hostflow-frontend/scripts/foundation_ratchet_base.py"
+      - "hostflow-frontend/scripts/test_foundation_ratchet_base.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_diff.py"
       - "hostflow-frontend/scripts/check_foundation_tokens_scan.py"
       - "hostflow-frontend/scripts/check_ts_import_integrity.py"
@@ -42,8 +46,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Fetch push-before SHA for Foundation ratchet
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        working-directory: .
+        run: |
+          git fetch --no-tags origin "${{ github.event.before }}" \
+            || echo "before SHA not fetchable; checker will fail-closed"
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
+      - name: Foundation ratchet comparison-base contract
+        run: python3 scripts/test_foundation_ratchet_base.py
       - name: CRM app paths codegen drift check
         working-directory: .
         run: python3 scripts/codegen/generate_crm_app_paths.py --check
@@ -60,11 +72,19 @@ jobs:
           cache-dependency-path: hostflow-frontend/package-lock.json
       - name: Install deps
         run: npm ci
-      - name: Foundation tokens (deprecated in diff)
+      - name: Foundation tokens (deprecated in change range)
         run: npm run foundation:check
         env:
-          # PR: compare vs target branch. Push: vs main. Override: FOUNDATION_DIFF_BASE.
-          FOUNDATION_DIFF_BASE: origin/${{ github.event.pull_request.base.ref || 'main' }}
+          # Ratchet the change that produced this event. Do not default to main.
+          # Override locally with FOUNDATION_DIFF_BASE only.
+          FOUNDATION_EVENT_NAME: ${{ github.event_name }}
+          FOUNDATION_PR_BASE_REF: ${{ github.event.pull_request && github.event.pull_request.base.ref || '' }}
+          FOUNDATION_PR_HEAD_REF: ${{ github.event.pull_request && github.event.pull_request.head.ref || '' }}
+          FOUNDATION_PR_SAME_REPO: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+          FOUNDATION_PUSH_BEFORE: ${{ github.event.before || '' }}
+          FOUNDATION_PUSH_AFTER: ${{ github.event.after || github.sha }}
+          FOUNDATION_PUSH_FORCED: ${{ github.event.forced == true }}
+          FOUNDATION_REF_NAME: ${{ github.ref_name }}
       - name: Unit tests with coverage
         run: npm run test:coverage
       - name: Coverage gate (Phase 0 #7 — ratchet)
