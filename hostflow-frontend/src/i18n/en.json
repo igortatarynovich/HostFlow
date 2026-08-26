@@ -945,7 +945,8 @@
         "marketing_diagnostics": "Diagnostics",
         "automation_rules": "Automation rules",
         "settings_hiring_gates": "Hiring pipeline gates",
-        "settings_risk_intel": "Risk intelligence"
+        "settings_risk_intel": "Risk intelligence",
+        "organization": "Organization"
       },
       "hr": {
         "workspace": {
@@ -1464,6 +1465,143 @@
         "work_schedule": {
           "title": "Work schedule options",
           "hint": "Schedules the client offers for this vacancy (candidate preference is separate)"
+        }
+      },
+      "workspace": {
+        "tabs": {
+          "workspace": "Workspace",
+          "job_details": "Job Details",
+          "recruitment": "Recruitment",
+          "requirements": "Candidate Requirements",
+          "automation": "Automation",
+          "analytics": "Analytics",
+          "settings": "Settings",
+          "candidates": "Candidates"
+        },
+        "actions": {
+          "edit": "Edit",
+          "pause": "Pause",
+          "export": "Export report"
+        },
+        "meta": {
+          "client": "Client",
+          "order": "Order",
+          "funnel": "Funnel",
+          "recruiter": "Recruiter"
+        },
+        "kpi": {
+          "headcount": "Headcount",
+          "hired": "Hired",
+          "remaining": "Remaining",
+          "completion": "Completion"
+        },
+        "stage_cards": {
+          "view_list": "View list"
+        },
+        "order_progress": "Order Progress",
+        "order_hint": "Order fulfillment uses vacancy hired count until order-level fulfillment API is available.",
+        "order_none": "— free vacancy (no order) —",
+        "vacancy_progress": "Vacancy Progress",
+        "main": {
+          "title": "Main information",
+          "location": "Location",
+          "employment": "Employment",
+          "salary": "Salary",
+          "currency": "Currency"
+        },
+        "req": {
+          "title": "Candidate requirements",
+          "mandatory": "Mandatory",
+          "preferred": "Preferred",
+          "preferred_empty": "Preferred requirements will appear when configured.",
+          "preferred_note": "Preferred criteria are soft signals. Full preferred schema may expand later.",
+          "documents": "Documents",
+          "experience": "Experience",
+          "years": "years",
+          "countries_allowed": "Allowed countries",
+          "countries_blocked": "Blocked countries",
+          "preferred_docs": "Preferred documents",
+          "languages": "Languages",
+          "languages_hint": "Comma-separated language codes (e.g. pl, en).",
+          "allow_statuses": "Allowed document statuses",
+          "preset": "— requirements preset —",
+          "apply_preset": "Apply preset"
+        },
+        "funnel": "Recruitment funnel",
+        "funnel_empty": "No pipeline data yet.",
+        "activity": {
+          "title": "Recent activity",
+          "message": "Vacancy activity history will appear after Activity Feed is connected."
+        },
+        "attention": {
+          "title": "Needs attention",
+          "no_recruiter": "No manager or recruiter assigned",
+          "waiting_docs": "{count} candidates waiting for documents ({stage})",
+          "permit": "{count} in work permit ({stage})",
+          "empty": "Nothing urgent right now."
+        },
+        "quick": {
+          "title": "Quick actions",
+          "add_candidate": "Add candidate",
+          "assign_recruiter": "Assign recruiter",
+          "create_document": "Create document",
+          "message": "Message candidate",
+          "export": "Export report",
+          "soon": "Coming soon"
+        },
+        "owner": "Owner",
+        "related": {
+          "title": "Related",
+          "company": "Company",
+          "order": "Order",
+          "funnel": "Funnel",
+          "profile": "Candidate profile",
+          "documents": "Documents",
+          "recruiter": "Recruiter",
+          "team": "Team",
+          "meta": "Meta campaigns",
+          "forms": "Forms",
+          "open": "Open",
+          "soon": "Soon"
+        },
+        "profile_none": "— not selected —",
+        "recruitment": {
+          "auto_assign": "Auto assignment",
+          "auto_assign_hint": "Pool weights drive least-load rotation.",
+          "sla": "SLA",
+          "sla_reserved": "SLA configuration will appear here.",
+          "transitions": "Transition rules",
+          "transitions_reserved": "Transition rules will appear here.",
+          "system_stages": "System stages",
+          "system_stages_empty": "No stages loaded yet."
+        },
+        "automation": {
+          "empty": "No automation rules derived from current requirements.",
+          "if": "If",
+          "then": "Then"
+        },
+        "analytics": {
+          "reserved": "No data yet",
+          "applications": "Applications",
+          "conversion": "Conversion",
+          "sources": "Sources",
+          "cost": "Cost",
+          "time_to_hire": "Time to Hire",
+          "hire_rate": "Hire Rate"
+        },
+        "settings": {
+          "created": "Created",
+          "updated": "Updated",
+          "active": "Active",
+          "archived": "Archived",
+          "open": "Open",
+          "status": "Status",
+          "hint": "Technical parameters only. Business fields live on other tabs."
+        },
+        "candidates": {
+          "empty": "No candidates for this vacancy yet.",
+          "filter": "Filter",
+          "clear_filter": "Clear filter"
         }
       }
     },
@@ -5263,6 +5401,65 @@
           "assignments_today": "Assignments today (UTC)",
           "assignments_month": "Assignments this month (UTC)"
         }
+      },
+      "marketing": {
+        "title": "Marketing efficiency",
+        "subtitle": "Acquisition campaign KPIs: spend, leads, CPL. Multi-select campaigns or use presets (e.g. Poltrakt drivers).",
+        "empty": "No campaigns in the selected slice.",
+        "empty_campaigns": "No campaigns available for this company.",
+        "snapshot_badge": "Meta snapshot metrics",
+        "snapshot_hint": "Impressions and reach come from the latest Meta insights snapshot, not the spend ledger window.",
+        "snapshot_chip": "Snapshot",
+        "source_ledger": "Spend ledger",
+        "source_attribution": "Lead attribution",
+        "source_derived": "Derived (spend ÷ leads)",
+        "filters": {
+          "currency": "Display currency",
+          "presets": "Presets",
+          "campaigns": "Campaigns",
+          "select_all": "Select all",
+          "clear": "Clear",
+          "selected": "Selected {count} / {total}"
+        },
+        "fx": {
+          "loading": "Loading NBP rates…",
+          "as_of": "NBP mid · {date} ({provider})",
+          "unavailable": "FX rates unavailable — showing source currency",
+          "error": "Could not load NBP rates. Amounts stay in USD until rates are available."
+        },
+        "presets": {
+          "drivers_poltrakt": "Poltrakt drivers",
+          "warehouse": "Warehouse",
+          "dispatcher": "Dispatcher",
+          "ru": "RU leads",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Spend",
+          "leads": "Leads",
+          "cpl": "Cost per lead",
+          "impressions": "Impressions",
+          "reach": "Reach"
+        },
+        "charts": {
+          "trend_title": "Trend",
+          "trend_subtitle": "Daily spend and leads for the selected campaigns and period.",
+          "spend_title": "Spend by campaign",
+          "spend_subtitle": "Ad spend in the selected group.",
+          "leads_title": "Leads by campaign",
+          "leads_subtitle": "Attributed leads (Acquisition results).",
+          "cpl_title": "Cost per lead",
+          "cpl_subtitle": "Lower is better — best CPL highlighted.",
+          "mix_title": "Lead mix",
+          "mix_subtitle": "Share of leads across selected campaigns."
+        },
+        "table": {
+          "title": "Campaign detail",
+          "subtitle": "Selected campaigns with Meta snapshot reach/impressions when available.",
+          "campaign": "Campaign",
+          "best_cpl": "Best CPL"
+        }
       }
     },
     "candidate_card": {
@@ -8592,18 +8789,18 @@
       "compact_hint": "Compact hint",
       "company_type": "Company type",
       "company_type_hint": "Company type hint",
-      "create": "Create",
+      "create": "Create my company",
       "empty": {
-        "limit_reached": "Limit reached",
-        "subtitle": "Subtitle",
-        "title": "Title"
+        "limit_reached": "Operating company slots are fully used. Add an extra slot in Billing to create another company.",
+        "subtitle": "Create your own company profile first. Client companies do not replace your operating profile.",
+        "title": "No operating company yet"
       },
       "manage_access": "Manage access",
       "missing_tax_id": "Missing tax ID",
       "open_billing": "Open billing",
       "open_invoices": "Open invoices",
-      "subtitle": "Subtitle",
-      "title": "Title",
+      "subtitle": "Operating company profile: legal data, bank details, branding and contacts.",
+      "title": "My Company",
       "workspace": {
         "bank_accounts": "Bank accounts",
         "billing": "Billing",
@@ -8611,6 +8808,82 @@
         "legal": "Legal",
         "subtitle": "Subtitle",
         "title": "Title"
+      },
+      "profile": {
+        "switch_label": "Company profile",
+        "type_unknown": "Company",
+        "copied": "Copied",
+        "copy_failed": "Could not copy",
+        "status": {
+          "active": "Active",
+          "archived": "Archived"
+        },
+        "tabs": {
+          "overview": "Overview",
+          "requisites": "Requisites",
+          "bank": "Bank accounts",
+          "documents": "Documents",
+          "contacts": "Contacts",
+          "related": "Related entities",
+          "history": "History"
+        },
+        "basic": {
+          "title": "Basic information",
+          "legal_name": "Legal name",
+          "type": "Company type",
+          "industry": "Industry",
+          "created": "Created",
+          "status": "Status"
+        },
+        "stats": {
+          "title": "Quick stats",
+          "employees": "Employees",
+          "vacancies": "Vacancies",
+          "clients": "Clients",
+          "orders": "Orders",
+          "go_employees": "Go to employees",
+          "go_vacancies": "Go to vacancies",
+          "go_clients": "Go to clients",
+          "go_orders": "Go to orders"
+        },
+        "legal": {
+          "title": "Legal data",
+          "edit": "Edit details",
+          "address": "Legal address",
+          "country": "Country"
+        },
+        "bank": {
+          "title": "Bank accounts",
+          "add": "Add account",
+          "empty": "No bank accounts yet.",
+          "view_all": "View all accounts",
+          "primary": "Primary"
+        },
+        "branding": {
+          "title": "Branding",
+          "primary": "Primary",
+          "secondary": "Secondary",
+          "edit": "Edit branding"
+        },
+        "contacts": {
+          "title": "Company contacts",
+          "add": "Add contact",
+          "empty": "No contacts yet."
+        },
+        "documents": {
+          "title": "Company documents",
+          "add": "Add document",
+          "empty": "Company documents will appear here when attached to this profile."
+        },
+        "history": {
+          "title": "Recent changes",
+          "updated": "Profile updated",
+          "created": "Company created",
+          "empty": "No recent changes."
+        },
+        "related": {
+          "hint": "Clients, vacancies and orders linked to this operating company."
+        }
       }
     },
     "onboarding": {
@@ -9011,6 +9284,73 @@
           "title": "Meta ads",
           "body": "Facebook/Instagram lead forms and ads connected so applications land in your inbox automatically."
         }
+      }
+    },
+    "organization": {
+      "title": "Organization",
+      "subtitle": "Manage workspace subscription, modules, users and operating companies.",
+      "errors": {
+        "load_failed": "Failed to load organization hub"
+      },
+      "identity": {
+        "workspace": "Workspace",
+        "companies": "Companies",
+        "owner": "Owner",
+        "hint": "Legal entity details live in each company profile, not here."
+      },
+      "subscription": {
+        "title": "Subscription",
+        "plan": "Plan",
+        "period": "Period",
+        "slots": "Company slots",
+        "available": "Available",
+        "payment": "Payment",
+        "paid": "Paid",
+        "unpaid": "Check billing",
+        "manage": "Manage subscription",
+        "no_access": "Billing details are available to administrators.",
+        "status": {
+          "active": "Active",
+          "trialing": "Trial",
+          "trial": "Trial",
+          "past_due": "Past due",
+          "canceled": "Canceled",
+          "unknown": "Unknown",
+          "restricted": "Restricted"
+        }
+      },
+      "operations": {
+        "title": "Company slots",
+        "unlimited": "Unlimited company slots on this plan.",
+        "used_label": "slots used",
+        "used": "Used: {count}",
+        "available": "Available: {count}",
+        "details": "Slot details"
+      },
+      "modules": {
+        "title": "Modules",
+        "subtitle": "Modules enabled for this workspace.",
+        "empty": "Module list unavailable.",
+        "all": "All modules"
+      },
+      "companies": {
+        "title": "Companies",
+        "subtitle": "Operating company profiles in this workspace.",
+        "empty": "No operating companies yet.",
+        "open_profile": "Open company profile",
+        "create": "Create company"
+      },
+      "users": {
+        "title": "Users",
+        "subtitle": "Active users in this workspace.",
+        "empty": "User list unavailable.",
+        "manage": "Manage users"
+      },
+      "billing_docs": {
+        "title": "Billing & documents",
+        "subtitle": "Payments and closing documents for this workspace.",
+        "history": "Payment history",
+        "closing": "Closing documents"
       }
     }
   },
@@ -11774,7 +12114,7 @@
           "description": "Single entry for connecting Meta, email, messengers, webhook, and Google placeholder. Open a tile, then use Inbox or Automations for day-to-day work."
         },
         "my_company": {
-          "description": "Agency profile, branding and company-level data (outside the settings subtree)."
+          "description": "Legal entity profile: requisites, bank accounts, branding and contacts."
         },
         "funnels": {
           "label": "Funnels & stages",
@@ -11867,6 +12207,9 @@
         "roles_access": {
           "label": "Roles & access",
           "description": "Trust roles, module matrix, and permission presets for Employee and Viewer."
+        },
+        "organization": {
+          "description": "Workspace subscription, modules, users and operating companies."
         }
       },
       "audit": {

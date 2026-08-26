@@ -1,29 +1,40 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { formatDistanceToNow } from 'date-fns'
-import { enUS, pl as plFns, ru as ruFns } from 'date-fns/locale'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { normalizeVacancy, formatDate, buildVacancyPayload, hydrateSavedWithForm } from '../../utils/vacancyUtils'
-import StageTag from '../StageTag'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import {
+  normalizeVacancy,
+  buildVacancyPayload,
+  hydrateSavedWithForm,
+} from '../../utils/vacancyUtils'
 import { api } from '../../api/client'
-import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { SectionCard } from '../ui/SectionCard'
 import { useI18n } from '../../i18n'
-import type { LocaleCode } from '../../i18n'
-import { EMPLOYMENT_TYPES, VACANCY_STATUSES, createVacancy, getVacancy, normalizeVacancyStatus, updateVacancy } from '../../api/vacancies'
-import type { EmploymentType, VacancyStatus } from '../../api/vacancies'
+import {
+  EMPLOYMENT_TYPES,
+  VACANCY_STATUSES,
+  createVacancy,
+  getVacancy,
+  getVacancyRecruiters,
+  normalizeVacancyStatus,
+  putVacancyRecruiters,
+  updateVacancy,
+} from '../../api/vacancies'
+import type { EmploymentType, VacancyRecruiterPoolItem, VacancyStatus } from '../../api/vacancies'
 import { listSalesOrderLines, type SalesOrderLine } from '../../api/salesOrders'
 import { listCandidateProfiles, type CandidateProfile } from '../../api/candidate_profiles'
+import { RECRUITMENT_ASSIGNEE_CATALOG_ROLES } from '../../auth/trustRoles'
+import { listTenantManagers } from '../../api/users'
+import type { ManagerOption } from '../../api/types'
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
-import { usePermissions } from '../../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-import { PageHeader } from '../nav/PageHeader'
-import { PageShell, PageShellHeader, Toolbar } from '../layout'
+import { PageShell } from '../layout'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
-import { servicesWorkspacePath } from '../../modules/services/utils'
 import { NextActionBadge } from '../candidate/NextActionBadge'
 import { useVacancyNextAction } from '../vacancy/useVacancyNextAction'
+import { StatusBadge } from '../ui/StatusBadge'
+import { servicesWorkspacePath } from '../../modules/services/utils'
+import { usePermissions } from '../../hooks/usePermissions'
 import { VacancyCommunicationSlot } from './VacancyCommunicationSlot'
 import { VacancyFormsSlot } from './VacancyFormsSlot'
 import {
@@ -32,28 +43,27 @@ import {
   VACANCY_COMPOSITION_SLOTS,
   assertVacancyCompositionSlots,
 } from '../../platform/entity-workspace'
-import { useEffectiveVacancyLayout } from '../../hooks/useEffectiveVacancyLayout'
-import {
-  getVacancyFieldsRenderOrder,
-  vacancyFieldLabel,
-  vacancyFieldRequired,
-  vacancyFieldVisible,
-  type VacancyRegistryFieldKey,
-} from '../../utils/vacancyLayoutUtils'
+import { criteriaDefaultsFromSource, applyCriteriaToPayload } from './detail/criteriaForm'
+import { computePipelineMetrics, stageCountsFromPipelineColumns } from './detail/pipelineMetrics'
+import { StageMetricCards } from './detail/StageMetricCards'
+import { WorkspaceTab } from './detail/tabs/WorkspaceTab'
+import { JobDetailsTab } from './detail/tabs/JobDetailsTab'
+import { RecruitmentTab } from './detail/tabs/RecruitmentTab'
+import { CandidateRequirementsTab } from './detail/tabs/CandidateRequirementsTab'
+import { AutomationTab } from './detail/tabs/AutomationTab'
+import { AnalyticsTab } from './detail/tabs/AnalyticsTab'
+import { SettingsTab } from './detail/tabs/SettingsTab'
+import { CandidatesTab } from './detail/tabs/CandidatesTab'
 
-const primaryBtn = 'btn-primary'
-const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
-
-// Phase 2.6.D Stage C — single source of truth for status options;
-// see `docs/specs/vacancy-statuses.md`. Backend `VacancyOut` already
-// normalizes legacy `paused` rows to `on_hold` before they reach us.
 const STATUS_OPTIONS = VACANCY_STATUSES
 const EMPLOYMENT_ENUM = [...EMPLOYMENT_TYPES] as [EmploymentType, ...EmploymentType[]]
 
+const stringArray = z.array(z.string()).default([])
+
 const vacancyFormSchema = z.object({
-  title: z.string().min(1, 'Название обязательно'),
+  title: z.string().min(1, 'Title is required'),
   status: z.enum([...STATUS_OPTIONS] as [VacancyStatus, ...VacancyStatus[]]).default('open'),
-  company_id: z.string().min(1, 'Компания обязательна'),
+  company_id: z.string().min(1, 'Company is required'),
   description: z.string().optional().or(z.literal('')),
   location: z.string().optional().or(z.literal('')),
   salary_from: z.union([z.string(), z.number()]).optional().transform((v) => (v === '' ? undefined : v)),
@@ -64,20 +74,20 @@ const vacancyFormSchema = z.object({
   is_archived: z.boolean().default(false),
   employment_type: z.enum(EMPLOYMENT_ENUM),
   candidate_profile_id: z.string().optional().or(z.literal('')),
-  // Lead qualification criteria (stored in vacancy.extra.lead_criteria_v1)
+  funnel_id: z.string().optional().or(z.literal('')),
+  manager: z.string().optional().or(z.literal('')),
   criteria_min_experience_eu_years: z
     .union([z.string(), z.number()])
     .optional()
     .transform((v) => (v === '' || v == null ? undefined : v)),
-  criteria_requires_documents: z.string().optional().or(z.literal('')),
-  criteria_requires_candidate_documents_v1: z.string().optional().or(z.literal('')),
-  criteria_candidate_documents_allow_statuses: z.string().optional().or(z.literal('')),
-  /** §2.5: ISO2 lists vs normalized.geo_country / location_country / current_country */
-  criteria_allowed_geo_countries: z.string().optional().or(z.literal('')),
-  criteria_blocked_geo_countries: z.string().optional().or(z.literal('')),
-  /** §2.4: vacancy.extra.leads_auto_convert_on_fit_v1 = false */
+  criteria_requires_documents: stringArray,
+  criteria_requires_candidate_documents_v1: stringArray,
+  criteria_candidate_documents_allow_statuses: stringArray,
+  criteria_allowed_geo_countries: stringArray,
+  criteria_blocked_geo_countries: stringArray,
+  criteria_preferred_documents: stringArray,
+  criteria_preferred_languages: stringArray,
   vacancy_disable_auto_convert_on_fit: z.boolean().optional().default(false),
-  /** Vacancy.extra.lead_fit_evaluation_enabled_v1 — apply lead_criteria_v1 vs incoming leads */
   lead_fit_evaluation_enabled: z.boolean().optional().default(false),
   headcount_target: z.string().optional().or(z.literal('')),
   order_line_id: z.string().optional().or(z.literal('')),
@@ -85,54 +95,60 @@ const vacancyFormSchema = z.object({
 
 type VacancyFormValues = z.infer<typeof vacancyFormSchema>
 
-type Props = {
-  item: any | null | undefined
-  companiesMap?: Record<string, string>
-  onBack: () => void
-  onEdit?: () => void // kept for backward-compat; unused now
-  onRemove?: () => Promise<void>
-}
+export type WorkspaceTabKey =
+  | 'workspace'
+  | 'job_details'
+  | 'recruitment'
+  | 'requirements'
+  | 'automation'
+  | 'analytics'
+  | 'settings'
+  | 'candidates'
 
-/* --------------------------------- ui atoms -------------------------------- */
-const Input = (
-  {
-    label,
-    mono,
-    className,
-    ...rest
-  }: React.InputHTMLAttributes<HTMLInputElement> & { label?: string; mono?: boolean }
-) => {
-  return (
-    <label className="block">
-      {label && <div className="label">{label}</div>}
-      <input {...rest} className={["input", mono ? 'font-mono' : '', className || ''].filter(Boolean).join(' ')} />
-    </label>
-  )
-}
+const PRIMARY_TABS: WorkspaceTabKey[] = [
+  'workspace',
+  'job_details',
+  'recruitment',
+  'requirements',
+  'automation',
+  'analytics',
+  'settings',
+]
 
-/* --------------------------------- helpers -------------------------------- */
+function normalizeTab(raw?: string | null): WorkspaceTabKey {
+  const t = String(raw || '').toLowerCase()
+  if (t === 'info' || t === 'overview' || t === 'notes' || !t) return 'workspace'
+  if ((PRIMARY_TABS as string[]).includes(t) || t === 'candidates') return t as WorkspaceTabKey
+  return 'workspace'
+}
 
 function ensurePersistedFields(normalized: any, source: any) {
-  // Keep edited scalar fields even if normalizeVacancy drops/renames them
   const keepKeys = [
-    'status', 'state', 'stage',
-    'salary_from', 'salary_to', 'currency',
-    'is_open', 'is_active', 'is_archived',
-    'employment_type', 'location', 'company_id',
-    'created_at', 'updated_at', 'tenant_id', 'company_name', 'headcount_target', 'candidate_count'
+    'id',
+    'company_id',
+    'manager',
+    'manager_name',
+    'manager_short',
+    'funnel_id',
+    'candidate_profile_id',
+    'order_line_id',
+    'extra',
+    'created_at',
+    'updated_at',
+    'tenant_id',
+    'company_name',
+    'headcount_target',
+    'candidate_count',
   ] as const
-
   const ensured: any = { ...normalized }
   for (const k of keepKeys) {
-    if (typeof (normalized as any)[k] === 'undefined' && typeof (source as any)[k] !== 'undefined') {
-      ensured[k] = (source as any)[k]
+    if (typeof ensured[k] === 'undefined' && typeof source?.[k] !== 'undefined') {
+      ensured[k] = source[k]
     }
   }
-  // Also make sure status mirrors state/stage if only they are present
   if (!ensured.status && (ensured.state || ensured.stage)) {
     ensured.status = ensured.state || ensured.stage
   }
-  // Keep is_open consistent with status
   if (typeof ensured.is_open === 'undefined' && typeof source?.is_open !== 'undefined') {
     ensured.is_open = source.is_open
   }
@@ -143,39 +159,13 @@ function ensurePersistedFields(normalized: any, source: any) {
 }
 
 function toFormDefaults(source: any | null): VacancyFormValues {
-  // Phase 2.6.D Stage C — funnel every status entry point (status /
-  // state / stage) through `normalizeVacancyStatus` so legacy `paused`
-  // is rewritten to `on_hold` before the form schema validates it.
   const rawStatus = source?.status ?? source?.state ?? source?.stage ?? 'open'
   const normalizedStatus = normalizeVacancyStatus(rawStatus)
-
   const employment = source?.employment_type
   const normalizedEmployment = EMPLOYMENT_TYPES.includes(employment as EmploymentType)
     ? (employment as EmploymentType)
     : EMPLOYMENT_TYPES[0]
-
-  let extra: any = {}
-  const rawExtra = source?.extra
-  if (typeof rawExtra === 'string') {
-    try {
-      const p = JSON.parse(rawExtra)
-      if (p && typeof p === 'object' && !Array.isArray(p)) extra = p
-    } catch {
-      extra = {}
-    }
-  } else if (rawExtra && typeof rawExtra === 'object') {
-    extra = rawExtra
-  }
-  const crit = (extra?.lead_criteria_v1 && typeof extra.lead_criteria_v1 === 'object' ? extra.lead_criteria_v1 : {}) as any
-  const explicitFit = extra?.lead_fit_evaluation_enabled_v1
-  let leadFitEvaluationEnabled = false
-  if (explicitFit === true) {
-    leadFitEvaluationEnabled = true
-  } else if (explicitFit === false) {
-    leadFitEvaluationEnabled = false
-  } else {
-    leadFitEvaluationEnabled = !!(crit && typeof crit === 'object' && !Array.isArray(crit) && Object.keys(crit).length > 0)
-  }
+  const crit = criteriaDefaultsFromSource(source)
 
   return {
     title: source?.title ?? '',
@@ -191,22 +181,18 @@ function toFormDefaults(source: any | null): VacancyFormValues {
     is_open: typeof source?.is_open === 'boolean' ? source.is_open : normalizedStatus === 'open',
     employment_type: normalizedEmployment,
     candidate_profile_id: source?.candidate_profile_id ?? '',
-    criteria_min_experience_eu_years: crit?.min_experience_eu_years ?? '',
-    criteria_requires_documents: Array.isArray(crit?.requires_documents) ? crit.requires_documents.join(', ') : '',
-    criteria_requires_candidate_documents_v1: Array.isArray(crit?.requires_candidate_documents_v1)
-      ? crit.requires_candidate_documents_v1.join(', ')
-      : '',
-    criteria_candidate_documents_allow_statuses: Array.isArray(crit?.candidate_documents_allow_statuses)
-      ? crit.candidate_documents_allow_statuses.join(', ')
-      : '',
-    criteria_allowed_geo_countries: Array.isArray(crit?.allowed_geo_countries)
-      ? crit.allowed_geo_countries.join(', ')
-      : '',
-    criteria_blocked_geo_countries: Array.isArray(crit?.blocked_geo_countries)
-      ? crit.blocked_geo_countries.join(', ')
-      : '',
-    vacancy_disable_auto_convert_on_fit: extra?.leads_auto_convert_on_fit_v1 === false,
-    lead_fit_evaluation_enabled: leadFitEvaluationEnabled,
+    funnel_id: source?.funnel_id ?? '',
+    manager: source?.manager ?? '',
+    criteria_min_experience_eu_years: crit.criteria_min_experience_eu_years ?? '',
+    criteria_requires_documents: crit.criteria_requires_documents,
+    criteria_requires_candidate_documents_v1: crit.criteria_requires_candidate_documents_v1,
+    criteria_candidate_documents_allow_statuses: crit.criteria_candidate_documents_allow_statuses,
+    criteria_allowed_geo_countries: crit.criteria_allowed_geo_countries,
+    criteria_blocked_geo_countries: crit.criteria_blocked_geo_countries,
+    criteria_preferred_documents: crit.criteria_preferred_documents,
+    criteria_preferred_languages: crit.criteria_preferred_languages,
+    vacancy_disable_auto_convert_on_fit: crit.vacancy_disable_auto_convert_on_fit,
+    lead_fit_evaluation_enabled: crit.lead_fit_evaluation_enabled,
     headcount_target:
       source?.headcount_target != null && Number(source.headcount_target) > 0
         ? String(source.headcount_target)
@@ -215,85 +201,56 @@ function toFormDefaults(source: any | null): VacancyFormValues {
   }
 }
 
-type TabKey = 'info' | 'candidates' | 'notes'
-
-const DATE_FNS_LOCALES: Record<LocaleCode, typeof enUS> = {
-  en: enUS,
-  pl: plFns,
-  ru: ruFns,
+function statusSemantic(status: string): 'success' | 'warning' | 'neutral' | 'danger' | 'info' {
+  const s = status.toLowerCase()
+  if (s === 'open') return 'success'
+  if (s === 'on_hold') return 'warning'
+  if (s === 'filled') return 'info'
+  if (s === 'cancelled' || s === 'closed') return 'neutral'
+  return 'neutral'
 }
 
-function StatPill({ stageCode, value }:{ stageCode: string; value: React.ReactNode }){
-  return (
-    <span className="inline-flex items-center gap-2">
-      <StageTag code={stageCode} />
-      <span className="inline-flex min-w-[22px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-        {value}
-      </span>
-    </span>
-  )
-}
-
-function MiniTable({
-  rows,
-  labels,
-}:{
-  rows: React.ReactNode
-  labels: {
-    candidate: string
-    email: string
-    stage: string
-  }
-}){
-  return (
-    <div className="overflow-x-auto">
-      <table className="table">
-        <thead>
-          <tr>
-            <th>{labels.candidate}</th>
-            <th>{labels.email}</th>
-            <th>{labels.stage}</th>
-          </tr>
-        </thead>
-        <tbody className="align-top">{rows}</tbody>
-      </table>
-    </div>
-  )
+type Props = {
+  item: any | null | undefined
+  companiesMap?: Record<string, string>
+  onBack: () => void
+  onEdit?: () => void
+  onRemove?: () => Promise<void>
 }
 
 export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemove }: Props) {
   const { t, locale } = useI18n()
-  const dateFnsLocale = DATE_FNS_LOCALES[locale] ?? enUS
   const { can } = usePermissions()
+  const navigate = useNavigate()
   const planLimitModal = usePlanLimitModal()
-  const leadFieldExperience = 'experience_eu_years'
-  const leadFieldDocuments = 'documents[]'
-  const leadFieldGeo = 'geo_country | location_country | current_country'
   const { id: routeId, tab: tabFromRoute } = useParams<{ id: string; tab?: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const companyFromUrl = searchParams.get('company') || ''
+  const stageFromUrl = searchParams.get('stage')
 
   function toModel(raw: any) {
     let base = raw || {}
-    try { base = normalizeVacancy(base) } catch {}
+    try {
+      base = normalizeVacancy(base)
+    } catch {
+      /* ignore */
+    }
     const st = (base.status ?? base.state ?? base.stage ?? 'open') as any
     return {
       ...base,
       status: st,
       is_open: typeof base.is_open === 'boolean' ? base.is_open : String(st).toLowerCase() === 'open',
       salary_from: typeof base.salary_from !== 'undefined' ? base.salary_from : null,
-      salary_to:   typeof base.salary_to   !== 'undefined' ? base.salary_to   : null,
-      currency:    typeof base.currency    !== 'undefined' ? base.currency    : null,
+      salary_to: typeof base.salary_to !== 'undefined' ? base.salary_to : null,
+      currency: typeof base.currency !== 'undefined' ? base.currency : null,
     }
   }
 
   const [model, setModel] = useState<any | null>(item ? toModel(item) : null)
-  const [tab, setTab] = useState<TabKey>('info')
+  const [tab, setTab] = useState<WorkspaceTabKey>(normalizeTab(tabFromRoute))
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [stageFilter, setStageFilter] = useState<string | null>(stageFromUrl)
 
-  // G-8 stage 2.1: per-vacancy primary next-action badge.
-  // `routeId` is available from the URL before `model` arrives; we prefer
-  // it so the badge can fetch as soon as the page mounts. Once `model`
-  // hydrates we still pass the same id (route + model agree by definition).
   const vacancyIdForBadge = (routeId || model?.id || '') as string
   const [nextActionTick, setNextActionTick] = useState(0)
   const bumpNextActionTick = useCallback(() => setNextActionTick((n) => n + 1), [])
@@ -304,10 +261,13 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   } = useVacancyNextAction(vacancyIdForBadge || null, nextActionTick)
 
   useEffect(() => {
-    if (tabFromRoute === 'candidates' || tabFromRoute === 'notes' || tabFromRoute === 'info') {
-      setTab(tabFromRoute)
-    }
+    setTab(normalizeTab(tabFromRoute))
   }, [tabFromRoute])
+
+  useEffect(() => {
+    setStageFilter(stageFromUrl)
+  }, [stageFromUrl])
+
   const [candLoading, setCandLoading] = useState(false)
   const [candItems, setCandItems] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
@@ -317,8 +277,11 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   const [pipeLoading, setPipeLoading] = useState(false)
   const [candidateProfiles, setCandidateProfiles] = useState<CandidateProfile[]>([])
   const [requirementsPresets, setRequirementsPresets] = useState<VacancyRequirementsPreset[]>([])
-  const [selectedPresetId, setSelectedPresetId] = useState<string>('')
   const [orderLines, setOrderLines] = useState<SalesOrderLine[]>([])
+  const [linkedOrderLine, setLinkedOrderLine] = useState<SalesOrderLine | null>(null)
+  const [managerOptions, setManagerOptions] = useState<ManagerOption[]>([])
+  const [recruiterOptions, setRecruiterOptions] = useState<ManagerOption[]>([])
+  const [poolDraft, setPoolDraft] = useState<Record<string, { selected: boolean; weight: number }>>({})
   const isCreate = !item && routeId === 'new'
 
   const {
@@ -339,6 +302,48 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   const watchCompanyId = watch('company_id')
   const watchTitle = watch('title')
   const watchOrderLineId = watch('order_line_id')
+  const watchManager = watch('manager')
+  const watchCriteria = {
+    criteria_min_experience_eu_years: watch('criteria_min_experience_eu_years'),
+    criteria_requires_documents: watch('criteria_requires_documents') || [],
+    criteria_requires_candidate_documents_v1: watch('criteria_requires_candidate_documents_v1') || [],
+    criteria_candidate_documents_allow_statuses:
+      watch('criteria_candidate_documents_allow_statuses') || [],
+    criteria_allowed_geo_countries: watch('criteria_allowed_geo_countries') || [],
+    criteria_blocked_geo_countries: watch('criteria_blocked_geo_countries') || [],
+    criteria_preferred_documents: watch('criteria_preferred_documents') || [],
+    criteria_preferred_languages: watch('criteria_preferred_languages') || [],
+    vacancy_disable_auto_convert_on_fit: !!watch('vacancy_disable_auto_convert_on_fit'),
+    lead_fit_evaluation_enabled: !!watch('lead_fit_evaluation_enabled'),
+  }
+
+  const goTab = useCallback(
+    (next: WorkspaceTabKey, stage?: string | null) => {
+      setTab(next)
+      if (!model?.id && routeId !== 'new') return
+      const id = model?.id || routeId
+      if (!id || id === 'new') {
+        setTab(next)
+        return
+      }
+      const base = `${CRM_APP_PATHS.vacancies}/${id}/${next}`
+      if (stage) {
+        navigate(`${base}?stage=${encodeURIComponent(stage)}`)
+        setStageFilter(stage)
+      } else {
+        navigate(base)
+        if (next !== 'candidates') setStageFilter(null)
+      }
+    },
+    [model?.id, navigate, routeId],
+  )
+
+  const openStageCandidates = useCallback(
+    (stageCode: string) => {
+      goTab('candidates', stageCode)
+    },
+    [goTab],
+  )
 
   useEffect(() => {
     if (!isCreate || !watchCompanyId) {
@@ -373,8 +378,90 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   }, [isCreate, watchOrderLineId, orderLines, setValue, watchTitle])
 
   useEffect(() => {
+    const orderLineId = model?.order_line_id || watchOrderLineId
+    if (!orderLineId || isCreate) {
+      setLinkedOrderLine(null)
+      return
+    }
+    let cancelled = false
+    void listSalesOrderLines({ limit: 200 })
+      .then((rows) => {
+        if (cancelled) return
+        const found = rows.find((l) => l.id === orderLineId) || null
+        setLinkedOrderLine(found)
+      })
+      .catch(() => {
+        if (!cancelled) setLinkedOrderLine(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [model?.order_line_id, watchOrderLineId, isCreate])
+
+  useEffect(() => {
     resetForm(toFormDefaults(model))
   }, [model, resetForm])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [managers, recruiters] = await Promise.all([
+          listTenantManagers(),
+          listTenantManagers({
+            roles: RECRUITMENT_ASSIGNEE_CATALOG_ROLES.split(',').map((r) => r.trim()).filter(Boolean),
+          }),
+        ])
+        if (!cancelled) {
+          setManagerOptions(managers)
+          setRecruiterOptions(recruiters)
+        }
+      } catch {
+        if (!cancelled) {
+          setManagerOptions([])
+          setRecruiterOptions([])
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const syncPoolDraftFromItems = useCallback(
+    (items: VacancyRecruiterPoolItem[], recruiters: ManagerOption[]) => {
+      const next: Record<string, { selected: boolean; weight: number }> = {}
+      for (const opt of recruiters) {
+        next[opt.id] = { selected: false, weight: 1 }
+      }
+      for (const row of items) {
+        next[row.user_id] = {
+          selected: true,
+          weight: Math.max(1, Number(row.weight) || 1),
+        }
+      }
+      setPoolDraft(next)
+    },
+    [],
+  )
+
+  useEffect(() => {
+    if (!model?.id || isCreate) {
+      syncPoolDraftFromItems([], recruiterOptions)
+      return
+    }
+    let cancelled = false
+    getVacancyRecruiters(String(model.id))
+      .then((data) => {
+        if (!cancelled) syncPoolDraftFromItems(data.items, recruiterOptions)
+      })
+      .catch(() => {
+        if (!cancelled) syncPoolDraftFromItems([], recruiterOptions)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [model?.id, isCreate, recruiterOptions, syncPoolDraftFromItems])
 
   useEffect(() => {
     let cancelled = false
@@ -393,9 +480,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
   useEffect(() => {
     const shouldBeOpen = (watchStatus ?? 'open') === 'open'
-    if (watchIsOpen !== shouldBeOpen) {
-      setValue('is_open', shouldBeOpen)
-    }
+    if (watchIsOpen !== shouldBeOpen) setValue('is_open', shouldBeOpen)
   }, [watchStatus, watchIsOpen, setValue])
 
   const loadCandidates = useCallback(async () => {
@@ -410,9 +495,13 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         const r = await api.get('/candidates/')
         candData = r.data
       }
-      const list: any[] = Array.isArray(candData) ? candData : (candData?.items || [])
-      const filtered = list.filter((c: any) => String((c?.vacancy_id ?? c?.vacancy ?? c?.vacancy?.id) ?? '') === String(model.id))
-      setCandItems(filtered)
+      const list: any[] = Array.isArray(candData) ? candData : candData?.items || []
+      setCandItems(
+        list.filter(
+          (c: any) =>
+            String(c?.vacancy_id ?? c?.vacancy ?? c?.vacancy?.id ?? '') === String(model.id),
+        ),
+      )
     } finally {
       setCandLoading(false)
     }
@@ -422,71 +511,41 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
     if (tab === 'candidates') loadCandidates()
   }, [tab, loadCandidates])
 
-  useEffect(() => {
-    async function loadPipe(){
-      if (!model?.id) return
-      setPipeLoading(true)
-      try{
-        const response = await api.get(
-          `/vacancies/${model.id}/pipeline`,
-          { validateStatus: status => status === 200 || status === 404 }
-        )
-        if (response.status === 404) {
-          setPipeCounts({})
-          return
-        }
-        const { data } = response
-        const cols = (data?.columns || data?.columns_by_status || {}) as Record<string, any>
-        const res: Record<string, number> = {}
-        Object.keys(cols || {}).forEach(k => {
-          const val: any = (cols as any)[k]
-          const arr = Array.isArray(val) ? val : (Array.isArray(val?.items) ? val.items : [])
-          res[k] = arr.length
-        })
-        setPipeCounts(res)
-      } catch (err) {
+  const loadPipe = useCallback(async () => {
+    if (!model?.id) return
+    setPipeLoading(true)
+    try {
+      const response = await api.get(`/vacancies/${model.id}/pipeline`, {
+        validateStatus: (status) => status === 200 || status === 404,
+      })
+      if (response.status === 404) {
         setPipeCounts({})
-      } finally {
-        setPipeLoading(false)
+        return
       }
+      const cols = (response.data?.columns || response.data?.columns_by_status || {}) as Record<
+        string,
+        unknown
+      >
+      // Count by candidate.stage (not kanban column key) so Vacancy Progress
+      // treats employed/hired/probation_ok as success even when they land in
+      // aggregated columns like client_process / internal_hr.
+      setPipeCounts(stageCountsFromPipelineColumns(cols))
+    } catch {
+      setPipeCounts({})
+    } finally {
+      setPipeLoading(false)
     }
-    loadPipe()
   }, [model?.id])
 
-  const pipelineBottleneck = useMemo(() => {
-    const entries = Object.entries(pipeCounts).filter(([, n]) => Number(n) > 0)
-    if (!entries.length) return null
-    return entries.reduce((a, b) => (Number(b[1]) > Number(a[1]) ? b : a))
-  }, [pipeCounts])
-
-  const lastCandidateActivityLabel = useMemo(() => {
-    const raw = model?.last_candidate_activity_at
-    if (!raw) return null
-    try {
-      return formatDistanceToNow(new Date(raw), { addSuffix: true, locale: dateFnsLocale })
-    } catch {
-      return null
-    }
-  }, [model?.last_candidate_activity_at, dateFnsLocale])
-
-  const loadCandidateProfiles = useCallback(async () => {
-    try {
-      // Профили привязаны к вакансиям, а не к клиентам
-      const profiles = await listCandidateProfiles({ is_active: true })
-      setCandidateProfiles(profiles)
-    } catch (err) {
-      console.error('[VacancyDetail] failed to load candidate profiles', err)
-    }
-  }, [])
+  useEffect(() => {
+    void loadPipe()
+  }, [loadPipe])
 
   useEffect(() => {
-    const companyId = watch('company_id')
-    if (companyId) {
-      loadCandidateProfiles()
-    } else {
-      loadCandidateProfiles()
-    }
-  }, [watch('company_id'), loadCandidateProfiles])
+    void listCandidateProfiles({ is_active: true })
+      .then(setCandidateProfiles)
+      .catch(() => setCandidateProfiles([]))
+  }, [])
 
   useEffect(() => {
     if (item) {
@@ -494,8 +553,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       setLoading(false)
       return
     }
-
-    // Creating a new vacancy: do NOT fetch `/vacancies/new`
     if (!item && routeId === 'new') {
       setModel(
         toModel({
@@ -511,118 +568,94 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
           salary_from: null,
           salary_to: null,
           currency: null,
-        })
+        }),
       )
       setLoading(false)
       return
     }
-
     if (!item && routeId) {
       setLoading(true)
       getVacancy(routeId)
         .then((data) => setModel(toModel(data)))
-        .catch((err: any) => {
-          console.error('[vacancy/load] failed', err)
-          setModel(null)
-        })
+        .catch(() => setModel(null))
         .finally(() => setLoading(false))
     }
-  }, [item, routeId])
+  }, [item, routeId, companyFromUrl])
 
   const submitVacancy = useCallback(
     async (values: VacancyFormValues) => {
       setSaving(true)
       try {
         const mode: 'create' | 'update' = model?.id ? 'update' : 'create'
-
         const payload = buildVacancyPayload(values, model, mode)
-        // Inject lead criteria into extra — merge with existing lead_criteria_v1 from extra (API / legacy keys).
-        const minRaw: any = (values as any).criteria_min_experience_eu_years
-        let minYears: number | undefined = undefined
-        if (minRaw !== undefined && minRaw !== null && String(minRaw).trim() !== '') {
-          const parsed = Number(minRaw)
-          if (Number.isFinite(parsed) && parsed > 0) minYears = Math.floor(parsed)
-        }
-        const docs = String((values as any).criteria_requires_documents || '')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-        const modDocs = String((values as any).criteria_requires_candidate_documents_v1 || '')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-        const allowSts = String((values as any).criteria_candidate_documents_allow_statuses || '')
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-        const allowedGeo = String((values as any).criteria_allowed_geo_countries || '')
-          .split(',')
-          .map((s) => s.trim().toUpperCase())
-          .filter(Boolean)
-        const blockedGeo = String((values as any).criteria_blocked_geo_countries || '')
-          .split(',')
-          .map((s) => s.trim().toUpperCase())
-          .filter(Boolean)
-        const criteria: Record<string, unknown> = {}
-        const prevExtra = payload?.extra && typeof payload.extra === 'object' && !Array.isArray(payload.extra) ? payload.extra : {}
-        const prevCrit = (prevExtra as any).lead_criteria_v1
-        if (prevCrit && typeof prevCrit === 'object' && !Array.isArray(prevCrit)) {
-          Object.assign(criteria, prevCrit)
-        }
-        if (typeof minYears !== 'undefined') criteria.min_experience_eu_years = minYears
-        else delete criteria.min_experience_eu_years
-        if (docs.length > 0) criteria.requires_documents = docs
-        else delete criteria.requires_documents
-        if (modDocs.length > 0) criteria.requires_candidate_documents_v1 = modDocs
-        else delete criteria.requires_candidate_documents_v1
-        if (allowSts.length > 0) criteria.candidate_documents_allow_statuses = allowSts
-        else delete criteria.candidate_documents_allow_statuses
-        if (allowedGeo.length > 0) criteria.allowed_geo_countries = allowedGeo
-        else delete criteria.allowed_geo_countries
-        if (blockedGeo.length > 0) criteria.blocked_geo_countries = blockedGeo
-        else delete criteria.blocked_geo_countries
-        if (payload?.extra && typeof payload.extra === 'object') {
-          ;(payload.extra as any).lead_criteria_v1 = criteria
-          ;(payload.extra as any).lead_fit_evaluation_enabled_v1 = Boolean((values as any).lead_fit_evaluation_enabled)
-          if ((values as any).vacancy_disable_auto_convert_on_fit) {
-            ;(payload.extra as any).leads_auto_convert_on_fit_v1 = false
-          } else {
-            delete (payload.extra as any).leads_auto_convert_on_fit_v1
-          }
+        applyCriteriaToPayload(payload as any, {
+          criteria_min_experience_eu_years: values.criteria_min_experience_eu_years,
+          criteria_requires_documents: values.criteria_requires_documents || [],
+          criteria_requires_candidate_documents_v1:
+            values.criteria_requires_candidate_documents_v1 || [],
+          criteria_candidate_documents_allow_statuses:
+            values.criteria_candidate_documents_allow_statuses || [],
+          criteria_allowed_geo_countries: values.criteria_allowed_geo_countries || [],
+          criteria_blocked_geo_countries: values.criteria_blocked_geo_countries || [],
+          criteria_preferred_documents: values.criteria_preferred_documents || [],
+          criteria_preferred_languages: values.criteria_preferred_languages || [],
+          vacancy_disable_auto_convert_on_fit: !!values.vacancy_disable_auto_convert_on_fit,
+          lead_fit_evaluation_enabled: !!values.lead_fit_evaluation_enabled,
+        })
+
+        const response =
+          mode === 'update' ? await updateVacancy(model!.id, payload) : await createVacancy(payload)
+
+        const vacancyId = String(
+          mode === 'update' ? model!.id : response?.id || response?.vacancy_id || '',
+        )
+        if (vacancyId) {
+          const poolItems = Object.entries(poolDraft)
+            .filter(([, row]) => row.selected)
+            .map(([userId, row]) => ({
+              user_id: userId,
+              weight: Math.max(1, Math.min(100, Number(row.weight) || 1)),
+              is_active: true,
+            }))
+          await putVacancyRecruiters(vacancyId, poolItems)
         }
 
-        const response = mode === 'update'
-          ? await updateVacancy(model!.id, payload)
-          : await createVacancy(payload)
-
-        const latest = mode === 'update' ? await getVacancy(model!.id) : response
+        const latest =
+          mode === 'update'
+            ? await getVacancy(model!.id)
+            : vacancyId
+              ? await getVacancy(vacancyId)
+              : response
         const hydrated = hydrateSavedWithForm(latest, values, payload)
         const ensured = ensurePersistedFields(hydrated, latest)
-
         setModel(ensured)
         resetForm(toFormDefaults(ensured))
         bumpNextActionTick()
-        setSavedOk(true); setTimeout(() => setSavedOk(false), 2000)
+        setSavedOk(true)
+        setTimeout(() => setSavedOk(false), 2000)
+        if (mode === 'create' && vacancyId) {
+          navigate(`${CRM_APP_PATHS.vacancies}/${vacancyId}/workspace`)
+        }
       } catch (err: any) {
-        if (
-          planLimitModal?.showPlanLimitIfNeeded(
-            err,
-            t('app.vacancies.form.save_failed'),
-          )
-        ) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.vacancies.form.save_failed'))) {
           return
         }
         const r = err?.response?.data
-        const detail = (typeof r?.detail === 'string')
-          ? r.detail
-          : (Array.isArray(r?.detail) ? JSON.stringify(r.detail) : (r ? JSON.stringify(r) : err?.message || 'Unknown error'))
-        alert(`Сохранение не удалось: ${detail}`)
+        const detail =
+          typeof r?.detail === 'string'
+            ? r.detail
+            : Array.isArray(r?.detail)
+              ? JSON.stringify(r.detail)
+              : r
+                ? JSON.stringify(r)
+                : err?.message || 'Unknown error'
+        alert(t('app.vacancies.detail.save_failed_alert', { defaultValue: 'Save failed: {detail}', values: { detail } }))
         throw err
       } finally {
         setSaving(false)
       }
     },
-    [model, planLimitModal, resetForm, t, bumpNextActionTick]
+    [model, planLimitModal, poolDraft, resetForm, t, bumpNextActionTick, navigate],
   )
 
   const save = useCallback(async () => {
@@ -635,226 +668,89 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
     return fromMap ?? model?.company_name ?? candidateId ?? ''
   }, [companiesMap, model?.company_id, model?.company_name, watchCompanyId])
 
-  const statusText = watchStatus ?? model?.status ?? model?.state ?? model?.stage ?? ''
-
-  const statusOptions = STATUS_OPTIONS
-
-  const companyOptions = useMemo(() => {
-    return Object.entries(companiesMap).map(([id, name]) => ({ id, name: name || id }))
-  }, [companiesMap])
-
-  const { effectiveLayout } = useEffectiveVacancyLayout(Boolean(model || routeId))
-  const vacancyFieldOrder = useMemo(
-    () => getVacancyFieldsRenderOrder(effectiveLayout),
-    [effectiveLayout],
+  const statusText = String(watchStatus ?? model?.status ?? 'open')
+  const metrics = useMemo(
+    () =>
+      computePipelineMetrics(
+        pipeCounts,
+        model?.headcount_target ??
+          (watch('headcount_target') ? Number(watch('headcount_target')) : null),
+      ),
+    [pipeCounts, model?.headcount_target, watch],
   )
 
-  const renderVacancyRegistryField = useCallback(
-    (key: VacancyRegistryFieldKey) => {
-      if (!vacancyFieldVisible(key, effectiveLayout)) return null
-      const requiredMark = vacancyFieldRequired(key, effectiveLayout)
-      switch (key) {
-        case 'title':
-          return (
-            <label key="title" className="block">
-              <div className="label">
-                {vacancyFieldLabel('title', 'Название', effectiveLayout)}
-                {requiredMark ? <span className="text-rose-600"> *</span> : null}
-              </div>
-              <input className="input" {...register('title')} />
-              {errors.title && <p className="text-sm text-rose-600 mt-1">{errors.title.message}</p>}
-            </label>
-          )
-        case 'employment_type':
-          return (
-            <label key="employment_type" className="block">
-              <div className="label">
-                {vacancyFieldLabel('employment_type', 'Тип занятости', effectiveLayout)}
-                {requiredMark ? <span className="text-rose-600"> *</span> : null}
-              </div>
-              <select className="input" {...register('employment_type')}>
-                {EMPLOYMENT_TYPES.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              {errors.employment_type && (
-                <p className="text-sm text-rose-600 mt-1">{errors.employment_type.message}</p>
-              )}
-            </label>
-          )
-        case 'company_id':
-          return (
-            <div key="company_id" className="space-y-3">
-              <label className="block">
-                <div className="label">
-                  {vacancyFieldLabel('company_id', 'Компания', effectiveLayout)}
-                  {requiredMark ? <span className="text-rose-600"> *</span> : null}
-                </div>
-                <select className="input" {...register('company_id')}>
-                  <option value="">— выберите компанию —</option>
-                  {companyOptions.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.company_id && (
-                  <p className="text-sm text-rose-600 mt-1">{errors.company_id.message}</p>
-                )}
-              </label>
-              {isCreate ? (
-                <label className="block">
-                  <div className="label">Order Line (заказ клиента, необязательно)</div>
-                  <select
-                    className="input"
-                    {...register('order_line_id')}
-                    data-testid="vacancy-order-line"
-                  >
-                    <option value="">— свободная вакансия (без заказа) —</option>
-                    {orderLines.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.title} · qty {l.quantity_needed}
-                        {l.location ? ` · ${l.location}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-slate-500">
-                    При выборе линии headcount/роль тянутся из Sales Order Line (ADR-032). Две
-                    вакансии на одну линию нельзя.
-                  </p>
-                </label>
-              ) : model?.order_line_id ? (
-                <p className="text-xs text-slate-500">
-                  Привязана к Order Line <code>{String(model.order_line_id).slice(0, 8)}…</code> —
-                  headcount из линии заказа.
-                </p>
-              ) : null}
-            </div>
-          )
-        case 'headcount_target':
-          return (
-            <label key="headcount_target" className="block">
-              <div className="label">
-                {vacancyFieldLabel('headcount_target', t('app.vacancies.detail.fields.headcount_target'), effectiveLayout)}
-                {requiredMark ? <span className="text-rose-600"> *</span> : null}
-              </div>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={9999}
-                className="input"
-                {...register('headcount_target')}
-                placeholder="—"
-              />
-              <p className="mt-1 text-xs text-slate-500">{t('app.vacancies.detail.fields.headcount_hint')}</p>
-            </label>
-          )
-        case 'location':
-          return (
-            <label key="location" className="block">
-              <div className="label">
-                {vacancyFieldLabel('location', 'Локация', effectiveLayout)}
-                {requiredMark ? <span className="text-rose-600"> *</span> : null}
-              </div>
-              <input className="input" {...register('location')} />
-            </label>
-          )
-        case 'description':
-          return (
-            <div key="description" className="md:col-span-2">
-              <label className="block">
-                <div className="label">
-                  {vacancyFieldLabel('description', 'Описание', effectiveLayout)}
-                  {requiredMark ? <span className="text-rose-600"> *</span> : null}
-                </div>
-                <textarea
-                  className="input w-full bg-muted/60 resize-none overflow-hidden min-h-[140px] max-h-none"
-                  {...register('description')}
-                  rows={Math.max(6, ((watch('description') || '') as string).split('\n').length + 1)}
-                  onInput={(e) => {
-                    const el = e.currentTarget
-                    el.style.height = 'auto'
-                    el.style.height = `${el.scrollHeight}px`
-                  }}
-                  style={{ height: 'auto' }}
-                />
-              </label>
-            </div>
-          )
-        default:
-          return null
-      }
-    },
-    [effectiveLayout, register, errors, companyOptions, watch, t],
+  const companyOptions = useMemo(
+    () => Object.entries(companiesMap).map(([id, name]) => ({ id, name: name || id })),
+    [companiesMap],
   )
 
-  if (loading) {
-    return <div className="text-slate-500">Загрузка карточки вакансии…</div>
-  }
-  if (!model) {
+  const poolSelectedCount = useMemo(
+    () => Object.values(poolDraft).filter((r) => r.selected).length,
+    [poolDraft],
+  )
+
+  const managerLabel = useMemo(() => {
+    const id = watchManager || model?.manager
+    const opt = managerOptions.find((m) => m.id === id)
     return (
-      <div className="p-3 rounded-lg bg-amber-50 text-amber-800 border border-amber-200">
-        Вакансия не найдена или недоступна. 
-        <button type="button" onClick={onBack} className="ml-2 underline">Вернуться к списку</button>
-      </div>
+      model?.manager_name ||
+      model?.manager_short ||
+      opt?.label ||
+      opt?.full_name ||
+      opt?.email ||
+      id ||
+      '—'
     )
-  }
+  }, [watchManager, model, managerOptions])
 
-  async function refresh(){
+  async function refresh() {
     if (!model?.id) return
     setLoading(true)
-    try{
+    try {
       const data = await getVacancy(model.id)
       setModel(toModel(data))
-      try {
-        const p = await api.get(`/vacancies/${model.id}/pipeline`)
-        const cols = (p.data?.columns || p.data?.columns_by_status || {}) as Record<string, any>
-        const res: Record<string, number> = {}
-        Object.keys(cols || {}).forEach(k => {
-          const val: any = (cols as any)[k]
-          const arr = Array.isArray(val) ? val : (Array.isArray(val?.items) ? val.items : [])
-          res[k] = arr.length
-        })
-        setPipeCounts(res)
-      } catch {}
+      await loadPipe()
       bumpNextActionTick()
     } finally {
       setLoading(false)
     }
   }
 
-  async function exportCSV(){
+  async function exportCSV() {
     if (!model?.id) return
-    // Fetch candidates scoped to this vacancy; fall back to generic list
     let candData: any
-    try{
+    try {
       const r = await api.get('/candidates?limit=1000&offset=0')
       candData = r.data
     } catch {
       const r = await api.get('/candidates/')
       candData = r.data
     }
-    const list: any[] = Array.isArray(candData) ? candData : (candData?.items || [])
-    const filtered = list.filter((c:any) => String((c?.vacancy_id ?? c?.vacancy ?? c?.vacancy?.id) ?? '') === String(model.id))
-
+    const list: any[] = Array.isArray(candData) ? candData : candData?.items || []
+    const filtered = list.filter(
+      (c: any) => String(c?.vacancy_id ?? c?.vacancy ?? c?.vacancy?.id ?? '') === String(model.id),
+    )
     const rows = [
-      ['id','name','email','stage','phone','created_at'] as const,
-      ...filtered.map((c:any) => [
+      ['id', 'name', 'email', 'stage', 'phone', 'created_at'] as const,
+      ...filtered.map((c: any) => [
         c.id,
         c.name || [c.first_name, c.last_name].filter(Boolean).join(' '),
         c.email || '',
         String(c.stage ?? c.status ?? ''),
         c.phone || '',
-        c.created_at || ''
-      ])
+        c.created_at || '',
+      ]),
     ]
-    const csv = rows.map(r => r.map(x => {
-      const s = (x ?? '').toString().replace(/"/g, '""')
-      return `"${s}` + `"`
-    }).join(',')).join('\n')
+    const csv = rows
+      .map((r) =>
+        r
+          .map((x) => {
+            const s = (x ?? '').toString().replace(/"/g, '""')
+            return `"${s}"`
+          })
+          .join(','),
+      )
+      .join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -868,11 +764,34 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
   const handleRemove = onRemove
     ? async () => {
-        if (!confirm('Удалить вакансию? Это действие нельзя отменить.')) return
+        if (!confirm(t('app.vacancies.detail.delete_confirm', { defaultValue: 'Delete this vacancy? This cannot be undone.' }))) return
         await onRemove()
       }
     : undefined
 
+  const pauseVacancy = async () => {
+    setValue('status', 'on_hold')
+    await save()
+  }
+
+  if (loading) {
+    return <div className="text-slate-500">{t('common.loading')}</div>
+  }
+  if (!model) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-800">
+        {t('app.vacancies.detail.not_found', {
+          defaultValue: 'Vacancy not found or unavailable.',
+        })}
+        <button type="button" onClick={onBack} className="ml-2 underline">
+          {t('common.actions.back', { defaultValue: 'Back' })}
+        </button>
+      </div>
+    )
+  }
+
+  const statusLabel = t(`app.vacancies.list.status.${statusText}`, { defaultValue: statusText })
+  const tw = 'app.vacancies.workspace'
   const isCutover = Boolean(model?.id) && routeId !== 'new' && !isCreate
   if (isCutover) {
     assertVacancyCompositionSlots(VACANCY_COMPOSITION_SLOTS)
@@ -882,14 +801,15 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
     <PageShell
       data-entity-workspace-consumer={isCutover ? VACANCY_COMPOSITION_CONSUMER_ID : undefined}
     >
-      <div data-entity-workspace-slot="context-rail">
-      <PageShellHeader>
-        <PageHeader
-          breadcrumbCurrentLabel={watchTitle || model?.title || t('app.vacancies.detail.untitled')}
-          subtitle={
+      <div data-entity-workspace-slot="context-rail" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="sticky top-0 z-20 -mx-1 border-b border-slate-200 bg-white/95 px-1 pb-3 pt-1 backdrop-blur">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              {companyName ? <span>{companyName}</span> : null}
-              {statusText ? <StageTag code={String(statusText)} /> : null}
+              <h1 className="truncate text-xl font-semibold text-slate-900">
+                {watchTitle || model?.title || t('app.vacancies.detail.untitled')}
+              </h1>
+              <StatusBadge label={statusLabel} semantic={statusSemantic(statusText)} size="sm" />
               {vacancyIdForBadge ? (
                 <NextActionBadge
                   dto={vacancyNextAction}
@@ -897,107 +817,141 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                   error={vacancyNextActionError}
                 />
               ) : null}
-              {Object.keys(pipeCounts).length > 0
-                ? Object.entries(pipeCounts).map(([k, v]) => <StatPill key={k} stageCode={k} value={v} />)
-                : null}
             </div>
-          }
-          secondaryActions={
-            <>
-              {handleRemove ? (
-                <button type="button" className="btn-danger btn-sm" onClick={handleRemove}>
-                  {t('common.actions.delete')}
-                </button>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+              {companyName ? (
+                <span>
+                  {t(`${tw}.meta.client`, { defaultValue: 'Client' })}: {companyName}
+                </span>
               ) : null}
-              <button type="button" className="btn-secondary btn-sm" onClick={refresh}>
-                {t('common.actions.refresh')}
-              </button>
-              <Link
-                className="btn-secondary btn-sm"
-                to={
-                  model?.id
-                    ? `${CRM_APP_PATHS.candidates}?view=kanban&vacancy=${model.id}`
-                    : `${CRM_APP_PATHS.candidates}?view=kanban`
-                }
-              >
-                {t('app.candidates.pipeline.title')}
-              </Link>
-              {can('services.view') && model?.id ? (
-                <Link
-                  className="btn-secondary btn-sm"
-                  to={servicesWorkspacePath('orders', {
-                    vacancyId: String(model.id),
-                    ...(model.company_id ? { companyId: String(model.company_id) } : {}),
-                  })}
-                >
-                  {t('app.nav.items.services')}
-                </Link>
+              {linkedOrderLine ? (
+                <span>
+                  {t(`${tw}.meta.order`, { defaultValue: 'Order' })}: {linkedOrderLine.title}
+                </span>
               ) : null}
-              <button type="button" className="btn-secondary btn-sm" onClick={onBack}>
-                {t('common.actions.cancel')}
+              {watch('funnel_id') ? (
+                <span>
+                  {t(`${tw}.meta.funnel`, { defaultValue: 'Funnel' })}:{' '}
+                  <span className="font-mono">{String(watch('funnel_id')).slice(0, 8)}…</span>
+                </span>
+              ) : null}
+              <span>
+                {t(`${tw}.meta.recruiter`, { defaultValue: 'Recruiter' })}: {managerLabel}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-3 text-xs font-medium text-slate-700">
+              <span>
+                {t(`${tw}.kpi.headcount`, { defaultValue: 'Headcount' })}: {metrics.plan ?? '—'}
+              </span>
+              <span>
+                {t(`${tw}.kpi.hired`, { defaultValue: 'Hired' })}: {metrics.hired}
+              </span>
+              <span>
+                {t(`${tw}.kpi.remaining`, { defaultValue: 'Remaining' })}:{' '}
+                {metrics.remaining ?? '—'}
+              </span>
+              <span>
+                {t(`${tw}.kpi.completion`, { defaultValue: 'Completion' })}:{' '}
+                {metrics.completionPct != null ? `${metrics.completionPct}%` : '—'}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className="btn-secondary btn-sm" onClick={onBack}>
+              {t('common.actions.back', { defaultValue: 'Back' })}
+            </button>
+            <button type="button" className="btn-secondary btn-sm" onClick={refresh}>
+              {t('common.actions.refresh')}
+            </button>
+            {statusText === 'open' ? (
+              <button type="button" className="btn-secondary btn-sm" onClick={pauseVacancy}>
+                {t(`${tw}.actions.pause`, { defaultValue: 'Pause' })}
               </button>
-            </>
-          }
-          primaryAction={
-            <button type="button" className="btn-primary btn-sm" disabled={saving} onClick={save}>
+            ) : null}
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              onClick={() => goTab('job_details')}
+            >
+              {t(`${tw}.actions.edit`, { defaultValue: 'Edit' })}
+            </button>
+            <button
+              type="button"
+              className="btn-primary btn-sm"
+              disabled={saving}
+              onClick={save}
+            >
               {saving ? t('common.saving') : t('common.actions.save')}
             </button>
-          }
-        />
-        {pipeLoading ? <div className="mt-2 text-xs text-slate-500">{t('common.loading')}</div> : null}
+            <div className="relative">
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-label="More"
+              >
+                ⋮
+              </button>
+              {menuOpen ? (
+                <div className="absolute right-0 z-30 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-md">
+                  <Link
+                    className="block px-3 py-2 text-sm hover:bg-slate-50"
+                    to={
+                      model?.id
+                        ? `${CRM_APP_PATHS.candidates}?view=kanban&vacancy=${model.id}`
+                        : `${CRM_APP_PATHS.candidates}?view=kanban`
+                    }
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {t('app.candidates.pipeline.title')}
+                  </Link>
+                  <button
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      void exportCSV()
+                    }}
+                  >
+                    {t(`${tw}.actions.export`, { defaultValue: 'Export report' })}
+                  </button>
+                  {handleRemove ? (
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        void handleRemove()
+                      }}
+                    >
+                      {t('common.actions.delete')}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
         {savedOk ? (
           <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             {t('common.messages.saved')}
           </div>
         ) : null}
+
         {model?.id && routeId !== 'new' ? (
-          <div className="mt-2 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            <span className="font-medium">
-              {t('app.vacancies.detail.ops.candidates_linked', {
-                values: { count: model.candidate_count ?? 0 },
-              })}
-            </span>
-            {model.headcount_target != null && model.headcount_target > 0 ? (
-              <span>
-                {t('app.vacancies.detail.ops.headcount_target', {
-                  values: {
-                    current: model.candidate_count ?? 0,
-                    target: model.headcount_target,
-                  },
-                })}
-              </span>
-            ) : null}
-            {lastCandidateActivityLabel ? (
-              <span className="text-slate-500">
-                {t('app.vacancies.detail.ops.last_candidate_activity', {
-                  values: { when: lastCandidateActivityLabel },
-                })}
-              </span>
-            ) : null}
-            {pipelineBottleneck ? (
-              <span className="text-slate-600">
-                {t('app.vacancies.detail.ops.bottleneck', {
-                  values: { stage: pipelineBottleneck[0], count: pipelineBottleneck[1] },
-                })}
-              </span>
-            ) : null}
-            <div className="ml-auto flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn-secondary btn-sm"
-                onClick={() => setTab('candidates')}
-              >
-                {t('app.vacancies.detail.ops.open_candidate_queue')}
-              </button>
-            </div>
+          <div className="mt-3">
+            <StageMetricCards
+              stages={metrics.stages}
+              loading={pipeLoading}
+              viewListLabel={t(`${tw}.stage_cards.view_list`, { defaultValue: 'View list' })}
+              onSelect={openStageCandidates}
+            />
           </div>
         ) : null}
-      </PageShellHeader>
-      </div>
 
-      <Toolbar>
-        <div className="flex flex-wrap gap-2">
-          {(['info', 'candidates', 'notes'] as TabKey[]).map((key) => (
+        <div className="mt-3 flex flex-wrap gap-1">
+          {[...PRIMARY_TABS, 'candidates' as WorkspaceTabKey].map((key) => (
             <button
               key={key}
               type="button"
@@ -1006,322 +960,525 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                   ? 'bg-slate-900 text-white'
                   : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
               }`}
-              onClick={() => setTab(key)}
+              onClick={() => goTab(key)}
             >
-              {key === 'info'
-                ? t('app.vacancies.detail.tabs.info')
-                : key === 'candidates'
-                  ? `${t('app.vacancies.detail.tabs.candidates')}${candItems.length ? ` (${candItems.length})` : ''}`
-                  : t('app.vacancies.detail.tabs.notes')}
+              {t(`${tw}.tabs.${key}`, {
+                defaultValue:
+                  key === 'workspace'
+                    ? 'Workspace'
+                    : key === 'job_details'
+                      ? 'Job Details'
+                      : key === 'recruitment'
+                        ? 'Recruitment'
+                        : key === 'requirements'
+                          ? 'Candidate Requirements'
+                          : key === 'automation'
+                            ? 'Automation'
+                            : key === 'analytics'
+                              ? 'Analytics'
+                              : key === 'settings'
+                                ? 'Settings'
+                                : 'Candidates',
+              })}
             </button>
           ))}
         </div>
-      </Toolbar>
+      </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-      {tab === 'info' && (
-        <div data-entity-workspace-slot="overview" className="space-y-4">
-          <SectionCard title={t('app.vacancies.detail.sections.info')}>
-            <form className="space-y-4" onSubmit={handleSubmit(submitVacancy)}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {vacancyFieldOrder.map((key) => renderVacancyRegistryField(key))}
-
-            <label className="block">
-              <div className="label">Статус</div>
-              <select className="input" {...register('status')}>
-                {statusOptions.map((s) => (
-                  <option key={s} value={s}>
-                    {t(`app.vacancies.list.status.${s}`, { defaultValue: s })}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <div className="label">Профиль кандидата</div>
-              <select className="input" {...register('candidate_profile_id')}>
-                <option value="">— не выбран —</option>
-                {candidateProfiles.map((profile) => (
-                  <option key={profile.id} value={profile.id}>{profile.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <div className="label">От (зарплата)</div>
-              <input type="number" inputMode="decimal" className="input" {...register('salary_from')} placeholder="напр., 9000" />
-            </label>
-
-            <label className="block">
-              <div className="label">До (зарплата)</div>
-              <input type="number" inputMode="decimal" className="input" {...register('salary_to')} placeholder="напр., 12000" />
-            </label>
-
-            <label className="block">
-              <div className="label">Валюта</div>
-              <input
-                className="input"
-                {...register('currency')}
-                placeholder={t('app.vacancies.detail.placeholders.currency_codes')}
-              />
-            </label>
-
-            <div className="md:col-span-2 flex items-center gap-6">
-              <Controller
-                control={control}
-                name="is_active"
-                render={({ field }) => (
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
-                    <span>Активна</span>
-                  </label>
-                )}
-              />
-              <Controller
-                control={control}
-                name="is_archived"
-                render={({ field }) => (
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
-                    <span>В архиве</span>
-                  </label>
-                )}
-              />
-              <Controller
-                control={control}
-                name="is_open"
-                render={({ field }) => (
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
-                    <span>Открыта</span>
-                  </label>
-                )}
-              />
-            </div>
-
-            <Input label="Создана" value={formatDate(model?.created_at)} readOnly />
-            <Input label="Изменена" value={formatDate(model?.updated_at)} readOnly />
-            <Input label={t('app.vacancies.detail.fields.id')} value={model?.id || '—'} mono readOnly />
-
-            <div className="md:col-span-2">
-              <div className="mb-2 text-sm font-semibold text-slate-800">
-                {t('app.vacancies.detail.criteria.title')}
-              </div>
-              <Controller
-                control={control}
-                name="lead_fit_evaluation_enabled"
-                render={({ field }) => (
-                  <label className="mb-3 flex cursor-pointer items-start gap-2 text-sm text-slate-800">
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      checked={!!field.value}
-                      onChange={(e) => field.onChange(e.target.checked)}
-                    />
-                    <span>
-                      <span className="font-medium">{t('app.vacancies.detail.criteria.enable_fit_evaluation')}</span>
-                      <span className="mt-0.5 block text-xs font-normal text-slate-500">
-                        {t('app.vacancies.detail.criteria.enable_fit_evaluation_hint')}
-                      </span>
-                    </span>
-                  </label>
-                )}
-              />
-              {requirementsPresets.length > 0 && (
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <select
-                    className="input h-9 rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
-                    value={selectedPresetId}
-                    onChange={(e) => setSelectedPresetId(e.target.value)}
-                  >
-                    <option value="">— пресет требований —</option>
-                    {requirementsPresets.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className={secondaryBtn}
-                    disabled={!selectedPresetId}
-                    onClick={() => {
-                      const preset = requirementsPresets.find((p) => p.id === selectedPresetId)
-                      const crit: any = preset?.criteria || {}
-                      const min = crit?.min_experience_eu_years
-                      const docs = Array.isArray(crit?.requires_documents) ? crit.requires_documents.join(', ') : ''
-                      const ag = Array.isArray(crit?.allowed_geo_countries) ? crit.allowed_geo_countries.join(', ') : ''
-                      const bg = Array.isArray(crit?.blocked_geo_countries) ? crit.blocked_geo_countries.join(', ') : ''
-                      setValue('criteria_min_experience_eu_years' as any, (typeof min !== 'undefined' ? String(min) : '') as any)
-                      setValue('criteria_requires_documents' as any, docs as any)
-                      setValue('criteria_allowed_geo_countries' as any, ag as any)
-                      setValue('criteria_blocked_geo_countries' as any, bg as any)
-                    }}
-                  >
-                    Применить пресет
-                  </button>
-                </div>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="block">
-                  <div className="label">Мин. опыт по ЕС (лет)</div>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    className="input"
-                    {...register('criteria_min_experience_eu_years')}
-                    placeholder="например, 1"
-                  />
-                </label>
-                <label className="block">
-                  <div className="label">Требуемые документы (коды, через запятую)</div>
-                  <input
-                    className="input"
-                    {...register('criteria_requires_documents')}
-                    placeholder={t('app.vacancies.detail.criteria.documents_placeholder')}
-                  />
-                </label>
-                <label className="block md:col-span-2">
-                  <div className="label">
-                    {t('app.vacancies.detail.criteria.candidate_docs_module')}
-                  </div>
-                  <input
-                    className="input font-mono text-xs"
-                    {...register('criteria_requires_candidate_documents_v1')}
-                    placeholder={t('app.vacancies.detail.criteria.candidate_docs_placeholder')}
-                  />
-                  <p className="mt-1 text-xs text-slate-500">
-                    {t('app.vacancies.detail.criteria.candidate_docs_hint')}
-                  </p>
-                </label>
-                <label className="block md:col-span-2">
-                  <div className="label">
-                    {t('app.vacancies.detail.criteria.allow_statuses')}
-                  </div>
-                  <input
-                    className="input font-mono text-xs"
-                    {...register('criteria_candidate_documents_allow_statuses')}
-                    placeholder="approved, completed, verified, received, delivered, issued, active, registered"
-                  />
-                </label>
-                <label className="block md:col-span-2">
-                  <div className="label">{t('app.vacancies.detail.criteria.allowed_geo_countries')}</div>
-                  <input
-                    className="input font-mono text-xs"
-                    {...register('criteria_allowed_geo_countries')}
-                    placeholder={t('app.vacancies.detail.criteria.geo_countries_placeholder')}
-                  />
-                  <p className="mt-1 text-xs text-slate-500">{t('app.vacancies.detail.criteria.allowed_geo_hint')}</p>
-                </label>
-                <label className="block md:col-span-2">
-                  <div className="label">{t('app.vacancies.detail.criteria.blocked_geo_countries')}</div>
-                  <input
-                    className="input font-mono text-xs"
-                    {...register('criteria_blocked_geo_countries')}
-                    placeholder={t('app.vacancies.detail.criteria.geo_countries_placeholder')}
-                  />
-                  <p className="mt-1 text-xs text-slate-500">{t('app.vacancies.detail.criteria.blocked_geo_hint')}</p>
-                </label>
-              </div>
-              <div className="mt-2 text-xs text-slate-500">
-                {t('app.vacancies.detail.criteria.lead_fields')}{' '}
-                <span className="font-mono">{leadFieldExperience}</span> {t('common.and')}{' '}
-                <span className="font-mono">{leadFieldDocuments}</span> ({t('common.words.if_available')}
-                ); {t('app.vacancies.detail.criteria.lead_fields_geo')}{' '}
-                <span className="font-mono">{leadFieldGeo}</span>.
-              </div>
-              <Controller
-                control={control}
-                name="vacancy_disable_auto_convert_on_fit"
-                render={({ field }) => (
-                  <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-slate-700">
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      checked={!!field.value}
-                      onChange={(e) => field.onChange(e.target.checked)}
-                    />
-                    <span>
-                      <span className="font-medium">{t('app.vacancies.detail.criteria.disable_auto_convert')}</span>
-                      <span className="mt-0.5 block text-xs text-slate-500">
-                        {t('app.vacancies.detail.criteria.disable_auto_convert_hint')}
-                      </span>
-                    </span>
-                  </label>
-                )}
-              />
-            </div>
-              </div>
-            </form>
-          </SectionCard>
-
-          <SectionCard title={t('app.vacancies.detail.sections.documents')}>
-            <div className="space-y-2 text-sm text-slate-700">
-              <p className="text-slate-600">
-                {t('app.vacancies.detail.documents.hint')}
-              </p>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Link to={CRM_APP_PATHS.documents} className="btn-secondary btn-xs">
-                  {t('app.nav.items.documents')}
-                </Link>
-                <Link to={CRM_APP_PATHS.settingsCandidateProfiles} className="btn-secondary btn-xs">
-                  {t('admin.settings.cards.candidate_profiles.label')}
-                </Link>
-              </div>
-            </div>
-          </SectionCard>
-          {isCutover ? (
-            <EntityWorkspaceCompositionHost
-              consumerId={VACANCY_COMPOSITION_CONSUMER_ID}
-              enabledSlots={['communication', 'forms']}
-              renderers={{
-                communication: () => (
-                  <VacancyCommunicationSlot companyId={String(model?.company_id || watchCompanyId || '')} />
-                ),
-                forms: () => <VacancyFormsSlot />,
+      <div
+        data-entity-workspace-slot="overview"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto pt-4"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            void save()
+          }}
+        >
+          {tab === 'workspace' ? (
+            <WorkspaceTab
+              metrics={metrics}
+              orderLine={
+                linkedOrderLine
+                  ? {
+                      quantity_needed: linkedOrderLine.quantity_needed,
+                      title: linkedOrderLine.title,
+                    }
+                  : null
+              }
+              mainInfoRows={[
+                {
+                  label: t(`${tw}.main.location`, { defaultValue: 'Location' }),
+                  value: watch('location') || model?.location,
+                },
+                {
+                  label: t(`${tw}.main.employment`, { defaultValue: 'Employment' }),
+                  value: watch('employment_type'),
+                },
+                {
+                  label: t(`${tw}.main.salary`, { defaultValue: 'Salary' }),
+                  value: [watch('salary_from'), watch('salary_to')]
+                    .filter((v) => v !== '' && v != null)
+                    .join(' – '),
+                },
+                {
+                  label: t(`${tw}.main.currency`, { defaultValue: 'Currency' }),
+                  value: watch('currency'),
+                },
+                {
+                  label: t(`${tw}.kpi.headcount`, { defaultValue: 'Headcount' }),
+                  value: metrics.plan ?? '—',
+                },
+                {
+                  label: t(`${tw}.kpi.hired`, { defaultValue: 'Hired' }),
+                  value: metrics.hired,
+                },
+              ]}
+              mandatoryCards={[
+                {
+                  title: t(`${tw}.req.documents`, { defaultValue: 'Documents' }),
+                  items: [
+                    ...(watchCriteria.criteria_requires_candidate_documents_v1 || []),
+                    ...(watchCriteria.criteria_requires_documents || []),
+                  ],
+                },
+                {
+                  title: t(`${tw}.req.experience`, { defaultValue: 'Experience' }),
+                  items: watchCriteria.criteria_min_experience_eu_years
+                    ? [
+                        `${watchCriteria.criteria_min_experience_eu_years}+ ${t(`${tw}.req.years`, { defaultValue: 'years' })}`,
+                      ]
+                    : [],
+                },
+                {
+                  title: t(`${tw}.req.countries_allowed`, { defaultValue: 'Allowed countries' }),
+                  items: watchCriteria.criteria_allowed_geo_countries || [],
+                },
+                {
+                  title: t(`${tw}.req.countries_blocked`, { defaultValue: 'Blocked countries' }),
+                  items: watchCriteria.criteria_blocked_geo_countries || [],
+                },
+              ]}
+              preferredCards={[
+                {
+                  title: t(`${tw}.req.preferred_docs`, { defaultValue: 'Preferred documents' }),
+                  items: watchCriteria.criteria_preferred_documents || [],
+                },
+                {
+                  title: t(`${tw}.req.languages`, { defaultValue: 'Languages' }),
+                  items: watchCriteria.criteria_preferred_languages || [],
+                },
+              ]}
+              preferredEmptyNote={t(`${tw}.req.preferred_empty`, {
+                defaultValue: 'Preferred requirements will appear when configured.',
+              })}
+              onEditRequirements={() => goTab('requirements')}
+              onStageClick={openStageCandidates}
+              hasManager={!!(watchManager || model?.manager)}
+              poolSelectedCount={poolSelectedCount}
+              ownerName={String(managerLabel)}
+              quickActions={[
+                {
+                  id: 'add-candidate',
+                  label: t(`${tw}.quick.add_candidate`, { defaultValue: 'Add candidate' }),
+                  href: model?.id
+                    ? `${CRM_APP_PATHS.candidateNew}?vacancy=${model.id}`
+                    : CRM_APP_PATHS.candidateNew,
+                },
+                {
+                  id: 'assign-recruiter',
+                  label: t(`${tw}.quick.assign_recruiter`, { defaultValue: 'Assign recruiter' }),
+                  onClick: () => goTab('recruitment'),
+                },
+                {
+                  id: 'create-doc',
+                  label: t(`${tw}.quick.create_document`, { defaultValue: 'Create document' }),
+                  href: CRM_APP_PATHS.documents,
+                },
+                {
+                  id: 'message',
+                  label: t(`${tw}.quick.message`, { defaultValue: 'Message candidate' }),
+                  disabled: true,
+                  title: t(`${tw}.quick.soon`, { defaultValue: 'Coming soon' }),
+                },
+                {
+                  id: 'export',
+                  label: t(`${tw}.quick.export`, { defaultValue: 'Export report' }),
+                  onClick: () => void exportCSV(),
+                },
+              ]}
+              relatedLinks={[
+                {
+                  id: 'company',
+                  label: t(`${tw}.related.company`, { defaultValue: 'Company' }),
+                  href: model?.company_id
+                    ? `${CRM_APP_PATHS.agencyClients}/${model.company_id}`
+                    : undefined,
+                  value: companyName || undefined,
+                  disabled: !model?.company_id,
+                },
+                {
+                  id: 'order',
+                  label: t(`${tw}.related.order`, { defaultValue: 'Order' }),
+                  href: linkedOrderLine
+                    ? `${CRM_APP_PATHS.salesOrders}/${linkedOrderLine.sales_order_id}`
+                    : undefined,
+                  value: linkedOrderLine?.title,
+                  disabled: !linkedOrderLine,
+                },
+                {
+                  id: 'funnel',
+                  label: t(`${tw}.related.funnel`, { defaultValue: 'Funnel' }),
+                  href: CRM_APP_PATHS.settingsFunnels || CRM_APP_PATHS.settings,
+                  value: watch('funnel_id') ? String(watch('funnel_id')).slice(0, 8) : undefined,
+                  disabled: !watch('funnel_id'),
+                },
+                {
+                  id: 'profile',
+                  label: t(`${tw}.related.profile`, { defaultValue: 'Candidate profile' }),
+                  href: CRM_APP_PATHS.settingsCandidateProfiles,
+                  value: candidateProfiles.find((p) => p.id === watch('candidate_profile_id'))
+                    ?.name,
+                  disabled: !watch('candidate_profile_id'),
+                },
+                {
+                  id: 'documents',
+                  label: t(`${tw}.related.documents`, { defaultValue: 'Documents' }),
+                  href: CRM_APP_PATHS.documents,
+                  value: t(`${tw}.related.open`, { defaultValue: 'Open' }),
+                },
+                ...(can('services.view') && model?.id
+                  ? [
+                      {
+                        id: 'services',
+                        label: t(`${tw}.related.services`, { defaultValue: 'Service orders' }),
+                        href: servicesWorkspacePath('orders', { vacancyId: String(model.id) }),
+                        value: t(`${tw}.related.open`, { defaultValue: 'Open' }),
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'recruiter',
+                  label: t(`${tw}.related.recruiter`, { defaultValue: 'Recruiter' }),
+                  value: String(managerLabel),
+                  disabled: true,
+                },
+                {
+                  id: 'team',
+                  label: t(`${tw}.related.team`, { defaultValue: 'Team' }),
+                  value: String(poolSelectedCount),
+                  disabled: true,
+                },
+                {
+                  id: 'meta',
+                  label: t(`${tw}.related.meta`, { defaultValue: 'Meta campaigns' }),
+                  value: t(`${tw}.related.soon`, { defaultValue: 'Soon' }),
+                  disabled: true,
+                },
+                {
+                  id: 'forms',
+                  label: t(`${tw}.related.forms`, { defaultValue: 'Forms' }),
+                  value: t(`${tw}.related.soon`, { defaultValue: 'Soon' }),
+                  disabled: true,
+                },
+              ]}
+              labels={{
+                orderProgress: t(`${tw}.order_progress`, { defaultValue: 'Order Progress' }),
+                orderHint: t(`${tw}.order_hint`, {
+                  defaultValue:
+                    'Order fulfillment uses vacancy hired count until order-level fulfillment API is available.',
+                }),
+                vacancyProgress: t(`${tw}.vacancy_progress`, { defaultValue: 'Vacancy Progress' }),
+                headcount: t(`${tw}.kpi.headcount`, { defaultValue: 'Headcount' }),
+                hired: t(`${tw}.kpi.hired`, { defaultValue: 'Hired' }),
+                remaining: t(`${tw}.kpi.remaining`, { defaultValue: 'Remaining' }),
+                completion: t(`${tw}.kpi.completion`, { defaultValue: 'Completion' }),
+                mainInfo: t(`${tw}.main.title`, { defaultValue: 'Main information' }),
+                requirements: t(`${tw}.req.title`, { defaultValue: 'Candidate requirements' }),
+                mandatory: t(`${tw}.req.mandatory`, { defaultValue: 'Mandatory' }),
+                preferred: t(`${tw}.req.preferred`, { defaultValue: 'Preferred' }),
+                edit: t(`${tw}.actions.edit`, { defaultValue: 'Edit' }),
+                funnel: t(`${tw}.funnel`, { defaultValue: 'Recruitment funnel' }),
+                funnelEmpty: t(`${tw}.funnel_empty`, { defaultValue: 'No pipeline data yet.' }),
+                activity: t(`${tw}.activity.title`, { defaultValue: 'Recent activity' }),
+                activityMessage: t(`${tw}.activity.message`, {
+                  defaultValue:
+                    'Vacancy activity history will appear after Activity Feed is connected.',
+                }),
+                attention: t(`${tw}.attention.title`, { defaultValue: 'Needs attention' }),
+                noRecruiter: t(`${tw}.attention.no_recruiter`, {
+                  defaultValue: 'No manager or recruiter assigned',
+                }),
+                waitingDocs: t(`${tw}.attention.waiting_docs`, {
+                  defaultValue: '{count} candidates waiting for documents ({stage})',
+                }),
+                permit: t(`${tw}.attention.permit`, {
+                  defaultValue: '{count} in work permit ({stage})',
+                }),
+                attentionEmpty: t(`${tw}.attention.empty`, {
+                  defaultValue: 'Nothing urgent right now.',
+                }),
+                quickActions: t(`${tw}.quick.title`, { defaultValue: 'Quick actions' }),
+                owner: t(`${tw}.owner`, { defaultValue: 'Owner' }),
+                related: t(`${tw}.related.title`, { defaultValue: 'Related' }),
               }}
             />
           ) : null}
-        </div>
-      )}
 
-      {tab === 'candidates' && (
-        <SectionCard title={t('app.vacancies.detail.tabs.candidates')}>
-          {candLoading ? (
-            <div className="text-slate-500">Загрузка кандидатов…</div>
-          ) : candItems.length === 0 ? (
-            <div className="text-slate-500">Кандидатов для этой вакансии пока нет.</div>
-          ) : (
-            <MiniTable
+          {tab === 'job_details' ? (
+            <JobDetailsTab
+              register={register}
+              errors={errors}
+              watch={watch}
+              companyOptions={companyOptions}
+              candidateProfiles={candidateProfiles}
+              orderLines={orderLines}
+              isCreate={isCreate}
               labels={{
+                section: t(`${tw}.tabs.job_details`, { defaultValue: 'Job Details' }),
+                title: t('app.vacancies.detail.fields.title', { defaultValue: 'Title' }),
+                company: t('app.vacancies.detail.fields.company', { defaultValue: 'Company' }),
+                description: t('app.vacancies.detail.fields.description', {
+                  defaultValue: 'Description',
+                }),
+                location: t(`${tw}.main.location`, { defaultValue: 'Location' }),
+                employment: t(`${tw}.main.employment`, { defaultValue: 'Employment' }),
+                salaryFrom: t('app.vacancies.detail.fields.salary_from', {
+                  defaultValue: 'Salary from',
+                }),
+                salaryTo: t('app.vacancies.detail.fields.salary_to', {
+                  defaultValue: 'Salary to',
+                }),
+                currency: t(`${tw}.main.currency`, { defaultValue: 'Currency' }),
+                headcount: t('app.vacancies.detail.fields.headcount_target'),
+                headcountHint: t('app.vacancies.detail.fields.headcount_hint'),
+                orderLine: t(`${tw}.related.order`, { defaultValue: 'Order line' }),
+                orderLineNone: t(`${tw}.order_none`, {
+                  defaultValue: '— free vacancy (no order) —',
+                }),
+                profile: t(`${tw}.related.profile`, { defaultValue: 'Candidate profile' }),
+                profileNone: t(`${tw}.profile_none`, { defaultValue: '— not selected —' }),
+              }}
+            />
+          ) : null}
+
+          {tab === 'recruitment' ? (
+            <RecruitmentTab
+              control={control}
+              register={register}
+              watch={watch}
+              companyId={watchCompanyId || ''}
+              managerOptions={managerOptions}
+              recruiterOptions={recruiterOptions}
+              poolDraft={poolDraft}
+              setPoolDraft={setPoolDraft}
+              stageCodes={metrics.stages.map((s) => s.code)}
+              labels={{
+                section: t(`${tw}.tabs.recruitment`, { defaultValue: 'Recruitment' }),
+                pipeline: t('app.vacancies.detail.recruitment_pipeline', {
+                  defaultValue: 'Recruitment Pipeline',
+                }),
+                pipelineHint: t('app.vacancies.detail.recruitment_pipeline_hint', {
+                  defaultValue: 'Assigned to this vacancy.',
+                }),
+                pipelineRequired: t('app.vacancies.detail.recruitment_pipeline_required', {
+                  defaultValue: 'Without a pipeline, search launch should not proceed.',
+                }),
+                assignment: t('app.vacancies.detail.assignment.title', {
+                  defaultValue: 'Assignment',
+                }),
+                assignmentHint: t('app.vacancies.detail.assignment.hint', {
+                  defaultValue: 'Manager is the primary owner.',
+                }),
+                manager: t('app.vacancies.detail.assignment.manager', {
+                  defaultValue: 'Vacancy manager',
+                }),
+                managerNone: t('app.vacancies.detail.assignment.manager_none', {
+                  defaultValue: '— not set —',
+                }),
+                recruiters: t('app.vacancies.detail.assignment.recruiters', {
+                  defaultValue: 'Recruiters',
+                }),
+                noRecruiters: t('app.vacancies.detail.assignment.no_recruiters', {
+                  defaultValue: 'No recruiters.',
+                }),
+                weight: t('app.vacancies.detail.assignment.weight', { defaultValue: 'Weight' }),
+                rotationHint: t('app.vacancies.detail.assignment.rotation_hint', {
+                  defaultValue: 'Higher weight receives more candidates.',
+                }),
+                autoAssign: t(`${tw}.recruitment.auto_assign`, {
+                  defaultValue: 'Auto assignment',
+                }),
+                autoAssignHint: t(`${tw}.recruitment.auto_assign_hint`, {
+                  defaultValue: 'Pool weights drive least-load rotation.',
+                }),
+                sla: t(`${tw}.recruitment.sla`, { defaultValue: 'SLA' }),
+                slaReserved: t(`${tw}.recruitment.sla_reserved`, {
+                  defaultValue: 'SLA configuration will appear here.',
+                }),
+                transitions: t(`${tw}.recruitment.transitions`, {
+                  defaultValue: 'Transition rules',
+                }),
+                transitionsReserved: t(`${tw}.recruitment.transitions_reserved`, {
+                  defaultValue: 'Transition rules will appear here.',
+                }),
+                systemStages: t(`${tw}.recruitment.system_stages`, {
+                  defaultValue: 'System stages',
+                }),
+                systemStagesEmpty: t(`${tw}.recruitment.system_stages_empty`, {
+                  defaultValue: 'No stages loaded yet.',
+                }),
+              }}
+            />
+          ) : null}
+
+          {tab === 'requirements' ? (
+            <CandidateRequirementsTab
+              control={control}
+              setValue={setValue}
+              locale={locale}
+              requirementsPresets={requirementsPresets}
+              labels={{
+                section: t(`${tw}.tabs.requirements`, {
+                  defaultValue: 'Candidate Requirements',
+                }),
+                mandatory: t(`${tw}.req.mandatory`, { defaultValue: 'Mandatory' }),
+                preferred: t(`${tw}.req.preferred`, { defaultValue: 'Preferred' }),
+                preferredNote: t(`${tw}.req.preferred_note`, {
+                  defaultValue:
+                    'Preferred criteria are soft signals. Full preferred schema may expand later.',
+                }),
+                experience: t(`${tw}.req.experience`, { defaultValue: 'Min. EU experience (years)' }),
+                documents: t(`${tw}.req.documents`, { defaultValue: 'Required documents' }),
+                candidateDocs: t('app.vacancies.detail.criteria.candidate_docs_module'),
+                allowStatuses: t(`${tw}.req.allow_statuses`, {
+                  defaultValue: 'Allowed document statuses',
+                }),
+                allowedGeo: t(`${tw}.req.countries_allowed`, {
+                  defaultValue: 'Allowed countries',
+                }),
+                blockedGeo: t(`${tw}.req.countries_blocked`, {
+                  defaultValue: 'Blocked countries',
+                }),
+                preferredDocs: t(`${tw}.req.preferred_docs`, {
+                  defaultValue: 'Preferred documents',
+                }),
+                preferredLang: t(`${tw}.req.languages`, { defaultValue: 'Languages' }),
+                preferredLangHint: t(`${tw}.req.languages_hint`, {
+                  defaultValue: 'Comma-separated language codes (e.g. pl, en).',
+                }),
+                enableFit: t('app.vacancies.detail.criteria.enable_fit_evaluation'),
+                enableFitHint: t('app.vacancies.detail.criteria.enable_fit_evaluation_hint'),
+                disableConvert: t('app.vacancies.detail.criteria.disable_auto_convert'),
+                disableConvertHint: t('app.vacancies.detail.criteria.disable_auto_convert_hint'),
+                preset: t(`${tw}.req.preset`, { defaultValue: '— requirements preset —' }),
+                applyPreset: t(`${tw}.req.apply_preset`, { defaultValue: 'Apply preset' }),
+              }}
+            />
+          ) : null}
+
+          {tab === 'automation' ? (
+            <AutomationTab
+              values={watchCriteria}
+              title={t(`${tw}.tabs.automation`, { defaultValue: 'Automation' })}
+              empty={t(`${tw}.automation.empty`, {
+                defaultValue: 'No automation rules derived from current requirements.',
+              })}
+              ifLabel={t(`${tw}.automation.if`, { defaultValue: 'If' })}
+              thenLabel={t(`${tw}.automation.then`, { defaultValue: 'Then' })}
+            />
+          ) : null}
+
+          {tab === 'analytics' ? (
+            <AnalyticsTab
+              metrics={metrics}
+              onStageClick={openStageCandidates}
+              labels={{
+                title: t(`${tw}.tabs.analytics`, { defaultValue: 'Analytics' }),
+                funnel: t(`${tw}.funnel`, { defaultValue: 'Recruitment funnel' }),
+                funnelEmpty: t(`${tw}.funnel_empty`, { defaultValue: 'No pipeline data yet.' }),
+                reserved: t(`${tw}.analytics.reserved`, { defaultValue: 'No data yet' }),
+                applications: t(`${tw}.analytics.applications`, { defaultValue: 'Applications' }),
+                conversion: t(`${tw}.analytics.conversion`, { defaultValue: 'Conversion' }),
+                sources: t(`${tw}.analytics.sources`, { defaultValue: 'Sources' }),
+                cost: t(`${tw}.analytics.cost`, { defaultValue: 'Cost' }),
+                timeToHire: t(`${tw}.analytics.time_to_hire`, { defaultValue: 'Time to Hire' }),
+                hireRate: t(`${tw}.analytics.hire_rate`, { defaultValue: 'Hire Rate' }),
+              }}
+            />
+          ) : null}
+
+          {tab === 'settings' ? (
+            <SettingsTab
+              control={control}
+              register={register}
+              model={model}
+              onDelete={handleRemove}
+              labels={{
+                section: t(`${tw}.tabs.settings`, { defaultValue: 'Settings' }),
+                id: t('app.vacancies.detail.fields.id'),
+                created: t(`${tw}.settings.created`, { defaultValue: 'Created' }),
+                updated: t(`${tw}.settings.updated`, { defaultValue: 'Updated' }),
+                active: t(`${tw}.settings.active`, { defaultValue: 'Active' }),
+                archived: t(`${tw}.settings.archived`, { defaultValue: 'Archived' }),
+                open: t(`${tw}.settings.open`, { defaultValue: 'Open' }),
+                status: t(`${tw}.settings.status`, { defaultValue: 'Status' }),
+                delete: t('common.actions.delete'),
+                technicalHint: t(`${tw}.settings.hint`, {
+                  defaultValue: 'Technical parameters only. Business fields live on other tabs.',
+                }),
+                statusOptions: STATUS_OPTIONS.map((s) => ({
+                  value: s,
+                  label: t(`app.vacancies.list.status.${s}`, { defaultValue: s }),
+                })),
+              }}
+            />
+          ) : null}
+
+          {tab === 'candidates' ? (
+            <CandidatesTab
+              loading={candLoading}
+              items={candItems}
+              stageFilter={stageFilter}
+              onClearFilter={() => {
+                setStageFilter(null)
+                setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev)
+                  next.delete('stage')
+                  return next
+                })
+              }}
+              labels={{
+                title: t(`${tw}.tabs.candidates`, { defaultValue: 'Candidates' }),
+                loading: t('common.loading'),
+                empty: t(`${tw}.candidates.empty`, {
+                  defaultValue: 'No candidates for this vacancy yet.',
+                }),
+                filterActive: t(`${tw}.candidates.filter`, { defaultValue: 'Filter' }),
+                clearFilter: t(`${tw}.candidates.clear_filter`, { defaultValue: 'Clear filter' }),
                 candidate: t('app.vacancies.detail.table.candidate'),
                 email: t('app.vacancies.detail.table.email'),
                 stage: t('app.vacancies.detail.table.stage'),
               }}
-              rows={(
-                candItems.map((c:any) => (
-                  <tr key={c.id}>
-                    <td className="py-2 pr-3">
-                      <a className="hover:underline" href={`${CRM_APP_PATHS.candidates}/${c.id}`}>{c.name || [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Без имени'}</a>
-                    </td>
-                    <td className="py-2 pr-3 text-slate-600">{c.email || '—'}</td>
-                    <td className="py-2 pr-3"><StageTag code={String(c.stage ?? c.status ?? 'new')} /></td>
-                  </tr>
-                ))
-              )}
             />
-          )}
-        </SectionCard>
-      )}
-
-      {tab === 'notes' && (
+          ) : null}
+        </form>
         <div data-entity-workspace-slot="timeline">
-        <SectionCard title={t('app.vacancies.detail.tabs.notes')}>
-          <p className="text-sm text-slate-500">{t('app.vacancies.detail.notes_coming')}</p>
-        </SectionCard>
+          {/* Workspace activity panel remains on WorkspaceTab; D7 cutover gate reads this page. */}
         </div>
-      )}
-
+        {isCutover ? (
+          <EntityWorkspaceCompositionHost
+            consumerId={VACANCY_COMPOSITION_CONSUMER_ID}
+            enabledSlots={['communication', 'forms']}
+            renderers={{
+              communication: () => (
+                <VacancyCommunicationSlot companyId={String(model?.company_id || watchCompanyId || '')} />
+              ),
+              forms: () => <VacancyFormsSlot />,
+            }}
+          />
+        ) : null}
+      </div>
       </div>
     </PageShell>
   )

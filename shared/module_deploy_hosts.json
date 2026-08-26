@@ -47,6 +47,7 @@
     "/app/settings",
     "/app/profile",
     "/app/my-company",
+    "/app/organization",
     "/app/launchpad",
     "/app/setup",
     "/app/platform"
@@ -213,6 +214,7 @@
     "settings-ruleset",
     "settings-audit",
     "my-company",
+    "organization",
     "profile",
     "logout",
     "team-availability",

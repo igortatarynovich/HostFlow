@@ -113,6 +113,7 @@ export const BREADCRUMB_REGISTRY: Record<string, BreadcrumbEntry> = {
   },
 
   [P.profile]: { labelKey: 'app.nav.items.profile' },
+  [P.organization]: { labelKey: 'app.nav.items.organization' },
   [P.myCompany]: { labelKey: 'app.nav.items.my_company' },
   [P.myAvailability]: { labelKey: 'app.nav.items.my_availability' },
   [P.teamAvailability]: { labelKey: 'app.nav.items.team_availability' },

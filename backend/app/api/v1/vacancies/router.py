@@ -42,8 +42,10 @@ PIPELINE_ROLES = TRUST_WRITE_ROLES
 # `/{vacancy_id}/next-action` and force FastAPI to validate the literal
 # string `next-action` as a UUID.
 from backend.app.api.v1.vacancies import next_action_api as _next_action_api  # noqa: E402
+from backend.app.api.v1.vacancies import recruiters_api as _recruiters_api  # noqa: E402
 
 router.include_router(_next_action_api.router)
+router.include_router(_recruiters_api.router)
 
 from backend.app.api.v1.vacancies import launch_search_setup_api as _launch_search_setup_api  # noqa: E402
 from backend.app.api.v1.vacancies import workspace_api as _workspace_api  # noqa: E402

@@ -9,6 +9,7 @@ import {
 } from '../modules/dashboard/components/OverviewModuleTabs'
 import AnalyticsSummaryDashboard from './AnalyticsSummaryDashboard'
 import RecruitmentEfficiencyDashboard from './RecruitmentEfficiencyDashboard'
+import MarketingEfficiencyDashboard from './MarketingEfficiencyDashboard'
 import SalesEfficiencyDashboard from './SalesEfficiencyDashboard'
 import HrEfficiencyDashboard from './HrEfficiencyDashboard'
 import FinanceEfficiencyDashboard from './FinanceEfficiencyDashboard'
@@ -69,6 +70,8 @@ export default function Dashboard() {
       <OverviewModuleTabs active={activeTab} onChange={onTabChange} onTabsReady={onTabsReady} />
       {activeTab === 'recruitment' ? (
         <RecruitmentEfficiencyDashboard />
+      ) : activeTab === 'marketing' ? (
+        <MarketingEfficiencyDashboard />
       ) : activeTab === 'sales' ? (
         <SalesEfficiencyDashboard />
       ) : activeTab === 'hr' ? (

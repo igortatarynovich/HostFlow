@@ -64,6 +64,7 @@ export interface VacancyPayload {
   order_line_id?: string | null;
   extra?: Record<string, unknown> | string | null;
   funnel_id?: string | null;
+  manager?: string | null;
 }
 
 export interface Vacancy {
@@ -153,4 +154,49 @@ export async function setupLaunchSearchVacancy(
     throw new Error("Launch search setup did not return a funnel_id");
   }
   return { funnel_id: funnelId };
+}
+
+export type VacancyRecruiterPoolItem = {
+  user_id: string;
+  full_name?: string | null;
+  email?: string | null;
+  weight: number;
+  is_active: boolean;
+  last_assigned_at?: string | null;
+};
+
+export type VacancyRecruitersResponse = {
+  vacancy_id: string;
+  items: VacancyRecruiterPoolItem[];
+};
+
+export type VacancyRecruiterPoolWriteItem = {
+  user_id: string;
+  weight?: number;
+  is_active?: boolean;
+};
+
+export async function getVacancyRecruiters(vacancyId: string): Promise<VacancyRecruitersResponse> {
+  const { data } = await api.get<VacancyRecruitersResponse>(`/vacancies/${vacancyId}/recruiters`);
+  return {
+    vacancy_id: data?.vacancy_id || vacancyId,
+    items: Array.isArray(data?.items) ? data.items : [],
+  };
+}
+
+export async function putVacancyRecruiters(
+  vacancyId: string,
+  items: VacancyRecruiterPoolWriteItem[],
+): Promise<VacancyRecruitersResponse> {
+  const { data } = await api.put<VacancyRecruitersResponse>(`/vacancies/${vacancyId}/recruiters`, {
+    items: items.map((item) => ({
+      user_id: item.user_id,
+      weight: item.weight ?? 1,
+      is_active: item.is_active ?? true,
+    })),
+  });
+  return {
+    vacancy_id: data?.vacancy_id || vacancyId,
+    items: Array.isArray(data?.items) ? data.items : [],
+  };
 }

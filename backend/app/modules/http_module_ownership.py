@@ -77,6 +77,7 @@ HTTP_MODULE_GATE_EXEMPT_PREFIXES: Final[tuple[str, ...]] = (
     "/api/v1/automation",
     "/api/v1/goals",
     "/api/v1/analytics",
+    "/api/v1/fx",
     "/api/v1/catalogs",
     "/api/v1/own-companies",
     "/api/v1/legal",
