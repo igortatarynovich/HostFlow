@@ -77,14 +77,16 @@ PASS when:
 
 Evidence: D4 Documents (`/app/candidates/:id`) required / optional / blocked from R5 `merge(pack, tenant_delta)`; Overlay = typed CL7 input `document_types`; canonical registry codes only. Adapter `documents.hub_adapter_v1`: `evaluate_required_doc_applicability_via_contract` / `project_required_doc_applicability_via_contract`; additive `applicability`; no contract id bump. D4 UI: `data-e8-eval="true"` `data-applicability`. D4 + D8 stay bound. D3 / D5–D7 / D9 stay unbound. Screening `required=true` is not Documents SoT.
 
-Unlocks: later Product via **queue amendment**. No named successor this amendment. Do **not** auto-start OCR / packages product / CL8. Do **not** mark Foundation ✅.
+Unlocks: [v1 Release Goal](../gates/hostflow-v1-release-goal.md). Requirement Policy Management remains OPEN. No named Product successor this amendment. Do **not** auto-start OCR / packages product / CL8. Do **not** mark Foundation ✅.
+
+**Release delta:** D4 required-doc evaluation via R5 merge is done. Operator policy management, mapping authority, external intake, hiring E2E, and min HR handoff remain OPEN. v1 is not release-ready.
 
 ---
 
 ## Queue position
 
 **Depends on:** Reference R5 Gate ✅ (#297) · E8 Canonical Type Bind Gate ✅ (#321 / `8246421f`) · Reference Program Exit Gate ✅ (#298 / `ff0b914c`)  
-**Unlocks:** later Product via queue amendment  
+**Unlocks:** [v1 Release Goal](../gates/hostflow-v1-release-goal.md) (no silent Product successor)  
 **Does not:** invent CL8; start OCR; mint a packages / request table; mass-bind D3–D9; rewrite Overlay / CL7 / DR1-runtime / E8-bind
 
 ---

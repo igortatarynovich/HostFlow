@@ -2,7 +2,7 @@
 
 ## Phase 0 complete · L0 FROZEN
 
-[`L0-platform-architecture.md`](L0-platform-architecture.md) · [`architecture-invariants.md`](architecture-invariants.md) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) · product sequencing: [`platform-completion-roadmap.md`](platform-completion-roadmap.md)
+[`L0-platform-architecture.md`](L0-platform-architecture.md) · [`architecture-invariants.md`](architecture-invariants.md) · [`ADR-030`](ADR-030-l0-platform-architecture-closure.md) · product sequencing: [`platform-completion-roadmap.md`](platform-completion-roadmap.md) · v1 scope: [`../gates/hostflow-v1-release-goal.md`](../gates/hostflow-v1-release-goal.md)
 
 ```text
 Phase 0 Constitution (done) → Phase 1 Platform (L1) → Phase 2 Business (L2) → Phase 3 Implementation (L3)

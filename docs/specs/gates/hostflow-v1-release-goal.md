@@ -1,0 +1,192 @@
+# HostFlow v1 — Release Goal
+
+**Status:** **L2 OPERATING CANON** (v1 in-scope vs later; Release DAG ≠ slice schedule)  
+**Phase class:** platform  
+**Date:** 2026-08-26  
+**Trusted base:** `integration/release-product-a-b`  
+**Parents:** [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](goal-completion-gate.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md) · [Documents Platform E8-eval](../tasks/documents-platform-e8-eval.md)  
+**Product Track:** **none** (this file does not schedule a slice and does not amend the sequential queue ladder)
+
+> This document is the **v1 in-scope vs later** SoT.  
+> The [sequential queue](../tasks/sales-to-comms-sequential-queue.md) remains the **slice schedule** SoT (one Active Product).  
+> Horizon letters in the [roadmap](../architecture/platform-completion-roadmap.md) (OCR, packages, Billing, AI) are **not** v1.  
+> This amendment does **not** schedule a Product slice. Active Product stays **none** until a later queue amendment cuts **one** named node from § Release DAG and queues it. This file does **not** lock a linear program order.
+
+---
+
+## Original Goal → Completion Proof
+
+**Problem this phase must permanently remove:**  
+A locked sequential queue can reach a program horizon (E8-eval) while the product is not releasable, because slice gates never asked whether the **Release Goal** became true. Roadmap leftovers must not silently become the next Product.
+
+**Completion proof (named consumer):**  
+A first paying tenant operated by a non-developer: configure without code → external candidate in → mapped canonical entities → recruitment with operator-managed requirements and documents → communication → hire → minimum Employee, proven by the Release Readiness acceptance suite (§ Finite criterion).
+
+---
+
+## Finite criterion
+
+HostFlow v1 is **release-ready** when a tenant can be configured without code, acquire an external candidate, map source data into canonical entities, operate the candidate through recruitment using operator-managed requirements and documents, communicate with the candidate, complete hiring, transfer the person into the minimum employee state, and pass the Release Readiness acceptance suite.
+
+Close-out of v1 is this criterion **plus** the [Goal Completion Gate](goal-completion-gate.md) against this section — not “all named slices in an amendment merged.”
+
+---
+
+## Four checks (mandatory on every v1 blocker)
+
+A Settings page that edits non-authority JSON is **not** ready. All four must hold, or the capability is **OPEN**.
+
+| Check | Meaning |
+|-------|---------|
+| **Runtime authority** | One answerer, or an explicit contract between answerers |
+| **Operator surface** | A person manages **that** authority |
+| **E2E consumption** | The setting changes the working flow |
+| **Release acceptance** | A named scenario proves the operator job |
+
+---
+
+## Confirmed v1 blockers
+
+| # | Capability | v1 boundary (acceptance) |
+|---|------------|--------------------------|
+| **1** | **Requirement Policy Management** | For this tenant / client / vacancy / profile / country: these requirements apply; base rule; override; reason; result. Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin product. |
+| **2** | **Mapping Authority** | One operator-visible model from source answers to **canonical entity fields**. Not “build another mapping editor.” |
+| **3** | **External Intake / Forms Publish** | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
+| **4** | **Hiring workflow E2E** | One candidate: `stage → requirements/docs → eligibility → transfer`. Acceptance over existing funnels, gates, policy authority, and transfer — **not** a new Hiring Product. |
+| **5** | **Minimal Recruitment → HR handoff** | Hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy. Full HR operations (Kadry, payroll, extended lifecycle) are later. |
+
+### Supporting (must work for the five; not separate programs)
+
+Company setup · Acquisition path into intake · Candidate workspace · Communications (Epic C constraints; C2.4 frozen) · Permissions sufficient to operate.
+
+These are **acceptance dependencies**, not automatic extra programs. A new Product exists only if a **release-blocking gap** is found in one of them. Communications, for example, is proven via the existing path with named constraints — it is not rebuilt as a v1 program.
+
+---
+
+## Control layers (do not collapse)
+
+| Layer | Answers | Must not |
+|-------|---------|----------|
+| **Release Goal** (this file, finite criterion) | What must become **true** for v1 | Invent the next slice |
+| **Release DAG** (§ below) | Which **capabilities** provide that, and which **acceptance** edges exist | Lock execution order |
+| **Program** | One capability, or a named part of one | Close the product by closing itself |
+| **Sequential queue** | Actual **slice** order, one Active Product | Invent v1 scope |
+| **Release Readiness Gate** | Whether the product (not the last program) is done | Treat program PASS as v1 PASS |
+
+A finished program writes **program outcome** + **release delta**. Queue complete without an explicit release delta does **not** mean HostFlow v1 is ready.
+
+---
+
+## Explicit later (conscious scope cut)
+
+These are **out of v1**. “Later” means deferred on purpose, not unfinished.
+
+| Theme | v1 statement |
+|-------|----------------|
+| OCR | Out of v1 |
+| Document packages | Out of v1 |
+| AI | Out of v1 |
+| General automation control plane | v1 **does not** promise a general-purpose automation control plane. Existing reminders and communication Intent rules stay **feature-specific**. [ADR-019](../architecture/ADR-019-automation-capability-entitlement-control-plane.md) Reaction Orchestrator remains target architecture; it does **not** block release. |
+| Tenant extension / widget system | HostFlow **owns and ships** all v1 workspace blocks first-party. Marketplace, install/uninstall, extension manifests, third-party widget lifecycle — later. |
+| Self-service Billing | v1 supports **operator-assisted** commercial onboarding (contract → invoice → manual tenant/plan). Self-service plans, subscriptions, limits, invoices UI = Phase F. Stripe skeleton may remain infrastructure. |
+| Full HR operations | Beyond the minimum handoff in blocker 5 |
+| Forms P4 / P5 | Themes / analytics after publish path works |
+
+Do **not** treat a later theme as the next Product because it appears in the roadmap.
+
+---
+
+## Release DAG (capabilities + acceptance edges — not a queue)
+
+Grain: **capabilities**, not slices. This is **not** a sequential Product ladder. Linear slice order appears only in a later **docs-only queue amendment** after dependency analysis. Unlock ≠ schedule.
+
+```text
+Release Goal (finite criterion)
+        │
+        │     five blocker capabilities (a set, not a ladder)
+        ├─ Requirement Policy Management
+        ├─ Mapping Authority
+        ├─ External Intake / Forms Publish
+        ├─ Hiring workflow E2E
+        └─ Minimal Recruitment → HR handoff
+        │
+        ▼
+dependency / integration gates (acceptance edges below)
+        │
+        ▼
+Release Candidate
+        │
+        ▼
+Release Readiness Gate
+```
+
+Supporting capabilities (Company setup, Acquisition, Candidate workspace, Communications, Permissions) attach as **acceptance dependencies** of the five, not as extra DAG nodes and not as extra programs.
+
+**Known acceptance edges** (what a capability’s release acceptance consumes — **not** proven execution order):
+
+| Edge | Why |
+|------|-----|
+| Mapping Authority → External Intake | Intake acceptance is `publish → … → mapping → canonical entity` |
+| Requirement Policy Management → Hiring E2E | Hiring acceptance walks `stage → requirements/docs → eligibility → transfer` against policy authority |
+| Hiring E2E → Min HR handoff | Handoff acceptance needs a completed hire/transfer of one person |
+
+**Not proven as execution predecessors** (do **not** treat as queue order):
+
+- Requirement Policy Management before Mapping Authority  
+- Requirement Policy Management before External Intake  
+- Min HR handoff blocked on Forms / External Intake  
+- Any total order of the five blockers  
+
+Programs may run with limited parallelism where write sets do not overlap. They do **not** mint a third track. After a program horizon the next **Product** is chosen from this DAG by a queue amendment — not invented from the roadmap.
+
+---
+
+## Program close = two results
+
+A program may not close with only “horizon reached.” Both lines are mandatory:
+
+| Field | Meaning |
+|-------|---------|
+| **Program outcome** | What the program finished technically |
+| **Release delta** | Which Release Goal condition became true; which v1 blockers remain OPEN |
+
+### E8-eval (already shipped)
+
+| Field | Value |
+|-------|--------|
+| **Program outcome** | D4 evaluates document requirements through canonical R5 `merge(pack, tenant_delta)` |
+| **Release delta** | Requirement **evaluation** is partially satisfied. Requirement Policy Management remains **OPEN**. Mapping Authority, External Intake, Hiring E2E, and min HR handoff remain **OPEN**. HostFlow v1 is **not** release-ready. Documents Foundation stays 🔄. |
+
+---
+
+## Current four-check snapshot (not acceptance)
+
+Recorded at Goal seal. Not a PASS.
+
+| Capability | Authority | Operator surface | E2E consumption | Acceptance |
+|------------|-----------|------------------|-----------------|------------|
+| Requirement Policy Management | partial (R5 on E8-eval) | no | no | OPEN |
+| Mapping Authority | no (three contracts) | partial (C-5 / intake editors) | partial | OPEN |
+| External Intake / Forms Publish | partial (Foundation serve→execute) | no (P3 locked) | partial | OPEN |
+| Hiring workflow E2E | partial (funnels / gates / transfer) | partial | not proven vs policy authority | OPEN |
+| Minimal HR handoff | partial (E3/E4 Document Link) | partial | partial | OPEN |
+
+---
+
+## What this document does not do
+
+- Does not schedule Requirement Policy Management or any other Product slice  
+- Does not lock a linear program / slice order (that is the sequential queue)  
+- Does not reopen E8-eval, Overlay, CL7, DR1-runtime, or E8-bind  
+- Does not mark Documents Foundation ✅  
+- Does not mint Catalog events, Hub request/reminder/packages tables, or CL8  
+- Does not unfreeze C2.4  
+
+---
+
+## Refs
+
+- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Product none until a DAG node is queued  
+- [Goal Completion Gate](goal-completion-gate.md) — original goal vs substituted brief  
+- [Platform capability maturity](../architecture/platform-capability-maturity.md) — platform maturity ≠ v1 Release Goal  
+- [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [ADR-019](../architecture/ADR-019-automation-capability-entitlement-control-plane.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md)
