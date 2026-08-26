@@ -3,7 +3,7 @@
 **Status:** **NORMATIVE** (L2 operating — mandatory for platform phase close)  
 **Date:** 2026-08-20  
 **Trusted base:** `integration/release-product-a-b`  
-**Parents:** [Architecture Review Checklist](../architecture/architecture-review-checklist.md) · [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md)  
+**Parents:** [HostFlow v1 Release Goal](hostflow-v1-release-goal.md) · [Architecture Review Checklist](../architecture/architecture-review-checklist.md) · [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md)  
 **First application:** [Platform Scope Completeness Audit](platform-scope-completeness-audit.md) · [Workspace Capability Platform Completion](../tasks/workspace-capability-platform-completion.md) · [G1–G5 close-out](workspace-capability-platform-g1-g5-closeout.md) · [COMPLETE](workspace-capability-platform-complete.md)
 
 > A phase may be **brief-complete** and still **goal-incomplete**.  
@@ -32,6 +32,7 @@ That class of error can repeat anywhere acceptance is written as deliverables in
 
 Apply this gate when **any** of the following would be claimed:
 
+- Claiming HostFlow v1 **release-ready** without the [HostFlow v1 Release Goal](hostflow-v1-release-goal.md) finite criterion  
 - Product Track marks a platform phase / epic **COMPLETE**  
 - Maturity marks **Foundation ✅** in a way that means “next layer may consume this platform”  
 - A slice is sold as “the platform is now sufficient for the next consumer”

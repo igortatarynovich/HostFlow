@@ -3,7 +3,7 @@
 **Status:** **NORMATIVE** (L2 operating — product/platform sequencing)  
 **Date:** 2026-07-20  
 **Trusted base:** `integration/release-product-a-b` (fast-forward only)  
-**Parents:** [L0 Platform Architecture](L0-platform-architecture.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md) · [Near-term queue](../tasks/sales-to-comms-sequential-queue.md)
+**Parents:** [L0 Platform Architecture](L0-platform-architecture.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md) · [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) · [Near-term queue](../tasks/sales-to-comms-sequential-queue.md)
 
 > This is **not** an amendment to the frozen L0 constitution.  
 > It locks **which platform epics run in which order** so product work does not compete  
@@ -26,7 +26,7 @@ Jumping back into Sales Stage 3 mid–Communication, or building Workspace/AI be
 
 **Epic C — complete** (`PASS_WITH_CONSTRAINTS`, 2026-08-03).  
 **A2 Platform Governance Review** — **PASS_WITH_CONSTRAINTS** (2026-08-03).  
-**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS. **Host runtime-equivalence** ← ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)). **Phase E — Documents Platform** ← E7 ✅; DR1-runtime ✅; **E8-bind ✅** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` ([brief](../tasks/documents-platform-e8-bind.md)); **E8-eval ✅** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` ([brief](../tasks/documents-platform-e8-eval.md)); **Product Track = none this amendment**. **Engineering Track = DONE** ([brief](../tasks/platform-reference-identity-sot.md); Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)). Overlay ✅ ([#311](https://github.com/igortatarynovich/HostFlow/pull/311)). DR1-runtime ✅ ([#313](https://github.com/igortatarynovich/HostFlow/pull/313)). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285)). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282)). OCR stays locked (see [queue § Locked execution sequence](../tasks/sales-to-comms-sequential-queue.md)).
+**Phase B** ← ✅ Meta / Stage 3 slice 3–4 closed. **Phase C — Forms Platform** ← ✅ C1–C6 / Foundation ([#250](https://github.com/igortatarynovich/HostFlow/pull/250)). **Phase D — Entity Workspace** ← D1–D9 brief-complete ([#268](https://github.com/igortatarynovich/HostFlow/pull/268)); **goal-incomplete**. **Workspace Capability Platform Completion** ← **COMPLETE** ([#274](https://github.com/igortatarynovich/HostFlow/pull/274) · [record](../gates/workspace-capability-platform-complete.md)); G4 PASS. **Host runtime-equivalence** ← ✅ ([brief](../tasks/workspace-capability-host-runtime-equivalence.md)). **Phase E — Documents Platform** ← E7 ✅; DR1-runtime ✅; **E8-bind ✅** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` ([brief](../tasks/documents-platform-e8-bind.md)); **E8-eval ✅** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` ([brief](../tasks/documents-platform-e8-eval.md)); **Product Track = none**. **v1 in-scope vs later** = [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (no slice scheduled). **Engineering Track = DONE** ([brief](../tasks/platform-reference-identity-sot.md); Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)). Overlay ✅ ([#311](https://github.com/igortatarynovich/HostFlow/pull/311)). DR1-runtime ✅ ([#313](https://github.com/igortatarynovich/HostFlow/pull/313)). E6 ✅ ([#285](https://github.com/igortatarynovich/HostFlow/pull/285)). E5 ✅ ([#282](https://github.com/igortatarynovich/HostFlow/pull/282)). OCR / packages / automation plane / self-service Billing / AI stay **later** (see Release Goal).
 
 ```text
 Epic C Complete Gate → A2 PASS_WITH_CONSTRAINTS → Phase B Meta / Stage 3 → Phase C Forms ✅ → Phase D Entity Workspace (brief-complete) → Workspace Capability Platform Completion → Phase E Documents → …
@@ -321,6 +321,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 | [lifecycle-identity-l0-contract-seal.md](../tasks/lifecycle-identity-l0-contract-seal.md) | **LI-1 after CL1** — existence/identity guard (ADR-037); docs sealed; LI-2+ do not block CL2+ |
 | [documents-platform-e3-first-consumer-bind.md](../tasks/documents-platform-e3-first-consumer-bind.md) | E3 first consumer bind ✅ |
 | This roadmap | **Horizon** order of platform phases A–G |
+| [hostflow-v1-release-goal.md](../gates/hostflow-v1-release-goal.md) | **v1 in-scope vs later** (Release Goal; not a slice schedule) |
 | [platform-capability-maturity.md](platform-capability-maturity.md) | **Maturity** SoT (Foundation / Workspace / Automation / Complete per platform) |
 | [L0-platform-architecture.md](L0-platform-architecture.md) | Frozen constitution (shape of capabilities) — unchanged by this file |
 
@@ -330,6 +331,7 @@ Amendments to this roadmap require an explicit PR note and update to the near-te
 
 ## History
 
+- 2026-08-26: [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) sealed. Product Track stays none. Five v1 blockers; OCR / packages / AI / automation plane / extensions / self-service Billing explicitly later.
 - 2026-08-25: E8 Required-Doc Evaluation Gate **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. No named Product successor this amendment. Engineering Track DONE. Not OCR auto-start. Not CL8. Not Foundation ✅.
 - 2026-08-25: Active Product Track = [E8-eval](../tasks/documents-platform-e8-eval.md) (brief; feat locked) after E8-bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. Engineering Track DONE. Not OCR auto-start. Not CL8.
 - 2026-08-25: E8 Canonical Type Bind Gate **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. No named Product successor this amendment. Engineering Track DONE. E8-eval unlocked (not scheduled). Not CL8.
