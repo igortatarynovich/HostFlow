@@ -208,7 +208,7 @@ export function OwnCompanyProfileView({
         </div>
       ) : null}
 
-      <section className="app-surface p-5 sm:p-6">
+      <section className="app-surface p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-4">
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-brand-700 text-white shadow-sm">
@@ -224,7 +224,7 @@ export function OwnCompanyProfileView({
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="truncate text-2xl font-semibold text-slate-900">{displayName}</h1>
                 <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  className={`rounded-full px-3 py-0.5 text-xs font-medium ${
                     company.is_archived
                       ? 'bg-slate-100 text-slate-600'
                       : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
@@ -236,19 +236,19 @@ export function OwnCompanyProfileView({
               <p className="text-sm text-slate-500">{businessTypeLabel}</p>
               <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-600">
                 {location ? (
-                  <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-2">
                     <IconMapPin size={16} stroke={1.75} className="text-slate-400" />
                     {location}
                   </span>
                 ) : null}
                 {company.email ? (
-                  <a href={`mailto:${company.email}`} className="inline-flex items-center gap-1.5 text-slate-600 hover:text-brand-700">
+                  <a href={`mailto:${company.email}`} className="inline-flex items-center gap-2 text-slate-600 hover:text-brand-700">
                     <IconMail size={16} stroke={1.75} className="text-slate-400" />
                     {company.email}
                   </a>
                 ) : null}
                 {company.phone ? (
-                  <a href={`tel:${company.phone}`} className="inline-flex items-center gap-1.5 text-slate-600 hover:text-brand-700">
+                  <a href={`tel:${company.phone}`} className="inline-flex items-center gap-2 text-slate-600 hover:text-brand-700">
                     <IconPhone size={16} stroke={1.75} className="text-slate-400" />
                     {company.phone}
                   </a>
@@ -258,7 +258,7 @@ export function OwnCompanyProfileView({
                     href={company.website.startsWith('http') ? company.website : `https://${company.website}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-slate-600 hover:text-brand-700"
+                    className="inline-flex items-center gap-2 text-slate-600 hover:text-brand-700"
                   >
                     <IconWorld size={16} stroke={1.75} className="text-slate-400" />
                     {company.website.replace(/^https?:\/\//, '')}
@@ -269,7 +269,7 @@ export function OwnCompanyProfileView({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <button type="button" className="btn-primary btn-sm inline-flex items-center gap-1.5" onClick={onEdit}>
+            <button type="button" className="btn-primary btn-sm inline-flex items-center gap-2" onClick={onEdit}>
               <IconPencil size={16} stroke={1.75} />
               {t('common.actions.edit', { defaultValue: 'Edit' })}
             </button>
@@ -279,7 +279,7 @@ export function OwnCompanyProfileView({
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+        <div className="mt-6 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
           {OWN_COMPANY_PROFILE_TABS.map((key) => (
             <button
               key={key}
@@ -314,7 +314,7 @@ export function OwnCompanyProfileView({
 
       {tab === 'overview' ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          <section className="app-surface space-y-3 p-5">
+          <section className="app-surface space-y-3 p-6">
             <h2 className="text-base font-semibold text-slate-900">
               {t('app.my_company.profile.basic.title', { defaultValue: 'Basic information' })}
             </h2>
@@ -327,7 +327,7 @@ export function OwnCompanyProfileView({
             </dl>
           </section>
 
-          <section className="app-surface space-y-3 p-5">
+          <section className="app-surface space-y-3 p-6">
             <h2 className="text-base font-semibold text-slate-900">
               {t('app.my_company.profile.stats.title', { defaultValue: 'Quick stats' })}
             </h2>
@@ -356,7 +356,7 @@ export function OwnCompanyProfileView({
             </div>
           </section>
 
-          <section className="app-surface space-y-3 p-5">
+          <section className="app-surface space-y-3 p-6">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-slate-900">
                 {t('app.my_company.profile.legal.title', { defaultValue: 'Legal data' })}
@@ -377,7 +377,7 @@ export function OwnCompanyProfileView({
             </dl>
           </section>
 
-          <section className="app-surface space-y-3 p-5">
+          <section className="app-surface space-y-3 p-6">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-slate-900">
                 {t('app.my_company.profile.bank.title', { defaultValue: 'Bank accounts' })}
@@ -413,7 +413,7 @@ export function OwnCompanyProfileView({
             </button>
           </section>
 
-          <section className="app-surface space-y-3 p-5">
+          <section className="app-surface space-y-3 p-6">
             <h2 className="text-base font-semibold text-slate-900">
               {t('app.my_company.profile.branding.title', { defaultValue: 'Branding' })}
             </h2>
@@ -435,7 +435,7 @@ export function OwnCompanyProfileView({
             </Link>
           </section>
 
-          <section className="app-surface space-y-3 p-5">
+          <section className="app-surface space-y-3 p-6">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-slate-900">
                 {t('app.my_company.profile.contacts.title', { defaultValue: 'Company contacts' })}
@@ -467,7 +467,7 @@ export function OwnCompanyProfileView({
             )}
           </section>
 
-          <section className="app-surface space-y-3 p-5">
+          <section className="app-surface space-y-3 p-6">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-slate-900">
                 {t('app.my_company.profile.documents.title', { defaultValue: 'Company documents' })}
@@ -486,7 +486,7 @@ export function OwnCompanyProfileView({
             </div>
           </section>
 
-          <section className="app-surface space-y-3 p-5">
+          <section className="app-surface space-y-3 p-6">
             <h2 className="text-base font-semibold text-slate-900">
               {t('app.my_company.profile.history.title', { defaultValue: 'Recent changes' })}
             </h2>
@@ -511,7 +511,7 @@ export function OwnCompanyProfileView({
       ) : null}
 
       {tab === 'requisites' ? (
-        <section className="app-surface space-y-3 p-5">
+        <section className="app-surface space-y-3 p-6">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-slate-900">
               {t('app.my_company.profile.tabs.requisites', { defaultValue: 'Requisites' })}
@@ -536,7 +536,7 @@ export function OwnCompanyProfileView({
       ) : null}
 
       {tab === 'bank' ? (
-        <section className="app-surface space-y-3 p-5">
+        <section className="app-surface space-y-3 p-6">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-slate-900">
               {t('app.my_company.profile.bank.title', { defaultValue: 'Bank accounts' })}
@@ -592,7 +592,7 @@ export function OwnCompanyProfileView({
       ) : null}
 
       {tab === 'documents' ? (
-        <section className="app-surface space-y-3 p-5">
+        <section className="app-surface space-y-3 p-6">
           <h2 className="text-base font-semibold text-slate-900">
             {t('app.my_company.profile.documents.title', { defaultValue: 'Company documents' })}
           </h2>
@@ -605,7 +605,7 @@ export function OwnCompanyProfileView({
       ) : null}
 
       {tab === 'contacts' ? (
-        <section className="app-surface space-y-3 p-5">
+        <section className="app-surface space-y-3 p-6">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-slate-900">
               {t('app.my_company.profile.contacts.title', { defaultValue: 'Company contacts' })}
@@ -640,7 +640,7 @@ export function OwnCompanyProfileView({
       ) : null}
 
       {tab === 'related' ? (
-        <section className="app-surface space-y-3 p-5">
+        <section className="app-surface space-y-3 p-6">
           <h2 className="text-base font-semibold text-slate-900">
             {t('app.my_company.profile.tabs.related', { defaultValue: 'Related entities' })}
           </h2>
@@ -664,7 +664,7 @@ export function OwnCompanyProfileView({
       ) : null}
 
       {tab === 'history' ? (
-        <section className="app-surface space-y-3 p-5">
+        <section className="app-surface space-y-3 p-6">
           <h2 className="text-base font-semibold text-slate-900">
             {t('app.my_company.profile.history.title', { defaultValue: 'Recent changes' })}
           </h2>
@@ -730,7 +730,7 @@ function CopyRow({
 function ColorSwatch({ label, color }: { label: string; color: string }) {
   const value = color || '—'
   return (
-    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5">
+    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
       <span
         className="h-4 w-4 rounded-full border border-slate-200"
         style={{ backgroundColor: color || '#e2e8f0' }}

@@ -893,7 +893,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 ⋮
               </button>
               {menuOpen ? (
-                <div className="absolute right-0 z-30 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                <div className="absolute right-0 z-30 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-md">
                   <Link
                     className="block px-3 py-2 text-sm hover:bg-slate-50"
                     to={
@@ -955,7 +955,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <button
               key={key}
               type="button"
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+              className={`rounded-lg px-3 py-2 text-sm font-medium ${
                 tab === key
                   ? 'bg-slate-900 text-white'
                   : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
@@ -985,7 +985,10 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pt-4">
+      <div
+        data-entity-workspace-slot="overview"
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto pt-4"
+      >
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -1460,6 +1463,9 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             />
           ) : null}
         </form>
+        <div data-entity-workspace-slot="timeline">
+          {/* Workspace activity panel remains on WorkspaceTab; D7 cutover gate reads this page. */}
+        </div>
         {isCutover ? (
           <EntityWorkspaceCompositionHost
             consumerId={VACANCY_COMPOSITION_CONSUMER_ID}

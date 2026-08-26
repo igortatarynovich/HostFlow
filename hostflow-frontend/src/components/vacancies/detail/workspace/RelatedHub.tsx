@@ -27,7 +27,7 @@ export function RelatedHub({ title, links }: Props) {
                 {l.value || '—'}
               </span>
             ) : (
-              <Link className="truncate font-medium text-teal-700 hover:underline" to={l.href}>
+              <Link className="truncate font-medium text-emerald-700 hover:underline" to={l.href}>
                 {l.value || l.label}
               </Link>
             )}

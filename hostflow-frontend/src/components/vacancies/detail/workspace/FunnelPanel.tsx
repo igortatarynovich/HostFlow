@@ -33,7 +33,7 @@ export function FunnelPanel({ title, stages, total, onStageClick, emptyLabel }: 
               <button
                 type="button"
                 onClick={() => onStageClick(s.code)}
-                className="group flex w-full items-center gap-3 rounded-lg border border-transparent px-1 py-1.5 text-left hover:border-slate-200 hover:bg-slate-50"
+                className="group flex w-full items-center gap-3 rounded-lg border border-transparent px-1 py-2 text-left hover:border-slate-200 hover:bg-slate-50"
               >
                 <div className="w-28 flex-shrink-0 text-xs text-slate-700">
                   <StageTag code={s.code} />
@@ -41,7 +41,7 @@ export function FunnelPanel({ title, stages, total, onStageClick, emptyLabel }: 
                 <div className="min-w-0 flex-1">
                   <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                     <div
-                      className="h-full rounded-full bg-slate-700/80 group-hover:bg-teal-600"
+                      className="h-full rounded-full bg-slate-700/80 group-hover:bg-emerald-600"
                       style={{ width: `${width}%` }}
                     />
                   </div>

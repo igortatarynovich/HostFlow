@@ -80,9 +80,9 @@ export function AttentionPanel({
                 type="button"
                 disabled={!item.stageCode || !onStageClick}
                 onClick={() => item.stageCode && onStageClick?.(item.stageCode)}
-                className="flex w-full items-start gap-2 rounded-lg px-1 py-1.5 text-left text-sm text-slate-800 enabled:hover:bg-slate-50 disabled:cursor-default"
+                className="flex w-full items-start gap-2 rounded-lg px-1 py-2 text-left text-sm text-slate-800 enabled:hover:bg-slate-50 disabled:cursor-default"
               >
-                <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${dot(item.level)}`} />
+                <span className={`mt-2 h-2 w-2 flex-shrink-0 rounded-full ${dot(item.level)}`} />
                 <span>{item.text}</span>
               </button>
             </li>

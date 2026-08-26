@@ -217,7 +217,7 @@ export default function OrganizationHubPage() {
         ) : (
           <div className="grid gap-4 xl:grid-cols-3">
             {/* Identity */}
-            <section className="app-surface space-y-4 p-5 xl:col-span-1">
+            <section className="app-surface space-y-4 p-6 xl:col-span-1">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-700 text-lg font-semibold text-white">
@@ -255,13 +255,13 @@ export default function OrganizationHubPage() {
             </section>
 
             {/* Subscription */}
-            <section className="app-surface flex flex-col space-y-3 p-5">
+            <section className="app-surface flex flex-col space-y-3 p-6">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-base font-semibold text-slate-900">
                   {t('app.organization.subscription.title', { defaultValue: 'Subscription' })}
                 </h2>
                 <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  className={`rounded-full px-3 py-0.5 text-xs font-medium ${
                     statusTone === 'ok'
                       ? 'bg-emerald-50 text-emerald-700'
                       : statusTone === 'warn'
@@ -332,7 +332,7 @@ export default function OrganizationHubPage() {
             </section>
 
             {/* Operations / slots donut */}
-            <section className="app-surface flex flex-col space-y-3 p-5">
+            <section className="app-surface flex flex-col space-y-3 p-6">
               <h2 className="text-base font-semibold text-slate-900">
                 {t('app.organization.operations.title', { defaultValue: 'Company slots' })}
               </h2>
@@ -384,7 +384,7 @@ export default function OrganizationHubPage() {
             </section>
 
             {/* Modules */}
-            <section className="app-surface space-y-3 p-5">
+            <section className="app-surface space-y-3 p-6">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">
                   {t('app.organization.modules.title', { defaultValue: 'Modules' })}
@@ -417,7 +417,7 @@ export default function OrganizationHubPage() {
             </section>
 
             {/* Companies */}
-            <section className="app-surface space-y-3 p-5">
+            <section className="app-surface space-y-3 p-6">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <h2 className="text-base font-semibold text-slate-900">
@@ -437,7 +437,7 @@ export default function OrganizationHubPage() {
                     <li key={company.id}>
                       <button
                         type="button"
-                        className="flex w-full items-center justify-between gap-2 py-2.5 text-left text-sm hover:text-brand-700"
+                        className="flex w-full items-center justify-between gap-2 py-2 text-left text-sm hover:text-brand-700"
                         onClick={() => {
                           void (async () => {
                             try {
@@ -471,7 +471,7 @@ export default function OrganizationHubPage() {
             </section>
 
             {/* Users */}
-            <section className="app-surface flex flex-col space-y-3 p-5">
+            <section className="app-surface flex flex-col space-y-3 p-6">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">
                   {t('app.organization.users.title', { defaultValue: 'Users' })}
@@ -505,7 +505,7 @@ export default function OrganizationHubPage() {
             </section>
 
             {/* Billing docs */}
-            <section className="app-surface space-y-3 p-5 xl:col-span-2">
+            <section className="app-surface space-y-3 p-6 xl:col-span-2">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">
                   {t('app.organization.billing_docs.title', { defaultValue: 'Billing & documents' })}

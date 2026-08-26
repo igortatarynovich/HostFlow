@@ -522,7 +522,7 @@ export function MarketingEfficiencyPanel({
                     <td className="px-4 py-2 font-medium text-slate-800">
                       {r.name}
                       {r.is_best_cpl ? (
-                        <span className="ml-2 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
+                        <span className="ml-2 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
                           {t('app.dashboard.marketing.table.best_cpl')}
                         </span>
                       ) : null}

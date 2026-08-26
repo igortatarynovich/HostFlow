@@ -8,6 +8,7 @@
   - `GET /api/v1/platform/campaigns/{campaign_id}/analytics/cohorts?window_days=&bucket=day|week|month`  
 - Read-only company portfolio (+ ROI)  
   - `GET /api/v1/platform/campaigns/analytics/portfolio?limit=`  
+  - Optional window: `date_from` / `date_to` (ISO dates) filter the same tenant/company KPI compose; omitted = full campaign history  
   (`backend/app/api/v1/platform/campaigns.py` ·  
   `backend/app/acquisition/ops/flight_compare.py` ·  
   `backend/app/acquisition/ops/cohort_analytics.py` ·  
@@ -27,6 +28,7 @@
 - ROI null when value missing or spend ≤ 0; mixed value/spend currencies → 422
 - Cohort window capped (1–90 days); UTC day / Monday-start week / calendar month buckets
 - Portfolio campaign scan capped (`limit` ≤ 100)
+- Optional portfolio `date_from` / `date_to` are authenticated read filters only (same JWT + `X-Tenant-Id` + company scope + RLS as uncapped history); they do not mint a second KPI ledger or write path
 
 ## Угрозы
 
@@ -44,6 +46,7 @@
 - `get_campaign` / `list_campaigns` company scope before compose
 - Compare/portfolio reuse `aggregate_campaign_kpi`; cohorts read Attribution / Spend / Outcome only
 - `window_days` Query ge=1 le=90; portfolio `limit` ge=1 le=100
+- Optional portfolio `date_from` / `date_to` reuse `aggregate_campaign_kpi` (no second ledger); still tenant/company scoped
 - Read-only analytics HTTP; UI display-only for KPI surfaces
 - Timeline remains SoT for audit; analytics is decision aid only
 - Commercial value only via Outcome contract (`declared_v1`); no SalesOrder invent in analytics

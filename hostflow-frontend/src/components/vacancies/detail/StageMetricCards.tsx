@@ -5,10 +5,10 @@ import type { StageMetric } from './pipelineMetrics'
 export type { StageMetric }
 
 const ACCENT: Record<string, string> = {
-  new: 'border-sky-200 bg-sky-50',
+  new: 'border-blue-200 bg-blue-50',
   contacted: 'border-blue-200 bg-blue-50',
   docs_wait: 'border-amber-200 bg-amber-50',
-  permit: 'border-violet-200 bg-violet-50',
+  permit: 'border-fuchsia-200 bg-fuchsia-50',
   employed: 'border-emerald-200 bg-emerald-50',
   hired: 'border-emerald-200 bg-emerald-50',
   rejected: 'border-rose-200 bg-rose-50',
@@ -43,7 +43,7 @@ export function StageMetricCards({ stages, loading, viewListLabel, onSelect }: P
           key={s.code}
           type="button"
           onClick={() => onSelect(s.code)}
-          className={`min-w-[7.5rem] flex-shrink-0 rounded-xl border px-3 py-2.5 text-left transition hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 ${accentFor(s.code)}`}
+          className={`min-w-[7.5rem] flex-shrink-0 rounded-xl border px-3 py-2 text-left transition hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 ${accentFor(s.code)}`}
         >
           <div className="text-xl font-semibold tabular-nums text-slate-900">{s.count}</div>
           <div className="mt-1 line-clamp-2 text-xs text-slate-700">

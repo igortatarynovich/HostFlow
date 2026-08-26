@@ -96,9 +96,7 @@ export function WorkspaceTab(props: Props) {
           onStageClick={props.onStageClick}
           emptyLabel={labels.funnelEmpty}
         />
-        <div data-entity-workspace-slot="timeline">
-          <ActivityReserved title={labels.activity} message={labels.activityMessage} />
-        </div>
+        <ActivityReserved title={labels.activity} message={labels.activityMessage} />
       </div>
       <div className="space-y-4">
         <AttentionPanel

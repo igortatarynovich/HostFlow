@@ -20,7 +20,7 @@ export function OrderProgress({ title, hint, fulfilled, needed }: Props) {
         <span className="tabular-nums text-slate-500">{pct}%</span>
       </div>
       <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-teal-600 transition-all" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${pct}%` }} />
       </div>
     </SectionCard>
   )

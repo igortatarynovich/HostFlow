@@ -35,7 +35,7 @@ export function AutomationTab({ values, title, empty, ifLabel, thenLabel }: Prop
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {thenLabel}
               </div>
-              <div className="mt-1 inline-flex rounded-md bg-teal-50 px-2 py-1 text-sm font-semibold text-teal-800">
+              <div className="mt-1 inline-flex rounded-lg bg-emerald-50 px-2 py-1 text-sm font-semibold text-emerald-800">
                 {r.then}
               </div>
             </li>

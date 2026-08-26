@@ -134,7 +134,7 @@ export function MarketingEfficiencyFiltersBar({
                 <button
                   key={code}
                   type="button"
-                  className={`rounded px-2.5 py-1 text-xs font-semibold tabular-nums ${
+                  className={`rounded px-3 py-1 text-xs font-semibold tabular-nums ${
                     active
                       ? 'bg-brand-600 text-white'
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -173,7 +173,7 @@ export function MarketingEfficiencyFiltersBar({
             <button
               key={preset.id}
               type="button"
-              className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                 active
                   ? 'bg-brand-600 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -239,7 +239,7 @@ export function MarketingEfficiencyFiltersBar({
             return (
               <label
                 key={opt.id}
-                className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-1 text-sm hover:bg-white"
+                className="flex cursor-pointer items-start gap-2 rounded px-2 py-1 text-sm hover:bg-white"
               >
                 <input
                   type="checkbox"
@@ -248,7 +248,7 @@ export function MarketingEfficiencyFiltersBar({
                   onChange={() => onToggleCampaign(opt.id)}
                   disabled={loading}
                 />
-                <span className="min-w-0 flex-1 leading-snug text-slate-800">{opt.label}</span>
+                <span className="min-w-0 flex-1 leading-tight text-slate-800">{opt.label}</span>
               </label>
             )
           })

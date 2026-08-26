@@ -104,7 +104,7 @@ export function RecruitmentTab({
                   return (
                     <li
                       key={opt.id}
-                      className="flex flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2"
+                      className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
                     >
                       <label className="flex min-w-[12rem] flex-1 items-center gap-2 text-sm">
                         <input
@@ -174,7 +174,7 @@ export function RecruitmentTab({
             {stageCodes.map((code) => (
               <li
                 key={code}
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 font-mono text-xs text-slate-700"
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-mono text-xs text-slate-700"
               >
                 {code}
               </li>
