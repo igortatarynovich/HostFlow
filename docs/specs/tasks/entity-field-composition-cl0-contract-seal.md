@@ -115,10 +115,11 @@ E7 already matches Document kind: request lives on `document_type_code`. Engine 
 | **CL7** | Requirement Engine evaluation | ✅ PASS [#309](https://github.com/igortatarynovich/HostFlow/pull/309) — [brief](entity-field-composition-cl7-engine-eval.md) |
 | **Vacancy Overlay** | Vacancy overlay contract | ✅ PASS [#311](https://github.com/igortatarynovich/HostFlow/pull/311) / `7649544d` — [brief](entity-profile-vacancy-overlay-contract.md) |
 | **DR1-runtime** | Engine may create Hub outstanding asks | ✅ PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313) / `e6978fe2` — [brief](engine-document-request-dr1-runtime.md) |
-| **E8-bind** | Canonical type bind (Documents) | ← **active** (brief; feat locked) — [brief](documents-platform-e8-bind.md) |
+| **E8-bind** | Canonical type bind (Documents) | ✅ PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — [brief](documents-platform-e8-bind.md) |
+| **E8-eval** | Required-doc evaluation (Documents) | ✅ PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — [brief](documents-platform-e8-eval.md) |
 
 CL1 is classification, **not** runtime. Do not skip to CL3 because “the card already renders”.  
-**Product after CL0 Gate:** CL1 → LI-1 → DR1-contract → CL2…. **DR1-runtime** is not a CL slice; it is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-bind** is **Active Product** after DR1 Runtime Gate (this amendment). **E8-eval** stays locked (needs E8-bind Gate). **CL7** is Engine **evaluation** (`ready`/`not_ready` + blockers). Do **not** name Engine→Request as CL7 — that remains DR1. **Vacancy Overlay Contract** leftover of the original CL0 chain is **PASS** [#311](https://github.com/igortatarynovich/HostFlow/pull/311). Do **not** invent CL8.
+**Product after CL0 Gate:** CL1 → LI-1 → DR1-contract → CL2…. **DR1-runtime** is not a CL slice; it is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-bind** is **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. **E8-eval** is **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product = **none this amendment**. **CL7** is Engine **evaluation** (`ready`/`not_ready` + blockers). Do **not** name Engine→Request as CL7 — that remains DR1. **Vacancy Overlay Contract** leftover of the original CL0 chain is **PASS** [#311](https://github.com/igortatarynovich/HostFlow/pull/311). Do **not** invent CL8.
 
 ---
 
@@ -138,8 +139,9 @@ CL1 is classification, **not** runtime. Do not skip to CL3 because “the card a
 | CL2–CL7 runtime / builder / Q&A / Flight / Engine eval | later CL (after DR1-contract) — CL2–CL7 ✅ |
 | Vacancy Overlay Contract | **PASS** [#311](https://github.com/igortatarynovich/HostFlow/pull/311) — [brief](entity-profile-vacancy-overlay-contract.md); not CL8 |
 | **DR1-contract** | **PASS** [#302](https://github.com/igortatarynovich/HostFlow/pull/302) — [brief](engine-document-request-dr1-contract.md); not a CL slice |
-| **DR1-runtime** | **Active Product** (this amendment) — [brief](engine-document-request-dr1-runtime.md); not a CL slice |
-| **E8-bind / E8-eval** | locked; unlock ≠ schedule; see queue |
+| **DR1-runtime** | **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313) — [brief](engine-document-request-dr1-runtime.md); not a CL slice |
+| **E8-bind** | **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — [brief](documents-platform-e8-bind.md) |
+| **E8-eval** | **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — [brief](documents-platform-e8-eval.md) |
 | Forms P3 / P4 / P5 | locked |
 | D10 / mass D3–D9 bind | forbidden |
 | OCR / packages / Billing / AI | forbidden |
@@ -170,7 +172,7 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 - Product Track = this brief (feat locked, docs only). Documents Platform E7 is closed (#287 / `ceafbd48`).  
 - Operators / agents cannot treat CandidateProfile.config, Documents E8, Forms P3, D10, or Engine boolean as this seal.  
 - `transition` / `handoff` are not Profile-field properties in canon.  
-- Documents Foundation stays 🔄. E8-bind / E8-eval stay locked (split-gated; unlock ≠ schedule). Next Product after this brief = **CL1**.
+- Documents Foundation stays 🔄. E8-bind is **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. E8-eval is **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product = **none this amendment**. Next Product after this brief was **CL1** (historical).
 
 ---
 
@@ -186,6 +188,9 @@ Does **not** amend L0 P-rules. Does **not** rewrite Catalog.
 
 ## History
 
+- 2026-08-25: E8 Required-Doc Evaluation Gate PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product = **none this amendment**. Not OCR / not CL8 / not Foundation ✅.
+- 2026-08-25: Queue amendment names **E8-eval** Active Product after E8-bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321). Not OCR / not CL8 / not mass D3–D9 bind.
+- 2026-08-25: E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. No named Product successor this amendment. Not E8-eval auto-start. Not CL8.
 - 2026-08-25: DR1 Runtime Gate PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313) / `e6978fe2`. Next Product = **E8-bind** (not CL8 / not E8-eval / not mass D3–D9 bind).
 - 2026-08-25: CL7 Gate PASS [#309](https://github.com/igortatarynovich/HostFlow/pull/309) / `6f2289f1`. Next Product = **Vacancy Overlay Contract** (not CL8 / not DR1 / not E8).
 - 2026-08-25: CL6 Gate PASS [#307](https://github.com/igortatarynovich/HostFlow/pull/307) / `8e2372db`. Next Product = **CL7** Engine evaluation (not Engine→Request / DR1). Vacancy overlay leftover.

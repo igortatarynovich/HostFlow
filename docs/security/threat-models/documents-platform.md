@@ -1,22 +1,24 @@
-# Threat Model — Documents Platform (E3–E7 public resolve)
+# Threat Model — Documents Platform (E3–E8 public resolve)
 
 ## Assets
 
-- Authenticated resolve DTO (`GET /api/v1/platform/documents/resolve`) — Hub document **metadata** + Document Link ids + Hub validity (`expires_at` / `expiry_state`) + Hub outstanding asks (`outstanding_asks`)  
+- Authenticated resolve DTO (`GET /api/v1/platform/documents/resolve`) — Hub document **metadata** + Document Link ids + Hub validity (`expires_at` / `expiry_state`) + Hub outstanding asks (`outstanding_asks`) + Hub applicability (`required` / `optional` / `blocked`)  
 - Hub table `document_entity_links` (relationship SoT for named consumers)  
 - Document Hub rows (`documents`) scoped by tenant — **no** `candidate_id` column  
 - Public contract / adapter ids: `documents.public_contract.v1` / `documents.hub_adapter_v1`
 
-This model covers the **platform capability** consume path sealed in E3–E7: HR employee (D8) reads reused documents via Document Link (`workforce_employee` / `reused_for_hr`); Candidate (D4) reads via Document Link (`candidate` / `primary`). E6 adds Hub expiry fields on the same DTO. E7 adds Hub outstanding-ask projection (required type vs linked docs). Neither consumer uses a page-local widget as the D2 path. Candidate relationship storage is Hub links only — **not** `documents.candidate_id`. Validity is on the Document, not on a Candidate status machine. The outstanding ask is Hub required type + entity, not Candidate stage / HR JSON / Activity `document_request`. File bytes, signed URLs, and upload remain [`document-uploads.md`](./document-uploads.md). Candidate portal uploads remain [`candidate-portal.md`](./candidate-portal.md). Handoff copy-vs-link remains [`handoff.md`](./handoff.md) — E3–E7 do not add a file-copy path.
+This model covers the **platform capability** consume path sealed in E3–E8: HR employee (D8) reads reused documents via Document Link (`workforce_employee` / `reused_for_hr`); Candidate (D4) reads via Document Link (`candidate` / `primary`). E6 adds Hub expiry fields on the same DTO. E7 adds Hub outstanding-ask projection (required type vs linked docs). E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` canonicalizes type identity (display / select / persist). E8-eval projects required / optional / blocked applicability from R5 `merge(pack, tenant_delta)` (+ Overlay as existing CL7 input) as additive `applicability` on the same DTO. Neither consumer uses a page-local widget as the D2 path. Candidate relationship storage is Hub links only — **not** `documents.candidate_id`. Validity is on the Document, not on a Candidate status machine. The outstanding ask is Hub required type + entity, not Candidate stage / HR JSON / Activity `document_request`. Applicability is R5 merged policy, not screening `required=true` on a field. File bytes, signed URLs, and upload remain [`document-uploads.md`](./document-uploads.md). Candidate portal uploads remain [`candidate-portal.md`](./candidate-portal.md). Handoff copy-vs-link remains [`handoff.md`](./handoff.md) — E3–E8 do not add a file-copy path.
 
-Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation close, anonymous public links, Hub-owned reminder / request table, Catalog `document.requested`.
+DP-12 stays the E8-bind identity threat. OCR / packages-product stay out of this surface until a later named slice.
+
+Not this surface: OCR / e-sign / packages product, D3 / D5–D7 / D9 bind, Foundation close, anonymous public links, Hub-owned reminder / request table, Catalog `document.requested`.
 
 ## Trust boundaries
 
 - Authenticated tenant operator → platform Documents APIs (JWT + `X-Tenant-Id` + RLS via `get_db_with_tenant`)  
 - Adapter (`documents.hub_adapter_v1`) is the only consumer contract; hosts must not import `modules.documents.crud`, `HrEmployeeDocumentsSection`, or CandidateCard documents as the D2 consume path  
 - Entity/relation closed set for this HTTP: `workforce_employee` / `reused_for_hr` **and** `candidate` / `primary`  
-- Resolve returns metadata (id / title / type / status / expiry / expiry_state / outstanding_asks / link). It is **not** a file download and must not mint a signed URL  
+- Resolve returns metadata (id / title / type / status / expiry / expiry_state / outstanding_asks / applicability / link). It is **not** a file download and must not mint a signed URL  
 - `documents.candidate_id` is dropped. Writers persist Hub `candidate` / `primary` links. Listing still goes through `document_entity_links`  
 - E5 follow-up (#288): FTS trigger `trg_documents_hostflow_search_tsv` / function concatenated `NEW.candidate_id` and listed it in `UPDATE OF`. Empty-CI `alembic upgrade` cannot `DROP COLUMN documents.candidate_id` while that trigger exists. Mitigation: drop trigger, drop column, recreate function+trigger **without** `candidate_id`. Search tsv no longer indexes the Candidate UUID column; relationship remains Hub Document Links. Does not restore the FK; does not change resolve auth or tenant RLS.
 
@@ -35,6 +37,9 @@ Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation cl
 | DP-9 | Nullable FK leftover | Leaving `documents.candidate_id` as a write target after E5 |
 | DP-10 | Candidate-status as expiry SoT | Treating pipeline auto-flip / `next_action` / a Hub reminder table as the Documents validity contract |
 | DP-11 | Module silo as request SoT | Treating Candidate stage / HR JSON / Activity `document_request` / a Hub request table as the Documents outstanding-ask contract |
+| DP-12 | Alias as stored type identity | Displaying, selecting, or persisting R4 alias / module codes as Hub `document_type_code` identity |
+| DP-13 | Screening `required=true` as applicability SoT | Treating a field flag / Hub ask / identity bind as required / optional / blocked |
+| DP-14 | Non-canonical applicability codes | Emitting alias / local dictionary codes on `applicability.doc_type` |
 
 ## Митигации
 
@@ -44,10 +49,14 @@ Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation cl
 - Response schema is Hub view + link ids + Hub expiry fields only. Upload, download, and signed URL stay on existing document routes.  
 - Same adapter id as E2. Named **Documents Platform E6 Document Expiry Gate** fails if expiry is not on the Hub view, if D4/D8 unbind, if D3 / D5–D7 / D9 bind `documents`, or if a Hub reminder table appears.  
 - Named **Documents Platform E7 Document Requests Gate** fails if `outstanding_asks` is missing from the Hub resolve, if a Hub request table appears, if Catalog `document.requested` is minted, or if D3 / D5–D7 / D9 bind `documents`.  
+- Named **Documents Platform E8 Canonical Type Bind Gate** **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — fails if D4 display / select / persist uses alias identity, if R4 aliases are stored as Hub `document_type_code`, if CL8 / mass D3–D9 bind appear, or if a Hub request table / Catalog `document.requested` is minted.  
+- Named **Documents Platform E8 Required-Doc Evaluation Gate** **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — fails if D4 applicability is not from R5 merge with canonical types, if screening `required=true` is Documents SoT, if OCR / packages / Hub request table / Catalog `document.requested` appear, or if CL8 / mass D3–D9 bind / Foundation ✅ are claimed. Overlay is typed CL7 input; Documents does not import Overlay / CL7 runtimes.  
 - No new security events. Catalog events stay `document.created` / `linked` / `verified` / `expired`.
 
 ## Тесты
 
+- `backend/tests/platform/test_documents_e8_required_doc_eval_gate.py`  
+- `backend/tests/platform/test_documents_e8_canonical_type_bind_gate.py`  
 - `backend/tests/platform/test_documents_e7_document_requests_gate.py`  
 - `backend/tests/platform/test_documents_e6_document_expiry_gate.py`  
 - `backend/tests/platform/test_documents_e5_candidate_storage_bridge_gate.py`  
@@ -61,6 +70,8 @@ Not this surface: OCR / e-sign / packages, D3 / D5–D7 / D9 bind, Foundation cl
 
 - `docs/specs/architecture/documents-public-contract.md`  
 - `docs/specs/workflows/document_expiry.md`  
+- `docs/specs/tasks/documents-platform-e8-eval.md` ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) (required / optional / blocked from R5 merge; not OCR)  
+- `docs/specs/tasks/documents-platform-e8-bind.md`  
 - `docs/specs/tasks/documents-platform-e7-document-requests.md`  
 - `docs/specs/tasks/documents-platform-e6-document-expiry.md`  
 - `docs/specs/tasks/documents-platform-e5-candidate-storage-bridge.md`  

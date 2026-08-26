@@ -82,20 +82,23 @@ PASS when:
 7. D4 still places Engine-eval zone; Information / Q&A / Flight-map zones unchanged.  
 8. Named CI job exists for the Overlay Gate.
 
-Unlocks: **DR1-runtime** ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). DR1-runtime unlocks **E8-bind** (this amendment). Does **not** auto-start E8-eval. Do **not** invent CL8.
+Unlocks: **DR1-runtime** ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). DR1-runtime unlocks **E8-bind** ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. E8-bind unlocks **E8-eval** ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Does **not** auto-start OCR. Do **not** invent CL8.
 
 ---
 
 ## Queue position
 
 **Depends on:** CL7 Gate ✅ (#309 / `6f2289f1`)  
-**Unlocks:** [DR1-runtime](engine-document-request-dr1-runtime.md) ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313) → [E8-bind](documents-platform-e8-bind.md)  
-**Does not:** invent CL8; auto-start E8-eval; mint Engine v2; write Hub asks in this producer; ship vacancy UI
+**Unlocks:** [DR1-runtime](engine-document-request-dr1-runtime.md) ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313) → [E8-bind](documents-platform-e8-bind.md) ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) → [E8-eval](documents-platform-e8-eval.md) ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324)  
+**Does not:** invent CL8; auto-start OCR; mint Engine v2; write Hub asks in this producer; ship vacancy UI
 
 ---
 
 ## History
 
+- 2026-08-25: E8 Required-Doc Evaluation Gate PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product = **none this amendment**. Not OCR auto-start.
+- 2026-08-25: Queue amendment after E8-bind Gate PASS names E8-eval Active Product (not OCR auto-start).
+- 2026-08-25: Queue amendment after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. No named Product successor. E8-eval unlocked (not scheduled).
 - 2026-08-25: Queue amendment after DR1 Runtime Gate PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313) names E8-bind Active Product (not E8-eval auto-start).
 - 2026-08-25: Vacancy Overlay Gate **PASS** [#311](https://github.com/igortatarynovich/HostFlow/pull/311) / `7649544d`. Unlocks DR1-runtime (not CL8; not E8 auto-start).
 - 2026-08-25: Vacancy Overlay Contract feat — `resolve_overlay` + `merge` as defined CL7 input; D4 Engine-eval zone consumes overlay; not CL8; not R5 pack merge; not vacancy UI.
