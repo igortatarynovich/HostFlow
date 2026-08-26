@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.acquisition.outcome_service import STATUS_COMPLETED
@@ -236,19 +236,22 @@ async def aggregate_flight_kpi(
     *,
     tenant_id: str,
     flight_id: str,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
 ) -> FlightKpiAggregate:
     flight = await db.get(CampaignRun, str(flight_id))
     if flight is None or str(flight.tenant_id) != str(tenant_id):
         raise KpiAggregateError("flight not found for tenant")
 
-    spend_rows = (
-        await db.execute(
-            select(CampaignFlightSpendEntry).where(
-                CampaignFlightSpendEntry.tenant_id == str(tenant_id),
-                CampaignFlightSpendEntry.campaign_run_id == str(flight_id),
-            )
-        )
-    ).scalars().all()
+    spend_q = select(CampaignFlightSpendEntry).where(
+        CampaignFlightSpendEntry.tenant_id == str(tenant_id),
+        CampaignFlightSpendEntry.campaign_run_id == str(flight_id),
+    )
+    if date_from is not None:
+        spend_q = spend_q.where(CampaignFlightSpendEntry.created_at >= date_from)
+    if date_to is not None:
+        spend_q = spend_q.where(CampaignFlightSpendEntry.created_at < date_to)
+    spend_rows = (await db.execute(spend_q)).scalars().all()
 
     currency: Optional[str] = None
     spend = ZERO
@@ -263,14 +266,15 @@ async def aggregate_flight_kpi(
         spend += _money(Decimal(row.amount))
     spend = _money(spend)
 
-    attributions = (
-        await db.execute(
-            select(CampaignResultAttribution).where(
-                CampaignResultAttribution.tenant_id == str(tenant_id),
-                CampaignResultAttribution.campaign_run_id == str(flight_id),
-            )
-        )
-    ).scalars().all()
+    attr_q = select(CampaignResultAttribution).where(
+        CampaignResultAttribution.tenant_id == str(tenant_id),
+        CampaignResultAttribution.campaign_run_id == str(flight_id),
+    )
+    if date_from is not None:
+        attr_q = attr_q.where(CampaignResultAttribution.created_at >= date_from)
+    if date_to is not None:
+        attr_q = attr_q.where(CampaignResultAttribution.created_at < date_to)
+    attributions = (await db.execute(attr_q)).scalars().all()
 
     # Unique Result identity — not submit-attempt count.
     lead_keys = {(str(a.result_type), str(a.result_id)) for a in attributions}
@@ -291,15 +295,18 @@ async def aggregate_flight_kpi(
 
     # Successful Outcomes = completed only (failed/cancelled excluded).
     # Cost per Outcome uses this count — soft-revoke of ledger links does not change it.
-    outcomes_completed = (
-        await db.execute(
-            select(CampaignOutcome).where(
-                CampaignOutcome.tenant_id == str(tenant_id),
-                CampaignOutcome.campaign_run_id == str(flight_id),
-                CampaignOutcome.status == STATUS_COMPLETED,
-            )
-        )
-    ).scalars().all()
+    outcome_q = select(CampaignOutcome).where(
+        CampaignOutcome.tenant_id == str(tenant_id),
+        CampaignOutcome.campaign_run_id == str(flight_id),
+        CampaignOutcome.status == STATUS_COMPLETED,
+    )
+    if date_from is not None or date_to is not None:
+        stamp = func.coalesce(CampaignOutcome.completed_at, CampaignOutcome.created_at)
+        if date_from is not None:
+            outcome_q = outcome_q.where(stamp >= date_from)
+        if date_to is not None:
+            outcome_q = outcome_q.where(stamp < date_to)
+    outcomes_completed = (await db.execute(outcome_q)).scalars().all()
     outcomes_n = len(outcomes_completed)
     converted = outcomes_n
     outcome_value = _sum_outcome_values(list(outcomes_completed), spend_currency=currency)
@@ -327,6 +334,8 @@ async def aggregate_campaign_kpi(
     *,
     tenant_id: str,
     campaign_id: str,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
 ) -> CampaignKpiAggregate:
     campaign = await db.get(Campaign, str(campaign_id))
     if campaign is None or str(campaign.tenant_id) != str(tenant_id):
@@ -344,7 +353,13 @@ async def aggregate_campaign_kpi(
     flight_aggs: list[FlightKpiAggregate] = []
     for flight in flights:
         flight_aggs.append(
-            await aggregate_flight_kpi(db, tenant_id=str(tenant_id), flight_id=str(flight.id))
+            await aggregate_flight_kpi(
+                db,
+                tenant_id=str(tenant_id),
+                flight_id=str(flight.id),
+                date_from=date_from,
+                date_to=date_to,
+            )
         )
 
     currency: Optional[str] = None

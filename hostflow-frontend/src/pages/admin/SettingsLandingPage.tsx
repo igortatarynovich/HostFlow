@@ -4,6 +4,7 @@ import type { Icon as TablerIcon } from '@tabler/icons-react'
 import {
   IconAlertTriangle,
   IconBell,
+  IconBuilding,
   IconChecklist,
   IconClipboardList,
   IconCreditCard,
@@ -76,6 +77,7 @@ const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
   legal: IconShield,
   tenant_links: IconLink,
   my_company: IconHome,
+  organization: IconBuilding,
   billing: IconCreditCard,
   integrations_hub: IconPlugConnected,
   ruleset: IconSettings,
@@ -181,9 +183,21 @@ export default function SettingsLandingPage() {
         superadminOnly: true,
       },
       {
+        key: 'organization',
+        label: t('app.nav.items.organization', { defaultValue: 'Organization' }),
+        description: t('admin.settings.cards.organization.description', {
+          defaultValue: 'Workspace subscription, modules, users and operating companies.',
+        }),
+        target: CRM_APP_PATHS.organization,
+        requireAny: ['settings.view', 'companies.view', 'admin.users'],
+        section: 'workspace',
+      },
+      {
         key: 'my_company',
         label: t('app.nav.items.my_company'),
-        description: t('admin.settings.cards.my_company.description'),
+        description: t('admin.settings.cards.my_company.description', {
+          defaultValue: 'Legal entity profile: requisites, bank accounts, branding and contacts.',
+        }),
         target: CRM_APP_PATHS.myCompany,
         openToAuthenticated: true,
         section: 'workspace',

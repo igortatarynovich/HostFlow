@@ -50,6 +50,7 @@ export const SIDEBAR_ITEM_ICON: Partial<Record<string, SidebarIconSpec>> = {
   'my-availability': { kind: 'ui', id: 'calendar' },
   'time-off': { kind: 'ui', id: 'отпуска' },
   leads: { kind: 'ui', id: 'отклики' },
+  organization: { kind: 'ui', id: 'компания' },
   'my-company': { kind: 'ui', id: 'компания' },
   settings: { kind: 'ui', id: 'settings' },
   'settings-users': { kind: 'ui', id: 'пользователи' },

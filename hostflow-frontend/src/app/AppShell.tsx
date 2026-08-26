@@ -68,6 +68,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const isProfileWorkspacePage = path === CRM_APP_PATHS.profile
   const isMyCompanyWorkspacePage =
     path === CRM_APP_PATHS.myCompany || path.startsWith(`${CRM_APP_PATHS.myCompany}/`)
+  const isOrganizationHubPage = path === CRM_APP_PATHS.organization
   const isAutomationsWorkspacePage =
     path === CRM_APP_PATHS.automations ||
     path === CRM_APP_PATHS.automationRules ||
@@ -86,6 +87,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     isCandidatesTablePage ||
     path === CRM_APP_PATHS.clientsDirectory ||
     path === CRM_APP_PATHS.vacancies ||
+    path.startsWith(`${CRM_APP_PATHS.vacancies}/`) ||
     path === CRM_APP_PATHS.leads ||
     path === CRM_APP_PATHS.services ||
     path === CRM_APP_PATHS.invoices ||
@@ -96,6 +98,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     isHubWorkspacePage ||
     isProfileWorkspacePage ||
     isMyCompanyWorkspacePage ||
+    isOrganizationHubPage ||
     isAutomationsWorkspacePage ||
     isCalendarOrDocumentsPage ||
     isSetupFlowPage ||

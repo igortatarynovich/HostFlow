@@ -128,6 +128,7 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   'time-off': IconCalendarOff,
   leads: IconInbox,
   'my-company': IconHome,
+  organization: IconBuilding,
   settings: IconSettings,
   'settings-users': IconUsersGroup,
   'settings-billing': IconCreditCard,
@@ -471,6 +472,9 @@ export function Sidebar({
     }
     if (item.key === 'service-orders') return ordersNavActive
     if (item.key === 'services') return servicesModuleNavActive
+    if (item.key === 'organization') {
+      return location.pathname === p.organization || location.pathname.startsWith(`${p.organization}/`)
+    }
     if (item.key === 'my-company') return location.pathname.startsWith(p.myCompany)
     if (item.key === 'profile') return location.pathname.startsWith(p.profile)
     if (item.key === 'settings') {

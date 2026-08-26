@@ -225,6 +225,16 @@ export function buildVacancyPayload(
     payload.order_line_id = oid || (_mode === 'create' ? undefined : null)
   }
 
+  if (typeof form.funnel_id !== 'undefined') {
+    const fid = String(form.funnel_id || '').trim()
+    payload.funnel_id = fid || (_mode === 'create' ? undefined : null)
+  }
+
+  if (typeof form.manager !== 'undefined') {
+    const mid = String(form.manager || '').trim()
+    payload.manager = mid || (_mode === 'create' ? undefined : null)
+  }
+
   const extraObject: Record<string, any> = {
     salary: {
       from: hasFrom ? (Number.isFinite(numFrom!) ? numFrom : form.salary_from) : undefined,

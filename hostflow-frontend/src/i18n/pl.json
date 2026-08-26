@@ -927,7 +927,8 @@
         "automation_rules": "Reguły automatyzacji",
         "settings_hiring_gates": "Bramki lejka rekrutacji",
         "settings_risk_intel": "Ryzyko operacyjne",
-        "hr_inbox": "HR Inbox"
+        "hr_inbox": "HR Inbox",
+        "organization": "Organizacja"
       },
       "hr": {
         "workspace": {
@@ -1446,6 +1447,143 @@
         "work_schedule": {
           "title": "Opcje grafiku pracy",
           "hint": "Co oferuje klient na tę wakaturę (preferencja kandydata jest osobno)"
+        }
+      },
+      "workspace": {
+        "tabs": {
+          "workspace": "Workspace",
+          "job_details": "Szczegóły oferty",
+          "recruitment": "Rekrutacja",
+          "requirements": "Wymagania kandydata",
+          "automation": "Automatyzacja",
+          "analytics": "Analityka",
+          "settings": "Ustawienia",
+          "candidates": "Kandydaci"
+        },
+        "actions": {
+          "edit": "Edytuj",
+          "pause": "Wstrzymaj",
+          "export": "Eksport raportu"
+        },
+        "meta": {
+          "client": "Klient",
+          "order": "Zamówienie",
+          "funnel": "Lejek",
+          "recruiter": "Rekruter"
+        },
+        "kpi": {
+          "headcount": "Plan",
+          "hired": "Zatrudnieni",
+          "remaining": "Pozostało",
+          "completion": "Ukończenie"
+        },
+        "stage_cards": {
+          "view_list": "Zobacz listę"
+        },
+        "order_progress": "Postęp zamówienia",
+        "order_hint": "Do czasu API fulfillment zamówienia licznik opiera się na zatrudnionych na wakacie.",
+        "order_none": "— wolny wakat (bez zamówienia) —",
+        "vacancy_progress": "Postęp wakatu",
+        "main": {
+          "title": "Główne informacje",
+          "location": "Lokalizacja",
+          "employment": "Zatrudnienie",
+          "salary": "Wynagrodzenie",
+          "currency": "Waluta"
+        },
+        "req": {
+          "title": "Wymagania kandydata",
+          "mandatory": "Obowiązkowe",
+          "preferred": "Preferowane",
+          "preferred_empty": "Preferowane wymagania pojawią się po konfiguracji.",
+          "preferred_note": "Preferowane kryteria to miękkie sygnały.",
+          "documents": "Dokumenty",
+          "experience": "Doświadczenie",
+          "years": "lat",
+          "countries_allowed": "Dozwolone kraje",
+          "countries_blocked": "Zakazane kraje",
+          "preferred_docs": "Preferowane dokumenty",
+          "languages": "Języki",
+          "languages_hint": "Kody języków po przecinku (np. pl, en).",
+          "allow_statuses": "Dozwolone statusy dokumentów",
+          "preset": "— preset wymagań —",
+          "apply_preset": "Zastosuj preset"
+        },
+        "funnel": "Lejek rekrutacji",
+        "funnel_empty": "Brak danych pipeline.",
+        "activity": {
+          "title": "Ostatnia aktywność",
+          "message": "Historia działań na wakacie pojawi się po podłączeniu Activity Feed."
+        },
+        "attention": {
+          "title": "Na co zwrócić uwagę",
+          "no_recruiter": "Brak managera lub rekrutera",
+          "waiting_docs": "{count} kandydatów czeka na dokumenty ({stage})",
+          "permit": "{count} na pozwoleniu na pracę ({stage})",
+          "empty": "Brak pilnych pozycji."
+        },
+        "quick": {
+          "title": "Szybkie akcje",
+          "add_candidate": "Dodaj kandydata",
+          "assign_recruiter": "Przypisz rekrutera",
+          "create_document": "Utwórz dokument",
+          "message": "Napisz do kandydata",
+          "export": "Eksport raportu",
+          "soon": "Wkrótce"
+        },
+        "owner": "Odpowiedzialny",
+        "related": {
+          "title": "Powiązane",
+          "company": "Firma",
+          "order": "Zamówienie",
+          "funnel": "Lejek",
+          "profile": "Profil kandydata",
+          "documents": "Dokumenty",
+          "recruiter": "Rekruter",
+          "team": "Zespół",
+          "meta": "Kampanie Meta",
+          "forms": "Formularze",
+          "open": "Otwórz",
+          "soon": "Wkrótce"
+        },
+        "profile_none": "— nie wybrano —",
+        "recruitment": {
+          "auto_assign": "Auto-przypisanie",
+          "auto_assign_hint": "Wagi puli sterują rotacją least-load.",
+          "sla": "SLA",
+          "sla_reserved": "Konfiguracja SLA pojawi się tutaj.",
+          "transitions": "Reguły przejść",
+          "transitions_reserved": "Reguły przejść pojawią się tutaj.",
+          "system_stages": "Etapy systemowe",
+          "system_stages_empty": "Brak załadowanych etapów."
+        },
+        "automation": {
+          "empty": "Brak reguł automatyzacji z bieżących wymagań.",
+          "if": "Jeśli",
+          "then": "To"
+        },
+        "analytics": {
+          "reserved": "Brak danych",
+          "applications": "Aplikacje",
+          "conversion": "Konwersja",
+          "sources": "Źródła",
+          "cost": "Koszt",
+          "time_to_hire": "Time to Hire",
+          "hire_rate": "Hire Rate"
+        },
+        "settings": {
+          "created": "Utworzono",
+          "updated": "Zmieniono",
+          "active": "Aktywna",
+          "archived": "W archiwum",
+          "open": "Otwarta",
+          "status": "Status",
+          "hint": "Tylko parametry techniczne. Pola biznesowe są na innych zakładkach."
+        },
+        "candidates": {
+          "empty": "Brak kandydatów na ten wakat.",
+          "filter": "Filtr",
+          "clear_filter": "Wyczyść filtr"
         }
       }
     },
@@ -4668,6 +4806,65 @@
           "assignments": "Przydziały",
           "assignments_today": "Przydziały dziś (UTC)",
           "assignments_month": "Przydziały w miesiącu (UTC)"
+        }
+      },
+      "marketing": {
+        "title": "Efektywność marketingu",
+        "subtitle": "KPI kampanii Acquisition: wydatki, leady, CPL. Multi-select kampanii lub preset (np. kierowcy Poltrakt).",
+        "empty": "Brak kampanii w wybranym przekroju.",
+        "empty_campaigns": "Brak kampanii dla tej firmy.",
+        "snapshot_badge": "Metryki ze snapshotu Meta",
+        "snapshot_hint": "Wyświetlenia i zasięg pochodzą z ostatniego snapshotu Meta Insights, nie z okna ledger wydatków.",
+        "snapshot_chip": "Snapshot",
+        "source_ledger": "Ledger wydatków",
+        "source_attribution": "Atrybucja leadów",
+        "source_derived": "Wyliczone (wydatki ÷ leady)",
+        "filters": {
+          "currency": "Waluta wyświetlania",
+          "presets": "Presety",
+          "campaigns": "Kampanie",
+          "select_all": "Zaznacz wszystkie",
+          "clear": "Wyczyść",
+          "selected": "Wybrano {count} / {total}"
+        },
+        "fx": {
+          "loading": "Ładowanie kursów NBP…",
+          "as_of": "Kurs średni NBP · {date} ({provider})",
+          "unavailable": "Brak kursów — pokazywana waluta źródłowa",
+          "error": "Nie udało się pobrać kursów NBP. Kwoty pozostają w USD do czasu dostępności kursów."
+        },
+        "presets": {
+          "drivers_poltrakt": "Kierowcy Poltrakt",
+          "warehouse": "Magazyn",
+          "dispatcher": "Dyspozytor",
+          "ru": "Leady RU",
+          "agency": "Agency",
+          "eng": "ENG"
+        },
+        "stats": {
+          "spend": "Wydatki",
+          "leads": "Leady",
+          "cpl": "CPL",
+          "impressions": "Wyświetlenia",
+          "reach": "Zasięg"
+        },
+        "charts": {
+          "trend_title": "Dynamika",
+          "trend_subtitle": "Dzienne wydatki i leady dla wybranych kampanii i okresu.",
+          "spend_title": "Wydatki wg kampanii",
+          "spend_subtitle": "Wydatki reklamowe w wybranej grupie.",
+          "leads_title": "Leady wg kampanii",
+          "leads_subtitle": "Przypisane leady (Acquisition).",
+          "cpl_title": "Koszt leada (CPL)",
+          "cpl_subtitle": "Niżej = lepiej; najlepszy CPL wyróżniony.",
+          "mix_title": "Mix leadów",
+          "mix_subtitle": "Udział leadów wśród wybranych kampanii."
+        },
+        "table": {
+          "title": "Szczegóły kampanii",
+          "subtitle": "Wybrane kampanie z wyświetleniami/zasięgiem ze snapshotu Meta, jeśli dostępne.",
+          "campaign": "Kampania",
+          "best_cpl": "Najlepszy CPL"
         }
       }
     },
@@ -8519,18 +8716,18 @@
       "compact_hint": "Kompaktowa wskazówka",
       "company_type": "Typ firmy",
       "company_type_hint": "Wskazówka dotycząca rodzaju firmy",
-      "create": "Utwórz",
+      "create": "Utwórz firmę",
       "empty": {
-        "limit_reached": "Limit osiągnięty",
-        "subtitle": "Podtytuł",
-        "title": "Tytuł"
+        "limit_reached": "Limit firm operacyjnych wyczerpany. Dodaj slot w Billing, aby utworzyć kolejną.",
+        "subtitle": "Najpierw utwórz profil własnej firmy. Firmy klientów go nie zastępują.",
+        "title": "Brak firmy operacyjnej"
       },
       "manage_access": "Zarządzaj dostępem",
       "missing_tax_id": "Brak identyfikatora podatkowego",
       "open_billing": "Otwórz rozliczenia",
       "open_invoices": "Otwarte faktury",
-      "subtitle": "Podtytuł",
-      "title": "Tytuł",
+      "subtitle": "Profil firmy operacyjnej: dane prawne, bank, branding i kontakty.",
+      "title": "Moja firma",
       "workspace": {
         "bank_accounts": "Konta bankowe",
         "billing": "Rozliczenia",
@@ -8538,6 +8735,82 @@
         "legal": "Legalne",
         "subtitle": "Podtytuł",
         "title": "Tytuł"
+      },
+      "profile": {
+        "switch_label": "Profil firmy",
+        "type_unknown": "Firma",
+        "copied": "Skopiowano",
+        "copy_failed": "Nie udało się skopiować",
+        "status": {
+          "active": "Aktywna",
+          "archived": "Zarchiwizowana"
+        },
+        "tabs": {
+          "overview": "Przegląd",
+          "requisites": "Dane firmowe",
+          "bank": "Konta bankowe",
+          "documents": "Dokumenty",
+          "contacts": "Kontakty",
+          "related": "Powiązane podmioty",
+          "history": "Historia"
+        },
+        "basic": {
+          "title": "Podstawowe informacje",
+          "legal_name": "Nazwa prawna",
+          "type": "Typ firmy",
+          "industry": "Branża",
+          "created": "Data utworzenia",
+          "status": "Status"
+        },
+        "stats": {
+          "title": "Szybkie statystyki",
+          "employees": "Pracownicy",
+          "vacancies": "Wakaty",
+          "clients": "Klienci",
+          "orders": "Zamówienia",
+          "go_employees": "Przejdź do pracowników",
+          "go_vacancies": "Przejdź do wakatów",
+          "go_clients": "Przejdź do klientów",
+          "go_orders": "Przejdź do zamówień"
+        },
+        "legal": {
+          "title": "Dane prawne",
+          "edit": "Edytuj dane",
+          "address": "Adres prawny",
+          "country": "Kraj"
+        },
+        "bank": {
+          "title": "Konta bankowe",
+          "add": "Dodaj konto",
+          "empty": "Brak kont bankowych.",
+          "view_all": "Wszystkie konta",
+          "primary": "Główne"
+        },
+        "branding": {
+          "title": "Branding",
+          "primary": "Główny",
+          "secondary": "Dodatkowy",
+          "edit": "Edytuj branding"
+        },
+        "contacts": {
+          "title": "Kontakty firmy",
+          "add": "Dodaj kontakt",
+          "empty": "Brak kontaktów."
+        },
+        "documents": {
+          "title": "Dokumenty firmy",
+          "add": "Dodaj dokument",
+          "empty": "Dokumenty firmy pojawią się tutaj po przypisaniu do profilu."
+        },
+        "history": {
+          "title": "Ostatnie zmiany",
+          "updated": "Zaktualizowano profil",
+          "created": "Utworzono firmę",
+          "empty": "Brak ostatnich zmian."
+        },
+        "related": {
+          "hint": "Klienci, wakaty i zamówienia powiązane z tą firmą operacyjną."
+        }
       }
     },
     "onboarding": {
@@ -9011,6 +9284,73 @@
           "title": "Reklamy Meta",
           "body": "Formularze i reklamy Facebook/Instagram — zgłoszenia automatycznie trafiają do inbox."
         }
+      }
+    },
+    "organization": {
+      "title": "Organizacja",
+      "subtitle": "Subskrypcja workspace, moduły, użytkownicy i firmy operacyjne.",
+      "errors": {
+        "load_failed": "Nie udało się wczytać huba organizacji"
+      },
+      "identity": {
+        "workspace": "Workspace",
+        "companies": "Firmy",
+        "owner": "Właściciel",
+        "hint": "Dane prawne firmy są w profilu firmy, nie tutaj."
+      },
+      "subscription": {
+        "title": "Subskrypcja",
+        "plan": "Plan",
+        "period": "Okres",
+        "slots": "Sloty firm",
+        "available": "Dostępne",
+        "payment": "Płatność",
+        "paid": "Opłacone",
+        "unpaid": "Sprawdź billing",
+        "manage": "Zarządzaj subskrypcją",
+        "no_access": "Szczegóły billingu są dostępne dla administratorów.",
+        "status": {
+          "active": "Aktywna",
+          "trialing": "Trial",
+          "trial": "Trial",
+          "past_due": "Zaległa",
+          "canceled": "Anulowana",
+          "unknown": "Nieznany",
+          "restricted": "Brak dostępu"
+        }
+      },
+      "operations": {
+        "title": "Sloty firm",
+        "unlimited": "Nielimitowane sloty firm w tym planie.",
+        "used_label": "slotów użytych",
+        "used": "Użyte: {count}",
+        "available": "Dostępne: {count}",
+        "details": "Szczegóły slotów"
+      },
+      "modules": {
+        "title": "Moduły",
+        "subtitle": "Moduły włączone w tym workspace.",
+        "empty": "Lista modułów niedostępna.",
+        "all": "Wszystkie moduły"
+      },
+      "companies": {
+        "title": "Firmy",
+        "subtitle": "Profile firm operacyjnych w tym workspace.",
+        "empty": "Brak firm operacyjnych.",
+        "open_profile": "Otwórz profil firmy",
+        "create": "Utwórz firmę"
+      },
+      "users": {
+        "title": "Użytkownicy",
+        "subtitle": "Aktywni użytkownicy workspace.",
+        "empty": "Lista użytkowników niedostępna.",
+        "manage": "Zarządzaj użytkownikami"
+      },
+      "billing_docs": {
+        "title": "Billing i dokumenty",
+        "subtitle": "Płatności i dokumenty rozliczeniowe workspace.",
+        "history": "Historia płatności",
+        "closing": "Dokumenty rozliczeniowe"
       }
     }
   },
@@ -11770,7 +12110,7 @@
           "description": "Tworzenie i obsługa przestrzeni klientów."
         },
         "my_company": {
-          "description": "Profil agencji, branding i dane na poziomie firmy (poza drzewem ustawień)."
+          "description": "Profil podmiotu prawnego: dane firmowe, bank, branding i kontakty."
         },
         "integrations_hub": {
           "label": "Hub integracji",
@@ -11867,6 +12207,9 @@
         "roles_access": {
           "label": "Role i dostępy",
           "description": "Role zaufania, macierz modułów i presety uprawnień dla Employee i Viewer."
+        },
+        "organization": {
+          "description": "Subskrypcja workspace, moduły, użytkownicy i firmy operacyjne."
         }
       },
       "audit": {

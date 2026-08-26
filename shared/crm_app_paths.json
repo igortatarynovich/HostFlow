@@ -87,6 +87,7 @@
     "communicationsThreadsBase": "/app/communications/threads",
     "communicationsLegacyHub": "/app/communications",
     "profile": "/app/profile",
+    "organization": "/app/organization",
     "myCompany": "/app/my-company",
     "myAvailability": "/app/my-availability",
     "teamAvailability": "/app/team-availability",
