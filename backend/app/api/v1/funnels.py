@@ -74,6 +74,31 @@ async def _enforce_company_module_scope(
     return tenant, company
 
 
+def _module_catalog_funnels(
+    funnels: List[Funnel],
+    *,
+    operating_company_id: Optional[str],
+) -> List[Funnel]:
+    """Settings catalog: one row per (type, name). Prefer the operating-company copy."""
+    operating = str(operating_company_id or "").strip()
+    by_key: Dict[tuple[str, str], Funnel] = {}
+    if operating:
+        for funnel in funnels:
+            if str(getattr(funnel, "company_id", None) or "").strip() != operating:
+                continue
+            key = (str(funnel.type or ""), str(funnel.name or "").strip().lower())
+            if key[1]:
+                by_key[key] = funnel
+    for funnel in funnels:
+        key = (str(funnel.type or ""), str(funnel.name or "").strip().lower())
+        if not key[1] or key in by_key:
+            continue
+        by_key[key] = funnel
+    selected = list(by_key.values())
+    selected.sort(key=lambda f: (not bool(f.is_default), str(f.name or "").lower()))
+    return selected
+
+
 async def _enforce_company_recruitment_scope(
     db: AsyncSession,
     *,
@@ -458,7 +483,7 @@ class FunnelStageOut(BaseModel):
 
 
 class FunnelIn(BaseModel):
-    company_id: str = Field(..., min_length=1, max_length=36)
+    company_id: Optional[str] = Field(default=None, min_length=1, max_length=36)
     type: str = Field(..., pattern=FUNNEL_TYPE_PATTERN)
     name: str = Field(..., min_length=1, max_length=255)
     is_default: bool = False
@@ -506,44 +531,58 @@ class FunnelOut(BaseModel):
 @router.get("", response_model=List[FunnelOut])
 @router.get("/", response_model=List[FunnelOut], include_in_schema=False)
 async def list_funnels(
-    company_id: str = Query(..., min_length=1, max_length=36),
+    company_id: Optional[str] = Query(None, min_length=1, max_length=36),
     type_filter: Optional[str] = Query(None, alias="type"),
     module_key: str = Query(RECRUITMENT_MODULE_KEY, min_length=1, max_length=32),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> List[FunnelOut]:
-    """List company-scoped operational funnels (excludes legacy tenant-wide rows)."""
+    """List operational funnels for a module. Omit company_id to list the tenant catalog."""
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
-    company_str = str(company_id).strip()
+    company_str = str(company_id or "").strip()
     module_str = str(module_key).strip()
     if module_str not in {RECRUITMENT_MODULE_KEY, HR_MODULE_KEY}:
         raise HTTPException(status_code=422, detail=f"unsupported module_key {module_key!r}")
     _validate_list_module_type(module_str, type_filter)
 
-    await _enforce_company_module_scope(
-        db,
-        tenant_id=tenant_str,
-        company_id=company_str,
-        module_key=module_str,
-        current_user=current_user,
-    )
-
     stmt = (
         select(Funnel)
         .where(
             Funnel.tenant_id == tenant_str,
-            Funnel.company_id == company_str,
             Funnel.module_key == module_str,
+            Funnel.company_id.isnot(None),
         )
     )
+    if company_str:
+        await _enforce_company_module_scope(
+            db,
+            tenant_id=tenant_str,
+            company_id=company_str,
+            module_key=module_str,
+            current_user=current_user,
+        )
+        stmt = stmt.where(Funnel.company_id == company_str)
+    else:
+        acl = await resolve_restricted_acl(db, tenant_str, current_user)
+        if acl is not None:
+            if not acl.company_ids:
+                return []
+            stmt = stmt.where(Funnel.company_id.in_(list(acl.company_ids)))
     if type_filter:
         stmt = stmt.where(Funnel.type == type_filter)
     elif module_str == HR_MODULE_KEY:
         stmt = stmt.where(Funnel.type == HR_EMPLOYEE_FUNNEL_TYPE)
     stmt = stmt.order_by(Funnel.is_default.desc(), Funnel.name)
     result = await db.execute(stmt)
-    funnels = result.scalars().all()
+    funnels = list(result.scalars().all())
+    if not company_str:
+        from backend.app.services.recruitment_funnel_bootstrap import (
+            resolve_first_operating_company_id,
+        )
+
+        operating_id = await resolve_first_operating_company_id(db, tenant_id=tenant_str)
+        funnels = _module_catalog_funnels(funnels, operating_company_id=operating_id)
 
     out: List[FunnelOut] = []
     for f in funnels:
@@ -596,7 +635,20 @@ async def create_funnel(
 
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
-    company_str = str(payload.company_id).strip()
+    company_str = str(payload.company_id or "").strip()
+    if not company_str:
+        from backend.app.services.recruitment_funnel_bootstrap import (
+            resolve_first_operating_company_id,
+        )
+
+        company_str = (
+            await resolve_first_operating_company_id(db, tenant_id=tenant_str) or ""
+        ).strip()
+    if not company_str:
+        raise HTTPException(
+            status_code=422,
+            detail="company_id is required when the tenant has no operating company",
+        )
 
     await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_str)
     await ensure_custom_funnel_create_allowed(db, tenant_str)

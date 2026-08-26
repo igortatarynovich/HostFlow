@@ -47,7 +47,7 @@ export interface Funnel {
 }
 
 export interface FunnelCreate {
-  company_id: string
+  company_id?: string
   type: 'candidate' | 'lead' | 'deal' | 'employee'
   name: string
   is_default?: boolean
@@ -60,7 +60,7 @@ export interface FunnelUpdate {
 }
 
 export interface ListFunnelsOptions {
-  companyId: string
+  companyId?: string
   type?: 'candidate' | 'lead' | 'deal' | 'employee'
   moduleKey?: string
 }
@@ -74,10 +74,9 @@ export function funnelHasReadyForHandoff(funnel: Funnel): boolean {
   )
 }
 
-export async function listFunnels(options: ListFunnelsOptions): Promise<Funnel[]> {
-  const params: Record<string, string> = {
-    company_id: options.companyId,
-  }
+export async function listFunnels(options: ListFunnelsOptions = {}): Promise<Funnel[]> {
+  const params: Record<string, string> = {}
+  if (options.companyId) params.company_id = options.companyId
   if (options.type) params.type = options.type
   if (options.moduleKey) params.module_key = options.moduleKey
 
