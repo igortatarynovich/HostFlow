@@ -63,6 +63,7 @@ export interface VacancyPayload {
   /** ADR-032: Sales Order Line bind (1:1) */
   order_line_id?: string | null;
   extra?: Record<string, unknown> | string | null;
+  funnel_id?: string | null;
 }
 
 export interface Vacancy {
@@ -83,6 +84,7 @@ export interface Vacancy {
   last_candidate_activity_at?: string | null;
   headcount_target?: number | null;
   order_line_id?: string | null;
+  funnel_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }

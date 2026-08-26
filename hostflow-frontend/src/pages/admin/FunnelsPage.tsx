@@ -1042,7 +1042,7 @@ export default function FunnelsPage() {
         ) : null}
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">

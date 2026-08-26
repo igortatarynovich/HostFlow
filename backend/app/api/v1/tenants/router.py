@@ -322,6 +322,21 @@ async def create_tenant_link(
     if display_name:
         features["client_display_name"] = display_name
 
+    if payload.handoff_enabled:
+        from backend.app.services.recruitment_handoff_funnel_gate import (
+            HandoffFunnelGateError,
+            ensure_can_enable_handoff_for_company,
+        )
+
+        gate_company_id = cid or handoff_company
+        if gate_company_id:
+            try:
+                await ensure_can_enable_handoff_for_company(
+                    db, tenant_id=str(tenant_id), company_id=gate_company_id
+                )
+            except HandoffFunnelGateError as exc:
+                raise exc.as_http_exception() from exc
+
     if tid and handoff_company:
         # Link to existing employer tenant + company
         company = await db.get(Company, handoff_company)
@@ -473,6 +488,21 @@ async def update_tenant_link(
         raise HTTPException(status_code=404, detail="Tenant link not found")
     updates = payload.model_dump(exclude_unset=True)
     if updates:
+        if updates.get("handoff_enabled") is True:
+            from backend.app.services.recruitment_handoff_funnel_gate import (
+                HandoffFunnelGateError,
+                ensure_can_enable_handoff_for_company,
+            )
+
+            gate_company_id = str(
+                link.client_company_id or link.handoff_include_company_id or ""
+            ).strip() or None
+            try:
+                await ensure_can_enable_handoff_for_company(
+                    db, tenant_id=str(tenant_id), company_id=gate_company_id
+                )
+            except HandoffFunnelGateError as exc:
+                raise exc.as_http_exception() from exc
         features = dict(link.features_json or {})
         if "handoff_enabled" in updates:
             features["handoff_enabled"] = updates["handoff_enabled"]

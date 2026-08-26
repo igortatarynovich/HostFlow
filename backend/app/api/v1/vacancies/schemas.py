@@ -37,6 +37,10 @@ class VacancyIn(BaseModel):
         le=9999,
         description="Planned positions to fill; omit or 0 for none",
     )
+    funnel_id: Optional[UUID] = Field(
+        default=None,
+        description="Recruitment candidate funnel for this vacancy",
+    )
     order_line_id: Optional[UUID] = Field(
         default=None,
         description="ADR-032: bind to Sales Order Line (1:1); pulls headcount from line",
@@ -79,6 +83,7 @@ class VacancyOut(BaseModel):
     last_candidate_activity_at: Optional[datetime] = None
     headcount_target: Optional[int] = None
     order_line_id: Optional[str] = None
+    funnel_id: Optional[str] = None
 
     # Phase 2.6.D Stage A — emit canonical values to clients even when
     # the row in the database still holds a legacy alias (`paused`). The
@@ -116,6 +121,7 @@ class VacancyPatch(BaseModel):
     manager: Optional[UUID] = None
     candidate_profile_id: Optional[UUID] = None
     required_documents_template_id: Optional[UUID] = None
+    funnel_id: Optional[UUID] = None
     extra: Optional[Dict[str, Any]] = None
     headcount_target: Optional[int] = Field(
         default=None,

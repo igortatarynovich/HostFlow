@@ -1,8 +1,9 @@
 /**
  * Maps `/meta/stages` payloads into state patches for column order, column→stages, and stage sequence.
+ * Funnel order from the API is the source of truth; do not strip post-handoff codes here.
+ * Company-scoped hide-list lives on GET /meta/stages?company_id= when that company has handoff on.
  */
 
-import { filterRecruitmentVisibleStageCodes } from '../../constants/recruitmentStageSurface';
 import { DEFAULT_COLUMN_STAGES, KANBAN_ORDER } from './constants';
 
 export type MetaStagesStatePatch = {
@@ -12,14 +13,13 @@ export type MetaStagesStatePatch = {
 };
 
 function trimCodes(list: unknown[]): string[] {
-  const raw = Array.from(
+  return Array.from(
     new Set(
       list
         .map((code: unknown) => (code != null ? String(code).trim() : ''))
         .filter(Boolean),
     ),
   );
-  return filterRecruitmentVisibleStageCodes(raw);
 }
 
 /**

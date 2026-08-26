@@ -2894,11 +2894,18 @@ async def patch_candidate(
                 enforce_agency_handoff_stage_change_allowed,
             )
 
+            cand_for_lane = await db.get(Candidate, str(candidate_id))
             await enforce_agency_handoff_stage_change_allowed(
                 db,
                 tenant_id=tenant_id_str,
                 user=current_user,
                 new_stage_code=str(data["stage"]),
+                company_id=str(
+                    data.get("company_id")
+                    or getattr(cand_for_lane, "company_id", None)
+                    or ""
+                ).strip()
+                or None,
             )
 
     _candidate_patch_side_effect_fields = frozenset(

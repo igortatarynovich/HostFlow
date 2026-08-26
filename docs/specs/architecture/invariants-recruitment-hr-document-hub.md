@@ -28,7 +28,9 @@
 
 **Ready for HR** — завершение части Recruitment: рекрутер довёл кандидата, подтвердил готовность к передаче в кадры. Рекрутер **может** выставить `ready_for_hr` (при включённом handoff lane на tenant).
 
-**Hired** — подтверждение трудоустройства со стороны **HR / company**, не рекрутера. Рекрутер **не** должен выставлять `hired` при включённом agency handoff (enforcement: `enforce_agency_handoff_stage_change_allowed`).
+**Hired** — подтверждение трудоустройства со стороны **HR / company**, не рекрутера. Рекрутер **не** должен выставлять `hired` при включённом agency handoff (enforcement: `enforce_agency_handoff_stage_change_allowed`). Lane split — **per company**: handoff у соседнего клиента не блокирует employment-воронку клиента без handoff.
+
+**Handoff-on funnel:** если handoff включён для клиента, назначенная recruitment candidate funnel **должна** содержать `ready_for_handoff` («Готов к передаче»). Enforcement: `recruitment_handoff_funnel_gate.py` (enable link, vacancy/profile/CMS assignment, delete/rename stage).
 
 **Handoff event (текущая имплементация):** см. детальный контракт [**handoff-contract.md**](handoff-contract.md) (часть B): stage-driven vs `CandidateHandoff`, source/destination, идемпотентность. Кратко: смена стадии при выполнении правил резолвера → `handoff_from_candidate` + activity `workforce.handoff_from_candidate`; либо запись `CandidateHandoff` с нужным `destination`.
 

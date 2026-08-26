@@ -67,6 +67,20 @@ async def _enforce_profile_funnel_company_scope(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except RecruitmentFunnelNotFoundError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    from backend.app.services.recruitment_handoff_funnel_gate import (
+        HandoffFunnelGateError,
+        ensure_candidate_funnel_allows_company_handoff,
+    )
+
+    try:
+        await ensure_candidate_funnel_allows_company_handoff(
+            db,
+            tenant_id=tenant_id,
+            company_id=scope_company,
+            funnel_id=fid,
+        )
+    except HandoffFunnelGateError as exc:
+        raise exc.as_http_exception() from exc
 
 
 def _profile_to_dict(profile: CandidateProfile) -> Dict[str, Any]:

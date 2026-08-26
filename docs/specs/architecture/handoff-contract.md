@@ -35,6 +35,15 @@
 - **`ready_for_hr`** = канонический переход Recruitment → internal HR (Workforce) по стадии.
 - **`ready_for_handoff`** = универсальная стадия передачи; может вести в client handoff, в internal HR, или в оба — в зависимости от **tenant link** и флага **`workforce_handoff_on_ready_for_handoff_stage`** (см. roadmap §2.1 блок D).
 
+### A.4 Handoff-on требует этап `ready_for_handoff` в воронке рекрутмента
+
+Если у клиента включён **handoff** (`handoff_enabled` на tenant link), воронка рекрутмента (type=`candidate`) **обязана** содержать код **`ready_for_handoff`** («Готов к передаче»).
+
+- Включить handoff нельзя, пока у назначенных воронок (default CMS, vacancy.`funnel_id`, профиль вакансии) нет этого этапа.
+- Вакансии / профилю / default funnel нельзя назначить воронку без этого этапа.
+- Нельзя удалить или переименовать последний `ready_for_handoff` в такой воронке, пока handoff включён.
+- Если handoff **выключен**, воронка рекрутмента может заканчиваться Employed / Rejected / Declined и никого не передавать.
+
 ---
 
 ## Часть B. Handoff Contract (модель события)
@@ -96,7 +105,8 @@
 - `backend/app/services/hr_acceptance_orchestrator.py` — accept → `handoff_from_candidate`
 - `backend/app/services/hr_employee_funnel_assignment.py` — `meta.employee_pipeline` (handoff gate)
 - `backend/app/services/workforce_hr_operational_context.py` — HR case + document links
-- `backend/app/api/v1/tenants/router.py` — флаги tenant link (`handoff_to_client`, `workforce_handoff_on_ready_for_handoff_stage`)
+- `backend/app/api/v1/tenants/router.py` — флаги tenant link (`handoff_to_client`, `workforce_handoff_on_ready_for_handoff_stage`); enable handoff gated by `ready_for_handoff` on assigned funnels
+- `backend/app/services/recruitment_handoff_funnel_gate.py` — vacancy/profile/CMS funnel assignment + stage delete when handoff is on
 
 ---
 

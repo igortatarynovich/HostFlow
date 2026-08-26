@@ -93,6 +93,34 @@ def merge_internal_hr_lane_into_funnel_order(payload: dict[str, Any]) -> dict[st
     return out
 
 
+def handoff_lane_active_for_company(links: list[Any], *, company_id: str | None) -> bool:
+    """True when the recruiter/HR lane split applies for this operating company.
+
+    Company-scoped: another client's handoff must not lock POLTRAKT-style
+    employment funnels that have handoff off. Without a company id the lane
+    split does not apply — mixed-tenant /meta/stages must not hide employment
+    stages for clients that have handoff off.
+    """
+    if not links:
+        return False
+
+    def _company_ids(link: Any) -> set[str]:
+        ids: set[str] = set()
+        for attr in ("client_company_id", "handoff_include_company_id"):
+            raw = str(getattr(link, attr, None) or "").strip()
+            if raw:
+                ids.add(raw)
+        return ids
+
+    cid = str(company_id or "").strip()
+    if not cid:
+        return False
+    scoped = [link for link in links if cid in _company_ids(link)]
+    if not scoped:
+        return False
+    return any(bool(link.get_handoff_enabled()) for link in scoped)
+
+
 def filter_meta_stages_payload(
     payload: dict[str, Any],
     *,
@@ -152,6 +180,8 @@ async def apply_handoff_stage_meta_for_user(
     tenant_id: str,
     user: UserCtx,
     payload: dict[str, Any],
+    *,
+    company_id: str | None = None,
 ) -> dict[str, Any]:
     """Apply recruitment / HR / client-processor narrowing for agency tenants with handoff links."""
     tid = (tenant_id or "").strip()
@@ -161,7 +191,7 @@ async def apply_handoff_stage_meta_for_user(
         return payload
 
     links = await list_links_for_agency(db, tid)
-    if not any(link.get_handoff_enabled() for link in links):
+    if not handoff_lane_active_for_company(links, company_id=company_id):
         return payload
 
     role = (user.role or "").strip().lower()
@@ -200,11 +230,13 @@ async def enforce_agency_handoff_stage_change_allowed(
     tenant_id: str,
     user: UserCtx,
     new_stage_code: str,
+    company_id: str | None = None,
 ) -> None:
     """403 if agency user tries to set a stage outside their lane while handoff is enabled.
 
     Recruitment (recruiter/supervisor/viewer): may set ``ready_for_hr`` (финал Recruitment);
     blocked codes — ``RECRUITMENT_HANDOFF_HIDDEN_STAGE_CODES`` (e.g. ``hired``, ``employed``, post-handoff lane).
+    Lane split is per operating company: employment funnels without handoff stay writable.
     """
     tid = (tenant_id or "").strip()
     if not tid or (user.tenant_id or "").strip() != tid:
@@ -213,7 +245,7 @@ async def enforce_agency_handoff_stage_change_allowed(
         return
 
     links = await list_links_for_agency(db, tid)
-    if not any(link.get_handoff_enabled() for link in links):
+    if not handoff_lane_active_for_company(links, company_id=company_id):
         return
 
     role = (user.role or "").strip().lower()
@@ -257,5 +289,9 @@ async def apply_recruitment_handoff_stage_meta_if_needed(
     tenant_id: str,
     user: UserCtx,
     payload: dict[str, Any],
+    *,
+    company_id: str | None = None,
 ) -> dict[str, Any]:
-    return await apply_handoff_stage_meta_for_user(db, tenant_id, user, payload)
+    return await apply_handoff_stage_meta_for_user(
+        db, tenant_id, user, payload, company_id=company_id
+    )

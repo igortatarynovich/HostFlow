@@ -41,7 +41,6 @@ import {
   translateStageLabel,
 } from '../utils/stageLabels'
 import { isPostRecruitmentStageCode } from '../constants/recruitmentStageBoundary'
-import { filterRecruitmentVisibleStageCodes } from '../constants/recruitmentStageSurface'
 import { getRegionDisplayName } from '../utils/catalogLocale'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -556,7 +555,7 @@ export default function Candidates(){
     if (meta?.meta && isClientRole) {
       list = base.filter((code) => meta.meta?.[code]?.visible_for_client)
     }
-    return filterRecruitmentVisibleStageCodes(list)
+    return list
   }, [meta, isClientRole])
 
   const recruitmentListStageFilterActive = Boolean(

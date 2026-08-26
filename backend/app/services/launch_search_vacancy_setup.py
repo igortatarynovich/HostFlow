@@ -273,6 +273,29 @@ async def ensure_launch_search_vacancy_defaults(
     if not funnel_id:
         raise LaunchSearchSetupError("no candidate funnel available for launch search")
 
+    from backend.app.services.recruitment_handoff_funnel_gate import (
+        HandoffFunnelGateError,
+        company_has_handoff_enabled,
+        ensure_candidate_funnel_allows_company_handoff,
+        find_handoff_ready_candidate_funnel_id,
+    )
+
+    if await company_has_handoff_enabled(db, tenant_id=tid, company_id=company_id):
+        try:
+            await ensure_candidate_funnel_allows_company_handoff(
+                db, tenant_id=tid, company_id=company_id, funnel_id=funnel_id
+            )
+        except HandoffFunnelGateError:
+            fallback = await find_handoff_ready_candidate_funnel_id(
+                db, tenant_id=tid, company_id=company_id
+            )
+            if not fallback:
+                raise LaunchSearchSetupError(
+                    "handoff is enabled; no candidate funnel includes ready_for_handoff "
+                    "(Готов к передаче)"
+                ) from None
+            funnel_id = fallback
+
     vacancy.funnel_id = funnel_id
     if profile is not None:
         vacancy.candidate_profile_id = str(profile.id)

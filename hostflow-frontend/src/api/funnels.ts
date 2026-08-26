@@ -42,6 +42,7 @@ export interface Funnel {
   name: string
   is_default: boolean
   is_legacy_readonly?: boolean
+  has_ready_for_handoff?: boolean
   stages: FunnelStage[]
 }
 
@@ -62,6 +63,15 @@ export interface ListFunnelsOptions {
   companyId: string
   type?: 'candidate' | 'lead' | 'deal' | 'employee'
   moduleKey?: string
+}
+
+export const READY_FOR_HANDOFF_STAGE_CODE = 'ready_for_handoff'
+
+export function funnelHasReadyForHandoff(funnel: Funnel): boolean {
+  if (typeof funnel.has_ready_for_handoff === 'boolean') return funnel.has_ready_for_handoff
+  return (funnel.stages || []).some(
+    (stage) => String(stage.code || '').trim().toLowerCase() === READY_FOR_HANDOFF_STAGE_CODE,
+  )
 }
 
 export async function listFunnels(options: ListFunnelsOptions): Promise<Funnel[]> {

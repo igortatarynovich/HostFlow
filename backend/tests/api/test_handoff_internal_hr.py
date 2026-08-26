@@ -446,7 +446,13 @@ async def test_meta_stages_recruiter_handoff_filter_excludes_post_hr_codes(
     )
 
     h_rec = {**recruiter_headers, "X-Tenant-Id": tenant_id}
-    meta_r = await client.get("/api/v1/meta/stages", headers=h_rec)
+    meta_unscoped = await client.get("/api/v1/meta/stages", headers=h_rec)
+    assert meta_unscoped.status_code == 200, meta_unscoped.text
+    assert meta_unscoped.json().get("recruiter_handoff_stage_filter") is None
+
+    meta_r = await client.get(
+        "/api/v1/meta/stages", headers=h_rec, params={"company_id": company_id}
+    )
     assert meta_r.status_code == 200, meta_r.text
     body_r = meta_r.json()
     assert body_r.get("stage_visibility_mode") == "recruitment_handoff"
@@ -483,7 +489,9 @@ async def test_meta_stages_hr_officer_internal_hr_lane(
         client, manager_headers=manager_headers, tenant_id=tenant_id, company_id=company_id
     )
     h_hr = {**hr_officer_headers, "X-Tenant-Id": tenant_id}
-    meta_hr = await client.get("/api/v1/meta/stages", headers=h_hr)
+    meta_hr = await client.get(
+        "/api/v1/meta/stages", headers=h_hr, params={"company_id": company_id}
+    )
     assert meta_hr.status_code == 200, meta_hr.text
     body = meta_hr.json()
     assert body.get("stage_visibility_mode") == "internal_hr_handoff"

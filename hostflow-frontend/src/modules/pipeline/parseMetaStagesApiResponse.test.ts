@@ -9,6 +9,13 @@ describe('parseMetaStagesApiResponse', () => {
     expect(patch.columnStages).toBeUndefined();
   });
 
+  it('keeps employment stages from funnel order', () => {
+    const patch = parseMetaStagesApiResponse({
+      order: ['new', 'employed', 'rejected'],
+    });
+    expect(patch.stageSequence).toEqual(['new', 'employed', 'rejected']);
+  });
+
   it('merges groups with defaults and derives column order', () => {
     const patch = parseMetaStagesApiResponse({
       groups: { new: ['new'], interview: ['contacted'] },

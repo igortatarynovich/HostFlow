@@ -3565,7 +3565,7 @@ export default function CandidateCard(){
       return main
     }
 
-    const stripRecruitmentBoundary = !isClientTenant
+    const stripRecruitmentBoundary = !isClientTenant && isHandoffEnabledForCurrentCompany
     const orderedPipeline = buildOrderedStages(codesForPipeline, false, stripRecruitmentBoundary)
     const orderedDisplay = buildOrderedStages(codesForDisplay, true, stripRecruitmentBoundary)
 
@@ -3611,6 +3611,7 @@ export default function CandidateCard(){
     (model as any)?.intake_submitted_at,
     t,
     isClientTenant,
+    isHandoffEnabledForCurrentCompany,
   ])
 
   const canCloseRecruitment = useMemo(

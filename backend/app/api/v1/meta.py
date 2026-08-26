@@ -313,7 +313,9 @@ async def stages_meta(
         out["pipeline_type"] = "employee"
     tid = (tenant_id_header or "").strip()
     if tid and current_user is not None and pipeline_type != "employee":
-        out = await apply_handoff_stage_meta_for_user(db, tid, current_user, out)
+        out = await apply_handoff_stage_meta_for_user(
+            db, tid, current_user, out, company_id=company_id
+        )
     return out
 
 

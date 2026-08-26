@@ -282,12 +282,15 @@ async def create_vacancy(
     svc = _svc(db_tenant, own_company_id=own_company_id)
     _db, tenant_id = db_tenant
     await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(_db, str(tenant_id))
-    return await svc.create(
-        str(tenant_id),
-        payload,
-        own_company_id=own_company_id,
-        actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
-    )
+    try:
+        return await svc.create(
+            str(tenant_id),
+            payload,
+            own_company_id=own_company_id,
+            actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
 
 @router.post(
     "/{vacancy_id}/candidates",

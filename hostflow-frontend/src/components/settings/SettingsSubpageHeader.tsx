@@ -103,7 +103,14 @@ export function SettingsSubpageHeader({
   return (
     <PageShell>
       <PageShellHeader>{header}</PageShellHeader>
-      <div className={clsx('flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto', contentClassName)}>
+      <div
+        className={clsx(
+          // shrink-0: flex children default to shrink, so a later panel (help text)
+          // compresses a table card with overflow-hidden and clips rows with no scrollbar.
+          'flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain pb-8 [&>*]:shrink-0',
+          contentClassName,
+        )}
+      >
         {children}
       </div>
     </PageShell>

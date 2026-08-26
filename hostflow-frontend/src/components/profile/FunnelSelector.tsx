@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { listFunnels, type Funnel } from '../../api/funnels'
+import { funnelHasReadyForHandoff, listFunnels, type Funnel } from '../../api/funnels'
+import { isHandoffEnabledForCompany, listTenantLinks } from '../../api/tenantLinks'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { useCurrentTenantId } from '../../contexts/CurrentTenant'
+import { useAuth } from '../../store/useAuth'
 
 interface FunnelSelectorProps {
   companyId: string | null | undefined
@@ -22,37 +25,56 @@ export default function FunnelSelector({
   funnelType = 'candidate',
   hint,
 }: FunnelSelectorProps) {
+  const { me } = useAuth()
+  const currentTenantId = useCurrentTenantId()
+  const tenantId = (currentTenantId ?? (me as { tenant_id?: string } | null)?.tenant_id ?? '').trim()
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [loading, setLoading] = useState(true)
+  const [handoffEnabled, setHandoffEnabled] = useState(false)
 
   const scopeCompanyId = String(companyId || '').trim()
+  const requireHandoffReady = funnelType === 'candidate' && moduleKey === 'recruitment' && handoffEnabled
 
   const load = useCallback(async () => {
     if (!scopeCompanyId) {
       setFunnels([])
+      setHandoffEnabled(false)
       setLoading(false)
       return
     }
     setLoading(true)
     try {
-      const list = await listFunnels({
-        companyId: scopeCompanyId,
-        type: funnelType,
-        moduleKey,
-      })
+      const [list, links] = await Promise.all([
+        listFunnels({
+          companyId: scopeCompanyId,
+          type: funnelType,
+          moduleKey,
+        }),
+        tenantId ? listTenantLinks(tenantId).catch(() => []) : Promise.resolve([]),
+      ])
       setFunnels(list)
+      setHandoffEnabled(isHandoffEnabledForCompany(links, scopeCompanyId))
     } catch {
       setFunnels([])
+      setHandoffEnabled(false)
     } finally {
       setLoading(false)
     }
-  }, [scopeCompanyId, moduleKey, funnelType])
+  }, [scopeCompanyId, moduleKey, funnelType, tenantId])
 
   useEffect(() => {
     void load()
   }, [load])
 
+  const selectableFunnels = useMemo(() => {
+    if (!requireHandoffReady) return funnels
+    return funnels.filter((funnel) => funnelHasReadyForHandoff(funnel))
+  }, [funnels, requireHandoffReady])
+
   const selectedFunnel = funnels.find((f) => f.id === value)
+  const selectedBlocked = Boolean(
+    requireHandoffReady && value && selectedFunnel && !funnelHasReadyForHandoff(selectedFunnel),
+  )
 
   if (!scopeCompanyId) {
     return (
@@ -77,19 +99,31 @@ export default function FunnelSelector({
           className="input w-full max-w-md"
         >
           <option value="">— не выбрана —</option>
-          {funnels.map((f) => (
+          {selectableFunnels.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
               {f.is_default ? ' ★' : ''}
             </option>
           ))}
+          {selectedBlocked && selectedFunnel ? (
+            <option value={selectedFunnel.id} disabled>
+              {selectedFunnel.name} (нет этапа «Готов к передаче»)
+            </option>
+          ) : null}
         </select>
         <p className="mt-1 text-xs text-slate-500">
-          {hint ?? 'Этапы берутся из company-scoped воронок.'}{' '}
+          {requireHandoffReady
+            ? 'У клиента включён handoff: доступны только воронки с этапом «Готов к передаче».'
+            : (hint ?? 'Этапы берутся из company-scoped воронок.')}{' '}
           <Link to={CRM_APP_PATHS.settingsFunnels} className="text-brand-600 hover:underline">
             Редактировать воронки
           </Link>
         </p>
+        {selectedBlocked ? (
+          <p className="mt-1 text-xs text-rose-700">
+            Эта воронка не подходит для handoff: добавьте этап «Готов к передаче» или выберите другую.
+          </p>
+        ) : null}
       </div>
       {selectedFunnel && selectedFunnel.stages && selectedFunnel.stages.length > 0 && (
         <div>

@@ -173,6 +173,19 @@ export function resolvePrimaryHandoffDestination(link: TenantLink | null): Prima
   return null
 }
 
+export function tenantLinkAppliesToCompany(link: TenantLink, companyId: string): boolean {
+  const cid = String(companyId || '').trim()
+  if (!cid) return false
+  return (
+    String(link.client_company_id || '').trim() === cid ||
+    String(link.handoff_include_company_id || '').trim() === cid
+  )
+}
+
+export function isHandoffEnabledForCompany(links: TenantLink[], companyId: string): boolean {
+  return links.some((link) => tenantLinkAppliesToCompany(link, companyId) && Boolean(link.handoff_enabled))
+}
+
 export async function listTenantLinks(tenantId: string): Promise<TenantLink[]> {
   const { data } = await api.get<TenantLink[]>(`/tenants/${tenantId}/links`)
   return data

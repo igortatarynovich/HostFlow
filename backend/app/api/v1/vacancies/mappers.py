@@ -62,4 +62,5 @@ def vacancy_to_out(v: Vacancy, *, company_name: Optional[str] = None,
         last_candidate_activity_at=last_candidate_activity_at,
         headcount_target=getattr(v, "headcount_target", None),
         order_line_id=getattr(v, "order_line_id", None),
+        funnel_id=str(getattr(v, "funnel_id", None) or "") or None,
     )

@@ -243,6 +243,20 @@ async def patch_company_module_settings(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=str(exc),
                 ) from exc
+            from backend.app.services.recruitment_handoff_funnel_gate import (
+                HandoffFunnelGateError,
+                ensure_candidate_funnel_allows_company_handoff,
+            )
+
+            try:
+                await ensure_candidate_funnel_allows_company_handoff(
+                    db,
+                    tenant_id=tenant_id,
+                    company_id=cid,
+                    funnel_id=(data["settings_json"] or {}).get("default_candidate_funnel_id"),
+                )
+            except HandoffFunnelGateError as exc:
+                raise exc.as_http_exception() from exc
         if mk == "hr":
             try:
                 data["settings_json"] = await validate_hr_module_settings_for_company(

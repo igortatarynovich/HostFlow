@@ -1,6 +1,7 @@
 import { listCandidateProfiles } from '../api/candidate_profiles'
-import { listCompanies } from '../api/client'
-import { listFunnels } from '../api/funnels'
+import { listCompanies, settings } from '../api/client'
+import { funnelHasReadyForHandoff, listFunnels } from '../api/funnels'
+import { isHandoffEnabledForCompany, listTenantLinks } from '../api/tenantLinks'
 import { updateVacancy } from '../api/vacancies'
 import {
   launchSearchRoleDefaults,
@@ -14,9 +15,15 @@ export type SetupVacancyDefaultsResult = {
   profileName: string | null
 }
 
-function pickDefaultFunnel(funnels: Awaited<ReturnType<typeof listFunnels>>) {
+function pickDefaultFunnel(
+  funnels: Awaited<ReturnType<typeof listFunnels>>,
+  requireHandoffReady = false,
+) {
   const candidateFunnels = funnels.filter((f) => f.type === 'candidate')
-  return candidateFunnels.find((f) => f.is_default) ?? candidateFunnels[0] ?? null
+  const pool = requireHandoffReady
+    ? candidateFunnels.filter((funnel) => funnelHasReadyForHandoff(funnel))
+    : candidateFunnels
+  return pool.find((f) => f.is_default) ?? pool[0] ?? null
 }
 
 function pickRoleProfile(
@@ -37,16 +44,20 @@ function pickRoleFunnel(
   funnels: Awaited<ReturnType<typeof listFunnels>>,
   role: SearchRole,
   profile: Awaited<ReturnType<typeof listCandidateProfiles>>[number] | null,
+  requireHandoffReady = false,
 ) {
   const spec = launchSearchRoleDefaults(role)
   const candidateFunnels = funnels.filter((f) => f.type === 'candidate')
-  const byName = candidateFunnels.find((f) => f.name === spec.funnelName)
+  const eligible = requireHandoffReady
+    ? candidateFunnels.filter((funnel) => funnelHasReadyForHandoff(funnel))
+    : candidateFunnels
+  const byName = eligible.find((f) => f.name === spec.funnelName)
   if (byName) return byName
   if (profile?.funnel_id) {
-    const linked = candidateFunnels.find((f) => f.id === profile.funnel_id)
+    const linked = eligible.find((f) => f.id === profile.funnel_id)
     if (linked) return linked
   }
-  return pickDefaultFunnel(funnels)
+  return pickDefaultFunnel(funnels, requireHandoffReady)
 }
 
 function companyRole(extra: unknown): string {
@@ -75,13 +86,17 @@ export async function applySetupVacancyDefaults(
   role: SearchRole = 'driver',
 ): Promise<SetupVacancyDefaultsResult> {
   let funnelCompanyId = companyId
-  let [funnels, profiles] = await Promise.all([
+  const tenantId = String(settings.get() || '').trim()
+  const [funnelsInitial, profiles, links] = await Promise.all([
     listFunnels({ companyId: funnelCompanyId, type: 'candidate', moduleKey: 'recruitment' }).catch(() => []),
     listCandidateProfiles({ is_active: true }).catch(() => []),
+    tenantId ? listTenantLinks(tenantId).catch(() => []) : Promise.resolve([]),
   ])
+  let funnels = funnelsInitial
+  const requireHandoffReady = isHandoffEnabledForCompany(links, companyId)
 
   const profile = pickRoleProfile(profiles, role)
-  let funnel = pickRoleFunnel(funnels, role, profile)
+  let funnel = pickRoleFunnel(funnels, role, profile, requireHandoffReady)
 
   if (!funnel) {
     const operatingCompanyId = await resolveOperatingCompanyId()
@@ -92,12 +107,12 @@ export async function applySetupVacancyDefaults(
         type: 'candidate',
         moduleKey: 'recruitment',
       }).catch(() => [])
-      funnel = pickRoleFunnel(funnels, role, profile)
+      funnel = pickRoleFunnel(funnels, role, profile, requireHandoffReady)
     }
   }
 
   if (!funnel) {
-    funnel = pickDefaultFunnel(funnels)
+    funnel = pickDefaultFunnel(funnels, requireHandoffReady)
   }
 
   const patch: Record<string, string | null> = {}

@@ -108,6 +108,7 @@ class VacancyService:
             "manager": str(payload.manager) if payload.manager else None,
             "candidate_profile_id": str(payload.candidate_profile_id) if payload.candidate_profile_id else None,
             "required_documents_template_id": str(payload.required_documents_template_id) if payload.required_documents_template_id else None,
+            "funnel_id": str(payload.funnel_id) if payload.funnel_id else None,
             "extra": json.dumps(payload.extra, ensure_ascii=False),
             "headcount_target": int(payload.headcount_target)
             if payload.headcount_target is not None and int(payload.headcount_target) > 0
@@ -139,6 +140,21 @@ class VacancyService:
             from backend.app.services import tenant_quota
 
             await tenant_quota.ensure_open_vacancy_quota(self.repo.db, tenant_id, extra_open=1)
+        from backend.app.services.recruitment_handoff_funnel_gate import (
+            HandoffFunnelGateError,
+            ensure_vacancy_funnel_assignment_allowed,
+        )
+
+        try:
+            await ensure_vacancy_funnel_assignment_allowed(
+                self.repo.db,
+                tenant_id=tenant_id,
+                company_id=str(payload.company_id),
+                funnel_id=values.get("funnel_id"),
+                candidate_profile_id=values.get("candidate_profile_id"),
+            )
+        except HandoffFunnelGateError as exc:
+            raise ValueError(exc.detail) from exc
         obj = await self.repo.create(values)
         # Reload with related data
         row = await self.repo.get(obj.id)
@@ -248,6 +264,8 @@ class VacancyService:
             values["extra"] = json.dumps(payload.extra, ensure_ascii=False)
 
         fields_set = getattr(payload, "model_fields_set", None) or set()
+        if "funnel_id" in fields_set:
+            values["funnel_id"] = str(payload.funnel_id) if payload.funnel_id else None
         if "headcount_target" in fields_set:
             # Linked vacancies: headcount SoT is Order Line — ignore manual override.
             if getattr(obj, "order_line_id", None) and "order_line_id" not in fields_set:
@@ -327,6 +345,28 @@ class VacancyService:
             values["is_active"] = open_flag
             values["is_archived"] = not open_flag
             values["status"] = "open" if open_flag else "closed"
+
+        if "funnel_id" in values or "candidate_profile_id" in values or "company_id" in values:
+            from backend.app.services.recruitment_handoff_funnel_gate import (
+                HandoffFunnelGateError,
+                ensure_vacancy_funnel_assignment_allowed,
+            )
+
+            try:
+                await ensure_vacancy_funnel_assignment_allowed(
+                    self.repo.db,
+                    tenant_id=str(getattr(obj, "tenant_id", "") or self.repo.tenant_id),
+                    company_id=str(
+                        values.get("company_id") or getattr(obj, "company_id", None) or ""
+                    ).strip()
+                    or None,
+                    funnel_id=values.get("funnel_id", getattr(obj, "funnel_id", None)),
+                    candidate_profile_id=values.get(
+                        "candidate_profile_id", getattr(obj, "candidate_profile_id", None)
+                    ),
+                )
+            except HandoffFunnelGateError as exc:
+                raise ValueError(exc.detail) from exc
 
         if values:
             old_open = str(getattr(obj, "status", "") or "").strip().lower() == "open"

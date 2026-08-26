@@ -479,10 +479,13 @@ class FunnelOut(BaseModel):
     name: str
     is_default: bool
     is_legacy_readonly: bool = False
+    has_ready_for_handoff: bool = False
     stages: List[FunnelStageOut] = []
 
     @classmethod
     def from_model(cls, f: Funnel, stages: Optional[List[FunnelStage]] = None) -> "FunnelOut":
+        from backend.app.services.recruitment_handoff_funnel_gate import funnel_has_ready_for_handoff
+
         stage_list = stages if stages is not None else list(f.stages) if hasattr(f, "stages") else []
         company_id = str(f.company_id).strip() if getattr(f, "company_id", None) else None
         module_key = str(f.module_key).strip() if getattr(f, "module_key", None) else None
@@ -495,6 +498,7 @@ class FunnelOut(BaseModel):
             name=f.name,
             is_default=f.is_default,
             is_legacy_readonly=not bool(company_id),
+            has_ready_for_handoff=funnel_has_ready_for_handoff(stage_list),
             stages=[FunnelStageOut.from_model(s) for s in stage_list],
         )
 
@@ -834,6 +838,27 @@ async def update_funnel_stage(
         if dup.scalar_one_or_none():
             raise HTTPException(status_code=409, detail=f"Stage code '{payload.code}' already exists")
 
+    remaining_codes = [
+        payload.code if str(s.id) == str(stage_id) else s.code
+        for s in (
+            await db.execute(select(FunnelStage).where(FunnelStage.funnel_id == funnel_id))
+        ).scalars().all()
+    ]
+    from backend.app.services.recruitment_handoff_funnel_gate import (
+        HandoffFunnelGateError,
+        ensure_can_drop_ready_for_handoff_from_funnel,
+    )
+
+    try:
+        await ensure_can_drop_ready_for_handoff_from_funnel(
+            db,
+            tenant_id=tenant_str,
+            funnel=funnel_row,
+            remaining_codes=remaining_codes,
+        )
+    except HandoffFunnelGateError as exc:
+        raise exc.as_http_exception() from exc
+
     resolved_system_stage = _resolve_system_stage(payload.system_stage, payload.code)
     stage.code = payload.code
     stage.label = payload.label
@@ -909,6 +934,24 @@ async def delete_funnel_stage(
                 "Cannot delete stage: each funnel must keep at least one stage mapped to each used system_stage bucket"
             ),
         )
+
+    remaining_codes = [
+        s.code for s in existing_stages if str(s.id) != str(stage_id)
+    ]
+    from backend.app.services.recruitment_handoff_funnel_gate import (
+        HandoffFunnelGateError,
+        ensure_can_drop_ready_for_handoff_from_funnel,
+    )
+
+    try:
+        await ensure_can_drop_ready_for_handoff_from_funnel(
+            db,
+            tenant_id=tenant_str,
+            funnel=funnel,
+            remaining_codes=remaining_codes,
+        )
+    except HandoffFunnelGateError as exc:
+        raise exc.as_http_exception() from exc
 
     await db.delete(stage)
     await db.commit()
