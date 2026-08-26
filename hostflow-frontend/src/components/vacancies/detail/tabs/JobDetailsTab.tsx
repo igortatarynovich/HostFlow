@@ -1,9 +1,10 @@
 import React from 'react'
-import type { FieldErrors, UseFormRegister, UseFormWatch } from 'react-hook-form'
+import { Controller, type Control, type FieldErrors, type UseFormRegister, type UseFormWatch } from 'react-hook-form'
 import { SectionCard } from '../../../ui/SectionCard'
 import { EMPLOYMENT_TYPES, type EmploymentType } from '../../../../api/vacancies'
 import type { CandidateProfile } from '../../../../api/candidate_profiles'
 import type { SalesOrderLine } from '../../../../api/salesOrders'
+import FunnelSelector from '../../../profile/FunnelSelector'
 
 export type JobDetailsFormFields = {
   title: string
@@ -20,6 +21,7 @@ export type JobDetailsFormFields = {
 }
 
 type Props = {
+  control: Control<any>
   register: UseFormRegister<any>
   errors: FieldErrors<any>
   watch: UseFormWatch<any>
@@ -42,11 +44,15 @@ type Props = {
     orderLineNone: string
     profile: string
     profileNone: string
+    funnel: string
+    funnelHint: string
+    funnelRequired: string
     section: string
   }
 }
 
 export function JobDetailsTab({
+  control,
   register,
   errors,
   watch,
@@ -134,6 +140,26 @@ export function JobDetailsTab({
             ))}
           </select>
         </label>
+
+        <div className="md:col-span-2">
+          <Controller
+            name="funnel_id"
+            control={control}
+            render={({ field }) => (
+              <FunnelSelector
+                companyId={watch('company_id') || null}
+                value={field.value || null}
+                onChange={(id) => field.onChange(id || '')}
+                funnelType="candidate"
+                moduleKey="recruitment"
+                hint={labels.funnelHint}
+              />
+            )}
+          />
+          {!watch('funnel_id') ? (
+            <p className="mt-2 text-xs text-amber-700">{labels.funnelRequired}</p>
+          ) : null}
+        </div>
 
         <label className="block">
           <div className="label">{labels.salaryFrom}</div>

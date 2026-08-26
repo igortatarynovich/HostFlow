@@ -79,7 +79,7 @@ export default function FunnelSelector({
   if (!scopeCompanyId) {
     return (
       <p className="text-sm text-slate-500">
-        Выберите компанию (client), чтобы привязать company-scoped воронку.
+        Сначала выберите компанию вакансии. Воронка сохраняется на вакансии, не на клиенте.
       </p>
     )
   }
@@ -91,7 +91,7 @@ export default function FunnelSelector({
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Воронка (этапы)</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Воронка вакансии</label>
         <select
           value={value || ''}
           onChange={(e) => onChange(e.target.value || null)}
@@ -114,7 +114,8 @@ export default function FunnelSelector({
         <p className="mt-1 text-xs text-slate-500">
           {requireHandoffReady
             ? 'У клиента включён handoff: доступны только воронки с этапом «Готов к передаче».'
-            : (hint ?? 'Этапы берутся из company-scoped воронок.')}{' '}
+            : (hint ??
+              'Воронка этой вакансии. У одного клиента могут быть разные воронки на разные вакансии.')}{' '}
           <Link to={CRM_APP_PATHS.settingsFunnels} className="text-brand-600 hover:underline">
             Редактировать воронки
           </Link>

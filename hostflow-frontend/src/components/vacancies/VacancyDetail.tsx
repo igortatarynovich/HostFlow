@@ -115,11 +115,11 @@ const PRIMARY_TABS: WorkspaceTabKey[] = [
   'settings',
 ]
 
-function normalizeTab(raw?: string | null): WorkspaceTabKey {
+function normalizeTab(raw?: string | null, fallback: WorkspaceTabKey = 'workspace'): WorkspaceTabKey {
   const t = String(raw || '').toLowerCase()
-  if (t === 'info' || t === 'overview' || t === 'notes' || !t) return 'workspace'
+  if (t === 'info' || t === 'overview' || t === 'notes' || !t) return fallback
   if ((PRIMARY_TABS as string[]).includes(t) || t === 'candidates') return t as WorkspaceTabKey
-  return 'workspace'
+  return fallback
 }
 
 function ensurePersistedFields(normalized: any, source: any) {
@@ -247,7 +247,9 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   }
 
   const [model, setModel] = useState<any | null>(item ? toModel(item) : null)
-  const [tab, setTab] = useState<WorkspaceTabKey>(normalizeTab(tabFromRoute))
+  const [tab, setTab] = useState<WorkspaceTabKey>(
+    normalizeTab(tabFromRoute, routeId === 'new' ? 'job_details' : 'workspace'),
+  )
   const [menuOpen, setMenuOpen] = useState(false)
   const [stageFilter, setStageFilter] = useState<string | null>(stageFromUrl)
 
@@ -261,8 +263,8 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   } = useVacancyNextAction(vacancyIdForBadge || null, nextActionTick)
 
   useEffect(() => {
-    setTab(normalizeTab(tabFromRoute))
-  }, [tabFromRoute])
+    setTab(normalizeTab(tabFromRoute, routeId === 'new' ? 'job_details' : 'workspace'))
+  }, [tabFromRoute, routeId])
 
   useEffect(() => {
     setStageFilter(stageFromUrl)
@@ -303,6 +305,8 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   const watchTitle = watch('title')
   const watchOrderLineId = watch('order_line_id')
   const watchManager = watch('manager')
+  const watchProfileId = watch('candidate_profile_id')
+  const watchFunnelId = watch('funnel_id')
   const watchCriteria = {
     criteria_min_experience_eu_years: watch('criteria_min_experience_eu_years'),
     criteria_requires_documents: watch('criteria_requires_documents') || [],
@@ -401,6 +405,14 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   useEffect(() => {
     resetForm(toFormDefaults(model))
   }, [model, resetForm])
+
+  useEffect(() => {
+    const profileId = String(watchProfileId || '').trim()
+    if (!profileId || String(watchFunnelId || '').trim()) return
+    const profile = candidateProfiles.find((p) => p.id === profileId)
+    const suggested = String(profile?.funnel_id || '').trim()
+    if (suggested) setValue('funnel_id', suggested)
+  }, [watchProfileId, watchFunnelId, candidateProfiles, setValue])
 
   useEffect(() => {
     let cancelled = false
@@ -1227,6 +1239,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
           {tab === 'job_details' ? (
             <JobDetailsTab
+              control={control}
               register={register}
               errors={errors}
               watch={watch}
@@ -1258,6 +1271,14 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 }),
                 profile: t(`${tw}.related.profile`, { defaultValue: 'Candidate profile' }),
                 profileNone: t(`${tw}.profile_none`, { defaultValue: '— not selected —' }),
+                funnel: t(`${tw}.funnel`, { defaultValue: 'Recruitment funnel' }),
+                funnelHint: t(`${tw}.funnel_hint`, {
+                  defaultValue:
+                    'This vacancy’s pipeline. One client can have different funnels on different vacancies.',
+                }),
+                funnelRequired: t('app.vacancies.detail.recruitment_pipeline_required', {
+                  defaultValue: 'Without a pipeline, search launch should not proceed.',
+                }),
               }}
             />
           ) : null}
@@ -1279,7 +1300,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                   defaultValue: 'Recruitment Pipeline',
                 }),
                 pipelineHint: t('app.vacancies.detail.recruitment_pipeline_hint', {
-                  defaultValue: 'Assigned to this vacancy.',
+                  defaultValue: 'Pipeline for this vacancy. The same client can use different funnels on other vacancies.',
                 }),
                 pipelineRequired: t('app.vacancies.detail.recruitment_pipeline_required', {
                   defaultValue: 'Without a pipeline, search launch should not proceed.',

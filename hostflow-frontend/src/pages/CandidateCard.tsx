@@ -806,6 +806,7 @@ export default function CandidateCard(){
   }, [isClientTenant, tenantId, model?.company_id])
   
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null)
+  const [vacancyFunnelId, setVacancyFunnelId] = useState<string | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
   const { effectiveLayout, layoutFromApi } = useEffectiveCandidateLayout({
     enabled: !isNew,
@@ -836,16 +837,19 @@ export default function CandidateCard(){
     [layoutFromApi, effectiveLayout],
   )
   const [profileFunnelStages, setProfileFunnelStages] = useState<Array<{ code: string; label: string }>>([])
+  const runtimeFunnelId = String(
+    vacancyFunnelId || candidateProfile?.funnel_id || (model as { funnel_id?: string } | null)?.funnel_id || '',
+  ).trim()
 
   useEffect(() => {
-    if (!candidateProfile?.funnel_id) {
+    if (!runtimeFunnelId) {
       setProfileFunnelStages([])
       return
     }
-    getFunnel(candidateProfile.funnel_id)
+    getFunnel(runtimeFunnelId)
       .then((f) => setProfileFunnelStages((f.stages || []).map((s) => ({ code: s.code, label: s.label }))))
       .catch(() => setProfileFunnelStages([]))
-  }, [candidateProfile?.funnel_id])
+  }, [runtimeFunnelId])
 
   // Полный список этапов профиля (без фильтра по роли)
   const profileStageCodes = useMemo(() => {
@@ -1152,6 +1156,7 @@ export default function CandidateCard(){
   const loadProfileFromVacancy = useCallback(async (vacancyId: string | null) => {
     if (!vacancyId) {
       setCandidateProfile(null)
+      setVacancyFunnelId(null)
       return
     }
 
@@ -1165,6 +1170,7 @@ export default function CandidateCard(){
         // Client can legitimately get 404/403 for agency vacancy.
         // Keep card usable and fallback to default candidate profile.
         if (status === 404 || status === 403) {
+          setVacancyFunnelId(null)
           try {
             const profiles = await listCandidateProfiles()
             const defaultProfile = profiles.find((p) => p.code === DEFAULT_PROFILE_CODE)
@@ -1176,6 +1182,7 @@ export default function CandidateCard(){
         }
         throw vacancyErr
       }
+      setVacancyFunnelId(String(vacancy?.funnel_id || '').trim() || null)
       if (!vacancy?.candidate_profile_id) {
         try {
           const profiles = await listCandidateProfiles()
@@ -1249,10 +1256,12 @@ export default function CandidateCard(){
     } catch (err) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
         setCandidateProfile(null)
+        setVacancyFunnelId(null)
         return
       }
       console.error('[CandidateCard] Failed to load vacancy or profile', err)
       setCandidateProfile(null)
+      setVacancyFunnelId(null)
     } finally {
       setProfileLoading(false)
     }
@@ -1564,6 +1573,7 @@ export default function CandidateCard(){
               await loadProfileFromVacancy(String(normalized.vacancy_id))
             } else {
               setCandidateProfile(null)
+              setVacancyFunnelId(null)
             }
           } catch (err: any) {
             if (cancelled) return
@@ -1614,6 +1624,7 @@ export default function CandidateCard(){
       void loadProfileFromVacancy(String(model.vacancy_id))
     } else {
       setCandidateProfile(null)
+      setVacancyFunnelId(null)
     }
   }, [model?.vacancy_id, loadProfileFromVacancy])
 
@@ -3541,8 +3552,6 @@ export default function CandidateCard(){
         const label = stageLabelIntl(code)
         const canonical = canonicalStageKey(code, label) || ''
 
-        if (canonical === 'no_answer') return
-        if (canonical === 'questionnaire_submitted') return
         if (canonical === 'handoff_returned' || canonical === 'rejected' || canonical === 'declined') {
           return
         }
@@ -3582,13 +3591,12 @@ export default function CandidateCard(){
     }
 
     let displayStage = currentCode || null
-    if (currentCanonical === 'no_answer' || currentCanonical === 'questionnaire_submitted') {
-      const contacted =
-        uniqDisplay.find((c) => (canonicalStageKey(String(c), null) || '') === 'contacted') || 'contacted'
-      displayStage = String(contacted)
-    }
-
-    const outcomeStage = null
+    const outcomeStage =
+      currentCanonical === 'rejected' ||
+      currentCanonical === 'declined' ||
+      currentCanonical === 'handoff_returned'
+        ? currentCode
+        : null
     const outcomeStages = ['rejected', 'declined']
       .filter((code) => uniqDisplay.includes(code) || profileStageCodes.includes(code))
       .map((code) => ({ code, label: stageLabelIntl(code) }))
@@ -4233,13 +4241,15 @@ export default function CandidateCard(){
   }, [pipelineOverrides])
 
   const completedStageCodes = useMemo(() => {
+    const steps = stageJourneyStagesDisplay || []
+    const current = String(stageJourneyDisplayStage || model?.stage || '').trim()
+    const idx = steps.findIndex((s) => s.code === current)
     const set = new Set<string>()
-    stageHistory.forEach((h) => {
-      if (h.from_code) set.add(String(h.from_code))
-      if (h.to_code) set.add(String(h.to_code))
-    })
+    if (idx > 0) {
+      steps.slice(0, idx).forEach((s) => set.add(s.code))
+    }
     return set
-  }, [stageHistory])
+  }, [stageJourneyStagesDisplay, stageJourneyDisplayStage, model?.stage])
 
   const handleStageJourneyChange = useCallback(async (nextStage: string) => {
     const terminalClose = isRecruitmentTerminalStageCode(nextStage)
@@ -4697,6 +4707,7 @@ export default function CandidateCard(){
                                   }
                                 })
                                 setCandidateProfile(null)
+                                setVacancyFunnelId(null)
                                 return
                               }
                               const opt = vacancyOpts.find((o) => o.value === v)
