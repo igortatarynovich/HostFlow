@@ -1,7 +1,7 @@
 # Documents Platform E7 — Document Requests (Phase E)
 
 **Status:** **COMPLETE** ([#286](https://github.com/igortatarynovich/HostFlow/pull/286)/[#287](https://github.com/igortatarynovich/HostFlow/pull/287) · merge `ceafbd48`)  
-**Next:** E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` → E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product = **none this amendment**.  
+**Next:** E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` → E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` → [RPM-1](requirement-policy-management.md) (brief; feat locked).  
 **Phase class:** platform  
 **Branch (docs):** `docs/documents-platform-e7-document-requests` ✅ [#286](https://github.com/igortatarynovich/HostFlow/pull/286)  
 **Branch (code):** `feat/documents-platform-e7-document-requests`  

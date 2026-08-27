@@ -77,7 +77,7 @@ PASS when:
 
 Evidence: D4 Documents (`/app/candidates/:id`) required / optional / blocked from R5 `merge(pack, tenant_delta)`; Overlay = typed CL7 input `document_types`; canonical registry codes only. Adapter `documents.hub_adapter_v1`: `evaluate_required_doc_applicability_via_contract` / `project_required_doc_applicability_via_contract`; additive `applicability`; no contract id bump. D4 UI: `data-e8-eval="true"` `data-applicability`. D4 + D8 stay bound. D3 / D5–D7 / D9 stay unbound. Screening `required=true` is not Documents SoT.
 
-Unlocks: [v1 Release Goal](../gates/hostflow-v1-release-goal.md). Requirement Policy Management remains OPEN. No named Product successor this amendment. Do **not** auto-start OCR / packages product / CL8. Do **not** mark Foundation ✅.
+Unlocks: [Requirement Policy Management](requirement-policy-management.md) (RPM-1 scheduled after DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328)). Mapping / Hiring E2E remain unscheduled. Do **not** auto-start OCR / packages product / CL8. Do **not** mark Foundation ✅.
 
 **Release delta:** D4 required-doc evaluation via R5 merge is done. Operator policy management, mapping authority, external intake, hiring E2E, and min HR handoff remain OPEN. v1 is not release-ready.
 
@@ -86,13 +86,14 @@ Unlocks: [v1 Release Goal](../gates/hostflow-v1-release-goal.md). Requirement Po
 ## Queue position
 
 **Depends on:** Reference R5 Gate ✅ (#297) · E8 Canonical Type Bind Gate ✅ (#321 / `8246421f`) · Reference Program Exit Gate ✅ (#298 / `ff0b914c`)  
-**Unlocks:** [v1 Release Goal](../gates/hostflow-v1-release-goal.md) (no silent Product successor)  
+**Unlocks:** [Requirement Policy Management](requirement-policy-management.md) (RPM-1; Mapping / Hiring not auto-scheduled)  
 **Does not:** invent CL8; start OCR; mint a packages / request table; mass-bind D3–D9; rewrite Overlay / CL7 / DR1-runtime / E8-bind
 
 ---
 
 ## History
 
-- 2026-08-25: Documents Platform E8 Required-Doc Evaluation Gate **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` (feat `821adf33`). Brief COMPLETE. No named Product successor this amendment. Not OCR auto-start. Not CL8. Not mass D3–D9 bind. Foundation stays 🔄.
+- 2026-08-27: Queue amendment named RPM-1 as Active Product after DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Mapping / Hiring E2E not auto-scheduled.
+- 2026-08-25: Documents Platform E8 Required-Doc Evaluation Gate **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` (feat `821adf33`). Brief COMPLETE. Not OCR auto-start. Not CL8. Not mass D3–D9 bind. Foundation stays 🔄.
 - 2026-08-25: E8-eval feat opened — D4 required / optional / blocked from R5 merge; Overlay as CL7 input; named Documents Platform E8 Required-Doc Evaluation Gate. Product Track stays [E8-eval](documents-platform-e8-eval.md). Engineering stays DONE. Not OCR. Not CL8. Not mass D3–D9 bind.
 - 2026-08-25: E8-eval opened (feat locked) after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` and queue amendment [#322](https://github.com/igortatarynovich/HostFlow/pull/322) / `196aff39`. Required / optional / applicability from R5 merge. Not OCR. Not CL8. Not mass D3–D9 bind.
