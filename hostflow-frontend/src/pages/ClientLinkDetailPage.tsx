@@ -205,7 +205,7 @@ export default function ClientLinkDetailPage() {
       <PageShellHeader>
         <PageHeader title={name} breadcrumbCurrentLabel={name} kind="browse" />
       </PageShellHeader>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between">

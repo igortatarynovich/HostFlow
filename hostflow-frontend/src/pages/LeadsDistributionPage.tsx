@@ -97,7 +97,7 @@ export default function LeadsDistributionPage() {
           }
         />
       </PageShellHeader>
-      <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4">
+      <div className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col gap-6 overflow-y-auto pb-4">
 
       {error ? <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">{String(error)}</div> : null}
 

@@ -20,7 +20,7 @@ export default function CommunicationsThreadPage() {
     return (
       <PageShell>
         <WorkspaceTopNav active={null} />
-        <div className="flex min-h-0 flex-1 items-center justify-center px-4 pb-4 text-sm text-slate-500">
+        <div className="flex min-h-0 flex-1 items-center justify-center pb-4 text-sm text-slate-500">
           {t('common.loading')}
         </div>
       </PageShell>
@@ -40,7 +40,7 @@ export default function CommunicationsThreadPage() {
         <PageShellHeader>
           <PageHeader kind="browse" />
         </PageShellHeader>
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-4">
           <div className="flex flex-wrap gap-2">
             <Link to={CRM_APP_PATHS.calendar} className="text-sm text-brand-700 hover:text-brand-900">
               {t('app.communications.actions.back_to_calendar')}
@@ -71,7 +71,7 @@ export default function CommunicationsThreadPage() {
       <PageShellHeader>
         <PageHeader kind="browse" breadcrumbCurrentLabel={thread.subject?.trim() || undefined} />
       </PageShellHeader>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-4">
         <CommunicationsThreadWorkArea thread={thread} model={model} layout="page" />
       </div>
     </PageShell>

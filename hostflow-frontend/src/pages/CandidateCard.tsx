@@ -4453,7 +4453,7 @@ export default function CandidateCard(){
         <PageShellHeader>
           <PageHeader breadcrumbCurrentLabel={t('common.loading')} kind="browse" />
         </PageShellHeader>
-        <div className="flex min-h-0 flex-1 items-center justify-center px-4 pb-4 text-slate-500">
+        <div className="flex min-h-0 flex-1 items-center justify-center pb-4 text-slate-500">
           {t('common.loading')}
         </div>
       </PageShell>

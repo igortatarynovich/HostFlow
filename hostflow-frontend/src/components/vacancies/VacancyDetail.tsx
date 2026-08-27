@@ -814,7 +814,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       data-entity-workspace-consumer={isCutover ? VACANCY_COMPOSITION_CONSUMER_ID : undefined}
     >
       <div data-entity-workspace-slot="context-rail" className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="sticky top-0 z-20 -mx-1 border-b border-slate-200 bg-white/95 px-1 pb-3 pt-1 backdrop-blur">
+      <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 pb-3 pt-1 backdrop-blur">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">

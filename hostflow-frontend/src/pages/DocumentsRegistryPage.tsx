@@ -628,7 +628,7 @@ export default function DocumentsRegistryPage() {
         </div>
       </Toolbar>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-4">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="order-1 min-w-0 flex-1 space-y-4">
         <div className="card space-y-3 p-4">

@@ -142,7 +142,7 @@ export default function AutomationsHubPage() {
         />
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4 sm:px-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pb-4">
       <section className="max-w-4xl rounded-xl border border-brand-200/80 bg-brand-50/40 p-4 text-sm text-slate-800 shadow-sm">
         <h2 className="text-base font-semibold text-slate-900">
           {t('app.automations.hub.meta_leads_fit_title')}

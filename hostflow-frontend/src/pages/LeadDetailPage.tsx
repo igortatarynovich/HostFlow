@@ -1024,7 +1024,7 @@ export default function LeadDetailPage() {
         ) : null}
       </PageShellHeader>
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-4">
         {!loading && notFound ? (
           <div className="card p-6 shadow-md shadow-slate-900/[0.04]">
             <h1 className="text-lg font-semibold text-slate-900">{t('app.leads.detail.not_found')}</h1>

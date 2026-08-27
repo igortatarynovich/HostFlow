@@ -2327,7 +2327,7 @@ export default function CommunicationsCalendarPage(props: { embedded?: boolean }
         </PageShellHeader>
       ) : null}
 
-      <div className={embedded ? 'space-y-4' : 'flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4'}>
+      <div className={embedded ? 'space-y-4' : 'flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4'}>
 
       {showAdvancedTools && (
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">

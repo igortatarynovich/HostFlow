@@ -206,7 +206,7 @@ export default function LeadsDistributionRulesPage() {
           }
         />
       </PageShellHeader>
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4 sm:px-6">
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-6 overflow-y-auto pb-4">
 
       {!canEdit ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">

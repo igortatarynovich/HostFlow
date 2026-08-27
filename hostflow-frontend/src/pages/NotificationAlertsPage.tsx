@@ -214,7 +214,7 @@ export default function NotificationAlertsPage() {
         />
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
       {lastSyncSummary ? (
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
           {lastSyncSummary}

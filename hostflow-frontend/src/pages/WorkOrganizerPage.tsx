@@ -103,7 +103,7 @@ export default function WorkOrganizerPage() {
           }
         />
       </PageShellHeader>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-4">
       <section className="sticky top-0 z-20 rounded-xl border border-slate-200 bg-white/95 p-3 backdrop-blur">
         <div className="mb-2 text-sm font-semibold text-slate-900">
           {t('app.work.organizer.top.problems_title', { defaultValue: 'Critical counters' })}

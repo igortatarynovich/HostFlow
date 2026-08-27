@@ -137,7 +137,7 @@ export default function TimeOffRequestsPage() {
         />
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.timeoff.stats.pending', { defaultValue: 'Pending: {count}', values: { count: summary.pending } })}</div>
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.timeoff.stats.approved', { defaultValue: 'Approved: {count}', values: { count: summary.approved } })}</div>

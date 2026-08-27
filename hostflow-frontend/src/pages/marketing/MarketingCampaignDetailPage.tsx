@@ -400,7 +400,7 @@ export default function MarketingCampaignDetailPage() {
         />
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-6">
         {error ? <ErrorRecoveryBanner info={error} onRetry={() => void load()} /> : null}
         {loading && !campaign ? <p className="text-sm text-slate-500">{t('common.loading')}</p> : null}
 

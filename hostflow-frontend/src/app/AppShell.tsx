@@ -28,6 +28,7 @@ import { ACTIVATION_PATHS, getActivationSetupTarget } from './activationRoutes'
 import { usePermissions } from '../hooks/usePermissions'
 import { maybeMigrateDefaultAppHomeToTasks } from '../utils/defaultAppHome'
 import { CRM_APP_PATHS } from './crmAppPaths'
+import { isEdgeToEdgeTablePath, ownsCrmWorkspaceScroll } from './crmWorkspaceLayout'
 import { isPlatformSuperadminRole } from '../utils/platformSuperadmin'
 
 type AppShellProps = {
@@ -47,62 +48,18 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const onboardingWizardEnabled = isOnboardingWizardEnabled()
   /** Весь CRM workspace: без внешних отступов у main, компактный topbar (как список кандидатов). Onboarding оставляем с полями. */
   const isCrmWorkspace = path.startsWith(CRM_APP_PATHS.appShellPrefix) && !isOnboardingPage
-  /** Список кандидатов (таблица): убираем scroll у main — иначе два скролла (main + таблица) ломают hit-testing/клики. */
-  const isCandidatesTablePage = path === CRM_APP_PATHS.candidates
-  /**
-   * Full-bleed list pages (единая система списков): страница сама владеет
-   * вертикальным скроллом через внутреннюю таблицу — как у «Кандидатов»:
-   * без `crm-page-inset`, `main` без своего скролла.
-   */
-  const isInboxWorkspacePage =
-    path === CRM_APP_PATHS.inbox || path.startsWith(`${CRM_APP_PATHS.inbox}/`)
-  const isRecruitmentSearchesWorkspace =
-    path === CRM_APP_PATHS.recruitmentSearches ||
-    (path.startsWith(`${CRM_APP_PATHS.recruitmentSearches}/`) &&
-      path !== CRM_APP_PATHS.recruitmentSearchesNew)
-  const isHrWorkspacePage = path === CRM_APP_PATHS.hr || path.startsWith(`${CRM_APP_PATHS.hr}/`)
-  const isHubWorkspacePage =
-    path === CRM_APP_PATHS.overview ||
-    path === CRM_APP_PATHS.work ||
-    path.startsWith(`${CRM_APP_PATHS.work}/`)
-  const isProfileWorkspacePage = path === CRM_APP_PATHS.profile
-  const isMyCompanyWorkspacePage =
-    path === CRM_APP_PATHS.myCompany || path.startsWith(`${CRM_APP_PATHS.myCompany}/`)
-  const isOrganizationHubPage = path === CRM_APP_PATHS.organization
-  const isAutomationsWorkspacePage =
-    path === CRM_APP_PATHS.automations ||
-    path === CRM_APP_PATHS.automationRules ||
-    path === CRM_APP_PATHS.automationLog ||
-    path === CRM_APP_PATHS.acquisitionActivity ||
-    path.startsWith(`${CRM_APP_PATHS.automationAreaPrefix}/`)
-  const isCalendarOrDocumentsPage =
-    path === CRM_APP_PATHS.calendar || path === CRM_APP_PATHS.documents
   const isSetupFlowPage =
     path === CRM_APP_PATHS.setup || path.startsWith(`${CRM_APP_PATHS.setup}/`)
+  /**
+   * Native list tables (Candidates, Отклики, vacancy list, …): no `crm-page-inset`.
+   * Detail/form pages stay inset so content does not stick to the screen edges.
+   */
+  const isEdgeToEdgeTable = isEdgeToEdgeTablePath(path)
   /**
    * Pages that own vertical scroll via `PageShell` (or list `DataTable`).
    * `main` stays `overflow-hidden` so we do not stack an outer scrollbar.
    */
-  const isFullBleedListPage =
-    isCandidatesTablePage ||
-    path === CRM_APP_PATHS.clientsDirectory ||
-    path === CRM_APP_PATHS.vacancies ||
-    path.startsWith(`${CRM_APP_PATHS.vacancies}/`) ||
-    path === CRM_APP_PATHS.leads ||
-    path === CRM_APP_PATHS.services ||
-    path === CRM_APP_PATHS.invoices ||
-    path === CRM_APP_PATHS.tasks ||
-    isInboxWorkspacePage ||
-    isRecruitmentSearchesWorkspace ||
-    isHrWorkspacePage ||
-    isHubWorkspacePage ||
-    isProfileWorkspacePage ||
-    isMyCompanyWorkspacePage ||
-    isOrganizationHubPage ||
-    isAutomationsWorkspacePage ||
-    isCalendarOrDocumentsPage ||
-    isSetupFlowPage ||
-    isSettingsArea
+  const ownsWorkspaceScroll = ownsCrmWorkspaceScroll(path)
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(false)
 
@@ -297,7 +254,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
 
             <main
               className={
-                isFullBleedListPage
+                ownsWorkspaceScroll
                   ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
                   : 'min-h-0 flex-1 overflow-y-auto'
               }
@@ -310,9 +267,9 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                         isSettingsArea
                           ? 'px-4 pb-10 pt-1 sm:px-6 lg:px-8'
                           : 'px-0 py-0',
-                        isFullBleedListPage && 'overflow-hidden',
+                        ownsWorkspaceScroll && 'overflow-hidden',
                       )
-                    : isFullBleedListPage
+                    : ownsWorkspaceScroll
                       ? 'flex min-h-0 w-full flex-1 flex-col overflow-hidden px-6 py-6 lg:px-10'
                       : 'w-full px-6 py-6 lg:px-10'
                 }
@@ -334,9 +291,9 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                     (isCrmWorkspace || isSetupFlowPage) && 'crm-workspace-fill',
                     isCrmWorkspace &&
                       !isSettingsArea &&
-                      !isFullBleedListPage &&
+                      !isEdgeToEdgeTable &&
                       'crm-page-inset',
-                    isFullBleedListPage && 'flex min-h-0 flex-1 flex-col overflow-hidden',
+                    ownsWorkspaceScroll && 'flex min-h-0 flex-1 flex-col overflow-hidden',
                   )}
                 >
                   <Outlet />

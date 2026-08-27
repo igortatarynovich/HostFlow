@@ -506,7 +506,7 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
           }
         />
       </PageShellHeader>
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4 sm:px-6">
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-6 overflow-y-auto pb-4">
         {funnelBody}
       </div>
     </PageShell>

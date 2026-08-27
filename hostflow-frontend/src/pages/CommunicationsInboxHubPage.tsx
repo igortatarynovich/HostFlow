@@ -803,7 +803,7 @@ export default function CommunicationsInboxHubPage() {
         />
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
         {oauthRedirectNotice && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
             <div className="font-medium">

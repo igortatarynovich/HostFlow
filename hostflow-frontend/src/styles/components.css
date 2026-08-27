@@ -173,10 +173,23 @@
 
   /**
    * Единые отступы контента от краёв области main (AppShell для /app даёт padding 0).
-   * Шкала: 16px → 20px (sm) → 24px (lg). Подключайте вместе с `.crm-page-stack` для gap между блоками.
+   * Горизонталь: 16px → 20px (sm) → 32px (lg). На fill-height workspace вертикаль
+   * скромнее, чтобы не оставлять серую полосу под PageShell.
    */
   .crm-page-inset {
-    @apply px-4 pb-6 pt-4 sm:px-5 sm:pb-7 sm:pt-5 lg:px-8 lg:pb-10 lg:pt-6;
+    @apply px-4 py-4 sm:px-5 lg:px-8;
+  }
+
+  /**
+   * `PageShellHeader` даёт px-4 только на edge-to-edge таблицах.
+   * Внутри inset этот горизонтальный padding дублирует оболочку — гасим.
+   */
+  .crm-page-inset [data-hf-page-shell-header] {
+    @apply px-0 pt-0;
+  }
+
+  .crm-page-inset [data-hf-page-toolbar] {
+    @apply mx-0;
   }
 
   /** Вертикальный ритм между крупными блоками страницы (баннеры, сетка, шапка). */

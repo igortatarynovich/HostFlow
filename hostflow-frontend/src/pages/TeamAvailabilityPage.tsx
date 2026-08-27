@@ -123,7 +123,7 @@ export default function TeamAvailabilityPage() {
         />
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
       <div className="grid grid-cols-4 gap-3">
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.team_availability.stats.available', { defaultValue: 'Available: {count}', values: { count: summary.available } })}</div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.team_availability.stats.busy', { defaultValue: 'Busy: {count}', values: { count: summary.busy } })}</div>

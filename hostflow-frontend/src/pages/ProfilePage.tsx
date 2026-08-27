@@ -680,7 +680,7 @@ export default function ProfilePage() {
           kind="browse"
         />
       </PageShellHeader>
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pb-4">
       <div className="grid gap-6 md:grid-cols-2">
         <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-slate-900">{t('app.profile.sections.profile.title')}</h2>

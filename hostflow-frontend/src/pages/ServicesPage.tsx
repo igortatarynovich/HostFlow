@@ -2044,7 +2044,7 @@ function OrdersTab({
   }
 
   return (
-    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 px-4 pb-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)]">
       <div
         className="flex min-h-0 flex-col gap-4 overflow-hidden"
         data-entity-workspace-slot="context-rail"

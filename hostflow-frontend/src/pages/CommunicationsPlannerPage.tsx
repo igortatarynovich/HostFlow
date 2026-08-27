@@ -189,7 +189,7 @@ export default function CommunicationsPlannerPage() {
           }
         />
       </PageShellHeader>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">{t('app.communications.planner.stats.total', { defaultValue: 'Total' })}: <strong>{stats.total}</strong></div>

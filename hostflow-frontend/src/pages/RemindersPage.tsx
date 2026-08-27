@@ -1716,10 +1716,10 @@ export default function RemindersPage() {
         />
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
       {activeTab === 'tasks' && (
         <>
-          <details className="group shrink-0 rounded-xl border border-slate-200/90 bg-white shadow-sm">
+          <details className="group mx-4 shrink-0 rounded-xl border border-slate-200/90 bg-white shadow-sm">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
               {t('app.reminders.quick_create')}
               <span className="text-xs font-normal text-slate-500">{composerOpen ? t('common.actions.collapse') : t('common.actions.expand')}</span>

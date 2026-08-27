@@ -584,7 +584,7 @@ export default function WorkHubPage() {
           }
         />
       </PageShellHeader>
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pb-4">
         <div className="mx-auto w-full max-w-[1200px] space-y-6">
 
         {loadError && !dataLoading ? (

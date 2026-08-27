@@ -258,7 +258,7 @@ export default function MyAvailabilityPage() {
         />
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
       <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
         <div>{t('app.profile.labels.user', { defaultValue: 'User' })}: <strong>{me?.full_name || me?.email || me?.id || '—'}</strong></div>
         <div className="mt-2 text-xs text-slate-500">Pending requests: {pendingCount}</div>

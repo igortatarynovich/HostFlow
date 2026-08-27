@@ -51,7 +51,7 @@ export default function HrWorkspaceLayout() {
           </NavLink>
         </nav>
       </PageShellHeader>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-gradient-to-b from-brand-50/40 to-slate-50/90 px-4 pb-8 pt-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-gradient-to-b from-brand-50/40 to-slate-50/90 pb-8 pt-4">
         <Outlet key={location.pathname} />
       </div>
     </PageShell>

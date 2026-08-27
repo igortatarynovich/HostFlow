@@ -257,7 +257,7 @@ export default function AutomationRulesPage() {
         <p className="mt-1 text-xs text-slate-600">{t('app.automation_rules.lq.hint')}</p>
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
       {bannerError ? (
         <ErrorRecoveryBanner
           info={bannerError}

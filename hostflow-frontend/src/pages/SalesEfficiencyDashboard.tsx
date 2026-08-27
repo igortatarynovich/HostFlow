@@ -245,7 +245,7 @@ export default function SalesEfficiencyDashboard() {
         />
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
         <div className="card space-y-3 p-4">
           <div className="flex flex-wrap items-end gap-3 gap-y-2">
             <label className="flex flex-col gap-0.5 text-xs">

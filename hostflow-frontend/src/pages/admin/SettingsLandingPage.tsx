@@ -477,7 +477,7 @@ export default function SettingsLandingPage() {
           kind="browse"
         />
       </PageShellHeader>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
       <section className="card p-6">
         <div className="space-y-6">
           <p className="text-sm text-slate-600">{t('admin.settings.areas_intro')}</p>

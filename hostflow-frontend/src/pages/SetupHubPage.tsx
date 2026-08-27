@@ -34,7 +34,7 @@ export default function SetupHubPage() {
           }
         />
       </PageShellHeader>
-      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-4 overflow-y-auto pb-4">
         <SuccessPathReadinessPanel showWhenComplete />
 
         {pathComplete ? (

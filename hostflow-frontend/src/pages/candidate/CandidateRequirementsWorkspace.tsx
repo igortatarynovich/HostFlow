@@ -223,7 +223,7 @@ export default function CandidateRequirementsWorkspace() {
         />
       </PageShellHeader>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-4 overflow-y-auto px-4 pb-10 sm:pb-6">
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-4 overflow-y-auto pb-10 sm:pb-6">
 
       {loading && !workspace ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">

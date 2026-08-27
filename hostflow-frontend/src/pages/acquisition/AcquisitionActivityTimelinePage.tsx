@@ -149,7 +149,7 @@ export default function AcquisitionActivityTimelinePage() {
         />
       </PageShellHeader>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
         {error ? <ErrorRecoveryBanner info={error} onRetry={() => void loadPage()} /> : null}
 
         <Toolbar>

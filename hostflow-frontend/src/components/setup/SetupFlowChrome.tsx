@@ -35,7 +35,7 @@ export function SetupFlowChrome({ testId, stepLabel, title, subtitle, children }
           }
         />
       </PageShellHeader>
-      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-4 overflow-y-auto pb-4">
         <section className="rounded-xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
           <div className="inline-flex items-center gap-1 rounded-lg bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
             <IconChecklist size={14} stroke={1.9} />
