@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { funnelHasReadyForHandoff, listFunnels, type Funnel } from '../../api/funnels'
+import { funnelHasReadyForHandoff, getFunnel, listFunnels, type Funnel } from '../../api/funnels'
 import { isHandoffEnabledForCompany, listTenantLinks } from '../../api/tenantLinks'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useCurrentTenantId } from '../../contexts/CurrentTenant'
@@ -14,6 +14,8 @@ interface FunnelSelectorProps {
   moduleKey?: string
   funnelType?: 'candidate' | 'lead' | 'deal' | 'employee'
   hint?: string
+  /** Vacancy assignment: tenant module catalog, not per-client copies. */
+  catalog?: boolean
 }
 
 export default function FunnelSelector({
@@ -24,6 +26,7 @@ export default function FunnelSelector({
   moduleKey = 'recruitment',
   funnelType = 'candidate',
   hint,
+  catalog = false,
 }: FunnelSelectorProps) {
   const { me } = useAuth()
   const currentTenantId = useCurrentTenantId()
@@ -36,7 +39,7 @@ export default function FunnelSelector({
   const requireHandoffReady = funnelType === 'candidate' && moduleKey === 'recruitment' && handoffEnabled
 
   const load = useCallback(async () => {
-    if (!scopeCompanyId) {
+    if (!catalog && !scopeCompanyId) {
       setFunnels([])
       setHandoffEnabled(false)
       setLoading(false)
@@ -46,21 +49,33 @@ export default function FunnelSelector({
     try {
       const [list, links] = await Promise.all([
         listFunnels({
-          companyId: scopeCompanyId,
+          ...(catalog ? {} : { companyId: scopeCompanyId }),
           type: funnelType,
           moduleKey,
         }),
-        tenantId ? listTenantLinks(tenantId).catch(() => []) : Promise.resolve([]),
+        tenantId && scopeCompanyId ? listTenantLinks(tenantId).catch(() => []) : Promise.resolve([]),
       ])
-      setFunnels(list)
-      setHandoffEnabled(isHandoffEnabledForCompany(links, scopeCompanyId))
+      let next = list
+      const selectedId = String(value || '').trim()
+      if (selectedId && !next.some((funnel) => funnel.id === selectedId)) {
+        try {
+          const current = await getFunnel(selectedId)
+          next = [...next, current]
+        } catch {
+          /* keep catalog list */
+        }
+      }
+      setFunnels(next)
+      setHandoffEnabled(
+        Boolean(scopeCompanyId && isHandoffEnabledForCompany(links, scopeCompanyId)),
+      )
     } catch {
       setFunnels([])
       setHandoffEnabled(false)
     } finally {
       setLoading(false)
     }
-  }, [scopeCompanyId, moduleKey, funnelType, tenantId])
+  }, [catalog, scopeCompanyId, moduleKey, funnelType, tenantId, value])
 
   useEffect(() => {
     void load()
@@ -76,7 +91,7 @@ export default function FunnelSelector({
     requireHandoffReady && value && selectedFunnel && !funnelHasReadyForHandoff(selectedFunnel),
   )
 
-  if (!scopeCompanyId) {
+  if (!catalog && !scopeCompanyId) {
     return (
       <p className="text-sm text-slate-500">
         Сначала выберите компанию вакансии. Воронка сохраняется на вакансии, не на клиенте.

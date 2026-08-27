@@ -88,9 +88,10 @@ async def resolve_recruitment_funnel(
     3. legacy tenant-scoped funnel (`company_id IS NULL`) — strangler
     4. platform seed funnel (`tenant_id='default'`)
 
-    When ``explicit_funnel_id`` is provided: load by id; on company mismatch →
-    ``RecruitmentFunnelForbiddenError`` (never fallback). When id missing →
-    ``RecruitmentFunnelNotFoundError``.
+    When ``explicit_funnel_id`` is provided: load by id. Candidate pipelines
+    may bind any operational recruitment funnel in the tenant (vacancy catalog).
+    Lead pipelines still reject company mismatch. Missing id →
+    ``RecruitmentFunnelNotFoundError`` (never fallback).
     """
     tid = str(tenant_id).strip()
     cid = str(company_id).strip()
@@ -309,7 +310,14 @@ async def _resolve_explicit_funnel(
         raise RecruitmentFunnelNotFoundError(f"explicit funnel not found: {funnel_id}")
 
     f_company = str(funnel.company_id or "").strip() or None
-    if f_company and f_company != str(company_id).strip():
+    # Candidate vacancies bind the tenant catalog: any operational recruitment
+    # funnel in the tenant, not a per-client copy.
+    if pipeline_type == "candidate":
+        if not f_company:
+            raise RecruitmentFunnelForbiddenError(
+                f"funnel {funnel_id} is legacy tenant-wide and cannot be bound"
+            )
+    elif f_company and f_company != str(company_id).strip():
         raise RecruitmentFunnelForbiddenError(
             f"funnel {funnel_id} belongs to company {f_company}, not {company_id}"
         )

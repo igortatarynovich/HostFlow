@@ -69,6 +69,7 @@ export function RecruitmentTab({
                   onChange={(id) => field.onChange(id || '')}
                   funnelType="candidate"
                   moduleKey="recruitment"
+                  catalog
                 />
               )}
             />

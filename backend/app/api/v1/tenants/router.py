@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from backend.app.api.v1.settings.hiring_pipeline_gates_impl import (
     HIRING_GATES_READ_ROLES,
@@ -462,7 +463,7 @@ async def list_tenant_links(
 @router.patch(
     "/{tenant_id}/links/{link_id}",
     response_model=schemas.TenantLinkWithCompanyOut,
-    dependencies=[Depends(require_trust_admin())],
+    dependencies=[Depends(require_trust_write())],
 )
 async def update_tenant_link(
     tenant_id: UUID,
@@ -505,7 +506,7 @@ async def update_tenant_link(
                 raise exc.as_http_exception() from exc
         features = dict(link.features_json or {})
         if "handoff_enabled" in updates:
-            features["handoff_enabled"] = updates["handoff_enabled"]
+            features["handoff_enabled"] = bool(updates["handoff_enabled"])
         if "handoff_to_client" in updates and updates["handoff_to_client"] is not None:
             features["handoff_to_client"] = updates["handoff_to_client"]
         if "handoff_to_internal_hr" in updates and updates["handoff_to_internal_hr"] is not None:
@@ -524,6 +525,7 @@ async def update_tenant_link(
         if "see_reduced_profiles" in updates:
             features["see_reduced_profiles"] = updates["see_reduced_profiles"]
         link.features_json = features
+        flag_modified(link, "features_json")
         await db.commit()
         await db.refresh(link)
     company_name = None

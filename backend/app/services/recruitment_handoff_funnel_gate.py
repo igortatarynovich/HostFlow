@@ -153,17 +153,18 @@ async def find_handoff_ready_candidate_funnel_id(
     tenant_id: str,
     company_id: str,
 ) -> str | None:
-    funnels = (
-        await db.execute(
-            select(Funnel).where(
-                Funnel.tenant_id == tenant_id,
-                Funnel.company_id == company_id,
-                Funnel.type == "candidate",
-                Funnel.module_key == RECRUITMENT_MODULE_KEY,
-            )
-        )
-    ).scalars().all()
-    for funnel in funnels:
+    """Prefer a company copy; fall back to any tenant operational catalog funnel."""
+    stmt = select(Funnel).where(
+        Funnel.tenant_id == tenant_id,
+        Funnel.company_id.isnot(None),
+        Funnel.type == "candidate",
+        Funnel.module_key == RECRUITMENT_MODULE_KEY,
+    )
+    funnels = list((await db.execute(stmt)).scalars().all())
+    cid = str(company_id or "").strip()
+    ordered = [funnel for funnel in funnels if str(funnel.company_id or "").strip() == cid]
+    ordered.extend(funnel for funnel in funnels if str(funnel.company_id or "").strip() != cid)
+    for funnel in ordered:
         codes = await _stage_codes_for_funnel(db, funnel.id)
         if funnel_codes_include_ready_for_handoff(codes):
             return funnel.id

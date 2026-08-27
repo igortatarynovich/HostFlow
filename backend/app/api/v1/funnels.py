@@ -565,10 +565,10 @@ async def list_funnels(
         stmt = stmt.where(Funnel.company_id == company_str)
     else:
         acl = await resolve_restricted_acl(db, tenant_str, current_user)
-        if acl is not None:
-            if not acl.company_ids:
-                return []
-            stmt = stmt.where(Funnel.company_id.in_(list(acl.company_ids)))
+        if acl is not None and not acl.company_ids:
+            return []
+        # Tenant catalog is not filtered by funnel.company_id: vacancy
+        # assignment binds operating-company copies, not client copies.
     if type_filter:
         stmt = stmt.where(Funnel.type == type_filter)
     elif module_str == HR_MODULE_KEY:
@@ -609,12 +609,10 @@ async def get_funnel(
 
     funnel_company = str(getattr(funnel, "company_id", None) or "").strip() or None
     if funnel_company:
-        await _enforce_funnel_module_access(
-            db,
-            funnel=funnel,
-            tenant_id=tenant_str,
-            current_user=current_user,
-        )
+        acl = await resolve_restricted_acl(db, tenant_str, current_user)
+        if acl is not None and not acl.company_ids:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        # GET is tenant catalog read. Writes still go through company ACL.
 
     stages_result = await db.execute(
         select(FunnelStage).where(FunnelStage.funnel_id == funnel.id).order_by(FunnelStage.order)

@@ -152,6 +152,7 @@ export function JobDetailsTab({
                 onChange={(id) => field.onChange(id || '')}
                 funnelType="candidate"
                 moduleKey="recruitment"
+                catalog
                 hint={labels.funnelHint}
               />
             )}

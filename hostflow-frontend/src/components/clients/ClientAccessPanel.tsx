@@ -11,6 +11,7 @@ import {
   type TenantLink,
 } from '../../api/tenantLinks'
 import { ContactPolicyForm } from './ContactPolicyForm'
+import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 
 type ClientAccessPanelProps = {
   tenantId: string
@@ -63,14 +64,22 @@ export function ClientAccessPanel({
     see_reduced_profiles?: boolean
   }) => {
     if (!link) return
+    const previous = link
+    onLinkUpdated({
+      ...link,
+      ...patch,
+      features_json: { ...(link.features_json || {}), ...patch },
+    })
     setSaving(true)
     try {
       const updated = await updateTenantLink(tenantId, link.id, patch)
       onLinkUpdated(updated)
       onNotify({ title: t('common.saved'), variant: 'success' })
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error'
-      onNotify({ title: typeof msg === 'string' ? msg : String(msg), variant: 'error' })
+      onLinkUpdated(previous)
+      const fallback = t('app.clients.errors.update_failed', { defaultValue: 'Could not save changes' })
+      const fe = getFriendlyErrorInfo(e, fallback, t)
+      onNotify({ title: fe.title, variant: 'error' })
     } finally {
       setSaving(false)
     }

@@ -11,6 +11,8 @@ def test_funnels_api_list_allows_tenant_catalog_without_company() -> None:
     assert "Funnel.module_key ==" in source
     assert "Funnel.company_id.isnot(None)" in source
     assert "_module_catalog_funnels" in source
+    assert "if acl is not None and not acl.company_ids:" in source
+    assert "Funnel.company_id.in_(list(acl.company_ids))" not in source
 
 
 def test_funnels_api_create_sets_module_key_and_company() -> None:

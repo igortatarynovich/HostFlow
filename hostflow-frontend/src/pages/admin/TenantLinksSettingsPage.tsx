@@ -56,6 +56,18 @@ export default function TenantLinksSettingsPage() {
 
   const handleHandoffToggle = async (link: TenantLink, enabled: boolean) => {
     if (!tenantId) return
+    const previous = link
+    setLinks((prev) =>
+      prev.map((row) =>
+        row.id === link.id
+          ? {
+              ...row,
+              handoff_enabled: enabled,
+              features_json: { ...(row.features_json || {}), handoff_enabled: enabled },
+            }
+          : row,
+      ),
+    )
     setSavingId(link.id)
     try {
       const updated = await updateTenantLink(tenantId, link.id, { handoff_enabled: enabled })
@@ -65,6 +77,7 @@ export default function TenantLinksSettingsPage() {
         variant: 'success',
       })
     } catch (e: unknown) {
+      setLinks((prev) => prev.map((l) => (l.id === link.id ? previous : l)))
       notify({
         title: (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error',
         variant: 'error',

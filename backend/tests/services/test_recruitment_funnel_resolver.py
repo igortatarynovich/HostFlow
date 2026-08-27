@@ -203,7 +203,7 @@ async def test_resolve_explicit_funnel_id(db) -> None:
 
 
 @pytest.mark.anyio
-async def test_explicit_funnel_wrong_company_forbidden_not_fallback(db) -> None:
+async def test_explicit_candidate_funnel_allows_tenant_catalog(db) -> None:
     tenant_id = await _seed_tenant(db)
     company_a = await _seed_company(db, tenant_id=tenant_id)
     company_b = await _seed_company(db, tenant_id=tenant_id)
@@ -215,12 +215,37 @@ async def test_explicit_funnel_wrong_company_forbidden_not_fallback(db) -> None:
     )
     await db.commit()
 
+    result = await resolve_recruitment_funnel(
+        db,
+        tenant_id=tenant_id,
+        company_id=company_a,
+        pipeline_type="candidate",
+        explicit_funnel_id=funnel_b.id,
+    )
+    assert result.funnel.id == funnel_b.id
+    assert result.source == "explicit"
+
+
+@pytest.mark.anyio
+async def test_explicit_lead_funnel_wrong_company_forbidden(db) -> None:
+    tenant_id = await _seed_tenant(db)
+    company_a = await _seed_company(db, tenant_id=tenant_id)
+    company_b = await _seed_company(db, tenant_id=tenant_id)
+    funnel_b = await _seed_funnel(
+        db,
+        tenant_id=tenant_id,
+        company_id=company_b,
+        funnel_type="lead",
+        name="Company B lead funnel",
+    )
+    await db.commit()
+
     with pytest.raises(RecruitmentFunnelForbiddenError):
         await resolve_recruitment_funnel(
             db,
             tenant_id=tenant_id,
             company_id=company_a,
-            pipeline_type="candidate",
+            pipeline_type="lead",
             explicit_funnel_id=funnel_b.id,
         )
 
