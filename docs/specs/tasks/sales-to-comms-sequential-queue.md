@@ -29,7 +29,7 @@
 
 | Track | Active work | Rule |
 |-------|-------------|------|
-| **Product** | **none this amendment** — E8-eval Gate **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. v1 scope = [Release Goal](../gates/hostflow-v1-release-goal.md). No named Product successor. Not OCR auto-start. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
+| **Product** | **[RPM-1 Authority contract](requirement-policy-management.md)** (brief; feat locked) — first Product from [Release DAG](../gates/hostflow-v1-release-goal.md) after [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Not Mapping. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
 | **Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` — [brief](platform-reference-identity-sot.md). No named Engineering successor this amendment. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background — **not** Active Engineering |
 
 ---
@@ -42,18 +42,18 @@ This section is the **only** “what Product slice starts next” SoT. **v1 in-s
 
 | Role | Value |
 |------|--------|
-| **Active Product** | **none this amendment** — E8-eval Gate **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` ([brief](documents-platform-e8-eval.md)). No named successor. Unlock ≠ schedule. |
-| **Queued Product successor** | named node from [v1 Release Goal § Release DAG](../gates/hostflow-v1-release-goal.md) — **not auto-scheduled this amendment**; DAG is not a linear queue. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
+| **Active Product** | **[RPM-1 Authority contract](requirement-policy-management.md)** (brief; feat locked) after E8-eval Gate **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` and DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Unlock ≠ silent schedule. |
+| **Queued Product successor** | **RPM-2** Operator overlay, then **RPM-3** Consumer cutover — [brief](requirement-policy-management.md). Mapping remains startable **after** RPM program close (not auto-scheduled). Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
 | **Active Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` (`ref-id-exit`). No named successor. |
 | **Queued Engineering after Exit** | none this amendment. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
-| **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **Product = none this amendment** |
+| **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **Product = RPM-1** (not a Phase E leftover) |
 | **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1) |
 
 Historical markers (A2 active, Meta Intake next, Phase E active = E7 feat) live only in §8 History. They are **not** current execution instructions.
 
 ### Invariants (mandatory)
 
-1. **One Active Product slice**, **or Product DONE with no named successor until amendment**. After E8-eval Gate PASS, this amendment does **not** name a Product successor (unlock ≠ silent schedule).  
+1. **One Active Product slice**, **or Product DONE with no named successor until amendment**. This amendment names **RPM-1** after DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Unlock ≠ silent schedule.  
 2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor**. After Exit PASS with no successor, Engineering is DONE — do not promote pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) to Active Engineering.  
 3. **No third track.** Unlocked work does not create a stream.  
 4. **Unlock ≠ schedule.** A satisfied unlock condition does **not** auto-start the slice. Only the owning track’s queue may activate it.  
@@ -95,7 +95,7 @@ Fan-out is **only** `{R2, R3}`. Reference R5 is **not** a third concurrent Engin
 ### Product ladder
 
 ```text
-CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → CL5 → CL6 → CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → …
+CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → CL5 → CL6 → CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2 → RPM-3
 DR1-runtime  also required  DR1-contract ∧ Reference R5   (PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313); E8-bind PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`)
 ```
 
@@ -114,9 +114,12 @@ DR1-runtime  also required  DR1-contract ∧ Reference R5   (PASS [#313](https:/
 | **P10** | [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md) | **Vacancy Overlay Gate** ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311) / `7649544d` — SoT + merge semantics for vacancy-specific requirement delta over Profile / Screening Pack; not CL8; not R5 pack merge | **CL7 Gate** | DR1-runtime |
 | **P-DR** | [DR1-runtime](engine-document-request-dr1-runtime.md) Engine generation | **DR1 Runtime Gate** ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313) / `e6978fe2` — Engine may create Hub outstanding asks; evaluation consumers may run; not mass generation; not E8 | **DR1-contract Gate ∧ Reference R5 Gate ∧ Vacancy Overlay Gate** | E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) |
 | **P-E8b** | [E8-bind](documents-platform-e8-bind.md) Canonical type bind | **Documents Platform E8 Canonical Type Bind Gate** ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — remaining consumers bind to canonical document types; display/select canonical types; identity migration; not E8-eval; not mass D3–D9 bind | **Reference R3 Gate ∧ Reference R4 Gate ∧ DR1 Runtime Gate**. Scheduled after DR1 Runtime Gate PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313) (unlock ≠ silent schedule) | E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) |
-| **P-E8e** | [E8-eval](documents-platform-e8-eval.md) Required-doc evaluation | **Documents Platform E8 Required-Doc Evaluation Gate** ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — required / optional / applicability from R5 merge; canonical types only; not OCR product; not mass D3–D9 bind | **Reference R5 Gate ∧ E8-bind Gate**. Scheduled after E8-bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` and queue amendment [#323](https://github.com/igortatarynovich/HostFlow/pull/323) (unlock ≠ silent schedule) | [v1 Release Goal](../gates/hostflow-v1-release-goal.md) (Requirement Policy Management remains OPEN; no silent successor) |
+| **P-E8e** | [E8-eval](documents-platform-e8-eval.md) Required-doc evaluation | **Documents Platform E8 Required-Doc Evaluation Gate** ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — required / optional / applicability from R5 merge; canonical types only; not OCR product; not mass D3–D9 bind | **Reference R5 Gate ∧ E8-bind Gate**. Scheduled after E8-bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` and queue amendment [#323](https://github.com/igortatarynovich/HostFlow/pull/323) (unlock ≠ silent schedule) | RPM-1 ✅ scheduled this amendment |
+| **P-RPM1** | [RPM-1](requirement-policy-management.md) Authority contract | **Requirement Policy Authority Gate** — one operator question; one write authority; nine answerers classified. Brief this amendment; feat locked. Not Mapping. Not Hiring E2E. Not CL8 | **E8-eval Gate** ∧ DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328) | RPM-2 |
+| **P-RPM2** | [RPM-2](requirement-policy-management.md) Operator overlay | **Requirement Policy Operator Gate** — one job UI: base, override, reason, result; writes RPM-1 authority; Documents domain first | **Requirement Policy Authority Gate** | RPM-3 |
+| **P-RPM3** | [RPM-3](requirement-policy-management.md) Consumer cutover | **Requirement Policy Consumer Cutover Gate** — classified consumers read the same merge or are retired; D4 matches operator write | **Requirement Policy Operator Gate** | RPM program close. Hiring E2E unlocked, **not** scheduled |
 
-**Now:** Product **DONE** (E8-eval Gate PASS; no named successor this amendment). **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** OCR auto-start. Do not invent CL8. Do not mark Foundation ✅.
+**Now:** Product **RPM-1** (brief; feat locked). **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping auto-start. **Not** OCR. Do not invent CL8. Do not mark Foundation ✅.
 
 LI-1 is the **only** Lifecycle slice between CL1 and CL2. LI-2…LI-4 stay in [the Lifecycle brief](lifecycle-identity-l0-contract-seal.md) and do not stall Field Composition.
 
@@ -127,7 +130,7 @@ LI-1 is the **only** Lifecycle slice between CL1 and CL2. LI-2…LI-4 stay in [t
 | **E8-bind** | **Reference R3 Gate ∧ Reference R4 Gate ∧ DR1 Runtime Gate** | Product Track; **DONE** — Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` after DR1 Runtime Gate PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313) | remaining consumers bind to **canonical** document types; display/select canonical types; identity migration. **Not** required/optional, applicability, candidate evaluation, packages, OCR↔requirement matching |
 | **E8-eval** | **Reference R5 Gate ∧ E8-bind Gate** | Product Track; **DONE** — Gate PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` after E8-bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` and queue amendment [#323](https://github.com/igortatarynovich/HostFlow/pull/323). Unlock was not auto-start | required/optional; applicability; candidate requirement evaluation from R5 merge. Consume existing packs as policy input. **Not** OCR product; **not** a packages Hub table |
 
-E8-eval brief + feat closed this amendment. Unlock does not schedule OCR / CL8 / Foundation. No named Product successor.
+E8-eval brief + feat **closed**. Successor is **RPM-1** (this amendment). Unlock does not schedule OCR / CL8 / Foundation / Mapping / Hiring E2E.
 
 ### Join graph (checkable)
 
@@ -137,15 +140,16 @@ Engineering:
             → (r2 ∧ r4) → ref-id-r5 → ref-id-exit
 
 Product:
-  CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → CL5 → CL6 → CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → …
+  CL0 → CL1 → LI-1 → DR1-contract → CL2 → CL3 → CL4 → CL5 → CL6 → CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1 → RPM-2 → RPM-3
   DR1-runtime also: DR1-contract ∧ ref-id-r5 (PASS [#313](https://github.com/igortatarynovich/HostFlow/pull/313))
 
 Documents:
   r3 ∧ r4 ∧ DR1-runtime → E8-bind   PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`
   r5 ∧ E8-bind → E8-eval   PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`
+  E8-eval ∧ DAG review [#328] → RPM-1   (this amendment)
 ```
 
-Program horizon of this amendment: **none**. After E8-eval Gate PASS, [v1 Release Goal](../gates/hostflow-v1-release-goal.md) names remaining **blocker capabilities** (Release DAG — not a linear program order). A later queue amendment may schedule **one** named slice from that DAG after dependency analysis. No silent successor. Do not invent CL8. Do not auto-start OCR. Do not mark Foundation ✅.
+Program horizon of this amendment: **RPM-3** (Requirement Policy Management program close). First Product from the [Release DAG](../gates/hostflow-v1-release-goal.md) after [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Mapping remains startable after RPM close — **not** auto-scheduled. Do not invent CL8. Do not auto-start OCR. Do not mark Foundation ✅.
 
 ### Naming (mandatory)
 
@@ -157,13 +161,13 @@ Program horizon of this amendment: **none**. After E8-eval Gate PASS, [v1 Releas
 | **Acquisition R6** | — | Acquisition table-cutover (out of this slice) |
 | **E8-bind / E8-eval** | — | two Documents slices; never one E8 with two unlocks |
 | **DR1-contract / DR1-runtime** | — | two Document Request slices |
-| **Vacancy Overlay Contract** | — | vacancy-specific requirement delta over Profile / Screening Pack; **not** CL8 |
+| **RPM-1 / RPM-2 / RPM-3** | `rpm-authority` / `rpm-operator` / `rpm-cutover` | Requirement Policy Management internal slices; not Mapping; not Hiring E2E |
 
 ### Exit test (this docs amendment)
 
 A reader who has only this section can answer every item **yes**:
 
-1. Exactly one **Active Product** slice, **or Product DONE with no named successor until amendment** (now: none this amendment; E8-eval PASS).  
+1. Exactly one **Active Product** slice, **or Product DONE with no named successor until amendment** (now: RPM-1; brief; feat locked).  
 2. Exactly one **Active Engineering** slice, **or** the named fan-out `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor** — never a third concurrent Engineering slice. Pytest is not Active Engineering.  
 3. Every queued slice has a named predecessor.  
 4. Every slice has an owner track. Unlocked work is not a third track.  
@@ -228,7 +232,8 @@ A reader who has only this section can answer every item **yes**:
 - **Documents E8-bind** ← **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — [brief](documents-platform-e8-bind.md); remaining consumers bind to canonical document types. Not E8-eval. Not CL8. Not mass D3–D9 bind.
 - **Lifecycle Identity** ← docs sealed; **LI-1 feat after CL1** (existence/identity guard only) — [brief](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md); LI-2+ do **not** block CL2+; Funnel ≠ existence SoT
 - **DR1-contract** ← **PASS** [#302](https://github.com/igortatarynovich/HostFlow/pull/302) — [brief](engine-document-request-dr1-contract.md). **DR1-runtime** ← **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313)
-- **Documents E8-eval** ← **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — [brief](documents-platform-e8-eval.md); required / optional / applicability from R5 merge. Not OCR. Not CL8. Not mass D3–D9 bind. No named Product successor this amendment.
+- **Documents E8-eval** ← **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — [brief](documents-platform-e8-eval.md); required / optional / applicability from R5 merge. Not OCR. Not CL8. Not mass D3–D9 bind. Successor = RPM-1 (this amendment).
+- **Requirement Policy Management** ← Active **RPM-1** (brief; feat locked) — [brief](requirement-policy-management.md) after DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328). RPM-2 / RPM-3 queued. Mapping not auto-scheduled. Not Hiring E2E. Not CL8.
 - Stage 5 settings/enable-disable · R6 table-cutover ← **out of this slice**
 
 ---
@@ -304,9 +309,10 @@ A reader who has only this section can answer every item **yes**:
 | **44** | **DR1-runtime** Engine generation | ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313) `e6978fe2` | after **DR1-contract Gate ∧ Reference R5 Gate ∧ Vacancy Overlay Gate**; Engine may create Hub outstanding asks; not CL8; not E8 |
 | **45** | **E8-bind** Canonical type bind | [brief](documents-platform-e8-bind.md) | after **DR1 Runtime Gate**; **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`; not E8-eval; not CL8; not mass D3–D9 bind |
 | **45b** | **E8-eval** Required-doc evaluation | [brief](documents-platform-e8-eval.md) | after **E8-bind Gate**; **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`; not OCR; not CL8; not mass D3–D9 bind |
+| **45c** | **RPM-1** Authority contract | [brief](requirement-policy-management.md) | after E8-eval Gate ∧ DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328); **Active** (brief; feat locked); RPM-2 / RPM-3 queued |
 
 **C0–C2.3** ✅. **C2.4 frozen (Epic C residual R1).** **Epic C — complete.** **A2 — PASS_WITH_CONSTRAINTS.** Forms Foundation ✅. D1–D9 brief-complete / goal-incomplete.  
-**Active (Product):** **none this amendment**. E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** OCR auto-start. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
+**Active (Product):** **[RPM-1](requirement-policy-management.md)** (brief; feat locked). E8-eval ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. **v1 scope:** [Release Goal](../gates/hostflow-v1-release-goal.md). **Not** Mapping auto-start. Do not invent CL8. Do not mark Foundation ✅. E8-bind ✅ [#321](https://github.com/igortatarynovich/HostFlow/pull/321). DR1-runtime ✅ [#313](https://github.com/igortatarynovich/HostFlow/pull/313). Overlay ✅ [#311](https://github.com/igortatarynovich/HostFlow/pull/311). E7 ✅ [#287](https://github.com/igortatarynovich/HostFlow/pull/287). Foundation stays 🔄.  
 **Active (Engineering):** **DONE** — Reference Program Exit Gate PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`. No named successor. Legacy full-repo pytest does **not** become Active Engineering.
 
 ---
@@ -440,7 +446,7 @@ Lead demotion on Sales path; SalesInquiry product identity; not full R6 / slice 
 
 ### CL1+ — Entity Field Composition remainder ← **CL0–CL7 / Overlay PASS**
 
-After CL0: **CL1 → LI-1 → DR1-contract → CL2…CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval**. CL1 observes live codes; it does **not** canonize country or document-type identity. **DR1-contract** is not a Field Composition slice. **DR1-runtime** is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-bind** is **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. **E8-eval** is **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product = **none this amendment**. **CL7** is Engine evaluation, not Engine→Request. Vacancy Overlay leftover of the original CL0 chain is **PASS** — **not** CL8.
+After CL0: **CL1 → LI-1 → DR1-contract → CL2…CL7 → Vacancy Overlay Contract → DR1-runtime → E8-bind → E8-eval → RPM-1**. CL1 observes live codes; it does **not** canonize country or document-type identity. **DR1-contract** is not a Field Composition slice. **DR1-runtime** is **PASS** [#313](https://github.com/igortatarynovich/HostFlow/pull/313). **E8-bind** is **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. **E8-eval** is **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product = **[RPM-1](requirement-policy-management.md)** (brief; feat locked). **CL7** is Engine evaluation, not Engine→Request. Vacancy Overlay leftover of the original CL0 chain is **PASS** — **not** CL8.
 
 ### Lifecycle Identity — LI-1 after CL1 (docs sealed; feat locked until CL1 Gate)
 
@@ -525,8 +531,9 @@ Next branch only after:
 **Do not** give one named slice two independent unlock conditions — split it.  
 **Do not** run a third concurrent Engineering slice. Fan-out is only `{Reference R2, Reference R3}` after Reference R1 Gate; then collapse.  
 **Do not** activate Reference R5 while Reference R2 is still open.  
-**Do not** auto-start OCR / packages product / CL8 / ADR-019 automation plane / tenant extension marketplace / Billing product / AI after E8-eval Gate. v1 blockers live in the [Release Goal](../gates/hostflow-v1-release-goal.md); unlock ≠ schedule.  
-**Do not** park later Product on Engineering DONE (no successor this amendment). Product is **none this amendment**.  
+**Do not** park later Product on Engineering DONE. Product is **RPM-1** this amendment (feat locked).  
+**Do not** auto-start Mapping / Hiring E2E / Intake / min HR because RPM is Active. Mapping remains startable after RPM program close (not this amendment).  
+**Do not** auto-start OCR / packages product / CL8 / ADR-019 automation plane / tenant extension marketplace / Billing product / AI. v1 blockers live in the [Release Goal](../gates/hostflow-v1-release-goal.md); unlock ≠ schedule.  
 **Do not** start full Lifecycle / Funnel UI cutover as LI-1.  
 **Do not** spend Product capacity on the 657 base-known pytest failures.  
 **Do not** mix Stage 5 settings/enable-disable or Acquisition R6 table-cutover into Documents.  
@@ -535,13 +542,15 @@ Next branch only after:
 **Do** apply [Goal Completion Gate](../gates/goal-completion-gate.md) before marking a future platform phase COMPLETE.  
 **Do** require `**Phase class:** platform` + [Original Goal → Completion Proof](../gates/goal-completion-gate.md) on every new platform phase brief (problem to permanently remove + named consumer — not a deliverables list).  
 **Do** apply [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) for in-scope vs later; every program close writes **program outcome** and **release delta**.  
-**Do** amend this queue when switching Product Active (this revision: live = **none this amendment**; E8-eval Gate PASS; v1 Goal sealed, no slice scheduled).
+**Do** amend this queue when switching Product Active (this revision: live = **RPM-1**; brief; feat locked; E8-eval Gate PASS; DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328)).
 
 ---
 
 ## 8. History
 
-- 2026-08-26: [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) sealed. Product Track stays **none**. Five v1 blockers named as a Release DAG (not a linear program order); OCR / packages / AI / automation plane / extensions / self-service Billing explicitly later. No Product slice scheduled.
+- 2026-08-27: Queue amendment after DAG dependency-position [#328](https://github.com/igortatarynovich/HostFlow/pull/328) / `087ed286`. Product Track → **[RPM-1](requirement-policy-management.md)** (brief; feat locked). RPM-2 / RPM-3 queued. Mapping not auto-scheduled. Not Hiring E2E. Not CL8. Not Foundation ✅.
+- 2026-08-26: [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) sealed [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Product Track stayed **none**. RPM recommended first; no schedule; no RPM → Mapping edge.
+- 2026-08-26: [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) sealed. Product Track stayed **none**. Five v1 blockers named as a Release DAG (not a linear program order); OCR / packages / AI / automation plane / extensions / self-service Billing explicitly later. No Product slice scheduled.
 - 2026-08-25: Queue amendment after E8 Required-Doc Evaluation Gate PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` (feat `821adf33`). Product Track → **none this amendment**. Engineering Track → Reference program **DONE** (Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`). Not OCR auto-start. Not CL8. Not Foundation ✅. Pytest stays background.
 - 2026-08-25: E8-eval feat opened — D4 required / optional / blocked from R5 merge; Overlay as CL7 input. Named Documents Platform E8 Required-Doc Evaluation Gate. Product Track stays [E8-eval](documents-platform-e8-eval.md). Engineering stays DONE. Not OCR. Not CL8. Not mass D3–D9 bind.
 - 2026-08-25: Queue amendment after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` and docs close-out [#322](https://github.com/igortatarynovich/HostFlow/pull/322) / `196aff39`. Product Track → [E8-eval](documents-platform-e8-eval.md) (brief; feat locked). Engineering Track → Reference program **DONE** (Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c`). Not OCR auto-start. Not CL8. Not mass D3–D9 bind. Pytest stays background.

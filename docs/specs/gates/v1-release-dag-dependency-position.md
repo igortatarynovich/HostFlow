@@ -4,7 +4,7 @@
 **Date:** 2026-08-26  
 **Trusted base:** `integration/release-product-a-b` @ `32e68b5d` ([#327](https://github.com/igortatarynovich/HostFlow/pull/327) merged)  
 **Parents:** [HostFlow v1 Release Goal](hostflow-v1-release-goal.md) · [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [Handoff contract](../architecture/handoff-contract.md)  
-**Product Track:** **none** (this file does not queue a slice and does not amend the sequential ladder)
+**Product Track:** **none at review time** (this file did not queue a slice). Consumed by [RPM-1 schedule](../tasks/requirement-policy-management.md) in the sequential queue.
 
 > Grain: the five [Release DAG](hostflow-v1-release-goal.md) blocker **capabilities**.  
 > Question: which **one** node may become the first Product, and why the other four cannot or should not precede it.  
@@ -18,7 +18,7 @@
 After [#327](https://github.com/igortatarynovich/HostFlow/pull/327) the Release Goal is L2 and Product Track is none, but the next queue amendment has no evidence for cutting **one** DAG node. Without this review the amendment will invent a linear program (RPM → Mapping → Intake → Hiring → HR), pick a Phase E leftover, or start the node that “feels first.”
 
 **Completion proof (named consumer):**  
-The next **docs-only queue amendment** (not this file). It may cite this review to name **one** first Product and update the [sequential queue](../tasks/sales-to-comms-sequential-queue.md). It may not treat this review as the schedule.
+The docs-only queue amendment that cites this review — [Requirement Policy Management](../tasks/requirement-policy-management.md). It may not treat this review as the schedule.
 
 ---
 
@@ -165,22 +165,18 @@ Known acceptance edges unchanged from the Goal. Still **not** proven as executio
 
 ---
 
-## Next (separate amendment)
+## Next (consumed)
 
-A later **docs-only queue amendment** may:
+The docs-only queue amendment after this review named **Requirement Policy Management** as the first Product and cut [RPM-1 / RPM-2 / RPM-3](../tasks/requirement-policy-management.md). Mapping remains startable after RPM program close and is **not** auto-scheduled there. This review is still not the schedule.
 
-1. Cite this review as the dependency-position evidence.  
-2. Name **Requirement Policy Management** as the first Product.  
-3. Update the sequential queue (one Active Product or brief-locked feat — that amendment decides grain).  
-
-Until that amendment, Product Track stays **none**. This review is not the schedule.
+Until that amendment merged, Product Track stayed **none**. After it, Active Product is RPM-1 (brief; feat locked).
 
 ---
 
 ## Refs
 
 - [HostFlow v1 Release Goal](hostflow-v1-release-goal.md) — v1 in-scope vs later; Release DAG; known acceptance edges  
-- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Product none until a DAG node is queued  
+- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [RPM-1](../tasks/requirement-policy-management.md) after this review  
 - [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) — one evaluator; Admin UI for policy was out of Slice 1  
 - [ADR-007](../architecture/ADR-007-forms-platform-capability.md) — Forms Foundation ✅; P3 Publish UI locked  
 - [Handoff contract](../architecture/handoff-contract.md) · [Documents E8-eval](../tasks/documents-platform-e8-eval.md) · [CL6 Flight map](../tasks/entity-field-composition-cl6-flight-map.md)

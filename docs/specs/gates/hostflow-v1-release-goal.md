@@ -5,12 +5,12 @@
 **Date:** 2026-08-26  
 **Trusted base:** `integration/release-product-a-b`  
 **Parents:** [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](goal-completion-gate.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md) · [Documents Platform E8-eval](../tasks/documents-platform-e8-eval.md)  
-**Product Track:** **none** (this file does not schedule a slice and does not amend the sequential queue ladder)
+**Product Track:** **[RPM-1](../tasks/requirement-policy-management.md)** (brief; feat locked) — scheduled in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) after [#328](https://github.com/igortatarynovich/HostFlow/pull/328). This file does not invent slice order.
 
 > This document is the **v1 in-scope vs later** SoT.  
 > The [sequential queue](../tasks/sales-to-comms-sequential-queue.md) remains the **slice schedule** SoT (one Active Product).  
 > Horizon letters in the [roadmap](../architecture/platform-completion-roadmap.md) (OCR, packages, Billing, AI) are **not** v1.  
-> This amendment does **not** schedule a Product slice. Active Product stays **none** until a later queue amendment cuts **one** named node from § Release DAG and queues it. This file does **not** lock a linear program order.
+> First Product from § Release DAG is **Requirement Policy Management**, scheduled as [RPM-1](../tasks/requirement-policy-management.md) (brief; feat locked). This file does **not** lock a linear program order of the five blockers. Mapping remains startable after RPM program close — not auto-scheduled here.
 
 ---
 
@@ -98,7 +98,7 @@ Do **not** treat a later theme as the next Product because it appears in the roa
 
 ## Release DAG (capabilities + acceptance edges — not a queue)
 
-Grain: **capabilities**, not slices. This is **not** a sequential Product ladder. Linear slice order appears only in a later **docs-only queue amendment** after dependency analysis. Unlock ≠ schedule.
+Grain: **capabilities**, not slices. This is **not** a sequential Product ladder. Linear slice order appears only in a later **docs-only queue amendment** after dependency analysis. Unlock ≠ schedule. The first such amendment after [#328](https://github.com/igortatarynovich/HostFlow/pull/328) scheduled [RPM-1](../tasks/requirement-policy-management.md); it did **not** lock a total order of the five blockers.
 
 ```text
 Release Goal (finite criterion)
@@ -175,7 +175,7 @@ Recorded at Goal seal. Not a PASS.
 
 ## What this document does not do
 
-- Does not schedule Requirement Policy Management or any other Product slice  
+- Does not schedule Mapping, External Intake, Hiring E2E, or min HR (RPM is scheduled in the sequential queue, not by this file)  
 - Does not lock a linear program / slice order (that is the sequential queue)  
 - Does not reopen E8-eval, Overlay, CL7, DR1-runtime, or E8-bind  
 - Does not mark Documents Foundation ✅  
@@ -186,7 +186,8 @@ Recorded at Goal seal. Not a PASS.
 
 ## Refs
 
-- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Product none until a DAG node is queued  
+- [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [RPM-1](../tasks/requirement-policy-management.md)  
+- [Dependency-position review](v1-release-dag-dependency-position.md) — why RPM is first  
 - [Goal Completion Gate](goal-completion-gate.md) — original goal vs substituted brief  
 - [Platform capability maturity](../architecture/platform-capability-maturity.md) — platform maturity ≠ v1 Release Goal  
 - [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [ADR-019](../architecture/ADR-019-automation-capability-entitlement-control-plane.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md)
