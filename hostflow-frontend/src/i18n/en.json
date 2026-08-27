@@ -10621,346 +10621,292 @@
       }
     },
     "crm_landing": {
-      "audience": {
-        "items": {
-          "0": "Recruitment agencies with distributed teams",
-          "1": "Employers with high-volume candidate flows",
-          "2": "Operations teams managing onboarding and docs",
-          "3": "Managers who need clear pipeline and ownership"
-        },
-        "title": "Who this CRM is for"
-      },
-      "compare": {
-        "analytics": "Analytics",
-        "communications": "Communications workspace",
-        "feature": "Feature",
-        "roles": "Roles & permissions",
-        "title": "Full plan comparison",
-        "users": "Users",
-        "rows": {
-          "users": {
-            "label": "Users (included)",
-            "starter": "1",
-            "team": "Up to 3",
-            "pro": "Up to 10",
-            "enterprise": "Custom"
-          },
-          "workspaces": {
-            "label": "Workspaces / companies",
-            "starter": "1",
-            "team": "1 (add-ons available)",
-            "pro": "Up to 3 included",
-            "enterprise": "Custom"
-          },
-          "automation": {
-            "label": "Automation & distribution",
-            "starter": "Assisted only",
-            "team": "Rules, auto-distribution",
-            "pro": "Extended rules & workflows",
-            "enterprise": "Custom"
-          },
-          "portals": {
-            "label": "Candidate & client portals",
-            "starter": "Not included",
-            "team": "Included (plan limits)",
-            "pro": "Extended limits + branded basics",
-            "enterprise": "Custom"
-          },
-          "finance": {
-            "label": "Services, orders & invoicing",
-            "starter": "Not included",
-            "team": "Not included",
-            "pro": "Included",
-            "enterprise": "Custom"
-          },
-          "analytics": {
-            "label": "Analytics",
-            "starter": "Basic funnel",
-            "team": "Funnel, sources, team",
-            "pro": "Advanced slices & reporting",
-            "enterprise": "Custom"
-          }
-        }
-      },
-      "faq": {
-        "a1": "Yes. Core onboarding is account -> company -> first client/lead/action. Advanced settings can be done later.",
-        "a2": "Yes. Start solo, then invite teammates from Team settings when ready.",
-        "a3": "Plans can be changed in Billing. The product flow keeps your workspace data intact.",
-        "q1": "Can we start without configuring everything?",
-        "q2": "Can we invite team later?",
-        "q3": "What if we choose wrong plan?",
-        "title": "FAQ",
-        "launch_q": "How do I start without support?",
-        "launch_a": "Sign up → create company in the setup wizard → connect Meta (or skip) → create your first vacancy. The checklist keeps the next step visible.",
-        "training_q": "Do we need training or an onboarding call?",
-        "training_a": "No for the core path. Guided setup and in-product checklist cover first value; deeper docs and FAQ expand later.",
-        "processes_q": "What happens to my data if I change plan?",
-        "processes_a": "Your workspace stays. Limits and modules follow the plan matrix — upgrade unlocks more seats, automation, and portals."
-      },
-      "final_cta": {
-        "button": "Create workspace",
-        "subtitle": "First value within minutes",
-        "title": "Start building a managed hiring process"
-      },
-      "guides": {
-        "title": "Explore product guides",
-        "subtitle": "Start with the page closest to your current challenge and move to the next linked guide."
-      },
-      "benefits": {
-        "badge": "Outcome",
-        "title": "What changes after you implement it",
-        "items": {
-          "0": "A transparent hiring pipeline",
-          "1": "Control over every candidate",
-          "2": "Clear ownership",
-          "3": "Fewer drop-offs",
-          "4": "Faster decisions",
-          "5": "Visible bottlenecks"
-        },
-        "closing": "You run the process instead of firefighting chaos."
-      },
-      "before_after": {
-        "badge": "Contrast",
-        "title": "Before and after HostFlow",
-        "before_title": "Before",
-        "after_badge": "After",
-        "after_title": "After",
-        "before_items": {
-          "0": "Spreadsheets, chats, chaos",
-          "1": "Lost candidates",
-          "2": "Manual control",
-          "3": "Repeated mistakes"
-        },
-        "after_items": {
-          "0": "One system",
-          "1": "Full visibility",
-          "2": "Control at every stage",
-          "3": "Predictable outcomes"
-        }
-      },
-      "conviction": {
-        "badge": "Fast start",
-        "title": "Why it works from day one",
-        "body": "You don't need to redesign your business.",
-        "list_intro": "You simply:",
-        "steps": {
-          "0": "run candidates in one system",
-          "1": "record stages and next steps",
-          "2": "see the real picture"
-        },
-        "closing": "You see impact within the first days."
-      },
-      "how": {
-        "badge": "How it works",
-        "title": "Understand the system in one minute",
-        "step_label": "Step {n}",
-        "steps": {
-          "0": {
-            "title": "Create your company",
-            "caption": "Name, country, and how you hire — your operating profile.",
-            "screenshot_src": "/landing/step-lead.svg"
-          },
-          "1": {
-            "title": "Connect Meta",
-            "caption": "Link ads and lead forms so applications arrive automatically.",
-            "screenshot_src": "/landing/step-pipeline.svg"
-          },
-          "2": {
-            "title": "Create a vacancy",
-            "caption": "Open the role you need to fill and set the hiring path.",
-            "screenshot_src": "/landing/step-tasks.svg"
-          },
-          "3": {
-            "title": "Receive applications",
-            "caption": "Leads land in the pipeline with ownership — not in a shared inbox.",
-            "screenshot_src": "/landing/step-analytics.svg"
-          },
-          "4": {
-            "title": "Process candidates",
-            "caption": "Stages, documents, and next actions stay in one place until hire.",
-            "screenshot_src": "/landing/hero.svg"
-          }
-        },
-        "lead": "Five steps from empty workspace to processing real applications."
-      },
-      "pain": {
-        "badge": "Reality check",
-        "title": "Why hiring breaks and costs you money",
-        "lead": "The problem isn't candidates.\nThe problem is no system.",
-        "items": {
-          "0": "Leads arrive but nobody owns them end-to-end",
-          "1": "Candidates vanish between spreadsheets, WhatsApp, and calls",
-          "2": "The team doesn't know who owns what",
-          "3": "Statuses are manual and always stale",
-          "4": "Documents live in five different places",
-          "5": "Leadership can't see what's actually happening"
-        },
-        "closing": "Every lost candidate is direct financial damage."
-      },
-      "roi": {
-        "badge": "Money",
-        "title": "What you lose without a system",
-        "intro": "If you lose just 3 candidates a month and each costs you €300–1,000 in handling and recruiter time before a hire, that channel alone can cost:",
-        "loss_setup": "",
-        "loss_range": "€900–3,000+ per month",
-        "loss_note": "That's only the obvious leakage — excluding slipped timelines and overloaded teams.",
-        "hidden_title": "Hidden costs:",
-        "hidden_items": {
-          "0": "team time",
-          "1": "re-processing the same leads",
-          "2": "longer time-to-hire",
-          "3": "lost client revenue"
-        },
-        "highlight": "HostFlow pays back in the first month when typical candidate leakage is present.",
-        "pilot_badge": "Pilot benchmarks",
-        "pilot_note": "Draft benchmarks from 6 EU teams (agencies + in-house, 2025–2026) before a single operating rhythm.",
-        "pilot_m1_label": "Inbound leads without a named owner",
-        "pilot_m1_value": "up to 18% → under 5% within 4 weeks once CRM discipline sticks",
-        "pilot_m2_label": "Median days a candidate sits on one stage without a system",
-        "pilot_m2_value": "9–14 business days",
-        "pilot_m3_label": "Share of candidates with no clear “next step” in sheets/chats (estimate)",
-        "pilot_m3_value": "12–25% → target in-system: near 0% on active stages"
-      },
-      "segments": {
-        "badge": "Segments",
-        "title": "Who HostFlow is for",
-        "items": {
-          "0": "Recruitment agencies",
-          "1": "High-volume hiring",
-          "2": "In-house HR teams",
-          "3": "Operations teams"
-        },
-        "footnote": "If you have a steady candidate flow, the system fits."
-      },
-      "shot": {
-        "placeholder_badge": "Product screenshot"
-      },
-      "solution": {
-        "badge": "Solution",
-        "title": "HostFlow turns chaos into a managed process",
-        "body": "Every candidate follows a clear path.",
-        "see_title": "You see:",
-        "see_items": {
-          "0": "where they are",
-          "1": "what happens next",
-          "2": "who owns it"
-        },
-        "footer": "The process can't silently fall apart."
+      "nav": {
+        "trust": "Why us",
+        "problem": "Compare",
+        "story": "How we close",
+        "case": "Case",
+        "pricing": "Pricing",
+        "faq": "FAQ",
+        "login": "Log in",
+        "demo": "Try it free",
+        "product": "How it works"
       },
       "hero": {
-        "badge": "Recruitment operations platform",
-        "primary_cta": "Start free setup",
-        "secondary_cta": "Sign in",
-        "subtitle": "HostFlow automatically collects candidates from Meta, WhatsApp and forms, assigns them to recruiters, and controls the hiring process end to end.",
-        "title": "Close vacancies faster",
-        "bullets": {
-          "0": "Inbound leads land in one owned pipeline",
-          "1": "Clear recruiter ownership on every candidate",
-          "2": "Documents and stages stay visible",
-          "3": "Less chaos between ads, chats, and spreadsheets"
+        "badge": "Built by working recruiters",
+        "title": "Close vacancies faster with a system built by recruiters with 10+ years of international hiring experience.",
+        "subtitle": "We helped companies hire drivers, warehouse, production, and office staff. HostFlow grew from real hiring practice — not from the idea of building yet another CRM.",
+        "primary_cta": "Try it free",
+        "secondary_cta": "Why you can trust us",
+        "proof": {
+          "0": "10+ years of international recruiting",
+          "1": "Meta Ads on real volume",
+          "2": "Drivers, warehouse, production, office",
+          "3": "Built for ourselves — open to companies"
         },
-        "cta_subline": "Self-serve setup — first vacancy in minutes, without a sales call",
-        "screenshot_caption": "Pipeline and candidates — hiring control at a glance.",
-        "screenshot_src": "/landing/hero.svg",
-        "answers": {
-          "what": {
-            "label": "What it is",
-            "body": "An operations system that runs hiring from lead to hire — not a generic CRM checklist."
+        "title_line1": "Close vacancies faster.",
+        "title_accent": "More candidates.\nFewer losses.",
+        "lead": "For more than 10 years we have worked in international recruiting, set up advertising, and built hiring processes.",
+        "system_line": "HostFlow is the system recruiters built from their own operating experience.",
+        "screenshot_caption": "Recruitment analytics — contacts, outcomes, and stage distribution.",
+        "screenshot_src": "/landing/shots/hero-recruitment-analytics.png"
+      },
+      "trust": {
+        "badge": "Why you can trust us",
+        "title": "For more than 10 years we have done international recruiting",
+        "lead": "Not “building another CRM”. Not slide-deck consulting. Actual hiring.",
+        "points": {
+          "0": "We hired drivers, warehouse, production, and office staff.",
+          "1": "We ran Meta ads and handled inbound candidate volume.",
+          "2": "We built hiring processes end to end — from lead to start.",
+          "3": "We worked with candidates across countries and languages.",
+          "4": "We lost people between chats, spreadsheets, and “another CRM”."
+        },
+        "closing": "HostFlow is the result of that experience. A system we built for ourselves because existing tools did not help close vacancies efficiently."
+      },
+      "team": {
+        "badge": "Built by recruiters",
+        "title": "People sell CRM. Interfaces don’t.",
+        "body": "HostFlow grew from the recruiting desk: shifts, Meta campaigns, lost candidates, and failed attempts to make generic ATS tools work for high-volume hiring.",
+        "members": {
+          "0": {
+            "initials": "OR",
+            "name": "Recruitment operations",
+            "role": "Day-to-day hiring",
+            "line": "We take candidates to start — not just to a status in a system."
           },
-          "who": {
-            "label": "Who it is for",
-            "body": "Agencies and employers with real candidate volume from ads, WhatsApp, and forms."
+          "1": {
+            "initials": "MA",
+            "name": "Meta & intake",
+            "role": "Paid volume",
+            "line": "Ads must end with an owner and a next step — not an Excel export."
           },
-          "get": {
-            "label": "What you get",
-            "body": "Owned pipeline, automatic intake, document control, and visible bottlenecks."
-          },
-          "why": {
-            "label": "Why HostFlow",
-            "body": "Built for Meta → vacancy → recruiter work — so candidates stop disappearing between tools."
+          "2": {
+            "initials": "HP",
+            "name": "Hiring processes",
+            "role": "From chaos to rhythm",
+            "line": "First we learned to close vacancies. Then we locked that into HostFlow."
           }
         }
       },
-      "objections": {
-        "0": "Too many settings before work starts.",
-        "1": "Hard to onboard team members.",
-        "2": "Unclear path from lead to next action.",
-        "title": "Common blockers we remove"
+      "problem": {
+        "badge": "Why vacancies stall",
+        "title": "Candidates exist. The process collapses — and you pay twice.",
+        "lead": "You already pay for ads and recruiters. Losses start where there is no owner, next step, or control through to start.",
+        "items": {
+          "0": "Candidates arrive from different sources",
+          "1": "Nobody knows who should call",
+          "2": "Documents get lost",
+          "3": "Leadership can’t see reality",
+          "4": "Ads work — people never reach hire"
+        },
+        "cost_badge": "Cost of leakage",
+        "cost_title": "Every lost candidate costs money",
+        "cost_value": "€900–3,000+",
+        "cost_note": "If 3–10 candidates drop each month at handling, leakage usually lands here — before line downtime.",
+        "cost_closing": "Faster and cheaper vacancy close starts by stopping this leak."
+      },
+      "moat": {
+        "badge": "Why not any ATS",
+        "title": "We hired. We lost people. We tried CRMs. Then we built our own.",
+        "items": {
+          "0": "We hired people on real volume ourselves.",
+          "1": "We lost candidates between Meta, WhatsApp, and sheets.",
+          "2": "We tried CRMs and ATS tools that did not close vacancies.",
+          "3": "So we built our own — for operational hiring, not a feature catalog."
+        },
+        "closing": "You can’t copy this with a feature list. You can only copy the UI — not the experience."
+      },
+      "story": {
+        "badge": "How it looks in operation",
+        "title": "Not a channel diagram — a vacancy-closing story",
+        "lead": "This is what a hiring wave looks like when the process belongs to recruiters, not chats.",
+        "steps": {
+          "0": {
+            "value": "Ads",
+            "label": "Launched a Meta campaign for the vacancy"
+          },
+          "1": {
+            "value": "214",
+            "label": "Candidates entered one funnel"
+          },
+          "2": {
+            "value": "Auto",
+            "label": "HostFlow distributed to recruiters"
+          },
+          "3": {
+            "value": "Tasks",
+            "label": "Each got a next step and ownership"
+          },
+          "4": {
+            "value": "37",
+            "label": "Started on the job"
+          }
+        },
+        "footnote": "Numbers illustrate an operating wave from international hiring practice. The point is the path to start — not a pretty funnel."
+      },
+      "product": {
+        "badge": "What matters in the work",
+        "title": "We show only what helps close vacancies",
+        "lead": "Not the whole CRM screen — a focused slice of the process that solves the job.",
+        "blocks": {
+          "0": {
+            "why": "Ownership",
+            "title": "One owner on every stage",
+            "body": "Candidates don’t disappear between shifts: you see who owns them and what must happen next.",
+            "quote": "We finally stopped asking “whose is this?” in the group chat.",
+            "caption": "Card with owner and stage",
+            "screenshot_src": "/landing/shots/hero-pipeline.jpg"
+          },
+          "1": {
+            "why": "Speed",
+            "title": "The next action sits on the desk",
+            "body": "Lead, task, and contact in one place — no jumping between WhatsApp and a spreadsheet.",
+            "quote": "Recruiters see the day, not inbound chaos.",
+            "caption": "Applications queue and next step",
+            "screenshot_src": "/landing/shots/step-applications.jpg"
+          },
+          "2": {
+            "why": "Control",
+            "title": "Bottlenecks without a weekly Excel",
+            "body": "Contacts, outcomes, and stage mix — so you reinforce what already converts.",
+            "quote": "Leadership sees where hiring actually slows down.",
+            "caption": "Recruitment analytics fragment",
+            "screenshot_src": "/landing/shots/hero-recruitment-analytics.png"
+          }
+        }
+      },
+      "case": {
+        "badge": "Live case",
+        "title": "Focus Personnel",
+        "lead": "One strong case instead of ten generic claims: how an operating team put Meta, candidates, and vacancies into one process.",
+        "steps": {
+          "0": {
+            "label": "Problem",
+            "body": "Meta leads, chats, and sheets lived apart. Unclear who owned the candidate and why vacancies stalled."
+          },
+          "1": {
+            "label": "What we did",
+            "body": "Moved lead handling and candidate control into HostFlow — one contour instead of parallel tools."
+          },
+          "2": {
+            "label": "Process built",
+            "body": "Meta → owned funnel → recruiter tasks → documents → hire decision."
+          },
+          "3": {
+            "label": "Result",
+            "body": "One system of record from paid lead to hire decision. Managers see processing — not an Excel snapshot."
+          }
+        },
+        "screenshot_src": "/landing/shots/hero-pipeline.jpg",
+        "screenshot_caption": "Focus Personnel: candidates and vacancies in one contour.",
+        "quote": "We didn’t need another ATS. We needed a system where a Meta lead doesn’t disappear before start. HostFlow grew from the work we live every day.",
+        "quote_name": "Focus Personnel team",
+        "quote_role": "Recruitment operations · international hiring"
+      },
+      "segments": {
+        "title": "Who this helps close vacancies",
+        "lead": "Teams with candidate volume and downtime cost — not buyers hunting “another CRM for CRM’s sake”.",
+        "items": {
+          "0": "Transport companies",
+          "1": "Recruitment agencies",
+          "2": "High-volume hiring",
+          "3": "HR / operations"
+        }
       },
       "pricing": {
         "badge": "Pricing",
-        "contact_sales_cta": "Contact sales",
-        "note": "Prices in EUR. Limits and modules follow the live plan matrix. Trial starts on signup; paid plan applies when trial ends or you upgrade.",
-        "featured_badge": "Most popular",
-        "enterprise": {
-          "name": "Enterprise",
-          "best_for": "Large programs with procurement and compliance needs",
-          "features": {
-            "0": "Contract pricing, SSO roadmap, custom integrations",
-            "1": "White-label / advanced branding options",
-            "2": "Dedicated onboarding and priority support"
-          },
-          "price": "From €499/mo or custom",
-          "seats": "Custom seats, workspaces, storage, and SLAs"
+        "title": "Pay for a process that closes vacancies",
+        "note": "Simple plans. Value first — without drowning in limits.",
+        "featured_badge": "Popular",
+        "billing_monthly": "Monthly",
+        "billing_yearly": "Yearly −20%",
+        "select_cta": "Choose",
+        "contact_sales_cta": "Contact",
+        "included_title": "In every plan",
+        "included": {
+          "0": "Lead channels in one process",
+          "1": "Owned funnel",
+          "2": "Document control",
+          "3": "Seats by plan"
         },
-        "pro": {
-          "name": "Business",
-          "best_for": "For scaling up",
-          "features": {
-            "0": "Everything in Team",
-            "1": "Multiple processes and workspaces",
-            "2": "Analytics and deeper reporting"
-          },
-          "price": "€249/mo · €219/mo billed yearly",
-          "seats": "Up to 10 users · up to 3 workspaces"
-        },
-        "select_cta": "Select plan",
         "starter": {
           "name": "Solo",
-          "best_for": "For a single specialist",
-          "features": {
-            "0": "Candidate funnel",
-            "1": "Statuses and tasks",
-            "2": "Baseline control"
-          },
-          "price": "€29/mo · €24/mo billed yearly",
-          "seats": "1 user · 1 workspace"
+          "audience": "One recruiter on the funnel",
+          "seats": "1 user · 1 workspace",
+          "line": "Lead and stage control without a team stack.",
+          "price_monthly": "€29",
+          "price_yearly": "€24"
         },
         "team": {
           "name": "Team",
-          "best_for": "For teams",
-          "features": {
-            "0": "Everything in Solo",
-            "1": "Collaboration",
-            "2": "Process control"
-          },
-          "price": "€129/mo · €109/mo billed yearly",
-          "seats": "Up to 3 users · 1 workspace"
+          "audience": "Team with shared ownership",
+          "seats": "Up to 3 users · 1 workspace",
+          "line": "Collaboration and auto-distribution ready.",
+          "price_monthly": "€129",
+          "price_yearly": "€109"
         },
-        "title": "Choose a plan that fits your team",
-        "clarity": {
-          "includes_title": "Included",
-          "excludes_title": "Not included / limited",
-          "limits_title": "Typical limits",
-          "after_trial_title": "After trial",
-          "includes": {
-            "0": "Candidate / lead pipeline and ownership",
-            "1": "Vacancy workflow and document statuses",
-            "2": "Meta / forms intake on eligible plans",
-            "3": "Team seats per plan (Solo → Business)"
-          },
-          "excludes": {
-            "0": "Enterprise SSO / custom SLAs (Enterprise only)",
-            "1": "Invoicing & multi-workspace depth (Business+)",
-            "2": "Unlimited automation on Solo (assisted only)"
-          },
-          "limits": {
-            "0": "Solo: 1 user, 1 workspace, ~200 leads/mo, 5 open vacancies",
-            "1": "Team: up to 3 users, 1 workspace, higher lead caps",
-            "2": "Business: up to 10 users, up to 3 workspaces"
-          },
-          "after_trial": "Trial uses reduced caps. When trial ends you choose a paid plan (Solo / Team / Business) or contact sales for Enterprise. Workspace data stays; features follow the selected plan."
+        "pro": {
+          "name": "Business",
+          "audience": "Growing hiring",
+          "seats": "Up to 10 users · up to 3 workspaces",
+          "line": "More seats, workspaces, and analytics.",
+          "price_monthly": "€249",
+          "price_yearly": "€219"
+        },
+        "enterprise": {
+          "name": "Enterprise",
+          "audience": "Large programs",
+          "seats": "Custom seats, workspaces, storage, and SLAs",
+          "line": "SLA, SSO roadmap, dedicated onboarding.",
+          "price_monthly": "Custom",
+          "price_yearly": "Custom"
         }
+      },
+      "faq": {
+        "title": "Answers to the fears that block a buy",
+        "crm_vs_ats_q": "How is HostFlow different from a normal CRM/ATS?",
+        "crm_vs_ats_a": "A normal ATS stores stages. HostFlow grew from 10+ years of international recruiting: Meta/WhatsApp/forms, distribution, documents, and control to start — to close vacancies, not fill cards.",
+        "meta_q": "Can we connect Meta?",
+        "meta_a": "Yes. Lead Forms connect so a paid lead lands in the funnel with an owner.",
+        "whatsapp_q": "Is WhatsApp supported?",
+        "whatsapp_a": "Yes. Conversations stay tied to the candidate and process instead of vanishing in personal chats.",
+        "data_q": "Where is data stored?",
+        "data_a": "In HostFlow cloud for your tenant workspace, with isolation and access control.",
+        "rodo_q": "How does RODO/GDPR work?",
+        "rodo_a": "Recruitment data is handled with controlled access and purpose. Details are in the Privacy Policy.",
+        "recruiters_q": "Can several recruiters work together?",
+        "recruiters_a": "Yes. Leads are distributed, each candidate has an owner, and managers see workload and bottlenecks.",
+        "launch_q": "Can we start without support?",
+        "launch_a": "Yes. Sign up → company → Meta or later → vacancy. Demo walks you through with sample data.",
+        "plan_change_q": "What happens to data if we change plan?",
+        "plan_change_a": "Workspace data stays. Limits and modules follow the plan."
+      },
+      "final_cta": {
+        "title": "We have done international recruiting for more than 10 years.",
+        "subtitle": "HostFlow is the system we built for ourselves because existing tools did not help close vacancies efficiently. Now other companies can use that experience.",
+        "button": "Try it free",
+        "secondary": "Create account"
+      },
+      "compare": {
+        "title": "How HostFlow beats spreadsheets, chats, and generic CRMs",
+        "them_title": "Spreadsheets, chats, and “universal” CRMs",
+        "us_title": "HostFlow",
+        "them": {
+          "0": "Candidates are scattered across Meta, WhatsApp, and Excel",
+          "1": "Nobody knows who should call right now",
+          "2": "Documents live in folders and message threads",
+          "3": "Leadership sees a report once a week — if you’re lucky",
+          "4": "You pay for features that still don’t close vacancies"
+        },
+        "us": {
+          "0": "Every lead and candidate in one owned queue",
+          "1": "Every stage has a clear owner and next step",
+          "2": "Documents live inside the hiring stage, not beside it",
+          "3": "A live view of the funnel and bottlenecks every day",
+          "4": "Built for operational hiring — from recruiter practice"
+        },
+        "cta": "Try it free"
       }
     },
     "documents_upload": {

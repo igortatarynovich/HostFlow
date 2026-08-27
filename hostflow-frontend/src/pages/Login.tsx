@@ -87,27 +87,42 @@ export default function Login(){
   }, [t])
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f6fbff] px-4 py-10">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(94,186,205,0.35),transparent_55%),radial-gradient(circle_at_85%_0%,rgba(25,78,122,0.2),transparent_65%),linear-gradient(180deg,rgba(255,255,255,0.92)_0%,#f6fbff_50%,#f8fbff_100%)]" />
-      <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-12">
-        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-xl border border-white/20 bg-brand-900/95 p-8 text-white shadow-2xl">
+    <div className="relative min-h-screen overflow-hidden bg-[#F7F8FA] px-4 py-10 text-slate-900 antialiased">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 50% at 10% 0%, rgba(0,194,168,0.08), transparent 50%), radial-gradient(ellipse 60% 40% at 90% 10%, rgba(11,14,20,0.06), transparent 55%)',
+        }}
+      />
+      <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-10">
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8">
+          <div className="rounded-2xl border border-white/10 bg-[#0B0E14] p-8 text-white shadow-[0_40px_100px_-48px_rgba(0,0,0,0.7)]">
             <PublicBrandingLogo showWordmark white />
             <div className="mt-8 space-y-5">
-              <h1 className="text-3xl font-semibold">{t('app.login.hero.title', { defaultValue: 'Добро пожаловать' })}</h1>
-              <p className="text-white/80">
+              <h1 className="text-3xl font-semibold tracking-tight">{t('app.login.hero.title', { defaultValue: 'Добро пожаловать' })}</h1>
+              <p className="text-slate-300">
                 {t('app.login.hero.subtitle', { defaultValue: 'Управляйте кандидатами и документами из единого рабочего места.' })}
               </p>
-              <ul className="space-y-2 text-sm text-white/80">
-                <li>• {t('app.login.hero.points.pipeline', { defaultValue: 'Пайплайн кандидатów и задачи' })}</li>
-                <li>• {t('app.login.hero.points.documents', { defaultValue: 'Контроль документов и статусов' })}</li>
-                <li>• {t('app.login.hero.points.analytics', { defaultValue: 'Аналитика по вакансиям и источникам' })}</li>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li className="flex gap-2">
+                  <span className="text-[#00C2A8]" aria-hidden>✓</span>
+                  {t('app.login.hero.points.pipeline', { defaultValue: 'Пайплайн кандидатów и задачи' })}
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-[#00C2A8]" aria-hidden>✓</span>
+                  {t('app.login.hero.points.documents', { defaultValue: 'Контроль документов и статусов' })}
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-[#00C2A8]" aria-hidden>✓</span>
+                  {t('app.login.hero.points.analytics', { defaultValue: 'Аналитика по вакансиям и источникам' })}
+                </li>
               </ul>
             </div>
           </div>
           <form
             onSubmit={onSubmit}
-            className="card w-full space-y-4 border-white/70 bg-white/95 p-8 backdrop-blur-lg"
+            className="w-full space-y-4 rounded-2xl border border-slate-200/80 bg-white p-8 shadow-[0_20px_50px_-36px_rgba(15,23,42,0.35)]"
           >
             <h2 className="text-2xl font-semibold text-center text-slate-900">{t('app.login.title')}</h2>
             {notice && (
@@ -148,33 +163,36 @@ export default function Login(){
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <button className="btn-primary w-full py-3 text-base" disabled={loading}>
+            <button
+              className="inline-flex w-full items-center justify-center rounded-xl bg-[#00C2A8] px-4 py-3 text-base font-semibold text-[#04201C] shadow-[0_12px_40px_-12px_rgba(0,194,168,0.55)] transition hover:bg-[#1ad4bb] disabled:opacity-60"
+              disabled={loading}
+            >
               {loading ? t('app.login.actions.submitting') : t('app.login.actions.submit')}
             </button>
             <Link
               to="/forgot-password"
-              className="block text-center text-sm text-brand-600 hover:underline mt-2"
+              className="mt-2 block text-center text-sm font-medium text-[#0F766E] hover:text-[#0B0E14] hover:underline"
             >
               {t('app.login.forgot_password', { defaultValue: 'Zapomniałeś hasła?' })}
             </Link>
             <Link
               to="/signup"
-              className="block text-center text-sm text-brand-700 hover:underline mt-1"
+              className="mt-1 block text-center text-sm font-medium text-[#0F766E] hover:text-[#0B0E14] hover:underline"
             >
               {t('app.login.create_account', { defaultValue: 'Create account' })}
             </Link>
           </form>
         </div>
 
-        <section className="card border-white/60 bg-white/90 p-6">
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <h3 className="text-xl font-semibold text-slate-900">{t('app.login.value_props.title')}</h3>
             <p className="text-sm text-slate-600">{t('app.login.value_props.subtitle')}</p>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {valueProps.map((item, idx) => (
-              <div key={item.key} className="rounded-2xl border border-slate-100 bg-white/95 p-5 shadow-sm">
-                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-base font-semibold text-brand-700">
+              <div key={item.key} className="rounded-2xl border border-slate-100 bg-[#F7F8FA] p-5">
+                <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#00C2A8]/15 text-base font-semibold text-[#0F766E]">
                   {idx + 1}
                 </div>
                 <div className="text-base font-semibold text-slate-900">{item.title}</div>
@@ -184,39 +202,39 @@ export default function Login(){
           </div>
         </section>
 
-        <section className="card overflow-hidden backdrop-blur">
+        <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
           <div className="grid gap-8 p-6 lg:grid-cols-[1.15fr_0.85fr] lg:p-10">
             <div className="space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2E6F74]">
                 {t('app.login.signup_first.badge', { defaultValue: 'New to HostFlow CRM?' })}
               </p>
-              <h1 className="text-3xl font-semibold text-slate-900 lg:text-4xl">
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-900 lg:text-4xl">
                 {t('app.login.signup_first.title', { defaultValue: 'Start with signup, not settings' })}
               </h1>
               <p className="text-base text-slate-600">
                 {t('app.login.signup_first.subtitle', { defaultValue: 'Create account, create company, and reach first value in minutes.' })}
               </p>
-              <div className="flex flex-wrap gap-3 text-sm text-brand-800">
-                <span className="rounded-md bg-brand-50 px-4 py-2">
+              <div className="flex flex-wrap gap-3 text-sm text-slate-700">
+                <span className="rounded-md bg-[#F7F8FA] px-4 py-2">
                   {t('app.login.signup_first.bullets.0', { defaultValue: 'Choose plan and create workspace' })}
                 </span>
-                <span className="rounded-md bg-brand-50 px-4 py-2">
+                <span className="rounded-md bg-[#F7F8FA] px-4 py-2">
                   {t('app.login.signup_first.bullets.1', { defaultValue: 'Add first client and lead' })}
                 </span>
-                <span className="rounded-md bg-brand-50 px-4 py-2">
+                <span className="rounded-md bg-[#F7F8FA] px-4 py-2">
                   {t('app.login.signup_first.bullets.2', { defaultValue: 'Run daily operations immediately' })}
                 </span>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link
                   to="/signup"
-                  className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-brand-500/40 transition hover:bg-brand-700"
+                  className="inline-flex items-center justify-center rounded-xl bg-[#00C2A8] px-6 py-3 text-base font-semibold text-[#04201C] shadow-[0_12px_40px_-12px_rgba(0,194,168,0.45)] transition hover:bg-[#1ad4bb]"
                 >
                   {t('app.login.signup_first.primary_cta', { defaultValue: 'Create account' })}
                 </Link>
                 <Link
                   to="/pricing"
-                  className="inline-flex items-center px-4 py-3 text-sm font-semibold text-brand-700 underline-offset-4 hover:text-brand-900 hover:underline"
+                  className="inline-flex items-center px-4 py-3 text-sm font-semibold text-[#0F766E] underline-offset-4 hover:text-[#0B0E14] hover:underline"
                 >
                   {t('app.login.signup_first.secondary_cta', { defaultValue: 'View plans' })}
                 </Link>

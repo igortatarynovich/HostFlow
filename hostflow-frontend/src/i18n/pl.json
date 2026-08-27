@@ -10621,346 +10621,292 @@
       }
     },
     "crm_landing": {
-      "audience": {
-        "items": {
-          "0": "Agencje rekrutacyjne z rozproszonymi zespołami",
-          "1": "Pracodawcy z dużą liczbą kandydatów",
-          "2": "Zespoły operacyjne: onboarding i dokumenty",
-          "3": "Menedżerowie potrzebujący przejrzystego pipeline i odpowiedzialności"
-        },
-        "title": "Dla kogo jest ten CRM"
-      },
-      "compare": {
-        "analytics": "Analityka",
-        "communications": "Przestrzeń komunikacji",
-        "feature": "Funkcja",
-        "roles": "Role i uprawnienia",
-        "title": "Pełne porównanie planów",
-        "users": "Użytkownicy",
-        "rows": {
-          "users": {
-            "label": "Użytkownicy (w pakiecie)",
-            "starter": "1",
-            "team": "Do 3",
-            "pro": "Do 10",
-            "enterprise": "Indywidualnie"
-          },
-          "workspaces": {
-            "label": "Przestrzenie / firmy",
-            "starter": "1",
-            "team": "1 (dodatki płatne)",
-            "pro": "Do 3 w cenie",
-            "enterprise": "Indywidualnie"
-          },
-          "automation": {
-            "label": "Automatyzacja i dystrybucja",
-            "starter": "Tylko asysta",
-            "team": "Reguły, auto-dystrybucja",
-            "pro": "Rozszerzone reguły i workflow",
-            "enterprise": "Indywidualnie"
-          },
-          "portals": {
-            "label": "Portale kandydata i klienta",
-            "starter": "Brak",
-            "team": "Tak (limity planu)",
-            "pro": "Szersze limity + podstawowy branding",
-            "enterprise": "Indywidualnie"
-          },
-          "finance": {
-            "label": "Usługi, zamówienia i faktury",
-            "starter": "Brak",
-            "team": "Brak",
-            "pro": "Tak",
-            "enterprise": "Indywidualnie"
-          },
-          "analytics": {
-            "label": "Analityka",
-            "starter": "Podstawowy lejek",
-            "team": "Lejek, źródła, zespół",
-            "pro": "Zaawansowane segmenty i raporty",
-            "enterprise": "Indywidualnie"
-          }
-        }
-      },
-      "faq": {
-        "a1": "Tak. Rdzeń to konto → firma → pierwszy klient/lead/akcja. Zaawansowane ustawienia można dodać później.",
-        "a2": "Tak. Zacznij sam, potem zaproś zespół z ustawień Zespołu.",
-        "a3": "Plany zmienisz w rozliczeniach. Dane przestrzeni roboczej pozostają.",
-        "q1": "Czy możemy zacząć bez pełnej konfiguracji?",
-        "q2": "Czy zespół dołączymy później?",
-        "q3": "Co jeśli wybierzemy zły plan?",
-        "title": "FAQ",
-        "launch_q": "Jak zacząć bez wsparcia?",
-        "launch_a": "Rejestracja → kreator firmy → Meta (lub odłóż) → pierwszy wakat. Checklist pokazuje kolejny krok.",
-        "training_q": "Czy potrzebne jest szkolenie?",
-        "training_a": "Dla głównej ścieżki — nie. Kreator i checklist prowadzą do pierwszej wartości; FAQ i docs — później.",
-        "processes_q": "Co z danymi przy zmianie planu?",
-        "processes_a": "Workspace zostaje. Limity i moduły idą za matrycą planów — upgrade odblokowuje miejsca, automatykę i portale."
-      },
-      "final_cta": {
-        "button": "Utwórz przestrzeń roboczą",
-        "subtitle": "Pierwsza wartość — już w pierwsze minuty",
-        "title": "Zacznij budować kontrolowany proces rekrutacji"
-      },
-      "guides": {
-        "title": "Poznaj przewodniki produktu",
-        "subtitle": "Zacznij od strony najbliższej Twojemu aktualnemu wyzwaniu i przejdź do kolejnego powiązanego przewodnika."
-      },
-      "benefits": {
-        "badge": "Efekt",
-        "title": "Co się zmienia po wdrożeniu",
-        "items": {
-          "0": "Przejrzysty lejek rekrutacji",
-          "1": "Kontrola nad każdym kandydatem",
-          "2": "Jasny podział odpowiedzialności",
-          "3": "Mniej strat",
-          "4": "Szybsze decyzje",
-          "5": "Widoczne wąskie gardła"
-        },
-        "closing": "Zarządzasz procesem zamiast gasić pożary."
-      },
-      "before_after": {
-        "badge": "Kontrast",
-        "title": "Przed i po HostFlow",
-        "before_title": "Przed",
-        "after_badge": "Po",
-        "after_title": "Po",
-        "before_items": {
-          "0": "Arkusze, czaty, chaos",
-          "1": "Zgubieni kandydaci",
-          "2": "Ręczna kontrola",
-          "3": "Powtarzające się błędy"
-        },
-        "after_items": {
-          "0": "Jeden system",
-          "1": "Pełna widoczność",
-          "2": "Kontrola na każdym etapie",
-          "3": "Przewidywalny wynik"
-        }
-      },
-      "conviction": {
-        "badge": "Szybki start",
-        "title": "Dlaczego działa od pierwszego dnia",
-        "body": "Nie musisz przebudowywać biznesu.",
-        "list_intro": "Po prostu:",
-        "steps": {
-          "0": "prowadzisz kandydatów w jednym systemie",
-          "1": "utrwalasz etapy i kolejne kroki",
-          "2": "widzisz realny obraz"
-        },
-        "closing": "Efekt widać już w pierwszych dniach."
-      },
-      "how": {
-        "badge": "Jak to działa",
-        "title": "Zrozum system w minutę",
-        "step_label": "Krok {n}",
-        "steps": {
-          "0": {
-            "title": "Utwórz firmę",
-            "caption": "Nazwa, kraj i model rekrutacji — profil operacyjny.",
-            "screenshot_src": "/landing/step-lead.svg"
-          },
-          "1": {
-            "title": "Podłącz Meta",
-            "caption": "Połącz reklamy i formularze — zgłoszenia przychodzą same.",
-            "screenshot_src": "/landing/step-pipeline.svg"
-          },
-          "2": {
-            "title": "Utwórz wakat",
-            "caption": "Otwórz rolę i ustaw ścieżkę kandydata.",
-            "screenshot_src": "/landing/step-tasks.svg"
-          },
-          "3": {
-            "title": "Odbieraj zgłoszenia",
-            "caption": "Leady w pipeline z właścicielem — nie we wspólnej skrzynce.",
-            "screenshot_src": "/landing/step-analytics.svg"
-          },
-          "4": {
-            "title": "Obsługuj kandydatów",
-            "caption": "Etapy, dokumenty i kolejne kroki — aż do zamknięcia wakatu.",
-            "screenshot_src": "/landing/hero.svg"
-          }
-        },
-        "lead": "Pięć kroków od pustego workspace do obsługi prawdziwych zgłoszeń."
-      },
-      "pain": {
-        "badge": "Prawda",
-        "title": "Dlaczego rekrutacja się sypie i kosztuje",
-        "lead": "Problem nie w kandydatach.\nProblem w braku systemu.",
-        "items": {
-          "0": "Leady przychodzą, ale nikt nie prowadzi ich end-to-end",
-          "1": "Kandydaci giną między arkuszami, WhatsApp i telefonami",
-          "2": "Zespół nie wie, kto za co odpowiada",
-          "3": "Statusy są ręczne i zawsze nieaktualne",
-          "4": "Dokumenty w pięciu miejscach",
-          "5": "Kierownictwo nie widzi, co naprawdę się dzieje"
-        },
-        "closing": "Każdy utracony kandydat to bezpośrednia strata finansowa."
-      },
-      "roi": {
-        "badge": "Pieniądze",
-        "title": "Ile tracisz bez systemu",
-        "intro": "Jeśli tracisz choć 3 kandydatów miesięcznie, a każdy kosztuje Cię €300–1000 w czasie i obsłudze przed zatrudnieniem, sam ten kanał to:",
-        "loss_setup": "",
-        "loss_range": "€900–3000+ miesięcznie",
-        "loss_note": "To tylko jawne straty — bez opóźnień i przeciążenia zespołu.",
-        "hidden_title": "Ukryte koszty:",
-        "hidden_items": {
-          "0": "czas zespołu",
-          "1": "ponowna obsługa tych samych leadów",
-          "2": "dłuższy time-to-hire",
-          "3": "utracony przychód klienta"
-        },
-        "highlight": "HostFlow zwraca się już w pierwszym miesiącu przy typowych stratach kandydatów.",
-        "pilot_badge": "Wskaźniki pilotażowe",
-        "pilot_note": "Wstępna ocena z 6 zespołów (UE, agencje + in-house, 2025–2026) przed jednolitym rytmem pracy.",
-        "pilot_m1_label": "Leady bez przypisanego właściciela",
-        "pilot_m1_value": "do 18% → poniżej 5% w 4 tygodnie przy dyscyplinie CRM",
-        "pilot_m2_label": "Mediana dni „postoju” kandydata na jednym etapie bez systemu",
-        "pilot_m2_value": "9–14 dni roboczych",
-        "pilot_m3_label": "Odsetek kandydatów bez jasnego „następnego kroku” w arkuszach/czatach (szacunek)",
-        "pilot_m3_value": "12–25% → cel w systemie: blisko 0% na aktywnych etapach"
-      },
-      "segments": {
-        "badge": "Segmenty",
-        "title": "Dla kogo jest HostFlow",
-        "items": {
-          "0": "Agencje rekrutacyjne",
-          "1": "Rekrutacja masowa",
-          "2": "Zespoły HR in-house",
-          "3": "Działy operacyjne"
-        },
-        "footnote": "Jeśli masz stały przepływ kandydatów — system się nada."
-      },
-      "shot": {
-        "placeholder_badge": "Zrzut ekranu produktu"
-      },
-      "solution": {
-        "badge": "Rozwiązanie",
-        "title": "HostFlow zamienia chaos w kontrolowany proces",
-        "body": "Każdy kandydat przechodzi jasną ścieżkę.",
-        "see_title": "Widzisz:",
-        "see_items": {
-          "0": "gdzie jest",
-          "1": "co dalej",
-          "2": "kto za to odpowiada"
-        },
-        "footer": "Proces nie rozsypie się po cichu."
+      "nav": {
+        "trust": "Dlaczego my",
+        "problem": "Porównanie",
+        "story": "Jak zamykamy",
+        "case": "Case",
+        "pricing": "Cennik",
+        "faq": "FAQ",
+        "login": "Zaloguj",
+        "demo": "Wypróbuj za darmo",
+        "product": "Jak działa"
       },
       "hero": {
-        "badge": "Platforma operacji rekrutacyjnych",
-        "primary_cta": "Rozpocznij konfigurację",
-        "secondary_cta": "Zaloguj się",
-        "subtitle": "HostFlow automatycznie zbiera kandydatów z Meta, WhatsApp i formularzy, rozdziela ich między rekruterów i kontroluje proces zatrudnienia.",
-        "title": "Zamykaj wakaty szybciej",
-        "bullets": {
-          "0": "Leady wpływają do jednego zarządzanego pipeline’u",
-          "1": "Każdy kandydat ma właściciela",
-          "2": "Dokumenty i etapy są zawsze widoczne",
-          "3": "Mniej chaosu między reklamami, czatami i arkuszami"
+        "badge": "System od praktykujących rekruterów",
+        "title": "Zamykaj wakaty szybciej dzięki systemowi stworzonemu przez rekruterów z ponad 10-letnim doświadczeniem w międzynarodowej rekrutacji.",
+        "subtitle": "Pomagaliśmy firmom zatrudniać kierowców, magazyn, produkcję i biuro. HostFlow wyrósł z realnej praktyki — nie z pomysłu na kolejny CRM.",
+        "primary_cta": "Wypróbuj za darmo",
+        "secondary_cta": "Dlaczego można nam ufać",
+        "proof": {
+          "0": "10+ lat międzynarodowej rekrutacji",
+          "1": "Meta Ads na realnym wolumenie",
+          "2": "Kierowcy, magazyn, produkcja, biuro",
+          "3": "Zbudowane dla siebie — otwarte dla firm"
         },
-        "cta_subline": "Self-service — pierwsza wakat w kilka minut, bez rozmowy z supportem",
-        "screenshot_caption": "Pipeline i kandydaci — kontrola rekrutacji na jednym ekranie.",
-        "screenshot_src": "/landing/hero.svg",
-        "answers": {
-          "what": {
-            "label": "Co to jest",
-            "body": "System operacyjny rekrutacji od leada do startu pracy — nie generyczny CRM z listą funkcji."
+        "title_line1": "Zamykaj wakaty szybciej.",
+        "title_accent": "Więcej kandydatów.\nMniej strat.",
+        "lead": "Od ponad 10 lat zajmujemy się międzynarodową rekrutacją, ustawiamy reklamę i budujemy procesy zatrudnienia.",
+        "system_line": "HostFlow to system stworzony przez rekruterów na podstawie własnego doświadczenia.",
+        "screenshot_caption": "Analityka rekrutacji — kontakty, wyniki i rozkład po etapach.",
+        "screenshot_src": "/landing/shots/hero-recruitment-analytics.png"
+      },
+      "trust": {
+        "badge": "Dlaczego można nam ufać",
+        "title": "Od ponad 10 lat zajmujemy się międzynarodową rekrutacją",
+        "lead": "Nie budowaniem „kolejnego CRM”. Nie consultingiem ze slajdami. Właśnie zatrudnianiem ludzi.",
+        "points": {
+          "0": "Rekrutowaliśmy kierowców, magazyn, produkcję i personel biurowy.",
+          "1": "Ustawialiśmy Meta Ads i obsługiwaliśmy napływ kandydatów.",
+          "2": "Budowaliśmy procesy rekrutacji end-to-end — od leada do startu.",
+          "3": "Pracowaliśmy z kandydatami z różnych krajów i języków.",
+          "4": "Sami traciliśmy ludzi między czatami, arkuszami i „kolejnym CRM”."
+        },
+        "closing": "HostFlow to wynik tego doświadczenia. System, który stworzyliśmy dla siebie, bo istniejące narzędzia nie pomagały efektywnie zamykać wakatów."
+      },
+      "team": {
+        "badge": "Stworzone przez rekruterów",
+        "title": "CRM sprzedają ludzie. Nie interfejsy.",
+        "body": "HostFlow wyrósł z biurka rekrutera: ze zmian, kampanii Meta, utraconych kandydatów i prób zmuszenia generic ATS do pracy przy wolumenie.",
+        "members": {
+          "0": {
+            "initials": "OR",
+            "name": "Operacyjna rekrutacja",
+            "role": "Codzienny hire",
+            "line": "Prowadzimy kandydatów do startu — nie tylko do statusu w systemie."
           },
-          "who": {
-            "label": "Dla kogo",
-            "body": "Agencje i pracodawcy z realnym wolumenem kandydatów z reklam, WhatsApp i formularzy."
+          "1": {
+            "initials": "MA",
+            "name": "Meta i intake",
+            "role": "Płatny wolumen",
+            "line": "Reklama musi kończyć się właścicielem i kolejnym krokiem — nie eksportem do Excela."
           },
-          "get": {
-            "label": "Co zyskujesz",
-            "body": "Zarządzany pipeline, automatyczny intake, kontrolę dokumentów i widoczne wąskie gardła."
-          },
-          "why": {
-            "label": "Dlaczego HostFlow",
-            "body": "Zbudowany pod Meta → wakat → pracę rekrutera — żeby kandydaci nie ginęli między narzędziami."
+          "2": {
+            "initials": "PR",
+            "name": "Procesy rekrutacji",
+            "role": "Od chaosu do rytmu",
+            "line": "Najpierw nauczyliśmy się zamykać wakaty. Potem zapisaliśmy to w HostFlow."
           }
         }
       },
-      "objections": {
-        "0": "Za dużo ustawień zanim zacznie się praca.",
-        "1": "Trudny onboarding członków zespołu.",
-        "2": "Niejasna ścieżka od leada do następnej akcji.",
-        "title": "Typowe blokady, które usuwamy"
+      "problem": {
+        "badge": "Dlaczego wakaty stoją",
+        "title": "Kandydaci są. Rozpada się proces — i płacisz dwa razy.",
+        "lead": "Już płacisz za reklamę i rekruterów. Straty zaczynają się tam, gdzie nie ma właściciela, kolejnego kroku i kontroli do startu.",
+        "items": {
+          "0": "Kandydaci przychodzą z różnych źródeł",
+          "1": "Nikt nie wie, kto ma zadzwonić",
+          "2": "Dokumenty giną",
+          "3": "Szef nie widzi rzeczywistości",
+          "4": "Reklama działa — ludzie nie dochodzą do zatrudnienia"
+        },
+        "cost_badge": "Koszt przecieku",
+        "cost_title": "Każdy utracony kandydat kosztuje pieniądze",
+        "cost_value": "€900–3000+",
+        "cost_note": "Jeśli 3–10 kandydatów odpada miesięcznie już na obsłudze, strata zwykle wpada w ten zakres — przed przestojem na linii.",
+        "cost_closing": "Szybsze i tańsze zamykanie wakatów zaczyna się od zatrzymania tego przecieku."
+      },
+      "moat": {
+        "badge": "Dlaczego nie dowolne ATS",
+        "title": "Sami rekrutowaliśmy. Sami traciliśmy. Sami próbowaliśmy CRM. Potem zbudowaliśmy własne.",
+        "items": {
+          "0": "Sami zatrudnialiśmy ludzi na realnym wolumenie.",
+          "1": "Sami traciliśmy kandydatów między Meta, WhatsApp i arkuszami.",
+          "2": "Sami próbowaliśmy CRM i ATS, które nie zamykały wakatów.",
+          "3": "Dlatego zbudowaliśmy własne — pod rekrutację operacyjną, nie katalog funkcji."
+        },
+        "closing": "Tego nie skopiujesz listą feature’ów. Skopiujesz tylko UI — nie doświadczenie."
+      },
+      "story": {
+        "badge": "Jak to wygląda w pracy",
+        "title": "Nie schemat kanałów — historia zamknięcia wakatu",
+        "lead": "Tak wygląda fala rekrutacji, gdy proces należy do rekruterów, nie do czatów.",
+        "steps": {
+          "0": {
+            "value": "Ads",
+            "label": "Odpaliliśmy kampanię Meta pod wakat"
+          },
+          "1": {
+            "value": "214",
+            "label": "Kandydatów weszło do jednego lejka"
+          },
+          "2": {
+            "value": "Auto",
+            "label": "HostFlow rozdzielił między rekruterów"
+          },
+          "3": {
+            "value": "Zadania",
+            "label": "Każdy dostał kolejny krok i ownership"
+          },
+          "4": {
+            "value": "37",
+            "label": "Wyszło do pracy"
+          }
+        },
+        "footnote": "Liczby ilustrują falę operacyjną z praktyki międzynarodowej rekrutacji. Chodzi o drogę do startu — nie o ładny lejek."
+      },
+      "product": {
+        "badge": "Co liczy się w pracy",
+        "title": "Pokazujemy tylko to, co pomaga zamykać wakaty",
+        "lead": "Nie cały ekran CRM — konkretny wycinek procesu, który rozwiązuje zadanie.",
+        "blocks": {
+          "0": {
+            "why": "Ownership",
+            "title": "Jeden owner na każdym etapie",
+            "body": "Kandydat nie ginie między zmianami: widać, kto odpowiada i co ma się wydarzyć dalej.",
+            "quote": "Wreszcie przestaliśmy pytać „czyje to?” na grupie.",
+            "caption": "Karta z ownerem i etapem",
+            "screenshot_src": "/landing/shots/hero-pipeline.jpg"
+          },
+          "1": {
+            "why": "Tempo",
+            "title": "Następne działanie od razu na biurku",
+            "body": "Lead, zadanie i kontakt w jednym miejscu — bez skoków między WhatsApp a arkuszem.",
+            "quote": "Rekruter widzi dzień, nie chaos inboxa.",
+            "caption": "Kolejka aplikacji i next step",
+            "screenshot_src": "/landing/shots/step-applications.jpg"
+          },
+          "2": {
+            "why": "Kontrola",
+            "title": "Wąskie gardła bez tygodniowego Excela",
+            "body": "Kontakty, wyniki i mix etapów — żeby wzmacniać to, co już konwertuje.",
+            "quote": "Manager widzi, gdzie rekrutacja naprawdę zwalnia.",
+            "caption": "Fragment analityki rekrutacji",
+            "screenshot_src": "/landing/shots/hero-recruitment-analytics.png"
+          }
+        }
+      },
+      "case": {
+        "badge": "Żywy case",
+        "title": "Focus Personnel",
+        "lead": "Jeden mocny case zamiast dziesięciu ogólnych tez: jak zespół operacyjny złożył Meta, kandydatów i wakaty w jeden proces.",
+        "steps": {
+          "0": {
+            "label": "Problem",
+            "body": "Leady z Meta, czaty i arkusze żyły osobno. Niejasne, kto ma kandydata i dlaczego wakaty stoją."
+          },
+          "1": {
+            "label": "Co zrobiliśmy",
+            "body": "Przenieśliśmy obsługę leadów i kontrolę kandydatów do HostFlow — jeden kontur zamiast równoległych narzędzi."
+          },
+          "2": {
+            "label": "Jaki proces",
+            "body": "Meta → lejek z właścicielem → zadania rekrutera → dokumenty → decyzja o zatrudnieniu."
+          },
+          "3": {
+            "label": "Wynik",
+            "body": "Jeden system zapisu od płatnego leada do decyzji. Menedżerowie widzą obsługę — nie zrzut z Excela."
+          }
+        },
+        "screenshot_src": "/landing/shots/hero-pipeline.jpg",
+        "screenshot_caption": "Focus Personnel: kandydaci i wakaty w jednym konturze.",
+        "quote": "Nie potrzebowaliśmy kolejnego ATS. Potrzebowaliśmy systemu, w którym lead z Meta nie znika przed startem. HostFlow wyrósł z pracy, którą żyjemy codziennie.",
+        "quote_name": "Zespół Focus Personnel",
+        "quote_role": "Rekrutacja operacyjna · międzynarodowy hire"
+      },
+      "segments": {
+        "title": "Komu to pomaga zamykać wakaty",
+        "lead": "Zespołom z wolumenem kandydatów i kosztem przestoju — nie kupującym „kolejny CRM dla CRM”.",
+        "items": {
+          "0": "Firmy transportowe",
+          "1": "Agencje rekrutacyjne",
+          "2": "Rekrutacja masowa",
+          "3": "HR / operations"
+        }
       },
       "pricing": {
         "badge": "Cennik",
-        "contact_sales_cta": "Kontakt sprzedaży",
-        "note": "Ceny w EUR. Limity i moduły zgodne z matrycą planów. Trial przy rejestracji; po Trial — wybrany plan płatny.",
-        "featured_badge": "Polecany",
-        "enterprise": {
-          "name": "Enterprise",
-          "best_for": "Duże programy z zamówieniami publicznymi i compliance",
-          "features": {
-            "0": "Cennik umowny, roadmapa SSO, integracje na zamówienie",
-            "1": "White-label / rozszerzony branding",
-            "2": "Dedykowany onboarding i priorytetowe wsparcie"
-          },
-          "price": "Od €499/mies. lub indywidualnie",
-          "seats": "Miejsca, przestrzenie, storage i SLA — wg umowy"
+        "title": "Płać za proces, który zamyka wakaty",
+        "note": "Proste plany. Najpierw wartość — bez przeciążenia limitami.",
+        "featured_badge": "Popularny",
+        "billing_monthly": "Miesięcznie",
+        "billing_yearly": "Rocznie −20%",
+        "select_cta": "Wybierz",
+        "contact_sales_cta": "Kontakt",
+        "included_title": "We wszystkich planach",
+        "included": {
+          "0": "Kanały leadów w jednym procesie",
+          "1": "Lejek z ownership",
+          "2": "Kontrola dokumentów",
+          "3": "Miejsca wg planu"
         },
-        "pro": {
-          "name": "Business",
-          "best_for": "Do skalowania",
-          "features": {
-            "0": "Wszystko z Team",
-            "1": "Wiele procesów i przestrzeni",
-            "2": "Analityka i głębsze raporty"
-          },
-          "price": "€249/mies. · €219/mies. przy rocznej opłacie",
-          "seats": "Do 10 użytkowników · do 3 przestrzeni"
-        },
-        "select_cta": "Wybierz plan",
         "starter": {
           "name": "Solo",
-          "best_for": "Dla jednego specjalisty",
-          "features": {
-            "0": "Lejek kandydatów",
-            "1": "Statusy i zadania",
-            "2": "Podstawowa kontrola"
-          },
-          "price": "€29/mies. · €24/mies. przy rocznej opłacie",
-          "seats": "1 użytkownik · 1 przestrzeń"
+          "audience": "Jeden rekruter na lejek",
+          "seats": "1 użytkownik · 1 przestrzeń",
+          "line": "Kontrola leadów i etapów bez stacku zespołowego.",
+          "price_monthly": "€29",
+          "price_yearly": "€24"
         },
         "team": {
           "name": "Team",
-          "best_for": "Dla zespołów",
-          "features": {
-            "0": "Wszystko z Solo",
-            "1": "Wspólna praca",
-            "2": "Kontrola procesów"
-          },
-          "price": "€129/mies. · €109/mies. przy rocznej opłacie",
-          "seats": "Do 3 użytkowników · 1 przestrzeń"
+          "audience": "Zespół ze wspólnym ownership",
+          "seats": "Do 3 użytkowników · 1 przestrzeń",
+          "line": "Współpraca i gotowość do auto-dystrybucji.",
+          "price_monthly": "€129",
+          "price_yearly": "€109"
         },
-        "title": "Wybierz plan dopasowany do zespołu",
-        "clarity": {
-          "includes_title": "W cenie",
-          "excludes_title": "Poza zakresem / ograniczone",
-          "limits_title": "Limity",
-          "after_trial_title": "Po Trial",
-          "includes": {
-            "0": "Pipeline leadów/kandydatów i ownership",
-            "1": "Wakaty i statusy dokumentów",
-            "2": "Meta / formularze na odpowiednich planach",
-            "3": "Miejsca w zespole wg planu (Solo → Business)"
-          },
-          "excludes": {
-            "0": "SSO / SLA (tylko Enterprise)",
-            "1": "Fakturowanie i głębszy multi-workspace (Business+)",
-            "2": "Pełna automatyka na Solo (tylko assisted)"
-          },
-          "limits": {
-            "0": "Solo: 1 użytkownik, 1 workspace, ~200 leadów/mies., 5 otwartych wakatów",
-            "1": "Team: do 3 użytkowników, 1 workspace, wyższe limity leadów",
-            "2": "Business: do 10 użytkowników, do 3 workspace"
-          },
-          "after_trial": "Trial ma obniżone limity. Po zakończeniu wybierasz Solo / Team / Business albo Enterprise przez sales. Dane workspace zostają; funkcje zależą od planu."
+        "pro": {
+          "name": "Business",
+          "audience": "Rosnąca rekrutacja",
+          "seats": "Do 10 użytkowników · do 3 przestrzeni",
+          "line": "Więcej miejsc, przestrzeni i analityki.",
+          "price_monthly": "€249",
+          "price_yearly": "€219"
+        },
+        "enterprise": {
+          "name": "Enterprise",
+          "audience": "Duże programy",
+          "seats": "Miejsca, przestrzenie, storage i SLA — wg umowy",
+          "line": "SLA, SSO roadmap, dedykowany onboarding.",
+          "price_monthly": "Indywidualnie",
+          "price_yearly": "Indywidualnie"
         }
+      },
+      "faq": {
+        "title": "Zamykamy obawy przed decyzją",
+        "crm_vs_ats_q": "Czym HostFlow różni się od zwykłego CRM/ATS?",
+        "crm_vs_ats_a": "Zwykły ATS trzyma etapy. HostFlow wyrósł z 10+ lat międzynarodowej rekrutacji: Meta/WhatsApp/formularze, dystrybucja, dokumenty i kontrola do startu — by zamykać wakaty, nie wypełniać kart.",
+        "meta_q": "Czy można podłączyć Meta?",
+        "meta_a": "Tak. Lead Forms łączą się tak, że płatny lead wpada do lejka z właścicielem.",
+        "whatsapp_q": "Czy jest WhatsApp?",
+        "whatsapp_a": "Tak. Rozmowy są powiązane z kandydatem i procesem, zamiast znikać w prywatnych czatach.",
+        "data_q": "Gdzie są dane?",
+        "data_a": "W chmurze HostFlow w ramach Twojego tenant workspace, z izolacją i kontrolą dostępu.",
+        "rodo_q": "Jak działa RODO/GDPR?",
+        "rodo_a": "Dane rekrutacyjne są przetwarzane z kontrolowanym dostępem i celami. Szczegóły w Polityce prywatności.",
+        "recruiters_q": "Czy kilku rekruterów może pracować razem?",
+        "recruiters_a": "Tak. Leady są dystrybuowane, każdy kandydat ma właściciela, menedżerowie widzą obciążenie i wąskie gardła.",
+        "launch_q": "Czy można zacząć bez wsparcia?",
+        "launch_a": "Tak. Rejestracja → firma → Meta lub później → wakat. Demo prowadzi po produkcie na danych przykładowych.",
+        "plan_change_q": "Co z danymi przy zmianie planu?",
+        "plan_change_a": "Dane workspace zostają. Limity i moduły zależą od planu."
+      },
+      "final_cta": {
+        "title": "Od ponad 10 lat zajmujemy się międzynarodową rekrutacją.",
+        "subtitle": "HostFlow to system, który stworzyliśmy dla siebie, bo istniejące narzędzia nie pomagały efektywnie zamykać wakatów. Teraz tym doświadczeniem mogą korzystać inne firmy.",
+        "button": "Wypróbuj za darmo",
+        "secondary": "Utwórz konto"
+      },
+      "compare": {
+        "title": "Jak HostFlow wygrywa z arkuszami, czatami i uniwersalnymi CRM",
+        "them_title": "Arkusze, czaty i „uniwersalne” CRM",
+        "us_title": "HostFlow",
+        "them": {
+          "0": "Kandydaci rozjeżdżają się po Meta, WhatsApp i Excelu",
+          "1": "Nie wiadomo, kto ma zadzwonić teraz",
+          "2": "Dokumenty żyją w folderach i wątkach",
+          "3": "Manager widzi raport raz w tygodniu — jeśli ma szczęście",
+          "4": "Płacisz za funkcje, które i tak nie zamykają wakatów"
+        },
+        "us": {
+          "0": "Wszystkie leady i kandydaci w jednej kolejce z ownerem",
+          "1": "Na każdym etapie jasne, kto odpowiada i co dalej",
+          "2": "Dokumenty wewnątrz etapu rekrutacji, nie obok",
+          "3": "Żywy obraz lejka i wąskich gardeł każdego dnia",
+          "4": "System pod operacyjną rekrutację — z praktyki rekruterów"
+        },
+        "cta": "Wypróbuj za darmo"
       }
     },
     "documents_upload": {

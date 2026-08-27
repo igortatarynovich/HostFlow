@@ -142,10 +142,16 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#f6fbff] px-4 py-10 flex items-center justify-center">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(94,186,205,0.35),transparent_55%),radial-gradient(circle_at_85%_0%,rgba(25,78,122,0.2),transparent_65%)]" />
+    <div className="relative min-h-screen overflow-hidden bg-[#F7F8FA] px-4 py-10 flex items-center justify-center text-slate-900 antialiased">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 50% at 10% 0%, rgba(0,194,168,0.08), transparent 50%), radial-gradient(ellipse 60% 40% at 90% 10%, rgba(11,14,20,0.06), transparent 55%)',
+        }}
+      />
       <div className="relative w-full max-w-md">
-        <div className="card p-8">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-[0_20px_50px_-36px_rgba(15,23,42,0.35)]">
           <PublicBrandingLogo showWordmark />
           <h1 className="mt-6 text-2xl font-semibold text-slate-900">
             {t('app.signup.title', { defaultValue: 'Create your CRM workspace' })}
@@ -154,7 +160,7 @@ export default function SignupPage() {
             {t('app.signup.subtitle', { defaultValue: 'Start with a trial and invite your team later.' })}
           </p>
           {planLabel && (
-            <p className="mt-2 text-xs text-brand-700">
+            <p className="mt-2 text-xs text-[#0F766E]">
               {t('app.signup.selected_plan', { defaultValue: 'Selected plan: {plan}', values: { plan: planLabel } })}
             </p>
           )}
@@ -264,7 +270,7 @@ export default function SignupPage() {
             )}
             <button
               type="submit"
-              className="btn-primary w-full py-3"
+              className="inline-flex w-full items-center justify-center rounded-xl bg-[#00C2A8] px-4 py-3 text-base font-semibold text-[#04201C] shadow-[0_12px_40px_-12px_rgba(0,194,168,0.55)] transition hover:bg-[#1ad4bb] disabled:opacity-60"
               disabled={loading || (captchaRequired && !captchaToken)}
             >
               {loading ? t('common.loading') : t('app.signup.submit', { defaultValue: 'Create account' })}
@@ -288,7 +294,7 @@ export default function SignupPage() {
 
           <p className="mt-4 text-center text-sm text-slate-600">
             {t('app.signup.have_account', { defaultValue: 'Already have an account?' })}{' '}
-            <Link to="/login" className="text-brand-600 hover:underline">
+            <Link to="/login" className="font-medium text-[#0F766E] hover:text-[#0B0E14] hover:underline">
               {t('app.signup.sign_in', { defaultValue: 'Sign in' })}
             </Link>
           </p>
