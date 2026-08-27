@@ -227,6 +227,29 @@ async def test_explicit_candidate_funnel_allows_tenant_catalog(db) -> None:
 
 
 @pytest.mark.anyio
+async def test_explicit_candidate_legacy_tenant_funnel_allowed(db) -> None:
+    tenant_id = await _seed_tenant(db)
+    company_id = await _seed_company(db, tenant_id=tenant_id)
+    legacy = await _seed_funnel(
+        db,
+        tenant_id=tenant_id,
+        company_id=None,
+        name="Legacy Tenant Default",
+    )
+    await db.commit()
+
+    result = await resolve_recruitment_funnel(
+        db,
+        tenant_id=tenant_id,
+        company_id=company_id,
+        pipeline_type="candidate",
+        explicit_funnel_id=legacy.id,
+    )
+    assert result.funnel.id == legacy.id
+    assert result.source == "explicit"
+
+
+@pytest.mark.anyio
 async def test_explicit_lead_funnel_wrong_company_forbidden(db) -> None:
     tenant_id = await _seed_tenant(db)
     company_a = await _seed_company(db, tenant_id=tenant_id)

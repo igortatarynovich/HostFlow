@@ -233,9 +233,9 @@ async def resolve_candidate_funnel_id_for_runtime(
                 explicit_funnel_id=explicit,
             )
             return result.funnel.id
-        except RecruitmentFunnelForbiddenError:
+        except RecruitmentFunnelForbiddenError as exc:
             if explicit:
-                raise
+                raise _http_from_resolve_error(exc) from exc
         except (RecruitmentModuleNotEnabledError, RecruitmentFunnelNotFoundError):
             return explicit
 
