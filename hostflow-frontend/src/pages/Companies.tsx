@@ -60,6 +60,10 @@ import {
   normalizeContactRole,
   combinePhone,
 } from '../modules/companies/utils'
+import {
+  buildBlockingOrders,
+  employedCandidatesCount,
+} from '../modules/companies/clientDriverCapacity'
 import { ClientInvoicesBlock } from '../components/companies/ClientInvoicesBlock'
 import { CompanyReceivablesOverview } from '../components/companies/CompanyReceivablesOverview'
 import { CompanyServiceOrdersPanel } from '../components/companies/CompanyServiceOrdersPanel'
@@ -586,39 +590,9 @@ export default function Companies(){
 
   const blockingOrders = useMemo(() => {
     if (!ordersList.length) return []
-    return ordersList
-      .map((order, index) => {
-        const reasons: string[] = []
-        const startsAt = order.starts_at ?? order.start ?? order.date_start
-        const endsAt = order.ends_at ?? order.end ?? order.date_end
-        const required = Number(order.required_drivers ?? order.drivers_required ?? order.slots ?? 0) || 0
-        const hired = Number(order.hired_drivers ?? order.drivers_assigned ?? order.assigned ?? 0) || 0
-        if (!startsAt || !endsAt) reasons.push('schedule')
-        if (required && hired < required) reasons.push('capacity')
-        if (!order.status || ['draft', 'pending', 'requested'].includes(String(order.status).toLowerCase())) {
-          reasons.push('status')
-        }
-        const docsRequired = Number(order.required_documents ?? order.docs_required ?? 0) || 0
-        const docsReady = Number(order.attachments_count ?? order.docs_ready ?? order.documents_ready ?? 0) || 0
-        if (docsRequired > docsReady) reasons.push('documents')
-        if (!reasons.length) return null
-        const updatedAt = order.updated_at ?? order.ends_at ?? order.starts_at ?? order.created_at ?? null
-        return {
-          key: String(order.id ?? order.code ?? `order-${index}`),
-          title: order.title ?? order.code ?? t('common.labels.unnamed'),
-          status: order.status ?? null,
-          reasons,
-          updatedAt,
-        }
-      })
-      .filter((entry): entry is { key: string; title: string; status: string | null; reasons: string[]; updatedAt: string | null } => Boolean(entry))
-      .sort((a, b) => {
-        const aTime = Date.parse(a.updatedAt ?? '') || 0
-        const bTime = Date.parse(b.updatedAt ?? '') || 0
-        return bTime - aTime
-      })
-      .slice(0, 4)
-  }, [ordersList, t])
+    const hiredEmployed = employedCandidatesCount(currentAny)
+    return buildBlockingOrders(ordersList, hiredEmployed, t('common.labels.unnamed'))
+  }, [ordersList, currentAny, t])
 
 
   const buildDetailForm = useCallback((): CompanyDetailForm | null => {
@@ -914,9 +888,6 @@ export default function Companies(){
             required_drivers: normalizeNumberString(
               data.required_drivers ?? data.drivers_required ?? data.target_drivers
             ),
-            hired_drivers: normalizeNumberString(
-              data.hired_drivers ?? data.drivers_hired ?? data.assigned_drivers
-            ),
             client_reference: (data.client_reference ?? '') as string,
             code: (data.code ?? '') as string,
             order_type_id: orderTypeId,
@@ -930,7 +901,6 @@ export default function Companies(){
             starts_at: '',
             ends_at: '',
             required_drivers: '',
-            hired_drivers: '',
             client_reference: '',
             code: '',
             order_type_id: 'transport' as const,
@@ -1182,7 +1152,6 @@ export default function Companies(){
           }
           if (order.order_type_id === 'transport') {
             base.required_drivers = order.required_drivers ? Number(order.required_drivers) : undefined
-            base.hired_drivers = order.hired_drivers ? Number(order.hired_drivers) : undefined
           }
           if (order.custom_fields && Object.keys(order.custom_fields).length > 0) {
             base.custom_fields = order.custom_fields
@@ -1517,7 +1486,6 @@ export default function Companies(){
         starts_at: '',
         ends_at: '',
         required_drivers: '',
-        hired_drivers: '',
         client_reference: '',
         code: '',
         order_type_id: 'transport' as const,
@@ -1539,7 +1507,6 @@ export default function Companies(){
                 starts_at: '',
                 ends_at: '',
                 required_drivers: '',
-                hired_drivers: '',
                 client_reference: '',
                 code: '',
                 order_type_id: 'transport' as const,
@@ -1957,17 +1924,11 @@ export default function Companies(){
         return aTime - bTime
       })[0]
 
-    const hasTransportOrders = detailForm.orders.some(
-      (o) => (numeric(o.required_drivers) || numeric(o.hired_drivers)) > 0
-    )
-    const driverStats = detailForm.orders.reduce(
-      (acc, order) => {
-        acc.required += numeric(order.required_drivers)
-        acc.hired += numeric(order.hired_drivers)
-        return acc
-      },
-      { required: 0, hired: 0 }
-    )
+    const hasTransportOrders = detailForm.orders.some((o) => numeric(o.required_drivers) > 0)
+    const driverStats = {
+      required: detailForm.orders.reduce((acc, order) => acc + numeric(order.required_drivers), 0),
+      hired: employedCandidatesCount(currentAny),
+    }
     const openDriverSlots = Math.max(driverStats.required - driverStats.hired, 0)
 
     const overviewCards = [
@@ -2496,12 +2457,21 @@ export default function Companies(){
                                 onChange={(value) => setOrderField(index, { required_drivers: value })}
                                 type="number"
                               />
-                              <TextField
-                                label={t('app.companies.detail.fields.hired_drivers')}
-                                value={order.hired_drivers}
-                                onChange={(value) => setOrderField(index, { hired_drivers: value })}
-                                type="number"
-                              />
+                              <div>
+                                <div className="label">
+                                  {t('app.companies.detail.fields.employed_drivers', {
+                                    defaultValue: 'Трудоустроено',
+                                  })}
+                                </div>
+                                <p className="input bg-slate-50 text-slate-700">
+                                  {employedCandidatesCount(currentAny)}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {t('app.companies.detail.fields.employed_drivers_hint', {
+                                    defaultValue: 'Кандидаты со статусом «Трудоустроен» по вакансиям этого клиента.',
+                                  })}
+                                </p>
+                              </div>
                             </div>
                           )}
                           {!isTransport && orderType.schema.length > 0 && (

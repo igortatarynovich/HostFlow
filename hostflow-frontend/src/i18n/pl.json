@@ -5796,7 +5796,7 @@
           "driver_slots": {
             "title": "Zapotrzebowanie na kierowców",
             "subtitle": "Otwarte wakaty",
-            "assigned": "Obsadzeni {hired} / {required}",
+            "assigned": "Zatrudnieni {hired} / {required}",
             "empty": "Brak aktywnych zamówień na kierowców."
           },
           "invoice_workspace": {
@@ -5981,6 +5981,8 @@
           "reference": "Referencja",
           "required_drivers": "Wymagana liczba kierowców",
           "hired_drivers": "Zatrudnionych kierowców",
+          "employed_drivers": "Zatrudnieni",
+          "employed_drivers_hint": "Kandydaci ze statusem «Zatrudniony» na wakatach tego klienta.",
           "id": "ID",
           "created_at": "Utworzono",
           "updated_at": "Zaktualizowano",

@@ -3830,7 +3830,7 @@
           "driver_slots": {
             "title": "Потребность в водителях",
             "subtitle": "Открытые слоты",
-            "assigned": "Назначено {hired} / {required}",
+            "assigned": "Трудоустроено {hired} / {required}",
             "empty": "Нет активных запросов на водителей."
           },
           "invoice_workspace": {
@@ -4015,6 +4015,8 @@
           "reference": "Референс",
           "required_drivers": "Требуется водителей",
           "hired_drivers": "Нанято водителей",
+          "employed_drivers": "Трудоустроено",
+          "employed_drivers_hint": "Кандидаты со статусом «Трудоустроен» по вакансиям этого клиента.",
           "id": "ID",
           "created_at": "Создано",
           "updated_at": "Обновлено",

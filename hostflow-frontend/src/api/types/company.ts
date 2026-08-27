@@ -23,6 +23,8 @@ export interface Company {
   /** Filled when GET /companies/?include_recruitment_metrics=true */
   recruitment_vacancies_active?: number | null;
   recruitment_candidates_total?: number | null;
+  /** Candidates on this client's vacancies in funnel stage `employed` (Трудоустроен). */
+  recruitment_candidates_employed?: number | null;
   legal_name?: string | null;
   reg_no?: string | null;
   tax_id?: string | null;

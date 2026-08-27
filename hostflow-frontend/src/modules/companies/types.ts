@@ -88,7 +88,6 @@ export const ORDER_TYPE_OPTIONS = [
     labelKey: 'app.companies.order_types.transport',
     schema: [
       { key: 'required_drivers', labelKey: 'app.companies.detail.fields.required_drivers', type: 'number' as const },
-      { key: 'hired_drivers', labelKey: 'app.companies.detail.fields.hired_drivers', type: 'number' as const },
     ],
   },
   {
@@ -119,7 +118,6 @@ export interface OrderForm {
   starts_at?: string;
   ends_at?: string;
   required_drivers?: string;
-  hired_drivers?: string;
   client_reference?: string;
   code?: string;
   order_type_id?: OrderTypeId | string;

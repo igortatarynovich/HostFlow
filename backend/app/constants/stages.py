@@ -300,6 +300,13 @@ PIPELINE_COMPLETED_STAGE_CODES: frozenset[str] = frozenset(TERMINAL_STATUSES) | 
     {"employed", "ready_for_hr", "hired", "processing_by_hr"}
 )
 
+# Client-card capacity: candidates counted as «Трудоустроен» (funnel stage, not a manual order field).
+# Includes stored labels for rows that never went through code normalization.
+EMPLOYED_HEADCOUNT_STAGE_CODES: frozenset[str] = frozenset(
+    {code.lower() for code in STAGES_BY_GROUP["employed"]}
+    | {"трудоустроен", "zatrudniony"}
+)
+
 # Ops analytics overview «stuck» — only real ``LABELS`` / ``STAGES_BY_GROUP`` codes (not legacy pseudo-stages).
 OVERVIEW_STUCK_AGENCY_STAGE: Final[str] = "docs_wait"
 OVERVIEW_STUCK_EMPLOYER_STAGE_CODES: Final[tuple[str, ...]] = tuple(STAGES_BY_GROUP["interview"])
@@ -424,6 +431,7 @@ __all__ = [
     "ORDER",
     "PIPELINE_SEQUENCE",
     "PIPELINE_COMPLETED_STAGE_CODES",
+    "EMPLOYED_HEADCOUNT_STAGE_CODES",
     "OVERVIEW_STUCK_AGENCY_STAGE",
     "OVERVIEW_STUCK_EMPLOYER_STAGE_CODES",
     "TERMINAL_STATUSES",

@@ -3903,7 +3903,7 @@
           "driver_slots": {
             "title": "Driver demand",
             "subtitle": "Open slots",
-            "assigned": "Assigned {hired} / {required}",
+            "assigned": "Employed {hired} / {required}",
             "empty": "No active driver requests."
           },
           "invoice_workspace": {
@@ -4088,6 +4088,8 @@
           "reference": "Reference",
           "required_drivers": "Drivers required",
           "hired_drivers": "Drivers hired",
+          "employed_drivers": "Employed",
+          "employed_drivers_hint": "Candidates in stage Employed on this client's vacancies.",
           "id": "ID",
           "created_at": "Created at",
           "updated_at": "Updated at",

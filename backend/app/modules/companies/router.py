@@ -84,7 +84,7 @@ async def list_companies(
     ),
     include_recruitment_metrics: bool = Query(
         False,
-        description="Include active vacancies and candidate counts scoped like the candidates list",
+        description="Include active vacancies and candidate counts (total + employed stage)",
     ),
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
@@ -154,9 +154,14 @@ async def list_companies(
             updates["service_active_orders"] = int(m["active_orders"])
             updates["service_revenue_completed"] = float(m["revenue_completed"])
         if include_recruitment_metrics:
-            r = rec_metrics.get(str(c.id), {"recruitment_vacancies_active": 0, "recruitment_candidates_total": 0})
+            r = rec_metrics.get(str(c.id), {
+                "recruitment_vacancies_active": 0,
+                "recruitment_candidates_total": 0,
+                "recruitment_candidates_employed": 0,
+            })
             updates["recruitment_vacancies_active"] = int(r["recruitment_vacancies_active"])
             updates["recruitment_candidates_total"] = int(r["recruitment_candidates_total"])
+            updates["recruitment_candidates_employed"] = int(r.get("recruitment_candidates_employed") or 0)
         if updates:
             result.append(row.model_copy(update=updates))
         else:
@@ -201,7 +206,7 @@ async def get_company(
     ),
     include_recruitment_metrics: bool = Query(
         False,
-        description="Include active vacancies and candidate counts (same scope as list)",
+        description="Include active vacancies and candidate counts (total + employed stage)",
     ),
     _role: str = Depends(require_trust_read()),
     db_tenant=Depends(get_db_with_tenant),
@@ -237,9 +242,14 @@ async def get_company(
         updates["service_revenue_completed"] = float(pack["revenue_completed"])
     if include_recruitment_metrics:
         r = await company_recruitment_metrics_for_list(db, tenant_id=str(tenant_id), company_ids=[cid_str])
-        pack = r.get(cid_str, {"recruitment_vacancies_active": 0, "recruitment_candidates_total": 0})
+        pack = r.get(cid_str, {
+            "recruitment_vacancies_active": 0,
+            "recruitment_candidates_total": 0,
+            "recruitment_candidates_employed": 0,
+        })
         updates["recruitment_vacancies_active"] = int(pack["recruitment_vacancies_active"])
         updates["recruitment_candidates_total"] = int(pack["recruitment_candidates_total"])
+        updates["recruitment_candidates_employed"] = int(pack.get("recruitment_candidates_employed") or 0)
     if updates:
         return row.model_copy(update=updates)
     return row

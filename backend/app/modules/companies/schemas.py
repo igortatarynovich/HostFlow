@@ -115,6 +115,7 @@ class CompanyOut(CompanyBase):
     # Populated when list/get is called with include_recruitment_metrics=true
     recruitment_vacancies_active: Optional[int] = None
     recruitment_candidates_total: Optional[int] = None
+    recruitment_candidates_employed: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

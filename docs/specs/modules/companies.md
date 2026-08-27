@@ -92,7 +92,7 @@
 | `client_portal` | Настройки клиентского портала (`enabled`, `url`, `last_sync_at`, `portal_roles[]`, `permissions`) | `portal_roles` — массив объектов `{full_name, email, role}`. |
 | `integrations` | Интеграции (`provider_ids[]`, `webhooks[]`, `branding{logo_url,primary_color}`) | Webhooks содержат `event` и `target`. |
 | `contracts` | Контракты с клиентом (`title`, `status`, `starts_at`, `ends_at`, `reference`, `code`) | Массив объектов. |
-| `company_orders` | Активные/исторические заказы (`title`, `status`, `starts_at`, `ends_at`, `required_drivers`, `hired_drivers`, `client_reference`, `code`) | Числовые значения приводятся к `int`. |
+| `company_orders` | Активные/исторические заказы (`title`, `status`, `starts_at`, `ends_at`, `required_drivers`, `client_reference`, `code`) | `required_drivers` — план headcount. Виджет «Нет водителей» / «Трудоустроено X / Y» считает кандидатов со статусом `employed` («Трудоустроен») на вакансиях этой компании (`recruitment_candidates_employed`), а не ручное поле `hired_drivers`. |
 
 Колонка `contacts` также хранится в JSONB и при сохранении карточки синхронизируется в `extra.contacts`. Каждый `PUT /companies/{id}`:
 
