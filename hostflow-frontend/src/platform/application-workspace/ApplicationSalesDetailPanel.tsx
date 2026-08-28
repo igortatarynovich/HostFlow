@@ -20,7 +20,7 @@ import {
   APPLICATION_STATUS_TEXT,
   applicationInitial,
 } from './applicationDisplay'
-import { resolveSalesApplicationDecision } from './resolveSalesApplicationDecision'
+import { resolveSalesApplicationDecision, existingClientFromApplication } from './resolveSalesApplicationDecision'
 
 const WORKFLOW_STEPS = [
   { key: 'contact', label: 'Связаться' },
@@ -55,7 +55,12 @@ export function ApplicationSalesDetailPanel({
   const statusKey = application.status
   const activeStep = Number(application.extensions?.workflow_step ?? 1)
   const convertedId = String(application.outcome_entity_id || '').trim()
-  const clientHref = convertedId ? clientDetailPath(convertedId) : undefined
+  const existingClient = existingClientFromApplication(application)
+  const clientHref = convertedId
+    ? clientDetailPath(convertedId)
+    : existingClient
+      ? clientDetailPath(existingClient.company_id)
+      : undefined
   const subtitle = application.subtitle || 'B2B заявка'
   const openCardLabel = t('app.sales_inquiry.open_client_card', { defaultValue: 'Открыть полную карточку' })
   const contactPhone = application.contact.phone?.trim() || ''

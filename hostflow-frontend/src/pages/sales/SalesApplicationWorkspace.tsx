@@ -111,8 +111,15 @@ export function SalesApplicationWorkspace() {
             try {
               const updated = await convertSalesInquiryToClient(application.id)
               onRefresh()
+              const existed = Boolean(
+                (application.extensions?.existing_client as { company_id?: string } | undefined)?.company_id,
+              )
               notify({
-                title: t('app.client_inquiry.client_created', { defaultValue: 'Компания сохранена в клиенты' }),
+                title: existed
+                  ? t('app.sales_inquiry.linked_existing', {
+                      defaultValue: 'Обращение привязано к существующему клиенту',
+                    })
+                  : t('app.client_inquiry.client_created', { defaultValue: 'Компания сохранена в клиенты' }),
                 variant: 'success',
               })
               const newClientId = String(updated.outcome_entity_id || '').trim()

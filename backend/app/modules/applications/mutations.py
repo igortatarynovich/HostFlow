@@ -123,6 +123,42 @@ async def _prepare_recruitment_application_for_process(
         )
 
 
+async def _attach_existing_client_match(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str,
+    lead: Lead,
+    app: ApplicationOut,
+) -> ApplicationOut:
+    """Surface an already-onboarded client so the rail does not propose a duplicate."""
+    if str(app.outcome_entity_id or "").strip():
+        return app
+    from backend.app.modules.leads.normalizer import resolve_b2b_inquiry_company_name
+    from backend.app.modules.sales.services.existing_client_match import (
+        find_existing_client_hits,
+    )
+
+    normalized = lead.normalized if isinstance(lead.normalized, dict) else {}
+    company_name = resolve_b2b_inquiry_company_name(normalized)
+    extensions = dict(app.extensions or {})
+    hits = await find_existing_client_hits(
+        db,
+        tenant_id=tenant_id,
+        company_name=company_name,
+        own_company_id=own_company_id or None,
+        limit=5,
+    )
+    if len(hits) == 1:
+        extensions["existing_client"] = hits[0].as_dict()
+        app.extensions = extensions
+        return app
+    if len(hits) > 1:
+        extensions["existing_client_candidates"] = [hit.as_dict() for hit in hits]
+        app.extensions = extensions
+    return app
+
+
 async def _reload_sales(db: AsyncSession, tenant_id: str, own_company_id: str, application_id: str) -> ApplicationOut:
     try:
         inquiry, lead = await resolve_sales_inquiry_and_lead(
@@ -133,7 +169,14 @@ async def _reload_sales(db: AsyncSession, tenant_id: str, own_company_id: str, a
         )
     except LookupError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found") from exc
-    return sales_inquiry_to_application(inquiry, lead)
+    app = sales_inquiry_to_application(inquiry, lead)
+    return await _attach_existing_client_match(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        lead=lead,
+        app=app,
+    )
 
 
 async def _reload_recruitment(db: AsyncSession, tenant_id: str, application_id: str) -> ApplicationOut:
@@ -195,6 +238,12 @@ async def run_product_convert_via_mapping(
     ``convert_sales_inquiry_mapping`` (Review SoT + mapping + lineage + audit),
     and commits. Returns ``sales_inquiry_id``.
     """
+    from backend.app.modules.leads.normalizer import resolve_b2b_inquiry_company_name
+    from backend.app.modules.sales.services.ambiguous_match_review import (
+        AmbiguousMatchReviewError,
+        mark_unique_match_not_required,
+        read_review_state,
+    )
     from backend.app.modules.sales.services.capability_spine_read import (
         load_sales_inquiry_for_spine,
     )
@@ -203,6 +252,8 @@ async def run_product_convert_via_mapping(
         convert_sales_inquiry_mapping,
         resolve_convert_provenance_for_inquiry,
     )
+    from backend.app.modules.sales.services.existing_client_match import find_unique_existing_client
+    from backend.app.modules.client_accounts import crud as account_crud
 
     inquiry = await load_sales_inquiry_for_spine(
         db, tenant_id=tenant_id, application_id=application_id
@@ -221,6 +272,39 @@ async def run_product_convert_via_mapping(
             tenant_id=tenant_id,
             inquiry=inquiry,
         )
+        lead_id = str(getattr(inquiry, "lead_id", "") or "").strip()
+        lead = (
+            await account_crud.get_lead_for_update(db, tenant_id=tenant_id, lead_id=lead_id)
+            if lead_id
+            else None
+        )
+        company_name = ""
+        if lead is not None:
+            normalized = lead.normalized if isinstance(lead.normalized, dict) else {}
+            company_name = resolve_b2b_inquiry_company_name(normalized)
+        unique = await find_unique_existing_client(
+            db,
+            tenant_id=tenant_id,
+            company_name=company_name,
+            own_company_id=own_company_id or inquiry_oc or None,
+        )
+        if lead is not None and unique is not None:
+            if unique.company_id and not str(getattr(lead, "converted_client_id", "") or "").strip():
+                lead.converted_client_id = unique.company_id
+            if unique.client_account_id and not str(getattr(lead, "client_account_id", "") or "").strip():
+                lead.client_account_id = unique.client_account_id
+            await db.flush()
+        if read_review_state(inquiry) is None:
+            await mark_unique_match_not_required(
+                db,
+                tenant_id=tenant_id,
+                sales_inquiry_id=str(inquiry.id),
+                destination=destination,
+                flights_ledger_id=flights_ledger_id,
+                matched_client_account_id=unique.client_account_id if unique else None,
+                own_company_id=own_company_id or inquiry_oc or None,
+                actor_id=actor_id,
+            )
         await convert_sales_inquiry_mapping(
             db,
             tenant_id=tenant_id,
@@ -230,7 +314,7 @@ async def run_product_convert_via_mapping(
             actor_id=actor_id,
         )
         await db.commit()
-    except ConvertMappingError as exc:
+    except (ConvertMappingError, AmbiguousMatchReviewError) as exc:
         await db.rollback()
         status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         if exc.reason in {"invalid_inquiry_state", "missing_flights_reference"}:

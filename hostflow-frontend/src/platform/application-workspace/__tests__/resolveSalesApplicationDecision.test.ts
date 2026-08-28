@@ -52,4 +52,32 @@ describe('resolveSalesApplicationDecision', () => {
     expect(decision.primaryAction?.id).toBe('convert')
     expect(decision.secondaryActions?.some((row) => row.id === 'close')).toBe(true)
   })
+
+  it('open inquiry with an existing client opens the card instead of creating', () => {
+    const onConvert = vi.fn()
+    const decision = resolveSalesApplicationDecision({
+      application: app({
+        status: 'waiting',
+        tab_bucket: 'waiting',
+        title: 'Synergia Kadry',
+        extensions: {
+          workflow_step: 3,
+          existing_client: {
+            company_id: 'co-synergia',
+            name: 'SYNERGIA KADRY sp. z o.o.',
+          },
+        },
+      }),
+      converting: false,
+      patching: false,
+      onStage: vi.fn(),
+      onConvert,
+      t,
+    })
+    expect(decision.stateId).toBe('sales.existing_client')
+    expect(decision.primaryAction?.id).toBe('open_existing_client')
+    expect(decision.primaryAction?.href).toContain('co-synergia')
+    expect(decision.secondaryActions?.map((row) => row.id)).toContain('link_existing')
+    expect(decision.primaryAction?.id).not.toBe('convert')
+  })
 })

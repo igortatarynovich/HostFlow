@@ -2,6 +2,26 @@ import type { Application } from '../../api/types/application'
 import type { ObjectDecision } from '../decision-model/types'
 import { clientDetailPath } from '../../services/platformHandoff'
 
+type ExistingClientHint = {
+  company_id: string
+  name: string
+  client_account_id?: string
+}
+
+export function existingClientFromApplication(application: Application): ExistingClientHint | null {
+  const raw = application.extensions?.existing_client
+  if (!raw || typeof raw !== 'object') return null
+  const row = raw as Record<string, unknown>
+  const companyId = String(row.company_id || '').trim()
+  if (!companyId) return null
+  const accountId = String(row.client_account_id || '').trim()
+  return {
+    company_id: companyId,
+    name: String(row.name || '').trim() || application.title,
+    client_account_id: accountId || undefined,
+  }
+}
+
 type ResolveSalesDecisionArgs = {
   application: Application
   converting: boolean
@@ -36,6 +56,9 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
             : []),
         ]
       : undefined
+
+  const existingClient = existingClientFromApplication(application)
+  const existingHref = existingClient ? clientDetailPath(existingClient.company_id) : undefined
 
   if (convertedId && clientHref) {
     return {
@@ -92,6 +115,50 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
             : t('app.sales_inquiry.completed', { defaultValue: 'Обращение завершено' }),
         variant: 'terminal',
       },
+    }
+  }
+
+  if (activeStep >= 3 && existingClient && existingHref) {
+    return {
+      stateId: 'sales.existing_client',
+      currentState: t('app.sales_inquiry.step.existing_client_title', {
+        defaultValue: 'Клиент уже есть',
+      }),
+      why: t('app.sales_inquiry.step.existing_client_body', {
+        defaultValue: '«{{name}}» уже в клиентах. Не создавайте дубль — откройте карточку и добавьте услугу.',
+        values: { name: existingClient.name },
+      }),
+      primaryAction: {
+        id: 'open_existing_client',
+        label: t('app.client_inquiry.service_order.open_client', { defaultValue: 'Открыть карточку клиента' }),
+        href: existingHref,
+      },
+      secondaryActions: [
+        {
+          id: 'link_existing',
+          label: converting
+            ? t('app.sales_inquiry.linking', { defaultValue: 'Привязываем…' })
+            : t('app.sales_inquiry.link_existing', { defaultValue: 'Привязать обращение' }),
+          onClick: () => void onConvert(),
+          disabled,
+        },
+        {
+          id: 'interested_later',
+          label: t('app.sales_inquiry.interested_later', { defaultValue: 'Заинтересован, но позже' }),
+          onClick: () => void onStage('qualified'),
+          disabled,
+        },
+        {
+          id: 'close',
+          label: t('app.sales_inquiry.close', { defaultValue: 'Закрыть запрос' }),
+          onClick: () => void onStage('lost'),
+          variant: 'danger',
+          disabled,
+        },
+      ],
+      contactActions,
+      requiredContext: ['workflow', 'contacts', 'summary', 'history'],
+      variant: 'success',
     }
   }
 

@@ -225,6 +225,61 @@ async def test_product_convert_applies_match_existing(db, tenant_id: str) -> Non
 
 
 @pytest.mark.asyncio
+async def test_product_convert_reuses_existing_client_by_company_name(db, tenant_id: str) -> None:
+    from backend.app.models import Company
+
+    suffix = uuid.uuid4().hex[:8]
+    lead, inquiry, _ledger_id, own_company_id = await _seed_product_bundle(
+        db, tenant_id=tenant_id, suffix=suffix
+    )
+    company = Company(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        name=f"Transport {suffix} sp. z o.o.",
+        extra={"company_role": "client", "company_kind": "client"},
+        party_business_roles="service_client",
+    )
+    existing = ClientAccount(
+        id=account_crud.new_client_account_id(),
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        display_name=f"Renamed Holding {suffix}",
+        status="active",
+        primary_company_id=company.id,
+    )
+    company.client_account_id = existing.id
+    db.add_all([company, existing])
+    await db.commit()
+
+    user = SimpleNamespace(sub="actor-product-existing", role="manager")
+    out = await mutations.convert_sales_inquiry(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        application_id=str(lead.id),
+        current_user=user,  # type: ignore[arg-type]
+    )
+    await db.refresh(lead)
+
+    assert str(lead.converted_client_id) == str(company.id)
+    assert str(lead.client_account_id) == str(existing.id)
+    assert out.extensions.get("existing_client") is None
+    company_count = await db.scalar(
+        select(func.count()).select_from(Company).where(
+            Company.tenant_id == tenant_id,
+            Company.name.ilike(f"%Transport {suffix}%"),
+        )
+    )
+    assert company_count == 1
+    created_from_lead = await db.scalar(
+        select(func.count())
+        .select_from(ClientAccount)
+        .where(ClientAccount.source_lead_id == str(lead.id))
+    )
+    assert created_from_lead == 0
+
+
+@pytest.mark.asyncio
 async def test_product_convert_blocks_unresolved_review(db, tenant_id: str) -> None:
     suffix = uuid.uuid4().hex[:8]
     lead, inquiry, ledger_id, own_company_id = await _seed_product_bundle(
