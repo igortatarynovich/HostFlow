@@ -1,6 +1,6 @@
 # C0.2 — Inbound resolver & threading
 
-**Status:** Active (next after PR #101 / C0.1b)  
+**Status:** **MERGED** — [PR #102](https://github.com/igortatarynovich/HostFlow/pull/102); Epic C closed [PASS_WITH_CONSTRAINTS](../gates/epic-c-complete-gate.md) 2026-08-03 (C2.4 frozen)  
 **Branch:** `fix/communication-c0-inbound-resolver`  
 **Worktree:** `/tmp/hf-c0-2-inbound-resolver`  
 **Base:** `integration/release-product-a-b` @ `7bc13d57`  

@@ -2,6 +2,8 @@
 
 Minimal operational tracker for CI F7 run-log governance. Full readiness matrix lives in linked manual-checklist run sheets.
 
+**Precedence (2026-08-28):** despite the historical title, this file is **not** the authority on whether HostFlow may be released. Release-ready is declared only by the [Release Readiness Gate](specs/gates/release-readiness-gate.md), proven by the [Release Readiness acceptance suite](specs/journeys/release-readiness-acceptance-suite.md). This file remains the operational tracker for the **F7 manual scenario run-log** enforced by the `f7-docs-qa` CI workflow (`scripts/check-f7-run-log.mjs`, `scripts/create-f7-run-record.mjs`) — it is referenced from code and CI and therefore must not be archived or renamed without updating both.
+
 ## 10. F7 Scenario Execution Board (A/B/C)
 
 Дата: `2026-07-14`  

@@ -137,7 +137,7 @@ C3 edits mutable definitions. Draft save is not publish. C4 is **Runtime, not an
 
 **Not** Communication Epic C2 / C2.4 / Communication C3. Historical Forms “C4 HTTP resolve” ≠ Phase C C4 Form Runtime. Acquisition UI C-5 ≠ Phase C C5 Form Execution.
 
-**Out of Phase C (still locked):** P3 Publish UI / P4 Themes / P5 Analytics · FormTemplate SoT · ADR-022 · Stage 5 settings/enable-disable · R6.
+**Out of Phase C (still locked):** P4 Themes / P5 Analytics · FormTemplate SoT · ADR-022 · Stage 5 settings/enable-disable · R6. **P3 Publish** left Phase C locked but is **v1 blocker 3** — see [external-intake-forms-publish.md](../tasks/external-intake-forms-publish.md); its unlock instrument is FP-1 + queue amendment, not this section.
 
 **Result:** every questionnaire, form, and survey shares one runtime contract. **Foundation ✅.**
 
@@ -280,7 +280,7 @@ Not standalone AI features. A **service layer over existing platforms**:
 ## Anti-patterns (forbidden without amending this roadmap)
 
 1. Starting Stage 3 slice 3+ **before** Governance Review (A2) closes — A2 is now **PASS_WITH_CONSTRAINTS**; Phase B may proceed.  
-2. P3 Publish UI / P4 Themes / P5 Analytics while Forms product unlocks stay locked.  
+2. P4 Themes / P5 Analytics while Forms product unlocks stay locked. **P3 Publish is v1 blocker 3** ([Release Goal](../gates/hostflow-v1-release-goal.md)) with a brief — [external-intake-forms-publish.md](../tasks/external-intake-forms-publish.md); it is unlocked by that brief's FP-1 slice plus a queue amendment, and starting FP feat work before both is still forbidden. Unlock ≠ schedule.  
 3. Treating PX EntityWorkspace chrome as Phase D Universal Entity Workspace — or inventing a fifth card shell.  
 4. AI features that create their own message/document/entity stores.  
 5. Parallel product branches that compete across phases (one active product slice **or Product DONE with no successor until amendment**). Product is **[RPM-1](../tasks/requirement-policy-management.md)** (brief; feat locked) after DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Engineering is **DONE** (Exit PASS [#298](https://github.com/igortatarynovich/HostFlow/pull/298)). Do not auto-start Mapping / Hiring E2E / OCR. Do not invent CL8. Do not mark Foundation ✅. Do not mix E7 into an E6/E5/E4/E3/E2/WCP PR, mass-bind D3–D9, reopen G4, D10-on-weak-D2, Recruitment rail patches, reopen D9, Forms C6, Stage 5 settings, or Acquisition R6. Do not fold Application into Entity. Do not mix ListWorkspace into the WCP close-out. Closing a later phase as COMPLETE requires the [Goal Completion Gate](../gates/goal-completion-gate.md). New platform phase briefs require [Original Goal → Completion Proof](../gates/goal-completion-gate.md). Slice order is the [queue locked sequence](../tasks/sales-to-comms-sequential-queue.md).  
@@ -314,6 +314,11 @@ Not standalone AI features. A **service layer over existing platforms**:
 | [entity-field-composition-cl6-flight-map.md](../tasks/entity-field-composition-cl6-flight-map.md) | CL6 Flight mapping ✅ (#307) |
 | [entity-field-composition-cl7-engine-eval.md](../tasks/entity-field-composition-cl7-engine-eval.md) | CL7 Requirement Engine evaluation ✅ (#309) |
 | [entity-profile-vacancy-overlay-contract.md](../tasks/entity-profile-vacancy-overlay-contract.md) | Vacancy Overlay Contract ✅ (#311) |
+| [mapping-authority.md](../tasks/mapping-authority.md) | v1 blocker 2 brief — **queued**, not scheduled |
+| [external-intake-forms-publish.md](../tasks/external-intake-forms-publish.md) | v1 blocker 3 brief (Forms P3 Publish) — **queued**, not scheduled |
+| [hiring-workflow-e2e.md](../tasks/hiring-workflow-e2e.md) | v1 blocker 4 brief — **queued**, not scheduled |
+| [recruitment-hr-minimal-handoff.md](../tasks/recruitment-hr-minimal-handoff.md) | v1 blocker 5 brief — **queued**, not scheduled |
+| [release-readiness-gate.md](../gates/release-readiness-gate.md) | Release close-out: reaching the program horizon is not release |
 | [engine-document-request-dr1-runtime.md](../tasks/engine-document-request-dr1-runtime.md) | DR1-runtime ✅ (#313) — Engine may create Hub outstanding asks |
 | [documents-platform-e8-bind.md](../tasks/documents-platform-e8-bind.md) | E8-bind **PASS** [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f` — remaining consumers bind to canonical document types |
 | [documents-platform-e8-eval.md](../tasks/documents-platform-e8-eval.md) | E8-eval **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` — required / optional / applicability from R5 merge |

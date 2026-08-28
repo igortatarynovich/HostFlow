@@ -1,6 +1,6 @@
 # Entity Field Composition CL2 — Membership runtime
 
-**Status:** **IN PROGRESS** (feat)  
+**Status:** **PASS** — CL2 Gate closed by [#303](https://github.com/igortatarynovich/HostFlow/pull/303) / `09dfea47`; successor CL3 ✅ [#304](https://github.com/igortatarynovich/HostFlow/pull/304)  
 **Phase class:** platform  
 **Branch:** `feat/entity-field-composition-cl2-membership`  
 **Parents:** [CL0 contract seal](entity-field-composition-cl0-contract-seal.md) · [CL1 inventory](entity-field-composition-cl1-candidate-inventory.md) · [DR1-contract](engine-document-request-dr1-contract.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Entity Profile Definition Registry](../platform/entity-profile-definition-registry.md)

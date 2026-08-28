@@ -5,6 +5,7 @@
 **Date:** 2026-08-26  
 **Trusted base:** `integration/release-product-a-b`  
 **Parents:** [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) · [Platform Completion Roadmap](../architecture/platform-completion-roadmap.md) · [Goal Completion Gate](goal-completion-gate.md) · [Hierarchy of Truth](../../governance/hierarchy-of-truth.md) · [Documents Platform E8-eval](../tasks/documents-platform-e8-eval.md)  
+**Close-out instruments:** [Release Readiness Gate](release-readiness-gate.md) (who declares v1 ready) · [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md) (how it is proven)  
 **Product Track:** **[RPM-1](../tasks/requirement-policy-management.md)** (brief; feat locked) — scheduled in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) after [#328](https://github.com/igortatarynovich/HostFlow/pull/328). This file does not invent slice order.
 
 > This document is the **v1 in-scope vs later** SoT.  
@@ -20,15 +21,17 @@
 A locked sequential queue can reach a program horizon (E8-eval) while the product is not releasable, because slice gates never asked whether the **Release Goal** became true. Roadmap leftovers must not silently become the next Product.
 
 **Completion proof (named consumer):**  
-A first paying tenant operated by a non-developer: configure without code → external candidate in → mapped canonical entities → recruitment with operator-managed requirements and documents → communication → hire → minimum Employee, proven by the Release Readiness acceptance suite (§ Finite criterion).
+A first paying tenant operated by a non-developer: configure without code → external candidate in → mapped canonical entities → recruitment with operator-managed requirements and documents → communication → hire → minimum Employee, proven by the [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md) (§ Finite criterion).
 
 ---
 
 ## Finite criterion
 
-HostFlow v1 is **release-ready** when a tenant can be configured without code, acquire an external candidate, map source data into canonical entities, operate the candidate through recruitment using operator-managed requirements and documents, communicate with the candidate, complete hiring, transfer the person into the minimum employee state, and pass the Release Readiness acceptance suite.
+HostFlow v1 is **release-ready** when a tenant can be configured without code, acquire an external candidate, map source data into canonical entities, operate the candidate through recruitment using operator-managed requirements and documents, communicate with the candidate, complete hiring, transfer the person into the minimum employee state, and pass the [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md).
 
 Close-out of v1 is this criterion **plus** the [Goal Completion Gate](goal-completion-gate.md) against this section — not “all named slices in an amendment merged.”
+
+The criterion is **declared true only by** the [Release Readiness Gate](release-readiness-gate.md). No program close, queue horizon, or blocker gate may declare it.
 
 ---
 
@@ -41,7 +44,7 @@ A Settings page that edits non-authority JSON is **not** ready. All four must ho
 | **Runtime authority** | One answerer, or an explicit contract between answerers |
 | **Operator surface** | A person manages **that** authority |
 | **E2E consumption** | The setting changes the working flow |
-| **Release acceptance** | A named scenario proves the operator job |
+| **Release acceptance** | A named scenario in the [acceptance suite](../journeys/release-readiness-acceptance-suite.md) proves the operator job |
 
 ---
 
@@ -49,11 +52,13 @@ A Settings page that edits non-authority JSON is **not** ready. All four must ho
 
 | # | Capability | v1 boundary (acceptance) |
 |---|------------|--------------------------|
-| **1** | **Requirement Policy Management** | For this tenant / client / vacancy / profile / country: these requirements apply; base rule; override; reason; result. Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin product. |
-| **2** | **Mapping Authority** | One operator-visible model from source answers to **canonical entity fields**. Not “build another mapping editor.” |
-| **3** | **External Intake / Forms Publish** | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
-| **4** | **Hiring workflow E2E** | One candidate: `stage → requirements/docs → eligibility → transfer`. Acceptance over existing funnels, gates, policy authority, and transfer — **not** a new Hiring Product. |
-| **5** | **Minimal Recruitment → HR handoff** | Hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy. Full HR operations (Kadry, payroll, extended lifecycle) are later. |
+| **1** | **Requirement Policy Management** — [brief](../tasks/requirement-policy-management.md) (Active: RPM-1) | For this tenant / client / vacancy / profile / country: these requirements apply; base rule; override; reason; result. Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin product. |
+| **2** | **Mapping Authority** — [brief](../tasks/mapping-authority.md) (queued) | One operator-visible model from source answers to **canonical entity fields**. Not “build another mapping editor.” |
+| **3** | **External Intake / Forms Publish** — [brief](../tasks/external-intake-forms-publish.md) (queued) | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
+| **4** | **Hiring workflow E2E** — [brief](../tasks/hiring-workflow-e2e.md) (queued) | One candidate: `stage → requirements/docs → eligibility → transfer`. Acceptance over existing funnels, gates, policy authority, and transfer — **not** a new Hiring Product. |
+| **5** | **Minimal Recruitment → HR handoff** — [brief](../tasks/recruitment-hr-minimal-handoff.md) (queued) | Hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy. Full HR operations (Kadry, payroll, extended lifecycle) are later. |
+
+Every blocker now has a brief with `Original Goal → Completion Proof`, an internal slice ladder with named gates, and an estimate. A brief is **not** a schedule: only the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) activates a slice, and the Active Product remains RPM-1.
 
 ### Supporting (must work for the five; not separate programs)
 
@@ -71,7 +76,7 @@ These are **acceptance dependencies**, not automatic extra programs. A new Produ
 | **Release DAG** (§ below) | Which **capabilities** provide that, and which **acceptance** edges exist | Lock execution order |
 | **Program** | One capability, or a named part of one | Close the product by closing itself |
 | **Sequential queue** | Actual **slice** order, one Active Product | Invent v1 scope |
-| **Release Readiness Gate** | Whether the product (not the last program) is done | Treat program PASS as v1 PASS |
+| **[Release Readiness Gate](release-readiness-gate.md)** | Whether the product (not the last program) is done | Treat program PASS as v1 PASS |
 
 A finished program writes **program outcome** + **release delta**. Queue complete without an explicit release delta does **not** mean HostFlow v1 is ready.
 
@@ -119,6 +124,8 @@ Release Candidate
         ▼
 Release Readiness Gate
 ```
+
+The last two nodes are defined in one place: **Release Candidate** (what build acceptance runs on), the seven readiness questions, and the outcome vocabulary all live in the [Release Readiness Gate](release-readiness-gate.md). This file does not restate them.
 
 Supporting capabilities (Company setup, Acquisition, Candidate workspace, Communications, Permissions) attach as **acceptance dependencies** of the five, not as extra DAG nodes and not as extra programs.
 
@@ -188,6 +195,8 @@ Recorded at Goal seal. Not a PASS.
 
 - [Sequential queue](../tasks/sales-to-comms-sequential-queue.md) — slice schedule; Active Product = [RPM-1](../tasks/requirement-policy-management.md)  
 - [Dependency-position review](v1-release-dag-dependency-position.md) — why RPM is first  
+- [Release Readiness Gate](release-readiness-gate.md) — entry conditions, seven questions, Release Candidate, derived RC date  
+- [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md) — RS-1…RS-12 and the coverage matrix  
 - [Goal Completion Gate](goal-completion-gate.md) — original goal vs substituted brief  
 - [Platform capability maturity](../architecture/platform-capability-maturity.md) — platform maturity ≠ v1 Release Goal  
 - [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [ADR-019](../architecture/ADR-019-automation-capability-entitlement-control-plane.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md)

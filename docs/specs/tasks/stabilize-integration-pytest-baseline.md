@@ -32,6 +32,8 @@ C2.4 remains **frozen**.
 
 Evidence: [CI run 29832741203](https://github.com/igortatarynovich/HostFlow/actions/runs/29832741203) — 657 failed / 1926 passed.
 
+**Figures are dated (2026-07-21) and must be re-measured before any release claim.** Later recorded observation on the E1 slice was **484 failed / 2740 passed** (see [queue](sales-to-comms-sequential-queue.md) § E1 close-out), i.e. the aggregate moved without anyone owning the delta. An aggregate that drifts is not a baseline: [Release Readiness Gate](../gates/release-readiness-gate.md) **RR6** requires an *enumerated, frozen, owned, non-growing* known-failure list plus a named set of suites that must be green for a release build. Re-measurement needs a scratch database — `backend/tests/conftest.py` refuses to run against a DB whose name does not contain `test` (guard `_assert_not_production_db`), so the number cannot be taken from a developer’s dev database.
+
 | Cluster | Count | Root cause | Fix layer (when Engineering resumes) |
 |---------|------:|------------|--------------------------------------|
 | asyncpg / event-loop lifecycle | 244 | test session/loop | `conftest` lifecycle |
@@ -49,6 +51,14 @@ Resume this slice only if:
 - clean Postgres `upgrade head` fails on a product branch we own, or  
 - a **new** module cannot deploy, or  
 - failures are proven introduced by a Product PR (not base-known).
+
+### Resume condition may already be met (open question, 2026-08-28)
+
+[`AGENTS.md`](../../../AGENTS.md) § “Migration caveats” states that `alembic upgrade heads` does **not** apply cleanly to a freshly created database, and documents a manual repair sequence (pre-create `alembic_version` with a wider column, apply parallel branch tips in dependency order, skip a double-`CREATE TYPE` revision by stamping, then patch an enum value and a column default for the bootstrap seed).
+
+If that is still true, the **first** resume condition above is satisfied and this slice is no longer merely deferred debt: [Release Readiness Gate](../gates/release-readiness-gate.md) § Release Candidate requires migrations to apply to a freshly created database **without manual repair steps**, so a fresh-install failure is a release blocker rather than background debt.
+
+This must be **measured, not assumed** — on a scratch database, on the current trusted base — and the result recorded here. The owning slice for the fix belongs to the launch/operations program (fresh-install bootstrap), not to this brief; this brief keeps the pytest side.
 
 ## Explicitly out of Product Track
 

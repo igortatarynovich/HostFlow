@@ -1,6 +1,6 @@
 # Forms Product Layer — Epic
 
-**Status:** **OPEN** · Phase C C1–C6 ✅ / Foundation ✅ · Product Track moved to [Entity Workspace D1](entity-workspace-d1-contract-seal.md) · P3 Publish UI / P4 / P5 **LOCKED**  
+**Status:** **OPEN** · Phase C C1–C6 ✅ / Foundation ✅ · **P3 Publish = v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md) (queued; feat locked until its FP-1 slice) · P4 / P5 **LOCKED**  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE** — backend platform contour closed ([`forms-sprint-6.md`](forms-sprint-6.md) · merge `7e259f22` / PR #41)  
 **Canon:** [`ADR-007`](../architecture/ADR-007-forms-platform-capability.md) · [`forms-public-contract.md`](../architecture/forms-public-contract.md)  
 **P1 task:** [`forms-product-p1-field-catalog.md`](forms-product-p1-field-catalog.md) ✅ **CLOSED**  
@@ -142,7 +142,8 @@ Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](fo
 | Field Catalog contracts v1 | **FROZEN** |
 | P2.1–P2.5 Builder | ✅ **COMPLETE** (MVP) |
 | Builder Catalog Consumption | ✅ **ACTIVE** |
-| P3 Publish UI / P4 Themes / P5 Analytics | **LOCKED** (C5 is Form Execution, not Publish UI — [forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md)) |
+| P3 Publish UI | **v1 blocker 3** — [external-intake-forms-publish.md](external-intake-forms-publish.md); feat locked until FP-1 + queue amendment (C5 is Form Execution, not Publish UI — [forms-platform-c5-form-execution.md](forms-platform-c5-form-execution.md)) |
+| P4 Themes / P5 Analytics | **LOCKED** |
 | Rewrite of Sprint 1–6 foundation | **FORBIDDEN** |
 | Executable logic inside descriptors | **FORBIDDEN** |
 | Catalog-core special cases for stdlib ids | **FORBIDDEN** |
@@ -155,6 +156,7 @@ Phase C ladder: C1 seal ✅ → C2 runtime gates ✅ → [C3 Builder Runtime](fo
 
 ## History
 
+- 2026-08-28: P3 Publish reclassified from `LOCKED` to **v1 blocker 3** with a brief — [external-intake-forms-publish.md](external-intake-forms-publish.md); roadmap anti-pattern 2 amended to name the unlock instrument (FP-1 + queue amendment). P4 / P5 stay locked. Feat still locked; nothing scheduled.
 - 2026-07-18: Opened after Sprint 6 COMPLETE (`7e259f22` / #41). Backend contour closed; product surface next.  
 - 2026-07-18: Canon merged PR #43 (`29f4057f`). P1 framed as component registry (not type enum).  
 - 2026-07-18: P1 split into Registry → Descriptors → Standard library → Extension API; Builder = Catalog client.  

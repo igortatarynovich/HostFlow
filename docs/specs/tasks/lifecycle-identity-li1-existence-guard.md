@@ -1,6 +1,6 @@
 # Lifecycle Identity LI-1 — Existence Guard
 
-**Status:** **IN PROGRESS** (feat; merge blocked until **CL1 Gate** PASS)  
+**Status:** **PASS** — LI-1 Existence Guard Gate closed by [#300](https://github.com/igortatarynovich/HostFlow/pull/300) / `c9ca41cc` after CL1 Gate ✅ [#299](https://github.com/igortatarynovich/HostFlow/pull/299); LI-2+ stay queued in the [Lifecycle brief](lifecycle-identity-l0-contract-seal.md)  
 **Phase class:** platform  
 **Branch:** `feat/lifecycle-identity-li1-existence-guard`  
 **Parents:** [Lifecycle Identity L0](lifecycle-identity-l0-contract-seal.md) · [ADR-037](../architecture/ADR-037-lifecycle-identity-canon.md) · [Sequential queue](sales-to-comms-sequential-queue.md)

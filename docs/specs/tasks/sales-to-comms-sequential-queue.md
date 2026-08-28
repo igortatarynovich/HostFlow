@@ -38,12 +38,14 @@
 
 This section is the **only** “what Product slice starts next” SoT. **v1 in-scope vs later** is the [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md). Horizon A–G stays in the [roadmap](../architecture/platform-completion-roadmap.md) and does **not** override the Release Goal. If another doc disagrees with **slice schedule**, **this ladder wins**. If it disagrees with **v1 scope**, the Release Goal wins.
 
+Reaching the program horizon of this section is **not** a release. Release-ready is declared only by the [Release Readiness Gate](../gates/release-readiness-gate.md), proven by the [acceptance suite](../journeys/release-readiness-acceptance-suite.md).
+
 ### Current execution header
 
 | Role | Value |
 |------|--------|
 | **Active Product** | **[RPM-1 Authority contract](requirement-policy-management.md)** (brief; feat locked) after E8-eval Gate **PASS** [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6` and DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Unlock ≠ silent schedule. |
-| **Queued Product successor** | **RPM-2** Operator overlay, then **RPM-3** Consumer cutover — [brief](requirement-policy-management.md). Mapping remains startable **after** RPM program close (not auto-scheduled). Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
+| **Queued Product successor** | **RPM-2** Operator overlay, then **RPM-3** Consumer cutover — [brief](requirement-policy-management.md). Mapping remains startable **after** RPM program close (not auto-scheduled). The four remaining v1 blockers are **briefed but unscheduled** — see § v1 blocker programs beyond this horizon. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
 | **Active Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` (`ref-id-exit`). No named successor. |
 | **Queued Engineering after Exit** | none this amendment. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
 | **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **Product = RPM-1** (not a Phase E leftover) |
@@ -102,10 +104,10 @@ DR1-runtime  also required  DR1-contract ∧ Reference R5   (PASS [#313](https:/
 | # | Slice | Gate (PASS =) | Depends on | Unlocks |
 |---|--------|----------------|------------|---------|
 | **P0** | [CL0](entity-field-composition-cl0-contract-seal.md) contract seal | **CL0 Gate** — brief merged; queue/roadmap/AGENTS point here; no runtime | E7 ✅ | CL1 |
-| **P1** | [CL1](entity-field-composition-cl1-candidate-inventory.md) Candidate inventory | **CL1 Gate** — live Candidate fields / `document_configs` / screening-as-required **observed** (code, source, tenant/module, enabled, required-as-found, fields, consumers, legacy usage). Does **not** emit canonical / alias / invalid / migration-required — that is R3/R4 | **CL0 Gate** | LI-1 |
-| **P2** | [LI-1](lifecycle-identity-l0-contract-seal.md) existence guard | **LI-1 Existence Guard Gate** — one producer for “is stage X registered?”; no Funnel/UI cutover | **CL1 Gate** | DR1-contract. LI-2+ stay in the Lifecycle queue and do **not** block CL2+ |
-| **P3** | [DR1-contract](engine-document-request-dr1-contract.md) Engine → Document Request contract | **DR1 Contract Gate** — Engine→Hub outstanding-ask contract sealed; no mass generation | **CL1 Gate ∧ LI-1 Gate**. If the contract already names canonical type ids: also **Reference R3 Gate ∧ Reference R4 Gate** | CL2; DR1-runtime (join R5) |
-| **P4** | [CL2](entity-field-composition-cl2-membership.md) Membership runtime | **CL2 Gate** — `entity_profile_membership.v1`; driver_ce members + intake/card_save; screening pack as ref; no layout | **DR1-contract Gate** | CL3 |
+| **P1** | [CL1](entity-field-composition-cl1-candidate-inventory.md) Candidate inventory | **CL1 Gate** ✅ [#299](https://github.com/igortatarynovich/HostFlow/pull/299) / `b33ac205` — live Candidate fields / `document_configs` / screening-as-required **observed** (code, source, tenant/module, enabled, required-as-found, fields, consumers, legacy usage). Does **not** emit canonical / alias / invalid / migration-required — that is R3/R4 | **CL0 Gate** | LI-1 |
+| **P2** | [LI-1](lifecycle-identity-l0-contract-seal.md) existence guard | **LI-1 Existence Guard Gate** ✅ [#300](https://github.com/igortatarynovich/HostFlow/pull/300) / `c9ca41cc` — one producer for “is stage X registered?”; no Funnel/UI cutover | **CL1 Gate** | DR1-contract. LI-2+ stay in the Lifecycle queue and do **not** block CL2+ |
+| **P3** | [DR1-contract](engine-document-request-dr1-contract.md) Engine → Document Request contract | **DR1 Contract Gate** ✅ [#302](https://github.com/igortatarynovich/HostFlow/pull/302) — Engine→Hub outstanding-ask contract sealed; no mass generation | **CL1 Gate ∧ LI-1 Gate**. If the contract already names canonical type ids: also **Reference R3 Gate ∧ Reference R4 Gate** | CL2; DR1-runtime (join R5) |
+| **P4** | [CL2](entity-field-composition-cl2-membership.md) Membership runtime | **CL2 Gate** ✅ [#303](https://github.com/igortatarynovich/HostFlow/pull/303) / `09dfea47` — `entity_profile_membership.v1`; driver_ce members + intake/card_save; screening pack as ref; no layout | **DR1-contract Gate** | CL3 |
 | **P5** | [CL3](entity-field-composition-cl3-layout.md) Layout runtime | **CL3 Gate** — D4 Information zone places `entity_profile_layout.v1` / `candidate.card`; membership-filtered; no builder | **CL2 Gate** | CL4 |
 | **P6** | [CL4](entity-field-composition-cl4-builder.md) Builder (two modes) | **CL4 Gate** ✅ [#305](https://github.com/igortatarynovich/HostFlow/pull/305) / `c49716e3` — card vs form compile over closed page types; D4 places card, not form | **CL3 Gate** | CL5 |
 | **P7** | [CL5](entity-field-composition-cl5-qa.md) Q&A | **CL5 Gate** ✅ [#306](https://github.com/igortatarynovich/HostFlow/pull/306) / `5d8e1ae3` — qa_only from Lead/Application; map recognized not executed; D4 places Q&A zone | **CL4 Gate** | CL6 |
@@ -151,6 +153,19 @@ Documents:
 
 Program horizon of this amendment: **RPM-3** (Requirement Policy Management program close). First Product from the [Release DAG](../gates/hostflow-v1-release-goal.md) after [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Mapping remains startable after RPM close — **not** auto-scheduled. Do not invent CL8. Do not auto-start OCR. Do not mark Foundation ✅.
 
+### v1 blocker programs beyond this horizon (briefed, not scheduled)
+
+Every remaining v1 blocker now has a brief with an internal slice ladder, named gates and an estimate. A brief is **not** a schedule: these rows exist so the release distance is countable, not so work can start. Activation still requires a queue amendment, one Active Product slice at a time.
+
+| Program | Brief | Internal slices | Estimate | Startable after |
+|---------|-------|-----------------|----------|-----------------|
+| Mapping Authority | [mapping-authority.md](mapping-authority.md) | MA-1…MA-4 | 4–6 slices | RPM program close |
+| External Intake / Forms Publish | [external-intake-forms-publish.md](external-intake-forms-publish.md) | FP-1…FP-5 | 5–7 slices | queue amendment; FP-5 needs Mapping close |
+| Hiring workflow E2E | [hiring-workflow-e2e.md](hiring-workflow-e2e.md) | HE-1…HE-4 | 4–6 slices | RPM program close (policy authority edge) |
+| Minimal Recruitment → HR handoff | [recruitment-hr-minimal-handoff.md](recruitment-hr-minimal-handoff.md) | HH-1…HH-4 | 4–6 slices | Hiring E2E program close |
+
+**Estimate unit:** 1 slice = one docs PR + one feat PR on the trusted base, single concern. Slices are not calendar days; the derived Release Candidate date is computed from the critical path in the [Release Readiness Gate](../gates/release-readiness-gate.md) § Derived RC date, and the roll-up itself lands in a later docs-only queue amendment together with the launch-operations track.
+
 ### Naming (mandatory)
 
 | Token | Machine id | Meaning |
@@ -162,6 +177,10 @@ Program horizon of this amendment: **RPM-3** (Requirement Policy Management prog
 | **E8-bind / E8-eval** | — | two Documents slices; never one E8 with two unlocks |
 | **DR1-contract / DR1-runtime** | — | two Document Request slices |
 | **RPM-1 / RPM-2 / RPM-3** | `rpm-authority` / `rpm-operator` / `rpm-cutover` | Requirement Policy Management internal slices; not Mapping; not Hiring E2E |
+| **MA-1…MA-4** | `map-authority` / `map-resolve` / `map-operator` / `map-cutover` | [Mapping Authority](mapping-authority.md) internal slices; not a fourth mapping editor |
+| **FP-1…FP-5** | `fp-contract` / `fp-publish` / `fp-serve` / `fp-operator` / `fp-accept` | [External Intake / Forms Publish](external-intake-forms-publish.md) internal slices = Forms **P3**; never P4 Themes / P5 Analytics |
+| **HE-1…HE-4** | `he-contract` / `he-stages` / `he-eligibility` / `he-accept` | [Hiring workflow E2E](hiring-workflow-e2e.md) internal slices; acceptance over existing machinery, not a Hiring Product |
+| **HH-1…HH-4** | `hh-contract` / `hh-status` / `hh-reuse` / `hh-accept` | [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) internal slices; not full HR operations |
 
 ### Exit test (this docs amendment)
 
@@ -297,9 +316,10 @@ A reader who has only this section can answer every item **yes**:
 | **40** | **Reference R4** Alias consolidation | `feat/platform-reference-r4-alias-consolidation` | ✅ [#296](https://github.com/igortatarynovich/HostFlow/pull/296) `69a4b992` |
 | **41** | **Reference R5** Policy merge | `feat/platform-reference-r5-policy-merge` | ✅ [#297](https://github.com/igortatarynovich/HostFlow/pull/297) `6ce7d350` |
 | **41b** | **Reference Program Exit Gate** | `feat/platform-reference-program-exit` | ✅ [#298](https://github.com/igortatarynovich/HostFlow/pull/298) `ff0b914c` — Q1–Q5 one chain; program DONE |
-| **42** | **CL1** Field composition inventory | locked | after **CL0 Gate**; observes codes; does not canonize identity |
-| **42b** | **LI-1** Existence guard (ADR-037) | [brief](lifecycle-identity-l0-contract-seal.md) | after **CL1 Gate**; docs sealed; not full Lifecycle; does not block CL2+ after it PASSes |
-| **43** | **DR1-contract** Engine → Document Request contract | locked | after CL1 ∧ LI-1; also R3∧R4 if the contract already names canonical type ids |
+| **42** | **CL1** Field composition inventory | ✅ [#299](https://github.com/igortatarynovich/HostFlow/pull/299) `b33ac205` | after **CL0 Gate**; observed codes; did not canonize identity |
+| **42b** | **LI-1** Existence guard (ADR-037) | ✅ [#300](https://github.com/igortatarynovich/HostFlow/pull/300) `c9ca41cc` — [brief](lifecycle-identity-li1-existence-guard.md) | after **CL1 Gate**; one existence producer; LI-2+ stay in [the Lifecycle brief](lifecycle-identity-l0-contract-seal.md) |
+| **42c** | **CL2** Membership runtime | ✅ [#303](https://github.com/igortatarynovich/HostFlow/pull/303) `09dfea47` | after **DR1-contract Gate**; `entity_profile_membership.v1`; no layout |
+| **43** | **DR1-contract** Engine → Document Request contract | ✅ [#302](https://github.com/igortatarynovich/HostFlow/pull/302) | after CL1 ∧ LI-1; also R3∧R4 if the contract already names canonical type ids |
 | **43b** | **CL3** Layout runtime | ✅ [#304](https://github.com/igortatarynovich/HostFlow/pull/304) `8c04d696` | after **CL2 Gate**; D4 Information zone |
 | **43c** | **CL4** Builder (two modes) | ✅ [#305](https://github.com/igortatarynovich/HostFlow/pull/305) `c49716e3` | after **CL3 Gate**; card vs form; closed page types; not Q&A |
 | **43d** | **CL5** Recruiter Q&A | ✅ [#306](https://github.com/igortatarynovich/HostFlow/pull/306) `5d8e1ae3` | after **CL4 Gate**; qa_only from Lead/Application; not extra; map recognized not executed |
@@ -542,12 +562,14 @@ Next branch only after:
 **Do** apply [Goal Completion Gate](../gates/goal-completion-gate.md) before marking a future platform phase COMPLETE.  
 **Do** require `**Phase class:** platform` + [Original Goal → Completion Proof](../gates/goal-completion-gate.md) on every new platform phase brief (problem to permanently remove + named consumer — not a deliverables list).  
 **Do** apply [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) for in-scope vs later; every program close writes **program outcome** and **release delta**.  
+**Do** route any “are we ready to launch?” claim to the [Release Readiness Gate](../gates/release-readiness-gate.md) — an empty queue, a closed program, or a green named gate is **not** release-ready.  
 **Do** amend this queue when switching Product Active (this revision: live = **RPM-1**; brief; feat locked; E8-eval Gate PASS; DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328)).
 
 ---
 
 ## 8. History
 
+- 2026-08-28: Docs-only. All four remaining v1 blockers received briefs with internal ladders, named gates and estimates — [Mapping Authority](mapping-authority.md) · [External Intake / Forms Publish](external-intake-forms-publish.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [min HR handoff](recruitment-hr-minimal-handoff.md). Forms **P3** reclassified from `LOCKED` to v1 blocker 3 in the [roadmap](../architecture/platform-completion-roadmap.md) and the [Forms epic](forms-product-layer-epic.md). Active Product stayed **RPM-1**; nothing scheduled; no feat unlocked.
 - 2026-08-27: Queue amendment after DAG dependency-position [#328](https://github.com/igortatarynovich/HostFlow/pull/328) / `087ed286`. Product Track → **[RPM-1](requirement-policy-management.md)** (brief; feat locked). RPM-2 / RPM-3 queued. Mapping not auto-scheduled. Not Hiring E2E. Not CL8. Not Foundation ✅.
 - 2026-08-26: [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) sealed [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Product Track stayed **none**. RPM recommended first; no schedule; no RPM → Mapping edge.
 - 2026-08-26: [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) sealed. Product Track stayed **none**. Five v1 blockers named as a Release DAG (not a linear program order); OCR / packages / AI / automation plane / extensions / self-service Billing explicitly later. No Product slice scheduled.

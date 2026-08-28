@@ -1,0 +1,156 @@
+# Mapping Authority
+
+**Status:** **QUEUED** (brief only; feat locked; **not scheduled**) — Active Product stays [RPM-1](requirement-policy-management.md)
+**Phase class:** platform
+**Branch (docs):** `docs/v1-blocker-briefs`
+**Branch (code):** none — later slices `feat/mapping-authority-maN-…`
+**Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 2) · [Release Readiness Gate](../gates/release-readiness-gate.md) · [Acceptance suite RS-3](../journeys/release-readiness-acceptance-suite.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [ADR-021](../architecture/ADR-021-unified-intake-resolution-model.md) · [Entity Profile Definition Registry](../platform/entity-profile-definition-registry.md) · [Field Registry](../platform/field-registry-card-configuration.md) · [CL6 Flight map](entity-field-composition-cl6-flight-map.md) · [C-5 mapping workspace](acquisition-ui-cutover-c5-mapping-workspace.md)
+**Estimate:** 4–6 slices (1 slice = one docs PR + one feat PR)
+
+> v1 blocker 2: **one operator-visible model from source answers to canonical entity fields.**
+> Not “build another mapping editor” — there are already three editors writing three stores.
+> **Not** Forms Publish (that is [External Intake](external-intake-forms-publish.md), which consumes this). **Not** Requirement Policy. **Not** CL8. **Not** OCR. **Not** a Zapier.
+> Opening this brief does **not** schedule it. The queue’s Active Product stays RPM-1.
+
+---
+
+## Original Goal → Completion Proof
+
+**Problem this phase must permanently remove:**
+An operator cannot answer “where does this incoming answer end up, and how do I change that?” in one place. Today the same class of decision is written in **three stores** with a silent fallback chain (`intake_source_profiles.mapping_rules` → `meta_lead_form_mappings.mapping_rules` → `meta_lead_settings.field_mapping`), edited from **three UIs**, expressed in **two vocabularies** (legacy flat `target` vs canonical `qualified_field_code` with a partial bridge), and executed by **three unrelated runtimes** plus several hardcoded extractors. Every new intake source therefore adds another private answer, and no acceptance scenario can prove that changing a mapping changes the next submission.
+
+**Completion proof (named consumer):**
+**RS-3 in the [acceptance suite](../journeys/release-readiness-acceptance-suite.md)** on the public intake path: an operator inspects how one named answer reached (or failed to reach) a canonical entity field, changes it in **one** surface, submits the public form again, and observes the new placement — without being asked which of several editors is authoritative. The consumer that must **not** fork: External Intake / Forms Publish acceptance (`publish → … → mapping → canonical entity`) must consume this authority instead of adding a fourth path.
+
+**False close (reject):** a fourth editor; renaming C-5 Marketing mapping workspace as “the authority” while Meta admin still writes independently; declaring the qualified-code vocabulary canonical while the runtime keeps writing legacy flat keys; proving the goal with a dry-run normalize preview instead of a real submission; folding Sales convert mapping or OCR extraction into this write to inflate scope.
+
+---
+
+## Starting point (measured, not assumed)
+
+Evidence collected 2026-08-28 over `backend/app` and `hostflow-frontend/src`.
+
+### Canonical destinations already exist
+
+`fr_canonical_fields` defines `qualified_code` + `storage.path`; Entity Profile (`ep_entity_profiles`, `ep_entity_profile_fields`) defines which codes belong to a role. **Destinations are not the gap** — the write path to them is.
+
+### Where the same decision is stored three times
+
+| Store | Used when |
+|-------|-----------|
+| `intake_source_profiles.mapping_rules` | Preferred at ingest when non-empty |
+| `meta_lead_form_mappings.mapping_rules` | Per Meta form fallback |
+| `meta_lead_settings.field_mapping` | Tenant default fallback |
+
+Resolution is a silent precedence chain in `backend/app/modules/leads/field_mapping_resolve.py` and `backend/app/entity_profile/ingest_runtime.py`. An operator editing the “wrong” one sees no effect and no warning.
+
+### Three operator UIs over overlapping rules
+
+| Route | Writes |
+|-------|--------|
+| `/app/settings/integrations/meta` (`MetaLeadsAdminPage`) | tenant `field_mapping`, per-form `mapping_rules`, ad→vacancy routing |
+| `/app/marketing/sources/:id/mapping` (`MarketingSourceMappingPage`) | `intake_source_profiles.mapping_rules` |
+| `/app/marketing/forms/:id` (`IntakeFormMappingEditor`) | same profile rules via intake-form admin API |
+
+Plus read-only diagnostics at `/app/marketing/diagnostics` (mapping health / drift vs `mapping_applied_v1` fingerprint) and a **read-only** CL6 panel in the candidate workspace.
+
+### Two vocabularies, one partial bridge
+
+Rules carry both `target` (legacy flat key) and `qualified_field_code`. `backend/app/field_registry/intake_mapping.py` maps qualified → legacy through a **hardcoded partial dict** (`LEAD_INTAKE_QUALIFIED_TO_NORMALIZED`) and falls through to dot-path targets when unmapped. So a canonical-looking rule may still write a legacy bucket.
+
+### Hardcoded extractors on the public path
+
+Four parallel ways answers become entity-shaped data: Forms answers (`forms.normalized_answers.v1`, explicitly “no domain mapping”), the presentation ↔ legacy bucket bridge, `PUBLIC_INTAKE_FIELD_TO_QUALIFIED` pseudo-rules, and `build_candidate_payload_from_intake_state` (which reads legacy buckets and ignores `presentation_values_v1`).
+
+### Adjacent models that are *not* this write
+
+| Model | Source → destination | Disposition |
+|-------|----------------------|-------------|
+| CL6 Flight map (`entity_profile_flight_map.v1`) ✅ [#307](https://github.com/igortatarynovich/HostFlow/pull/307) | Flight answer → Profile member on Binding snapshot | **Consume** — already gated; must not be re-forked |
+| Sales convert mapping (`convert_mapping_v1`) | SalesInquiry → ClientAccount projection | **Not this write** — different source/destination pair; must be declared, not absorbed |
+| Documents OCR mapping (`mapping_candidate.py`) | OCR fields → candidate keys | **Out of v1** (OCR is later); named leftover |
+| Telegram intake bootstrap | sender label → candidate name/phone | **Leftover** with owner + expiry |
+| Legacy `CandidateProfile` bridge | legacy config keys → qualified codes | **Consume or retire** in MA-4 |
+
+---
+
+## Internal ladder (this program only)
+
+One Active Product slice at a time. Nothing here starts while RPM holds the Product Track.
+
+```text
+MA-1 Authority contract
+  → MA-2 Resolution runtime (one store, one resolver)
+  → MA-3 Operator surface (one editor)
+  → MA-4 Consumer cutover (one vocabulary)
+  → Mapping program close (outcome + release delta)
+```
+
+| # | Slice | Machine id | Named gate (PASS =) | Depends on | Estimate |
+|---|-------|------------|---------------------|------------|----------|
+| **MA-1** | Authority contract | `map-authority` | **Mapping Authority Contract Gate** — one operator question; one write authority named; every mechanism in § Starting point classified write / consume / leftover / not-this-write; no fourth store permitted | RPM program close (queue amendment) | 1 slice (docs) |
+| **MA-2** | Resolution runtime | `map-resolve` | **Mapping Resolution Gate** — exactly one store answers “which rule applies to this source?”; the other two are read-through or migrated; precedence chain removed, not documented | MA-1 Gate | 1–2 slices |
+| **MA-3** | Operator surface | `map-operator` | **Mapping Operator Gate** — one editor writes the authority; remaining surfaces are views or retired; operator sees applied result and drift for a real submission | MA-2 Gate | 1 slice |
+| **MA-4** | Consumer cutover | `map-cutover` | **Mapping Consumer Cutover Gate** — canonical `qualified_code` is the only write vocabulary on the intake path; hardcoded extractors read the authority or are named leftovers with owner + expiry | MA-3 Gate | 1–2 slices |
+
+---
+
+## MA-1 — Authority contract (queued)
+
+**Operator question (one):** for this source (Meta form, public form, import file, flight), which incoming answer writes which canonical entity field, and what happens when it does not match?
+
+**Write authority (one):** to be sealed in this slice as a single store + resolver pair. The contract must state explicitly which of the three current stores survives and how the other two are read (never written).
+
+MA-1 ships no runtime and no UI. It forbids a second write authority for the same question.
+
+---
+
+## MA-2 — Resolution runtime (queued)
+
+Collapse the fallback chain. Success is that a rule saved anywhere the operator can reach lands in the authority, and ingest consults exactly one resolver. Drift diagnostics (`mapping_applied_v1`) must keep working, since they are the only current evidence that a rule was applied.
+
+Out: new mapping semantics, transformation DSL, Zapier-style conditions.
+
+---
+
+## MA-3 — Operator surface (queued)
+
+One editor for the sealed authority; the other two surfaces become read-only views on it or are retired with redirects. Operator must be able to test against a real submission — the existing dry-run normalize is preview only and is **not** the acceptance proof.
+
+Out: themes, analytics, bulk rule import.
+
+---
+
+## MA-4 — Consumer cutover (queued)
+
+Retire the dual vocabulary on the intake path and make the hardcoded extractors consume the authority. Anything that cannot be cut over in this slice (OCR mapping, Telegram bootstrap) must be listed with owner and expiry — silent leftovers make the gate STOP.
+
+Out: Sales convert mapping rewrite; CL6 re-fork; a canonical-write refactor of modules outside intake.
+
+---
+
+## Program close = two results
+
+| Field | Meaning |
+|-------|---------|
+| **Program outcome** | One authority answers source answer → canonical entity field; one editor writes it; intake consumers read it |
+| **Release delta** | Mapping Authority four-checks PASS. External Intake acceptance becomes provable (its acceptance edge is satisfied). Hiring E2E and min HR handoff remain **OPEN** unless separately closed. HostFlow v1 is not release-ready until the [Release Readiness Gate](../gates/release-readiness-gate.md) passes |
+
+---
+
+## Queue position
+
+**Depends on:** RPM program close **or** an explicit queue amendment that runs Mapping earlier (the [DAG](../gates/hostflow-v1-release-goal.md) does **not** make RPM a predecessor of Mapping — only the one-Active-Product invariant serializes them)
+**Unlocks:** [External Intake / Forms Publish](external-intake-forms-publish.md) acceptance (known acceptance edge)
+**Does not:** schedule itself; absorb Forms Publish; reopen CL6 / C-5 / ADR-021; mint a new reference dictionary (Rule 1 — canonical fields stay in Field Registry)
+
+---
+
+## Refs
+
+- [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) — blocker 2 and the four checks
+- [Acceptance suite RS-3](../journeys/release-readiness-acceptance-suite.md) — the proof this program must satisfy
+- [Dependency-position review](../gates/v1-release-dag-dependency-position.md) — “three mapping models answer different source→dest pairs”
+- [C-5 mapping workspace](acquisition-ui-cutover-c5-mapping-workspace.md) — the profile-rules surface that exists today
+- [Source diagnostics](acquisition-source-diagnostics.md) — mapping health / drift evidence to preserve
+- [CL6 Flight map](entity-field-composition-cl6-flight-map.md) — adjacent gated mapping runtime (consume, do not fork)

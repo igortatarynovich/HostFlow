@@ -22,7 +22,8 @@
 | **Frontend canon** | `docs/specs/frontend/*.md`, ADR-010, ADR-011 | Frontend owner | UI standard, list shell, forms, tokens (`docs/pipedesign.md`) |
 | **Platform canon** | `docs/specs/platform/observability.md`, `prometheus_integration.md`, `webhooks.md` | Platform owner | Observability, metrics, webhooks |
 | **Integrations canon** | `docs/specs/integrations/*.md`, ADR-006, marketplace-integrations-data-model.md | Integrations owner | Marketplace, intake channels |
-| **Journeys canon** | `docs/specs/journeys/*.md` | UX / product owner | UAT прогоны, persona journeys |
+| **Journeys canon** | `docs/specs/journeys/*.md` | UX / product owner | UAT прогоны, persona journeys, release acceptance suite |
+| **Gates canon** | `docs/specs/gates/*.md` (gate records, [Release Goal](../specs/gates/hostflow-v1-release-goal.md), [Release Readiness Gate](../specs/gates/release-readiness-gate.md), [Goal Completion Gate](../specs/gates/goal-completion-gate.md)) | Engineering lead + Operational lead; Architecture canon owner аппрувит architecture-gates; Security owner co-signs security-perimeter gates | Держит формальные outcomes (PASS / PASS_WITH_CONSTRAINTS / STOP); запрещает promotion без evidence; ни один gate не объявляет release-ready кроме Release Readiness Gate |
 | **Glossary** | `docs/specs/glossary.md` | Cross-team (engineering + product) | Единый словарь терминов |
 | **Governance** | `docs/governance/*.md` | Engineering lead + architecture canon owner | Эти три файла; lint script |
 
