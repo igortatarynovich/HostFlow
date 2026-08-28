@@ -100,10 +100,47 @@ export function runtimeBadgeFromRuntime(
   return presentationFor('missing', satisfies)
 }
 
+function documentPayloadHasFiles(doc: {
+  has_files?: boolean | null
+  files?: unknown[] | null
+} | null | undefined): boolean {
+  if (!doc) return false
+  if (Array.isArray(doc.files) && doc.files.length > 0) return true
+  return Boolean(doc.has_files)
+}
+
+function badgeWhenFilePresent(status: string | null | undefined): RuntimeBadgeKind {
+  const normalized = String(status ?? '').trim().toLowerCase()
+  if (['approved', 'verified', 'completed', 'delivered', 'received'].includes(normalized)) {
+    return 'approved'
+  }
+  return 'pending'
+}
+
 export function runtimeBadgeFromDocument(
-  doc: { document_runtime?: DocumentRuntimeV1 | null } | null | undefined,
+  doc:
+    | {
+        document_runtime?: DocumentRuntimeV1 | null
+        has_files?: boolean | null
+        files?: unknown[] | null
+        status?: string | null
+      }
+    | null
+    | undefined,
 ): RuntimeBadgePresentation {
-  return runtimeBadgeFromRuntime(doc?.document_runtime)
+  const hasFiles = documentPayloadHasFiles(doc)
+  if (doc?.document_runtime && typeof doc.document_runtime === 'object') {
+    const fromRuntime = runtimeBadgeFromRuntime(doc.document_runtime)
+    // Runtime may still say "missing" for a stale snapshot. A stored file is never "no file".
+    if (fromRuntime.badge === 'missing' && hasFiles) {
+      return presentationFor(badgeWhenFilePresent(doc.status), false)
+    }
+    return fromRuntime
+  }
+  if (hasFiles) {
+    return presentationFor(badgeWhenFilePresent(doc?.status), false)
+  }
+  return presentationFor('missing', false)
 }
 
 export function runtimeBadgeKindFromDocument(

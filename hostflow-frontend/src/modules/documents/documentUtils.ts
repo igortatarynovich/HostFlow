@@ -46,6 +46,31 @@ export const dateValue = (value?: string | null) => {
   return Number.isNaN(time) ? 0 : time;
 };
 
+export function documentHasFiles(doc: {
+  has_files?: boolean | null;
+  files?: unknown[] | null;
+  path?: string | null;
+  filename?: string | null;
+} | null | undefined): boolean {
+  if (!doc) return false;
+  if (Array.isArray(doc.files) && doc.files.length > 0) return true;
+  if (doc.path || doc.filename) return true;
+  if (typeof doc.has_files === "boolean") return doc.has_files;
+  return false;
+}
+
+const STATUSES_REQUIRING_FILE = new Set([
+  "approved",
+  "received",
+  "delivered",
+  "completed",
+  "verified",
+]);
+
+export function statusRequiresUploadedFile(status: string | null | undefined): boolean {
+  return STATUSES_REQUIRING_FILE.has(String(status || "").trim().toLowerCase());
+}
+
 export const daysUntil = (value?: string | null) => {
   if (!value) return null;
   const target = Date.parse(value);

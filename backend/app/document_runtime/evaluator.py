@@ -28,7 +28,6 @@ _APPROVED_STATUSES = frozenset(
 )
 _PENDING_REVIEW_STATUSES = frozenset({"submitted", "in_progress", "pending_review"})
 _REJECTED_STATUSES = frozenset({"rejected", "cancelled"})
-_MISSING_STATUSES = frozenset({"missing"})
 
 
 def _norm_status(value: Any) -> str:
@@ -43,6 +42,24 @@ def _document_type_code(doc: dict[str, Any]) -> str:
     return ""
 
 
+def _snapshot_has_files(snapshot: dict[str, Any]) -> bool:
+    if snapshot.get("has_files") is True:
+        return True
+    files = snapshot.get("files")
+    if isinstance(files, list):
+        for item in files:
+            if isinstance(item, dict) and any(
+                str(item.get(key) or "").strip()
+                for key in ("url", "storage_path", "path", "name", "key")
+            ):
+                return True
+    if str(snapshot.get("filename") or "").strip():
+        return True
+    if str(snapshot.get("path") or "").strip():
+        return True
+    return False
+
+
 def resolve_workflow_status(snapshot: Optional[dict[str, Any]]) -> WorkflowStatus:
     """Map document snapshot to canonical workflow status."""
     if not snapshot or not isinstance(snapshot, dict):
@@ -55,21 +72,21 @@ def resolve_workflow_status(snapshot: Optional[dict[str, Any]]) -> WorkflowStatu
         return "replaced"
 
     status = _norm_status(snapshot.get("status"))
-    has_files = snapshot.get("has_files") is True
+    has_files = _snapshot_has_files(snapshot)
 
     if status in _REJECTED_STATUSES:
         return "rejected"
-    if status in _MISSING_STATUSES or (not has_files and status in {"", "requested"}):
+    # No uploaded file → missing, even if hub status still says approved.
+    if not has_files:
         return "missing"
     if status in _APPROVED_STATUSES:
         return "approved"
     if status in _PENDING_REVIEW_STATUSES:
         return "pending_review"
-    if status == "uploaded" or has_files:
-        return "uploaded"
     if status in {"expired", "overdue"}:
         return "approved"
-    return "missing"
+    # File is present: missing/requested/uploaded all mean "uploaded, not yet approved".
+    return "uploaded"
 
 
 def expires_on_present(snapshot: Optional[dict[str, Any]]) -> bool:

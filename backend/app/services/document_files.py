@@ -14,6 +14,7 @@ from backend.app.modules.documents.storage import (
     resolve_file_path,
     select_file_entry,
 )
+from backend.app.services.document_workflow import document_has_stored_file
 
 
 def _normalize_storage_path(value: str) -> str:
@@ -151,4 +152,9 @@ def resolve_document_file_ref(
     )
 
 
-__all__ = ["DocumentFileRef", "resolve_document_file", "resolve_document_file_ref"]
+__all__ = [
+    "DocumentFileRef",
+    "document_has_stored_file",
+    "resolve_document_file",
+    "resolve_document_file_ref",
+]

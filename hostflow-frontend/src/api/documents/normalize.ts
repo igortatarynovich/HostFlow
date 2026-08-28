@@ -597,7 +597,12 @@ export function normalizeDocument<T extends Record<string, any>>(raw: T): Docume
         .map((entry: any) => normalizeFile(entry))
         .filter((entry): entry is DocumentFile => !!entry)
     : [];
-  const hasFiles = typeof raw.has_files === "boolean" ? Boolean(raw.has_files) : files.length > 0;
+  const hasFiles =
+    files.length > 0 ||
+    (typeof raw.has_files === "boolean"
+      ? Boolean(raw.has_files)
+      : Boolean(raw.path || raw.filename));
+  const documentRuntime = isPlainObject(raw.document_runtime) ? raw.document_runtime : null;
 
   const reminders = Array.isArray(raw.reminders)
     ? raw.reminders
@@ -665,6 +670,7 @@ export function normalizeDocument<T extends Record<string, any>>(raw: T): Docume
     reminders,
     version: raw.version != null ? Number(raw.version) : null,
     last_check: lastCheck,
+    document_runtime: documentRuntime,
   };
 }
 

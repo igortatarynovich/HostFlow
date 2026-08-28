@@ -78,7 +78,7 @@ from backend.app.services.ruleset_versioning import (
     compute_ruleset_diff,
     normalize_ruleset_payload,
 )
-from backend.app.services.document_workflow import STATUS_ORDER, default_workflow
+from backend.app.services.document_workflow import STATUS_ORDER, default_workflow, document_has_stored_file
 from backend.app.services.document_runtime_delivery_contract import enrich_snapshot_via_contract
 from .ocr_pipeline import OcrPipeline
 from .owner_summary import compute_owner_summary
@@ -494,7 +494,7 @@ def _compute_readiness_state(
 ) -> str:
     normalized = status_value.lower()
     if normalized in {"approved", "received", "delivered", "completed", "verified"}:
-        return "ready"
+        return "ready" if has_files else "requested"
     if normalized in {"rejected", "expired", "invalid", "overdue"}:
         return "problem"
     if ordered_at:
@@ -675,7 +675,7 @@ async def _document_to_out(
     last_check_out = _check_to_out(last_check) if last_check else None
     ordered_at = _as_date(getattr(doc, "ordered_at", None))
     valid_from = _as_date(getattr(doc, "valid_from", None))
-    has_files = bool(files)
+    has_files = document_has_stored_file(doc)
     try:
         status_rank = STATUS_ORDER[DocumentStatus(status_value)]
     except Exception:
@@ -704,6 +704,9 @@ async def _document_to_out(
         "expires_at": expire_value,
         "expires_on": expire_value,
         "has_files": has_files,
+        "files": files,
+        "filename": getattr(doc, "filename", None),
+        "path": getattr(doc, "path", None),
         "meta": meta_payload,
     }
     enriched_runtime = enrich_snapshot_via_contract(runtime_snapshot)
@@ -2014,12 +2017,15 @@ async def api_check_document(
     meta_update = body.get("meta") or body.get("meta_json")
     if isinstance(meta_update, dict):
         update_payload["meta"] = meta_update
-    doc = await update_document(
-        session,
-        doc_tenant_id,
-        str(document_id),
-        update_payload,
-    )
+    try:
+        doc = await update_document(
+            session,
+            doc_tenant_id,
+            str(document_id),
+            update_payload,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     reviewer_id = body.get("reviewer_id") or getattr(current_user, "sub", None)

@@ -10,7 +10,7 @@ import { getDocumentFieldsConfig } from "../documentFieldsConfig";
 import {
   DOCUMENT_STATUS_META,
 } from "../constants";
-import { formatDate, primaryStatus, resolveRequestedFromDate, normalizeDocTypeCode, resolveDocTypeLabel } from "../documentUtils";
+import { formatDate, primaryStatus, resolveRequestedFromDate, normalizeDocTypeCode, resolveDocTypeLabel, documentHasFiles, statusRequiresUploadedFile } from "../documentUtils";
 import { runtimeBadgeFromDocument } from "../../../utils/runtimeBadgePresentation";
 import { buildMetadataStateFromDoc } from "../documentUtils";
 import type { DocType, MetadataState, CoreFields } from "../types";
@@ -101,19 +101,34 @@ export const DocumentCard = memo(function DocumentCard({
   const metadataValues = metadataEdits[doc.id] ?? buildMetadataStateFromDoc(doc, metadataFields);
   const statusLabel = t(badgePresentation.labelKey, { defaultValue: badgePresentation.badge });
   const selectStatus = statusValue;
-  const hasFiles = doc.has_files ?? (Array.isArray(doc.files) && doc.files.length > 0);
+  const hasFiles = documentHasFiles(doc);
   const firstFileName = Array.isArray(doc.files) ? doc.files[0]?.name : undefined;
-  const needsVerification = badgePresentation.badge === "pending";
-  const isApproved = badgePresentation.badge === "approved" || selectStatus === "approved";
+  const needsVerification = hasFiles && badgePresentation.badge === "pending";
+  const isApproved = hasFiles && (badgePresentation.badge === "approved" || selectStatus === "approved");
+  const canApprove = canManageDocuments && hasFiles;
+  const showTypeLabel = Boolean(typeLabel) && typeLabel.trim().toLowerCase() !== String(title || "").trim().toLowerCase();
+  const showStatusChip = isCompact || hasFiles;
+  const showNextAction = !isCompact && hasFiles && badgePresentation.badge !== "missing";
   const fieldsConfig = getDocumentFieldsConfig(normalizedTypeCode || doc.doc_type || doc.type_code || "");
   const docReminders = Array.isArray(doc.reminders) ? doc.reminders : [];
   const hasLastCheck = Boolean(doc.last_check);
   const showFollowUps = docReminders.length > 0 || hasLastCheck;
+  const showMetaRow =
+    !expanded &&
+    Boolean(
+      showTypeLabel ||
+        doc.number ||
+        doc.issue_date ||
+        doc.expire_date ||
+        doc.expires_at ||
+        doc.ordered_at ||
+        hasFiles,
+    );
 
   /** Next-action badge: hidden in `compact` (no room); fingerprint reflects status/files/expiry. */
   const docNextActionFingerprint = `${doc.status ?? ''}|${doc.expire_date ?? doc.expires_at ?? ''}|${(doc as { deleted_at?: string | null }).deleted_at ?? ''}|${hasFiles ? 1 : 0}`;
   const { data: docNextAction, loading: docNextActionLoading, error: docNextActionError } =
-    useDocumentNextAction(isCompact ? null : doc.id, docNextActionFingerprint);
+    useDocumentNextAction(showNextAction ? doc.id : null, docNextActionFingerprint);
 
   const expanded = !isCompact && Boolean(expandedDocs[doc.id]);
   const toggleExpanded = () => {
@@ -167,16 +182,41 @@ export const DocumentCard = memo(function DocumentCard({
   return (
     <div key={doc.id} className="rounded border border-slate-200 bg-white shadow-sm">
       <div
-        className="flex flex-col gap-3 p-4 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+        className="flex flex-col gap-3 p-4 hover:bg-slate-50 xl:flex-row xl:items-start xl:justify-between"
         onClick={toggleExpanded}
       >
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          {!isCompact && <span className="text-sm">{expanded ? "▾" : "▸"}</span>}
-          <div className="flex-1 min-w-0">
-            <div className="text-base font-semibold text-slate-800">{title}</div>
-            {!expanded && (
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500 mt-1">
-                <span>{typeLabel}</span>
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          {!isCompact && <span className="mt-0.5 shrink-0 text-sm">{expanded ? "▾" : "▸"}</span>}
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="text-base font-semibold text-slate-800 break-words">{title}</div>
+              {showStatusChip ? (
+              <span
+                className={clsx(
+                  "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs",
+                  statusMeta.color
+                )}
+              >
+                {statusLabel}
+                {badgePresentation.showSatisfactionIndicator ? (
+                  <span className="text-[10px] opacity-80" title={t("admin.documents.runtime_badges.satisfies_requirement", { defaultValue: "Satisfies requirement" })}>
+                    ✓
+                  </span>
+                ) : null}
+                {statusUpdating[doc.id] && <span className="text-[10px] text-slate-600">…</span>}
+              </span>
+              ) : null}
+              {showNextAction ? (
+                <NextActionBadge
+                  dto={docNextAction}
+                  loading={docNextActionLoading}
+                  error={docNextActionError}
+                />
+              ) : null}
+            </div>
+            {showMetaRow ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                {showTypeLabel ? <span>{typeLabel}</span> : null}
                 {doc.number && <span>{t("admin.documents.labels.number")} {doc.number}</span>}
                 {doc.issue_date && (
                   <span>
@@ -193,17 +233,16 @@ export const DocumentCard = memo(function DocumentCard({
                     {t("admin.documents.labels.ordered_at", { defaultValue: "Ordered" })} {formatDate(doc.ordered_at)}
                   </span>
                 )}
-                <span
-                  className={clsx(
-                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
-                    hasFiles ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
-                  )}
-                >
-                  {hasFiles ? t("admin.documents.badges.files_present") : t("admin.documents.badges.files_missing")}
-                </span>
-                {hasFiles && firstFileName ? <span className="text-xs text-slate-600">{firstFileName}</span> : null}
+                {hasFiles ? (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                      {t("admin.documents.badges.files_present")}
+                    </span>
+                    {firstFileName ? <span className="text-xs text-slate-600">{firstFileName}</span> : null}
+                  </>
+                ) : null}
               </div>
-            )}
+            ) : null}
             {showFollowUps ? (
               <div
                 className="mt-1.5 flex flex-col gap-1"
@@ -216,30 +255,9 @@ export const DocumentCard = memo(function DocumentCard({
               </div>
             ) : null}
           </div>
-          <span
-            className={clsx(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs",
-              statusMeta.color
-            )}
-          >
-            {statusLabel}
-            {badgePresentation.showSatisfactionIndicator ? (
-              <span className="text-[10px] opacity-80" title={t("admin.documents.runtime_badges.satisfies_requirement", { defaultValue: "Satisfies requirement" })}>
-                ✓
-              </span>
-            ) : null}
-            {statusUpdating[doc.id] && <span className="text-[10px] text-slate-600">…</span>}
-          </span>
-          {!isCompact && (
-            <NextActionBadge
-              dto={docNextAction}
-              loading={docNextActionLoading}
-              error={docNextActionError}
-            />
-          )}
         </div>
         <div
-          className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end"
+          className="flex w-full shrink-0 flex-wrap items-center gap-2 xl:w-auto xl:max-w-[46%] xl:justify-end"
           onClick={(e) => e.stopPropagation()}
         >
           {isCompact ? (
@@ -258,7 +276,9 @@ export const DocumentCard = memo(function DocumentCard({
               >
                 {replaceUploading[doc.id]
                   ? t("admin.documents.status.uploading", { defaultValue: "Uploading..." })
-                  : t("admin.documents.actions.replace")}
+                  : hasFiles
+                    ? t("admin.documents.actions.replace")
+                    : t("admin.documents.actions.choose_file")}
               </button>
               {hasFiles ? (
                 <button
@@ -289,16 +309,22 @@ export const DocumentCard = memo(function DocumentCard({
                   disabled={!canManageDocuments || statusUpdating[doc.id]}
                 >
                   {Object.keys(DOCUMENT_STATUS_META).map((status) => (
-                    <option key={status} value={status}>
+                    <option
+                      key={status}
+                      value={status}
+                      disabled={!hasFiles && statusRequiresUploadedFile(status)}
+                    >
                       {translateStatus(status)}
                     </option>
                   ))}
                 </select>
               </label>
+              {hasFiles ? (
+                <>
               <button
                 className={clsx("btn-xs w-full sm:w-auto", needsVerification ? "btn-primary ring-2 ring-emerald-200" : "btn-primary")}
                 onClick={() => approveDocument(doc)}
-                disabled={!canManageDocuments || statusUpdating[doc.id]}
+                disabled={!canApprove || statusUpdating[doc.id]}
               >
                 {t("admin.documents.actions.approve")}
               </button>
@@ -309,6 +335,8 @@ export const DocumentCard = memo(function DocumentCard({
               >
                 {t("admin.documents.actions.reject")}
               </button>
+                </>
+              ) : null}
                 </>
               ) : null}
               <label className="input btn-xs flex w-full cursor-pointer items-center gap-2 sm:w-auto">

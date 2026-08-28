@@ -330,15 +330,14 @@ async def test_document_status_update_without_files(
         headers=manager_headers,
         json={"status": "approved"},
     )
-    assert approve.status_code == 200, approve.text
-    approved = approve.json()
-    assert approved["status"] == "approved"
+    assert approve.status_code == 422, approve.text
+    assert "without an uploaded file" in approve.text
 
-    # follow-up fetch to ensure status persisted
     fetch = await client.get(f"/api/v1/documents/{doc_id}", headers=manager_headers)
     assert fetch.status_code == 200
     fetched = fetch.json()
-    assert fetched["status"] == "approved"
+    assert fetched["status"] == "in_progress"
+    assert fetched["has_files"] is False
 
 
 @pytest.mark.anyio

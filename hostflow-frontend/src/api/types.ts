@@ -1426,6 +1426,15 @@ export interface Document {
   reminders: DocumentReminder[];
   version?: number | null;
   last_check?: DocumentCheck | null;
+  document_runtime?: {
+    evaluation_version?: string;
+    workflow_status?: string | null;
+    expiry_status?: string | null;
+    runtime_signal?: string | null;
+    satisfies_requirement?: boolean;
+    document_type_code?: string | null;
+    document_id?: string | null;
+  } | null;
   /** Internal staff comment (separate from `user_comment`); some synthetic placeholder
    *  rows constructed in the UI initialise this field to null. */
   comment?: string | null;

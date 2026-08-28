@@ -48,6 +48,68 @@ STATUS_ORDER: Dict[DocumentStatus, int] = {
     DocumentStatus.expired: 10,
 }
 
+# Statuses that mean "the document exists / is confirmed". They are invalid
+# without an uploaded file.
+FILE_REQUIRED_STATUSES: Set[DocumentStatus] = {
+    DocumentStatus.received,
+    DocumentStatus.delivered,
+    DocumentStatus.approved,
+    DocumentStatus.completed,
+    DocumentStatus.verified,
+}
+
+FILE_REQUIRED_STATUS_ALIASES = frozenset({"verified"})
+
+
+def status_requires_uploaded_file(status: DocumentStatus | str | None) -> bool:
+    if status is None:
+        return False
+    if isinstance(status, DocumentStatus):
+        return status in FILE_REQUIRED_STATUSES
+    raw = str(status).strip().lower()
+    if raw in FILE_REQUIRED_STATUS_ALIASES:
+        return True
+    try:
+        return DocumentStatus(raw) in FILE_REQUIRED_STATUSES
+    except ValueError:
+        return False
+
+
+NO_FILE_STATUS_ERROR = "Cannot approve or confirm a document without an uploaded file"
+
+
+def _file_entries(raw: Any) -> List[Dict[str, Any]]:
+    if not isinstance(raw, list):
+        return []
+    return [entry for entry in raw if isinstance(entry, dict)]
+
+
+def document_has_stored_file(doc: Any) -> bool:
+    """True when a Hub document (ORM or snapshot dict) has an uploaded file.
+
+    File presence is independent of workflow status: an ``approved`` row without
+    a file still counts as missing for operators.
+    """
+    if doc is None:
+        return False
+    getter = doc.get if isinstance(doc, dict) else lambda key, default=None: getattr(doc, key, default)
+    files = getter("files", None)
+    entries = _file_entries(files)
+    if entries:
+        for entry in entries:
+            for key in ("url", "storage_path", "path", "name", "key"):
+                value = entry.get(key)
+                if value is not None and str(value).strip():
+                    return True
+        return False
+    if isinstance(files, list):
+        return False
+    if getter("has_files") is True:
+        return True
+    filename = getter("filename", None)
+    path = getter("path", None)
+    return bool(str(filename or "").strip() or str(path or "").strip())
+
 
 WORKFLOW_DEFINITIONS: Dict[DocumentProcessType, WorkflowDefinition] = {
     DocumentProcessType.work_permit: WorkflowDefinition(

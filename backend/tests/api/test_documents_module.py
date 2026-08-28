@@ -28,6 +28,9 @@ async def test_documents_db_flow(
         "expires_at": expires_at,
         "number": "DL-XYZ-001",
         "extra": {"title": "Driver License"},
+        "files": [
+            {"name": "license.pdf", "url": "/uploads/demo/license.pdf"},
+        ],
     }
     create_resp = await client.post(
         f"/api/v1/db/candidate/{candidate_id}/documents",
@@ -307,3 +310,35 @@ async def test_documents_db_flow(
     usage = usage_resp.json()
     assert usage["items"]
     assert any(item["used_in"] == "checklist" for item in usage["items"])
+
+
+@pytest.mark.anyio
+async def test_cannot_approve_document_without_file(
+    client: AsyncClient,
+    candidate_id: str,
+    manager_headers: Dict[str, str],
+) -> None:
+    create_resp = await client.post(
+        f"/api/v1/db/candidate/{candidate_id}/documents",
+        headers=manager_headers,
+        json={"type": "passport", "extra": {"title": "Passport"}},
+    )
+    assert create_resp.status_code == 201, create_resp.text
+    created = create_resp.json()
+    assert created["has_files"] is False
+    doc_id = created["id"]
+
+    check_resp = await client.post(
+        f"/api/v1/db/documents/{doc_id}/check",
+        headers=manager_headers,
+        json={"decision": "approved", "comment": "no file"},
+    )
+    assert check_resp.status_code == 422, check_resp.text
+    assert "without an uploaded file" in check_resp.text
+
+    fetched = (
+        await client.get(f"/api/v1/db/documents/{doc_id}", headers=manager_headers)
+    ).json()
+    assert fetched["has_files"] is False
+    assert fetched["status"] not in {"approved", "verified", "received"}
+    assert (fetched.get("document_runtime") or {}).get("workflow_status") == "missing"

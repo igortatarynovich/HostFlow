@@ -12,6 +12,7 @@ from backend.app.modules.documents.crud import list_candidate_documents
 from backend.app.services.document_runtime_delivery_contract import (
     enrich_snapshot_via_contract,
 )
+from backend.app.services.document_workflow import document_has_stored_file
 from backend.app.requirement_rules.constants import REQUIREMENT_EVALUATION_V1
 from backend.app.requirement_rules.registry import RequirementRulesNotFoundError
 
@@ -122,7 +123,10 @@ def _document_row_to_snapshot(doc: Any) -> dict[str, Any]:
         "status": status,
         "readiness_state": meta.get("readiness_state"),
         "verified_at": meta.get("verified_at"),
-        "has_files": bool(files),
+        "has_files": document_has_stored_file(doc),
+        "files": files if isinstance(files, list) else [],
+        "filename": getattr(doc, "filename", None),
+        "path": getattr(doc, "path", None),
         "expires_on": expire_date.isoformat() if expire_date else None,
         "expire_date": expire_date,
         "meta": meta,

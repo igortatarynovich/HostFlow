@@ -11183,7 +11183,8 @@
         "template_apply_failed": "Nie udało się zastosować szablonu",
         "download_failed": "Nie udało się pobrać profilu",
         "notify_failed": "Nie udało się powiadomić kandydata",
-        "no_file_to_delete": "Brak pliku do usunięcia"
+        "no_file_to_delete": "Brak pliku do usunięcia",
+        "file_required_to_approve": "Nie można zatwierdzić dokumentu bez przesłanego pliku"
       },
       "actions": {
         "upload": "Prześlij",
@@ -11432,7 +11433,8 @@
         "ready": "Gotowy"
       },
       "hints": {
-        "review_required": "Wymagana recenzja"
+        "review_required": "Wymagana recenzja",
+        "file_required_to_approve": "Najpierw prześlij plik — bez niego nie można zatwierdzić dokumentu."
       },
       "template": {
         "select": "Wybierać"

@@ -11183,7 +11183,8 @@
         "template_apply_failed": "Failed to apply template",
         "download_failed": "Failed to download profile",
         "notify_failed": "Failed to notify candidate",
-        "no_file_to_delete": "No file to delete"
+        "no_file_to_delete": "No file to delete",
+        "file_required_to_approve": "Cannot approve or confirm a document without an uploaded file"
       },
       "actions": {
         "upload": "Upload",
@@ -11444,7 +11445,8 @@
         "ready": "Ready"
       },
       "hints": {
-        "review_required": "Review required"
+        "review_required": "Review required",
+        "file_required_to_approve": "Upload a file before confirming or approving this document."
       },
       "template": {
         "select": "Select"

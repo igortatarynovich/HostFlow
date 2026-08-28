@@ -55,11 +55,14 @@ from backend.app.services.document_orders import (
 from backend.app.services.document_ruleset import load_default_ruleset
 from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 from backend.app.services.document_workflow import (
+    NO_FILE_STATUS_ERROR,
     WORKFLOW_DEFINITIONS,
     auto_status as compute_auto_status,
     default_workflow,
+    document_has_stored_file,
     normalize_workflow,
     STATUS_ORDER,
+    status_requires_uploaded_file,
 )
 from backend.app.observability.metrics import refresh_documents_overdue_metrics
 from backend.app.services import candidate_notifications
@@ -491,7 +494,7 @@ def _readiness_state(
 ) -> str:
     status_lower = status_value.lower()
     if status_lower in READY_STATUSES:
-        return "ready"
+        return "ready" if has_files else "requested"
     if status_lower in PROBLEM_STATUSES:
         return "problem"
     if status_lower in IN_PROGRESS_STATUSES:
@@ -639,7 +642,7 @@ def _row_to_out(d: Document) -> DocumentOut:
     expire_date = getattr(d, "expire_date", None)
     ordered_at = getattr(d, "ordered_at", None)
     valid_from = getattr(d, "valid_from", None)
-    has_files = bool(files)
+    has_files = bool(files) or document_has_stored_file(d)
     status_rank = _status_rank(status_value)
     readiness_state = _readiness_state(
         status_value,
@@ -1212,17 +1215,24 @@ async def update_document(
 
     if payload.files is not None:
         obj.files = [f.model_dump() for f in payload.files]
+        if not obj.files:
+            obj.filename = None
+            obj.path = None
 
-    has_files = bool(obj.files)
+    has_files = document_has_stored_file(obj)
 
     if payload.status is not None:
         status_value = _status_or_422(payload.status)
+        if not has_files and status_requires_uploaded_file(status_value):
+            raise HTTPException(status_code=422, detail=NO_FILE_STATUS_ERROR)
     else:
         current_status = getattr(obj, "status", None)
         if isinstance(current_status, DocumentStatus):
             status_value = current_status
         else:
             status_value = _status_or_422(current_status)
+        if not has_files and status_requires_uploaded_file(status_value):
+            status_value = DocumentStatus.missing
 
     auto_status_value = compute_auto_status(
         status_value,
@@ -1233,6 +1243,8 @@ async def update_document(
     )
     if payload.status is not None and status_value in (DocumentStatus.rejected, DocumentStatus.expired):
         auto_status_value = status_value
+    if not has_files and status_requires_uploaded_file(auto_status_value):
+        auto_status_value = DocumentStatus.missing
 
     obj.status = auto_status_value
 

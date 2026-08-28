@@ -26,9 +26,12 @@ from backend.app.services.document_catalog import (
     normalize_status,
 )
 from backend.app.services.document_workflow import (
+    NO_FILE_STATUS_ERROR,
     default_workflow,
+    document_has_stored_file,
     normalize_workflow,
     auto_status as compute_auto_status,
+    status_requires_uploaded_file,
 )
 from backend.app.services.ruleset_versioning import (
     compute_ruleset_diff,
@@ -544,6 +547,9 @@ async def update_document(
             next_doc_attribution_bytes=next_b,
         )
         doc.files = files or None
+        if not files:
+            doc.filename = None
+            doc.path = None
         changes["files"] = doc.files
 
     if "user_comment" in payload:
@@ -602,7 +608,12 @@ async def update_document(
     else:
         status_enum = doc.status if isinstance(doc.status, DocumentStatus) else normalize_status(doc.status)
 
-    has_files = bool(doc.files)
+    has_files = document_has_stored_file(doc)
+    if not has_files:
+        if manual_status_provided and status_requires_uploaded_file(status_enum):
+            raise ValueError(NO_FILE_STATUS_ERROR)
+        if status_requires_uploaded_file(status_enum):
+            status_enum = DocumentStatus.missing
     auto_status_value = compute_auto_status(
         status_enum,
         process_type=process_type_enum,
@@ -610,6 +621,8 @@ async def update_document(
         has_files=has_files,
         expire_date=_as_date(doc.expire_date),
     )
+    if not has_files and status_requires_uploaded_file(auto_status_value):
+        auto_status_value = DocumentStatus.missing
     if manual_status_provided:
         doc.status = (
             auto_status_value

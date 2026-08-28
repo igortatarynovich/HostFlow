@@ -81,6 +81,40 @@ describe('runtimeBadgePresentation', () => {
     expect(runtimeBadgeFromDocument(doc).badge).toBe('approved')
   })
 
+  it('does not show missing when runtime is absent but a file is uploaded', () => {
+    expect(
+      runtimeBadgeFromDocument({
+        has_files: true,
+        files: [{ name: 'Paszport.pdf' }],
+        status: 'approved',
+      }).badge,
+    ).toBe('approved')
+    expect(
+      runtimeBadgeFromDocument({
+        has_files: true,
+        files: [{ name: 'PJ.pdf' }],
+        status: 'uploaded',
+      }).badge,
+    ).toBe('pending')
+  })
+
+  it('shows missing only when there is no file and no runtime', () => {
+    expect(runtimeBadgeFromDocument({ has_files: false, files: [], status: 'approved' }).badge).toBe(
+      'missing',
+    )
+  })
+
+  it('does not show missing when a file is uploaded even if runtime says missing', () => {
+    expect(
+      runtimeBadgeFromDocument({
+        has_files: true,
+        files: [{ name: 'Paszport.pdf' }],
+        status: 'approved',
+        document_runtime: { workflow_status: 'missing', runtime_signal: 'missing' },
+      }).badge,
+    ).toBe('approved')
+  })
+
   it('isRuntimeExpiringSoon is a thin runtime adapter', () => {
     expect(
       isRuntimeExpiringSoon({

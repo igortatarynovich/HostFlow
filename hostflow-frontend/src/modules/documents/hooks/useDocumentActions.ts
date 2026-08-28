@@ -9,6 +9,7 @@ import { formatErrorForDisplay } from "../../../utils/errorHandling";
 import { usePlanLimitModal } from "../../../contexts/PlanLimitModalContext";
 import { useI18n } from "../../../i18n";
 import { getDocumentFieldsConfig } from "../documentFieldsConfig";
+import { documentHasFiles, statusRequiresUploadedFile } from "../documentUtils";
 import type { DocumentPatchPayload, CreateCandidateDocumentPayload } from "../../../api/documents";
 import { createCandidateDocument } from "../../../api/documents";
 import type { CoreFields, MetadataState } from "../types";
@@ -104,6 +105,14 @@ export function useDocumentActions({
         setError(t("admin.documents.errors.permission_edit"));
         return;
       }
+      if (statusRequiresUploadedFile(newStatus) && !documentHasFiles(doc)) {
+        setError(
+          t("admin.documents.errors.file_required_to_approve", {
+            defaultValue: "Cannot approve or confirm a document without an uploaded file",
+          }),
+        );
+        return;
+      }
       setStatusUpdating((prev) => ({ ...prev, [doc.id]: true }));
       try {
         let targetDoc = doc;
@@ -147,6 +156,14 @@ export function useDocumentActions({
     async (doc: Document) => {
       if (!canManageDocuments) {
         setError(t("admin.documents.errors.permission_approve"));
+        return;
+      }
+      if (!documentHasFiles(doc)) {
+        setError(
+          t("admin.documents.errors.file_required_to_approve", {
+            defaultValue: "Cannot approve or confirm a document without an uploaded file",
+          }),
+        );
         return;
       }
       setStatusUpdating((prev) => ({ ...prev, [doc.id]: true }));

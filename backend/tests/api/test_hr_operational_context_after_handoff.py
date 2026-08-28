@@ -39,7 +39,11 @@ async def test_hr_operational_context_case_links_and_hr_review_does_not_replace_
     doc_resp = await client.post(
         f"/api/v1/candidates/{candidate_id}/documents",
         headers=rec_json,
-        json={"doc_type": "driver_license", "status": "uploaded"},
+        json={
+            "doc_type": "driver_license",
+            "status": "uploaded",
+            "files": [{"name": "license.pdf", "url": "/uploads/demo/license.pdf"}],
+        },
     )
     assert doc_resp.status_code == 201, doc_resp.text
     doc_id = doc_resp.json()["id"]

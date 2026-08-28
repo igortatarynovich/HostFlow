@@ -71,6 +71,26 @@ def test_runtime_uploaded_not_satisfied() -> None:
     assert any(row["code"] == "document_pending_verification" for row in runtime["warnings"])
 
 
+def test_runtime_file_present_overrides_missing_status() -> None:
+    runtime = evaluate_document_runtime(
+        {"document_type_code": "passport", "status": "missing", "has_files": True},
+        document_type_code="passport",
+    )
+    assert runtime["workflow_status"] == "uploaded"
+    assert runtime["runtime_signal"] == "pending_verification"
+    assert runtime["satisfies_requirement"] is False
+
+
+def test_runtime_approved_without_file_is_missing() -> None:
+    runtime = evaluate_document_runtime(
+        {"document_type_code": "passport", "status": "approved", "has_files": False},
+        document_type_code="passport",
+    )
+    assert runtime["workflow_status"] == "missing"
+    assert runtime["runtime_signal"] == "missing"
+    assert runtime["satisfies_requirement"] is False
+
+
 def test_runtime_pending_review_not_satisfied() -> None:
     runtime = evaluate_document_runtime(
         {"document_type_code": "passport", "status": "submitted", "has_files": True},

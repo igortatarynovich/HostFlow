@@ -73,6 +73,7 @@ import {
   computeTodayIso,
   normalizeDocTypeCode,
   resolveDocTypeLabel,
+  documentHasFiles,
 } from "./documentUtils";
 import {
   documentMatchesRuntimeFilterSelection,
@@ -83,6 +84,7 @@ import {
 import {
   extractRuntimeItemsFromSummary,
   indexRuntimeItemsByType,
+  runtimeBadgeFromDocument,
   runtimeBadgeFromRuntime,
   type RuntimeBadgePresentation,
 } from "../../utils/runtimeBadgePresentation";
@@ -1101,8 +1103,13 @@ useEffect(() => {
       const typeCode = normalizeDocTypeCode(String(rawType));
       const typeInfo = typeByCode.get(typeCode);
       const label = getDocTypeLabel(typeCode, typeInfo?.name);
-      const badge = runtimeBadgeFromRuntime(runtimeByType.get(typeCode));
       const documentsForType = docs.filter((doc) => normalizeDocTypeCode(doc.type_code || doc.doc_type || "") === typeCode);
+      const instanceWithFile = documentsForType.find((doc) => documentHasFiles(doc));
+      const badge = instanceWithFile
+        ? runtimeBadgeFromDocument(instanceWithFile)
+        : documentsForType[0]
+          ? runtimeBadgeFromDocument(documentsForType[0])
+          : runtimeBadgeFromRuntime(runtimeByType.get(typeCode));
       return { type: typeCode, label, badge, documents: documentsForType };
     });
   }, [checklist, summaryResponse, docs, typeByCode, getDocTypeLabel]);
