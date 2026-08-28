@@ -62,8 +62,12 @@ async def resolve_sales_inquiry_and_lead(
         if inquiry is not None:
             return inquiry, lead
 
-    inquiry = await db.get(SalesInquiry, aid)
-    if inquiry is None or str(inquiry.tenant_id) != tid:
+    inquiry = await db.scalar(
+        select(SalesInquiry)
+        .where(SalesInquiry.id == aid, SalesInquiry.tenant_id == tid)
+        .limit(1)
+    )
+    if inquiry is None:
         raise LookupError("application not found")
 
     lead_id = str(inquiry.lead_id or "").strip()
@@ -80,8 +84,12 @@ async def _ensure_missing_client_sales_inquiries(
     *,
     tenant_id: str,
     own_company_id: str | None,
-) -> None:
-    """Create SI rows for client transport leads that still lack one (Meta inbox)."""
+) -> int:
+    """Create SI rows for client transport leads that still lack one (Meta inbox).
+
+    Returns how many SalesInquiry rows were created in this call. Callers that
+    serve HTTP must commit afterwards — otherwise list returns IDs that GET 404s.
+    """
     stmt = (
         select(Lead)
         .outerjoin(
@@ -103,6 +111,7 @@ async def _ensure_missing_client_sales_inquiries(
     if oc:
         stmt = stmt.where(Lead.own_company_id == oc)
     rows = (await db.execute(stmt)).scalars().all()
+    created = 0
     for lead in rows:
         source = str(getattr(lead, "source", None) or "meta").strip() or "meta"
         try:
@@ -112,8 +121,10 @@ async def _ensure_missing_client_sales_inquiries(
                 lead=lead,
                 source=source,
             )
+            created += 1
         except SalesInquiryTransportConflictError:
             continue
+    return created
 
 
 async def list_sales_inquiry_pairs(

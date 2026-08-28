@@ -91,6 +91,9 @@ async def list_sales_inquiries(
         offset=offset,
     )
     items = [sales_inquiry_to_application(inquiry, lead) for inquiry, lead in pairs]
+    # List backfills missing SalesInquiry rows for Meta client leads. Without a
+    # commit those ids vanish when the request session closes and GET 404s.
+    await db.commit()
     return ApplicationListResponse(items=items, total=total)
 
 
@@ -102,7 +105,10 @@ async def get_sales_inquiry(
     _role: str = Depends(require_trust_read()),
 ) -> ApplicationOut:
     db, tenant_id = db_tenant
-    return await mutations._reload_sales(db, str(tenant_id), own_company_id, application_id)
+    result = await mutations._reload_sales(db, str(tenant_id), own_company_id, application_id)
+    # Persist ensure_if_lead backfill (Lead-keyed compat) for the next request.
+    await db.commit()
+    return result
 
 
 @sales_router.get(
@@ -132,6 +138,7 @@ async def get_sales_inquiry_capability_spine(
         tenant_id=str(tenant_id),
         application_id=str(inquiry.id),
     )
+    await db.commit()
     return SalesCapabilitySpineOut.model_validate(payload)
 
 
@@ -166,6 +173,7 @@ async def list_sales_inquiry_possible_duplicates(
         SalesInquiryDuplicateHintOut(application=app, match_reason=reason)
         for app, reason in hits
     ]
+    await db.commit()
     return SalesInquiryDuplicateListResponse(items=items, total=len(items))
 
 

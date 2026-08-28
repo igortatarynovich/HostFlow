@@ -328,3 +328,51 @@ async def test_http_sales_list_get_keyed_by_sales_inquiry(
     assert rec_list.status_code == 200, rec_list.text
     rec_ids = {str(item.get("id") or "") for item in (rec_list.json().get("items") or [])}
     assert str(inquiry.id) not in rec_ids
+
+
+@pytest.mark.asyncio
+async def test_http_sales_list_backfill_is_durable_on_get(
+    client,
+    manager_headers,
+    db,
+    tenant_id: str,
+) -> None:
+    """Meta client leads without a persisted SI must survive list → GET.
+
+    List backfills SalesInquiry in the request session. If that row is not
+    committed, the inbox shows an id that GET /sales/inquiries/{id} 404s.
+    """
+    own_company_id = await _own_company_id(db, tenant_id)
+    lead = await leads_crud.create_lead(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        company_id=None,
+        vacancy_id=None,
+        payload={},
+        normalized={"company_name": "Backfill Logistics", "email": "ops@backfill.example"},
+        source="meta",
+        lead_type="client",
+        lead_target_type="client_lead",
+    )
+    await db.commit()
+
+    headers = {**manager_headers, "X-Own-Company-Id": own_company_id}
+    listed = await client.get("/api/v1/sales/inquiries", headers=headers)
+    assert listed.status_code == 200, listed.text
+    items = listed.json().get("items") or []
+    row = next(
+        (item for item in items if str(item.get("transport_lead_id") or "") == str(lead.id)),
+        None,
+    )
+    assert row is not None, "list must include the client lead after SI backfill"
+    si_id = str(row.get("id") or "")
+    assert si_id
+    assert si_id != str(lead.id)
+
+    got = await client.get(f"/api/v1/sales/inquiries/{si_id}", headers=headers)
+    assert got.status_code == 200, got.text
+    body = got.json()
+    assert body["id"] == si_id
+    assert body["transport_lead_id"] == str(lead.id)
+    assert body["module"] == "sales"

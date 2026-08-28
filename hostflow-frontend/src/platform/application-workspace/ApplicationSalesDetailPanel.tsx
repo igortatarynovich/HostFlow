@@ -83,6 +83,7 @@ export function ApplicationSalesDetailPanel({
 
   return (
     <div
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"
       data-entity-workspace-slot="context-rail"
       data-entity-workspace-consumer={SALES_INQUIRY_COMPOSITION_CONSUMER_ID}
     >

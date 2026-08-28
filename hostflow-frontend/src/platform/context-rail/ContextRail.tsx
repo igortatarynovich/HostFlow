@@ -56,7 +56,7 @@ export function ContextRail({
 
   return (
     <div
-      className="flex h-full min-h-0 flex-col overflow-hidden bg-white"
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white"
       data-context-rail={railKind ?? 'v1'}
       data-decision-state={decision.stateId}
     >

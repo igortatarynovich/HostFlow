@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { IconArrowRight, IconFilter, IconInbox, IconPhone } from '@tabler/icons-react'
@@ -49,6 +49,8 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
   const [listTotal, setListTotal] = useState(0)
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const allApplicationsRef = useRef(allApplications)
+  allApplicationsRef.current = allApplications
 
   const splitView = Boolean(selectedId)
   const serverTabs = Boolean(config.serverTabPagination)
@@ -131,7 +133,15 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
     async (id: string) => {
       setDetailLoading(true)
       try {
-        const row = await config.getApplication(id)
+        let row
+        try {
+          row = await config.getApplication(id)
+        } catch {
+          const cached = allApplicationsRef.current.find((item) => item.id === id)
+          const transportId = String(cached?.transport_lead_id || '').trim()
+          if (!transportId || transportId === id) throw new Error('application not found')
+          row = await config.getApplication(transportId)
+        }
         if (row.module !== config.module) {
           setSelectedApplication(null)
           navigate(config.homePath, { replace: true })
@@ -264,7 +274,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-slate-50/80">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-slate-50/80">
       <div className="shrink-0 space-y-4 border-b border-slate-200 bg-white px-4 py-4">
         <h1 className="text-lg font-bold text-slate-900">{config.objectNamePlural}</h1>
 
@@ -332,12 +342,13 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
         <section className="m-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error}</section>
       ) : (
         <div
-          className="grid min-h-0 flex-1"
+          className="grid min-h-0 flex-1 overflow-hidden"
           data-hf-decision-mode={splitView ? 'context' : 'table'}
           style={{
             gridTemplateColumns: splitView
               ? `minmax(0, 1fr) ${DEFAULT_DETAIL_RAIL_WIDTH_PX}px`
               : 'minmax(0, 1fr)',
+            gridTemplateRows: 'minmax(0, 1fr)',
           }}
         >
           <div className="min-h-0 min-w-0 overflow-auto bg-white">
@@ -384,7 +395,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
               {detailLoading || !selectedApplication ? (
                 <p className="p-6 text-sm text-slate-500">{t('common.loading')}</p>
               ) : (
-                <div className="flex min-h-0 flex-1 flex-col">
+                <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
                   {config.renderDetail({
                     application: selectedApplication,
                     onRefresh: () => void refreshApplication(selectedApplication.id),

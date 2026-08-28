@@ -207,10 +207,12 @@ async def load_sales_inquiry_for_spine(
     )
     if by_lead is not None:
         return by_lead
-    row = await db.get(SalesInquiry, aid)
-    if row is not None and str(row.tenant_id) == tid:
-        return row
-    return None
+    row = await db.scalar(
+        select(SalesInquiry)
+        .where(SalesInquiry.id == aid, SalesInquiry.tenant_id == tid)
+        .limit(1)
+    )
+    return row
 
 
 async def get_capability_spine_for_application(
