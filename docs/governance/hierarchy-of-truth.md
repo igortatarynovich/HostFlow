@@ -87,7 +87,7 @@
 | **Implementation notes / tasks** | `docs/specs/tasks/*.md` |
 | **Research drafts** | `docs/specs/workflows/*-research.md`, `docs/analysis/` |
 | **Plans / migration plans** | `docs/specs/db/migrations_plan_*.md`, drafts in `docs/specs/architecture/phase-*-plan.md` (когда не L2-канон) |
-| **Runbooks (operational)** | `docs/META_GRAPH_190_FIX.md`, `docs/VAPID_KEYS.md`, `docs/FRONTEND_DEPLOY.md`, `deploy/TROUBLESHOOTING.md` (после реструктуризации — `docs/runbooks/`) |
+| **Runbooks (operational)** | [`docs/runbooks/README.md`](../runbooks/README.md) — **индекс обязательного набора** (сам индекс нормативен для состава); процедуры: `docs/META_GRAPH_190_FIX.md`, `docs/VAPID_KEYS.md`, `docs/FRONTEND_DEPLOY.md`, `deploy/TROUBLESHOOTING.md`, далее — `docs/runbooks/<slug>.md` |
 | **Seeds** | `docs/specs/seeds/*.md` |
 | **i18n drafts** | `docs/specs/i18n/<step>-<scope>.md` |
 | **PR checklists** | `docs/devel/*.md` |

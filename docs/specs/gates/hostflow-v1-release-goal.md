@@ -27,7 +27,7 @@ A first paying tenant operated by a non-developer: configure without code → ex
 
 ## Finite criterion
 
-HostFlow v1 is **release-ready** when a tenant can be configured without code, acquire an external candidate, map source data into canonical entities, operate the candidate through recruitment using operator-managed requirements and documents, communicate with the candidate, complete hiring, transfer the person into the minimum employee state, and pass the [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md).
+HostFlow v1 is **release-ready** when a tenant can be configured without code, acquire an external candidate, map source data into canonical entities, operate the candidate through recruitment using operator-managed requirements and documents, communicate with the candidate, complete hiring, transfer the person into the minimum employee state — **and** when that tenant can be deployed onto, recovered, exported and offboarded by an operator who did not build the system ([blocker 6](../tasks/operate-and-launch.md)) — proven by the [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md).
 
 Close-out of v1 is this criterion **plus** the [Goal Completion Gate](goal-completion-gate.md) against this section — not “all named slices in an amendment merged.”
 
@@ -57,6 +57,9 @@ A Settings page that edits non-authority JSON is **not** ready. All four must ho
 | **3** | **External Intake / Forms Publish** — [brief](../tasks/external-intake-forms-publish.md) (queued) | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
 | **4** | **Hiring workflow E2E** — [brief](../tasks/hiring-workflow-e2e.md) (queued) | One candidate: `stage → requirements/docs → eligibility → transfer`. Acceptance over existing funnels, gates, policy authority, and transfer — **not** a new Hiring Product. |
 | **5** | **Minimal Recruitment → HR handoff** — [brief](../tasks/recruitment-hr-minimal-handoff.md) (queued) | Hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy. Full HR operations (Kadry, payroll, extended lifecycle) are later. |
+| **6** | **Operate & Launch** — [brief](../tasks/operate-and-launch.md) (queued; **Launch-ops track**) | Deployed, rolled back, monitored, backed up and restored from written procedures; tenant created, loaded, exported and erased as product; support and incident path named. Not an SRE programme, not IaC, not steady-state operations. |
+
+Blockers 1–5 are **capability** blockers: they make the product complete. Blocker 6 is an **operability** blocker: it makes the product sellable. Blocker 6 is not a capability node in the DAG and does not consume a Product slot — it runs as the parallel **Launch-ops** track, because a paying tenant cannot be served by features alone.
 
 Every blocker now has a brief with `Original Goal → Completion Proof`, an internal slice ladder with named gates, and an estimate. A brief is **not** a schedule: only the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) activates a slice, and the Active Product remains RPM-1.
 
@@ -108,22 +111,24 @@ Grain: **capabilities**, not slices. This is **not** a sequential Product ladder
 ```text
 Release Goal (finite criterion)
         │
-        │     five blocker capabilities (a set, not a ladder)
-        ├─ Requirement Policy Management
-        ├─ Mapping Authority
-        ├─ External Intake / Forms Publish
-        ├─ Hiring workflow E2E
-        └─ Minimal Recruitment → HR handoff
-        │
-        ▼
-dependency / integration gates (acceptance edges below)
-        │
-        ▼
-Release Candidate
+        │     five blocker capabilities (a set, not a ladder)      Launch-ops track (parallel)
+        ├─ Requirement Policy Management                           ┌─ Operate & Launch (blocker 6)
+        ├─ Mapping Authority                                       │    deploy · rollback · signal
+        ├─ External Intake / Forms Publish                         │    backup · restore
+        ├─ Hiring workflow E2E                                     │    tenant lifecycle · support
+        └─ Minimal Recruitment → HR handoff                        └────────────┐
+        │                                                                       │
+        ▼                                                                       │
+dependency / integration gates (acceptance edges below)                         │
+        │                                                                       │
+        ▼                                                                       │
+Release Candidate  ◄──── requires a deploy procedure + clean migrations ────────┘
         │
         ▼
 Release Readiness Gate
 ```
+
+Blocker 6 is drawn beside the capability set, not inside it: it is a precondition of the **Release Candidate** node (a tagged build deployed to a non-developer target with migrations applied to a fresh database) and of readiness questions RR3 / RR4 / RR7. It has no acceptance edge to or from any capability.
 
 The last two nodes are defined in one place: **Release Candidate** (what build acceptance runs on), the seven readiness questions, and the outcome vocabulary all live in the [Release Readiness Gate](release-readiness-gate.md). This file does not restate them.
 
@@ -177,12 +182,13 @@ Recorded at Goal seal. Not a PASS.
 | External Intake / Forms Publish | partial (Foundation serve→execute) | no (P3 locked) | partial | OPEN |
 | Hiring workflow E2E | partial (funnels / gates / transfer) | partial | not proven vs policy authority | OPEN |
 | Minimal HR handoff | partial (E3/E4 Document Link) | partial | partial | OPEN |
+| Operate & Launch (blocker 6, added 2026-08-28) | no (no deploy / rollback / backup procedure) | partial (tenant create only; no delete, no export, no bulk import) | no (in-process queue + local disk are the defaults) | OPEN |
 
 ---
 
 ## What this document does not do
 
-- Does not schedule Mapping, External Intake, Hiring E2E, or min HR (RPM is scheduled in the sequential queue, not by this file)  
+- Does not schedule Mapping, External Intake, Hiring E2E, min HR, or Operate & Launch (RPM is scheduled in the sequential queue, not by this file; the Launch-ops track is opened by a queue amendment)  
 - Does not lock a linear program / slice order (that is the sequential queue)  
 - Does not reopen E8-eval, Overlay, CL7, DR1-runtime, or E8-bind  
 - Does not mark Documents Foundation ✅  
@@ -199,4 +205,6 @@ Recorded at Goal seal. Not a PASS.
 - [Release Readiness acceptance suite](../journeys/release-readiness-acceptance-suite.md) — RS-1…RS-12 and the coverage matrix  
 - [Goal Completion Gate](goal-completion-gate.md) — original goal vs substituted brief  
 - [Platform capability maturity](../architecture/platform-capability-maturity.md) — platform maturity ≠ v1 Release Goal  
-- [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [ADR-019](../architecture/ADR-019-automation-capability-entitlement-control-plane.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md)
+- [Operate & Launch](../tasks/operate-and-launch.md) — blocker 6 (Launch-ops track) · [Runbook index](../../runbooks/README.md) — required procedures with owner and status
+- [Unowned work register](v1-unowned-work-register.md) — what v1 deliberately does not own, and the five undecided rows that block the gate from opening
+- [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [ADR-019](../architecture/ADR-019-automation-capability-entitlement-control-plane.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md) (tenant data lifecycle)

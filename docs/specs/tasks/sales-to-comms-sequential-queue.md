@@ -31,6 +31,7 @@
 |-------|-------------|------|
 | **Product** | **[RPM-1 Authority contract](requirement-policy-management.md)** (brief; feat locked) — first Product from [Release DAG](../gates/hostflow-v1-release-goal.md) after [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Not Mapping. Not Hiring E2E. Not OCR. Do not invent CL8. Do not mark Foundation ✅ | Almost all capacity |
 | **Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` — [brief](platform-reference-identity-sot.md). No named Engineering successor this amendment. Never collapse with **Epic C residual R1** (C2.4) or **Acquisition R6**. [#127](https://github.com/igortatarynovich/HostFlow/pull/127) / pytest = background — **not** Active Engineering |
+| **Launch-ops** | **[Operate & Launch](operate-and-launch.md)** — v1 blocker 6 (brief this amendment; **not scheduled**, no Active Launch-ops slice yet). Write-set: `deploy/`, `docs/runbooks/`, infra defaults, tenant-lifecycle surfaces. Occupies the second-track slot left free by Engineering DONE. Not an SRE programme. Not Billing | Second track, small share of capacity |
 
 ---
 
@@ -48,6 +49,8 @@ Reaching the program horizon of this section is **not** a release. Release-ready
 | **Queued Product successor** | **RPM-2** Operator overlay, then **RPM-3** Consumer cutover — [brief](requirement-policy-management.md). Mapping remains startable **after** RPM program close (not auto-scheduled). The four remaining v1 blockers are **briefed but unscheduled** — see § v1 blocker programs beyond this horizon. Not OCR / packages / automation plane / extensions / Billing product / AI. Do not invent CL8. Do not mark Foundation ✅. |
 | **Active Engineering** | **DONE** — Reference Program Exit Gate **PASS** [#298](https://github.com/igortatarynovich/HostFlow/pull/298) / `ff0b914c` (`ref-id-exit`). No named successor. |
 | **Queued Engineering after Exit** | none this amendment. Pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) stay background |
+| **Active Launch-ops** | **none** — [Operate & Launch](operate-and-launch.md) is briefed, not started. Opening it requires an amendment naming **OL-1** and the RR3 / RR4 / RR7 owners. Brief ≠ schedule |
+| **Queued Launch-ops** | **OL-1** Launch contract & ownership seal, then OL-2…OL-7 — [brief](operate-and-launch.md). The migration blocker (`alembic upgrade heads` fails on a fresh DB, [AGENTS.md](../../../AGENTS.md)) is owned by **OL-2**, not by the pytest background item |
 | **Phase E** | **E7 = DONE**. **E8-bind = DONE** (Gate PASS [#321] / `8246421f`). **E8-eval = DONE** (Gate PASS [#324] / `19c95ef6`). **Product = RPM-1** (not a Phase E leftover) |
 | **Frozen** | C2.4 Scheduling (**Epic C residual R1** — not Reference R1) |
 
@@ -57,7 +60,7 @@ Historical markers (A2 active, Meta Intake next, Phase E active = E7 feat) live 
 
 1. **One Active Product slice**, **or Product DONE with no named successor until amendment**. This amendment names **RPM-1** after DAG review [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Unlock ≠ silent schedule.  
 2. **One Active Engineering slice**, except the named fan-out window `{Reference R2, Reference R3}` after Reference R1 Gate, **or Engineering DONE with no named successor**. After Exit PASS with no successor, Engineering is DONE — do not promote pytest / [#127](https://github.com/igortatarynovich/HostFlow/pull/127) to Active Engineering.  
-3. **No third track.** Unlocked work does not create a stream.  
+3. **Two named tracks maximum.** A track exists only when this section names it with an owner and a write-set; unlocked work never creates a stream by itself. Engineering is **DONE with no successor**, so this amendment assigns the second slot to **Launch-ops** ([Operate & Launch](operate-and-launch.md), v1 blocker 6). Reviving Engineering would require closing or parking Launch-ops first — never three concurrent tracks.  
 4. **Unlock ≠ schedule.** A satisfied unlock condition does **not** auto-start the slice. Only the owning track’s queue may activate it.  
 5. **One work = one unlock condition.** Two independent unlocks ⇒ two named slices.  
 6. **Do not skip a named gate.** Do not start the next slice in the same PR as its predecessor.  
@@ -69,6 +72,9 @@ Historical markers (A2 active, Meta Intake next, Phase E active = E7 feat) live 
    - CL document identity ∥ Reference R3 — forbidden.  
    - CL required-doc policy ∥ Reference R5 — forbidden.  
    - Vacancy Overlay ∥ Reference R5 pack / `tenant_delta` merge — forbidden. Overlay is vacancy-specific delta over Profile / Screening Pack, not R5 policy merge.  
+   - Product ∥ **Launch-ops** OL-1…OL-5 / OL-7 — allowed (docs, `deploy/`, infra config, runbooks; no product-module writes).  
+   - Product ∥ **Launch-ops OL-6** (tenant lifecycle as product) — allowed **only** while the Active Product slice writes a different module; OL-6 touches tenant / superadmin / export surfaces.  
+   - Any Launch-ops slice ∥ a Product slice editing the same file — forbidden, as for every other track.  
 9. **Naming.** Prose: **Reference Rn**, **Epic C residual R1**, **Acquisition R6**. Machine ids: `ref-id-r1` … `ref-id-r5`. Never a bare `R1` in execution text.
 
 ### Engineering ladder
@@ -163,8 +169,35 @@ Every remaining v1 blocker now has a brief with an internal slice ladder, named 
 | External Intake / Forms Publish | [external-intake-forms-publish.md](external-intake-forms-publish.md) | FP-1…FP-5 | 5–7 slices | queue amendment; FP-5 needs Mapping close |
 | Hiring workflow E2E | [hiring-workflow-e2e.md](hiring-workflow-e2e.md) | HE-1…HE-4 | 4–6 slices | RPM program close (policy authority edge) |
 | Minimal Recruitment → HR handoff | [recruitment-hr-minimal-handoff.md](recruitment-hr-minimal-handoff.md) | HH-1…HH-4 | 4–6 slices | Hiring E2E program close |
+| **Operate & Launch** (blocker 6, **Launch-ops track**) | [operate-and-launch.md](operate-and-launch.md) | OL-1…OL-7 | 10–14 slices | amendment naming OL-1 + RR3 / RR4 / RR7 owners |
 
-**Estimate unit:** 1 slice = one docs PR + one feat PR on the trusted base, single concern. Slices are not calendar days; the derived Release Candidate date is computed from the critical path in the [Release Readiness Gate](../gates/release-readiness-gate.md) § Derived RC date, and the roll-up itself lands in a later docs-only queue amendment together with the launch-operations track.
+Blocker 6 runs on the **second track**, so its slices do not extend the Product critical path — but they do extend the release distance, because the Release Candidate cannot exist without OL-2 (deploy + clean migrations) and the gate cannot pass without OL-5, OL-6 and OL-7.
+
+**Estimate unit:** 1 slice = one docs PR + one feat PR on the trusted base, single concern. Slices are not calendar days.
+
+### Release horizon roll-up (the queue’s number, consumed by the gate)
+
+This is the **only** place where remaining release distance is totalled. The [Release Readiness Gate](../gates/release-readiness-gate.md) § Derived RC date consumes these numbers and never invents its own.
+
+| Path | Programs | Slices |
+|------|----------|--------|
+| **Product critical path** | RPM 3–5 · Mapping 4–6 · Forms Publish 5–7 · Hiring E2E 4–6 · min HR handoff 4–6 | **20–30** |
+| **Launch-ops** | Operate & Launch OL-1…OL-7 | **10–14** |
+| **Serialized-equivalent total** | both tracks share one delivery capacity today | **30–44** |
+
+The Product path is a sum, not a max: the one-Active-Product invariant serialises it regardless of the DAG. Launch-ops is a second **track**, not second capacity — until a separate person or team owns it, its slices consume the same throughput, so the honest total is the sum.
+
+**Measured velocity (for calibration, not a promise):** the 2026-08-14…2026-08-27 window recorded ≈29 Product slice gates in 14 days (~2/day), plus the Reference program in parallel. Those slices were predominantly contract and docs work with thin runtime. The remaining work is mostly runtime, infrastructure and executed procedures, so applying that rate unchanged would be dishonest.
+
+| Scenario | Rate | Slice work | **RC can be tagged** | **Gate decision** |
+|----------|------|-----------|----------------------|-------------------|
+| S1 — recent pace holds | 2.0 slices/day | 15–22 days | 2026-09-12 … 2026-09-19 | 2026-09-26 … 2026-10-10 |
+| S2 — runtime-heavy discount | 1.0 slices/day | 30–44 days | 2026-09-27 … 2026-10-11 | 2026-10-11 … 2026-11-01 |
+| S3 — infrastructure reality | 0.5 slices/day | 60–88 days | 2026-10-27 … 2026-11-24 | 2026-11-10 … 2026-12-15 |
+
+Computed from 2026-08-28, adding a 7-day acceptance-suite execution window and a 7–14-day defect-fix window after RC. **S2 is the planning scenario**: S1 assumes contract-slice velocity survives contact with deploy pipelines, backups and publish runtime, which the [Operate & Launch](operate-and-launch.md) starting-point inventory contradicts.
+
+**What can move these dates.** Unresolved rows in the [unowned work register](../gates/v1-unowned-work-register.md) § D4 (U-1…U-5) block the gate from opening at all; the fresh-database migration failure is inside OL-2 and gates the RC definition itself; and the acceptance windows assume a non-developer operator is available, which is a staffing input, not an engineering one. A date quoted without this section behind it is not a release date.
 
 ### Naming (mandatory)
 
@@ -181,6 +214,7 @@ Every remaining v1 blocker now has a brief with an internal slice ladder, named 
 | **FP-1…FP-5** | `fp-contract` / `fp-publish` / `fp-serve` / `fp-operator` / `fp-accept` | [External Intake / Forms Publish](external-intake-forms-publish.md) internal slices = Forms **P3**; never P4 Themes / P5 Analytics |
 | **HE-1…HE-4** | `he-contract` / `he-stages` / `he-eligibility` / `he-accept` | [Hiring workflow E2E](hiring-workflow-e2e.md) internal slices; acceptance over existing machinery, not a Hiring Product |
 | **HH-1…HH-4** | `hh-contract` / `hh-status` / `hh-reuse` / `hh-accept` | [Minimal Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) internal slices; not full HR operations |
+| **OL-1…OL-7** | `ol-contract` / `ol-deploy` / `ol-runtime` / `ol-signal` / `ol-recovery` / `ol-tenant` / `ol-support` | [Operate & Launch](operate-and-launch.md) internal slices on the **Launch-ops** track; not an SRE programme; never counted as Active Product |
 
 ### Exit test (this docs amendment)
 
@@ -569,6 +603,8 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-08-28: Docs-only. § Release horizon roll-up added — 20–30 Product slices + 10–14 Launch-ops slices = **30–44 serialized-equivalent**, with measured velocity, three rate scenarios and computed RC / gate-decision bands (planning scenario: RC 2026-09-27…10-11). [Unowned work register](../gates/v1-unowned-work-register.md) opened: 74 canon commitments dispositioned, five (U-1…U-5) undecided and now blocking gate entry via EC-6. RPM brief received an estimate; stale LI-1 status in the Lifecycle seal corrected to PASS.
+- 2026-08-28: Docs-only. **Launch-ops** named as the second track (slot left free by Engineering DONE) with [Operate & Launch](operate-and-launch.md) as v1 blocker 6; invariant 3 amended from “no third track” to “two named tracks maximum”; write-set guard extended for OL slices. No Active Launch-ops slice — OL-1 still needs an amendment and named RR3 / RR4 / RR7 owners.
 - 2026-08-28: Docs-only. All four remaining v1 blockers received briefs with internal ladders, named gates and estimates — [Mapping Authority](mapping-authority.md) · [External Intake / Forms Publish](external-intake-forms-publish.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [min HR handoff](recruitment-hr-minimal-handoff.md). Forms **P3** reclassified from `LOCKED` to v1 blocker 3 in the [roadmap](../architecture/platform-completion-roadmap.md) and the [Forms epic](forms-product-layer-epic.md). Active Product stayed **RPM-1**; nothing scheduled; no feat unlocked.
 - 2026-08-27: Queue amendment after DAG dependency-position [#328](https://github.com/igortatarynovich/HostFlow/pull/328) / `087ed286`. Product Track → **[RPM-1](requirement-policy-management.md)** (brief; feat locked). RPM-2 / RPM-3 queued. Mapping not auto-scheduled. Not Hiring E2E. Not CL8. Not Foundation ✅.
 - 2026-08-26: [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) sealed [#328](https://github.com/igortatarynovich/HostFlow/pull/328). Product Track stayed **none**. RPM recommended first; no schedule; no RPM → Mapping edge.

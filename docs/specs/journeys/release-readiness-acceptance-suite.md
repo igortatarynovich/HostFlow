@@ -159,6 +159,7 @@ Every v1 blocker and every gate question that this suite is responsible for must
 | Blocker 3 — External Intake / Forms Publish | RS-2 |
 | Blocker 4 — Hiring workflow E2E | RS-7 |
 | Blocker 5 — Minimal Recruitment → HR handoff | RS-8 |
+| Blocker 6 — [Operate & Launch](../tasks/operate-and-launch.md) (Launch-ops) | RS-10, RS-11, RS-12 |
 | Supporting — Company setup / configure without code | RS-1 |
 | Supporting — Acquisition path into intake | RS-2 |
 | Supporting — Candidate workspace | RS-4, RS-5, RS-6 |
@@ -168,7 +169,7 @@ Every v1 blocker and every gate question that this suite is responsible for must
 | Gate RR4 — Tenant lifecycle | RS-10, RS-11 |
 | Gate RR5 — Security & compliance | RS-9, RS-11 |
 
-Gate questions RR1, RR6, and RR7 are **not** proven by this suite — they are documentary/CI/process evidence collected directly by the [gate](../gates/release-readiness-gate.md).
+Gate questions RR1, RR6, and RR7 are **not** proven by this suite — they are documentary/CI/process evidence collected directly by the [gate](../gates/release-readiness-gate.md). RS-10…RS-12 depend on runbooks that do not exist yet: every required procedure is listed as MISSING in the [runbook index](../../runbooks/README.md), and writing them is [Operate & Launch](../tasks/operate-and-launch.md). Until then these three scenarios are **NOT RUN — blocked**, not failing.
 
 ---
 

@@ -5,6 +5,7 @@
 **Branch (docs):** `docs/queue-schedule-rpm`  
 **Branch (code):** none this amendment — feat locked until RPM-1 Gate; later slices `feat/requirement-policy-management-rpmN-…`  
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) · [v1 Release DAG dependency-position](../gates/v1-release-dag-dependency-position.md) [#328](https://github.com/igortatarynovich/HostFlow/pull/328) · [Documents Platform E8-eval](documents-platform-e8-eval.md) ✅ [#324](https://github.com/igortatarynovich/HostFlow/pull/324) · [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [Sequential queue](sales-to-comms-sequential-queue.md) · [Reference R5](platform-reference-identity-sot.md) · [Vacancy Overlay Contract](entity-profile-vacancy-overlay-contract.md)
+**Estimate:** 3–5 slices — RPM-1 1 (docs), RPM-2 1–2, RPM-3 1–2 (1 slice = one docs PR + one feat PR; rolled up in the [queue release horizon](sales-to-comms-sequential-queue.md))
 
 > First Product from the [Release DAG](../gates/hostflow-v1-release-goal.md), scheduled after [#328](https://github.com/igortatarynovich/HostFlow/pull/328).  
 > Documents is the **first domain** of this capability — not a second Documents Admin vs Rules Admin.  

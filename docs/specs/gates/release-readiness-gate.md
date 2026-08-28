@@ -50,6 +50,7 @@ The gate may not open until all of the following hold. An unmet entry condition 
 | **EC-3** | A **Release Candidate** exists per § Release Candidate below | This file |
 | **EC-4** | The [acceptance suite](../journeys/release-readiness-acceptance-suite.md) is executable end to end on that RC by a non-developer | Suite § Execution protocol |
 | **EC-5** | `make repo-health` PASS on the RC commit; trusted base fast-forward only | [Repository Operational Canon](../../governance/repository-operational-canon.md) |
+| **EC-6** | The [unowned work register](v1-unowned-work-register.md) has **no undecided D4 row** — every item is either owned by a slice or a declared residual with owner | [Unowned work register](v1-unowned-work-register.md) § D4 |
 
 ---
 
@@ -89,7 +90,7 @@ Each question has one owner and one evidence artifact. “Works on my machine”
 | **PASS_WITH_CONSTRAINTS** | Release allowed with **named residuals**, each with owner, expiry, and customer-visible impact | Only for RR6–RR7 residuals, or an RR1–RR5 residual explicitly accepted in writing by the owner of that question |
 | **STOP** | One or more questions unanswered or answered by intent | Do not onboard a paying tenant; do not announce availability |
 
-A residual is valid only if it appears in **§ Named residuals** of the closing record with owner, expiry, and the sentence a customer would be told. Silent residuals make the outcome STOP retroactively.
+A residual is valid only if it appears in **§ Named residuals** of the closing record with owner, expiry, and the sentence a customer would be told. Silent residuals make the outcome STOP retroactively. The candidate set of residuals is not improvised at gate time — it is the D2 section of the [unowned work register](v1-unowned-work-register.md).
 
 ---
 
@@ -113,12 +114,16 @@ The RC date is **computed**, not declared:
 
 ```text
 RC date = today
-        + Σ (remaining slice estimates on the critical path of the queue)
+        + Σ (remaining slice estimates on the critical path of the queue) / delivery rate
         + acceptance suite execution window
         + defect-fix window
 ```
 
-Slice estimates live in the owning briefs; the rolled-up horizon lives in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) execution header. This gate consumes those numbers and never overrides them. A date announced without a queue roll-up behind it is not a release date.
+Slice estimates live in the owning briefs; the roll-up lives in the [sequential queue](../tasks/sales-to-comms-sequential-queue.md) § Release horizon roll-up. This gate consumes those numbers and never overrides them.
+
+**Current computation (from the roll-up, 2026-08-28):** 30–44 remaining slices across the Product critical path and the Launch-ops track. Under the planning scenario (1 slice/day, chosen because the remaining work is runtime and infrastructure rather than contract slices) the RC can be tagged **2026-09-27 … 2026-10-11** and this gate would decide **2026-10-11 … 2026-11-01**. The optimistic and conservative bands, and the inputs that move them, are in the roll-up.
+
+Two conditions make even that band provisional: the [unowned work register](v1-unowned-work-register.md) § D4 must be emptied before the gate may open, and the fresh-database migration failure inside [Operate & Launch](../tasks/operate-and-launch.md) OL-2 currently makes RC condition 4 unsatisfiable. A date announced without a queue roll-up behind it is not a release date.
 
 ---
 
@@ -164,4 +169,5 @@ Outcome: PASS | PASS_WITH_CONSTRAINTS | STOP
 
 ## History
 
+- 2026-08-28: EC-6 added (unowned work register must have no undecided D4 row); § Derived RC date now carries the computed band from the queue roll-up instead of only a formula.
 - 2026-08-28: Introduced. The Release Goal declared this control layer on 2026-08-26 without a procedure; this file supplies entry conditions, seven questions, evidence bar, RC definition, derived-date rule, and the closing template.

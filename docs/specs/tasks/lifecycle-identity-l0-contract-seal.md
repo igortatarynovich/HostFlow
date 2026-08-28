@@ -1,6 +1,6 @@
 # Lifecycle Identity L0 — Contract Seal
 
-**Status:** **QUEUED** (docs sealed with ADR-037; **LI-1 feat after CL1 Gate**; LI-2+ do not block CL2+)  
+**Status:** **PARTIAL** — **LI-1 ✅ PASS** [#300](https://github.com/igortatarynovich/HostFlow/pull/300) (existence guard shipped after CL1 Gate); **LI-2…LI-4 QUEUED** and not scheduled. Recorded as a declared residual in the [unowned work register](../gates/v1-unowned-work-register.md). Consumed by [Hiring E2E](hiring-workflow-e2e.md) HE-2 (LI-1 only)  
 **Phase class:** platform  
 **Branch (docs):** this slice — ADR + L2 + queue linkage  
 **Branch (code):** none until **CL1 Gate**; then `feat/lifecycle-identity-li1-…` for LI-1 only. LI-2+ stay in the Lifecycle ladder  
@@ -45,8 +45,8 @@ Module Stage Registry (existence)
 
 | Track | Role |
 |-------|------|
-| **Product (now)** | [Entity Field Composition CL0](entity-field-composition-cl0-contract-seal.md) — then CL1 → **LI-1** → DR1-contract → CL2… per [queue locked sequence](sales-to-comms-sequential-queue.md) |
-| **This program** | Docs (ADR-037 + L2) land without stealing Product Track. **LI-1 feat starts after CL1 Gate PASS.** LI-1 is the existence/identity guard only. LI-2+ stay queued and do not block CL2+. |
+| **Product (now)** | [RPM-1](requirement-policy-management.md) — the CL0…CL7 / LI-1 / DR1 / Overlay / E8 chain is **done**; see [queue locked sequence](sales-to-comms-sequential-queue.md) |
+| **This program** | LI-1 shipped as the existence/identity guard ([#300](https://github.com/igortatarynovich/HostFlow/pull/300)). **LI-2…LI-4 remain queued**, are not scheduled, and do not block any v1 blocker. Hiring E2E consumes LI-1 only. |
 
 Do not parallelize LI-1 with CL0. Do not expand LI-1 into Funnel/UI cutover. Do not let LI-2+ stall Field Composition CL2+.
 
