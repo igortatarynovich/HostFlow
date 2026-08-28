@@ -26,6 +26,7 @@ const STATUS_BADGE: Record<string, string> = {
   waiting: 'bg-blue-50 text-blue-700',
   questionnaire_submitted: 'bg-violet-50 text-violet-700',
   completed: 'bg-slate-100 text-slate-600',
+  rejected: 'bg-rose-50 text-rose-700',
 }
 
 const STATUS_TEXT: Record<string, string> = {
@@ -34,6 +35,7 @@ const STATUS_TEXT: Record<string, string> = {
   waiting: 'Ожидаем ответ',
   questionnaire_submitted: 'Ответ получен',
   completed: 'Завершено',
+  rejected: 'Отклонено',
 }
 
 type SalesInquiryDetailPanelProps = {

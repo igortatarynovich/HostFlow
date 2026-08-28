@@ -218,7 +218,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
   }
 
   const renderListItem = (app: Application) => {
-    const status = app.status === 'rejected' ? 'completed' : app.status
+    const status = app.status
     const badge = config.extensionBadge?.(app)
     const isSelected = app.id === selectedId
     const entityPath = config.primaryEntityPath?.(app)
@@ -384,7 +384,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
 
           {splitView ? (
             <aside
-              className="flex min-h-0 shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-slate-50 shadow-[inset_1px_0_0_rgb(226_232_240)]"
+              className="flex min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-slate-200 bg-slate-50 shadow-[inset_1px_0_0_rgb(226_232_240)]"
               style={{
                 width: DEFAULT_DETAIL_RAIL_WIDTH_PX,
                 minWidth: DEFAULT_DETAIL_RAIL_WIDTH_PX,
@@ -395,7 +395,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
               {detailLoading || !selectedApplication ? (
                 <p className="p-6 text-sm text-slate-500">{t('common.loading')}</p>
               ) : (
-                <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+                <div className="min-w-0">
                   {config.renderDetail({
                     application: selectedApplication,
                     onRefresh: () => void refreshApplication(selectedApplication.id),

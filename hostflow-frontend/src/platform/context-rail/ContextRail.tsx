@@ -41,7 +41,8 @@ const DEFAULT_CONTEXT_TITLES: Partial<Record<DecisionContextBlockId, string>> = 
 }
 
 /**
- * Universal Context Rail shell — Fixed Header → Fixed Decision (state) → Scroll Context (adaptive).
+ * Universal Context Rail shell — one scroll for the whole rail.
+ * Header and decision scroll with context so short viewports can reach the bottom.
  */
 export function ContextRail({
   header,
@@ -56,11 +57,11 @@ export function ContextRail({
 
   return (
     <div
-      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white"
+      className="flex flex-col bg-white"
       data-context-rail={railKind ?? 'v1'}
       data-decision-state={decision.stateId}
     >
-      <header className="shrink-0 border-b border-slate-100 p-4">
+      <header className="border-b border-slate-100 p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             {header.titleHref ? (
@@ -104,12 +105,12 @@ export function ContextRail({
         </div>
       </header>
 
-      <section className="shrink-0 border-b border-slate-100 p-4" data-context-rail-zone="decision">
+      <section className="border-b border-slate-100 p-4" data-context-rail-zone="decision">
         <ContextRailDecisionZone decision={decision} />
       </section>
 
       {decision.requiredContext.length > 0 ? (
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-context-rail-zone="scroll">
+        <div data-context-rail-zone="scroll">
           {decision.requiredContext.map((blockId) => {
             const slot = contextSlots[blockId]
             if (!slot) return null

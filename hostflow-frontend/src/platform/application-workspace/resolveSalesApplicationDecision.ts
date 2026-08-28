@@ -62,8 +62,27 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
         application.status === 'rejected'
           ? t('app.sales_inquiry.closed', { defaultValue: 'Запрос закрыт' })
           : t('app.sales_inquiry.completed', { defaultValue: 'Обращение завершено' }),
-      why: undefined,
+      why: t('app.sales_inquiry.reopen_why', {
+        defaultValue: 'Можно только сменить этап — например, если компания заинтересована позже.',
+      }),
       primaryAction: null,
+      secondaryActions:
+        application.status === 'rejected'
+          ? [
+              {
+                id: 'interested_later',
+                label: t('app.sales_inquiry.interested_later', { defaultValue: 'Заинтересован, но позже' }),
+                onClick: () => void onStage('qualified'),
+                disabled,
+              },
+              {
+                id: 'reopen',
+                label: t('app.sales_inquiry.reopen', { defaultValue: 'Вернуть в работу' }),
+                onClick: () => void onStage('contacted'),
+                disabled,
+              },
+            ]
+          : undefined,
       requiredContext: ['workflow', 'contacts', 'summary', 'history'],
       terminal: true,
       outcome: {

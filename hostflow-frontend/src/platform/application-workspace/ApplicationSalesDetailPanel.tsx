@@ -52,7 +52,7 @@ export function ApplicationSalesDetailPanel({
   const { t } = useI18n()
   const [timelineRefresh, setTimelineRefresh] = useState(0)
   const companyName = application.title
-  const statusKey = application.status === 'rejected' ? 'completed' : application.status
+  const statusKey = application.status
   const activeStep = Number(application.extensions?.workflow_step ?? 1)
   const convertedId = String(application.outcome_entity_id || '').trim()
   const clientHref = convertedId ? clientDetailPath(convertedId) : undefined
@@ -83,7 +83,7 @@ export function ApplicationSalesDetailPanel({
 
   return (
     <div
-      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"
+      className="flex flex-col"
       data-entity-workspace-slot="context-rail"
       data-entity-workspace-consumer={SALES_INQUIRY_COMPOSITION_CONSUMER_ID}
     >

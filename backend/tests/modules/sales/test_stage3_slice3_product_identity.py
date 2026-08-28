@@ -70,6 +70,59 @@ def test_sales_inquiry_to_application_uses_si_product_id():
     assert legacy.transport_lead_id == lead_id
 
 
+def test_lost_sales_inquiry_status_is_rejected_not_completed():
+    lead_id = str(uuid4())
+    lead = SimpleNamespace(
+        id=lead_id,
+        normalized={"company_name_hint": "Lost Co"},
+        company_name=None,
+        source="meta",
+        stage="lost",
+        status="processed",
+        assigned_to=None,
+        recruiter_id=None,
+        next_action_type=None,
+        updated_at=None,
+        created_at=None,
+        priority=None,
+        converted_client_id=None,
+        client_account_id=None,
+        payload={},
+        phone=None,
+        email=None,
+        full_name=None,
+    )
+    app = sales_inquiry_to_application(SimpleNamespace(id=str(uuid4())), lead)
+    assert app.status == "rejected"
+    assert app.tab_bucket == "completed"
+    assert app.module == "sales"
+
+
+def test_converted_sales_inquiry_status_stays_completed():
+    lead = SimpleNamespace(
+        id=str(uuid4()),
+        normalized={"company_name_hint": "Won Co"},
+        company_name=None,
+        source="meta",
+        stage="converted",
+        status="processed",
+        assigned_to=None,
+        recruiter_id=None,
+        next_action_type=None,
+        updated_at=None,
+        created_at=None,
+        priority=None,
+        converted_client_id=str(uuid4()),
+        client_account_id=str(uuid4()),
+        payload={},
+        phone=None,
+        email=None,
+        full_name=None,
+    )
+    app = sales_inquiry_to_application(SimpleNamespace(id=str(uuid4())), lead)
+    assert app.status == "completed"
+
+
 async def _own_company_id(db, tenant_id: str) -> str:
     row = await db.execute(
         select(OwnCompany.id)

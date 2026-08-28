@@ -76,6 +76,23 @@ export function ContextRailDecisionZone({ decision }: { decision: ObjectDecision
             <p className="mt-0.5 text-sm text-slate-700">{o.why}</p>
           </div>
         ) : null}
+        {decision.why && !o.why ? (
+          <div className="mt-3 border-l-2 border-slate-300 pl-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Почему</p>
+            <p className="mt-0.5 text-sm text-slate-700">{decision.why}</p>
+          </div>
+        ) : null}
+        {decision.secondaryActions?.length ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {decision.secondaryActions.map((action) => (
+              <DecisionActionButton
+                key={action.id}
+                action={action}
+                size={action.variant === 'danger' ? 'danger' : 'secondary'}
+              />
+            ))}
+          </div>
+        ) : null}
       </div>
     )
   }

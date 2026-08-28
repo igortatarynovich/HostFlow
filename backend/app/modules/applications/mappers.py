@@ -88,15 +88,15 @@ def _recruitment_contact(lead: Lead) -> ApplicationContactOut:
 
 
 def _sales_status(lead: Lead) -> ApplicationStatus:
-    if (
-        getattr(lead, "converted_client_id", None)
-        or getattr(lead, "client_account_id", None)
-        or _text(getattr(lead, "stage", None)).lower() in ("converted", "lost")
-    ):
+    if getattr(lead, "converted_client_id", None) or getattr(lead, "client_account_id", None):
         return "completed"
+    stage = _text(getattr(lead, "stage", None)).lower()
+    if stage == "converted":
+        return "completed"
+    if stage == "lost":
+        return "rejected"
     normalized = _record(getattr(lead, "normalized", None))
     q_status = _text(normalized.get("sales_questionnaire_status")).lower()
-    stage = _text(getattr(lead, "stage", None)).lower()
     if stage == "questionnaire_submitted" or q_status == "submitted":
         return "questionnaire_submitted"
     if stage == "waiting_for_response" or q_status in {"sent", "opened", "in_progress"}:

@@ -139,10 +139,11 @@ export function inquiryServiceLabel(lead: Lead): string | null {
   return null
 }
 
-export type SalesInquiryStatusKey = 'new' | 'in_progress' | 'waiting' | 'completed' | 'questionnaire_submitted'
+export type SalesInquiryStatusKey = 'new' | 'in_progress' | 'waiting' | 'completed' | 'rejected' | 'questionnaire_submitted'
 
 export function inquiryStatusKey(lead: Lead): SalesInquiryStatusKey {
-  if (lead.converted_client_id || lead.stage === 'converted' || lead.stage === 'lost') return 'completed'
+  if (lead.converted_client_id || lead.stage === 'converted') return 'completed'
+  if (lead.stage === 'lost') return 'rejected'
   const normalized = record(lead.normalized)
   const qStatus = text(normalized.sales_questionnaire_status).toLowerCase()
   const stage = (lead.stage || '').trim().toLowerCase()
@@ -160,7 +161,10 @@ export function inquiryStatusLabelKey(lead: Lead): SalesInquiryStatusKey {
 }
 
 export function inquiryTabBucket(lead: Lead): SalesInquiryTab {
-  return inquiryStatusKey(lead)
+  const key = inquiryStatusKey(lead)
+  if (key === 'rejected') return 'completed'
+  if (key === 'questionnaire_submitted') return 'in_progress'
+  return key
 }
 
 /** Workflow step index 1–5 for the sales stepper (Связаться → … → Заказ). */
