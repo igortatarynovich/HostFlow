@@ -113,6 +113,7 @@ export const DocumentCard = memo(function DocumentCard({
   const docReminders = Array.isArray(doc.reminders) ? doc.reminders : [];
   const hasLastCheck = Boolean(doc.last_check);
   const showFollowUps = docReminders.length > 0 || hasLastCheck;
+  const expanded = !isCompact && Boolean(expandedDocs[doc.id]);
   const showMetaRow =
     !expanded &&
     Boolean(
@@ -130,7 +131,6 @@ export const DocumentCard = memo(function DocumentCard({
   const { data: docNextAction, loading: docNextActionLoading, error: docNextActionError } =
     useDocumentNextAction(showNextAction ? doc.id : null, docNextActionFingerprint);
 
-  const expanded = !isCompact && Boolean(expandedDocs[doc.id]);
   const toggleExpanded = () => {
     if (isCompact) return;
     setExpandedDocs((prev) => ({ ...prev, [doc.id]: !prev[doc.id] }));
