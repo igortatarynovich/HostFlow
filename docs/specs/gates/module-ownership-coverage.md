@@ -28,9 +28,9 @@ All four artifacts live under `docs/modules/<module>/`. Three of these five (HR,
 
 | Domain | Runtime evidence | On a v1 blocker path? | Disposition |
 |---|---|---|---|
-| **Sales** | `backend/app/modules/sales/` (16 `.py`: `intake/`, `communication/`, `services/sales_inquiry_service.py`) · `client_accounts/` (6) · `sales_orders/` (5) · separated from Recruitment by [ADR-023](../architecture/ADR-023-recruitment-sales-module-separation.md) | **Yes** — sales inquiry → communication is the queue's own name and the RS-6 acceptance path | **Card required before Release Readiness Gate** (§4) |
-| **Forms** | `backend/app/forms_platform/` · `docs/forms/module-scope.md` · Field Catalog v1 FROZEN | **Yes** — v1 blocker 3 ([Forms Publish](../tasks/external-intake-forms-publish.md)) | **Card required before Release Readiness Gate** (§4) |
-| **Acquisition** | `backend/app/acquisition/` (48 files) · `modules/intake_routing/` · `modules/outcome_rules/` · `docs/acquisition/module-scope.md` | **Yes** — v1 blocker 1 ([Mapping Authority](../tasks/mapping-authority.md)) and public intake | **Card required before Release Readiness Gate** (§4) |
+| **Sales** | `backend/app/modules/sales/` (16 `.py`: `intake/`, `communication/`, `services/sales_inquiry_service.py`) · `client_accounts/` (6) · `sales_orders/` (5) · separated from Recruitment by [ADR-023](../architecture/ADR-023-recruitment-sales-module-separation.md) | **Yes** — sales inquiry → communication is the queue's own name and the RS-6 acceptance path | **Card delivered** — [MOC-1](../../modules/sales/module_ownership_card.md) |
+| **Forms** | `backend/app/forms_platform/` · `docs/forms/module-scope.md` · Field Catalog v1 FROZEN | **Yes** — v1 blocker 3 ([Forms Publish](../tasks/external-intake-forms-publish.md)) | **Card delivered** — [MOC-2](../../modules/forms/module_ownership_card.md) |
+| **Acquisition** | `backend/app/acquisition/` (48 files) · `modules/intake_routing/` · `modules/outcome_rules/` · `docs/acquisition/module-scope.md` | **Yes** — v1 blocker 1 ([Mapping Authority](../tasks/mapping-authority.md)) and public intake | **Card delivered** — [MOC-3](../../modules/acquisition/module_ownership_card.md) |
 | **Communication** | `backend/app/communications/` · Communication Platform Foundation complete (C0.0–C0.3) | Adjacent (RS-6 uses it, Sales card must cite the boundary) | **Later** — covered for v1 by the Sales card's outbound contract section |
 | **Finance / Billing** | `backend/app/api/v1/invoices`, `api/v1/settings/billing/` (12 files) · `docs/finance/module-scope.md` · `backend/app/modules/finance/` is **empty** | No — self-service Billing is explicitly «later» | **Later**, registered |
 | **Fleet** | `backend/app/api/v1/fleet/` (9 files) · `docs/fleet/module-scope.md` | No | **Later**, registered |
@@ -60,15 +60,17 @@ Two are ambiguous and must be resolved by the owning card, not by a new card:
 
 Three ownership cards, because each one sits on a v1 blocker write-path and RR1 cannot cite an owner that does not exist:
 
-| # | Card | Must state | Sized |
+| # | Card | Must state | Status |
 |---|---|---|---|
-| MOC-1 | `docs/modules/sales/module_ownership_card.md` | Sales boundary vs Recruitment (ADR-023), source-of-truth zones (inquiry, client account, sales order), outbound communication contract, forbidden zones | 0.5 slice |
-| MOC-2 | `docs/modules/forms/module_ownership_card.md` | Forms as platform capability vs product consumer, Catalog non-ownership (Builder does not own types), publish boundary | 0.5 slice |
-| MOC-3 | `docs/modules/acquisition/module_ownership_card.md` | Intake/routing ownership, the `leads` package adjudication from §3, mapping boundary vs Mapping Authority | 0.5 slice |
+| MOC-1 | [`docs/modules/sales/module_ownership_card.md`](../../modules/sales/module_ownership_card.md) | Sales boundary vs Recruitment (ADR-023), source-of-truth zones (inquiry, client account, sales order), outbound communication contract, forbidden zones | **DONE** 2026-08-28 |
+| MOC-2 | [`docs/modules/forms/module_ownership_card.md`](../../modules/forms/module_ownership_card.md) | Forms as platform capability vs product consumer, Catalog non-ownership (Builder does not own types), publish boundary | **DONE** 2026-08-28 |
+| MOC-3 | [`docs/modules/acquisition/module_ownership_card.md`](../../modules/acquisition/module_ownership_card.md) | Intake/routing ownership, the `leads` package adjudication from §3, mapping boundary vs Mapping Authority | **DONE** 2026-08-28 |
 
-Each card follows `docs/modules/_template/module_ownership_card.md`. The other three artifacts (contract map, dependency audit, test boundary) are **not** required for v1 on these three domains: they are program-completion artifacts, and RR1 needs an owner, not a certification.
+The other three artifacts (contract map, dependency audit, test boundary) are **not** required for v1 on these three domains: they are program-completion artifacts, and RR1 needs an owner, not a certification. None of the three domains is therefore **certified** — each card says so in its own closing line.
 
-**Total: 1.5 slices.** These are docs-only and do not consume a Product Track slot; they may run on the Launch-ops track or inside the owning blocker's first slice.
+**Delivered as 1.5 docs-only slices, no Product Track slot consumed.** RR1 can now cite an owner for every v1 blocker path. What the cards did **not** do: no code moved, no package split, no other module's card was edited.
+
+**Adjudication delivered by MOC-3.** The `leads` triple claim from §3 is settled per concern (Integrations = channel ingest and credentials; Acquisition = routing, provenance, diagnostics; Recruitment = candidate conversion and qualification; Sales = client / order conversion; `Lead` ORM and the operational `/api/v1/leads` surface = shared transport with no product owner until R6). Two consequences are recorded and not resolved: the Recruitment card's «lead intake processing» is overbroad and should be narrowed when that card is next revised, and the legacy operational Lead surface still contradicts ADR-021 until the locked R6 cutover.
 
 ---
 
@@ -94,3 +96,4 @@ Under Rule 7 the Module Independence Program is therefore **documentation only**
 ## История
 
 - **2026-08-28** — record introduced. Corrects the scope of the 2026-05-29 closeout outcome sentence; names three cards (MOC-1…MOC-3, 1.5 slices) as required before the Release Readiness Gate; records the Rule 7 enforcement gap.
+- **2026-08-28** — MOC-1…MOC-3 **delivered**: ownership cards for Sales, Forms and Acquisition, with the `leads` triple claim adjudicated per concern in the Acquisition card. RR1 unblocked on the ownership dimension. Certification (contract map / dependency audit / test boundary) deliberately not attempted; the Rule 7 enforcement gap stays open as a Launch-ops candidate.

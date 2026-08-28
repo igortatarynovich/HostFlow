@@ -9,7 +9,9 @@
 
 > v1 blocker 3: **`publish → public form → submit → mapping → canonical entity → visible in workspace`.**
 > This is the work the [Forms product layer epic](forms-product-layer-epic.md) calls **P3 Publish UI** and marks `LOCKED`. The Release Goal makes it a **v1 blocker**. FP-1 resolves that contradiction in the canon before any code.
-> **Not** P4 Themes. **Not** P5 Analytics. **Not** FormTemplate SoT migration / ADR-022. **Not** a second submit engine. **Not** Mapping Authority (consumed, not rebuilt).
+> **Not** P4 Themes. **Not** P5 Analytics. **Not** FormTemplate SoT migration. **Not** a second submit engine. **Not** Mapping Authority (consumed, not rebuilt).
+>
+> **Amended 2026-08-28 (U-2 decision):** accepting [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) *is* in FP-1 scope. v1 does not ship intake acceptance over a `Proposed` contract whose backend already runs.
 > Opening this brief does **not** schedule it. The queue’s Active Product stays RPM-1.
 
 ---
@@ -81,7 +83,7 @@ FP-1 Publish contract seal + roadmap unlock (docs)
 
 | # | Slice | Machine id | Named gate (PASS =) | Depends on | Estimate |
 |---|-------|------------|---------------------|------------|----------|
-| **FP-1** | Publish contract seal + unlock | `fp-contract` | **Forms Publish Contract Gate** — publish is defined as `commit_publish` only; roadmap anti-pattern 2 amended to unlock **P3 only**; epic status updated; out-of-band `published_version` bumps declared forbidden | Queue amendment | 1 slice (docs) |
+| **FP-1** | Publish contract seal + unlock + **ADR-022 accept** | `fp-contract` | **Forms Publish Contract Gate** — publish is defined as `commit_publish` only; roadmap anti-pattern 2 amended to unlock **P3 only**; epic status updated; out-of-band `published_version` bumps declared forbidden; [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) moves `Proposed` → `Accepted` with its review checklist closed | Queue amendment | 1–1.5 slices (docs) |
 | **FP-2** | Publish action runtime | `fp-publish` | **Publish Action Gate** — an authenticated product route commits a publication version; presentation save no longer bumps versions; republish is idempotent per identity | FP-1 Gate | 1–2 slices |
 | **FP-3** | Public serve from publication | `fp-serve` | **Public Serve Gate** — the public form is served from the frozen snapshot; draft markers rejected; one definition reaches the renderer | FP-2 Gate | 1–2 slices |
 | **FP-4** | Operator publish surface | `fp-operator` | **Forms Publish Operator Gate** — operator publishes / unpublishes, sees version history and draft-vs-published state, and obtains the public URL from the product | FP-3 Gate | 1 slice |
@@ -128,7 +130,9 @@ Depends on [Mapping Authority](mapping-authority.md) program close — the accep
 
 **Depends on:** queue amendment; FP-5 additionally on Mapping Authority close
 **Unlocks:** nothing automatically — “unlock ≠ schedule”
-**Does not:** open P4 / P5; migrate `TenantLeadForm` → FormTemplate SoT; accept ADR-022; rebuild Shared Intake; touch C2.4
+**Does not:** open P4 / P5; migrate `TenantLeadForm` → FormTemplate SoT (U-5 residual: Publish ships on the bridge, and **no new writer may be added to it**); rebuild Shared Intake; touch C2.4
+
+**Does (added 2026-08-28):** accept ADR-022 and close [`ADR-022-review-checklist.md`](../architecture/ADR-022-review-checklist.md).
 
 ---
 

@@ -50,7 +50,7 @@ The gate may not open until all of the following hold. An unmet entry condition 
 | **EC-3** | A **Release Candidate** exists per § Release Candidate below | This file |
 | **EC-4** | The [acceptance suite](../journeys/release-readiness-acceptance-suite.md) is executable end to end on that RC by a non-developer | Suite § Execution protocol |
 | **EC-5** | `make repo-health` PASS on the RC commit; trusted base fast-forward only | [Repository Operational Canon](../../governance/repository-operational-canon.md) |
-| **EC-6** | The [unowned work register](v1-unowned-work-register.md) has **no undecided D4 row** — every item is either owned by a slice or a declared residual with owner | [Unowned work register](v1-unowned-work-register.md) § D4 |
+| **EC-6** | The [unowned work register](v1-unowned-work-register.md) has **no undecided D4 row** — every item is either owned by a slice or a declared residual with owner. **Met 2026-08-28** (D4 empty); re-checked at gate opening, since a U-row may be opened at any time | [Unowned work register](v1-unowned-work-register.md) § D4 |
 
 ---
 
@@ -169,5 +169,6 @@ Outcome: PASS | PASS_WITH_CONSTRAINTS | STOP
 
 ## History
 
+- 2026-08-28: RR1 extended — a blocker path running through a domain with no ownership card fails the question; MOC-1…MOC-3 delivered the three missing cards the same day. All five D4 rows decided, so EC-6 is met as of this date.
 - 2026-08-28: EC-6 added (unowned work register must have no undecided D4 row); § Derived RC date now carries the computed band from the queue roll-up instead of only a formula.
 - 2026-08-28: Introduced. The Release Goal declared this control layer on 2026-08-26 without a procedure; this file supplies entry conditions, seven questions, evidence bar, RC definition, derived-date rule, and the closing template.

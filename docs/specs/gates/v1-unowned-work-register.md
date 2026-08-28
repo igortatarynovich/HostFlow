@@ -35,17 +35,17 @@ Anything else in the canon that implies future work is **unowned** and must appe
 
 ## D4 — needs a decision (the only rows that block the gate)
 
-Five rows. Everything else in this register is already disposed of.
+**Empty. All five rows were decided on 2026-08-28** by the owner. EC-6 of the [Release Readiness Gate](release-readiness-gate.md) is satisfied unless a new U-row is opened.
 
-| # | Item | Why it cannot stay undecided | Declared in |
-|---|------|------------------------------|-------------|
-| **U-1** | **RR6 known-failure list does not exist.** The pytest aggregate (last recorded 657 failures, dated 2026-07-21) is drifting, cannot be re-measured locally, and is only “background” | RR6 requires an *enumerated, frozen, owned, non-growing* list. “Background debt” is not an answer to a gate question | [stabilize-integration-pytest-baseline.md](../tasks/stabilize-integration-pytest-baseline.md) · [release-readiness-gate.md](release-readiness-gate.md) § Evidence bar |
-| **U-2** | **ADR-022 Intake Form Purpose is `Proposed` while its backend exists.** The Forms Publish brief explicitly excludes accepting it | Publish and intake acceptance run over a contract that is not accepted. Either accept the ADR, or state that v1 ships on the pre-ADR model as a residual | [ADR-021](../architecture/ADR-021-unified-intake-resolution-model.md) · [external-intake-forms-publish.md](../tasks/external-intake-forms-publish.md) |
-| **U-3** | **Documents Foundation stays 🔄 with D3 / D5 / D6 / D7 / D9 `documents` slots unbound**, and no successor program exists after E8 | Either the empty slots are acceptable for v1 (residual with the sentence a customer is told), or a bind slice is needed. Silence lets “Foundation 🔄” travel into the release record | [platform-capability-maturity.md](../architecture/platform-capability-maturity.md) · [platform-completion-roadmap.md](../architecture/platform-completion-roadmap.md) |
-| **U-4** | **Entity Shell inner capabilities remain module-local** (Notes / Consent / rail on the composition host) — the original Entity Platform goal is recorded as goal-incomplete | The audit recorded a STOP-class substitution; WCP closed the dual-host question, not this one. Needs an explicit v1 verdict | [platform-scope-completeness-audit.md](platform-scope-completeness-audit.md) · [workspace-capability-platform-complete.md](workspace-capability-platform-complete.md) |
-| **U-5** | **FormTemplate SoT migration / `TenantLeadForm` bridge** — named as a G5 leftover; the Publish brief excludes the migration | Publish ships on the bridge. Acceptable only if declared, because it fixes the form-definition SoT question for v1 | [platform-scope-completeness-audit.md](platform-scope-completeness-audit.md) · [external-intake-forms-publish.md](../tasks/external-intake-forms-publish.md) |
+| # | Item | Decision | Landed as |
+|---|------|----------|-----------|
+| **U-1** | RR6 known-failure list does not exist | **Measure once and freeze.** A scratch test database is authorised; the aggregate is replaced by an enumerated list with per-cluster owners. **Measured the same day: 397 failed / 3136 passed on `8d594e3f`**, of which 54 pass in isolation and ~100 are shared-database quota artifacts | **D1** — [pytest baseline](../tasks/stabilize-integration-pytest-baseline.md) § QB-1 · list: [`qb1-known-failures.tsv`](../tasks/qb1-known-failures.tsv) |
+| **U-2** | ADR-022 Intake Form Purpose is `Proposed` while its backend exists | **Accept the ADR** inside the first Forms Publish slice. v1 does not ship intake acceptance over an unaccepted contract | **D1** — [Forms Publish](../tasks/external-intake-forms-publish.md) FP-1 |
+| **U-3** | Documents Foundation 🔄 with D3 / D5 / D6 / D7 / D9 `documents` slots unbound | **Residual.** Empty slots are acceptable for v1; the customer sentence is recorded | **D2** — Documents |
+| **U-4** | Entity Shell inner capabilities remain module-local | **Residual.** Notes / Consent stay module-local for v1; no acceptance scenario depends on hosting them | **D2** — Product Architecture |
+| **U-5** | FormTemplate SoT migration / `TenantLeadForm` bridge | **Residual.** Publish ships on the bridge; the migration is post-v1 | **D2** — Forms |
 
-**Rule:** the [Release Readiness Gate](release-readiness-gate.md) may not open while any U-row is undecided. Deciding a U-row means moving it to D2 (with owner, expiry, customer sentence) or into a named slice — not deleting it.
+**Rule (unchanged):** the Release Readiness Gate may not open while any U-row is undecided. Deciding a U-row means moving it to D2 (with owner, expiry, customer sentence) or into a named slice — not deleting it. A new U-row may be opened at any time by anyone who finds release-relevant work with no owner.
 
 ---
 
@@ -64,8 +64,11 @@ Five rows. Everything else in this register is already disposed of.
 | Three stage registries; ten eligibility answerers; arbitrary stage jumps | [Hiring workflow E2E](../tasks/hiring-workflow-e2e.md) |
 | Delayed-workforce flag; conditional document reuse; PE HR inbound placeholder | [min HR handoff](../tasks/recruitment-hr-minimal-handoff.md) |
 | Nine requirement-policy answerers | [RPM-1…RPM-3](../tasks/requirement-policy-management.md) |
-| Sales / Forms / Acquisition have runtime code and no ownership card, on v1 blocker paths | [module ownership coverage](module-ownership-coverage.md) MOC-1…MOC-3 (1.5 slices) — RR1 evidence |
-| `backend/app/modules/leads` claimed by Recruitment, Integrations and the catalog simultaneously | [module ownership coverage](module-ownership-coverage.md) §3 — adjudicated by MOC-3 |
+| ~~Sales / Forms / Acquisition have runtime code and no ownership card~~ | **CLOSED** 2026-08-28 — MOC-1…MOC-3 delivered ([coverage record](module-ownership-coverage.md) §4) |
+| ~~`backend/app/modules/leads` claimed by Recruitment, Integrations and the catalog simultaneously~~ | **CLOSED** 2026-08-28 — adjudicated per concern in the [Acquisition card](../../modules/acquisition/module_ownership_card.md) § Lead adjudication |
+| Recruitment card’s «lead intake processing» is overbroad vs the ADR-021 transport demotion | [Acquisition card](../../modules/acquisition/module_ownership_card.md) — narrow when the Recruitment card is next revised (no slice; not v1-blocking) |
+| **U-1 decided:** enumerate, freeze and own the known-failure list on a scratch test database | [pytest baseline](../tasks/stabilize-integration-pytest-baseline.md) § QB-1 — RR6 evidence |
+| **U-2 decided:** accept [ADR-022](../architecture/ADR-022-intake-form-purpose-and-submission-policy-model.md) (Intake Form Purpose) | [Forms Publish](../tasks/external-intake-forms-publish.md) FP-1 — was an explicit non-goal, now in scope |
 
 ---
 
@@ -90,6 +93,16 @@ Grouped by class. Each row needs an owner in the closing record; expiry only whe
 | Acquisition Stage 3E deferred D1–D5 (Meta normalization, duplicate disposition, txn boundaries) | [acquisition-stage-3e-deferred.md](../tasks/acquisition-stage-3e-deferred.md) | per-row suggested home | No |
 | Intake Communication Context C6 — legacy unresolved handling | [intake-domain-separation-communication-context-v1.md](../tasks/intake-domain-separation-communication-context-v1.md) | Intake / Communication | No |
 
+### Decided residuals (2026-08-28, from D4)
+
+Each carries the sentence a customer is told, because that is what the closing record copies.
+
+| Item | Owner | Can it grow? | What the customer is told |
+|------|-------|--------------|---------------------------|
+| **U-3** Documents Foundation 🔄 — `documents` slots on D3 / D5–D7 / D9 unbound; no successor program after E8 | Documents | No — binding more consumers is a post-v1 program, and the empty set must not be re-labelled «done» | «Documents are attached to employees and candidates. Client, order and vacancy records do not carry their own document set in this release.» |
+| **U-4** Entity Shell inner capabilities (Notes / Consent / rail) stay module-local | Product Architecture | No | Nothing customer-visible: the capabilities work, they are just implemented per module rather than on the shared host. |
+| **U-5** Form definition ships on the `TenantLeadForm` bridge; `FormTemplate` SoT migration deferred | Forms | **Yes** — no new writer may be added to the bridge; the three live form definitions must not become four | Nothing customer-visible; internal storage model changes after v1 without affecting published forms. |
+
 ### Security residuals
 
 | Item | Declared in | Owner |
@@ -108,6 +121,7 @@ Grouped by class. Each row needs an owner in the closing record; expiry only whe
 | Item | Declared in | Owner | Note |
 |------|-------------|-------|------|
 | Coverage ratchet gap — backend baseline ~35% vs 60% target; frontend ~5% vs 40% | [HOSTFLOW_AUDIT_AND_PLAN.md](../../HOSTFLOW_AUDIT_AND_PLAN.md) | Engineering lead | Non-blocking suite; feeds RR6 |
+| Backend suite shares one database and accumulates rows, so ~100 failures are plan/quota exhaustion rather than defects, and 54 tests pass only in isolation | [pytest baseline](../tasks/stabilize-integration-pytest-baseline.md) § Measurement record 2026-08-28 | Engineering lead | Highest-value single fix for RR6: removing the shared-state accumulation deletes the largest cluster |
 | Hardcoded screening / required-field maps in the frontend | [CL1 inventory](../tasks/entity-field-composition-cl1-inventory.tsv) | RPM / Field Composition | Cutover in RPM-3 where it overlaps policy |
 | Telegram messenger hardcoded strings (i18n) | [telegram execution plan](../workflows/candidate-intake-via-telegram-execution-plan.md) | Communications | |
 | Select / listbox accessibility deferred to implementation review | [SELECT_V1_DRAFT.md](../frontend/SELECT_V1_DRAFT.md) | Frontend owner | |
@@ -134,7 +148,7 @@ Grouped by class. Each row needs an owner in the closing record; expiry only whe
 | Capability | State | Disposition |
 |------------|-------|-------------|
 | Entity Workspace Foundation 🔄 | brief-complete, not Complete | D2 (see also U-4) |
-| Documents Foundation 🔄 | E7 / E8 done; consumer slots unbound | **U-3** — needs a decision |
+| Documents Foundation 🔄 | E7 / E8 done; consumer slots unbound | D2 — decided residual (was U-3) |
 | Acquisition Automation 🔄 | Stage 5 / R6 residual | D2 |
 | Forms Workspace / Automation ⏳ | P4 / P5 locked | D3 (P3 path is a v1 blocker brief) |
 | Billing platform ⏳ | all stages | D3 (operator-assisted commerce is the v1 answer) |
@@ -155,7 +169,7 @@ C2.4 Communication Scheduling (frozen) · CL8 (forbidden by name) · Forms P4 Th
 
 | Moment | Use |
 |--------|-----|
-| Before the [Release Readiness Gate](release-readiness-gate.md) opens | Every **U-row** must be decided (moved to D2 or into a slice). Entry condition EC-1 is not met otherwise |
+| Before the [Release Readiness Gate](release-readiness-gate.md) opens | Every **U-row** must be decided (moved to D2 or into a slice). Entry condition EC-6 is not met otherwise. **Status 2026-08-28: D4 is empty** |
 | In the closing record | Every **D2** row that touches the release perimeter is copied into § Named residuals with owner, expiry and the sentence a customer is told |
 | When a new leftover is created | The slice that creates it adds a row here in the same PR. A leftover that exists only inside a gate record is invisible to the release decision |
 | When a queue amendment schedules a blocker | The corresponding **D1** rows move with it; nothing is re-litigated |
@@ -167,4 +181,6 @@ This register is **not** a backlog to burn down. Most rows are supposed to stay 
 ## History
 
 - 2026-08-28: Introduced. Full sweep of gate records, ADRs, maturity matrix, audits, security roadmap and task briefs produced 74 items; five (U-1…U-5) turned out to be release-relevant with no owner, and the rest were dispositioned D1 / D2 / D3. Created because the plan documented what would be built and never documented what would deliberately not be.
+- 2026-08-28: **D4 emptied.** All five U-rows decided by the owner: U-1 → measure once on an authorised scratch test database and freeze the list (QB-1); U-2 → accept ADR-022 inside FP-1; U-3 / U-4 / U-5 → declared residuals with owners and customer sentences. EC-6 satisfied. Two briefs gain scope (pytest baseline, Forms Publish); nothing scheduled.
+- 2026-08-28: MOC-1…MOC-3 delivered — the two ownership-coverage rows close, and one new non-blocking row opens (Recruitment card wording). 79 items, 5 undecided (U-1…U-5, unchanged).
 - 2026-08-28: +4 rows from the canon-hygiene pass — ownership-card coverage for Sales / Forms / Acquisition and the `leads` triple claim (D1, owned by [module ownership coverage](module-ownership-coverage.md)); the Rule 7 enforcement gap and the two empty module packages (D2). No new U-row: the coverage gaps are decided by that record, not deferred. 78 items.

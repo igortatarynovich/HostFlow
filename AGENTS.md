@@ -224,7 +224,7 @@ A module may communicate only through approved contracts.
 
 No new domain may be created without an ownership definition.
 
-**Current coverage:** [`module-ownership-coverage.md`](docs/specs/gates/module-ownership-coverage.md) — the Module Independence Program certified five modules (Documents / Recruitment / HR / Workforce / Integrations); **Sales, Forms and Acquisition have runtime code and no card**, and cards MOC-1…MOC-3 are required before the Release Readiness Gate can answer RR1. Absence from the certification matrix is **not** evidence that a domain is owned. Cards live in `docs/modules/<module>/module_ownership_card.md` (template: `docs/modules/_template/`).
+**Current coverage:** [`module-ownership-coverage.md`](docs/specs/gates/module-ownership-coverage.md) — the Module Independence Program certified five modules (Documents / Recruitment / HR / Workforce / Integrations); cards for **Sales**, **Forms** and **Acquisition** were added 2026-08-28 (MOC-1…MOC-3) but those three are **owned, not certified** (no contract map / dependency audit / test boundary). Absence from the certification matrix is **not** evidence that a domain is owned, and there is **no enforcement** that a domain has a card. `Lead` ownership is adjudicated per concern in the [Acquisition card](docs/modules/acquisition/module_ownership_card.md). Cards live in `docs/modules/<module>/module_ownership_card.md` (template: `docs/modules/_template/`).
 
 Required ownership card:
 
