@@ -2,6 +2,8 @@
 
 # HostFlow — Дорожная карта (Roadmap)
 
+> **Precedence (added 2026-08-28).** Датированный документ (последняя правка 2025-11-28), сохраняется как **продуктовое видение / North Star**. Это **не** horizon SoT и **не** план релиза. Фазы A–G ведёт [`platform-completion-roadmap.md`](architecture/platform-completion-roadmap.md), scope v1 — [`hostflow-v1-release-goal.md`](gates/hostflow-v1-release-goal.md), порядок — [`sales-to-comms-sequential-queue.md`](tasks/sales-to-comms-sequential-queue.md), готовность — [`release-readiness-gate.md`](gates/release-readiness-gate.md). Нумерация «Фаза 1…N» здесь **не совпадает** с Phases A–G и не должна использоваться для планирования.
+
 ## North Star
 Создать универсальную мульти-тенант HR/ATS платформу для транспортного сектора, объединяющую кандидатов, работодателей, агентства и провайдеров услуг.  
 HostFlow должен стать основой экосистемы трудоустройства и управления персоналом в Европе.

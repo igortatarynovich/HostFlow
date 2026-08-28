@@ -63,13 +63,23 @@
 | **Module specs** | `docs/specs/modules/<name>.md` | Модульный owner |
 | **Workflows** | `docs/specs/workflows/*.md` (зарегистрированы в `workflows/index.md`) | Workflow owner + index maintainer |
 | **Architecture supplementary** | `docs/specs/architecture/*.md` (recruitment-domain-model, handoff-contract, multi_tenant_model, rbac_matrix, object_storage, job_queue, applications-operating-model, и т.д.) | Architecture canon owner |
-| **Operational SSOT** | `docs/SSOT.md`, `docs/HOSTFLOW_AUDIT_AND_PLAN.md`, `docs/specs/operations-loop.md`, `docs/specs/manager-assignment.md`, `docs/specs/vacancy-statuses.md`, `docs/specs/plans-matrix.md`, `docs/specs/personas.md`, `docs/specs/operational-metrics.md`, `docs/specs/lead-types.md`, `docs/specs/tenant-types.md`, `docs/specs/own-company-model.md` | Operational owner |
+| **Gates** | `docs/specs/gates/*.md` — в частности [`release-readiness-gate.md`](../specs/gates/release-readiness-gate.md) (**единственная релизная власть**), [`goal-completion-gate.md`](../specs/gates/goal-completion-gate.md), [`v1-unowned-work-register.md`](../specs/gates/v1-unowned-work-register.md) | Engineering lead + Operational lead |
+| **Operational SSOT** (не релизная власть) | `docs/SSOT.md`, `docs/HOSTFLOW_AUDIT_AND_PLAN.md`, `docs/specs/operations-loop.md`, `docs/specs/manager-assignment.md`, `docs/specs/vacancy-statuses.md`, `docs/specs/plans-matrix.md`, `docs/specs/personas.md`, `docs/specs/operational-metrics.md`, `docs/specs/lead-types.md`, `docs/specs/tenant-types.md`, `docs/specs/own-company-model.md` | Operational owner |
 | **Phase / roadmap** | [`platform-completion-roadmap.md`](../specs/architecture/platform-completion-roadmap.md) (**horizon SoT** Phases A–G), [`hostflow-v1-release-goal.md`](../specs/gates/hostflow-v1-release-goal.md) (**v1 in-scope vs later**), [`platform-capability-maturity.md`](../specs/architecture/platform-capability-maturity.md) (maturity SoT), `docs/specs/tasks/sales-to-comms-sequential-queue.md` (near-term slices), `docs/specs/phase-8-roadmap.md`, `phases-2-8-engineering-closure.md`, `phase-1-3-…`, `phase-2-1-…`, `phase-3-cleanup-inventory.md`, `runbooks/phase-2-1-drop-runbook.md` | Engineering lead + Architecture canon owner |
 | **Journeys** | `docs/specs/journeys/*.md` | UX / product owner |
 | **DB / Frontend / Platform / Integrations** | `docs/specs/db/`, `docs/specs/frontend/`, `docs/specs/platform/`, `docs/specs/integrations/` | Соответствующая команда |
 | **Glossary** | `docs/specs/glossary.md` | Cross-team |
 
 **Правило:** L2 **должен** быть консистентен с L1. Расхождение — баг (ловится `make docs-lint`, секция «conflict with canon»).
+
+**Правило разрешения конфликтов внутри L2 (release authority, 2026-08-28).** Несколько документов L2 исторически претендуют на «план». Приоритет фиксирован:
+
+1. **Готовность к запуску** — только [`release-readiness-gate.md`](../specs/gates/release-readiness-gate.md). Ни пустая очередь, ни зелёный named gate, ни «всё сделано» в другом файле не объявляют release-ready.
+2. **Scope v1 (что входит / что «позже»)** — [`hostflow-v1-release-goal.md`](../specs/gates/hostflow-v1-release-goal.md).
+3. **Порядок работ** — [`sales-to-comms-sequential-queue.md`](../specs/tasks/sales-to-comms-sequential-queue.md).
+4. **Горизонт фаз** — [`platform-completion-roadmap.md`](../specs/architecture/platform-completion-roadmap.md).
+
+`docs/SSOT.md`, `docs/HOSTFLOW_AUDIT_AND_PLAN.md`, `docs/specs/roadmap.md`, `docs/roadmap-hr-pr14-pr16.md` и `docs/crm-production-readiness-ssot.md` **подчинены** этому порядку: они несут дев-правила, видение, операционные трекеры и датированные снимки, но не scope и не релизное решение. Каждый из них содержит precedence-блок с этой ссылкой.
 
 **Изменения L2:** PR в нормальном порядке + linkage:
 - Workflow: запись в `workflows/index.md` + reference в коде или из L1

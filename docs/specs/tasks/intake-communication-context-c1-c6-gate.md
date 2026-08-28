@@ -1,10 +1,10 @@
 # Communication Context — C1–C6 Gate
 
-**Status:** **ACTIVE** · C1–C5 COMPLETE · **C6 NEXT** · unlocked by R5 / C1–C5  
+**Status:** **PARKED** · C1–C5 **COMPLETE** ([#71](https://github.com/igortatarynovich/HostFlow/pull/71)–[#75](https://github.com/igortatarynovich/HostFlow/pull/75), 2026-07-19) · **C6 not started, unowned, not scheduled** — [unowned work register](../gates/v1-unowned-work-register.md)  
 **Parent epic:** [`intake-domain-separation-communication-context-v1.md`](intake-domain-separation-communication-context-v1.md)  
-**Still LOCKED until C6 (and C1–C5 already done for R6 unlock):** Queues / UI remain gated by product readiness; Forms P3–P5 LOCKED  
+**Still LOCKED:** Forms P4 / P5 (P3 Publish is v1 blocker 3 — [brief](external-intake-forms-publish.md)). Queues / UI are gated by product **R6**, not by this chain  
 
-C1–C5 complete unlocks Queues/UI (R6) from the Communication Context chain perspective.
+C1–C5 complete already unlocked Queues/UI (R6) from the Communication Context chain perspective; R6 remains locked on its own table-cutover grounds.
 
 ---
 

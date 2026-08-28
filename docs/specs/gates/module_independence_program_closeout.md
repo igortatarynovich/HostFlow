@@ -24,6 +24,8 @@ Related:
 
 ## Program Outcome
 
+> **Scope note (added 2026-08-28).** The four sentences below are scoped to the **five modules in the certification matrix above**, as they stood on 2026-05-29. They are **not** a statement about the system today: Sales, Forms and Acquisition have runtime code and no ownership card, and there is no enforcement that a domain has one. Current coverage — and the three cards required before the Release Readiness Gate — live in [`module-ownership-coverage.md`](module-ownership-coverage.md). This decision (`MODULE_INDEPENDENCE_PROGRAM_PASS`) stands and is not reopened.
+
 1. all active core modules have ownership boundaries documented;
 2. all active core modules have contract maps documented;
 3. all active core modules have dependency audits documented;

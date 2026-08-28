@@ -1,6 +1,6 @@
 # ADR-022 Phase 2 — kickoff (Product B on current architecture)
 
-**Status:** DOMAIN SLICES 1–4 **DONE** · Pipeline v1 seal **DONE** · Creation Origins **DONE** · **NEXT:** Capability UI (queue Stage 1)  
+**Status:** **CLOSED / historical** — delivery slices 1–7 DONE through [#99](https://github.com/igortatarynovich/HostFlow/pull/99) (2026-07-20), including Capability UI `a2a413e9` / [#96](https://github.com/igortatarynovich/HostFlow/pull/96), manual ClientAccount creation `6cbb1161` / [#97](https://github.com/igortatarynovich/HostFlow/pull/97) and Pipeline v1 wiring [#98](https://github.com/igortatarynovich/HostFlow/pull/98)/[#99](https://github.com/igortatarynovich/HostFlow/pull/99). This file names no successor: sequencing lives in the [sequential queue](sales-to-comms-sequential-queue.md) (Product Track = RPM-1)  
 **Date:** 2026-07-20  
 **Trusted base:** `integration/release-product-a-b` @ `e276e81f`+ (fast-forward only)  
 **Supersedes naming:** not “ADR022 audit” — audit is **done** ([`adr022-product-b-local-commits-audit.md`](adr022-product-b-local-commits-audit.md))  

@@ -1,6 +1,6 @@
 # Forms Product Layer P1 — Field Catalog (component registry)
 
-**Status:** **ACTIVE** (decomposition canon · merge `51063d1c` / [PR #45](https://github.com/igortatarynovich/HostFlow/pull/45))  
+**Status:** **CLOSED** — P1.1 `644b102a` / [#47](https://github.com/igortatarynovich/HostFlow/pull/47) · P1.2 `1f7b4aba` / [#50](https://github.com/igortatarynovich/HostFlow/pull/50) · P1.3 `0cf7fc00` / [#52](https://github.com/igortatarynovich/HostFlow/pull/52) · P1.4 `97aac4e3` / [#54](https://github.com/igortatarynovich/HostFlow/pull/54) (2026-07-19); Field Catalog contracts v1 **FROZEN** ([freeze record](../architecture/forms-field-catalog-v1-freeze.md)). `51063d1c` / [#45](https://github.com/igortatarynovich/HostFlow/pull/45) was the decomposition brief, not the work  
 **Epic:** [`forms-product-layer-epic.md`](forms-product-layer-epic.md) · merge `29f4057f` / PR #43 · registry framing `8320dc7a` / PR #44  
 **Prerequisite:** Forms Sprint 1–6 **COMPLETE**  
 **Unlocks:** Product Layer P2 (Builder) **only after P1.3 Standard Library DoD**  
@@ -186,12 +186,12 @@ Public Form / validate / normalize / envelope use Catalog rules
 
 ### P1 overall
 
-- [ ] P1.1–P1.4 complete  
-- [ ] Published `forms.field_schema.v1` may only cite Catalog `component_id`s  
-- [ ] Validation / normalization / storage resolve through Catalog  
-- [ ] Extension API usable by at least one module smoke registration (test double OK)  
-- [ ] Builder remains non-owner of types; P2 unlock after P1.3 documented  
-- [ ] No rewrite of Sprint 1–6 foundation  
+- [x] P1.1–P1.4 complete  
+- [x] Published `forms.field_schema.v1` may only cite Catalog `component_id`s  
+- [x] Validation / normalization / storage resolve through Catalog  
+- [x] Extension API usable by at least one module smoke registration (test double OK)  
+- [x] Builder remains non-owner of types; P2 unlock after P1.3 documented  
+- [x] No rewrite of Sprint 1–6 foundation  
 
 ### Per-sprint
 

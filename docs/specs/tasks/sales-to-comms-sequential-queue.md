@@ -183,7 +183,8 @@ This is the **only** place where remaining release distance is totalled. The [Re
 |------|----------|--------|
 | **Product critical path** | RPM 3–5 · Mapping 4–6 · Forms Publish 5–7 · Hiring E2E 4–6 · min HR handoff 4–6 | **20–30** |
 | **Launch-ops** | Operate & Launch OL-1…OL-7 | **10–14** |
-| **Serialized-equivalent total** | both tracks share one delivery capacity today | **30–44** |
+| **Gate prerequisites** | ownership cards MOC-1…MOC-3 ([coverage record](../gates/module-ownership-coverage.md)) — docs-only, may ride inside the owning blocker’s first slice | **1.5** |
+| **Serialized-equivalent total** | both tracks share one delivery capacity today | **31.5–45.5** |
 
 The Product path is a sum, not a max: the one-Active-Product invariant serialises it regardless of the DAG. Launch-ops is a second **track**, not second capacity — until a separate person or team owns it, its slices consume the same throughput, so the honest total is the sum.
 
@@ -603,6 +604,7 @@ Next branch only after:
 
 ## 8. History
 
+- 2026-08-28: Docs-only. Canon-hygiene pass. Nine stale slice statuses corrected against git evidence (Forms P1 / P2 → CLOSED-COMPLETE, C0.1b → COMPLETE `#101`, compliance outbound → COMPLETE, ADR-022 Phase 2 → CLOSED historical, Intake Runtime Split → CLOSED for R1–R5, Communication Context C1–C6 → PARKED with C6 unowned, pytest docker debt rescoped to dev-only, UI consistency → Phase 0–2B). Release authority ordered in [`hierarchy-of-truth.md`](../../governance/hierarchy-of-truth.md): `docs/SSOT.md`, `HOSTFLOW_AUDIT_AND_PLAN.md`, `docs/specs/roadmap.md`, `roadmap-hr-pr14-pr16.md` subordinated by precedence blocks. [Module ownership coverage](../gates/module-ownership-coverage.md) opened — MOC-1…MOC-3 (1.5 slices) required before RR1. Nothing scheduled; Active Product stays **RPM-1**.
 - 2026-08-28: Docs-only. § Release horizon roll-up added — 20–30 Product slices + 10–14 Launch-ops slices = **30–44 serialized-equivalent**, with measured velocity, three rate scenarios and computed RC / gate-decision bands (planning scenario: RC 2026-09-27…10-11). [Unowned work register](../gates/v1-unowned-work-register.md) opened: 74 canon commitments dispositioned, five (U-1…U-5) undecided and now blocking gate entry via EC-6. RPM brief received an estimate; stale LI-1 status in the Lifecycle seal corrected to PASS.
 - 2026-08-28: Docs-only. **Launch-ops** named as the second track (slot left free by Engineering DONE) with [Operate & Launch](operate-and-launch.md) as v1 blocker 6; invariant 3 amended from “no third track” to “two named tracks maximum”; write-set guard extended for OL slices. No Active Launch-ops slice — OL-1 still needs an amendment and named RR3 / RR4 / RR7 owners.
 - 2026-08-28: Docs-only. All four remaining v1 blockers received briefs with internal ladders, named gates and estimates — [Mapping Authority](mapping-authority.md) · [External Intake / Forms Publish](external-intake-forms-publish.md) · [Hiring workflow E2E](hiring-workflow-e2e.md) · [min HR handoff](recruitment-hr-minimal-handoff.md). Forms **P3** reclassified from `LOCKED` to v1 blocker 3 in the [roadmap](../architecture/platform-completion-roadmap.md) and the [Forms epic](forms-product-layer-epic.md). Active Product stayed **RPM-1**; nothing scheduled; no feat unlocked.

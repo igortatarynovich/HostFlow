@@ -64,6 +64,8 @@ Five rows. Everything else in this register is already disposed of.
 | Three stage registries; ten eligibility answerers; arbitrary stage jumps | [Hiring workflow E2E](../tasks/hiring-workflow-e2e.md) |
 | Delayed-workforce flag; conditional document reuse; PE HR inbound placeholder | [min HR handoff](../tasks/recruitment-hr-minimal-handoff.md) |
 | Nine requirement-policy answerers | [RPM-1…RPM-3](../tasks/requirement-policy-management.md) |
+| Sales / Forms / Acquisition have runtime code and no ownership card, on v1 blocker paths | [module ownership coverage](module-ownership-coverage.md) MOC-1…MOC-3 (1.5 slices) — RR1 evidence |
+| `backend/app/modules/leads` claimed by Recruitment, Integrations and the catalog simultaneously | [module ownership coverage](module-ownership-coverage.md) §3 — adjudicated by MOC-3 |
 
 ---
 
@@ -110,6 +112,8 @@ Grouped by class. Each row needs an owner in the closing record; expiry only whe
 | Telegram messenger hardcoded strings (i18n) | [telegram execution plan](../workflows/candidate-intake-via-telegram-execution-plan.md) | Communications | |
 | Select / listbox accessibility deferred to implementation review | [SELECT_V1_DRAFT.md](../frontend/SELECT_V1_DRAFT.md) | Frontend owner | |
 | Dependabot: 19 open vulnerability alerts on the default branch (8 high) | GitHub security tab (reported on push) | Security owner | Not in `docs/`; must be triaged before the gate |
+| No enforcement that a domain has an ownership card, or that the certification matrix matches the runtime module list (Rule 7 → the coverage dimension of the Module Independence Program is documentation only) | [module ownership coverage](module-ownership-coverage.md) §5 | Architecture canon owner | Launch-ops candidate; prevents future drift, does not make v1 launchable |
+| Empty packages `backend/app/modules/finance` and `.../services` imply ownership their documented modules run elsewhere | [module ownership coverage](module-ownership-coverage.md) §3 | Architecture canon owner | Either the runtime moves in or the packages go |
 
 ### ADRs accepted without runtime
 
@@ -163,3 +167,4 @@ This register is **not** a backlog to burn down. Most rows are supposed to stay 
 ## History
 
 - 2026-08-28: Introduced. Full sweep of gate records, ADRs, maturity matrix, audits, security roadmap and task briefs produced 74 items; five (U-1…U-5) turned out to be release-relevant with no owner, and the rest were dispositioned D1 / D2 / D3. Created because the plan documented what would be built and never documented what would deliberately not be.
+- 2026-08-28: +4 rows from the canon-hygiene pass — ownership-card coverage for Sales / Forms / Acquisition and the `leads` triple claim (D1, owned by [module ownership coverage](module-ownership-coverage.md)); the Rule 7 enforcement gap and the two empty module packages (D2). No new U-row: the coverage gaps are decided by that record, not deferred. 78 items.

@@ -1,9 +1,7 @@
 # C0.1b — Intent Policy & Snapshot Hardening
 
-**Status:** In progress  
-**Branch:** `fix/communication-c0-intent-policy-hardening`  
-**Worktree:** `/tmp/hf-c0-1b-intent-policy`  
-**Base:** `integration/release-product-a-b` @ `f8569fa9` (PR #100 merged)  
+**Status:** **COMPLETE** — [#101](https://github.com/igortatarynovich/HostFlow/pull/101) / `7bc13d57` (2026-07-20); shipped `communications/intent_registry.py`, `intent_policy.py`, `snapshot.py` + `test_c0_1b_intent_policy_hardening.py`. Epic C0 closed C0.0–C0.3 ✅  
+**Base at merge:** `integration/release-product-a-b` @ `f8569fa9` (after [#100](https://github.com/igortatarynovich/HostFlow/pull/100))  
 **Parents:** [C0.0 Canon](c0-0-communication-canon.md) · [Epic C0](epic-c0-communication-integrity.md) · [Legacy migration map](c0-1b-legacy-writers-migration-map.md)
 
 > Hardens the Canon path so registry, policy, and snapshot cannot drift.  

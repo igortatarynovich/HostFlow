@@ -1,6 +1,6 @@
 # Forms Product Layer P2 — Builder
 
-**Status:** **ACTIVE** · Builder MVP **COMPLETE** (P2.1–P2.5)  
+**Status:** **COMPLETE** — Builder MVP P2.1–P2.5 ([#57](https://github.com/igortatarynovich/HostFlow/pull/57)–[#61](https://github.com/igortatarynovich/HostFlow/pull/61), 2026-07-19). Nothing open in this slice: “Builder Catalog Consumption” is a standing rule, not work. **P3 Publish** is now v1 blocker 3 — [external-intake-forms-publish.md](external-intake-forms-publish.md); P4 / P5 stay LOCKED  
 **Prerequisite:** P1 CLOSED · Field Catalog v1 **FROZEN**  
 **Canon:** [`forms-product-layer-epic.md`](forms-product-layer-epic.md)  
 **Last complete:** [`forms-product-p2-5-minimal-builder-ui.md`](forms-product-p2-5-minimal-builder-ui.md) · **COMPLETE**
@@ -54,7 +54,7 @@ Palette · search · canvas · add/reorder/remove · properties from `config_fie
 ## Next (outside P2 Builder MVP)
 
 - **P3 Publish UI** remains LOCKED until explicitly opened.  
-- **Next platform focus:** [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · **READY FOR IMPLEMENTATION** (R1–R6).  
+- **Next platform focus:** this file names none. Sequencing is owned by [`sales-to-comms-sequential-queue.md`](sales-to-comms-sequential-queue.md); Intake Runtime Split R1–R5 closed 2026-07-19.  
   Matrix SoT: [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) (**ACCEPTED / FROZEN**).
 
 ---

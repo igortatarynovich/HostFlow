@@ -1,6 +1,6 @@
 # Intake Runtime Split V1
 
-**Status:** **ACTIVE** (R1–R5 COMPLETE · **Communication Context NEXT**)  
+**Status:** **CLOSED** for R1–R5 ([#63](https://github.com/igortatarynovich/HostFlow/pull/63)–[#67](https://github.com/igortatarynovich/HostFlow/pull/67), [#69](https://github.com/igortatarynovich/HostFlow/pull/69), 2026-07-19). Communication Context **C1–C5 COMPLETE** ([#71](https://github.com/igortatarynovich/HostFlow/pull/71)–[#75](https://github.com/igortatarynovich/HostFlow/pull/75), 2026-07-19) — only **C6** is outstanding, unowned and not scheduled ([register](../gates/v1-unowned-work-register.md)). Queues/UI are no longer blocked by C1–C5; Acquisition **R6** stays locked for its own reasons  
 **Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Matrix epic **COMPLETE**  
 **Matrix SoT:** [`../architecture/intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md)  
 **L0 boundary:** [`intake-r35-flights-dispatch-boundary.md`](intake-r35-flights-dispatch-boundary.md)  

@@ -1,6 +1,6 @@
 # Task: UI Consistency Foundation (PR14)
 
-**Status:** Phase 0–1 **completed (engineering)** — visual sign-off pending → then Phase 2  
+**Status:** Phase 0–**2B** completed (engineering) — Phase 2A–2B landed as `6d91ac4a` (2026-05-20), re-landed on this integration line as `d0e95704` / [#17](https://github.com/igortatarynovich/HostFlow/pull/17) (2026-07-14): `EntityListShell.tsx`, `EntityListTableFrame.tsx`, `VacancyList.tsx`. **Open:** formal visual sign-off · Phases 2C / 3 / 4 planned, not scheduled  
 **Label:** PR14 — UI Consistency Foundation (**not** [`docs/PR14-hr-verification-ux.md`](../../PR14-hr-verification-ux.md))  
 **ADR:** [`ADR-011-hostflow-ui-platform-standard.md`](../architecture/ADR-011-hostflow-ui-platform-standard.md)  
 **Canon:** [`../frontend/entity-table-governance.md`](../frontend/entity-table-governance.md)  

@@ -1,5 +1,7 @@
 # HR verification roadmap (PR14–PR17)
 
+> **Precedence (added 2026-08-28).** Датированный документ (2026-07-13). Его порядок «PR-INFRA → PR15 → PR17 → PR16» и статус **Next** у PR17 **не действуют** как план: Recruitment → HR handoff теперь v1-блокер 4 с собственным брифом — [`recruitment-hr-minimal-handoff.md`](specs/tasks/recruitment-hr-minimal-handoff.md). Порядок работ ведёт [`sales-to-comms-sequential-queue.md`](specs/tasks/sales-to-comms-sequential-queue.md). Названия ветвей ниже — историческая справка, не активная работа. Спеки PR15/PR16/PR17 остаются полезным входом для брифа блокера.
+
 | PR | Scope | Status |
 |----|--------|--------|
 | **PR14** | UX/style sequential HR verification | **Done** on employee card (`caseMode` → `HrDataVerificationWorkspace`) |

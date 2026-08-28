@@ -1,8 +1,9 @@
 # Backend pytest DB reachability (docker) — open debt
 
-**Status:** open  
-**Date:** 2026-07-15  
-**Not part of Questionnaire SSOT slice** — track before merging `integration/release-product-a-b` into `main`.
+**Status:** **open — dev-environment only.** No longer a merge blocker: `integration/release-product-a-b` → `main` already merged 2026-08-26 ([#326](https://github.com/igortatarynovich/HostFlow/pull/326)), and CI does not use the docker-compose pytest path (`backend-ci.yml` / `backend-regression.yml` run against a service Postgres).  
+**Date:** 2026-07-15 · reassessed 2026-08-28  
+**Scope:** local `docker compose exec backend pytest` only. `conftest.py` rewrites `db` → `127.0.0.1` but never the reverse, so the in-container alembic subprocess still targets the wrong host.  
+**Related:** [pytest baseline stabilisation](stabilize-integration-pytest-baseline.md) (test debt SoT) · [unowned work register](../gates/v1-unowned-work-register.md) (quality debt dispositions)
 
 ## Symptom
 

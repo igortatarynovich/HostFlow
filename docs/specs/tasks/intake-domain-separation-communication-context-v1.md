@@ -1,11 +1,11 @@
 # Intake Domain Separation & Communication Context V1
 
-**Status:** **ACTIVE** · C1–C5 COMPLETE · **C6 NEXT** (R5 COMPLETE `#69`)  
+**Status:** **PARKED** · C1–C5 **COMPLETE** ([#71](https://github.com/igortatarynovich/HostFlow/pull/71)–[#75](https://github.com/igortatarynovich/HostFlow/pull/75), 2026-07-19; R5 COMPLETE [#69](https://github.com/igortatarynovich/HostFlow/pull/69)) · **C6 not started, unowned and not scheduled** — declared residual in the [unowned work register](../gates/v1-unowned-work-register.md). Nothing here is Active: the Product Track is [RPM-1](requirement-policy-management.md)  
 **Prerequisite:** Canonical Input Matrix **ACCEPTED / FROZEN** · Runtime Split R1–R5 COMPLETE · INV-16 · R3.5  
 **Acceptance scenario (must close epic):** A Sales Inquiry that received a B2B questionnaire may send **only Sales-owned** communications. Recruitment acknowledgement is unavailable regardless of form, Thread UI, locale, or send path.  
 **Parents:** [`intake-canonical-input-matrix.md`](../architecture/intake-canonical-input-matrix.md) · [`intake-runtime-split-v1.md`](intake-runtime-split-v1.md) · [`intake-r5-provenance-gate.md`](intake-r5-provenance-gate.md) · [`ADR-023`](../architecture/ADR-023-recruitment-sales-module-separation.md) · [`../architecture/decision-priority-rule.md`](../architecture/decision-priority-rule.md)  
 **Gate:** [`intake-communication-context-c1-c6-gate.md`](intake-communication-context-c1-c6-gate.md)  
-**Still LOCKED:** Forms P3–P5 · Queues/UI until product R6 (Communication Context C1–C5 complete)  
+**Still LOCKED:** Forms P4 / P5 (P3 Publish is now v1 blocker 3 — [brief](external-intake-forms-publish.md)) · Queues/UI wait on product **R6**, which C1–C5 no longer block  
 
 ---
 

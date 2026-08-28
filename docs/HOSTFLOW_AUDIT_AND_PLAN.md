@@ -1,5 +1,14 @@
 # HostFlow — Состояние системы и план развития
 
+> **Precedence (added 2026-08-28).** Это **датированный снимок** (последняя содержательная правка — 2026-04-19), а **не** план релиза и **не** актуальное состояние системы. Он не объявляет scope, порядок работ и готовность к запуску.
+>
+> - **Что входит в v1 и что «позже»** — [`docs/specs/gates/hostflow-v1-release-goal.md`](specs/gates/hostflow-v1-release-goal.md).
+> - **Порядок слайсов** — [`docs/specs/tasks/sales-to-comms-sequential-queue.md`](specs/tasks/sales-to-comms-sequential-queue.md).
+> - **«Готовы к запуску»** объявляет только [`release-readiness-gate.md`](specs/gates/release-readiness-gate.md).
+> - **Бесхозные пункты этого аудита** имеют диспозицию в [`v1-unowned-work-register.md`](specs/gates/v1-unowned-work-register.md); операционные дефолты (очередь, хранилище, миграции, алерты) — в [`operate-and-launch.md`](specs/tasks/operate-and-launch.md).
+>
+> Отдельные утверждения в тексте уже опровергнуты кодом (см. §1.4 строка 10 против §2 `[x]`). При конфликте выигрывает код и документы выше.
+
 **Назначение документа:** одноразовый архитектурный аудит и дорожная карта развития HostFlow — от текущего состояния к продукту уровня «лучше Pipedrive по простоте и результату». Документ **не заменяет** `docs/SSOT.md` (операционный бэклог с `[ ]`) и не является трекером прогресса. Прогресс по задачам ведётся в `docs/SSOT.md` §2.1 (см. §1.1 и §1.3 там).
 
 **Связанные документы:**
@@ -66,9 +75,11 @@
 | 7 | **Нет Sentry / structured logging / RUM.** Prometheus есть, но только под метрики инфраструктуры | Инциденты в проде не видны, нет traceability ошибок пользователя | `backend/app/main.py`, `hostflow-frontend/src/main.tsx` |
 | 8 | **E2E-тесты есть как скелет, но не покрывают критичные сценарии** (оплата, intake → lead → кандидат → документ → коммуникация) | Регрессии ловятся после релиза | `tests/e2e/*` |
 | 9 | **Хардкод-строки на кириллице** в 65 `.tsx` файлах обходят i18n | Разрыв локалей, невозможность быстро продать en/pl | `grep '[а-я]' hostflow-frontend/src/**/*.tsx` |
-| 10 | **Нет rate-limit/CAPTCHA на публичных endpoint-ах** (`/public/intake`, signup, password-reset) | Спам, abuse | `backend/app/api/public/*` |
+| 10 | ~~**Нет rate-limit/CAPTCHA на публичных endpoint-ах**~~ → **РЕШЕНО** (см. §2 `[x]`): `backend/app/core/rate_limit.py` (Redis-backed) + `backend/app/core/turnstile.py` (Cloudflare Turnstile), применены к public intake и auth-эндпоинтам | — | `backend/app/core/rate_limit.py`, `backend/app/core/turnstile.py` |
 | 11 | **Биллинг частичный по SSOT §2.18** — нет Stripe Tax/VIES, нет SKU packs UI, нет Customer Portal, не все write-API под trial grace | Деньги уходят, регионы не перекрыты, лазейки в квотах | `backend/app/api/v1/settings/billing.py`, `backend/app/services/billing_restrictions.py` |
 | 12 | **Onboarding не вытягивает «первое значение».** Есть getting-started, но нет жёсткого «первые 5 минут = первый лид в работе» | Churn на второй день после signup | `pages/OnboardingGettingStartedPage.tsx` |
+
+**Owners (added 2026-08-28).** Строки 2 (очередь в памяти), 3 (локальное хранилище), 5 (alembic heads / миграции) и 7 (наблюдаемость и алерты) — это wrong runtime defaults, и они принадлежат v1-блокеру [`operate-and-launch.md`](specs/tasks/operate-and-launch.md) (OL-1…OL-3). Строка 8 (E2E) закрывается [`release-readiness-acceptance-suite.md`](specs/journeys/release-readiness-acceptance-suite.md). Строки 1, 4, 9, 11, 12 не принадлежат ни одному запланированному слайсу — их диспозиция в [`v1-unowned-work-register.md`](specs/gates/v1-unowned-work-register.md).
 
 ### 1.5 Что работает хорошо (опорные сильные стороны)
 

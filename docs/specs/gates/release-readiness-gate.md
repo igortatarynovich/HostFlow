@@ -60,7 +60,7 @@ Each question has one owner and one evidence artifact. “Works on my machine”
 
 | # | Question | Owner | Fail if |
 |---|----------|-------|---------|
-| **RR1** | **Capability completeness.** Is every v1 blocker closed with a release delta that names what became true, and is no blocker OPEN? | Operational lead | A blocker is closed by program outcome only, or a blocker is waived without appearing in § Named residuals |
+| **RR1** | **Capability completeness.** Is every v1 blocker closed with a release delta that names what became true, is no blocker OPEN, and does every blocker path have a **named owning module**? | Operational lead | A blocker is closed by program outcome only; a blocker is waived without appearing in § Named residuals; a blocker path runs through a domain with no ownership card ([coverage record](module-ownership-coverage.md) MOC-1…MOC-3) |
 | **RR2** | **Product acceptance.** Did a **non-developer** walk every release-blocking scenario of the [acceptance suite](../journeys/release-readiness-acceptance-suite.md) on the RC build, in one tenant, in order? | UX / product owner | Scenarios executed by the implementer, on a dev branch, across several builds, or partially |
 | **RR3** | **Operability.** Can the service be deployed, rolled back, monitored, and recovered by following a written runbook — by someone who did not build it? | Engineering lead | Deploy is an undocumented manual build; no verified restore; no alerting; no on-call owner |
 | **RR4** | **Tenant lifecycle.** Can an operator create a tenant, load a customer’s existing data, export all of it, and delete it — as product, not as SQL? | Operational lead | Onboarding requires developer intervention; import/export/delete exist only as scripts or not at all |
@@ -72,7 +72,7 @@ Each question has one owner and one evidence artifact. “Works on my machine”
 
 | Question | Acceptable evidence | Not acceptable |
 |----------|---------------------|----------------|
-| RR1 | Release delta lines quoted from each program close | Merged PR list |
+| RR1 | Release delta lines quoted from each program close + ownership card present for every domain on a blocker path (MOC-1…MOC-3 merged) | Merged PR list; «the module obviously belongs to someone» |
 | RR2 | Signed suite run: scenario ids, build id, tenant id, operator name, defect ids | Screenshots without build id; “we tested it” |
 | RR3 | Runbook executed on a clean target + restore drill record (date, RPO/RTO observed) | Runbook that has never been executed |
 | RR4 | One tenant created → data imported → full export produced → tenant deleted, all via product surfaces | `psql` transcript; purge script |

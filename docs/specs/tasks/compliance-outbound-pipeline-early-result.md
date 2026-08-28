@@ -1,6 +1,6 @@
 # Compliance outbound via Pipeline — early opaque result + binders
 
-**Status:** READY TO IMPLEMENT — **Engineering / Communication track** (does not steal Acquisition Product Track)  
+**Status:** **COMPLETE** — PR-1…PR-5 merged 2026-07-26 (`3dfc2036`, `4b144bf7`, `391f9641`, `d1edf56b`, `8f695522`) + ops tooling [#181](https://github.com/igortatarynovich/HostFlow/pull/181) / [#182](https://github.com/igortatarynovich/HostFlow/pull/182). **Residual:** the SMTP allowlist shrank but is not empty (`rodo`, notifications, dispatch) — carried as Epic C R2 in the [unowned work register](../gates/v1-unowned-work-register.md)  
 **Date:** 2026-07-26  
 **Canon ADR:** [ADR-031](../architecture/ADR-031-compliance-outbound-requires-opaque-result.md) (**Accepted**)  
 **Parents:** INV-17 · C5 · §8.0.1–8.0.2 · [C0.1b migration map](c0-1b-legacy-writers-migration-map.md) · Sales questionnaire binder  
