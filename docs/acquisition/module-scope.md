@@ -105,6 +105,14 @@ Campaign → Flight → Endpoint → Submission → Result → Outcome → KPI
 
 **CampaignTemplate** catalog + instantiate — после V1 (ориентир V2). Multi-Flight UX — тоже после V1.
 
+## Legacy Search → Campaign / Flight (PR-A gate)
+
+Операторская поверхность Recruitment Searches **не снимается**, пока на копии production DB не пройден backfill:
+
+- Runbook: [`../runbooks/legacy-search-to-campaign-migration.md`](../runbooks/legacy-search-to-campaign-migration.md)
+- Переносятся только Vacancy с реальными acquisition-сигналами (не «каждая вакансия»).
+- Получатель = `CampaignTarget` (`vacancy` + `candidate_application`); UX cleanup (#139 / PR-B) — только после PASS gate в runbook.
+
 ## Anti-scope (Stage 3A / V1)
 
 - Не Marketing product / `marketing.*`  
