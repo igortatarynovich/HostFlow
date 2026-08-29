@@ -128,14 +128,10 @@ def _pytest_localize_postgres_host() -> None:
 _pytest_localize_postgres_host()
 
 
-def _alembic_executable(repo_root: Path) -> str | None:
-    for rel in (".venv/bin/alembic", ".venv312/bin/alembic"):
-        p = repo_root / rel
-        if p.is_file():
-            return str(p)
-    import shutil
+def _alembic_executable(_repo_root: Path) -> str | None:
+    from backend.tests.test_support.repo_paths import alembic_executable
 
-    return shutil.which("alembic")
+    return alembic_executable()
 
 
 def _env_with_local_db_host(base: dict[str, str]) -> dict[str, str]:
