@@ -6,7 +6,7 @@
 **Branch (docs):** `docs/v1-blocker-briefs`
 **Branch (code):** none — later slices `feat/tenant-isolation-tiN-…`
 **Parents:** [Release Readiness Gate](../gates/release-readiness-gate.md) **RR5** · [Security SSOT](../../security/security-ssot.md) §10 · [Unowned work register](../gates/v1-unowned-work-register.md) · [QB-1 measurement](stabilize-integration-pytest-baseline.md) · [Acceptance suite](../journeys/release-readiness-acceptance-suite.md)
-**Estimate:** 7–10 slices. TI-1…TI-3 are delivered; the whole remainder is TI-4, whose size is now measured rather than assumed: 102 tables to cover, 10 application paths that write with no tenant bound, 108 tests that write for a tenant other than the one they bind, and one security-canon decision about identity lookup. Raised from 3–5 (2026-08-28) → 5–8 (policy rewrites and coverage measured) → 7–10 (2026-08-29, once the restricted role was actually connected).
+**Estimate:** 9–12 slices. TI-1…TI-4 are delivered. The remainder is **TI-5**, and its size is measured rather than assumed: a named elevated connection for the `/api/v1/platform` superadmin surface (which reads and writes every tenant on an unbound session), two public tenant resolvers, slug uniqueness and enumeration, a policy on `tenants`, and the test tail that writes for a tenant it does not bind. Raised from 3–5 (2026-08-28) → 5–8 (policy rewrites and coverage measured) → 7–10 (2026-08-29, once the restricted role was actually connected) → 9–12 (2026-08-30, once the coverage guard stopped keying on one column name and found two tables with no row-level security at all).
 **Owner:** proposed Security canon owner (decision) + Engineering lead (execution)
 
 > The database-level tenant isolation that the security canon names as the primary control is **not in force**. Application-level filtering is doing the work alone.
@@ -270,6 +270,96 @@ suite work, and it is the last thing TI-4 owes.
 
 ---
 
+## TI-5 — what "100% coverage" was not measuring (2026-08-30)
+
+TI-4 closed 102 tables and reported the coverage guard's baseline as empty. That report was true
+about what the guard measured and wrong about what it claimed, and the difference was found by
+running the suite under the restricted role rather than by reading the schema again.
+
+**The guard recognised tenant scope by the exact column name `tenant_id`.** Three tables are scoped
+through other names, so none of them was ever counted, ever covered, or ever missed:
+
+| Table | Scoping columns | State found |
+|---|---|---|
+| `candidate_handoffs` | `agency_tenant_id`, `client_tenant_id` | **row-level security switched off entirely** |
+| `candidate_handoff_snapshots` | `agency_tenant_id` | **row-level security switched off entirely** |
+| `tenant_links` | `agency_tenant_id`, `client_tenant_id` | two policies, both `FOR SELECT` |
+
+The first two are the tables that record which agency presented which candidate to which client, and
+the snapshot `payload` is the candidate profile as presented — personal data. Unpolicied, they were
+readable in full by any tenant's session. This is the exact failure mode the whole programme exists
+to prevent, and it survived TI-1…TI-4 because the guard and the migrations shared one assumption
+about column naming. The guard now matches any column ending in `tenant_id`.
+
+**`tenant_links` was worse than uncovered — it was unusable.** With row-level security enabled and
+policies that cover only `SELECT`, PostgreSQL default-denies every insert: there is no applicable
+policy, so there is nothing to satisfy. Reads were filtered, writes were refused, and the owner
+connection hid it completely. So coverage now has a second condition — a policy that can admit a
+write — and a second guard asserts it. `202608290009_rls_handoff_dual_leg` closes all three.
+
+Their policy shape differs from the single-tenant form on purpose. A handoff has two legitimate
+owners, and both must read it for the feature to exist at all, so the predicate names both legs and
+denies every third tenant. Writes follow the workflow: a handoff is created by the agency and
+decided by the client, so both may write; a link and a snapshot are minted by the agency alone.
+Snapshot visibility is derived from the parent handoff rather than duplicated, because the snapshot
+row has no client leg — the application already gates that read through
+`assert_handoff_snapshot_readable`, and the policy states the same rule where it cannot be bypassed.
+
+**Two more application paths, of shapes already named.** The public client portal resolved a link by
+token on an unbound session and then read handoffs, candidates and snapshots — the scanner's shape,
+and it gets the scanner's answer: `resolve_tenant_of_portal_token` returns the agency tenant on the
+owner connection, the session binds it, and a token that does not exist never reaches a query.
+Tenant provisioning is a new shape: it writes the *new* tenant's rows from the transaction of
+whoever asked for the tenant, and it must stay in that transaction because the hook contract is that
+a provisioning failure rolls tenant creation back. A separate session cannot see an uncommitted
+tenant row, so the scope moves instead — `acting_for_tenant` binds the new tenant for a bounded
+region and restores the previous scope afterwards, leaving `session.info["tenant_id"]` alone so the
+next transaction returns to the caller regardless of how the block exits.
+
+### The finding that changes the switch decision
+
+**`tenants` cannot be closed yet, and the reason is a consumer with no home.** The whole
+`/api/v1/platform` surface behind `require_superadmin()` runs on an unbound session and reads and
+writes *any* tenant by design — that is what a platform administration surface is. Tenant creation,
+slug uniqueness across the global namespace, and the two public resolvers that map a share token or
+a host name to a tenant are the same shape. A policy on `tenants` without a named elevated
+connection for those paths would break superadmin without isolating anything, so `tenants` is the
+single name left in `rls_uncovered_tables.txt`, with that reason written next to it.
+
+The consequence is larger than one table. **The 2026-08-29 decision to switch the application to the
+restricted role after TI-4 does not survive this finding**: under the restricted role the superadmin
+platform surface is denied on every tenant it is meant to administer, not only on `tenants`. The
+switch condition therefore moves to *after TI-5*, and the substance of TI-5 is:
+
+1. a named elevated connection for platform administration, authorised by `require_superadmin()` and
+   listed like the identity path, so the bypass is one auditable route rather than an unbound session;
+2. the two public resolvers moved onto the resolution primitive;
+3. slug uniqueness and tenant enumeration onto the owner connection;
+4. then, and only then, a policy on `tenants`.
+
+### Measurement (fresh database, both roles, 2026-08-30)
+
+| Run | Owner control | Restricted | Restricted-only |
+|---|---|---|---|
+| 2026-08-29, after TI-4 | 370 | 536 | **166** |
+| 2026-08-30, after the three tables and two paths | 366 | 449 | **89** |
+
+Six earlier runs are recorded above; this is the seventh and eighth. The remaining 89 are one shape,
+now unmixed with anything else: a test picks a tenant id of its own — often a literal like
+`fr-closure-idem-e959569c` — and writes rows for it on a session the harness bound to the default
+tenant. The concentrations are `candidates` (17), `fr_canonical_fields` (15),
+`pe_document_requirements` (12) and `own_companies` (9). **No application path is among them**, and
+the two that were have been fixed. The platform-catalog seeders are also out of the tail: tests that
+called them directly on a tenant session now go through `seed_platform_catalog`, which uses the
+owner connection, because sentinel rows are readable from every tenant and writable from none.
+
+This is the third time a stated contract has bent under measurement rather than under argument —
+`FORCE` could not be universal, binding could not live at session level, and now coverage could not
+be defined by a column name. Each was found by connecting the role, which is the practice worth
+keeping.
+
+---
+
 ## Internal ladder (proposed)
 
 | Slice | Content | Named gate |
@@ -278,7 +368,8 @@ suite work, and it is the last thing TI-4 owes.
 | **TI-2** ✅ | Coverage guard: a test/CI check that fails when a `tenant_id` table has no policy, plus the measured baseline committed as the allow-list. Makes the gap non-growing before it is closed. | — Delivered and verified in both directions |
 | **TI-3** | Provision the role model: a documented, scripted production role that is not superuser and does not own the tables, or `FORCE ROW LEVEL SECURITY` where ownership cannot be separated. Isolation tests run under that role in CI. **Provisioning script, the policy-form migration and the connection split are delivered, and the isolation suite passes under the restricted role.** What remains is the cost of the switch across the *whole* suite (being measured) and the CI wiring, which needs a migrated database in CI (**OL-2**). | — |
 | **TI-4** | Close the 102-table gap in batches with the guard staying green; retire the allow-list. Also: fix the **10 `broken` call sites** so the role can be switched, and decide what identity lookup runs as once `users` carries a policy. **Coverage is closed** — seven migrations, baseline empty, identity decided, `FORCE` exception named and guarded. What remains before the switch: the 10 application paths and the test tail. | **RLS Coverage Gate** |
-| **TI-5** (conditional) | Fix the red module-registry boundary guard, or split it out if it proves unrelated. | — |
+| **TI-5** | **The role switch's remaining precondition.** A named elevated connection for the `/api/v1/platform` superadmin surface, the two public tenant resolvers moved onto the resolution primitive, slug uniqueness and tenant enumeration onto the owner connection, then a policy on `tenants`. Also the test tail that writes for a tenant it does not bind. | **Isolation Switch Gate** |
+| **TI-6** (conditional) | Fix the red module-registry boundary guard, or split it out if it proves unrelated. | — |
 
 **Not this brief:** RBAC / role semantics, superadmin model, audit coverage, export rules, the `tenant_visibility` agency-linking model, and the [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md) erasure work (adjacent, separately owned).
 
@@ -301,6 +392,7 @@ What was **not** an option is the state this replaced: canon asserting 100% RLS 
 
 | Date | Change |
 |------|--------|
+| 2026-08-30 | **TI-4's coverage claim corrected, and the switch condition moved.** The coverage guard keyed on the literal column name `tenant_id`, so three tables scoped through `agency_tenant_id` / `client_tenant_id` were never counted: `candidate_handoffs` and `candidate_handoff_snapshots` had row-level security switched off entirely, and `tenant_links` carried read-only policies that made every write default-deny. Two of the three hold cross-tenant candidate data, so this was a live isolation gap for the whole programme's duration. All three closed by `202608290009_rls_handoff_dual_leg`; the guard now matches any column ending in `tenant_id` and additionally requires a policy that can admit a write. Two application paths fixed with them — the public client portal, and tenant provisioning via the new `acting_for_tenant` scope. **`tenants` stays open on purpose**, because the `/api/v1/platform` superadmin surface reads and writes every tenant on an unbound session; that makes **TI-5**, not TI-4, the precondition for the role switch. |
 | 2026-08-29 | **TI-4 coverage delivered.** All 102 remaining tenant-scoped tables closed in seven owner-batched migrations; the guard's baseline is empty, so it now asserts *no gap* rather than *no growth*. Identity decided: `users` and `user_memberships` carry policies and authentication runs over one named owner connection. A stated contract line bent under evidence — `FORCE` cannot be universal, because it applies to the owner, and the owner is exactly what identity lookup and platform seeding need; 15 tables are named exceptions and a new guard fails if the set grows or goes stale. The nine broken application paths are fixed, and one undiscovered defect with them: tenant provisioning was writing platform-owned reference rows from a tenant's session. |
 | 2026-08-29 | **Switch sequencing decided by the owner:** the application moves to the restricted role **after TI-4**, when the coverage gap is closed — a role in force over a schema where half the tables have no policy buys a false sense of protection. Test-suite bindings are defaulted in the harness rather than edited into 424 tests, with the blind spot that creates covered by a static guard over the 24 places `backend/app` opens a session directly. |
 | 2026-08-29 | **TI-3 part two delivered: the isolation suite passes with the application connected as `hostflow_app`.** Two findings, both invisible while the role bypassed RLS. First, 126 of 130 policies read `app.tenant_id` with one argument, so an unbound statement raised instead of returning nothing; folded into the same migration. Second, and more consequential: the tenant was bound once per request at session level, but a session releases its connection to the pool on every commit, so the `add`/`commit`/`refresh` shape continued on an unbound connection — RLS could never have worked with that binding. Binding moved to `after_begin`, transaction-locally. Connection split added behind `PRIVILEGED_DATABASE_URL`, which resolves to the application URL when unset, so environments that do not separate roles are unaffected. One more leftover-state fixture defect fixed: `tenant2_data` never created its own tenant. |
