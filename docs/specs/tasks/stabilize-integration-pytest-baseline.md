@@ -32,7 +32,7 @@ C2.4 remains **frozen**.
 
 Evidence: [CI run 29832741203](https://github.com/igortatarynovich/HostFlow/actions/runs/29832741203) — 657 failed / 1926 passed.
 
-**Figures on this line are historical.** The sequence recorded was 657 failed / 1926 passed (2026-07-21) → 484 failed / 2740 passed (E1 close-out) → **397 failed / 3136 passed (2026-08-28)**, i.e. the aggregate moved three times without anyone owning the delta. An aggregate that drifts is not a baseline: [Release Readiness Gate](../gates/release-readiness-gate.md) **RR6** requires an *enumerated, frozen, owned, non-growing* known-failure list plus a named set of suites that must be green for a release build. **Re-measured 2026-08-28 on an authorised scratch database — see § QB-1 § Measurement record.** `backend/tests/conftest.py` refuses to run against a DB whose name does not contain `test` (guard `_assert_not_production_db`), so no figure may be taken from a developer's dev database.
+**Figures on this line are historical.** The sequence recorded was 657 failed / 1926 passed (2026-07-21) → 484 failed / 2740 passed (E1 close-out) → **371 failed / 3164 passed (2026-08-28, `255279fc`)**, i.e. the aggregate moved three times without anyone owning the delta. An aggregate that drifts is not a baseline: [Release Readiness Gate](../gates/release-readiness-gate.md) **RR6** requires an *enumerated, frozen, owned, non-growing* known-failure list plus a named set of suites that must be green for a release build. **Re-measured 2026-08-28 on an authorised scratch database — see § QB-1 § Measurement record.** `backend/tests/conftest.py` refuses to run against a DB whose name does not contain `test` (guard `_assert_not_production_db`), so no figure may be taken from a developer's dev database.
 
 | Cluster | Count | Root cause | Fix layer (when Engineering resumes) |
 |---------|------:|------------|--------------------------------------|
@@ -84,34 +84,89 @@ RR6 asks whether the set of tolerated known failures is **enumerated, frozen, ow
 
 | | |
 |---|---|
-| Commit | `8d594e3f` (`integration/release-product-a-b`) |
-| Database | `hostflow_qb1_test` — production **schema only** (267 tables) stamped at head `202608250002_merge_e5_drop_and_adr036_heads`, **no production data** |
-| Command | `pytest -q --tb=no -rf` from `backend/`, `PYTHONPATH=<repo>:<repo>/backend` |
-| Result | **397 failed · 3136 passed · 7 skipped**, 663 s |
-| Enumerated list | [`qb1-known-failures.tsv`](qb1-known-failures.tsv) — 397 rows: test id, area, isolated re-run outcome |
+| Commit | `255279fc` — **clean detached worktree**, no uncommitted changes |
+| Database | `hostflow_qb1_test` — dev **schema only** (267 tables) stamped at head `202608250002_merge_e5_drop_and_adr036_heads`, **no data**, recreated immediately before the run |
+| Command | `pytest -q --tb=no -rf -c backend/pytest.ini backend/tests`, cwd = **repo root**, `PYTHONPATH=<root>:<root>/backend` |
+| Result | **371 failed · 3164 passed · 8 skipped · 4 errors**, 671 s (3543 collected) |
+| Enumerated list | [`qb1-known-failures.tsv`](qb1-known-failures.tsv) — 371 rows: test id, area, cluster, hard/order-dependent, proposed owner, reason |
 
-The stale **«~657, dated 2026-07-21»** figure is retired. It is replaced by an enumerated list, and the count is **397**, not 657.
+The stale **«~657, dated 2026-07-21»** figure is retired, and so is the intermediate 397 figure taken earlier the same day on a dirty tree from the wrong working directory.
 
-**The single most important finding: 54 of the 397 pass when re-run alone.** A second run of exactly those 397 ids gave 343 failed / 54 passed. Those 54 are not broken code — they are order-dependent, because the suite shares one database and accumulates rows across tests.
+**Three conditions had to be fixed before any number was meaningful, and each one moved the count.**
 
-**Cause clusters** (from a `--tb=line` re-run of the 397):
+| Condition | Wrong way | Effect |
+|---|---|---|
+| Database freshness | reuse the scratch DB for a second run | **467 failed instead of 371.** The extra ~96 are all plan-quota errors: `monthly_leads_limit_reached`, `"limit":1500,"current":2740`. Tenant quota counters accumulate across runs, so a reused database inflates the count |
+| Working directory | run from `backend/` | **+25 failures.** Those 25 read source files by repo-relative path (`Path('backend/app/api/v1/analytics.py')`) and pass from the repo root. `AGENTS.md` prescribes `backend/`, so the documented command cannot produce a clean run. **Fixed** — see below |
+| Tree cleanliness | measure a dirty tree | ±1–2 tests; small, but it makes the figure non-citable |
+
+**Order dependence is far smaller than it first appeared.** Re-running exactly the 371 ids on a *fresh* database gives 363 failed / 8 passed: only **8** are order-dependent. The earlier «54 order-dependent» reading was itself an artifact of a polluted database.
+
+**Cause clusters** (371 rows):
 
 | Cluster | Count | Reading |
 |---|---|---|
-| Plan / quota limits reached (`monthly_leads_limit_reached`, `lead_sources_limit_reached`, `communication_channels_limit_reached`, `seat_limit_reached`) | ~100 | **Shared-state artifact.** One case shows `"limit":3,"current":79` — earlier tests exhausted the tenant plan. This is the suite polluting itself, not a defect |
-| `Internal Server Error` (500) | 21 | Real defects, need per-endpoint triage |
-| `IntegrityError` on insert | 17 | Fixture collisions on the shared database |
-| `Method Not Allowed` (405) | 14 | Tests expect routes that do not exist — either stale tests or unshipped endpoints |
-| `SimpleNamespace has no attribute 'get'` and similar | ~12 | Test-double drift against changed signatures |
-| Requirement / document runtime («Missing runtime item for passport», «No blocker for passport», linked-document validity) | ~23 | Requirement rules and document runtime; overlaps RPM and Documents |
+| Assertion mismatch, behavioural | 205 | The long tail. Spread over 160 files; only 16 files have ≥5 failures, so no single fix collapses it |
+| Requirement / document runtime | 38 | «Missing runtime item for passport», linked-document validity — RPM and Documents surface |
+| `Internal Server Error` (500) | 27 | Customer-visible failures; per-endpoint triage |
+| Test-double / API drift | 21 | Tests stale against changed signatures |
+| `IntegrityError` on shared fixtures | 17 | Fixture collisions on the one shared database |
+| Plan / quota exhausted | 14 | Residual self-pollution *within* a single run |
+| `Method Not Allowed` (405) | 11 | Tests expect routes that do not exist |
+| `Not Found` (404) | 7 | Same, for resources |
+| Authz / module gate | 6 | Role or module-enablement expectations |
 | `MissingGreenlet` | 5 | Async lifecycle in sync context |
-| Remaining long tail | ~100 | Individually small signatures |
+| Stale pinned alembic head | 2 | `test_alembic_has_single_head` asserts the literal revision `202607131402` is head. **Alembic really does have one head** — the tests pin an obsolete id |
+| Model re-import collision, SQL schema mismatch, `ImportError`, misc | ~18 | Individually small |
 
-**Areas:** `tests/api` 243 (52 order-dependent) · `tests/services` 41 · `tests` 31 · `tests/document_runtime` 24 · `tests/requirement_rules` 23 · `tests/modules` 10 · the rest ≤5 each.
+**Proposed owner routing.** The failures concentrate in exactly the v1 blocker paths, so they are routed to the briefs that will touch that code rather than to one stabilisation task:
 
-**Caveats that must be stated with any use of this number.** The measurement ran on a data-less schema copy, so anything that depends on seeded plan or licence rows starts from a different place than CI does; and the suite shares one database, which is itself the cause of the largest cluster. The list is therefore the **measurement of record for this environment** and the correct starting point for RR6 — not yet the frozen list. Freezing requires two things this run cannot supply: the same measurement in the CI environment, and a per-cluster owner verdict.
+| Proposed owner | Rows | Verdict proposed |
+|---|---|---|
+| [HH — Recruitment → HR handoff](recruitment-hr-minimal-handoff.md) | 100 | triage inside the brief; blocker path |
+| [RPM-1 / Documents](requirement-policy-management.md) | 61 | triage inside the brief; blocker path |
+| [HE — Hiring E2E](hiring-workflow-e2e.md) | 52 | triage inside the brief; blocker path |
+| [MA — Mapping Authority](mapping-authority.md) | 45 | triage inside the brief; blocker path |
+| TEST-INFRA — Engineering lead | 42 | **must be fixed before RC** — quota accumulation, fixture collisions, stale head pins, order dependence. These make the suite unmeasurable, which is the RR6 obstacle itself |
+| [FP — Forms Publish](external-intake-forms-publish.md) | 22 | triage inside the brief; blocker path |
+| [TI — isolation & boundary enforcement](tenant-isolation-enforcement.md) | 5 | **must be fixed before RC** — see that brief; these are true negatives |
+| UNROUTED | 44 | Fleet, calendar, invoices, analytics, org units, company module settings — outside the six blockers. **`tolerated for v1`, decided 2026-08-28, expiry 2027-01-31**, owner Engineering lead, non-growing ([register](../gates/v1-unowned-work-register.md) § Quality debt) |
 
-**What remains for QB-1:** per-cluster owner and verdict (`tolerated for v1` / `must be fixed before RC`) with expiry on the tolerated set; the same run reproduced in CI; and the named required-green workflows. Fixing the shared-database accumulation would delete the largest cluster outright and is the highest-value single action.
+**Two findings inside the noise that are not noise.** A 371-failure baseline hides true negatives, and two were found by reading the tail:
+
+1. `tests/api/test_tenant_isolation.py` — «Should NOT see tenant 2's candidate with tenant 1 context». This is real; see [tenant-isolation-enforcement.md](tenant-isolation-enforcement.md).
+2. `tests/module_registry/…::test_p2_no_new_direct_legacy_module_flag_reads` — an architecture guard that is currently red, i.e. a live boundary violation. It is the enforcement gap that [module-ownership-coverage.md](../gates/module-ownership-coverage.md) predicted.
+
+This is the argument for RR6 in one line: while the baseline is an unowned aggregate, a security regression and a red architecture guard are indistinguishable from 369 other red lines.
+
+**Caveats to state with any use of these numbers.** The run used a data-less schema copy, so anything depending on seeded plan or licence rows starts differently from CI; four collection **errors** are counted separately from the 371 and still need naming; and the whole measurement is single-environment. It is the **measurement of record**, and the correct input to RR6 — not yet the frozen list.
+
+**Routing accepted 2026-08-28.** Each blocker brief takes the failing tests on its own path as an entry condition; TEST-INFRA (42) and TI (5) are fix-before-RC; the 44 unrouted are tolerated to 2027-01-31 and may not grow.
+
+### TEST-INFRA progress
+
+**Working-directory independence and stale head pins — fixed** on `fix/test-suite-reproducibility` (2026-08-29, based on `b67fe4e2`):
+
+| Change | Effect |
+|---|---|
+| 27 repo-relative `Path("backend/…")` source reads in 10 test files now resolve through `backend/tests/test_support/repo_paths.py`, anchored on `__file__` | The suite returns the **same** failure set from `backend/` and from the repo root. The `FileNotFoundError` cluster is gone (25 → 0) |
+| Three tests asserted that *their own* migration is the current head (`202607131402`, `202607180009_forms_s6`, the Stage-3E revision). They now assert a single head plus reachability in `alembic history` | Two of them go green; the third had been silently **skipping** whenever `.venv312` was not at the expected path, and now resolves the executable via `PATH` so it actually runs |
+
+Verification: full suite from `backend/` on a freshly created database gives **370 failed / 3169 passed** against the 371 measured from the repo root — the two sets differ only by the two repaired head-pin tests, plus one unrelated Sales regression that arrived in `b67fe4e2` (see below). Before the change the same command from `backend/` gave 397.
+
+**Not fixed, and now understood:** four migration round-trip tests (`test_forms_sprint6_alembic_roundtrip`, `test_forms_sprint3_alembic_roundtrip`, `test_alembic_downgrade_upgrade_roundtrip`, `test_epic_p_alembic_pr3_downgrade_upgrade_roundtrip`) cannot pass in the shared suite at all: each downgrades to its own predecessor, which on today's graph unwinds every later migration, and the downgrade aborts on `ck_users_supervisor_role` because the database holds rows. They can only assert reversibility on a throwaway database, which depends on fresh-database migrations working — **OL-2**. They stay in the tolerated set with that dependency named, not as mystery failures.
+
+**Regression found while verifying (not part of this fix):** `b67fe4e2` «fix(sales): open existing client instead of creating a duplicate» makes `tests/modules/sales/test_convert_entrypoints_contract.py::test_missing_review_blocks_both_endpoints` fail with «DID NOT RAISE HTTPException». The file passes 9/9 at `255279fc` and 8/9 at `b67fe4e2` on an identical fresh database, so the guard that blocked conversion without a review is no longer firing. Owner: whoever owns the Sales convert entrypoints.
+
+**Monthly lead quota — fixed** on the same branch. The cap counts `leads` rows created in the current calendar month and the suite never deletes them, so every run inherited the previous run's total: a second run against the same database reported **467** failures instead of 371, 152 of them `monthly_leads_limit_reached`. The test tenant is now granted quota through the product's own `pack_addons_v1.monthly_leads_cap` field in `backend/tests/conftest.py`, so `resolve_monthly_leads_cap` is still exercised exactly as in production and the unit tests that pin the plan caps are untouched.
+
+**Measurement protocol — scripted.** `scripts/testing/measure-known-failures.sh` recreates a scratch database from the schema of an already-migrated one, runs the full suite from the repo root, and writes a sorted failure-id list. The schema is cloned rather than migrated because `alembic upgrade heads` still does not apply to an empty database (**OL-2**); when that is fixed the script should migrate instead.
+
+**Reproducibility — proven.** Two consecutive runs of that script on commit `9c8296d4` produced **370 failed / 3172 passed / 7 skipped / 4 errors** with **identical** failure-id sets. This is the reproducible measurement RR6 asks for, and it replaces the 371 recorded at `255279fc`: two alembic-pin tests were repaired and one Sales regression arrived in `b67fe4e2`.
+
+**Newly exposed, not fixed — the database is still shared state.** With the quota accumulation gone, a *reused* database no longer inflates the count but still does not match a fresh one: 54 tests fail on a fresh database and pass on a warm one (HR dashboard, workforce, handoff, ZUS), and 20 fail only on a warm one (Meta credentials, communication accounts, funnel and document-type fallback resolvers). Both directions are the same defect — tests depend on, and mutate, rows that outlive the run — and the fresh-database result is the honest one. Hence the protocol above is normative for any figure quoted at a gate: **a number measured on a reused database is not evidence.** Removing the coupling itself is separate quality debt, tracked in the [unowned work register](../gates/v1-unowned-work-register.md).
+
+**What remains for QB-1:** the same run reproduced in CI on a freshly created database, and the named required-green workflows. Until CI reproduces it, the list is the measurement of record but not yet frozen.
 
 ## Explicitly out of Product Track
 
