@@ -120,10 +120,11 @@ Each scenario lists **preconditions**, the **operator job** (not the click path)
 
 ### RS-9 Permission boundaries
 
-- **Preconditions:** RS-1 created a viewer; a portal guest context exists.
-- **Operator job:** with each restricted role, attempt to reach the tenant surfaces they must not see, including direct URL entry.
-- **Pass detail:** refusals are enforced server-side, not merely hidden in navigation.
-- **Evidence:** role, attempted paths, observed result per path.
+- **Preconditions:** RS-1 created a viewer; a portal guest context exists; a **second tenant with at least one candidate and one document** exists on the same build (RS-10's tenant may be reused if it runs first).
+- **Operator job:** with each restricted role, attempt to reach the tenant surfaces they must not see, including direct URL entry. Then, as a fully privileged user of tenant A, attempt to read and to modify a record belonging to tenant B by its id — via list, search, export, and direct record URL.
+- **Pass detail:** refusals are enforced server-side, not merely hidden in navigation. Cross-tenant attempts are refused on **every** one of those four paths.
+- **Evidence:** role, attempted paths, observed result per path; for the cross-tenant part, the two tenant ids and the record ids attempted.
+- **Note:** this scenario is the operator-visible half of RR5's isolation question. It does **not** substitute for the database-level evidence RR5 requires — see [tenant-isolation-enforcement.md](../tasks/tenant-isolation-enforcement.md), since application-level filtering can pass this scenario while the database control is inert.
 
 ### RS-10 Operator onboards a new tenant with existing data
 

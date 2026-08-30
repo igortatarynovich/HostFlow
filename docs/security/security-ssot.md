@@ -118,10 +118,43 @@ Documents Platform E3–E5 (authenticated Hub metadata resolve via Document Link
 4. Любые пути: **list, search, export, bulk, reports, WebSocket, notifications, attachments, uploads, audit logs** — подчиняются тем же правилам.
 5. **Runtime guard на границе SQLAlchemy-сессии:** для сессий с `tenant_rls_enforcement=True` любой `execute`/`stream` в Postgres блокируется, пока не выполнен `bind_tenant_context_to_session` (см. `backend/app/db/tenant_session.py`, `backend/app/db/deps.py`). Детали и backlog — `docs/security/runtime-roadmap.md` §Phase 1.
 
+### Измеренное состояние (2026-08-28) — правило 1 не выполняется
+
+Правила выше остаются **нормативными**. Ниже — факт, измеренный на dev-кластере (схема на head `202608250002_merge_e5_drop_and_adr036_heads`), чтобы канон не утверждал непроверенное:
+
+| Факт | Значение |
+|------|----------|
+| Таблиц с `tenant_id` | **226** |
+| Из них с включённым RLS | **124** |
+| Из них **без политики вовсе** | **102** |
+| Таблиц с `FORCE ROW LEVEL SECURITY` | **0** |
+| Роль приложения `hostflow` | суперпользователь, `rolbypassrls = true`, владелец всех таблиц |
+| Провижининг ограниченной роли в репозитории | отсутствует |
+
+Следствие: для роли, под которой работает приложение, RLS обходится дважды — по `BYPASSRLS` и по владению таблицами без `FORCE`. Изоляцию сегодня фактически обеспечивает только фильтрация на уровне приложения (правила 2, 3, 5 — они реализованы и работают: `backend/app/db/deps.py`). Тесты `backend/tests/api/test_tenant_isolation.py` падают именно по этой причине.
+
+KPI §19 «RLS coverage (tenant tables) 100%» — это **цель**, а не текущее состояние: измеренное покрытие 124/226 ≈ 55%.
+
+**Решение (2026-08-28):** разрыв закрывается **до RC** — правило 1 и KPI §19 остаются как есть, runtime подтягивается к ним. Владелец работ: [tenant-isolation-enforcement.md](../specs/tasks/tenant-isolation-enforcement.md) TI-1…TI-4 (было [U-6](../specs/gates/v1-unowned-work-register.md)). До этого [Release Readiness Gate](../specs/gates/release-readiness-gate.md) **RR5** не может быть отвечен `PASS`, а доказательство изоляции должно быть получено **под ролью производственного вида**, не под суперпользователем.
+
+**Состояние на 2026-08-29 — покрытие закрыто.** Все 226 таблиц с `tenant_id` несут политику; базовый файл guard'а (`backend/tests/security/rls_uncovered_tables.txt`) пуст, и проверка теперь утверждает «разрыва нет», а не «разрыв не растёт». KPI §19 «RLS coverage 100%» соответствует измерению.
+
+| Факт | Значение |
+|------|----------|
+| Таблиц с `tenant_id` без политики | **0** (было 102) |
+| Политик, способных упасть с ошибкой вместо отказа | **0** (было 126) |
+| Таблиц с политикой и `FORCE ROW LEVEL SECURITY` | все, кроме **15** названных исключений |
+| Роль приложения для запросов | `hostflow_app` — не суперпользователь, без `BYPASSRLS`, не владелец (`scripts/security/provision_app_role.sql`) |
+
+**Именованное исключение из `FORCE` (2026-08-29).** `FORCE ROW LEVEL SECURITY` распространяет политики и на владельца таблицы, поэтому его нельзя применить к 2 identity-таблицам (`users`, `user_memberships`) и 13 платформенным справочникам (`ep_*`, `fr_*`, `pe_*`): аутентификация ищет пользователя по e-mail до того, как тенант известен, а платформенные строки (`tenant_id = ''`) сеет владелец. Обход изоляции сведён к одному аудируемому соединению — `backend/app/auth/identity_session.py` — и набор исключений проверяется тестом `backend/tests/security/test_rls_force_exceptions.py`, который падает и при росте набора, и когда исключение стало ненужным.
+
+**Роль в окружениях ещё не переключена** — по решению это происходит только после того, как под ней проходит весь набор тестов; остаток на 2026-08-29 — 166 тестов, которые пишут строку для одного тенанта, привязав сессию к другому.
+
 ### Канонические спеки
 
 - `docs/specs/architecture/multi_tenant_model.md`
 - Миграции RLS в `backend/alembic/versions/`
+- Разрыв enforcement: [tenant-isolation-enforcement.md](../specs/tasks/tenant-isolation-enforcement.md)
 
 ---
 
@@ -368,7 +401,7 @@ New **critical** findings outside that allowlist remain merge-blocking.
 | Исправление critical vuln | < 24h |
 | High vuln | < 7d |
 | Security review по PR в perimeter | 100% |
-| RLS coverage (tenant tables) | 100% |
+| RLS coverage (tenant tables) | 100% — **измерено 2026-08-28: 124/226 ≈ 55%**, см. §3 «Измеренное состояние» |
 | Audit coverage критичных действий | 100% |
 | MFA adoption (superadmin + tenant owners) | > 90% |
 

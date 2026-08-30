@@ -206,5 +206,6 @@ Recorded at Goal seal. Not a PASS.
 - [Goal Completion Gate](goal-completion-gate.md) — original goal vs substituted brief  
 - [Platform capability maturity](../architecture/platform-capability-maturity.md) — platform maturity ≠ v1 Release Goal  
 - [Operate & Launch](../tasks/operate-and-launch.md) — blocker 6 (Launch-ops track) · [Runbook index](../../runbooks/README.md) — required procedures with owner and status
-- [Unowned work register](v1-unowned-work-register.md) — what v1 deliberately does not own, and the five undecided rows that block the gate from opening
+- [Unowned work register](v1-unowned-work-register.md) — what v1 deliberately does not own; § D4 must be empty for the gate to open
+- [Tenant isolation enforcement](../tasks/tenant-isolation-enforcement.md) — gate prerequisite for RR5, not a capability blocker: the database-level isolation the security canon claims is not yet in force
 - [ADR-018](../architecture/ADR-018-requirement-policy-evaluation-model.md) · [ADR-019](../architecture/ADR-019-automation-capability-entitlement-control-plane.md) · [ADR-007](../architecture/ADR-007-forms-platform-capability.md) · [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md) (tenant data lifecycle)
