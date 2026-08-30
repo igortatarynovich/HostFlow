@@ -6,7 +6,7 @@
 **Branch (docs):** `docs/v1-blocker-briefs`
 **Branch (code):** none — later slices `feat/tenant-isolation-tiN-…`
 **Parents:** [Release Readiness Gate](../gates/release-readiness-gate.md) **RR5** · [Security SSOT](../../security/security-ssot.md) §10 · [Unowned work register](../gates/v1-unowned-work-register.md) · [QB-1 measurement](stabilize-integration-pytest-baseline.md) · [Acceptance suite](../journeys/release-readiness-acceptance-suite.md)
-**Estimate:** 9–12 slices. TI-1…TI-4 are delivered. The remainder is **TI-5**, and its size is measured rather than assumed: a named elevated connection for the `/api/v1/platform` superadmin surface (which reads and writes every tenant on an unbound session), two public tenant resolvers, slug uniqueness and enumeration, a policy on `tenants`, and the test tail that writes for a tenant it does not bind. Raised from 3–5 (2026-08-28) → 5–8 (policy rewrites and coverage measured) → 7–10 (2026-08-29, once the restricted role was actually connected) → 9–12 (2026-08-30, once the coverage guard stopped keying on one column name and found two tables with no row-level security at all).
+**Estimate:** 9–12 slices. **TI-1…TI-5 are delivered**, and the two-role measurement now shows **zero restricted-only failures** — the suite costs nothing to run under the production-shaped role. What remains is not development: the deployment switch of `ASYNC_DATABASE_URL` to `hostflow_app`, and CI running the isolation suite under that role, which still needs a database CI can migrate (**OL-2**). Raised from 3–5 (2026-08-28) → 5–8 (policy rewrites and coverage measured) → 7–10 (2026-08-29, once the restricted role was actually connected) → 9–12 (2026-08-30, once the coverage guard stopped keying on one column name and found two tables with no row-level security at all).
 **Owner:** proposed Security canon owner (decision) + Engineering lead (execution)
 
 > The database-level tenant isolation that the security canon names as the primary control is **not in force**. Application-level filtering is doing the work alone.
@@ -360,7 +360,241 @@ keeping.
 
 ---
 
-## Internal ladder (proposed)
+## TI-5 delivered — the two connections, and four defect classes found on the way (2026-08-30)
+
+TI-5 was scoped as "the role switch's remaining precondition": a named elevated connection for the
+platform surface, the two public resolvers, and a policy on `tenants`. All three landed. What is worth
+recording is that each one, once measured rather than reasoned about, exposed an application defect
+class that had been invisible for as long as the role bypassed policies.
+
+### 1. Platform administration: one connection, then two
+
+`/api/v1/platform/tenants` is 24 superadmin routes that read and write tenants the caller is not a
+member of. They took the ordinary unbound `get_db`, and isolation was left to application filtering.
+`get_platform_db` gives them a privileged session whose **privilege and authorisation are the same
+dependency** — it depends on `require_superadmin()`, so a route cannot acquire the connection and
+forget the check, and a route that is not superadmin-only cannot be given the connection at all. A
+guard fails if the dependency appears outside the platform surface, and fails in the other direction
+if that surface goes back to `get_db`, because an unbound ordinary session under policy returns
+*fewer rows* rather than an error.
+
+Then measurement corrected the shape. Only **two** of the 24 routes have the set of all tenants as
+their subject (list, create). The other 22 are `/{tenant_id}/...` and act on one named tenant, and for
+those an unbound session is wrong in both directions: on a `FORCE` table it reads nothing —
+`POST /{tenant_id}/admins` answered 403 `seat_limit_reached` with `limit: 0`, because the licence row
+it checked against was invisible — and on a table left `NO FORCE` for platform seeding it writes with
+no scope at all. `get_platform_db_for_tenant` takes the tenant from the route's own path parameter and
+binds it, so scope and subject cannot drift apart. That is **narrower** than what it replaced: the
+request is privileged enough to choose which tenant it acts on, and then runs under that tenant's
+policy like any other session.
+
+### 2. The two public resolvers, and what "minimum data" means
+
+A public request carries a share token or a host name and no tenant. Both resolvers used to load
+`Tenant.settings` for every active tenant and scan it in Python. `settings` is also where
+`goals_share_token` lives, so the host resolver was reading other tenants' share tokens to answer a
+question about host names. Both are now SQL projections on the owner connection: the token resolver
+matches `settings->>'goals_share_token'` and returns an id; the host resolver selects the six declared
+host fields and returns an id. Neither returns a row, and the request continues on a session bound to
+the resolved tenant — asserted, because a resolver that resolves correctly and then continues unbound
+is the same leak by another route.
+
+### 3. `tenants` closed, and tenant creation was reachable from a tenant administrator
+
+`POST /api/v1/tenants/` accepted `require_trust_admin()` — a **tenant** administrator, the role every
+customer's own admin holds — and created a top-level tenant with its own slug in the global namespace
+and a free-form `settings` blob. `settings` declares which public host names a tenant's pages answer
+on, so a customer's admin could mint a tenant claiming a host belonging to someone else and become a
+candidate answer for it. Proven in `test_tenant_creation_authority.py` before being fixed; the route
+now takes the privileged connection, which is the same act as requiring superadmin.
+
+With that path closed, `tenants` gets the strict self-only policy: a session sees and writes the one
+tenant it is bound to. `FORCE` stays off, and that exception moves from "no policy" to a named,
+reasoned entry — the owner connection is how platform administration, the resolvers and the bootstrap
+work. `rls_uncovered_tables.txt` is now **empty**, which changes what it asserts: the guard reads the
+live schema, so the next uncovered table is a failure rather than an entry.
+
+Two findings came with it. The platform tenant listing was returning **500 for every caller**:
+`tenants.id` is a `VARCHAR` while the response model declares a `UUID`, so one row holding something
+else broke the whole listing rather than its own entry — and the suite had created 23 such rows.
+`ck_tenants_id_is_uuid` closes the class for new rows, deliberately `NOT VALID`, because a migration
+must not choose between failing a deploy and deleting a tenant; the existing rows are a data audit,
+and a test states the property so they show up as work. And `funnels` turned out to hold
+platform-seeded rows under the sentinel `'default'`, which the TI-4 policy made invisible to every
+session — the funnel resolvers' last-resort step could never match, and the funnel list silently
+omitted the platform defaults.
+
+### 4. Two classes of check that stop working, silently, under a policy
+
+Both were found by running the suite, and both are the same shape: **a query whose predicate a bound
+session can never satisfy**.
+
+**A uniqueness check that asks about other tenants.** Three names are unique across the installation
+rather than within a tenant — a tenant slug, and the public slug of a lead form or intake profile —
+because all three appear in a URL that carries no tenant. The pre-insert check reads
+`WHERE public_slug = :slug AND tenant_id <> :me`. Under a policy that matches nothing, ever, so the
+check reports every slug free and the global unique index refuses the insert instead. On the tenant
+provisioning path that turns a designed fallback into an `IntegrityError`.
+`public_slug_taken_by_another_tenant` is the named elevated read, and the answer is a boolean — the
+boolean is the whole disclosure.
+
+**A seed that names its tenant in an argument.** Every provisioning seed takes a session *and* a
+`tenant_id`. That is two sources of truth for one fact, equal only by convention, and when they
+disagree the outcome depends on the table: under an enforced policy the database refuses, but on a
+table left `NO FORCE` so platform seeding can work, over the owner connection, **nothing refuses it**.
+The rows are written under the argument's tenant id and the scope is ignored. `require_session_scope`
+states the invariant where it can be read. It found sixteen tests immediately, in the class this brief
+already had open — they invent a tenant id (`fr-p1-9db80b71d7`, not even a UUID) and pass it to the
+seed. They now bind the tenant they provision, which is what the production caller does
+(`acting_for_tenant`), so the fix makes the tests exercise the real arrangement rather than appease
+the check.
+
+### 5. The tenant binding itself: two ways to lose it
+
+Both were found by the two-role measurement, after the coverage and connection work was done, and both
+are about the **binding** rather than about any policy. They are recorded separately because they are
+the first two defects in this programme that a policy audit could not have found: every policy was
+correct, and the scope arriving at the database was not.
+
+**Elevation did not survive a savepoint.** `acting_for_tenant` moved the database setting and
+deliberately left `session.info["tenant_id"]` alone, reasoning that the caller's tenant should return
+afterwards. But `session.info["tenant_id"]` is what `_bind_tenant_on_transaction_begin` re-applies on
+every `after_begin` — and `after_begin` fires for savepoints, not only for the outer transaction. So
+the first `begin_nested()` inside an elevated block put the caller's tenant back, and the next write
+was refused by the policy, with a driver error naming neither the elevation nor the savepoint.
+Measured on the intake-routing suite, where `crud.create_binding` opens a savepoint to catch a unique
+violation: the profile was written under the elevated tenant and its binding, one statement later, was
+not. This is the same shape as the seed defect above — two sources of truth for one fact, equal only
+by convention — and it has the same fix: the declared scope moves with the elevation, and is restored
+in `finally`. Note that the identical bug had already been found and fixed *in the test harness* a day
+earlier; nobody looked for it in the application, where the same hook does the same thing.
+
+**Six bindings were session-local, and leaked through the connection pool.**
+`set_config('app.tenant_id', …, false)` outlives the transaction, the session and the request, and
+stays on the connection when it goes back to the pool. Production runs a queue pool. The next borrower
+inherits the scope, and a borrower that declares no tenant has nothing to overwrite it with, because
+the re-apply hook only re-applies a tenant the session *declared*. That request then reads the
+previous request's tenant while believing it is unscoped.
+
+This is the only defect in the whole programme whose failure direction is **exposure** rather than
+denial. Everything else found here fails closed: a missing binding reads zero rows and a wrong scope is
+refused. Here a missing binding reads *another tenant's rows*, and nothing in the request looks wrong.
+It is proven by measurement — a one-connection pool, a binding, the connection handed back, and the
+setting read by the next borrower, which returned the tenant id.
+
+Four of the six were hand-rolled elevation in `candidate_documents`: read the documents of a candidate
+shared through a vacancy, then restore — with the restore swallowing its own exceptions and putting
+back a remembered tenant rather than the one that was there. They now use `acting_for_tenant`. The two
+in `candidate_notes` open their own session and now bind it properly.
+`test_no_session_local_tenant_binding` fails on any new `false` binding in `backend/app`. The existing
+call-site guard could not have caught these: it counted `set_config('app.tenant_id'` as evidence of a
+binding without distinguishing the two forms.
+
+**A third, smaller finding, recorded because the failure mode is the dangerous one.** The platform
+document-reference backfill sweeps every tenant's `documents` and writes reference rows under the
+platform sentinel. Handed a tenant-bound session under enforced policies it does not fail: the selects
+return one tenant's rows, the updates apply to that fraction, and it reports success while most of the
+installation keeps pointing at the wrong canonical type. It now requires the owner connection. The
+check that enforces this was itself broken when written — it compared the session's bind against the
+async engine, but `AsyncSession.get_bind()` returns the sync engine underneath, so it answered "not
+privileged" for every session including privileged ones. A guard that always denies looks the same as
+a guard that works until the first legitimate caller arrives.
+
+### 6. The test tail, read rather than converted
+
+The instruction for the 89 was not to fix them mechanically, and the split is worth recording, because
+the reading changed the fix in both directions:
+
+| Reading | Count | What was done |
+|---|---|---|
+| The test creates a second tenant to be isolated *from* — platform administration by any other name | ~100 sites, 30 files | `tenant_directory.create_tenant_row`, the owner connection, the door production uses |
+| The test provisions an invented tenant and the production caller runs under that tenant's scope | 16 | bound to the tenant it provisions, mirroring `acting_for_tenant` |
+| The test reads its own tenant's row on a session it never bound | 3 | bound; these were passing as `None is not None` assertions with the wrong diagnosis |
+| The test calls a service whose route holds the privileged connection | 1 | takes the same connection, not a weaker one |
+| The *production* code was wrong, not the test | 4 | the slug probe above; the tests were correct all along |
+| Pre-existing failures, unrelated to isolation, in the frozen QB-1 baseline | 7 in this group | left alone |
+
+The last two rows are the reason not to convert mechanically. Four of these "failures" were the suite
+correctly reporting that provisioning no longer works, and a fixture edit would have hidden a live
+defect on the tenant-creation path.
+
+### Adversarial checks (TI-5.6)
+
+Ten classes, fifteen cases, `test_adversarial_isolation_classes.py`. The tenth is the pool-inheritance
+class above, added when it was found rather than planned.
+
+Non-vacuity is **measured, not asserted**: run with the owner connection as the application role,
+**seven of the fifteen fail**. The eight that pass are the positive and structural halves — both legs
+of a handoff *must* read it, the agency *must* be able to write its own link, elevation *must* survive
+a savepoint, the pool *must* come back clean — which do not depend on the role. A test that passes
+under both roles proves nothing about the role, so the split is recorded as the property to re-check
+after touching the file. The two newest cases have their non-vacuity established the other way, against
+the defect itself: each was written before its fix and each failed, naming the wrong tenant it saw.
+
+The positive halves are not padding. The `funnels` finding is exactly what a policy "fixed" by denying
+everyone looks like, and it presented as absence rather than as an error.
+
+### Measured baseline (TI-5 close, 2026-08-30, `hostflow_ti_ti5_test` built from scratch at head)
+
+Measured with `scripts/security/measure_policy_coverage.sql` and `pg_roles`, not read off the
+migrations. Coverage is per verb, because a `FOR SELECT` policy does not restrain an `INSERT`.
+
+| Property | Value |
+|---|---|
+| Tables in `public` (excluding `alembic_version`) | 264 |
+| Tenant-scoped (any column ending `tenant_id`, plus `tenants`) | **230** |
+| Row-level security enabled | **230 / 230** |
+| `FORCE ROW LEVEL SECURITY` | **213 / 230** |
+| Read covered (`ALL` or `SELECT` policy) | **230 / 230** |
+| Write covered (`INSERT` ∧ `UPDATE` ∧ `DELETE`) | **230 / 230** |
+| Policies total | 234 |
+| Tables with no policy (`rls_uncovered_tables.txt`) | **0** |
+| `FORCE` exceptions | **17**, and the declared set (`scripts/security/rls_force_exceptions.txt`) is **identical** to the measured set — 14 reference/registry tables holding platform rows under a sentinel, plus `funnels`, `tenants`, and the identity pair `users` / `user_memberships` |
+| Application role `hostflow_app` | `rolsuper=f`, `rolbypassrls=f`, not the table owner |
+| Privileged role `hostflow` | the schema owner, reachable only through `privileged_session_maker` and the two named platform dependencies |
+
+Both `FORCE`-exception groups are exceptions to *owner* bypass, not to the policy: the restricted role
+is subject to the policy on all 230 tables. The distinction matters and is guarded separately —
+`rls_uncovered_tables.txt` for "no policy" and `test_rls_force_exceptions.py` for "the owner can
+bypass this one", because they are different claims. The declared list is now the single input to
+both the provisioning script and its test, which converge the `FORCE` flag in *both* directions; before
+that, `provision_app_role.sql` re-forced tables that a migration had deliberately unforced, so a fresh
+environment disagreed with the migrations about which tables were exempt.
+
+### Two-role run at TI-5 close (both suites, fresh database each)
+
+| Run | Failed | Passed | Skipped | Errors |
+|---|---|---|---|---|
+| Owner control (`hostflow`) | 364 | 3214 | 8 | 4 |
+| Restricted (`hostflow_app`) | **353** | 3226 | 7 | 4 |
+
+| Diff | Count | Reading |
+|---|---|---|
+| **Restricted-only failures** | **0** | The role change costs the suite nothing. This is the number TI-3…TI-5 existed to reach; it was 166 after TI-4, then 89, 52, 2, 1. |
+| Owner-only failures | 11 | **Required.** These are the isolation tests themselves: 7 adversarial cases, both `tenants`-directory contract tests, the database-level enforcement test, and per-tenant short-id scoping. They fail as owner because the owner bypasses the policy — that is the evidence the restricted run is not vacuous. |
+
+Classification of the 353 remaining, which is the part worth stating precisely:
+
+| Class | Count | Evidence |
+|---|---|---|
+| In the frozen QB-1 known-failure baseline, unrelated to isolation | **353 / 353** | id-set comparison against `qb1-known-failures.tsv` |
+| Restricted-only, i.e. attributable to the role | **0** | two-role diff above |
+| Isolation-caused but not in QB-1 | **0** | the two that were (`test_alembic_revision_is_linear_no_merge`, `test_forms_sprint6_alembic_single_head`) each asserted that their own migration was still `alembic heads`, which no migration can leave true; fixed to the property they meant |
+
+The restricted failure set is therefore a **strict subset** of the pre-existing baseline: 353 of the
+371 known failures, with 20 of them now passing (fixture and provisioning defects repaired along the
+way) and nothing added. The classification the instruction asked for — fixture/binding vs legitimate
+privileged operation vs application bypass vs wrong policy — has an empty remainder in every category,
+because each restricted-only failure was resolved into one of them and closed:
+
+| Classification | Resolved this pass |
+|---|---|
+| Incorrect test fixture / binding | ~120 sites across 30 files (second tenant created through the privileged door; provisioned tenant bound) |
+| Legitimate privileged operation, wrongly on an application session | 3 — platform catalog seeding, the global slug probe, the document-reference backfill |
+| Real application bypass / defect | 5 — the Meta webhook's `X-Tenant-Id` override, runtime DDL in the leads admin service, the savepoint elevation, the six session-local bindings, tenant creation reachable by a tenant administrator |
+| Incorrect RLS policy | 4 — `candidate_handoffs` / `candidate_handoff_snapshots` (no RLS), `tenant_links` (read-only policies), `funnels` (platform seed unreadable) |
+
+
 
 | Slice | Content | Named gate |
 |---|---|---|
@@ -368,7 +602,7 @@ keeping.
 | **TI-2** ✅ | Coverage guard: a test/CI check that fails when a `tenant_id` table has no policy, plus the measured baseline committed as the allow-list. Makes the gap non-growing before it is closed. | — Delivered and verified in both directions |
 | **TI-3** | Provision the role model: a documented, scripted production role that is not superuser and does not own the tables, or `FORCE ROW LEVEL SECURITY` where ownership cannot be separated. Isolation tests run under that role in CI. **Provisioning script, the policy-form migration and the connection split are delivered, and the isolation suite passes under the restricted role.** What remains is the cost of the switch across the *whole* suite (being measured) and the CI wiring, which needs a migrated database in CI (**OL-2**). | — |
 | **TI-4** | Close the 102-table gap in batches with the guard staying green; retire the allow-list. Also: fix the **10 `broken` call sites** so the role can be switched, and decide what identity lookup runs as once `users` carries a policy. **Coverage is closed** — seven migrations, baseline empty, identity decided, `FORCE` exception named and guarded. What remains before the switch: the 10 application paths and the test tail. | **RLS Coverage Gate** |
-| **TI-5** | **The role switch's remaining precondition.** A named elevated connection for the `/api/v1/platform` superadmin surface, the two public tenant resolvers moved onto the resolution primitive, slug uniqueness and tenant enumeration onto the owner connection, then a policy on `tenants`. Also the test tail that writes for a tenant it does not bind. | **Isolation Switch Gate** |
+| **TI-5** ✅ | **The role switch's remaining precondition.** A named elevated connection for the `/api/v1/platform` superadmin surface, the two public tenant resolvers moved onto the resolution primitive, slug uniqueness and tenant enumeration onto the owner connection, then a policy on `tenants`. Also the test tail that writes for a tenant it does not bind. **Delivered:** all four, plus six defect classes found on the way, and a two-role run with **zero restricted-only failures**. | **Isolation Switch Gate** — measured baseline above; the switch itself (`ASYNC_DATABASE_URL` → `hostflow_app` in deployment) and its CI wiring remain, and the latter still depends on **OL-2** |
 | **TI-6** (conditional) | Fix the red module-registry boundary guard, or split it out if it proves unrelated. | — |
 
 **Not this brief:** RBAC / role semantics, superadmin model, audit coverage, export rules, the `tenant_visibility` agency-linking model, and the [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md) erasure work (adjacent, separately owned).
@@ -392,6 +626,7 @@ What was **not** an option is the state this replaced: canon asserting 100% RLS 
 
 | Date | Change |
 |------|--------|
+| 2026-08-30 | **TI-5 delivered: the two-role run reaches zero restricted-only failures.** Platform administration split into two named privileged dependencies (directory-level, and bound to the tenant in the path — the unbound version could not see the target tenant's licence row and every admin creation returned `seat_limit_reached`); the four public resolvers reduced to a minimum projection; `tenants` closed with a policy, a database-level UUID check on `id`, and tenant creation restricted to superadmin, which a tenant administrator could reach until this pass. Six defect classes found by measuring rather than reasoning: the Meta webhook accepted an `X-Tenant-Id` override from an unauthenticated caller; the leads admin service ran `ALTER TABLE` in a request path; three checks whose predicate a bound session can never satisfy; **`acting_for_tenant` did not survive a savepoint**, because the hook that keeps a session's tenant on its connection re-applied the declared scope and the declared scope had not moved; and **six bindings were session-local**, so the scope stayed on the connection after the request and was inherited from the pool by the next borrower — the only finding in this programme whose failure direction is exposure rather than denial. Adversarial file at ten classes / fifteen cases, seven of which fail under the owner role, which is what makes the restricted run non-vacuous. Measured baseline: 230 tenant-scoped tables, RLS 230/230, read and write coverage 230/230, 17 named `FORCE` exceptions whose declared set now matches the measured set exactly. The 353 remaining failures are a strict subset of the frozen QB-1 baseline; 20 of that baseline now pass and nothing was added. |
 | 2026-08-30 | **TI-4's coverage claim corrected, and the switch condition moved.** The coverage guard keyed on the literal column name `tenant_id`, so three tables scoped through `agency_tenant_id` / `client_tenant_id` were never counted: `candidate_handoffs` and `candidate_handoff_snapshots` had row-level security switched off entirely, and `tenant_links` carried read-only policies that made every write default-deny. Two of the three hold cross-tenant candidate data, so this was a live isolation gap for the whole programme's duration. All three closed by `202608290009_rls_handoff_dual_leg`; the guard now matches any column ending in `tenant_id` and additionally requires a policy that can admit a write. Two application paths fixed with them — the public client portal, and tenant provisioning via the new `acting_for_tenant` scope. **`tenants` stays open on purpose**, because the `/api/v1/platform` superadmin surface reads and writes every tenant on an unbound session; that makes **TI-5**, not TI-4, the precondition for the role switch. |
 | 2026-08-29 | **TI-4 coverage delivered.** All 102 remaining tenant-scoped tables closed in seven owner-batched migrations; the guard's baseline is empty, so it now asserts *no gap* rather than *no growth*. Identity decided: `users` and `user_memberships` carry policies and authentication runs over one named owner connection. A stated contract line bent under evidence — `FORCE` cannot be universal, because it applies to the owner, and the owner is exactly what identity lookup and platform seeding need; 15 tables are named exceptions and a new guard fails if the set grows or goes stale. The nine broken application paths are fixed, and one undiscovered defect with them: tenant provisioning was writing platform-owned reference rows from a tenant's session. |
 | 2026-08-29 | **Switch sequencing decided by the owner:** the application moves to the restricted role **after TI-4**, when the coverage gap is closed — a role in force over a schema where half the tables have no policy buys a false sense of protection. Test-suite bindings are defaulted in the harness rather than edited into 424 tests, with the blind spot that creates covered by a static guard over the 24 places `backend/app` opens a session directly. |
