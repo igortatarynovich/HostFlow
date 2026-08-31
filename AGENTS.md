@@ -436,4 +436,4 @@ Runtime Gate, which is unrelated to migrations.
 `alembic -c alembic.ini upgrade heads` from `/opt/HostFlow`. `backend/alembic.ini` is a SHIM for
 leftover `cd backend && alembic` callers. The documents-module `alembic.ini` is a different graph.
 The shared proof-path is `scripts/deploy/release-proof.sh` / workflow `release-proof` — it starts
-the app and asserts `/healthz` (and `/build` + admin login once those files are on the tree).
+the app and asserts `/healthz`, `/build` revision, and admin login.

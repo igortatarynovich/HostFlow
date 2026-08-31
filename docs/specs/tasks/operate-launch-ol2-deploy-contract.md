@@ -162,7 +162,7 @@ supports that code.
 |---|---|---|---|
 | **OL-2A** | This contract; artefact identity for backend and frontend; build metadata carried by the running system | Contract recorded **and enforced** — images labelled, frontend published atomically with build metadata, provenance queryable | OL-1 |
 | **OL-2B** | The real **RB-2**: clean target → running application, including migrations **and** the first-admin/bootstrap path | A non-author operator reaches a working login on a clean target from the written procedure alone | OL-2A |
-| **OL-2C** | One deployment proof-path for CI and RB-2: PG16-alpine, repo-root `alembic.ini`, fresh DB → migrate → bootstrap → start → `/healthz` (`/build` and login when those PRs are on the tree) | [operate-launch-ol2c-ci-parity.md](operate-launch-ol2c-ci-parity.md) — workflow `release-proof.yml` | OL-2B |
+| **OL-2C** | One deployment proof-path for CI and RB-2: PG16-alpine, repo-root `alembic.ini`, fresh DB → migrate → bootstrap → start → `/healthz` 200 → `/build` 200 + SHA → admin login 200 | [operate-launch-ol2c-ci-parity.md](operate-launch-ol2c-ci-parity.md) — workflow `release-proof.yml` | OL-2B |
 | **OL-2D** | Rollback rehearsal on a throwaway target, with migration compatibility established per C-7 | Candidate deployed, rolled back to a C-5 predecessor, and the system proven **working** — not merely started — after rollback | OL-2A ∧ OL-2B ∧ OL-2C |
 
 ### Execution status is separate from implementation status

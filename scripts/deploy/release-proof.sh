@@ -77,12 +77,12 @@ fi
 echo "release-proof: /healthz $(cat /tmp/ol2c-healthz.json)"
 
 code="$(curl -sS -o /tmp/ol2c-build.body -w '%{http_code}' "$base/build" || true)"
-if [[ -f "$repo_root/backend/app/core/build_info.py" ]]; then
-  if [[ "$code" != "200" ]]; then
-    echo "release-proof: /build required (OL-2A on tree) but HTTP $code" >&2
-    exit 1
-  fi
-  python3 - "$HEAD_SHA" /tmp/ol2c-build.body <<'PY'
+if [[ "$code" != "200" ]]; then
+  echo "release-proof: /build must be 200, got HTTP $code" >&2
+  cat /tmp/ol2c-build.body >&2 || true
+  exit 1
+fi
+python3 - "$HEAD_SHA" /tmp/ol2c-build.body <<'PY'
 import json, sys
 claimed, path = sys.argv[1], sys.argv[2]
 body = json.loads(open(path).read())
@@ -91,24 +91,17 @@ if got != claimed:
     raise SystemExit(f"/build revision {got!r} != {claimed}")
 print(f"release-proof: /build revision {got}")
 PY
-else
-  echo "release-proof: residual — /build not asserted (needs OL-2A #332 on the tree); HTTP $code"
-fi
 
-if [[ -f "$repo_root/backend/alembic/versions/202608310001_bootstrap_admin_schema.py" ]]; then
-  login_code="$(curl -sS -o /tmp/ol2c-login.body -w '%{http_code}' \
-    -H 'Content-Type: application/json' \
-    -H 'X-Tenant-Id: 11111111-1111-1111-1111-111111111111' \
-    -d '{"email":"admin@hostflow.dev","password":"Admin@025"}' \
-    "$base/api/v1/auth/login" || true)"
-  if [[ "$login_code" != "200" ]]; then
-    echo "release-proof: admin login required (OL-2B first-admin on tree) but HTTP $login_code" >&2
-    cat /tmp/ol2c-login.body >&2 || true
-    exit 1
-  fi
-  echo "release-proof: admin login 200"
-else
-  echo "release-proof: residual — admin login not asserted (needs OL-2B #336 on the tree)"
+login_code="$(curl -sS -o /tmp/ol2c-login.body -w '%{http_code}' \
+  -H 'Content-Type: application/json' \
+  -H 'X-Tenant-Id: 11111111-1111-1111-1111-111111111111' \
+  -d '{"email":"admin@hostflow.dev","password":"Admin@025"}' \
+  "$base/api/v1/auth/login" || true)"
+if [[ "$login_code" != "200" ]]; then
+  echo "release-proof: admin login must be 200, got HTTP $login_code" >&2
+  cat /tmp/ol2c-login.body >&2 || true
+  exit 1
 fi
+echo "release-proof: admin login 200"
 
 echo "release-proof: PASS identity=$HEAD_SHA"

@@ -1,6 +1,6 @@
 # OL-2C — CI / RB-2 deployment proof-path
 
-**Status:** **IMPLEMENTED** — 2026-08-31 (author path; not a substitute for RB-2 execution)
+**Status:** **PASS_IMPLEMENTATION** pending full five-assertion proof on this tree — 2026-08-31
 **Phase class:** platform
 **Slice:** OL-2C
 **Track:** Launch-ops
@@ -8,8 +8,8 @@
 
 > One reproducible path for CI and RB-2: fresh PostgreSQL 16 → migrate through
 > the canonical Alembic entrypoint → bootstrap → application start →
-> `/healthz` and, when the release-path PRs are on the tree, `/build` and
-> admin login. Identity is a commit SHA, never the working tree.
+> `/healthz` 200 → `/build` 200 + SHA → admin login 200.
+> Identity is a commit SHA, never the working tree.
 
 ---
 
@@ -31,10 +31,10 @@
 2. `alembic -c alembic.ini upgrade heads` against a freshly created `postgres:16-alpine`.
 3. Start the application with `HOSTFLOW_REVISION=$GIT_SHA` (not `git rev-parse` at request time).
 4. Assert `GET /healthz` returns 200.
-5. **If** `backend/app/core/build_info.py` is on the tree (OL-2A / #332): assert `GET /build` JSON `revision` equals `$GIT_SHA`. Otherwise print residual and continue.
-6. **If** `backend/alembic/versions/202608310001_bootstrap_admin_schema.py` is on the tree (OL-2B / #336): enable seed, assert `POST /api/v1/auth/login` returns 200. Otherwise print residual and continue.
+5. Assert `GET /build` returns 200 and JSON `revision` equals `$GIT_SHA`.
+6. Assert `POST /api/v1/auth/login` as `admin@hostflow.dev` returns 200.
 
-Steps 5–6 become mandatory automatically when those files merge. This slice does not copy those commits.
+Missing `/build` or a failed login after #332 and #336 are on the tree is an **OL-2C defect**, not a residual.
 
 ---
 
