@@ -39,6 +39,7 @@
 - Bulk migration of inventory H-risk `JOB_PROXY` / `PORTAL_LEGACY` call sites to permission/module gates (separate PR).
 - Persist `access_context` explicitly on membership/JWT for portal guests (not only inferred from legacy role).
 - Seat counters: stop billing portal guests as CRM seats.
+- 2026-08-31 (OL-2B): the native PostgreSQL `role` enum now includes `superadmin` (`202608310001_bootstrap_admin_schema`) so ADR-036's persisted trust role can be inserted. `users.preferences` has a server default `'{}'`. Expand-only; no new trust role. Rollback of that release must not `DROP VALUE`.
 
 ## Related checklist
 
