@@ -36,6 +36,7 @@ from backend.app.api.v1.candidates.helpers import (
     _ensure_langs,
     _normalize_stage_to_code,
     _validate_stage_transition,
+    resolve_writable_stage_code,
     _dump_json_str,
     _as_dict_safe,
     _merge_dict,
@@ -418,10 +419,9 @@ async def create_candidate_full(
     if stage_input is None or str(stage_input).strip() == "":
         stage_code = DEFAULT_STAGE_CODE
     else:
-        normalized = _normalize_stage_to_code(str(stage_input))
-        if not normalized:
-            raise HTTPException(status_code=422, detail=f"Unknown stage '{stage_input}'")
-        stage_code = normalized
+        stage_code = await resolve_writable_stage_code(
+            db, tenant_id=tenant_id, raw=str(stage_input)
+        )
 
     # Для клиентских тенантов запрещаем устанавливать внутренние агентские стадии
     if await _is_client_tenant(db, tenant_id) and not _stage_visible_for_client(stage_code):
@@ -493,9 +493,12 @@ async def create_candidate_full(
         if stage_input is None or str(stage_input).strip() == "":
             first_code = first_funnel_stage_code(funnel_result.funnel)
             if first_code:
-                normalized_first = _normalize_stage_to_code(str(first_code))
-                if normalized_first:
-                    stage_code = normalized_first
+                try:
+                    stage_code = await resolve_writable_stage_code(
+                        db, tenant_id=tenant_id, raw=str(first_code)
+                    )
+                except HTTPException:
+                    stage_code = _normalize_stage_to_code(str(first_code)) or stage_code
 
     _mgr_in = payload.get("manager") if payload.get("manager") is not None else payload.get("manager_id")
     manager_val: Optional[str] = (str(_mgr_in or "").strip() or None)
@@ -1118,10 +1121,9 @@ async def update_candidate_full(
     if "stage" in payload and payload["stage"] is not None:
         s_raw = str(payload["stage"] or "").strip()
         if s_raw:
-            normalized = _normalize_stage_to_code(s_raw)
-            if not normalized:
-                raise HTTPException(status_code=422, detail=f"Unknown stage '{s_raw}'")
-            new_stage_code = normalized
+            new_stage_code = await resolve_writable_stage_code(
+                db, tenant_id=tenant_id, raw=s_raw
+            )
 
             # Для клиентских тенантов запрещаем перевод на стадии,
             # которые не помечены как visible_for_client.
@@ -1778,7 +1780,7 @@ async def bulk_update_stage(
                 return str(detail)
         return str(detail)
 
-    target_stage = _normalize_stage_to_code(stage) or stage
+    target_stage = await resolve_writable_stage_code(db, tenant_id=tenant_id, raw=stage)
     client_tenant = await _is_client_tenant(db, tenant_id)
 
     out: list[BulkStageResult] = []
@@ -1823,7 +1825,7 @@ async def bulk_update_stage(
                     out.append({"candidate_id": cid, "stage": target_stage, "ok": False, "error": lock_err})
                     continue
 
-            normalized = _normalize_stage_to_code(target_stage) or target_stage
+            normalized = target_stage
             if not normalized:
                 out.append({"candidate_id": cid, "stage": target_stage, "ok": False, "error": "unknown stage"})
                 continue

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.constants.catalogs import DIAL_CODES
 from fastapi import HTTPException
 
-from backend.app.constants.stages_adapter import STAGES, PIPELINE_SEQUENCE
+from backend.app.constants.stages_adapter import STAGES
 from backend.app.constants.stages import LABELS
 from backend.app.models import Candidate
 from backend.app.models.candidate import next_candidate_short_id
@@ -58,8 +58,6 @@ def code_for_label(label: str) -> Optional[str]:
             return code
     return None
 
-_STAGE_INDEX = {code: idx for idx, code in enumerate(PIPELINE_SEQUENCE)}
-
 _STAGE_CODE_ALIASES = {
     "planning_arrival": "trip_plan",
     "plan_arrival": "trip_plan",
@@ -95,16 +93,51 @@ def _validate_stage_transition(
     вручную проставить любой этап в любой момент.
 
     Текущая политика:
-    - Запрещаем только пустой и неизвестный код стадии.
+    - Запрещаем только пустой код стадии.
+    - Известность кода проверяет ``resolve_writable_stage_code`` (глобальный
+      каталог **или** ``funnel_stages`` тенанта).
     - Любые переходы между валидными стадиями разрешены (вперёд, назад,
       через сколько угодно шагов).
     """
     if not target:
         raise HTTPException(status_code=422, detail="Stage must not be empty")
 
-    target = target.strip()
-    if target not in _STAGE_INDEX:
-        raise HTTPException(status_code=422, detail=f"Unknown stage '{target}'")
+
+async def resolve_writable_stage_code(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    raw: str,
+) -> str:
+    """Accept a global pipeline code **or** a tenant funnel stage code.
+
+    Candidate PATCH used to 422 any funnel-local code (e.g. a custom
+    ``skontaktowac__sie_pozniej`` row) because ``_normalize_stage_to_code``
+    only knows ``constants/stages.py``.
+    """
+    text = str(raw or "").strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Stage must not be empty")
+    normalized = _normalize_stage_to_code(text)
+    if normalized:
+        return normalized
+
+    from backend.app.models.funnel import Funnel, FunnelStage
+
+    found = (
+        await db.execute(
+            select(FunnelStage.id)
+            .join(Funnel, Funnel.id == FunnelStage.funnel_id)
+            .where(
+                Funnel.tenant_id == str(tenant_id),
+                FunnelStage.code == text,
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if found is None:
+        raise HTTPException(status_code=422, detail=f"Unknown stage '{text}'")
+    return text
 
 def _parse_dt(s: Optional[str]) -> Optional[datetime]:
     if not s:
