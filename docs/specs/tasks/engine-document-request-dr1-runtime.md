@@ -89,7 +89,7 @@ Unlocks: later Product via **queue amendment** — named **E8-bind** after this 
 
 ## History
 
-- 2026-08-31: Trusted-base CI job is red; GitHub logs for run #326 are gone. Local reproduction of the same pytest target fails 1/10 — see [dr1-runtime-trusted-base-repro.md](../gates/dr1-runtime-trusted-base-repro.md). Not a reopen of this slice. Not Launch-ops.
+- 2026-08-31: Trusted-base CI job is red; GitHub logs for run #326 are gone. Local reproduction of the same pytest target fails 1/10 — see [dr1-runtime-trusted-base-repro.md](../gates/dr1-runtime-trusted-base-repro.md). Owning defect: [dr1-runtime-alias-satisfaction-defect.md](dr1-runtime-alias-satisfaction-defect.md). Not a reopen of this slice. Not Launch-ops.
 - 2026-08-25: E8 Required-Doc Evaluation Gate PASS [#324](https://github.com/igortatarynovich/HostFlow/pull/324) / `19c95ef6`. Product = **none this amendment**. Not OCR auto-start. Not CL8.
 - 2026-08-25: Queue amendment after E8-bind Gate PASS names **E8-eval** as Active Product (brief; feat locked). Not OCR auto-start. Not CL8.
 - 2026-08-25: Queue amendment after E8 Canonical Type Bind Gate PASS [#321](https://github.com/igortatarynovich/HostFlow/pull/321) / `8246421f`. No named Product successor. E8-eval unlocked (not scheduled).

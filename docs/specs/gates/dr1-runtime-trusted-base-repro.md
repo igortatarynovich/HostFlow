@@ -1,7 +1,7 @@
 # DR1 Runtime Gate — trusted-base reproduction (2026-08-31)
 
 **Status:** measured, **FAIL** on current trusted base — not a gate decision, not a fix
-**Parents:** [DR1-runtime brief](../tasks/engine-document-request-dr1-runtime.md) · `backend-ci.yml` job `DR1 Runtime Gate`
+**Parents:** [DR1-runtime brief](../tasks/engine-document-request-dr1-runtime.md) · [alias-satisfaction defect](../tasks/dr1-runtime-alias-satisfaction-defect.md) · `backend-ci.yml` job `DR1 Runtime Gate`
 **Trusted base at measurement:** `9762e173`
 
 > Forensic pass only. Does not reopen DR1-runtime. Does not belong to Launch-ops / OL-2.
