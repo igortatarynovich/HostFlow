@@ -5,10 +5,13 @@ import fs from "fs";
 import path from "path";
 
 function hostflowBuildMeta() {
+  let outDir = path.resolve(__dirname, "dist");
   return {
     name: "hostflow-build-meta",
+    configResolved(config: { root: string; build: { outDir: string } }) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
     closeBundle() {
-      const outDir = path.resolve(__dirname, "dist");
       const meta = {
         revision: (process.env.HOSTFLOW_REVISION || process.env.HOSTFLOW_GIT_SHA || "").trim() || "unknown",
         version: (process.env.HOSTFLOW_VERSION || process.env.HOSTFLOW_GIT_REF || "").trim() || "unknown",
