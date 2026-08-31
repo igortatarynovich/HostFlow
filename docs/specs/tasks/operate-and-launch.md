@@ -184,6 +184,8 @@ Also inherited: "deploy" currently means editing the working tree of the live ho
 
 **OL-2D (2026-08-31) — [predecessor evidence](operate-launch-ol2d-predecessor.md):** **DEFERRED_BY_INITIAL_BASELINE / NOT EXECUTED** (not a FAIL). A rollbackable predecessor is a deployable state under the same release contract, not the previous commit. Production is a **legacy unversioned deployment**; correspondence to any SHA is unproven, so a predecessor cannot be named without falsifying provenance. Rehearsal starts after the first procedure-built tagged baseline. Do not mint a fictitious first tag. OL-2C remains the last technical slice before that baseline.
 
+**RB-1 (2026-08-31) — [deploy a release build](../../runbooks/rb-1-deploy-release-build.md):** **DRAFT / NOT EXECUTED.** Load retained artefacts into `hostflow-release`; host-side Alembic; prove `/healthz` + `/build` + login. Not a production cutover and not a tag. The first baseline candidate remains `650c7d11…` until an independent operator executes.
+
 **Entry condition — corrected 2026-08-31.** The Deploy & Rollback Gate requires execution by someone other than the author, and OL-1 recorded a single holder for RR3 / RR4 / RR7. This was first written as a condition that must be satisfied *before* the slice starts. That is wrong and would stall the work for a staffing reason: **implementation and execution are separate statuses.** OL-2A…OL-2D may be implemented in full by the author; the gate simply stays `NOT EXECUTED` until an independent operator performs the OL-2D rehearsal. That is a normal intermediate state. No technical substitute for the witness is permitted — self-attested execution is not evidence. OL-7 still owns the escalation half of OL1-C1.
 
 Out: zero-downtime, blue-green, IaC, multi-environment promotion.
@@ -246,6 +248,7 @@ Severity matrix, on-call / escalation, rollback window, and customer-communicati
 
 ## Refs
 
+- [RB-1 deploy a release build](../../runbooks/rb-1-deploy-release-build.md) — **DRAFT / NOT EXECUTED**; artefacts from the store, not a rebuild
 - [OL-2C CI / RB-2 proof-path](operate-launch-ol2c-ci-parity.md) — PG16-alpine, repo-root `alembic.ini`, `release-proof.sh`
 - [OL-2D predecessor evidence](operate-launch-ol2d-predecessor.md) — **DEFERRED_BY_INITIAL_BASELINE / NOT EXECUTED**; first tagged release is the baseline; rehearsal starts at the next release
 - [Release Readiness Gate](../gates/release-readiness-gate.md) — RR3 / RR4 / RR5 / RR7 and the RC definition this program must make satisfiable
@@ -261,6 +264,7 @@ Severity matrix, on-call / escalation, rollback window, and customer-communicati
 ## History
 
 - 2026-09-01: Live compose still bind-mounted. `rebuild-frontend.sh` no longer rsyncs to the unused host `/var/www/hostflow-frontend`; [`deploy-live.sh`](../../../scripts/deploy/deploy-live.sh) publishes into `hostflow-frontend/dist`, recreates backend/arq-worker, and stamps `/build`. This does **not** close RB-1 or OL-2B.
+- 2026-08-31 (later, RB-1): Deploy-from-store runbook written. Status **DRAFT / NOT EXECUTED**. Does not tag `release/v*` and does not replace the live bind-mount. [rb-1-deploy-release-build.md](../../runbooks/rb-1-deploy-release-build.md).
 - 2026-08-31 (later, OL-2D): Predecessor defined as a deployable contract state. Production measured as legacy unversioned — not a valid rollback target. Status **DEFERRED_BY_INITIAL_BASELINE / NOT EXECUTED**. No `release/v*` tag. Decision: [operate-launch-ol2d-predecessor.md](operate-launch-ol2d-predecessor.md).
 - 2026-08-31 (later, OL-2C): CI aligned to `postgres:16-alpine`; canonical Alembic is repo-root `alembic.ini`; five-assertion proof-path. [operate-launch-ol2c-ci-parity.md](operate-launch-ol2c-ci-parity.md).
 - 2026-08-31 (later, OL-2B first-admin): Bootstrap admin schema closed as implementation. The throwaway composite `11f1c845` was evidence only. OL-2B remains **PASS_IMPLEMENTATION / NOT EXECUTED**.
