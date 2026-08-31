@@ -510,8 +510,9 @@ async def ensure_auth_seed() -> None:
                     print(f"[seed] admin существовал: пароль и статус обновлены для {ADMIN_EMAIL}")
                 except Exception as update_err:
                     await db.rollback()
-                    print(f"[seed] обновление admin не удалось: {update_err}")
-                    return
+                    raise RuntimeError(
+                        f"bootstrap admin update failed: {update_err}"
+                    ) from update_err
             else:
                 print("[seed] admin существует, подходящих колонок для обновления не найдено — пропускаю")
 
@@ -544,17 +545,20 @@ async def ensure_auth_seed() -> None:
         add("tenant_id", DEFAULT_TENANT_ID)
         add("created_at", now)
         add("updated_at", now)
-
-        # Иногда встречаются альтернативные/алиасные поля
-        # add("is_admin", True)  # раскомментируй, если в схеме есть is_admin вместо role
+        add("preferences", json.dumps({}))
 
         if not insert_cols:
             print("[seed] не удалось подобрать подходящие колонки — пропускаю")
             return
 
-        placeholders = ", ".join([f":v{i}" for i in range(len(insert_vals))])
+        placeholders = []
+        for i, col in enumerate(insert_cols):
+            if col == "preferences" and not IS_SQLITE:
+                placeholders.append(f"CAST(:v{i} AS jsonb)")
+            else:
+                placeholders.append(f":v{i}")
         columns_ddl = ", ".join(insert_cols)
-        sql = f"INSERT INTO users ({columns_ddl}) VALUES ({placeholders})"
+        sql = f"INSERT INTO users ({columns_ddl}) VALUES ({', '.join(placeholders)})"
         params = {f"v{i}": insert_vals[i] for i in range(len(insert_vals))}
 
         try:
@@ -562,9 +566,8 @@ async def ensure_auth_seed() -> None:
             await db.commit()
             print(f"[seed] admin пользователь создан: {ADMIN_EMAIL} / {ADMIN_PASSWORD}")
         except Exception as e:
-            # Если что-то не так (например, в схеме другие имена колонок) — печатаем и не валим стартап
-            print(f"[seed] вставка admin не удалась: {e} — проверь схему users")
             await db.rollback()
+            raise RuntimeError(f"bootstrap admin insert failed: {e}") from e
         else:
             user_id_value = new_id if "id" in insert_cols else None
             if user_id_value is None:

@@ -532,10 +532,9 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("[startup:ensure_auth_multitenancy] skipped (%s)", e)
 
-        try:
-            await ensure_auth_seed()
-        except Exception as e:
-            logger.warning("[startup:ensure_auth_seed] skipped (%s)", e)
+        # Seed is off by default. When it is on, a swallowed failure used to
+        # start a healthy instance with no admin (OL-2B). Fail the process.
+        await ensure_auth_seed()
 
         # Seed process templates, requirements, and gates
         try:

@@ -72,7 +72,7 @@ class User(Base, TimestampMixin):
         JSONType, nullable=True, default=dict
     )
     preferences: Mapped[dict[str, Any]] = mapped_column(
-        JSONType, nullable=False, default=dict
+        JSONType, nullable=False, default=dict, server_default=text("'{}'")
     )
     supervisor_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
