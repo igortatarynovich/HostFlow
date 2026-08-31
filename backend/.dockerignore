@@ -1,0 +1,22 @@
+# Build context exclusions for the ./backend context.
+#
+# The repo-root .dockerignore does NOT apply here: Docker resolves .dockerignore
+# relative to the build context, and docker-compose.yml builds this service with
+# `context: ./backend`. Without this file `COPY . /app` bakes backend/.env —
+# which holds live payment, SMTP, OAuth and push credentials — into an immutable
+# image layer.
+.env
+.env.*
+!.env.example
+
+.git
+.venv
+**/__pycache__/
+*.pyc
+*.pyo
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
