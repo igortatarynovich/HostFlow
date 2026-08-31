@@ -60,7 +60,7 @@ not auditable to that standard.
 |---|---|---|
 | **R-1** | Stop future builds from baking the file — add `backend/.dockerignore`. | **DONE** 2026-08-31 (`2408a5a0`). Verified: `/app/.env` absent from a rebuilt image, `.env.example` retained, app code intact |
 | **R-2** | Move secrets out of the checkout to a path outside every build context and bind mount, readable only by the runtime account (`0600`), referenced by compose `env_file:` with an absolute path or injected by the orchestrator. | **TODO** — OL-2 owns the mechanism; production-affecting, needs a restart window |
-| **R-3** | Tighten permissions on whatever remains: `chmod 600`, correct ownership. | **TODO** — safe to do independently of R-2 |
+| **R-3** | Tighten permissions on whatever remains: `chmod 600`, correct ownership. | **DONE** 2026-08-31 — `.env`, `backend/.env`, `.env.local` moved 644 → 600. No process restart needed (permissions do not affect an already-running process; Docker reads the files as root). Verified after: all five containers up, `/healthz` 200. Ownership is still UID 501 / GID 50, an account that does not exist on this host — correcting that belongs with R-2 |
 | **R-4** | Rebuild and redeploy the backend image so no running artefact contains the file. | **TODO** — requires R-2; production-affecting |
 | **R-5** | **Rotate every class in § 2**, in provider dashboards where applicable. Rotation is only meaningful after R-2/R-4, or the new values land in the same exposed places. | **TODO** — requires provider access the repository does not have |
 | **R-6** | Invalidate old values at the provider (revoke, not merely replace) and confirm the application still functions on the new ones. | **TODO** |
@@ -81,4 +81,6 @@ image is rebuilt. R-2 and R-4 must precede R-5.
 ## 6. History
 
 - 2026-08-31: Opened. E-1…E-4 measured on the production host without printing values; R-1 landed and
-  verified; R-2…R-7 outstanding.
+  verified; R-3 applied (644 → 600 on three files, production verified healthy afterwards);
+  R-2, R-4…R-7 outstanding. E-3 is reduced but **not closed** — the files are still inside the build
+  context and the bind mount, which is what R-2 addresses.
