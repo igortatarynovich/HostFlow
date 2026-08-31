@@ -3,3 +3,10 @@
 *.pyc
 .venv
 .env
+.env.*
+backend/.env
+backend/.env.*
+!**/.env.example
+hostflow-frontend/node_modules
+hostflow-frontend/dist
+releases/

@@ -1,0 +1,37 @@
+# Release backend image — repo-root build context (OL-2A C-1).
+#
+# Unlike backend/Dockerfile (context: ./backend, source bind-mounted at runtime),
+# this image contains application code, shared contracts and the docs the
+# reference layer reads. A release stack must not bind-mount the checkout over /app.
+
+FROM python:3.11-slim
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+WORKDIR /app
+
+ARG GIT_SHA=unknown
+ARG GIT_REF=
+ARG BUILD_TIME=
+LABEL org.opencontainers.image.revision=$GIT_SHA \
+      org.opencontainers.image.version=$GIT_REF \
+      org.opencontainers.image.created=$BUILD_TIME \
+      org.opencontainers.image.source="https://github.com/igortatarynovich/HostFlow"
+ENV HOSTFLOW_REVISION=$GIT_SHA \
+    HOSTFLOW_VERSION=$GIT_REF \
+    HOSTFLOW_BUILT_AT=$BUILD_TIME
+
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt /tmp/requirements.txt
+RUN pip install --upgrade pip && pip install -r /tmp/requirements.txt
+
+COPY backend/ /app/
+COPY shared/ /app/shared/
+COPY docs/ /docs/
+
+# Defence in depth: never ship an env file even if the ignore list is bypassed.
+RUN rm -f /app/.env /app/.env.local /app/.env.production
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

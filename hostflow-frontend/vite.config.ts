@@ -1,7 +1,24 @@
 // vite.config.ts
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import fs from "fs";
 import path from "path";
+
+function hostflowBuildMeta() {
+  return {
+    name: "hostflow-build-meta",
+    closeBundle() {
+      const outDir = path.resolve(__dirname, "dist");
+      const meta = {
+        revision: (process.env.HOSTFLOW_REVISION || process.env.HOSTFLOW_GIT_SHA || "").trim() || "unknown",
+        version: (process.env.HOSTFLOW_VERSION || process.env.HOSTFLOW_GIT_REF || "").trim() || "unknown",
+        built_at: (process.env.HOSTFLOW_BUILT_AT || "").trim() || new Date().toISOString(),
+      };
+      fs.mkdirSync(outDir, { recursive: true });
+      fs.writeFileSync(path.join(outDir, "build.json"), `${JSON.stringify(meta, null, 2)}\n`);
+    },
+  };
+}
 
 /**
  * По умолчанию — обычная сборка Vite/Rollup (как до экспериментов с RAM).
@@ -20,7 +37,7 @@ const crossOriginIsolationHeaders = {
 } as const;
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), hostflowBuildMeta()],
   resolve: {
     dedupe: ["react", "react-dom"],
     alias: {
