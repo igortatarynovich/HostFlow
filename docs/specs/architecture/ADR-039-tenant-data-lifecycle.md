@@ -1,6 +1,6 @@
 # ADR-039: Tenant Data Lifecycle (provision → import → export → erase → retain)
 
-**Status:** Proposed (acceptance is the [Launch Ownership Gate](../tasks/operate-and-launch.md) in OL-1)
+**Status:** **Accepted** 2026-08-31 by the [Launch Ownership Gate](../gates/launch-ownership-gate.md) (OL-1, `PASS_WITH_CONSTRAINTS`). Acceptance gives OL-6 a contract; it does not schedule OL-6 and creates no endpoint
 **Date:** 2026-08-28
 **Trusted base:** `integration/release-product-a-b`
 **Related:** [`ADR-003`](ADR-003-tenant-company-module-data-boundaries.md) (tenant / company / module data boundaries) · [`ADR-009`](ADR-009-document-hub-platform-layer.md) (documents are a platform layer) · [`ADR-026`](ADR-026-capability-ownership.md) (capability ownership) · [`multi_tenant_model.md`](multi_tenant_model.md) · [`../../security/security-ssot.md`](../../security/security-ssot.md) §2 data classification · [`../gates/release-readiness-gate.md`](../gates/release-readiness-gate.md) RR4 / RR5 · [`../tasks/operate-and-launch.md`](../tasks/operate-and-launch.md) (consumer program)
@@ -110,4 +110,5 @@ No customer-facing artifact (FAQ, legal document, DPA, sales material) may promi
 
 ## History
 
+- 2026-08-31: **Accepted** by the [Launch Ownership Gate](../gates/launch-ownership-gate.md) (OL-1). Nothing in the decision changed between Proposed and Accepted; what changed is that the consumer program is now open, so OL-6 has a contract to implement against instead of each module inventing its own tenant export and its own delete. The customer-facing anonymisation claim noted below remains unimplemented and is owned by OL-6, not by this acceptance.
 - 2026-08-28: Proposed. Opened while briefing [Operate & Launch](../tasks/operate-and-launch.md) (v1 blocker 6) after an inventory found tenant export, subject erasure, tenant offboarding and retention without an owner, and a customer-facing anonymisation claim with no implementation.

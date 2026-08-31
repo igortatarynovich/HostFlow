@@ -1,17 +1,19 @@
 # Operate & Launch
 
-**Status:** **QUEUED** (brief only; **not scheduled**) — second track, runs parallel to the Product Track
+**Status:** **ACTIVE** — Launch-ops track opened 2026-08-31; **OL-1 delivered** ([Launch Ownership Gate](../gates/launch-ownership-gate.md) `PASS_WITH_CONSTRAINTS`). **Next slice: OL-2** Deploy, migrate & rollback — named, **not started**: invariant 6 of the [queue](sales-to-comms-sequential-queue.md) forbids starting a slice in the same PR that closes its predecessor. Runs parallel to the Product Track
 **Phase class:** platform
 **Track:** **Launch-ops** (write-set disjoint from Product: `deploy/`, `docs/runbooks/`, infra config, tenant-lifecycle product surfaces)
 **Branch (docs):** `docs/v1-blocker-briefs`
-**Branch (code):** none — later slices `feat/operate-launch-olN-…`
+**Branch (code):** none yet — OL-2 onwards `feat/operate-launch-olN-…`
+**Production target (v1, decided OL-1):** one dedicated host, one compose stack. No staging environment, so OL-2's rollback rehearsal and OL-5's restore drill build a throwaway target — see [OL1-C2](../gates/launch-ownership-gate.md)
+**RR3 / RR4 / RR7 owner (decided OL-1):** `igortatarynovich` for all three; single-person ownership is a named residual carried to OL-7 ([OL1-C1](../gates/launch-ownership-gate.md))
 **Parents:** [HostFlow v1 Release Goal](../gates/hostflow-v1-release-goal.md) (blocker 6) · [Release Readiness Gate](../gates/release-readiness-gate.md) RR3 / RR4 / RR5 / RR7 · [Acceptance suite RS-10…RS-12](../journeys/release-readiness-acceptance-suite.md) · [ADR-039 Tenant Data Lifecycle](../architecture/ADR-039-tenant-data-lifecycle.md) · [Runbook index](../../runbooks/README.md) · [Repository Operational Canon](../../governance/repository-operational-canon.md) · [Sequential queue](sales-to-comms-sequential-queue.md)
 **Estimate:** 10–14 slices (1 slice = one docs PR + one feat PR)
 
 > v1 blocker 6: **the product can be deployed, monitored, backed up, restored, onboarded, exported, offboarded and supported by someone who did not build it.**
 > Five feature blockers make HostFlow *complete*. This one makes it *sellable*: without it a paying tenant cannot be served even if every capability works.
 > **Not** a production platform / SRE programme. **Not** multi-region, autoscaling, IaC, blue-green, SLO engineering. **Not** post-release steady-state operations. **Not** Billing (self-service Billing stays later).
-> Opening this brief does **not** schedule it. Activation requires a queue amendment naming the Launch-ops track.
+> Opened by the [2026-08-31 queue amendment](sales-to-comms-sequential-queue.md) § 8. OL-1 is closed; OL-2 is the active slice.
 
 ---
 
@@ -99,7 +101,7 @@ OL-1 Launch contract & ownership seal (docs)
 
 | # | Slice | Machine id | Named gate (PASS =) | Depends on | Estimate |
 |---|-------|------------|---------------------|------------|----------|
-| **OL-1** | Launch contract & ownership seal | `ol-contract` | **Launch Ownership Gate** — production target defined; RR3 / RR4 / RR7 owners named; required runbook set enumerated in [`docs/runbooks/README.md`](../../runbooks/README.md) with owner and status; “executed” defined as a dated record; [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md) accepted | queue amendment opening the Launch-ops track | 1 slice (docs) |
+| **OL-1** ✅ | Launch contract & ownership seal | `ol-contract` | **[Launch Ownership Gate](../gates/launch-ownership-gate.md) — `PASS_WITH_CONSTRAINTS` 2026-08-31.** production target defined; RR3 / RR4 / RR7 owners named; required runbook set enumerated in [`docs/runbooks/README.md`](../../runbooks/README.md) with owner and status; “executed” defined as a dated record; [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md) accepted | queue amendment opening the Launch-ops track | 1 slice (docs) |
 | **OL-2** | Deploy, migrate & rollback | `ol-deploy` | **Deploy & Rollback Gate** — a written procedure takes a tagged commit to a non-dev target, applies migrations to a **freshly created** DB with no manual repair, serves a reproducibly built frontend, and rolls back to the previous tag; executed once by someone other than its author | OL-1 Gate | 2–3 slices |
 | **OL-3** | Production runtime defaults | `ol-runtime` | **Production Runtime Defaults Gate** — durable queue and non-local object storage are the documented production configuration with a running worker; scheduled work has exactly one owner process (no double-send); scripts that require cron have a scheduler manifest | OL-2 Gate | 2 slices |
 | **OL-4** | Operability signal | `ol-signal` | **Operability Signal Gate** — readiness endpoint answers for Postgres / Redis / storage; a scrape config and a minimal alert set exist as loaded configuration; an alert reaches a named human; the minimal set is justified per metric | OL-3 Gate | 1–2 slices |
@@ -109,7 +111,7 @@ OL-1 Launch contract & ownership seal (docs)
 
 ---
 
-## OL-1 — Launch contract & ownership seal (queued, docs only)
+## OL-1 — Launch contract & ownership seal ✅ (delivered 2026-08-31, docs only)
 
 Answers what nothing currently answers:
 
@@ -121,7 +123,7 @@ Answers what nothing currently answers:
 
 Out: writing the runbooks themselves (OL-2…OL-7 own them); choosing hosting vendors; SLO targets.
 
-## OL-2 — Deploy, migrate & rollback (queued)
+## OL-2 — Deploy, migrate & rollback (**next** — named, not started)
 
 The blocking sub-problem is migrations: per `AGENTS.md`, `alembic upgrade heads` does **not** apply cleanly to a fresh database, and the documented workaround is a hand-ordered sequence with a manual `CREATE TYPE` and a `stamp`. RC condition 4 forbids exactly that. This slice either fixes the migration graph or replaces it with a documented, automated bootstrap — an insider-only sequence is a STOP.
 
@@ -176,7 +178,7 @@ Out: 24/7 rotation, paid support tiers, status-page product.
 ## Queue position
 
 **Track:** Launch-ops — parallel to Product by explicit decision (write-set disjoint: no Product slice edits `deploy/`, `docs/runbooks/`, infra defaults; OL-6 is the one slice that touches product code and must not collide with an Active Product slice in the same module)
-**Depends on:** a queue amendment opening the track; OL-6 additionally on ADR-039 acceptance
+**Depends on:** ~~a queue amendment opening the track~~ (done 2026-08-31); OL-6 additionally on ADR-039 acceptance (**Accepted** 2026-08-31 by OL-1)
 **Does not:** consume a Product slot; unlock Billing / AI / OCR; authorise an SRE programme; make this gate a substitute for the [Release Readiness Gate](../gates/release-readiness-gate.md)
 
 ---
@@ -190,3 +192,10 @@ Out: 24/7 rotation, paid support tiers, status-page product.
 - [job_queue.md](../architecture/job_queue.md) · [object_storage.md](../architecture/object_storage.md) — the two production defaults OL-3 must flip
 - [observability.md](../platform/observability.md) · [prometheus_integration.md](../platform/prometheus_integration.md) — metric catalog and scrape plan OL-4 must make real
 - [crm-production-readiness-ssot.md](../../crm-production-readiness-ssot.md) — F7 manual scenario run-log (operational tracker, not the release authority)
+
+---
+
+## History
+
+- 2026-08-31: **Track opened; OL-1 delivered** — [Launch Ownership Gate](../gates/launch-ownership-gate.md) `PASS_WITH_CONSTRAINTS`. Production target decided (one dedicated host, one compose stack), RR3 / RR4 / RR7 given a named holder, the RB-1…RB-10 set sealed at ten of ten MISSING, "executed" defined as a dated record naming operator / target / build / result with the operator not being the author, and [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md) accepted. Two residuals recorded rather than smoothed over: one person holds all three release questions, so RR7's escalation step has no second party (carried to OL-7); and the single-host target means OL-2's rollback rehearsal and OL-5's restore drill must build a throwaway target instead of using production. Successor **OL-2**, which owns the sharpest launch blocker in § Starting point — `alembic upgrade heads` failing on a fresh database — and therefore also gates the CI half of [tenant isolation](tenant-isolation-enforcement.md).
+- 2026-08-28: Brief opened as v1 blocker 6 with the measured starting point, the OL-1…OL-7 ladder and named gates. Queued, not scheduled.

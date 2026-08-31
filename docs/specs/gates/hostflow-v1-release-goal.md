@@ -57,7 +57,7 @@ A Settings page that edits non-authority JSON is **not** ready. All four must ho
 | **3** | **External Intake / Forms Publish** — [brief](../tasks/external-intake-forms-publish.md) (queued) | `publish → public form → submit → mapping → canonical entity → visible in workspace`. Forms P4 / P5 stay later. |
 | **4** | **Hiring workflow E2E** — [brief](../tasks/hiring-workflow-e2e.md) (queued) | One candidate: `stage → requirements/docs → eligibility → transfer`. Acceptance over existing funnels, gates, policy authority, and transfer — **not** a new Hiring Product. |
 | **5** | **Minimal Recruitment → HR handoff** — [brief](../tasks/recruitment-hr-minimal-handoff.md) (queued) | Hire / transfer creates or links Employee; identity / profile kept; documents reused via Document Link; handoff status visible; no manual copy. Full HR operations (Kadry, payroll, extended lifecycle) are later. |
-| **6** | **Operate & Launch** — [brief](../tasks/operate-and-launch.md) (queued; **Launch-ops track**) | Deployed, rolled back, monitored, backed up and restored from written procedures; tenant created, loaded, exported and erased as product; support and incident path named. Not an SRE programme, not IaC, not steady-state operations. |
+| **6** | **Operate & Launch** — [brief](../tasks/operate-and-launch.md) (**active**; **Launch-ops track** opened 2026-08-31, [OL-1](launch-ownership-gate.md) done, OL-2 next) | Deployed, rolled back, monitored, backed up and restored from written procedures; tenant created, loaded, exported and erased as product; support and incident path named. Not an SRE programme, not IaC, not steady-state operations. |
 
 Blockers 1–5 are **capability** blockers: they make the product complete. Blocker 6 is an **operability** blocker: it makes the product sellable. Blocker 6 is not a capability node in the DAG and does not consume a Product slot — it runs as the parallel **Launch-ops** track, because a paying tenant cannot be served by features alone.
 
@@ -182,7 +182,7 @@ Recorded at Goal seal. Not a PASS.
 | External Intake / Forms Publish | partial (Foundation serve→execute) | no (P3 locked) | partial | OPEN |
 | Hiring workflow E2E | partial (funnels / gates / transfer) | partial | not proven vs policy authority | OPEN |
 | Minimal HR handoff | partial (E3/E4 Document Link) | partial | partial | OPEN |
-| Operate & Launch (blocker 6, added 2026-08-28) | no (no deploy / rollback / backup procedure) | partial (tenant create only; no delete, no export, no bulk import) | no (in-process queue + local disk are the defaults) | OPEN |
+| Operate & Launch (blocker 6, added 2026-08-28) | no (no deploy / rollback / backup procedure — RB-1…RB-10 all MISSING, now owned and countable via [OL-1](launch-ownership-gate.md)) | partial (tenant create only; no delete, no export, no bulk import; contract accepted in [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md), capability absent) | no (in-process queue + local disk are the defaults) | OPEN |
 
 ---
 
