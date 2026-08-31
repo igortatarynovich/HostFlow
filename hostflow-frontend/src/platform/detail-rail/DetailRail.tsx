@@ -97,8 +97,8 @@ export function DetailRail({
                   disabled={!navigation.hasPrevious}
                   onClick={navigation.onPrevious}
                   className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
-                  aria-label={navigation.previousLabel ?? 'Предыдущий'}
-                  title={navigation.previousLabel ?? 'Предыдущий'}
+                  aria-label={navigation.previousLabel ?? t('app.platform.detail_rail.previous')}
+                  title={navigation.previousLabel ?? t('app.platform.detail_rail.previous')}
                 >
                   <IconChevronUp size={18} />
                 </button>
@@ -107,8 +107,8 @@ export function DetailRail({
                   disabled={!navigation.hasNext}
                   onClick={navigation.onNext}
                   className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
-                  aria-label={navigation.nextLabel ?? 'Следующий'}
-                  title={navigation.nextLabel ?? 'Следующий'}
+                  aria-label={navigation.nextLabel ?? t('app.platform.detail_rail.next')}
+                  title={navigation.nextLabel ?? t('app.platform.detail_rail.next')}
                 >
                   <IconChevronDown size={18} />
                 </button>
@@ -123,7 +123,7 @@ export function DetailRail({
                   pin.pinned ? 'bg-amber-100 text-amber-800' : 'text-slate-500 hover:bg-slate-100',
                 )}
                 aria-pressed={pin.pinned}
-                title={pin.pinned ? pin.unpinLabel ?? 'Открепить' : pin.pinLabel ?? 'Закрепить'}
+                title={pin.pinned ? pin.unpinLabel ?? t('app.platform.detail_rail.unpin') : pin.pinLabel ?? t('app.platform.detail_rail.pin')}
               >
                 {pin.pinned ? <IconPinFilled size={18} /> : <IconPin size={18} />}
               </button>
@@ -133,7 +133,7 @@ export function DetailRail({
             type="button"
             onClick={onClose}
             className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Закрыть"
+            aria-label={t('app.platform.detail_rail.close')}
           >
             <IconX size={18} stroke={2} />
           </button>
@@ -158,7 +158,7 @@ export function DetailRail({
               className="mt-2 inline-flex text-sm font-medium text-brand-700 hover:underline"
               data-entity-link="primary"
             >
-              {h.entityWorkspaceLabel ?? 'Открыть полную карточку'}
+              {h.entityWorkspaceLabel ?? t('app.platform.detail_rail.open_full')}
             </Link>
           ) : null}
           <div className="mt-2 flex flex-wrap gap-2">
@@ -232,7 +232,7 @@ export function DetailRail({
         )}
       >
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-          Следующее действие
+          {t('app.platform.detail_rail.next_action')}
         </p>
         {!n.hideStepper && n.stepLabels?.length ? (
           <div className="mt-2 flex flex-wrap gap-1">
@@ -254,7 +254,7 @@ export function DetailRail({
         {n.whyBody ? (
           <div className="mt-3 border-l-2 border-slate-300 pl-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              {n.whyTitle ?? 'Почему'}
+              {n.whyTitle ?? t('app.platform.detail_rail.why')}
             </p>
             <p className="mt-0.5 text-sm text-slate-700">{n.whyBody}</p>
           </div>
@@ -271,7 +271,7 @@ export function DetailRail({
         {n.outcomeBody ? (
           <div className="mt-3 rounded-lg bg-white/70 px-3 py-2 ring-1 ring-slate-200/80">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-              {n.outcomeTitle ?? 'Что будет дальше'}
+              {n.outcomeTitle ?? t('app.platform.detail_rail.what_next')}
             </p>
             <p className="mt-0.5 text-xs text-slate-600">{n.outcomeBody}</p>
           </div>
@@ -370,7 +370,7 @@ export function DetailRail({
         ))}
         {model.onSummaryExpand ? (
           <button type="button" onClick={model.onSummaryExpand} className="mt-1 text-xs font-medium text-brand-700 hover:underline">
-            {model.summaryExpandLabel ?? 'Показать все'}
+            {model.summaryExpandLabel ?? t('app.platform.detail_rail.show_all')}
           </button>
         ) : null}
       </dl>
@@ -445,14 +445,14 @@ export function DetailRail({
   }
 
   const blockTitles: Partial<Record<DetailRailBlockId, string>> = {
-    contacts: 'Контакты',
+    contacts: t('app.platform.detail_rail.block.contacts'),
     next_action: undefined,
-    actions: 'Действия',
-    summary: 'Основная информация',
-    history: 'История',
-    documents: 'Документы',
-    relations: 'Связанные объекты',
-    footer_actions: 'Другие действия',
+    actions: t('app.platform.detail_rail.block.actions'),
+    summary: t('app.platform.detail_rail.block.summary'),
+    history: t('app.platform.detail_rail.block.history'),
+    documents: t('app.platform.detail_rail.block.documents'),
+    relations: t('app.platform.detail_rail.block.relations'),
+    footer_actions: t('app.platform.detail_rail.block.footer_actions'),
   }
 
   const merged = { ...blocks, ...blockOverrides }

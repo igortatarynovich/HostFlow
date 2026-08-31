@@ -19,16 +19,19 @@ type Props = {
   t: (key: string, opts?: Record<string, unknown>) => string
 }
 
-function reprocessHint(binding: CampaignAdBinding): string | null {
+function reprocessHint(
+  binding: CampaignAdBinding,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string | null {
   const r = binding.reprocess
   if (!r) return null
   const matched = Number(r.matched || 0)
   const processed = Number(r.processed || 0)
   const errors = Array.isArray(r.errors) ? r.errors.length : 0
   if (!matched && !processed && !errors) return null
-  return `Переобработано ожидающих: matched ${matched}, processed ${processed}${
-    errors ? `, ошибок ${errors}` : ''
-  }`
+  let msg = t('app.marketing.ad_bindings.reprocessed', { values: { matched, processed } })
+  if (errors) msg += t('app.marketing.ad_bindings.reprocessed_errors', { values: { errors } })
+  return msg
 }
 
 export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: Props) {
@@ -52,7 +55,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
     try {
       const created = await attachFlightAdBinding(campaignId, flight.id, trimmed, 'meta')
       setAdId('')
-      setLastHint(reprocessHint(created))
+      setLastHint(reprocessHint(created, t))
       await onChanged()
     } catch (err: unknown) {
       setLocalError(
@@ -76,7 +79,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
     setLastHint(null)
     try {
       const next = await patchCampaignAdBinding(campaignId, link.id, !link.is_active)
-      setLastHint(reprocessHint(next))
+      setLastHint(reprocessHint(next, t))
       await onChanged()
     } catch (err: unknown) {
       setLocalError(
@@ -95,7 +98,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
 
   async function onDetach(link: CampaignAdBinding) {
     if (busy) return
-    if (!window.confirm(`Отвязать Ad ID ${link.provider_ad_id}?`)) return
+    if (!window.confirm(t('app.marketing.ad_bindings.confirm_unbind', { values: { id: link.provider_ad_id } }))) return
     setBusy(true)
     setLocalError(null)
     setLastHint(null)
@@ -126,9 +129,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
         <div>
           <h3 className="text-sm font-semibold text-slate-900">{t('app.marketing.ad_bindings.title')}</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Override: когда одна Meta-форма кормит несколько Flight — привяжите конкретный Ad ID
-            сюда. Обычный путь: Connect Source (Lead Form) на странице «Подключить источник»; без
-            Ad bind все объявления формы идут в Flight формы.
+            {t('app.marketing.ad_bindings.help')}
           </p>
           <p className="mt-1 text-xs text-slate-500">
             Flight: <span className="font-medium text-slate-700">{flight.name || flight.code}</span>
@@ -159,7 +160,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
 
       {bindings.length === 0 ? (
         <p className="mt-3 text-xs text-slate-500" data-testid="marketing-ad-bindings-empty">
-          Активных привязок Ad ID пока нет.
+          {t('app.marketing.ad_bindings.empty')}
         </p>
       ) : (
         <ul className="mt-3 space-y-2" data-testid="marketing-ad-bindings-list">
@@ -173,7 +174,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
                 <div className="truncate font-mono text-sm text-slate-900">{link.provider_ad_id}</div>
                 <div className="mt-0.5 text-xs text-slate-500">
                   {String(link.provider || 'meta').toUpperCase()} ·{' '}
-                  {link.is_active ? 'активна' : 'выключена'}
+                  {link.is_active ? t('app.marketing.ad_bindings.active') : t('app.marketing.ad_bindings.disabled')}
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -184,7 +185,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
                   onClick={() => void onToggle(link)}
                   data-testid={`marketing-ad-binding-toggle-${link.id}`}
                 >
-                  {link.is_active ? 'Выключить' : 'Включить'}
+                  {link.is_active ? t('app.marketing.ad_bindings.disable') : t('app.marketing.ad_bindings.enable')}
                 </button>
                 <button
                   type="button"
@@ -193,7 +194,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
                   onClick={() => void onDetach(link)}
                   data-testid={`marketing-ad-binding-detach-${link.id}`}
                 >
-                  Отвязать
+                  {t('app.marketing.ad_bindings.unbind')}
                 </button>
               </div>
             </li>
@@ -224,7 +225,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
           disabled={busy || !adId.trim()}
           data-testid="marketing-ad-bindings-submit"
         >
-          {busy ? '…' : 'Привязать к Flight'}
+          {busy ? '…' : t('app.marketing.ad_bindings.bind')}
         </button>
       </form>
     </section>

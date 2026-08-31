@@ -17,14 +17,6 @@ import { ApplicationSalesDetailPanel } from '../../platform/application-workspac
 import type { ApplicationWorkspaceConfig } from '../../platform/application-workspace/types'
 import { clientDetailPath } from '../../services/platformHandoff'
 
-const SALES_TABS = [
-  { id: 'all' as const, label: 'Все' },
-  { id: 'new' as const, label: 'Новые' },
-  { id: 'in_progress' as const, label: 'В работе' },
-  { id: 'waiting' as const, label: 'Ожидают ответа' },
-  { id: 'completed' as const, label: 'Завершённые' },
-]
-
 export function SalesApplicationWorkspace() {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -72,19 +64,25 @@ export function SalesApplicationWorkspace() {
   const config: ApplicationWorkspaceConfig = useMemo(
     () => ({
       module: 'sales',
-      objectNamePlural: 'Обращения',
+      objectNamePlural: t('app.sales_inquiry.workspace.inquiries'),
       homePath: SALES_HOME_PATH,
       applicationPath: salesInquiryPath,
       listApplications: listSalesInquiries,
       getApplication: getSalesInquiry,
-      tabs: SALES_TABS,
+      tabs: [
+        { id: 'all' as const, label: t('app.sales_inquiry.workspace.tab_all') },
+        { id: 'new' as const, label: t('app.sales_inquiry.workspace.tab_new') },
+        { id: 'in_progress' as const, label: t('app.sales_inquiry.workspace.tab_in_progress') },
+        { id: 'waiting' as const, label: t('app.sales_inquiry.workspace.tab_waiting') },
+        { id: 'completed' as const, label: t('app.sales_inquiry.workspace.tab_completed') },
+      ],
       workSessionSurface: 'sales',
       workSessionKind: 'call',
-      heroCallTitle: (count: number) => `Позвонить ${count} новым обращениям`,
-      heroCallHint:
-        'Откроем обращения по одному: позвонить → выяснить потребность → создать клиента → выбрать услугу.',
-      heroEmptyText: 'Нет новых обращений для звонка',
-      listKindLabel: 'B2B заявка',
+      heroCallTitle: (count: number) =>
+        t('app.sales_inquiry.workspace.hero_call_title', { values: { count } }),
+      heroCallHint: t('app.sales_inquiry.workspace.hero_call_hint'),
+      heroEmptyText: t('app.sales_inquiry.workspace.hero_empty'),
+      listKindLabel: t('app.sales_inquiry.workspace.list_kind'),
       extensionBadge: (app) => (app.extensions?.service_label as string | undefined) || null,
       primaryEntityPath: (app) => {
         const id = String(app.outcome_entity_id || '').trim()
@@ -125,11 +123,11 @@ export function SalesApplicationWorkspace() {
               const newClientId = String(updated.outcome_entity_id || '').trim()
               if (newClientId) window.setTimeout(() => navigate(clientDetailPath(newClientId)), 500)
             } catch (err: unknown) {
-              if (planLimitModal?.showPlanLimitIfNeeded(err, 'Не удалось создать клиента')) return
+              if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.sales_inquiry.workspace.create_client_failed'))) return
               const detail =
                 (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ??
                 (err as Error)?.message ??
-                'Не удалось создать клиента'
+                t('app.sales_inquiry.workspace.create_client_failed')
               notify({ title: typeof detail === 'string' ? detail : JSON.stringify(detail), variant: 'error' })
             } finally {
               setConverting(false)

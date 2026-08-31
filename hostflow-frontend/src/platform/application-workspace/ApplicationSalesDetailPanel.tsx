@@ -17,18 +17,12 @@ import {
 } from '../entity-workspace/salesInquiryConsumer'
 import {
   APPLICATION_STATUS_BADGE,
-  APPLICATION_STATUS_TEXT,
   applicationInitial,
+  applicationStatusLabel,
 } from './applicationDisplay'
 import { resolveSalesApplicationDecision, existingClientFromApplication } from './resolveSalesApplicationDecision'
 
-const WORKFLOW_STEPS = [
-  { key: 'contact', label: 'Связаться' },
-  { key: 'need', label: 'Потребность' },
-  { key: 'client', label: 'Клиент' },
-  { key: 'service', label: 'Услуга' },
-  { key: 'order', label: 'Заказ' },
-] as const
+const WORKFLOW_STEP_KEYS = ['contact', 'need', 'client', 'service', 'order'] as const
 
 export type ApplicationSalesDetailPanelProps = {
   application: Application
@@ -61,8 +55,12 @@ export function ApplicationSalesDetailPanel({
     : existingClient
       ? clientDetailPath(existingClient.company_id)
       : undefined
-  const subtitle = application.subtitle || 'B2B заявка'
+  const subtitle = application.subtitle || t('app.sales_inquiry.workspace.list_kind')
   const openCardLabel = t('app.sales_inquiry.open_client_card', { defaultValue: 'Открыть полную карточку' })
+  const workflowSteps = WORKFLOW_STEP_KEYS.map((key) => ({
+    key,
+    label: t(`app.sales_inquiry.detail.step_${key}`),
+  }))
   const contactPhone = application.contact.phone?.trim() || ''
   const contactEmail = application.contact.email?.trim() || ''
   const telHref = contactPhone ? `tel:${contactPhone.replace(/\s/g, '')}` : null
@@ -99,7 +97,7 @@ export function ApplicationSalesDetailPanel({
         titleHref: clientHref,
         subtitle,
         meta,
-        statusLabel: APPLICATION_STATUS_TEXT[statusKey as keyof typeof APPLICATION_STATUS_TEXT] || statusKey,
+        statusLabel: applicationStatusLabel(statusKey, t) || statusKey,
         statusClassName: `rounded-full px-3 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[statusKey as keyof typeof APPLICATION_STATUS_BADGE] || APPLICATION_STATUS_BADGE.new}`,
         entityWorkspaceHref: clientHref,
         entityWorkspaceLabel: openCardLabel,
@@ -110,7 +108,7 @@ export function ApplicationSalesDetailPanel({
       contextSlots={{
         workflow: (
           <ol className="flex items-center gap-1">
-            {WORKFLOW_STEPS.map((step, idx) => {
+            {workflowSteps.map((step, idx) => {
               const stepNum = idx + 1
               const done = stepNum < activeStep
               const active = stepNum === activeStep
@@ -134,7 +132,7 @@ export function ApplicationSalesDetailPanel({
                   >
                     {step.label}
                   </span>
-                  {idx < WORKFLOW_STEPS.length - 1 ? (
+                  {idx < workflowSteps.length - 1 ? (
                     <span className={`mx-0.5 h-px flex-1 ${done ? 'bg-brand-300' : 'bg-slate-200'}`} />
                   ) : null}
                 </li>
@@ -149,7 +147,7 @@ export function ApplicationSalesDetailPanel({
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-slate-800">
-                {application.contact.name || 'Контакт'}
+                {application.contact.name || t('app.sales_inquiry.detail.contact_fallback')}
               </p>
               {telHref ? (
                 <a

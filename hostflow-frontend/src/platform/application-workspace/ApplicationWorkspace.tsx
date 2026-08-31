@@ -12,8 +12,8 @@ import {
 } from '../../services/salesWorkSession'
 import {
   APPLICATION_STATUS_BADGE,
-  APPLICATION_STATUS_TEXT,
   applicationNeedsFirstContact,
+  applicationStatusLabel,
   applicationTabBucket,
   formatApplicationRelativeTime,
   sortApplicationsByCreatedDesc,
@@ -30,7 +30,7 @@ type ApplicationWorkspaceProps = {
 export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: ApplicationWorkspaceProps) {
   const params = useParams<Record<string, string | undefined>>()
   const selectedId = params[routeParam] || params.inquiryId || params.leadId || null
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const navigate = useNavigate()
   const { notify } = useToast()
 
@@ -246,7 +246,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                   className="block truncate font-semibold text-brand-700 hover:text-brand-800 hover:underline"
                   data-entity-link="primary"
                   onClick={(e) => e.stopPropagation()}
-                  title={config.primaryEntityLabel ?? 'Открыть карточку'}
+                  title={config.primaryEntityLabel ?? t('app.platform.application_workspace.open_card')}
                 >
                   {app.title}
                 </Link>
@@ -265,10 +265,10 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
         <td className="px-4 py-3 text-sm text-slate-600">{badge || '—'}</td>
         <td className="px-4 py-3">
           <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${APPLICATION_STATUS_BADGE[status as keyof typeof APPLICATION_STATUS_BADGE]}`}>
-            {APPLICATION_STATUS_TEXT[status as keyof typeof APPLICATION_STATUS_TEXT]}
+            {applicationStatusLabel(status, t)}
           </span>
         </td>
-        <td className="px-4 py-3 text-sm text-slate-500">{formatApplicationRelativeTime(app.created_at)}</td>
+        <td className="px-4 py-3 text-sm text-slate-500">{formatApplicationRelativeTime(app.created_at, t, locale)}</td>
       </tr>
     )
   }

@@ -451,7 +451,9 @@ export default function MarketingCampaignDetailPage() {
                 ) : null}
                 {flight?.starts_at ? (
                   <div className="mt-1 text-xs text-slate-500">
-                    Запуск: {formatDateTime(flight.starts_at, locale)}
+                    {t('app.marketing.detail.starts', {
+                      values: { when: formatDateTime(flight.starts_at, locale) },
+                    })}
                   </div>
                 ) : null}
               </div>
@@ -465,8 +467,7 @@ export default function MarketingCampaignDetailPage() {
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900">{t('app.marketing.detail.sources_title')}</h2>
                   <p className="mt-1 text-xs text-slate-500">
-                    Source = откуда приходят заявки (Lead Form Meta или анкета HostFlow). Connection
-                    (OAuth) настраивается в Integrations. Routing наследует Primary Target кампании.
+                    {t('app.marketing.detail.sources_help')}
                   </p>
                 </div>
                 {showConnectCta ? (
@@ -487,8 +488,7 @@ export default function MarketingCampaignDetailPage() {
                 >
                   <p className="text-sm font-medium text-slate-800">{t('app.marketing.detail.sources_empty')}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    Подключите Meta Lead Ads или публичную анкету HostFlow — без повторного создания
-                    кампании.
+                    {t('app.marketing.detail.sources_empty_hint')}
                   </p>
                   {showConnectCta ? (
                     <Link
@@ -516,9 +516,7 @@ export default function MarketingCampaignDetailPage() {
                   className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600"
                   data-testid="marketing-sources-primary-limit"
                 >
-                  Primary-слоты анкеты HostFlow и Meta-источника для этого Flight заняты. Несколько
-                  равноправных источников одного типа появятся в следующем обновлении — сейчас UI не
-                  предлагает подключение, которое завершится ошибкой.
+                  {t('app.marketing.detail.primary_slots_full')}
                 </p>
               ) : null}
 
@@ -886,7 +884,7 @@ export default function MarketingCampaignDetailPage() {
               >
                 <div className="font-semibold">{t('app.marketing.detail.pause_advice')}</div>
                 <p className="mt-1 text-amber-900/90">
-                  Сигнал только советует — пауза через кнопку «Пауза» выше. Автопаузы нет.
+                  {t('app.marketing.detail.pause_advice_body')}
                 </p>
                 {optimization.explanation ? (
                   <p className="mt-2 text-xs text-amber-900/90" data-testid="marketing-optimization-explanation">
@@ -934,8 +932,8 @@ export default function MarketingCampaignDetailPage() {
                 {optimization.operator ? (
                   <p className="mt-2 text-xs text-amber-900/80" data-testid="marketing-optimization-operator-state">
                     {optimization.operator.action === 'dismiss'
-                      ? 'Отклонено оператором'
-                      : 'Подтверждено оператором'}
+                      ? t('app.marketing.detail.advice_rejected')
+                      : t('app.marketing.detail.advice_accepted')}
                     {optimization.operator.occurred_at
                       ? ` · ${formatDateTime(optimization.operator.occurred_at, locale)}`
                       : ''}
@@ -949,7 +947,7 @@ export default function MarketingCampaignDetailPage() {
                       disabled={acting || !optimization.signal_fingerprint}
                       onClick={() => void runOptAction('acknowledge')}
                     >
-                      Принять к сведению
+                      {t('app.marketing.detail.ack_advice')}
                     </button>
                     <button
                       type="button"
@@ -958,7 +956,7 @@ export default function MarketingCampaignDetailPage() {
                       disabled={acting || !optimization.signal_fingerprint}
                       onClick={() => void runOptAction('dismiss')}
                     >
-                      Отклонить совет
+                      {t('app.marketing.detail.reject_advice')}
                     </button>
                   </div>
                 )}
@@ -970,7 +968,7 @@ export default function MarketingCampaignDetailPage() {
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900">{t('app.marketing.detail.submissions')}</h2>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    Люди, пришедшие на этот Flight. Технический лог — в таймлайне.
+                    {t('app.marketing.detail.submissions_hint')}
                   </p>
                 </div>
                 <Link
@@ -979,12 +977,12 @@ export default function MarketingCampaignDetailPage() {
                   }`}
                   className="text-xs font-medium text-brand-600"
                 >
-                  Таймлайн →
+                  {t('app.marketing.detail.timeline')}
                 </Link>
               </div>
               {!monitor?.applicants?.length ? (
                 <p className="px-4 py-6 text-sm text-slate-500">
-                  Пока нет заявок на этот Flight. После Connect Source новые Meta-лиды появятся здесь.
+                  {t('app.marketing.detail.submissions_empty')}
                 </p>
               ) : (
                 <>
@@ -999,7 +997,7 @@ export default function MarketingCampaignDetailPage() {
                           <Link to={href} className="block hover:bg-slate-50/80 -mx-4 px-4 py-0.5 rounded">
                             <div className="flex flex-wrap items-baseline justify-between gap-2">
                               <span className="text-sm font-medium text-slate-900">
-                                {row.full_name || 'Без имени'}
+                                {row.full_name || t('app.marketing.detail.unnamed')}
                               </span>
                               <span className="text-xs text-slate-500">
                                 {row.created_at ? formatDateTime(row.created_at, locale) : '—'}
@@ -1025,7 +1023,7 @@ export default function MarketingCampaignDetailPage() {
                         onClick={() => void loadMoreMonitor()}
                         data-testid="marketing-monitor-load-more"
                       >
-                        {loadingMore ? t('common.loading') : 'Ещё заявки'}
+                        {loadingMore ? t('common.loading') : t('app.marketing.detail.more_submissions')}
                       </button>
                     </div>
                   ) : null}

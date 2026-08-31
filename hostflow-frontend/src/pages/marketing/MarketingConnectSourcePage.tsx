@@ -215,7 +215,7 @@ export default function MarketingConnectSourcePage() {
     <PageShell>
       <PageShellHeader>
         <PageHeader
-          title={t('app.marketing.connect.title', { defaultValue: 'Подключить источник' })}
+          title={t('app.marketing.connect.title')}
           subtitle={campaign?.name || campaignId}
           kind="browse"
           secondaryActions={
@@ -238,15 +238,13 @@ export default function MarketingConnectSourcePage() {
           >
             <p className="font-medium">{t('app.marketing.connect.primary_limit_title')}</p>
             <p className="mt-1">
-              Сейчас можно иметь не больше одной активной primary анкеты HostFlow и одного primary
-              Meta-источника. Несколько равноправных источников одного типа появятся позже — UI не
-              предлагает заведомо недоступное подключение.
+              {t('app.marketing.connect.primary_limit_body')}
             </p>
             <Link
               to={marketingCampaignPath(campaignId)}
               className="mt-3 inline-flex btn-secondary btn-sm"
             >
-              Вернуться к кампании
+              {t('app.marketing.connect.back_campaign')}
             </Link>
           </div>
         ) : null}
@@ -254,13 +252,15 @@ export default function MarketingConnectSourcePage() {
         {!loading && campaign && flight && (canMeta || canPublic) ? (
           <>
             <p className="text-sm text-slate-600">
-              Источник заявок для кампании «{campaign.name}». Routing наследует Primary Target
-              кампании ({campaign.targets?.find((x) => x.role === 'primary')?.route_intent || '—'}
-              ). Список Meta = Lead Form (не отдельное объявление). Формы, уже приходившие в лидах,
-              тоже здесь — даже если профиль ещё не создан. Точечный Ad ID — на карточке кампании.
+              {t('app.marketing.connect.intro', {
+                values: {
+                  name: campaign.name,
+                  intent: campaign.targets?.find((x) => x.role === 'primary')?.route_intent || '—',
+                },
+              })}
             </p>
 
-            <div className="grid gap-3" role="radiogroup" aria-label="Тип источника">
+            <div className="grid gap-3" role="radiogroup" aria-label={t('app.marketing.connect.type_aria')}>
               <MarketingOptionCard
                 selected={sourceKind === 'public_form'}
                 disabled={!canPublic}
@@ -273,8 +273,8 @@ export default function MarketingConnectSourcePage() {
                 <span className="font-medium text-slate-900">{t('app.marketing.connect.hostflow_form')}</span>
                 <span className="mt-1 block text-slate-600">
                   {canPublic
-                    ? 'Заявки приходят через публичную ссылку анкеты кандидата.'
-                    : 'Primary анкета уже подключена к этому Flight.'}
+                    ? t('app.marketing.connect.form_via_link')
+                    : t('app.marketing.connect.form_already')}
                 </span>
               </MarketingOptionCard>
               <MarketingOptionCard
@@ -289,10 +289,10 @@ export default function MarketingConnectSourcePage() {
                 <span className="font-medium text-slate-900">Meta Lead Ads</span>
                 <span className="mt-1 block text-slate-600">
                   {!canMeta
-                    ? 'Primary Meta-источник уже подключён к этому Flight.'
+                    ? t('app.marketing.connect.meta_already')
                     : metaSources.length
-                      ? 'Привязать Lead Form (Meta) как источник — все объявления формы пойдут в этот Flight.'
-                      : 'Нет Meta-форм в каталоге и в лидах — настройте Meta или дождитесь первого лида.'}
+                      ? t('app.marketing.connect.meta_bind')
+                      : t('app.marketing.connect.meta_empty')}
                 </span>
               </MarketingOptionCard>
             </div>
@@ -300,7 +300,7 @@ export default function MarketingConnectSourcePage() {
             {sourceKind === 'public_form' && canPublic ? (
               <div className="space-y-3" data-testid="marketing-connect-public-form">
                 {forms.length ? (
-                  <div className="grid gap-2" role="radiogroup" aria-label="Анкета HostFlow">
+                  <div className="grid gap-2" role="radiogroup" aria-label={t('app.marketing.connect.form_aria')}>
                     {forms.map((f) => (
                       <MarketingOptionCard
                         key={f.id}
@@ -317,9 +317,9 @@ export default function MarketingConnectSourcePage() {
                   </div>
                 ) : (
                   <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    Нет активных анкет.{' '}
+                    {t('app.marketing.connect.no_forms')}{' '}
                     <Link to={CRM_APP_PATHS.marketingForms} className="underline">
-                      Открыть анкеты
+                      {t('app.marketing.connect.open_forms')}
                     </Link>
                   </p>
                 )}
@@ -424,7 +424,7 @@ export default function MarketingConnectSourcePage() {
                             className="ml-2 inline-flex rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-inset ring-amber-200"
                             data-testid={`marketing-connect-meta-discovered-${s.id}`}
                           >
-                            из лидов
+                            {t('app.marketing.connect.from_leads')}
                           </span>
                         ) : null}
                       </span>

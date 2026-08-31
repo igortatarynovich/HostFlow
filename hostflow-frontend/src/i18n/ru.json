@@ -2717,7 +2717,8 @@
         "col_status": "Статус",
         "col_time": "Время",
         "empty_tab": "Нет записей в этой вкладке",
-        "load_more": "Загрузить ещё ({loaded} из {total})"
+        "load_more": "Загрузить ещё ({loaded} из {total})",
+        "open_card": "Открыть карточку"
       },
       "context_rail": {
         "outcome": "Итог",
@@ -2728,10 +2729,30 @@
         "process_outcome": "Итог процесса",
         "owner": "Владелец",
         "when": "Когда",
-        "more_actions": "Ещё действия ({count})"
+        "more_actions": "Ещё действия ({count})",
+        "previous": "Предыдущий",
+        "next": "Следующий",
+        "unpin": "Открепить",
+        "pin": "Закрепить",
+        "close": "Закрыть",
+        "open_full": "Открыть полную карточку",
+        "what_next": "Что будет дальше",
+        "show_all": "Показать все",
+        "block": {
+          "contacts": "Контакты",
+          "actions": "Действия",
+          "summary": "Основная информация",
+          "history": "История",
+          "documents": "Документы",
+          "relations": "Связанные объекты",
+          "footer_actions": "Другие действия"
+        },
+        "next_action": "Следующее действие",
+        "why": "Почему"
       },
       "consent": {
-        "no_intake": "Нет intake-контекста для согласия на этом отклике."
+        "no_intake": "Нет intake-контекста для согласия на этом отклике.",
+        "source_ack_hint": "Подтвердите, что уведомление уже закрыто на источнике, затем нажмите подтверждение."
       },
       "entity_workspace": {
         "object": "Объект",
@@ -2750,7 +2771,8 @@
         "quick_contacts": "Быстрые контакты",
         "call": "Звонок",
         "show_full_history": "Показать всю историю",
-        "no_context": "Нет контекста"
+        "no_context": "Нет контекста",
+        "create_task": "Создать задачу"
       }
     },
     "settings": {
@@ -6875,7 +6897,30 @@
         "no_events": "Нет событий",
         "no_relations": "Нет связей",
         "no_tasks": "Нет задач",
-        "process_active": "Процесс активен"
+        "process_active": "Процесс активен",
+        "overview": "Основная информация",
+        "overview_hint": "Имя, контакты, базовые данные",
+        "full_name": "ФИО",
+        "birth_date": "Дата рождения",
+        "citizenship": "Гражданство",
+        "languages": "Языки",
+        "phone": "Телефон",
+        "city": "Город",
+        "stage": "Этап",
+        "extra": "Дополнительная информация",
+        "extra_hint": "Опыт, права, предпочтения",
+        "experience": "Опыт работы",
+        "experience_eu": "Опыт в EU",
+        "years": "{count} лет",
+        "licence": "Права",
+        "in_poland": "В Польше",
+        "stay_basis": "Основание пребывания",
+        "preferred_channel": "Предпочитаемый канал",
+        "preferred_channel_value": "Предпочитаемый канал: {value}",
+        "source": "Источник",
+        "masked_policy": "Персональные данные скрыты политикой доступа.",
+        "rel_vacancy": "Вакансия",
+        "rel_relation": "Связь"
       }
     },
     "tasks": {
@@ -7860,7 +7905,54 @@
         }
       },
       "client_detail": {
-        "rejected": "Лид отклонён и исключён из обработки кандидатов."
+        "rejected": "Лид отклонён и исключён из обработки кандидатов.",
+        "status_rejected": "Отклонён",
+        "status_client_created": "Клиент создан",
+        "status_new_form": "Новая анкета",
+        "default_summary": "Анкета транспортной компании",
+        "open_client": "Открыть клиента",
+        "create_client": "Создать клиента",
+        "creating": "Создаём...",
+        "contact_done": "Контакт установлен",
+        "qualify": "Квалифицировать",
+        "reject": "Отклонить",
+        "section": {
+          "company": "Компания",
+          "contact": "Контактное лицо",
+          "need": "Потребность",
+          "meta_answers": "Ответы из формы Meta",
+          "terms": "Условия работы",
+          "source": "Источник и отправка"
+        },
+        "more": "История и служебные данные",
+        "field": {
+          "name": "Название",
+          "legal_name": "Юр. название",
+          "country": "Страна",
+          "city": "Город",
+          "website": "Сайт",
+          "fleet_size": "Размер флота",
+          "transport_type": "Тип перевозок",
+          "full_name": "Имя",
+          "role": "Должность",
+          "phone": "Телефон",
+          "what_needed": "Что нужно",
+          "summary": "Сводка",
+          "people_count": "Сколько людей",
+          "cooperation_type": "Тип сотрудничества",
+          "when_needed": "Когда нужны",
+          "requirements": "Требования",
+          "paid_campaigns": "Платные кампании",
+          "rate": "Ставка",
+          "schedule": "График",
+          "base": "База",
+          "trucks": "Машины",
+          "body_type": "Тип кузова",
+          "extra": "Дополнительно",
+          "source_profile": "Профиль источника",
+          "language": "Язык",
+          "created": "Создано"
+        }
       }
     },
     "common": {
@@ -9505,7 +9597,21 @@
         "end_campaign": "Завершить кампанию",
         "archive": "В архив",
         "open_public": "Открыть публичную ссылку",
-        "connect_source": "Подключить источник"
+        "connect_source": "Подключить источник",
+        "starts": "Запуск: {when}",
+        "sources_help": "Source = откуда приходят заявки (Lead Form Meta или анкета HostFlow). Connection (OAuth) настраивается в Integrations. Routing наследует Primary Target кампании.",
+        "sources_empty_hint": "Подключите Meta Lead Ads или публичную анкету HostFlow — без повторного создания кампании.",
+        "primary_slots_full": "Primary-слоты анкеты HostFlow и Meta-источника для этого Flight заняты. Несколько равноправных источников одного типа появятся в следующем обновлении — сейчас UI не предлагает подключение, которое завершится ошибкой.",
+        "pause_advice_body": "Сигнал только советует — пауза через кнопку «Пауза» выше. Автопаузы нет.",
+        "advice_rejected": "Отклонено оператором",
+        "advice_accepted": "Подтверждено оператором",
+        "ack_advice": "Принять к сведению",
+        "reject_advice": "Отклонить совет",
+        "submissions_hint": "Люди, пришедшие на этот Flight. Технический лог — в таймлайне.",
+        "timeline": "Таймлайн →",
+        "submissions_empty": "Пока нет заявок на этот Flight. После Connect Source новые Meta-лиды появятся здесь.",
+        "unnamed": "Без имени",
+        "more_submissions": "Ещё заявки"
       },
       "kpi": {
         "applications": "Заявки",
@@ -9520,7 +9626,20 @@
         "back_campaign": "К кампании",
         "cancel": "Отмена",
         "submit": "Подключить",
-        "connecting": "Подключение…"
+        "connecting": "Подключение…",
+        "title": "Подключить источник",
+        "primary_limit_body": "Сейчас можно иметь не больше одной активной primary анкеты HostFlow и одного primary Meta-источника. Несколько равноправных источников одного типа появятся позже — UI не предлагает заведомо недоступное подключение.",
+        "intro": "Источник заявок для кампании «{name}». Routing наследует Primary Target кампании ({intent}). Список Meta = Lead Form (не отдельное объявление). Формы, уже приходившие в лидах, тоже здесь — даже если профиль ещё не создан. Точечный Ad ID — на карточке кампании.",
+        "type_aria": "Тип источника",
+        "form_via_link": "Заявки приходят через публичную ссылку анкеты кандидата.",
+        "form_already": "Primary анкета уже подключена к этому Flight.",
+        "meta_already": "Primary Meta-источник уже подключён к этому Flight.",
+        "meta_bind": "Привязать Lead Form (Meta) как источник — все объявления формы пойдут в этот Flight.",
+        "meta_empty": "Нет Meta-форм в каталоге и в лидах — настройте Meta или дождитесь первого лида.",
+        "form_aria": "Анкета HostFlow",
+        "no_forms": "Нет активных анкет.",
+        "open_forms": "Открыть анкеты",
+        "from_leads": "из лидов"
       },
       "source_card": {
         "public_form": "Публичная форма",
@@ -9537,10 +9656,77 @@
         "draft": "Черновик",
         "inactive": "Неактивна",
         "bound": "Привязан",
-        "never": "никогда"
+        "never": "никогда",
+        "untitled": "Без названия",
+        "page_id_hidden": "ID скрыт в подробностях"
       },
       "ad_bindings": {
-        "title": "Привязка Ad ID → Flight"
+        "title": "Привязка Ad ID → Flight",
+        "help": "Override: когда одна Meta-форма кормит несколько Flight — привяжите конкретный Ad ID сюда. Обычный путь: Connect Source (Lead Form) на странице «Подключить источник»; без Ad bind все объявления формы идут в Flight формы.",
+        "empty": "Активных привязок Ad ID пока нет.",
+        "active": "активна",
+        "disabled": "выключена",
+        "disable": "Выключить",
+        "enable": "Включить",
+        "unbind": "Отвязать",
+        "bind": "Привязать к Flight",
+        "confirm_unbind": "Отвязать Ad ID {id}?",
+        "reprocessed": "Переобработано ожидающих: matched {matched}, processed {processed}",
+        "reprocessed_errors": ", ошибок {errors}"
+      },
+      "setup": {
+        "title": "Новая кампания",
+        "step_name": "Название кампании",
+        "step_flow": "Тип потока",
+        "step_subject": "Клиент и предмет кампании",
+        "step_review": "Проверка",
+        "back_list": "К списку",
+        "search_prefill": "Вакансия подставлена из Подбора. Дальше задайте цель кампании — источник подключите на странице кампании.",
+        "name": "Название",
+        "name_placeholder": "Например: Kierowca CE — Poltrakt",
+        "description": "Описание (необязательно)",
+        "description_placeholder": "Бизнес-цель кампании",
+        "owner_company": "Компания (владелец)",
+        "pick_company": "Выберите компанию",
+        "owner_hint": "Campaign принадлежит tenant и этой компании. Клиент/заказ — только контекст, не владелец.",
+        "flow_aria": "Тип потока",
+        "serves_client": "Кампания обслуживает клиента. Primary Target — вакансия или услуга/заказ этого клиента; routing и KPI идут через него.",
+        "client_required": "Клиент (обязательно)",
+        "pick_client": "Выберите клиента",
+        "no_client_account": "Нет Client Account.",
+        "create_client": "Создать клиента",
+        "then_return": "в Sales, затем вернитесь сюда.",
+        "client_context_hint": "Сохраняется как CampaignTarget(role=context, client_account). Статистика по клиенту — отсюда.",
+        "new_client": "Новый клиент",
+        "subject": "Предмет кампании · {label}",
+        "primary_target_hint": "Primary Target задаёт route_intent для всех источников кампании.",
+        "no_vacancies": "Нет вакансий для этого клиента.",
+        "create_vacancy": "Создать вакансию",
+        "in_recruitment": "в Recruitment (Вакансии).",
+        "vacancy_aria": "Вакансия",
+        "no_services": "Нет услуг.",
+        "open_services": "Открыть услуги",
+        "service_aria": "Услуга",
+        "pick_client_first": "Сначала выберите клиента — затем вакансию (hiring) или услугу (B2B).",
+        "review_campaign": "Кампания",
+        "review_owner": "Компания-владелец",
+        "review_flow": "Поток",
+        "review_client": "Клиент (обслуживаем)",
+        "source_later": "Источник заявок (Meta Lead Form / публичная анкета) подключается на странице кампании — отдельно от создания цели.",
+        "back": "Назад",
+        "next": "Далее",
+        "creating": "Создание…",
+        "create": "Создать кампанию"
+      },
+      "list": {
+        "public_form": "Публичная форма",
+        "applications": "Заявок: {count}",
+        "form": "Форма: {name}",
+        "source": "Источник: {name}",
+        "destination": "Куда: {value}",
+        "launch": "Запуск: {when}",
+        "not_launched": "ещё не запускали",
+        "open": "Открыть"
       }
     },
     "context_help": {
@@ -9747,6 +9933,45 @@
         "copy_failed": "Не удалось скопировать",
         "qr_downloaded": "QR скачан",
         "qr_failed": "Не удалось скачать QR"
+      }
+    },
+    "sales_inquiry": {
+      "workspace": {
+        "tab_all": "Все",
+        "tab_new": "Новые",
+        "tab_in_progress": "В работе",
+        "tab_waiting": "Ожидают ответа",
+        "tab_completed": "Завершённые",
+        "inquiries": "Обращения",
+        "hero_call_title": "Позвонить {count} новым обращениям",
+        "hero_call_hint": "Откроем обращения по одному: позвонить → выяснить потребность → создать клиента → выбрать услугу.",
+        "hero_empty": "Нет новых обращений для звонка",
+        "list_kind": "B2B заявка",
+        "create_client_failed": "Не удалось создать клиента",
+        "call": "Позвонить"
+      },
+      "detail": {
+        "step_contact": "Связаться",
+        "step_need": "Потребность",
+        "step_client": "Клиент",
+        "step_service": "Услуга",
+        "step_order": "Заказ",
+        "contact_fallback": "Контакт"
+      },
+      "interested": "Заинтересован",
+      "called": "Позвонил",
+      "status": {
+        "new": "Новое",
+        "in_progress": "В работе",
+        "waiting": "Ожидаем ответ",
+        "questionnaire_submitted": "Ответ получен",
+        "completed": "Завершено",
+        "rejected": "Отклонено"
+      },
+      "time": {
+        "just_now": "только что",
+        "minutes_ago": "{count} мин назад",
+        "hours_ago": "{count} ч назад"
       }
     }
   },

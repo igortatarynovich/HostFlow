@@ -34,7 +34,7 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
             ? [
                 {
                   id: 'call',
-                  label: 'Позвонить',
+                  label: t('app.sales_inquiry.workspace.call'),
                   href: `tel:${contactPhone.replace(/\s/g, '')}`,
                   variant: 'primary' as const,
                   icon: 'phone' as const,

@@ -139,7 +139,7 @@ export function ConsentCapability(ctx: WorkspaceCapabilityRenderContext) {
             label={t('app.leads.intake_workspace.decision_rail.mark_source_provided', {
               defaultValue: 'Covered at source',
             })}
-            description="Подтвердите, что уведомление уже закрыто на источнике, затем нажмите подтверждение."
+            description={t('app.platform.consent.source_ack_hint')}
           />
           <Button variant="secondary" size="sm" disabled={busy || !sourceAcknowledged} onClick={() => void markCovered()}>
             {t('common.confirm', { defaultValue: 'Подтвердить' })}

@@ -10,15 +10,10 @@ import {
   inquiryStatusKey,
   salesInquiryWorkflowStep,
 } from '../../utils/clientInquiryLead'
+import { applicationStatusLabel } from '../../platform/application-workspace/applicationDisplay'
 import { leadIntakeResolutionRejected } from '../../utils/intakeResolution'
 
-const WORKFLOW_STEPS = [
-  { key: 'contact', label: 'Связаться' },
-  { key: 'need', label: 'Потребность' },
-  { key: 'client', label: 'Клиент' },
-  { key: 'service', label: 'Услуга' },
-  { key: 'order', label: 'Заказ' },
-] as const
+const WORKFLOW_STEP_KEYS = ['contact', 'need', 'client', 'service', 'order'] as const
 
 const STATUS_BADGE: Record<string, string> = {
   new: 'bg-emerald-50 text-emerald-700',
@@ -27,15 +22,6 @@ const STATUS_BADGE: Record<string, string> = {
   questionnaire_submitted: 'bg-violet-50 text-violet-700',
   completed: 'bg-slate-100 text-slate-600',
   rejected: 'bg-rose-50 text-rose-700',
-}
-
-const STATUS_TEXT: Record<string, string> = {
-  new: 'Новое',
-  in_progress: 'В работе',
-  waiting: 'Ожидаем ответ',
-  questionnaire_submitted: 'Ответ получен',
-  completed: 'Завершено',
-  rejected: 'Отклонено',
 }
 
 type SalesInquiryDetailPanelProps = {
@@ -55,7 +41,7 @@ export function SalesInquiryDetailPanel({
 }: SalesInquiryDetailPanelProps) {
   const { t } = useI18n()
   const companyName = inquiryCompanyName(lead)
-  const contactName = inquiryContactName(lead) || 'Контакт'
+  const contactName = inquiryContactName(lead) || t('app.sales_inquiry.detail.contact_fallback')
   const contactPhone = inquiryContactPhone(lead)
   const contactEmail = inquiryContactEmail(lead)
   const statusKey = inquiryStatusKey(lead)
@@ -84,7 +70,7 @@ export function SalesInquiryDetailPanel({
           defaultValue: 'Компания заинтересована. Сохраните её в клиенты — дальше работа продолжится в Client Workspace.',
         }),
         primary: {
-          label: converting ? 'Создаём…' : 'Создать клиента',
+          label: converting ? t('app.leads.client_detail.creating') : t('app.leads.client_detail.create_client'),
           action: () => void onConvert(),
         },
       }
@@ -96,7 +82,7 @@ export function SalesInquiryDetailPanel({
           defaultValue: 'Уточните, какую услугу компания хочет купить. Когда договорились — отметьте «Заинтересован».',
         }),
         primary: {
-          label: 'Заинтересован',
+          label: t('app.sales_inquiry.interested'),
           action: () => void onStage('qualified'),
         },
       }
@@ -107,7 +93,7 @@ export function SalesInquiryDetailPanel({
         defaultValue: 'Позвоните или напишите клиенту, чтобы уточнить потребность.',
       }),
       primary: contactPhone
-        ? { label: 'Позвонил', action: () => void onStage('contacted') }
+        ? { label: t('app.sales_inquiry.called'), action: () => void onStage('contacted') }
         : null,
     }
   })()
@@ -121,7 +107,7 @@ export function SalesInquiryDetailPanel({
             <p className="mt-0.5 text-sm text-slate-500">{inquiryRequestTitle(lead)}</p>
           </div>
           <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${STATUS_BADGE[statusKey] || STATUS_BADGE.new}`}>
-            {STATUS_TEXT[statusKey] || statusKey}
+            {applicationStatusLabel(statusKey, t) || statusKey}
           </span>
         </div>
       </div>
@@ -145,7 +131,7 @@ export function SalesInquiryDetailPanel({
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
               >
                 <IconPhone size={16} stroke={2} />
-                Позвонить
+                {t('app.sales_inquiry.workspace.call')}
               </a>
             ) : null}
             {whatsappHref ? (
@@ -177,12 +163,12 @@ export function SalesInquiryDetailPanel({
           {t('app.sales_inquiry.workflow_title', { defaultValue: 'Что делать дальше?' })}
         </p>
         <ol className="flex items-center gap-1">
-          {WORKFLOW_STEPS.map((step, idx) => {
+          {WORKFLOW_STEP_KEYS.map((key, idx) => {
             const stepNum = idx + 1
             const done = stepNum < activeStep
             const active = stepNum === activeStep
             return (
-              <li key={step.key} className="flex min-w-0 flex-1 items-center gap-1">
+              <li key={key} className="flex min-w-0 flex-1 items-center gap-1">
                 <span
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                     done
@@ -199,9 +185,9 @@ export function SalesInquiryDetailPanel({
                     active ? 'text-brand-800' : done ? 'text-slate-700' : 'text-slate-400'
                   }`}
                 >
-                  {step.label}
+                  {t(`app.sales_inquiry.detail.step_${key}`)}
                 </span>
-                {idx < WORKFLOW_STEPS.length - 1 ? (
+                {idx < WORKFLOW_STEP_KEYS.length - 1 ? (
                   <span className={`mx-0.5 h-px flex-1 ${done ? 'bg-brand-300' : 'bg-slate-200'}`} />
                 ) : null}
               </li>

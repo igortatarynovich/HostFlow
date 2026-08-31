@@ -2717,7 +2717,8 @@
         "col_status": "Status",
         "col_time": "Czas",
         "empty_tab": "Brak rekordów w tej karcie",
-        "load_more": "Wczytaj więcej ({loaded} z {total})"
+        "load_more": "Wczytaj więcej ({loaded} z {total})",
+        "open_card": "Otwórz kartę"
       },
       "context_rail": {
         "outcome": "Wynik",
@@ -2728,10 +2729,30 @@
         "process_outcome": "Wynik procesu",
         "owner": "Właściciel",
         "when": "Kiedy",
-        "more_actions": "Więcej działań ({count})"
+        "more_actions": "Więcej działań ({count})",
+        "previous": "Poprzedni",
+        "next": "Następny",
+        "unpin": "Odepnij",
+        "pin": "Przypnij",
+        "close": "Zamknij",
+        "open_full": "Otwórz pełną kartę",
+        "what_next": "Co dalej",
+        "show_all": "Pokaż wszystko",
+        "block": {
+          "contacts": "Kontakty",
+          "actions": "Działania",
+          "summary": "Przegląd",
+          "history": "Historia",
+          "documents": "Dokumenty",
+          "relations": "Powiązane obiekty",
+          "footer_actions": "Inne działania"
+        },
+        "next_action": "Następna czynność",
+        "why": "Dlaczego"
       },
       "consent": {
-        "no_intake": "Brak kontekstu intake dla zgody w tym zgłoszeniu."
+        "no_intake": "Brak kontekstu intake dla zgody w tym zgłoszeniu.",
+        "source_ack_hint": "Potwierdź, że powiadomienie zostało już zamknięte u źródła, a następnie kliknij potwierdzenie."
       },
       "entity_workspace": {
         "object": "Obiekt",
@@ -2750,7 +2771,8 @@
         "quick_contacts": "Szybkie kontakty",
         "call": "Telefon",
         "show_full_history": "Pokaż całą historię",
-        "no_context": "Brak kontekstu"
+        "no_context": "Brak kontekstu",
+        "create_task": "Utwórz zadanie"
       }
     },
     "settings": {
@@ -6875,7 +6897,30 @@
         "no_events": "Brak zdarzeń",
         "no_relations": "Brak powiązań",
         "no_tasks": "Brak zadań",
-        "process_active": "Proces aktywny"
+        "process_active": "Proces aktywny",
+        "overview": "Informacje podstawowe",
+        "overview_hint": "Imię, kontakty, dane podstawowe",
+        "full_name": "Imię i nazwisko",
+        "birth_date": "Data urodzenia",
+        "citizenship": "Obywatelstwo",
+        "languages": "Języki",
+        "phone": "Telefon",
+        "city": "Miasto",
+        "stage": "Etap",
+        "extra": "Informacje dodatkowe",
+        "extra_hint": "Doświadczenie, prawo jazdy, preferencje",
+        "experience": "Doświadczenie zawodowe",
+        "experience_eu": "Doświadczenie w UE",
+        "years": "{count} lat",
+        "licence": "Prawo jazdy",
+        "in_poland": "W Polsce",
+        "stay_basis": "Podstawa pobytu",
+        "preferred_channel": "Preferowany kanał",
+        "preferred_channel_value": "Preferowany kanał: {value}",
+        "source": "Źródło",
+        "masked_policy": "Dane osobowe są ukryte przez politykę dostępu.",
+        "rel_vacancy": "Wakat",
+        "rel_relation": "Powiązanie"
       }
     },
     "tasks": {
@@ -7860,7 +7905,54 @@
         }
       },
       "client_detail": {
-        "rejected": "Lead odrzucony i wyłączony z przetwarzania kandydatów."
+        "rejected": "Lead odrzucony i wyłączony z przetwarzania kandydatów.",
+        "status_rejected": "Odrzucony",
+        "status_client_created": "Klient utworzony",
+        "status_new_form": "Nowy formularz",
+        "default_summary": "Zgłoszenie firmy transportowej",
+        "open_client": "Otwórz klienta",
+        "create_client": "Utwórz klienta",
+        "creating": "Tworzymy…",
+        "contact_done": "Kontakt nawiązany",
+        "qualify": "Kwalifikuj",
+        "reject": "Odrzuć",
+        "section": {
+          "company": "Firma",
+          "contact": "Osoba kontaktowa",
+          "need": "Zapotrzebowanie",
+          "meta_answers": "Odpowiedzi z formularza Meta",
+          "terms": "Warunki pracy",
+          "source": "Źródło i wysyłka"
+        },
+        "more": "Historia i dane systemowe",
+        "field": {
+          "name": "Nazwa",
+          "legal_name": "Nazwa prawna",
+          "country": "Kraj",
+          "city": "Miasto",
+          "website": "Strona",
+          "fleet_size": "Wielkość floty",
+          "transport_type": "Typ transportu",
+          "full_name": "Imię",
+          "role": "Stanowisko",
+          "phone": "Telefon",
+          "what_needed": "Czego potrzeba",
+          "summary": "Podsumowanie",
+          "people_count": "Liczba osób",
+          "cooperation_type": "Typ współpracy",
+          "when_needed": "Kiedy potrzebni",
+          "requirements": "Wymagania",
+          "paid_campaigns": "Kampanie płatne",
+          "rate": "Stawka",
+          "schedule": "Grafik",
+          "base": "Baza",
+          "trucks": "Pojazdy",
+          "body_type": "Typ nadwozia",
+          "extra": "Dodatkowo",
+          "source_profile": "Profil źródła",
+          "language": "Język",
+          "created": "Utworzono"
+        }
       }
     },
     "common": {
@@ -9505,7 +9597,21 @@
         "end_campaign": "Zakończ kampanię",
         "archive": "Do archiwum",
         "open_public": "Otwórz publiczny link",
-        "connect_source": "Podłącz źródło"
+        "connect_source": "Podłącz źródło",
+        "starts": "Start: {when}",
+        "sources_help": "Source to miejsce, skąd przychodzą zgłoszenia (Lead Form Meta albo formularz HostFlow). Connection (OAuth) konfiguruje się w Integrations. Routing dziedziczy Primary Target kampanii.",
+        "sources_empty_hint": "Podłącz Meta Lead Ads albo publiczny formularz HostFlow — bez ponownego tworzenia kampanii.",
+        "primary_slots_full": "Sloty primary formularza HostFlow i źródła Meta dla tego Flight są zajęte. Wiele równorzędnych źródeł tego samego typu pojawi się później — UI nie oferuje podłączenia, które skończyłoby się błędem.",
+        "pause_advice_body": "To tylko rada — wstrzymaj przyciskiem Wstrzymaj powyżej. Nie ma autodwstrzymania.",
+        "advice_rejected": "Odrzucone przez operatora",
+        "advice_accepted": "Potwierdzone przez operatora",
+        "ack_advice": "Przyjmij do wiadomości",
+        "reject_advice": "Odrzuć radę",
+        "submissions_hint": "Osoby, które przyszły na ten Flight. Log techniczny jest na osi czasu.",
+        "timeline": "Oś czasu →",
+        "submissions_empty": "Brak zgłoszeń na tym Flight. Po Connect Source nowe leady Meta pojawią się tutaj.",
+        "unnamed": "Bez imienia",
+        "more_submissions": "Więcej zgłoszeń"
       },
       "kpi": {
         "applications": "Zgłoszenia",
@@ -9520,7 +9626,20 @@
         "back_campaign": "Do kampanii",
         "cancel": "Anuluj",
         "submit": "Podłącz",
-        "connecting": "Łączenie…"
+        "connecting": "Łączenie…",
+        "title": "Podłącz źródło",
+        "primary_limit_body": "Można mieć co najwyżej jeden aktywny primary formularz HostFlow i jedno primary źródło Meta. Wiele równorzędnych źródeł tego samego typu pojawi się później — UI nie oferuje podłączenia, o którym wiadomo, że się nie uda.",
+        "intro": "Źródło zgłoszeń kampanii „{name}”. Routing dziedziczy Primary Target kampanii ({intent}). Lista Meta to Lead Form (nie pojedyncza reklama). Formularze już widziane w leadach są tutaj nawet bez profilu. Konkretny Ad ID jest na karcie kampanii.",
+        "type_aria": "Typ źródła",
+        "form_via_link": "Zgłoszenia przychodzą przez publiczny link formularza kandydata.",
+        "form_already": "Primary formularz jest już podłączony do tego Flight.",
+        "meta_already": "Primary źródło Meta jest już podłączone do tego Flight.",
+        "meta_bind": "Powiąż Lead Form (Meta) jako źródło — wszystkie reklamy formularza pójdą do tego Flight.",
+        "meta_empty": "Brak formularzy Meta w katalogu i w leadach — skonfiguruj Meta albo poczekaj na pierwszy lead.",
+        "form_aria": "Formularz HostFlow",
+        "no_forms": "Brak aktywnych formularzy.",
+        "open_forms": "Otwórz formularze",
+        "from_leads": "z leadów"
       },
       "source_card": {
         "public_form": "Formularz publiczny",
@@ -9537,10 +9656,77 @@
         "draft": "Szkic",
         "inactive": "Nieaktywna",
         "bound": "Powiązany",
-        "never": "nigdy"
+        "never": "nigdy",
+        "untitled": "Bez nazwy",
+        "page_id_hidden": "ID ukryte w szczegółach"
       },
       "ad_bindings": {
-        "title": "Powiązanie Ad ID → Flight"
+        "title": "Powiązanie Ad ID → Flight",
+        "help": "Override: gdy jeden formularz Meta karmi kilka Flight — powiąż konkretny Ad ID tutaj. Zwykła ścieżka to Connect Source (Lead Form) na stronie podłączenia źródła; bez Ad bind wszystkie reklamy formularza idą do Flight formularza.",
+        "empty": "Brak aktywnych powiązań Ad ID.",
+        "active": "aktywna",
+        "disabled": "wyłączona",
+        "disable": "Wyłącz",
+        "enable": "Włącz",
+        "unbind": "Odepnij",
+        "bind": "Powiąż z Flight",
+        "confirm_unbind": "Odpiąć Ad ID {id}?",
+        "reprocessed": "Ponownie przetworzono oczekujące: matched {matched}, processed {processed}",
+        "reprocessed_errors": ", błędów {errors}"
+      },
+      "setup": {
+        "title": "Nowa kampania",
+        "step_name": "Nazwa kampanii",
+        "step_flow": "Typ przepływu",
+        "step_subject": "Klient i przedmiot kampanii",
+        "step_review": "Sprawdzenie",
+        "back_list": "Do listy",
+        "search_prefill": "Wakat został uzupełniony z naboru. Następnie ustaw cel kampanii — źródło podłączysz na stronie kampanii.",
+        "name": "Nazwa",
+        "name_placeholder": "Np. Kierowca CE — Poltrakt",
+        "description": "Opis (opcjonalnie)",
+        "description_placeholder": "Cel biznesowy kampanii",
+        "owner_company": "Firma (właściciel)",
+        "pick_company": "Wybierz firmę",
+        "owner_hint": "Kampania należy do tenanta i tej firmy. Klient/zamówienie to tylko kontekst, nie właściciel.",
+        "flow_aria": "Typ przepływu",
+        "serves_client": "Kampania obsługuje klienta. Primary Target to wakat albo usługa/zamówienie tego klienta; routing i KPI idą przez niego.",
+        "client_required": "Klient (wymagany)",
+        "pick_client": "Wybierz klienta",
+        "no_client_account": "Brak Client Account.",
+        "create_client": "Utwórz klienta",
+        "then_return": "w sprzedaży, potem wróć tutaj.",
+        "client_context_hint": "Zapisane jako CampaignTarget(role=context, client_account). Statystyki klienta biorą się stąd.",
+        "new_client": "Nowy klient",
+        "subject": "Przedmiot kampanii · {label}",
+        "primary_target_hint": "Primary Target ustawia route_intent dla wszystkich źródeł kampanii.",
+        "no_vacancies": "Brak wakatów dla tego klienta.",
+        "create_vacancy": "Utwórz wakat",
+        "in_recruitment": "w rekrutacji (Wakaty).",
+        "vacancy_aria": "Wakat",
+        "no_services": "Brak usług.",
+        "open_services": "Otwórz usługi",
+        "service_aria": "Usługa",
+        "pick_client_first": "Najpierw wybierz klienta — potem wakat (hiring) albo usługę (B2B).",
+        "review_campaign": "Kampania",
+        "review_owner": "Firma-właściciel",
+        "review_flow": "Przepływ",
+        "review_client": "Klient (obsługujemy)",
+        "source_later": "Źródło zgłoszeń (Meta Lead Form / formularz publiczny) podłączysz na stronie kampanii — osobno od utworzenia celu.",
+        "back": "Wstecz",
+        "next": "Dalej",
+        "creating": "Tworzenie…",
+        "create": "Utwórz kampanię"
+      },
+      "list": {
+        "public_form": "Formularz publiczny",
+        "applications": "Zgłoszenia: {count}",
+        "form": "Formularz: {name}",
+        "source": "Źródło: {name}",
+        "destination": "Dokąd: {value}",
+        "launch": "Start: {when}",
+        "not_launched": "jeszcze nie uruchomiono",
+        "open": "Otwórz"
       }
     },
     "context_help": {
@@ -9747,6 +9933,45 @@
         "copy_failed": "Nie udało się skopiować",
         "qr_downloaded": "QR pobrany",
         "qr_failed": "Nie udało się pobrać QR"
+      }
+    },
+    "sales_inquiry": {
+      "workspace": {
+        "tab_all": "Wszystkie",
+        "tab_new": "Nowe",
+        "tab_in_progress": "W toku",
+        "tab_waiting": "Oczekują odpowiedzi",
+        "tab_completed": "Zakończone",
+        "inquiries": "Zapytania",
+        "hero_call_title": "Zadzwoń do {count} nowych zapytań",
+        "hero_call_hint": "Otworzymy zapytania po kolei: zadzwoń → ustal potrzebę → utwórz klienta → wybierz usługę.",
+        "hero_empty": "Brak nowych zapytań do połączenia",
+        "list_kind": "Zgłoszenie B2B",
+        "create_client_failed": "Nie udało się utworzyć klienta",
+        "call": "Zadzwoń"
+      },
+      "detail": {
+        "step_contact": "Skontaktuj się",
+        "step_need": "Zapotrzebowanie",
+        "step_client": "Klient",
+        "step_service": "Usługa",
+        "step_order": "Zamówienie",
+        "contact_fallback": "Kontakt"
+      },
+      "interested": "Zainteresowany",
+      "called": "Zadzwoniłem",
+      "status": {
+        "new": "Nowe",
+        "in_progress": "W toku",
+        "waiting": "Czekamy na odpowiedź",
+        "questionnaire_submitted": "Otrzymano odpowiedź",
+        "completed": "Zakończone",
+        "rejected": "Odrzucone"
+      },
+      "time": {
+        "just_now": "przed chwilą",
+        "minutes_ago": "{count} min temu",
+        "hours_ago": "{count} godz. temu"
       }
     }
   },

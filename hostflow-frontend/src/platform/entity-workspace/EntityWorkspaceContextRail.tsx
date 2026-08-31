@@ -61,7 +61,7 @@ export function EntityWorkspaceContextRail({
           onClick={model.onCreateTask}
           className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
-          {model.createTaskLabel ?? 'Создать задачу'}
+          {model.createTaskLabel ?? t('app.platform.entity_workspace.create_task')}
         </button>
       ) : null}
       {model.actions?.secondary?.length ? (

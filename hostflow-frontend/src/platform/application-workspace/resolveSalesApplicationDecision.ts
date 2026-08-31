@@ -47,7 +47,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
             ? [
                 {
                   id: 'call',
-                  label: 'Позвонить',
+                  label: t('app.sales_inquiry.workspace.call'),
                   href: `tel:${contactPhone.replace(/\s/g, '')}`,
                   variant: 'primary' as const,
                   icon: 'phone' as const,
@@ -171,7 +171,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
       }),
       primaryAction: {
         id: 'convert',
-        label: converting ? 'Создаём…' : 'Создать клиента',
+        label: converting ? t('app.leads.client_detail.creating') : t('app.leads.client_detail.create_client'),
         onClick: () => void onConvert(),
         disabled,
       },
@@ -205,7 +205,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
       }),
       primaryAction: {
         id: 'qualified',
-        label: 'Заинтересован',
+        label: t('app.sales_inquiry.interested'),
         onClick: () => void onStage('qualified'),
         disabled,
       },
@@ -238,7 +238,7 @@ export function resolveSalesApplicationDecision(args: ResolveSalesDecisionArgs):
     primaryAction: contactPhone
       ? {
           id: 'contacted',
-          label: 'Позвонил',
+          label: t('app.sales_inquiry.called'),
           onClick: () => void onStage('contacted'),
           disabled,
         }

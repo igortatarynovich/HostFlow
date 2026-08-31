@@ -2790,7 +2790,8 @@
         "col_status": "Status",
         "col_time": "Time",
         "empty_tab": "No records in this tab",
-        "load_more": "Load more ({loaded} of {total})"
+        "load_more": "Load more ({loaded} of {total})",
+        "open_card": "Open card"
       },
       "context_rail": {
         "outcome": "Outcome",
@@ -2801,10 +2802,30 @@
         "process_outcome": "Process outcome",
         "owner": "Owner",
         "when": "When",
-        "more_actions": "More actions ({count})"
+        "more_actions": "More actions ({count})",
+        "previous": "Previous",
+        "next": "Next",
+        "unpin": "Unpin",
+        "pin": "Pin",
+        "close": "Close",
+        "open_full": "Open full card",
+        "what_next": "What happens next",
+        "show_all": "Show all",
+        "block": {
+          "contacts": "Contacts",
+          "actions": "Actions",
+          "summary": "Overview",
+          "history": "History",
+          "documents": "Documents",
+          "relations": "Related objects",
+          "footer_actions": "Other actions"
+        },
+        "next_action": "Next action",
+        "why": "Why"
       },
       "consent": {
-        "no_intake": "No intake context for consent on this application."
+        "no_intake": "No intake context for consent on this application.",
+        "source_ack_hint": "Confirm that the notice was already covered at the source, then click confirm."
       },
       "entity_workspace": {
         "object": "Object",
@@ -2823,7 +2844,8 @@
         "quick_contacts": "Quick contacts",
         "call": "Call",
         "show_full_history": "Show full history",
-        "no_context": "No context"
+        "no_context": "No context",
+        "create_task": "Create task"
       }
     },
     "settings": {
@@ -6948,7 +6970,30 @@
         "no_events": "No events",
         "no_relations": "No relations",
         "no_tasks": "No tasks",
-        "process_active": "Process is active"
+        "process_active": "Process is active",
+        "overview": "Basic information",
+        "overview_hint": "Name, contacts, basic data",
+        "full_name": "Full name",
+        "birth_date": "Date of birth",
+        "citizenship": "Citizenship",
+        "languages": "Languages",
+        "phone": "Phone",
+        "city": "City",
+        "stage": "Stage",
+        "extra": "Additional information",
+        "extra_hint": "Experience, licence, preferences",
+        "experience": "Work experience",
+        "experience_eu": "EU experience",
+        "years": "{count} years",
+        "licence": "Licence",
+        "in_poland": "In Poland",
+        "stay_basis": "Stay basis",
+        "preferred_channel": "Preferred channel",
+        "preferred_channel_value": "Preferred channel: {value}",
+        "source": "Source",
+        "masked_policy": "Personal data is hidden by the access policy.",
+        "rel_vacancy": "Vacancy",
+        "rel_relation": "Relation"
       }
     },
     "tasks": {
@@ -7933,7 +7978,54 @@
         }
       },
       "client_detail": {
-        "rejected": "The lead is rejected and excluded from candidate processing."
+        "rejected": "The lead is rejected and excluded from candidate processing.",
+        "status_rejected": "Rejected",
+        "status_client_created": "Client created",
+        "status_new_form": "New form",
+        "default_summary": "Transport company inquiry",
+        "open_client": "Open client",
+        "create_client": "Create client",
+        "creating": "Creating…",
+        "contact_done": "Contact made",
+        "qualify": "Qualify",
+        "reject": "Reject",
+        "section": {
+          "company": "Company",
+          "contact": "Contact person",
+          "need": "Need",
+          "meta_answers": "Meta form answers",
+          "terms": "Working terms",
+          "source": "Source and submission"
+        },
+        "more": "History and system data",
+        "field": {
+          "name": "Name",
+          "legal_name": "Legal name",
+          "country": "Country",
+          "city": "City",
+          "website": "Website",
+          "fleet_size": "Fleet size",
+          "transport_type": "Transport type",
+          "full_name": "Name",
+          "role": "Role",
+          "phone": "Phone",
+          "what_needed": "What is needed",
+          "summary": "Summary",
+          "people_count": "Headcount",
+          "cooperation_type": "Cooperation type",
+          "when_needed": "When needed",
+          "requirements": "Requirements",
+          "paid_campaigns": "Paid campaigns",
+          "rate": "Rate",
+          "schedule": "Schedule",
+          "base": "Base",
+          "trucks": "Trucks",
+          "body_type": "Body type",
+          "extra": "Additional",
+          "source_profile": "Source profile",
+          "language": "Language",
+          "created": "Created"
+        }
       }
     },
     "common": {
@@ -9505,7 +9597,21 @@
         "end_campaign": "End campaign",
         "archive": "Archive",
         "open_public": "Open public link",
-        "connect_source": "Connect a source"
+        "connect_source": "Connect a source",
+        "starts": "Start: {when}",
+        "sources_help": "Source is where applications come from (Meta Lead Form or HostFlow form). Connection (OAuth) is configured in Integrations. Routing inherits the campaign Primary Target.",
+        "sources_empty_hint": "Connect Meta Lead Ads or a HostFlow public form — without creating the campaign again.",
+        "primary_slots_full": "Primary slots for the HostFlow form and Meta source on this Flight are taken. Multiple equal sources of the same type will come later — the UI does not offer a connection that would fail.",
+        "pause_advice_body": "This is advice only — pause with the Pause button above. There is no auto-pause.",
+        "advice_rejected": "Rejected by operator",
+        "advice_accepted": "Acknowledged by operator",
+        "ack_advice": "Acknowledge",
+        "reject_advice": "Reject advice",
+        "submissions_hint": "People who arrived on this Flight. The technical log is in the timeline.",
+        "timeline": "Timeline →",
+        "submissions_empty": "No applications on this Flight yet. After Connect Source, new Meta leads will appear here.",
+        "unnamed": "Unnamed",
+        "more_submissions": "More applications"
       },
       "kpi": {
         "applications": "Applications",
@@ -9520,7 +9626,20 @@
         "back_campaign": "Back to campaign",
         "cancel": "Cancel",
         "submit": "Connect",
-        "connecting": "Connecting…"
+        "connecting": "Connecting…",
+        "title": "Connect a source",
+        "primary_limit_body": "You can have at most one active primary HostFlow form and one primary Meta source. Multiple equal sources of the same type will come later — the UI does not offer a connection that is known to fail.",
+        "intro": "Application source for campaign “{name}”. Routing inherits the campaign Primary Target ({intent}). The Meta list is Lead Forms (not a single ad). Forms already seen in leads are listed here even if a profile is not created yet. A specific Ad ID is on the campaign card.",
+        "type_aria": "Source type",
+        "form_via_link": "Applications arrive through the public candidate form link.",
+        "form_already": "A primary form is already connected to this Flight.",
+        "meta_already": "A primary Meta source is already connected to this Flight.",
+        "meta_bind": "Bind a Meta Lead Form as a source — all ads for the form will go to this Flight.",
+        "meta_empty": "No Meta forms in the catalog or in leads — configure Meta or wait for the first lead.",
+        "form_aria": "HostFlow form",
+        "no_forms": "No active forms.",
+        "open_forms": "Open forms",
+        "from_leads": "from leads"
       },
       "source_card": {
         "public_form": "Public form",
@@ -9537,10 +9656,77 @@
         "draft": "Draft",
         "inactive": "Inactive",
         "bound": "Bound",
-        "never": "never"
+        "never": "never",
+        "untitled": "Untitled",
+        "page_id_hidden": "ID hidden in details"
       },
       "ad_bindings": {
-        "title": "Ad ID → Flight binding"
+        "title": "Ad ID → Flight binding",
+        "help": "Override: when one Meta form feeds several Flights — bind a specific Ad ID here. The usual path is Connect Source (Lead Form) on the Connect source page; without an Ad bind, all ads for the form go to that form’s Flight.",
+        "empty": "No active Ad ID bindings yet.",
+        "active": "active",
+        "disabled": "off",
+        "disable": "Turn off",
+        "enable": "Turn on",
+        "unbind": "Unbind",
+        "bind": "Bind to Flight",
+        "confirm_unbind": "Unbind Ad ID {id}?",
+        "reprocessed": "Reprocessed waiting: matched {matched}, processed {processed}",
+        "reprocessed_errors": ", errors {errors}"
+      },
+      "setup": {
+        "title": "New campaign",
+        "step_name": "Campaign name",
+        "step_flow": "Flow type",
+        "step_subject": "Client and campaign subject",
+        "step_review": "Review",
+        "back_list": "Back to list",
+        "search_prefill": "The vacancy is filled in from the Search. Next, set the campaign goal — connect a source on the campaign page.",
+        "name": "Name",
+        "name_placeholder": "e.g. Kierowca CE — Poltrakt",
+        "description": "Description (optional)",
+        "description_placeholder": "Campaign business goal",
+        "owner_company": "Company (owner)",
+        "pick_company": "Select a company",
+        "owner_hint": "The campaign belongs to the tenant and this company. Client/order is context only, not the owner.",
+        "flow_aria": "Flow type",
+        "serves_client": "The campaign serves a client. The primary target is a vacancy or service/order of that client; routing and KPI go through it.",
+        "client_required": "Client (required)",
+        "pick_client": "Select a client",
+        "no_client_account": "No Client Account.",
+        "create_client": "Create a client",
+        "then_return": "in Sales, then return here.",
+        "client_context_hint": "Saved as CampaignTarget(role=context, client_account). Client statistics come from here.",
+        "new_client": "New client",
+        "subject": "Campaign subject · {label}",
+        "primary_target_hint": "The primary target sets route_intent for all campaign sources.",
+        "no_vacancies": "No vacancies for this client.",
+        "create_vacancy": "Create a vacancy",
+        "in_recruitment": "in Recruitment (Vacancies).",
+        "vacancy_aria": "Vacancy",
+        "no_services": "No services.",
+        "open_services": "Open services",
+        "service_aria": "Service",
+        "pick_client_first": "Select a client first — then a vacancy (hiring) or a service (B2B).",
+        "review_campaign": "Campaign",
+        "review_owner": "Owner company",
+        "review_flow": "Flow",
+        "review_client": "Client (we serve)",
+        "source_later": "The application source (Meta Lead Form / public form) is connected on the campaign page — separately from creating the goal.",
+        "back": "Back",
+        "next": "Next",
+        "creating": "Creating…",
+        "create": "Create campaign"
+      },
+      "list": {
+        "public_form": "Public form",
+        "applications": "Applications: {count}",
+        "form": "Form: {name}",
+        "source": "Source: {name}",
+        "destination": "Goes to: {value}",
+        "launch": "Launch: {when}",
+        "not_launched": "not launched yet",
+        "open": "Open"
       }
     },
     "context_help": {
@@ -9747,6 +9933,45 @@
         "copy_failed": "Could not copy",
         "qr_downloaded": "QR downloaded",
         "qr_failed": "Could not download QR"
+      }
+    },
+    "sales_inquiry": {
+      "workspace": {
+        "tab_all": "All",
+        "tab_new": "New",
+        "tab_in_progress": "In progress",
+        "tab_waiting": "Waiting for a reply",
+        "tab_completed": "Completed",
+        "inquiries": "Inquiries",
+        "hero_call_title": "Call {count} new inquiries",
+        "hero_call_hint": "We will open inquiries one by one: call → clarify the need → create a client → pick a service.",
+        "hero_empty": "No new inquiries to call",
+        "list_kind": "B2B inquiry",
+        "create_client_failed": "Could not create client",
+        "call": "Call"
+      },
+      "detail": {
+        "step_contact": "Contact",
+        "step_need": "Need",
+        "step_client": "Client",
+        "step_service": "Service",
+        "step_order": "Order",
+        "contact_fallback": "Contact"
+      },
+      "interested": "Interested",
+      "called": "Called",
+      "status": {
+        "new": "New",
+        "in_progress": "In progress",
+        "waiting": "Waiting for a reply",
+        "questionnaire_submitted": "Reply received",
+        "completed": "Completed",
+        "rejected": "Rejected"
+      },
+      "time": {
+        "just_now": "just now",
+        "minutes_ago": "{count} min ago",
+        "hours_ago": "{count} h ago"
       }
     }
   },

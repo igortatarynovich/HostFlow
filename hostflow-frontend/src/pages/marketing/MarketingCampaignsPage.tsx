@@ -279,7 +279,7 @@ export default function MarketingCampaignsPage() {
             const flight = currentFlight(campaign)
             const form = primaryForm(flight)
             const source = primarySource(flight)
-            const sourceLabel = source?.name || source?.provider || (form ? 'Публичная форма' : '—')
+            const sourceLabel = source?.name || source?.provider || (form ? t('app.marketing.list.public_form') : '—')
             const status = flight?.status || 'planned'
             const busy = actingId === campaign.id
             return (
@@ -304,22 +304,29 @@ export default function MarketingCampaignsPage() {
                         </span>
                       ) : null}
                       <span className="text-xs text-slate-500">
-                        Заявок: {counts[campaign.id]?.received ?? '…'}
+                        {t('app.marketing.list.applications', {
+                          values: { count: String(counts[campaign.id]?.received ?? '…') },
+                        })}
                       </span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span>Форма: {form?.title || '—'}</span>
-                      <span>Источник: {sourceLabel}</span>
-                      <span>Куда: {destinationSummary(campaign, t)}</span>
+                      <span>{t('app.marketing.list.form', { values: { name: form?.title || '—' } })}</span>
+                      <span>{t('app.marketing.list.source', { values: { name: sourceLabel } })}</span>
+                      <span>{t('app.marketing.list.destination', { values: { value: destinationSummary(campaign, t) } })}</span>
                       <span>
-                        Запуск:{' '}
-                        {flight?.starts_at ? formatDateTime(flight.starts_at, locale) : 'ещё не запускали'}
+                        {t('app.marketing.list.launch', {
+                          values: {
+                            when: flight?.starts_at
+                              ? formatDateTime(flight.starts_at, locale)
+                              : t('app.marketing.list.not_launched'),
+                          },
+                        })}
                       </span>
                     </div>
                   </Link>
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <Link to={marketingCampaignPath(campaign.id)} className="btn-secondary btn-sm">
-                      Открыть
+                      {t('app.marketing.list.open')}
                     </Link>
                     {status === 'planned' ? (
                       <button
@@ -328,7 +335,7 @@ export default function MarketingCampaignsPage() {
                         disabled={busy || !flight}
                         onClick={() => void runCommand(campaign, 'launch')}
                       >
-                        Запустить
+                        {t('app.marketing.detail.start')}
                       </button>
                     ) : null}
                     {status === 'active' ? (
@@ -338,7 +345,7 @@ export default function MarketingCampaignsPage() {
                         disabled={busy || !flight}
                         onClick={() => void runCommand(campaign, 'pause')}
                       >
-                        Приостановить
+                        {t('app.marketing.detail.pause')}
                       </button>
                     ) : null}
                     {status === 'paused' ? (
@@ -348,7 +355,7 @@ export default function MarketingCampaignsPage() {
                         disabled={busy || !flight}
                         onClick={() => void runCommand(campaign, 'resume')}
                       >
-                        Возобновить
+                        {t('app.marketing.detail.resume')}
                       </button>
                     ) : null}
                   </div>

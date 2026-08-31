@@ -69,16 +69,22 @@ function MockupWorkspaceSection({
   )
 }
 
-function formatBool(value: boolean | null | undefined, locale = 'ru'): string | undefined {
+function formatBool(value: boolean | null | undefined, yes: string, no: string): string | undefined {
   if (value == null) return undefined
-  return value ? (locale === 'pl' ? 'Tak' : locale === 'en' ? 'Yes' : 'Да') : locale === 'pl' ? 'Nie' : locale === 'en' ? 'No' : 'Нет'
+  return value ? yes : no
 }
 
-function formatCustomFieldValue(definition: CustomFieldDefinition, raw: unknown, locale: string): ReactNode {
+function formatCustomFieldValue(
+  definition: CustomFieldDefinition,
+  raw: unknown,
+  locale: string,
+  yes: string,
+  no: string,
+): ReactNode {
   if (raw == null || raw === '') return '—'
   switch (definition.field_type) {
     case 'CHECKBOX':
-      return formatBool(Boolean(raw), locale)
+      return formatBool(Boolean(raw), yes, no)
     case 'MULTISELECT':
       return Array.isArray(raw) && raw.length ? raw.join(', ') : '—'
     case 'DATE':
@@ -175,7 +181,7 @@ function CandidateCustomFieldsReadOnlyBlock({
             <ReadOnlyField
               key={fieldConfig.field_key}
               label={label}
-              value={formatCustomFieldValue(definition, value, locale)}
+              value={formatCustomFieldValue(definition, value, locale, t('common.yes'), t('common.no'))}
             />
           )
         })
@@ -219,62 +225,77 @@ export function CandidateOverviewContent({
 
   return (
     <div className="space-y-3">
-      <MockupWorkspaceSection index={1} title="Основная информация" subtitle="Имя, контакты, базовые данные" defaultOpen>
-        <ReadOnlyField label="ФИО" value={passport.sections.identity.title} />
+      <MockupWorkspaceSection
+        index={1}
+        title={t('app.candidates.workspace.overview')}
+        subtitle={t('app.candidates.workspace.overview_hint')}
+        defaultOpen
+      >
+        <ReadOnlyField label={t('app.candidates.workspace.full_name')} value={passport.sections.identity.title} />
         <ReadOnlyField
-          label="Дата рождения"
+          label={t('app.candidates.workspace.birth_date')}
           value={birthDate ? formatDateSafe(birthDate, locale) : undefined}
         />
-        <ReadOnlyField label="Гражданство" value={citizenship} />
-        <ReadOnlyField label="Языки" value={languages} />
+        <ReadOnlyField label={t('app.candidates.workspace.citizenship')} value={citizenship} />
+        <ReadOnlyField label={t('app.candidates.workspace.languages')} value={languages} />
         <ReadOnlyField
-          label="Телефон"
+          label={t('app.candidates.workspace.phone')}
           value={candidate.masked ? t('app.candidates.workspace.hidden') : candidate.phone ?? undefined}
         />
         <ReadOnlyField
           label="Email"
           value={candidate.masked ? t('app.candidates.workspace.hidden') : candidate.email ?? undefined}
         />
-        <ReadOnlyField label="Город" value={candidate.city ? String(candidate.city) : undefined} />
+        <ReadOnlyField label={t('app.candidates.workspace.city')} value={candidate.city ? String(candidate.city) : undefined} />
         <ReadOnlyField
-          label="Этап"
+          label={t('app.candidates.workspace.stage')}
           value={passport.sections.state.stageLabel || passport.sections.state.processLabel}
         />
       </MockupWorkspaceSection>
 
       <MockupWorkspaceSection
         index={2}
-        title="Дополнительная информация"
-        subtitle="Опыт, права, предпочтения"
+        title={t('app.candidates.workspace.extra')}
+        subtitle={t('app.candidates.workspace.extra_hint')}
         defaultOpen
       >
         <ReadOnlyField
-          label="Опыт работы"
-          value={experienceYears != null ? `${experienceYears} лет` : undefined}
-        />
-        <ReadOnlyField
-          label="Опыт в EU"
+          label={t('app.candidates.workspace.experience')}
           value={
-            rawExtra.experience_eu_years != null
-              ? `${rawExtra.experience_eu_years} лет`
+            experienceYears != null
+              ? t('app.candidates.workspace.years', { values: { count: experienceYears } })
               : undefined
           }
         />
-        <ReadOnlyField label="Права" value={licenseCategories} />
-        <ReadOnlyField label="ADR" value={formatBool(rawExtra.has_adr as boolean | null, locale)} />
         <ReadOnlyField
-          label="В Польше"
-          value={formatBool(rawExtra.in_poland as boolean | null, locale)}
+          label={t('app.candidates.workspace.experience_eu')}
+          value={
+            rawExtra.experience_eu_years != null
+              ? t('app.candidates.workspace.years', { values: { count: String(rawExtra.experience_eu_years) } })
+              : undefined
+          }
+        />
+        <ReadOnlyField label={t('app.candidates.workspace.licence')} value={licenseCategories} />
+        <ReadOnlyField
+          label="ADR"
+          value={formatBool(rawExtra.has_adr as boolean | null, t('common.yes'), t('common.no'))}
         />
         <ReadOnlyField
-          label="Основание пребывания"
+          label={t('app.candidates.workspace.in_poland')}
+          value={formatBool(rawExtra.in_poland as boolean | null, t('common.yes'), t('common.no'))}
+        />
+        <ReadOnlyField
+          label={t('app.candidates.workspace.stay_basis')}
           value={rawExtra.poland_stay_basis ? String(rawExtra.poland_stay_basis) : undefined}
         />
         <ReadOnlyField
-          label="Предпочитаемый канал"
+          label={t('app.candidates.workspace.preferred_channel')}
           value={extra.preferredContact ?? undefined}
         />
-        <ReadOnlyField label="Источник" value={candidate.source ? String(candidate.source) : undefined} />
+        <ReadOnlyField
+          label={t('app.candidates.workspace.source')}
+          value={candidate.source ? String(candidate.source) : undefined}
+        />
       </MockupWorkspaceSection>
 
       <CandidateCustomFieldsReadOnlyBlock
@@ -286,7 +307,7 @@ export function CandidateOverviewContent({
 
       {passport.sections.identity.masked ? (
         <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          Персональные данные скрыты политикой доступа.
+          {t('app.candidates.workspace.masked_policy')}
         </p>
       ) : null}
     </div>
@@ -302,13 +323,17 @@ export function CandidateContactsContent({ passport, candidate }: { passport: En
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-900">{passport.sections.contacts.displayName}</h3>
         {passport.sections.contacts.citizenship ? (
-              {t('app.platform.entity_workspace.citizenship', {
-                values: { value: passport.sections.contacts.citizenship },
-              })}
+          <p className="mt-1 text-sm text-slate-600">
+            {t('app.platform.entity_workspace.citizenship', {
+              values: { value: passport.sections.contacts.citizenship },
+            })}
+          </p>
         ) : null}
         {passport.sections.contacts.preferredChannel ? (
           <p className="mt-1 text-sm text-slate-600">
-            Предпочитаемый канал: {passport.sections.contacts.preferredChannel}
+            {t('app.candidates.workspace.preferred_channel_value', {
+              values: { value: passport.sections.contacts.preferredChannel },
+            })}
           </p>
         ) : null}
       </div>
@@ -368,7 +393,11 @@ export function CandidateRelationsContent({ passport }: { passport: EntityPasspo
         <li key={rel.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              {rel.kind === 'vacancy' ? 'Вакансия' : rel.kind === 'hr' ? 'Handoff' : 'Связь'}
+              {rel.kind === 'vacancy'
+                ? t('app.candidates.workspace.rel_vacancy')
+                : rel.kind === 'hr'
+                  ? 'Handoff'
+                  : t('app.candidates.workspace.rel_relation')}
             </p>
             {rel.href ? (
               <a href={rel.href} className="mt-1 block text-sm font-semibold text-brand-700 hover:underline">

@@ -125,7 +125,7 @@ export function HostFlowFormSourceCard({
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
             {t('app.marketing.source_card.hostflow_source')}
           </div>
-          <div className="mt-1 font-semibold text-slate-900">{link.title || 'Без названия'}</div>
+          <div className="mt-1 font-semibold text-slate-900">{link.title || t('app.marketing.source_card.untitled')}</div>
         </div>
         <div className="flex flex-wrap gap-1">
           <StatusPill tone={active ? 'ok' : 'muted'}>
@@ -223,7 +223,7 @@ export function MetaLeadFormSourceCard({
         <div>
           <dt className="text-slate-500">{t('app.marketing.source_card.facebook_page')}</dt>
           <dd className="font-medium text-slate-800">
-            {pageLine || (link.page_id ? 'ID скрыт в подробностях' : '—')}
+            {pageLine || (link.page_id ? t('app.marketing.source_card.page_id_hidden') : '—')}
           </dd>
         </div>
         <div>

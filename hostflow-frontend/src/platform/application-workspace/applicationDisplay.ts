@@ -1,4 +1,5 @@
 import type { Application, ApplicationStatus, ApplicationTab } from '../../api/types/application'
+import type { TranslateFn } from '../../i18n'
 
 export const APPLICATION_STATUS_BADGE: Record<ApplicationStatus, string> = {
   new: 'bg-emerald-50 text-emerald-700',
@@ -9,13 +10,20 @@ export const APPLICATION_STATUS_BADGE: Record<ApplicationStatus, string> = {
   rejected: 'bg-rose-50 text-rose-700',
 }
 
+export function applicationStatusLabel(status: string, t: TranslateFn): string {
+  const key = `app.sales_inquiry.status.${status}`
+  const translated = t(key)
+  return translated === key ? status : translated
+}
+
+/** @deprecated Prefer applicationStatusLabel(status, t) */
 export const APPLICATION_STATUS_TEXT: Record<ApplicationStatus, string> = {
-  new: 'Новое',
-  in_progress: 'В работе',
-  waiting: 'Ожидаем ответ',
-  questionnaire_submitted: 'Ответ получен',
-  completed: 'Завершено',
-  rejected: 'Отклонено',
+  new: 'New',
+  in_progress: 'In progress',
+  waiting: 'Waiting for a reply',
+  questionnaire_submitted: 'Reply received',
+  completed: 'Completed',
+  rejected: 'Rejected',
 }
 
 export function applicationTabBucket(app: Application): ApplicationTab {
@@ -31,17 +39,21 @@ export function applicationNeedsFirstContact(app: Application): boolean {
   return app.status === 'new'
 }
 
-export function formatApplicationRelativeTime(iso: string | null | undefined): string {
+export function formatApplicationRelativeTime(
+  iso: string | null | undefined,
+  t: TranslateFn,
+  locale?: string,
+): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   const diffMs = Date.now() - d.getTime()
   const mins = Math.floor(diffMs / 60000)
-  if (mins < 1) return 'только что'
-  if (mins < 60) return `${mins} мин назад`
+  if (mins < 1) return t('app.sales_inquiry.time.just_now')
+  if (mins < 60) return t('app.sales_inquiry.time.minutes_ago', { values: { count: mins } })
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} ч назад`
-  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  if (hours < 24) return t('app.sales_inquiry.time.hours_ago', { values: { count: hours } })
+  return d.toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 export function applicationInitial(app: Application): string {
