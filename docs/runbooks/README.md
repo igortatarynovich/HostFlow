@@ -17,7 +17,7 @@
 |---|---------|---------|-------|------------|--------|
 | **RB-1** | Deploy a release build | RR3 | igortatarynovich | [OL-2](../specs/tasks/operate-and-launch.md) | **MISSING** — only [FRONTEND_DEPLOY.md](../FRONTEND_DEPLOY.md) (frontend step) and [deploy/TROUBLESHOOTING.md](../../deploy/TROUBLESHOOTING.md) exist |
 | **RB-2** | Apply migrations to a fresh and to an existing database | RR3, RC condition 4 | igortatarynovich | [OL-2](../specs/tasks/operate-and-launch.md) · [OL-2C](../specs/tasks/operate-launch-ol2c-ci-parity.md) | **MISSING** as an executed runbook. The executable path is `scripts/deploy/release-proof.sh`: PG16-alpine, repo-root `alembic.ini`, `/healthz` + `/build` + admin login |
-| **RB-3** | Roll back a release | RR3, RR7 | igortatarynovich | [OL-2](../specs/tasks/operate-and-launch.md) | **MISSING** — **Expand-only rule (locked now):** rollback of a release such as `202608310001_bootstrap_admin_schema` redeploys retained artefacts and **does not** `alembic downgrade` |
+| **RB-3** | Roll back a release | RR3, RR7 | igortatarynovich | [OL-2](../specs/tasks/operate-and-launch.md) · [OL-2D](../specs/tasks/operate-launch-ol2d-predecessor.md) | **MISSING** — **DEFERRED_BY_INITIAL_BASELINE / NOT EXECUTED**. Expand-only rule: rollback of `202608310001_bootstrap_admin_schema` redeploys retained artefacts and **does not** `alembic downgrade` |
 | **RB-4** | Start / verify background processing (queue worker, scheduler) | RR3 | igortatarynovich | [OL-3](../specs/tasks/operate-and-launch.md) | **MISSING** — [job_queue.md](../specs/architecture/job_queue.md) describes the model, not the operation |
 | **RB-5** | Monitor and respond to alerts | RR3, RR7 | igortatarynovich | [OL-4](../specs/tasks/operate-and-launch.md) | **MISSING** — [observability.md](../specs/platform/observability.md) §3 names alerts that nothing loads |
 | **RB-6** | Back up database and document storage | RR3 | igortatarynovich | [OL-5](../specs/tasks/operate-and-launch.md) | **MISSING** — no backup tooling in the repo |
@@ -58,5 +58,6 @@ Service-incident response (RB-10) is **not** covered by the security incident ru
 
 ## History
 
+- 2026-08-31 (later, OL-2D): RB-3 still MISSING as a procedure. Predecessor is defined as a contract-satisfying deployable state; production is not one — [OL-2D](../specs/tasks/operate-launch-ol2d-predecessor.md).
 - 2026-08-31: **Required set sealed by the [Launch Ownership Gate](../specs/gates/launch-ownership-gate.md) (OL-1).** Owners changed from role names to the person who holds them, because the gate requires a named holder — a release question cannot be answered by a role that has no occupant. The set itself is unchanged and still ten of ten MISSING; OL-1 was required to make the gap owned and countable, not to close it. One honest loss: RB-9's Security co-sign is now visibly the same person as its owner.
 - 2026-08-28: Index introduced with the ten required v1 procedures, all MISSING, while briefing Operate & Launch as v1 blocker 6. Governance already targeted `docs/runbooks/` ([documentation-rules.md](../governance/documentation-rules.md) §2.1); this is the folder’s first file.

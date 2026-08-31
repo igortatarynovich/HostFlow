@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Content hash of a frontend artefact tree (OL-2A C-2).
+# Content hash of a frontend artefact tree (OL-2A C-2 / OL-2D retain).
 # Prints a single sha256 hex of the sorted (path, file-digest) list.
+# Sort is locale-sensitive (same as publish). Do not replace with Python
+# code-point order — that produces a different digest on mixed-case paths.
 set -euo pipefail
 root="${1:?usage: frontend-tree-hash.sh <artefact-dir>}"
 if [[ ! -d "$root" ]]; then
