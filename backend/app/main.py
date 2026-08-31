@@ -23,6 +23,8 @@ from sqlalchemy import create_engine
 
 logger = logging.getLogger("backend.app.main")
 
+from backend.app.core.build_info import read_build_info  # noqa: E402
+
 
 def _test_light_startup() -> bool:
     return os.environ.get("HOSTFLOW_TEST_LIGHT_STARTUP", "").strip().lower() in ("1", "true", "yes")
@@ -692,7 +694,7 @@ if Instrumentator is not None and _enable_prometheus_instrumentator:
             should_group_status_codes=False,
             should_ignore_untemplated=True,
             should_instrument_requests_inprogress=True,
-            excluded_handlers=["/metrics", "/healthz", "/health"],
+            excluded_handlers=["/metrics", "/healthz", "/health", "/build"],
         )
         instrumentator.instrument(app).expose(app, include_in_schema=False)
         _metrics_route_registered = True
@@ -868,6 +870,16 @@ app.add_middleware(ForceCORSHeadersMiddleware)
 @app.get("/healthz", tags=["internal"])
 async def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/build", tags=["internal"])
+async def build_identity() -> dict[str, str]:
+    """OL-2A C-3: the running process answers which artefact it is.
+
+    Values are baked at image build / process start. A bind-mounted working
+    tree that still has a different SHA is not evidence of this endpoint.
+    """
+    return dict(read_build_info())
 
 # --- include routers ---
 

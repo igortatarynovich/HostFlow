@@ -1,0 +1,19 @@
+# Used when the build context is the repository root (deploy/Dockerfile.backend).
+.env
+.env.*
+!**/.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+.git
+**/.venv
+**/.venv312
+**/node_modules
+**/__pycache__/
+*.pyc
+hostflow-frontend/dist
+hostflow-frontend/node_modules
+releases/
+*.md
+!docs/**/*.md
