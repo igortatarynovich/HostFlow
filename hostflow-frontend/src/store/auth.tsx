@@ -117,6 +117,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   })
   const logoutInFlightRef = useRef(false)
+  const meRef = useRef(me)
+  meRef.current = me
 
   const applyTheme = useCallback((theme?: string | null) => {
     const root = document.documentElement
@@ -141,7 +143,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setMe(null)
       return
     }
-    setLoading(true)
+    // Do not flip loading when a session is already painted: App unmounts the tree
+    // while loading is true, which remounts setup and retriggers catalog fetches.
+    if (!meRef.current) setLoading(true)
     try {
       // Prefer shared Domain cookie over a stale per-origin Bearer (module-host split-brain).
       await reconcileBearerWithSharedCookie()

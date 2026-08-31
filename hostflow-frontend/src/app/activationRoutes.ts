@@ -7,6 +7,7 @@ export const ACTIVATION_PATHS = {
   onboardingCompany: CRM_APP_PATHS.onboardingCompany,
   onboardingWizard: CRM_APP_PATHS.onboardingWizard,
   onboardingGettingStarted: CRM_APP_PATHS.onboardingGettingStarted,
+  platformSetup: CRM_APP_PATHS.platformSetup,
   clients: CRM_APP_PATHS.clientsDirectory,
   candidates: CRM_APP_PATHS.candidates,
   vacancies: CRM_APP_PATHS.vacancies,
@@ -18,6 +19,22 @@ export const ACTIVATION_PATHS = {
   billing: CRM_APP_PATHS.settingsBilling,
   legal: CRM_APP_PATHS.settingsLegal,
 } as const
+
+function pathWithoutTrailingSlash(pathname: string): string {
+  const trimmed = pathname.replace(/\/+$/, '')
+  return trimmed.length > 0 ? trimmed : '/'
+}
+
+/** Company-creation / wizard routes that must not bounce when onboarding is still required. */
+export function isActivationOnboardingPath(pathname: string): boolean {
+  const path = pathWithoutTrailingSlash(pathname)
+  const onboardingRoot = pathWithoutTrailingSlash(ACTIVATION_PATHS.onboarding)
+  return (
+    path === ACTIVATION_PATHS.platformSetup ||
+    path === onboardingRoot ||
+    path.startsWith(`${onboardingRoot}/`)
+  )
+}
 
 export const ACTIVATION_ALLOWED_PREFIXES = [
   ACTIVATION_PATHS.onboarding,
@@ -60,7 +77,7 @@ export function getBusinessNextActionPath(businessType: ActivationBusinessType):
 
 export function getActivationSetupTarget(status: ActivationStatusLike | null | undefined): string {
   if (!status) return ACTIVATION_PATHS.overview
-  if (status.onboarding_required) return ACTIVATION_PATHS.onboardingCompany
+  if (status.onboarding_required) return ACTIVATION_PATHS.platformSetup
   if (status.activation_required) {
     // New tenants with demo pipeline land on overview; legacy tenants keep guided checklist.
     if (status.demo_seeded) return ACTIVATION_PATHS.overview
@@ -80,7 +97,7 @@ export function isBusinessPrimaryStepDone(status: ActivationStatusLike | null | 
 
 export function getRetentionNextPath(status: ActivationStatusLike | null | undefined): string {
   if (!status) return ACTIVATION_PATHS.overview
-  if (!status.steps.company_created) return ACTIVATION_PATHS.onboardingCompany
+  if (!status.steps.company_created) return ACTIVATION_PATHS.platformSetup
   if (!isBusinessPrimaryStepDone(status)) return getBusinessNextActionPath(status.business_type)
   if (!status.steps.next_action_created) return ACTIVATION_PATHS.reminders
   return ACTIVATION_PATHS.billing

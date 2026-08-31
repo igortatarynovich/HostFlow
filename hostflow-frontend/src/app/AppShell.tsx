@@ -24,7 +24,7 @@ import { isOnboardingWizardEnabled } from '../utils/featureFlags'
 import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
 import { useLicenseStatus } from '../hooks/useLicenseStatus'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
-import { ACTIVATION_PATHS, getActivationSetupTarget } from './activationRoutes'
+import { ACTIVATION_PATHS, getActivationSetupTarget, isActivationOnboardingPath } from './activationRoutes'
 import { usePermissions } from '../hooks/usePermissions'
 import { maybeMigrateDefaultAppHomeToTasks } from '../utils/defaultAppHome'
 import { CRM_APP_PATHS } from './crmAppPaths'
@@ -43,7 +43,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const path = location.pathname
-  const isOnboardingPage = location.pathname.startsWith(ACTIVATION_PATHS.onboarding)
+  const isOnboardingPage = isActivationOnboardingPath(location.pathname)
   const isSettingsArea = location.pathname.startsWith(CRM_APP_PATHS.settings)
   const onboardingWizardEnabled = isOnboardingWizardEnabled()
   /** Весь CRM workspace: без внешних отступов у main, компактный topbar (как список кандидатов). Onboarding оставляем с полями. */
@@ -200,7 +200,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   }, [currentTenantId])
 
   if (!isOnboardingPage && !isSuperAdmin && onboardingStatus?.onboarding_required === true) {
-    return <Navigate to={ACTIVATION_PATHS.onboardingCompany} replace />
+    return <Navigate to={ACTIVATION_PATHS.platformSetup} replace />
   }
   /** Guided trial: lock down settings except billing checkout and team/modules (seat toggles). */
   const isTrialAllowedSettingsPath =

@@ -606,11 +606,19 @@ export async function getServicesAnalyticsOverview(params?: {
 }
 
 export async function recordTrialRetentionEvent(payload: TrialRetentionEventPayload): Promise<void> {
-  await api.post('/analytics/events', payload)
+  try {
+    await api.post('/analytics/events', payload)
+  } catch {
+    // Fire-and-forget telemetry must not surface as an uncaught rejection.
+  }
 }
 
 export async function recordTtvStepCompleted(payload: TtvStepEventPayload): Promise<void> {
-  await api.post('/analytics/events', payload)
+  try {
+    await api.post('/analytics/events', payload)
+  } catch {
+    // Fire-and-forget telemetry must not surface as an uncaught rejection.
+  }
 }
 
 export async function recordPerfMeasurement(payload: {
@@ -627,7 +635,11 @@ export async function recordPerfMeasurement(payload: {
     route: payload.route ?? null,
     meta: payload.meta ?? null,
   }
-  await api.post('/analytics/events', eventPayload)
+  try {
+    await api.post('/analytics/events', eventPayload)
+  } catch {
+    // Fire-and-forget telemetry must not surface as an uncaught rejection.
+  }
 }
 
 export async function getTrialRetentionReport(params?: { days?: number }): Promise<TrialRetentionReport> {

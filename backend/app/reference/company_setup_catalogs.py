@@ -41,6 +41,15 @@ TEAM_SIZES: Final[tuple[LocalizedCatalogItem, ...]] = (
     LocalizedCatalogItem("1000_plus", "Более 1000", "1000+"),
 )
 
+# Wizard / first-company chips (distinct from the operating-company size buckets).
+ONBOARDING_TEAM_SIZES: Final[tuple[LocalizedCatalogItem, ...]] = (
+    LocalizedCatalogItem("solo", "1", "1"),
+    LocalizedCatalogItem("2_5", "2–5", "2–5"),
+    LocalizedCatalogItem("6_10", "6–10", "6–10"),
+    LocalizedCatalogItem("11_25", "11–25", "11–25"),
+    LocalizedCatalogItem("25_plus", "25+", "25+"),
+)
+
 BUSINESS_TYPES: Final[tuple[LocalizedCatalogItem, ...]] = (
     LocalizedCatalogItem("agency", "Кадровое агентство", "Recruitment agency"),
     LocalizedCatalogItem("employer", "Работодатель", "Employer"),
@@ -209,6 +218,7 @@ VACANCY_SEARCH_CATEGORIES: Final[tuple[LocalizedCatalogItem, ...]] = (
 
 INDUSTRY_CODES: Final[frozenset[str]] = frozenset(item.code for item in INDUSTRIES)
 TEAM_SIZE_CODES: Final[frozenset[str]] = frozenset(item.code for item in TEAM_SIZES)
+TEAM_SIZE_ONBOARDING_CODES: Final[frozenset[str]] = frozenset(item.code for item in ONBOARDING_TEAM_SIZES)
 BUSINESS_TYPE_CODES: Final[frozenset[str]] = frozenset(item.code for item in BUSINESS_TYPES)
 PLATFORM_IDENTITY_CODES: Final[frozenset[str]] = frozenset(item.code for item in PLATFORM_IDENTITIES)
 VACANCY_SEARCH_CATEGORY_CODES: Final[frozenset[str]] = frozenset(item.code for item in VACANCY_SEARCH_CATEGORIES)
@@ -218,7 +228,9 @@ def list_industries() -> tuple[LocalizedCatalogItem, ...]:
     return INDUSTRIES
 
 
-def list_team_sizes() -> tuple[LocalizedCatalogItem, ...]:
+def list_team_sizes(*, onboarding: bool = False) -> tuple[LocalizedCatalogItem, ...]:
+    if onboarding:
+        return ONBOARDING_TEAM_SIZES
     return TEAM_SIZES
 
 

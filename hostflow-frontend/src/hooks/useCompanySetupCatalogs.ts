@@ -69,22 +69,17 @@ function fallbackCompanySetup(locale?: string): CompanySetupCatalogsDto {
 
 export function useCompanySetupCatalogs(locale?: string) {
   const fallback = useMemo(() => fallbackCompanySetup(locale), [locale])
-  const [catalogs, setCatalogs] = useState<CompanySetupCatalogsDto>(fallback)
+  const [remote, setRemote] = useState<CompanySetupCatalogsDto | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
     void fetchCompanySetupCatalogs()
       .then((data) => {
-        if (cancelled) return
-        setCatalogs({
-          ...data,
-          countries: withOtherCountryOption(data.countries ?? fallback.countries, locale),
-        })
+        if (!cancelled) setRemote(data)
       })
       .catch(() => {
-        if (!cancelled) setCatalogs(fallback)
+        /* Keep local fallback. fetchCompanySetupCatalogs latches the failure so remounts do not refetch. */
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -92,7 +87,15 @@ export function useCompanySetupCatalogs(locale?: string) {
     return () => {
       cancelled = true
     }
-  }, [fallback, locale])
+  }, [])
+
+  const catalogs = useMemo(() => {
+    const source = remote ?? fallback
+    return {
+      ...source,
+      countries: withOtherCountryOption(source.countries ?? fallback.countries, locale),
+    }
+  }, [remote, fallback, locale])
 
   return { catalogs, loading }
 }

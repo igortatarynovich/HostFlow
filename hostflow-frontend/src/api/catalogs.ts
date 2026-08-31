@@ -34,15 +34,22 @@ export type CompanySetupCatalogsDto = {
 
 let companySetupCache: CompanySetupCatalogsDto | null = null
 let companySetupInflight: Promise<CompanySetupCatalogsDto> | null = null
+let companySetupFailure: unknown = null
 
 export async function fetchCompanySetupCatalogs(): Promise<CompanySetupCatalogsDto> {
   if (companySetupCache) return companySetupCache
+  if (companySetupFailure) return Promise.reject(companySetupFailure)
   if (companySetupInflight) return companySetupInflight
   companySetupInflight = api
     .get<CompanySetupCatalogsDto>('/catalogs/company-setup/options')
     .then(({ data }) => {
       companySetupCache = data
+      companySetupFailure = null
       return data
+    })
+    .catch((err) => {
+      companySetupFailure = err
+      throw err
     })
     .finally(() => {
       companySetupInflight = null
@@ -65,4 +72,5 @@ export async function fetchVacancyCategoryOptions(launchSearchOnly = true): Prom
 
 export function invalidateCompanySetupCatalogsCache(): void {
   companySetupCache = null
+  companySetupFailure = null
 }
