@@ -11949,6 +11949,10 @@
       "code_field": "Code",
       "order_field": "Order",
       "code_readonly": "Code cannot be changed",
+      "code_hint": "Latin slug used in the pipeline. The on-screen name is the label above — it can be any language.",
+      "code_must_map_pe": "Each candidate stage must map to a Process Engine system stage. The label and code can be your own.",
+      "pe_maps_to": "Maps to system stage",
+      "pe_maps_to_hint": "This is the catalog identity (gates, handoff, analytics). Several funnel steps can share the same system stage.",
       "create": "Create",
       "validation_stage": "Code and label are required",
       "validation_funnel_name": "Name is required",
@@ -11963,7 +11967,7 @@
       "no_funnels_leads": "No lead funnels yet. Create one to align stages with the lead pipeline.",
       "no_stages": "No stages. Add your first stage.",
       "pick_existing_code": "Or pick from existing system stages:",
-      "reference_help": "You can use these codes or define your own. Pipeline and Dashboard use the stages from your selected funnel.",
+      "reference_help": "You can add your own candidate stages. Each one must map to a registered system stage; the label is free text. Lead funnels do not need this mapping.",
       "reference_stages": "Reference: system stage codes",
       "select_funnel": "Funnel",
       "select_funnel_first": "Select a funnel",
@@ -12013,7 +12017,9 @@
         "unknown": "Unknown error",
         "load_failed": "Could not load funnels",
         "save_failed": "Could not save funnel changes",
-        "reorder_failed": "Could not reorder stages"
+        "reorder_failed": "Could not reorder stages",
+        "unmapped_stage_code": "This stage is not mapped to the recruitment catalog. Choose a system stage in “Maps to system stage”.",
+        "pe_mapping_required": "Choose which system stage this funnel step maps to."
       }
     },
     "settings": {

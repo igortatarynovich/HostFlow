@@ -41,6 +41,11 @@ import { Modal } from '../../components/Modal'
 import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { refreshMetaStagesCache } from '../../store/useMeta'
 import { DEFAULT_STAGE_CODES } from '../../modules/dashboard/constants'
+import {
+  inferRecruitmentPeSystemStageCode,
+  RECRUITMENT_MAPPABLE_FUNNEL_STAGE_CODES,
+  RECRUITMENT_PE_SYSTEM_STAGE_CODES,
+} from '../../constants/recruitmentStageSurface'
 
 function SortableStageRow({
   stage,
@@ -145,6 +150,7 @@ function StageCreateEditModal({
   disabled,
   referenceCodes,
   funnelType,
+  saveError,
 }: {
   stage?: FunnelStage | null
   onClose: () => void
@@ -152,11 +158,19 @@ function StageCreateEditModal({
   disabled?: boolean
   referenceCodes?: string[]
   funnelType: 'candidate' | 'lead' | 'deal'
+  saveError?: FriendlyErrorInfo | null
 }) {
   const { t } = useI18n()
+  const isCandidateFunnel = funnelType === 'candidate'
   const [code, setCode] = useState(stage?.code || '')
   const [label, setLabel] = useState(stage?.label || '')
   const [systemStage, setSystemStage] = useState<FunnelStageCreate['system_stage']>(stage?.system_stage || 'in_progress')
+  const [peMapsTo, setPeMapsTo] = useState(
+    () =>
+      stage?.pe_maps_to_code ||
+      inferRecruitmentPeSystemStageCode(stage?.code) ||
+      (funnelType === 'candidate' ? 'processing_by_client' : ''),
+  )
   const [order, setOrder] = useState(stage?.order ?? 0)
   const [isTerminal, setIsTerminal] = useState(stage?.is_terminal ?? false)
   const [ownerRole, setOwnerRole] = useState('')
@@ -164,6 +178,7 @@ function StageCreateEditModal({
   const [requiredActionsText, setRequiredActionsText] = useState('')
   const [autoRulesJsonStr, setAutoRulesJsonStr] = useState('')
   const [conversionRoot, setConversionRoot] = useState<string>(() => stage?.conversion_root_v1 ?? '')
+  const [localError, setLocalError] = useState<string | null>(null)
 
   useEffect(() => {
     setConversionRoot(stage?.conversion_root_v1 ?? '')
@@ -182,10 +197,21 @@ function StageCreateEditModal({
   }, [stage])
 
   const handleSubmit = async () => {
-    if (!code.trim() || !label.trim()) {
+    if (!label.trim()) {
       alert(t('admin.funnels.validation_stage'))
       return
     }
+    const latinSlug = label
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '')
+    const resolvedCode = code.trim() || latinSlug || `stage_${order || 0}`
+    if (isCandidateFunnel && !peMapsTo.trim()) {
+      setLocalError(t('admin.funnels.errors.pe_mapping_required'))
+      return
+    }
+    setLocalError(null)
     const actions = requiredActionsText
       .split('\n')
       .map((s) => s.trim())
@@ -217,11 +243,15 @@ function StageCreateEditModal({
       Boolean(ownerRole.trim()) || actions.length > 0 || sla_hours !== undefined || auto_rules !== undefined
 
     const payload: FunnelStageCreate = {
-      code: code.trim(),
+      code: resolvedCode,
       label: label.trim(),
       system_stage: systemStage || 'in_progress',
       order: order || 0,
       is_terminal: isTerminal,
+    }
+    if (isCandidateFunnel) {
+      payload.pe_maps_to_module = 'recruitment'
+      payload.pe_maps_to_code = peMapsTo.trim()
     }
     if (funnelType === 'lead') {
       const cr = conversionRoot.trim().toLowerCase()
@@ -261,6 +291,18 @@ function StageCreateEditModal({
       }
     >
       <div className="space-y-4">
+        {(saveError || localError) && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+            {saveError ? (
+              <>
+                <p className="font-medium">{saveError.title}</p>
+                {saveError.detail ? <p className="mt-1 text-xs">{saveError.detail}</p> : null}
+              </>
+            ) : (
+              localError
+            )}
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             {t('admin.funnels.label_field')} *
@@ -270,14 +312,13 @@ function StageCreateEditModal({
             value={label}
             onChange={(e) => {
               setLabel(e.target.value)
-              if (!stage && !code.trim()) {
-                setCode(
-                  e.target.value
-                    .trim()
-                    .toLowerCase()
-                    .replace(/\s+/g, '_')
-                    .replace(/[^a-z0-9_]/g, '')
-                )
+              if (!stage) {
+                const slug = e.target.value
+                  .trim()
+                  .toLowerCase()
+                  .replace(/\s+/g, '_')
+                  .replace(/[^a-z0-9_]/g, '')
+                if (slug) setCode(slug)
               }
             }}
             className="input w-full"
@@ -292,16 +333,23 @@ function StageCreateEditModal({
           <input
             type="text"
             value={code}
-            onChange={(e) =>
-              setCode(e.target.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'))
-            }
+            onChange={(e) => {
+              const next = e.target.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_')
+              setCode(next)
+              const mapped = inferRecruitmentPeSystemStageCode(next)
+              if (mapped) setPeMapsTo(mapped)
+            }}
             className="input w-full font-mono text-sm"
             placeholder={t('admin.funnels.placeholders.stage_code')}
             disabled={disabled || !!stage}
           />
-          {stage && (
+          {stage ? (
             <p className="mt-1 text-xs text-slate-500">
               {t('admin.funnels.code_readonly')}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">
+              {t('admin.funnels.code_hint')}
             </p>
           )}
         </div>
@@ -318,6 +366,8 @@ function StageCreateEditModal({
                   disabled={disabled}
                   onClick={() => {
                     setCode(c)
+                    const mapped = inferRecruitmentPeSystemStageCode(c)
+                    if (mapped) setPeMapsTo(mapped)
                     if (!label.trim()) {
                       setLabel(c)
                     }
@@ -349,6 +399,26 @@ function StageCreateEditModal({
             {t('admin.funnels.system_stage_hint')}
           </p>
         </div>
+        {isCandidateFunnel ? (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              {t('admin.funnels.pe_maps_to')} *
+            </label>
+            <select
+              value={peMapsTo}
+              onChange={(e) => setPeMapsTo(e.target.value)}
+              className="input w-full"
+              disabled={disabled}
+            >
+              {RECRUITMENT_PE_SYSTEM_STAGE_CODES.map((peCode) => (
+                <option key={peCode} value={peCode}>
+                  {peCode}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">{t('admin.funnels.pe_maps_to_hint')}</p>
+          </div>
+        ) : null}
         {funnelType === 'lead' ? (
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -565,10 +635,24 @@ export default function FunnelsPage() {
   const [showCreateStageModal, setShowCreateStageModal] = useState(false)
   const [showCreateFunnelModal, setShowCreateFunnelModal] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [stageModalError, setStageModalError] = useState<FriendlyErrorInfo | null>(null)
+
+  const catalogStageCodes = useMemo(() => {
+    if (funnelTab !== 'candidate') return [...DEFAULT_STAGE_CODES]
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const code of [...RECRUITMENT_MAPPABLE_FUNNEL_STAGE_CODES, ...DEFAULT_STAGE_CODES]) {
+      const key = String(code || '').trim().toLowerCase()
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      out.push(key)
+    }
+    return out
+  }, [funnelTab])
 
   const referenceStageCodes = useMemo(
-    () => DEFAULT_STAGE_CODES.filter((code) => !stages.some((s) => s.code === code)),
-    [stages],
+    () => catalogStageCodes.filter((code) => !stages.some((s) => s.code === code)),
+    [catalogStageCodes, stages],
   )
 
   const sensors = useSensors(
@@ -655,6 +739,7 @@ export default function FunnelsPage() {
       if (!selectedFunnel) return
       setSaving(true)
       setPageError(null)
+      setStageModalError(null)
       try {
         await addFunnelStage(selectedFunnel.id, data)
         await refreshSelectedFunnel()
@@ -663,7 +748,9 @@ export default function FunnelsPage() {
       } catch (err: unknown) {
         const fb = t('admin.funnels.errors.save_failed')
         if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
-          setPageError(getFriendlyErrorInfo(err, fb, t))
+          const info = getFriendlyErrorInfo(err, fb, t)
+          setStageModalError(info)
+          setPageError(info)
         }
       } finally {
         setSaving(false)
@@ -677,6 +764,7 @@ export default function FunnelsPage() {
       if (!editingStage || !selectedFunnel) return
       setSaving(true)
       setPageError(null)
+      setStageModalError(null)
       try {
         await updateFunnelStage(selectedFunnel.id, editingStage.id, data)
         await refreshSelectedFunnel()
@@ -692,7 +780,9 @@ export default function FunnelsPage() {
         }
         const fb = t('admin.funnels.errors.save_failed')
         if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
-          setPageError(getFriendlyErrorInfo(err, fb, t))
+          const info = getFriendlyErrorInfo(err, fb, t)
+          setStageModalError(info)
+          setPageError(info)
         }
       } finally {
         setSaving(false)
@@ -985,7 +1075,10 @@ export default function FunnelsPage() {
           {selectedFunnel && (
             <button
               type="button"
-              onClick={() => setShowCreateStageModal(true)}
+              onClick={() => {
+                setStageModalError(null)
+                setShowCreateStageModal(true)
+              }}
               className="btn-primary text-sm"
             >
               + {t('admin.funnels.add_stage')}
@@ -1052,7 +1145,7 @@ export default function FunnelsPage() {
           {t('admin.funnels.reference_help')}
         </p>
         <div className="flex flex-wrap gap-2">
-          {DEFAULT_STAGE_CODES.map((code) => (
+          {catalogStageCodes.map((code) => (
             <span
               key={code}
               className="inline-flex rounded-lg bg-slate-100 px-3 py-0.5 text-xs font-medium text-slate-700"
@@ -1066,20 +1159,28 @@ export default function FunnelsPage() {
       {showCreateStageModal && selectedFunnel && (
         <StageCreateEditModal
           stage={null}
-          onClose={() => setShowCreateStageModal(false)}
+          onClose={() => {
+            setShowCreateStageModal(false)
+            setStageModalError(null)
+          }}
           onSave={handleCreateStage}
           disabled={saving}
           referenceCodes={referenceStageCodes}
           funnelType={funnelTab}
+          saveError={stageModalError}
         />
       )}
       {editingStage && (
         <StageCreateEditModal
           stage={editingStage}
-          onClose={() => setEditingStage(null)}
+          onClose={() => {
+            setEditingStage(null)
+            setStageModalError(null)
+          }}
           onSave={handleUpdateStage}
           disabled={saving}
           funnelType={funnelTab}
+          saveError={stageModalError}
         />
       )}
       {createFunnelModal}

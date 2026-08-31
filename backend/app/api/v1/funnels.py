@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -36,6 +37,7 @@ from backend.app.constants.funnel_types import (
 from backend.app.services.plan_feature_gates import ensure_custom_funnel_create_allowed
 
 router = APIRouter(prefix="/funnels", tags=["funnels"])
+logger = logging.getLogger(__name__)
 
 
 async def _enforce_company_module_scope(
@@ -306,6 +308,11 @@ async def _require_candidate_funnel_pe_mapping(
 
     inferred = infer_pe_mapping(str(stage.code or ""))
     if inferred is None:
+        logger.warning(
+            "candidate funnel stage code has no PE mapping funnel_id=%s code=%s",
+            getattr(funnel, "id", None),
+            stage.code,
+        )
         raise HTTPException(
             status_code=422,
             detail=(
@@ -445,6 +452,16 @@ class FunnelStageIn(BaseModel):
         default=None,
         description="Optional pipeline contract (owner_role, required_actions, sla_hours, auto_rules).",
     )
+    pe_maps_to_module: Optional[str] = Field(
+        default=None,
+        max_length=32,
+        description="Process Engine module for this stage (default recruitment).",
+    )
+    pe_maps_to_code: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="Registered Process Engine system stage this funnel row maps to.",
+    )
 
 
 class FunnelStageOut(BaseModel):
@@ -457,6 +474,8 @@ class FunnelStageOut(BaseModel):
     is_terminal: bool
     conversion_root_v1: Optional[str] = None
     stage_contract: Optional[StageContractV1] = None
+    pe_maps_to_module: Optional[str] = None
+    pe_maps_to_code: Optional[str] = None
 
     @classmethod
     def from_model(cls, s: FunnelStage) -> "FunnelStageOut":
@@ -479,7 +498,23 @@ class FunnelStageOut(BaseModel):
             is_terminal=s.is_terminal,
             conversion_root_v1=cr_out,
             stage_contract=contract,
+            pe_maps_to_module=str(getattr(s, "pe_maps_to_module", None) or "").strip() or None,
+            pe_maps_to_code=str(getattr(s, "pe_maps_to_code", None) or "").strip() or None,
         )
+
+
+def _apply_explicit_pe_mapping(stage: FunnelStage, payload: FunnelStageIn) -> None:
+    """Copy optional PE mapping from the write payload onto the funnel stage row."""
+    if "pe_maps_to_code" not in payload.model_fields_set and "pe_maps_to_module" not in payload.model_fields_set:
+        return
+    pe_code = str(payload.pe_maps_to_code or "").strip()
+    pe_module = str(payload.pe_maps_to_module or "").strip()
+    if not pe_code:
+        stage.pe_maps_to_module = None
+        stage.pe_maps_to_code = None
+        return
+    stage.pe_maps_to_module = pe_module or RECRUITMENT_MODULE_KEY
+    stage.pe_maps_to_code = pe_code
 
 
 class FunnelIn(BaseModel):
@@ -626,7 +661,8 @@ async def get_funnel(
 async def create_funnel(
     payload: FunnelIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_trust_write()),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
 ) -> FunnelOut:
     """Create a company-scoped operational funnel (recruitment or HR employee)."""
     import uuid
@@ -722,7 +758,8 @@ async def update_funnel(
     funnel_id: str,
     payload: FunnelPatchIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_trust_write()),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
 ) -> FunnelOut:
     """Update a company-scoped funnel."""
     db, tenant_id = db_tenant
@@ -783,7 +820,8 @@ async def add_funnel_stage(
     funnel_id: str,
     payload: FunnelStageIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_trust_write()),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
 ) -> FunnelStageOut:
     """Add stage to funnel."""
     import uuid
@@ -834,6 +872,7 @@ async def add_funnel_stage(
     if "stage_contract" in payload.model_fields_set:
         stage_kwargs["stage_contract_v1"] = _stage_contract_db_value(payload.stage_contract)
     stage = FunnelStage(**stage_kwargs)
+    _apply_explicit_pe_mapping(stage, payload)
     db.add(stage)
     await _require_funnel_stage_pe_mapping(
         db, tenant_id=tenant_str, funnel=funnel, stage=stage
@@ -849,7 +888,8 @@ async def update_funnel_stage(
     stage_id: str,
     payload: FunnelStageIn,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_trust_write()),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
 ) -> FunnelStageOut:
     """Update funnel stage."""
     db, tenant_id = db_tenant
@@ -924,6 +964,7 @@ async def update_funnel_stage(
         )
     if "stage_contract" in payload.model_fields_set:
         stage.stage_contract_v1 = _stage_contract_db_value(payload.stage_contract)
+    _apply_explicit_pe_mapping(stage, payload)
     await _require_funnel_stage_pe_mapping(
         db, tenant_id=tenant_str, funnel=funnel_row, stage=stage
     )
@@ -942,7 +983,8 @@ async def delete_funnel_stage(
     funnel_id: str,
     stage_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_trust_admin()),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_admin()),
 ) -> None:
     """Delete funnel stage."""
     db, tenant_id = db_tenant
@@ -1016,7 +1058,8 @@ async def delete_funnel_stage(
 async def delete_funnel(
     funnel_id: str,
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(require_trust_write()),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_trust_write()),
 ) -> None:
     """Delete a custom funnel when it is not default and not referenced anywhere."""
     db, tenant_id = db_tenant

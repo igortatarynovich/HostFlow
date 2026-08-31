@@ -603,6 +603,27 @@ function _getFriendlyErrorInfoInner(
     }
   }
 
+  if (status === 422) {
+    const peUnmapped =
+      typeof detail === 'string' && detail.toLowerCase().includes('process engine')
+    if (peUnmapped) {
+      return {
+        title: tr('Stage code is not in the catalog', 'admin.funnels.errors.unmapped_stage_code', t),
+        detail,
+        hint: tr(
+          'Pick a registered system stage code. The label can be custom.',
+          'admin.funnels.code_must_map_pe',
+          t,
+        ),
+      }
+    }
+    return {
+      title: fallbackTitle,
+      detail,
+      hint: tr('Retry the action or refresh the page.', 'app.api_errors.generic_retry_hint', t),
+    }
+  }
+
   if (status === 429) {
     const hintBase = tr('Wait a moment and try again.', 'app.api_errors.rate_limit_hint', t)
     const hint =

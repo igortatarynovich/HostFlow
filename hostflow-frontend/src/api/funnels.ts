@@ -19,6 +19,8 @@ export interface FunnelStage {
   /** Lead funnels: §2.12 root bucket for conversion analytics. */
   conversion_root_v1?: string | null
   stage_contract?: FunnelStageContractV1 | null
+  pe_maps_to_module?: string | null
+  pe_maps_to_code?: string | null
 }
 
 export interface FunnelStageCreate {
@@ -31,6 +33,9 @@ export interface FunnelStageCreate {
   conversion_root_v1?: string | null
   /** Omit on create if unused; send `null` on update to clear. */
   stage_contract?: FunnelStageContractV1 | null
+  /** Candidate funnels: registered Process Engine system stage this row maps to. */
+  pe_maps_to_module?: string | null
+  pe_maps_to_code?: string | null
 }
 
 export interface Funnel {

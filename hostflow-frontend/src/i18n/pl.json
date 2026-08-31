@@ -11949,6 +11949,10 @@
       "code_field": "Kod",
       "order_field": "Kolejność",
       "code_readonly": "Kodu nie można zmienić",
+      "code_hint": "Łaciński slug w pipeline. Nazwa na ekranie to etykieta powyżej — może być w dowolnym języku.",
+      "code_must_map_pe": "Każdy etap kandydata musi być zmapowany na etap systemowy Process Engine. Etykieta i kod mogą być własne.",
+      "pe_maps_to": "Mapowanie na etap systemowy",
+      "pe_maps_to_hint": "To tożsamość w katalogu (bramki, handoff, analityka). Kilka kroków lejka może współdzielić ten sam etap systemowy.",
       "create": "Utwórz",
       "validation_stage": "Kod i etykieta są wymagane",
       "validation_funnel_name": "Podaj nazwę lejka",
@@ -11963,7 +11967,7 @@
       "no_funnels_leads": "Brak lejków leadów. Utwórz lejek, aby zsynchronizować etapy z pipeline leadów.",
       "no_stages": "Brak etapów. Dodaj pierwszy etap.",
       "pick_existing_code": "Albo wybierz z istniejących kodów etapów systemowych:",
-      "reference_help": "Możesz użyć tych kodów lub zdefiniować własne. Pipeline i Dashboard biorą etapy z wybranego lejka.",
+      "reference_help": "Możesz dodawać własne etapy kandydatów. Każdy musi być zmapowany na zarejestrowany etap systemowy; etykieta jest dowolna. Lejki leadów nie wymagają tego mapowania.",
       "reference_stages": "Odniesienie: kody etapów systemowych",
       "select_funnel": "Lejek",
       "select_funnel_first": "Wybierz lejek",
@@ -12013,7 +12017,9 @@
         "unknown": "Nieznany błąd",
         "load_failed": "Nie udało się wczytać lejków",
         "save_failed": "Nie udało się zapisać zmian lejka",
-        "reorder_failed": "Nie udało się zmienić kolejności etapów"
+        "reorder_failed": "Nie udało się zmienić kolejności etapów",
+        "unmapped_stage_code": "Ten etap nie jest zmapowany na katalog rekrutacji. Wybierz etap systemowy w polu „Mapowanie na etap systemowy”.",
+        "pe_mapping_required": "Wskaż, na który etap systemowy mapuje się ten krok lejka."
       }
     },
     "settings": {

@@ -32,3 +32,19 @@ def test_funnels_api_schema_allows_employee_type_constant() -> None:
     source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
     assert "FUNNEL_TYPE_PATTERN" in source
     assert "pattern=FUNNEL_TYPE_PATTERN" in source
+
+
+def test_funnels_mutate_handlers_inject_userctx_not_role_string() -> None:
+    """require_trust_write() returns str; ACL needs UserCtx — mixing them 500s on POST /stages."""
+    source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
+    assert "current_user: UserCtx = Depends(require_trust_write())" not in source
+    assert "current_user: UserCtx = Depends(require_trust_admin())" not in source
+    assert "current_user: UserCtx = Depends(get_current_user)" in source
+    assert "_role: str = Depends(require_trust_write())" in source
+    assert "_role: str = Depends(require_trust_admin())" in source
+
+
+def test_funnels_stage_write_accepts_explicit_pe_mapping() -> None:
+    source = Path("backend/app/api/v1/funnels.py").read_text(encoding="utf-8")
+    assert "pe_maps_to_code" in source
+    assert "_apply_explicit_pe_mapping" in source
