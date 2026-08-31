@@ -144,3 +144,11 @@ an explicit single-person owner is strictly better than an unnamed role.
   [queue amendment](../tasks/sales-to-comms-sequential-queue.md) § 8. Successor: **OL-2**, which owns
   the fresh-database migration blocker and therefore also gates the CI half of
   [TI-5](../tasks/tenant-isolation-enforcement.md).
+- 2026-08-31 (later, note — the decision above is unchanged): the migration blocker referenced in
+  § What this gate does not do and in the line above **was measured and does not exist** —
+  `alembic upgrade heads` applies to a freshly created database in one command
+  ([Operate & Launch § Correction](../tasks/operate-and-launch.md)). This does not alter the outcome,
+  the five answers or either constraint; OL-2 remains the successor, with a corrected scope. One
+  consequence for OL1-C1: OL-2's gate requires an operator who is not the author, so the
+  **execution-witness** half of that residual is now an OL-2 entry condition, while the escalation half
+  stays with OL-7 as recorded.

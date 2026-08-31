@@ -52,13 +52,15 @@ Resume this slice only if:
 - a **new** module cannot deploy, or  
 - failures are proven introduced by a Product PR (not base-known).
 
-### Resume condition may already be met (open question, 2026-08-28)
+### Resume condition — **measured 2026-08-31, and it is NOT met**
 
-[`AGENTS.md`](../../../AGENTS.md) § “Migration caveats” states that `alembic upgrade heads` does **not** apply cleanly to a freshly created database, and documents a manual repair sequence (pre-create `alembic_version` with a wider column, apply parallel branch tips in dependency order, skip a double-`CREATE TYPE` revision by stamping, then patch an enum value and a column default for the bootstrap seed).
+The 2026-08-28 entry asked whether [`AGENTS.md`](../../../AGENTS.md) § “Migration caveats” was still true, and required the answer to be **measured, not assumed**, on a scratch database, on the current trusted base, with the result recorded here. It has been measured, and the answer is no.
 
-If that is still true, the **first** resume condition above is satisfied and this slice is no longer merely deferred debt: [Release Readiness Gate](../gates/release-readiness-gate.md) § Release Candidate requires migrations to apply to a freshly created database **without manual repair steps**, so a fresh-install failure is a release blocker rather than background debt.
+On `f03a4dbd`, against two disposable Postgres 16 containers each starting genuinely empty, `alembic upgrade heads` and `alembic upgrade head` both exit 0, apply all 299 revisions and produce 236 tables with no manual step. The manual repair sequence is obsolete: the `alembic_version` widening already lives in the graph ([`20260113_widen_alembic_version.py`](../../../backend/alembic/versions/20260113_widen_alembic_version.py)), the branch tips order themselves, and `202605200001` applies rather than needing a stamp. Full method and evidence: [Operate & Launch § Correction](operate-and-launch.md).
 
-This must be **measured, not assumed** — on a scratch database, on the current trusted base — and the result recorded here. The owning slice for the fix belongs to the launch/operations program (fresh-install bootstrap), not to this brief; this brief keeps the pytest side.
+**Therefore the first resume condition — “clean Postgres `upgrade head` fails on a product branch we own” — is not satisfied,** and this slice stays deferred debt rather than becoming a release blocker.
+
+What did survive is a bootstrap defect, not a migration one: the migrated schema rejects the seeded admin (`role='superadmin'` absent from the enum; `users.preferences` NOT NULL with no default) and the seed swallows the error. That is **OL-2's**, as before; this brief keeps the pytest side.
 
 ## QB-1 — freeze the known-failure list (RR6 evidence, decided 2026-08-28)
 
@@ -68,7 +70,7 @@ This must be **measured, not assumed** — on a scratch database, on the current
 
 RR6 asks whether the set of tolerated known failures is **enumerated, frozen, owned and non-growing**. Today the answer is an aggregate («~657, dated 2026-07-21»), which is not an answer: an aggregate cannot be frozen, and a number nobody owns cannot be shown not to grow. This slice replaces the number with a list.
 
-**Authorised:** a dedicated scratch **test** database. `backend/tests/conftest.py` refuses to run against a database that does not look like a test database, which is why the figure could not be re-measured. The cheap path is a template copy of the migrated dev database rather than a fresh migration run — a fresh run hits the bootstrap failure described above, which is **OL-2's** problem, not this slice's.
+**Authorised:** a dedicated scratch **test** database. `backend/tests/conftest.py` refuses to run against a database that does not look like a test database, which is why the figure could not be re-measured. The cheap path is a template copy of the migrated dev database rather than a fresh migration run. Note (2026-08-31): a fresh run no longer fails *in the migrations* — it reaches head cleanly — but it still hits the bootstrap failure described above, which is **OL-2's** problem, not this slice's. The template copy remains the cheaper path; it is no longer the only one.
 
 **Done when:**
 
@@ -154,13 +156,13 @@ This is the argument for RR6 in one line: while the baseline is an unowned aggre
 
 Verification: full suite from `backend/` on a freshly created database gives **370 failed / 3169 passed** against the 371 measured from the repo root — the two sets differ only by the two repaired head-pin tests, plus one unrelated Sales regression that arrived in `b67fe4e2` (see below). Before the change the same command from `backend/` gave 397.
 
-**Not fixed, and now understood:** four migration round-trip tests (`test_forms_sprint6_alembic_roundtrip`, `test_forms_sprint3_alembic_roundtrip`, `test_alembic_downgrade_upgrade_roundtrip`, `test_epic_p_alembic_pr3_downgrade_upgrade_roundtrip`) cannot pass in the shared suite at all: each downgrades to its own predecessor, which on today's graph unwinds every later migration, and the downgrade aborts on `ck_users_supervisor_role` because the database holds rows. They can only assert reversibility on a throwaway database, which depends on fresh-database migrations working — **OL-2**. They stay in the tolerated set with that dependency named, not as mystery failures.
+**Not fixed, and now understood:** four migration round-trip tests (`test_forms_sprint6_alembic_roundtrip`, `test_forms_sprint3_alembic_roundtrip`, `test_alembic_downgrade_upgrade_roundtrip`, `test_epic_p_alembic_pr3_downgrade_upgrade_roundtrip`) cannot pass in the shared suite at all: each downgrades to its own predecessor, which on today's graph unwinds every later migration, and the downgrade aborts on `ck_users_supervisor_role` because the database holds rows. They can only assert reversibility on a throwaway database, which depends on fresh-database migrations working. **That dependency was measured satisfied on 2026-08-31** — a fresh database reaches head in one command — so the blocker for these four is no longer OL-2 but the harness: nothing in the suite builds them a throwaway database. They stay in the tolerated set with the corrected dependency named, not as mystery failures.
 
 **Regression found while verifying (not part of this fix):** `b67fe4e2` «fix(sales): open existing client instead of creating a duplicate» makes `tests/modules/sales/test_convert_entrypoints_contract.py::test_missing_review_blocks_both_endpoints` fail with «DID NOT RAISE HTTPException». The file passes 9/9 at `255279fc` and 8/9 at `b67fe4e2` on an identical fresh database, so the guard that blocked conversion without a review is no longer firing. Owner: whoever owns the Sales convert entrypoints.
 
 **Monthly lead quota — fixed** on the same branch. The cap counts `leads` rows created in the current calendar month and the suite never deletes them, so every run inherited the previous run's total: a second run against the same database reported **467** failures instead of 371, 152 of them `monthly_leads_limit_reached`. The test tenant is now granted quota through the product's own `pack_addons_v1.monthly_leads_cap` field in `backend/tests/conftest.py`, so `resolve_monthly_leads_cap` is still exercised exactly as in production and the unit tests that pin the plan caps are untouched.
 
-**Measurement protocol — scripted.** `scripts/testing/measure-known-failures.sh` recreates a scratch database from the schema of an already-migrated one, runs the full suite from the repo root, and writes a sorted failure-id list. The schema is cloned rather than migrated because `alembic upgrade heads` still does not apply to an empty database (**OL-2**); when that is fixed the script should migrate instead.
+**Measurement protocol — scripted.** `scripts/testing/measure-known-failures.sh` recreates a scratch database from the schema of an already-migrated one, runs the full suite from the repo root, and writes a sorted failure-id list. The schema is cloned rather than migrated. The stated reason — that `alembic upgrade heads` does not apply to an empty database — was **measured false on 2026-08-31**, so the script *may* now migrate instead; the remaining reasons to clone are speed and the bootstrap defect (**OL-2**), not an impossibility. Changing the script is not this note; the note only corrects the justification.
 
 **Reproducibility — proven.** Two consecutive runs of that script on commit `9c8296d4` produced **370 failed / 3172 passed / 7 skipped / 4 errors** with **identical** failure-id sets. This is the reproducible measurement RR6 asks for, and it replaces the 371 recorded at `255279fc`: two alembic-pin tests were repaired and one Sales regression arrived in `b67fe4e2`.
 

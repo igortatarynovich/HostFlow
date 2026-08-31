@@ -80,7 +80,37 @@ Evidence collected 2026-08-28 across `docker-compose.yml`, `deploy/`, `.github/w
 | Communications scheduler inside the API process | `main.py` lifespan + `services/communications_scheduler.py` | [job_queue.md](../architecture/job_queue.md) itself warns that a second replica double-sends |
 | `OBJECT_STORAGE_BACKEND=fs` | `backend/app/core/settings.py` | Customer documents on a container-local disk; loss on host failure, no horizontal scale |
 | Migrations not applied by the container entrypoint | `backend/Dockerfile` CMD is uvicorn only | Deploy correctness depends on someone remembering `alembic upgrade` |
-| `alembic upgrade heads` fails on a fresh database | [AGENTS.md](../../../AGENTS.md) § Migration caveats | Directly contradicts RC condition 4 — this is the sharpest single launch blocker |
+| ~~`alembic upgrade heads` fails on a fresh database~~ — **withdrawn 2026-08-31, see § Correction below** | [AGENTS.md](../../../AGENTS.md) § Migration caveats | Measured false. The surviving defect is one layer down: the migrated schema rejects the bootstrap admin, and the seed swallows the error |
+| A fresh instance starts **healthy with no admin user** | `backend/app/auth/ensure_seed.py`; measured 2026-08-31 | `role='superadmin'` is not in the `role` enum and `users.preferences` is `NOT NULL` with no default; the seed catches the failure and startup continues. A deploy check that asks "did it start" passes |
+| The trusted-base checkout **is** the production runtime | `docker inspect hostflow-backend-1`; measured 2026-08-31 | `/opt/HostFlow/backend` is bind-mounted read-write at `/app` in the running container and Caddy serves `/opt/HostFlow/hostflow-frontend/dist`. "Deploy" today is editing the working tree of the live host; a branch switch changes production |
+
+---
+
+## Correction — the fresh-database migration blocker does not exist (measured 2026-08-31)
+
+This brief opened by calling `alembic upgrade heads` on a fresh database "the sharpest single launch blocker". That was inherited from [`AGENTS.md`](../../../AGENTS.md) § Migration caveats and never measured. It has now been measured, and it is false.
+
+**Method.** Two disposable Postgres 16 containers, each a genuinely empty database (0 public tables), on the current trusted base `f03a4dbd`. Alembic run under a scrubbed environment (`env -i`) with all three URL variables pinned to the throwaway port, so no fallback to the live database was possible. The production stack was not touched.
+
+| Run | Command | Result |
+|---|---|---|
+| 1 | `alembic upgrade heads` | exit 0 · 299 revisions · head `202608250002_merge_e5_drop_and_adr036_heads` · 236 tables · 0 errors |
+| 2 | `alembic upgrade head` | exit 0 · same head · 236 tables |
+
+**Why the old caveats were wrong.** The `alembic_version` column does not need widening by hand — [`20260113_widen_alembic_version.py`](../../../backend/alembic/versions/20260113_widen_alembic_version.py) does it inside the graph before any of the 109 over-length revision ids is recorded (verified: the fresh database ends with `character varying(255)` holding a 43-character id). The parallel branch tips do not need hand-ordering — there is one head, 25 merge points, and alembic's own ordering suffices. `202605200001` does not need stamping over — it applies, and `202511130001` drops its objects as designed.
+
+**What survives, and is now OL-2's actual migration problem.** The schema the migrations produce cannot accept the admin the bootstrap writes. Reproduced directly against the fresh database:
+
+```
+ERROR:  invalid input value for enum role: "superadmin"
+ERROR:  null value in column "preferences" of relation "users" violates not-null constraint
+```
+
+`ensure_seed.py` inserts `role='superadmin'` and omits `preferences`; no migration adds `superadmin` to the enum, and `preferences` is `NOT NULL` with no server default. The seed catches the exception and startup continues, so the failure is silent.
+
+**Release consequence.** RC condition 4 ("migrations apply to a freshly created database without manual repair steps") is not the unsatisfiable condition the [Release Readiness Gate](../gates/release-readiness-gate.md) and the [queue](sales-to-comms-sequential-queue.md) currently describe. It is unproven rather than blocked: no CI job builds a fresh database. Producing that proof is OL-2's, and it also removes the stated obstacle to running the isolation suite under the restricted role in CI ([RR5](../gates/release-readiness-gate.md), [TI-5](tenant-isolation-enforcement.md)).
+
+**Not claimed here.** That CI passes — CI was not re-run. That a fresh instance is usable — it is not, per the bootstrap defect above. That any runbook exists — RB-1…RB-10 remain ten of ten MISSING.
 
 ---
 
@@ -125,7 +155,15 @@ Out: writing the runbooks themselves (OL-2…OL-7 own them); choosing hosting ve
 
 ## OL-2 — Deploy, migrate & rollback (**next** — named, not started)
 
-The blocking sub-problem is migrations: per `AGENTS.md`, `alembic upgrade heads` does **not** apply cleanly to a fresh database, and the documented workaround is a hand-ordered sequence with a manual `CREATE TYPE` and a `stamp`. RC condition 4 forbids exactly that. This slice either fixes the migration graph or replaces it with a documented, automated bootstrap — an insider-only sequence is a STOP.
+**The premise this slice was framed around has been measured false — see § Correction (2026-08-31).** The migration graph applies to a freshly created database in one command. What remains for OL-2 is smaller in one place and larger in another.
+
+Smaller: there is no migration graph to repair. RC condition 4 looks satisfiable today, and the slice's job is to *prove* it in CI rather than fix it — a workflow that creates an empty database and runs `alembic upgrade head` is the evidence, and no such workflow exists.
+
+Larger: the fresh-database defect moved downstream and got quieter. A freshly migrated instance starts healthy with **no admin user**, because the bootstrap insert violates the `role` enum and the `preferences` NOT NULL constraint and the seed swallows both. A deploy runbook that checks liveness would not catch it. And because `auth_seed_enabled()` is off by default, a production target never runs that seed at all, so this slice must name the first-admin path explicitly rather than inherit one.
+
+Also inherited: "deploy" currently means editing the working tree of the live host (§ Starting point). The procedure this slice writes has to replace that, not document it.
+
+**Entry condition (added 2026-08-31, from [OL1-C1](../gates/launch-ownership-gate.md)).** The Deploy & Rollback Gate requires execution by someone other than the author, and OL-1 recorded a single holder for RR3 / RR4 / RR7. A named executor who is not the author of the procedure must exist **before** this slice starts; otherwise OL-2 can complete every deliverable and still fail its own gate on the last line. OL-7 owns the escalation half of OL1-C1; the execution-witness half is due here.
 
 Out: zero-downtime, blue-green, IaC, multi-environment promotion.
 
@@ -197,5 +235,6 @@ Out: 24/7 rotation, paid support tiers, status-page product.
 
 ## History
 
+- 2026-08-31 (later, correction): **The fresh-database migration blocker was measured and does not exist** — see § Correction. `alembic upgrade heads` applies to an empty database in one command, twice, on `f03a4dbd`; the three manual steps in [`AGENTS.md`](../../../AGENTS.md) § Migration caveats were obsolete, one of them because the repair already lives in the graph. This retires the claim that OL-2 owns "the sharpest single launch blocker" and that RC condition 4 is unsatisfiable — the condition is **unproven, not blocked**, because no CI job builds a fresh database. Two defects were found in its place and are OL-2's: a freshly migrated instance starts healthy with **no admin user** (the bootstrap insert violates the `role` enum and the `preferences` NOT NULL constraint, and the seed swallows the error), and "deploy" today means editing the working tree of the live host, which bind-mounts read-write into the running container. An entry condition was added to OL-2 for the execution-witness half of [OL1-C1](../gates/launch-ownership-gate.md), since its gate requires an operator who is not the author.
 - 2026-08-31: **Track opened; OL-1 delivered** — [Launch Ownership Gate](../gates/launch-ownership-gate.md) `PASS_WITH_CONSTRAINTS`. Production target decided (one dedicated host, one compose stack), RR3 / RR4 / RR7 given a named holder, the RB-1…RB-10 set sealed at ten of ten MISSING, "executed" defined as a dated record naming operator / target / build / result with the operator not being the author, and [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md) accepted. Two residuals recorded rather than smoothed over: one person holds all three release questions, so RR7's escalation step has no second party (carried to OL-7); and the single-host target means OL-2's rollback rehearsal and OL-5's restore drill must build a throwaway target instead of using production. Successor **OL-2**, which owns the sharpest launch blocker in § Starting point — `alembic upgrade heads` failing on a fresh database — and therefore also gates the CI half of [tenant isolation](tenant-isolation-enforcement.md).
 - 2026-08-28: Brief opened as v1 blocker 6 with the measured starting point, the OL-1…OL-7 ladder and named gates. Queued, not scheduled.

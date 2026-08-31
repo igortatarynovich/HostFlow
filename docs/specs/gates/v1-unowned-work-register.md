@@ -56,7 +56,7 @@ Anything else in the canon that implies future work is **unowned** and must appe
 
 | Item | Brief that owns it |
 |------|--------------------|
-| Fresh-database `alembic upgrade heads` failure (RC condition 4) | [Operate & Launch](../tasks/operate-and-launch.md) OL-2 |
+| ~~Fresh-database `alembic upgrade heads` failure~~ — measured false 2026-08-31; replaced by **RC condition 4 is unproven** (no CI job builds a fresh database) and **a freshly migrated instance starts with no admin user** | [Operate & Launch](../tasks/operate-and-launch.md) OL-2 · [§ Correction](../tasks/operate-and-launch.md) |
 | All ten missing v1 runbooks (RB-1…RB-10) | [Operate & Launch](../tasks/operate-and-launch.md) OL-2…OL-7 · [runbook index](../../runbooks/README.md) |
 | Production defaults: in-process queue, local-disk storage, scheduler inside the API process | [Operate & Launch](../tasks/operate-and-launch.md) OL-3 |
 | Tenant export, subject erasure, retention policy; FAQ anonymisation claim without implementation | [Operate & Launch](../tasks/operate-and-launch.md) OL-6 · [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md) |
