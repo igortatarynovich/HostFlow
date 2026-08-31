@@ -409,7 +409,10 @@ def _run_alembic_upgrade_head(sync_url: str) -> None:
         from alembic.config import Config
 
         backend_dir = _backend_root
-        alembic_ini = os.path.join(backend_dir, "alembic.ini")
+        repo_root = os.path.dirname(backend_dir)
+        alembic_ini = os.path.join(repo_root, "alembic.ini")
+        if not os.path.exists(alembic_ini):
+            alembic_ini = os.path.join(backend_dir, "alembic.ini")
         script_location = os.path.join(backend_dir, "alembic")
 
         cfg = Config(alembic_ini if os.path.exists(alembic_ini) else None)

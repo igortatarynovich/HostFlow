@@ -185,7 +185,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
         return
     backend_root = Path(__file__).resolve().parents[1]
     repo_root = Path(__file__).resolve().parents[2]
-    alembic_ini = backend_root / "alembic.ini"
+    alembic_ini = repo_root / "alembic.ini"
     if not alembic_ini.is_file():
         return
     url = (
@@ -202,8 +202,8 @@ def pytest_sessionstart(session: pytest.Session) -> None:
             "Alembic executable not found (.venv/bin/alembic). Run `make install` or set HOSTFLOW_SKIP_ALEMBIC_UPGRADE=1."
         )
     subprocess.run(
-        [alembic_bin, "-c", str(alembic_ini), "upgrade", "head"],
-        cwd=str(backend_root),
+        [alembic_bin, "-c", str(alembic_ini), "upgrade", "heads"],
+        cwd=str(repo_root),
         check=True,
         env=_env_with_local_db_host(os.environ),
     )

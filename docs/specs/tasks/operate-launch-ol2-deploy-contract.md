@@ -109,17 +109,18 @@ There are zero tags, and the running deployment cannot honestly be tagged: its f
 unknown and its backend executes a mutable working tree. Tagging it would assert a commit-to-runtime
 correspondence that does not exist.
 
-**Therefore the first predecessor is manufactured, not discovered.** The permitted sequence:
+**The first tagged release is a baseline, not a predecessor.** A predecessor exists only
+relative to a later candidate. Meaning of C-5 is unchanged; the phase is:
 
-1. Choose a commit on the trusted base.
-2. Build backend and frontend artefacts from it **through the OL-2B procedure**, satisfying C-1 and C-2.
-3. Deploy them to the throwaway target and record an execution entry.
-4. Tag that commit `release/v0.1.0`. It is a valid predecessor **because it was built and deployed by
-   the procedure**, not because a tag was created.
-5. The rehearsal candidate is a later commit, tagged the same way.
+1. Merge the release-path PRs onto the trusted base and keep it green.
+2. Build immutable artefacts from that commit SHA (not the working tree).
+3. Retain them by digest.
+4. Independent RB-2 execution.
+5. Tag `release/vX.Y.Z`. That tag **creates the baseline**.
+6. Rollback is provable only starting with the **next** release.
 
 Explicitly forbidden: tagging the current production commit to "have a predecessor"; tagging
-retroactively; tagging a commit whose artefacts were never built by the procedure.
+retroactively; tagging a throwaway SHA that is not on the trusted base.
 
 ### C-6. Rollback must not rebuild
 
@@ -142,7 +143,9 @@ Redeploying old code against a database migrated forward is not a rollback unles
 supports that code.
 
 - A release whose migrations are **backward-compatible** (expand-only: additive columns/tables,
-  nullable or defaulted, no drops or narrowing renames) may be rolled back by artefact alone.
+  nullable or defaulted, no drops or narrowing renames, including `ALTER TYPE … ADD VALUE`)
+  may be rolled back by artefact alone. Rollback **does not** run `alembic downgrade` for
+  that class (RB-3 rule; example `202608310001_bootstrap_admin_schema`).
 - A release containing a **destructive or narrowing** migration may not. It must declare itself
   irreversible, and its rollback path is restore-from-backup ([OL-5](operate-and-launch.md)), not
   redeploy.
@@ -159,7 +162,7 @@ supports that code.
 |---|---|---|---|
 | **OL-2A** | This contract; artefact identity for backend and frontend; build metadata carried by the running system | Contract recorded **and enforced** — images labelled, frontend published atomically with build metadata, provenance queryable | OL-1 |
 | **OL-2B** | The real **RB-2**: clean target → running application, including migrations **and** the first-admin/bootstrap path | A non-author operator reaches a working login on a clean target from the written procedure alone | OL-2A |
-| **OL-2C** | CI parity: Postgres 15 vs 16-alpine, two `alembic.ini` under a declared single source of truth, migration-only CI that never starts the app | One canonical path used by both CI and RB-2 as far as practical; every remaining difference named and justified | OL-2B |
+| **OL-2C** | One deployment proof-path for CI and RB-2: PG16-alpine, repo-root `alembic.ini`, fresh DB → migrate → bootstrap → start → `/healthz` (`/build` and login when those PRs are on the tree) | [operate-launch-ol2c-ci-parity.md](operate-launch-ol2c-ci-parity.md) — workflow `release-proof.yml` | OL-2B |
 | **OL-2D** | Rollback rehearsal on a throwaway target, with migration compatibility established per C-7 | Candidate deployed, rolled back to a C-5 predecessor, and the system proven **working** — not merely started — after rollback | OL-2A ∧ OL-2B ∧ OL-2C |
 
 ### Execution status is separate from implementation status
@@ -182,7 +185,9 @@ beyond what C-1.5 requires; autoscaling; SLO targets.
 
 ## History
 
-- 2026-08-31 (later): Executable path landed (`cdfb8697`) — release Dockerfile with OCI labels,
+- 2026-08-31 (later, OL-2C): C-5 phase locked — first tag creates the baseline; rollback is
+  provable from the next release. Proof-path: [operate-launch-ol2c-ci-parity.md](operate-launch-ol2c-ci-parity.md).
+- 2026-08-31 (later): Executable path landed — release Dockerfile with OCI labels,
   `GET /build`, frontend `build.json`, content-hash publish with atomic symlink, throwaway
   `compose.release.yml` with no source bind mounts. Contract clauses C-1…C-3 are **implemented on
   the release path and still failed on the live path**. No tag created. Live stack not rebuilt.

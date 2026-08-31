@@ -30,6 +30,8 @@ on:
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/actions/backend-pytest/**"
+      - "alembic.ini"
+      - "scripts/deploy/**"
   push:
     branches:
       - integration/release-product-a-b
@@ -53,6 +55,8 @@ on:
       - "docs/devel/pr-checklist-adr014-document-access.md"
       - ".github/workflows/backend-ci.yml"
       - ".github/actions/backend-pytest/**"
+      - "alembic.ini"
+      - "scripts/deploy/**"
   workflow_dispatch:
 
 concurrency:
@@ -120,11 +124,14 @@ jobs:
               - 'shared/crm_app_paths.schema.json'
               - 'docs/devel/pr-checklist-adr014-document-access.md'
             alembic:
+              - 'alembic.ini'
+              - 'backend/alembic.ini'
               - 'backend/alembic/**'
               - 'backend/scripts/check_alembic_heads.py'
               - 'backend/scripts/check_alembic_revision_graph.py'
               - 'backend/scripts/check_stage1a_migrations.py'
               - 'backend/app/models/**'
+              - 'scripts/deploy/check_alembic_entrypoint.py'
             sales:
               - 'backend/app/modules/sales/**'
               - 'backend/app/modules/client_accounts/**'
@@ -278,7 +285,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       db:
-        image: postgres:15
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: hostflow
           POSTGRES_PASSWORD: hostflow
@@ -305,9 +312,12 @@ jobs:
         run: python3 backend/scripts/check_alembic_heads.py
       - name: Alembic revision graph (every down_revision present + single head)
         run: python3 backend/scripts/check_alembic_revision_graph.py --with-alembic
+      - name: Canonical Alembic entrypoint (repo-root alembic.ini)
+        run: python3 scripts/deploy/check_alembic_entrypoint.py
       - name: Alembic upgrade
-        working-directory: backend
-        run: alembic upgrade head
+        env:
+          ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+        run: alembic -c alembic.ini upgrade heads
       - name: Stage 1A migration roundtrip (when present)
         working-directory: backend
         run: |
@@ -324,7 +334,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       db:
-        image: postgres:15
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: hostflow
           POSTGRES_PASSWORD: hostflow
@@ -354,7 +364,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       db:
-        image: postgres:15
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: hostflow
           POSTGRES_PASSWORD: hostflow

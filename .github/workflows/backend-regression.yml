@@ -30,7 +30,7 @@ jobs:
       HOSTFLOW_ALLOW_NON_TEST_DB: "1"
     services:
       db:
-        image: postgres:15
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: hostflow
           POSTGRES_PASSWORD: hostflow
@@ -52,10 +52,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest pytest-asyncio pytest-cov
       - name: Alembic upgrade
-        working-directory: backend
         env:
           DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-        run: alembic upgrade head
+          ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+        run: alembic -c alembic.ini upgrade heads
       - name: Tests with coverage
         working-directory: backend
         env:

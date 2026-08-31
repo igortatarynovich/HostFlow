@@ -1,0 +1,65 @@
+# OL-2C: the same fresh-DB path CI and RB-2 must share.
+# Identity is GITHUB_SHA. Postgres 16-alpine matches release compose.
+name: release-proof
+
+on:
+  pull_request:
+  push:
+    branches:
+      - integration/release-product-a-b
+  workflow_dispatch:
+
+concurrency:
+  group: release-proof-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fresh-db-proof:
+    name: fresh DB → migrate → start → healthz
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hostflow
+          POSTGRES_PASSWORD: hostflow
+          POSTGRES_DB: hostflow
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U hostflow -d hostflow"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+      ASYNC_DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
+      SYNC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+      ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET: ol2c-ci-not-a-production-secret
+      TENANT_ID: 11111111-1111-1111-1111-111111111111
+      GIT_SHA: ${{ github.sha }}
+      GITHUB_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Canonical Alembic entrypoint
+        run: python3 scripts/deploy/check_alembic_entrypoint.py
+      - name: Release proof
+        run: bash scripts/deploy/release-proof.sh

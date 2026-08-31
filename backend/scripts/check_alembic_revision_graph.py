@@ -35,7 +35,7 @@ from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_VERSIONS_DIR = BACKEND_ROOT / "alembic" / "versions"
-DEFAULT_ALEMBIC_INI = BACKEND_ROOT / "alembic.ini"
+DEFAULT_ALEMBIC_INI = BACKEND_ROOT.parent / "alembic.ini"
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(_SCRIPTS_DIR) not in sys.path:

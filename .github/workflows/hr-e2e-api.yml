@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       db:
-        image: postgres:15
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: hostflow
           POSTGRES_PASSWORD: hostflow
@@ -63,10 +63,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Alembic upgrade
-        working-directory: backend
         env:
           DATABASE_URL: postgresql+asyncpg://hostflow:hostflow@localhost:5432/hostflow
-        run: alembic upgrade head
+          ALEMBIC_DATABASE_URL: postgresql+psycopg://hostflow:hostflow@localhost:5432/hostflow
+        run: alembic -c alembic.ini upgrade heads
 
       - name: Seed bootstrap users for e2e
         env:
