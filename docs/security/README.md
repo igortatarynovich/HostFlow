@@ -13,6 +13,7 @@
 | [security-events-governance.md](./security-events-governance.md) | Правила владения security events: canonical v1, taxonomy PR, запрет raw events, redaction, отделение transport от producers. |
 | [security-review-checklist.md](./security-review-checklist.md) | Обязательный чеклист для каждого PR, который трогает security perimeter. |
 | [threat-models/](./threat-models/) | Узкоспециализированные threat models по поверхностям атаки. |
+| [credential-exposure-and-secrets-injection.md](./credential-exposure-and-secrets-injection.md) | **OPEN P0** — измеренные пути экспозиции секретов (образ, bind mount, права 644), классы credential-ов и последовательность ротации R-1…R-7. Значения секретов в документе отсутствуют по правилу. |
 | [github-labels.md](./github-labels.md) | Имена GitHub labels + команды `gh` для первичной настройки. |
 | [runtime-validation-report-hf-sec-stabilization-01.md](./runtime-validation-report-hf-sec-stabilization-01.md) | Отчёт спринта HF-Sec-Stabilization-01: legacy burn-down, runtime validation, telemetry quality (аудит репозитория + operational follow-ups). |
 | [operations/security-runtime-cycle-checklists.md](./operations/security-runtime-cycle-checklists.md) | Практические процедуры цикла: staging log validation, volume snapshot, worker context audit (код), document flow manual, ссылка на mini-review / Search–AI merge gate. |
