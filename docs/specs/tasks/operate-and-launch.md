@@ -132,6 +132,10 @@ Sequential inside this track; parallel to the Product Track. One Active Launch-o
 ```text
 OL-1 Launch contract & ownership seal (docs)
   → OL-2 Deploy, migrate & rollback (executed)
+       OL-2A deploy contract & artefact identity
+       OL-2B documented deploy + bootstrap (RB-2)
+       OL-2C CI parity
+       OL-2D rollback rehearsal (needs an independent operator)
   → OL-3 Production runtime defaults (queue / storage / scheduler)
   → OL-4 Operability signal (readiness, scrape, alerts, receiver)
   → OL-5 Backup & recovery drill
@@ -143,7 +147,7 @@ OL-1 Launch contract & ownership seal (docs)
 | # | Slice | Machine id | Named gate (PASS =) | Depends on | Estimate |
 |---|-------|------------|---------------------|------------|----------|
 | **OL-1** ✅ | Launch contract & ownership seal | `ol-contract` | **[Launch Ownership Gate](../gates/launch-ownership-gate.md) — `PASS_WITH_CONSTRAINTS` 2026-08-31.** production target defined; RR3 / RR4 / RR7 owners named; required runbook set enumerated in [`docs/runbooks/README.md`](../../runbooks/README.md) with owner and status; “executed” defined as a dated record; [ADR-039](../architecture/ADR-039-tenant-data-lifecycle.md) accepted | queue amendment opening the Launch-ops track | 1 slice (docs) |
-| **OL-2** | Deploy, migrate & rollback | `ol-deploy` | **Deploy & Rollback Gate** — a written procedure takes a tagged commit to a non-dev target, applies migrations to a **freshly created** DB with no manual repair, serves a reproducibly built frontend, and rolls back to the previous tag; executed once by someone other than its author | OL-1 Gate | 2–3 slices |
+| **OL-2** | Deploy, migrate & rollback — **split into [OL-2A…OL-2D](operate-launch-ol2-deploy-contract.md)** | `ol-deploy` | **Deploy & Rollback Gate** — a written procedure takes a tagged commit to a non-dev target, applies migrations to a **freshly created** DB with no manual repair, serves a reproducibly built frontend, and rolls back to the previous tag; executed once by someone other than its author. **Execution status is tracked separately from implementation:** the gate stays `NOT EXECUTED` until an independent operator runs the OL-2D rehearsal, which does not block OL-2A…OL-2D development | OL-1 Gate | 4 slices (A/B/C/D) |
 | **OL-3** | Production runtime defaults | `ol-runtime` | **Production Runtime Defaults Gate** — durable queue and non-local object storage are the documented production configuration with a running worker; scheduled work has exactly one owner process (no double-send); scripts that require cron have a scheduler manifest | OL-2 Gate | 2 slices |
 | **OL-4** | Operability signal | `ol-signal` | **Operability Signal Gate** — readiness endpoint answers for Postgres / Redis / storage; a scrape config and a minimal alert set exist as loaded configuration; an alert reaches a named human; the minimal set is justified per metric | OL-3 Gate | 1–2 slices |
 | **OL-5** | Backup & recovery drill | `ol-recovery` | **Recovery Drill Gate** (proves RS-12) — backup runs unattended; a drill restores database **and** document storage onto a clean target from backup only, with observed RPO / RTO recorded and dated | OL-3 Gate | 2 slices |
@@ -174,7 +178,9 @@ Larger: the fresh-database defect moved downstream and got quieter. A freshly mi
 
 Also inherited: "deploy" currently means editing the working tree of the live host (§ Starting point). The procedure this slice writes has to replace that, not document it.
 
-**Entry condition (added 2026-08-31, from [OL1-C1](../gates/launch-ownership-gate.md)).** The Deploy & Rollback Gate requires execution by someone other than the author, and OL-1 recorded a single holder for RR3 / RR4 / RR7. A named executor who is not the author of the procedure must exist **before** this slice starts; otherwise OL-2 can complete every deliverable and still fail its own gate on the last line. OL-7 owns the escalation half of OL1-C1; the execution-witness half is due here.
+**Split into four self-consistent slices, with the release semantics fixed first — [OL-2A…OL-2D](operate-launch-ol2-deploy-contract.md).** Measurement on 2026-08-31 showed the missing tags were the smaller half of the problem: **rollback does not exist as a reproducible operation**, and tagging would not create it. The backend image is built from the working tree and then overridden by a read-write bind mount of that same tree; Caddy serves the frontend build output directory itself, so `vite build` empties and rewrites the live document root in place; and `rebuild-frontend.sh` publishes to `/var/www/hostflow-frontend`, which Caddy does not serve and whose newest file predates the served bundle by a month. No tag is created by OL-2A, deliberately: the running deployment cannot be honestly tagged, because the served frontend's provenance is unknown and the backend executes a mutable tree.
+
+**Entry condition — corrected 2026-08-31.** The Deploy & Rollback Gate requires execution by someone other than the author, and OL-1 recorded a single holder for RR3 / RR4 / RR7. This was first written as a condition that must be satisfied *before* the slice starts. That is wrong and would stall the work for a staffing reason: **implementation and execution are separate statuses.** OL-2A…OL-2D may be implemented in full by the author; the gate simply stays `NOT EXECUTED` until an independent operator performs the OL-2D rehearsal. That is a normal intermediate state. No technical substitute for the witness is permitted — self-attested execution is not evidence. OL-7 still owns the escalation half of OL1-C1.
 
 Out: zero-downtime, blue-green, IaC, multi-environment promotion.
 
