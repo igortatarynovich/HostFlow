@@ -1,6 +1,6 @@
 # OL-2C — CI / RB-2 deployment proof-path
 
-**Status:** **PASS_IMPLEMENTATION** pending full five-assertion proof on this tree — 2026-08-31
+**Status:** **PASS_IMPLEMENTATION / NOT EXECUTED** — 2026-08-31 (five assertions green on throwaway PG16; author is not the RB-2 witness)
 **Phase class:** platform
 **Slice:** OL-2C
 **Track:** Launch-ops
