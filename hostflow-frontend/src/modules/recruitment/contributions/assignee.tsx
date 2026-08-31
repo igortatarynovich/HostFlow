@@ -18,13 +18,15 @@ export function RecruitmentAssigneeContribution({
 
   return (
     <section className="space-y-2" data-capability-id="recruitment.assignee">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ответственный</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {t('app.recruitment.contributions.assignee')}
+      </p>
       <div className="flex gap-2">
         <input
           value={assigneeId}
           onChange={(event) => setAssigneeId(event.target.value)}
           className="input flex-1"
-          placeholder="ID пользователя"
+          placeholder={t('app.recruitment.contributions.user_id_placeholder')}
         />
         <Button
           variant="primary"
@@ -36,10 +38,10 @@ export function RecruitmentAssigneeContribution({
               setBusy(true)
               try {
                 await assignRecruitmentApplication(application.id, { assignee_id: assigneeId.trim() })
-                notify({ title: 'Ответственный назначен', variant: 'success' })
+                notify({ title: t('app.recruitment.contributions.assigned'), variant: 'success' })
                 onRefresh()
               } catch (err: unknown) {
-                const info = getFriendlyErrorInfo(err, 'Не удалось назначить', t)
+                const info = getFriendlyErrorInfo(err, t('app.recruitment.contributions.assign_failed'), t)
                 notify({ title: info.title, variant: 'error' })
               } finally {
                 setBusy(false)
@@ -47,7 +49,7 @@ export function RecruitmentAssigneeContribution({
             })()
           }}
         >
-          Назначить
+          {t('app.recruitment.contributions.assign')}
         </Button>
       </div>
     </section>

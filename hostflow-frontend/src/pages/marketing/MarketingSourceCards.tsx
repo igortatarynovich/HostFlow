@@ -5,28 +5,29 @@
 import { useState, type ReactNode } from 'react'
 import type { CampaignFormLink, CampaignIntakeSourceLink } from '../../api/platformCampaigns'
 import { formPublicUrl } from './marketingPresentation'
+import { useI18n, type TranslateFn } from '../../i18n'
 
-function publicationLabel(status: string | null | undefined): string {
+function publicationLabel(status: string | null | undefined, t: TranslateFn): string {
   switch (String(status || '').toLowerCase()) {
     case 'published':
-      return 'Опубликована'
+      return t('app.marketing.source_card.published')
     case 'draft':
-      return 'Черновик'
+      return t('app.marketing.source_card.draft')
     case 'inactive':
-      return 'Неактивна'
+      return t('app.marketing.source_card.inactive')
     default:
       return status || '—'
   }
 }
 
-function bindingLabel(status: string | null | undefined): string {
+function bindingLabel(status: string | null | undefined, t: TranslateFn): string {
   switch (String(status || '').toLowerCase()) {
     case 'bound':
-      return 'Привязан'
+      return t('app.marketing.source_card.bound')
     case 'bound_inactive_profile':
-      return 'Привязан · профиль выключен'
+      return t('app.marketing.source_card.bound')
     case 'unbound':
-      return 'Без binding'
+      return t('app.marketing.source_card.no_public_link')
     default:
       return status || '—'
   }
@@ -39,10 +40,10 @@ function providerLabel(provider: string | null | undefined): string {
   return provider || '—'
 }
 
-function formatRelativeOrDash(iso: string | null | undefined, locale: string): string {
-  if (!iso) return 'никогда'
+function formatRelativeOrDash(iso: string | null | undefined, locale: string, neverLabel: string): string {
+  if (!iso) return neverLabel
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return 'никогда'
+  if (Number.isNaN(d.getTime())) return neverLabel
   try {
     return new Intl.DateTimeFormat(locale, {
       dateStyle: 'medium',
@@ -84,6 +85,7 @@ function DetailsToggle({
   children: ReactNode
   testId?: string
 }) {
+  const { t } = useI18n()
   return (
     <div className="mt-2 border-t border-slate-100 pt-2">
       <button
@@ -93,7 +95,7 @@ function DetailsToggle({
         data-testid={testId}
         aria-expanded={open}
       >
-        {open ? 'Скрыть подробности' : 'Подробнее'}
+        {open ? t('app.marketing.source_card.hide_details') : t('app.marketing.source_card.details')}
       </button>
       {open ? <div className="mt-2 space-y-1 text-xs text-slate-500">{children}</div> : null}
     </div>
@@ -107,6 +109,7 @@ export function HostFlowFormSourceCard({
   link: CampaignFormLink
   locale: string
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const publicUrl = formPublicUrl(link.public_slug)
   const pub = link.publication_status || (link.public_slug ? 'published' : 'draft')
@@ -120,7 +123,7 @@ export function HostFlowFormSourceCard({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Анкета HostFlow · Source
+            {t('app.marketing.source_card.hostflow_source')}
           </div>
           <div className="mt-1 font-semibold text-slate-900">{link.title || 'Без названия'}</div>
         </div>
@@ -129,26 +132,26 @@ export function HostFlowFormSourceCard({
             {active ? 'Active binding' : 'Inactive binding'}
           </StatusPill>
           <StatusPill tone={pub === 'published' ? 'ok' : pub === 'inactive' ? 'muted' : 'warn'}>
-            {publicationLabel(pub)}
+            {publicationLabel(pub, t)}
           </StatusPill>
           {link.is_public || link.public_slug ? (
-            <StatusPill tone="ok">Публичная форма</StatusPill>
+            <StatusPill tone="ok">{t('app.marketing.source_card.public_form')}</StatusPill>
           ) : (
-            <StatusPill tone="muted">Без public link</StatusPill>
+            <StatusPill tone="muted">{t('app.marketing.source_card.no_public_link')}</StatusPill>
           )}
         </div>
       </div>
 
       <dl className="mt-3 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
         <div>
-          <dt className="text-slate-500">Последняя заявка</dt>
+          <dt className="text-slate-500">{t('app.marketing.source_card.last_submission')}</dt>
           <dd className="font-medium text-slate-800">
-            {formatRelativeOrDash(link.last_submission_at, locale)}
+            {formatRelativeOrDash(link.last_submission_at, locale, t('app.marketing.source_card.never'))}
           </dd>
         </div>
         {publicUrl ? (
           <div>
-            <dt className="text-slate-500">Публичная ссылка</dt>
+            <dt className="text-slate-500">{t('app.marketing.source_card.public_link')}</dt>
             <dd>
               <a
                 href={publicUrl}
@@ -156,7 +159,7 @@ export function HostFlowFormSourceCard({
                 rel="noreferrer"
                 className="break-all font-medium text-brand-700 underline"
               >
-                Открыть анкету
+                {t('app.marketing.source_card.open_form')}
               </a>
             </dd>
           </div>
@@ -179,6 +182,7 @@ export function MetaLeadFormSourceCard({
   link: CampaignIntakeSourceLink
   locale: string
 }) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const title =
     link.display_title ||
@@ -206,7 +210,7 @@ export function MetaLeadFormSourceCard({
             {active ? 'Active' : 'Inactive'}
           </StatusPill>
           <StatusPill tone={binding === 'bound' ? 'ok' : binding === 'unbound' ? 'warn' : 'muted'}>
-            {bindingLabel(binding)}
+            {bindingLabel(binding, t)}
           </StatusPill>
         </div>
       </div>
@@ -217,7 +221,7 @@ export function MetaLeadFormSourceCard({
           <dd className="font-medium text-slate-800">{providerLabel(link.provider)}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Страница Facebook</dt>
+          <dt className="text-slate-500">{t('app.marketing.source_card.facebook_page')}</dt>
           <dd className="font-medium text-slate-800">
             {pageLine || (link.page_id ? 'ID скрыт в подробностях' : '—')}
           </dd>
@@ -229,9 +233,9 @@ export function MetaLeadFormSourceCard({
           </dd>
         </div>
         <div>
-          <dt className="text-slate-500">Последний лид</dt>
+          <dt className="text-slate-500">{t('app.marketing.source_card.last_lead')}</dt>
           <dd className="font-medium text-slate-800">
-            {formatRelativeOrDash(link.last_submission_at, locale)}
+            {formatRelativeOrDash(link.last_submission_at, locale, t('app.marketing.source_card.never'))}
           </dd>
         </div>
       </dl>

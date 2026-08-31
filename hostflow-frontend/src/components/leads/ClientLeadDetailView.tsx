@@ -198,7 +198,7 @@ export default function ClientLeadDetailView({
               </span>
             </div>
             {terminal ? (
-              <p className="mt-3 text-sm text-red-700">Лид отклонён и исключён из обработки кандидатов.</p>
+              <p className="mt-3 text-sm text-red-700">{t('app.leads.client_detail.rejected')}</p>
             ) : null}
             <p className="mt-3 font-mono text-[11px] leading-relaxed text-slate-400 break-all">ID · {lead.id}</p>
           </div>

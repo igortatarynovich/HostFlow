@@ -271,8 +271,8 @@ export default function MarketingCampaignSetupPage() {
                 }}
                 testId={`marketing-setup-flow-${p.kind}`}
               >
-                <span className="font-medium text-slate-900">{p.label}</span>
-                <span className="mt-1 block text-slate-600">{p.description}</span>
+                <span className="font-medium text-slate-900">{t(`app.marketing.flow.${p.kind}.label`)}</span>
+                <span className="mt-1 block text-slate-600">{t(`app.marketing.flow.${p.kind}.description`)}</span>
               </MarketingOptionCard>
             ))}
           </div>

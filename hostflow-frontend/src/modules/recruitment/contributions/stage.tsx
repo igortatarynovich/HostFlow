@@ -14,30 +14,18 @@ import { ContextRailDecisionZone } from '../../../platform/context-rail'
 import { resolveRecruitmentApplicationDecision } from '../../../platform/application-workspace/resolveRecruitmentApplicationDecision'
 import type { WorkspaceCapabilityRenderContext } from '../../../platform/workspace-capability/renderContext'
 
-const REJECT_REASONS = [
-  { code: 'insufficient_experience', label: 'Не подходит' },
-  { code: 'no_response', label: 'Не отвечает' },
-  { code: 'duplicate_spam', label: 'Дубликат' },
-  { code: 'invalid_contact', label: 'Спам' },
-  { code: 'other', label: 'Другое' },
+const REJECT_REASON_CODES = [
+  'insufficient_experience',
+  'no_response',
+  'duplicate_spam',
+  'invalid_contact',
+  'other',
 ] as const
 
 function recruitmentActionErrorMessage(err: unknown, t: (key: string, options?: Record<string, unknown>) => string): string {
-  const info = getFriendlyErrorInfo(err, 'Не удалось выполнить действие', t)
+  const info = getFriendlyErrorInfo(err, t('app.recruitment.contributions.action_failed'), t)
   const code = String(info.code || '').toUpperCase()
-  const byCode: Record<string, string> = {
-    INTAKE_INFO_REQUESTED: 'Ранее запросили данные у кандидата. Повторите «Создать кандидата» после обновления.',
-    VACANCY_NOT_CONFIRMED: 'Сначала привяжите подбор в блоке «Вакансия».',
-    INTAKE_ROUTING_INCOMPLETE: 'Не хватает маршрутизации: привяжите подбор.',
-    INTAKE_POOL_PATH_REQUIRED: 'Сначала привяжите подбор в блоке «Вакансия», затем снова нажмите «Создать кандидата».',
-    NO_INTAKE_CONTEXT:
-      'Не удалось создать кандидата: у отклика нет полного intake-контекста. Привяжите актуальный подбор и повторите, либо откройте карточку лида для маршрутизации.',
-    LEAD_RODO_REQUIRED: 'Нужно подтвердить согласие перед этим действием.',
-    LEAD_INTAKE_ALREADY_REJECTED: 'Отклик уже закрыт.',
-    INTAKE_REJECT_REASON_REQUIRED: 'Укажите причину отклонения.',
-    LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED: 'Это действие недоступно для данного источника.',
-  }
-  const mapped = byCode[code]
+  const mapped = t(`app.recruitment.contributions.err.${code}`, { defaultValue: '' })
   return [mapped || info.title, info.detail, info.hint].filter(Boolean).join(' ')
 }
 
@@ -64,7 +52,7 @@ export function RecruitmentStageContribution({
   const [rejectCode, setRejectCode] = useState('insufficient_experience')
   const [rejectNote, setRejectNote] = useState('')
   const [showFollowUp, setShowFollowUp] = useState(false)
-  const [followUpTitle, setFollowUpTitle] = useState('Перезвонить кандидату')
+  const [followUpTitle, setFollowUpTitle] = useState('')
 
   const run = useCallback(
     async (fn: () => Promise<void>) => {
@@ -92,7 +80,7 @@ export function RecruitmentStageContribution({
         })
         return
       }
-      notify({ title: 'Кандидат создан', variant: 'success' })
+      notify({ title: t('app.recruitment.contributions.candidate_created'), variant: 'success' })
       navigate(candidateDetailPath(String(result.candidate_id)))
     })
   }, [application, navigate, notify, run, t])
@@ -105,7 +93,10 @@ export function RecruitmentStageContribution({
     busy,
     onStage,
     onCreateCandidate: createCandidate,
-    onFollowUp: () => setShowFollowUp(true),
+    onFollowUp: () => {
+      setFollowUpTitle((prev) => prev || t('app.recruitment.contributions.followup_default'))
+      setShowFollowUp(true)
+    },
     onReject: () => setShowReject(true),
     t,
   })
@@ -116,28 +107,28 @@ export function RecruitmentStageContribution({
       {showReject ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md border border-slate-200 bg-white p-4 shadow-xl">
-            <h3 className="font-semibold text-slate-900">Отклонить отклик</h3>
+            <h3 className="font-semibold text-slate-900">{t('app.recruitment.contributions.reject_title')}</h3>
             <select
               value={rejectCode}
               onChange={(event) => setRejectCode(event.target.value)}
               className="input mt-3"
             >
-              {REJECT_REASONS.map((reason) => (
-                <option key={reason.code} value={reason.code}>
-                  {reason.label}
+              {REJECT_REASON_CODES.map((code) => (
+                <option key={code} value={code}>
+                  {t(`app.recruitment.contributions.reason.${code}`)}
                 </option>
               ))}
             </select>
             <textarea
               value={rejectNote}
               onChange={(event) => setRejectNote(event.target.value)}
-              placeholder="Комментарий"
+              placeholder={t('app.recruitment.contributions.comment_placeholder')}
               className="textarea mt-2"
               rows={3}
             />
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setShowReject(false)}>
-                Отмена
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="danger"
@@ -151,11 +142,11 @@ export function RecruitmentStageContribution({
                       lost_reason_note: rejectNote || undefined,
                     })
                     setShowReject(false)
-                    notify({ title: 'Отклик отклонён', variant: 'success' })
+                    notify({ title: t('app.recruitment.contributions.rejected'), variant: 'success' })
                   })
                 }
               >
-                Отклонить
+                {t('app.recruitment.contributions.reject')}
               </Button>
             </div>
           </div>
@@ -168,7 +159,7 @@ export function RecruitmentStageContribution({
             <input value={followUpTitle} onChange={(event) => setFollowUpTitle(event.target.value)} className="input mt-3" />
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setShowFollowUp(false)}>
-                Отмена
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -178,11 +169,11 @@ export function RecruitmentStageContribution({
                   void run(async () => {
                     await createRecruitmentApplicationFollowUp(application.id, { title: followUpTitle.trim() })
                     setShowFollowUp(false)
-                    notify({ title: 'Напоминание создано', variant: 'success' })
+                    notify({ title: t('app.recruitment.contributions.reminder_created'), variant: 'success' })
                   })
                 }
               >
-                Сохранить
+                {t('common.save')}
               </Button>
             </div>
           </div>

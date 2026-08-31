@@ -10,6 +10,7 @@ import {
 } from './detailRailTypes'
 import { ContextRailDecisionZone } from '../context-rail/ContextRailDecisionZone'
 import { SemanticBadge } from '../data-table/SemanticBadge'
+import { useI18n } from '../../i18n'
 
 function ContactIcon({
   kind,
@@ -75,9 +76,10 @@ export function DetailRail({
   navigation,
   pin,
   blockOverrides,
-  emptyTitle = 'Выберите строку',
-  emptyDescription = 'Клик по строке открывает панель для быстрых решений.',
+  emptyTitle = 'Select a row',
+  emptyDescription = 'Click a row to open the panel for quick decisions.',
 }: DetailRailProps) {
+  const { t } = useI18n()
   if (!open) return null
 
   const blocks: Partial<Record<DetailRailBlockId, React.ReactNode>> = {}
@@ -290,25 +292,29 @@ export function DetailRail({
           variant === 'default' && 'border-brand-200 bg-brand-50/50',
         )}
       >
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Итог процесса</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          {t('app.platform.detail_rail.process_outcome')}
+        </p>
         <p className="mt-3 text-base font-bold leading-tight text-slate-900">{o.title}</p>
         {o.body ? <p className="mt-2 text-sm text-slate-600">{o.body}</p> : null}
         {o.whyLabel ? (
           <div className="mt-3 border-l-2 border-slate-300 pl-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Почему</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              {t('app.platform.context_rail.why')}
+            </p>
             <p className="mt-0.5 text-sm text-slate-700">{o.whyLabel}</p>
           </div>
         ) : null}
         <dl className="mt-3 space-y-1.5 text-sm">
           {o.ownerLabel ? (
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Владелец</dt>
+              <dt className="text-slate-500">{t('app.platform.detail_rail.owner')}</dt>
               <dd className="text-right font-medium text-slate-900">{o.ownerLabel}</dd>
             </div>
           ) : null}
           {o.whenLabel ? (
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-500">Когда</dt>
+              <dt className="text-slate-500">{t('app.platform.detail_rail.when')}</dt>
               <dd className="text-right font-medium text-slate-900">{o.whenLabel}</dd>
             </div>
           ) : null}
@@ -338,7 +344,7 @@ export function DetailRail({
         {more.length ? (
           <details className="group">
             <summary className="cursor-pointer text-xs font-medium text-slate-600 hover:text-slate-900">
-              Ещё действия ({more.length})
+              {t('app.platform.detail_rail.more_actions', { values: { count: more.length } })}
             </summary>
             <ul className="mt-2 space-y-1 border-t border-slate-100 pt-2">
               {more.map((a) => (
@@ -501,7 +507,7 @@ export function DetailRail({
       data-resource-id={model?.resourceId}
     >
       {loading ? (
-        <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">Загрузка…</div>
+        <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">{t('common.loading')}</div>
       ) : !model ? (
         <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
           <p className="text-sm font-medium text-slate-700">{emptyTitle}</p>

@@ -102,7 +102,7 @@ export function ConsentCapability(ctx: WorkspaceCapabilityRenderContext) {
       </p>
       {loading ? <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p> : null}
       {!subjectKey ? (
-        <p className="text-sm text-slate-500">Нет intake-контекста для согласия на этом отклике.</p>
+        <p className="text-sm text-slate-500">{t('app.platform.consent.no_intake')}</p>
       ) : null}
       {!loading && available && satisfied ? (
         <p className="text-sm font-medium text-emerald-800">

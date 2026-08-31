@@ -23,15 +23,15 @@ export function Sidebar() {
       />
 
       <nav className="flex-1 mt-6 flex flex-col gap-3">
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/">Дашборд</Link>
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/companies">Компании</Link>
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/vacancies">Вакансии</Link>
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to={CRM_APP_PATHS.candidates}>Кандидаты</Link>
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/pipeline">Канбан</Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/">{t('app.sidebar.nav.dashboard')}</Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/companies">{t('app.sidebar.nav.companies')}</Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/vacancies">{t('app.sidebar.nav.vacancies')}</Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to={CRM_APP_PATHS.candidates}>{t('app.sidebar.nav.candidates')}</Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/pipeline">{t('app.sidebar.nav.kanban')}</Link>
       </nav>
 
       <div className="mt-auto pt-6 border-t border-white/10 text-xs opacity-80">
-        <div className="font-semibold mb-1">Настройки</div>
+        <div className="font-semibold mb-1">{t('app.sidebar.nav.settings')}</div>
 
         <div className="space-y-3">
           <div>

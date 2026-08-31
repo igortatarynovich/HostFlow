@@ -339,7 +339,7 @@ export function NotificationSettings({
           )}
           {phone && (
             <div className="text-sm text-slate-600">
-              <span className="font-medium">Телефон:</span> {phone}
+              <span className="font-medium">{t('public.notifications.labels.phone_colon')}</span> {phone}
             </div>
           )}
 

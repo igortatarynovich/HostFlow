@@ -105,20 +105,20 @@ export default function MarketingCampaignDetailPage() {
       if (target?.target_type === 'vacancy' && target.target_id) {
         try {
           const v = await getVacancy(target.target_id)
-          setDestinationLabel(v?.title || 'Вакансия')
+          setDestinationLabel(v?.title || t('app.marketing.destination.vacancy'))
         } catch {
-          setDestinationLabel('Вакансия')
+          setDestinationLabel(t('app.marketing.destination.vacancy'))
         }
       } else if (target?.target_type === 'service' && target.target_id) {
         try {
           const services = await listAdditionalServices(true)
           const s = services.find((row) => row.id === target.target_id)
-          setDestinationLabel(s?.name || 'Услуга')
+          setDestinationLabel(s?.name || t('app.marketing.destination.service'))
         } catch {
-          setDestinationLabel('Услуга')
+          setDestinationLabel(t('app.marketing.destination.service'))
         }
       } else {
-        setDestinationLabel(target ? target.target_type : 'Не задано')
+        setDestinationLabel(target ? target.target_type : t('app.marketing.destination.unset'))
       }
     } catch (err: unknown) {
       setError(
@@ -268,7 +268,7 @@ export default function MarketingCampaignDetailPage() {
 
   const publicUrl = formPublicUrl(form?.public_slug)
   const sourceLabel =
-    source?.name || source?.provider || (form ? 'Публичная анкета HostFlow' : '—')
+    source?.name || source?.provider || (form ? t('app.marketing.connect.hostflow_form') : '—')
   const formLinks = flight?.forms?.filter((f) => f.is_active) || []
   const intakeLinks = flight?.intake_sources?.filter((s) => s.is_active) || []
   const hasAnySourceBinding = formLinks.length > 0 || intakeLinks.length > 0
@@ -277,10 +277,10 @@ export default function MarketingCampaignDetailPage() {
   const contextTargets = campaign?.targets?.filter((x) => x.role === 'context') || []
   const counters = monitor?.counters
   const kpiTiles = [
-    { label: 'Заявки', value: counters?.submissions ?? 0 },
-    { label: 'Направлено', value: counters?.routing_completed ?? 0 },
-    { label: 'Ошибки маршрута', value: counters?.routing_failed ?? 0 },
-    { label: 'Лиды (KPI)', value: counters?.kpi_leads ?? 0 },
+    { label: t('app.marketing.kpi.applications'), value: counters?.submissions ?? 0 },
+    { label: t('app.marketing.kpi.routed'), value: counters?.routing_completed ?? 0 },
+    { label: t('app.marketing.kpi.route_errors'), value: counters?.routing_failed ?? 0 },
+    { label: t('app.marketing.kpi.leads'), value: counters?.kpi_leads ?? 0 },
     {
       label: 'CPL',
       value:
@@ -309,7 +309,7 @@ export default function MarketingCampaignDetailPage() {
           subtitle={
             <span className="inline-flex items-center gap-1.5">
               {flight
-                ? `Flight · ${statusLabel(flightStatus)}`
+                ? `Flight · ${statusLabel(flightStatus, t)}`
                 : t('app.marketing.detail.no_flight', { defaultValue: 'Flight не найден' })}
               <ContextHelp term="flight" />
             </span>
@@ -318,7 +318,7 @@ export default function MarketingCampaignDetailPage() {
           secondaryActions={
             <div className="flex flex-wrap gap-2">
               <Link to={CRM_APP_PATHS.marketing} className="btn-secondary btn-sm">
-                К списку
+                {t('app.marketing.detail.back_list')}
               </Link>
               <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading}>
                 {loading ? t('common.loading') : t('common.actions.refresh')}
@@ -336,7 +336,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runFlightCommand('launch')}
                     data-testid="marketing-flight-launch"
                   >
-                    Запустить
+                    {t('app.marketing.detail.start')}
                   </button>
                 ) : null}
                 {canPause ? (
@@ -347,7 +347,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runFlightCommand('pause')}
                     data-testid="marketing-flight-pause"
                   >
-                    Приостановить
+                    {t('app.marketing.detail.pause')}
                   </button>
                 ) : null}
                 {canResume ? (
@@ -358,7 +358,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runFlightCommand('resume')}
                     data-testid="marketing-flight-resume"
                   >
-                    Возобновить
+                    {t('app.marketing.detail.resume')}
                   </button>
                 ) : null}
                 {canCompleteFlight ? (
@@ -369,7 +369,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runFlightCommand('complete')}
                     data-testid="marketing-flight-complete"
                   >
-                    Завершить Flight
+                    {t('app.marketing.detail.end_flight')}
                   </button>
                 ) : null}
                 {canCompleteCampaign ? (
@@ -380,7 +380,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runCampaignCommand('complete')}
                     data-testid="marketing-campaign-complete"
                   >
-                    Завершить кампанию
+                    {t('app.marketing.detail.end_campaign')}
                   </button>
                 ) : null}
                 {canArchiveCampaign ? (
@@ -391,7 +391,7 @@ export default function MarketingCampaignDetailPage() {
                     onClick={() => void runCampaignCommand('archive')}
                     data-testid="marketing-campaign-archive"
                   >
-                    В архив
+                    {t('app.marketing.detail.archive')}
                   </button>
                 ) : null}
               </div>
@@ -408,12 +408,12 @@ export default function MarketingCampaignDetailPage() {
           <>
             <section className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <div className="text-xs text-slate-500">Кампания</div>
+                <div className="text-xs text-slate-500">{t('app.marketing.detail.campaign')}</div>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${statusTone(campaignStatus)}`}
                   >
-                    {statusLabel(campaignStatus)}
+                    {statusLabel(campaignStatus, t)}
                   </span>
                 </div>
                 {runtime ? (
@@ -426,7 +426,7 @@ export default function MarketingCampaignDetailPage() {
                 ) : null}
               </div>
               <div>
-                <div className="text-xs text-slate-500">Анкета HostFlow</div>
+                <div className="text-xs text-slate-500">{t('app.marketing.detail.hostflow_form')}</div>
                 <div className="mt-1 text-sm font-medium text-slate-900">{form?.title || '—'}</div>
                 {publicUrl ? (
                   <a
@@ -435,16 +435,16 @@ export default function MarketingCampaignDetailPage() {
                     rel="noreferrer"
                     className="mt-1 block break-all text-xs text-brand-600 underline"
                   >
-                    Открыть публичную ссылку
+                    {t('app.marketing.detail.open_public')}
                   </a>
                 ) : null}
               </div>
               <div>
-                <div className="text-xs text-slate-500">Источник (кратко)</div>
+                <div className="text-xs text-slate-500">{t('app.marketing.detail.source_short')}</div>
                 <div className="mt-1 text-sm font-medium text-slate-900">{sourceLabel}</div>
               </div>
               <div>
-                <div className="text-xs text-slate-500">Куда идут заявки</div>
+                <div className="text-xs text-slate-500">{t('app.marketing.detail.destination')}</div>
                 <div className="mt-1 text-sm font-medium text-slate-900">{destinationLabel}</div>
                 {primaryTarget ? (
                   <div className="mt-1 text-xs text-slate-500">{primaryTarget.route_intent}</div>
@@ -463,7 +463,7 @@ export default function MarketingCampaignDetailPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-900">Источники заявок</h2>
+                  <h2 className="text-sm font-semibold text-slate-900">{t('app.marketing.detail.sources_title')}</h2>
                   <p className="mt-1 text-xs text-slate-500">
                     Source = откуда приходят заявки (Lead Form Meta или анкета HostFlow). Connection
                     (OAuth) настраивается в Integrations. Routing наследует Primary Target кампании.
@@ -475,7 +475,7 @@ export default function MarketingCampaignDetailPage() {
                     className="btn-primary btn-sm"
                     data-testid="marketing-connect-source-cta"
                   >
-                    Подключить источник
+                    {t('app.marketing.detail.connect_source')}
                   </Link>
                 ) : null}
               </div>
@@ -485,7 +485,7 @@ export default function MarketingCampaignDetailPage() {
                   className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center"
                   data-testid="marketing-sources-empty"
                 >
-                  <p className="text-sm font-medium text-slate-800">Источников пока нет</p>
+                  <p className="text-sm font-medium text-slate-800">{t('app.marketing.detail.sources_empty')}</p>
                   <p className="mt-1 text-xs text-slate-500">
                     Подключите Meta Lead Ads или публичную анкету HostFlow — без повторного создания
                     кампании.
@@ -496,7 +496,7 @@ export default function MarketingCampaignDetailPage() {
                       className="btn-primary btn-sm mt-4 inline-flex"
                       data-testid="marketing-sources-empty-cta"
                     >
-                      Подключить источник
+                      {t('app.marketing.detail.connect_source')}
                     </Link>
                   ) : null}
                 </div>
@@ -533,7 +533,7 @@ export default function MarketingCampaignDetailPage() {
 
               {contextTargets.length ? (
                 <div className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-600">
-                  <div className="font-medium text-slate-700">Контекст кампании</div>
+                  <div className="font-medium text-slate-700">{t('app.marketing.detail.campaign_context')}</div>
                   <ul className="mt-1 list-inside list-disc">
                     {contextTargets.map((ct) => (
                       <li key={ct.id}>
@@ -607,7 +607,7 @@ export default function MarketingCampaignDetailPage() {
                               </span>
                             ) : null}
                           </td>
-                          <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status)}</td>
+                          <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status, t)}</td>
                           <td className="py-2 pr-3 tabular-nums text-slate-900">
                             {row.spend}
                             {row.currency ? ` ${row.currency}` : ''}
@@ -884,7 +884,7 @@ export default function MarketingCampaignDetailPage() {
                 data-testid="marketing-optimization-suggest-pause"
                 role="status"
               >
-                <div className="font-semibold">Рекомендация: рассмотреть паузу Flight</div>
+                <div className="font-semibold">{t('app.marketing.detail.pause_advice')}</div>
                 <p className="mt-1 text-amber-900/90">
                   Сигнал только советует — пауза через кнопку «Пауза» выше. Автопаузы нет.
                 </p>
@@ -968,7 +968,7 @@ export default function MarketingCampaignDetailPage() {
             <section className="rounded-xl border border-slate-200 bg-white" data-testid="marketing-live-intake-monitor">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-900">Заявки</h2>
+                  <h2 className="text-sm font-semibold text-slate-900">{t('app.marketing.detail.submissions')}</h2>
                   <p className="mt-0.5 text-xs text-slate-500">
                     Люди, пришедшие на этот Flight. Технический лог — в таймлайне.
                   </p>

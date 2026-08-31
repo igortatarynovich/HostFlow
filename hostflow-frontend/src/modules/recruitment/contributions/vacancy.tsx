@@ -35,10 +35,10 @@ export function RecruitmentVacancyContribution({
     setBusy(true)
     try {
       await confirmRecruitmentApplicationVacancy(application.id, { vacancy_id: selectedVacancyId })
-      notify({ title: 'Подбор привязан', variant: 'success' })
+      notify({ title: t('app.recruitment.contributions.bound'), variant: 'success' })
       onRefresh()
     } catch (err: unknown) {
-      const info = getFriendlyErrorInfo(err, 'Не удалось привязать подбор', t)
+      const info = getFriendlyErrorInfo(err, t('app.recruitment.contributions.bind_failed'), t)
       notify({ title: info.title, variant: 'error' })
     } finally {
       setBusy(false)
@@ -47,9 +47,11 @@ export function RecruitmentVacancyContribution({
 
   return (
     <section className="space-y-2" data-capability-id="recruitment.vacancy">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Подбор</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {t('app.recruitment.contributions.search')}
+      </p>
       <select value={selectedVacancyId} onChange={(event) => setSelectedVacancyId(event.target.value)} className="input">
-        <option value="">Выберите подбор</option>
+        <option value="">{t('app.recruitment.contributions.pick_search')}</option>
         {vacancies.map((vacancy) => (
           <option key={vacancy.id} value={vacancy.id}>
             {vacancy.title}
@@ -57,7 +59,7 @@ export function RecruitmentVacancyContribution({
         ))}
       </select>
       <Button variant="secondary" size="sm" disabled={!selectedVacancyId || patching || busy} onClick={() => void bind()}>
-        Привязать к подбору
+        {t('app.recruitment.contributions.bind_search')}
       </Button>
     </section>
   )

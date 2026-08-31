@@ -17,48 +17,53 @@ export type FlowPreset = {
 export const FLOW_PRESETS: FlowPreset[] = [
   {
     kind: 'candidates',
-    label: 'Кандидаты',
-    description: 'Клиент → вакансия → заявки в Recruitment',
+    label: 'Candidates',
+    description: 'Client → vacancy → applications in Recruitment',
     goal_type: 'hiring',
     primary_kpi: 'applications',
     target_type: 'vacancy',
     route_intent: 'candidate_application',
-    destinationLabel: 'Вакансия',
+    destinationLabel: 'Vacancy',
   },
   {
     kind: 'clients',
-    label: 'B2B / клиенты',
-    description: 'Клиент → услуга (таргетинг и др.) → Sales inquiry',
+    label: 'B2B / clients',
+    description: 'Client → service (targeting, etc.) → Sales inquiry',
     goal_type: 'sales',
     primary_kpi: 'qualified_leads',
     target_type: 'service',
     route_intent: 'sales_inquiry',
-    destinationLabel: 'Услуга',
+    destinationLabel: 'Service',
   },
   {
     kind: 'service',
-    label: 'Заявки на услугу',
-    description: 'Клиент → услуга каталога → Service flow',
+    label: 'Service requests',
+    description: 'Client → catalog service → Service flow',
     goal_type: 'sales',
     primary_kpi: 'revenue',
     target_type: 'service',
     route_intent: 'service_request',
-    destinationLabel: 'Услуга',
+    destinationLabel: 'Service',
   },
 ]
 
 export type MarketingSourceKind = 'public_form' | 'meta'
 
-export function statusLabel(status: string): string {
+export function statusLabel(status: string, t?: (key: string) => string): string {
   const s = String(status || '').toLowerCase()
+  if (t) {
+    const key = `app.marketing.status.${s}`
+    const translated = t(key)
+    if (translated && translated !== key) return translated
+  }
   const map: Record<string, string> = {
-    draft: 'Черновик',
-    active: 'Активна',
-    paused: 'На паузе',
-    completed: 'Завершена',
-    archived: 'Архив',
-    planned: 'Запланирован',
-    failed: 'Ошибка',
+    draft: 'Draft',
+    active: 'Active',
+    paused: 'On hold',
+    completed: 'Completed',
+    archived: 'Archive',
+    planned: 'Planned',
+    failed: 'Error',
   }
   return map[s] || status || '—'
 }
@@ -161,22 +166,23 @@ export function canConnectAnySource(flight: CampaignFlight | null): boolean {
   return canConnectSourceKind(flight, 'public_form') || canConnectSourceKind(flight, 'meta')
 }
 
-export function destinationSummary(campaign: Campaign): string {
-  const t = campaign.targets?.[0]
-  if (!t) return 'Не задано'
-  const labels: Record<string, string> = {
-    vacancy: 'Вакансия',
-    service: 'Услуга',
-    search: 'Поиск',
-    client_account: 'Клиент',
-  }
-  const intentLabels: Record<string, string> = {
-    candidate_application: 'кандидаты',
-    sales_inquiry: 'sales inquiry',
-    service_request: 'услуга',
-  }
-  const typeLabel = labels[t.target_type] || t.target_type
-  const intent = intentLabels[t.route_intent]
+export function destinationSummary(campaign: Campaign, t?: (key: string) => string): string {
+  const target = campaign.targets?.[0]
+  if (!target) return t ? t('app.marketing.destination.unset') : 'Not set'
+  const typeKey = `app.marketing.destination.${target.target_type}`
+  const intentKey = `app.marketing.destination.intent.${target.route_intent}`
+  const typeLabel = t
+    ? (t(typeKey) !== typeKey ? t(typeKey) : target.target_type)
+    : ({ vacancy: 'Vacancy', service: 'Service', search: 'Search', client_account: 'Client' } as Record<string, string>)[
+        target.target_type
+      ] || target.target_type
+  const intent = t
+    ? (t(intentKey) !== intentKey ? t(intentKey) : '')
+    : ({
+        candidate_application: 'candidates',
+        sales_inquiry: 'sales inquiry',
+        service_request: 'service',
+      } as Record<string, string>)[target.route_intent]
   return intent ? `${typeLabel} · ${intent}` : typeLabel
 }
 

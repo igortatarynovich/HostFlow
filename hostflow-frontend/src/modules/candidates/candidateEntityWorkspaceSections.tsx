@@ -11,6 +11,16 @@ import {
   CandidateTasksContent,
   CandidateTimelineContent,
 } from './candidateEntityWorkspaceContent'
+import { useI18n } from '../../i18n'
+
+function ProcessActiveFallback() {
+  const { t } = useI18n()
+  return (
+    <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+      {t('app.candidates.workspace.process_active')}
+    </p>
+  )
+}
 
 export type CandidateEntityWorkspaceSectionContext = {
   passport: EntityPassport
@@ -47,7 +57,7 @@ export function buildCandidateEntityWorkspaceSectionRenderers(
     outcome: () => {
       const outcome = passport.sections.outcome
       if (!outcome) {
-        return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Процесс активен</p>
+        return <ProcessActiveFallback />
       }
       return (
         <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

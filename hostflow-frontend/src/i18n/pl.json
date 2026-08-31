@@ -126,7 +126,18 @@
     "plan": "plan",
     "available": "Dostępne",
     "active": "Aktywny",
-    "required": "Wymagane"
+    "required": "Wymagane",
+    "inactive": "Nieaktywne",
+    "no_matches": "Brak dopasowań",
+    "select_placeholder": "— wybierz —",
+    "search_placeholder": "Szukaj…",
+    "multiselect_placeholder": "Wybierz wartości",
+    "error_boundary": {
+      "title": "Coś poszło nie tak",
+      "body": "Zapisaliśmy błąd. Odśwież stronę lub spróbuj ponownie — jeśli problem wróci, skontaktuj się z pomocą.",
+      "reload": "Odśwież stronę",
+      "retry": "Spróbuj ponownie"
+    }
   },
   "scanner": {
     "place_in_frame": "Place the document inside the frame",
@@ -204,7 +215,17 @@
         "doc_col_days_left": "Dni",
         "doc_col_file": "Plik",
         "doc_open": "Otwórz",
-        "doc_open_error": "Could not open document file"
+        "doc_open_error": "Could not open document file",
+        "header": {
+          "back": "Wróć do pracowników",
+          "footer_hint": "Rekord HR jest powiązany z rekrutacją, gdy istnieje kandydat.",
+          "handoff": "Przekazanie",
+          "hire": "Zatrudnienie",
+          "kicker": "Pracownik HR",
+          "open_vacancy": "Otwórz wakat",
+          "record_id": "Rekord {id}"
+        },
+        "open_candidate": "Otwórz kandydata"
       },
       "work_eligibility": {
         "section_title": "Uprawnienia do pracy i opłaty ustawowe",
@@ -1261,7 +1282,10 @@
         "cohort_delta": "Δ",
         "cohort_m_win_path": "Na ścieżce wygranej (processed)",
         "cohort_m_lost": "Lost (processed)",
-        "cohort_m_new": "New (inbox)"
+        "cohort_m_new": "New (inbox)",
+        "cohort_custom_from": "Od",
+        "cohort_custom_to": "Do",
+        "cohort_custom_wow": "Tydzień do tygodnia"
       }
     },
     "clients": {
@@ -1364,7 +1388,9 @@
           "open": "Otwarte",
           "on_hold": "Wstrzymane",
           "closed": "Zamknięte",
-          "archived": "W archiwum"
+          "archived": "W archiwum",
+          "filled": "Obsadzona",
+          "cancelled": "Anulowana"
         },
         "insights": {
           "total": "Razem",
@@ -1386,7 +1412,24 @@
         "empty_cta_setup": "Otwórz start"
       },
       "form": {
-        "save_failed": "Nie udało się zapisać oferty"
+        "save_failed": "Nie udało się zapisać oferty",
+        "company": "Firma",
+        "company_placeholder": "— wybierz firmę —",
+        "title_field": "Tytuł",
+        "status": "Status",
+        "employment_type": "Forma zatrudnienia",
+        "salary_from": "Od",
+        "salary_to": "Do",
+        "currency": "Waluta",
+        "location": "Lokalizacja",
+        "description": "Opis",
+        "active": "Aktywna",
+        "archived": "W archiwum",
+        "open_flag": "Otwarta",
+        "company_required": "Firma jest wymagana",
+        "title_required": "Tytuł jest wymagany",
+        "salary_from_placeholder": "np. 9000",
+        "salary_to_placeholder": "np. 12000"
       },
       "detail": {
         "wayfinding_title": "Inne obszary CRM",
@@ -2064,7 +2107,11 @@
       "own_company_plan_limit_402": "Limit przestrzeni dla planu został wykorzystany.",
       "own_company_open_billing": "Otwórz rozliczenia",
       "trial_badge": "Trial",
-      "trial_badge_hint": "Workspace próbny. Plan i rozliczenia: Ustawienia → Billing."
+      "trial_badge_hint": "Workspace próbny. Plan i rozliczenia: Ustawienia → Billing.",
+      "tasks_peek": {
+        "complete": "Zakończ",
+        "snooze_hour": "Odłóż o godzinę"
+      }
     },
     "trial_banner": {
       "badge": "Status trial",
@@ -2622,7 +2669,8 @@
           "required_fields": "Nazwa i slug są wymagane.",
           "initial_admin_password_required": "Podaj hasło administratora.",
           "create_failed": "Nie udało się utworzyć tenanta.",
-          "superadmin_only": "Widok dostępny tylko dla superadminów."
+          "superadmin_only": "Widok dostępny tylko dla superadminów.",
+          "save_failed": "Nie udało się zapisać tenanta."
         },
         "seat_requests": {
           "title": "Prośby o miejsca",
@@ -2647,6 +2695,62 @@
             "action_failed": "Nie udało się zaktualizować prośby."
           }
         }
+      },
+      "completion": {
+        "loading": "Wczytywanie…",
+        "done": "Gotowe",
+        "done_body": "Praca zakończona.",
+        "next_contract": "Następne działania w umowie",
+        "creating": "Tworzymy…",
+        "open_client": "Otwórz klienta",
+        "to_acquisition": "Do pozyskiwania klientów",
+        "back_acquisition": "Wróć do pozyskiwania klientów"
+      },
+      "application_workspace": {
+        "next_action": "Następna czynność",
+        "start_work": "Rozpocznij pracę",
+        "newest_first": "Najpierw nowe",
+        "col_contact": "Kontakt",
+        "col_details": "Szczegóły",
+        "col_source": "Źródło",
+        "col_extra": "Dod.",
+        "col_status": "Status",
+        "col_time": "Czas",
+        "empty_tab": "Brak rekordów w tej karcie",
+        "load_more": "Wczytaj więcej ({loaded} z {total})"
+      },
+      "context_rail": {
+        "outcome": "Wynik",
+        "why": "Dlaczego",
+        "next_action": "Następna czynność"
+      },
+      "detail_rail": {
+        "process_outcome": "Wynik procesu",
+        "owner": "Właściciel",
+        "when": "Kiedy",
+        "more_actions": "Więcej działań ({count})"
+      },
+      "consent": {
+        "no_intake": "Brak kontekstu intake dla zgody w tym zgłoszeniu."
+      },
+      "entity_workspace": {
+        "object": "Obiekt",
+        "process": "Proces",
+        "stage": "Etap",
+        "owner": "Odpowiedzialny",
+        "citizenship": "Obywatelstwo: {value}",
+        "readiness": "Gotowość:",
+        "missing": "Brakuje",
+        "no_events": "Brak zdarzeń",
+        "no_relations": "Brak powiązań",
+        "no_tasks": "Brak zadań",
+        "outcome_owner": "Właściciel: {name}",
+        "process_active": "Proces aktywny",
+        "section_unset": "Sekcja nie jest skonfigurowana",
+        "quick_contacts": "Szybkie kontakty",
+        "call": "Telefon",
+        "show_full_history": "Pokaż całą historię",
+        "no_context": "Brak kontekstu"
       }
     },
     "settings": {
@@ -5616,6 +5720,11 @@
       "stage_blocked_by_requirements": {
         "title": "Blocked by requirements",
         "description_generic": "Confirm all requirements before moving forward."
+      },
+      "quick_contact": {
+        "title": "Skontaktuj się z kandydatem",
+        "subtitle": "Następny krok — pierwszy kontakt.",
+        "call": "Zadzwoń"
       }
     },
     "fleet": {
@@ -5626,7 +5735,8 @@
         "operating_lines": "Linie operacyjne",
         "vehicles": "Pojazdy",
         "trailers": "Naczepy",
-        "drivers": "Kierowcy"
+        "drivers": "Kierowcy",
+        "assignments": "Przydziały"
       },
       "inventory": {
         "vehicle_hint": "Nr rejestracyjny, VIN lub kod wewnętrzny (wymagane jedno z pól).",
@@ -5664,6 +5774,21 @@
         "edit_status": "Status",
         "status_active": "aktywna",
         "status_inactive": "nieaktywna"
+      },
+      "counterparties": {
+        "title": "Kontrahenci",
+        "body": "Kontrahenci floty to firmy z katalogu klientów, które występują na liniach operacyjnych.",
+        "open_clients": "Otwórz klientów"
+      },
+      "hr_bridge": {
+        "title": "Mostek HR",
+        "body": "Powiąż kierowców floty z pracownikami HR, aby dokumenty i uprawnienia były w jednym miejscu.",
+        "open_hr": "Otwórz HR"
+      },
+      "module_settings": {
+        "title": "Ustawienia floty",
+        "body": "Przełączniki modułu i skróty przestrzeni dla operacji floty.",
+        "open_settings": "Otwórz ustawienia"
       }
     },
     "companies": {
@@ -6741,6 +6866,16 @@
         "open_tasks_list": "Otwórz listę zadań",
         "create_failed": "Nie udało się utworzyć zadania",
         "invalid_due": "Nieprawidłowa data terminu"
+      },
+      "workspace": {
+        "custom_fields": "Pola własne",
+        "custom_fields_hint": "Skonfigurowane pola profilu kandydata",
+        "hidden": "Ukryte",
+        "no_contacts": "Brak kontaktów",
+        "no_events": "Brak zdarzeń",
+        "no_relations": "Brak powiązań",
+        "no_tasks": "Brak zadań",
+        "process_active": "Proces aktywny"
       }
     },
     "tasks": {
@@ -6784,7 +6919,14 @@
         "label": "Widok",
         "by_due": "Grupuj wg terminu",
         "sla_queue": "Kolejka wg SLA (płaska)",
-        "advanced_toggle": "Układ listy (zaawansowane)"
+        "advanced_toggle": "Układ listy (zaawansowane)",
+        "by_candidate": "Według kandydata",
+        "by_due_day": "Według terminu",
+        "by_task_type": "Według typu zadania",
+        "groups_other_entities": "Inne rekordy",
+        "groups_unlinked_entities": "Bez powiązania",
+        "groups_unlinked_entities_hint": "Zadania bez powiązania z kandydatem lub innym rekordem CRM.",
+        "unlinked_badge": "Bez powiązania"
       },
       "sla": {
         "status": {
@@ -6910,7 +7052,11 @@
       },
       "status": {
         "overdue": "Zaległy"
-      }
+      },
+      "fallback_title": "Przypomnienie",
+      "layout_hint_by_candidate": "Grupuje otwarte zadania według powiązanego kandydata.",
+      "layout_hint_by_due_day": "Grupuje zadania według dnia terminu.",
+      "layout_hint_by_task_type": "Grupuje zadania według typu (telefon, dokumenty, follow-up)."
     },
     "leads": {
       "title": "Leady",
@@ -6987,7 +7133,8 @@
         "fit": "Dopasuj",
         "next_action": "Następna akcja",
         "service_order": "Zamówienie serwisowe",
-        "full_page": "Pełna strona"
+        "full_page": "Pełna strona",
+        "manager": "Opiekun"
       },
       "queue_keyboard": {
         "hint": "Skróty: J lub ↓ / K lub ↑ — wybór leada · Enter — główna akcja · Esc — zamknij panel lub okno · V — oferta · P — pula · I — poproś o info · R — odrzuć",
@@ -7687,6 +7834,33 @@
         "col_inbox": "Skrzynka (new)",
         "hint": "Te same filtry co w tabeli; w każdej kolumnie do limitu poniżej.",
         "view_all": "Wszystkie na liście"
+      },
+      "duplicate_review": {
+        "attach": "Dołącz do istniejącego",
+        "badge_active": "Wymaga przeglądu",
+        "create_new": "Utwórz nowego kandydata",
+        "error_code": "Kod błędu",
+        "error_title": "Nie udało się zapisać decyzji o duplikacie",
+        "history_last": "Ostatnia decyzja",
+        "hr_blockers": "Blokady HR",
+        "ignore": "To nie duplikat",
+        "last_resolution": "Rozstrzygnięcie",
+        "level": "Poziom dopasowania",
+        "missing_suggestion": "Brak sugerowanego kandydata",
+        "readonly_hint": "Decyzja została już zapisana. Otwórz ponownie tylko, gdy status przyjęcia nadal jest w przeglądzie.",
+        "reasons": "Powody dopasowania",
+        "source_lead": "Przychodzący lead",
+        "subtitle": "Ten lead może już istnieć jako kandydat. Wybierz: dołącz, utwórz nowego albo zignoruj.",
+        "suggested": "Sugerowany kandydat",
+        "title": "Możliwy duplikat",
+        "toast": {
+          "attach_existing": "Lead dołączony do istniejącego kandydata.",
+          "create_new": "Z leada utworzono nowego kandydata.",
+          "ignore": "Oznaczono jako nie duplikat."
+        }
+      },
+      "client_detail": {
+        "rejected": "Lead odrzucony i wyłączony z przetwarzania kandydatów."
       }
     },
     "common": {
@@ -7911,7 +8085,12 @@
         "refresh": "Odśwież"
       },
       "errors": {
-        "load": "Załaduj"
+        "load": "Załaduj",
+        "auto_assign": "Nie udało się automatycznie przypisać wątku.",
+        "dispatch_one": "Nie udało się wysłać tej wiadomości.",
+        "dispatch_queued": "Nie udało się dodać wiadomości wychodzących do kolejki.",
+        "mark_read": "Nie udało się oznaczyć wątku jako przeczytany.",
+        "send": "Nie udało się wysłać wiadomości."
       },
       "command_audit": {
         "subtitle": "Dziennik wykonania szablonów poleceń w obszarze roboczym.",
@@ -8693,6 +8872,18 @@
       "kind_label": "Typ faktury",
       "placeholders": {
         "billing_email": "billing@client.com"
+      },
+      "errors": {
+        "action_failed": "Nie udało się wykonać akcji na fakturze.",
+        "client_billing_load_failed": "Nie udało się wczytać danych rozliczeniowych klienta.",
+        "companies_load_failed": "Nie udało się wczytać firm.",
+        "create_failed": "Nie udało się utworzyć faktury.",
+        "detail_load_failed": "Nie udało się wczytać faktury.",
+        "edit_invoice_load_failed": "Nie udało się wczytać faktury do edycji.",
+        "issuer_load_failed": "Nie udało się wczytać danych wystawcy.",
+        "load_failed": "Nie udało się wczytać faktur.",
+        "source_invoice_load_failed": "Nie udało się wczytać faktury źródłowej.",
+        "update_failed": "Nie udało się zaktualizować faktury."
       }
     },
     "license": {
@@ -9106,6 +9297,14 @@
         "docs_base": "Docs Base (tylko odczyt)",
         "tenant_id": "Tenant ID",
         "tenant_placeholder": "UUID tenanta"
+      },
+      "nav": {
+        "dashboard": "Pulpit",
+        "companies": "Firmy",
+        "vacancies": "Wakaty",
+        "candidates": "Kandydaci",
+        "kanban": "Kanban",
+        "settings": "Ustawienia"
       }
     },
     "surfaces": {
@@ -9252,6 +9451,96 @@
         "errors": {
           "load": "Nie udało się załadować źródeł"
         }
+      },
+      "status": {
+        "draft": "Szkic",
+        "active": "Aktywna",
+        "paused": "Wstrzymana",
+        "completed": "Zakończona",
+        "archived": "Archiwum",
+        "planned": "Zaplanowany",
+        "failed": "Błąd"
+      },
+      "destination": {
+        "unset": "Nie ustawiono",
+        "vacancy": "Wakat",
+        "service": "Usługa",
+        "search": "Nabór",
+        "client_account": "Klient",
+        "intent": {
+          "candidate_application": "kandydaci",
+          "sales_inquiry": "zapytanie sprzedażowe",
+          "service_request": "usługa"
+        }
+      },
+      "flow": {
+        "candidates": {
+          "label": "Kandydaci",
+          "description": "Klient → wakat → zgłoszenia w rekrutacji"
+        },
+        "clients": {
+          "label": "B2B / klienci",
+          "description": "Klient → usługa (targeting itd.) → zapytanie sprzedażowe"
+        },
+        "service": {
+          "label": "Zgłoszenia usługi",
+          "description": "Klient → usługa katalogu → przepływ usługi"
+        }
+      },
+      "detail": {
+        "campaign": "Kampania",
+        "hostflow_form": "Formularz HostFlow",
+        "source_short": "Źródło (krótko)",
+        "destination": "Dokąd idą zgłoszenia",
+        "sources_title": "Źródła zgłoszeń",
+        "sources_empty": "Brak źródeł",
+        "campaign_context": "Kontekst kampanii",
+        "pause_advice": "Rekomendacja: rozważ wstrzymanie Flight",
+        "submissions": "Zgłoszenia",
+        "back_list": "Do listy",
+        "start": "Uruchom",
+        "pause": "Wstrzymaj",
+        "resume": "Wznów",
+        "end_flight": "Zakończ Flight",
+        "end_campaign": "Zakończ kampanię",
+        "archive": "Do archiwum",
+        "open_public": "Otwórz publiczny link",
+        "connect_source": "Podłącz źródło"
+      },
+      "kpi": {
+        "applications": "Zgłoszenia",
+        "routed": "Przekazane",
+        "route_errors": "Błędy routingu",
+        "leads": "Leady (KPI)"
+      },
+      "connect": {
+        "primary_limit_title": "Limit źródeł primary dla tego Flight",
+        "hostflow_form": "Publiczny formularz HostFlow",
+        "no_flight": "Kampania nie ma Flight — skontaktuj się z pomocą.",
+        "back_campaign": "Do kampanii",
+        "cancel": "Anuluj",
+        "submit": "Podłącz",
+        "connecting": "Łączenie…"
+      },
+      "source_card": {
+        "public_form": "Formularz publiczny",
+        "no_public_link": "Brak publicznego linku",
+        "last_submission": "Ostatnie zgłoszenie",
+        "public_link": "Link publiczny",
+        "facebook_page": "Strona Facebook",
+        "last_lead": "Ostatni lead",
+        "hostflow_source": "Formularz HostFlow · Source",
+        "open_form": "Otwórz formularz",
+        "details": "Szczegóły",
+        "hide_details": "Ukryj szczegóły",
+        "published": "Opublikowana",
+        "draft": "Szkic",
+        "inactive": "Nieaktywna",
+        "bound": "Powiązany",
+        "never": "nigdy"
+      },
+      "ad_bindings": {
+        "title": "Powiązanie Ad ID → Flight"
       }
     },
     "context_help": {
@@ -9353,6 +9642,111 @@
         "subtitle": "Płatności i dokumenty rozliczeniowe workspace.",
         "history": "Historia płatności",
         "closing": "Dokumenty rozliczeniowe"
+      }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Limit planu",
+        "body": "Ta czynność wymaga planu {required}. Twoja przestrzeń jest na planie {current}.",
+        "actions": {
+          "upgrade": "Zmień plan",
+          "talk_to_sales": "Porozmawiaj ze sprzedażą"
+        },
+        "required_plan_fallback": "wyższy plan",
+        "current_plan_fallback": "aktualny plan",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        }
+      },
+      "quota_warning": {
+        "cta_addon": "Dodaj pojemność",
+        "leads": "Miesięczne leady: {percent}% limitu planu.",
+        "candidates": "Aktywni kandydaci: {percent}% limitu planu.",
+        "storage": "Magazyn plików: {percent}% limitu planu."
+      }
+    },
+    "recruitment": {
+      "create_flow": {
+        "kicker": "Utwórz nabór",
+        "step": "Krok {step} z {total}"
+      },
+      "search_ready": {
+        "title": "Nabór gotowy",
+        "subtitle": "Skopiuj link i uruchom reklamy — kandydaci pojawią się w naborze.",
+        "step1": "Krok 1",
+        "step1_body": "Skopiuj link dla kandydatów",
+        "copy": "Kopiuj",
+        "or_qr": "albo pobierz QR",
+        "download": "Pobierz",
+        "step2": "Krok 2",
+        "step2_body": "Skonfiguruj źródła — Meta, link, QR",
+        "add_source": "Dodaj źródło",
+        "footer": "Wklej link do reklamy albo wyślij kandydatom. Zgłoszenia pojawią się na stronie naboru.",
+        "open": "Otwórz nabór",
+        "copied": "Link skopiowany",
+        "copy_failed": "Nie udało się skopiować",
+        "qr_downloaded": "QR pobrany",
+        "qr_failed": "Nie udało się pobrać QR"
+      },
+      "contributions": {
+        "assignee": "Odpowiedzialny",
+        "user_id_placeholder": "ID użytkownika",
+        "assign": "Przypisz",
+        "assigned": "Przypisano odpowiedzialnego",
+        "assign_failed": "Nie udało się przypisać",
+        "search": "Nabór",
+        "pick_search": "Wybierz nabór",
+        "bind_search": "Powiąż z naborem",
+        "bound": "Nabór powiązany",
+        "bind_failed": "Nie udało się powiązać naboru",
+        "reject_title": "Odrzuć zgłoszenie",
+        "comment_placeholder": "Komentarz",
+        "reject": "Odrzuć",
+        "rejected": "Zgłoszenie odrzucone",
+        "candidate_created": "Kandydat utworzony",
+        "followup_default": "Oddzwoń do kandydata",
+        "reminder_created": "Utworzono przypomnienie",
+        "action_failed": "Nie udało się wykonać działania",
+        "reason": {
+          "insufficient_experience": "Nie pasuje",
+          "no_response": "Brak odpowiedzi",
+          "duplicate_spam": "Duplikat",
+          "invalid_contact": "Spam",
+          "other": "Inne"
+        },
+        "err": {
+          "INTAKE_INFO_REQUESTED": "Dane już były proszone. Ponów „Utwórz kandydata” po aktualizacji.",
+          "VACANCY_NOT_CONFIRMED": "Najpierw powiąż nabór w bloku „Wakat”.",
+          "INTAKE_ROUTING_INCOMPLETE": "Brak routingu: powiąż nabór.",
+          "INTAKE_POOL_PATH_REQUIRED": "Powiąż nabór w bloku „Wakat”, potem ponownie kliknij „Utwórz kandydata”.",
+          "NO_INTAKE_CONTEXT": "Nie udało się utworzyć kandydata: zgłoszenie nie ma pełnego kontekstu intake. Powiąż aktualny nabór i spróbuj ponownie albo otwórz kartę leada.",
+          "LEAD_RODO_REQUIRED": "Potwierdź zgodę przed tą czynnością.",
+          "LEAD_INTAKE_ALREADY_REJECTED": "Zgłoszenie jest już zamknięte.",
+          "INTAKE_REJECT_REASON_REQUIRED": "Podaj powód odrzucenia.",
+          "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "Ta czynność jest niedostępna dla tego źródła."
+        }
+      }
+    },
+    "client_acquisition": {
+      "create_flow": {
+        "kicker": "Pozyskiwanie klientów",
+        "step": "Krok {step} z {total}"
+      },
+      "channel_ready": {
+        "title": "Kanał gotowy",
+        "subtitle": "Skopiuj link lub QR i umieść tam, gdzie firmy zobaczą ofertę: reklama, strona, e-mail, wizytówka.",
+        "link_label": "Link dla firm",
+        "copy": "Kopiuj link",
+        "download_qr": "Pobierz QR",
+        "next_hint": "Gdy firma zostawi zgłoszenie, na pulpicie pojawi się następna czynność — zwykle „Zadzwoń”.",
+        "open": "Otwórz pulpit",
+        "copied": "Link skopiowany",
+        "copy_failed": "Nie udało się skopiować",
+        "qr_downloaded": "QR pobrany",
+        "qr_failed": "Nie udało się pobrać QR"
       }
     }
   },
@@ -10969,7 +11363,8 @@
         "email": "your@email.com"
       },
       "labels": {
-        "email_colon": "Email:"
+        "email_colon": "Email:",
+        "phone_colon": "Telefon:"
       }
     },
     "landing": {
@@ -11008,6 +11403,46 @@
       "seo": {
         "title": "FAQ HostFlow — start, Meta, rekrutacja, billing",
         "description": "Odpowiedzi o starcie, Meta, WhatsApp, wakatach, dokumentach, billingu, bezpieczeństwie i API — bez czekania na support."
+      }
+    },
+    "client_inquiry": {
+      "landing": {
+        "headline": "Potrzebujesz personelu?",
+        "subheadline": "Zostaw zgłoszenie — skontaktujemy się i zaproponujemy rozwiązanie rekrutacyjne.",
+        "cta": "Zostaw zgłoszenie"
+      },
+      "thanks_title": "Dziękujemy!",
+      "thanks_body": "Otrzymaliśmy zgłoszenie i wkrótce się odezwiemy.",
+      "back": "Wróć na stronę",
+      "title": "Zostaw zgłoszenie",
+      "subtitle": "Napisz, kogo szukasz — oddzwonimy.",
+      "company": "Firma",
+      "company_placeholder": "Nazwa firmy",
+      "contact": "Osoba kontaktowa",
+      "name_placeholder": "Imię",
+      "phone_placeholder": "Telefon",
+      "need": "Czego potrzebujesz",
+      "who": "Kogo szukasz?",
+      "headcount": "Ile osób?",
+      "when": "Kiedy?",
+      "comment": "Komentarz",
+      "comment_placeholder": "Dodatkowe szczegóły",
+      "submit": "Wyślij",
+      "sending": "Wysyłanie…",
+      "err_contact": "Podaj telefon lub e-mail",
+      "err_required": "Wypełnij wszystkie wymagane pola",
+      "err_submit": "Nie udało się wysłać zgłoszenia. Spróbuj ponownie.",
+      "role": {
+        "drivers": "Kierowcy",
+        "warehouse": "Magazyn",
+        "office": "Biuro",
+        "other": "Inne"
+      },
+      "when_opt": {
+        "urgent": "Pilnie",
+        "week": "Tydzień",
+        "month": "Miesiąc",
+        "anytime": "Obojętnie"
       }
     }
   },
@@ -11117,12 +11552,17 @@
         "table": {
           "code": "Kod",
           "name": "Imię",
-          "required": "Wymagane przesłanie"
+          "required": "Wymagane przesłanie",
+          "process": "Proces",
+          "status": "Status",
+          "total": "Razem"
         },
         "badge": {
           "required": "Wymagany",
           "optional": "Opcjonalny"
-        }
+        },
+        "empty": "Brak typów dokumentów.",
+        "error": "Nie udało się wczytać typów dokumentów."
       },
       "notifications": {
         "upload_success": "Dokument przesłany",
@@ -11366,7 +11806,10 @@
         "stats": {
           "ready": "Gotowe",
           "pending": "W trakcie",
-          "overdue": "Przeterminowane"
+          "overdue": "Przeterminowane",
+          "process_all": "Wszystkie procesy",
+          "process_mine": "Moje procesy",
+          "process_sla_due": "SLA zapada"
         },
         "table": {
           "title": "Dokumenty",
@@ -11376,13 +11819,46 @@
           "status": "Status",
           "updated": "Zaktualizowano",
           "all": "Wszystkie statusy",
-          "empty": "Brak dokumentów dla tych filtrów."
+          "empty": "Brak dokumentów dla tych filtrów.",
+          "deadline": "Termin",
+          "deadline_overdue": "Zaległe",
+          "process": "Proces",
+          "responsible": "Odpowiedzialny"
         },
         "pagination": "Wiersze {from}–{to} z {total}",
         "automation": {
           "title": "Automatyzuj przypomnienia",
           "description": "Kieruj wygasające pliki do opiekunów i uruchamiaj prośby w portalu bez arkuszy.",
           "action": "Otwórz automatyzacje"
+        },
+        "mine_only": "Tylko moje",
+        "preset_filter": "Preset",
+        "preview": {
+          "clear": "Wyczyść",
+          "empty": "Wybierz dokument do podglądu.",
+          "files": "Pliki",
+          "open_candidate": "Otwórz kandydata",
+          "title": "Podgląd"
+        },
+        "queue_filter": "Kolejka",
+        "work": {
+          "back_to_my_work": "Wróć do mojej pracy",
+          "empty": {
+            "attention": "Nic nie wymaga uwagi.",
+            "mine": "Brak dokumentów przypisanych do Ciebie.",
+            "no_session": "Zaloguj się, aby zobaczyć swoją pracę z dokumentami."
+          },
+          "open_full_registry": "Otwórz pełny rejestr",
+          "search_placeholder": "Szukaj w moich dokumentach…",
+          "stats": {
+            "attention": "Wymaga uwagi",
+            "mine_total": "Przypisane do mnie"
+          },
+          "tab": {
+            "attention": "Uwaga",
+            "mine": "Moje"
+          },
+          "title": "Moja praca z dokumentami"
         }
       },
       "badges": {
@@ -11450,6 +11926,41 @@
         "pending_review": "Pending review",
         "rejected": "Rejected",
         "satisfied": "Satisfied"
+      },
+      "merge": {
+        "activate": "Aktywuj",
+        "bindings_invalid": "JSON powiązań jest nieprawidłowy.",
+        "confirm_delete": "Usunąć ten szablon scalania?",
+        "deactivate": "Dezaktywuj",
+        "description": "Szablony, które wypełniają wygenerowane dokumenty polami CRM.",
+        "empty": "Brak szablonów scalania.",
+        "error_delete": "Nie udało się usunąć szablonu.",
+        "error_load": "Nie udało się wczytać szablonów scalania.",
+        "error_save": "Nie udało się zapisać szablonu.",
+        "field_bindings": "Powiązania pól (JSON)",
+        "field_body": "Treść",
+        "field_code": "Kod",
+        "field_filename": "Wzorzec nazwy pliku",
+        "field_mime": "Typ MIME",
+        "field_name": "Nazwa",
+        "field_oc": "Firma operacyjna",
+        "form_edit_title": "Edytuj szablon",
+        "form_new_title": "Nowy szablon",
+        "header_kicker": "Dokumenty",
+        "include_inactive": "Pokaż nieaktywne",
+        "table": {
+          "actions": "Akcje",
+          "code": "Kod",
+          "mime": "MIME",
+          "name": "Nazwa",
+          "oc": "Firma",
+          "status": "Status"
+        },
+        "title": "Szablony scalania"
+      },
+      "preview": {
+        "dialog_aria": "Podgląd dokumentu",
+        "iframe_title": "Podgląd pliku dokumentu"
       }
     },
     "integrations_hub": {
@@ -11595,7 +12106,9 @@
         "mapping_saved": "Mapowanie zapisane",
         "lead_rerouted": "Lead wysłany do obsługi",
         "lead_retried": "Lead przetworzony pomyślnie",
-        "unmapped_attached": "Leady przypisane do oferty"
+        "unmapped_attached": "Leady przypisane do oferty",
+        "form_mapping_saved": "Mapowanie formularza zapisane.",
+        "tenant_mapping_saved": "Mapowanie tenanta zapisane."
       },
       "errors": {
         "load": "Nie udało się wczytać danych Meta Leads",
@@ -11617,7 +12130,9 @@
         "field_mapping_row_incomplete_hint": "Usuń puste wiersze lub uzupełnij źródło i cel dla każdej reguły.",
         "lead_field_definition_create": "Nie udało się utworzyć niestandardowego pola leada",
         "lead_field_definition_conflict": "Pole leada z tym kluczem już istnieje",
-        "lead_field_definition_conflict_hint": "Otwórz ustawienia pól niestandardowych i edytuj je albo wybierz inny klucz."
+        "lead_field_definition_conflict_hint": "Otwórz ustawienia pól niestandardowych i edytuj je albo wybierz inny klucz.",
+        "load_form_mapping": "Nie udało się wczytać mapowania formularza.",
+        "save": "Nie udało się zapisać mapowania."
       },
       "hints": {
         "fill_fields_retry": "Uzupełnij wymagane pola i spróbuj ponownie.",
@@ -11748,7 +12263,14 @@
         "graph_fetch_notice": "Z Graph: {count} pól. form_id: {form_id}.",
         "graph_fetch_validation_title": "Brak danych",
         "graph_fetch_validation_hint": "Wybierz ostatni lead lub podaj leadgen_id i page_id.",
-        "graph_fetch_error_title": "Żądanie do Meta nie powiodło się"
+        "graph_fetch_error_title": "Żądanie do Meta nie powiodło się",
+        "form_name_placeholder": "Nazwa formularza",
+        "form_select_label": "Formularz leada",
+        "form_select_option": "{name}",
+        "form_select_tenant_default": "Domyślne dla tenanta",
+        "inherits_tenant_banner": "Ten formularz dziedziczy mapowanie tenanta, dopóki nie zapiszesz osobnych reguł.",
+        "save_form": "Zapisz mapowanie formularza",
+        "save_tenant": "Zapisz mapowanie tenanta"
       },
       "credentials": {
         "title": "Dodaj połączenie",
@@ -12166,6 +12688,10 @@
         },
         "organization": {
           "description": "Subskrypcja workspace, moduły, użytkownicy i firmy operacyjne."
+        },
+        "merge_templates": {
+          "label": "Szablony scalania",
+          "description": "Szablony scalania dokumentów i powiązania pól dla generowanych plików."
         }
       },
       "audit": {
@@ -12781,6 +13307,149 @@
         "last_name": "Nazwisko",
         "email": "E-mail",
         "phone": "Telefon"
+      },
+      "deprecation_banner": "To widok zgodności. Nowa praca z profilami jest w Ustawienia → Profile kandydatów.",
+      "apply_modal": {
+        "title": "Zastosuj profil „{name}” do wakatów",
+        "info_title": "Informacja:",
+        "info_1": "Profil zostanie zastosowany do wybranych wakatów",
+        "info_2": "Wakaty, które już używają tego profilu, będą oznaczone",
+        "info_3": "Operacja może chwilę potrwać przy dużej liczbie wakatów",
+        "search_placeholder": "Szukaj po tytule lub firmie…",
+        "load_failed": "Nie udało się wczytać wakatów",
+        "pick_one": "Wybierz przynajmniej jeden wakat",
+        "partial": "Zastosowano do {success} wakatów. Błędów: {failed}.",
+        "partial_details": "Szczegóły: {details}",
+        "unknown_error": "Nieznany błąd",
+        "apply_failed": "Nie udało się zastosować profilu do wakatów",
+        "retry_hint": "Ponów działanie lub odśwież stronę.",
+        "loading": "Wczytywanie wakatów…",
+        "empty": "Nie znaleziono wakatów",
+        "select_all": "Zaznacz wszystkie ({selected} z {total})",
+        "no_company": "Bez firmy",
+        "candidates_count": "{count} kandydatów",
+        "already_applied": "Profil już zastosowany",
+        "current_profile": "Aktualny profil: {name}",
+        "selected": "Wybrano: {count} wakatów",
+        "applying": "Stosowanie…",
+        "apply_n": "Zastosuj do {count} wakatów"
+      },
+      "bulk_modal": {
+        "title": "Masowa zmiana profili",
+        "info_1": "Wybierz profile do zmiany",
+        "info_2": "Podaj zmiany: dodanie/usunięcie pól lub etapów",
+        "info_3": "Zmiany zostaną zastosowane do wszystkich wybranych profili",
+        "search_placeholder": "Szukaj po nazwie lub kodzie…",
+        "load_failed": "Nie udało się wczytać profili",
+        "pick_one": "Wybierz przynajmniej jeden profil",
+        "wip": "Masowa zmiana konfiguracji jest w przygotowaniu. Edytuj każdy profil osobno.",
+        "wip_banner": "Masowa zmiana konfiguracji jest w przygotowaniu. Ta wersja pozwala zastosować profil do wakatów. Aby zmienić konfigurację, edytuj każdy profil osobno.",
+        "loading": "Wczytywanie profili…",
+        "empty": "Nie znaleziono profili",
+        "select_all": "Zaznacz wszystkie ({selected} z {total})",
+        "config_changes": "Zmiany konfiguracji",
+        "selected_for_change": "Wybrane profile: {count}",
+        "selected": "Wybrano: {count} profili",
+        "wip_title": "Funkcja w przygotowaniu",
+        "updating": "Aktualizacja…",
+        "apply_wip": "Zastosuj zmiany (w przygotowaniu)"
+      },
+      "funnel": {
+        "need_company": "Najpierw wybierz firmę wakatu. Lejek jest zapisany na wakacie, nie na kliencie.",
+        "loading": "Wczytywanie lejków…",
+        "label": "Lejek wakatu",
+        "none": "— nie wybrano —",
+        "missing_handoff_stage": "{name} (brak etapu „Gotowy do przekazania”)",
+        "handoff_only": "Klient ma włączone przekazanie: dostępne są tylko lejki z etapem „Gotowy do przekazania”.",
+        "hint": "Lejek tego wakatu. Jeden klient może mieć różne lejki na różnych wakatach.",
+        "edit_link": "Edytuj lejki",
+        "blocked": "Ten lejek nie nadaje się do przekazania: dodaj etap „Gotowy do przekazania” albo wybierz inny.",
+        "stages": "Etapy wybranego lejka"
+      },
+      "docs": {
+        "loading": "Wczytywanie typów dokumentów…",
+        "available": "Dostępne dokumenty",
+        "all_added": "Wszystkie dokumenty dodane",
+        "in_profile": "Dokumenty w profilu",
+        "empty": "Brak dokumentów. Dodaj je z listy powyżej.",
+        "required": "Wymagany",
+        "disabled": "Wyłączony",
+        "enabled": "Włączony",
+        "alert_before": "Przypomnij przed:",
+        "days": "dni"
+      },
+      "history": {
+        "title": "Historia zmian profilu: {name}",
+        "load_failed": "Nie udało się wczytać historii zmian",
+        "no_changes": "Brak zmian",
+        "was": "Było:",
+        "became": "Jest:",
+        "loading": "Wczytywanie historii…",
+        "empty": "Historia zmian jest pusta",
+        "changes": "Zmiany:",
+        "initial_data": "Dane początkowe:",
+        "action": {
+          "created": "Utworzony",
+          "updated": "Zaktualizowany",
+          "deleted": "Usunięty",
+          "activated": "Aktywowany",
+          "deactivated": "Dezaktywowany"
+        },
+        "field": {
+          "code": "Kod",
+          "name": "Nazwa",
+          "description": "Opis",
+          "client_id": "ID klienta",
+          "config": "Konfiguracja",
+          "is_active": "Aktywność",
+          "is_system": "Systemowy",
+          "owner_user_id": "Właściciel",
+          "notes": "Notatki"
+        }
+      },
+      "preview": {
+        "title": "Podgląd profilu: {name}",
+        "general": "Informacje ogólne",
+        "code": "Kod:",
+        "description": "Opis:",
+        "notes": "Notatki:",
+        "status": "Status:",
+        "active": "Aktywny",
+        "inactive": "Nieaktywny",
+        "system": "Systemowy",
+        "fields": "Pól",
+        "required_count": "{count} wymaganych",
+        "stages": "Etapów",
+        "stages_funnel": "Etapów (lejek)",
+        "documents": "Dokumentów",
+        "fields_heading": "Pola ({count})",
+        "field_required": "Wymagane",
+        "stages_heading": "Etapy lejka ({count})",
+        "documents_heading": "Dokumenty ({count})",
+        "doc_required": "Wymagany",
+        "remind_days": "Przypomnienie {days} dni wcześniej",
+        "export": "Eksport",
+        "duplicate": "Kopiuj"
+      },
+      "usage": {
+        "title": "Statystyki użycia profilu „{name}”",
+        "load_failed": "Nie udało się wczytać statystyk użycia",
+        "fields": "Pola",
+        "stages": "Etapy",
+        "documents": "Dokumenty",
+        "vacancies": "Wakaty",
+        "active_count": "{count} aktywnych",
+        "total_candidates": "Razem kandydatów",
+        "total_candidates_hint": "Kandydaci na wszystkich wakatach z tym profilem",
+        "vacancies_heading": "Wakaty używające profilu ({count})",
+        "empty": "Profil nie jest używany na żadnym wakacie",
+        "company": "Firma: {name}",
+        "location": "Lokalizacja: {value}",
+        "status": "Status: {value}",
+        "candidates": "Kandydatów: {count}",
+        "active": "Aktywna",
+        "inactive_vacancy": "Nieaktywna",
+        "archived": "W archiwum"
       }
     },
     "email": {
@@ -12998,6 +13667,113 @@
         "copy": "Could not copy",
         "smoke": "Smoke test failed"
       }
+    },
+    "calendar_integrations": {
+      "actions": {
+        "complete_oauth": "Dokończ OAuth",
+        "connecting": "Łączenie…",
+        "copy_oauth_url": "Kopiuj URL OAuth",
+        "delete": "Usuń",
+        "deleting": "Usuwanie…",
+        "open_oauth": "Otwórz OAuth",
+        "queueing": "Kolejkowanie…",
+        "reconcile": "Uzgodnij",
+        "refresh_list": "Odśwież listę",
+        "refresh_token": "Odśwież token",
+        "refreshing": "Odświeżanie…",
+        "renew_sub": "Odnów subskrypcję"
+      },
+      "connect": {
+        "quick_flow": "Szybkie połączenie otwiera logowanie u dostawcy. Po zatwierdzeniu dostępu wróć tutaj — połączenie pojawi się na liście poniżej.",
+        "subtitle": "Połącz kalendarze Google lub Microsoft, aby rozmowy i zadania były zsynchronizowane.",
+        "title": "Połącz kalendarz"
+      },
+      "connections": {
+        "empty": "Brak połączeń kalendarza.",
+        "error": "Nie udało się wczytać połączeń.",
+        "status": "Status",
+        "title": "Połączone kalendarze"
+      },
+      "errors": {
+        "delete_connection": "Nie udało się usunąć połączenia.",
+        "load_connections": "Nie udało się wczytać połączeń kalendarza.",
+        "oauth_complete": "Nie udało się dokończyć OAuth.",
+        "oauth_error": "Błąd OAuth.",
+        "reconcile_queue": "Nie udało się dodać uzgodnienia do kolejki.",
+        "refresh_token": "Nie udało się odświeżyć tokenu.",
+        "renew_queue": "Nie udało się dodać odnowienia subskrypcji do kolejki."
+      },
+      "fields": {
+        "account_ref": "Konto",
+        "client_id": "Client ID",
+        "client_secret": "Client secret",
+        "oauth_code": "Kod OAuth",
+        "provider": "Dostawca",
+        "redirect_uri": "Redirect URI",
+        "scopes": "Zakresy"
+      },
+      "header": {
+        "back_to_hub": "← Integracje",
+        "kicker": "Konfiguracja CRM",
+        "subtitle": "Połączenia OAuth, stan synchronizacji i wydarzenia kalendarza dla rozmów i zadań.",
+        "title": "Integracje kalendarza"
+      },
+      "hints": {
+        "fill_client_id_first": "Najpierw podaj Client ID."
+      },
+      "placeholders": {
+        "account_ref": "user@company.com",
+        "oauth_code": "Wklej kod autoryzacji",
+        "redirect_uri": "https://…/oauth/callback",
+        "refresh_scope": "Opcjonalne dodatkowe zakresy",
+        "scopes": "calendar.readonly, …"
+      },
+      "providers": {
+        "google": "Google",
+        "microsoft": "Microsoft"
+      },
+      "refresh": {
+        "subtitle": "Odśwież token dostępu, gdy synchronizacja się zatrzyma lub dostawca poprosi o ponowne połączenie.",
+        "title": "Odświeżanie tokenu"
+      },
+      "success": {
+        "connection_created": "Kalendarz połączony.",
+        "connection_deleted": "Połączenie usunięte.",
+        "oauth_callback": "OAuth zakończony.",
+        "reconcile_queued": "Uzgodnienie dodane do kolejki.",
+        "renew_queued": "Odnowienie dodane do kolejki.",
+        "token_refreshed": "Token odświeżony."
+      }
+    },
+    "company_access": {
+      "title": "Dostęp do firm",
+      "subtitle": "Zarządzaj dostępem pracowników do kart klientów i kandydatów w wybranej firmie.",
+      "subtitle_with_company": "Firma: {name}",
+      "company_select_label": "Wybór firmy",
+      "no_acl": "Nie masz dostępu do zarządzania ACL firm.",
+      "no_companies": "Brak firm do konfiguracji dostępu.",
+      "current": "Aktualny dostęp",
+      "empty_users": "Do tej firmy nie przypisano jeszcze użytkowników.",
+      "role_rights": "Rola: {role} · Uprawnienia: {rights}",
+      "rights_edit": "edycja",
+      "rights_view": "podgląd",
+      "view_only": "Tylko podgląd",
+      "allow_edits": "Zezwól na edycję",
+      "revoke": "Usuń",
+      "grant_title": "Nadaj dostęp",
+      "user": "Użytkownik",
+      "pick_user": "Wybierz użytkownika",
+      "allow_company_edit": "Zezwól na edycję danych firmy",
+      "grant": "Nadaj dostęp",
+      "saving": "Zapisywanie…",
+      "load_source_failed": "Nie udało się wczytać danych źródłowych",
+      "load_list_failed": "Nie udało się wczytać listy dostępu",
+      "grant_failed": "Nie udało się nadać dostępu do firmy",
+      "update_failed": "Nie udało się zaktualizować uprawnień",
+      "revoke_failed": "Nie udało się odebrać dostępu",
+      "missing_user": "Rekord nie ma user_id",
+      "confirm_revoke": "Odebrać dostęp użytkownikowi {email}?",
+      "retry_hint": "Ponów działanie lub odśwież stronę."
     }
   }
 }

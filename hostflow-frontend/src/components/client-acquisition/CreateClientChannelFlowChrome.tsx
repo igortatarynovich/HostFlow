@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { useI18n } from '../../i18n'
 
 type CreateClientChannelFlowChromeProps = {
   step: number
@@ -20,6 +21,7 @@ export function CreateClientChannelFlowChrome({
   children,
   testId = 'm1-create-client-channel-wizard',
 }: CreateClientChannelFlowChromeProps) {
+  const { t } = useI18n()
   return (
     <div className="mx-auto max-w-2xl space-y-4" data-testid={testId}>
       <Link
@@ -32,9 +34,11 @@ export function CreateClientChannelFlowChrome({
 
       <section className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-brand-700">Привлечение клиентов</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-brand-700">
+            {t('app.client_acquisition.create_flow.kicker')}
+          </p>
           <span className="text-xs text-slate-500">
-            Шаг {step} из {totalSteps}
+            {t('app.client_acquisition.create_flow.step', { values: { step, total: totalSteps } })}
           </span>
         </div>
         <div className="mt-4 flex gap-1">

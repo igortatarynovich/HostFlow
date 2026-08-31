@@ -286,7 +286,9 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                   <IconPhone size={20} stroke={1.9} />
                 </span>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Следующее действие</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">
+                    {t('app.platform.application_workspace.next_action')}
+                  </p>
                   <p className="mt-1 text-lg font-bold text-slate-900">{config.heroCallTitle(newToContactCount)}</p>
                   <p className="mt-1 text-sm text-slate-600">{config.heroCallHint}</p>
                 </div>
@@ -296,7 +298,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                 onClick={() => void startCallSession()}
                 className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-800"
               >
-                Начать работу
+                {t('app.platform.application_workspace.start_work')}
                 <IconArrowRight size={16} stroke={2} />
               </button>
             </div>
@@ -331,7 +333,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
           >
             <IconFilter size={14} stroke={1.9} />
-            Сначала новые
+            {t('app.platform.application_workspace.newest_first')}
           </button>
         </div>
       </div>
@@ -355,18 +357,20 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
             <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
               <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Контакт</th>
-                  <th className="px-4 py-3">Детали</th>
-                  <th className="px-4 py-3">Источник</th>
-                  <th className="px-4 py-3">Доп.</th>
-                  <th className="px-4 py-3">Статус</th>
-                  <th className="px-4 py-3">Время</th>
+                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_contact')}</th>
+                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_details')}</th>
+                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_source')}</th>
+                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_extra')}</th>
+                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_status')}</th>
+                  <th className="px-4 py-3">{t('app.platform.application_workspace.col_time')}</th>
                 </tr>
               </thead>
               <tbody>{filteredApplications.map((app) => renderListItem(app))}</tbody>
             </table>
             {filteredApplications.length === 0 ? (
-              <p className="p-8 text-center text-sm text-slate-500">Нет записей в этой вкладке</p>
+              <p className="p-8 text-center text-sm text-slate-500">
+                {t('app.platform.application_workspace.empty_tab')}
+              </p>
             ) : null}
             {hasMore ? (
               <div className="border-t border-slate-100 p-4 text-center">
@@ -376,7 +380,11 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
                   onClick={() => void loadList({ tab, offset: allApplications.length, append: true })}
                   className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                 >
-                  {loadingMore ? t('common.loading') : `Загрузить ещё (${allApplications.length} из ${listTotal})`}
+                  {loadingMore
+                    ? t('common.loading')
+                    : t('app.platform.application_workspace.load_more', {
+                        values: { loaded: allApplications.length, total: listTotal },
+                      })}
                 </button>
               </div>
             ) : null}

@@ -1,32 +1,19 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getCompanyIntakeConfig, submitCompanyIntake } from '../../api/companyIntake'
 import { PublicPageShell } from './components/PublicPageShell'
 import { buildPublicClientInquiryUrl } from '../../utils/clientInquiryUrl'
+import { useI18n } from '../../i18n'
 
 type NeedRole = 'drivers' | 'warehouse' | 'office' | 'other'
 type PeopleCount = '1-2' | '3-5' | '6-10' | '10+'
 type NeededWhen = 'urgent' | 'week' | 'month' | 'anytime'
-
-const ROLE_OPTIONS: { id: NeedRole; label: string }[] = [
-  { id: 'drivers', label: 'Водители' },
-  { id: 'warehouse', label: 'Склад' },
-  { id: 'office', label: 'Офис' },
-  { id: 'other', label: 'Другое' },
-]
 
 const COUNT_OPTIONS: { id: PeopleCount; label: string }[] = [
   { id: '1-2', label: '1–2' },
   { id: '3-5', label: '3–5' },
   { id: '6-10', label: '6–10' },
   { id: '10+', label: '10+' },
-]
-
-const WHEN_OPTIONS: { id: NeededWhen; label: string }[] = [
-  { id: 'urgent', label: 'Срочно' },
-  { id: 'week', label: 'Неделя' },
-  { id: 'month', label: 'Месяц' },
-  { id: 'anytime', label: 'Неважно' },
 ]
 
 function ChipGroup<T extends string>({
@@ -64,6 +51,7 @@ function ChipGroup<T extends string>({
 
 export default function ClientInquiryFormPage() {
   const { publicToken = '' } = useParams<{ publicToken: string }>()
+  const { t, locale } = useI18n()
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,6 +65,27 @@ export default function ClientInquiryFormPage() {
   const [neededWhen, setNeededWhen] = useState<NeededWhen | ''>('')
   const [comment, setComment] = useState('')
 
+  const roleOptions = useMemo(
+    () =>
+      [
+        { id: 'drivers' as const, label: t('public.client_inquiry.role.drivers') },
+        { id: 'warehouse' as const, label: t('public.client_inquiry.role.warehouse') },
+        { id: 'office' as const, label: t('public.client_inquiry.role.office') },
+        { id: 'other' as const, label: t('public.client_inquiry.role.other') },
+      ] satisfies { id: NeedRole; label: string }[],
+    [t],
+  )
+  const whenOptions = useMemo(
+    () =>
+      [
+        { id: 'urgent' as const, label: t('public.client_inquiry.when_opt.urgent') },
+        { id: 'week' as const, label: t('public.client_inquiry.when_opt.week') },
+        { id: 'month' as const, label: t('public.client_inquiry.when_opt.month') },
+        { id: 'anytime' as const, label: t('public.client_inquiry.when_opt.anytime') },
+      ] satisfies { id: NeededWhen; label: string }[],
+    [t],
+  )
+
   useEffect(() => {
     if (!publicToken) return
     void getCompanyIntakeConfig(publicToken).catch(() => undefined)
@@ -86,18 +95,18 @@ export default function ClientInquiryFormPage() {
     e.preventDefault()
     if (!publicToken || !companyName.trim() || !contactName.trim()) return
     if (!phone.trim() && !email.trim()) {
-      setError('Укажите телефон или email')
+      setError(t('public.client_inquiry.err_contact'))
       return
     }
     if (!needRole || !peopleCount || !neededWhen) {
-      setError('Заполните все обязательные поля')
+      setError(t('public.client_inquiry.err_required'))
       return
     }
 
     setLoading(true)
     setError(null)
     try {
-      const roleLabel = ROLE_OPTIONS.find((o) => o.id === needRole)?.label ?? needRole
+      const roleLabel = roleOptions.find((o) => o.id === needRole)?.label ?? needRole
       await submitCompanyIntake(publicToken, {
         company: { name: companyName.trim() },
         contact: {
@@ -107,7 +116,7 @@ export default function ClientInquiryFormPage() {
         },
         need: {
           what_needed: `${roleLabel} · ${peopleCount}`,
-          needed_when: WHEN_OPTIONS.find((o) => o.id === neededWhen)?.label ?? neededWhen,
+          needed_when: whenOptions.find((o) => o.id === neededWhen)?.label ?? neededWhen,
           requirements: comment.trim() || null,
         },
         consent: {
@@ -118,7 +127,7 @@ export default function ClientInquiryFormPage() {
           terms_version: 'client-inquiry-v1',
           privacy_version: 'client-inquiry-v1',
         },
-        language: 'ru',
+        language: locale,
         source: 'website',
         source_context: {
           landing_page: buildPublicClientInquiryUrl(publicToken),
@@ -127,7 +136,7 @@ export default function ClientInquiryFormPage() {
       })
       setSubmitted(true)
     } catch {
-      setError('Не удалось отправить заявку. Попробуйте ещё раз.')
+      setError(t('public.client_inquiry.err_submit'))
     } finally {
       setLoading(false)
     }
@@ -139,15 +148,15 @@ export default function ClientInquiryFormPage() {
     return (
       <PublicPageShell maxWidth="md" showBrand>
         <div className="rounded-3xl border border-white/70 bg-white/90 p-8 text-center shadow-xl shadow-slate-900/5">
-          <h1 className="text-2xl font-semibold text-slate-900">Спасибо!</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('public.client_inquiry.thanks_title')}</h1>
           <p className="mt-3 text-slate-600">
-            Мы получили вашу заявку и свяжемся с вами в ближайшее время.
+            {t('public.client_inquiry.thanks_body')}
           </p>
           <Link
             to={buildPublicClientInquiryUrl(publicToken)}
             className="mt-6 inline-block text-sm font-medium text-brand-700 hover:underline"
           >
-            Вернуться на страницу
+            {t('public.client_inquiry.back')}
           </Link>
         </div>
       </PublicPageShell>
@@ -162,37 +171,37 @@ export default function ClientInquiryFormPage() {
         data-testid="client-inquiry-form"
       >
         <header>
-          <h1 className="text-2xl font-semibold text-slate-900">Оставить заявку</h1>
-          <p className="mt-2 text-sm text-slate-600">Расскажите, кого ищете — мы перезвоним.</p>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('public.client_inquiry.title')}</h1>
+          <p className="mt-2 text-sm text-slate-600">{t('public.client_inquiry.subtitle')}</p>
         </header>
 
         <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold text-slate-900">Компания</legend>
+          <legend className="text-sm font-semibold text-slate-900">{t('public.client_inquiry.company')}</legend>
           <input
             type="text"
             required
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
-            placeholder="Название компании"
+            placeholder={t('public.client_inquiry.company_placeholder')}
             className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm"
           />
         </fieldset>
 
         <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold text-slate-900">Контактное лицо</legend>
+          <legend className="text-sm font-semibold text-slate-900">{t('public.client_inquiry.contact')}</legend>
           <input
             type="text"
             required
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
-            placeholder="Имя"
+            placeholder={t('public.client_inquiry.name_placeholder')}
             className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm"
           />
           <input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="Телефон"
+            placeholder={t('public.client_inquiry.phone_placeholder')}
             className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm"
           />
           <input
@@ -205,28 +214,28 @@ export default function ClientInquiryFormPage() {
         </fieldset>
 
         <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold text-slate-900">Что требуется</legend>
-          <p className="text-xs text-slate-500">Кого ищете?</p>
-          <ChipGroup value={needRole} options={ROLE_OPTIONS} onChange={setNeedRole} name="need-role" />
+          <legend className="text-sm font-semibold text-slate-900">{t('public.client_inquiry.need')}</legend>
+          <p className="text-xs text-slate-500">{t('public.client_inquiry.who')}</p>
+          <ChipGroup value={needRole} options={roleOptions} onChange={setNeedRole} name="need-role" />
         </fieldset>
 
         <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold text-slate-900">Сколько человек?</legend>
+          <legend className="text-sm font-semibold text-slate-900">{t('public.client_inquiry.headcount')}</legend>
           <ChipGroup value={peopleCount} options={COUNT_OPTIONS} onChange={setPeopleCount} name="people-count" />
         </fieldset>
 
         <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold text-slate-900">Когда нужно?</legend>
-          <ChipGroup value={neededWhen} options={WHEN_OPTIONS} onChange={setNeededWhen} name="needed-when" />
+          <legend className="text-sm font-semibold text-slate-900">{t('public.client_inquiry.when')}</legend>
+          <ChipGroup value={neededWhen} options={whenOptions} onChange={setNeededWhen} name="needed-when" />
         </fieldset>
 
         <label className="block space-y-2">
-          <span className="text-sm font-semibold text-slate-900">Комментарий</span>
+          <span className="text-sm font-semibold text-slate-900">{t('public.client_inquiry.comment')}</span>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={3}
-            placeholder="Дополнительные детали"
+            placeholder={t('public.client_inquiry.comment_placeholder')}
             className="w-full rounded-lg border border-slate-200 px-3 py-3 text-sm"
           />
         </label>
@@ -238,7 +247,7 @@ export default function ClientInquiryFormPage() {
           disabled={loading}
           className="w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
         >
-          {loading ? 'Отправка…' : 'Отправить'}
+          {loading ? t('public.client_inquiry.sending') : t('public.client_inquiry.submit')}
         </button>
       </form>
     </PublicPageShell>

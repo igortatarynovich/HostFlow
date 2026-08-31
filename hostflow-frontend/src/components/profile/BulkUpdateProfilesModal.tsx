@@ -5,6 +5,7 @@ import {
   listCandidateProfiles,
   type CandidateProfile,
 } from '../../api/candidate_profiles'
+import { useI18n } from '../../i18n'
 
 interface BulkUpdateProfilesModalProps {
   onClose: () => void
@@ -12,6 +13,7 @@ interface BulkUpdateProfilesModalProps {
 }
 
 function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModalProps) {
+  const { t } = useI18n()
   const [profiles, setProfiles] = useState<CandidateProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
@@ -32,7 +34,7 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
       const data = await listCandidateProfiles({ is_active: undefined })
       setProfiles(data.filter((p) => !p.is_system)) // Exclude system profiles
     } catch (err: any) {
-      setError(err?.message || 'Не удалось загрузить профили')
+      setError(err?.message || t('admin.candidate_profiles_page.bulk_modal.load_failed'))
     } finally {
       setLoading(false)
     }
@@ -76,25 +78,25 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
 
   const handleBulkUpdate = async () => {
     if (selectedIds.size === 0) {
-      setError('Выберите хотя бы один профиль')
+      setError(t('admin.candidate_profiles_page.bulk_modal.pick_one'))
       return
     }
 
     // TODO: Реализовать массовое изменение конфигурации профилей
     // Пока что функционал находится в разработке
-    setError('Функционал массового изменения конфигурации находится в разработке. Используйте редактирование каждого профиля отдельно.')
+    setError(t('admin.candidate_profiles_page.bulk_modal.wip'))
     return
   }
 
   return (
-    <Modal open={true} onClose={onClose} title="Массовое изменение профилей">
+    <Modal open={true} onClose={onClose} title={t('admin.candidate_profiles_page.bulk_modal.title')}>
       <div className="space-y-4">
         <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-          <div className="font-semibold mb-1">Информация:</div>
+          <div className="font-semibold mb-1">{t('admin.candidate_profiles_page.apply_modal.info_title')}</div>
           <ul className="list-disc list-inside space-y-1 text-xs">
-            <li>Выберите профили для изменения</li>
-            <li>Укажите изменения: добавление/удаление полей или этапов</li>
-            <li>Изменения будут применены ко всем выбранным профилям</li>
+            <li>{t('admin.candidate_profiles_page.bulk_modal.info_1')}</li>
+            <li>{t('admin.candidate_profiles_page.bulk_modal.info_2')}</li>
+            <li>{t('admin.candidate_profiles_page.bulk_modal.info_3')}</li>
           </ul>
         </div>
 
@@ -102,7 +104,7 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
         <div className="space-y-2">
           <input
             type="text"
-            placeholder="Поиск по названию или коду..."
+            placeholder={t('admin.candidate_profiles_page.bulk_modal.search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input w-full"
@@ -115,17 +117,17 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
             }}
             className="input"
           >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
+            <option value="all">{t('admin.candidate_profiles_page.filter_all')}</option>
+            <option value="active">{t('admin.candidate_profiles_page.filter_active')}</option>
+            <option value="inactive">{t('admin.candidate_profiles_page.filter_inactive')}</option>
           </select>
         </div>
 
         {/* Список профилей */}
         {loading ? (
-          <div className="text-sm text-slate-500">Загрузка профилей...</div>
+          <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.bulk_modal.loading')}</div>
         ) : filteredProfiles.length === 0 ? (
-          <div className="text-sm text-slate-500">Профили не найдены</div>
+          <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.bulk_modal.empty')}</div>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto border border-slate-200 rounded p-3">
             {/* Select All */}
@@ -138,7 +140,9 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
                 disabled={updating}
               />
               <span className="text-sm font-semibold text-slate-700">
-                Выбрать все ({selectedIds.size} из {filteredProfiles.length})
+                {t('admin.candidate_profiles_page.bulk_modal.select_all', {
+                  values: { selected: selectedIds.size, total: filteredProfiles.length },
+                })}
               </span>
             </div>
 
@@ -174,22 +178,25 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
         {/* Configuration changes - упрощенная версия */}
         {selectedIds.size > 0 && (
           <div className="space-y-3 border-t border-slate-200 pt-4">
-            <h3 className="text-sm font-semibold text-slate-900">Изменения конфигурации</h3>
+            <h3 className="text-sm font-semibold text-slate-900">
+              {t('admin.candidate_profiles_page.bulk_modal.config_changes')}
+            </h3>
             <div className="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-              ⚠️ Функционал массового изменения конфигурации находится в разработке.
-              Текущая версия позволяет применять профиль к вакансиям. Для изменения конфигурации профилей используйте редактирование каждого профиля отдельно.
+              ⚠️ {t('admin.candidate_profiles_page.bulk_modal.wip_banner')}
             </div>
             <div className="text-sm text-slate-600">
-              Выбрано профилей для изменения: <span className="font-semibold">{selectedIds.size}</span>
+              {t('admin.candidate_profiles_page.bulk_modal.selected_for_change', {
+                values: { count: selectedIds.size },
+              })}
             </div>
           </div>
         )}
 
         {error && (
           <ErrorRecoveryBanner
-            info={{ title: error, hint: 'Повторите действие или обновите страницу.' }}
+            info={{ title: error, hint: t('admin.candidate_profiles_page.apply_modal.retry_hint') }}
             onRetry={() => void loadProfiles()}
-            retryLabel="Обновить"
+            retryLabel={t('common.refresh')}
             compact
           />
         )}
@@ -197,7 +204,9 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
         {/* Actions */}
         <div className="flex items-center justify-between border-t border-slate-200 pt-4">
           <div className="text-sm text-slate-600">
-            Выбрано: <span className="font-semibold">{selectedIds.size}</span> профилей
+            {t('admin.candidate_profiles_page.bulk_modal.selected', {
+              values: { count: selectedIds.size },
+            })}
           </div>
           <div className="flex gap-2">
             <button
@@ -206,16 +215,18 @@ function BulkUpdateProfilesModal({ onClose, onSuccess }: BulkUpdateProfilesModal
               disabled={updating}
               className="btn-secondary"
             >
-              Отмена
+              {t('common.cancel')}
             </button>
             <button
               type="button"
               onClick={handleBulkUpdate}
               disabled={selectedIds.size === 0 || updating}
               className="btn-primary opacity-50 cursor-not-allowed"
-              title="Функционал в разработке"
+              title={t('admin.candidate_profiles_page.bulk_modal.wip_title')}
             >
-              {updating ? 'Обновление...' : `Применить изменения (в разработке)`}
+              {updating
+                ? t('admin.candidate_profiles_page.bulk_modal.updating')
+                : t('admin.candidate_profiles_page.bulk_modal.apply_wip')}
             </button>
           </div>
         </div>

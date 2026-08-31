@@ -8,6 +8,7 @@ import type {
   EntityWorkspaceShellLabels,
 } from './types'
 import { DEFAULT_ENTITY_CONTEXT_RAIL_WIDTH_PX, DEFAULT_ENTITY_WORKSPACE_SHELL_LABELS, ENTITY_CONTEXT_RAIL_BLOCK_ORDER } from './types'
+import { useI18n } from '../../i18n'
 
 type EntityWorkspaceContextRailProps = {
   model: EntityContextRailModel
@@ -26,12 +27,13 @@ export function EntityWorkspaceContextRail({
   labels = DEFAULT_ENTITY_WORKSPACE_SHELL_LABELS.contextRail,
   widthPx = DEFAULT_ENTITY_CONTEXT_RAIL_WIDTH_PX,
 }: EntityWorkspaceContextRailProps) {
+  const { t } = useI18n()
   const blocks: Partial<Record<EntityContextRailBlockId, ReactNode>> = {}
 
   const nextActionBlock = model.decisionTitle || model.actions?.primary ? (
     <div className="rounded-xl border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 shadow-sm">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-700/80">
-        {labels?.next_actions ?? 'Следующее действие'}
+        {labels?.next_actions ?? t('app.platform.context_rail.next_action')}
       </p>
       {model.decisionTitle ? <p className="mt-2 text-base font-bold text-slate-900">{model.decisionTitle}</p> : null}
       {model.decisionWhy ? <p className="mt-1 text-sm leading-relaxed text-slate-600">{model.decisionWhy}</p> : null}
@@ -92,7 +94,9 @@ export function EntityWorkspaceContextRail({
 
   const quickContactsBlock = model.quickContacts?.length ? (
     <div className={nextActionBlock ? 'mt-4' : undefined}>
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Быстрые контакты</p>
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        {t('app.platform.entity_workspace.quick_contacts')}
+      </p>
       <div className="grid grid-cols-3 gap-2">
         {model.quickContacts.map((contact) =>
           contact.href ? (
@@ -102,7 +106,7 @@ export function EntityWorkspaceContextRail({
               className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 bg-white px-2 py-3 text-center text-[11px] font-medium text-slate-700 hover:bg-slate-50"
             >
               <ContactIcon icon={contact.icon} />
-              <span className="truncate">{contact.icon === 'phone' ? 'Звонок' : contact.icon === 'whatsapp' ? 'WA' : 'Email'}</span>
+              <span className="truncate">{contact.icon === 'phone' ? t('app.platform.entity_workspace.call') : contact.icon === 'whatsapp' ? 'WA' : 'Email'}</span>
             </a>
           ) : (
             <button
@@ -202,7 +206,7 @@ export function EntityWorkspaceContextRail({
             onClick={model.onShowAllEvents}
             className="mt-2 text-xs font-medium text-brand-700 hover:underline"
           >
-            Показать всю историю
+            {t('app.platform.entity_workspace.show_full_history')}
           </button>
         ) : null}
       </>
@@ -227,7 +231,7 @@ export function EntityWorkspaceContextRail({
         data-entity-workspace-zone="context-rail"
         data-entity-workspace-slot="context-rail"
       >
-        Нет контекста
+        {t('app.platform.entity_workspace.no_context')}
       </aside>
     )
   }

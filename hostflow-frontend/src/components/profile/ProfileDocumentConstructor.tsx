@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getDocumentTypes, type DocType } from '../../api/documents'
+import { useI18n } from '../../i18n'
 
 export interface DocumentConfig {
   document_type_id: string
@@ -21,6 +22,7 @@ export default function ProfileDocumentConstructor({
   onChange,
   disabled = false,
 }: ProfileDocumentConstructorProps) {
+  const { t } = useI18n()
   const [documentTypes, setDocumentTypes] = useState<DocType[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -87,16 +89,18 @@ export default function ProfileDocumentConstructor({
   )
 
   if (loading) {
-    return <div className="text-sm text-slate-500">Загрузка типов документов...</div>
+    return <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.docs.loading')}</div>
   }
 
   return (
     <div className="space-y-4">
       {/* Available documents */}
       <div>
-        <h4 className="mb-2 text-sm font-medium text-slate-700">Доступные документы</h4>
+        <h4 className="mb-2 text-sm font-medium text-slate-700">
+          {t('admin.candidate_profiles_page.docs.available')}
+        </h4>
         {availableDocumentTypes.length === 0 ? (
-          <p className="text-sm text-slate-500">Все документы добавлены</p>
+          <p className="text-sm text-slate-500">{t('admin.candidate_profiles_page.docs.all_added')}</p>
         ) : (
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
             {availableDocumentTypes.map((docType) => (
@@ -119,9 +123,11 @@ export default function ProfileDocumentConstructor({
 
       {/* Configured documents */}
       <div>
-        <h4 className="mb-2 text-sm font-medium text-slate-700">Документы в профиле</h4>
+        <h4 className="mb-2 text-sm font-medium text-slate-700">
+          {t('admin.candidate_profiles_page.docs.in_profile')}
+        </h4>
         {value.length === 0 ? (
-          <p className="text-sm text-slate-500">Нет документов. Добавьте документы из списка выше.</p>
+          <p className="text-sm text-slate-500">{t('admin.candidate_profiles_page.docs.empty')}</p>
         ) : (
           <div className="space-y-2">
             {value.map((config, index) => {
@@ -141,12 +147,12 @@ export default function ProfileDocumentConstructor({
                         <span className="font-medium text-slate-900">{docTypeName}</span>
                         {config.required && (
                           <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                            Обязательный
+                            {t('admin.candidate_profiles_page.docs.required')}
                           </span>
                         )}
                         {!config.enabled && (
                           <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                            Отключен
+                            {t('admin.candidate_profiles_page.docs.disabled')}
                           </span>
                         )}
                       </div>
@@ -161,7 +167,9 @@ export default function ProfileDocumentConstructor({
                             disabled={disabled}
                             className="rounded border-slate-300"
                           />
-                          <span className="text-xs text-slate-600">Включен</span>
+                          <span className="text-xs text-slate-600">
+                            {t('admin.candidate_profiles_page.docs.enabled')}
+                          </span>
                         </label>
                         <label className="flex items-center gap-1">
                           <input
@@ -173,10 +181,14 @@ export default function ProfileDocumentConstructor({
                             disabled={disabled}
                             className="rounded border-slate-300"
                           />
-                          <span className="text-xs text-slate-600">Обязательный</span>
+                          <span className="text-xs text-slate-600">
+                            {t('admin.candidate_profiles_page.docs.required')}
+                          </span>
                         </label>
                         <label className="flex items-center gap-1">
-                          <span className="text-xs text-slate-600">Оповещение за:</span>
+                          <span className="text-xs text-slate-600">
+                            {t('admin.candidate_profiles_page.docs.alert_before')}
+                          </span>
                           <input
                             type="number"
                             min="1"
@@ -190,9 +202,11 @@ export default function ProfileDocumentConstructor({
                             }}
                             disabled={disabled}
                             className="w-16 rounded border-slate-300 px-2 py-1 text-xs"
-                            placeholder="дней"
+                            placeholder={t('admin.candidate_profiles_page.docs.days')}
                           />
-                          <span className="text-xs text-slate-600">дней</span>
+                          <span className="text-xs text-slate-600">
+                            {t('admin.candidate_profiles_page.docs.days')}
+                          </span>
                         </label>
                       </div>
                     </div>

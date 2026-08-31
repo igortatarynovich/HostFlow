@@ -10,6 +10,7 @@ import { getFieldConfigs, getFieldLabel, isFieldVisible } from '../../utils/prof
 import { getLanguageDisplayName, getRegionDisplayName } from '../../utils/catalogLocale'
 import { formatDateSafe } from './candidateUtils'
 import type { AugmentedCandidate } from './types'
+import { useI18n } from '../../i18n'
 
 type ReadOnlyFieldProps = {
   label: string
@@ -98,6 +99,7 @@ function CandidateCustomFieldsReadOnlyBlock({
   effectiveLayout?: EffectiveCardLayout | null
   locale: string
 }) {
+  const { t } = useI18n()
   const extra = candidate.__extra as Record<string, unknown>
   const rawExtra = (candidate as { extra?: Record<string, unknown> }).extra ?? {}
 
@@ -155,12 +157,12 @@ function CandidateCustomFieldsReadOnlyBlock({
   return (
     <MockupWorkspaceSection
       index={3}
-      title="Кастомные поля"
-      subtitle="Настроенные поля профиля кандидата"
+      title={t('app.candidates.workspace.custom_fields')}
+      subtitle={t('app.candidates.workspace.custom_fields_hint')}
       defaultOpen
     >
       {loading ? (
-        <div className="md:col-span-2 text-sm text-slate-500">Загрузка…</div>
+        <div className="md:col-span-2 text-sm text-slate-500">{t('common.loading')}</div>
       ) : (
         visibleFields.map((fieldConfig) => {
           const definition = definitionMap.get(fieldConfig.field_key)
@@ -197,6 +199,7 @@ export function CandidateOverviewContent({
   candidateProfile,
   effectiveLayout,
 }: CandidateOverviewContentProps) {
+  const { t } = useI18n()
   const extra = candidate.__extra
   const rawExtra = (candidate as { extra?: Record<string, unknown> }).extra ?? {}
   const birthDate = (rawExtra.birth_date as string | undefined) ?? undefined
@@ -226,11 +229,11 @@ export function CandidateOverviewContent({
         <ReadOnlyField label="Языки" value={languages} />
         <ReadOnlyField
           label="Телефон"
-          value={candidate.masked ? 'Скрыто' : candidate.phone ?? undefined}
+          value={candidate.masked ? t('app.candidates.workspace.hidden') : candidate.phone ?? undefined}
         />
         <ReadOnlyField
           label="Email"
-          value={candidate.masked ? 'Скрыто' : candidate.email ?? undefined}
+          value={candidate.masked ? t('app.candidates.workspace.hidden') : candidate.email ?? undefined}
         />
         <ReadOnlyField label="Город" value={candidate.city ? String(candidate.city) : undefined} />
         <ReadOnlyField
@@ -291,6 +294,7 @@ export function CandidateOverviewContent({
 }
 
 export function CandidateContactsContent({ passport, candidate }: { passport: EntityPassport; candidate: AugmentedCandidate }) {
+  const { t } = useI18n()
   const channels = passport.sections.contacts.channels
 
   return (
@@ -298,7 +302,9 @@ export function CandidateContactsContent({ passport, candidate }: { passport: En
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-900">{passport.sections.contacts.displayName}</h3>
         {passport.sections.contacts.citizenship ? (
-          <p className="mt-1 text-sm text-slate-600">Гражданство: {passport.sections.contacts.citizenship}</p>
+              {t('app.platform.entity_workspace.citizenship', {
+                values: { value: passport.sections.contacts.citizenship },
+              })}
         ) : null}
         {passport.sections.contacts.preferredChannel ? (
           <p className="mt-1 text-sm text-slate-600">
@@ -316,22 +322,23 @@ export function CandidateContactsContent({ passport, candidate }: { passport: En
                 {ch.display || ch.value}
               </a>
             ) : (
-              <p className="mt-2 text-base font-semibold text-slate-900">{candidate.masked ? 'Скрыто' : ch.display || ch.value}</p>
+              <p className="mt-2 text-base font-semibold text-slate-900">{candidate.masked ? t('app.candidates.workspace.hidden') : ch.display || ch.value}</p>
             )}
           </div>
         ))}
       </div>
 
-      {!channels.length ? <p className="text-sm text-slate-500">Контакты не указаны</p> : null}
+      {!channels.length ? <p className="text-sm text-slate-500">{t('app.candidates.workspace.no_contacts')}</p> : null}
     </div>
   )
 }
 
 export function CandidateTimelineContent({ passport }: { passport: EntityPassport }) {
+  const { t } = useI18n()
   const items = passport.sections.timeline.items
 
   if (!items.length) {
-    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет событий</p>
+    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">{t('app.candidates.workspace.no_events')}</p>
   }
 
   return (
@@ -348,10 +355,11 @@ export function CandidateTimelineContent({ passport }: { passport: EntityPasspor
 }
 
 export function CandidateRelationsContent({ passport }: { passport: EntityPassport }) {
+  const { t } = useI18n()
   const items = passport.sections.relations.items
 
   if (!items.length) {
-    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет связей</p>
+    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">{t('app.candidates.workspace.no_relations')}</p>
   }
 
   return (
@@ -377,10 +385,11 @@ export function CandidateRelationsContent({ passport }: { passport: EntityPasspo
 }
 
 export function CandidateTasksContent({ passport }: { passport: EntityPassport }) {
+  const { t } = useI18n()
   const items = passport.sections.tasks.items
 
   if (!items.length) {
-    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Нет задач</p>
+    return <p className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">{t('app.candidates.workspace.no_tasks')}</p>
   }
 
   return (

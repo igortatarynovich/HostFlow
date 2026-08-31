@@ -42,12 +42,12 @@ describe('marketingPresentation', () => {
       targets: [{ target_type: 'vacancy', target_id: 'uuid-here', route_intent: 'candidate_application' }],
     } as Campaign
     const summary = destinationSummary(campaign)
-    expect(summary).toContain('Вакансия')
+    expect(summary).toContain('Vacancy')
     expect(summary).not.toContain('uuid-here')
   })
 
-  it('labels statuses in Russian', () => {
-    expect(statusLabel('active')).toBe('Активна')
-    expect(statusLabel('paused')).toBe('На паузе')
+  it('labels statuses in English by default', () => {
+    expect(statusLabel('active')).toBe('Active')
+    expect(statusLabel('paused')).toBe('On hold')
   })
 })

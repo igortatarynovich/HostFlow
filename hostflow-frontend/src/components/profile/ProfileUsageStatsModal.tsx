@@ -5,6 +5,7 @@ import { listVacancies, type Vacancy } from '../../api/vacancies'
 import type { CandidateProfile } from '../../api/candidate_profiles'
 import type { FieldConfig } from './ProfileFieldConstructor'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
+import { useI18n } from '../../i18n'
 
 interface ProfileUsageStatsModalProps {
   profile: CandidateProfile
@@ -12,6 +13,7 @@ interface ProfileUsageStatsModalProps {
 }
 
 function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProps) {
+  const { t } = useI18n()
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +32,7 @@ function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProp
       })
       setVacancies(data)
     } catch (err: any) {
-      setError(err?.message || 'Не удалось загрузить статистику использования')
+      setError(err?.message || t('admin.candidate_profiles_page.usage.load_failed'))
     } finally {
       setLoading(false)
     }
@@ -53,7 +55,11 @@ function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProp
   }, [profile.config, vacancies])
 
   return (
-    <Modal open={true} onClose={onClose} title={`Статистика использования профиля "${profile.name}"`}>
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={t('admin.candidate_profiles_page.usage.title', { values: { name: profile.name } })}
+    >
       <div className="space-y-4">
         {/* Profile Info */}
         <div className="rounded border border-slate-200 bg-slate-50 p-4">
@@ -66,12 +72,12 @@ function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProp
                 </span>
                 {!profile.is_active && (
                   <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                    Неактивен
+                    {t('admin.candidate_profiles_page.badge_inactive')}
                   </span>
                 )}
                 {profile.is_system && (
                   <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                    Системный
+                    {t('admin.candidate_profiles_page.badge_system')}
                   </span>
                 )}
               </div>
@@ -88,28 +94,32 @@ function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProp
         {/* Statistics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="rounded border border-blue-200 bg-blue-50 p-3">
-            <div className="text-xs text-blue-700 mb-1">Поля</div>
+            <div className="text-xs text-blue-700 mb-1">{t('admin.candidate_profiles_page.usage.fields')}</div>
             <div className="text-lg font-semibold text-blue-900">{stats.fieldsCount}</div>
             {stats.requiredFieldsCount > 0 && (
               <div className="text-xs text-blue-600">
-                {stats.requiredFieldsCount} обязательных
+                {t('admin.candidate_profiles_page.preview.required_count', {
+                  values: { count: stats.requiredFieldsCount },
+                })}
               </div>
             )}
           </div>
           <div className="rounded border border-green-200 bg-green-50 p-3">
-            <div className="text-xs text-green-700 mb-1">Этапы</div>
+            <div className="text-xs text-green-700 mb-1">{t('admin.candidate_profiles_page.usage.stages')}</div>
             <div className="text-lg font-semibold text-green-900">{stats.stagesCount}</div>
           </div>
           <div className="rounded border border-purple-200 bg-purple-50 p-3">
-            <div className="text-xs text-purple-700 mb-1">Документы</div>
+            <div className="text-xs text-purple-700 mb-1">{t('admin.candidate_profiles_page.usage.documents')}</div>
             <div className="text-lg font-semibold text-purple-900">{stats.documentsCount}</div>
           </div>
           <div className="rounded border border-amber-200 bg-amber-50 p-3">
-            <div className="text-xs text-amber-700 mb-1">Вакансии</div>
+            <div className="text-xs text-amber-700 mb-1">{t('admin.candidate_profiles_page.usage.vacancies')}</div>
             <div className="text-lg font-semibold text-amber-900">{stats.vacanciesCount}</div>
             {stats.activeVacanciesCount > 0 && (
               <div className="text-xs text-amber-600">
-                {stats.activeVacanciesCount} активных
+                {t('admin.candidate_profiles_page.usage.active_count', {
+                  values: { count: stats.activeVacanciesCount },
+                })}
               </div>
             )}
           </div>
@@ -117,10 +127,12 @@ function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProp
 
         {stats.totalCandidates > 0 && (
           <div className="rounded border border-slate-200 bg-slate-50 p-3">
-            <div className="text-sm font-medium text-slate-900 mb-1">Всего кандидатов</div>
+            <div className="text-sm font-medium text-slate-900 mb-1">
+              {t('admin.candidate_profiles_page.usage.total_candidates')}
+            </div>
             <div className="text-2xl font-bold text-slate-900">{stats.totalCandidates}</div>
             <div className="text-xs text-slate-500 mt-1">
-              Кандидаты во всех вакансиях, использующих этот профиль
+              {t('admin.candidate_profiles_page.usage.total_candidates_hint')}
             </div>
           </div>
         )}
@@ -128,23 +140,25 @@ function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProp
         {/* Vacancies List */}
         <div className="border-t border-slate-200 pt-4">
           <h3 className="text-sm font-semibold text-slate-900 mb-3">
-            Вакансии, использующие профиль ({vacancies.length})
+            {t('admin.candidate_profiles_page.usage.vacancies_heading', {
+              values: { count: vacancies.length },
+            })}
           </h3>
           {error && (
             <div className="mb-3">
               <ErrorRecoveryBanner
-                info={{ title: error, hint: 'Повторите действие или обновите страницу.' }}
+                info={{ title: error, hint: t('admin.candidate_profiles_page.apply_modal.retry_hint') }}
                 onRetry={() => void loadUsageStats()}
-                retryLabel="Обновить"
+                retryLabel={t('common.refresh')}
                 compact
               />
             </div>
           )}
           {loading ? (
-            <div className="text-sm text-slate-500">Загрузка вакансий...</div>
+            <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.apply_modal.loading')}</div>
           ) : vacancies.length === 0 ? (
             <div className="text-sm text-slate-500 text-center py-4">
-              Профиль не используется ни в одной вакансии
+              {t('admin.candidate_profiles_page.usage.empty')}
             </div>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -159,17 +173,31 @@ function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProp
                       <div className="font-medium text-slate-900 mb-1">{vacancy.title}</div>
                       <div className="text-xs text-slate-500 space-y-1">
                         {vacancy.company_name && (
-                          <div>Компания: {vacancy.company_name}</div>
+                          <div>
+                            {t('admin.candidate_profiles_page.usage.company', {
+                              values: { name: vacancy.company_name },
+                            })}
+                          </div>
                         )}
-                        {vacancy.location && <div>Локация: {vacancy.location}</div>}
+                        {vacancy.location && (
+                          <div>
+                            {t('admin.candidate_profiles_page.usage.location', {
+                              values: { value: vacancy.location },
+                            })}
+                          </div>
+                        )}
                         {vacancy.status && (
                           <div>
-                            Статус: <span className="font-medium">{vacancy.status}</span>
+                            {t('admin.candidate_profiles_page.usage.status', {
+                              values: { value: vacancy.status },
+                            })}
                           </div>
                         )}
                         {vacancy.candidate_count !== undefined && vacancy.candidate_count > 0 && (
                           <div>
-                            Кандидатов: <span className="font-medium">{vacancy.candidate_count}</span>
+                            {t('admin.candidate_profiles_page.usage.candidates', {
+                              values: { count: vacancy.candidate_count },
+                            })}
                           </div>
                         )}
                       </div>
@@ -177,16 +205,16 @@ function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProp
                     <div className="flex flex-col items-end gap-1">
                       {vacancy.is_active ? (
                         <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-                          Активна
+                          {t('admin.candidate_profiles_page.usage.active')}
                         </span>
                       ) : (
                         <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                          Неактивна
+                          {t('admin.candidate_profiles_page.usage.inactive_vacancy')}
                         </span>
                       )}
                       {vacancy.is_archived && (
                         <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                          В архиве
+                          {t('admin.candidate_profiles_page.usage.archived')}
                         </span>
                       )}
                     </div>
@@ -204,7 +232,7 @@ function ProfileUsageStatsModal({ profile, onClose }: ProfileUsageStatsModalProp
             onClick={onClose}
             className="btn-secondary"
           >
-            Закрыть
+            {t('common.actions.close')}
           </button>
         </div>
       </div>

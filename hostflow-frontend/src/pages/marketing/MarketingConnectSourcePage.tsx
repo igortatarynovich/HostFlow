@@ -220,7 +220,7 @@ export default function MarketingConnectSourcePage() {
           kind="browse"
           secondaryActions={
             <Link to={marketingCampaignPath(campaignId)} className="btn-secondary btn-sm">
-              К кампании
+              {t('app.marketing.connect.back_campaign')}
             </Link>
           }
         />
@@ -236,7 +236,7 @@ export default function MarketingConnectSourcePage() {
             data-testid="marketing-connect-limit"
             role="status"
           >
-            <p className="font-medium">Лимит primary-источников для этого Flight</p>
+            <p className="font-medium">{t('app.marketing.connect.primary_limit_title')}</p>
             <p className="mt-1">
               Сейчас можно иметь не больше одной активной primary анкеты HostFlow и одного primary
               Meta-источника. Несколько равноправных источников одного типа появятся позже — UI не
@@ -270,7 +270,7 @@ export default function MarketingConnectSourcePage() {
                 }}
                 testId="marketing-connect-kind-public"
               >
-                <span className="font-medium text-slate-900">Публичная анкета HostFlow</span>
+                <span className="font-medium text-slate-900">{t('app.marketing.connect.hostflow_form')}</span>
                 <span className="mt-1 block text-slate-600">
                   {canPublic
                     ? 'Заявки приходят через публичную ссылку анкеты кандидата.'
@@ -483,7 +483,7 @@ export default function MarketingConnectSourcePage() {
 
             <div className="flex justify-end gap-2 pt-2">
               <Link to={marketingCampaignPath(campaignId)} className="btn-secondary btn-sm">
-                Отмена
+                {t('app.marketing.connect.cancel')}
               </Link>
               <button
                 type="button"
@@ -492,14 +492,14 @@ export default function MarketingConnectSourcePage() {
                 onClick={() => void handleConnect()}
                 data-testid="marketing-connect-submit"
               >
-                {submitting ? 'Подключение…' : 'Подключить'}
+                {submitting ? t('app.marketing.connect.connecting') : t('app.marketing.connect.submit')}
               </button>
             </div>
           </>
         ) : null}
 
         {!loading && campaign && !flight ? (
-          <p className="text-sm text-amber-800">У кампании нет Flight — обратитесь к поддержке.</p>
+          <p className="text-sm text-amber-800">{t('app.marketing.connect.no_flight')}</p>
         ) : null}
       </div>
     </PageShell>

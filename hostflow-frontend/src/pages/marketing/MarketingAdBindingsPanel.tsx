@@ -124,7 +124,7 @@ export function MarketingAdBindingsPanel({ campaignId, flight, onChanged, t }: P
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Привязка Ad ID → Flight</h3>
+          <h3 className="text-sm font-semibold text-slate-900">{t('app.marketing.ad_bindings.title')}</h3>
           <p className="mt-1 text-xs text-slate-500">
             Override: когда одна Meta-форма кормит несколько Flight — привяжите конкретный Ad ID
             сюда. Обычный путь: Connect Source (Lead Form) на странице «Подключить источник»; без

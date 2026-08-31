@@ -30,7 +30,36 @@ export function AppErrorBoundary({
   )
 }
 
+const ERROR_BOUNDARY_COPY = {
+  en: {
+    title: 'Something went wrong',
+    body: 'We recorded the error. Refresh the page or try again — if it keeps happening, contact support.',
+    reload: 'Refresh page',
+    retry: 'Try again',
+  },
+  ru: {
+    title: 'Что-то пошло не так',
+    body: 'Мы уже записали ошибку. Обновите страницу или попробуйте ещё раз — если проблема повторится, напишите в поддержку.',
+    reload: 'Обновить страницу',
+    retry: 'Попробовать ещё раз',
+  },
+  pl: {
+    title: 'Coś poszło nie tak',
+    body: 'Zapisaliśmy błąd. Odśwież stronę lub spróbuj ponownie — jeśli problem wróci, skontaktuj się z pomocą.',
+    reload: 'Odśwież stronę',
+    retry: 'Spróbuj ponownie',
+  },
+} as const
+
+function errorBoundaryCopy() {
+  if (typeof window === 'undefined') return ERROR_BOUNDARY_COPY.en
+  const stored = window.localStorage.getItem('hf:ui:lang')
+  if (stored === 'ru' || stored === 'pl' || stored === 'en') return ERROR_BOUNDARY_COPY[stored]
+  return ERROR_BOUNDARY_COPY.en
+}
+
 function DefaultErrorFallback({ error, resetError }: { error?: unknown; resetError: () => void }) {
+  const copy = errorBoundaryCopy()
   useEffect(() => {
     attemptStaleChunkReload(error)
   }, [error])
@@ -50,11 +79,8 @@ function DefaultErrorFallback({ error, resetError }: { error?: unknown; resetErr
       }}
     >
       <div style={{ maxWidth: 480, textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>Что-то пошло не так</h1>
-        <p style={{ color: '#475569', marginBottom: '1.5rem' }}>
-          Мы уже записали ошибку. Обновите страницу или попробуйте ещё раз — если проблема
-          повторится, напишите в поддержку.
-        </p>
+        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>{copy.title}</h1>
+        <p style={{ color: '#475569', marginBottom: '1.5rem' }}>{copy.body}</p>
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
           <button
             type="button"
@@ -69,7 +95,7 @@ function DefaultErrorFallback({ error, resetError }: { error?: unknown; resetErr
               fontWeight: 600,
             }}
           >
-            Обновить страницу
+            {copy.reload}
           </button>
           <button
             type="button"
@@ -84,7 +110,7 @@ function DefaultErrorFallback({ error, resetError }: { error?: unknown; resetErr
               fontWeight: 600,
             }}
           >
-            Попробовать ещё раз
+            {copy.retry}
           </button>
         </div>
       </div>

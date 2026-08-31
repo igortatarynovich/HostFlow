@@ -232,7 +232,7 @@ export default function MarketingCampaignsPage() {
                           </span>
                         ) : null}
                       </td>
-                      <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status)}</td>
+                      <td className="py-2 pr-3 text-slate-700">{statusLabel(row.status, t)}</td>
                       <td className="py-2 pr-3 tabular-nums text-slate-900">
                         {row.spend}
                         {row.currency ? ` ${row.currency}` : ''}
@@ -294,13 +294,13 @@ export default function MarketingCampaignsPage() {
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${statusTone(campaign.status)}`}
                       >
-                        {statusLabel(campaign.status)}
+                        {statusLabel(campaign.status, t)}
                       </span>
                       {flight ? (
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${statusTone(flight.status)}`}
                         >
-                          Flight: {statusLabel(flight.status)}
+                          Flight: {statusLabel(flight.status, t)}
                         </span>
                       ) : null}
                       <span className="text-xs text-slate-500">
@@ -310,7 +310,7 @@ export default function MarketingCampaignsPage() {
                     <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                       <span>Форма: {form?.title || '—'}</span>
                       <span>Источник: {sourceLabel}</span>
-                      <span>Куда: {destinationSummary(campaign)}</span>
+                      <span>Куда: {destinationSummary(campaign, t)}</span>
                       <span>
                         Запуск:{' '}
                         {flight?.starts_at ? formatDateTime(flight.starts_at, locale) : 'ещё не запускали'}

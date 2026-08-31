@@ -17,22 +17,24 @@ type Company = { id: string; name?: string }
 const STATUS_OPTIONS = VACANCY_STATUSES
 const EMPLOYMENT_ENUM = [...EMPLOYMENT_TYPES] as [EmploymentType, ...EmploymentType[]]
 
-const vacancySchema = z.object({
-  company_id: z.string().min(1, 'Компания обязательна'),
-  title: z.string().min(1, 'Название обязательно'),
-  description: z.string().optional().or(z.literal('')),
-  status: z.enum([...STATUS_OPTIONS] as [VacancyStatus, ...VacancyStatus[]]).default('open'),
-  is_open: z.boolean().default(true),
-  is_active: z.boolean().default(true),
-  is_archived: z.boolean().default(false),
-  salary_from: z.union([z.string(), z.number()]).optional().transform((val) => (val === '' ? undefined : val)),
-  salary_to: z.union([z.string(), z.number()]).optional().transform((val) => (val === '' ? undefined : val)),
-  currency: z.string().optional().or(z.literal('')),
-  location: z.string().optional().or(z.literal('')),
-  employment_type: z.enum(EMPLOYMENT_ENUM),
-})
+function buildVacancySchema(t: (key: string) => string) {
+  return z.object({
+    company_id: z.string().min(1, t('app.vacancies.form.company_required')),
+    title: z.string().min(1, t('app.vacancies.form.title_required')),
+    description: z.string().optional().or(z.literal('')),
+    status: z.enum([...STATUS_OPTIONS] as [VacancyStatus, ...VacancyStatus[]]).default('open'),
+    is_open: z.boolean().default(true),
+    is_active: z.boolean().default(true),
+    is_archived: z.boolean().default(false),
+    salary_from: z.union([z.string(), z.number()]).optional().transform((val) => (val === '' ? undefined : val)),
+    salary_to: z.union([z.string(), z.number()]).optional().transform((val) => (val === '' ? undefined : val)),
+    currency: z.string().optional().or(z.literal('')),
+    location: z.string().optional().or(z.literal('')),
+    employment_type: z.enum(EMPLOYMENT_ENUM),
+  })
+}
 
-type FormValues = z.infer<typeof vacancySchema>
+type FormValues = z.infer<ReturnType<typeof buildVacancySchema>>
 
 type Props = {
   open: boolean
@@ -45,6 +47,7 @@ type Props = {
 
 export default function VacancyForm({ open, title, companies, initial, onClose, onSubmit }: Props) {
   const { t } = useI18n()
+  const vacancySchema = useMemo(() => buildVacancySchema(t), [t])
   const defaultValues: FormValues = useMemo(
     () => ({
       company_id: initial.company_id ?? companies[0]?.id ?? '',
@@ -121,16 +124,16 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
       <div className="w-full max-w-3xl rounded-xl bg-white shadow-xl overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
           <div className="font-semibold">{title}</div>
-          <button onClick={onClose} className="btn-secondary btn-sm" aria-label="Закрыть">
+          <button onClick={onClose} className="btn-secondary btn-sm" aria-label={t('common.actions.close')}>
             ✕
           </button>
         </div>
 
         <form onSubmit={submitHandler} className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="col-span-2">
-            <label className="label" htmlFor="vf-company">Компания</label>
+            <label className="label" htmlFor="vf-company">{t('app.vacancies.form.company')}</label>
             <select id="vf-company" className="input" {...register('company_id')}>
-              <option value="">— выберите компанию —</option>
+              <option value="">{t('app.vacancies.form.company_placeholder')}</option>
               {companies.map((c) => (
                 <option key={c.id} value={c.id}>{c.name || c.id}</option>
               ))}
@@ -139,13 +142,13 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
           </div>
 
           <div className="col-span-2">
-            <label className="label" htmlFor="vf-title">Название</label>
+            <label className="label" htmlFor="vf-title">{t('app.vacancies.form.title_field')}</label>
             <input id="vf-title" className="input" {...register('title')} />
             {errors.title && <p className="text-sm text-rose-600 mt-1">{errors.title.message}</p>}
           </div>
 
           <div>
-            <label className="label" htmlFor="vf-status">Статус</label>
+            <label className="label" htmlFor="vf-status">{t('app.vacancies.form.status')}</label>
             <select id="vf-status" className="input" {...register('status')}>
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
@@ -156,7 +159,7 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
           </div>
 
           <div>
-            <label className="label" htmlFor="vf-employment">Тип занятости</label>
+            <label className="label" htmlFor="vf-employment">{t('app.vacancies.form.employment_type')}</label>
             <select id="vf-employment" className="input" {...register('employment_type')}>
               {EMPLOYMENT_TYPES.map((option) => (
                 <option key={option} value={option}>{option}</option>
@@ -166,17 +169,17 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
           </div>
 
           <div>
-            <label className="label" htmlFor="vf-sfrom">От</label>
-            <input id="vf-sfrom" type="number" inputMode="decimal" className="input" {...register('salary_from')} placeholder="напр., 9000" />
+            <label className="label" htmlFor="vf-sfrom">{t('app.vacancies.form.salary_from')}</label>
+            <input id="vf-sfrom" type="number" inputMode="decimal" className="input" {...register('salary_from')} placeholder={t('app.vacancies.form.salary_from_placeholder')} />
           </div>
 
           <div>
-            <label className="label" htmlFor="vf-sto">До</label>
-            <input id="vf-sto" type="number" inputMode="decimal" className="input" {...register('salary_to')} placeholder="напр., 12000" />
+            <label className="label" htmlFor="vf-sto">{t('app.vacancies.form.salary_to')}</label>
+            <input id="vf-sto" type="number" inputMode="decimal" className="input" {...register('salary_to')} placeholder={t('app.vacancies.form.salary_to_placeholder')} />
           </div>
 
           <div>
-            <label className="label" htmlFor="vf-currency">Валюта</label>
+            <label className="label" htmlFor="vf-currency">{t('app.vacancies.form.currency')}</label>
             <input
               id="vf-currency"
               className="input"
@@ -186,12 +189,12 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
           </div>
 
           <div>
-            <label className="label" htmlFor="vf-location">Локация</label>
+            <label className="label" htmlFor="vf-location">{t('app.vacancies.form.location')}</label>
             <input id="vf-location" className="input" {...register('location')} />
           </div>
 
           <div className="col-span-2">
-            <label className="label" htmlFor="vf-description">Описание</label>
+            <label className="label" htmlFor="vf-description">{t('app.vacancies.form.description')}</label>
             <textarea id="vf-description" className="input min-h-[92px]" {...register('description')} />
           </div>
 
@@ -202,7 +205,7 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
               render={({ field }) => (
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
-                  <span>Активна</span>
+                  <span>{t('app.vacancies.form.active')}</span>
                 </label>
               )}
             />
@@ -212,7 +215,7 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
               render={({ field }) => (
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
-                  <span>В архиве</span>
+                  <span>{t('app.vacancies.form.archived')}</span>
                 </label>
               )}
             />
@@ -222,7 +225,7 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
               render={({ field }) => (
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={field.value} onChange={(e) => field.onChange(e.target.checked)} />
-                  <span>Открыта</span>
+                  <span>{t('app.vacancies.form.open_flag')}</span>
                 </label>
               )}
             />
@@ -230,10 +233,10 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
 
           <div className="col-span-2 flex justify-end gap-2 pt-3 border-t">
             <button type="button" onClick={onClose} className="btn-secondary">
-              Отмена
+              {t('common.cancel')}
             </button>
             <button type="submit" className="btn-primary disabled:opacity-60" disabled={isSubmitting}>
-              {isSubmitting ? 'Сохранение…' : 'Сохранить'}
+              {isSubmitting ? t('common.saving') : t('common.save')}
             </button>
           </div>
         </form>

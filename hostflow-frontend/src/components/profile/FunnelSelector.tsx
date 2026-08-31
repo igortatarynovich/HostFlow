@@ -4,6 +4,7 @@ import { funnelHasReadyForHandoff, getFunnel, listFunnels, type Funnel } from '.
 import { isHandoffEnabledForCompany, listTenantLinks } from '../../api/tenantLinks'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useCurrentTenantId } from '../../contexts/CurrentTenant'
+import { useI18n } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
 
 interface FunnelSelectorProps {
@@ -28,6 +29,7 @@ export default function FunnelSelector({
   hint,
   catalog = false,
 }: FunnelSelectorProps) {
+  const { t } = useI18n()
   const { me } = useAuth()
   const currentTenantId = useCurrentTenantId()
   const tenantId = (currentTenantId ?? (me as { tenant_id?: string } | null)?.tenant_id ?? '').trim()
@@ -94,26 +96,28 @@ export default function FunnelSelector({
   if (!catalog && !scopeCompanyId) {
     return (
       <p className="text-sm text-slate-500">
-        Сначала выберите компанию вакансии. Воронка сохраняется на вакансии, не на клиенте.
+        {t('admin.candidate_profiles_page.funnel.need_company')}
       </p>
     )
   }
 
   if (loading) {
-    return <div className="text-sm text-slate-500">Загрузка воронок…</div>
+    return <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.funnel.loading')}</div>
   }
 
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Воронка вакансии</label>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          {t('admin.candidate_profiles_page.funnel.label')}
+        </label>
         <select
           value={value || ''}
           onChange={(e) => onChange(e.target.value || null)}
           disabled={disabled}
           className="input w-full max-w-md"
         >
-          <option value="">— не выбрана —</option>
+          <option value="">{t('admin.candidate_profiles_page.funnel.none')}</option>
           {selectableFunnels.map((f) => (
             <option key={f.id} value={f.id}>
               {f.name}
@@ -122,28 +126,31 @@ export default function FunnelSelector({
           ))}
           {selectedBlocked && selectedFunnel ? (
             <option value={selectedFunnel.id} disabled>
-              {selectedFunnel.name} (нет этапа «Готов к передаче»)
+              {t('admin.candidate_profiles_page.funnel.missing_handoff_stage', {
+                values: { name: selectedFunnel.name },
+              })}
             </option>
           ) : null}
         </select>
         <p className="mt-1 text-xs text-slate-500">
           {requireHandoffReady
-            ? 'У клиента включён handoff: доступны только воронки с этапом «Готов к передаче».'
-            : (hint ??
-              'Воронка этой вакансии. У одного клиента могут быть разные воронки на разные вакансии.')}{' '}
+            ? t('admin.candidate_profiles_page.funnel.handoff_only')
+            : (hint ?? t('admin.candidate_profiles_page.funnel.hint'))}{' '}
           <Link to={CRM_APP_PATHS.settingsFunnels} className="text-brand-600 hover:underline">
-            Редактировать воронки
+            {t('admin.candidate_profiles_page.funnel.edit_link')}
           </Link>
         </p>
         {selectedBlocked ? (
           <p className="mt-1 text-xs text-rose-700">
-            Эта воронка не подходит для handoff: добавьте этап «Готов к передаче» или выберите другую.
+            {t('admin.candidate_profiles_page.funnel.blocked')}
           </p>
         ) : null}
       </div>
       {selectedFunnel && selectedFunnel.stages && selectedFunnel.stages.length > 0 && (
         <div>
-          <div className="text-sm font-medium text-slate-700 mb-2">Этапы выбранной воронки</div>
+          <div className="text-sm font-medium text-slate-700 mb-2">
+            {t('admin.candidate_profiles_page.funnel.stages')}
+          </div>
           <div className="flex flex-wrap gap-2">
             {selectedFunnel.stages.map((s) => (
               <span

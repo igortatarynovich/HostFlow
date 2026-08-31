@@ -126,7 +126,18 @@
     "plan": "plan",
     "available": "Available",
     "active": "Active",
-    "required": "Required"
+    "required": "Required",
+    "inactive": "Inactive",
+    "no_matches": "No matches",
+    "select_placeholder": "— select —",
+    "search_placeholder": "Search…",
+    "multiselect_placeholder": "Select values",
+    "error_boundary": {
+      "title": "Something went wrong",
+      "body": "We recorded the error. Refresh the page or try again — if it keeps happening, contact support.",
+      "reload": "Refresh page",
+      "retry": "Try again"
+    }
   },
   "scanner": {
     "place_in_frame": "Place the document inside the frame",
@@ -222,7 +233,17 @@
         "doc_col_days_left": "Days left",
         "doc_col_file": "File",
         "doc_open": "Open",
-        "doc_open_error": "Could not open document file"
+        "doc_open_error": "Could not open document file",
+        "header": {
+          "back": "Back to employees",
+          "footer_hint": "HR record linked to recruitment when a candidate exists.",
+          "handoff": "Handoff",
+          "hire": "Hire",
+          "kicker": "HR employee",
+          "open_vacancy": "Open vacancy",
+          "record_id": "Record {id}"
+        },
+        "open_candidate": "Open candidate"
       },
       "document_packs": {
         "section_title": "Document packs",
@@ -1279,7 +1300,10 @@
         "cohort_delta": "Δ",
         "cohort_m_win_path": "On win path (processed)",
         "cohort_m_lost": "Lost (processed)",
-        "cohort_m_new": "New (inbox)"
+        "cohort_m_new": "New (inbox)",
+        "cohort_custom_from": "From",
+        "cohort_custom_to": "To",
+        "cohort_custom_wow": "Week over week"
       }
     },
     "clients": {
@@ -1382,7 +1406,9 @@
           "open": "Open",
           "on_hold": "On hold",
           "closed": "Closed",
-          "archived": "Archived"
+          "archived": "Archived",
+          "filled": "Filled",
+          "cancelled": "Cancelled"
         },
         "insights": {
           "total": "Total",
@@ -1404,7 +1430,24 @@
         "empty_cta_setup": "Open getting started"
       },
       "form": {
-        "save_failed": "Could not save vacancy"
+        "save_failed": "Could not save vacancy",
+        "company": "Company",
+        "company_placeholder": "— select company —",
+        "title_field": "Title",
+        "status": "Status",
+        "employment_type": "Employment type",
+        "salary_from": "From",
+        "salary_to": "To",
+        "currency": "Currency",
+        "location": "Location",
+        "description": "Description",
+        "active": "Active",
+        "archived": "Archived",
+        "open_flag": "Open",
+        "company_required": "Company is required",
+        "title_required": "Title is required",
+        "salary_from_placeholder": "e.g. 9000",
+        "salary_to_placeholder": "e.g. 12000"
       },
       "detail": {
         "wayfinding_title": "Other CRM areas",
@@ -2137,7 +2180,11 @@
       "own_company_plan_limit_402": "Workspace limit reached for your plan.",
       "own_company_open_billing": "Open billing",
       "trial_badge": "Trial",
-      "trial_badge_hint": "Trial workspace. Manage plan in Settings → Billing."
+      "trial_badge_hint": "Trial workspace. Manage plan in Settings → Billing.",
+      "tasks_peek": {
+        "complete": "Complete",
+        "snooze_hour": "Snooze 1 hour"
+      }
     },
     "trial_banner": {
       "badge": "Trial status",
@@ -2695,7 +2742,8 @@
           "required_fields": "Name and slug are required.",
           "initial_admin_password_required": "Initial admin password is required.",
           "create_failed": "Failed to create tenant.",
-          "superadmin_only": "Platform tenants are available to superadmins only."
+          "superadmin_only": "Platform tenants are available to superadmins only.",
+          "save_failed": "Could not save tenant."
         },
         "seat_requests": {
           "title": "Seat requests",
@@ -2720,6 +2768,62 @@
             "action_failed": "Failed to update seat request."
           }
         }
+      },
+      "completion": {
+        "loading": "Loading…",
+        "done": "Done",
+        "done_body": "The work is complete.",
+        "next_contract": "Next actions on the contract",
+        "creating": "Creating…",
+        "open_client": "Open client",
+        "to_acquisition": "To client acquisition",
+        "back_acquisition": "Back to client acquisition"
+      },
+      "application_workspace": {
+        "next_action": "Next action",
+        "start_work": "Start work",
+        "newest_first": "Newest first",
+        "col_contact": "Contact",
+        "col_details": "Details",
+        "col_source": "Source",
+        "col_extra": "More",
+        "col_status": "Status",
+        "col_time": "Time",
+        "empty_tab": "No records in this tab",
+        "load_more": "Load more ({loaded} of {total})"
+      },
+      "context_rail": {
+        "outcome": "Outcome",
+        "why": "Why",
+        "next_action": "Next action"
+      },
+      "detail_rail": {
+        "process_outcome": "Process outcome",
+        "owner": "Owner",
+        "when": "When",
+        "more_actions": "More actions ({count})"
+      },
+      "consent": {
+        "no_intake": "No intake context for consent on this application."
+      },
+      "entity_workspace": {
+        "object": "Object",
+        "process": "Process",
+        "stage": "Stage",
+        "owner": "Owner",
+        "citizenship": "Citizenship: {value}",
+        "readiness": "Readiness:",
+        "missing": "Missing",
+        "no_events": "No events",
+        "no_relations": "No relations",
+        "no_tasks": "No tasks",
+        "outcome_owner": "Owner: {name}",
+        "process_active": "Process is active",
+        "section_unset": "Section is not configured",
+        "quick_contacts": "Quick contacts",
+        "call": "Call",
+        "show_full_history": "Show full history",
+        "no_context": "No context"
       }
     },
     "settings": {
@@ -6212,6 +6316,11 @@
         "open_inbox": "Open messages inbox",
         "loading_dialogs": "Loading dialogs...",
         "empty_dialogs": "No linked dialogs yet. Open Messages and link this candidate in dialog header."
+      },
+      "quick_contact": {
+        "title": "Contact the candidate",
+        "subtitle": "Next step — first contact.",
+        "call": "Call"
       }
     },
     "fleet": {
@@ -6222,7 +6331,8 @@
         "operating_lines": "Operating lines",
         "vehicles": "Vehicles",
         "trailers": "Trailers",
-        "drivers": "Drivers"
+        "drivers": "Drivers",
+        "assignments": "Assignments"
       },
       "inventory": {
         "vehicle_hint": "Registration plate, VIN, or internal code (at least one).",
@@ -6260,6 +6370,21 @@
         "edit_status": "Status",
         "status_active": "active",
         "status_inactive": "inactive"
+      },
+      "counterparties": {
+        "title": "Counterparties",
+        "body": "Fleet counterparties are companies from the Clients directory that appear on operating lines.",
+        "open_clients": "Open clients"
+      },
+      "hr_bridge": {
+        "title": "HR bridge",
+        "body": "Link fleet drivers to workforce employees so documents and eligibility stay in one place.",
+        "open_hr": "Open HR"
+      },
+      "module_settings": {
+        "title": "Fleet settings",
+        "body": "Module switches and workspace shortcuts for fleet operations.",
+        "open_settings": "Open settings"
       }
     },
     "candidates": {
@@ -6814,6 +6939,16 @@
         "open_tasks_list": "Open tasks list",
         "create_failed": "Could not create task",
         "invalid_due": "Invalid due date"
+      },
+      "workspace": {
+        "custom_fields": "Custom fields",
+        "custom_fields_hint": "Configured candidate profile fields",
+        "hidden": "Hidden",
+        "no_contacts": "No contacts listed",
+        "no_events": "No events",
+        "no_relations": "No relations",
+        "no_tasks": "No tasks",
+        "process_active": "Process is active"
       }
     },
     "tasks": {
@@ -6857,7 +6992,14 @@
         "label": "View",
         "by_due": "Group by due date",
         "sla_queue": "SLA priority queue (flat)",
-        "advanced_toggle": "List layout (advanced)"
+        "advanced_toggle": "List layout (advanced)",
+        "by_candidate": "By candidate",
+        "by_due_day": "By due day",
+        "by_task_type": "By task type",
+        "groups_other_entities": "Other records",
+        "groups_unlinked_entities": "Unlinked",
+        "groups_unlinked_entities_hint": "Tasks not linked to a candidate or other CRM record.",
+        "unlinked_badge": "Unlinked"
       },
       "sla": {
         "status": {
@@ -6983,7 +7125,11 @@
       },
       "status": {
         "overdue": "Overdue"
-      }
+      },
+      "fallback_title": "Reminder",
+      "layout_hint_by_candidate": "Groups open tasks by the linked candidate.",
+      "layout_hint_by_due_day": "Groups tasks by due calendar day.",
+      "layout_hint_by_task_type": "Groups tasks by type (call, documents, follow-up)."
     },
     "leads": {
       "title": "Leads",
@@ -7060,7 +7206,8 @@
         "fit": "Fit",
         "next_action": "Next action",
         "service_order": "Service order",
-        "full_page": "Full page"
+        "full_page": "Full page",
+        "manager": "Manager"
       },
       "queue_keyboard": {
         "hint": "Shortcuts: J or ↓ / K or ↑ move selection · Enter primary action · Esc close panel or modal · V vacancy · P pool · I request info · R reject",
@@ -7760,6 +7907,33 @@
         "col_inbox": "Inbox (new)",
         "hint": "Same filters as the table; each column loads up to the limit below.",
         "view_all": "All in list"
+      },
+      "duplicate_review": {
+        "attach": "Attach to existing",
+        "badge_active": "Needs review",
+        "create_new": "Create new candidate",
+        "error_code": "Error code",
+        "error_title": "Could not save duplicate decision",
+        "history_last": "Last decision",
+        "hr_blockers": "HR blockers",
+        "ignore": "Not a duplicate",
+        "last_resolution": "Resolution",
+        "level": "Match level",
+        "missing_suggestion": "No suggested candidate",
+        "readonly_hint": "A decision was already recorded. Re-open only if intake status is still in review.",
+        "reasons": "Match reasons",
+        "source_lead": "Incoming lead",
+        "subtitle": "This lead may already exist as a candidate. Choose attach, create new, or ignore.",
+        "suggested": "Suggested candidate",
+        "title": "Possible duplicate",
+        "toast": {
+          "attach_existing": "Lead attached to existing candidate.",
+          "create_new": "New candidate created from this lead.",
+          "ignore": "Marked as not a duplicate."
+        }
+      },
+      "client_detail": {
+        "rejected": "The lead is rejected and excluded from candidate processing."
       }
     },
     "common": {
@@ -7984,7 +8158,12 @@
         "refresh": "Refresh"
       },
       "errors": {
-        "load": "Load"
+        "load": "Load",
+        "auto_assign": "Could not auto-assign the thread.",
+        "dispatch_one": "Could not send this message.",
+        "dispatch_queued": "Could not queue outbound messages.",
+        "mark_read": "Could not mark the thread as read.",
+        "send": "Could not send the message."
       },
       "command_audit": {
         "subtitle": "Execution log for workspace command templates.",
@@ -8766,6 +8945,18 @@
       "kind_label": "Invoice type",
       "placeholders": {
         "billing_email": "billing@client.com"
+      },
+      "errors": {
+        "action_failed": "Invoice action failed.",
+        "client_billing_load_failed": "Could not load client billing details.",
+        "companies_load_failed": "Could not load companies.",
+        "create_failed": "Could not create the invoice.",
+        "detail_load_failed": "Could not load the invoice.",
+        "edit_invoice_load_failed": "Could not load the invoice for editing.",
+        "issuer_load_failed": "Could not load issuer details.",
+        "load_failed": "Could not load invoices.",
+        "source_invoice_load_failed": "Could not load the source invoice.",
+        "update_failed": "Could not update the invoice."
       }
     },
     "license": {
@@ -9179,6 +9370,14 @@
         "docs_base": "Docs Base (read-only)",
         "tenant_id": "Tenant ID",
         "tenant_placeholder": "Tenant UUID"
+      },
+      "nav": {
+        "dashboard": "Dashboard",
+        "companies": "Companies",
+        "vacancies": "Vacancies",
+        "candidates": "Candidates",
+        "kanban": "Kanban",
+        "settings": "Settings"
       }
     },
     "sales_questionnaire": {
@@ -9252,6 +9451,96 @@
         "errors": {
           "load": "Failed to load sources"
         }
+      },
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "paused": "On hold",
+        "completed": "Completed",
+        "archived": "Archive",
+        "planned": "Planned",
+        "failed": "Error"
+      },
+      "destination": {
+        "unset": "Not set",
+        "vacancy": "Vacancy",
+        "service": "Service",
+        "search": "Search",
+        "client_account": "Client",
+        "intent": {
+          "candidate_application": "candidates",
+          "sales_inquiry": "sales inquiry",
+          "service_request": "service"
+        }
+      },
+      "flow": {
+        "candidates": {
+          "label": "Candidates",
+          "description": "Client → vacancy → applications in Recruitment"
+        },
+        "clients": {
+          "label": "B2B / clients",
+          "description": "Client → service (targeting, etc.) → Sales inquiry"
+        },
+        "service": {
+          "label": "Service requests",
+          "description": "Client → catalog service → Service flow"
+        }
+      },
+      "detail": {
+        "campaign": "Campaign",
+        "hostflow_form": "HostFlow form",
+        "source_short": "Source (short)",
+        "destination": "Where applications go",
+        "sources_title": "Application sources",
+        "sources_empty": "No sources yet",
+        "campaign_context": "Campaign context",
+        "pause_advice": "Recommendation: consider pausing the Flight",
+        "submissions": "Applications",
+        "back_list": "Back to list",
+        "start": "Start",
+        "pause": "Pause",
+        "resume": "Resume",
+        "end_flight": "End Flight",
+        "end_campaign": "End campaign",
+        "archive": "Archive",
+        "open_public": "Open public link",
+        "connect_source": "Connect a source"
+      },
+      "kpi": {
+        "applications": "Applications",
+        "routed": "Routed",
+        "route_errors": "Routing errors",
+        "leads": "Leads (KPI)"
+      },
+      "connect": {
+        "primary_limit_title": "Primary source limit for this Flight",
+        "hostflow_form": "HostFlow public form",
+        "no_flight": "This campaign has no Flight — contact support.",
+        "back_campaign": "Back to campaign",
+        "cancel": "Cancel",
+        "submit": "Connect",
+        "connecting": "Connecting…"
+      },
+      "source_card": {
+        "public_form": "Public form",
+        "no_public_link": "No public link",
+        "last_submission": "Last application",
+        "public_link": "Public link",
+        "facebook_page": "Facebook page",
+        "last_lead": "Last lead",
+        "hostflow_source": "HostFlow form · Source",
+        "open_form": "Open form",
+        "details": "Details",
+        "hide_details": "Hide details",
+        "published": "Published",
+        "draft": "Draft",
+        "inactive": "Inactive",
+        "bound": "Bound",
+        "never": "never"
+      },
+      "ad_bindings": {
+        "title": "Ad ID → Flight binding"
       }
     },
     "context_help": {
@@ -9353,6 +9642,111 @@
         "subtitle": "Payments and closing documents for this workspace.",
         "history": "Payment history",
         "closing": "Closing documents"
+      }
+    },
+    "billing": {
+      "plan_limit": {
+        "title": "Plan limit",
+        "body": "This action needs the {required} plan. Your workspace is on {current}.",
+        "actions": {
+          "upgrade": "Upgrade plan",
+          "talk_to_sales": "Talk to sales"
+        },
+        "required_plan_fallback": "a higher plan",
+        "current_plan_fallback": "your current plan",
+        "plan_name": {
+          "starter": "Starter",
+          "team": "Team",
+          "pro": "Pro",
+          "enterprise": "Enterprise"
+        }
+      },
+      "quota_warning": {
+        "cta_addon": "Add capacity",
+        "leads": "Monthly leads are at {percent}% of the plan limit.",
+        "candidates": "Active candidates are at {percent}% of the plan limit.",
+        "storage": "File storage is at {percent}% of the plan limit."
+      }
+    },
+    "recruitment": {
+      "create_flow": {
+        "kicker": "Create a search",
+        "step": "Step {step} of {total}"
+      },
+      "search_ready": {
+        "title": "Search is ready",
+        "subtitle": "Copy the link and launch ads — candidates will appear in the search.",
+        "step1": "Step 1",
+        "step1_body": "Copy the candidate link",
+        "copy": "Copy",
+        "or_qr": "or download a QR",
+        "download": "Download",
+        "step2": "Step 2",
+        "step2_body": "Set up acquisition sources — Meta, link, QR",
+        "add_source": "Add a source",
+        "footer": "Paste the link into ads or send it to candidates. Applications will appear on the search page.",
+        "open": "Open search",
+        "copied": "Link copied",
+        "copy_failed": "Could not copy",
+        "qr_downloaded": "QR downloaded",
+        "qr_failed": "Could not download QR"
+      },
+      "contributions": {
+        "assignee": "Assignee",
+        "user_id_placeholder": "User ID",
+        "assign": "Assign",
+        "assigned": "Assignee set",
+        "assign_failed": "Could not assign",
+        "search": "Search",
+        "pick_search": "Select a search",
+        "bind_search": "Bind to search",
+        "bound": "Search bound",
+        "bind_failed": "Could not bind the search",
+        "reject_title": "Reject application",
+        "comment_placeholder": "Comment",
+        "reject": "Reject",
+        "rejected": "Application rejected",
+        "candidate_created": "Candidate created",
+        "followup_default": "Call the candidate back",
+        "reminder_created": "Reminder created",
+        "action_failed": "Could not complete the action",
+        "reason": {
+          "insufficient_experience": "Not a fit",
+          "no_response": "No response",
+          "duplicate_spam": "Duplicate",
+          "invalid_contact": "Spam",
+          "other": "Other"
+        },
+        "err": {
+          "INTAKE_INFO_REQUESTED": "Information was already requested. Run “Create candidate” again after the update.",
+          "VACANCY_NOT_CONFIRMED": "Bind a search in the Vacancy block first.",
+          "INTAKE_ROUTING_INCOMPLETE": "Routing is incomplete: bind a search.",
+          "INTAKE_POOL_PATH_REQUIRED": "Bind a search in the Vacancy block, then click “Create candidate” again.",
+          "NO_INTAKE_CONTEXT": "Could not create a candidate: this application has no full intake context. Bind a current search and retry, or open the lead card for routing.",
+          "LEAD_RODO_REQUIRED": "Confirm consent before this action.",
+          "LEAD_INTAKE_ALREADY_REJECTED": "The application is already closed.",
+          "INTAKE_REJECT_REASON_REQUIRED": "Provide a rejection reason.",
+          "LEAD_SOURCE_INTAKE_DECISION_UNSUPPORTED": "This action is not available for this source."
+        }
+      }
+    },
+    "client_acquisition": {
+      "create_flow": {
+        "kicker": "Client acquisition",
+        "step": "Step {step} of {total}"
+      },
+      "channel_ready": {
+        "title": "Channel is ready",
+        "subtitle": "Copy the link or QR and place it where companies will see the offer: ads, website, email, business card.",
+        "link_label": "Link for companies",
+        "copy": "Copy link",
+        "download_qr": "Download QR",
+        "next_hint": "When a company submits a request, the work desk will show a next action — usually “Call”.",
+        "open": "Open work desk",
+        "copied": "Link copied",
+        "copy_failed": "Could not copy",
+        "qr_downloaded": "QR downloaded",
+        "qr_failed": "Could not download QR"
       }
     }
   },
@@ -10969,7 +11363,8 @@
         "email": "your@email.com"
       },
       "labels": {
-        "email_colon": "Email:"
+        "email_colon": "Email:",
+        "phone_colon": "Phone:"
       }
     },
     "landing": {
@@ -11008,6 +11403,46 @@
       "seo": {
         "title": "HostFlow FAQ — setup, Meta, recruitment, billing",
         "description": "Answers for getting started, Meta ads, WhatsApp, vacancies, documents, billing, security, and API — hire without waiting on support."
+      }
+    },
+    "client_inquiry": {
+      "landing": {
+        "headline": "Need staff?",
+        "subheadline": "Leave a request — we will contact you and propose a staffing solution.",
+        "cta": "Leave a request"
+      },
+      "thanks_title": "Thank you!",
+      "thanks_body": "We received your request and will contact you shortly.",
+      "back": "Back to the page",
+      "title": "Leave a request",
+      "subtitle": "Tell us who you need — we will call you back.",
+      "company": "Company",
+      "company_placeholder": "Company name",
+      "contact": "Contact person",
+      "name_placeholder": "Name",
+      "phone_placeholder": "Phone",
+      "need": "What you need",
+      "who": "Who are you looking for?",
+      "headcount": "How many people?",
+      "when": "When do you need them?",
+      "comment": "Comment",
+      "comment_placeholder": "Additional details",
+      "submit": "Send",
+      "sending": "Sending…",
+      "err_contact": "Enter a phone or email",
+      "err_required": "Fill in all required fields",
+      "err_submit": "Could not send the request. Try again.",
+      "role": {
+        "drivers": "Drivers",
+        "warehouse": "Warehouse",
+        "office": "Office",
+        "other": "Other"
+      },
+      "when_opt": {
+        "urgent": "Urgent",
+        "week": "This week",
+        "month": "This month",
+        "anytime": "Anytime"
       }
     }
   },
@@ -11117,12 +11552,17 @@
         "table": {
           "code": "Code",
           "name": "Name",
-          "required": "Upload required"
+          "required": "Upload required",
+          "process": "Process",
+          "status": "Status",
+          "total": "Total"
         },
         "badge": {
           "required": "Required",
           "optional": "Optional"
-        }
+        },
+        "empty": "No document types yet.",
+        "error": "Could not load document types."
       },
       "notifications": {
         "upload_success": "Document uploaded",
@@ -11366,7 +11806,10 @@
         "stats": {
           "ready": "Ready",
           "pending": "In progress",
-          "overdue": "Expired"
+          "overdue": "Expired",
+          "process_all": "All processes",
+          "process_mine": "My processes",
+          "process_sla_due": "SLA due"
         },
         "table": {
           "title": "Documents",
@@ -11376,13 +11819,46 @@
           "status": "Status",
           "updated": "Updated",
           "all": "All statuses",
-          "empty": "No documents match the filters."
+          "empty": "No documents match the filters.",
+          "deadline": "Deadline",
+          "deadline_overdue": "Overdue",
+          "process": "Process",
+          "responsible": "Responsible"
         },
         "pagination": "Showing {from}–{to} of {total} documents",
         "automation": {
           "title": "Automate reminders",
           "description": "Route expiring files, issue portal requests, and notify managers without spreadsheets.",
           "action": "Open automations"
+        },
+        "mine_only": "Mine only",
+        "preset_filter": "Preset",
+        "preview": {
+          "clear": "Clear",
+          "empty": "Select a document to preview.",
+          "files": "Files",
+          "open_candidate": "Open candidate",
+          "title": "Preview"
+        },
+        "queue_filter": "Queue",
+        "work": {
+          "back_to_my_work": "Back to my work",
+          "empty": {
+            "attention": "Nothing needs attention.",
+            "mine": "No documents assigned to you.",
+            "no_session": "Sign in to see your document work."
+          },
+          "open_full_registry": "Open full registry",
+          "search_placeholder": "Search my documents…",
+          "stats": {
+            "attention": "Needs attention",
+            "mine_total": "Assigned to me"
+          },
+          "tab": {
+            "attention": "Attention",
+            "mine": "Mine"
+          },
+          "title": "My document work"
         }
       },
       "badges": {
@@ -11450,6 +11926,41 @@
       },
       "template": {
         "select": "Select"
+      },
+      "merge": {
+        "activate": "Activate",
+        "bindings_invalid": "Bindings JSON is invalid.",
+        "confirm_delete": "Delete this merge template?",
+        "deactivate": "Deactivate",
+        "description": "Templates that fill generated documents from CRM fields.",
+        "empty": "No merge templates yet.",
+        "error_delete": "Could not delete the template.",
+        "error_load": "Could not load merge templates.",
+        "error_save": "Could not save the template.",
+        "field_bindings": "Field bindings (JSON)",
+        "field_body": "Body",
+        "field_code": "Code",
+        "field_filename": "Filename pattern",
+        "field_mime": "MIME type",
+        "field_name": "Name",
+        "field_oc": "Operating company",
+        "form_edit_title": "Edit template",
+        "form_new_title": "New template",
+        "header_kicker": "Documents",
+        "include_inactive": "Show inactive",
+        "table": {
+          "actions": "Actions",
+          "code": "Code",
+          "mime": "MIME",
+          "name": "Name",
+          "oc": "Company",
+          "status": "Status"
+        },
+        "title": "Merge templates"
+      },
+      "preview": {
+        "dialog_aria": "Document preview",
+        "iframe_title": "Document file preview"
       }
     },
     "integrations_hub": {
@@ -11580,7 +12091,9 @@
         "mapping_saved": "Mapping saved",
         "lead_rerouted": "Lead sent for processing",
         "lead_retried": "Lead processed successfully",
-        "unmapped_attached": "Leads attached to vacancy"
+        "unmapped_attached": "Leads attached to vacancy",
+        "form_mapping_saved": "Form mapping saved.",
+        "tenant_mapping_saved": "Tenant mapping saved."
       },
       "errors": {
         "load": "Could not load Meta Leads data",
@@ -11602,7 +12115,9 @@
         "field_mapping_row_incomplete_hint": "Remove empty rows or fill every source and target, then save again.",
         "lead_field_definition_create": "Could not create lead custom field",
         "lead_field_definition_conflict": "A lead custom field with this key already exists",
-        "lead_field_definition_conflict_hint": "Open Custom fields settings to edit it, or pick another key."
+        "lead_field_definition_conflict_hint": "Open Custom fields settings to edit it, or pick another key.",
+        "load_form_mapping": "Could not load form mapping.",
+        "save": "Could not save mapping."
       },
       "hints": {
         "fill_fields_retry": "Fill required fields and try again.",
@@ -11748,7 +12263,14 @@
         "graph_fetch_notice": "Loaded {count} field name(s) from Graph. form_id: {form_id}.",
         "graph_fetch_validation_title": "Missing information",
         "graph_fetch_validation_hint": "Pick a recent lead or enter both leadgen_id and page_id.",
-        "graph_fetch_error_title": "Meta request failed"
+        "graph_fetch_error_title": "Meta request failed",
+        "form_name_placeholder": "Form name",
+        "form_select_label": "Lead form",
+        "form_select_option": "{name}",
+        "form_select_tenant_default": "Tenant default",
+        "inherits_tenant_banner": "This form inherits the tenant default mapping until you save form-specific rules.",
+        "save_form": "Save form mapping",
+        "save_tenant": "Save tenant mapping"
       },
       "credentials": {
         "title": "Add credential",
@@ -12166,6 +12688,10 @@
         },
         "organization": {
           "description": "Workspace subscription, modules, users and operating companies."
+        },
+        "merge_templates": {
+          "label": "Merge templates",
+          "description": "Document merge templates and field bindings for generated files."
         }
       },
       "audit": {
@@ -12837,6 +13363,149 @@
         "last_name": "Last name",
         "email": "Email",
         "phone": "Phone"
+      },
+      "deprecation_banner": "This page is a compatibility view. New profile work lives in Settings → Candidate profiles.",
+      "apply_modal": {
+        "title": "Apply profile “{name}” to vacancies",
+        "info_title": "Information:",
+        "info_1": "The profile will be applied to the selected vacancies",
+        "info_2": "Vacancies that already use this profile will be marked",
+        "info_3": "The operation may take a while for a large number of vacancies",
+        "search_placeholder": "Search by title or company…",
+        "load_failed": "Could not load vacancies",
+        "pick_one": "Select at least one vacancy",
+        "partial": "Applied to {success} vacancies. Failed: {failed}.",
+        "partial_details": "Details: {details}",
+        "unknown_error": "Unknown error",
+        "apply_failed": "Could not apply the profile to vacancies",
+        "retry_hint": "Retry the action or refresh the page.",
+        "loading": "Loading vacancies…",
+        "empty": "No vacancies found",
+        "select_all": "Select all ({selected} of {total})",
+        "no_company": "No company",
+        "candidates_count": "{count} candidates",
+        "already_applied": "Profile already applied",
+        "current_profile": "Current profile: {name}",
+        "selected": "Selected: {count} vacancies",
+        "applying": "Applying…",
+        "apply_n": "Apply to {count} vacancies"
+      },
+      "bulk_modal": {
+        "title": "Bulk update profiles",
+        "info_1": "Select profiles to change",
+        "info_2": "Specify changes: add or remove fields or stages",
+        "info_3": "Changes will be applied to all selected profiles",
+        "search_placeholder": "Search by name or code…",
+        "load_failed": "Could not load profiles",
+        "pick_one": "Select at least one profile",
+        "wip": "Bulk configuration changes are still in development. Edit each profile separately.",
+        "wip_banner": "Bulk configuration changes are still in development. This version can apply a profile to vacancies. To change profile configuration, edit each profile separately.",
+        "loading": "Loading profiles…",
+        "empty": "No profiles found",
+        "select_all": "Select all ({selected} of {total})",
+        "config_changes": "Configuration changes",
+        "selected_for_change": "Profiles selected: {count}",
+        "selected": "Selected: {count} profiles",
+        "wip_title": "Feature in development",
+        "updating": "Updating…",
+        "apply_wip": "Apply changes (in development)"
+      },
+      "funnel": {
+        "need_company": "Select the vacancy company first. The funnel is stored on the vacancy, not on the client.",
+        "loading": "Loading funnels…",
+        "label": "Vacancy funnel",
+        "none": "— not selected —",
+        "missing_handoff_stage": "{name} (no “Ready for handoff” stage)",
+        "handoff_only": "This client has handoff enabled: only funnels with a “Ready for handoff” stage are available.",
+        "hint": "Funnel for this vacancy. One client can have different funnels on different vacancies.",
+        "edit_link": "Edit funnels",
+        "blocked": "This funnel is not suitable for handoff: add a “Ready for handoff” stage or pick another.",
+        "stages": "Stages of the selected funnel"
+      },
+      "docs": {
+        "loading": "Loading document types…",
+        "available": "Available documents",
+        "all_added": "All documents have been added",
+        "in_profile": "Documents in the profile",
+        "empty": "No documents. Add documents from the list above.",
+        "required": "Required",
+        "disabled": "Disabled",
+        "enabled": "Enabled",
+        "alert_before": "Remind before:",
+        "days": "days"
+      },
+      "history": {
+        "title": "Profile change history: {name}",
+        "load_failed": "Could not load change history",
+        "no_changes": "No changes",
+        "was": "Before:",
+        "became": "After:",
+        "loading": "Loading history…",
+        "empty": "Change history is empty",
+        "changes": "Changes:",
+        "initial_data": "Initial data:",
+        "action": {
+          "created": "Created",
+          "updated": "Updated",
+          "deleted": "Deleted",
+          "activated": "Activated",
+          "deactivated": "Deactivated"
+        },
+        "field": {
+          "code": "Code",
+          "name": "Name",
+          "description": "Description",
+          "client_id": "Client ID",
+          "config": "Configuration",
+          "is_active": "Active",
+          "is_system": "System",
+          "owner_user_id": "Owner",
+          "notes": "Notes"
+        }
+      },
+      "preview": {
+        "title": "Profile preview: {name}",
+        "general": "General information",
+        "code": "Code:",
+        "description": "Description:",
+        "notes": "Notes:",
+        "status": "Status:",
+        "active": "Active",
+        "inactive": "Inactive",
+        "system": "System",
+        "fields": "Fields",
+        "required_count": "{count} required",
+        "stages": "Stages",
+        "stages_funnel": "Stages (funnel)",
+        "documents": "Documents",
+        "fields_heading": "Fields ({count})",
+        "field_required": "Required",
+        "stages_heading": "Funnel stages ({count})",
+        "documents_heading": "Documents ({count})",
+        "doc_required": "Required",
+        "remind_days": "Remind {days} days before",
+        "export": "Export",
+        "duplicate": "Duplicate"
+      },
+      "usage": {
+        "title": "Usage statistics for “{name}”",
+        "load_failed": "Could not load usage statistics",
+        "fields": "Fields",
+        "stages": "Stages",
+        "documents": "Documents",
+        "vacancies": "Vacancies",
+        "active_count": "{count} active",
+        "total_candidates": "Total candidates",
+        "total_candidates_hint": "Candidates on all vacancies that use this profile",
+        "vacancies_heading": "Vacancies using this profile ({count})",
+        "empty": "This profile is not used on any vacancy",
+        "company": "Company: {name}",
+        "location": "Location: {value}",
+        "status": "Status: {value}",
+        "candidates": "Candidates: {count}",
+        "active": "Active",
+        "inactive_vacancy": "Inactive",
+        "archived": "Archived"
       }
     },
     "email": {
@@ -12998,6 +13667,113 @@
         "key_placeholder": "custom_field_key",
         "option_placeholder": "Type option and press Enter"
       }
+    },
+    "calendar_integrations": {
+      "actions": {
+        "complete_oauth": "Complete OAuth",
+        "connecting": "Connecting…",
+        "copy_oauth_url": "Copy OAuth URL",
+        "delete": "Delete",
+        "deleting": "Deleting…",
+        "open_oauth": "Open OAuth",
+        "queueing": "Queueing…",
+        "reconcile": "Reconcile",
+        "refresh_list": "Refresh list",
+        "refresh_token": "Refresh token",
+        "refreshing": "Refreshing…",
+        "renew_sub": "Renew subscription"
+      },
+      "connect": {
+        "quick_flow": "One-click connect opens the provider login. After you approve access, return here — the connection appears in the list below.",
+        "subtitle": "Connect Google or Microsoft calendars so interviews and tasks stay in sync.",
+        "title": "Connect a calendar"
+      },
+      "connections": {
+        "empty": "No calendar connections yet.",
+        "error": "Could not load connections.",
+        "status": "Status",
+        "title": "Connected calendars"
+      },
+      "errors": {
+        "delete_connection": "Could not delete the connection.",
+        "load_connections": "Could not load calendar connections.",
+        "oauth_complete": "Could not complete OAuth.",
+        "oauth_error": "OAuth error.",
+        "reconcile_queue": "Could not queue reconcile.",
+        "refresh_token": "Could not refresh the token.",
+        "renew_queue": "Could not queue subscription renewal."
+      },
+      "fields": {
+        "account_ref": "Account",
+        "client_id": "Client ID",
+        "client_secret": "Client secret",
+        "oauth_code": "OAuth code",
+        "provider": "Provider",
+        "redirect_uri": "Redirect URI",
+        "scopes": "Scopes"
+      },
+      "header": {
+        "back_to_hub": "← Integrations",
+        "kicker": "CRM setup",
+        "subtitle": "OAuth connections, sync health, and calendar events used by interviews and tasks.",
+        "title": "Calendar integrations"
+      },
+      "hints": {
+        "fill_client_id_first": "Enter Client ID first."
+      },
+      "placeholders": {
+        "account_ref": "user@company.com",
+        "oauth_code": "Paste authorization code",
+        "redirect_uri": "https://…/oauth/callback",
+        "refresh_scope": "Optional extra scopes",
+        "scopes": "calendar.readonly, …"
+      },
+      "providers": {
+        "google": "Google",
+        "microsoft": "Microsoft"
+      },
+      "refresh": {
+        "subtitle": "Refresh the access token when sync stops or the provider asks you to reconnect.",
+        "title": "Token refresh"
+      },
+      "success": {
+        "connection_created": "Calendar connected.",
+        "connection_deleted": "Connection deleted.",
+        "oauth_callback": "OAuth completed.",
+        "reconcile_queued": "Reconcile queued.",
+        "renew_queued": "Renewal queued.",
+        "token_refreshed": "Token refreshed."
+      }
+    },
+    "company_access": {
+      "title": "Company access",
+      "subtitle": "Manage employee access to client and candidate records inside the selected company.",
+      "subtitle_with_company": "Company: {name}",
+      "company_select_label": "Select company",
+      "no_acl": "You do not have access to company ACL management.",
+      "no_companies": "No companies to configure access for.",
+      "current": "Current access",
+      "empty_users": "No users are assigned to this company yet.",
+      "role_rights": "Role: {role} · Rights: {rights}",
+      "rights_edit": "edit",
+      "rights_view": "view",
+      "view_only": "View only",
+      "allow_edits": "Allow edits",
+      "revoke": "Remove",
+      "grant_title": "Grant access",
+      "user": "User",
+      "pick_user": "Select a user",
+      "allow_company_edit": "Allow editing company data",
+      "grant": "Grant access",
+      "saving": "Saving…",
+      "load_source_failed": "Could not load source data",
+      "load_list_failed": "Could not load the access list",
+      "grant_failed": "Could not grant company access",
+      "update_failed": "Could not update access rights",
+      "revoke_failed": "Could not revoke access",
+      "missing_user": "This access record has no user_id",
+      "confirm_revoke": "Revoke access for {email}?",
+      "retry_hint": "Retry the action or refresh the page."
     }
   }
 }

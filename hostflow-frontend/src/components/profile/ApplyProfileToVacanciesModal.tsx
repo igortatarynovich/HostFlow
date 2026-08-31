@@ -3,6 +3,7 @@ import { Modal } from '../Modal'
 import { listVacancies, updateVacancy, type Vacancy } from '../../api/vacancies'
 import type { CandidateProfile } from '../../api/candidate_profiles'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
+import { useI18n } from '../../i18n'
 
 interface ApplyProfileToVacanciesModalProps {
   profile: CandidateProfile
@@ -11,6 +12,7 @@ interface ApplyProfileToVacanciesModalProps {
 }
 
 function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProfileToVacanciesModalProps) {
+  const { t } = useI18n()
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState(false)
@@ -30,7 +32,7 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
       const data = await listVacancies({ is_archived: false })
       setVacancies(data)
     } catch (err: any) {
-      setError(err?.message || 'Не удалось загрузить вакансии')
+      setError(err?.message || t('admin.candidate_profiles_page.apply_modal.load_failed'))
     } finally {
       setLoading(false)
     }
@@ -74,7 +76,7 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
 
   const handleApply = async () => {
     if (selectedIds.size === 0) {
-      setError('Выберите хотя бы одну вакансию')
+      setError(t('admin.candidate_profiles_page.apply_modal.pick_one'))
       return
     }
 
@@ -97,21 +99,29 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
           results.success++
         } catch (err: any) {
           results.failed++
-          results.errors.push(`${vacancyId}: ${err?.message || 'Неизвестная ошибка'}`)
+          results.errors.push(
+            `${vacancyId}: ${err?.message || t('admin.candidate_profiles_page.apply_modal.unknown_error')}`,
+          )
         }
       }
 
       if (results.failed > 0) {
         setError(
-          `Применено к ${results.success} вакансиям. Ошибок: ${results.failed}. ` +
-            (results.errors.length > 0 ? `Детали: ${results.errors.slice(0, 3).join('; ')}` : '')
+          t('admin.candidate_profiles_page.apply_modal.partial', {
+            values: { success: results.success, failed: results.failed },
+          }) +
+            (results.errors.length > 0
+              ? ` ${t('admin.candidate_profiles_page.apply_modal.partial_details', {
+                  values: { details: results.errors.slice(0, 3).join('; ') },
+                })}`
+              : ''),
         )
       } else {
         onSuccess?.()
         onClose()
       }
     } catch (err: any) {
-      setError(err?.message || 'Не удалось применить профиль к вакансиям')
+      setError(err?.message || t('admin.candidate_profiles_page.apply_modal.apply_failed'))
     } finally {
       setApplying(false)
     }
@@ -120,14 +130,18 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
   const alreadyHasProfile = (vacancy: Vacancy) => vacancy.candidate_profile_id === profile.id
 
   return (
-    <Modal open={true} onClose={onClose} title={`Применить профиль "${profile.name}" к вакансиям`}>
+    <Modal
+      open={true}
+      onClose={onClose}
+      title={t('admin.candidate_profiles_page.apply_modal.title', { values: { name: profile.name } })}
+    >
       <div className="space-y-4">
         <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
-          <div className="font-semibold mb-1">Информация:</div>
+          <div className="font-semibold mb-1">{t('admin.candidate_profiles_page.apply_modal.info_title')}</div>
           <ul className="list-disc list-inside space-y-1 text-xs">
-            <li>Профиль будет применен к выбранным вакансиям</li>
-            <li>Вакансии, у которых уже установлен этот профиль, будут помечены</li>
-            <li>Операция может занять некоторое время при большом количестве вакансий</li>
+            <li>{t('admin.candidate_profiles_page.apply_modal.info_1')}</li>
+            <li>{t('admin.candidate_profiles_page.apply_modal.info_2')}</li>
+            <li>{t('admin.candidate_profiles_page.apply_modal.info_3')}</li>
           </ul>
         </div>
 
@@ -135,7 +149,7 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
         <div className="space-y-2">
           <input
             type="text"
-            placeholder="Поиск по названию или компании..."
+            placeholder={t('admin.candidate_profiles_page.apply_modal.search_placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input w-full"
@@ -148,26 +162,26 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
             }}
             className="input"
           >
-            <option value="all">Все</option>
-            <option value="active">Активные</option>
-            <option value="inactive">Неактивные</option>
+            <option value="all">{t('admin.candidate_profiles_page.filter_all')}</option>
+            <option value="active">{t('admin.candidate_profiles_page.filter_active')}</option>
+            <option value="inactive">{t('admin.candidate_profiles_page.filter_inactive')}</option>
           </select>
         </div>
 
         {error && (
           <ErrorRecoveryBanner
-            info={{ title: error, hint: 'Повторите действие или обновите страницу.' }}
+            info={{ title: error, hint: t('admin.candidate_profiles_page.apply_modal.retry_hint') }}
             onRetry={() => void loadVacancies()}
-            retryLabel="Обновить"
+            retryLabel={t('common.refresh')}
             compact
           />
         )}
 
         {/* Список вакансий */}
         {loading ? (
-          <div className="text-sm text-slate-500">Загрузка вакансий...</div>
+          <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.apply_modal.loading')}</div>
         ) : filteredVacancies.length === 0 ? (
-          <div className="text-sm text-slate-500">Вакансии не найдены</div>
+          <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.apply_modal.empty')}</div>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {/* Select All */}
@@ -180,7 +194,9 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
                 disabled={applying}
               />
               <span className="text-sm font-semibold text-slate-700">
-                Выбрать все ({selectedIds.size} из {filteredVacancies.length})
+                {t('admin.candidate_profiles_page.apply_modal.select_all', {
+                  values: { selected: selectedIds.size, total: filteredVacancies.length },
+                })}
               </span>
             </div>
 
@@ -210,18 +226,23 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
                   <div className="flex-1">
                     <div className="font-medium text-slate-900">{vacancy.title}</div>
                     <div className="text-xs text-slate-500">
-                      {vacancy.company_name || 'Без компании'}
+                      {vacancy.company_name || t('admin.candidate_profiles_page.apply_modal.no_company')}
                       {vacancy.location && ` • ${vacancy.location}`}
-                      {vacancy.candidate_count !== undefined && ` • ${vacancy.candidate_count} кандидатов`}
+                      {vacancy.candidate_count !== undefined &&
+                        ` • ${t('admin.candidate_profiles_page.apply_modal.candidates_count', {
+                          values: { count: vacancy.candidate_count },
+                        })}`}
                     </div>
                     {hasProfile && (
                       <div className="mt-1 text-xs font-medium text-green-700">
-                        ✓ Профиль уже применен
+                        ✓ {t('admin.candidate_profiles_page.apply_modal.already_applied')}
                       </div>
                     )}
                     {vacancy.candidate_profile_name && vacancy.candidate_profile_id !== profile.id && (
                       <div className="mt-1 text-xs text-amber-700">
-                        ⚠ Текущий профиль: {vacancy.candidate_profile_name}
+                        ⚠ {t('admin.candidate_profiles_page.apply_modal.current_profile', {
+                          values: { name: vacancy.candidate_profile_name },
+                        })}
                       </div>
                     )}
                   </div>
@@ -234,7 +255,9 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
         {/* Actions */}
         <div className="flex items-center justify-between border-t border-slate-200 pt-4">
           <div className="text-sm text-slate-600">
-            Выбрано: <span className="font-semibold">{selectedIds.size}</span> вакансий
+            {t('admin.candidate_profiles_page.apply_modal.selected', {
+              values: { count: selectedIds.size },
+            })}
           </div>
           <div className="flex gap-2">
             <button
@@ -243,7 +266,7 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
               disabled={applying}
               className="btn-secondary"
             >
-              Отмена
+              {t('common.cancel')}
             </button>
             <button
               type="button"
@@ -251,7 +274,11 @@ function ApplyProfileToVacanciesModal({ profile, onClose, onSuccess }: ApplyProf
               disabled={selectedIds.size === 0 || applying}
               className="btn-primary"
             >
-              {applying ? 'Применение...' : `Применить к ${selectedIds.size} вакансиям`}
+              {applying
+                ? t('admin.candidate_profiles_page.apply_modal.applying')
+                : t('admin.candidate_profiles_page.apply_modal.apply_n', {
+                    values: { count: selectedIds.size },
+                  })}
             </button>
           </div>
         </div>
