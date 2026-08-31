@@ -428,5 +428,17 @@ VALUE IF NOT EXISTS 'superadmin';` and `ALTER TABLE users ALTER COLUMN preferenc
 does not run at all and the first-admin path must be named by the deploy runbook.
 
 Many `pytest` failures stem from pre-existing bugs and schema/seed gaps (≈60 tests pass). The claim that
-CI's `alembic upgrade head` fails on a fresh DB is **withdrawn** — it was inferred from this section
-rather than observed. CI has not been re-run against a fresh database; that check is OL-2's to add.
+CI's `alembic upgrade head` fails on a fresh DB is **withdrawn**, and CI had in fact been disproving it
+on every push: `backend-ci.yml` (job `alembic`), `backend-regression.yml` and `hr-e2e-api.yml` each
+start a fresh `postgres:15` service and run `alembic upgrade head`. On run
+[#326](https://github.com/igortatarynovich/HostFlow/actions/runs/33169406846) the `alembic` job is
+green; that run fails on the DR1 Runtime Gate, which is unrelated to migrations.
+
+Two things this CI coverage does **not** prove, and OL-2 owns both: CI runs `postgres:15` while
+`docker-compose.yml` runs `postgres:16-alpine`, and CI stops at migrations — it never starts the app, so
+the bootstrap defect above is invisible to it.
+
+**Two `alembic.ini` files exist** (`./alembic.ini` and `./backend/alembic.ini`, both resolving to
+`backend/alembic`). CI drives the `backend/` one via `working-directory: backend`, which contradicts
+§ Alembic Layout above ("запускайте Alembic только из `/opt/HostFlow`"). Keep them in sync until OL-2
+picks one.
