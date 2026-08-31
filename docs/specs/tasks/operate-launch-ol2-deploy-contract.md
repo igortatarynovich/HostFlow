@@ -51,7 +51,7 @@ An image qualifies only if all hold:
 5. Is addressable later by digest — retained in a registry or an exported store, not only in the local
    daemon cache of one host.
 
-**Current state: FAILS 1, 2, 3, 5.**
+**Current state (2026-08-31, after `cdfb8697`):** the **release path** satisfies 1–4 when `scripts/deploy/build-release-artefacts.sh` is used (`deploy/Dockerfile.backend`, OCI labels, no source bind mount, `.env` excluded). Clause 5 (addressable later by digest in a retained store) is still **FAIL** — the image lives in the local daemon until a registry or export exists. The **live** `docker-compose.yml` still fails 1, 2, 3, 5: it bind-mounts the checkout and does not pass build args. OL-2B is what switches a target onto the release path.
 
 ### C-2. Deployable frontend artefact
 
@@ -68,8 +68,12 @@ It qualifies only if all hold:
 4. Emits a served build-metadata file (commit SHA, build ID, build timestamp) so provenance is
    answerable from the outside.
 
-**Current state: FAILS 2, 3, 4** — and 1 is unverified, because the served bundle's provenance is
-unknown.
+**Current state (2026-08-31, after `cdfb8697`):** `vite` now emits `dist/build.json` (clause 4, on the
+next build). `scripts/deploy/publish-frontend.sh` publishes by content-hash directory + atomic
+symlink (clauses 2 and 3) and refuses a tree without `build.json`. The **live** Caddy root is still
+the checkout `dist/`, so production still fails 2, 3, 4 until OL-2B points it at
+`/var/lib/hostflow/releases/frontend/current`. Clause 1 (`npm ci`) is enforced only by
+`build-release-artefacts.sh`, not by `rebuild-frontend.sh`.
 
 ### C-3. How a commit SHA reaches the deployed build
 
@@ -82,6 +86,11 @@ The SHA is not documented alongside the deployment; it is **carried by it**.
 
 Until an endpoint exposes it, no deployment record may assert a commit; it may only assert what was
 *intended* to be deployed, which is not evidence.
+
+**Current state (2026-08-31, after `cdfb8697`):** `GET /build` returns `{revision, version, built_at}`
+from `HOSTFLOW_*` environment variables baked into the release image. The live backend, started
+without those variables and bind-mounted over the image, will answer `unknown`. Querying `/build` on
+production today is therefore not evidence of a commit.
 
 ### C-4. What "previous tag" means
 
@@ -173,6 +182,10 @@ beyond what C-1.5 requires; autoscaling; SLO targets.
 
 ## History
 
+- 2026-08-31 (later): Executable path landed (`cdfb8697`) — release Dockerfile with OCI labels,
+  `GET /build`, frontend `build.json`, content-hash publish with atomic symlink, throwaway
+  `compose.release.yml` with no source bind mounts. Contract clauses C-1…C-3 are **implemented on
+  the release path and still failed on the live path**. No tag created. Live stack not rebuilt.
 - 2026-08-31: Contract drafted from measurement. Recorded that rollback does not exist as a
   reproducible operation — the backend runs a bind-mounted working tree, the frontend is built in
   place over the live document root with `emptyOutDir` semantics, and the committed deploy script
