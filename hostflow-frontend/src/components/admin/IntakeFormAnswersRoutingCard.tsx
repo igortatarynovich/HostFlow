@@ -6,9 +6,11 @@ import {
   personalInviteBehaviorLabel,
   publicSubmitBehaviorLabel,
   purposeLabel,
+  purposeLabelKey,
   salesInboxPath,
   salesModuleLabel,
 } from '../../utils/intakeFormRoutingSummary'
+import { intakePresentationProfileTitle } from '../../utils/intakePresentationI18n'
 import { useI18n } from '../../i18n'
 
 type Props = {
@@ -27,9 +29,15 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export default function IntakeFormAnswersRoutingCard({ definition, entityProfileCode, entityProfileName }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const profileCode = entityProfileCode || definition?.target_entity_profile_code || ''
-  const profileName = entityProfileName || entityProfileLabel(profileCode)
+  const profileName =
+    entityProfileName ||
+    intakePresentationProfileTitle(
+      t,
+      { entity_profile_code: profileCode, profile_name: entityProfileLabel(profileCode) },
+      locale,
+    )
 
   return (
     <section className="rounded-xl border border-brand-100 bg-brand-50/30 p-4" data-testid="intake-form-routing-card">
@@ -44,7 +52,7 @@ export default function IntakeFormAnswersRoutingCard({ definition, entityProfile
       <dl className="mt-3">
         <Row
           label={t('admin.intake_forms.routing.purpose', { defaultValue: 'Purpose' })}
-          value={purposeLabel(definition?.purpose)}
+          value={t(purposeLabelKey(definition?.purpose), { defaultValue: purposeLabel(definition?.purpose) })}
         />
         <Row label={t('admin.intake_forms.routing.profile', { defaultValue: 'Profile' })} value={profileName} />
         <Row

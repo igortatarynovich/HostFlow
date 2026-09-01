@@ -82,4 +82,13 @@ describe('C-6 Marketing Forms IA', () => {
     expect(src).toContain("lifecycle_status: 'archived'")
     expect(src).not.toContain("defaultValue: 'Lead forms'")
   })
+
+  it('create wizard asks who fills the form, not Entity Profile first', () => {
+    const src = readFileSync(path.join(ROOT, 'src/pages/admin/LeadFormsSettingsPage.tsx'), 'utf8')
+    expect(src).toContain('admin.lead_forms.wizard.who_fills')
+    expect(src).toContain('hideProfileSelect')
+    expect(src).toContain('title_placeholder_company')
+    expect(src).not.toContain("defaultValue: '2. Entity profile'")
+    expect(src).not.toContain("defaultValue: 'e.g. B2B advertising questionnaire'")
+  })
 })

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IconArrowDown, IconArrowUp, IconDeviceFloppy } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
 import { useToast } from '../../components/Toast'
@@ -9,6 +9,8 @@ import {
   type EntityProfileFieldOption,
   type PresentationFieldInput,
 } from '../../api/intakeForms'
+import { intakePresentationFieldLabel, intakePresentationProfileTitle } from '../../utils/intakePresentationI18n'
+import { entityProfileLabel } from '../../utils/intakeFormRoutingSummary'
 
 import type { PresentationRules } from '../../utils/presentationRules'
 
@@ -23,16 +25,21 @@ export type PresentationFieldDraft = {
 
 const RULE_KEYS = ['show_if', 'hide_if', 'required_if', 'readonly_if'] as const
 
-const B2B_SALES_PROFILE_CODE = 'service_sales.targeted_advertising'
+const SERVICE_SALES_PROFILE_PREFIX = 'service_sales.'
+
+function looksLikeI18nKey(value: string): boolean {
+  return /^(fields|admin|public|forms)\./.test(value)
+}
 
 function fieldsToPayload(rows: PresentationFieldDraft[]): PresentationFieldInput[] {
   return rows
     .filter((row) => row.selected)
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((row, index) => {
+      const rawLabel = row.label_override.trim()
       const payload: PresentationFieldInput = {
         qualified_code: row.qualified_code,
-        label_override: row.label_override.trim() || undefined,
+        label_override: !rawLabel || looksLikeI18nKey(rawLabel) ? undefined : rawLabel,
         intake_level: row.intake_level,
         sort_order: (index + 1) * 10,
       }
@@ -49,6 +56,9 @@ type Props = {
   onEntityProfileChange?: (code: string) => void
   onChange: (fields: PresentationFieldInput[]) => void
   disabled?: boolean
+  hideProfileSelect?: boolean
+  autoLoadPreset?: boolean
+  variant?: 'full' | 'wizard'
 }
 
 export function IntakeFormPresentationEditor({
@@ -57,8 +67,11 @@ export function IntakeFormPresentationEditor({
   onEntityProfileChange,
   onChange,
   disabled = false,
+  hideProfileSelect = false,
+  autoLoadPreset = false,
+  variant = 'full',
 }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { notify } = useToast()
   const [profiles, setProfiles] = useState<Array<{ code: string; name: string }>>([])
   const [profileCode, setProfileCode] = useState(entityProfileCode)
@@ -66,6 +79,14 @@ export function IntakeFormPresentationEditor({
   const [rows, setRows] = useState<PresentationFieldDraft[]>(initialFields ?? [])
   const [loading, setLoading] = useState(true)
   const [loadingPreset, setLoadingPreset] = useState(false)
+  const autoLoadedFor = useRef<string | null>(null)
+  const compact = variant === 'wizard'
+
+  const catalogLabel = useCallback(
+    (field: Pick<EntityProfileFieldOption, 'qualified_code' | 'label'>) =>
+      intakePresentationFieldLabel(t, field, locale),
+    [locale, t],
+  )
 
   const loadCatalog = useCallback(
     async (code: string) => {
@@ -104,10 +125,11 @@ export function IntakeFormPresentationEditor({
   )
 
   useEffect(() => {
+    if (hideProfileSelect) return
     void listIntakeFormEntityProfiles()
       .then((items) => setProfiles(items.map((item) => ({ code: item.code, name: item.name }))))
       .catch(() => undefined)
-  }, [])
+  }, [hideProfileSelect])
 
   useEffect(() => {
     setProfileCode(entityProfileCode)
@@ -130,12 +152,9 @@ export function IntakeFormPresentationEditor({
     [rows],
   )
 
-  const loadPlatformPreset = async () => {
-    if (!profileCode || disabled) return
-    setLoadingPreset(true)
-    try {
-      const preset = await getEntityProfilePresentationPreset(profileCode)
-      const presetByCode = new Map(preset.fields.map((field) => [field.qualified_code, field]))
+  const applyPresetFields = useCallback(
+    (presetFields: PresentationFieldInput[]) => {
+      const presetByCode = new Map(presetFields.map((field) => [field.qualified_code, field]))
       setRows((prev) => {
         const prevByCode = new Map(prev.map((row) => [row.qualified_code, row]))
         return catalog.map((field, index) => {
@@ -168,19 +187,46 @@ export function IntakeFormPresentationEditor({
           }
         })
       })
-      notify({
-        title: t('admin.intake_forms.toast.preset_loaded', { defaultValue: 'Platform preset loaded' }),
-        variant: 'success',
-      })
-    } catch {
-      notify({
-        title: t('admin.intake_forms.errors.load_preset', { defaultValue: 'Failed to load platform preset' }),
-        variant: 'error',
-      })
-    } finally {
-      setLoadingPreset(false)
-    }
-  }
+    },
+    [catalog],
+  )
+
+  const loadPlatformPreset = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!profileCode || disabled) return
+      setLoadingPreset(true)
+      try {
+        const preset = await getEntityProfilePresentationPreset(profileCode)
+        applyPresetFields(preset.fields)
+        if (!opts?.silent) {
+          notify({
+            title: t('admin.intake_forms.toast.preset_loaded', { defaultValue: 'Company questionnaire loaded' }),
+            variant: 'success',
+          })
+        }
+      } catch {
+        if (!opts?.silent) {
+          notify({
+            title: t('admin.intake_forms.errors.load_preset', { defaultValue: 'Failed to load company questionnaire' }),
+            variant: 'error',
+          })
+        }
+      } finally {
+        setLoadingPreset(false)
+      }
+    },
+    [applyPresetFields, disabled, notify, profileCode, t],
+  )
+
+  useEffect(() => {
+    if (!autoLoadPreset) return
+    if (loading || loadingPreset) return
+    if (profileCode.startsWith(SERVICE_SALES_PROFILE_PREFIX) === false) return
+    if (catalog.length === 0) return
+    if (autoLoadedFor.current === profileCode) return
+    autoLoadedFor.current = profileCode
+    void loadPlatformPreset({ silent: true })
+  }, [autoLoadPreset, catalog.length, loadPlatformPreset, loading, loadingPreset, profileCode])
 
   const moveRow = (qualifiedCode: string, direction: -1 | 1) => {
     const ordered = selectedRows
@@ -200,41 +246,67 @@ export function IntakeFormPresentationEditor({
     )
   }
 
+  const displayLabel = (row: PresentationFieldDraft, field: EntityProfileFieldOption) => {
+    const override = row.label_override.trim()
+    if (override && !looksLikeI18nKey(override)) return override
+    return catalogLabel(field)
+  }
+
   return (
     <div className="space-y-4">
-      <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {t('admin.intake_forms.fields.entity_profile', { defaultValue: 'Entity Profile' })}
-        </label>
-        <select
-          className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-          value={profileCode}
-          disabled={disabled}
-          onChange={(event) => {
-            const next = event.target.value
-            setProfileCode(next)
-            onEntityProfileChange?.(next)
-          }}
-        >
-          {profiles.map((profile) => (
-            <option key={profile.code} value={profile.code}>
-              {profile.name} ({profile.code})
-            </option>
-          ))}
-        </select>
-        {profileCode === B2B_SALES_PROFILE_CODE && (
-          <button
-            type="button"
-            className="btn-secondary mt-2"
-            disabled={disabled || loadingPreset || loading}
-            onClick={() => void loadPlatformPreset()}
+      {!hideProfileSelect ? (
+        <div>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('admin.intake_forms.fields.entity_profile', { defaultValue: 'Question set' })}
+          </label>
+          <select
+            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            value={profileCode}
+            disabled={disabled}
+            onChange={(event) => {
+              const next = event.target.value
+              setProfileCode(next)
+              onEntityProfileChange?.(next)
+            }}
           >
-            {loadingPreset
-              ? t('common.loading')
-              : t('admin.intake_forms.load_b2b_preset', { defaultValue: 'Load B2B sales questionnaire preset' })}
-          </button>
-        )}
-      </div>
+            {profiles.map((profile) => (
+              <option key={profile.code} value={profile.code}>
+                {intakePresentationProfileTitle(
+                  t,
+                  { entity_profile_code: profile.code, profile_name: entityProfileLabel(profile.code) },
+                  locale,
+                )}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+      {profileCode.startsWith(SERVICE_SALES_PROFILE_PREFIX) && (
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={disabled || loadingPreset || loading}
+          onClick={() => void loadPlatformPreset()}
+        >
+          {loadingPreset
+            ? t('common.loading')
+            : t(
+                profileCode === 'service_sales.driver_hiring'
+                  ? 'admin.intake_forms.load_driver_hiring_preset'
+                  : profileCode === 'service_sales.warehouse_hiring'
+                    ? 'admin.intake_forms.load_warehouse_hiring_preset'
+                    : 'admin.intake_forms.load_b2b_preset',
+                {
+                  defaultValue:
+                    profileCode === 'service_sales.driver_hiring'
+                      ? 'Load questionnaire for companies hiring drivers'
+                      : profileCode === 'service_sales.warehouse_hiring'
+                        ? 'Load questionnaire for companies hiring warehouse workers'
+                        : 'Load ready questionnaire for companies',
+                },
+              )}
+        </button>
+      )}
 
       {loading ? (
         <p className="text-sm text-slate-500">{t('common.loading')}</p>
@@ -244,9 +316,11 @@ export function IntakeFormPresentationEditor({
             <thead>
               <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-2 py-2">{t('admin.intake_forms.columns.include', { defaultValue: 'Include' })}</th>
-                <th className="px-2 py-2">{t('admin.intake_forms.columns.label', { defaultValue: 'Label' })}</th>
-                <th className="px-2 py-2">{t('admin.intake_forms.columns.field', { defaultValue: 'Field code' })}</th>
-                <th className="px-2 py-2">{t('admin.intake_forms.columns.level', { defaultValue: 'Intake level' })}</th>
+                <th className="px-2 py-2">{t('admin.intake_forms.columns.label', { defaultValue: 'Question' })}</th>
+                {compact ? null : (
+                  <th className="px-2 py-2">{t('admin.intake_forms.columns.field', { defaultValue: 'Field code' })}</th>
+                )}
+                <th className="px-2 py-2">{t('admin.intake_forms.columns.level', { defaultValue: 'Required?' })}</th>
                 <th className="px-2 py-2">{t('admin.intake_forms.columns.order', { defaultValue: 'Order' })}</th>
               </tr>
             </thead>
@@ -276,7 +350,7 @@ export function IntakeFormPresentationEditor({
                     <td className="px-2 py-2">
                       <input
                         className="w-full rounded-lg border border-slate-200 px-2 py-1 text-sm"
-                        value={row.label_override}
+                        value={displayLabel(row, field)}
                         disabled={disabled || !row.selected}
                         onChange={(event) =>
                           setRows((prev) =>
@@ -289,7 +363,9 @@ export function IntakeFormPresentationEditor({
                         }
                       />
                     </td>
-                    <td className="px-2 py-2 font-mono text-xs text-slate-600">{row.qualified_code}</td>
+                    {compact ? null : (
+                      <td className="px-2 py-2 font-mono text-xs text-slate-600">{row.qualified_code}</td>
+                    )}
                     <td className="px-2 py-2">
                       <select
                         className="rounded-lg border border-slate-200 px-2 py-1 text-sm"
@@ -343,7 +419,7 @@ export function IntakeFormPresentationEditor({
         </div>
       )}
 
-      {selectedRows.length > 0 && (
+      {!compact && selectedRows.length > 0 && (
         <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {t('admin.intake_forms.sections.presentation_rules', { defaultValue: 'Presentation rules (P10A)' })}
@@ -356,7 +432,9 @@ export function IntakeFormPresentationEditor({
           <div className="mt-3 space-y-3">
             {selectedRows.map((row) => (
               <div key={row.qualified_code} className="rounded-lg border border-slate-100 bg-white p-3">
-                <p className="font-mono text-xs text-slate-700">{row.qualified_code}</p>
+                <p className="text-xs font-medium text-slate-700">
+                  {catalogLabel({ qualified_code: row.qualified_code, label: row.label_override })}
+                </p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   {RULE_KEYS.map((ruleKey) => {
                     const condition = row.presentation_rules?.[ruleKey]
@@ -397,7 +475,7 @@ export function IntakeFormPresentationEditor({
                           </option>
                           {sourceOptions.map((code) => (
                             <option key={code} value={code}>
-                              {code.split('.').slice(-2).join('.')}
+                              {catalogLabel({ qualified_code: code, label: code })}
                             </option>
                           ))}
                         </select>

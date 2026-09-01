@@ -14,15 +14,16 @@ import {
   type PresentationFieldInput,
 } from '../../api/intakeForms'
 import { listLeadForms, patchLeadForm, type TenantLeadForm } from '../../api/leadForms'
-import IntakeFormAnswersRoutingCard from '../../components/admin/IntakeFormAnswersRoutingCard'
 import { IntakeFormPresentationEditor } from '../../components/admin/IntakeFormPresentationEditor'
 import {
   friendlyErrorBannerSecondary,
   getFriendlyErrorInfo,
   type FriendlyErrorInfo,
 } from '../../utils/friendlyError'
+import { intakePresentationProfileTitle } from '../../utils/intakePresentationI18n'
 import {
   defaultProfileForPurpose,
+  entityProfileLabel,
   filterProfilesForPurpose,
   PURPOSE_WIZARD_OPTIONS,
   slugifyFormTitle,
@@ -39,7 +40,7 @@ function publicIntakeUrlForSlug(slug: string, opts?: { applicationKind?: 'client
 }
 
 export default function LeadFormsSettingsPage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { role } = usePermissions()
   const { notify } = useToast()
   const navigate = useNavigate()
@@ -58,7 +59,7 @@ export default function LeadFormsSettingsPage() {
   const [profileOptions, setProfileOptions] = useState<Array<{ code: string; name: string }>>([])
   const [createTitle, setCreateTitle] = useState('')
   const [createSlug, setCreateSlug] = useState('')
-  const [createProfileCode, setCreateProfileCode] = useState('service_sales.targeted_advertising')
+  const [createProfileCode, setCreateProfileCode] = useState('service_sales.driver_hiring')
   const [createFields, setCreateFields] = useState<PresentationFieldInput[]>([])
   const [creating, setCreating] = useState(false)
 
@@ -277,14 +278,31 @@ export default function LeadFormsSettingsPage() {
 
   const sortedForms = useMemo(() => [...forms].sort((a, b) => a.created_at.localeCompare(b.created_at)), [forms])
 
-  const wizardDefinition = useMemo(
-    () => ({
-      purpose: createPurpose,
-      target_entity_profile_code: createProfileCode,
-      submission_policy: { mode: 'match_or_create' },
-    }),
-    [createProfileCode, createPurpose],
+  const primaryPurposeOptions = useMemo(
+    () => PURPOSE_WIZARD_OPTIONS.filter((option) => option.prominence === 'primary'),
+    [],
   )
+  const secondaryPurposeOptions = useMemo(
+    () => PURPOSE_WIZARD_OPTIONS.filter((option) => option.prominence === 'secondary'),
+    [],
+  )
+  const showProfilePicker = filteredProfiles.length > 1
+  const titlePlaceholder =
+    createPurpose === 'application'
+      ? t('admin.lead_forms.wizard.title_placeholder_candidate', {
+          defaultValue: 'e.g. Driver C+E application',
+        })
+      : t('admin.lead_forms.wizard.title_placeholder_company', {
+          defaultValue: 'e.g. Questionnaire for companies that need drivers',
+        })
+  const destinationHint =
+    createPurpose === 'application'
+      ? t('admin.lead_forms.wizard.destination_candidate', {
+          defaultValue: 'Answers land in Recruitment as a candidate application.',
+        })
+      : t('admin.lead_forms.wizard.destination_company', {
+          defaultValue: 'Answers land in Sales → Inquiries. A driver does not fill this form.',
+        })
 
   return (
     <SettingsSubpageHeader
@@ -314,7 +332,7 @@ export default function LeadFormsSettingsPage() {
             })
           : t('admin.forms_builder.library_subtitle', {
               defaultValue:
-                'Compose HostFlow forms from the Field Catalog. Open a form to edit the canvas, then share a public URL.',
+                'Create a form for a company request or for a candidate, then share the public URL.',
             })
       }
       actions={
@@ -361,10 +379,15 @@ export default function LeadFormsSettingsPage() {
 
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {t('admin.lead_forms.wizard.purpose', { defaultValue: '1. Purpose' })}
+                    {t('admin.lead_forms.wizard.who_fills', { defaultValue: '1. Who fills this form?' })}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {t('admin.lead_forms.wizard.who_fills_hint', {
+                      defaultValue: 'Choose company request if a firm wants you to hire drivers. Choose candidate application only if the driver fills it in themselves.',
+                    })}
                   </p>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {PURPOSE_WIZARD_OPTIONS.map((option) => (
+                    {primaryPurposeOptions.map((option) => (
                       <label
                         key={option.purpose}
                         className={`cursor-pointer rounded-xl border p-3 text-sm ${
@@ -380,75 +403,135 @@ export default function LeadFormsSettingsPage() {
                           checked={createPurpose === option.purpose}
                           onChange={() => setCreatePurpose(option.purpose)}
                         />
-                        <span className="font-semibold text-slate-900">{option.label}</span>
-                        <p className="mt-1 text-xs text-slate-600">{option.hint}</p>
+                        <span className="font-semibold text-slate-900">
+                          {t(option.labelKey, { defaultValue: option.label })}
+                        </span>
+                        <p className="mt-1 text-xs text-slate-600">
+                          {t(option.hintKey, { defaultValue: option.hint })}
+                        </p>
+                        {option.exampleKey ? (
+                          <p className="mt-1 text-xs font-medium text-slate-700">
+                            {t(option.exampleKey, { defaultValue: option.example || '' })}
+                          </p>
+                        ) : null}
                       </label>
                     ))}
                   </div>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs font-medium text-slate-500">
+                      {t('admin.lead_forms.wizard.other_types', { defaultValue: 'Other form types' })}
+                    </summary>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      {secondaryPurposeOptions.map((option) => (
+                        <label
+                          key={option.purpose}
+                          className={`cursor-pointer rounded-xl border p-3 text-sm ${
+                            createPurpose === option.purpose
+                              ? 'border-brand-300 bg-brand-50/60'
+                              : 'border-slate-200 bg-white hover:border-slate-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            className="sr-only"
+                            name="form-purpose"
+                            checked={createPurpose === option.purpose}
+                            onChange={() => setCreatePurpose(option.purpose)}
+                          />
+                          <span className="font-semibold text-slate-900">
+                            {t(option.labelKey, { defaultValue: option.label })}
+                          </span>
+                          <p className="mt-1 text-xs text-slate-600">
+                            {t(option.hintKey, { defaultValue: option.hint })}
+                          </p>
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+
+                <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  {destinationHint}
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block text-sm sm:col-span-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {t('admin.lead_forms.wizard.profile', { defaultValue: '2. Entity profile' })}
-                    </span>
-                    <select
-                      className="input mt-1 w-full"
-                      value={createProfileCode}
-                      onChange={(event) => setCreateProfileCode(event.target.value)}
-                    >
-                      {filteredProfiles.map((profile) => (
-                        <option key={profile.code} value={profile.code}>
-                          {profile.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  {showProfilePicker ? (
+                    <label className="block text-sm sm:col-span-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {createPurpose === 'application'
+                          ? t('admin.lead_forms.wizard.candidate_role', { defaultValue: 'Candidate role' })
+                          : t('admin.lead_forms.wizard.company_questionnaire', {
+                              defaultValue: 'What does the company need?',
+                            })}
+                      </span>
+                      <select
+                        className="input mt-1 w-full"
+                        value={createProfileCode}
+                        onChange={(event) => setCreateProfileCode(event.target.value)}
+                      >
+                        {filteredProfiles.map((profile) => (
+                          <option key={profile.code} value={profile.code}>
+                            {intakePresentationProfileTitle(
+                              t,
+                              { entity_profile_code: profile.code, profile_name: entityProfileLabel(profile.code) },
+                              locale,
+                            )}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
                   <label className="block text-sm">
                     <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {t('admin.lead_forms.fields.title', { defaultValue: '3. Form title' })}
+                      {t('admin.lead_forms.wizard.name', { defaultValue: '2. Form name' })}
                     </span>
                     <input
                       className="input mt-1 w-full"
                       value={createTitle}
                       onChange={(event) => setCreateTitle(event.target.value)}
-                      placeholder={t('admin.lead_forms.placeholders.b2b_title', {
-                        defaultValue: 'e.g. B2B advertising questionnaire',
-                      })}
+                      placeholder={titlePlaceholder}
                     />
                   </label>
                   <label className="block text-sm">
                     <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {t('admin.intake_forms.fields.slug', { defaultValue: 'Public slug' })}
+                      {t('admin.lead_forms.fields.public_slug', { defaultValue: 'Public link id' })}
                     </span>
                     <input
                       className="input mt-1 w-full font-mono text-sm"
                       value={createSlug}
                       onChange={(event) => setCreateSlug(event.target.value)}
-                      placeholder="my-b2b-form"
+                      placeholder={t('admin.lead_forms.placeholders.company_slug', {
+                        defaultValue: 'company-needs-drivers',
+                      })}
                     />
                   </label>
                 </div>
 
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {t('admin.lead_forms.wizard.questions', { defaultValue: '4. Questions' })}
+                    {t('admin.lead_forms.wizard.questions', { defaultValue: '3. Questions' })}
                   </p>
                   <p className="mt-1 text-xs text-slate-600">
-                    {t('admin.lead_forms.wizard.questions_hint', {
-                      defaultValue: 'Select fields, edit labels, order, required level, and show-if rules.',
-                    })}
+                    {createPurpose === 'application'
+                      ? t('admin.lead_forms.wizard.questions_hint_candidate', {
+                          defaultValue: 'These questions are answered by the candidate.',
+                        })
+                      : t('admin.lead_forms.wizard.questions_hint_company', {
+                          defaultValue:
+                            'Ready questions for a company. Keep “who are you looking for” if the firm wants drivers.',
+                        })}
                   </p>
                   <div className="mt-3">
                     <IntakeFormPresentationEditor
+                      key={`${createPurpose}:${createProfileCode}`}
                       entityProfileCode={createProfileCode}
-                      onEntityProfileChange={setCreateProfileCode}
+                      hideProfileSelect
+                      autoLoadPreset={createPurpose !== 'application'}
+                      variant="wizard"
                       onChange={setCreateFields}
                     />
                   </div>
                 </div>
-
-                <IntakeFormAnswersRoutingCard definition={wizardDefinition} entityProfileCode={createProfileCode} />
 
                 <button
                   type="button"

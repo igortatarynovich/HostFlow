@@ -1,5 +1,6 @@
 import type { FormPresentationField } from '../../modules/public-intake/types'
 import type { LocaleCode } from '../../i18n'
+import { intakePresentationFieldLabel } from '../../utils/intakePresentationI18n'
 import {
   fieldOptionsForCode,
   isEmptyFieldValue,
@@ -27,7 +28,7 @@ export function PresentationFieldControl({ field, value, error, disabled, locale
   const required = field.evaluated.intake_level === 'required'
   const label = (
     <span className="mb-1 block text-sm font-medium text-slate-800">
-      {field.label}
+      {intakePresentationFieldLabel(t, field, locale)}
       {required ? <span className="ml-1 text-xs font-normal text-slate-400">({t('public.intake.presentation.required_short', { defaultValue: 'wymagane' })})</span> : null}
     </span>
   )

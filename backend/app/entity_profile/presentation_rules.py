@@ -57,16 +57,25 @@ def evaluate_rule_condition(condition: Any, values: dict[str, Any]) -> bool:
         return _coerce_bool(actual)
     if operator == "falsy":
         return not _coerce_bool(actual)
+    actuals = _as_values(actual)
     if operator == "eq":
-        return _normalize_scalar(actual) == _normalize_scalar(expected)
+        return _normalize_scalar(expected) in actuals
     if operator == "neq":
-        return _normalize_scalar(actual) != _normalize_scalar(expected)
+        return _normalize_scalar(expected) not in actuals
     if operator == "in":
         if not isinstance(expected, list):
             return False
-        normalized_actual = _normalize_scalar(actual)
-        return any(_normalize_scalar(item) == normalized_actual for item in expected)
+        expected_n = {_normalize_scalar(item) for item in expected}
+        return any(item in expected_n for item in actuals)
     return False
+
+
+def _as_values(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return [_normalize_scalar(item) for item in value]
+    if value is None:
+        return []
+    return [_normalize_scalar(value)]
 
 
 def _rules_from_field(field: dict[str, Any]) -> dict[str, Any]:

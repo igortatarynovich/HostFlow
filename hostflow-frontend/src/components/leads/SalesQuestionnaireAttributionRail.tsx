@@ -11,7 +11,9 @@ import {
   personalInviteBehaviorLabel,
   publicSubmitBehaviorLabel,
   purposeLabel,
+  purposeLabelKey,
 } from '../../utils/intakeFormRoutingSummary'
+import { intakePresentationProfileTitle } from '../../utils/intakePresentationI18n'
 import {
   readLatestSubmission,
   resolveSubmissionPresentationCode,
@@ -173,12 +175,16 @@ export default function SalesQuestionnaireAttributionRail({ lead }: { lead: Lead
             />
             <Row
               label={t('app.sales_questionnaire.attribution.profile', { defaultValue: 'Entity profile' })}
-              value={entityProfileLabel(entityProfileCode)}
+              value={intakePresentationProfileTitle(
+                t,
+                { entity_profile_code: entityProfileCode, profile_name: entityProfileLabel(entityProfileCode) },
+                locale,
+              )}
             />
             {purpose ? (
               <Row
                 label={t('app.sales_questionnaire.attribution.purpose', { defaultValue: 'Purpose' })}
-                value={purposeLabel(purpose)}
+                value={t(purposeLabelKey(purpose), { defaultValue: purposeLabel(purpose) })}
               />
             ) : null}
             {presentationCode ? (

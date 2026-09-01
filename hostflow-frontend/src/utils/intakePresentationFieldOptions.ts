@@ -1,6 +1,14 @@
 import type { FormPresentationField } from '../modules/public-intake/types'
 import { lookupScopedTranslation, type LocaleCode } from '../i18n'
 import { buildCountryOptions } from '../data/countries'
+import {
+  driverHiringFieldSuffix,
+  driverHiringOptionsForSuffix,
+} from './driverHiringFieldOptions'
+import {
+  warehouseHiringFieldSuffix,
+  warehouseHiringOptionsForSuffix,
+} from './warehouseHiringFieldOptions'
 
 export type FieldOption = { value: string; label: string }
 
@@ -262,6 +270,14 @@ export function fieldOptionsForCode(
   const salesSuffix = salesQuestionnaireFieldSuffix(code)
   if (salesSuffix) {
     return salesQuestionnaireOptions(t, locale, salesSuffix)
+  }
+  const hiringSuffix = driverHiringFieldSuffix(code)
+  if (hiringSuffix) {
+    return driverHiringOptionsForSuffix(t, locale, hiringSuffix)
+  }
+  const warehouseSuffix = warehouseHiringFieldSuffix(code)
+  if (warehouseSuffix) {
+    return warehouseHiringOptionsForSuffix(t, locale, warehouseSuffix)
   }
 
   if (code === 'platform.identity.citizenship') {

@@ -23,41 +23,62 @@ export type PurposeWizardOption = {
   purpose: FormPurposeKey
   label: string
   hint: string
+  example?: string
+  labelKey: string
+  hintKey: string
+  exampleKey?: string
   profilePrefix: string
+  prominence: 'primary' | 'secondary'
 }
 
 export const PURPOSE_WIZARD_OPTIONS: PurposeWizardOption[] = [
   {
     purpose: 'inquiry',
-    label: 'B2B inquiry',
-    hint: 'Company asks for a service (e.g. targeted advertising). Answers land in Sales.',
+    label: 'Company request',
+    hint: 'A company wants the agency to hire drivers, warehouse workers, run ads, or deliver another service. Answers go to Sales. This is not a form for the worker.',
+    example: 'Example: a transport firm needs C+E drivers.',
+    labelKey: 'admin.lead_forms.wizard.purposes.inquiry.title',
+    hintKey: 'admin.lead_forms.wizard.purposes.inquiry.hint',
+    exampleKey: 'admin.lead_forms.wizard.purposes.inquiry.example',
     profilePrefix: 'service_sales.',
+    prominence: 'primary',
   },
   {
     purpose: 'application',
     label: 'Candidate application',
-    hint: 'Recruitment questionnaire for drivers and other roles.',
+    hint: 'A driver or other applicant fills this in themselves. Answers go to Recruitment.',
+    example: 'Do not use this when a company is asking you to hire people.',
+    labelKey: 'admin.lead_forms.wizard.purposes.application.title',
+    hintKey: 'admin.lead_forms.wizard.purposes.application.hint',
+    exampleKey: 'admin.lead_forms.wizard.purposes.application.example',
     profilePrefix: 'recruitment.',
+    prominence: 'primary',
   },
   {
     purpose: 'survey',
-    label: 'Survey',
-    hint: 'Short feedback or qualification survey.',
+    label: 'Short survey',
+    hint: 'Feedback or a short qualification survey. Answers go to Sales.',
+    labelKey: 'admin.lead_forms.wizard.purposes.survey.title',
+    hintKey: 'admin.lead_forms.wizard.purposes.survey.hint',
     profilePrefix: 'service_sales.',
+    prominence: 'secondary',
   },
   {
     purpose: 'questionnaire',
-    label: 'Service request form',
-    hint: 'Structured service intake with follow-up on an existing inquiry.',
+    label: 'Follow-up questionnaire',
+    hint: 'Extra questions on an existing company inquiry.',
+    labelKey: 'admin.lead_forms.wizard.purposes.questionnaire.title',
+    hintKey: 'admin.lead_forms.wizard.purposes.questionnaire.hint',
     profilePrefix: 'service_sales.',
+    prominence: 'secondary',
   },
 ]
 
 const PURPOSE_LABELS: Record<string, string> = {
-  inquiry: 'B2B inquiry',
+  inquiry: 'Company request',
   application: 'Candidate application',
-  survey: 'Survey',
-  questionnaire: 'Service request form',
+  survey: 'Short survey',
+  questionnaire: 'Follow-up questionnaire',
   registration: 'Registration',
   update: 'Update',
   consent: 'Consent',
@@ -65,14 +86,21 @@ const PURPOSE_LABELS: Record<string, string> = {
 }
 
 const PROFILE_LABELS: Record<string, string> = {
-  'service_sales.targeted_advertising': 'Targeted advertising',
-  'recruitment.candidate.driver_ce': 'Driver C+E',
-  'recruitment.candidate.warehouse_worker': 'Warehouse worker',
+  'service_sales.driver_hiring': 'Company hiring drivers',
+  'service_sales.warehouse_hiring': 'Company hiring warehouse / general labor',
+  'service_sales.targeted_advertising': 'Advertising / client acquisition',
+  'recruitment.candidate.driver_ce': 'Driver C+E (candidate fills this)',
+  'recruitment.candidate.warehouse_worker': 'Warehouse worker (candidate fills this)',
 }
 
 export function purposeLabel(purpose: string | null | undefined): string {
   const key = String(purpose || 'inquiry').trim()
   return PURPOSE_LABELS[key] || key.replace(/_/g, ' ')
+}
+
+export function purposeLabelKey(purpose: string | null | undefined): string {
+  const key = String(purpose || 'inquiry').trim()
+  return `admin.lead_forms.wizard.purposes.${key}.title`
 }
 
 export function entityProfileLabel(code: string | null | undefined): string {
@@ -138,6 +166,8 @@ export function defaultProfileForPurpose(
 ): string {
   const filtered = filterProfilesForPurpose(profiles, purpose)
   if (purpose === 'inquiry' || purpose === 'questionnaire' || purpose === 'survey') {
+    const drivers = filtered.find((p) => p.code === 'service_sales.driver_hiring')
+    if (drivers) return drivers.code
     const b2b = filtered.find((p) => p.code === 'service_sales.targeted_advertising')
     if (b2b) return b2b.code
   }

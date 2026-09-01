@@ -109,3 +109,54 @@ async def test_p6_smoke_test_creates_lead_draft_not_candidate(client: AsyncClien
             )
         )
         assert count is None
+
+
+@pytest.mark.asyncio
+async def test_archive_form_with_alias_slug_binding(client: AsyncClient, tenant_id: str) -> None:
+    """Shared intake profiles keep multiple public_slug keys; archive must not rename them."""
+    from backend.app.models.intake_routing import IntakeSourceBinding
+    from backend.app.models.intake_routing_enums import IntakeProvider
+    from backend.app.modules.intake_routing import crud as intake_crud
+
+    form_id = await _seed_driver_ce_form(tenant_id)
+    async with async_session_maker() as session:
+        form = await session.get(TenantLeadForm, form_id)
+        assert form is not None
+        from backend.app.entity_profile.ingest_runtime import resolve_public_intake_source_profile_id
+
+        profile_id = await resolve_public_intake_source_profile_id(
+            session,
+            tenant_id=tenant_id,
+            lead_form_id=form_id,
+            public_slug=form.public_slug,
+        )
+        assert profile_id
+        alias = f"public_slug:{DRIVER_CE_FORM_SLUG}-alias"
+        existing = await session.scalar(
+            select(IntakeSourceBinding).where(
+                IntakeSourceBinding.tenant_id == tenant_id,
+                IntakeSourceBinding.external_key == alias,
+            )
+        )
+        if existing is None:
+            await intake_crud.create_binding(
+                session,
+                tenant_id=tenant_id,
+                intake_source_profile_id=profile_id,
+                provider=IntakeProvider.public_intake.value,
+                external_key=alias,
+                priority=10,
+            )
+        await session.commit()
+
+    headers = await _admin_headers(tenant_id)
+    resp = await client.patch(
+        f"/api/v1/settings/intake-forms/{form_id}",
+        headers=headers,
+        json={"lifecycle_status": "archived"},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["form"]["is_active"] is False
+    assert body["form_definition"]["lifecycle_status"] == "archived"
+

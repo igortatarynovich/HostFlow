@@ -161,8 +161,9 @@ async def _sync_public_slug_bindings(
     for binding in await intake_crud.list_bindings_for_profile(
         db, tenant_id=str(tenant_id), profile_id=str(intake_profile.id)
     ):
-        if binding.external_key.startswith("public_slug:") and binding.external_key != slug_key:
-            binding.external_key = slug_key
+        # Shared profiles keep alias slug keys (unique on tenant+provider+key).
+        # Never rename an existing public_slug:* row onto slug_key.
+        if binding.external_key == slug_key:
             binding.is_active = True
 
     if not any(b.external_key == slug_key for b in await intake_crud.list_bindings_for_profile(
@@ -195,6 +196,30 @@ async def _sync_public_slug_bindings(
         for binding in bindings:
             if binding.external_key == stale_key:
                 binding.is_active = False
+
+
+async def _deactivate_lead_form_id_bindings(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    form_id: str,
+) -> None:
+    """Drop this form's identity bindings without rewriting shared slug keys."""
+    fid = str(form_id or "").strip()
+    if not fid:
+        return
+    keys = [f"lead_form_id:{fid}", fid, f"form_id:{fid}"]
+    rows = (
+        await db.execute(
+            select(IntakeSourceBinding).where(
+                IntakeSourceBinding.tenant_id == str(tenant_id),
+                IntakeSourceBinding.provider == IntakeProvider.public_intake.value,
+                IntakeSourceBinding.external_key.in_(keys),
+            )
+        )
+    ).scalars().all()
+    for row in rows:
+        row.is_active = False
 
 
 async def _ensure_intake_source_for_form(
@@ -442,6 +467,18 @@ async def update_public_intake_form(
     lead_form.updated_at = now_utc()
     await db.flush()
 
+    archiving = str(getattr(lead_form, "lifecycle_status", "") or "") == FormLifecycleStatus.archived.value and (
+        lifecycle_status is not None
+    )
+    if archiving:
+        await _deactivate_lead_form_id_bindings(
+            db,
+            tenant_id=str(tenant_id),
+            form_id=str(lead_form.id),
+        )
+        await db.commit()
+        return await build_intake_form_admin_context(db, tenant_id=str(tenant_id), form_id=str(form_id))
+
     intake_profile = await _load_intake_source_for_form(
         db,
         tenant_id=str(tenant_id),
@@ -469,9 +506,7 @@ async def update_public_intake_form(
             _apply_intake_routing(intake_profile, routing)
         intake_profile.name = lead_form.title or intake_profile.name
         intake_profile.is_active = bool(lead_form.is_active)
-        if lifecycle_status == FormLifecycleStatus.archived.value:
-            intake_profile.is_active = False
-        if new_slug:
+        if public_slug is not None and new_slug:
             intake_profile.public_slug = new_slug
             if ep_code or intake_profile.entity_profile_code:
                 bound_ep = ep_code or str(intake_profile.entity_profile_code or "").strip()

@@ -5,6 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from backend.app.field_registry.constants import ENTITY_LEAD, SERVICE_SALES_MODULE
+from backend.app.field_registry.manifests.service_sales_driver_hiring import (
+    service_sales_driver_hiring_fields,
+)
+from backend.app.field_registry.manifests.service_sales_warehouse_hiring import (
+    service_sales_warehouse_hiring_fields,
+)
 
 _PREFIX = "service_sales.targeted_advertising"
 
@@ -66,6 +72,8 @@ def service_sales_module_manifest() -> dict[str, Any]:
     return {
         "module": SERVICE_SALES_MODULE,
         "registry_version": "field_registry_v1",
-        "canonical_fields": service_sales_targeted_advertising_fields(),
+        "canonical_fields": service_sales_targeted_advertising_fields()
+        + service_sales_driver_hiring_fields()
+        + service_sales_warehouse_hiring_fields(),
         "card_layouts": [],
     }

@@ -11528,10 +11528,822 @@
       },
       "presentation": {
         "fields": {
-          "recruitment.candidate.first_name": "First name"
+          "recruitment.candidate.first_name": "First name",
+          "service_sales.targeted_advertising.need_type": "Who are you looking for?",
+          "service_sales.targeted_advertising.primary_outcome": "What result do you need?",
+          "service_sales.targeted_advertising.recruitment_roles": "Which roles do you need?",
+          "service_sales.targeted_advertising.recruitment_other_role": "Other role",
+          "service_sales.targeted_advertising.recruitment_headcount": "How many people",
+          "service_sales.targeted_advertising.work_location_country": "Work country",
+          "service_sales.targeted_advertising.work_location_city": "Work city",
+          "service_sales.targeted_advertising.application_channel": "Where should applications go",
+          "service_sales.targeted_advertising.job_posting_ready": "Is the job posting ready",
+          "service_sales.targeted_advertising.recruitment_materials": "Hiring materials",
+          "service_sales.targeted_advertising.promotion_subject": "What are we promoting",
+          "service_sales.targeted_advertising.industry": "Industry",
+          "service_sales.targeted_advertising.target_audience_description": "Audience description",
+          "service_sales.targeted_advertising.qualified_lead_definition": "What is a qualified lead",
+          "service_sales.targeted_advertising.client_geo_scope": "Geography",
+          "service_sales.targeted_advertising.client_geo_detail": "City / region",
+          "service_sales.targeted_advertising.conversion_destination": "Where should leads go",
+          "service_sales.targeted_advertising.offer_ready": "Is the offer ready",
+          "service_sales.targeted_advertising.marketing_materials": "Ad materials",
+          "service_sales.targeted_advertising.prior_ads_experience": "Previous ads experience",
+          "service_sales.targeted_advertising.monthly_ad_budget": "Monthly ad budget",
+          "service_sales.targeted_advertising.start_timeline": "When to start",
+          "service_sales.targeted_advertising.decision_maker": "Who decides",
+          "service_sales.targeted_advertising.contact_full_name": "Contact name",
+          "service_sales.targeted_advertising.contact_company_name": "Company",
+          "service_sales.targeted_advertising.contact_phone": "Phone",
+          "service_sales.targeted_advertising.contact_email": "Email",
+          "service_sales.targeted_advertising.contact_website": "Website",
+          "service_sales.targeted_advertising.additional_notes": "Notes",
+          "service_sales.driver_hiring.contact_company_name": "Company name",
+          "service_sales.driver_hiring.base_location": "Where is the base?",
+          "service_sales.driver_hiring.drivers_needed": "How many drivers do you need?",
+          "service_sales.driver_hiring.driver_categories": "Which driver categories do you need?",
+          "service_sales.driver_hiring.driver_categories_other": "Which other category?",
+          "service_sales.driver_hiring.first_drivers_when": "When do you need the first drivers?",
+          "service_sales.driver_hiring.monthly_hire_plan": "How many drivers do you plan to hire each month?",
+          "service_sales.driver_hiring.transport_scope": "What type of transport?",
+          "service_sales.driver_hiring.transport_scope_other": "Which other type of transport?",
+          "service_sales.driver_hiring.route_countries": "Which countries do drivers travel to?",
+          "service_sales.driver_hiring.route_countries_other": "Which other countries?",
+          "service_sales.driver_hiring.cargo_types": "What type of loads?",
+          "service_sales.driver_hiring.cargo_types_other": "Which other load type?",
+          "service_sales.driver_hiring.loading_unloading": "Does the driver load / unload?",
+          "service_sales.driver_hiring.avg_monthly_km": "Average monthly mileage (km)",
+          "service_sales.driver_hiring.vehicle_models": "Which trucks do you use?",
+          "service_sales.driver_hiring.trailers": "Which trailers do you use?",
+          "service_sales.driver_hiring.trailers_other": "Which other trailer?",
+          "service_sales.driver_hiring.dedicated_vehicle": "Is the truck assigned to the driver?",
+          "service_sales.driver_hiring.work_systems": "Which rotation systems are available?",
+          "service_sales.driver_hiring.work_systems_other": "Which other rotation system?",
+          "service_sales.driver_hiring.individual_schedule": "Is an individual schedule possible?",
+          "service_sales.driver_hiring.work_start": "Where does the driver start work?",
+          "service_sales.driver_hiring.work_start_other": "Where else does the driver start?",
+          "service_sales.driver_hiring.travel_to_base_paid": "Is travel to the base paid?",
+          "service_sales.driver_hiring.pay_system": "What is the pay system?",
+          "service_sales.driver_hiring.pay_system_other": "Which other pay system?",
+          "service_sales.driver_hiring.pay_netto_amount": "How much does the driver earn netto?",
+          "service_sales.driver_hiring.pay_netto_currency": "Netto pay currency",
+          "service_sales.driver_hiring.day_rate_amount": "What is the daily netto rate?",
+          "service_sales.driver_hiring.day_rate_currency": "Daily rate currency",
+          "service_sales.driver_hiring.guaranteed_min_income": "Is there a guaranteed minimum income?",
+          "service_sales.driver_hiring.guaranteed_min_amount": "What is the guaranteed amount?",
+          "service_sales.driver_hiring.extra_bonuses": "Are there extra bonuses?",
+          "service_sales.driver_hiring.extra_bonuses_detail": "For what, and how much?",
+          "service_sales.driver_hiring.pay_frequency": "How often is pay issued?",
+          "service_sales.driver_hiring.pay_frequency_other": "How else is pay issued?",
+          "service_sales.driver_hiring.advances": "Are advances possible?",
+          "service_sales.driver_hiring.contract_types": "Which contract is offered?",
+          "service_sales.driver_hiring.contract_types_other": "Which other contract?",
+          "service_sales.driver_hiring.medical_psychotest_payer": "Who pays for medical exams and psychotests?",
+          "service_sales.driver_hiring.driver_certificate": "Do you issue a driver certificate?",
+          "service_sales.driver_hiring.legalization_help": "Do you help with legalisation / documents?",
+          "service_sales.driver_hiring.legalization_help_other": "Which other document help?",
+          "service_sales.driver_hiring.min_experience": "What is the minimum experience required?",
+          "service_sales.driver_hiring.europe_experience": "Is European experience required?",
+          "service_sales.driver_hiring.languages": "Which languages are required?",
+          "service_sales.driver_hiring.languages_other": "Which other language?",
+          "service_sales.driver_hiring.language_level": "What is the minimum language level?",
+          "service_sales.driver_hiring.citizenships": "Which citizenships do you consider?",
+          "service_sales.driver_hiring.citizenships_other": "Which other citizenship?",
+          "service_sales.driver_hiring.required_documents": "Which documents must the candidate have?",
+          "service_sales.driver_hiring.required_documents_other": "Which other document?",
+          "service_sales.driver_hiring.stay_document_min_validity": "Minimum remaining validity of stay documents",
+          "service_sales.driver_hiring.housing": "Is housing provided?",
+          "service_sales.driver_hiring.housing_cost": "Housing cost (PLN / month)",
+          "service_sales.driver_hiring.housing_between_trips": "Can drivers use housing between trips?",
+          "service_sales.driver_hiring.personal_car_parking": "Is there parking for a personal car?",
+          "service_sales.driver_hiring.selection_process": "How do you select a candidate?",
+          "service_sales.driver_hiring.selection_process_other": "Which other selection step?",
+          "service_sales.driver_hiring.hiring_decision_maker": "Who decides on hiring?",
+          "service_sales.driver_hiring.feedback_time": "How quickly can you give feedback?",
+          "service_sales.driver_hiring.start_after_approval": "How soon after approval can the candidate start?",
+          "service_sales.driver_hiring.hire_themselves": "Do you hire drivers yourselves?",
+          "service_sales.driver_hiring.other_agencies": "Are you working with other agencies now?",
+          "service_sales.driver_hiring.hired_last_3_months": "How many drivers did you hire in the last 3 months?",
+          "service_sales.driver_hiring.leavers_per_month": "How many drivers leave per month on average?",
+          "service_sales.driver_hiring.hiring_problems": "What is the main hiring problem now?",
+          "service_sales.driver_hiring.hiring_problems_other": "Which other problem?",
+          "service_sales.driver_hiring.refusal_reasons": "Why do candidates most often refuse?",
+          "service_sales.driver_hiring.refusal_reasons_other": "Which other refusal reason?",
+          "service_sales.driver_hiring.weekly_candidate_capacity": "How many new candidates can you process per week?",
+          "service_sales.driver_hiring.contact_full_name": "Contact person name",
+          "service_sales.driver_hiring.contact_phone": "Contact phone",
+          "service_sales.driver_hiring.contact_email": "Contact email",
+          "service_sales.warehouse_hiring.contact_company_name": "Company name",
+          "service_sales.warehouse_hiring.work_location": "Where is the work location?",
+          "service_sales.warehouse_hiring.workers_needed": "How many workers do you need?",
+          "service_sales.warehouse_hiring.worker_roles": "Which workers do you need?",
+          "service_sales.warehouse_hiring.worker_roles_other": "Which other role?",
+          "service_sales.warehouse_hiring.first_workers_when": "When do you need the first workers?",
+          "service_sales.warehouse_hiring.monthly_hire_volume": "How many workers do you plan to hire each month?",
+          "service_sales.warehouse_hiring.job_tasks": "What tasks does the worker perform?",
+          "service_sales.warehouse_hiring.job_tasks_other": "Which other task?",
+          "service_sales.warehouse_hiring.physical_demand": "How physically demanding is the work?",
+          "service_sales.warehouse_hiring.max_lift_weight": "What is the maximum weight that must be lifted by hand?",
+          "service_sales.warehouse_hiring.work_posture": "Work is mainly performed",
+          "service_sales.warehouse_hiring.has_productivity_norms": "Are there productivity norms?",
+          "service_sales.warehouse_hiring.productivity_norm": "What is the productivity norm?",
+          "service_sales.warehouse_hiring.kpi_system": "Is a KPI / piece-rate system used?",
+          "service_sales.warehouse_hiring.workplace_temperature": "What is the temperature at the workplace?",
+          "service_sales.warehouse_hiring.shift_length": "What is the work schedule?",
+          "service_sales.warehouse_hiring.shift_length_other": "Which other schedule?",
+          "service_sales.warehouse_hiring.shift_count": "How many shifts?",
+          "service_sales.warehouse_hiring.shift_types": "Which shifts are offered?",
+          "service_sales.warehouse_hiring.workdays_per_week": "How many workdays per week?",
+          "service_sales.warehouse_hiring.weekend_work": "Is weekend work possible?",
+          "service_sales.warehouse_hiring.overtime": "Are overtime hours possible?",
+          "service_sales.warehouse_hiring.monthly_hours": "How many hours can be worked per month on average?",
+          "service_sales.warehouse_hiring.pay_system": "What is the pay system?",
+          "service_sales.warehouse_hiring.pay_system_other": "Which other pay system?",
+          "service_sales.warehouse_hiring.pay_netto_amount": "What is the netto rate?",
+          "service_sales.warehouse_hiring.pay_netto_unit": "Netto rate unit",
+          "service_sales.warehouse_hiring.pay_brutto_amount": "What is the brutto rate?",
+          "service_sales.warehouse_hiring.pay_brutto_unit": "Brutto rate unit",
+          "service_sales.warehouse_hiring.guaranteed_hours": "Is there a guaranteed number of hours?",
+          "service_sales.warehouse_hiring.guaranteed_hours_amount": "How many hours per month are guaranteed?",
+          "service_sales.warehouse_hiring.has_bonuses": "Are there bonuses or premiums?",
+          "service_sales.warehouse_hiring.bonus_types": "What are the bonuses for?",
+          "service_sales.warehouse_hiring.bonus_types_other": "Which other bonus?",
+          "service_sales.warehouse_hiring.overtime_pay": "How is overtime paid?",
+          "service_sales.warehouse_hiring.overtime_pay_other": "How else is overtime paid?",
+          "service_sales.warehouse_hiring.pay_frequency": "How often is pay issued?",
+          "service_sales.warehouse_hiring.pay_frequency_other": "How else is pay issued?",
+          "service_sales.warehouse_hiring.advances": "Are advances possible?",
+          "service_sales.warehouse_hiring.contract_types": "Which contract is offered?",
+          "service_sales.warehouse_hiring.contract_types_other": "Which other contract?",
+          "service_sales.warehouse_hiring.legal_employer": "Who is the official employer?",
+          "service_sales.warehouse_hiring.has_probation": "Is there a probation period?",
+          "service_sales.warehouse_hiring.probation_length": "How long is the probation period?",
+          "service_sales.warehouse_hiring.medical_exam_payer": "Who pays for the medical exam?",
+          "service_sales.warehouse_hiring.workwear": "Are workwear and shoes provided?",
+          "service_sales.warehouse_hiring.experience_required": "Is work experience required?",
+          "service_sales.warehouse_hiring.min_experience": "What is the minimum experience required?",
+          "service_sales.warehouse_hiring.extra_qualifications": "Are extra qualifications required?",
+          "service_sales.warehouse_hiring.extra_qualifications_other": "Which other qualification?",
+          "service_sales.warehouse_hiring.language_required": "Is language knowledge required?",
+          "service_sales.warehouse_hiring.languages": "Which language is required?",
+          "service_sales.warehouse_hiring.languages_other": "Which other language?",
+          "service_sales.warehouse_hiring.language_level": "What is the minimum language level?",
+          "service_sales.warehouse_hiring.gender_considered": "Who do you consider?",
+          "service_sales.warehouse_hiring.citizenships": "Which citizenships do you consider?",
+          "service_sales.warehouse_hiring.citizenships_other": "Which other citizenship?",
+          "service_sales.warehouse_hiring.required_documents": "Which documents are required?",
+          "service_sales.warehouse_hiring.required_documents_other": "Which other document?",
+          "service_sales.warehouse_hiring.stay_document_min_validity": "What is the minimum remaining legal stay required?",
+          "service_sales.warehouse_hiring.housing": "Is housing provided?",
+          "service_sales.warehouse_hiring.housing_cost": "How much does housing cost? (PLN / month)",
+          "service_sales.warehouse_hiring.roommates": "How many people live in a room?",
+          "service_sales.warehouse_hiring.housing_distance_km": "How far is housing from work? (km)",
+          "service_sales.warehouse_hiring.transport_to_work": "Is transport to work provided?",
+          "service_sales.warehouse_hiring.transport_cost": "How much does transport cost? (PLN / month)",
+          "service_sales.warehouse_hiring.selection_process": "How does selection work?",
+          "service_sales.warehouse_hiring.decision_time": "How quickly is a decision made on a candidate?",
+          "service_sales.warehouse_hiring.start_after_approval": "When can the candidate start after approval?",
+          "service_sales.warehouse_hiring.has_onboarding": "Is there organized onboarding / training?",
+          "service_sales.warehouse_hiring.onboarding_duration": "How long does training last?",
+          "service_sales.warehouse_hiring.hire_themselves": "Do you hire workers yourselves?",
+          "service_sales.warehouse_hiring.other_agencies": "Do you work with other agencies?",
+          "service_sales.warehouse_hiring.hired_last_3_months": "How many workers were hired in the last 3 months?",
+          "service_sales.warehouse_hiring.leavers_per_month": "How many workers leave per month on average?",
+          "service_sales.warehouse_hiring.hiring_problems": "What is the main hiring problem?",
+          "service_sales.warehouse_hiring.hiring_problems_other": "Which other problem?",
+          "service_sales.warehouse_hiring.refusal_reasons": "Why do candidates most often refuse?",
+          "service_sales.warehouse_hiring.refusal_reasons_other": "Which other refusal reason?",
+          "service_sales.warehouse_hiring.weekly_candidate_capacity": "How many candidates can you process per week?",
+          "service_sales.warehouse_hiring.contact_full_name": "Recruiting contact name",
+          "service_sales.warehouse_hiring.contact_phone": "Recruiting contact phone",
+          "service_sales.warehouse_hiring.contact_email": "Recruiting contact email"
         },
         "profiles": {
-          "recruitment.candidate.office_worker": "Office worker"
+          "recruitment.candidate.office_worker": "Office worker",
+          "service_sales.targeted_advertising": "Advertising / client acquisition",
+          "recruitment.candidate.driver_ce": "Driver C+E (candidate fills this)",
+          "recruitment.candidate.warehouse_worker": "Warehouse worker (candidate fills this)",
+          "service_sales.driver_hiring": "Company hiring drivers",
+          "service_sales.warehouse_hiring": "Company hiring warehouse / general labor"
+        },
+        "options": {
+          "service_sales": {
+            "driver_hiring": {
+              "driver_categories": {
+                "c": "C",
+                "ce": "C+E",
+                "d": "D",
+                "other": "Other"
+              },
+              "first_drivers_when": {
+                "asap": "As soon as possible",
+                "within_2_weeks": "Within 2 weeks",
+                "within_month": "Within a month",
+                "1_3_months": "1–3 months",
+                "ongoing": "Ongoing hiring"
+              },
+              "monthly_hire_plan": {
+                "1_2": "1–2",
+                "3_5": "3–5",
+                "6_10": "6–10",
+                "11_20": "11–20",
+                "20_plus": "More than 20",
+                "unknown": "I don’t know"
+              },
+              "transport_scope": {
+                "international": "International",
+                "poland": "Within Poland",
+                "local": "Local",
+                "distribution": "Distribution",
+                "other": "Other"
+              },
+              "route_countries": {
+                "poland": "Poland",
+                "germany": "Germany",
+                "france": "France",
+                "benelux": "Benelux",
+                "italy": "Italy",
+                "spain": "Spain",
+                "scandinavia": "Scandinavia",
+                "uk": "United Kingdom",
+                "other": "Other"
+              },
+              "cargo_types": {
+                "ftl": "FTL",
+                "ltl": "LTL",
+                "distribution": "Distribution",
+                "containers": "Containers",
+                "adr": "ADR",
+                "car_transporter": "Car transporter",
+                "other": "Other"
+              },
+              "loading_unloading": {
+                "no": "No",
+                "sometimes": "Sometimes",
+                "yes": "Yes"
+              },
+              "trailers": {
+                "curtain": "Curtain",
+                "reefer": "Reefer",
+                "container": "Container",
+                "tanker": "Tanker",
+                "dump": "Dump",
+                "platform": "Platform",
+                "other": "Other"
+              },
+              "dedicated_vehicle": {
+                "yes": "Yes",
+                "no": "No",
+                "depends": "Depends on the system"
+              },
+              "work_systems": {
+                "2_1": "2/1",
+                "3_1": "3/1",
+                "4_1": "4/1",
+                "6_2": "6/2",
+                "8_2": "8/2",
+                "no_system": "No rotation system",
+                "individual": "Individual",
+                "other": "Other"
+              },
+              "individual_schedule": {
+                "yes": "Yes",
+                "no": "No",
+                "sometimes": "In some cases"
+              },
+              "work_start": {
+                "always_base": "Always from the base",
+                "route_changeover": "Changeover on the route is possible",
+                "other": "Other"
+              },
+              "travel_to_base_paid": {
+                "yes": "Yes, in full",
+                "partial": "Partially",
+                "no": "No"
+              },
+              "pay_system": {
+                "per_day": "Per day",
+                "monthly_fixed": "Fixed monthly",
+                "per_km": "Per km",
+                "fixed_plus_bonus": "Fixed + bonus",
+                "other": "Other"
+              },
+              "pay_netto_currency": {
+                "pln": "PLN",
+                "eur": "EUR"
+              },
+              "day_rate_currency": {
+                "pln": "PLN",
+                "eur": "EUR"
+              },
+              "guaranteed_min_income": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "extra_bonuses": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "pay_frequency": {
+                "monthly": "Once a month",
+                "twice_monthly": "Twice a month",
+                "after_rotation": "After rotation / trip",
+                "other": "Other"
+              },
+              "advances": {
+                "yes": "Yes",
+                "no": "No",
+                "individual": "Case by case"
+              },
+              "contract_types": {
+                "umowa_o_prace": "Umowa o pracę",
+                "umowa_zlecenie": "Umowa zlecenie",
+                "b2b": "B2B",
+                "other": "Other"
+              },
+              "medical_psychotest_payer": {
+                "employer": "Employer",
+                "driver": "Driver",
+                "shared": "Partly employer"
+              },
+              "driver_certificate": {
+                "yes": "Yes",
+                "no": "No",
+                "not_required": "Not required"
+              },
+              "legalization_help": {
+                "work_permit": "Zezwolenie na pracę",
+                "residence_card": "Karta pobytu",
+                "code_95": "Code 95",
+                "license_exchange": "Driving licence exchange",
+                "driver_certificate": "Świadectwo kierowcy",
+                "none": "We do not help",
+                "other": "Other"
+              },
+              "min_experience": {
+                "none": "No experience",
+                "3_months": "3 months",
+                "6_months": "6 months",
+                "1_year": "1 year",
+                "2_years_plus": "2+ years"
+              },
+              "europe_experience": {
+                "yes": "Yes",
+                "no": "No",
+                "preferred": "Preferred"
+              },
+              "languages": {
+                "not_required": "No language required",
+                "pl": "Polish",
+                "en": "English",
+                "de": "German",
+                "other": "Other"
+              },
+              "language_level": {
+                "basic": "Basic",
+                "conversational": "Conversational",
+                "good": "Good"
+              },
+              "citizenships": {
+                "poland": "Poland",
+                "ukraine": "Ukraine",
+                "belarus": "Belarus",
+                "moldova": "Moldova",
+                "georgia": "Georgia",
+                "armenia": "Armenia",
+                "central_asia": "Central Asia",
+                "asia": "Asia",
+                "any_with_docs": "Any, if documents are in order",
+                "other": "Other"
+              },
+              "required_documents": {
+                "driving_licence": "Prawo jazdy",
+                "code_95": "Code 95",
+                "driver_card": "Karta kierowcy",
+                "residence_card": "Karta pobytu",
+                "work_visa": "Work visa",
+                "driver_certificate": "Świadectwo kierowcy",
+                "other": "Other"
+              },
+              "stay_document_min_validity": {
+                "any": "Does not matter",
+                "3_months": "3+ months",
+                "6_months": "6+ months",
+                "8_months": "8+ months",
+                "12_months": "12+ months"
+              },
+              "housing": {
+                "free": "Free",
+                "paid": "Paid",
+                "no": "No"
+              },
+              "housing_between_trips": {
+                "yes": "Yes",
+                "no": "No",
+                "not_applicable": "Not applicable"
+              },
+              "personal_car_parking": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "selection_process": {
+                "document_check": "Document check",
+                "phone_interview": "Phone interview",
+                "video_interview": "Video interview",
+                "in_person": "In-person interview",
+                "test_drive": "Test drive",
+                "other": "Other"
+              },
+              "feedback_time": {
+                "same_day": "Same day",
+                "within_24h": "Within 24 hours",
+                "1_3_days": "1–3 days",
+                "over_3_days": "More than 3 days"
+              },
+              "start_after_approval": {
+                "immediately": "Immediately",
+                "within_week": "Within a week",
+                "1_2_weeks": "1–2 weeks",
+                "over_2_weeks": "More than 2 weeks",
+                "depends_on_docs": "Depends on documents"
+              },
+              "hire_themselves": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "other_agencies": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "hiring_problems": {
+                "not_enough_candidates": "Not enough candidates",
+                "low_lead_quality": "Low lead quality",
+                "insufficient_experience": "Insufficient experience",
+                "document_issues": "Document issues",
+                "no_shows": "Candidates do not start work",
+                "high_turnover": "High turnover",
+                "slow_process": "Slow hiring process",
+                "other": "Other"
+              },
+              "refusal_reasons": {
+                "pay": "Pay",
+                "work_system": "Work system",
+                "routes": "Routes",
+                "vehicles": "Vehicles",
+                "housing": "Housing",
+                "travel_to_base": "Travel to base",
+                "documents": "Documents",
+                "other_offer": "They take another offer",
+                "unknown": "We don’t know",
+                "other": "Other"
+              },
+              "weekly_candidate_capacity": {
+                "1_5": "1–5",
+                "6_10": "6–10",
+                "11_20": "11–20",
+                "21_50": "21–50",
+                "50_plus": "50+"
+              }
+            },
+            "warehouse_hiring": {
+              "worker_roles": {
+                "warehouse": "Warehouse worker",
+                "picker": "Order picker",
+                "packer": "Packer",
+                "sorter": "Sorter",
+                "loader": "Loader",
+                "production": "Production worker",
+                "laborer": "General laborer",
+                "forklift_operator": "Forklift operator",
+                "other": "Other"
+              },
+              "first_workers_when": {
+                "asap": "As soon as possible",
+                "within_2_weeks": "Within 2 weeks",
+                "within_month": "Within a month",
+                "1_3_months": "1–3 months",
+                "ongoing": "Ongoing hiring"
+              },
+              "monthly_hire_volume": {
+                "1_5": "1–5",
+                "6_10": "6–10",
+                "11_20": "11–20",
+                "21_50": "21–50",
+                "50_plus": "50+",
+                "unknown": "I don’t know"
+              },
+              "job_tasks": {
+                "picking": "Order picking",
+                "packing": "Packing",
+                "sorting": "Sorting",
+                "loading": "Loading / unloading",
+                "scanner": "Scanner work",
+                "goods_receipt": "Goods receipt",
+                "putaway": "Putaway",
+                "production": "Production work",
+                "cleaning": "Workplace cleaning",
+                "physical": "Physical work",
+                "other": "Other"
+              },
+              "physical_demand": {
+                "light": "Light",
+                "medium": "Medium",
+                "heavy": "Heavy"
+              },
+              "max_lift_weight": {
+                "up_to_5": "Up to 5 kg",
+                "5_10": "5–10 kg",
+                "10_15": "10–15 kg",
+                "15_20": "15–20 kg",
+                "over_20": "More than 20 kg",
+                "not_required": "Lifting is not required"
+              },
+              "work_posture": {
+                "standing": "Standing",
+                "sitting": "Sitting",
+                "moving": "On the move",
+                "mixed": "Mixed"
+              },
+              "has_productivity_norms": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "kpi_system": {
+                "no": "No",
+                "yes": "Yes",
+                "partial": "Partially"
+              },
+              "workplace_temperature": {
+                "room": "Room temperature",
+                "cool": "Cool",
+                "fridge": "Refrigerator",
+                "freezer": "Freezer",
+                "hot": "High temperature",
+                "outdoor": "Outdoor work"
+              },
+              "shift_length": {
+                "hours_8": "8 hours",
+                "hours_10": "10 hours",
+                "hours_12": "12 hours",
+                "other": "Other"
+              },
+              "shift_count": {
+                "one": "1",
+                "two": "2",
+                "three": "3",
+                "flexible": "Flexible schedule"
+              },
+              "shift_types": {
+                "morning": "Morning",
+                "day": "Day",
+                "evening": "Evening",
+                "night": "Night"
+              },
+              "workdays_per_week": {
+                "days_5": "5",
+                "days_6": "6",
+                "flexible": "Flexible schedule",
+                "by_schedule": "According to schedule"
+              },
+              "weekend_work": {
+                "no": "No",
+                "sometimes": "Sometimes",
+                "regularly": "Regularly"
+              },
+              "overtime": {
+                "no": "No",
+                "optional": "Optional",
+                "regularly": "Regularly"
+              },
+              "pay_system": {
+                "hourly": "Hourly",
+                "monthly": "Monthly rate",
+                "piece_rate": "Piece-rate",
+                "rate_plus_bonus": "Rate + bonus",
+                "other": "Other"
+              },
+              "pay_netto_unit": {
+                "pln_hour": "PLN / hour",
+                "pln_month": "PLN / month",
+                "eur_hour": "EUR / hour",
+                "eur_month": "EUR / month"
+              },
+              "pay_brutto_unit": {
+                "pln_hour": "PLN / hour",
+                "pln_month": "PLN / month",
+                "eur_hour": "EUR / hour",
+                "eur_month": "EUR / month"
+              },
+              "guaranteed_hours": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "has_bonuses": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "bonus_types": {
+                "attendance": "Attendance",
+                "productivity": "Productivity",
+                "night_shifts": "Night shifts",
+                "weekends": "Weekends",
+                "other": "Other"
+              },
+              "overtime_pay": {
+                "standard": "At the standard rate",
+                "increased": "At an increased rate",
+                "included": "Included in the pay system",
+                "other": "Other"
+              },
+              "pay_frequency": {
+                "monthly": "Once a month",
+                "twice_monthly": "Twice a month",
+                "weekly": "Weekly",
+                "other": "Other"
+              },
+              "advances": {
+                "yes": "Yes",
+                "no": "No",
+                "individual": "Case by case"
+              },
+              "contract_types": {
+                "employment": "Umowa o pracę",
+                "zlecenie": "Umowa zlecenie",
+                "b2b": "B2B",
+                "other": "Other"
+              },
+              "has_probation": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "medical_exam_payer": {
+                "employer": "Employer",
+                "worker": "Worker"
+              },
+              "workwear": {
+                "full": "Fully",
+                "partial": "Partially",
+                "no": "No"
+              },
+              "experience_required": {
+                "not_required": "Not required",
+                "preferred": "Preferred",
+                "required": "Required"
+              },
+              "min_experience": {
+                "up_to_3_months": "Up to 3 months",
+                "3_6_months": "3–6 months",
+                "6_12_months": "6–12 months",
+                "1_plus": "1+ year",
+                "2_plus": "2+ years"
+              },
+              "extra_qualifications": {
+                "not_required": "Not required",
+                "forklift_udt": "Forklift UDT",
+                "sanitary_book": "Sanitary book",
+                "driving_license": "Driving license",
+                "other": "Other"
+              },
+              "language_required": {
+                "no": "No",
+                "yes": "Yes",
+                "preferred": "Preferred"
+              },
+              "languages": {
+                "polish": "Polish",
+                "english": "English",
+                "ukrainian": "Ukrainian",
+                "russian": "Russian",
+                "other": "Other"
+              },
+              "language_level": {
+                "basic_commands": "Understanding basic commands",
+                "basic": "Basic",
+                "conversational": "Conversational",
+                "good": "Good"
+              },
+              "gender_considered": {
+                "men": "Men",
+                "women": "Women",
+                "all_matching": "Anyone who matches the role requirements"
+              },
+              "citizenships": {
+                "poland": "Poland",
+                "ukraine": "Ukraine",
+                "belarus": "Belarus",
+                "moldova": "Moldova",
+                "georgia": "Georgia",
+                "armenia": "Armenia",
+                "central_asia": "Central Asia",
+                "asia": "Asia",
+                "all_with_documents": "Anyone with the required documents",
+                "other": "Other"
+              },
+              "required_documents": {
+                "pesel": "PESEL",
+                "karta_pobytu": "Karta pobytu",
+                "work_visa": "Work visa",
+                "work_permit": "Work permit",
+                "ukr_status": "UKR status",
+                "other": "Other"
+              },
+              "stay_document_min_validity": {
+                "irrelevant": "Does not matter",
+                "3_plus": "3+ months",
+                "6_plus": "6+ months",
+                "9_plus": "9+ months",
+                "12_plus": "12+ months"
+              },
+              "housing": {
+                "free": "Free",
+                "paid": "Paid",
+                "no": "No"
+              },
+              "roommates": {
+                "1": "1",
+                "2": "2",
+                "3": "3",
+                "4": "4",
+                "5_plus": "5+"
+              },
+              "transport_to_work": {
+                "free": "Free",
+                "paid": "Paid",
+                "no": "No",
+                "not_needed": "Not needed"
+              },
+              "selection_process": {
+                "application_review": "Application review",
+                "phone": "Phone interview",
+                "online": "Online interview",
+                "in_person": "In-person interview",
+                "practical_test": "Practical test",
+                "no_interview": "No interview"
+              },
+              "decision_time": {
+                "same_day": "Same day",
+                "within_24h": "Within 24 hours",
+                "1_3_days": "1–3 days",
+                "more_than_3": "More than 3 days"
+              },
+              "start_after_approval": {
+                "immediately": "Immediately",
+                "within_week": "Within a week",
+                "1_2_weeks": "1–2 weeks",
+                "after_documents": "After documents are processed"
+              },
+              "has_onboarding": {
+                "paid": "Yes, paid",
+                "unpaid": "Yes, unpaid",
+                "no": "No"
+              },
+              "onboarding_duration": {
+                "1_day": "1 day",
+                "2_3_days": "2–3 days",
+                "up_to_week": "Up to a week",
+                "more_than_week": "More than a week"
+              },
+              "hire_themselves": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "other_agencies": {
+                "yes": "Yes",
+                "no": "No"
+              },
+              "hiring_problems": {
+                "not_enough_candidates": "Not enough candidates",
+                "mismatch": "Candidates do not match requirements",
+                "no_show": "They do not show up for work",
+                "high_turnover": "High turnover",
+                "documents": "Documents",
+                "language": "Language barrier",
+                "slow_process": "Slow hiring process",
+                "other": "Other"
+              },
+              "refusal_reasons": {
+                "pay": "Pay",
+                "few_hours": "Too few hours",
+                "schedule": "Schedule",
+                "night_shifts": "Night shifts",
+                "hard_work": "Hard work",
+                "housing": "Housing",
+                "transport": "Transport",
+                "location": "Location",
+                "other_job": "They found another job",
+                "unknown": "We don’t know",
+                "other": "Other"
+              },
+              "weekly_candidate_capacity": {
+                "1_5": "1–5",
+                "6_10": "6–10",
+                "11_20": "11–20",
+                "21_50": "21–50",
+                "51_100": "51–100",
+                "100_plus": "100+"
+              }
+            }
+          }
         }
       }
     },
@@ -13729,7 +14541,7 @@
     "forms_builder": {
       "kicker": "Forms",
       "library_title": "Form Builder",
-      "library_subtitle": "Compose HostFlow forms from the Field Catalog. Open a form to edit the canvas, then share a public URL.",
+      "library_subtitle": "Create a form for a company request or for a candidate, then share the public URL.",
       "library_empty": "No forms yet. Create one, then assemble fields in Form Builder.",
       "title": "Form Builder",
       "subtitle": "Palette from Field Catalog · canvas order · properties · save draft.",
@@ -13764,7 +14576,8 @@
       },
       "placeholders": {
         "title": "e.g. Facebook campaigns",
-        "slug": "my-campaign"
+        "slug": "my-campaign",
+        "company_slug": "company-needs-drivers"
       },
       "slug_hint": "Lowercase letters, digits, hyphens; 2–64 characters. Leave empty to unpublish.",
       "share_url": "Public intake URL (this host)",
@@ -13782,6 +14595,44 @@
         "create": "Failed to create form",
         "save": "Failed to save form",
         "copy": "Could not copy"
+      },
+      "create_form": "Create form",
+      "wizard_title": "New form",
+      "wizard": {
+        "who_fills": "1. Who fills this form?",
+        "who_fills_hint": "Choose company request if a firm wants you to hire drivers. Choose candidate application only if the driver fills it in themselves.",
+        "other_types": "Other form types",
+        "candidate_role": "Candidate role",
+        "name": "2. Form name",
+        "questions": "3. Questions",
+        "questions_hint_company": "Ready questions for a company. Choose the questionnaire that matches what the firm needs (drivers, warehouse, ads).",
+        "questions_hint_candidate": "These questions are answered by the candidate.",
+        "title_placeholder_company": "e.g. Questionnaire for companies that need drivers",
+        "title_placeholder_candidate": "e.g. Driver C+E application",
+        "destination_company": "Answers land in Sales → Inquiries. A driver does not fill this form.",
+        "destination_candidate": "Answers land in Recruitment as a candidate application.",
+        "save_activate": "Save and activate form",
+        "purposes": {
+          "inquiry": {
+            "title": "Company request",
+            "hint": "A company wants the agency to hire drivers, warehouse workers, run ads, or deliver another service. Answers go to Sales. This is not a form for the worker.",
+            "example": "Example: a transport firm needs C+E drivers."
+          },
+          "application": {
+            "title": "Candidate application",
+            "hint": "A driver or other applicant fills this in themselves. Answers go to Recruitment.",
+            "example": "Do not use this when a company is asking you to hire people."
+          },
+          "survey": {
+            "title": "Short survey",
+            "hint": "Feedback or a short qualification survey. Answers go to Sales."
+          },
+          "questionnaire": {
+            "title": "Follow-up questionnaire",
+            "hint": "Extra questions on an existing company inquiry."
+          }
+        },
+        "company_questionnaire": "What does the company need?"
       }
     },
     "intake_forms": {
@@ -13838,7 +14689,9 @@
         "load_detail": "Failed to load intake form",
         "copy": "Could not copy",
         "smoke": "Smoke test failed"
-      }
+      },
+      "load_driver_hiring_preset": "Load questionnaire for companies hiring drivers",
+      "load_warehouse_hiring_preset": "Load questionnaire for companies hiring warehouse workers"
     },
     "tenant_links": {
       "header_kicker": "Links your workspace to client organizations and handoff rules.",

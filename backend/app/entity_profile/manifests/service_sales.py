@@ -12,6 +12,12 @@ from backend.app.entity_profile.constants import (
     TARGETED_ADVERTISING_PRESENTATION_CODE,
     TARGETED_ADVERTISING_PROFILE_CODE,
 )
+from backend.app.entity_profile.manifests.service_sales_driver_hiring import (
+    service_sales_driver_hiring_profile,
+)
+from backend.app.entity_profile.manifests.service_sales_warehouse_hiring import (
+    service_sales_warehouse_hiring_profile,
+)
 
 _PREFIX = TARGETED_ADVERTISING_PROFILE_CODE
 _RECRUITMENT_NEED = "employee_recruitment"
@@ -269,4 +275,8 @@ def service_sales_targeted_advertising_profile() -> dict[str, Any]:
 
 
 def service_sales_module_entity_profiles() -> list[dict[str, Any]]:
-    return [service_sales_targeted_advertising_profile()]
+    return [
+        service_sales_targeted_advertising_profile(),
+        service_sales_driver_hiring_profile(),
+        service_sales_warehouse_hiring_profile(),
+    ]

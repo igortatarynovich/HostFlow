@@ -41,6 +41,28 @@ def test_p10a_show_if_hides_field_when_false() -> None:
     assert shown["visible"] is True
 
 
+def test_p10a_in_matches_any_selected_multi_value() -> None:
+    field = _field(
+        "service_sales.driver_hiring.driver_categories_other",
+        "optional",
+        {
+            "show_if": {
+                "source_field": "service_sales.driver_hiring.driver_categories",
+                "operator": "eq",
+                "value": "other",
+            }
+        },
+    )
+    hidden = evaluate_presentation_field_state(
+        field, {"service_sales.driver_hiring.driver_categories": ["c", "ce"]}
+    )
+    assert hidden["visible"] is False
+    shown = evaluate_presentation_field_state(
+        field, {"service_sales.driver_hiring.driver_categories": ["c", "other"]}
+    )
+    assert shown["visible"] is True
+
+
 def test_p10a_hide_if() -> None:
     field = _field(
         "recruitment.candidate.last_name",

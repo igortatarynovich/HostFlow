@@ -11528,10 +11528,822 @@
       },
       "presentation": {
         "fields": {
-          "recruitment.candidate.first_name": "Имя"
+          "recruitment.candidate.first_name": "Имя",
+          "service_sales.targeted_advertising.need_type": "Кого ищем?",
+          "service_sales.targeted_advertising.primary_outcome": "Какой результат нужен?",
+          "service_sales.targeted_advertising.recruitment_roles": "Какие должности нужны?",
+          "service_sales.targeted_advertising.recruitment_other_role": "Другая должность",
+          "service_sales.targeted_advertising.recruitment_headcount": "Сколько человек",
+          "service_sales.targeted_advertising.work_location_country": "Страна работы",
+          "service_sales.targeted_advertising.work_location_city": "Город работы",
+          "service_sales.targeted_advertising.application_channel": "Куда приходят отклики",
+          "service_sales.targeted_advertising.job_posting_ready": "Готово ли объявление",
+          "service_sales.targeted_advertising.recruitment_materials": "Материалы для набора",
+          "service_sales.targeted_advertising.promotion_subject": "Что продвигаем",
+          "service_sales.targeted_advertising.industry": "Отрасль",
+          "service_sales.targeted_advertising.target_audience_description": "Описание аудитории",
+          "service_sales.targeted_advertising.qualified_lead_definition": "Что считать качественным лидом",
+          "service_sales.targeted_advertising.client_geo_scope": "География",
+          "service_sales.targeted_advertising.client_geo_detail": "Город / регион",
+          "service_sales.targeted_advertising.conversion_destination": "Куда вести заявки",
+          "service_sales.targeted_advertising.offer_ready": "Готова ли оферта",
+          "service_sales.targeted_advertising.marketing_materials": "Рекламные материалы",
+          "service_sales.targeted_advertising.prior_ads_experience": "Опыт с рекламой",
+          "service_sales.targeted_advertising.monthly_ad_budget": "Месячный бюджет",
+          "service_sales.targeted_advertising.start_timeline": "Когда стартовать",
+          "service_sales.targeted_advertising.decision_maker": "Кто принимает решение",
+          "service_sales.targeted_advertising.contact_full_name": "Контактное лицо",
+          "service_sales.targeted_advertising.contact_company_name": "Компания",
+          "service_sales.targeted_advertising.contact_phone": "Телефон",
+          "service_sales.targeted_advertising.contact_email": "Email",
+          "service_sales.targeted_advertising.contact_website": "Сайт",
+          "service_sales.targeted_advertising.additional_notes": "Комментарий",
+          "service_sales.driver_hiring.contact_company_name": "Название компании",
+          "service_sales.driver_hiring.base_location": "Где находится база?",
+          "service_sales.driver_hiring.drivers_needed": "Сколько водителей требуется?",
+          "service_sales.driver_hiring.driver_categories": "Какие категории водителей нужны?",
+          "service_sales.driver_hiring.driver_categories_other": "Какая другая категория?",
+          "service_sales.driver_hiring.first_drivers_when": "Когда нужны первые водители?",
+          "service_sales.driver_hiring.monthly_hire_plan": "Сколько водителей планируете нанимать ежемесячно?",
+          "service_sales.driver_hiring.transport_scope": "Какой тип перевозок?",
+          "service_sales.driver_hiring.transport_scope_other": "Какой другой тип перевозок?",
+          "service_sales.driver_hiring.route_countries": "По каким странам ездят водители?",
+          "service_sales.driver_hiring.route_countries_other": "Какие другие страны?",
+          "service_sales.driver_hiring.cargo_types": "Какой тип перевозок/грузов?",
+          "service_sales.driver_hiring.cargo_types_other": "Какой другой тип груза?",
+          "service_sales.driver_hiring.loading_unloading": "Выполняет ли водитель погрузку/разгрузку?",
+          "service_sales.driver_hiring.avg_monthly_km": "Какой средний пробег автомобиля в месяц? (км)",
+          "service_sales.driver_hiring.vehicle_models": "Какие автомобили используются?",
+          "service_sales.driver_hiring.trailers": "Какие полуприцепы используются?",
+          "service_sales.driver_hiring.trailers_other": "Какой другой полуприцеп?",
+          "service_sales.driver_hiring.dedicated_vehicle": "Закрепляется ли автомобиль за водителем?",
+          "service_sales.driver_hiring.work_systems": "Какие системы работы доступны?",
+          "service_sales.driver_hiring.work_systems_other": "Какая другая система работы?",
+          "service_sales.driver_hiring.individual_schedule": "Возможен ли индивидуальный график?",
+          "service_sales.driver_hiring.work_start": "Откуда водитель начинает работу?",
+          "service_sales.driver_hiring.work_start_other": "Откуда ещё начинается работа?",
+          "service_sales.driver_hiring.travel_to_base_paid": "Оплачивается ли дорога водителя до базы?",
+          "service_sales.driver_hiring.pay_system": "Какая система оплаты?",
+          "service_sales.driver_hiring.pay_system_other": "Какая другая система оплаты?",
+          "service_sales.driver_hiring.pay_netto_amount": "Сколько водитель получает netto?",
+          "service_sales.driver_hiring.pay_netto_currency": "Валюта оплаты netto",
+          "service_sales.driver_hiring.day_rate_amount": "Если оплата за день — какая ставка netto?",
+          "service_sales.driver_hiring.day_rate_currency": "Валюта дневной ставки",
+          "service_sales.driver_hiring.guaranteed_min_income": "Есть ли гарантированный минимальный доход?",
+          "service_sales.driver_hiring.guaranteed_min_amount": "Какая гарантированная сумма?",
+          "service_sales.driver_hiring.extra_bonuses": "Есть ли дополнительные бонусы?",
+          "service_sales.driver_hiring.extra_bonuses_detail": "За что и сколько?",
+          "service_sales.driver_hiring.pay_frequency": "Как часто выплачивается зарплата?",
+          "service_sales.driver_hiring.pay_frequency_other": "Как ещё выплачивается зарплата?",
+          "service_sales.driver_hiring.advances": "Возможны ли авансы?",
+          "service_sales.driver_hiring.contract_types": "Какой договор предлагается?",
+          "service_sales.driver_hiring.contract_types_other": "Какой другой договор?",
+          "service_sales.driver_hiring.medical_psychotest_payer": "Кто оплачивает медосмотр и psychotesty?",
+          "service_sales.driver_hiring.driver_certificate": "Оформляете ли świadectwo kierowcy?",
+          "service_sales.driver_hiring.legalization_help": "Помогаете ли с легализацией/документами?",
+          "service_sales.driver_hiring.legalization_help_other": "Какая другая помощь с документами?",
+          "service_sales.driver_hiring.min_experience": "Какой минимальный опыт работы требуется?",
+          "service_sales.driver_hiring.europe_experience": "Обязателен ли опыт работы по Европе?",
+          "service_sales.driver_hiring.languages": "Какой уровень языка требуется?",
+          "service_sales.driver_hiring.languages_other": "Какой другой язык?",
+          "service_sales.driver_hiring.language_level": "Какой минимальный уровень языка?",
+          "service_sales.driver_hiring.citizenships": "Кандидатов каких гражданств вы рассматриваете?",
+          "service_sales.driver_hiring.citizenships_other": "Какое другое гражданство?",
+          "service_sales.driver_hiring.required_documents": "Какие документы должны быть у кандидата?",
+          "service_sales.driver_hiring.required_documents_other": "Какой другой документ?",
+          "service_sales.driver_hiring.stay_document_min_validity": "Какой минимальный остаточный срок действия документов на пребывание?",
+          "service_sales.driver_hiring.housing": "Предоставляется ли жильё?",
+          "service_sales.driver_hiring.housing_cost": "Стоимость жилья (PLN/месяц)",
+          "service_sales.driver_hiring.housing_between_trips": "Можно ли пользоваться жильём между рейсами?",
+          "service_sales.driver_hiring.personal_car_parking": "Есть ли парковка для личного автомобиля?",
+          "service_sales.driver_hiring.selection_process": "Как проходит отбор кандидата?",
+          "service_sales.driver_hiring.selection_process_other": "Какой другой этап отбора?",
+          "service_sales.driver_hiring.hiring_decision_maker": "Кто принимает решение о найме?",
+          "service_sales.driver_hiring.feedback_time": "За какое время вы можете дать обратную связь по кандидату?",
+          "service_sales.driver_hiring.start_after_approval": "Через сколько после одобрения кандидат может начать работу?",
+          "service_sales.driver_hiring.hire_themselves": "Нанимаете ли вы водителей самостоятельно?",
+          "service_sales.driver_hiring.other_agencies": "Работаете ли сейчас с другими агентствами?",
+          "service_sales.driver_hiring.hired_last_3_months": "Сколько водителей вы наняли за последние 3 месяца?",
+          "service_sales.driver_hiring.leavers_per_month": "Сколько водителей в среднем покидает компанию за месяц?",
+          "service_sales.driver_hiring.hiring_problems": "Что сейчас является основной проблемой при найме?",
+          "service_sales.driver_hiring.hiring_problems_other": "Какая другая проблема?",
+          "service_sales.driver_hiring.refusal_reasons": "Почему кандидаты чаще всего отказываются от работы?",
+          "service_sales.driver_hiring.refusal_reasons_other": "Какая другая причина отказа?",
+          "service_sales.driver_hiring.weekly_candidate_capacity": "Сколько новых кандидатов вы способны обрабатывать в неделю?",
+          "service_sales.driver_hiring.contact_full_name": "Контактное лицо",
+          "service_sales.driver_hiring.contact_phone": "Телефон контактного лица",
+          "service_sales.driver_hiring.contact_email": "Email контактного лица",
+          "service_sales.warehouse_hiring.contact_company_name": "Название компании",
+          "service_sales.warehouse_hiring.work_location": "Где находится место работы?",
+          "service_sales.warehouse_hiring.workers_needed": "Сколько работников требуется?",
+          "service_sales.warehouse_hiring.worker_roles": "Какие работники нужны?",
+          "service_sales.warehouse_hiring.worker_roles_other": "Какая другая роль?",
+          "service_sales.warehouse_hiring.first_workers_when": "Когда нужны первые работники?",
+          "service_sales.warehouse_hiring.monthly_hire_volume": "Сколько работников планируете нанимать ежемесячно?",
+          "service_sales.warehouse_hiring.job_tasks": "Какие задачи выполняет работник?",
+          "service_sales.warehouse_hiring.job_tasks_other": "Какая другая задача?",
+          "service_sales.warehouse_hiring.physical_demand": "Насколько физически тяжёлая работа?",
+          "service_sales.warehouse_hiring.max_lift_weight": "Какой максимальный вес необходимо поднимать вручную?",
+          "service_sales.warehouse_hiring.work_posture": "Работа преимущественно выполняется",
+          "service_sales.warehouse_hiring.has_productivity_norms": "Есть ли нормы производительности?",
+          "service_sales.warehouse_hiring.productivity_norm": "Какая норма?",
+          "service_sales.warehouse_hiring.kpi_system": "Используется ли система KPI/аккорд?",
+          "service_sales.warehouse_hiring.workplace_temperature": "Какая температура на рабочем месте?",
+          "service_sales.warehouse_hiring.shift_length": "Какой график работы?",
+          "service_sales.warehouse_hiring.shift_length_other": "Какой другой график?",
+          "service_sales.warehouse_hiring.shift_count": "Сколько смен?",
+          "service_sales.warehouse_hiring.shift_types": "Какие смены предусмотрены?",
+          "service_sales.warehouse_hiring.workdays_per_week": "Сколько рабочих дней в неделю?",
+          "service_sales.warehouse_hiring.weekend_work": "Возможна работа в выходные?",
+          "service_sales.warehouse_hiring.overtime": "Возможны сверхурочные часы?",
+          "service_sales.warehouse_hiring.monthly_hours": "Сколько часов в среднем можно работать в месяц?",
+          "service_sales.warehouse_hiring.pay_system": "Какая система оплаты?",
+          "service_sales.warehouse_hiring.pay_system_other": "Какая другая система оплаты?",
+          "service_sales.warehouse_hiring.pay_netto_amount": "Какая ставка netto?",
+          "service_sales.warehouse_hiring.pay_netto_unit": "Единица ставки netto",
+          "service_sales.warehouse_hiring.pay_brutto_amount": "Какая ставка brutto?",
+          "service_sales.warehouse_hiring.pay_brutto_unit": "Единица ставки brutto",
+          "service_sales.warehouse_hiring.guaranteed_hours": "Есть ли гарантированное количество часов?",
+          "service_sales.warehouse_hiring.guaranteed_hours_amount": "Сколько часов в месяц гарантировано?",
+          "service_sales.warehouse_hiring.has_bonuses": "Есть ли бонусы/премии?",
+          "service_sales.warehouse_hiring.bonus_types": "За что бонусы?",
+          "service_sales.warehouse_hiring.bonus_types_other": "Какой другой бонус?",
+          "service_sales.warehouse_hiring.overtime_pay": "Как оплачиваются сверхурочные?",
+          "service_sales.warehouse_hiring.overtime_pay_other": "Как ещё оплачиваются сверхурочные?",
+          "service_sales.warehouse_hiring.pay_frequency": "Как часто выплачивается зарплата?",
+          "service_sales.warehouse_hiring.pay_frequency_other": "Как ещё выплачивается зарплата?",
+          "service_sales.warehouse_hiring.advances": "Возможны ли авансы?",
+          "service_sales.warehouse_hiring.contract_types": "Какой договор предлагается?",
+          "service_sales.warehouse_hiring.contract_types_other": "Какой другой договор?",
+          "service_sales.warehouse_hiring.legal_employer": "Кто является официальным работодателем?",
+          "service_sales.warehouse_hiring.has_probation": "Есть ли испытательный срок?",
+          "service_sales.warehouse_hiring.probation_length": "Какая продолжительность испытательного срока?",
+          "service_sales.warehouse_hiring.medical_exam_payer": "Кто оплачивает медосмотр?",
+          "service_sales.warehouse_hiring.workwear": "Предоставляется ли рабочая одежда и обувь?",
+          "service_sales.warehouse_hiring.experience_required": "Требуется ли опыт работы?",
+          "service_sales.warehouse_hiring.min_experience": "Какой минимальный опыт требуется?",
+          "service_sales.warehouse_hiring.extra_qualifications": "Требуются ли дополнительные квалификации?",
+          "service_sales.warehouse_hiring.extra_qualifications_other": "Какая другая квалификация?",
+          "service_sales.warehouse_hiring.language_required": "Требуется ли знание языка?",
+          "service_sales.warehouse_hiring.languages": "Какой язык требуется?",
+          "service_sales.warehouse_hiring.languages_other": "Какой другой язык?",
+          "service_sales.warehouse_hiring.language_level": "Какой минимальный уровень языка?",
+          "service_sales.warehouse_hiring.gender_considered": "Кого рассматриваете?",
+          "service_sales.warehouse_hiring.citizenships": "Кандидатов каких гражданств рассматриваете?",
+          "service_sales.warehouse_hiring.citizenships_other": "Какое другое гражданство?",
+          "service_sales.warehouse_hiring.required_documents": "Какие документы необходимы?",
+          "service_sales.warehouse_hiring.required_documents_other": "Какой другой документ?",
+          "service_sales.warehouse_hiring.stay_document_min_validity": "Какой минимальный остаточный срок легального пребывания требуется?",
+          "service_sales.warehouse_hiring.housing": "Предоставляется ли жильё?",
+          "service_sales.warehouse_hiring.housing_cost": "Сколько стоит жильё? (PLN/месяц)",
+          "service_sales.warehouse_hiring.roommates": "Сколько человек проживает в комнате?",
+          "service_sales.warehouse_hiring.housing_distance_km": "Какое расстояние от жилья до работы? (км)",
+          "service_sales.warehouse_hiring.transport_to_work": "Предоставляется ли транспорт до работы?",
+          "service_sales.warehouse_hiring.transport_cost": "Сколько стоит транспорт? (PLN/месяц)",
+          "service_sales.warehouse_hiring.selection_process": "Как проходит отбор?",
+          "service_sales.warehouse_hiring.decision_time": "За какое время принимается решение по кандидату?",
+          "service_sales.warehouse_hiring.start_after_approval": "Когда кандидат может начать работу после одобрения?",
+          "service_sales.warehouse_hiring.has_onboarding": "Есть ли организованный onboarding/обучение?",
+          "service_sales.warehouse_hiring.onboarding_duration": "Сколько длится обучение?",
+          "service_sales.warehouse_hiring.hire_themselves": "Нанимаете ли вы работников самостоятельно?",
+          "service_sales.warehouse_hiring.other_agencies": "Работаете ли с другими агентствами?",
+          "service_sales.warehouse_hiring.hired_last_3_months": "Сколько работников было нанято за последние 3 месяца?",
+          "service_sales.warehouse_hiring.leavers_per_month": "Сколько работников в среднем увольняется в месяц?",
+          "service_sales.warehouse_hiring.hiring_problems": "Какая основная проблема при найме?",
+          "service_sales.warehouse_hiring.hiring_problems_other": "Какая другая проблема?",
+          "service_sales.warehouse_hiring.refusal_reasons": "Почему кандидаты чаще всего отказываются?",
+          "service_sales.warehouse_hiring.refusal_reasons_other": "Какая другая причина отказа?",
+          "service_sales.warehouse_hiring.weekly_candidate_capacity": "Сколько кандидатов можете обрабатывать в неделю?",
+          "service_sales.warehouse_hiring.contact_full_name": "Контактное лицо по рекрутингу — имя",
+          "service_sales.warehouse_hiring.contact_phone": "Контактное лицо по рекрутингу — телефон",
+          "service_sales.warehouse_hiring.contact_email": "Контактное лицо по рекрутингу — e-mail"
         },
         "profiles": {
-          "recruitment.candidate.office_worker": "Офисный сотрудник"
+          "recruitment.candidate.office_worker": "Офисный сотрудник",
+          "service_sales.targeted_advertising": "Реклама / привлечение клиентов",
+          "recruitment.candidate.driver_ce": "Водитель C+E (заполняет кандидат)",
+          "recruitment.candidate.warehouse_worker": "Склад (заполняет кандидат)",
+          "service_sales.driver_hiring": "Компания набирает водителей",
+          "service_sales.warehouse_hiring": "Компания набирает склад / разнорабочих"
+        },
+        "options": {
+          "service_sales": {
+            "driver_hiring": {
+              "driver_categories": {
+                "c": "C",
+                "ce": "C+E",
+                "d": "D",
+                "other": "Другое"
+              },
+              "first_drivers_when": {
+                "asap": "Как можно скорее",
+                "within_2_weeks": "До 2 недель",
+                "within_month": "В течение месяца",
+                "1_3_months": "1–3 месяца",
+                "ongoing": "Постоянный набор"
+              },
+              "monthly_hire_plan": {
+                "1_2": "1–2",
+                "3_5": "3–5",
+                "6_10": "6–10",
+                "11_20": "11–20",
+                "20_plus": "Более 20",
+                "unknown": "Не знаю"
+              },
+              "transport_scope": {
+                "international": "Международные",
+                "poland": "По Польше",
+                "local": "Локальные",
+                "distribution": "Дистрибуция",
+                "other": "Другое"
+              },
+              "route_countries": {
+                "poland": "Польша",
+                "germany": "Германия",
+                "france": "Франция",
+                "benelux": "Бенилюкс",
+                "italy": "Италия",
+                "spain": "Испания",
+                "scandinavia": "Скандинавия",
+                "uk": "Великобритания",
+                "other": "Другие"
+              },
+              "cargo_types": {
+                "ftl": "FTL",
+                "ltl": "LTL",
+                "distribution": "Дистрибуция",
+                "containers": "Контейнеры",
+                "adr": "ADR",
+                "car_transporter": "Автовоз",
+                "other": "Другое"
+              },
+              "loading_unloading": {
+                "no": "Нет",
+                "sometimes": "Иногда",
+                "yes": "Да"
+              },
+              "trailers": {
+                "curtain": "Штора",
+                "reefer": "Рефрижератор",
+                "container": "Контейнер",
+                "tanker": "Цистерна",
+                "dump": "Самосвал",
+                "platform": "Платформа",
+                "other": "Другое"
+              },
+              "dedicated_vehicle": {
+                "yes": "Да",
+                "no": "Нет",
+                "depends": "Зависит от системы"
+              },
+              "work_systems": {
+                "2_1": "2/1",
+                "3_1": "3/1",
+                "4_1": "4/1",
+                "6_2": "6/2",
+                "8_2": "8/2",
+                "no_system": "Без системы",
+                "individual": "Индивидуально",
+                "other": "Другое"
+              },
+              "individual_schedule": {
+                "yes": "Да",
+                "no": "Нет",
+                "sometimes": "В отдельных случаях"
+              },
+              "work_start": {
+                "always_base": "Всегда с базы",
+                "route_changeover": "Возможна смена на маршруте",
+                "other": "Другое"
+              },
+              "travel_to_base_paid": {
+                "yes": "Да полностью",
+                "partial": "Частично",
+                "no": "Нет"
+              },
+              "pay_system": {
+                "per_day": "За день",
+                "monthly_fixed": "Фиксированная месячная",
+                "per_km": "За км",
+                "fixed_plus_bonus": "Фикс + бонус",
+                "other": "Другая"
+              },
+              "pay_netto_currency": {
+                "pln": "PLN",
+                "eur": "EUR"
+              },
+              "day_rate_currency": {
+                "pln": "PLN",
+                "eur": "EUR"
+              },
+              "guaranteed_min_income": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "extra_bonuses": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "pay_frequency": {
+                "monthly": "Раз в месяц",
+                "twice_monthly": "Дважды в месяц",
+                "after_rotation": "После системы/рейса",
+                "other": "Другое"
+              },
+              "advances": {
+                "yes": "Да",
+                "no": "Нет",
+                "individual": "Индивидуально"
+              },
+              "contract_types": {
+                "umowa_o_prace": "Umowa o pracę",
+                "umowa_zlecenie": "Umowa zlecenie",
+                "b2b": "B2B",
+                "other": "Другой"
+              },
+              "medical_psychotest_payer": {
+                "employer": "Работодатель",
+                "driver": "Водитель",
+                "shared": "Частично работодатель"
+              },
+              "driver_certificate": {
+                "yes": "Да",
+                "no": "Нет",
+                "not_required": "Не требуется"
+              },
+              "legalization_help": {
+                "work_permit": "Zezwolenie na pracę",
+                "residence_card": "Karta pobytu",
+                "code_95": "Code 95",
+                "license_exchange": "Обмен водительского удостоверения",
+                "driver_certificate": "Świadectwo kierowcy",
+                "none": "Не помогаем",
+                "other": "Другое"
+              },
+              "min_experience": {
+                "none": "Без опыта",
+                "3_months": "3 месяца",
+                "6_months": "6 месяцев",
+                "1_year": "1 год",
+                "2_years_plus": "2+ года"
+              },
+              "europe_experience": {
+                "yes": "Да",
+                "no": "Нет",
+                "preferred": "Желательно"
+              },
+              "languages": {
+                "not_required": "Язык не требуется",
+                "pl": "Польский",
+                "en": "Английский",
+                "de": "Немецкий",
+                "other": "Другой"
+              },
+              "language_level": {
+                "basic": "Базовый",
+                "conversational": "Разговорный",
+                "good": "Хороший"
+              },
+              "citizenships": {
+                "poland": "Польша",
+                "ukraine": "Украина",
+                "belarus": "Беларусь",
+                "moldova": "Молдова",
+                "georgia": "Грузия",
+                "armenia": "Армения",
+                "central_asia": "Центральная Азия",
+                "asia": "Азия",
+                "any_with_docs": "Все при наличии необходимых документов",
+                "other": "Другое"
+              },
+              "required_documents": {
+                "driving_licence": "Prawo jazdy",
+                "code_95": "Code 95",
+                "driver_card": "Karta kierowcy",
+                "residence_card": "Karta pobytu",
+                "work_visa": "Рабочая виза",
+                "driver_certificate": "Świadectwo kierowcy",
+                "other": "Другое"
+              },
+              "stay_document_min_validity": {
+                "any": "Не имеет значения",
+                "3_months": "3+ мес.",
+                "6_months": "6+ мес.",
+                "8_months": "8+ мес.",
+                "12_months": "12+ мес."
+              },
+              "housing": {
+                "free": "Бесплатно",
+                "paid": "Платно",
+                "no": "Нет"
+              },
+              "housing_between_trips": {
+                "yes": "Да",
+                "no": "Нет",
+                "not_applicable": "Не применимо"
+              },
+              "personal_car_parking": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "selection_process": {
+                "document_check": "Проверка документов",
+                "phone_interview": "Телефонное интервью",
+                "video_interview": "Видеоинтервью",
+                "in_person": "Личное интервью",
+                "test_drive": "Тест-драйв",
+                "other": "Другое"
+              },
+              "feedback_time": {
+                "same_day": "В тот же день",
+                "within_24h": "До 24 часов",
+                "1_3_days": "1–3 дня",
+                "over_3_days": "Более 3 дней"
+              },
+              "start_after_approval": {
+                "immediately": "Сразу",
+                "within_week": "До недели",
+                "1_2_weeks": "1–2 недели",
+                "over_2_weeks": "Более 2 недель",
+                "depends_on_docs": "Зависит от документов"
+              },
+              "hire_themselves": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "other_agencies": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "hiring_problems": {
+                "not_enough_candidates": "Недостаточно кандидатов",
+                "low_lead_quality": "Низкое качество лидов",
+                "insufficient_experience": "Недостаточный опыт",
+                "document_issues": "Проблемы с документами",
+                "no_shows": "Кандидаты не выходят на работу",
+                "high_turnover": "Высокая текучесть",
+                "slow_process": "Долгий процесс найма",
+                "other": "Другое"
+              },
+              "refusal_reasons": {
+                "pay": "Зарплата",
+                "work_system": "Система работы",
+                "routes": "Маршруты",
+                "vehicles": "Автомобили",
+                "housing": "Условия проживания",
+                "travel_to_base": "Дорога до базы",
+                "documents": "Документы",
+                "other_offer": "Находят другое предложение",
+                "unknown": "Не знаем",
+                "other": "Другое"
+              },
+              "weekly_candidate_capacity": {
+                "1_5": "1–5",
+                "6_10": "6–10",
+                "11_20": "11–20",
+                "21_50": "21–50",
+                "50_plus": "50+"
+              }
+            },
+            "warehouse_hiring": {
+              "worker_roles": {
+                "warehouse": "Работник склада",
+                "picker": "Комплектовщик",
+                "packer": "Упаковщик",
+                "sorter": "Сортировщик",
+                "loader": "Грузчик",
+                "production": "Работник производства",
+                "laborer": "Разнорабочий",
+                "forklift_operator": "Оператор погрузчика",
+                "other": "Другое"
+              },
+              "first_workers_when": {
+                "asap": "Как можно скорее",
+                "within_2_weeks": "До 2 недель",
+                "within_month": "В течение месяца",
+                "1_3_months": "1–3 месяца",
+                "ongoing": "Постоянный набор"
+              },
+              "monthly_hire_volume": {
+                "1_5": "1–5",
+                "6_10": "6–10",
+                "11_20": "11–20",
+                "21_50": "21–50",
+                "50_plus": "50+",
+                "unknown": "Не знаю"
+              },
+              "job_tasks": {
+                "picking": "Комплектация заказов",
+                "packing": "Упаковка",
+                "sorting": "Сортировка",
+                "loading": "Погрузка-разгрузка",
+                "scanner": "Работа со сканером",
+                "goods_receipt": "Приём товара",
+                "putaway": "Размещение товара",
+                "production": "Производственные работы",
+                "cleaning": "Уборка рабочего места",
+                "physical": "Физические работы",
+                "other": "Другое"
+              },
+              "physical_demand": {
+                "light": "Лёгкая",
+                "medium": "Средняя",
+                "heavy": "Тяжёлая"
+              },
+              "max_lift_weight": {
+                "up_to_5": "До 5 кг",
+                "5_10": "5–10 кг",
+                "10_15": "10–15 кг",
+                "15_20": "15–20 кг",
+                "over_20": "Более 20 кг",
+                "not_required": "Поднимать грузы не требуется"
+              },
+              "work_posture": {
+                "standing": "Стоя",
+                "sitting": "Сидя",
+                "moving": "В движении",
+                "mixed": "Смешанный формат"
+              },
+              "has_productivity_norms": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "kpi_system": {
+                "no": "Нет",
+                "yes": "Да",
+                "partial": "Частично"
+              },
+              "workplace_temperature": {
+                "room": "Комнатная",
+                "cool": "Прохладно",
+                "fridge": "Холодильник",
+                "freezer": "Морозильник",
+                "hot": "Высокая температура",
+                "outdoor": "Работа на улице"
+              },
+              "shift_length": {
+                "hours_8": "8 часов",
+                "hours_10": "10 часов",
+                "hours_12": "12 часов",
+                "other": "Другой"
+              },
+              "shift_count": {
+                "one": "1",
+                "two": "2",
+                "three": "3",
+                "flexible": "Гибкий график"
+              },
+              "shift_types": {
+                "morning": "Утренняя",
+                "day": "Дневная",
+                "evening": "Вечерняя",
+                "night": "Ночная"
+              },
+              "workdays_per_week": {
+                "days_5": "5",
+                "days_6": "6",
+                "flexible": "Гибкий график",
+                "by_schedule": "По графику"
+              },
+              "weekend_work": {
+                "no": "Нет",
+                "sometimes": "Иногда",
+                "regularly": "Регулярно"
+              },
+              "overtime": {
+                "no": "Нет",
+                "optional": "По желанию",
+                "regularly": "Регулярно"
+              },
+              "pay_system": {
+                "hourly": "Почасовая",
+                "monthly": "Месячная ставка",
+                "piece_rate": "Аккорд",
+                "rate_plus_bonus": "Ставка + бонус",
+                "other": "Другая"
+              },
+              "pay_netto_unit": {
+                "pln_hour": "PLN/час",
+                "pln_month": "PLN/месяц",
+                "eur_hour": "EUR/час",
+                "eur_month": "EUR/месяц"
+              },
+              "pay_brutto_unit": {
+                "pln_hour": "PLN/час",
+                "pln_month": "PLN/месяц",
+                "eur_hour": "EUR/час",
+                "eur_month": "EUR/месяц"
+              },
+              "guaranteed_hours": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "has_bonuses": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "bonus_types": {
+                "attendance": "За посещаемость",
+                "productivity": "Производительность",
+                "night_shifts": "Ночные смены",
+                "weekends": "Выходные",
+                "other": "Другое"
+              },
+              "overtime_pay": {
+                "standard": "По стандартной ставке",
+                "increased": "Повышенная ставка",
+                "included": "Включены в систему оплаты",
+                "other": "Другое"
+              },
+              "pay_frequency": {
+                "monthly": "Раз в месяц",
+                "twice_monthly": "Дважды в месяц",
+                "weekly": "Еженедельно",
+                "other": "Другое"
+              },
+              "advances": {
+                "yes": "Да",
+                "no": "Нет",
+                "individual": "Индивидуально"
+              },
+              "contract_types": {
+                "employment": "Umowa o pracę",
+                "zlecenie": "Umowa zlecenie",
+                "b2b": "B2B",
+                "other": "Другой"
+              },
+              "has_probation": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "medical_exam_payer": {
+                "employer": "Работодатель",
+                "worker": "Работник"
+              },
+              "workwear": {
+                "full": "Полностью",
+                "partial": "Частично",
+                "no": "Нет"
+              },
+              "experience_required": {
+                "not_required": "Не требуется",
+                "preferred": "Желателен",
+                "required": "Обязателен"
+              },
+              "min_experience": {
+                "up_to_3_months": "До 3 месяцев",
+                "3_6_months": "3–6 месяцев",
+                "6_12_months": "6–12 месяцев",
+                "1_plus": "1+ год",
+                "2_plus": "2+ года"
+              },
+              "extra_qualifications": {
+                "not_required": "Не требуются",
+                "forklift_udt": "UDT на погрузчик",
+                "sanitary_book": "Санитарная книжка",
+                "driving_license": "Водительские права",
+                "other": "Другие"
+              },
+              "language_required": {
+                "no": "Нет",
+                "yes": "Да",
+                "preferred": "Желательно"
+              },
+              "languages": {
+                "polish": "Польский",
+                "english": "Английский",
+                "ukrainian": "Украинский",
+                "russian": "Русский",
+                "other": "Другой"
+              },
+              "language_level": {
+                "basic_commands": "Понимание базовых команд",
+                "basic": "Базовый",
+                "conversational": "Разговорный",
+                "good": "Хороший"
+              },
+              "gender_considered": {
+                "men": "Мужчин",
+                "women": "Женщин",
+                "all_matching": "Всех кандидатов, соответствующих требованиям позиции"
+              },
+              "citizenships": {
+                "poland": "Польша",
+                "ukraine": "Украина",
+                "belarus": "Беларусь",
+                "moldova": "Молдова",
+                "georgia": "Грузия",
+                "armenia": "Армения",
+                "central_asia": "Центральная Азия",
+                "asia": "Азия",
+                "all_with_documents": "Все при наличии необходимых документов",
+                "other": "Другое"
+              },
+              "required_documents": {
+                "pesel": "PESEL",
+                "karta_pobytu": "Karta pobytu",
+                "work_visa": "Рабочая виза",
+                "work_permit": "Разрешение на работу",
+                "ukr_status": "Статус UKR",
+                "other": "Другое"
+              },
+              "stay_document_min_validity": {
+                "irrelevant": "Не имеет значения",
+                "3_plus": "3+ мес.",
+                "6_plus": "6+ мес.",
+                "9_plus": "9+ мес.",
+                "12_plus": "12+ мес."
+              },
+              "housing": {
+                "free": "Бесплатно",
+                "paid": "Платно",
+                "no": "Нет"
+              },
+              "roommates": {
+                "1": "1",
+                "2": "2",
+                "3": "3",
+                "4": "4",
+                "5_plus": "5+"
+              },
+              "transport_to_work": {
+                "free": "Бесплатно",
+                "paid": "Платно",
+                "no": "Нет",
+                "not_needed": "Не требуется"
+              },
+              "selection_process": {
+                "application_review": "Проверка анкеты",
+                "phone": "Телефонное интервью",
+                "online": "Онлайн-интервью",
+                "in_person": "Личное интервью",
+                "practical_test": "Практический тест",
+                "no_interview": "Без собеседования"
+              },
+              "decision_time": {
+                "same_day": "В тот же день",
+                "within_24h": "До 24 часов",
+                "1_3_days": "1–3 дня",
+                "more_than_3": "Более 3 дней"
+              },
+              "start_after_approval": {
+                "immediately": "Сразу",
+                "within_week": "В течение недели",
+                "1_2_weeks": "1–2 недели",
+                "after_documents": "После оформления документов"
+              },
+              "has_onboarding": {
+                "paid": "Да, оплачиваемое",
+                "unpaid": "Да, неоплачиваемое",
+                "no": "Нет"
+              },
+              "onboarding_duration": {
+                "1_day": "1 день",
+                "2_3_days": "2–3 дня",
+                "up_to_week": "До недели",
+                "more_than_week": "Более недели"
+              },
+              "hire_themselves": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "other_agencies": {
+                "yes": "Да",
+                "no": "Нет"
+              },
+              "hiring_problems": {
+                "not_enough_candidates": "Недостаточно кандидатов",
+                "mismatch": "Кандидаты не соответствуют требованиям",
+                "no_show": "Не выходят на работу",
+                "high_turnover": "Высокая текучесть",
+                "documents": "Документы",
+                "language": "Языковой барьер",
+                "slow_process": "Медленный процесс найма",
+                "other": "Другое"
+              },
+              "refusal_reasons": {
+                "pay": "Ставка",
+                "few_hours": "Мало часов",
+                "schedule": "График",
+                "night_shifts": "Ночные смены",
+                "hard_work": "Тяжёлая работа",
+                "housing": "Жильё",
+                "transport": "Транспорт",
+                "location": "Локация",
+                "other_job": "Нашли другую работу",
+                "unknown": "Не знаем",
+                "other": "Другое"
+              },
+              "weekly_candidate_capacity": {
+                "1_5": "1–5",
+                "6_10": "6–10",
+                "11_20": "11–20",
+                "21_50": "21–50",
+                "51_100": "51–100",
+                "100_plus": "100+"
+              }
+            }
+          }
         }
       }
     },
@@ -13729,7 +14541,7 @@
     "forms_builder": {
       "kicker": "Forms",
       "library_title": "Form Builder",
-      "library_subtitle": "Собирайте HostFlow-формы из Field Catalog. Откройте форму, чтобы править canvas, затем скопируйте публичный URL.",
+      "library_subtitle": "Создайте анкету для запроса компании или для кандидата, затем поделитесь публичной ссылкой.",
       "library_empty": "Пока нет форм. Создайте форму и соберите поля в Form Builder.",
       "title": "Form Builder",
       "subtitle": "Палитра Field Catalog · порядок на canvas · свойства · сохранение черновика.",
@@ -13763,7 +14575,8 @@
       },
       "placeholders": {
         "title": "например, кампании Facebook",
-        "slug": "my-campaign"
+        "slug": "my-campaign",
+        "company_slug": "kompaniya-nuzhny-voditeli"
       },
       "slug_hint": "Строчные буквы, цифры, дефисы; 2–64 символа. Оставьте пустым, чтобы снять публикацию.",
       "share_url": "Публичный URL intake (этот хост)",
@@ -13782,7 +14595,45 @@
         "save": "Не удалось сохранить форму",
         "copy": "Не удалось скопировать"
       },
-      "configure": "Configure"
+      "configure": "Настроить",
+      "create_form": "Создать анкету",
+      "wizard_title": "Новая анкета",
+      "wizard": {
+        "who_fills": "1. Кто заполняет анкету?",
+        "who_fills_hint": "Если компания хочет, чтобы вы набрали водителей — выберите «Запрос от компании». «Анкета кандидата» — только если водитель заполняет её сам.",
+        "other_types": "Другие типы анкет",
+        "candidate_role": "Роль кандидата",
+        "name": "2. Название",
+        "questions": "3. Вопросы",
+        "questions_hint_company": "Готовый набор вопросов для компании. Выберите анкету под задачу фирмы: водители, склад / разнорабочие или реклама.",
+        "questions_hint_candidate": "На эти вопросы отвечает сам кандидат.",
+        "title_placeholder_company": "например, Анкета для компаний, которым нужны водители",
+        "title_placeholder_candidate": "например, Анкета водителя C+E",
+        "destination_company": "Ответы появятся в Sales → Заявки. Водитель эту анкету не заполняет.",
+        "destination_candidate": "Ответы появятся в Recruitment как отклик кандидата.",
+        "save_activate": "Сохранить и активировать",
+        "purposes": {
+          "inquiry": {
+            "title": "Запрос от компании",
+            "hint": "Компания хочет, чтобы агентство набрало водителей, складских работников или разнорабочих, запустило рекламу или оказало другую услугу. Ответы попадут в Sales. Это не анкета для соискателя.",
+            "example": "Например: транспортная фирма ищет водителей C+E."
+          },
+          "application": {
+            "title": "Анкета кандидата",
+            "hint": "Водитель или другой соискатель сам откликается на вакансию. Ответы попадут в Recruitment.",
+            "example": "Не выбирайте этот тип, если анкету заполняет компания."
+          },
+          "survey": {
+            "title": "Короткий опрос",
+            "hint": "Обратная связь или квалификация. Ответы — в Sales."
+          },
+          "questionnaire": {
+            "title": "Дополнительная анкета по заявке",
+            "hint": "Уточняющие вопросы к уже существующему запросу компании."
+          }
+        },
+        "company_questionnaire": "Что нужно компании?"
+      }
     },
     "tenant_links": {
       "header_kicker": "Связь вашего воркспейса с организациями клиентов и правила передачи.",
@@ -14281,7 +15132,9 @@
         "load_detail": "Failed to load intake form",
         "copy": "Could not copy",
         "smoke": "Smoke test failed"
-      }
+      },
+      "load_driver_hiring_preset": "Подставить анкету для компаний, которым нужны водители",
+      "load_warehouse_hiring_preset": "Подставить анкету для компаний, которым нужны складские работники"
     },
     "calendar_integrations": {
       "actions": {
