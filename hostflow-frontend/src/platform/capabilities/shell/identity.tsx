@@ -34,7 +34,10 @@ export function IdentityCapability({ application }: WorkspaceCapabilityRenderCon
       ) : (
         <h2 className="text-xl font-bold text-slate-900">{contactName}</h2>
       )}
-      <p className="mt-0.5 text-sm text-slate-500">{vacancyTitle || 'Новый отклик'}</p>
+      <p className="mt-0.5 text-sm text-slate-500">{vacancyTitle || t('app.recruitment_inquiry.workspace.new_application')}</p>
+      {application.contact.phone ? (
+        <p className="mt-1 text-sm font-medium text-slate-800">{application.contact.phone}</p>
+      ) : null}
       {meta ? <p className="mt-1 text-xs text-slate-400">{meta}</p> : null}
       {candidateHref ? (
         <Link to={candidateHref} className="mt-2 inline-flex text-sm font-medium text-brand-700 hover:underline" data-entity-link="primary">

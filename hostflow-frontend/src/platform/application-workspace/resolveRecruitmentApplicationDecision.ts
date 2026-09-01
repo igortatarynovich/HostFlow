@@ -14,11 +14,12 @@ type ResolveRecruitmentDecisionArgs = {
   onCreateCandidate: () => void
   onFollowUp: () => void
   onReject: () => void
+  onPool: () => void
   t: (key: string, options?: Record<string, unknown>) => string
 }
 
 export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDecisionArgs): ObjectDecision {
-  const { application, patching, busy, onStage, onCreateCandidate, onFollowUp, onReject, t } = args
+  const { application, patching, busy, onCreateCandidate, onFollowUp, onReject, onPool, t } = args
   const statusKey = application.status
   const terminal = statusKey === 'completed' || statusKey === 'rejected'
   const contactPhone = application.contact.phone
@@ -26,34 +27,16 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
   const candidateId =
     application.outcome_entity_type === 'candidate' ? String(application.outcome_entity_id || '').trim() : ''
   const candidateHref = candidateId ? candidateDetailPath(candidateId) : undefined
-
-  const contactActions =
-    !terminal && (contactPhone || application.contact.email)
-      ? [
-          ...(contactPhone
-            ? [
-                {
-                  id: 'call',
-                  label: t('app.sales_inquiry.workspace.call'),
-                  href: `tel:${contactPhone.replace(/\s/g, '')}`,
-                  variant: 'primary' as const,
-                  icon: 'phone' as const,
-                },
-              ]
-            : []),
-        ]
-      : undefined
+  const callHref = contactPhone ? `tel:${contactPhone.replace(/\s/g, '')}` : null
 
   if (candidateHref) {
     return {
       stateId: 'recruitment.candidate_created',
-      currentState: t('app.recruitment_inquiry.outcome_title', { defaultValue: 'Кандидат создан' }),
-      why: t('app.recruitment_inquiry.outcome_body', {
-        defaultValue: 'Отклик обработан. Продолжите в карточке кандидата.',
-      }),
+      currentState: t('app.recruitment_inquiry.outcome_title'),
+      why: t('app.recruitment_inquiry.outcome_body'),
       primaryAction: {
         id: 'open_candidate',
-        label: t('app.candidates.detail.open_full_profile', { defaultValue: 'Открыть полную карточку' }),
+        label: t('app.candidates.detail.open_full_profile'),
         href: candidateHref,
       },
       requiredContext: ['outcome'],
@@ -64,77 +47,55 @@ export function resolveRecruitmentApplicationDecision(args: ResolveRecruitmentDe
   if (terminal) {
     return {
       stateId: 'recruitment.terminal',
-      currentState: t('app.recruitment_inquiry.closed_title', { defaultValue: 'Отклик закрыт' }),
+      currentState: t('app.recruitment_inquiry.closed_title'),
       why:
         statusKey === 'rejected'
-          ? t('app.recruitment_inquiry.rejected_body', { defaultValue: 'Отклик отклонён.' })
-          : t('app.recruitment_inquiry.completed_body', { defaultValue: 'Обработка завершена.' }),
+          ? t('app.recruitment_inquiry.rejected_body')
+          : t('app.recruitment_inquiry.completed_body'),
       primaryAction: null,
       requiredContext: [],
       terminal: true,
       outcome: {
-        title: t('app.recruitment_inquiry.closed_title', { defaultValue: 'Отклик закрыт' }),
+        title: t('app.recruitment_inquiry.closed_title'),
         body:
           statusKey === 'rejected'
-            ? t('app.recruitment_inquiry.rejected_body', { defaultValue: 'Отклик отклонён. Новых действий нет.' })
-            : t('app.recruitment_inquiry.completed_body', { defaultValue: 'Обработка завершена.' }),
+            ? t('app.recruitment_inquiry.rejected_outcome_body')
+            : t('app.recruitment_inquiry.completed_body'),
         variant: 'terminal',
       },
     }
   }
 
-  if (statusKey === 'new' && contactPhone) {
-    return {
-      stateId: 'recruitment.first_contact',
-      currentState: t('app.recruitment_inquiry.contact_title', { defaultValue: 'Связаться с кандидатом' }),
-      why: t('app.recruitment_inquiry.contact_why', { defaultValue: 'Первый контакт ещё не выполнен.' }),
-      primaryAction: {
-        id: 'contacted',
-        label: t('app.recruitment_inquiry.called', { defaultValue: 'Позвонил' }),
-        onClick: () => void onStage('contacted'),
+  return {
+    stateId: 'recruitment.triage',
+    currentState: t('app.recruitment_inquiry.process_title'),
+    why: t('app.recruitment_inquiry.process_body'),
+    primaryAction: callHref
+      ? {
+          id: 'call',
+          label: t('app.recruitment_inquiry.call'),
+          href: callHref,
+          disabled,
+        }
+      : null,
+    secondaryActions: [
+      {
+        id: 'create_candidate',
+        label: t('app.recruitment_inquiry.create_candidate'),
+        onClick: onCreateCandidate,
         disabled,
       },
-      secondaryActions: [
-        { id: 'follow_up', label: 'Follow-up', onClick: onFollowUp, disabled },
-        {
-          id: 'reject',
-          label: t('app.recruitment_inquiry.reject', { defaultValue: 'Отклонить' }),
-          onClick: onReject,
-          variant: 'danger',
-          disabled,
-        },
-      ],
-      contactActions,
-      requiredContext: ['vacancy', 'assignee'],
-      afterActionHint: t('app.recruitment_inquiry.after_call_hint', {
-        defaultValue: 'После звонка привяжите подбор и создайте кандидата.',
-      }),
-    }
-  }
-
-  return {
-    stateId: 'recruitment.process',
-    currentState: t('app.recruitment_inquiry.process_title', { defaultValue: 'Обработать отклик' }),
-    why: t('app.recruitment_inquiry.process_body', {
-      defaultValue: 'Привяжите подбор и создайте кандидата — или отклоните отклик.',
-    }),
-    primaryAction: {
-      id: 'create_candidate',
-      label: t('app.recruitment_inquiry.create_candidate', { defaultValue: 'Создать кандидата' }),
-      onClick: onCreateCandidate,
-      disabled,
-    },
-    secondaryActions: [
-      { id: 'follow_up', label: 'Follow-up', onClick: onFollowUp, disabled },
+      { id: 'follow_up', label: t('app.recruitment_inquiry.follow_up'), onClick: onFollowUp, disabled },
+      { id: 'pool', label: t('app.recruitment_inquiry.pool'), onClick: onPool, disabled },
       {
         id: 'reject',
-        label: t('app.recruitment_inquiry.reject', { defaultValue: 'Отклонить' }),
+        label: t('app.recruitment_inquiry.reject'),
         onClick: onReject,
         variant: 'danger',
         disabled,
       },
     ],
-    contactActions,
     requiredContext: ['vacancy', 'assignee'],
+    variant: callHref ? 'default' : 'blocker',
   }
 }

@@ -56,7 +56,10 @@ export function NotesCapability(ctx: WorkspaceCapabilityRenderContext) {
       onRefresh()
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      notify({ title: typeof detail === 'string' ? detail : 'Не удалось сохранить заметку', variant: 'error' })
+      notify({
+        title: typeof detail === 'string' ? detail : t('app.candidate_card.notes.save_failed'),
+        variant: 'error',
+      })
     } finally {
       setSaving(false)
     }
@@ -65,13 +68,11 @@ export function NotesCapability(ctx: WorkspaceCapabilityRenderContext) {
   return (
     <section className="space-y-3" data-capability-id="notes" data-widget-class="notes">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {t('app.candidate_card.notes.title', { defaultValue: 'Заметки' })}
+        {t('app.candidate_card.notes.title')}
       </p>
-      {loading ? <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка…' })}</p> : null}
+      {loading ? <p className="text-sm text-slate-500">{t('common.loading')}</p> : null}
       {!loading && !available ? (
-        <p className="text-sm text-slate-500">
-          Нет субъекта для заметок на этом экране. Shared Notes widget размещён хостом — локальная секция комментариев запрещена.
-        </p>
+        <p className="text-sm text-slate-500">{t('app.candidate_card.notes.unavailable')}</p>
       ) : null}
       {!loading && available
         ? notes.map((note) => (
@@ -88,10 +89,10 @@ export function NotesCapability(ctx: WorkspaceCapabilityRenderContext) {
             rows={3}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder={t('app.candidate_card.notes.placeholder', { defaultValue: 'Внутренняя заметка' })}
+            placeholder={t('app.candidate_card.notes.placeholder')}
           />
           <Button variant="secondary" size="sm" disabled={saving || !draft.trim()} onClick={() => void save()}>
-            {t('common.save', { defaultValue: 'Сохранить' })}
+            {t('common.save')}
           </Button>
         </div>
       ) : null}

@@ -31,10 +31,18 @@ function DecisionActionButton({
         ? 'rounded-xl border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-60'
         : 'rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60'
   if (action.href) {
+    const appPath = action.href.startsWith('/') && !action.href.startsWith('//')
+    if (appPath) {
+      return (
+        <Link to={action.href} className={clsx('inline-flex items-center', cls)} data-entity-link="primary">
+          {action.label}
+        </Link>
+      )
+    }
     return (
-      <Link to={action.href} className={clsx('inline-flex items-center', cls)} data-entity-link="primary">
+      <a href={action.href} className={clsx('inline-flex items-center', cls)}>
         {action.label}
-      </Link>
+      </a>
     )
   }
   return (

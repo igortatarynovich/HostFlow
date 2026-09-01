@@ -139,7 +139,8 @@
       "retry": "Try again"
     },
     "continue": "Continue",
-    "back": "Back"
+    "back": "Back",
+    "load_failed": "Could not load data"
   },
   "scanner": {
     "place_in_frame": "Place the document inside the frame",
@@ -6029,7 +6030,10 @@
           "internal": "Internal",
           "client": "Client",
           "candidate": "Candidate"
-        }
+        },
+        "title": "Notes",
+        "save_failed": "Could not save the note",
+        "unavailable": "Notes are not available on this screen."
       },
       "placeholders": {
         "phone_number": "Phone number",
@@ -7031,7 +7035,10 @@
         "rel_vacancy": "Vacancy",
         "rel_relation": "Relation"
       },
-      "unnamed": "Candidate"
+      "unnamed": "Candidate",
+      "detail": {
+        "open_full_profile": "Open full profile"
+      }
     },
     "tasks": {
       "hub_eyebrow": "Tasks",
@@ -10300,6 +10307,7 @@
         "reject": "Reject",
         "rejected": "Application rejected",
         "candidate_created": "Candidate created",
+        "pooled": "Application sent to pool",
         "followup_default": "Call the candidate back",
         "reminder_created": "Reminder created",
         "action_failed": "Could not complete the action",
@@ -10687,6 +10695,37 @@
       "bindings_title": "Bind to searches",
       "bindings_hint": "Choose the searches this activity runs on.",
       "bindings_current": "current"
+    },
+    "recruitment_inquiry": {
+      "workspace": {
+        "tab_all": "All",
+        "tab_new": "New",
+        "tab_in_progress": "In progress",
+        "tab_completed": "Completed",
+        "applications": "Applications",
+        "hero_call_title": "Call {count} new applications",
+        "hero_call_hint": "We will open applications one by one: call, log the outcome, then decide.",
+        "hero_empty": "No new applications to call",
+        "list_kind": "Candidate application",
+        "new_application": "New application"
+      },
+      "process_title": "Call and decide",
+      "process_body": "Read the form answers and log the call first. A candidate is created only after the decision.",
+      "create_candidate": "Create candidate",
+      "reject": "Reject",
+      "follow_up": "Follow-up",
+      "call": "Call",
+      "pool": "To pool",
+      "contact_title": "Contact the candidate",
+      "contact_why": "First contact has not been made yet.",
+      "called": "Called",
+      "after_call_hint": "After the call, link a search and create a candidate.",
+      "outcome_title": "Candidate created",
+      "outcome_body": "The application is processed. Continue in the candidate profile.",
+      "closed_title": "Application closed",
+      "rejected_body": "The application was rejected.",
+      "rejected_outcome_body": "The application was rejected. There are no further actions.",
+      "completed_body": "Processing is complete."
     }
   },
   "public": {

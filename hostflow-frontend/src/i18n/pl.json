@@ -139,7 +139,8 @@
       "retry": "Spróbuj ponownie"
     },
     "continue": "Kontynuuj",
-    "back": "Wstecz"
+    "back": "Wstecz",
+    "load_failed": "Nie udało się wczytać danych"
   },
   "scanner": {
     "place_in_frame": "Place the document inside the frame",
@@ -5433,7 +5434,10 @@
           "internal": "Wewnętrzna",
           "client": "Klient",
           "candidate": "Kandydat"
-        }
+        },
+        "title": "Notatki",
+        "save_failed": "Nie udało się zapisać notatki",
+        "unavailable": "Na tym ekranie nie ma podmiotu do notatek."
       },
       "placeholders": {
         "phone_number": "Numer telefonu",
@@ -6958,7 +6962,10 @@
         "rel_vacancy": "Wakat",
         "rel_relation": "Powiązanie"
       },
-      "unnamed": "Kandydat"
+      "unnamed": "Kandydat",
+      "detail": {
+        "open_full_profile": "Otwórz pełną kartę"
+      }
     },
     "tasks": {
       "hub_eyebrow": "Zadania",
@@ -10300,6 +10307,7 @@
         "reject": "Odrzuć",
         "rejected": "Zgłoszenie odrzucone",
         "candidate_created": "Kandydat utworzony",
+        "pooled": "Zgłoszenie wysłane do puli",
         "followup_default": "Oddzwoń do kandydata",
         "reminder_created": "Utworzono przypomnienie",
         "action_failed": "Nie udało się wykonać działania",
@@ -10687,6 +10695,37 @@
       "bindings_title": "Powiązanie z rekrutacjami",
       "bindings_hint": "Wybierz rekrutacje, na które działa ta aktywność.",
       "bindings_current": "bieżąca"
+    },
+    "recruitment_inquiry": {
+      "workspace": {
+        "tab_all": "Wszystkie",
+        "tab_new": "Nowe",
+        "tab_in_progress": "W toku",
+        "tab_completed": "Zakończone",
+        "applications": "Odpowiedzi",
+        "hero_call_title": "Zadzwoń do {count} nowych zgłoszeń",
+        "hero_call_hint": "Otworzymy zgłoszenia po kolei: telefon, wynik rozmowy, decyzja.",
+        "hero_empty": "Brak nowych zgłoszeń do telefonu",
+        "list_kind": "Zgłoszenie kandydata",
+        "new_application": "Nowe zgłoszenie"
+      },
+      "process_title": "Zadzwoń i podejmij decyzję",
+      "process_body": "Najpierw odpowiedzi z formularza i wynik rozmowy. Kandydata tworzy się dopiero po decyzji.",
+      "create_candidate": "Utwórz kandydata",
+      "reject": "Odrzuć",
+      "follow_up": "Follow-up",
+      "call": "Zadzwoń",
+      "pool": "Do puli",
+      "contact_title": "Skontaktuj się z kandydatem",
+      "contact_why": "Pierwszy kontakt jeszcze nie został wykonany.",
+      "called": "Zadzwoniłem",
+      "after_call_hint": "Po telefonie powiąż rekrutację i utwórz kandydata.",
+      "outcome_title": "Kandydat utworzony",
+      "outcome_body": "Zgłoszenie obsłużone. Kontynuuj w karcie kandydata.",
+      "closed_title": "Zgłoszenie zamknięte",
+      "rejected_body": "Zgłoszenie odrzucone.",
+      "rejected_outcome_body": "Zgłoszenie odrzucone. Brak dalszych działań.",
+      "completed_body": "Obsługa zakończona."
     }
   },
   "public": {

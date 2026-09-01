@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   createRecruitmentApplicationFollowUp,
   processRecruitmentApplication,
+  submitRecruitmentApplicationIntakeDecision,
   updateRecruitmentApplicationStage,
 } from '../../../api/applications'
 import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
@@ -98,6 +99,11 @@ export function RecruitmentStageContribution({
       setShowFollowUp(true)
     },
     onReject: () => setShowReject(true),
+    onPool: () =>
+      void run(async () => {
+        await submitRecruitmentApplicationIntakeDecision(application.id, { decision: 'pool' })
+        notify({ title: t('app.recruitment.contributions.pooled'), variant: 'success' })
+      }),
     t,
   })
 

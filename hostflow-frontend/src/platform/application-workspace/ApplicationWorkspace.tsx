@@ -85,7 +85,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
           }))
         }
       } catch {
-        setError(t('common.load_failed', { defaultValue: 'Не удалось загрузить данные' }))
+        setError(t('common.load_failed'))
         if (!append) setAllApplications([])
       } finally {
         if (append) setLoadingMore(false)
@@ -182,7 +182,7 @@ export function ApplicationWorkspace({ config, routeParam = 'applicationId' }: A
         const res = await config.listApplications({ tab: 'new', limit: 200, scope: 'all' })
         queue = res.items.filter(applicationNeedsFirstContact)
       } catch {
-        notify({ title: t('common.load_failed', { defaultValue: 'Не удалось загрузить данные' }), variant: 'error' })
+        notify({ title: t('common.load_failed'), variant: 'error' })
         return
       }
     }
