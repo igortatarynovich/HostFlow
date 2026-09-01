@@ -103,7 +103,7 @@
 
 | Состояние | Что можно | Что нельзя | Where enforced |
 |-----------|-----------|------------|----------------|
-| **Trial** (`subscription.status='trial'`, до 14 дней) | Всё, что и Solo, но с trial-капами по SSOT (TODO 2.1.D) | — | `lead_quota` (через мапинг `trial → starter`), `billing_restrictions` |
+| **Trial** (`subscription.status='trial'`, 30 дней) | Функционал уровня Team/Business с trial-капами по SSOT; полный продукт, не client-handoff view | — | `lead_quota` (через мапинг `trial → starter`), `billing_restrictions` |
 | **Active** | По текущему `plan_code` | — | — |
 | **Past_due** (Stripe) | Чтение, экспорт, оплата; завершение текущих задач; закрытие существующих кандидатов (2.1.G v1) | Прочие side-effect write (создание лидов, исходящие comms, automation, non-terminal candidate edits) | `billing_restrictions.ensure_billing_*_allowed` + action-level allowlist |
 | **Canceled / Expired** | Только просмотр истории + оплата | Любые мутации, любые исходящие | `billing_restrictions` + `useLicenseStatus` баннер |

@@ -16,16 +16,24 @@ import {
 
 type CompanyOption = { id: string; name: string; group: 'own' | 'client' }
 
-function isClientCompany(extra: unknown): boolean {
-  if (!extra || typeof extra !== 'object') return false
-  const role = String(
+function companyRole(extra: unknown): string {
+  if (!extra || typeof extra !== 'object') return ''
+  return String(
     (extra as Record<string, unknown>).company_role ??
       (extra as Record<string, unknown>).company_kind ??
       '',
   )
     .trim()
     .toLowerCase()
-  return role === 'client'
+}
+
+function isClientCompany(extra: unknown): boolean {
+  return companyRole(extra) === 'client'
+}
+
+function isOperatingCompany(extra: unknown): boolean {
+  const role = companyRole(extra)
+  return role === 'operating' || role === ''
 }
 
 export default function SetupFirstVacancyPage() {
@@ -78,10 +86,19 @@ export default function SetupFirstVacancyPage() {
             group: 'client' as const,
           }))
 
+        const operatingItems: CompanyOption[] = companiesList
+          .filter((c) => isOperatingCompany(c.extra) && !isClientCompany(c.extra))
+          .map((c) => ({
+            id: String(c.id),
+            name: String(c.name ?? c.id),
+            group: 'own' as const,
+          }))
+
+        const ownFallback = operatingItems.length > 0 ? operatingItems : ownItems
         const opts =
           hiringTarget === 'own' || clientItems.length === 0
-            ? ownItems
-            : [...clientItems, ...ownItems.filter((o) => !clientItems.some((c) => c.id === o.id))]
+            ? ownFallback
+            : [...clientItems, ...ownFallback.filter((o) => !clientItems.some((c) => c.id === o.id))]
 
         setCompanyOptions(opts)
         if (presetCompanyId && opts.some((o) => o.id === presetCompanyId)) {

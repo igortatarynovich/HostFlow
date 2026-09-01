@@ -209,7 +209,7 @@ export function usePermissions() {
       (me as { tenant?: { id?: string } } | null)?.tenant?.id ||
       '11111111-1111-1111-1111-111111111111'
 
-    const isClientTenant = tenant?.type === 'company'
+    const isClientTenant = tenant?.client_handoff_view === true
     const trust = resolveActorTrustContext(me)
     const persona = resolvePermissionPersona({
       role: trust.rawRole,

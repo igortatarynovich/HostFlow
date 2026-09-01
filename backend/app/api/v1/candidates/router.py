@@ -567,32 +567,32 @@ async def _apply_client_view_mask(
     client_tenant_id: str,
 ) -> Dict[str, Any]:
     """
-    For client tenant: full data when:
-    1. Accepted handoff TO this tenant exists, OR
-    2. Pending handoff TO this tenant exists (client needs to see data to make decision)
-    
-    All other candidates (including those belonging to client tenant itself) should be masked.
-    
-    IMPORTANT: For client tenants, ALL candidates should be masked unless:
-    - Candidate has accepted handoff TO this client tenant, OR
-    - Candidate has pending handoff TO this client tenant (for decision-making)
-    
-    This ensures that clients can see unmasked data for candidates that have been handed off to them
-    (both pending and accepted), allowing them to make informed decisions.
+    For a handoff-client tenant (inbound TenantLink): full data when:
+    1. The candidate belongs to this tenant (operating CRM), OR
+    2. Accepted handoff TO this tenant exists, OR
+    3. Pending handoff TO this tenant exists (client needs data to decide).
+
+    Agency-side candidates without a handoff stay masked.
     """
     if not candidate_dict:
         return candidate_dict
     cand_tenant = (candidate_dict.get("tenant_id") or "").strip() or None
-    
+    client_tid = str(client_tenant_id or "").strip()
+
     # Debug logging
     logger = logging.getLogger(__name__)
     logger.debug(
         "_apply_client_view_mask: candidate_id=%s cand_tenant=%s client_tenant_id=%s",
         candidate_id,
         cand_tenant,
-        client_tenant_id,
+        client_tid,
     )
-    
+
+    # Own-tenant records are the client's operating CRM — never mask PII.
+    if cand_tenant and client_tid and cand_tenant == client_tid:
+        candidate_dict["masked"] = False
+        return candidate_dict
+
     # Check if there's an accepted handoff TO this client tenant
     has_accepted_handoff = await client_has_accepted_handoff(db, candidate_id, client_tenant_id)
     if has_accepted_handoff:
@@ -616,13 +616,12 @@ async def _apply_client_view_mask(
         )
         return candidate_dict
     
-    # ALL other cases = masked (including candidates belonging to client tenant itself)
-    # This ensures that clients only see unmasked data for candidates that have been handed off to them
+    # Agency-side candidates without a handoff to this client stay masked.
     logger.info(
         "_apply_client_view_mask: MASKING candidate_id=%s (cand_tenant=%s, client_tenant_id=%s, no accepted or pending handoff)",
         candidate_id,
         cand_tenant,
-        client_tenant_id,
+        client_tid,
     )
     out = _mask_candidate_pre_handoff(candidate_dict)
     out["masked"] = True

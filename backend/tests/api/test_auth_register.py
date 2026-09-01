@@ -49,6 +49,7 @@ async def test_register_persists_signup_consents_and_meta(client: AsyncClient, m
     body = resp.json()
     assert body["ok"] is True
     assert body["tenant"]["status"] == "trial"
+    assert body["tenant"]["trial_days"] == 30
     assert body.get("meta", {}).get("welcome_email_sent") is False
 
     async with async_session_maker() as session:

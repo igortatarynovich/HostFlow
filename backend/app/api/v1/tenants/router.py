@@ -58,7 +58,11 @@ async def get_me(
     tenant = await service.get_tenant(db, tenant_id)
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    return {"tenant": schemas.TenantOut.model_validate(tenant)}
+    from backend.app.services.handoff import is_client_tenant
+
+    tenant_out = schemas.TenantOut.model_validate(tenant)
+    client_handoff_view = await is_client_tenant(db, str(tenant.id))
+    return {"tenant": tenant_out.model_copy(update={"client_handoff_view": client_handoff_view})}
 
 
 @router.get(

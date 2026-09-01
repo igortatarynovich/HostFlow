@@ -28,6 +28,7 @@ If this path works end-to-end, HostFlow is ready to scale acquisition.
 | Persistent **checklist + next CTA** on home / setup hub | Hide progress until the wizard finishes |
 | **Empty states** with one primary action | “Nothing here yet” with no path forward |
 | Allow skip with visible checklist debt | Block the app until every optional step is done |
+| Full CRM for a standalone employer (`type=company` without inbound `TenantLink`) | Treat self-serve signup as Citronex-style client-view (masked candidates, truncated menu) |
 
 **Allowed narrow form:** `/app/platform/setup` (or equivalent) collects company name / country / activity once — then the user lands in the real CRM with a readiness panel, not another wizard.
 

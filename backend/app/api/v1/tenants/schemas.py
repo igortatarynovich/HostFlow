@@ -39,6 +39,7 @@ class TenantOut(TenantBase):
     status: str = "active"
     client_portal_enabled: bool = True
     status_sharing_allowed: bool = False
+    client_handoff_view: bool = False
     created_at: datetime
     updated_at: datetime
 

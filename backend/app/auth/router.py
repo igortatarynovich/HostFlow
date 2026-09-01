@@ -45,7 +45,7 @@ from backend.app.services.users import UserServiceError
 router = APIRouter()
 
 DEFAULT_TENANT_ID = "11111111-1111-1111-1111-111111111111"
-TRIAL_DAYS = 7
+TRIAL_DAYS = 30
 
 _user_memberships = sa.table(
     "user_memberships",

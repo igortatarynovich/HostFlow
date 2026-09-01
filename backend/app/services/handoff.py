@@ -255,20 +255,38 @@ async def client_has_accepted_handoff(
 
 
 async def is_client_tenant(db: AsyncSession, tenant_id: str) -> bool:
-    """True if tenant is a client (company type)."""
+    """True if this tenant is an agency's handoff client (inbound TenantLink).
+
+    Employer self-serve also sets ``Tenant.type = company``. That must not
+    enable client-portal PII masking or the truncated client nav. Only an
+    active inbound ``TenantLink.client_tenant_id`` means handoff-client view.
+    """
     session = _extract_session(db)
-    tenant = await session.get(Tenant, tenant_id)
+    tid = str(tenant_id or "").strip()
+    if not tid:
+        return False
+    tenant = await session.get(Tenant, tid)
     if not tenant:
         return False
-    return getattr(tenant, "type", None) == TenantType.company
+    if getattr(tenant, "type", None) != TenantType.company:
+        return False
+    row = await session.execute(
+        select(TenantLink.id)
+        .where(
+            TenantLink.client_tenant_id == tid,
+            TenantLink.status == "active",
+        )
+        .limit(1)
+    )
+    return row.scalar_one_or_none() is not None
 
 
 async def is_client_tenant_for_list(db: AsyncSession, tenant_id: str) -> bool:
     """True if tenant should be treated as client in candidates list scope.
 
-    Important: we intentionally rely only on tenant type.
-    `TenantLink` records configure handoff/link access, but must not globally
-    flip an agency workspace into client view.
+    Standalone employer workspaces (``type=company`` without inbound agency
+    links) stay on the operating CRM path. ``TenantLink`` as *agency* must
+    not flip an agency workspace into client view.
     """
     return await is_client_tenant(db, tenant_id)
 

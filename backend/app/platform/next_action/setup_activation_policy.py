@@ -91,12 +91,10 @@ def is_handler_blocked_for_guided_trial(
     tenant_status: str | None,
     policy: SetupActivationReachabilityPolicy | None = None,
 ) -> bool:
-    """Trial workspace blocks most settings routes (AppShell guidedTrialWorkspace)."""
-    pol = policy or load_setup_activation_reachability_policy()
-    status = str(tenant_status or "").strip().lower()
-    if status != pol.trial_tenant_status:
-        return False
-    path = str(handler_ref or "").strip()
-    if not path.startswith(pol.settings_allowed_prefix):
-        return False
-    return path not in pol.trial_allowed_settings_exact
+    """Trial is full product access (SSOT: Team/Business for the trial window).
+
+    Settings must not be locked for self-serve employers. The JSON policy is
+    retained for documentation; it is not enforced at runtime.
+    """
+    del handler_ref, tenant_status, policy
+    return False

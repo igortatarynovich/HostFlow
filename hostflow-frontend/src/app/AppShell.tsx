@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { TenantRecord, WhoAmI } from '../api/types'
@@ -180,20 +180,8 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     role === 'owner' ||
     role === 'admin'
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
-  const guidedTrialWorkspace = Boolean(!isSuperAdmin && role === 'administrator' && isTrialTenant)
   const setupTarget = getActivationSetupTarget(onboardingStatus)
-  const shellNavItems = useMemo(() => {
-    if (!guidedTrialWorkspace) return navItems
-    return navItems.filter((item) => {
-      if (!item.path) return false
-      if (
-        item.path === CRM_APP_PATHS.settings ||
-        item.path.startsWith(`${CRM_APP_PATHS.settings}/`)
-      )
-        return false
-      return item.group !== 'admin'
-    })
-  }, [guidedTrialWorkspace, navItems])
+  const shellNavItems = navItems
 
   useEffect(() => {
     setTrialBannerDismissed(false)
@@ -201,12 +189,6 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
 
   if (!isOnboardingPage && !isSuperAdmin && onboardingStatus?.onboarding_required === true) {
     return <Navigate to={ACTIVATION_PATHS.platformSetup} replace />
-  }
-  /** Guided trial: lock down settings except billing checkout and team/modules (seat toggles). */
-  const isTrialAllowedSettingsPath =
-    path === ACTIVATION_PATHS.billing || path === CRM_APP_PATHS.settingsTeam
-  if (guidedTrialWorkspace && path.startsWith(CRM_APP_PATHS.settings) && !isTrialAllowedSettingsPath) {
-    return <Navigate to={ACTIVATION_PATHS.overview} replace />
   }
 
   return (
@@ -233,8 +215,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                 isTrialTenant &&
                 !licenseExpired &&
                 !isOnboardingPage &&
-                !trialBannerDismissed &&
-                !guidedTrialWorkspace
+                !trialBannerDismissed
               }
               validUntil={validUntil}
               canOpenBilling={canOpenBilling}
@@ -281,7 +262,6 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                   <SettingsChrome
                     pathname={location.pathname}
                     search={location.search}
-                    compactMode={guidedTrialWorkspace}
                   />
                 )}
                 <div

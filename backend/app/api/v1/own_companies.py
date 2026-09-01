@@ -20,9 +20,10 @@ from backend.app.api.v1.utils.own_company_acl import (
     role_bypasses_own_company_acl,
 )
 from backend.app.modules.companies import crud as companies_crud
+from backend.app.modules.companies.crud import OperatingCompanyLimitReached
+from backend.app.modules.companies.service import _map_value_error
 from backend.app.services.audit import log_activity
 from backend.app.services import billing_restrictions
-from backend.app.services.onboarding_demo_seed import seed_onboarding_demo_if_needed
 
 
 router = APIRouter(prefix="/own-companies", tags=["own-companies"], redirect_slashes=False)
@@ -250,7 +251,7 @@ async def create_own_company(
     )
     db.add(obj)
     await db.flush()
-    demo_summary: Dict[str, Any] | None = None
+    actor_id = str(current_user.sub).strip() if getattr(current_user, "sub", None) else None
     if current_count == 0:
         await companies_crud.bootstrap_tenant_for_own_company_onboarding(
             db,
@@ -261,18 +262,21 @@ async def create_own_company(
             workspace_name=extra.get("workspace_name"),
             workspace_count=extra.get("workspace_count"),
             working_hours_preset=extra.get("working_hours_preset"),
-            actor_user_id=str(current_user.sub).strip() if getattr(current_user, "sub", None) else None,
+            actor_user_id=actor_id,
         )
+        # Mirror OwnCompany into companies so vacancy/funnel setup has an FK target.
+        # Do not auto-seed demo candidates — that pack is opt-in via POST /onboarding/demo/seed.
         try:
-            demo_summary = await seed_onboarding_demo_if_needed(
+            await companies_crud.resolve_company_id_for_vacancy(
                 db,
                 tenant_id=tenant_id,
-                own_company_id=str(obj.id),
-                business_type=bt_norm,
-                assignee_user_id=str(current_user.sub).strip() if current_user and current_user.sub else None,
+                company_id=str(obj.id),
+                actor_user_id=actor_id,
             )
-        except Exception:
-            demo_summary = None
+        except OperatingCompanyLimitReached as exc:
+            raise _map_value_error(exc) from exc
+        except ValueError as exc:
+            raise _map_value_error(exc) from exc
     await db.commit()
     await db.refresh(obj)
     try:
@@ -288,8 +292,6 @@ async def create_own_company(
     except Exception:
         pass
     out = OwnCompanyOut.model_validate(obj)
-    if demo_summary:
-        return out.model_copy(update={"onboarding_demo": demo_summary})
     return out
 
 
