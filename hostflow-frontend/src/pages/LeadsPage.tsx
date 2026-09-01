@@ -84,6 +84,8 @@ import {
   leadAssignmentLocked,
   leadSupportsManualProcess,
 } from '../utils/leadCrm'
+import { INTAKE_QUEUE_FILTERS, parseIntakeQueueFilter, type IntakeQueueFilter } from '../utils/leadIntakeLifecycle'
+import { leadIntakeLastActivityAt, leadIntakeLastActivityLabel, leadIntakeQueueFlags } from '../utils/leadIntakeQueueFlags'
 import { formatLeadPipelineError } from '../utils/leadPipelineErrors'
 import { useLeadsQueueKeyboard } from '../hooks/useLeadsQueueKeyboard'
 
@@ -112,6 +114,9 @@ const LEADS_HREF_QUEUE_NEW = `${CRM_APP_PATHS.leads}?status=new`
 const LEADS_HREF_QUEUE_IN_PROGRESS = `${CRM_APP_PATHS.leads}?status=processed&stage=contacted`
 const LEADS_HREF_QUEUE_WAITING = `${CRM_APP_PATHS.leads}?status=processed&next_action=scheduled`
 const LEADS_HREF_QUEUE_OVERDUE = `${CRM_APP_PATHS.leads}?status=processed&next_action=overdue`
+
+const INTAKE_QUEUE_CHIP_VALUES = ['', ...INTAKE_QUEUE_FILTERS] as const
+type IntakeLaneFilter = '' | IntakeQueueFilter
 
 function leadOpsNum(n: number | undefined | null): string {
   if (n == null || Number.isNaN(Number(n))) return '—'
@@ -232,6 +237,7 @@ export default function LeadsPage() {
   const [lostReasonCode, setLostReasonCode] = useState(initialLostReasonCodeFromLocation)
   const [lostFromCrmStage, setLostFromCrmStage] = useState(initialLostFromCrmStageFromLocation)
   const [pipelineError, setPipelineError] = useState<PipelineErrorFilter>(initialPipelineErrorFromLocation)
+  const [intakeLane, setIntakeLane] = useState<IntakeLaneFilter>('')
   const [workspaceView, setWorkspaceView] = useState<'table' | 'kanban'>('table')
   const [customFieldKey, setCustomFieldKey] = useState('')
   const [customFieldValue, setCustomFieldValue] = useState('')
@@ -435,8 +441,16 @@ export default function LeadsPage() {
       setPipelineError('')
       setPage(1)
     }
+    const nextLane = parseIntakeQueueFilter(sp.get('intake_lifecycle') || sp.get('intake_lane'))
+    if (nextLane !== intakeLane) {
+      setIntakeLane(nextLane)
+      setPage(1)
+    } else if (!sp.has('intake_lifecycle') && !sp.has('intake_lane') && intakeLane) {
+      setIntakeLane('')
+      setPage(1)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, conversionRoot, lostReasonCode, lostFromCrmStage, pipelineError, createdBeforeHoursFilter])
+  }, [location.search, conversionRoot, lostReasonCode, lostFromCrmStage, pipelineError, createdBeforeHoursFilter, intakeLane])
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -463,6 +477,7 @@ export default function LeadsPage() {
       lostReasonCode ||
       lostFromCrmStage ||
       pipelineError ||
+      intakeLane ||
       customFieldKey.trim() ||
       leadSearch.trim().length >= 2 ||
       createdBeforeHoursFilter != null,
@@ -484,6 +499,7 @@ export default function LeadsPage() {
           lostReasonCode: lostReasonCode || undefined,
           lostFromCrmStage: lostFromCrmStage || undefined,
           pipelineError: pipelineError || undefined,
+          intakeLane: intakeLane || undefined,
           q: leadSearch.trim().length >= 2 ? leadSearch.trim() : undefined,
           ...(customFieldKey.trim()
             ? { customFieldKey: customFieldKey.trim(), customFieldValue }
@@ -541,6 +557,7 @@ export default function LeadsPage() {
       lostReasonCode,
       lostFromCrmStage,
       pipelineError,
+      intakeLane,
       customFieldKey,
       customFieldValue,
       leadSearch,
@@ -575,6 +592,7 @@ export default function LeadsPage() {
     setLostReasonCode('')
     setLostFromCrmStage('')
     setPipelineError('')
+    setIntakeLane('')
     setCustomFieldKey('')
     setCustomFieldValue('')
     setLeadSearch('')
@@ -757,7 +775,7 @@ export default function LeadsPage() {
           to: CRM_APP_PATHS.settingsIntegrationsMeta,
         }
   const recruitmentLeadsTable = !isServicesTenant
-  const tableColCount = recruitmentLeadsTable ? 7 : 9
+  const tableColCount = recruitmentLeadsTable ? 10 : 9
 
   const totalPages = useMemo(() => {
     if (!data.limit) return 1
@@ -1808,6 +1826,46 @@ export default function LeadsPage() {
 
       <Toolbar>
           <div className="flex flex-wrap items-center gap-2">
+            {!isServicesTenant ? (
+              <div className="flex w-full flex-wrap items-center gap-1.5 pb-1">
+                <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  {t('app.leads.intake_workspace.lane.label')}
+                </span>
+                {INTAKE_QUEUE_CHIP_VALUES.map((lane) => {
+                  const active = intakeLane === lane
+                  const label =
+                    lane === ''
+                      ? t('app.leads.intake_workspace.queue.all', { defaultValue: 'All' })
+                      : t(`app.leads.intake_workspace.queue.${lane}`)
+                  return (
+                    <button
+                      key={lane || 'all'}
+                      type="button"
+                      className={
+                        active
+                          ? 'rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white'
+                          : 'rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200'
+                      }
+                      aria-pressed={active}
+                      onClick={() => {
+                        const sp = new URLSearchParams(location.search || '')
+                        sp.delete('intake_lane')
+                        if (active || !lane) sp.delete('intake_lifecycle')
+                        else sp.set('intake_lifecycle', lane)
+                        const next = sp.toString()
+                        navigate(
+                          { pathname: CRM_APP_PATHS.leads, search: next ? `?${next}` : '' },
+                          { replace: true },
+                        )
+                        setPage(1)
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
             <select
               className="input h-9 min-h-[40px] w-auto rounded-lg border-slate-300 bg-white px-3 py-2 text-sm"
               value={status}
@@ -2124,9 +2182,12 @@ export default function LeadsPage() {
                   {recruitmentLeadsTable ? (
                     <>
                       <th>{t('app.leads.intake_workspace.section.lead_data')}</th>
-                      <th>{t('app.leads.table.source')}</th>
-                      <th>{t('app.leads.intake_workspace.col.intake_status')}</th>
                       <th>{vacancyColumnLabel}</th>
+                      <th>{t('app.leads.table.source')}</th>
+                      <th>{t('app.leads.intake_workspace.queue.flags', { defaultValue: 'Flags' })}</th>
+                      <th>{t('app.leads.intake_workspace.queue.last_activity', { defaultValue: 'Last activity' })}</th>
+                      <th>{t('app.leads.table.manager')}</th>
+                      <th>{t('app.leads.intake_workspace.col.intake_status')}</th>
                       <th className="whitespace-nowrap">{t('app.leads.workspace.col_actions', { defaultValue: 'Actions' })}</th>
                     </>
                   ) : (
@@ -2247,13 +2308,38 @@ export default function LeadsPage() {
                               {contactPhone ? <div className="truncate text-sm text-slate-700">{contactPhone}</div> : null}
                               {contactEmail ? <div className="truncate text-[11px] text-slate-500">{contactEmail}</div> : null}
                             </td>
+                            <td className="max-w-[160px] truncate text-slate-800">{lead.vacancy_title || lead.vacancy_id || '—'}</td>
                             <td className="text-slate-700">{lead.source || '—'}</td>
+                            <td className="max-w-[180px]">
+                              {(() => {
+                                const flags = leadIntakeQueueFlags(lead, t)
+                                return flags.length ? (
+                                  <span className="text-xs font-medium text-slate-700">{flags.join(' · ')}</span>
+                                ) : (
+                                  <span className="text-xs text-slate-400">—</span>
+                                )
+                              })()}
+                            </td>
+                            <td className="max-w-[160px] text-xs text-slate-600">
+                              {(() => {
+                                const act = leadIntakeLastActivityLabel(lead, t)
+                                const at = leadIntakeLastActivityAt(lead)
+                                return (
+                                  <>
+                                    <div className="truncate font-medium text-slate-800">{act || '—'}</div>
+                                    {at ? <div className="truncate text-[11px] text-slate-500">{formatDateValue(at)}</div> : null}
+                                  </>
+                                )
+                              })()}
+                            </td>
+                            <td className="max-w-[120px] truncate font-mono text-[11px] text-slate-600">
+                              {lead.recruiter_id || '—'}
+                            </td>
                             <td>
                               <span className="inline-flex max-w-[11rem] items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-800">
                                 <span className="truncate">{t(leadIntakeColumnStatusKey(lead, isServicesTenant))}</span>
                               </span>
                             </td>
-                            <td className="max-w-[160px] truncate text-slate-800">{lead.vacancy_title || lead.vacancy_id || '—'}</td>
                             <td className="max-w-[200px]">
                               {rowMetaProblem ? (
                                 <div className="flex flex-col items-start gap-1">

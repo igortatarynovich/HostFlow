@@ -19,9 +19,11 @@ FIRST_CONTACT_SUPPRESSED_ACTION = "lead_to_candidate.first_contact_suppressed"
 
 _INTAKE_STATUSES_SUPPRESS: frozenset[str] = frozenset(
     {
+        "in_progress",
         "qualified",
         "rejected",
         "pooled",
+        "converted",
         "info_requested",
         "duplicate_review_requested",
     }
@@ -40,6 +42,8 @@ _ACTIVITY_LOG_TOUCH_ACTIONS: frozenset[str] = frozenset(
         "lead.manual_process.done",
         "lead.vacancy_confirmed",
         "lead.intake_decision.qualify",
+        "lead.intake_decision.request_info",
+        "lead.call_result",
     }
 )
 
@@ -81,6 +85,10 @@ def lead_first_contact_suppression_reasons_sync(lead: Any) -> List[str]:
     stage = str(getattr(lead, "stage", None) or "").strip().lower()
     if stage in _LEAD_STAGES_POST_TOUCH:
         reasons.append(f"lead_stage:{stage}")
+
+    call_raw = norm.get("call_result_v1")
+    if isinstance(call_raw, dict) and str(call_raw.get("result") or "").strip():
+        reasons.append("call_result:present")
 
     note = resolve_lead_note(lead)
     if note:

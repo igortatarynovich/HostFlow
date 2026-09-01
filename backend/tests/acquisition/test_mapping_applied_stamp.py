@@ -27,3 +27,4 @@ def test_stamp_mapping_applied_writes_key() -> None:
     assert stamp["rules_count"] == 1
     assert stamp["rules_fingerprint"]
     assert stamp["rules_source"] == "profile"
+    assert stamp["executable_rules"][0]["source"] == "email"

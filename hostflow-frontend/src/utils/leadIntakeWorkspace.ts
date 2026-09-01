@@ -12,6 +12,7 @@ import {
   isClientLead,
   leadSupportsManualProcess,
 } from './leadCrm'
+import { leadIntakeLifecycle } from './leadIntakeLifecycle'
 
 /** Public-intake leads: no backend support for intake-decision / manual process — show read-only guidance only. */
 export function leadRecruitmentPublicIntakeReadonly(lead: Lead | null, isServicesTenant: boolean): boolean {
@@ -46,29 +47,8 @@ export function leadIntakeColumnStatusKey(lead: Lead, isServicesTenant: boolean)
     if (lead.converted_client_id) return 'app.leads.intake_workspace.col.client_converted'
     return 'app.leads.intake_workspace.col.client_lead'
   }
-  if (lead.candidate_id) return 'app.leads.intake_workspace.col.converted'
-  if (!leadSupportsManualProcess(lead)) return 'app.leads.intake_workspace.col.unsupported'
-
-  const st = String(lead.status || '')
-    .trim()
-    .toLowerCase()
-  if (st === 'duplicate_review') return 'app.leads.intake_workspace.col.duplicate_review'
-  if (st === 'failed') return 'app.leads.intake_workspace.col.failed'
-
-  const hint = manualProcessBlockHint(lead)
-  if (hint === 'INTAKE_REJECTED') return 'app.leads.intake_workspace.col.rejected'
-  if (hint === 'INTAKE_INFO_REQUESTED') return 'app.leads.intake_workspace.col.info_requested'
-  if (hint === 'INTAKE_IDENTITY_UNCLEAR') return 'app.leads.intake_workspace.col.identity_unclear'
-  if (hint === 'INTAKE_POOL_PATH_REQUIRED') return 'app.leads.intake_workspace.col.pool_path'
-  if (hint === 'DUPLICATE_REVIEW_PENDING') return 'app.leads.intake_workspace.col.duplicate_review'
-  if (hint === 'VACANCY_NOT_CONFIRMED') return 'app.leads.intake_workspace.col.routing_unconfirmed'
-  if (hint === 'INTAKE_ROUTING_INCOMPLETE') return 'app.leads.intake_workspace.col.routing_incomplete'
-
-  if (st === 'needs_routing') return 'app.leads.intake_workspace.col.needs_routing'
-  if (st === 'new') return 'app.leads.intake_workspace.col.new'
-  if (st === 'processed') return 'app.leads.intake_workspace.col.awaiting_convert'
-  if (st === 'duplicated') return 'app.leads.intake_workspace.col.duplicated'
-  return 'app.leads.intake_workspace.col.other'
+  const lc = leadIntakeLifecycle(lead)
+  return `app.leads.intake_workspace.lifecycle.${lc}`
 }
 
 export type LeadRowPrimaryAction =

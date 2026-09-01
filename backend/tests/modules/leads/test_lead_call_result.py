@@ -15,7 +15,15 @@ from backend.app.modules.leads.schemas import LeadCallResultIn
 from backend.app.modules.leads.service.call_result import apply_lead_call_result
 
 
-def test_lead_call_result_schema_accepts_callback_and_note() -> None:
+def test_lead_call_result_schema_accepts_next_contact() -> None:
+    from datetime import datetime, timezone
+
+    payload = LeadCallResultIn(
+        result="callback_requested",
+        note="Перезвонить",
+        next_contact_at=datetime(2026, 9, 2, 15, 0, tzinfo=timezone.utc),
+    )
+    assert payload.next_contact_at is not None
     payload = LeadCallResultIn(
         result="callback_requested",
         note="Перезвонить завтра после 15:00, спрашивает про ставку",
@@ -45,6 +53,7 @@ def test_apply_lead_call_result_appends_history() -> None:
         result="callback_requested",
         note="Думает, перезвонить в пятницу",
         actor_sub="u1",
+        next_contact_at=None,
     )
     assert second["note"] == "Думает, перезвонить в пятницу"
     history = lead.normalized["call_results_v1"]
@@ -119,3 +128,61 @@ async def test_post_call_result_on_client_lead(client, manager_headers, tenant_i
         row = (await db.execute(select(Lead).where(Lead.id == lead_id))).scalar_one()
         stored = row.normalized or {}
         assert stored.get("call_result_v1", {}).get("note") == note
+
+
+@pytest.mark.anyio
+async def test_post_call_result_on_meta_recruitment_lead(client, manager_headers, tenant_id, monkeypatch):
+    async with async_session_maker() as db:
+        await db.execute(
+            text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
+            {"tenant_id": str(tenant_id)},
+        )
+        own_company_id = await db.scalar(
+            select(OwnCompany.id)
+            .where(OwnCompany.tenant_id == str(tenant_id), OwnCompany.is_archived.is_(False))
+            .order_by(OwnCompany.created_at.asc())
+            .limit(1)
+        )
+        assert own_company_id is not None
+        lead = await leads_crud.create_lead(
+            db,
+            tenant_id=str(tenant_id),
+            own_company_id=str(own_company_id),
+            company_id=None,
+            vacancy_id=None,
+            payload={},
+            normalized={
+                "first_name": "Jan",
+                "last_name": "Kowalski",
+                "phone": "+48500111222",
+                "field_answers": [{"name": "experience", "values": ["5 years"]}],
+                "rodo": {"sent": True},
+            },
+            source="meta",
+            lead_type="candidate",
+            lead_target_type="candidate",
+        )
+        lead.status = "needs_routing"
+        lead.stage = "new"
+        lead_id = str(lead.id)
+        await db.commit()
+
+    async def _rodo_ok(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(
+        "backend.app.services.lead_rodo.ensure_lead_rodo_allows_action",
+        _rodo_ok,
+    )
+
+    r = await client.post(
+        f"/api/v1/leads/{lead_id}/call-result",
+        headers=manager_headers,
+        json={"result": "interested", "note": "CE ok, create candidate"},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["stage"] == "contacted"
+    assert body.get("intake_lifecycle") == "in_progress"
+    assert (body.get("normalized") or {}).get("call_result_v1", {}).get("result") == "interested"
+

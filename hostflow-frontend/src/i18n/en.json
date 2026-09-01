@@ -7591,6 +7591,13 @@
           "vacancy_route_pending": "{title} · confirm route",
           "vacancy_none": "No vacancy yet"
         },
+        "form_answers": {
+          "title": "Candidate answers",
+          "subtitle": "What the person submitted — use this to decide before creating a candidate.",
+          "empty": "No form answers on this lead yet.",
+          "question": "Question",
+          "answer": "Answer"
+        },
         "snapshot": {
           "title": "Candidate snapshot",
           "context_title": "Recruitment context",
@@ -7624,10 +7631,55 @@
           "tachograph_missing": "Tachograph not in documents",
           "citizenship_line": "Citizenship / location: {value}"
         },
+        "lane": {
+          "label": "Intake",
+          "to_call": "New",
+          "called": "In progress",
+          "rejected": "Completed",
+          "pool": "Pool",
+          "duplicate": "Needs decision",
+          "converted": "Completed"
+        },
+        "lifecycle": {
+          "new": "New",
+          "in_progress": "In progress",
+          "converted": "Candidate created",
+          "rejected": "Rejected",
+          "pool": "Pool",
+          "duplicate_review": "Duplicate"
+        },
+        "queue": {
+          "all": "All",
+          "new": "New",
+          "in_progress": "In progress",
+          "needs_decision": "Needs decision",
+          "pool": "Pool",
+          "completed": "Completed",
+          "flags": "Key answers",
+          "last_activity": "Last activity",
+          "flag_code95": "Code95 ✓",
+          "flag_pl": "PL ✓",
+          "flag_stay": "pobyt >8 mies."
+        },
+        "call": {
+          "hint": "Log the outcome after the call. This is activity, not a lead stage.",
+          "reached": "Reached",
+          "not_reached": "No answer",
+          "next_contact": "Next contact",
+          "next_contact_required": "Pick a date and time to call back."
+        },
+        "identity": {
+          "form": "form"
+        },
         "decision_rail": {
           "title": "Decision",
-          "subtitle": "Pick a vacancy, scan qualification, then act.",
+          "subtitle": "See answers, call, then decide — creating a candidate is the exit, not the first step.",
           "step_vacancy": "Step 1 · Choose vacancy",
+          "block_call": "Call",
+          "call_hint": "Call first. Save the result so the candidate card does not start from a cold first contact.",
+          "call_latest": "Last result: {result}",
+          "call_no_phone": "No phone on this lead — still log a result if you reached them another way.",
+          "call_history_count": "{n} call results logged",
           "step_review_fit": "Step 2 · Review fit",
           "step_decision": "Step 3 · Decide",
           "block_vacancy": "Vacancy",
@@ -7725,6 +7777,7 @@
           "client_lead": "Client questionnaire",
           "client_converted": "Client created",
           "duplicated": "Duplicate",
+          "called": "Called",
           "other": "—"
         },
         "qual": {

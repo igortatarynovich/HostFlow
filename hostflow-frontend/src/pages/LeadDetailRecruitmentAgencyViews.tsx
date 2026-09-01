@@ -1,9 +1,13 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import type { Lead } from '../api/types'
 import LeadIntakeCandidateSnapshot, { LeadIntakeRecruitmentContextBlock } from '../components/leads/LeadIntakeCandidateSnapshot'
+import LeadIntakeCallStep from '../components/leads/LeadIntakeCallStep'
 import LeadIntakeDecisionRail from '../components/leads/LeadIntakeDecisionRail'
+import LeadIntakeFormAnswers from '../components/leads/LeadIntakeFormAnswers'
+import LeadIntakeIdentityBar from '../components/leads/LeadIntakeIdentityBar'
 import LeadQualificationSummaryCard from '../components/leads/LeadQualificationSummaryCard'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
@@ -89,11 +93,30 @@ export function RecruitmentAgencyIntakeDetailView({
     : lead.vacancy_id || lead.vacancy_title
       ? t('app.leads.intake_workspace.snapshot.route_unconfirmed')
       : t('app.leads.intake_workspace.snapshot.route_missing')
+  const [rejectNonce, setRejectNonce] = useState(0)
 
   return (
     <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,65fr)_minmax(280px,35fr)] lg:gap-10">
       <div className="space-y-8">
-        <LeadIntakeCandidateSnapshot lead={lead} anchorName={name} />
+        <LeadIntakeIdentityBar
+          lead={lead}
+          displayName={name}
+          formatDate={formatDateValue}
+          createLabel={t('app.leads.intake_workspace.unified.create_candidate')}
+          rejectLabel={t('app.leads.intake_workspace.decision_rail.reject_open')}
+          poolLabel={t('app.leads.detail.intake_resolution.intake_actions.pool')}
+          createBusy={processing || routingConfirming}
+          poolDisabled={poolBusy}
+          onCreate={onRequestProcess}
+          onReject={() => setRejectNonce((n) => n + 1)}
+          onPool={onPool}
+        />
+
+        <LeadIntakeFormAnswers lead={lead} />
+
+        <LeadIntakeCallStep lead={lead} onLeadUpdated={onLeadUpdated} showTelButton={false} />
+
+        <LeadIntakeCandidateSnapshot lead={lead} />
 
         <LeadIntakeRecruitmentContextBlock
           lead={lead}
@@ -132,6 +155,7 @@ export function RecruitmentAgencyIntakeDetailView({
           onRequestProcess={onRequestProcess}
           onConfirmRouting={onConfirmRouting}
           onPool={onPool}
+          forceRejectOpen={rejectNonce}
         />
 
         {lead.recruiter_id ? (

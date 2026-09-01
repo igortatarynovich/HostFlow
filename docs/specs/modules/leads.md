@@ -97,19 +97,24 @@ Sequence диаграмма (логический порядок):
 
 Операционный слой intake (отдельно от стадий кандидата): **`POST /api/v1/leads/{id}/intake-decision`**, **`POST /api/v1/leads/{id}/confirm-vacancy`**, гейтинг **`POST /api/v1/leads/{id}/process`** через `manual_process_block_code` (стабильные коды в 422), тот же слой на **bulk/NBA**, **retry**, **CSV reimport** для повторной обработки существующей строки. Детали и smoke-чеклист: [lead-intake-resolution-and-activity-continuity.md](../workflows/lead-intake-resolution-and-activity-continuity.md) §8.0.
 
-### Call result on B2B appeals (client leads)
+### Call result (recruitment intake and B2B appeals)
 
-Операторский лог результата звонка по обращению (client lead):
+Операторский лог результата звонка:
 
-- `POST /api/v1/leads/{id}/call-result` — body `{ result, note?, bump_stage? }`
+- `POST /api/v1/leads/{id}/call-result` — body `{ result, note?, next_contact_at?, bump_stage? }`
 - `result`: `no_answer` | `answered` | `callback_requested` | `interested` | `not_interested` | `wrong_number` | `unavailable`
 - `note` — свободный комментарий (перезвонить / что хотят / думают), до 2000 символов
-- Persistence: latest → `Lead.normalized.call_result_v1`; history → `Lead.normalized.call_results_v1` (append, max 50)
-- Audit: `lead.call_result` в timeline
-- При `bump_stage=true` (default) и результате из contact-reached (`answered` / `callback_requested` / `interested` / `not_interested`) CRM stage → `contacted` (если ещё не `qualified` / `converted` / `lost`)
+- `next_contact_at` — дата/время следующего контакта (для перезвонить)
+- Persistence: latest → `Lead.normalized.call_result_v1`; history → `Lead.normalized.call_results_v1` (append, max 50); блоки сохраняются при re-normalize
+- Audit: `lead.call_result` — activity `call → outcome → note → actor → timestamp → next_contact_at`
+- Recruitment: первое сохранение результата переводит intake lifecycle **new → in_progress** (`intake_resolution_v1`). CRM `stage` — только compatibility (`contacted`). «Не дозвонились» не является стадией лида.
+- Convert несёт **всю** историю звонков + исходные `field_answers` в `candidate.extra.lead_continuity_v1` / `intake_answers_v1` и глушит повторный «Call candidate»
 - Gate: lead RODO (`communication_call`), billing side-effects; terminal rejected client lead → 422
+- Список: `GET /leads?intake_lifecycle=new|in_progress|needs_decision|pool|completed` — единственная проекция intake (`intake_resolution_v1`). Legacy `intake_lane` aliases принимаются.
 
-UI: карточка client lead (`ClientLeadDetailView`) — блок «Результат звонка» + история. Для services-tenant заголовок списка — «Обращения» (`app.leads.title_services`).
+UI: identity bar + answers table + `LeadIntakeCallStep` на intake workspace; карточка client lead (`ClientLeadDetailView`). Для services-tenant заголовок списка — «Обращения» (`app.leads.title_services`).
+
+**Recruitment intake lifecycle (authority):** `LeadOut.intake_lifecycle` = `new | in_progress | converted | rejected | pool | duplicate_review`. Create candidate — терминальное решение (converted), не начало обработки.
 
 ### Lead-stage RODO (art. 14)
 

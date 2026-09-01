@@ -7518,6 +7518,13 @@
           "vacancy_route_pending": "{title} · potwierdź routing",
           "vacancy_none": "Brak oferty"
         },
+        "form_answers": {
+          "title": "Odpowiedzi kandydata",
+          "subtitle": "To, co osoba wysłała — na tej podstawie zdecyduj, zanim utworzysz kandydata.",
+          "empty": "Brak odpowiedzi z formularza na tym leadzie.",
+          "question": "Pytanie",
+          "answer": "Odpowiedź"
+        },
         "snapshot": {
           "title": "Szybki podgląd kandydata",
           "context_title": "Kontekst rekrutacji",
@@ -7551,10 +7558,55 @@
           "tachograph_missing": "Brak tachografu w dokumentach",
           "citizenship_line": "Obywatelstwo / lokalizacja: {value}"
         },
+        "lane": {
+          "label": "Intake",
+          "to_call": "Nowe",
+          "called": "W toku",
+          "rejected": "Zakończone",
+          "pool": "Pula",
+          "duplicate": "Wymagają decyzji",
+          "converted": "Zakończone"
+        },
+        "lifecycle": {
+          "new": "Nowy",
+          "in_progress": "W toku",
+          "converted": "Utworzono kandydata",
+          "rejected": "Odrzucony",
+          "pool": "Pula",
+          "duplicate_review": "Duplikat"
+        },
+        "queue": {
+          "all": "Wszystkie",
+          "new": "Nowe",
+          "in_progress": "W toku",
+          "needs_decision": "Wymagają decyzji",
+          "pool": "Pula",
+          "completed": "Zakończone",
+          "flags": "Kluczowe odpowiedzi",
+          "last_activity": "Ostatnia aktywność",
+          "flag_code95": "Code95 ✓",
+          "flag_pl": "PL ✓",
+          "flag_stay": "pobyt >8 mies."
+        },
+        "call": {
+          "hint": "Zapisz wynik po rozmowie. To aktywność, nie etap leada.",
+          "reached": "Odebrano",
+          "not_reached": "Nie odebrano",
+          "next_contact": "Następny kontakt",
+          "next_contact_required": "Wybierz datę i godzinę oddzwonienia."
+        },
+        "identity": {
+          "form": "formularz"
+        },
         "decision_rail": {
           "title": "Decyzja",
-          "subtitle": "Oferta → podsumowanie dopasowania → działanie.",
+          "subtitle": "Zobacz odpowiedzi, zadzwoń, potem zdecyduj — utworzenie kandydata to wyjście z lejka, nie pierwszy krok.",
           "step_vacancy": "Krok 1 · Oferta",
+          "block_call": "Telefon",
+          "call_hint": "Najpierw zadzwoń. Zapisz wynik, żeby karta kandydata nie zaczynała się od zimnego pierwszego kontaktu.",
+          "call_latest": "Ostatni wynik: {result}",
+          "call_no_phone": "Brak telefonu — i tak zapisz wynik, jeśli rozmawiałeś inną drogą.",
+          "call_history_count": "Zapisano wyników rozmów: {n}",
           "step_review_fit": "Krok 2 · Dopasowanie",
           "step_decision": "Krok 3 · Decyzja",
           "block_vacancy": "Oferta",
@@ -7652,6 +7704,7 @@
           "client_lead": "Ankieta klienta",
           "client_converted": "Klient utworzony",
           "duplicated": "Duplikat",
+          "called": "Po rozmowie",
           "other": "—"
         },
         "qual": {

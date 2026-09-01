@@ -11,6 +11,9 @@ import { useToast } from '../Toast'
 import { leadIntakeWorkspaceSuppressesCrmChrome } from '../../utils/leadIntakeWorkspace'
 import LeadIntakeCandidateSnapshot, { LeadIntakeRecruitmentContextBlock } from './LeadIntakeCandidateSnapshot'
 import LeadIntakeDecisionRail from './LeadIntakeDecisionRail'
+import LeadIntakeFormAnswers from './LeadIntakeFormAnswers'
+import LeadIntakeCallStep from './LeadIntakeCallStep'
+import LeadIntakeIdentityBar from './LeadIntakeIdentityBar'
 
 function normRecord(normalized: unknown): Record<string, unknown> {
   if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) return {}
@@ -65,6 +68,7 @@ export default function LeadIntakeWorkspacePanel({
   const { notify } = useToast()
   const planLimitModal = usePlanLimitModal()
   const [poolBusy, setPoolBusy] = useState(false)
+  const [rejectNonce, setRejectNonce] = useState(0)
 
   const n = normRecord(lead.normalized)
   const displayName = useMemo(() => {
@@ -210,12 +214,9 @@ export default function LeadIntakeWorkspacePanel({
 
   return (
     <div className="flex h-full min-h-[320px] flex-col lg:max-h-[calc(100vh-8rem)]">
-      <div className="shrink-0 border-b border-slate-100 px-4 py-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{t('app.leads.intake_workspace.title')}</p>
-            <h2 className="mt-0.5 truncate text-lg font-semibold text-slate-900">{displayName}</h2>
-          </div>
+      <div className="shrink-0 border-b border-slate-100 px-4 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{t('app.leads.intake_workspace.title')}</p>
           <div className="flex shrink-0 gap-1">
             <Link
               to={`${CRM_APP_PATHS.leads}/${lead.id}`}
@@ -232,6 +233,24 @@ export default function LeadIntakeWorkspacePanel({
       </div>
 
       <div className="min-h-0 flex-1 space-y-8 overflow-y-auto px-4 py-5">
+        <LeadIntakeIdentityBar
+          lead={lead}
+          displayName={displayName}
+          formatDate={formatDate}
+          createLabel={t('app.leads.intake_workspace.unified.create_candidate')}
+          rejectLabel={t('app.leads.intake_workspace.decision_rail.reject_open')}
+          poolLabel={t('app.leads.detail.intake_resolution.intake_actions.pool')}
+          createBusy={processing || routingBusy}
+          poolDisabled={poolBusy}
+          onCreate={() => void onProcess()}
+          onReject={() => setRejectNonce((n) => n + 1)}
+          onPool={() => void runPool()}
+        />
+
+        <LeadIntakeFormAnswers lead={lead} />
+
+        <LeadIntakeCallStep lead={lead} onLeadUpdated={onLeadUpdated} showTelButton={false} />
+
         <LeadIntakeCandidateSnapshot lead={lead} />
 
         <LeadIntakeRecruitmentContextBlock
@@ -254,6 +273,7 @@ export default function LeadIntakeWorkspacePanel({
           onRequestProcess={() => void onProcess()}
           onConfirmRouting={onConfirmRouting}
           onPool={() => void runPool()}
+          forceRejectOpen={rejectNonce}
         />
 
         {moreSection ? (

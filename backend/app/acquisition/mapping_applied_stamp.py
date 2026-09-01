@@ -34,7 +34,9 @@ def build_mapping_applied_stamp(
     profile_updated_at: str | None = None,
 ) -> dict[str, Any]:
     rule_list = [dict(r) for r in (rules or []) if isinstance(r, Mapping)]
-    return {
+    from backend.app.modules.leads.conversion_mapping import compact_executable_rules
+
+    stamp: dict[str, Any] = {
         "source_id": str(source_id).strip() if source_id else None,
         "rules_source": str(rules_source or "").strip() or None,
         "rules_count": len(rule_list),
@@ -42,6 +44,10 @@ def build_mapping_applied_stamp(
         "profile_updated_at": profile_updated_at,
         "stamped_at": datetime.now(timezone.utc).isoformat(),
     }
+    executable = compact_executable_rules(rule_list)
+    if executable:
+        stamp["executable_rules"] = executable
+    return stamp
 
 
 def stamp_mapping_applied_v1(

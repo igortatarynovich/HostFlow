@@ -47,6 +47,8 @@ export type LeadIntakeDecisionRailProps = {
   onPool: () => void | Promise<void>
   /** `panel` = detail sidebar chrome; `embedded` = list/inbox rail, no outer card. */
   layout?: LeadIntakeDecisionRailLayout
+  /** Increment to expand the reject form (identity bar Reject). */
+  forceRejectOpen?: number
 }
 
 const VACANCY_CARD_LIMIT = 10
@@ -65,6 +67,7 @@ export default function LeadIntakeDecisionRail({
   onConfirmRouting,
   onPool,
   layout = 'panel',
+  forceRejectOpen = 0,
 }: LeadIntakeDecisionRailProps) {
   const { t } = useI18n()
   const { notify } = useToast()
@@ -129,6 +132,10 @@ export default function LeadIntakeDecisionRail({
   const fitErr = lead.error?.trim() || ''
   const fitHighlight =
     fitErr === 'LEAD_FIT_NO_MATCH' ? 'critical' : fitErr === 'LEAD_FIT_NEEDS_INFO' ? 'risk' : fitSummary ? 'neutral' : 'clear'
+
+  useEffect(() => {
+    if (forceRejectOpen > 0) setRejectExpanded(true)
+  }, [forceRejectOpen])
 
   useEffect(() => {
     if (routingNeedsPicker) setVacancyOverrideOpen(true)
@@ -336,81 +343,6 @@ export default function LeadIntakeDecisionRail({
 
   return (
     <div className={outerClass}>
-      {!intakeRejected && !lead.candidate_id ? (
-        <div
-          className={clsx(
-            'space-y-3 rounded-xl px-3 py-3 text-sm ring-1',
-            rodoOk ? 'bg-emerald-500/[0.08] text-emerald-950 ring-emerald-900/10' : 'bg-amber-500/[0.1] text-amber-950 ring-amber-800/15',
-          )}
-          role="status"
-        >
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-800">
-            {t('app.leads.intake_workspace.decision_rail.rodo_required_title')}
-          </p>
-          {!rodoOk ? (
-            <>
-              <p className="text-xs leading-relaxed text-amber-900/95">
-                {rodoStatus === 'pending_channel'
-                  ? t('app.leads.intake_workspace.decision_rail.rodo_pending_channel')
-                  : rodoStatus === 'pending_policy'
-                    ? t('app.leads.intake_workspace.decision_rail.rodo_pending_policy', {
-                        defaultValue:
-                          'Email policy blocked RODO send (missing or invalid template). Configure Lead lifecycle email in Communications settings.',
-                      })
-                    : rodoStatus === 'failed'
-                      ? t('app.leads.intake_workspace.decision_rail.rodo_failed')
-                      : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
-              </p>
-              {policyBlocked ? (
-                <p className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-900 ring-1 ring-rose-900/10">
-                  <IconAlertTriangle size={14} aria-hidden />
-                  {t('app.leads.intake_workspace.decision_rail.email_policy_blocked_badge', {
-                    defaultValue: 'Email policy blocked',
-                  })}
-                </p>
-              ) : null}
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <button
-                  type="button"
-                  className="btn-primary inline-flex justify-center rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50"
-                  disabled={rodoBusy}
-                  onClick={() => void sendRodoNotice()}
-                >
-                  {rodoBusy ? t('app.leads.intake_workspace.decision_rail.rodo_sending') : t('app.leads.intake_workspace.decision_rail.send_rodo_notice')}
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary inline-flex justify-center rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50"
-                  disabled={rodoBusy}
-                  onClick={() => void markRodoSourceProvided()}
-                >
-                  {t('app.leads.intake_workspace.decision_rail.mark_source_provided')}
-                </button>
-              </div>
-            </>
-          ) : (
-            <p className="text-xs font-medium text-emerald-900">{t('app.leads.intake_workspace.decision_rail.rodo_ok_hint')}</p>
-          )}
-        </div>
-      ) : null}
-
-      {commLine ? (
-        <div
-          className={clsx(
-            'rounded-lg px-3 py-2 text-xs ring-1',
-            commLine.tone === 'warn'
-              ? 'bg-rose-500/[0.08] text-rose-950 ring-rose-900/10'
-              : 'bg-slate-500/[0.06] text-slate-800 ring-slate-900/10',
-          )}
-          role="status"
-        >
-          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-700">
-            {t('app.leads.intake_workspace.decision_rail.communication_title', { defaultValue: 'Operational emails' })}
-          </p>
-          <p className="mt-1 leading-relaxed">{commLine.text}</p>
-        </div>
-      ) : null}
-
       <header className="space-y-1">
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{t('app.leads.intake_workspace.decision_rail.title')}</p>
         <p className="text-sm text-slate-600">{t('app.leads.intake_workspace.decision_rail.subtitle')}</p>
@@ -530,6 +462,81 @@ export default function LeadIntakeDecisionRail({
           <p className="text-sm font-medium text-emerald-900">{t('app.leads.detail.intake_resolution.confirmed_hint')}</p>
         ) : null}
       </section>
+
+      {!intakeRejected && !lead.candidate_id ? (
+        <div
+          className={clsx(
+            'space-y-2 rounded-xl px-3 py-3 text-sm ring-1',
+            rodoOk ? 'bg-emerald-500/[0.06] text-emerald-950 ring-emerald-900/10' : 'bg-amber-500/[0.08] text-amber-950 ring-amber-800/15',
+          )}
+          role="status"
+        >
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-700">
+            {t('app.leads.intake_workspace.decision_rail.rodo_required_title')}
+          </p>
+          {!rodoOk ? (
+            <>
+              <p className="text-xs leading-relaxed text-amber-900/95">
+                {rodoStatus === 'pending_channel'
+                  ? t('app.leads.intake_workspace.decision_rail.rodo_pending_channel')
+                  : rodoStatus === 'pending_policy'
+                    ? t('app.leads.intake_workspace.decision_rail.rodo_pending_policy', {
+                        defaultValue:
+                          'Email policy blocked RODO send (missing or invalid template). Configure Lead lifecycle email in Communications settings.',
+                      })
+                    : rodoStatus === 'failed'
+                      ? t('app.leads.intake_workspace.decision_rail.rodo_failed')
+                      : t('app.leads.intake_workspace.decision_rail.rodo_required_hint')}
+              </p>
+              {policyBlocked ? (
+                <p className="inline-flex items-center gap-1 rounded-md bg-rose-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-900 ring-1 ring-rose-900/10">
+                  <IconAlertTriangle size={14} aria-hidden />
+                  {t('app.leads.intake_workspace.decision_rail.email_policy_blocked_badge', {
+                    defaultValue: 'Email policy blocked',
+                  })}
+                </p>
+              ) : null}
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <button
+                  type="button"
+                  className="btn-secondary inline-flex justify-center rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                  disabled={rodoBusy}
+                  onClick={() => void sendRodoNotice()}
+                >
+                  {rodoBusy ? t('app.leads.intake_workspace.decision_rail.rodo_sending') : t('app.leads.intake_workspace.decision_rail.send_rodo_notice')}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary inline-flex justify-center rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                  disabled={rodoBusy}
+                  onClick={() => void markRodoSourceProvided()}
+                >
+                  {t('app.leads.intake_workspace.decision_rail.mark_source_provided')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs font-medium text-emerald-900">{t('app.leads.intake_workspace.decision_rail.rodo_ok_hint')}</p>
+          )}
+        </div>
+      ) : null}
+
+      {commLine ? (
+        <div
+          className={clsx(
+            'rounded-lg px-3 py-2 text-xs ring-1',
+            commLine.tone === 'warn'
+              ? 'bg-rose-500/[0.08] text-rose-950 ring-rose-900/10'
+              : 'bg-slate-500/[0.06] text-slate-800 ring-slate-900/10',
+          )}
+          role="status"
+        >
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-700">
+            {t('app.leads.intake_workspace.decision_rail.communication_title', { defaultValue: 'Operational emails' })}
+          </p>
+          <p className="mt-1 leading-relaxed">{commLine.text}</p>
+        </div>
+      ) : null}
 
       <StepDivider />
 

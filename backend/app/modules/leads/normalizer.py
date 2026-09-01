@@ -985,6 +985,14 @@ def normalize_meta_payload(
         field_mapping=field_mapping,
     )
 
+    from backend.app.modules.leads.conversion_mapping import attach_field_answer_labels
+
+    labels = attach_field_answer_labels(field_answers, _coerce_mapping_rules(field_mapping))
+    if labels:
+        normalized["form_question_labels_v1"] = labels
+    if field_answers:
+        normalized["field_answers"] = field_answers
+
     # Attempt to parse canonical vacancy UUID from hint
     for key in (vacancy_field, vacancy_hint):
         if not key:

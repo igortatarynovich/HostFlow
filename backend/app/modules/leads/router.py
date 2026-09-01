@@ -28,6 +28,11 @@ from backend.app.modules.leads import (
     pipeline_hooks,
     service,
 )
+from backend.app.modules.leads.intake_lifecycle import (
+    INTAKE_LIFECYCLE_FILTER_WHITELIST,
+    is_recruitment_intake_lead,
+    project_recruitment_intake_lifecycle,
+)
 from backend.app.modules.leads.lead_stage_contract import batch_lead_stage_contracts
 from backend.app.modules.leads.schemas import (
     BulkAutoProcessQueueItemOut,
@@ -148,6 +153,24 @@ async def list_leads_endpoint(
         le=8760,
         description="When set, only leads with created_at older than now minus this many hours (e.g. 24 with status=new for stale new leads).",
     ),
+    intake_lane_param: str | None = Query(
+        None,
+        alias="intake_lane",
+        max_length=32,
+        description=(
+            "Deprecated alias for intake_lifecycle. Legacy: to_call | called | rejected | pool | "
+            "duplicate | converted."
+        ),
+    ),
+    intake_lifecycle_param: str | None = Query(
+        None,
+        alias="intake_lifecycle",
+        max_length=32,
+        description=(
+            "Recruitment intake queue: new | in_progress | needs_decision | pool | completed. "
+            "Authority is intake_resolution_v1 projection, not CRM stage."
+        ),
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -211,6 +234,16 @@ async def list_leads_endpoint(
         )
     pipeline_error = None if (lrc or lf_crm) else pe_raw
 
+    lane_raw = (intake_lifecycle_param or intake_lane_param or "").strip().lower() or None
+    if lane_raw and lane_raw not in INTAKE_LIFECYCLE_FILTER_WHITELIST:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "intake_lifecycle must be one of: new, in_progress, needs_decision, pool, completed "
+                "(legacy intake_lane aliases: to_call, called, rejected, pool, duplicate, converted)"
+            ),
+        )
+
     return await service.list_leads(
         db,
         tenant_id=tid,
@@ -226,6 +259,7 @@ async def list_leads_endpoint(
         lost_from_crm_stage=lf_crm,
         pipeline_error=pipeline_error,
         created_before_hours=created_before_hours,
+        intake_lane=lane_raw,
         limit=limit,
         offset=offset,
     )
@@ -482,11 +516,13 @@ async def log_lead_call_result_endpoint(
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> LeadOut:
-    """Log call outcome + comment on a lead (B2B appeals / client leads).
+    """Log call outcome + comment on a lead (recruitment intake and B2B appeals).
 
     Stores ``normalized.call_result_v1`` (latest) and appends to
-    ``normalized.call_results_v1``. Contact-reached results may bump CRM stage
-    to ``contacted``.
+    ``normalized.call_results_v1``. Recruitment first save stamps intake
+    lifecycle ``in_progress`` (IR authority). CRM stage bump is compatibility.
+    Convert carries the full call history onto the candidate via
+    ``lead_continuity_v1``.
     """
     from backend.app.modules.leads import crud
     from backend.app.modules.leads.service.call_result import log_lead_call_result
@@ -536,6 +572,7 @@ async def log_lead_call_result_endpoint(
         note=payload.note,
         actor_id=str(current_user.sub or "").strip() or None,
         bump_stage=bool(payload.bump_stage),
+        next_contact_at=payload.next_contact_at,
     )
     await db.commit()
 
@@ -953,6 +990,11 @@ async def update_lead_stage_endpoint(
         created_at=lead.created_at,
         last_routed_at=lead.last_routed_at,
         vacancy_routing_confirmed=vacancy_routing_confirmed,
+        intake_lifecycle=(
+            project_recruitment_intake_lifecycle(lead)
+            if is_recruitment_intake_lead(lead)
+            else None
+        ),
     )
 
 

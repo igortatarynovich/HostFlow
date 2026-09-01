@@ -50,6 +50,10 @@ from backend.app.modules.leads.lead_candidate_doc_loader import (
 )
 from backend.app.modules.leads.lead_criteria_eval import evaluate_vacancy_for_lead
 from backend.app.modules.leads.lead_stage_contract import batch_lead_stage_contracts
+from backend.app.modules.leads.intake_lifecycle import (
+    is_recruitment_intake_lead,
+    project_recruitment_intake_lifecycle,
+)
 from backend.app.modules.leads.schemas import LeadListResponse, LeadOut, lead_vacancy_routing_aux
 from backend.app.intake_platform.operational_scope import OPERATIONAL_EXCLUDED_LEAD_STAGES
 
@@ -93,6 +97,124 @@ _LEAD_LEGACY_STAGE_TO_ROOT = {
 # Allowed exact values for GET /leads ?pipeline_error= (NBA drill-down for fit pipeline).
 LEAD_LIST_PIPELINE_ERROR_WHITELIST: frozenset[str] = frozenset({"LEAD_FIT_NO_MATCH", "LEAD_FIT_NEEDS_INFO"})
 
+# Recruitment intake queue filters. New names are the authority; legacy intake_lane
+# values remain accepted aliases (see intake_lifecycle.INTAKE_LANE_ALIASES).
+INTAKE_LANE_WHITELIST: frozenset[str] = frozenset(
+    {
+        "new",
+        "in_progress",
+        "needs_decision",
+        "pool",
+        "completed",
+        "to_call",
+        "called",
+        "rejected",
+        "duplicate",
+        "converted",
+    }
+)
+
+
+def _sql_intake_resolution_status() -> Any:
+    return func.lower(
+        func.coalesce(Lead.normalized["intake_resolution_v1"]["status"].as_string(), literal(""))
+    )
+
+
+def _sql_call_result_present() -> Any:
+    return func.coalesce(
+        func.nullif(Lead.normalized["call_result_v1"]["result"].as_string(), ""),
+        literal(""),
+    ) != ""
+
+
+def _sql_pool_intent() -> Any:
+    pool_flag = func.lower(
+        func.coalesce(Lead.normalized["recruitment_pool_intent_v1"].as_string(), literal(""))
+    )
+    return or_(
+        _sql_intake_resolution_status() == "pooled",
+        pool_flag.in_(("true", "1", "t")),
+    )
+
+
+def _sql_intake_not_terminal() -> Any:
+    ir = _sql_intake_resolution_status()
+    status_l = func.lower(func.coalesce(Lead.status, literal("")))
+    stage_l = func.lower(func.coalesce(Lead.stage, literal("")))
+    return and_(
+        Lead.candidate_id.is_(None),
+        status_l.notin_(("rejected", "duplicated")),
+        ir.notin_(("rejected", "pooled", "converted")),
+        stage_l.notin_(("lost", "converted")),
+    )
+
+
+def _sql_intake_in_progress_signals() -> Any:
+    ir = _sql_intake_resolution_status()
+    called = _sql_call_result_present()
+    stage_l = func.lower(func.coalesce(Lead.stage, literal("")))
+    return or_(
+        ir.in_(("in_progress", "qualified", "info_requested")),
+        called,
+        stage_l.in_(("contacted", "qualified")),
+    )
+
+
+def _apply_intake_lane_filters(filters: List[Any], *, intake_lane: str) -> None:
+    """Restrict list to one intake-lifecycle queue filter. Mutates ``filters``."""
+    from backend.app.modules.leads.intake_lifecycle import resolve_intake_lifecycle_filter
+
+    lane = resolve_intake_lifecycle_filter(intake_lane)
+    ir = _sql_intake_resolution_status()
+    status_l = func.lower(func.coalesce(Lead.status, literal("")))
+    if lane == "new":
+        filters.append(_sql_intake_not_terminal())
+        filters.append(status_l != "duplicate_review")
+        filters.append(ir.notin_(("in_progress", "qualified", "info_requested", "duplicate_review_requested")))
+        filters.append(~_sql_intake_in_progress_signals())
+        return
+    if lane == "in_progress":
+        filters.append(_sql_intake_not_terminal())
+        filters.append(status_l != "duplicate_review")
+        filters.append(~_sql_pool_intent())
+        filters.append(_sql_intake_in_progress_signals())
+        return
+    if lane == "needs_decision":
+        # Partition vs in_progress: only duplicate review (blocked on an operator decision).
+        filters.append(Lead.candidate_id.is_(None))
+        filters.append(
+            or_(
+                status_l == "duplicate_review",
+                ir.in_(("duplicate_review", "duplicate_review_requested")),
+            )
+        )
+        return
+    if lane == "pool":
+        filters.append(Lead.candidate_id.is_(None))
+        filters.append(_sql_pool_intent())
+        return
+    if lane == "completed":
+        filters.append(
+            or_(
+                Lead.candidate_id.is_not(None),
+                status_l == "rejected",
+                ir == "rejected",
+                and_(
+                    func.lower(func.coalesce(Lead.stage, literal(""))) == "lost",
+                    Lead.candidate_id.is_(None),
+                ),
+            )
+        )
+        return
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail=(
+            "intake_lifecycle must be one of: new, in_progress, needs_decision, pool, completed "
+            "(legacy intake_lane aliases: to_call, called, rejected, pool, duplicate, converted)"
+        ),
+    )
+
 
 def _sql_effective_lead_conversion_root() -> Any:
     mapped = (
@@ -132,6 +254,7 @@ async def _build_lead_list_filters(
     created_before_hours: Optional[int] = None,
     lead_type: Optional[str] = None,
     lead_target_type: Optional[str] = None,
+    intake_lane: Optional[str] = None,
 ) -> Tuple[List[Any], Any, Any, datetime]:
     filters: List[Any] = [Lead.tenant_id == tenant_id]
     filters.append(func.lower(func.coalesce(Lead.stage, "")).notin_(tuple(OPERATIONAL_EXCLUDED_LEAD_STAGES)))
@@ -296,6 +419,18 @@ async def _build_lead_list_filters(
             )
         filters.append(Lead.error == pe)
 
+    lane = (intake_lane or "").strip().lower() or None
+    if lane:
+        if lane not in INTAKE_LANE_WHITELIST:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "intake_lifecycle must be one of: new, in_progress, needs_decision, pool, completed "
+                    "(legacy intake_lane aliases: to_call, called, rejected, pool, duplicate, converted)"
+                ),
+            )
+        _apply_intake_lane_filters(filters, intake_lane=lane)
+
     return filters, stuck_stage_subq, stuck_stage_join_on, now
 
 
@@ -311,6 +446,7 @@ async def count_leads(
     custom_field_match_value: Optional[str] = None,
     conversion_root: Optional[str] = None,
     pipeline_error: Optional[str] = None,
+    intake_lane: Optional[str] = None,
 ) -> int:
     filters, stuck_stage_subq, stuck_stage_join_on, _now = await _build_lead_list_filters(
         db,
@@ -325,6 +461,7 @@ async def count_leads(
         lost_reason_code=None,
         lost_from_crm_stage=None,
         pipeline_error=pipeline_error,
+        intake_lane=intake_lane,
     )
     total_stmt = select(func.count()).select_from(Lead)
     if stuck_stage_subq is not None and stuck_stage_join_on is not None:
@@ -421,6 +558,7 @@ async def list_leads(
     search: Optional[str] = None,
     lead_type: Optional[str] = None,
     lead_target_type: Optional[str] = None,
+    intake_lane: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
     only_lead_id: Optional[str] = None,
@@ -454,6 +592,7 @@ async def list_leads(
             created_before_hours=created_before_hours,
             lead_type=lead_type,
             lead_target_type=lead_target_type,
+            intake_lane=intake_lane,
         )
         sq = (search or "").strip().lower()
         text_search_or = _lead_list_text_search_or(sq) if len(sq) >= 2 else None
@@ -711,6 +850,11 @@ async def list_leads(
                 fit_reasons=fit_reasons,
                 vacancy_routing_confirmed=vacancy_routing_confirmed,
                 custom_fields=custom_field_maps.get(str(lead.id), {}),
+                intake_lifecycle=(
+                    project_recruitment_intake_lifecycle(lead)
+                    if is_recruitment_intake_lead(lead)
+                    else None
+                ),
             )
         )
 

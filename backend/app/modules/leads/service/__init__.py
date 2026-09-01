@@ -46,6 +46,7 @@ from ._helpers import (  # noqa: F401
 from ._listing import (  # noqa: F401
     CONVERSION_ROOTS_SET,
     CONVERSION_ROOT_ORDER,
+    INTAKE_LANE_WHITELIST,
     LEAD_LIST_PIPELINE_ERROR_WHITELIST,
     _LEAD_LEGACY_STAGE_TO_ROOT,
     _build_lead_list_filters,

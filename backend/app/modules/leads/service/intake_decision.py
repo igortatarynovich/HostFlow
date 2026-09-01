@@ -208,8 +208,11 @@ async def manual_process_block_code(
     if isinstance(ir, dict) and str(ir.get("status") or "").strip().lower() == "rejected":
         return "INTAKE_REJECTED"
 
-    if isinstance(ir, dict) and str(ir.get("status") or "").strip().lower() == "info_requested":
-        return "INTAKE_INFO_REQUESTED"
+    if isinstance(ir, dict):
+        ir_st = str(ir.get("status") or "").strip().lower()
+        last_dec = str(ir.get("last_decision") or "").strip().lower()
+        if ir_st == "info_requested" or last_dec == "request_info":
+            return "INTAKE_INFO_REQUESTED"
 
     idv = norm.get("intake_identity_v1")
     if isinstance(idv, dict) and str(idv.get("status") or "").strip().lower() == "unclear":

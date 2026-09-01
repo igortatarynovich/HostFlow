@@ -13,6 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.crypto import decrypt_secret, encrypt_secret, generate_secret
 from backend.app.core.settings import settings
 from backend.app.modules.leads import crud, service
+from backend.app.modules.leads.intake_lifecycle import (
+    is_recruitment_intake_lead,
+    project_recruitment_intake_lifecycle,
+)
 from backend.app.models.lead import Lead
 from backend.app.models.own_company import OwnCompany
 from backend.app.models.tenant import Tenant
@@ -1130,6 +1134,11 @@ async def list_unmapped_leads(
                     created_at=lead.created_at,
                     last_routed_at=lead.last_routed_at,
                     vacancy_routing_confirmed=vrc,
+                    intake_lifecycle=(
+                        project_recruitment_intake_lifecycle(lead)
+                        if is_recruitment_intake_lead(lead)
+                        else None
+                    ),
                 )
             )
         groups.append(

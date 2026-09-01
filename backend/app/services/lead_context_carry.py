@@ -109,6 +109,39 @@ def build_lead_continuity_snapshot(lead: Any) -> dict[str, Any]:
         snapshot["lead_stage"] = stage
         carried_fields.append("lead_stage")
 
+    call_raw = norm.get("call_result_v1")
+    if isinstance(call_raw, dict):
+        result = str(call_raw.get("result") or "").strip()
+        if result:
+            call_snapshot = {"result": result}
+            at = str(call_raw.get("at") or "").strip()
+            note = str(call_raw.get("note") or "").strip()
+            nxt = str(call_raw.get("next_contact_at") or "").strip()
+            actor = str(call_raw.get("by") or "").strip()
+            if at:
+                call_snapshot["at"] = at
+            if note:
+                call_snapshot["note"] = note
+            if nxt:
+                call_snapshot["next_contact_at"] = nxt
+            if actor:
+                call_snapshot["by"] = actor
+            snapshot["call_result_v1"] = call_snapshot
+            carried_fields.append("call_result_v1")
+
+    history_raw = norm.get("call_results_v1")
+    if isinstance(history_raw, list) and history_raw:
+        history = [dict(item) for item in history_raw if isinstance(item, dict) and item.get("result")]
+        if history:
+            snapshot["call_results_v1"] = history
+            if "call_results_v1" not in carried_fields:
+                carried_fields.append("call_results_v1")
+
+    answers = norm.get("field_answers")
+    if isinstance(answers, list) and answers:
+        snapshot["intake_answers_v1"] = [dict(a) for a in answers if isinstance(a, dict)]
+        carried_fields.append("intake_answers_v1")
+
     return snapshot
 
 
@@ -137,6 +170,9 @@ async def carry_lead_context_on_conversion(
 
     if carried_fields:
         extra["lead_continuity_v1"] = snapshot
+        answers = snapshot.get("intake_answers_v1")
+        if isinstance(answers, list) and answers and "intake_answers_v1" not in extra:
+            extra["intake_answers_v1"] = answers
     else:
         extra["lead_continuity_v1"] = {
             "schema_version": LEAD_CONTINUITY_SCHEMA,

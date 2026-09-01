@@ -44,7 +44,14 @@ def normalized_merging_lead_persisted_blocks(lead: Lead, normalized: Dict[str, A
     submissions = existing.get(SUBMISSIONS_V1_KEY)
     if isinstance(submissions, list):
         out[SUBMISSIONS_V1_KEY] = list(submissions)
-    for key in ("intake_attribution_v1", "intake_submit_resolution_v1", "public_intake_draft_v1"):
+    for key in (
+        "intake_attribution_v1",
+        "intake_submit_resolution_v1",
+        "public_intake_draft_v1",
+        "call_result_v1",
+        "call_results_v1",
+        "form_question_labels_v1",
+    ):
         if key in existing and key not in out:
             out[key] = existing[key]
     return out

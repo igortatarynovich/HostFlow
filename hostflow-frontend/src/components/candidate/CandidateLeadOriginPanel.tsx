@@ -33,6 +33,17 @@ export function CandidateLeadOriginPanel({
   const intakeStatus = text(intake.status)
   const intakeSummary = text(intake.summary) || text(intake.note)
   const leadStage = text(continuity.lead_stage)
+  const call = record(continuity.call_result_v1)
+  const callResult = text(call.result)
+  const callNote = text(call.note)
+  const callHistoryRaw = continuity.call_results_v1
+  const callHistory = Array.isArray(callHistoryRaw)
+    ? callHistoryRaw.filter((item): item is IntakeRecord => Boolean(item && typeof item === 'object'))
+    : []
+  const answersRaw = extra.intake_answers_v1 || continuity.intake_answers_v1
+  const answers = Array.isArray(answersRaw)
+    ? answersRaw.filter((item): item is IntakeRecord => Boolean(item && typeof item === 'object'))
+    : []
   const notePreview = leadNote || (candidateNote?.includes('[From lead]') ? candidateNote : '')
 
   return (
@@ -67,12 +78,53 @@ export function CandidateLeadOriginPanel({
                 <dd className="font-medium text-slate-900">{intakeStatus}</dd>
               </div>
             ) : null}
-            {intakeSummary ? (
+            {callResult ? (
+              <div>
+                <dt className="text-xs text-slate-500">
+                  {t('app.candidate_card.from_lead_call', { defaultValue: 'Lead call result' })}
+                </dt>
+                <dd className="font-medium text-slate-900">
+                  {callResult}
+                  {callNote ? ` — ${callNote}` : ''}
+                </dd>
+              </div>
+            ) : null}
+            {callHistory.length > 1 ? (
               <div className="sm:col-span-2">
                 <dt className="text-xs text-slate-500">
-                  {t('app.candidate_card.from_lead_intake_summary', { defaultValue: 'Intake summary' })}
+                  {t('app.candidate_card.from_lead_calls', { defaultValue: 'Call history' })}
                 </dt>
-                <dd className="font-medium text-slate-900">{intakeSummary}</dd>
+                <dd className="font-medium text-slate-900">
+                  <ul className="mt-1 space-y-1 text-sm">
+                    {callHistory.map((item, idx) => (
+                      <li key={`${text(item.at)}-${idx}`}>
+                        {text(item.result)}
+                        {text(item.note) ? ` — ${text(item.note)}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            ) : null}
+            {answers.length > 0 ? (
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-slate-500">
+                  {t('app.candidate_card.from_lead_answers', { defaultValue: 'Original questionnaire' })}
+                </dt>
+                <dd className="font-medium text-slate-900">
+                  <ul className="mt-1 space-y-1 text-sm">
+                    {answers.slice(0, 12).map((item, idx) => {
+                      const label = text(item.label) || text(item.name) || `#${idx}`
+                      const values = item.values
+                      const value = Array.isArray(values) ? values.map((v) => String(v)).join(', ') : text(values)
+                      return (
+                        <li key={`${label}-${idx}`}>
+                          <span className="text-slate-500">{label}:</span> {value}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </dd>
               </div>
             ) : null}
           </dl>

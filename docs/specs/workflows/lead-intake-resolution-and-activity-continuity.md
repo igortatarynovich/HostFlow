@@ -307,6 +307,28 @@ Prefer recording intake-relevant work (calls, messages, doc requests, outcomes, 
 
 **Meta:** lock this spec; align `leads.status` / `normalized` only as needed per slice; ship incrementally (no big-bang UI).
 
+### 8.0.3 Recruitment Lead Intake Decision Surface
+
+Named cut: **Recruitment Lead Intake Decision Surface**. Four atomic deliverables (this order): answers projection → call outcome → authoritative intake state → conversion mapping + activity continuity.
+
+**Operator funnel:** `new → in_progress → terminal decision`. Terminal outcomes: converted | rejected | pool | duplicate_review. “No answer” is a **call outcome**, not a lead stage.
+
+**Authority:** `intake_resolution_v1` is the only recruitment-intake lifecycle SoT. UI / KPI / `GET /leads?intake_lifecycle=` consume one projection:
+
+`new | in_progress | converted | rejected | pool | duplicate_review`
+
+CRM `Lead.stage` is a **compatibility projection** only (`new` → `contacted` on first substantive action; `converted` / `lost` on terminals). Do not use it as a second independent truth for recruitment filters.
+
+**Queue filters:** `new | in_progress | needs_decision | pool | completed` (legacy `intake_lane` aliases still accepted). These partition the projection: `needs_decision` is duplicate review only (not “any called lead”).
+
+**First substantive action** (not opening the card) stamps `in_progress`: saved call result, operator note, operator RODO send / source-provided, request_info.
+
+**Call activity:** `POST /leads/{id}/call-result` records `call → outcome → note → actor → timestamp → next_contact_at`. History in `call_results_v1`. Convert carries history + original `field_answers` onto the candidate (`lead_continuity_v1` / `intake_answers_v1`).
+
+**Conversion mapping:** if an answer has an executable mapping to a Candidate destination (field-registry qualified code or `mapping_applied_v1.executable_rules`), the value is written at convert. Unmapped answers remain as the original questionnaire. No conversion-specific extra whitelist.
+
+**Out of this cut:** pipeline builder, SLA engine, scoring, AI, candidate documents, candidate stages, task sequences, comms automations.
+
 ### 8.0 Slice 2 — implementation signed off (operational consolidation, 2026-05)
 
 **Scope:** intake resolution **actions** + **reject taxonomy** + **manual Process gating** (stable block codes), aligned across **all operator entrypoints** — not only the primary Process button.

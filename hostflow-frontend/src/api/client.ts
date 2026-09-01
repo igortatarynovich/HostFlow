@@ -1182,6 +1182,8 @@ export async function listLeads(opts?: {
   lostFromCrmStage?: string;
   /** Exact Lead.error (server whitelist: LEAD_FIT_NO_MATCH, LEAD_FIT_NEEDS_INFO). */
   pipelineError?: string;
+  /** Recruitment intake queue: new | in_progress | needs_decision | pool | completed. */
+  intakeLane?: string;
   /** Substring search (server applies when trimmed length ≥ 2). */
   q?: string;
   customFieldKey?: string;
@@ -1205,6 +1207,8 @@ export async function listLeads(opts?: {
   if (lfc) params.lost_from_crm_stage = lfc;
   const pe = (opts?.pipelineError || '').trim();
   if (pe) params.pipeline_error = pe;
+  const lane = (opts?.intakeLane || '').trim().toLowerCase();
+  if (lane) params.intake_lifecycle = lane;
   const qq = (opts?.q || '').trim();
   if (qq.length >= 2) params.q = qq;
   const cfk = (opts?.customFieldKey || '').trim();
@@ -1266,6 +1270,7 @@ export type LeadCallResultPayload = {
   result: LeadCallResultCode
   note?: string | null
   bump_stage?: boolean
+  next_contact_at?: string | null
 }
 
 /** POST /leads/:id/call-result — B2B appeal call disposition + comment. */

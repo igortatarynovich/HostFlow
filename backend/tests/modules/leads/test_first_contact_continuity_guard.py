@@ -71,6 +71,17 @@ async def test_greenfield_lead_no_sync_reasons() -> None:
 
 
 @pytest.mark.anyio
+async def test_suppression_reasons_call_result_present() -> None:
+    lead = _lead_ns(
+        id=str(uuid.uuid4()),
+        stage="new",
+        normalized={"call_result_v1": {"result": "no_answer", "at": "2026-09-01T10:00:00+00:00"}},
+    )
+    r = lead_first_contact_suppression_reasons_sync(lead)
+    assert "call_result:present" in r
+
+
+@pytest.mark.anyio
 async def test_uos_creates_call_reminder_without_lead_context(
     tenant_id: str, bootstrap: Dict[str, str]
 ) -> None:

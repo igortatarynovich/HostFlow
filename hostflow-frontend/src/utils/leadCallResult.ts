@@ -6,16 +6,25 @@ export type LeadCallResultEntry = {
   note?: string | null
   at?: string | null
   by?: string | null
+  next_contact_at?: string | null
 }
 
-export const LEAD_CALL_RESULT_CODES: LeadCallResultCode[] = [
-  'no_answer',
-  'answered',
-  'callback_requested',
+export const LEAD_CALL_REACHED_CODES: LeadCallResultCode[] = [
   'interested',
   'not_interested',
-  'wrong_number',
+  'callback_requested',
+]
+
+export const LEAD_CALL_NO_ANSWER_CODES: LeadCallResultCode[] = [
+  'no_answer',
   'unavailable',
+  'wrong_number',
+]
+
+export const LEAD_CALL_RESULT_CODES: LeadCallResultCode[] = [
+  ...LEAD_CALL_REACHED_CODES,
+  'answered',
+  ...LEAD_CALL_NO_ANSWER_CODES,
 ]
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -33,6 +42,7 @@ export function parseLeadCallResultEntry(value: unknown): LeadCallResultEntry | 
     note: o.note != null ? String(o.note) : null,
     at: o.at != null ? String(o.at) : null,
     by: o.by != null ? String(o.by) : null,
+    next_contact_at: o.next_contact_at != null ? String(o.next_contact_at) : null,
   }
 }
 

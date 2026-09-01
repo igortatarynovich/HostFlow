@@ -273,6 +273,14 @@ class LeadOut(BaseModel):
         default=None,
         description="True when ``intake_vacancy_confirm_v1`` matches the lead's committed ``vacancy_id``.",
     )
+    intake_lifecycle: Optional[str] = Field(
+        default=None,
+        description=(
+            "Recruitment intake projection (single authority over intake_resolution_v1): "
+            "new | in_progress | converted | rejected | pool | duplicate_review. "
+            "CRM stage is compatibility only."
+        ),
+    )
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -289,7 +297,7 @@ LeadCallResult = Literal[
 
 
 class LeadCallResultIn(BaseModel):
-    """Operator disposition after a call on a B2B appeal / client lead."""
+    """Operator disposition after a call on a recruitment or B2B lead."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -302,9 +310,16 @@ class LeadCallResultIn(BaseModel):
         max_length=2000,
         description="Free-text: what they want / think, when to call back, conditions.",
     )
+    next_contact_at: Optional[datetime] = Field(
+        default=None,
+        description="When to call back (required in UI for callback_requested).",
+    )
     bump_stage: bool = Field(
         default=True,
-        description="When true, contact-reached results move CRM stage to contacted (if not already later).",
+        description=(
+            "B2B: contact-reached results may move CRM stage to contacted. "
+            "Recruitment intake uses intake_resolution_v1; stage is compatibility only."
+        ),
     )
 
     @field_validator("note", mode="before")

@@ -464,6 +464,11 @@ async def process_normalized_lead(
         normalized["resolved_company_id"] = resolved_company_id
     resolved_company_name = next((hint for hint in company_hints if hint), None)
 
+    if lead_target_type == "candidate" and not sales_lead_without_candidate:
+        from backend.app.modules.leads.intake_lifecycle import ensure_recruitment_intake_new
+
+        ensure_recruitment_intake_new(normalized)
+
     if lead is None:
         tenant_row = await db.get(Tenant, tenant_id)
         lic_row = (
@@ -1137,42 +1142,32 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
-    first_name = normalized.get("first_name") or "Meta"
-    last_name = normalized.get("last_name") or normalized.get("full_name") or "Lead"
-    if not last_name.strip():
+    from backend.app.modules.leads.conversion_mapping import apply_executable_intake_mapping
+    from backend.app.services.lead_rodo import rodo_lead_audit_for_candidate_extra
+
+    mapped = apply_executable_intake_mapping(normalized if isinstance(normalized, dict) else {})
+    first_name = (
+        mapped.columns.get("first_name")
+        or normalized.get("first_name")
+        or "Meta"
+    )
+    last_name = (
+        mapped.columns.get("last_name")
+        or normalized.get("last_name")
+        or normalized.get("full_name")
+        or "Lead"
+    )
+    if not str(last_name).strip():
         last_name = "Lead"
 
-    extra_fields: Dict[str, Any] = {}
-    personal_fields: Dict[str, Any] = {}
-    preferred_contact = normalized.get("preferred_contact") or normalized.get("preferred_contact_raw")
-    if isinstance(preferred_contact, str) and preferred_contact.strip():
-        extra_fields["preferred_contact"] = preferred_contact.strip()
-    in_poland_value = normalized.get("in_poland")
-    if isinstance(in_poland_value, bool):
-        extra_fields["in_poland"] = in_poland_value
-        personal_fields["in_poland"] = in_poland_value
-    elif isinstance(in_poland_value, str):
-        lowered = in_poland_value.strip().lower()
-        if lowered in {"true", "yes", "1"}:
-            extra_fields["in_poland"] = True
-            personal_fields["in_poland"] = True
-        elif lowered in {"false", "no", "0"}:
-            extra_fields["in_poland"] = False
-            personal_fields["in_poland"] = False
-    poland_basis = normalized.get("poland_stay_basis") or normalized.get("poland_stay_basis_raw")
-    if isinstance(poland_basis, str) and poland_basis.strip():
-        extra_fields["poland_stay_basis"] = poland_basis.strip()
-        personal_fields["residency_status"] = poland_basis.strip()
-    # Handle driving experience - save both raw string and normalized number
-    driving_experience = normalized.get("driving_experience_in_europe")
-    if isinstance(driving_experience, str) and driving_experience.strip():
-        extra_fields["driving_experience_in_europe"] = driving_experience.strip()
-    # Also save normalized number of years if available (опыт по ЕС)
-    experience_eu_years = normalized.get("experience_eu_years")
-    if isinstance(experience_eu_years, int) and experience_eu_years >= 0:
-        extra_fields["experience_eu_years"] = experience_eu_years
-
-    from backend.app.services.lead_rodo import rodo_lead_audit_for_candidate_extra
+    extra_fields: Dict[str, Any] = dict(mapped.extra)
+    personal_fields: Dict[str, Any] = dict(mapped.personal)
+    mapped_email = mapped.columns.get("email")
+    mapped_phone = mapped.columns.get("phone")
+    if mapped_email:
+        email = mapped_email
+    if mapped_phone:
+        phone = mapped_phone
 
     rodo_audit = rodo_lead_audit_for_candidate_extra(
         normalized if isinstance(normalized, dict) else {},
@@ -1181,25 +1176,28 @@ async def process_normalized_lead(
     if rodo_audit:
         extra_fields["rodo_lead_audit"] = rodo_audit
 
+    contact_fields = {
+        key: value
+        for key, value in {
+            "email": email,
+            "phone": phone,
+            "phone_country_code": mapped.columns.get("phone_country_code") or normalized.get("phone_country_code"),
+            "preferred_messenger": extra_fields.get("preferred_contact") or mapped.contacts.get("preferred_messenger"),
+            **{k: v for k, v in mapped.contacts.items() if v not in (None, "")},
+        }.items()
+        if value
+    }
+
     candidate_payload: Dict[str, Any] = {
-        "first_name": first_name.strip() or "Meta",
-        "last_name": last_name.strip() or "Lead",
+        "first_name": str(first_name).strip() or "Meta",
+        "last_name": str(last_name).strip() or "Lead",
         "email": email,
         "phone": phone,
-        "phone_country_code": normalized.get("phone_country_code"),
+        "phone_country_code": mapped.columns.get("phone_country_code") or normalized.get("phone_country_code"),
         "own_company_id": getattr(lead, "own_company_id", None),
         "company_id": resolved_company_id,
         "vacancy_id": vacancy.id if vacancy else None,
-        "contacts": {
-            key: value
-            for key, value in {
-                "email": email,
-                "phone": phone,
-                "phone_country_code": normalized.get("phone_country_code"),
-                "preferred_messenger": extra_fields.get("preferred_contact"),
-            }.items()
-            if value
-        },
+        "contacts": contact_fields,
         "source": source,
         "origin": {source: normalized},
     }
@@ -1257,14 +1255,20 @@ async def process_normalized_lead(
 
     recruiter_id = getattr(candidate, "recruiter_id", None)
 
+    from backend.app.modules.leads.intake_lifecycle import stamp_recruitment_intake_converted
+
+    stamp_recruitment_intake_converted(lead)
+    converted_norm = lead.normalized if isinstance(lead.normalized, dict) else normalized
+
     await crud.update_lead(
         db,
         lead,
         status="processed",
         candidate_id=str(candidate.id),
         vacancy_id=candidate.vacancy_id,
-        normalized=normalized,
+        normalized=converted_norm,
         error=None,
+        stage="converted",
     )
     await lead_custom_fields.sync_lead_custom_fields_from_normalized(
         db,

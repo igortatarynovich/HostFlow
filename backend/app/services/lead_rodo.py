@@ -899,6 +899,16 @@ async def _send_lead_rodo_via_recruitment_pipeline(
     lead.normalized = norm_out
     await db.flush()
 
+    if not auto_trigger:
+        from backend.app.modules.leads.intake_lifecycle import mark_recruitment_intake_in_progress
+
+        mark_recruitment_intake_in_progress(
+            lead,
+            actor=actor_id,
+            last_action="rodo_sent",
+        )
+        await db.flush()
+
     await log_audit_event(
         db,
         tenant_id=tenant_id,
@@ -965,6 +975,14 @@ def mark_lead_rodo_source_provided(
         block["source_provided_note"] = str(note).strip()[:2000]
     norm["rodo"] = block
     lead.normalized = norm
+    if actor_id:
+        from backend.app.modules.leads.intake_lifecycle import mark_recruitment_intake_in_progress
+
+        mark_recruitment_intake_in_progress(
+            lead,
+            actor=actor_id,
+            last_action="rodo_source_provided",
+        )
 
 
 __all__ = [

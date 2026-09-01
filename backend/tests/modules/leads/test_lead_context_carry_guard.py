@@ -53,6 +53,40 @@ async def test_build_lead_continuity_snapshot_includes_note_and_intake() -> None
 
 
 @pytest.mark.anyio
+async def test_build_lead_continuity_snapshot_includes_call_result() -> None:
+    lead = type(
+        "L",
+        (),
+        {
+            "id": "lead-call",
+            "note": "",
+            "stage": "contacted",
+            "normalized": {
+                "call_result_v1": {
+                    "result": "interested",
+                    "note": "CE 5 years, callback tomorrow",
+                    "at": "2026-09-01T10:00:00+00:00",
+                },
+                "call_results_v1": [
+                    {"result": "no_answer", "at": "2026-09-01T09:00:00+00:00"},
+                    {
+                        "result": "interested",
+                        "note": "CE 5 years, callback tomorrow",
+                        "at": "2026-09-01T10:00:00+00:00",
+                    },
+                ],
+            },
+        },
+    )()
+    snap = build_lead_continuity_snapshot(lead)
+    assert snap["call_result_v1"]["result"] == "interested"
+    assert snap["call_result_v1"]["note"] == "CE 5 years, callback tomorrow"
+    assert "call_result_v1" in snap["carried_fields"]
+    assert len(snap["call_results_v1"]) == 2
+    assert "call_results_v1" in snap["carried_fields"]
+
+
+@pytest.mark.anyio
 async def test_conversion_carries_lead_note_to_candidate(
     tenant_id: str,
     bootstrap: Dict[str, str],

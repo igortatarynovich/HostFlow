@@ -34,6 +34,8 @@ export interface Lead {
   external_id?: string | null;
   status: LeadStatus;
   stage?: LeadStage | null;
+  /** Recruitment intake projection: new | in_progress | converted | rejected | pool | duplicate_review */
+  intake_lifecycle?: string | null;
   funnel_id?: UUID | null;
   stage_contract?: LeadStageContractV1 | null;
   candidate_id?: UUID | null;
