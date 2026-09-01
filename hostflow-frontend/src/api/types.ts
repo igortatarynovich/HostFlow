@@ -1068,7 +1068,7 @@ export interface MetaGraphFieldDataPreviewField {
 export interface MetaGraphFieldDataPreviewResponse {
   field_names: string[];
   fields: MetaGraphFieldDataPreviewField[];
-  leadgen_id: string;
+  leadgen_id?: string | null;
   page_id: string;
   ad_id?: string | null;
   form_id?: string | null;

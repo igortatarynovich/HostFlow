@@ -50,6 +50,28 @@ async def fetch_page_leadgen_forms(
     )
 
 
+async def fetch_leadgen_form(form_id: str, access_token: str) -> dict[str, Any]:
+    """Form metadata including ``questions`` (keys/labels) for field mapping."""
+    return await _graph_get(
+        str(form_id),
+        access_token=access_token,
+        params={"fields": "id,name,status,locale,questions"},
+    )
+
+
+async def fetch_leadgen_form_latest_lead(
+    form_id: str, access_token: str
+) -> Optional[dict[str, Any]]:
+    """Newest Graph lead on the form, if any (sample ``field_data``)."""
+    rows = await _graph_get_paged(
+        f"{form_id}/leads",
+        access_token=access_token,
+        params={"fields": "id,created_time,field_data,ad_id,form_id"},
+        limit=1,
+    )
+    return rows[0] if rows else None
+
+
 async def fetch_ad_node(ad_id: str, access_token: str) -> dict[str, Any]:
     fields = "id,name,status,effective_status,campaign_id,adset_id"
     return await _graph_get(str(ad_id), access_token=access_token, params={"fields": fields})

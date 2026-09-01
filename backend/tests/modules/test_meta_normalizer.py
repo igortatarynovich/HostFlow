@@ -155,3 +155,22 @@ def test_normalize_meta_payload_maps_nazwa_firmy_and_preserves_field_answers():
     names = [row["name"] for row in data["field_answers"]]
     assert "nazwa_firmy" in names
     assert "kogo_obecnie_poszukujesz?" in names
+
+
+def test_normalize_meta_payload_maps_danema_cyrillic_question_keys():
+    payload = _make_payload(
+        [
+            {"name": "email", "values": ["driver@example.com"]},
+            {
+                "name": "основание_для_пребывания_в_польше",
+                "values": ["karta_pobytu_(residence_card)"],
+            },
+            {"name": "опыт_работы_с/се_в_европе", "values": ["2 years"]},
+        ]
+    )
+
+    data = normalizer.normalize_meta_payload(payload)
+
+    assert data["poland_stay_basis"] == "karta_pobytu"
+    assert data["poland_stay_basis_raw"] == "karta_pobytu_(residence_card)"
+    assert data["driving_experience_in_europe"] == "2 years"

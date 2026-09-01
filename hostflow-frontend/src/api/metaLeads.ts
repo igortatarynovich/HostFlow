@@ -291,6 +291,7 @@ export async function putMetaFormRoute(formId: string, payload: MetaFormRouteUpd
 export async function fetchMetaGraphFieldPreview(payload: {
   leadgen_id?: string
   page_id?: string
+  form_id?: string
   hostflow_lead_id?: string
 }): Promise<MetaGraphFieldDataPreviewResponse> {
   const { data } = await api.post<MetaGraphFieldDataPreviewResponse>(`${BASE}/meta/graph-field-preview`, payload)

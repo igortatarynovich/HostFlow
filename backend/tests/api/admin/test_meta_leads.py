@@ -532,6 +532,85 @@ async def test_meta_graph_field_preview_graph_error(client, manager_headers, mon
 
 
 @pytest.mark.anyio
+async def test_meta_graph_field_preview_by_form_id(client, manager_headers, monkeypatch):
+    from backend.app.modules.leads import meta_marketing_graph as graph
+
+    async def fake_form(form_id: str, access_token: str):
+        assert form_id == "1074988858916526"
+        assert access_token == "TOKFORM"
+        return {
+            "id": form_id,
+            "name": "Metafora TSL C/CE 110",
+            "questions": [
+                {"key": "email", "label": "Email", "type": "EMAIL"},
+                {
+                    "key": "основание_для_пребывания_в_польше",
+                    "label": "Основание для пребывания в Польше",
+                    "type": "CUSTOM",
+                },
+            ],
+        }
+
+    async def fake_latest(form_id: str, access_token: str):
+        assert form_id == "1074988858916526"
+        return {
+            "id": "1010176182055377",
+            "form_id": form_id,
+            "ad_id": "120252053013860163",
+            "field_data": [{"name": "email", "values": ["a@b.co"]}],
+        }
+
+    monkeypatch.setattr(graph, "fetch_leadgen_form", fake_form)
+    monkeypatch.setattr(graph, "fetch_leadgen_form_latest_lead", fake_latest)
+
+    cred = await client.post(
+        "/api/v1/settings/leads/credentials",
+        headers=manager_headers,
+        json={"label": "gf", "secret": "sec", "page_id": "259905353877064", "access_token": "TOKFORM"},
+    )
+    assert cred.status_code == 201, cred.text
+
+    resp = await client.post(
+        "/api/v1/settings/leads/meta/graph-field-preview",
+        headers=manager_headers,
+        json={"form_id": "1074988858916526", "page_id": "259905353877064"},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["form_id"] == "1074988858916526"
+    assert data["leadgen_id"] == "1010176182055377"
+    names = data["field_names"]
+    assert "email" in names
+    assert "основание_для_пребывания_в_польше" in names
+    email = next(f for f in data["fields"] if f["name"] == "email")
+    assert email["value_preview"] == "a@b.co"
+
+
+@pytest.mark.anyio
+async def test_meta_forms_list_includes_graph_leadgen_forms(client, manager_headers, monkeypatch):
+    async def _fake_graph(_db, *, tenant_id: str):
+        return [
+            {
+                "form_id": "1074988858916526",
+                "page_id": "259905353877064",
+                "form_name": "Metafora TSL C/CE 110",
+                "source": "meta",
+            }
+        ]
+
+    monkeypatch.setattr(
+        "backend.app.acquisition.connect_source_picker.discover_leadgen_forms_from_connected_pages",
+        _fake_graph,
+    )
+    resp = await client.get("/api/v1/settings/leads/meta/forms", headers=manager_headers)
+    assert resp.status_code == 200, resp.text
+    items = resp.json().get("items") or []
+    by_id = {str(x.get("form_id")): x for x in items}
+    assert "1074988858916526" in by_id
+    assert by_id["1074988858916526"]["form_name"] == "Metafora TSL C/CE 110"
+
+
+@pytest.mark.anyio
 async def test_meta_self_serve_onboarding_admin(client, manager_headers, tenant_id, monkeypatch):
     monkeypatch.setattr(settings, "meta_leads_app_id", "1102404865044655", raising=False)
     monkeypatch.setattr(settings, "meta_leads_shared_app_secret", "shared-secret-test", raising=False)

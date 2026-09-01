@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any, Optional
 
 from sqlalchemy import select
@@ -298,6 +299,8 @@ async def discover_leadgen_forms_from_connected_pages(
     db: AsyncSession, *, tenant_id: str
 ) -> list[dict[str, Optional[str]]]:
     """Active Lead Forms on Pages with stored Meta credentials (no wait for first lead)."""
+    if os.environ.get("HOSTFLOW_TEST_LIGHT_STARTUP", "").strip().lower() in ("1", "true", "yes"):
+        return []
     from backend.app.core.crypto import decrypt_secret
     from backend.app.modules.leads import crud as leads_crud
     from backend.app.modules.leads.meta_marketing_graph import fetch_page_leadgen_forms
@@ -321,7 +324,7 @@ async def discover_leadgen_forms_from_connected_pages(
             if not isinstance(row, dict):
                 continue
             status = str(row.get("status") or "ACTIVE").strip().upper()
-            if status not in {"", "ACTIVE"}:
+            if status in {"ARCHIVED", "DELETED", "DRAFT"}:
                 continue
             fid = str(row.get("id") or "").strip()
             if not fid or fid in seen:

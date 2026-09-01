@@ -1120,6 +1120,10 @@ class MetaGraphFieldDataPreviewRequest(BaseModel):
 
     leadgen_id: Optional[str] = Field(default=None, description="Meta lead id from Ads / webhook")
     page_id: Optional[str] = Field(default=None, description="Facebook Page id (must match a stored credential)")
+    form_id: Optional[str] = Field(
+        default=None,
+        description="Meta Lead Form id: load questions (and latest lead sample) without a HostFlow row",
+    )
     hostflow_lead_id: Optional[UUID] = Field(
         default=None,
         description="Optional HostFlow lead row: resolves leadgen_id + page_id from stored payload",
@@ -1134,7 +1138,7 @@ class MetaGraphFieldDataPreviewField(BaseModel):
 class MetaGraphFieldDataPreviewResponse(BaseModel):
     field_names: List[str]
     fields: List[MetaGraphFieldDataPreviewField]
-    leadgen_id: str
+    leadgen_id: Optional[str] = None
     page_id: str
     ad_id: Optional[str] = None
     form_id: Optional[str] = None

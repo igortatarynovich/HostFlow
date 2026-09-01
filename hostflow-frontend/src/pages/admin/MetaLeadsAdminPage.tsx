@@ -1606,7 +1606,10 @@ export default function MetaLeadsAdminPage() {
     const pick = graphHostflowLeadPick.trim()
     const lg = graphLeadgenInput.trim()
     const pg = graphPageInput.trim()
-    if (!pick && (!lg || !pg)) {
+    const selectedForm = parseMetaFormSelectionKey(selectedFormKey)
+    const formId = selectedForm?.source === 'meta' ? selectedForm.form_id.trim() : ''
+    const formPage = selectedForm?.page_id?.trim() || pg
+    if (!pick && !(lg && (pg || formPage)) && !formId) {
       setError({
         title: t('admin.meta_leads.field_mapping.graph_fetch_validation_title'),
         hint: t('admin.meta_leads.field_mapping.graph_fetch_validation_hint'),
@@ -1617,11 +1620,15 @@ export default function MetaLeadsAdminPage() {
     setError(null)
     try {
       const res = await fetchMetaGraphFieldPreview(
-        pick ? { hostflow_lead_id: pick, ...(pg ? { page_id: pg } : {}) } : { leadgen_id: lg, page_id: pg },
+        pick
+          ? { hostflow_lead_id: pick, ...(pg ? { page_id: pg } : {}) }
+          : lg
+            ? { leadgen_id: lg, page_id: pg || formPage }
+            : { form_id: formId, ...(formPage ? { page_id: formPage } : {}) },
       )
       setGraphPreviewFields(Array.isArray(res.fields) ? res.fields : [])
-      setGraphLeadgenInput(res.leadgen_id)
-      setGraphPageInput(res.page_id)
+      setGraphLeadgenInput(res.leadgen_id || lg)
+      setGraphPageInput(res.page_id || pg || formPage)
       if (res.form_id?.trim()) {
         const fid = res.form_id.trim()
         const pid = res.page_id?.trim() ?? ''
@@ -1668,7 +1675,7 @@ export default function MetaLeadsAdminPage() {
     } finally {
       setGraphFetchLoading(false)
     }
-  }, [graphHostflowLeadPick, graphLeadgenInput, graphPageInput, planLimitModal, t])
+  }, [graphHostflowLeadPick, graphLeadgenInput, graphPageInput, planLimitModal, selectedFormKey, t])
 
   const fieldMappingRuleCount = useMemo(() => {
     let n = 0
@@ -3373,7 +3380,8 @@ export default function MetaLeadsAdminPage() {
                 disabled={
                   graphFetchLoading ||
                   (!graphHostflowLeadPick.trim() &&
-                    (!graphLeadgenInput.trim() || !graphPageInput.trim()))
+                    !(graphLeadgenInput.trim() && graphPageInput.trim()) &&
+                    parseMetaFormSelectionKey(selectedFormKey)?.source !== 'meta')
                 }
                 onClick={() => void handleFetchGraphFields()}
               >

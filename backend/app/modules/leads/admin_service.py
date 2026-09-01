@@ -1248,18 +1248,120 @@ _MAX_PAYLOAD_PREVIEW = 16_384
 _MAX_NORMALIZED_PREVIEW = 8_192
 
 
+def _fields_from_graph_questions(questions: Any) -> List[MetaGraphFieldDataPreviewField]:
+    out: List[MetaGraphFieldDataPreviewField] = []
+    seen: set[str] = set()
+    if not isinstance(questions, list):
+        return out
+    for item in questions:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("key") or item.get("id") or "").strip()
+        if not key:
+            continue
+        nl = key.lower()
+        if nl in seen:
+            continue
+        seen.add(nl)
+        label = str(item.get("label") or "").strip() or None
+        out.append(MetaGraphFieldDataPreviewField(name=nl, value_preview=label))
+    return out
+
+
+def _merge_graph_field_data(
+    base: List[MetaGraphFieldDataPreviewField],
+    field_data: Any,
+) -> List[MetaGraphFieldDataPreviewField]:
+    by_name = {f.name: f for f in base}
+    if isinstance(field_data, list):
+        for item in field_data:
+            if not isinstance(item, dict):
+                continue
+            raw_name = str(item.get("name") or "").strip()
+            if not raw_name:
+                continue
+            nl = raw_name.lower()
+            sample = _meta_graph_value_preview(item.get("values"))
+            prev = by_name.get(nl)
+            if prev is None:
+                by_name[nl] = MetaGraphFieldDataPreviewField(name=nl, value_preview=sample)
+            elif sample:
+                by_name[nl] = MetaGraphFieldDataPreviewField(name=nl, value_preview=sample)
+    return list(by_name.values())
+
+
+async def _resolve_page_token_for_graph_preview(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    page_id: Optional[str],
+    form_id: Optional[str],
+) -> Tuple[str, str]:
+    """Return (page_id, token). Prefer an explicit page; else a credential that can read the form."""
+    from backend.app.modules.leads.meta_marketing_graph import fetch_leadgen_form
+
+    hinted = (page_id or "").strip() or None
+    if hinted:
+        token = await get_page_access_token(db, tenant_id, hinted)
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "meta_no_page_token",
+                    "message": "No Page access token for this page_id. Check Meta credentials.",
+                },
+            )
+        return hinted, token
+
+    fid = (form_id or "").strip()
+    if not fid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "page_id_required",
+                "message": "Provide page_id or form_id so the Page token can be resolved.",
+            },
+        )
+    entries = await crud.list_meta_credentials(db, tenant_id=tenant_id)
+    for entry in entries:
+        if str(getattr(entry, "status", "") or "").strip().lower() != "active":
+            continue
+        pid = (decrypt_secret(entry.encrypted_page_id) or "").strip()
+        token = (decrypt_secret(entry.encrypted_access_token) or "").strip()
+        if not pid or not token:
+            continue
+        try:
+            node = await fetch_leadgen_form(fid, token)
+        except Exception:
+            continue
+        if str(node.get("id") or "").strip() == fid:
+            return pid, token
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail={
+            "code": "meta_no_page_token",
+            "message": "No Page access token that can read this form_id. Check Meta credentials.",
+        },
+    )
+
+
 async def fetch_meta_graph_field_preview(
     db: AsyncSession,
     tenant_id: str,
     body: MetaGraphFieldDataPreviewRequest,
 ) -> MetaGraphFieldDataPreviewResponse:
     """
-    Pull field_data for a Meta lead from Graph using the tenant's Page token (real form field names).
+    Pull field names from Graph: a specific lead, or Lead Form questions (+ latest lead sample).
     """
     from backend.app.modules.leads import pipeline as meta_pipeline
+    from backend.app.modules.leads.meta_marketing_graph import (
+        fetch_leadgen_form,
+        fetch_leadgen_form_latest_lead,
+    )
 
     leadgen_id: Optional[str] = None
     page_id: Optional[str] = None
+    form_id = (body.form_id or "").strip() or None
 
     if body.hostflow_lead_id is not None:
         row = await db.get(Lead, str(body.hostflow_lead_id))
@@ -1283,72 +1385,62 @@ async def fetch_meta_graph_field_preview(
         leadgen_id = (body.leadgen_id or "").strip() or None
         page_id = (body.page_id or "").strip() or None
 
-    if not leadgen_id:
+    if not leadgen_id and not form_id:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
                 "code": "leadgen_id_required",
-                "message": "Provide leadgen_id or hostflow_lead_id whose payload contains leadgen_id.",
-            },
-        )
-    if not page_id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "code": "page_id_required",
-                "message": "Provide page_id or use hostflow_lead_id with page_id in stored webhook payload.",
+                "message": "Provide form_id, leadgen_id, or hostflow_lead_id whose payload contains leadgen_id.",
             },
         )
 
-    token = await get_page_access_token(db, tenant_id, page_id)
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "meta_no_page_token",
-                "message": "No Page access token for this page_id. Check Meta credentials.",
-            },
-        )
-
-    try:
-        graph_payload = await meta_pipeline.fetch_meta_lead_field_data_from_graph(leadgen_id, token)
-    except meta_pipeline.GraphAPIError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail={
-                "code": "meta_graph_error",
-                "message": str(exc),
-                "graph_code": exc.code,
-            },
-        ) from exc
-
-    field_data = graph_payload.get("field_data") if isinstance(graph_payload, dict) else None
-    if not isinstance(field_data, list):
-        field_data = []
+    page_id, token = await _resolve_page_token_for_graph_preview(
+        db, tenant_id, page_id=page_id, form_id=form_id
+    )
 
     fields_out: List[MetaGraphFieldDataPreviewField] = []
-    seen: set[str] = set()
-    for item in field_data:
-        if not isinstance(item, dict):
-            continue
-        raw_name = str(item.get("name") or "").strip()
-        if not raw_name:
-            continue
-        nl = raw_name.lower()
-        if nl in seen:
-            continue
-        seen.add(nl)
-        fields_out.append(
-            MetaGraphFieldDataPreviewField(
-                name=nl,
-                value_preview=_meta_graph_value_preview(item.get("values")),
-            )
+    ad_raw: Any = None
+    form_raw: Any = form_id
+
+    if form_id and not leadgen_id:
+        try:
+            form_node = await fetch_leadgen_form(form_id, token)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={"code": "meta_graph_error", "message": str(exc)},
+            ) from exc
+        fields_out = _fields_from_graph_questions(
+            form_node.get("questions") if isinstance(form_node, dict) else None
         )
+        form_raw = (form_node.get("id") if isinstance(form_node, dict) else None) or form_id
+        try:
+            latest = await fetch_leadgen_form_latest_lead(form_id, token)
+        except Exception:
+            latest = None
+        if isinstance(latest, dict):
+            leadgen_id = str(latest.get("id") or "").strip() or None
+            ad_raw = latest.get("ad_id")
+            form_raw = latest.get("form_id") or form_raw
+            fields_out = _merge_graph_field_data(fields_out, latest.get("field_data"))
+    else:
+        try:
+            graph_payload = await meta_pipeline.fetch_meta_lead_field_data_from_graph(leadgen_id, token)
+        except meta_pipeline.GraphAPIError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail={
+                    "code": "meta_graph_error",
+                    "message": str(exc),
+                    "graph_code": exc.code,
+                },
+            ) from exc
+        field_data = graph_payload.get("field_data") if isinstance(graph_payload, dict) else None
+        fields_out = _merge_graph_field_data([], field_data)
+        ad_raw = graph_payload.get("ad_id") if isinstance(graph_payload, dict) else None
+        form_raw = graph_payload.get("form_id") if isinstance(graph_payload, dict) else form_raw
 
     fields_out.sort(key=lambda f: f.name)
-    ad_raw = graph_payload.get("ad_id") if isinstance(graph_payload, dict) else None
-    form_raw = graph_payload.get("form_id") if isinstance(graph_payload, dict) else None
-
     return MetaGraphFieldDataPreviewResponse(
         field_names=[f.name for f in fields_out],
         fields=fields_out,
@@ -1453,6 +1545,14 @@ async def list_meta_lead_forms(
     saved = await crud.list_meta_form_mapping_rows(db, tenant_id=tenant_id, source=src)
     saved_routes = await crud.list_meta_form_routes(db, tenant_id=tenant_id, source=src)
     discovered = await crud.list_discovered_meta_forms_from_leads(db, tenant_id=tenant_id, source=src)
+    from backend.app.acquisition.connect_source_picker import discover_leadgen_forms_from_connected_pages
+
+    graph_forms: List[Dict[str, Any]] = []
+    if src == "meta":
+        try:
+            graph_forms = await discover_leadgen_forms_from_connected_pages(db, tenant_id=tenant_id)
+        except Exception:
+            graph_forms = []
 
     routes_by_key: Dict[Tuple[str, str], Any] = {}
 
@@ -1525,6 +1625,31 @@ async def list_meta_lead_forms(
             has_form_mapping=False,
             mapping_rules_count=0,
             inherits_tenant_fallback=True,
+            ),
+            fid,
+            pid,
+        )
+
+    for disc in graph_forms:
+        fid = str(disc.get("form_id") or "").strip()
+        if not fid:
+            continue
+        pid = str(disc.get("page_id") or "").strip() or None
+        k = key(fid, pid)
+        name = str(disc.get("form_name") or "").strip() or None
+        if k in by_key:
+            if name and not by_key[k].form_name:
+                by_key[k] = by_key[k].model_copy(update={"form_name": name})
+            continue
+        by_key[k] = apply_route_fields(
+            MetaLeadFormSummaryOut(
+                form_id=fid,
+                page_id=pid,
+                source=src,
+                form_name=name,
+                has_form_mapping=False,
+                mapping_rules_count=0,
+                inherits_tenant_fallback=True,
             ),
             fid,
             pid,
