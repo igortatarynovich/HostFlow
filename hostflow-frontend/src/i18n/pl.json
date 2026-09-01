@@ -7957,7 +7957,16 @@
           "attach_existing": "Lead dołączony do istniejącego kandydata.",
           "create_new": "Z leada utworzono nowego kandydata.",
           "ignore": "Oznaczono jako nie duplikat."
-        }
+        },
+        "badge_attached": "Dołączony",
+        "badge_duplicate": "Duplikat",
+        "open_candidate": "Otwórz kandydata",
+        "prior_candidate": "Poprzedni kandydat",
+        "prior_candidate_created": "Kandydat już istnieje",
+        "prior_no_candidate": "Kandydat nie został utworzony",
+        "prior_outcome": "Wynik",
+        "prior_reason": "Powód",
+        "prior_repeat": "Już widziany jako duplikat {n} raz(y)."
       },
       "client_detail": {
         "rejected": "Lead odrzucony i wyłączony z przetwarzania kandydatów.",

@@ -114,7 +114,7 @@ Sequence диаграмма (логический порядок):
 
 UI: identity bar + answers table + `LeadIntakeCallStep` на intake workspace; карточка client lead (`ClientLeadDetailView`). Для services-tenant заголовок списка — «Обращения» (`app.leads.title_services`).
 
-**Recruitment intake lifecycle (authority):** `LeadOut.intake_lifecycle` = `new | in_progress | converted | rejected | pool | duplicate_review`. Create candidate — терминальное решение (converted), не начало обработки.
+**Recruitment intake lifecycle (authority):** `LeadOut.intake_lifecycle` = `new | in_progress | converted | rejected | pool | duplicate_review`. Create candidate — терминальное решение (converted), не начало обработки. Дубль: явный `StatusBadge` + `duplicate_prior_v1` (кандидат создан / stage / причина) на существующем `LeadDuplicateReviewPanel`.
 
 ### Lead-stage RODO (art. 14)
 

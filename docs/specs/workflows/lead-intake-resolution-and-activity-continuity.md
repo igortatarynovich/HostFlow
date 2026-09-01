@@ -325,6 +325,8 @@ CRM `Lead.stage` is a **compatibility projection** only (`new` → `contacted` o
 
 **Call activity:** `POST /leads/{id}/call-result` records `call → outcome → note → actor → timestamp → next_contact_at`. History in `call_results_v1`. Convert carries history + original `field_answers` onto the candidate (`lead_continuity_v1` / `intake_answers_v1`).
 
+**Duplicate mark:** `StatusBadge` on identity and queue when `duplicate_review` / `duplicated` / `duplicate_match_v1`. Prior-candidate snapshot (`duplicate_prior_v1`: created, stage/outcome, reason) is shown via the existing `LeadDuplicateReviewPanel` (primitives: StatusBadge, StageTag, Button, FieldGrid) — not a local card.
+
 **Conversion mapping:** if an answer has an executable mapping to a Candidate destination (field-registry qualified code or `mapping_applied_v1.executable_rules`), the value is written at convert. Unmapped answers remain as the original questionnaire. No conversion-specific extra whitelist.
 
 **Out of this cut:** pipeline builder, SLA engine, scoring, AI, candidate documents, candidate stages, task sequences, comms automations.

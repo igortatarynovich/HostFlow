@@ -8,6 +8,7 @@ import LeadIntakeCallStep from '../components/leads/LeadIntakeCallStep'
 import LeadIntakeDecisionRail from '../components/leads/LeadIntakeDecisionRail'
 import LeadIntakeFormAnswers from '../components/leads/LeadIntakeFormAnswers'
 import LeadIntakeIdentityBar from '../components/leads/LeadIntakeIdentityBar'
+import LeadDuplicateReviewPanel from '../components/leads/LeadDuplicateReviewPanel'
 import LeadQualificationSummaryCard from '../components/leads/LeadQualificationSummaryCard'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
@@ -113,6 +114,8 @@ export function RecruitmentAgencyIntakeDetailView({
         />
 
         <LeadIntakeFormAnswers lead={lead} />
+
+        <LeadDuplicateReviewPanel lead={lead} onLeadUpdated={onLeadUpdated} />
 
         <LeadIntakeCallStep lead={lead} onLeadUpdated={onLeadUpdated} showTelButton={false} />
 

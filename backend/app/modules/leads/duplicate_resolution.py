@@ -11,9 +11,10 @@ silent attach, even when match is exact.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Mapping, Optional
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -432,6 +433,119 @@ async def resolve_lead_duplicate_match(
     return LeadDuplicateMatch(level="none", candidate=None, reasons=[], hr_blockers=[])
 
 
+def _as_mapping(value: Any) -> dict[str, Any]:
+    if isinstance(value, Mapping):
+        return dict(value)
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value or "{}")
+        except (TypeError, json.JSONDecodeError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
+def build_duplicate_prior_summary(candidate: Any) -> Optional[dict[str, Any]]:
+    """Compact history of the matched candidate (created? outcome? reason?)."""
+    if candidate is None:
+        return None
+    cid = str(getattr(candidate, "id", "") or "").strip()
+    if not cid:
+        return None
+
+    extra = _as_mapping(getattr(candidate, "extra", None))
+    origin = _as_mapping(getattr(candidate, "origin", None))
+    first = str(getattr(candidate, "first_name", "") or "").strip()
+    last = str(getattr(candidate, "last_name", "") or "").strip()
+    display = f"{first} {last}".strip() or None
+    stage = str(getattr(candidate, "stage", "") or "").strip() or None
+    status = str(getattr(candidate, "status", "") or "").strip() or None
+
+    raw_reasons = getattr(candidate, "status_reason", None)
+    reason_list = (
+        [str(x).strip() for x in raw_reasons if str(x).strip()]
+        if isinstance(raw_reasons, list)
+        else []
+    )
+
+    source_lead_id = str(extra.get("source_lead_id") or "").strip() or None
+    continuity = extra.get("lead_continuity_v1")
+    intake_status: Optional[str] = None
+    intake_reason: Optional[str] = None
+    if isinstance(continuity, Mapping):
+        ir = continuity.get("intake_resolution_v1")
+        if isinstance(ir, Mapping):
+            intake_status = str(ir.get("status") or "").strip() or None
+            intake_reason = str(ir.get("reason_code") or "").strip() or None
+        if not source_lead_id:
+            source_lead_id = str(continuity.get("source_lead_id") or "").strip() or None
+
+    intakes = origin.get("lead_duplicate_intakes_v1")
+    intake_count = 0
+    last_at: Optional[str] = None
+    if isinstance(intakes, list):
+        kept = [row for row in intakes if isinstance(row, Mapping)]
+        intake_count = len(kept)
+        if kept:
+            last_at = str(kept[-1].get("ingested_at") or "").strip() or None
+
+    reason = reason_list[0] if reason_list else intake_reason
+    stage_l = (stage or "").lower()
+    outcome = None
+    if stage_l in {"rejected", "declined", "employed"}:
+        outcome = stage_l
+    elif intake_status in {"rejected", "converted", "pooled"}:
+        outcome = intake_status
+
+    summary: dict[str, Any] = {
+        "candidate_created": True,
+        "candidate_id": cid,
+    }
+    if display:
+        summary["display_name"] = display
+    if stage:
+        summary["stage"] = stage
+    if status:
+        summary["status"] = status
+    if reason:
+        summary["reason"] = reason
+    if reason_list:
+        summary["status_reason"] = reason_list
+    if intake_status:
+        summary["intake_status"] = intake_status
+    if intake_reason:
+        summary["intake_reason"] = intake_reason
+    if source_lead_id:
+        summary["source_lead_id"] = source_lead_id
+    if intake_count:
+        summary["previous_duplicate_intakes"] = intake_count
+    if last_at:
+        summary["last_duplicate_intake_at"] = last_at
+    if outcome:
+        summary["outcome"] = outcome
+    return summary
+
+
+def stamp_duplicate_prior_v1(normalized: dict[str, Any], candidate: Any) -> None:
+    """Durable prior-candidate snapshot (survives duplicate_match_v1 clear)."""
+    prior = build_duplicate_prior_summary(candidate)
+    if not prior:
+        return
+    normalized["duplicate_prior_v1"] = dict(prior)
+
+
+def preserve_duplicate_prior_from_match(normalized: dict[str, Any], match_block: Any) -> None:
+    """Copy ``match.prior`` onto ``duplicate_prior_v1`` before the match stamp is dropped."""
+    if not isinstance(normalized, dict) or not isinstance(match_block, Mapping):
+        return
+    existing = normalized.get("duplicate_prior_v1")
+    if isinstance(existing, Mapping) and existing.get("candidate_id"):
+        return
+    prior = match_block.get("prior")
+    if isinstance(prior, Mapping) and prior.get("candidate_id"):
+        normalized["duplicate_prior_v1"] = dict(prior)
+
+
 def stamp_duplicate_review_normalized_v1(
     normalized: dict[str, Any],
     *,
@@ -442,7 +556,7 @@ def stamp_duplicate_review_normalized_v1(
     suggested: Optional[str] = None
     if match.candidate is not None:
         suggested = str(match.candidate.id)
-    normalized["duplicate_match_v1"] = {
+    stamp: dict[str, Any] = {
         "level": match.level,
         "suggested_candidate_id": suggested,
         "reasons": list(match.reasons),
@@ -450,6 +564,11 @@ def stamp_duplicate_review_normalized_v1(
         "error_code": error_code,
         "stamped_at": datetime.now(timezone.utc).isoformat(),
     }
+    prior = build_duplicate_prior_summary(match.candidate)
+    if prior:
+        stamp["prior"] = prior
+        normalized["duplicate_prior_v1"] = dict(prior)
+    normalized["duplicate_match_v1"] = stamp
 
 
 async def record_exact_duplicate_lead_intake(

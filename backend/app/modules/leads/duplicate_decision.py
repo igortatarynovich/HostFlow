@@ -10,7 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models import Candidate, Lead
 from backend.app.modules.leads import crud
-from backend.app.modules.leads.duplicate_resolution import record_exact_duplicate_lead_intake
+from backend.app.modules.leads.duplicate_resolution import (
+    preserve_duplicate_prior_from_match,
+    record_exact_duplicate_lead_intake,
+    stamp_duplicate_prior_v1,
+)
 from backend.app.services.audit import log_activity
 from backend.app.modules.leads.lead_candidate_conversion import (
     ensure_recruitment_application_for_converted_lead,
@@ -110,6 +114,8 @@ async def apply_lead_duplicate_decision(
             suggested_prior=suggested,
             outcome="attached",
         )
+        preserve_duplicate_prior_from_match(norm, dm)
+        stamp_duplicate_prior_v1(norm, cand)
         norm.pop("duplicate_match_v1", None)
         norm["duplicate_resolution_v1"] = {
             "resolved_at": datetime.now(timezone.utc).isoformat(),
@@ -218,6 +224,7 @@ async def apply_lead_duplicate_decision(
         suggested_prior=suggested,
         outcome="override_create_new" if d == "create_new" else "override_ignore",
     )
+    preserve_duplicate_prior_from_match(norm, dm)
     norm.pop("duplicate_match_v1", None)
     norm["duplicate_resolution_v1"] = {
         "resolved_at": datetime.now(timezone.utc).isoformat(),

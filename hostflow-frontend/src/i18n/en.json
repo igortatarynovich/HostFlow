@@ -8030,7 +8030,16 @@
           "attach_existing": "Lead attached to existing candidate.",
           "create_new": "New candidate created from this lead.",
           "ignore": "Marked as not a duplicate."
-        }
+        },
+        "badge_attached": "Attached",
+        "badge_duplicate": "Duplicate",
+        "open_candidate": "Open candidate",
+        "prior_candidate": "Previous candidate",
+        "prior_candidate_created": "Candidate already exists",
+        "prior_no_candidate": "No candidate was created",
+        "prior_outcome": "Outcome",
+        "prior_reason": "Reason",
+        "prior_repeat": "Already seen as a duplicate {n} time(s)."
       },
       "client_detail": {
         "rejected": "The lead is rejected and excluded from candidate processing.",

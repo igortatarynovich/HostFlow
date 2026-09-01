@@ -11,7 +11,10 @@ from backend.app.entity_profile.decision_layer import DecisionResult, IngestDisp
 from backend.app.models import Candidate, Company, Lead
 from backend.app.models.additional_service import ServiceOrder
 from backend.app.modules.leads import crud
-from backend.app.modules.leads.duplicate_resolution import record_exact_duplicate_lead_intake
+from backend.app.modules.leads.duplicate_resolution import (
+    record_exact_duplicate_lead_intake,
+    stamp_duplicate_prior_v1,
+)
 from backend.app.modules.leads.lead_candidate_conversion import create_candidate_from_lead_conversion
 from backend.app.modules.leads.lead_client_conversion import create_client_from_lead_conversion
 from backend.app.modules.leads.lead_service_order_conversion import create_service_order_from_lead_conversion
@@ -40,6 +43,7 @@ async def apply_blocked_duplicate_outcome(
     duplicate = decision.duplicate_match.candidate
     if duplicate is None:
         raise ValueError("blocked_duplicate requires duplicate candidate")
+    stamp_duplicate_prior_v1(normalized, duplicate)
     await crud.update_lead(
         db,
         lead,

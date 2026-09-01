@@ -2,6 +2,8 @@ import { IconPhone } from '@tabler/icons-react'
 
 import type { Lead } from '../../api/types'
 import { useI18n } from '../../i18n'
+import { leadShowsDuplicateMark } from '../../utils/leadDuplicateReview'
+import { StatusBadge } from '../ui/StatusBadge'
 
 type Props = {
   lead: Lead
@@ -56,7 +58,16 @@ export default function LeadIntakeIdentityBar({
   return (
     <div className="space-y-3">
       <div>
-        <h2 className="truncate text-xl font-semibold tracking-tight text-slate-900">{displayName}</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="truncate text-xl font-semibold tracking-tight text-slate-900">{displayName}</h2>
+          {leadShowsDuplicateMark(lead) ? (
+            <StatusBadge
+              label={t('app.leads.duplicate_review.badge_duplicate', { defaultValue: 'Duplicate' })}
+              semantic="warning"
+              size="sm"
+            />
+          ) : null}
+        </div>
         {canTel ? (
           <p className="mt-0.5 text-base font-medium tabular-nums text-slate-800">{String(phone)}</p>
         ) : null}

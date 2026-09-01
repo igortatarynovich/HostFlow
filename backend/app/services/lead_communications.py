@@ -51,6 +51,8 @@ def normalized_merging_lead_persisted_blocks(lead: Lead, normalized: Dict[str, A
         "call_result_v1",
         "call_results_v1",
         "form_question_labels_v1",
+        "duplicate_match_v1",
+        "duplicate_prior_v1",
     ):
         if key in existing and key not in out:
             out[key] = existing[key]

@@ -90,3 +90,22 @@ export function parseIntakeQueueFilter(raw: string | null | undefined): IntakeQu
 export function intakeLifecycleLabelKey(lifecycle: IntakeLifecycle): string {
   return `app.leads.intake_workspace.lifecycle.${lifecycle}`
 }
+
+export function intakeLifecycleSemantic(
+  lifecycle: IntakeLifecycle,
+): 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'brand' {
+  switch (lifecycle) {
+    case 'converted':
+      return 'success'
+    case 'rejected':
+      return 'danger'
+    case 'in_progress':
+      return 'info'
+    case 'pool':
+      return 'brand'
+    case 'duplicate_review':
+      return 'warning'
+    default:
+      return 'neutral'
+  }
+}

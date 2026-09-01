@@ -14,6 +14,7 @@ import LeadIntakeDecisionRail from './LeadIntakeDecisionRail'
 import LeadIntakeFormAnswers from './LeadIntakeFormAnswers'
 import LeadIntakeCallStep from './LeadIntakeCallStep'
 import LeadIntakeIdentityBar from './LeadIntakeIdentityBar'
+import LeadDuplicateReviewPanel from './LeadDuplicateReviewPanel'
 
 function normRecord(normalized: unknown): Record<string, unknown> {
   if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) return {}
@@ -248,6 +249,8 @@ export default function LeadIntakeWorkspacePanel({
         />
 
         <LeadIntakeFormAnswers lead={lead} />
+
+        <LeadDuplicateReviewPanel lead={lead} onLeadUpdated={onLeadUpdated} />
 
         <LeadIntakeCallStep lead={lead} onLeadUpdated={onLeadUpdated} showTelButton={false} />
 

@@ -84,8 +84,16 @@ import {
   leadAssignmentLocked,
   leadSupportsManualProcess,
 } from '../utils/leadCrm'
-import { INTAKE_QUEUE_FILTERS, parseIntakeQueueFilter, type IntakeQueueFilter } from '../utils/leadIntakeLifecycle'
+import {
+  INTAKE_QUEUE_FILTERS,
+  intakeLifecycleSemantic,
+  leadIntakeLifecycle,
+  parseIntakeQueueFilter,
+  type IntakeQueueFilter,
+} from '../utils/leadIntakeLifecycle'
 import { leadIntakeLastActivityAt, leadIntakeLastActivityLabel, leadIntakeQueueFlags } from '../utils/leadIntakeQueueFlags'
+import { leadShowsDuplicateMark } from '../utils/leadDuplicateReview'
+import { StatusBadge } from '../components/ui/StatusBadge'
 import { formatLeadPipelineError } from '../utils/leadPipelineErrors'
 import { useLeadsQueueKeyboard } from '../hooks/useLeadsQueueKeyboard'
 
@@ -2336,9 +2344,22 @@ export default function LeadsPage() {
                               {lead.recruiter_id || '—'}
                             </td>
                             <td>
-                              <span className="inline-flex max-w-[11rem] items-center rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-800">
-                                <span className="truncate">{t(leadIntakeColumnStatusKey(lead, isServicesTenant))}</span>
-                              </span>
+                              <div className="flex flex-wrap items-center gap-1">
+                                {leadShowsDuplicateMark(lead) ? (
+                                  <StatusBadge
+                                    label={t('app.leads.duplicate_review.badge_duplicate', { defaultValue: 'Duplicate' })}
+                                    semantic="warning"
+                                    size="sm"
+                                  />
+                                ) : null}
+                                {leadIntakeLifecycle(lead) !== 'duplicate_review' ? (
+                                  <StatusBadge
+                                    label={t(leadIntakeColumnStatusKey(lead, isServicesTenant))}
+                                    semantic={intakeLifecycleSemantic(leadIntakeLifecycle(lead))}
+                                    size="sm"
+                                  />
+                                ) : null}
+                              </div>
                             </td>
                             <td className="max-w-[200px]">
                               {rowMetaProblem ? (

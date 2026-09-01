@@ -7957,7 +7957,16 @@
           "attach_existing": "Лид привязан к существующему кандидату.",
           "create_new": "Из лида создан новый кандидат.",
           "ignore": "Отмечено как не дубль."
-        }
+        },
+        "badge_attached": "Привязан",
+        "badge_duplicate": "Дубль",
+        "open_candidate": "Открыть кандидата",
+        "prior_candidate": "Прежний кандидат",
+        "prior_candidate_created": "Кандидат уже создан",
+        "prior_no_candidate": "Кандидат не создавался",
+        "prior_outcome": "Исход",
+        "prior_reason": "Причина",
+        "prior_repeat": "Уже приходил как дубль {n} раз."
       },
       "client_detail": {
         "rejected": "Лид отклонён и исключён из обработки кандидатов.",

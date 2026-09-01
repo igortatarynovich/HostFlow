@@ -109,6 +109,8 @@ def _merge_lead_normalized_fallback(normalized: Dict[str, Any], prior: Any) -> N
         "duplicate_override_v1",
         "duplicate_decisions_history_v1",
         "duplicate_resolution_v1",
+        "duplicate_match_v1",
+        "duplicate_prior_v1",
         "intake_vacancy_confirm_v1",
         "intake_resolution_v1",
         "recruitment_pool_intent_v1",
